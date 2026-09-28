@@ -245,10 +245,9 @@ Online-Ausweisfunktion statt eines Freischaltcodes. Anders als `ident-fsc` erbri
 Faktortypen in einem Durchlauf (`factorTypes={possession,knowledge}`, `maxAcr=loa3`): den Besitz der
 (simulierten) eID-Karte und das Wissen um die PIN.
 
-Es gibt zwei `PATCH`-Schritte mit je eigenem `nextStep`, damit der Client zwei verschiedene
-Bildschirme zeigen kann:
+Wie `ident-fsc` hat es einen einzigen Schritt `input` mit gestaffelten `missingFields`:
 
-1. **`card`**: Die simulierte eID-Karte liefert ihre vollständigen Ausweisdaten auf einmal:
+1. **Kartendaten**: Die simulierte eID-Karte liefert ihre vollständigen Ausweisdaten auf einmal:
    `familyName`, `givenNames`, `birthDate`, `streetAddress` (Straße **und** Hausnummer in einer Zeile,
    wie im Kartenfeld `Street`), `postalCode`, `locality` und `restrictedId`. Vorher wird **nichts** eingetippt: Eine
    Karte trägt weder KVNR noch PersonId, also gibt es auch keinen Suchschritt davor. Die
@@ -259,8 +258,23 @@ Bildschirme zeigen kann:
    (Wiedererkennung).
 2. **`pin`**: die eID-PIN (Testwert `123456`, entsprechend dem `VALIDCODE` bei `ident-fsc`).
 
-Wie beim allgemeinen Muster lassen sich auch alle Felder zusammen in einem einzigen `PATCH`
-schicken; nur fehlende Felder müssen einzeln nachgereicht werden.
+Dabei gilt:
+
+- Die Kartendaten werden geprüft, sobald sie vollständig sind; erst danach fragt das Tool nach der
+  PIN. Geprüft werden nur Form und Vollständigkeit, kein Abgleich mit dem Personenverzeichnis, denn
+  die Karte steht für ihre Daten selbst ein (siehe unten): Das Geburtsdatum liegt nicht in der
+  Zukunft, die Postleitzahl hat fünf Ziffern, die `restrictedId` besteht aus 16 bis 64 Buchstaben
+  und Ziffern.
+- Abgelehnte Kartendaten werden samt PIN verworfen; danach fehlen wieder alle Kartenfelder. Bei
+  einer abgelehnten PIN wird nur die PIN verworfen.
+- Beide Ablehnungen zählen als Fehlversuch der Journey. Die Antwort nennt nie, welches Feld nicht
+  passte.
+- Alle Felder lassen sich auch zusammen in einem einzigen `PATCH` schicken. Wer einzelne
+  Kartenfelder später ändert, löst eine neue Prüfung der Kartendaten aus.
+- Wie viele Bildschirme ein Client daraus macht, entscheidet er selbst ([Frontend](10-frontend.md)).
+  App und Keycloak zeigen zuerst die Karte, dann die PIN, und bleiben nach einem Fehlversuch auf der
+  Seite, von der aus abgeschickt wurde. Von der PIN führt „Angaben ändern“ (in Keycloak „Zurück“)
+  zur Karte zurück.
 
 Der eigentliche Unterschied zu `ident-fsc` liegt darin, wer für die Daten einsteht. Bei
 `ident-fsc` ist das Personenverzeichnis die Quelle und das Tool nur der Weg dorthin

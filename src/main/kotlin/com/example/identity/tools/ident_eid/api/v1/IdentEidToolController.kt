@@ -62,7 +62,8 @@ class IdentEidToolController(
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
                       "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
-                      "next": {"type": "tool", "toolId": "ident-eid", "step": "card", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "next": {"type": "tool", "toolId": "ident-eid", "step": "input", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                      "stepData": {"kind": "missing-fields", "missingFields": ["familyName", "givenNames", "birthDate", "streetAddress", "postalCode", "locality", "restrictedId"]}
                     }
                 """)])]
             )
@@ -83,22 +84,23 @@ class IdentEidToolController(
     @PatchMapping("$API_V1/tools/{toolSessionId}/ident-eid")
     @Operation(
         summary = "Supply the simulated card's Ausweisdaten, then the PIN",
-        description = "Only the fields for the current step need to be sent; all of them together also completes in one call.",
+        description = "Only the fields being supplied or corrected need to be sent; all of them together also completes in one call. " +
+            "The card data is checked for format and completeness as soon as it is complete, and only then is the PIN asked for.",
         responses = [
             ApiResponse(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [
-                    ExampleObject(name = "After card data - pin step", value = """
+                    ExampleObject(name = "After card data - the PIN is missing", value = """
                         {
                           "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
-                          "next": {"type": "tool", "toolId": "ident-eid", "step": "pin", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                          "next": {"type": "tool", "toolId": "ident-eid", "step": "input", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                          "stepData": {"kind": "missing-fields", "missingFields": ["pin"]}
                         }
                     """),
-                    ExampleObject(name = "After pin - attested, the assignment question follows", value = """
+                    ExampleObject(name = "After pin - attested, the assignment step follows", value = """
                         {
                           "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
-                          "next": {"type": "orchestrator", "context": "prompt", "step": "confirm"},
-                          "stepData": {"kind": "confirm", "prompt": {"kind": "Confirm", "title": "Konto Ihrer Versichertennummer zuordnen?"}}
+                          "next": {"type": "tool", "toolId": "ident-kvnr", "step": "input"}
                         }
                     """)
                 ])]
@@ -137,7 +139,8 @@ class IdentEidToolController(
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
                       "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
-                      "next": {"type": "tool", "toolId": "ident-eid", "step": "card", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "next": {"type": "tool", "toolId": "ident-eid", "step": "input", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                      "stepData": {"kind": "missing-fields", "missingFields": ["pin"]}
                     }
                 """)])]
             )

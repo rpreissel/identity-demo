@@ -27,8 +27,6 @@ object IdentEidDescriptor : ToolDescriptor {
     override val factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE)
     override val maxAcr = AcrLevel.LOA3
     override val demoOnly = SIMULATED_EID
-    // Not the role's "input": nothing is typed to begin with, the run opens on the card read.
-    override val startStep = "card"
     // Exactly what the card carries, on this procedure's own authority. No PERSON_ID and no KVNR:
     // a real eID card holds neither (ADR-18). restricted_id is the card's pseudonym, a replaceable
     // local anchor, so a later eid run recognizes the Interessent it created (ADR-19).

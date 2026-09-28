@@ -367,7 +367,8 @@ Ein `next.step` benennt eine fachliche Phase, keinen Bildschirm. Wie viele Bilds
 daraus macht, entscheidet das Frontend anhand von `stepData.missingFields` und `PATCH`-Anfragen mit
 einem Teil der Felder. Ein zusätzlicher Bildschirm, der dieselben Daten braucht, erfordert deshalb
 keine Änderung im Backend. Beispiel `ident-fsc`: Es hat einen Schritt `input`, im Frontend aber zwei
-Bildschirme (erst die Personendaten, dann der Freischaltcode).
+Bildschirme (erst die Personendaten, dann der Freischaltcode). `ident-eid` hält es genauso: ein
+Schritt `input`, zwei Bildschirme (erst die Karte, dann die PIN).
 
 Die Folgen: Alle URLs des Backends bleiben ein Detail der Umsetzung. Ein neues Tool braucht nur einen
 eigenen Ordner `tools/<name>/`; die Registry findet es selbst, ein Tabelleneintrag ist nicht nötig.

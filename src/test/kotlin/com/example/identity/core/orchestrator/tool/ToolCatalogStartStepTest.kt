@@ -19,7 +19,7 @@ class ToolCatalogStartStepTest(toolRegistry: ToolHandlerRegistry) : BehaviorSpec
 
     val expectedStartSteps = mapOf(
         "ident-fsc" to "input",
-        "ident-eid" to "card",
+        "ident-eid" to "input",
         "ident-nect" to "redirect",
         "ident-kvnr" to "input",
         "enroll-sms" to "enroll",

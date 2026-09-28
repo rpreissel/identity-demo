@@ -39,7 +39,7 @@ const { getKcContextMock } = createGetKcContextMock({
     'tool-ident-kvnr.ftl': { toolId: 'ident-kvnr', pageTitle: 'Versichertennummer', hint: 'Konto der eigenen Person im Personenverzeichnis zuordnen', demoPersonsJson: PERSONS },
     'tool-sms-enroll.ftl': { toolId: 'enroll-sms', pageTitle: 'SMS', hint: 'Code per SMS', step: 'enroll', demoTan: '123456', demoPersonsJson: PERSONS },
     'tool-ident-fsc.ftl': { toolId: 'ident-fsc', pageTitle: 'Freischaltcode', personalienPage: true, demoPersonsJson: PERSONS },
-    'tool-ident-eid.ftl': { toolId: 'ident-eid', pageTitle: 'Online-Ausweis', hint: 'Mit dem Personalausweis', step: 'card', demoPersonsJson: PERSONS },
+    'tool-ident-eid.ftl': { toolId: 'ident-eid', pageTitle: 'Online-Ausweis', hint: 'Mit dem Personalausweis', cardPage: true, demoPersonsJson: PERSONS },
     'tool-qr-wait.ftl': {
       toolId: 'auth-qr-lookup',
       pageTitle: 'Mit der App anmelden',
