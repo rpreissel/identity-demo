@@ -9,6 +9,14 @@
 # keycloak-sync.base-url/realm und keycloak-migrate.base-url ab, bevor die erste Bean
 # entsteht. Grund: Aufbau und Betrieb meinen dasselbe Realm und dieselben Clients - zwei Orte
 # dafuer waren ein Tippfehler von einem 401 entfernt, der erst tief im Betrieb auffaellt.
+spring:
+  modulith:
+    events:
+      # Offene Ereignisse erst nach den Keycloak-Migrationen zustellen, nicht parallel dazu:
+      # Ein Realm-Neuaufbau im Demomodus liesse eine Kontoloeschung sonst gegen ein Realm im Umbau
+      # laufen. KeycloakMigrationRunnerStartup stellt sie danach selbst zu.
+      republish-outstanding-events-on-restart: false
+
 kc:
   peer-auth:
     # issuer/audience/jwks-uri: abgeleitet (siehe oben).

@@ -7,6 +7,7 @@ import com.example.identity.kcmigrate.MigrationStepFailedException
 import com.example.identity.kcmigrate.buildAdminClient
 import com.example.identity.core.orchestrator.KeycloakGatedReadinessState
 import org.slf4j.LoggerFactory
+import org.springframework.modulith.events.IncompleteEventPublications
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ApplicationArguments
@@ -39,6 +40,9 @@ class KeycloakMigrationRunnerStartup(
     // das Sitzungen, Nutzer-IDs und Credentials; der Start bricht dann ab.
     private val demoMode: DemoMode,
     private val clock: Clock,
+    // Im Profil keycloak ist republish-outstanding-events-on-restart aus; zugestellt wird hier,
+    // wenn das Realm steht (application-keycloak.yml).
+    private val incompletePublications: IncompleteEventPublications,
 ) : ApplicationRunner {
     private val log = LoggerFactory.getLogger(KeycloakMigrationRunnerStartup::class.java)
 
@@ -70,6 +74,7 @@ class KeycloakMigrationRunnerStartup(
         }
         log.info("Keycloak-Migrationen abgeschlossen.")
         readinessState.markReady()
+        incompletePublications.resubmitIncompletePublications { true }
     }
 
     /**

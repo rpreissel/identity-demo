@@ -272,7 +272,11 @@ Aufruf nicht spurlos verloren geht:
 - Zugestellt wird auf Springs gemeinsamem Async-Pool. Eine Löschung ist unabhängig von jeder anderen
   und darf wiederholt werden; eine eigene Spur mit fester Reihenfolge braucht es nicht.
 - Offene Zeilen werden nach fünf Minuten erneut zugestellt (`spring.modulith.events.staleness.*`),
-  ebenso beim Neustart (`republish-outstanding-events-on-restart`).
+  ebenso beim Neustart. Im Profil `keycloak` geschieht das erst nach den Keycloak-Migrationen
+  (`KeycloakMigrationRunnerStartup`), nicht parallel dazu: Baut der Demomodus das Realm neu auf,
+  liefe eine Löschung sonst gegen ein Realm im Umbau.
+- Lehnt Keycloak das zwischengespeicherte Token des Admin-Clients mit 401 ab, etwa nach einem
+  Realm-Neuaufbau, holt `KeycloakAdminClient` einmal ein neues und wiederholt den Aufruf.
 - Die Zeile enthält den Status, die Zahl der Zustellversuche und den Zeitpunkt der letzten
   Wiederholung.
 

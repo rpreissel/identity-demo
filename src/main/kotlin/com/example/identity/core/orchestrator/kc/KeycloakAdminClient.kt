@@ -46,7 +46,7 @@ class KeycloakAdminClient(
      * also end the account's Web-channel browser sessions. Callers treat it as best-effort.
      */
     fun logoutSession(keycloakSessionId: String) {
-        authorized().delete().uri("/admin/realms/{realm}/sessions/{sessionId}", realm, keycloakSessionId).retrieve().toBodilessEntity()
+        asAdmin { it.delete().uri("/admin/realms/{realm}/sessions/{sessionId}", realm, keycloakSessionId).retrieve().toBodilessEntity() }
     }
 
     /**
@@ -55,7 +55,7 @@ class KeycloakAdminClient(
      * because Keycloak's `DELETE users/{id}` first looks the user up, which no longer succeeds.
      */
     fun removeAccount(accountId: Long) {
-        authorized().delete().uri("/admin/realms/{realm}/orchestrator-accounts/{accountId}", realm, accountId).retrieve().toBodilessEntity()
+        asAdmin { it.delete().uri("/admin/realms/{realm}/orchestrator-accounts/{accountId}", realm, accountId).retrieve().toBodilessEntity() }
         log.info("Keycloak: removed local state of federated user for accountId={}", accountId)
     }
 
@@ -114,6 +114,19 @@ class KeycloakAdminClient(
         val refreshExpiresInSeconds = (response["refresh_expires_in"] as? Number)?.toLong()
         return AccountTokenResponse(accessToken, expiresInSeconds, refreshToken, refreshExpiresInSeconds)
     }
+
+    /**
+     * Runs [call] with the service-account token. A 401 means Keycloak no longer accepts the cached
+     * token, although it has not expired yet - typically because the demo rebuilt the realm and its
+     * keys. Then the token is dropped and the call repeated exactly once with a fresh one.
+     */
+    private fun <T> asAdmin(call: (RestClient) -> T): T =
+        try {
+            call(authorized())
+        } catch (e: HttpClientErrorException.Unauthorized) {
+            cachedToken = null
+            call(authorized())
+        }
 
     /** [restClient] pre-authorized with a valid (cached, auto-refreshed) service-account access token. */
     private fun authorized(): RestClient =
