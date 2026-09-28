@@ -1,0 +1,1293 @@
+.app {
+  /* Scales with the viewport instead of a fixed width, capped so text and forms never get too wide
+     on a huge screen. */
+  width: 100%;
+  max-width: min(94vw, 960px);
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  text-align: left;
+}
+
+/* The Journey-Trace tab is a wide table, not prose: it uses the whole app-main column instead of
+   the 960px reading-width cap. */
+.app.app-wide {
+  max-width: 100%;
+}
+
+.app-header {
+  position: relative;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.app-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 2.25rem;
+  color: var(--accent);
+}
+
+.app-header p {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.app-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-tabs button {
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--text-muted, #888);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.app-tabs button:hover {
+  color: var(--text-h);
+}
+
+.app-tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.app-tabs {
+  align-items: center;
+}
+
+.back-button {
+  margin-right: 0.25rem;
+}
+
+.card {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+
+.card h2 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  color: var(--text-h);
+}
+
+.card h3,
+.section-heading {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1.05rem;
+  color: var(--text-h);
+}
+
+.card h3:first-child,
+.section-heading:first-child {
+  margin-top: 0;
+}
+
+.card p {
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+/* Identity line + logout side by side, the same in the App- and Web-Kanal's authenticated view, so
+   logging out sits next to "who am I". */
+.identity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.identity-row p {
+  margin: 0;
+}
+
+.success-card {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.success-card h2 {
+  color: #16a34a;
+}
+
+/* ---- Welcome page: one first action, tasks with buttons, a short glossary ------------------- */
+
+/* One text size for everything but titles; the tiles' hints included. */
+.welcome .card p,
+.welcome .method-choice-hint {
+  font-size: 1rem;
+}
+
+.welcome-hero {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+
+.welcome-hero p {
+  color: var(--text-h);
+}
+
+.button-large {
+  padding: 0.9rem 1.75rem;
+  font-size: 1.05rem;
+  text-decoration: none;
+}
+
+/* A row per entry: what it is on the left, its button on the right; lines between rows only. */
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+  color: var(--text-h);
+}
+
+.task-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.task-row:last-child {
+  padding-bottom: 0;
+}
+
+.task-row > .button,
+.task-row > .task-note {
+  flex: none;
+}
+
+.task-row > .button {
+  min-width: 12rem;
+  padding: 0.45rem 1rem;
+  text-decoration: none;
+}
+
+.task-note {
+  color: var(--text);
+}
+
+/* Session overview (ActiveSessionsView): the task rows, a bit denser, one heading per Keycloak client. */
+.active-sessions h3 {
+  margin: 1.25rem 0 0.5rem;
+}
+
+.active-sessions .task-row {
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.active-sessions-client h4 {
+  margin: 0.75rem 0 0.4rem;
+  font-size: 0.95rem;
+  color: var(--text-h);
+}
+
+.tab-tiles {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.tab-tiles .method-choice {
+  box-sizing: border-box;
+  height: 100%;
+}
+
+.glossary {
+  margin: 0;
+}
+
+.glossary > div {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.glossary > div:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.glossary dt {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+/* The terms reuse the wordings of running text, which some languages write in lower case. */
+.glossary dt::first-letter,
+.tab-tiles .method-choice-label::first-letter {
+}
+
+.glossary dd {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .task-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .glossary > div {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+}
+
+/* Welcome page: what the demo really runs vs. what it only plays - side by side, stacked on phones. */
+.real-vs-sim {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.real-vs-sim h3 {
+  margin-top: 0;
+}
+
+.real-vs-sim ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.real-vs-sim li {
+  margin-bottom: 0.4rem;
+}
+
+.journey-diagram {
+  margin: 0;
+  color: var(--text-h);
+}
+
+/* Containment, not sequence: Tool lives inside Journey lives inside Channel - nested boxes say
+   that correctly, an arrow chain would misread it as "happens after". */
+.nesting-diagram {
+  margin: 1rem 0;
+}
+
+.nesting-box {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.nesting-box--2 {
+  margin-top: 0.85rem;
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+
+.nesting-box--3 {
+  margin-top: 0.85rem;
+  background: var(--bg);
+  border-color: var(--accent);
+}
+
+.nesting-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.nesting-label em {
+  margin-left: 0.4rem;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.nesting-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.nesting-note strong {
+  color: var(--text-h);
+}
+
+.nesting-label-action {
+  margin-left: auto;
+}
+
+.journey-diagram svg {
+  /* Rendered at native size (width/height attrs match the viewBox) - shrinking it to fit a
+     narrow popover made the text illegible; the popover scrolls horizontally instead. */
+  display: block;
+}
+
+.journey-diagram figcaption {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+/* Hover/focus-revealed diagram preview - the diagram itself stays out of the way until wanted. */
+.diagram-hint {
+  position: relative;
+}
+
+.diagram-hint--block {
+  display: block;
+}
+
+.diagram-hint--inline {
+  display: inline-block;
+}
+
+.diagram-hint-trigger {
+  display: inline-flex;
+  margin-left: 0.4rem;
+  color: var(--accent);
+  cursor: help;
+  vertical-align: middle;
+}
+
+.diagram-hint-popover {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  bottom: calc(100% + 0.5rem);
+  min-width: max-content;
+  max-width: min(95vw, 860px);
+  max-height: min(70vh, 640px);
+  overflow-x: auto;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 0.75rem;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.12s, transform 0.12s;
+  pointer-events: none;
+}
+
+/* See DiagramHint's openDown prop - a trigger with no room above needs the popover below instead. */
+.diagram-hint-popover--down {
+  bottom: auto;
+  top: calc(100% + 0.5rem);
+  transform: translateY(-4px);
+}
+
+.diagram-hint:hover .diagram-hint-popover,
+.diagram-hint:focus-within .diagram-hint-popover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.form-group input {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font-size: 1rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.form-actions {
+  margin-top: 1.25rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.section-heading {
+  margin-top: 1.5rem;
+}
+
+.form-actions.stacked {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.controls {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+button,
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.05s;
+}
+
+button:hover,
+.button:hover {
+  filter: brightness(1.1);
+}
+
+button:active,
+.button:active {
+  transform: translateY(1px);
+}
+
+button.secondary,
+.button.secondary {
+  background: transparent;
+  color: var(--accent);
+}
+
+button.secondary:hover,
+.button.secondary:hover {
+  background: var(--accent-bg);
+}
+
+button.destructive,
+.button.destructive {
+  background: #c0392b;
+  border-color: #c0392b;
+}
+
+.hint {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  font-size: 0.9rem;
+  color: var(--text-h);
+}
+
+/* Demo-only helper above a real form (DemoPersonPicker): set apart as a tool, not a form field -
+   dashed frame, muted background, a small tag - so nobody takes it for part of the procedure. */
+.demo-picker {
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  border: 1px dashed var(--accent-border);
+  border-radius: 8px;
+  background: var(--social-bg);
+}
+
+.demo-picker label {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.demo-picker__tag {
+  display: inline-block;
+  padding: 0 0.4rem;
+  margin-right: 0.25rem;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.hint code {
+  background: transparent;
+  padding: 0;
+  font-weight: 600;
+}
+
+.method-choice-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+button.method-choice,
+a.method-choice {
+  width: 100%;
+  display: flex;
+  /* center would align the icon against the whole text block; flex-start keeps every icon level
+     with its own label, however many lines the hint wraps to. */
+  align-items: flex-start;
+  /* Overrides the global `button{justify-content:center}`: centering the icon+text group put every
+     icon at a different x position, depending on how its hint wrapped. */
+  justify-content: flex-start;
+  gap: 0.9rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text-h);
+  text-align: left;
+  text-decoration: none;
+  font-weight: 400;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 0.15s, background 0.15s, transform 0.05s;
+}
+
+/* A tile for something this server does not offer right now (e.g. the Web channel without the
+   `keycloak` profile): same shape as the others, but visibly not clickable. */
+.method-choice.method-choice-disabled {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+button.method-choice:hover,
+a.method-choice:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+button.method-choice:active,
+a.method-choice:active {
+  transform: translateY(1px);
+}
+
+.method-choice-icon {
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  font-size: 1.5rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.method-choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.method-choice-label {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.method-choice-hint {
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.status-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.status-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.status-list li:last-child {
+  border-bottom: none;
+}
+
+/* A row whose value is a list: label on top, the list full width below it. */
+.status-list li.status-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+/* One shared grid for all rows, so the tool lists line up under each other. */
+.status-sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 1rem;
+  row-gap: 0.35rem;
+  align-items: baseline;
+}
+
+.status-list .status-sublist li {
+  display: contents;
+}
+
+.status-group {
+  font-size: 0.85rem;
+  color: var(--text-muted, var(--text));
+}
+
+.status-list .label {
+  font-size: 0.9rem;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+/* ADR-5-Transparenz (effektives/max loa, enrolledUnderAcr, Faktor-Typen) unter dem Methodennamen -
+   selbe Optik wie .method-choice-hint, nur lokal in der Anmeldeverfahren-Liste. */
+.method-detail-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted, var(--text));
+  font-weight: 400;
+}
+
+.status-list .value {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--text-h);
+}
+
+.status-list .value.value-plain {
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.disclosure {
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+/* The divider separates a disclosure from card content ABOVE it - as a card's first element there
+   is nothing to separate it from. */
+.card > .disclosure:first-child {
+  margin-top: 0;
+  border-top: none;
+  padding-top: 0;
+}
+
+.disclosure-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-h);
+  list-style: none;
+}
+
+.disclosure-summary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosure-summary::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin: 0 2px;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.disclosure[open] > .disclosure-summary::before {
+  transform: rotate(135deg);
+}
+
+.disclosure-body {
+  margin-top: 0.75rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge--registration {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+}
+
+.badge--authentication {
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.error-card {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.error-card h2 {
+  color: #dc2626;
+}
+
+.journey-trace-channel {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.journey-trace-channel:first-of-type {
+  margin-top: 1rem;
+  padding-top: 0;
+  border-top: none;
+}
+
+.journey-trace-channel h3 {
+  margin: 0 0 0.75rem;
+}
+
+.journey-trace-channel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.journey-trace-channel-header h3 {
+  margin: 0;
+}
+
+.journey-trace-channel-type {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.journey-trace-journey {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.journey-trace-journey-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Sub-journeys (docs/04-orchestrierung.md #6) are nested (see renderJourneyNode) with an accent
+   border back to their parent, so a step-up's re-identification reads as part of the flow. */
+.journey-trace-journey--nested {
+  border-left: 3px solid var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.journey-trace-journey-header--sub {
+  justify-content: flex-start;
+}
+
+.journey-trace-sub-marker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.journey-trace-table-scroll {
+  overflow-x: auto;
+}
+
+.journey-trace-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.journey-trace-table th {
+  text-align: left;
+  padding: 0.4rem 0.75rem 0.4rem 0;
+  font-size: 0.75rem;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.journey-trace-table td {
+  padding: 0.5rem 0.75rem 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.journey-trace-table tr:last-child td {
+  border-bottom: none;
+}
+
+.journey-trace-time {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.journey-trace-tool {
+  font-family: var(--mono);
+  color: var(--text-h);
+  white-space: nowrap;
+}
+
+.journey-trace-state {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.journey-trace-detail-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.journey-trace-detail-chips li {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid var(--accent-border);
+  font-size: 0.78rem;
+}
+
+.journey-trace-chip-label {
+  padding: 0.15rem 0.45rem;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.journey-trace-chip-value {
+  padding: 0.15rem 0.5rem;
+  font-family: var(--mono);
+  color: var(--text-h);
+  /* Wraps instead of an ellipsis: a long value (e.g. "methods" with a toolId:amrSourceId per entry)
+     stays fully readable. */
+  max-width: 28rem;
+  white-space: normal;
+  word-break: break-word;
+}
+
+pre {
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  overflow-x: auto;
+}
+
+.debug-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.debug-log li {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.debug-log li:last-child {
+  border-bottom: none;
+}
+
+.debug-log-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.8rem;
+}
+
+.debug-log-time {
+  flex: none;
+  color: var(--text);
+  font-family: var(--mono);
+}
+
+.debug-log-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text-h);
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.debug-log-block {
+  margin-top: 0.35rem;
+}
+
+.debug-log-block-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+}
+
+.debug-log-block pre {
+  margin: 0;
+}
+
+.value-with-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+button.small,
+.button.small {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+}
+
+.icon-button {
+  padding: 0.4rem 0.6rem;
+  border-radius: 999px;
+  line-height: 1;
+  font-size: 1.1rem;
+}
+
+/* Developer tools live in a quiet footer strip, deliberately out of the main flow: they are not
+   part of any journey, and an absolutely-positioned header row overlapped the title. */
+.dev-tools {
+  margin-top: 2.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  justify-content: center;
+  align-items: baseline;
+}
+
+.admin-toggle {
+  padding: 0;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 400;
+  background: none;
+  border: none;
+  color: var(--text-muted, #888);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.admin-toggle:hover {
+  color: var(--accent);
+  background: none;
+  border: none;
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.tool-availability-selector {
+  margin-top: 1rem;
+}
+
+.tool-availability-selector h3 {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.tool-availability-selector p {
+  font-size: 0.82rem;
+  margin: 0.5rem 0;
+}
+
+
+
+/* Beide Kanal-Chromes (App/Web) teilen dieselbe Topbar (ChannelNav.tsx). Sie unterscheiden sich nur
+   im Farbschema (.channel-app/.channel-web, index.css) und in der Breite der Inhaltsspalte. So
+   lesen sich beide Kanäle als dieselbe Art UI in verschiedenen Farben. */
+.app-frame,
+.web-shell {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.channel-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.85rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.channel-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.channel-topbar-tabs {
+  border-bottom: none;
+  flex-wrap: wrap;
+}
+
+.channel-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.web-page {
+  width: 100%;
+  max-width: min(94vw, 1200px);
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  text-align: left;
+}
+
+.web-page-wide {
+  max-width: 100%;
+}
+
+.channel-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.card-heading-row h2 {
+  margin: 0;
+}
+
+.form-group select {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font-size: 1rem;
+}
+
+/* /personenverzeichnis/ - Personenverzeichnis */
+.ext-banner {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-bg);
+  color: var(--text-h);
+  font-size: 0.9rem;
+}
+
+.ext-banner code {
+  margin: 0;
+  padding: 0 0.2rem;
+}
+
+.brief-list {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.brief {
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  font-family: var(--heading);
+  color: #222;
+}
+
+.brief-meta {
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 0.75rem;
+}
+
+.brief-code {
+  margin-top: 0.4rem;
+  font-family: var(--mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #111;
+}
+
+/* Personenverzeichnis: letters, SMS and e-mails in one list; the code is what the reader looks for. */
+.mailbox-code {
+  font-family: var(--mono);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+/* Admin: one ordered tool list per channel, side by side, stacked on narrow screens. */
+.tool-channel-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.tool-order-group h4 {
+  margin: 1rem 0 0.25rem;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.tool-order-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tool-order-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tool-order-arrows {
+  display: inline-flex;
+  gap: 0.2rem;
+}
+
+.tool-order-arrows button {
+  padding: 0.15rem 0.45rem;
+}
+
+.tool-order-name {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.tool-order-reason {
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.tool-order-list li.tool-locked .tool-order-name code {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.tool-order-arrows button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+/* Which tools are switched off here, and why - a short list where a section was opened for it. */
+.unavailable-tools {
+  margin: 0.5rem 0 0.75rem;
+}
+
+.unavailable-tools ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.unavailable-tools code {
+  font-size: 0.8rem;
+}

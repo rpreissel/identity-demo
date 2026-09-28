@@ -1,0 +1,18 @@
+import { submitViaPatch } from '../shared/defaultApi'
+import type { ToolRenderContext } from '../types'
+
+export interface FscFields {
+  kvnr: string
+  /** Only without a KVNR (a Partner, ADR-34) - sent instead of `kvnr`, never together with it. */
+  partnernr: string
+  familyName: string
+  givenNames: string
+  /** ISO date (YYYY-MM-DD), as `<input type="date">` delivers it. */
+  birthDate: string
+  fsc: string
+}
+
+/** Any subset: the backend merges each PATCH onto what it already has (docs/06-ablaeufe.md #2). */
+export function submitFsc(ctx: ToolRenderContext, fields: Partial<FscFields>) {
+  return submitViaPatch(ctx, fields)
+}

@@ -1,0 +1,155 @@
+package com.example.identity.core.orchestrator.dpop
+
+import com.example.identity.contract.tool_api.device.DeviceProofs
+import com.example.identity.contract.tool_api.device.UserVerification
+import com.example.identity.contract.tool_api.device.VerifiedDeviceProof
+import com.nimbusds.jose.JOSEException
+import jakarta.servlet.http.HttpServletRequest
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.crypto.ECDSAVerifier
+import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.SignedJWT
+import java.text.ParseException
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
+
+/**
+ * Verifies device-binding proofs (typ="device-proof+jwt") for enroll-device/auth-device. A sibling
+ * of [DpopValidator], not a generalization: a channel key and an account-bound device credential
+ * must never accept each other's proofs. Each class hardcodes its `typ`, so no caller can pass the
+ * wrong one.
+ */
+@Component
+class DeviceProofValidator(
+    private val jwkThumbprintService: JwkThumbprintService,
+    private val replayProtectionService: DpopReplayProtectionService,
+    @Value("\${dpop.proof.max-clock-skew-seconds:30}") private val maxClockSkewSeconds: Long,
+    @Value("\${dpop.proof.max-age-seconds:120}") private val maxProofAgeSeconds: Long
+) : DeviceProofs {
+
+    /** The [DeviceProofs] contract - hands back only the opaque, verified result. */
+    override fun validate(deviceProof: String?, request: HttpServletRequest): VerifiedDeviceProof {
+        val proof = verify(deviceProof, request.method, buildRequestUrl(request))
+        return VerifiedDeviceProof(proof.toDevicePublicKey(), proof.userVerification)
+    }
+
+    private fun verify(deviceProof: String?, httpMethod: String, httpUrl: String): DeviceProof {
+        if (deviceProof.isNullOrBlank()) {
+            throw DpopValidationException("Missing device proof")
+        }
+
+        val signedJWT: SignedJWT = try {
+            SignedJWT.parse(deviceProof)
+        } catch (e: ParseException) {
+            throw DpopValidationException("Invalid device proof format", e)
+        }
+
+        val header = signedJWT.header
+        validateHeader(header)
+
+        val jwk = header.jwk
+        if (jwk == null || jwk.isPrivate) {
+            throw DpopValidationException("Device proof must contain a public JWK")
+        }
+
+        val claims: JWTClaimsSet = try {
+            signedJWT.jwtClaimsSet
+        } catch (e: ParseException) {
+            throw DpopValidationException("Invalid device proof claims", e)
+        }
+
+        validateSignature(signedJWT, jwk)
+        validateClaims(claims, httpMethod, httpUrl)
+        val userVerification = validateUserVerification(claims)
+
+        val thumbprint = jwkThumbprintService.computeThumbprint(jwk)
+        val issuedAt = claims.issueTime.toInstant()
+        val replayKeyExpiresAt = issuedAt.plus(maxProofAgeSeconds + maxClockSkewSeconds, ChronoUnit.SECONDS)
+        replayProtectionService.validateAndStore(thumbprint, claims.getJWTID(), replayKeyExpiresAt)
+
+        return DeviceProof(jwk, thumbprint, userVerification, claims.getJWTID(), issuedAt)
+    }
+
+    private fun validateHeader(header: JWSHeader) {
+        if (header.type == null || header.type.type == null
+            || !DEVICE_PROOF_JWT_TYPE.equals(header.type.type, ignoreCase = true)) {
+            throw DpopValidationException("Device proof must have type 'device-proof+jwt'")
+        }
+        if (header.algorithm !in SUPPORTED_ALGORITHMS) {
+            throw DpopValidationException("Unsupported device proof algorithm: ${header.algorithm}")
+        }
+    }
+
+    private fun validateSignature(signedJWT: SignedJWT, jwk: JWK) {
+        try {
+            val valid: Boolean = when (jwk) {
+                is ECKey -> signedJWT.verify(ECDSAVerifier(jwk.toECPublicKey()))
+                else -> throw DpopValidationException("Unsupported key type: ${jwk.keyType}")
+            }
+            if (!valid) {
+                throw DpopValidationException("Invalid device proof signature")
+            }
+        } catch (e: JOSEException) {
+            throw DpopValidationException("Failed to verify device proof signature", e)
+        }
+    }
+
+    private fun validateClaims(claims: JWTClaimsSet, httpMethod: String, httpUrl: String) {
+        try {
+            val htm = claims.getStringClaim("htm")
+            if (htm == null || !htm.equals(httpMethod, ignoreCase = true)) {
+                throw DpopValidationException("Device proof htm claim does not match request method")
+            }
+
+            val htu = claims.getStringClaim("htu")
+            if (htu == null) {
+                throw DpopValidationException("Device proof htu claim is missing")
+            }
+            if (!htuMatches(htu, httpUrl)) {
+                throw DpopValidationException("Device proof htu claim does not match request URL")
+            }
+
+            val issuedAt = claims.issueTime?.toInstant()
+                ?: throw DpopValidationException("Device proof iat claim is missing")
+            val now = Instant.now()
+            if (issuedAt.isAfter(now.plus(maxClockSkewSeconds, ChronoUnit.SECONDS))) {
+                throw DpopValidationException("Device proof iat claim is in the future")
+            }
+            if (issuedAt.isBefore(now.minus(maxProofAgeSeconds, ChronoUnit.SECONDS))) {
+                throw DpopValidationException("Device proof iat claim is too old")
+            }
+
+            val jti = claims.getJWTID()
+            if (jti.isNullOrBlank()) {
+                throw DpopValidationException("Device proof jti claim is missing")
+            }
+        } catch (e: ParseException) {
+            throw DpopValidationException("Invalid device proof claims", e)
+        }
+    }
+
+    private fun validateUserVerification(claims: JWTClaimsSet): UserVerification {
+        val rawValue = try {
+            claims.getStringClaim("userVerification")
+        } catch (e: ParseException) {
+            throw DpopValidationException("Invalid device proof claims", e)
+        }
+        return UserVerification.fromWireValue(rawValue)
+            ?: throw DpopValidationException("Unsupported or missing userVerification claim: $rawValue")
+    }
+
+
+    companion object {
+        private const val DEVICE_PROOF_JWT_TYPE = "device-proof+jwt"
+        private val SUPPORTED_ALGORITHMS: Set<JWSAlgorithm> = setOf(
+            JWSAlgorithm.ES256,
+            JWSAlgorithm.ES384,
+            JWSAlgorithm.ES512
+        )
+    }
+}

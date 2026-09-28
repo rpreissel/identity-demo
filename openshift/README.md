@@ -1,0 +1,64 @@
+# OpenShift-Prototyp
+
+Keycloak und Orchestrator laufen als **ein Deployment mit zwei Containern**. Sie teilen sich das Netz
+des Pods und sprechen sich über `localhost` an, intern per HTTP. Nach außen gehen zwei `edge`-Routes,
+TLS macht der Router.
+
+| Datei | Wofür |
+|---|---|
+| `identity-demo.yaml` | Deployment, Service, Routes, PVCs. Dieselbe Datei für OpenShift und den lokalen Test |
+| `build.yaml` | ImageStreams und Binary-Builds für die beiden Images (nur OpenShift) |
+| `deploy.sh` | Ausrollen ins aktuelle OpenShift-Projekt |
+| `undeploy.sh` | Entfernen aus dem aktuellen OpenShift-Projekt, auf Wunsch samt Daten |
+| `local.yaml`, `local-up.sh` | Lokaler Test mit Podman |
+
+## Auf OpenShift
+
+```bash
+oc login ...
+oc project <projekt>
+./openshift/deploy.sh
+```
+
+Das Skript baut die Artefakte mit Gradle und lädt nur die fertigen Laufzeit-Artefakte als
+Binary-Build-Kontexte hoch. OpenShift baut daraus die Images und schreibt sie direkt in die
+ImageStreams; eine externe Route der internen Registry ist nicht nötig. Wegen der 4-GiB-Quota im
+Namespace skaliert das Skript ein vorhandenes `identity-demo` für die Dauer der Builds auf 0. Scheitert
+ein Build, stellt es die vorherige Replikazahl wieder her. Danach legt es zuerst Service und Routes
+an. Die Hosts, die OpenShift den Routes gibt, trägt es in die ConfigMap `identity-demo-env` ein. Zum
+Schluss wendet es das Deployment an und wartet auf den Rollout.
+
+- **Admin-Console:** Benutzer `admin`. Das Passwort erzeugt das Skript beim ersten Lauf zufällig:
+  `oc extract secret/identity-demo-keycloak-admin --keys=password --to=-`
+- **Erneut ausrollen:** einfach das Skript noch einmal laufen lassen, mit `SKIP_GRADLE=1`, wenn die
+  Artefakte schon gebaut sind.
+- **Andere Basis-Images:** `KEYCLOAK_BASE_IMAGE` und `ORCHESTRATOR_RUNTIME_BASE_IMAGE`, wie bei
+  Compose. Beide Skripte lesen dafür auch `.env`, dieselbe Datei wie Compose (Vorlage
+  `.env.work.example`); eine in der Shell gesetzte Variable hat Vorrang. Die Basis-Images zieht der
+  Build im Cluster; `deploy.sh` überträgt die Werte vor dem Start in die BuildConfigs. Private
+  Basis-Images müssen deshalb für den `builder`-Service-Account erreichbar sein.
+- **Route-Hosts nicht ändern:** Sie gehören zum Realm-Aufbau. Ändern sie sich, baut die Migration das
+  Realm beim nächsten Start neu auf.
+- **Entfernen:** `./openshift/undeploy.sh` löscht Deployment, Service, Routes, ConfigMap, Builds
+  und ImageStreams. Die beiden PVCs und das Admin-Secret bleiben, ein späteres `deploy.sh` setzt
+  also mit denselben Konten, demselben Realm und demselben Passwort wieder auf. Mit `--purge`
+  verschwinden auch sie: Das ist nicht umkehrbar, deshalb verlangt das Skript den Projektnamen als
+  Bestätigung (`--yes` überspringt die Rückfrage).
+
+Zwischen den Containern wird kein Geheimnis geteilt. Die Migration meldet sich per signierter
+Assertion als `orchestrator-migration` an, Keycloak prüft sie gegen das JWKS unter
+`http://localhost:8080/...`.
+
+## Lokal mit Podman
+
+```bash
+./gradlew stagePodmanArtifacts
+./openshift/local-up.sh
+```
+
+Orchestrator unter http://localhost:8090, Keycloak unter http://localhost:8091. Die Ports sind so
+gewählt, dass es neben dem Compose-Setup (8080/8543) läuft. Stoppen:
+`podman kube down openshift/identity-demo.yaml` (mit `--force` auch die Volumes).
+
+Lokal nicht prüfbar sind nur die OpenShift-eigenen Teile: Routes, der Binary-Build im Cluster und
+die zufällige UID, mit der OpenShift Container startet.

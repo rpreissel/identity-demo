@@ -1,0 +1,478 @@
+components:
+  schemas:
+    AuthSmsLookupPatchRequest:
+      properties:
+        email:
+          example: max.mustermann@example.com
+          type: string
+        tan:
+          example: '123456'
+          type: string
+      type: object
+    AuthSmsPatchRequest:
+      properties:
+        tan:
+          example: '123456'
+          type: string
+      type: object
+    EnrollSmsPatchRequest:
+      properties:
+        phoneNumber:
+          example: +49 170 1234567
+          type: string
+        tan:
+          example: '123456'
+          type: string
+      type: object
+  securitySchemes:
+    dpop:
+      description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the
+        binding key is derived from it and is never supplied by the caller.
+      in: header
+      name: DPoP
+      type: apiKey
+    kc-peer-auth:
+      bearerFormat: JWT
+      description: 'Signed peer-auth assertion (docs/05-api.md Abschnitt 3, ADR-7). The Web channel''s proof: Keycloak calls
+        server-to-server, and the channel anchor comes out of the assertion.'
+      scheme: bearer
+      type: http
+info:
+  description: App-facing (orchestrator-first) API for the DPoP-bound registration and login demo. See docs/05-api.md for
+    the full contract; the Keycloak-facing kc facade is out of scope for this build (docs/08-projektrahmen.md).
+  title: Identity-Demo Orchestrator API
+  version: v1
+openapi: 3.1.0
+paths:
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-sms:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_1
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  step: auth
+                  toolId: auth-sms
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-sms
+      tags:
+      - 'Tool: SMS'
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-sms-lookup:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_2
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  step: auth
+                  toolId: auth-sms-lookup
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-sms-lookup
+      tags:
+      - 'Tool: SMS'
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-sms:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  step: enroll
+                  toolId: enroll-sms
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-sms
+      tags:
+      - 'Tool: SMS'
+  /orchestrator/api/v1/tools/{toolSessionId}/auth-sms:
+    get:
+      operationId: read_1
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  step: auth
+                  toolId: auth-sms
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current auth-sms state
+      tags:
+      - 'Tool: SMS'
+    patch:
+      operationId: patch_1
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthSmsPatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - password
+                  - sms
+                  state: AUTHENTICATED
+                next:
+                  context: authentication
+                  step: authenticated
+                  type: orchestrator
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Correct TAN - the step-up is satisfied, channel settles into authenticated.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Confirm the TAN sent to the account's enrolled phone number
+      tags:
+      - 'Tool: SMS'
+  /orchestrator/api/v1/tools/{toolSessionId}/auth-sms-lookup:
+    get:
+      operationId: read_2
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  step: tanInput
+                  toolId: auth-sms-lookup
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current auth-sms-lookup state
+      tags:
+      - 'Tool: SMS'
+    patch:
+      description: First call with email resolves the account and triggers the TAN send; a second call with tan confirms it.
+      operationId: patch_2
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthSmsLookupPatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              examples:
+                After email - TAN sent:
+                  description: After email - TAN sent
+                  value:
+                    channel:
+                      channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      state: REGISTERING
+                    demo:
+                      tan: '123456'
+                    next:
+                      step: tanInput
+                      toolId: auth-sms-lookup
+                      toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                      type: tool
+                After tan - logged in, device-binding offer:
+                  description: After tan - logged in, device-binding offer
+                  value:
+                    channel:
+                      channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      currentAcr: loa1
+                      currentAmr:
+                      - sms
+                      state: AUTHENTICATED
+                    next:
+                      context: authentication
+                      step: offerDeviceBinding
+                      type: orchestrator
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Supply email, then TAN
+      tags:
+      - 'Tool: SMS'
+  /orchestrator/api/v1/tools/{toolSessionId}/enroll-sms:
+    get:
+      operationId: read
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  step: tanInput
+                  toolId: enroll-sms
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current enroll-sms state
+      tags:
+      - 'Tool: SMS'
+    patch:
+      description: First call with phoneNumber triggers the TAN send; a second call with tan confirms it.
+      operationId: patch
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollSmsPatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              examples:
+                After phoneNumber - TAN sent:
+                  description: After phoneNumber - TAN sent
+                  value:
+                    channel:
+                      channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      state: REGISTERING
+                    demo:
+                      tan: '123456'
+                    next:
+                      step: tanInput
+                      toolId: enroll-sms
+                      toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                      type: tool
+                After tan - enrolled, chain continues:
+                  description: After tan - enrolled, chain continues
+                  value:
+                    channel:
+                      channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      state: REGISTERING
+                    next:
+                      context: enrollment
+                      step: selectMethod
+                      type: orchestrator
+                    stepData:
+                      kind: select-method
+                      options:
+                      - confirm-email
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Supply phone number, then TAN
+      tags:
+      - 'Tool: SMS'
+tags:
+- description: 'SMS-TAN: Einrichtung als Faktor, Anmeldung und Login ohne DPoP'
+  name: 'Tool: SMS'
+- description: 'E-Mail: Bestaetigung der Adresse, Anmeldung und Login ohne DPoP'
+  name: 'Tool: E-Mail'
+- description: 'Passwort: Einrichtung als Wissensfaktor, Anmeldung und Login ohne DPoP'
+  name: 'Tool: Passwort'
+- description: 'Geraetebindung: Einrichtung und Anmeldung ueber den Geraeteschluessel'
+  name: 'Tool: Gerät'
+- description: 'QR-Pairing: Freigabe eines Web-Kanals aus einer bereits angemeldeten App'
+  name: 'Tool: QR-Login'
+- description: Gerätebindung über den externen Dienstleister KOBIL
+  name: 'Tool: KOBIL'

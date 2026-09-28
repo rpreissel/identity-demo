@@ -1,0 +1,499 @@
+components:
+  schemas:
+    AuthKobilPatchRequest:
+      properties:
+        otp:
+          example: '48210937'
+          type: string
+      type: object
+    BiometricUnlock:
+      allOf:
+      - $ref: '#/components/schemas/KobilUnlockCredential'
+      - properties:
+          unlockSecret:
+            type: string
+        type: object
+      required:
+      - unlockSecret
+      - userVerification
+    EnrollKobilPatchRequest:
+      properties:
+        activated:
+          example: true
+          type: boolean
+        biometricConsent:
+          example: true
+          type: boolean
+        label:
+          example: Diensthandy
+          type: string
+      type: object
+    KobilActivationStep:
+      description: What the KOBIL SDK needs to activate this device.
+      properties:
+        activationCode:
+          type: string
+        kind:
+          enum:
+          - kobil-activation
+          type: string
+        kobilUserId:
+          type: string
+        missingFields:
+          items:
+            type: string
+          type: array
+        pin:
+          type: string
+        tenantId:
+          type: string
+        unlockSecret:
+          type: string
+      required:
+      - activationCode
+      - kind
+      - kobilUserId
+      - missingFields
+      - pin
+      - tenantId
+    KobilOtpStep:
+      description: Waiting for the one-time password the KOBIL SDK produced.
+      properties:
+        kind:
+          enum:
+          - kobil-otp
+          type: string
+        kobilPin:
+          type: string
+        kobilUserId:
+          type: string
+        missingFields:
+          example:
+          - otp
+          items:
+            example: '["otp"]'
+            type: string
+          type: array
+        tenantId:
+          type: string
+      required:
+      - kind
+      - kobilUserId
+      - missingFields
+      - tenantId
+    KobilPinReleaseRequest:
+      properties:
+        unlock:
+          oneOf:
+          - $ref: '#/components/schemas/BiometricUnlock'
+          - $ref: '#/components/schemas/PasswordUnlock'
+      required:
+      - unlock
+      type: object
+    KobilUnlockCredential:
+      discriminator:
+        mapping:
+          biometric: '#/components/schemas/BiometricUnlock'
+          password: '#/components/schemas/PasswordUnlock'
+        propertyName: kind
+      properties:
+        kind:
+          type: string
+        userVerification:
+          enum:
+          - PIN
+          - BIOMETRIC
+          type: string
+      required:
+      - kind
+      type: object
+    KobilUnlockStep:
+      description: The app must unlock the backend-held PIN; these are the accepted ways.
+      properties:
+        kind:
+          enum:
+          - kobil-unlock
+          type: string
+        kobilUserId:
+          type: string
+        tenantId:
+          type: string
+        unlockOptions:
+          example:
+          - biometric
+          - password
+          items:
+            example: '["biometric","password"]'
+            type: string
+          type: array
+      required:
+      - kind
+      - kobilUserId
+      - tenantId
+      - unlockOptions
+    PasswordUnlock:
+      allOf:
+      - $ref: '#/components/schemas/KobilUnlockCredential'
+      - properties:
+          password:
+            type: string
+        type: object
+      required:
+      - password
+      - userVerification
+  securitySchemes:
+    dpop:
+      description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the
+        binding key is derived from it and is never supplied by the caller.
+      in: header
+      name: DPoP
+      type: apiKey
+    kc-peer-auth:
+      bearerFormat: JWT
+      description: 'Signed peer-auth assertion (docs/05-api.md Abschnitt 3, ADR-7). The Web channel''s proof: Keycloak calls
+        server-to-server, and the channel anchor comes out of the assertion.'
+      scheme: bearer
+      type: http
+info:
+  description: App-facing (orchestrator-first) API for the DPoP-bound registration and login demo. See docs/05-api.md for
+    the full contract; the Keycloak-facing kc facade is out of scope for this build (docs/08-projektrahmen.md).
+  title: Identity-Demo Orchestrator API
+  version: v1
+openapi: 3.1.0
+paths:
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-kobil:
+    post:
+      operationId: activate_1
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: unlock
+                  toolId: auth-kobil
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  kind: kobil-unlock
+                  kobilUserId: kob-1a2b3c4d5e6f
+                  tenantId: identity-demo
+                  unlockOptions:
+                  - biometric
+                  - password
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-kobil
+      tags:
+      - 'Tool: KOBIL'
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-kobil:
+    post:
+      description: Provisions the KOBIL user and returns everything the app's SDK needs for its activation call - including
+        the PIN, which this backend mints and keeps.
+      operationId: activate
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - fsc
+                  state: AUTHENTICATED
+                next:
+                  step: activate
+                  toolId: enroll-kobil
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  activationCode: K7M2PQX9
+                  kind: kobil-activation
+                  kobilUserId: kob-1a2b3c4d5e6f
+                  missingFields:
+                  - activated
+                  - biometricConsent
+                  pin: '40318827'
+                  tenantId: identity-demo
+                  unlockSecret: xE1r...
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-kobil
+      tags:
+      - 'Tool: KOBIL'
+  /orchestrator/api/v1/tools/{toolSessionId}/auth-kobil:
+    get:
+      operationId: read_1
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current auth-kobil state
+      tags:
+      - 'Tool: KOBIL'
+    patch:
+      description: The backend fetches the assertion behind the OTP from KOBIL, compares the device identifier with the enrolled
+        one and checks the reported risks.
+      operationId: patch_1
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthKobilPatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - kobil
+                  - biometric
+                  state: AUTHENTICATED
+                next:
+                  context: authentication
+                  step: authenticated
+                  type: orchestrator
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Redeem the one-time password
+      tags:
+      - 'Tool: KOBIL'
+  /orchestrator/api/v1/tools/{toolSessionId}/auth-kobil/pin-releases:
+    post:
+      description: The app presents either the locally stored unlock secret (guarded by its biometric prompt) or the account
+        password. The PIN is in this response and nowhere else - a later GET will not return it again.
+      operationId: releasePin
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KobilPinReleaseRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Not released - an ordinary retryable failure, deliberately not an error status
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: otp
+                  toolId: auth-kobil
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  kind: kobil-otp
+                  kobilPin: '40318827'
+                  kobilUserId: kob-1a2b3c4d5e6f
+                  missingFields:
+                  - otp
+                  tenantId: identity-demo
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Released
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Release the backend-held PIN
+      tags:
+      - 'Tool: KOBIL'
+  /orchestrator/api/v1/tools/{toolSessionId}/enroll-kobil:
+    get:
+      operationId: read
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current enroll-kobil state
+      tags:
+      - 'Tool: KOBIL'
+    patch:
+      description: Records the credential once KOBIL reports a bound device for this user.
+      operationId: patch
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollKobilPatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - fsc
+                  - kobil
+                  - biometric
+                  state: AUTHENTICATED
+                next:
+                  context: authentication
+                  step: authenticated
+                  type: orchestrator
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Confirm the KOBIL activation
+      tags:
+      - 'Tool: KOBIL'
+tags:
+- description: 'SMS-TAN: Einrichtung als Faktor, Anmeldung und Login ohne DPoP'
+  name: 'Tool: SMS'
+- description: 'E-Mail: Bestaetigung der Adresse, Anmeldung und Login ohne DPoP'
+  name: 'Tool: E-Mail'
+- description: 'Passwort: Einrichtung als Wissensfaktor, Anmeldung und Login ohne DPoP'
+  name: 'Tool: Passwort'
+- description: 'Geraetebindung: Einrichtung und Anmeldung ueber den Geraeteschluessel'
+  name: 'Tool: Gerät'
+- description: 'QR-Pairing: Freigabe eines Web-Kanals aus einer bereits angemeldeten App'
+  name: 'Tool: QR-Login'
+- description: Gerätebindung über den externen Dienstleister KOBIL
+  name: 'Tool: KOBIL'

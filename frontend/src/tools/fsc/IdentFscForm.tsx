@@ -1,0 +1,167 @@
+import { useState } from 'react'
+import { DemoPersonPicker } from '../../components/DemoPersonPicker'
+import type { DemoPerson } from '../../types'
+import type { FscFields } from './api'
+import { t } from '../../texts'
+import { Tx } from '../../Tx'
+import { DemoNote } from '../../components/DemoArea'
+import { StepActions } from '../../components/PhoneFrame'
+
+/** What the first screen collects - everything the backend stages before it asks for `fsc`. */
+const PERSONAL_FIELDS = ['kvnr', 'familyName', 'givenNames', 'birthDate']
+// `kvnr` in missingFields stands for "KVNR or Partnernummer" - the form asks for the KVNR first (ADR-34).
+
+type PersonalDetails = Omit<FscFields, 'fsc'>
+
+interface IdentFscFormProps {
+  onSubmit: (fields: Partial<FscFields>) => void
+  /** stepData.missingFields, when the step carries it - undefined after a failed attempt. */
+  missingFields?: string[]
+  error?: string
+  /** Demo-only: every register person, offered as a picker that fills the personal data and FSC together. */
+  demoPersons?: DemoPerson[]
+}
+
+type Page = 'personalDetails' | 'code'
+
+/**
+ * toolId=ident-fsc / step=input (docs/06-ablaeufe.md #2). The backend keeps one step; the two
+ * pages here (personal data first, then the code) are this form's choice
+ * (docs/10-frontend.md). The backend checks the personal data the moment it is complete and only
+ * then asks for `fsc`, so `missingFields` says which page is due.
+ *
+ * A failed attempt carries no `missingFields` - the form then stays on the page it was submitted
+ * from: rejected personal data is corrected where it was typed, a rejected code on the code page.
+ */
+export function IdentFscForm({ onSubmit, missingFields, error, demoPersons }: IdentFscFormProps) {
+  // Prefilled from the first register persona - no hard-coded test person of our own (ADR-31).
+  const first = demoPersons?.[0]
+  const [personalDetails, setPersonalDetails] = useState<PersonalDetails>({
+    givenNames: first?.givenNames ?? '',
+    familyName: first?.familyName ?? '',
+    birthDate: first?.birthDate ?? '',
+    kvnr: first?.kvnr ?? '',
+    partnernr: first?.kvnr ? '' : (first?.personId ?? ''),
+  })
+  // The KVNR is asked for first; the Partnernummer only when there is none (a Partner, ADR-34).
+  const [withoutKvnr, setWithoutKvnr] = useState(first != null && !first.kvnr)
+  const [fsc, setFsc] = useState(first?.fscCode ?? '')
+  const [submittedFrom, setSubmittedFrom] = useState<Page>('personalDetails')
+  const [editing, setEditing] = useState(false)
+
+  const dueByBackend: Page | undefined = missingFields
+    ? missingFields.some((field) => PERSONAL_FIELDS.includes(field)) ? 'personalDetails' : 'code'
+    : undefined
+  const page: Page = editing ? 'personalDetails' : (dueByBackend ?? submittedFrom)
+
+  function selectPerson(person: DemoPerson) {
+    setPersonalDetails({
+      givenNames: person.givenNames ?? '',
+      familyName: person.familyName ?? '',
+      birthDate: person.birthDate ?? '',
+      kvnr: person.kvnr ?? '',
+      partnernr: person.kvnr ? '' : person.personId,
+    })
+    setWithoutKvnr(!person.kvnr)
+    setFsc(person.fscCode ?? '')
+  }
+
+  function update(field: keyof PersonalDetails) {
+    return (event: React.ChangeEvent<HTMLInputElement>) => setPersonalDetails({ ...personalDetails, [field]: event.target.value })
+  }
+
+  function submitPersonalien(event: React.FormEvent) {
+    event.preventDefault()
+    setSubmittedFrom('personalDetails')
+    setEditing(false)
+    const { kvnr, partnernr, ...rest } = personalDetails
+    onSubmit(withoutKvnr ? { ...rest, partnernr } : { ...rest, kvnr })
+  }
+
+  const identifier = withoutKvnr ? personalDetails.partnernr : personalDetails.kvnr
+  const selectedPersonId =
+    demoPersons?.find((p) => (withoutKvnr ? p.personId === personalDetails.partnernr : p.kvnr === personalDetails.kvnr))?.personId ?? ''
+
+  function submitCode(event: React.FormEvent) {
+    event.preventDefault()
+    setSubmittedFrom('code')
+    onSubmit({ fsc })
+  }
+
+  if (page === 'personalDetails') {
+    return (
+      <div className="card">
+        <h2>{t('Identifikation per Freischaltcode')}</h2>
+        <p>{t('Damit Sie Ihren Freischaltcode gleich eingeben können, brauchen wir noch diese Daten:')}</p>
+        <form id="fsc-person" onSubmit={submitPersonalien} className="form-grid" style={{ marginTop: '1rem' }}>
+          <DemoPersonPicker demoPersons={demoPersons} selectedPersonId={selectedPersonId} onSelect={selectPerson} />
+          <div className="form-group">
+            <label htmlFor="givenNames">{t('Vorname')}</label>
+            <input id="givenNames" value={personalDetails.givenNames} onChange={update('givenNames')} autoComplete="given-name" required />
+          </div>
+          <div className="form-group">
+            <label htmlFor="familyName">{t('Nachname')}</label>
+            <input id="familyName" value={personalDetails.familyName} onChange={update('familyName')} autoComplete="family-name" required />
+          </div>
+          <div className="form-group">
+            <label htmlFor="birthDate">{t('Geburtsdatum')}</label>
+            <input id="birthDate" type="date" value={personalDetails.birthDate} onChange={update('birthDate')} autoComplete="bday" required />
+          </div>
+          {withoutKvnr ? (
+            <div className="form-group">
+              <label htmlFor="partnernr">{t('Partnernummer')}</label>
+              <input id="partnernr" value={personalDetails.partnernr} placeholder="P000000000" onChange={update('partnernr')} required />
+              <button type="button" className="text-button" onClick={() => setWithoutKvnr(false)}>
+                {t('Ich habe doch eine Versichertennummer')}
+              </button>
+            </div>
+          ) : (
+            <div className="form-group">
+              <label htmlFor="kvnr">{t('Versichertennummer')}</label>
+              <input id="kvnr" value={personalDetails.kvnr} onChange={update('kvnr')} required />
+              <button type="button" className="text-button" onClick={() => setWithoutKvnr(true)}>
+                {t('Ich habe keine Versichertennummer')}
+              </button>
+            </div>
+          )}
+          {error && <div className="hint">{error}</div>}
+          <StepActions>
+            <button type="submit" form="fsc-person">{t('Weiter zur Freischaltcode-Eingabe')}</button>
+          </StepActions>
+        </form>
+      </div>
+    )
+  }
+
+  return (
+    <div className="card">
+      <h2>{t('Freischaltcode eingeben')}</h2>
+      <p>
+        <Tx
+          text="Geben Sie den Freischaltcode ein, den wir Ihnen per Brief geschickt haben, für {person} ({nummer})."
+          person={
+            <strong>
+              {personalDetails.givenNames} {personalDetails.familyName}
+            </strong>
+          }
+          nummer={identifier}
+        />{' '}
+        {/* Correcting the data belongs to what this screen shows, not to the ways on. */}
+        <button type="button" className="text-button" onClick={() => setEditing(true)}>
+          {t('Angaben ändern')}
+        </button>
+      </p>
+      {first && !fsc && <DemoNote>{t('Für diese Person liegt kein gültiger Code im Briefkasten. Stellen Sie im Personenverzeichnis ({pfad}, Reiter „Freischaltcodes“) einen neuen aus.', { pfad: '/personenverzeichnis/' })}</DemoNote>}
+      <form id="fsc-code" onSubmit={submitCode} className="form-grid" style={{ marginTop: '1rem' }}>
+        <div className="form-group">
+          <label htmlFor="fsc">{t('Freischaltcode')}</label>
+          <input id="fsc" value={fsc} onChange={(e) => setFsc(e.target.value)} autoComplete="one-time-code" required />
+        </div>
+        {error && <div className="hint">{error}</div>}
+        <StepActions>
+          <button type="submit" form="fsc-code">{t('Identifizieren')}</button>
+        </StepActions>
+      </form>
+    </div>
+  )
+}

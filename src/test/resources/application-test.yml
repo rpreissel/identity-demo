@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+dpop:
+  proof:
+    max-clock-skew-seconds: 30
+    max-age-seconds: 120
+
+# Geplante Jobs laufen in Tests nicht von selbst (SchedulingConfig); ein Test ruft den Job direkt auf.
+scheduling:
+  enabled: false

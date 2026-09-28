@@ -1,0 +1,45 @@
+package com.example.identity.core.account.infrastructure
+
+import com.example.identity.core.account.RetractionAnchor
+import com.example.identity.contract.tool_api.claims.AttributeType
+import jakarta.persistence.Column
+import jakarta.persistence.Convert
+import jakarta.persistence.Entity
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import jakarta.persistence.Table
+import java.time.Instant
+
+/**
+ * One withdrawn (account, attribute type, value) triple. Cancels every matching [AccountClaim]
+ * without touching it: the claim log stays append-only, and "currently valid" is the log minus
+ * these rows, matched on [normalizedValue].
+ */
+@Entity
+@Table(schema = "account", name = "retraction")
+class AccountRetraction(
+    @Column(name = "account_id", nullable = false)
+    var accountId: Long? = null,
+
+    @Convert(converter = AttributeTypeConverter::class)
+    @Column(name = "attribute_type", nullable = false)
+    var attributeType: AttributeType? = null,
+
+    @Column(name = "normalized_value", nullable = false)
+    var normalizedValue: String? = null,
+
+    @Column(name = "trust_anchor", nullable = false)
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    var trustAnchor: RetractionAnchor? = null,
+
+    @Column(name = "reason")
+    var reason: String? = null,
+
+    @Column(name = "retracted_at", nullable = false)
+    var retractedAt: Instant? = null
+) {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    var id: Long? = null
+}

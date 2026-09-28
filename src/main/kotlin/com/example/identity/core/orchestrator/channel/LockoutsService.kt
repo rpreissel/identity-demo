@@ -1,0 +1,19 @@
+package com.example.identity.core.orchestrator.channel
+
+import com.example.identity.core.orchestrator.session.PersonLockoutService
+import com.example.identity.core.orchestrator.session.AccountLockoutService
+import com.example.identity.contract.tool_api.Lockouts
+import org.springframework.stereotype.Service
+
+/** Implements the [Lockouts] port on the orchestrator's throttles. */
+@Service
+class LockoutsService(
+    private val accountLockoutService: AccountLockoutService,
+    private val personLockoutService: PersonLockoutService
+) : Lockouts {
+    override fun isLockedOut(accountId: Long?): Boolean =
+        accountId?.let { accountLockoutService.isLocked(it) } ?: false
+
+    override fun isIdentLockedOut(personId: String?): Boolean =
+        personId?.let { personLockoutService.isLocked(it) } ?: false
+}

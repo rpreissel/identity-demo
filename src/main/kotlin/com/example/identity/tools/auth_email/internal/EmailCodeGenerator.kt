@@ -1,0 +1,55 @@
+package com.example.identity.tools.auth_email.internal
+
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
+import java.security.MessageDigest
+import java.security.SecureRandom
+import java.time.Duration
+import java.time.Instant
+import java.util.Base64
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
+
+/**
+ * Generates and verifies tool-session-scoped confirmation codes; the plaintext is never persisted.
+ * Stored as HMAC-SHA256 under a server-side pepper: a six-digit code has only 10^6 preimages, so a
+ * plain hash is reversed by anyone who can read `issued_code_hash`. A deliberate copy of auth_sms's
+ * TanGenerator, since leaf modules stay decoupled (docs/08-projektrahmen.md #3).
+ */
+@Component
+class EmailCodeGenerator(@Value("\${identity.secrets.otp-pepper:}") configuredPepper: String) {
+
+    /**
+     * Blank means a random pepper per boot: safe by default, but a restart invalidates codes in
+     * flight and two instances cannot verify each other's. Configure it for multi-instance setups.
+     */
+    private val pepper: ByteArray = configuredPepper.takeIf { it.isNotBlank() }?.toByteArray()
+        ?: ByteArray(32).also { SecureRandom().nextBytes(it) }
+
+    private val random = SecureRandom()
+    val validity: Duration = Duration.ofMinutes(5)
+
+    data class Issued(val plainCode: String, val hash: String, val expiresAt: Instant)
+
+    fun issue(): Issued {
+        val code = (random.nextInt(900_000) + 100_000).toString()
+        return Issued(code, hash(code), Instant.now().plus(validity))
+    }
+
+    fun matches(candidate: String, hash: String?, expiresAt: Instant?): Boolean {
+        if (hash == null || expiresAt == null) return false
+        if (Instant.now().isAfter(expiresAt)) return false
+        // Constant-time: `==` on the hex strings leaks how many leading characters matched.
+        return MessageDigest.isEqual(hash(candidate.trim()).toByteArray(), hash.toByteArray())
+    }
+
+    private fun hash(value: String): String {
+        val mac = Mac.getInstance(HMAC_ALGORITHM)
+        mac.init(SecretKeySpec(pepper, HMAC_ALGORITHM))
+        return Base64.getEncoder().encodeToString(mac.doFinal(value.toByteArray()))
+    }
+
+    private companion object {
+        const val HMAC_ALGORITHM = "HmacSHA256"
+    }
+}

@@ -1,0 +1,48 @@
+package com.example.identity.core.orchestrator.admin
+
+import com.example.identity.core.account.AccountService
+import com.example.identity.core.orchestrator.journeytrace.JourneyTraceEntryView
+import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
+import com.example.identity.contract.tool_api.directory.PersonDirectory
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
+
+/** An account the log can be filtered by, named as far as the demo may say: the register's display name (`PersonDirectory.displayName`). */
+data class AdminAccountLabel(val accountId: Long, val displayName: String?)
+
+data class AdminJourneyTraceResponse(val entries: List<JourneyTraceEntryView>, val accounts: List<AdminAccountLabel>)
+
+/**
+ * The journey trace across every account and device - what the per-device and per-account views
+ * (docs/05-api.md) deliberately cannot show. An operator view, so under [ADMIN_API] and its login.
+ */
+@RestController
+@RequestMapping("$ADMIN_API/journey-trace")
+@Tag(name = "Admin: journey trace", description = "Journey trace across all accounts and channels")
+class AdminJourneyTraceController(
+    private val journeyTraceService: JourneyTraceService,
+    private val accountService: AccountService,
+    private val personDirectory: PersonDirectory,
+) {
+
+    @GetMapping
+    @Operation(summary = "Newest journey-trace entries across all accounts", description = "At most `limit` entries (1-2000), newest first.")
+    fun recent(@RequestParam(defaultValue = "500") limit: Int): AdminJourneyTraceResponse {
+        val log = journeyTraceService.getRecent(limit.coerceIn(1, MAX_LIMIT))
+        // Every existing account, also one without entries. Ids found only in the log belong to
+        // deleted accounts and keep their number.
+        val accountIds = (accountService.allAccountIds() + log.entries.mapNotNull { it.accountId }).distinct().sorted()
+        val accounts = accountIds.map { accountId ->
+            AdminAccountLabel(accountId, accountService.findAccount(accountId)?.personId?.let { personDirectory.displayName(it) })
+        }
+        return AdminJourneyTraceResponse(log.entries, accounts)
+    }
+
+    private companion object {
+        const val MAX_LIMIT = 2000
+    }
+}

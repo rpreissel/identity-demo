@@ -1,0 +1,204 @@
+package com.example.identity.core.orchestrator.domain.journey.strategy
+
+import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginStrategy
+import com.example.identity.tools.auth_sms.AuthSmsDescriptor
+import com.example.identity.core.orchestrator.domain.journey.Action
+import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.Transition
+import com.example.identity.core.orchestrator.domain.journey.state.Offer
+import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
+import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
+import com.example.identity.contract.tool_api.claims.AcrLevel
+import com.example.identity.contract.tool_api.FactorType
+import com.example.identity.contract.tool_api.ToolId
+import com.example.identity.contract.tool_api.ToolOutcome
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
+
+/**
+ * Unit test of [ConfirmPeerLoginStrategy]: approving or declining a Web-channel QR pairing
+ * (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN). Mirrors [DeleteAccountStrategyTest], because
+ * both intents require a fresh re-proof for loa2 evidence of unknown age, but not after a
+ * just-finished step-up.
+ */
+class ConfirmPeerLoginStrategyTest : BehaviorSpec({
+
+    val strategy = ConfirmPeerLoginStrategy()
+
+    given("the intent") {
+        then("is CONFIRM_PEER_LOGIN") {
+            strategy.intent shouldBe AuthIntent.CONFIRM_PEER_LOGIN
+        }
+    }
+
+    given("initialState") {
+        then("is Requested(startedAuthenticated = false) - the cold-entry default") {
+            strategy.initialState(ctx()) shouldBe ConfirmPeerLoginState.Requested(startedAuthenticated = false)
+        }
+    }
+
+    given("Requested, a cold entry with no account at all") {
+        `when`("the journey starts") {
+            val transition = strategy.transition(ConfirmPeerLoginState.Requested(false), JourneyEvent.Started, ctx(account = null))
+            then("aborts right here - never falls into identification/registration") {
+                transition.shouldBeInstanceOf<Transition.Abort>()
+            }
+        }
+    }
+
+    given("Requested, the session does not yet carry loa2") {
+        val acc = account(method("sms", AcrLevel.LOA1))
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
+        `when`("the journey starts") {
+            val transition = strategy.transition(ConfirmPeerLoginState.Requested(false), JourneyEvent.Started, theCtx)
+            then("the loa2 gate parks the wish and demands a step-up first") {
+                transition shouldBe
+                    Transition.RequireSubJourney(
+                        AuthIntent.STEP_UP,
+                        seedWith = StepUpState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1, allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN),
+                        resumeWith = ConfirmPeerLoginState.Requested(false)
+                    )
+            }
+        }
+    }
+
+    given("Requested, the session already carries loa2") {
+        // device is the only method that reaches loa2 alone, so it seeds loa2 evidence with one method.
+        val acc = account(method("device", AcrLevel.LOA2, details = StrategyTestFixtures.deviceDetails()))
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE), account = acc), acrFloor = AcrLevel.LOA1)
+        `when`("the journey starts") {
+            val transition = strategy.transition(ConfirmPeerLoginState.Requested(true), JourneyEvent.Started, theCtx)
+            then("still demands one fresh re-proof of any active factor - evidence of unknown age is never enough on its own to vouch for a foreign login") {
+                transition.shouldBeInstanceOf<Transition.To>()
+                val to = transition.state
+                to.shouldBeInstanceOf<ConfirmPeerLoginState.ConfirmationRequired>()
+                to.offered shouldContainExactlyInAnyOrder listOf(ToolId("auth-device"))
+                to.startedAuthenticated shouldBe true
+            }
+        }
+    }
+
+    given("Requested, waiting for a sub-journey") {
+        `when`("the gate's own STEP_UP finishes and reached loa2 (SubJourneyFinished)") {
+            val event = JourneyEvent.SubJourneyFinished(AuthIntent.STEP_UP, achievedAcr = AcrLevel.LOA2)
+            val transition = strategy.transition(ConfirmPeerLoginState.Requested(false), event, ctx())
+            then("goes straight to Confirming - that fresh proof already IS the re-confirmation, no second one demanded") {
+                transition shouldBe
+                    Transition.To(ConfirmPeerLoginState.Confirming(false, CONFIRM_OFFER))
+            }
+        }
+
+
+        `when`("the gate's own step-up was declined instead (SubJourneyCancelled)") {
+            val event = JourneyEvent.SubJourneyCancelled(AuthIntent.STEP_UP)
+            val transition = strategy.transition(ConfirmPeerLoginState.Requested(false), event, ctx())
+            then("cancels the whole wish - not re-requested forever") {
+                transition shouldBe Transition.Cancel
+            }
+        }
+    }
+
+    given("Requested, waiting for a sub-journey, the session only carries loa1") {
+        val acc = account(method("sms", AcrLevel.LOA1))
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
+
+        `when`("a STEP_UP finishes that fell short of loa2") {
+            val event = JourneyEvent.SubJourneyFinished(AuthIntent.STEP_UP, achievedAcr = AcrLevel.LOA1)
+            val transition = strategy.transition(ConfirmPeerLoginState.Requested(false), event, theCtx)
+            then("re-evaluates from scratch instead of silently accepting it as sufficient") {
+                transition shouldBe
+                    Transition.RequireSubJourney(
+                        AuthIntent.STEP_UP,
+                        seedWith = StepUpState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1, allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN),
+                        resumeWith = ConfirmPeerLoginState.Requested(false)
+                    )
+            }
+        }
+
+        `when`("a different sub-journey entirely finishes - never assumed to be the gate's own") {
+            val event = JourneyEvent.SubJourneyFinished(AuthIntent.RE_IDENTIFY, achievedAcr = AcrLevel.LOA3)
+            val transition = strategy.transition(ConfirmPeerLoginState.Requested(false), event, theCtx)
+            then("re-evaluates from scratch") {
+                transition shouldBe
+                    Transition.RequireSubJourney(
+                        AuthIntent.STEP_UP,
+                        seedWith = StepUpState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1, allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN),
+                        resumeWith = ConfirmPeerLoginState.Requested(false)
+                    )
+            }
+        }
+    }
+
+    given("ConfirmationRequired, more than one offered candidate") {
+        val state = ConfirmPeerLoginState.ConfirmationRequired(false, Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
+        `when`("one candidate is abandoned") {
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(AuthSmsDescriptor), ctx())
+            then("keeps the choice among the rest") {
+                transition shouldBe
+                    Transition.To(state.declining(ToolId("auth-sms")))
+            }
+        }
+    }
+
+    given("ConfirmationRequired, a single offered candidate") {
+        val state = ConfirmPeerLoginState.ConfirmationRequired(false, Offer(listOf(ToolId("auth-sms"))))
+        `when`("the last offered candidate is abandoned") {
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(AuthSmsDescriptor), ctx())
+            then("cancels - the peer login is never confirmed just because every re-proof option was declined") {
+                transition shouldBe Transition.Cancel
+            }
+        }
+    }
+
+    given("ConfirmationRequired, started authenticated") {
+        val state = ConfirmPeerLoginState.ConfirmationRequired(true, Offer(listOf(ToolId("auth-sms"))))
+        `when`("any active factor is re-proven") {
+            val event = JourneyEvent.Completed(AuthSmsDescriptor, ToolOutcome.Completed.Authenticated(amr = listOf("sms")))
+            val transition = strategy.transition(state, event, ctx())
+            then("moves on to Confirming - one proof, at any level, is always sufficient here") {
+                transition shouldBe Transition.To(ConfirmPeerLoginState.Confirming(true, CONFIRM_OFFER))
+            }
+        }
+    }
+
+    given("ConfirmationRequired, offering an identification tool") {
+        val state = ConfirmPeerLoginState.ConfirmationRequired(false, Offer(listOf(ToolId("ident-fsc"))))
+        `when`("an outcome this state never offers arrives (Identified)") {
+            val result = runCatching {
+                strategy.transition(
+                    state,
+                    JourneyEvent.Completed(com.example.identity.tools.ident_fsc.IdentFscDescriptor, ToolOutcome.Completed.Identified(claims = listOf(com.example.identity.contract.tool_api.claims.Claim(com.example.identity.contract.tool_api.claims.AttributeType.PERSON_ID, "P000000001", com.example.identity.contract.tool_api.claims.ClaimSource.PERSON_DIRECTORY)))),
+                    ctx()
+                )
+            }
+            then("fails loudly rather than silently confirming") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
+            }
+        }
+    }
+
+    given("Confirming, account known") {
+        val acc = account(method("sms", AcrLevel.LOA1))
+        val theCtx = ctx(account = acc)
+        val state = ConfirmPeerLoginState.Confirming(false, CONFIRM_OFFER)
+        `when`("the approval just ran (Completed)") {
+            val outcome = ToolOutcome.Completed.Approved()
+            val event = JourneyEvent.Completed(com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor, outcome)
+            val transition = strategy.transition(state, event, theCtx)
+            then("performs RecordApproval") {
+                transition shouldBe Transition.Perform(Action.RecordApproval(com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor, outcome), resumeState = state)
+            }
+        }
+    }
+})
+
+/** What the catalog offers for peer approval: confirm-qr-login, derived from its role. */
+private val CONFIRM_OFFER = Offer(listOf(ToolId("confirm-qr-login")))

@@ -1,0 +1,28 @@
+<#import "template.ftl" as layout>
+<#import "page-notes.ftl" as pageNotes>
+<@layout.registrationLayout displayMessage=true; section>
+    <#if section = "header">
+        ${pageTitle!toolId}
+    <#elseif section = "form">
+        <@pageNotes.notes/>
+        <#if hint??>
+            <p class="orchestrator-subtitle">${hint}</p>
+        </#if>
+        <form id="kc-orchestrator-tool-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
+            <#list fields?keys as fieldName>
+                <div class="${properties.kcFormGroupClass!}">
+                    <label for="${fieldName}" class="${properties.kcLabelClass!}">${fieldName}</label>
+                    <#-- Generic scaffold for tools without their own page: one text input per
+                         stepData key. -->
+                    <input type="text" id="${fieldName}" name="${fieldName}" class="${properties.kcInputClass!}"
+                           value="${fields[fieldName]!''}" autocomplete="off"/>
+                </div>
+            </#list>
+            <div class="orchestrator-actions">
+                <button class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!}" type="submit">${t.of("Weiter")}</button>
+                <button class="${properties.kcButtonClass!} ${properties.kcButtonDefaultClass!}"
+                        type="submit" name="orchestrator_back" value="true">${t.of("Zurück")}</button>
+            </div>
+        </form>
+    </#if>
+</@layout.registrationLayout>

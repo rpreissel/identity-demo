@@ -1,0 +1,158 @@
+package com.example.identity.core.orchestrator.kc
+
+import com.example.identity.kcmigrate.federatedUserId
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.time.Instant
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Profile
+import org.springframework.http.MediaType
+import org.springframework.stereotype.Component
+import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.RestClient
+import org.springframework.web.client.body
+import org.springframework.web.util.UriComponentsBuilder
+
+/**
+ * The orchestrator's calls into Keycloak: ending a session, clearing up after a deleted account, and
+ * the account-token grant. Not a user mirror; Keycloak reads accounts through its user federation
+ * (ADR-38). A federated user's Keycloak id is computed ([federatedUserId]), never searched for.
+ * Admin calls run as `keycloak-sync.admin-client-id`. The token grant runs as the separate
+ * `keycloak-sync.app-client-id`, so the client that mints end-user tokens holds no admin rights.
+ */
+@Component
+@Profile("keycloak")
+class KeycloakAdminClient(
+    keycloakHttp: KeycloakHttp,
+    private val clientAssertions: OrchestratorClientAssertionSigner,
+    @Value("\${keycloak-sync.base-url}") private val baseUrl: String,
+    @Value("\${keycloak-sync.public-base-url}") private val publicBaseUrl: String,
+    @Value("\${keycloak-sync.realm}") private val realm: String,
+    @Value("\${keycloak-sync.admin-client-id}") private val adminClientId: String,
+    @Value("\${keycloak-sync.app-client-id}") private val appClientId: String
+) {
+    private val log = LoggerFactory.getLogger(KeycloakAdminClient::class.java)
+    private val restClient = keycloakHttp.restClient(baseUrl)
+
+    @Volatile
+    private var cachedToken: CachedToken? = null
+
+    /**
+     * Ends one Keycloak session: the App-channel logout for the session the account-token grant
+     * created (docs/07-betrieb.md Abschnitt 3). Deliberately not `users/{id}/logout`, which would
+     * also end the account's Web-channel browser sessions. Callers treat it as best-effort.
+     */
+    fun logoutSession(keycloakSessionId: String) {
+        authorized().delete().uri("/admin/realms/{realm}/sessions/{sessionId}", realm, keycloakSessionId).retrieve().toBodilessEntity()
+    }
+
+    /**
+     * The account is gone: Keycloak drops what it keeps locally for this federated user (sessions,
+     * login failures, consents, federated storage). Goes through the extension's own endpoint,
+     * because Keycloak's `DELETE users/{id}` first looks the user up, which no longer succeeds.
+     */
+    fun removeAccount(accountId: Long) {
+        authorized().delete().uri("/admin/realms/{realm}/orchestrator-accounts/{accountId}", realm, accountId).retrieve().toBodilessEntity()
+        log.info("Keycloak: removed local state of federated user for accountId={}", accountId)
+    }
+
+    /**
+     * Mints a Keycloak-signed access token for [accountId] with [acr] and [amr] through the custom
+     * account-token grant. Authenticated as the dedicated app-token client, the only one the grant
+     * accepts. That client is the orchestrator; there is no second per-account proof (ADR-9).
+     * Without [sessionId] the grant opens a new Keycloak session; with it, it continues exactly
+     * that session or fails (ADR-43).
+     */
+    fun requestAccountToken(accountId: Long, acr: String?, amr: List<String>, sessionId: String?): AccountTokenResponse {
+        val form = "grant_type=$ACCOUNT_TOKEN_GRANT_TYPE" +
+            "&${clientAuth(appClientId)}" +
+            "&account_id=$accountId" +
+            (sessionId?.let { "&session_id=" + URLEncoder.encode(it, StandardCharsets.UTF_8) } ?: "") +
+            (acr?.let { "&acr=" + URLEncoder.encode(it, StandardCharsets.UTF_8) } ?: "") +
+            "&amr=" + URLEncoder.encode(amr.joinToString(","), StandardCharsets.UTF_8)
+        return tokenResponse(form)
+    }
+
+    /**
+     * Plain `refresh_token` grant against the session [requestAccountToken] created. The caller
+     * decides that ACR/AMR are unchanged. The refresh also keeps the session's SSO idle timeout alive.
+     */
+    fun refreshAccountToken(refreshToken: String): AccountTokenResponse {
+        val form = "grant_type=refresh_token" +
+            "&${clientAuth(appClientId)}" +
+            "&refresh_token=$refreshToken"
+        return tokenResponse(form)
+    }
+
+    /**
+     * Client-Authentisierung per `private_key_jwt` (RFC 7523) statt `client_secret`. Keycloak prueft
+     * die Assertion gegen [OrchestratorClientJwksController]; kein geteiltes Geheimnis (wie ADR-7).
+     * Als `aud` dient die oeffentliche Realm-Adresse, nicht [baseUrl]: Keycloak vergleicht gegen
+     * die Issuer-URL aus seiner Frontend-Konfiguration (KC_HOSTNAME).
+     */
+    private fun clientAuth(clientId: String): String {
+        val assertion = clientAssertions.assertionFor(clientId, "$publicBaseUrl/realms/$realm")
+        return "client_id=$clientId" +
+            "&client_assertion_type=${URLEncoder.encode(CLIENT_ASSERTION_TYPE, StandardCharsets.UTF_8)}" +
+            "&client_assertion=$assertion"
+    }
+
+    private fun tokenResponse(form: String): AccountTokenResponse {
+        val response = restClient.post()
+            .uri("/realms/{realm}/protocol/openid-connect/token", realm)
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(form)
+            .retrieve()
+            .body<Map<String, Any?>>()
+            ?: error("Keycloak token endpoint returned no body")
+        val accessToken = response["access_token"] as? String ?: error("Keycloak token response has no access_token")
+        val expiresInSeconds = (response["expires_in"] as? Number)?.toLong() ?: 60L
+        val refreshToken = response["refresh_token"] as? String
+        val refreshExpiresInSeconds = (response["refresh_expires_in"] as? Number)?.toLong()
+        return AccountTokenResponse(accessToken, expiresInSeconds, refreshToken, refreshExpiresInSeconds)
+    }
+
+    /** [restClient] pre-authorized with a valid (cached, auto-refreshed) service-account access token. */
+    private fun authorized(): RestClient =
+        restClient.mutate().defaultHeader("Authorization", "Bearer ${accessToken()}").build()
+
+    private fun accessToken(): String {
+        val current = cachedToken
+        if (current != null && Instant.now().isBefore(current.expiresAt)) return current.value
+
+        val form = "grant_type=client_credentials&${clientAuth(adminClientId)}"
+        val response = restClient.post()
+            .uri("/realms/{realm}/protocol/openid-connect/token", realm)
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(form)
+            .retrieve()
+            .body<Map<String, Any?>>()
+            ?: error("Keycloak service-account token request returned no body")
+
+        val token = response["access_token"] as? String ?: error("Keycloak token response has no access_token")
+        val expiresInSeconds = (response["expires_in"] as? Number)?.toLong() ?: 60L
+        // A minute of slack, so a cached token does not expire on its way to Keycloak.
+        val expiresAt = Instant.now().plusSeconds((expiresInSeconds - 60).coerceAtLeast(5))
+        val fresh = CachedToken(token, expiresAt)
+        cachedToken = fresh
+        return fresh.value
+    }
+
+    private data class CachedToken(val value: String, val expiresAt: Instant)
+
+    companion object {
+        /** Must match [com.example.identity.kcext.grant.AccountTokenGrantType.GRANT_TYPE] on the keycloak-extension side. */
+        const val ACCOUNT_TOKEN_GRANT_TYPE = "urn:identity-demo:account-token"
+
+        /** RFC 7523: signierte Client-Assertion statt client_secret. */
+        private const val CLIENT_ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+    }
+}
+
+data class AccountTokenResponse(
+    val accessToken: String,
+    val expiresInSeconds: Long,
+    val refreshToken: String? = null,
+    val refreshExpiresInSeconds: Long? = null
+)

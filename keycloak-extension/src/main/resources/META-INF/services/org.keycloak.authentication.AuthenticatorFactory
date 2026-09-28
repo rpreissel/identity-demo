@@ -1,0 +1,3 @@
+com.example.identity.kcext.OrchestratorResumeAuthenticatorFactory
+com.example.identity.kcext.OrchestratorAuthenticatorFactory
+com.example.identity.kcext.OrchestratorUpdateAuthenticatorFactory

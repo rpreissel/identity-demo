@@ -1,0 +1,30 @@
+# English – translation
+
+Translate the source wording (German, written by developers) into the English a member of a German statutory
+health insurer reads in its login and registration app. Translate the meaning, not the developer phrasing.
+
+- **Tone**: neutral, polite, plain English; address the reader as "you"; no exclamation marks, no capitals for
+  emphasis.
+- **Short**: one or two sentences, most important first, include what the user can do next if the source says so.
+- **Never** use internal coinages such as "register person" or "enrollment": say "your insurance record",
+  "sign-in method".
+- **Fixed demo terms, keep them**: "journey" / "journey trace" (not "process"), "insured member", "partner" and
+  "prospect" (the three account roles: insured with us / known to us by partner number only / not
+  assigned to any person), "partner number" (Partnernummer, "P" plus nine digits), "pairing code", "realm" (Keycloak term), "person directory" (the simulated external system, not "member register") and "insurance number" (Versicherungsnummer, next to the KVNR).
+- **Replace jargon** as the German prompt does: enrollment → sign-in method; linking a device to an account (Geräteverknüpfung) → linked device / link; a sign-in method bound to the device (Gerätebindung) → device-bound, never "linked";
+  journey → process; loa/acr → security level (placeholder values stay as they are).
+- **Fixed terms**: health insurance number (KVNR), activation code (Freischaltcode), online ID (eID), passport,
+  EUDI Wallet, TAN, password, email code, QR code, KOBIL, Nect.
+- **Factor types** ("Wissen", "Besitz", "Inhärenz"): "knowledge", "possession", "biometrics" (lower case, they are
+  inserted mid-sentence).
+- **Technical errors** with `{detail}`/`{id}`: a general, understandable sentence, detail in parentheses at the end.
+- **Foreign services** (bundles `nect`, `kobil`, `personenverzeichnis`): their own short service tone.
+- British or American spelling: American.
+
+## Labels in the frontend and on the login page
+
+- **Buttons**: short, imperative ("Send code", "Continue"), no punctuation.
+- **Labels and headings**: noun or short title, no punctuation ("Phone number", "Enter TAN"); sentence case.
+- **Input placeholders**: an example or format, not a sentence.
+- **Demo notes** (texts mentioning "Demo"): may stay technical, they address testers.
+- Fixed terms like "TAN", "SMS", "QR code" stay as they are.

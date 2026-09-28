@@ -1,0 +1,445 @@
+import { useEffect, useMemo, useState } from 'react'
+import { describeError } from '../api'
+import type { JourneyTraceEntryView, JourneyTraceResponse } from '../types'
+import { t } from '../texts'
+
+/** The admin endpoint's answer: the entries plus every account they can be filtered by. */
+type LogWithAccounts = JourneyTraceResponse & { accounts: { accountId: number; displayName?: string | null }[] }
+
+const LIVE_INTERVAL_MS = 5000
+
+interface Props {
+  /** The admin page's fetch (`fetchAdminJourneyTrace`). */
+  fetchLog: () => Promise<LogWithAccounts>
+}
+
+/** Labels for the raw detail keys JourneyService logs (JourneyTraceEntry). */
+const KEY_LABELS: Record<string, string> = {
+  decision: 'Decision',
+  toState: 'Target State',
+  reason: 'Reason',
+  outcome: 'Outcome',
+  achievedAcr: 'Achieved ACR',
+  targetAcr: 'Target ACR',
+  amr: 'AMR',
+  factorTypes: 'Factor Types',
+  method: 'Method',
+  attemptBudgetLeft: 'Attempts Left',
+  attemptedAccountId: 'Attempted Account',
+  attemptedPersonId: 'Attempted Person',
+  personId: 'Person',
+  accountId: 'Account',
+  enrollmentRef: 'Enrollment',
+  subIntent: 'Sub-Intent',
+  effect: 'Effect',
+  answer: 'Answer',
+  methodInstanceId: 'Method ID',
+  label: 'Label',
+  acrFloor: 'ACR Floor',
+  amrSourceId: 'AMR Source',
+  loa: 'LoA',
+  source: 'Source',
+  methods: 'Methods',
+}
+
+function labelFor(key: string): string {
+  const last = key.split('.').pop() ?? key
+  return KEY_LABELS[last] ?? last
+}
+
+interface DetailChip {
+  key: string
+  label: string
+  value: string
+}
+
+/**
+ * Renders `next` (a full step address) and `candidateTools` (toolId -> method) as one readable chip
+ * each instead of several raw key.path chips.
+ */
+function specialCasedChip(key: string, value: unknown): DetailChip | null {
+  if (key === 'next' && value && typeof value === 'object') {
+    const next = value as Record<string, unknown>
+    const address = next.type === 'tool' ? `${next.toolId} · ${next.step}` : `${next.context} · ${next.step}`
+    return { key, label: 'Next Step', value: address }
+  }
+  if (key === 'candidateTools' && value && typeof value === 'object') {
+    const list = Object.entries(value as Record<string, string>)
+      .map(([toolId, method]) => `${toolId} (${method})`)
+      .join(', ')
+    return list ? { key, label: 'Candidate Tools', value: list } : null
+  }
+  return null
+}
+
+/** Flattens the nested detail map into labeled chips: the composites first, the rest by key path. */
+function formatDetail(detail: Record<string, unknown>): DetailChip[] {
+  const chips: DetailChip[] = []
+  for (const [key, value] of Object.entries(detail)) {
+    const special = specialCasedChip(key, value)
+    if (special) {
+      chips.push(special)
+      continue
+    }
+    chips.push(...flatten(key, value))
+  }
+  return chips
+}
+
+/** One array entry as "key=value, key2=value2", for arrays of objects (e.g. `methods`). */
+function describeItem(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (Array.isArray(value)) return value.map(describeItem).join('+')
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== null && v !== undefined && v !== '')
+      .map(([k, v]) => `${labelFor(k)}=${describeItem(v)}`)
+      .join(', ')
+  }
+  return String(value)
+}
+
+function flatten(keyPath: string, value: unknown): DetailChip[] {
+  if (value === null || value === undefined || value === '') return []
+  if (Array.isArray(value)) {
+    if (value.length === 0) return []
+    const text = value.some((v) => v !== null && typeof v === 'object')
+      ? value.map(describeItem).join(' | ')
+      : value.join(', ')
+    return [{ key: keyPath, label: labelFor(keyPath), value: text }]
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).flatMap(([k, v]) => flatten(`${keyPath}.${k}`, v))
+  }
+  return [{ key: keyPath, label: labelFor(keyPath), value: String(value) }]
+}
+
+const dateTimeFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'medium' })
+const timeFormat = new Intl.DateTimeFormat('de-DE', { timeStyle: 'medium' })
+
+function channelTypeLabel(channelType?: string): string {
+  if (channelType === 'APP') return 'App'
+  if (channelType === 'KEYCLOAK') return 'Kc/Web'
+  return 'Unbekannt'
+}
+
+/** A journey-scoped entry, narrowed from JourneyTraceEntryView once journeyId/intent are known to be set. */
+interface JourneyScopedEntry extends JourneyTraceEntryView {
+  journeyId: string
+  intent: string
+}
+
+function isJourneyScoped(entry: JourneyTraceEntryView): entry is JourneyScopedEntry {
+  return entry.journeyId !== undefined
+}
+
+/** Groups journey-scoped entries by channelSessionId, then journeyId. [entries] arrive in row order. */
+function groupEntries(entries: JourneyScopedEntry[]): Map<string, Map<string, JourneyScopedEntry[]>> {
+  const byChannel = new Map<string, Map<string, JourneyScopedEntry[]>>()
+  for (const entry of entries) {
+    const byJourney = byChannel.get(entry.channelSessionId) ?? new Map<string, JourneyScopedEntry[]>()
+    byChannel.set(entry.channelSessionId, byJourney)
+    const list = byJourney.get(entry.journeyId) ?? []
+    byJourney.set(entry.journeyId, [...list, entry])
+  }
+  return byChannel
+}
+
+/** Channel-level entries without a journey (e.g. a logout with nothing running), by channelSessionId. */
+function groupChannelLevelEntries(entries: JourneyTraceEntryView[]): Map<string, JourneyTraceEntryView[]> {
+  const byChannel = new Map<string, JourneyTraceEntryView[]>()
+  for (const entry of entries) {
+    if (isJourneyScoped(entry)) continue
+    const list = byChannel.get(entry.channelSessionId) ?? []
+    byChannel.set(entry.channelSessionId, [...list, entry])
+  }
+  return byChannel
+}
+
+function firstChannelType(entries: JourneyTraceEntryView[]): string | undefined {
+  return entries.find((entry) => entry.channelType)?.channelType
+}
+
+interface JourneyNode {
+  journeyId: string
+  entries: JourneyScopedEntry[]
+  children: JourneyNode[]
+}
+
+/**
+ * Turns one ChannelSession's flat journey map into a tree via parentJourneyId. A sub-journey runs as
+ * another journey's precondition (docs/04-orchestrierung.md #6), e.g. a step-up demanding RE_IDENTIFY.
+ * Without the tree it looks unrelated. Every level is sorted newest activity first.
+ */
+function buildJourneyTree(byJourney: Map<string, JourneyScopedEntry[]>): JourneyNode[] {
+  const nodes = new Map<string, JourneyNode>()
+  for (const [journeyId, journeyEntries] of byJourney) nodes.set(journeyId, { journeyId, entries: journeyEntries, children: [] })
+
+  const roots: JourneyNode[] = []
+  for (const node of nodes.values()) {
+    const parentId = node.entries[0].parentJourneyId
+    const parent = parentId ? nodes.get(parentId) : undefined
+    ;(parent?.children ?? roots).push(node)
+  }
+
+  const latestOf = (node: JourneyNode) => node.entries.at(-1)!.createdAt
+  const sortNewestFirst = (list: JourneyNode[]) => list.sort((a, b) => latestOf(b).localeCompare(latestOf(a)))
+  sortNewestFirst(roots)
+  for (const node of nodes.values()) sortNewestFirst(node.children)
+  return roots
+}
+
+/**
+ * The admin page's Journey-Trace tab (docs/04-orchestrierung.md): every journey step across all
+ * accounts and channels, filterable by person, channel and journey, optionally refreshing live.
+ * Channels and journeys are opaque UUIDs, so filters and headings name them by start time (plus
+ * intent for a journey).
+ */
+export function JourneyTraceView({ fetchLog }: Props) {
+  const [entries, setEntries] = useState<JourneyTraceEntryView[]>([])
+  const [accountNames, setAccountNames] = useState<Map<number, string>>(new Map())
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [channelFilter, setChannelFilter] = useState<string>('')
+  const [journeyFilter, setJourneyFilter] = useState<string>('')
+  const [accountFilter, setAccountFilter] = useState<string>('')
+  const [liveOn, setLiveOn] = useState(false)
+
+  /** [quiet]: a live refresh must not blank the view with "Lädt…" every few seconds. */
+  function load(quiet = false) {
+    if (!quiet) setLoading(true)
+    setError(null)
+    fetchLog()
+      .then((response) => {
+        setEntries(response.entries)
+        setAccountNames(new Map(response.accounts.map((a) => [a.accountId, a.displayName ?? `Konto ${a.accountId}`])))
+      })
+      .catch((err) => setError(describeError(t('Journey-Trace laden fehlgeschlagen'), err)))
+      .finally(() => setLoading(false))
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(load, [fetchLog])
+
+  useEffect(() => {
+    if (!liveOn) return
+    const timer = window.setInterval(() => load(true), LIVE_INTERVAL_MS)
+    return () => window.clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveOn, fetchLog])
+
+  const accountOf = (entry: JourneyTraceEntryView) => (entry.accountId == null ? 'none' : String(entry.accountId))
+
+  // Oldest first within a journey's steps (the backend returns newest first). groupedNewestFirst
+  // below re-sorts only the groups.
+  const chronological = useMemo(() => [...entries].sort((a, b) => a.createdAt.localeCompare(b.createdAt)), [entries])
+
+  // Filter options double as the identity shown for a channel/journey: start time (plus intent for
+  // a journey), newest first. The id is only the <option> value.
+  const channelOptions = useMemo(() => {
+    const firstSeen = new Map<string, { createdAt: string; channelType?: string }>()
+    for (const e of chronological) {
+      if (!firstSeen.has(e.channelSessionId)) firstSeen.set(e.channelSessionId, { createdAt: e.createdAt, channelType: e.channelType })
+    }
+    return [...firstSeen.entries()].sort(([, a], [, b]) => b.createdAt.localeCompare(a.createdAt))
+  }, [chronological])
+
+  const journeyOptions = useMemo(() => {
+    const firstSeen = new Map<string, { createdAt: string; intent: string }>()
+    for (const e of chronological) {
+      if (!isJourneyScoped(e)) continue
+      if (channelFilter && e.channelSessionId !== channelFilter) continue
+      if (!firstSeen.has(e.journeyId)) firstSeen.set(e.journeyId, { createdAt: e.createdAt, intent: e.intent })
+    }
+    return [...firstSeen.entries()].sort(([, a], [, b]) => b.createdAt.localeCompare(a.createdAt))
+  }, [chronological, channelFilter])
+
+  const filtered = chronological.filter(
+    (e) =>
+      (!channelFilter || e.channelSessionId === channelFilter) &&
+      (!journeyFilter || e.journeyId === journeyFilter) &&
+      (!accountFilter || accountOf(e) === accountFilter)
+  )
+  // Groups (ChannelSession, Journey within it) are ordered newest activity first; rows inside a
+  // journey stay chronological. Sub-journeys are nested under their parent (buildJourneyTree).
+  // Channel-level entries (e.g. a logout with nothing running) get one table above the journeys.
+  const journeyScopedByChannel = groupEntries(filtered.filter(isJourneyScoped))
+  const channelLevelByChannel = groupChannelLevelEntries(filtered)
+  const allChannelIds = new Set([...journeyScopedByChannel.keys(), ...channelLevelByChannel.keys()])
+  const groupedNewestFirst = [...allChannelIds]
+    .map((channelSessionId) => {
+      const byJourney = journeyScopedByChannel.get(channelSessionId) ?? new Map<string, JourneyScopedEntry[]>()
+      const channelLevelEntries = channelLevelByChannel.get(channelSessionId) ?? []
+      const allEntries = [...[...byJourney.values()].flat(), ...channelLevelEntries]
+      const latest = allEntries.reduce((max, e) => (e.createdAt > max ? e.createdAt : max), allEntries[0].createdAt)
+      const earliest = allEntries.reduce((min, e) => (e.createdAt < min ? e.createdAt : min), allEntries[0].createdAt)
+      const accountId = allEntries.find((e) => e.accountId != null)?.accountId
+      return {
+        channelSessionId,
+        person: accountId != null ? accountNames.get(accountId) ?? `Konto ${accountId}` : 'ohne Konto',
+        channelType: firstChannelType(allEntries),
+        journeyTree: buildJourneyTree(byJourney),
+        channelLevelEntries,
+        latest,
+        earliest,
+      }
+    })
+    .sort((a, b) => b.latest.localeCompare(a.latest))
+
+  return (
+    <div className="card journey-trace-card">
+      <h2>Journey-Trace</h2>
+      <p>
+        Jeder Journey-Schritt aller Konten und Geräte, neueste zuerst - gruppiert nach Person, ChannelSession und
+        Journey. Mit „Live“ läuft die Ansicht neben einer Demo mit. Nur zu Demo-/Debug-Zwecken, kein Audit-Trail.
+      </p>
+
+      <div className="controls">
+        <label className="field-row">
+          Person:
+          <select
+            value={accountFilter}
+            onChange={(e) => {
+              setAccountFilter(e.target.value)
+              setChannelFilter('')
+              setJourneyFilter('')
+            }}
+          >
+            <option value="">Alle ({accountNames.size})</option>
+            {[...accountNames.entries()].map(([id, name]) => (
+              <option key={id} value={String(id)}>
+                {name}
+              </option>
+            ))}
+            {entries.some((e) => e.accountId == null) && <option value="none">ohne Konto</option>}
+          </select>
+        </label>
+        <label className="field-row">
+          ChannelSession:
+          <select
+            value={channelFilter}
+            onChange={(e) => {
+              setChannelFilter(e.target.value)
+              setJourneyFilter('')
+            }}
+          >
+            <option value="">Alle ({channelOptions.length})</option>
+            {channelOptions.map(([id, { createdAt, channelType }]) => (
+              <option key={id} value={id}>
+                {channelTypeLabel(channelType)} · {dateTimeFormat.format(new Date(createdAt))}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field-row">
+          Journey:
+          <select value={journeyFilter} onChange={(e) => setJourneyFilter(e.target.value)}>
+            <option value="">Alle ({journeyOptions.length})</option>
+            {journeyOptions.map(([id, { createdAt, intent }]) => (
+              <option key={id} value={id}>
+                {intent} · {dateTimeFormat.format(new Date(createdAt))}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" onClick={() => load()} disabled={loading}>
+          Aktualisieren
+        </button>
+        <label className="field-row">
+          <input type="checkbox" checked={liveOn} onChange={(e) => setLiveOn(e.target.checked)} />
+          Live ({LIVE_INTERVAL_MS / 1000} s)
+        </label>
+      </div>
+
+      {error && (
+        <div className="card error-card">
+          <p>{error}</p>
+        </div>
+      )}
+      {loading && entries.length === 0 && <p>Lädt…</p>}
+      {!loading && filtered.length === 0 && !error && <p>Keine Einträge.</p>}
+
+      {groupedNewestFirst.map(({ channelSessionId, person, channelType, journeyTree, channelLevelEntries, earliest }) => (
+        <div key={channelSessionId} className="journey-trace-channel">
+          <div className="journey-trace-channel-header">
+            <h3>
+              {person && <>{person} · </>}ChannelSession vom {dateTimeFormat.format(new Date(earliest))}
+            </h3>
+            <span className="journey-trace-channel-type">{channelTypeLabel(channelType)}</span>
+          </div>
+          {channelLevelEntries.length > 0 && renderEntryTable(channelLevelEntries)}
+          {journeyTree.map((node) => renderJourneyNode(node, 0))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** The Zeit/Event/Tool/Details table for a journey's steps and a channel's journey-less entries. */
+function renderEntryTable(entries: JourneyTraceEntryView[]) {
+  return (
+    <div className="journey-trace-table-scroll">
+      <table className="journey-trace-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>State</th>
+            <th>Event</th>
+            <th>Tool</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((entry, index) => {
+            const { toolId, ...rest } = entry.detail
+            const chips = formatDetail(rest)
+            return (
+              <tr key={index}>
+                <td className="journey-trace-time">{timeFormat.format(new Date(entry.createdAt))}</td>
+                <td className="journey-trace-state">{entry.journeyState ?? '–'}</td>
+                <td>
+                  <span className="badge">{entry.eventType}</span>
+                </td>
+                <td className="journey-trace-tool">{typeof toolId === 'string' ? toolId : '–'}</td>
+                <td>
+                  {chips.length > 0 ? (
+                    <ul className="journey-trace-detail-chips">
+                      {chips.map((chip) => (
+                        <li key={chip.key}>
+                          <span className="journey-trace-chip-label">{chip.label}</span>
+                          <span className="journey-trace-chip-value">{chip.value}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    '–'
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/** One journey block (header + step table), then its sub-journeys indented underneath. */
+function renderJourneyNode(node: JourneyNode, depth: number) {
+  const { journeyId, entries: journeyEntries, children } = node
+  return (
+    <div
+      key={journeyId}
+      className={depth > 0 ? 'journey-trace-journey journey-trace-journey--nested' : 'journey-trace-journey'}
+      style={depth > 0 ? { marginLeft: `${depth * 1.5}rem` } : undefined}
+    >
+      <div className={depth > 0 ? 'journey-trace-journey-header journey-trace-journey-header--sub' : 'journey-trace-journey-header'}>
+        {depth > 0 && <span className="journey-trace-sub-marker">↳ Sub-Journey</span>}
+        <span className="value-plain">{journeyEntries[0].intent}</span>
+        <span className="value">{dateTimeFormat.format(new Date(journeyEntries[0].createdAt))}</span>
+      </div>
+      {renderEntryTable(journeyEntries)}
+      {children.map((child) => renderJourneyNode(child, depth + 1))}
+    </div>
+  )
+}

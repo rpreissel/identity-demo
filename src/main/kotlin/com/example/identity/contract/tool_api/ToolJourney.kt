@@ -1,0 +1,103 @@
+package com.example.identity.contract.tool_api
+
+import com.example.identity.contract.tool_api.envelope.ChannelResponse
+import java.net.URI
+import java.util.UUID
+
+/**
+ * The handle a tool controller holds for one request. Obtained from [ToolJourney.beginActivation]
+ * or [ToolJourney.loadContext] and passed to every other [ToolJourney] call afterwards.
+ */
+interface ToolContext {
+    /** The toolId this context was obtained for. */
+    val toolId: String
+    val toolSessionId: UUID
+    /**
+     * The account in hand: the one this channel knows (device link, earlier login, or bound by the
+     * running journey), or `null` while nobody is known yet.
+     */
+    val accountId: Long?
+}
+
+/**
+ * A [ToolContext] that may change the journey; the only kind [ToolJourney.applyOutcome] accepts.
+ * [ToolJourney.beginActivation] creates a fresh session, [ToolJourney.loadCurrent] verifies an
+ * existing one against the journey's active tool. So a controller cannot apply an outcome for an
+ * unverified session. [ToolJourney.loadContext] returns the weaker type for the read path, where
+ * a superseded session gets a clean answer instead of a 409.
+ */
+interface AuthorizedToolContext : ToolContext
+
+/**
+ * The journey as a tool controller sees it: activation, binding checks, transitions and the
+ * response envelope. A controller gets a context
+ * ([beginActivation], [loadCurrent] or [loadContext]), runs its own logic to a [ToolOutcome], and
+ * calls [applyOutcome] (writes) or [buildReadResponse] (reads).
+ */
+interface ToolJourney {
+    /**
+     * Activates [toolId] on the channel: creates a new tool session and advances the journey to it.
+     *
+     * @param bindingKeyRef the caller's resolved DPoP binding key (see [BindingKey]).
+     * @throws RuntimeException if the channel or binding is invalid, or the journey does not offer [toolId].
+     */
+    fun beginActivation(channelSessionId: UUID, bindingKeyRef: String, toolId: String): AuthorizedToolContext
+
+    /**
+     * Loads the context of an existing tool session for the read path. Whether it is still the
+     * current tool, [isCurrentTool] tells.
+     *
+     * @throws RuntimeException if the tool session does not exist or the binding key does not
+     * match its channel.
+     */
+    fun loadContext(toolSessionId: UUID, bindingKeyRef: String, toolId: String): ToolContext
+
+    /**
+     * The `Location` header value for a just-created tool resource.
+     *
+     * @param baseUri the scheme/host/port the client actually reached.
+     */
+    fun activationLocation(context: ToolContext, baseUri: URI): URI
+
+    /**
+     * The write-path counterpart to [loadContext]: loads an existing tool session and verifies it
+     * is the one the journey currently authorizes.
+     *
+     * @throws RuntimeException if it is not the journey's current tool.
+     */
+    fun loadCurrent(toolSessionId: UUID, bindingKeyRef: String, toolId: String): AuthorizedToolContext
+
+    /** @return whether [context]'s toolId is still the journey's current tool. */
+    fun isCurrentTool(context: ToolContext): Boolean
+
+    /**
+     * Abandons the currently activated tool ("Switch"). What happens next is decided by the
+     * journey's current state, not by the caller.
+     */
+    fun abandon(context: AuthorizedToolContext): ChannelResponse
+
+    /**
+     * Leaves the currently activated tool without declining it ("Zurück"): the journey shows its
+     * selection page again, this tool still among the options.
+     */
+    fun back(context: AuthorizedToolContext): ChannelResponse
+
+    /** Applies a tool's [outcome] of any kind to the journey and builds the resulting response. */
+    fun applyOutcome(context: AuthorizedToolContext, outcome: ToolOutcome): ChannelResponse
+
+    /**
+     * Whether [personId] is the person the account in hand had attested (name, first name, date of
+     * birth). A CORRELATION tool asks before it reports, so a number of somebody else fails like
+     * an unknown one. `false` without an account. The journey repeats the check when binding.
+     * Stays here rather than on [IdentityResolver]: only the journey consults that port.
+     */
+    fun matchesAttestedIdentity(context: AuthorizedToolContext, personId: String): Boolean
+
+    /**
+     * Builds the response for a GET call.
+     *
+     * @param freshOutcome the tool's rebuilt `InProgress` state, or `null` if it is no longer the
+     * current tool; the response then shows the journey's current step.
+     */
+    fun buildReadResponse(context: ToolContext, freshOutcome: ToolOutcome.InProgress?): ChannelResponse
+}

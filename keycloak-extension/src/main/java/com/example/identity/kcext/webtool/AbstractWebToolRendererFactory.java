@@ -1,0 +1,36 @@
+package com.example.identity.kcext.webtool;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import org.keycloak.Config;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.KeycloakSessionFactory;
+
+/** Base for a stateless tool factory+renderer pair; the factory hands back itself. */
+public abstract class AbstractWebToolRendererFactory implements WebToolRendererFactory, WebToolRenderer {
+
+    /**
+     * Raw JSON of {@code demo.persons}, or {@code "null"} when absent. {@code demo-person-picker.ftl}
+     * embeds it as a JS array literal.
+     */
+    protected static String demoPersonsJson(WebToolRenderContext ctx) {
+        JsonNode persons = ctx.demo().get("persons");
+        return persons != null ? persons.toString() : "null";
+    }
+
+    @Override
+    public WebToolRenderer create(KeycloakSession session) {
+        return this;
+    }
+
+    @Override
+    public void init(Config.Scope config) {
+    }
+
+    @Override
+    public void postInit(KeycloakSessionFactory factory) {
+    }
+
+    @Override
+    public void close() {
+    }
+}

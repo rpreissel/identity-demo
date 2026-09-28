@@ -1,0 +1,16 @@
+com.example.identity.kcext.webtool.password.PasswordAuthRendererFactory
+com.example.identity.kcext.webtool.password.PasswordEnrollRendererFactory
+com.example.identity.kcext.webtool.password.PasswordLookupRendererFactory
+com.example.identity.kcext.webtool.email.EmailAuthRendererFactory
+com.example.identity.kcext.webtool.email.EmailEnrollRendererFactory
+com.example.identity.kcext.webtool.email.EmailLookupRendererFactory
+com.example.identity.kcext.webtool.email.ConfirmEmailRendererFactory
+com.example.identity.kcext.webtool.sms.SmsAuthRendererFactory
+com.example.identity.kcext.webtool.sms.SmsEnrollRendererFactory
+com.example.identity.kcext.webtool.sms.SmsLookupRendererFactory
+com.example.identity.kcext.webtool.identfsc.IdentFscRendererFactory
+com.example.identity.kcext.webtool.identeid.IdentEidRendererFactory
+com.example.identity.kcext.webtool.identkvnr.IdentKvnrRendererFactory
+com.example.identity.kcext.webtool.qr.AuthQrRendererFactory
+com.example.identity.kcext.webtool.qr.AuthQrLookupRendererFactory
+com.example.identity.kcext.webtool.qr.EnrollQrRendererFactory

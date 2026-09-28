@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Richtet einen internen Spiegel fuer Gradle ein, dessen Adressen verschluesselt im Repo liegen
+# (gradle/local-mirror.enc). Nach Eingabe des Passworts:
+#   - stellt es die Wrapper-Distribution in gradle/wrapper/gradle-wrapper.properties um und nimmt
+#     die Datei aus der Verfolgung durch Git,
+#   - legt ~/.gradle/init.d/local-mirror.init.gradle.kts an, das den Maven-Spiegel fuer Plugins und
+#     Abhaengigkeiten ergaenzt, solange er erreichbar ist.
+# Der Build im Repo bleibt dadurch neutral.
+#
+#   ./init-local                  Passwort eingeben, einrichten
+#   ./init-local seal <datei>     Klartextdatei (MIRROR_HOST, MIRROR_URL, DISTRIBUTION_URL) verschluesseln
+#   ./init-local remove           Einrichtung zuruecknehmen
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ENC="$SCRIPT_DIR/gradle/local-mirror.enc"
+PROPS="$SCRIPT_DIR/gradle/wrapper/gradle-wrapper.properties"
+INIT_SCRIPT="$HOME/.gradle/init.d/local-mirror.init.gradle.kts"
+CIPHER=(-aes-256-cbc -pbkdf2 -iter 600000 -a)
+
+case "${1:-}" in
+  seal)
+    plain="${2:?Klartextdatei angeben}"
+    openssl enc "${CIPHER[@]}" -salt -in "$plain" -out "$ENC"
+    echo "✔ verschluesselt nach $ENC - die Klartextdatei jetzt loeschen."
+    exit 0
+    ;;
+  remove)
+    rm -f "$INIT_SCRIPT"
+    git -C "$SCRIPT_DIR" update-index --no-assume-unchanged "$PROPS"
+    git -C "$SCRIPT_DIR" checkout -- "$PROPS"
+    echo "✔ Spiegel entfernt, Wrapper zurueckgesetzt."
+    exit 0
+    ;;
+esac
+
+# Entschluesselt nur in eine Variable, nie auf die Platte.
+config="$(openssl enc -d "${CIPHER[@]}" -in "$ENC")" || { echo "✘ Passwort falsch oder Datei beschaedigt." >&2; exit 1; }
+value() { printf '%s\n' "$config" | sed -n "s/^$1=//p"; }
+MIRROR_HOST="$(value MIRROR_HOST)"
+MIRROR_URL="$(value MIRROR_URL)"
+DISTRIBUTION_URL="$(value DISTRIBUTION_URL)"
+
+# Backslashes verdoppeln: sed nimmt sie in der Ersetzung sonst weg, die Properties brauchen "\:".
+sed -i.bak "s|^distributionUrl=.*|distributionUrl=${DISTRIBUTION_URL//\\/\\\\}|" "$PROPS"
+rm -f "$PROPS.bak"
+git -C "$SCRIPT_DIR" update-index --assume-unchanged "$PROPS"
+
+mkdir -p "$(dirname "$INIT_SCRIPT")"
+cat > "$INIT_SCRIPT" <<EOF
+// Angelegt von init-local. Ergaenzt den internen Maven-Spiegel, solange er erreichbar ist.
+val mirrorReachable = try {
+    java.net.Socket().use { it.connect(java.net.InetSocketAddress("$MIRROR_HOST", 443), 800) }
+    true
+} catch (e: Exception) {
+    false
+}
+if (mirrorReachable) {
+    beforeSettings {
+        pluginManagement.repositories { maven { url = uri("$MIRROR_URL") } }
+    }
+    allprojects {
+        repositories { maven { url = uri("$MIRROR_URL") } }
+    }
+}
+EOF
+chmod 600 "$INIT_SCRIPT"
+
+echo "✔ Wrapper umgestellt und aus der Verfolgung genommen, Spiegel in $INIT_SCRIPT eingerichtet."

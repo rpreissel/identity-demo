@@ -1,0 +1,83 @@
+package com.example.identity.tools.auth_password.internal.authpasswordlookup
+import com.example.identity.contract.texts.Text
+import com.example.identity.tools.auth_password.internal.PasswordHasher
+import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
+
+import com.example.identity.tools.auth_password.PASSWORD_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_password.AuthPasswordLookupDescriptor
+import com.example.identity.contract.tool_api.EnrollmentRef
+import com.example.identity.contract.tool_api.ToolOutcome
+import org.springframework.data.repository.findByIdOrNull
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
+
+/**
+ * toolId=auth-password-lookup: login without a known account (docs/04-orchestrierung.md). Takes
+ * email and password together in one step. The controller resolves the email and passes the result
+ * into [patch]. The completeness decision lives in [AuthPasswordLookupFlow].
+ */
+@Component
+class AuthPasswordLookupToolHandler(
+    private val descriptor: AuthPasswordLookupDescriptor,
+    private val toolDataRepository: AuthPasswordLookupToolSessionRepository,
+    private val enrollmentRepository: AuthPasswordEnrollmentRepository
+) {
+
+    @Transactional
+    fun start(toolSessionId: UUID): ToolOutcome {
+        toolDataRepository.save(AuthPasswordLookupToolSession(toolSessionId = toolSessionId))
+        return outcomeFor()
+    }
+
+    /**
+     * [accountId]/[enrollmentRef] are null for an unknown email, no active password method, or a
+     * throttled account. The failure looks the same in every case (enumeration protection,
+     * docs/04-orchestrierung.md), and costs the same: `PasswordHasher.matches` runs unconditionally.
+     */
+    @Transactional
+    fun patch(toolSessionId: UUID, email: String?, password: String?, accountId: Long?, enrollmentRef: EnrollmentRef?): ToolOutcome {
+        checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-password-lookup tool session: $toolSessionId" }
+
+        return when (val decision = AuthPasswordLookupFlow.decide(AuthPasswordLookupInput(email, password))) {
+            is AuthPasswordLookupDecision.Incomplete -> outcomeFor(decision.missingFields)
+
+            is AuthPasswordLookupDecision.Check -> {
+                val enrollment = enrollmentRef
+                    ?.takeIf { it.type == PASSWORD_ENROLLMENT_TYPE }
+                    ?.id?.toLongOrNull()
+                    ?.let { enrollmentRepository.findByIdOrNull(it) }
+
+                // Unconditional, before any null check - a null enrollment hashes against a dummy
+                // and costs the same. See the KDoc above.
+                val passwordOk = PasswordHasher.matches(decision.password, enrollment?.passwordHash)
+
+                if (accountId != null && enrollment != null && passwordOk) {
+                    PasswordHasher.upgrade(enrollment, decision.password)
+                    ToolOutcome.Completed.Authenticated(
+                        amr = listOf(descriptor.method),
+                        achievedAcr = descriptor.maxAcr,
+                        factorTypes = descriptor.factorTypes,
+                        accountId = accountId
+                    )
+                } else {
+                    // Naming the account here is what lets the orchestrator count this attempt;
+                    // the client-facing part of the outcome stays identical for known and unknown
+                    // addresses.
+                    ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Passwort ungueltig"), attemptedAccountId = accountId)
+                }
+            }
+        }
+    }
+
+    @Transactional(readOnly = true)
+    fun read(toolSessionId: UUID): ToolOutcome {
+        checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-password-lookup tool session: $toolSessionId" }
+        return outcomeFor()
+    }
+
+    private fun outcomeFor(missingFields: List<String> = listOf("email", "password")): ToolOutcome.InProgress {
+        val (step, fields) = AuthPasswordLookupFlow.describe(missingFields)
+        return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = AuthPasswordLookupFlow.demo())
+    }
+}

@@ -1,0 +1,208 @@
+spring:
+  application:
+    name: identity-demo
+  task:
+    execution:
+      # Boots eigener Async-Pool bleibt Default, obwohl es mit personChangeExecutor einen weiteren
+      # Executor gibt - ohne "force" zieht sich Boot dann zurueck, und jedes @Async landete auf
+      # dessen einem Thread (PersonChangeExecutorConfig).
+      mode: force
+  modulith:
+    # Module sind nur Pakete mit @ApplicationModule in einer ModuleMetadata; die Gruppen
+    # core/contract/tools/simulation/demo dazwischen sind keine Module (docs/08-projektrahmen.md M-1).
+    detection-strategy: explicitly-annotated
+    events:
+      # Event Publication Registry = Spring Modulith' transaktionaler Outbox. Jede Methode mit
+      # @ApplicationModuleListener bekommt vor dem Commit eine Zeile in
+      # orchestrator.event_publication; sie wird erst geschlossen, wenn die Methode fehlerfrei
+      # zurueckkehrt. Details: docs/07-betrieb.md Abschnitt 3a.
+      #
+      # Beim Neustart offene Zeilen erneut zustellen: sonst bliebe liegen, was genau in dem Moment
+      # noch offen war, als der Prozess endete.
+      republish-outstanding-events-on-restart: true
+      jdbc:
+        # Ohne das sucht die Registry EVENT_PUBLICATION im Standardschema. In diesem Projekt hat
+        # jedes Modul sein eigenes Schema (ADR-16), und die Tabelle gehoert dem Orchestrator.
+        schema: orchestrator
+      # Und waehrend des Laufs: was laenger als fuenf Minuten offen ist, wird erneut zugestellt.
+      # Der Empfaenger (die Keycloak-Spiegelung) ist idempotent, deshalb kostet eine ueberfluessige
+      # Wiederholung nichts.
+      staleness:
+        check-interval: 5m
+        published: 5m
+        processing: 5m
+        resubmitted: 5m
+  datasource:
+    url: jdbc:h2:file:./data/identitydb
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        type:
+          # Only tools.jackson:jackson-module-kotlin is on the classpath (see build.gradle.kts);
+          # without this, Hibernate's JSON-column auto-detection picks the classic com.fasterxml
+          # Jackson2 mapper instead (also present transitively, with no Kotlin module for it),
+          # which cannot construct a Kotlin data class's primary constructor and fails with
+          # "Could not deserialize string to java type" the first time a JSON-column entity is
+          # dirty-checked mid-transaction.
+          json_format_mapper: jackson3
+  flyway:
+    enabled: true
+  h2:
+    console:
+      # Bewusst an - erklaerte Projektentscheidung fuer diese Demo, der direkte DB-Blick gehoert
+      # zum Zweck.
+      #
+      # Damit die Abwaegung dokumentiert bleibt: Spring Security schuetzt nur /orchestrator/admin/**
+      # (AdminSecurityConfig), dieser Pfad ist dort ausdruecklich offen - es bewacht ihn also sonst
+      # NICHTS. Was ihn traegt, ist allein H2s eigener Default
+      # web-allow-others=false, der Zugriffe auf localhost begrenzt. Wer den auf true setzt,
+      # oeffnet jedem, der den Port erreicht, vollen Lese-/Schreibzugriff auf die Datei-DB -
+      # inklusive Passwort-Hashes (auth_password), Geraeteschluesseln (auth_device_enrollment),
+      # Freischaltcode-Hashes (personenverzeichnis) und allen Sessions - und dazu allem, was in
+      # dieser Demo bewusst im Klartext liegt (ADR-22): jedem lebenden KOBIL-PIN (auth_kobil.enrollment),
+      # den Brief-Klartexten (personenverzeichnis.brief) und den privaten Schluesseln
+      # (orchestrator.node_signing_key). Also: nicht setzen.
+      enabled: true
+      path: /h2-console
+
+# Zugang zur Admin-Seite (/admin/) und zu allen Betriebsendpunkten unter /orchestrator/admin/**
+# (AdminSecurityConfig, HTTP Basic). Demo-Werte - wer diese Instanz erreichbar macht, setzt sie per
+# DEMO_ADMIN_USERNAME/DEMO_ADMIN_PASSWORD neu.
+# Was eine Kontoloeschung ueberlebt (ADR-39): das Änderungsprotokoll ohne Werte. Die Frist zaehlt ab
+# der Loeschung; 10 Jahre sind die Voreinstellung und von der Datenschutzbeauftragten zu bestaetigen.
+account:
+  change-log:
+    retention-years: 10
+    # Geheimnis des Suchschluessels (PersonLookupKey, ADR-39). Der Standardwert ist oeffentlich und nur
+    # fuer die Demo; ausserhalb des Demomodus lehnt ProductionModeCheck ihn ab. Es muss so lange
+    # aufbewahrt werden wie das Protokoll selbst, sonst sind aeltere Eintraege nicht mehr zu finden.
+    lookup-secret: ${CHANGE_LOG_LOOKUP_SECRET:demo-only-change-log-lookup-secret}
+    # Id des aktuellen Geheimnisses; jeder Eintrag merkt sie sich (lookup_key_id). Zum Wechseln: das
+    # alte Geheimnis unter previous-lookup-secrets.<alte Id> eintragen, neues Geheimnis und neue Id
+    # setzen. Das alte bleibt, bis kein Eintrag mehr seine Id traegt (ProductionModeCheck prueft das).
+    lookup-key-id: ${CHANGE_LOG_LOOKUP_KEY_ID:1}
+    # previous-lookup-secrets:
+    #   "1": <altes Geheimnis>
+  # Anmeldeprotokoll (SignInLog, ADR-39 Nachtrag): kein Nachweis, geht mit dem Konto.
+  sign-in-log:
+    retention-months: 6
+
+demo:
+  # Demomodus: true fuer diese Demo-Instanz. false fuer jeden Betrieb mit echten Personen - dann sind
+  # Tools, die sich als "nur Demo" erklaeren (ToolDescriptor.demoOnly, z. B. auth-device ohne
+  # Plattform-Attestation), nicht verfuegbar, und Demo-Werte (Klartext-TANs) fehlen in den Antworten.
+  mode: ${DEMO_MODE:true}
+  admin:
+    username: admin
+    password: admin
+
+  # Voreinstellung der Tools je Kanal (ToolDefaults): angewendet beim Start, wenn noch keine
+  # Tool-Einstellungen existieren, und von "Demo zurücksetzen". Die Reihenfolge wirkt nur
+  # innerhalb einer Rolle (ADR-32); disabled sperrt nur in diesem Kanal.
+  tool-defaults:
+    channels:
+      APP:
+        order: [ident-nect, ident-fsc, ident-eid, ident-kvnr, enroll-device, enroll-kobil, enroll-qr, enroll-password, enroll-sms, enroll-email, auth-device, auth-kobil, auth-password, auth-sms, auth-qr, auth-email, auth-password-lookup, auth-sms-lookup, auth-qr-lookup, auth-email-lookup, confirm-email, confirm-qr-login]
+        disabled: [auth-qr, auth-email, auth-qr-lookup, auth-email-lookup]
+      KEYCLOAK:
+        order: [ident-fsc, ident-eid, ident-kvnr, enroll-email, enroll-password, enroll-qr, enroll-sms, enroll-kobil, enroll-device, auth-qr, auth-sms, auth-password, auth-device, auth-email, auth-kobil, auth-qr-lookup, auth-sms-lookup, auth-password-lookup, auth-email-lookup, confirm-email, confirm-qr-login]
+        disabled: [enroll-kobil, enroll-device, auth-device, auth-email, auth-kobil, auth-email-lookup]
+
+# Wie viele Instanzen dieses Systems laufen. Eine Aussage ueber die Umgebung, kein Schalter:
+# `multiple` schaltet nichts frei, sondern laesst DeploymentTopologyCheck beim Start pruefen, ob
+# der Code das ueberhaupt traegt (geplante Jobs ohne Sperre, Pepper pro Boot) - und mit einer
+# klaren Meldung abbrechen, wenn nicht. Siehe docs/07-betrieb.md.
+deployment:
+  instances: single
+
+# Aufbewahrung der modul-eigenen Tool-Session-Arbeitsdaten - die eine Stelle, an der diese Frist
+# steht (vorher als private Konstante in zehn Retention-Jobs kopiert). tool_api/ToolSessionRetention.kt
+tool-session:
+  retention: PT24H
+  sweep-interval: PT1H
+
+server:
+  port: 8080
+
+# Log-Kontext je Anfrage (LoggingContextFilter, docs/07-betrieb.md Abschnitt 7): Anfrage-Id und
+# die Sitzungs-Id aus dem Pfad in jeder Zeile. Im Betrieb strukturiert als ECS-JSON einschalten:
+# LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs (openshift/identity-demo.yaml) - lokal bleibt die Konsole lesbar.
+logging:
+  pattern:
+    correlation: "[%X{requestId:-} %X{channelSessionId:-}%X{toolSessionId:-}] "
+
+# Health und Kennzahlen (docs/07-betrieb.md Abschnitt 7): auf einem eigenen Port, den keine Route
+# nach aussen fuehrt - /actuator gibt es auf 8080 nicht. Freigegeben sind nur health (mit den
+# Probes liveness/readiness) und prometheus. Readiness haengt an der Datenbank, nicht an Keycloak:
+# faellt Keycloak aus, soll der Orchestrator nicht aus dem Lastverteiler fallen, der App-Kanal
+# braucht Keycloak nicht. Keycloak steht als eigene Komponente in /actuator/health.
+management:
+  server:
+    port: ${MANAGEMENT_PORT:9080}
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-components: always
+      group:
+        readiness:
+          include: readinessState, db
+
+springdoc:
+  swagger-ui:
+    # "Try it out" can't work here: DPoP needs a fresh proof signed per request, bound to that
+    # exact method+URL and single-use (jti) - a value pasted into Authorize would just misfire as
+    # a 401 on every call after the first. Swagger UI stays read-only API reference; use the real
+    # frontend to exercise the API.
+    supported-submit-methods: []
+
+kc:
+  peer-auth:
+    # docs/05-api.md Abschnitt 3 / docs/12-entscheidungen.md ADR-7: one signed JWT per kc-facade request.
+    # Ohne Profil `keycloak` gibt es keinen Aussteller: issuer und jwks-uri bleiben leer, die
+    # kc-Fassade weist damit jede Assertion ab (KeycloakJwkSource kennt keinen Schluessel) - der
+    # Web-Kanal existiert nur mit echtem Keycloak. Im Profil `keycloak` setzt
+    # KeycloakSetupEnvironment beide Werte aus dem Parametersatz.
+    issuer: ""
+    audience: identity-demo-orchestrator
+    jwks-uri: ""
+    jwks-cache-ttl-seconds: 600
+    max-clock-skew-seconds: 30
+    max-age-seconds: 30
+
+dpop:
+  proof:
+    max-clock-skew-seconds: 30
+    max-age-seconds: 120
+
+# Einstellungen dieses Systems (Geheimnisse, KOBIL-Mandant); dpop.* oben ist nur der Nachweis nach RFC 9449.
+identity:
+  secrets:
+    # Pepper for the short-lived SMS/e-mail OTP hashes and the hashed keys of the modules' send
+    # budgets (ADR-44). A six-digit code has only 10^6 possible preimages, and phone numbers/
+    # e-mail addresses are similarly low-entropy (fully enumerable / dictionary-guessable), so a
+    # bare digest of either is reversible on sight by anyone who can read the table; this key is
+    # what such a reader does not have.
+    # Blank (the default) means a fresh random pepper per boot - nothing to check in and forget.
+    # A restart then invalidates codes still in flight (they live five minutes) and two instances
+    # cannot verify each other's, so set this explicitly for any multi-instance deployment.
+    otp-pepper: ""
+  kobil:
+    # Der Mandant, unter dem dieses System seine Nutzer bei KOBIL fuehrt.
+    tenant-id: identity-demo
+    pin-length: 8
+    # Wie lange eine PIN-Freigabe gilt. Kurz, weil sie genau einen SDK-Aufruf tragen muss.
+    pin-release-ttl-seconds: 120
+    # Welche vom Geraet gemeldeten Signale eine Anmeldung verhindern. Eine benannte Menge statt
+    # eines Scores: ein Score muesste erfunden werden und laese sich als Messung. OS_OUTDATED
+    # fehlt bewusst - veraltet ist nicht kompromittiert.
+    blocking-risks: ROOTED,EMULATOR,DEBUGGER_ATTACHED,APP_TAMPERED

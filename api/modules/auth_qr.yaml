@@ -1,0 +1,472 @@
+components:
+  schemas:
+    ConfirmQrLoginActivateRequest:
+      properties:
+        pairingCode:
+          example: ABCD-1234
+          type: string
+      type: object
+    ConfirmQrLoginPatchRequest:
+      properties:
+        decision:
+          example: accept
+          type: string
+        pairingCode:
+          example: ABCD-1234
+          type: string
+      type: object
+    QrConfirmationCodeRequest:
+      properties:
+        confirmationCode:
+          example: '482913'
+          type: string
+      type: object
+    QrPairingStep:
+      description: 'A QR pairing in progress: the pairing code (browser), or the confirmation code to type into the browser
+        (app, once).'
+      properties:
+        confirmationCode:
+          example: '482913'
+          type: string
+        kind:
+          enum:
+          - qr-pairing
+          type: string
+        pairingCode:
+          example: 7F3K92QL
+          type: string
+      required:
+      - kind
+  securitySchemes:
+    dpop:
+      description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the
+        binding key is derived from it and is never supplied by the caller.
+      in: header
+      name: DPoP
+      type: apiKey
+    kc-peer-auth:
+      bearerFormat: JWT
+      description: 'Signed peer-auth assertion (docs/05-api.md Abschnitt 3, ADR-7). The Web channel''s proof: Keycloak calls
+        server-to-server, and the channel anchor comes out of the assertion.'
+      scheme: bearer
+      type: http
+info:
+  description: App-facing (orchestrator-first) API for the DPoP-bound registration and login demo. See docs/05-api.md for
+    the full contract; the Keycloak-facing kc facade is out of scope for this build (docs/08-projektrahmen.md).
+  title: Identity-Demo Orchestrator API
+  version: v1
+openapi: 3.1.0
+paths:
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-qr:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_2
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-qr
+      tags:
+      - 'Tool: QR-Login'
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-qr-lookup:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_3
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-qr-lookup
+      tags:
+      - 'Tool: QR-Login'
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/confirm-qr-login:
+    post:
+      description: 'Optional body: {pairingCode}, when already known (e.g. from a demo-link deep link) - skips the input step.'
+      operationId: activate_1
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmQrLoginActivateRequest'
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate confirm-qr-login
+      tags:
+      - 'Tool: QR-Login'
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-qr:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-qr
+      tags:
+      - 'Tool: QR-Login'
+  /orchestrator/api/v1/tools/{toolSessionId}/auth-qr:
+    get:
+      operationId: read_2
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current auth-qr state
+      tags:
+      - 'Tool: QR-Login'
+    patch:
+      description: 'Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a confirmation
+        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md
+        #5).'
+      operationId: patch_2
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QrConfirmationCodeRequest'
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Poll for the APP side's decision, then submit the confirmation code the app shows
+      tags:
+      - 'Tool: QR-Login'
+  /orchestrator/api/v1/tools/{toolSessionId}/auth-qr-lookup:
+    get:
+      operationId: read_3
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current auth-qr-lookup state
+      tags:
+      - 'Tool: QR-Login'
+    patch:
+      description: 'Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a confirmation
+        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md
+        #5).'
+      operationId: patch_3
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QrConfirmationCodeRequest'
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Poll for the APP side's decision, then submit the confirmation code the app shows
+      tags:
+      - 'Tool: QR-Login'
+  /orchestrator/api/v1/tools/{toolSessionId}/confirm-qr-login:
+    get:
+      operationId: read_1
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current confirm-qr-login state
+      tags:
+      - 'Tool: QR-Login'
+    patch:
+      description: 'First call: {pairingCode}. Once resolved: {decision: accept|reject}.'
+      operationId: patch_1
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmQrLoginPatchRequest'
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Supply the pairing code, then the accept/reject decision
+      tags:
+      - 'Tool: QR-Login'
+  /orchestrator/api/v1/tools/{toolSessionId}/enroll-qr:
+    get:
+      operationId: read
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current enroll-qr state
+      tags:
+      - 'Tool: QR-Login'
+    patch:
+      description: No request body - the call itself is the confirmation.
+      operationId: patch
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Confirm the opt-in
+      tags:
+      - 'Tool: QR-Login'
+tags:
+- description: 'SMS-TAN: Einrichtung als Faktor, Anmeldung und Login ohne DPoP'
+  name: 'Tool: SMS'
+- description: 'E-Mail: Bestaetigung der Adresse, Anmeldung und Login ohne DPoP'
+  name: 'Tool: E-Mail'
+- description: 'Passwort: Einrichtung als Wissensfaktor, Anmeldung und Login ohne DPoP'
+  name: 'Tool: Passwort'
+- description: 'Geraetebindung: Einrichtung und Anmeldung ueber den Geraeteschluessel'
+  name: 'Tool: Gerät'
+- description: 'QR-Pairing: Freigabe eines Web-Kanals aus einer bereits angemeldeten App'
+  name: 'Tool: QR-Login'
+- description: Gerätebindung über den externen Dienstleister KOBIL
+  name: 'Tool: KOBIL'

@@ -1,0 +1,29 @@
+package com.example.identity.tools.auth_device.internal.enrolldevice
+
+import com.example.identity.contract.tool_api.device.DevicePublicKey
+import com.example.identity.contract.tool_api.device.UserVerification
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
+
+class EnrollDeviceFlowTest : BehaviorSpec({
+
+    given("an already-verified device proof") {
+        val key = DevicePublicKey(kty = "EC", crv = "P-256", x = "x", y = "y", thumbprint = "thumb-a")
+
+        then("it enrolls, carrying the input through unchanged") {
+            EnrollDeviceFlow.decide(EnrollDeviceInput(key, UserVerification.PIN, "channel-key", "My Phone")) shouldBe
+                EnrollDeviceDecision.Enroll(key, UserVerification.PIN, "channel-key", "My Phone")
+        }
+
+        then("it refuses a device key that is the channel's own DPoP key") {
+            EnrollDeviceFlow.decide(EnrollDeviceInput(key, UserVerification.PIN, key.thumbprint, "My Phone")) shouldBe
+                EnrollDeviceDecision.SameKeyAsChannel
+        }
+    }
+
+    given("describe()") {
+        then("it names step enroll with no stepData") {
+            EnrollDeviceState.describe() shouldBe ("enroll" to null)
+        }
+    }
+})

@@ -1,0 +1,33 @@
+package com.example.identity.tools.auth_device.internal
+
+import jakarta.persistence.Entity
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
+import jakarta.persistence.Table
+import java.time.Instant
+
+/**
+ * Long-lived, account-bound device credential: the public half of a non-extractable device key pair
+ * (docs/03-tool-architektur.md, enroll-device). Each attempt is verified against a proof only the
+ * matching private key could have signed.
+ */
+@Entity
+@Table(schema = "auth_device", name = "enrollment")
+class DeviceEnrollment(
+    var kty: String? = null,
+    var crv: String? = null,
+    var x: String? = null,
+    var y: String? = null,
+    var thumbprint: String? = null
+) {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    var id: Long? = null
+
+    var createdAt: Instant? = null
+
+    init {
+        createdAt = Instant.now()
+    }
+}

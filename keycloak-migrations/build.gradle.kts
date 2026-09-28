@@ -1,0 +1,53 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    kotlin("jvm") version "2.4.0"
+    `java-library`
+}
+
+group = "com.example.identity"
+version = "0.1.0"
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+// keycloak-admin-client wird unabhängig von den Server-SPI-Artefakten released (die laufen bei
+// 26.6.4, siehe keycloak-extension/build.gradle.kts) - 26.0.12 ist die letzte auf Maven Central
+// verfügbare Version. Das REST-API ist innerhalb von Keycloak 26.x stabil, der Client spricht
+// also problemlos mit dem 26.6.4-Server.
+val keycloakAdminClientVersion = "26.0.12"
+val kotlinVersion = "2.4.0"
+
+dependencies {
+    // api statt implementation: org.keycloak.admin.client.Keycloak taucht in der öffentlichen
+    // Signatur von buildAdminClient()/MigrationRunner auf - Konsumenten (root-Projekt) müssen den
+    // Typ also auf ihrem eigenen Compile-Classpath sehen.
+    api("org.keycloak:keycloak-admin-client:$keycloakAdminClientVersion")
+    // JVM scripting host: kompiliert und evaluiert die .kc.kts-Migrationsdateien zur Laufzeit,
+    // mit KcMigrationScript als impliziter Basisklasse (siehe KcMigrationScript.kt) - dadurch
+    // sehen die Skripte die DSL-Funktionen (up/down, KcContext) ohne eigene Imports.
+    // kotlin-scripting-jvm-host deklariert seine kotlin.script.experimental.* Abhängigkeiten in
+    // der POM nur mit scope=runtime - ohne die drei hier explizit auf implementation zu heben,
+    // fehlen sie auf dem Compile-Classpath (ResultValue, ScriptCompilationConfiguration, ...).
+    implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host:$kotlinVersion")
+    implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:$kotlinVersion")
+    implementation("org.jetbrains.kotlin:kotlin-scripting-common:$kotlinVersion")
+    implementation("org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion")
+    // KeycloakSetup leitet Namen, Werte und Overrides seiner Felder aus dem primaeren
+    // Konstruktor ab - ein neues Feld ist dadurch genau eine Zeile, ohne parallel gepflegte
+    // Namensliste. Explizit auf $kotlinVersion: transitiv zoege keycloak-admin-client sonst ein
+    // deutlich aelteres kotlin-reflect herein, das nicht zu dieser Stdlib passt.
+    implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
+}

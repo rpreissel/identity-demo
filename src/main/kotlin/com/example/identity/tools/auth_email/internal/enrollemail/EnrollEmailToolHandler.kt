@@ -1,0 +1,45 @@
+package com.example.identity.tools.auth_email.internal.enrollemail
+
+import com.example.identity.tools.auth_email.EnrollEmailDescriptor
+import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
+import com.example.identity.contract.tool_api.ToolOutcome
+import java.util.UUID
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
+
+/**
+ * toolId=enroll-email: turns the account's confirmed address into an authentication method. A
+ * one-shot, because `confirm-email` already proved control; the descriptor's `requires` guarantees
+ * the anchor exists. The credential is that anchor ([EMAIL_ANCHOR_ENROLLMENT]), so this module
+ * owns no enrollment table.
+ */
+@Component
+class EnrollEmailToolHandler(
+    private val descriptor: EnrollEmailDescriptor,
+    private val toolDataRepository: EnrollEmailToolSessionRepository
+) {
+
+    @Transactional
+    fun start(toolSessionId: UUID): ToolOutcome {
+        toolDataRepository.save(EnrollEmailToolSession(toolSessionId = toolSessionId))
+        return completed()
+    }
+
+    /**
+     * A re-read after completion returns the same outcome: the tool has exactly one state, so
+     * there is no step to describe and nothing a client could still submit.
+     */
+    @Transactional(readOnly = true)
+    fun read(toolSessionId: UUID): ToolOutcome {
+        checkNotNull(toolDataRepository.findById(toolSessionId).orElse(null)) {
+            "Unknown enroll-email tool session: $toolSessionId"
+        }
+        return completed()
+    }
+
+    private fun completed() = ToolOutcome.Completed.Enrolled(
+        enrollmentRef = EMAIL_ANCHOR_ENROLLMENT,
+        achievedAcr = descriptor.maxAcr,
+        factorTypes = descriptor.factorTypes
+    )
+}

@@ -1,0 +1,2157 @@
+components:
+  schemas:
+    ActiveChannelView:
+      properties:
+        accountId:
+          format: int64
+          type: integer
+        channel:
+          enum:
+          - APP
+          - KEYCLOAK
+          type: string
+        channelSessionId:
+          format: uuid
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        displayName:
+          type: string
+        expiresAt:
+          format: date-time
+          type: string
+        lastAccessedAt:
+          format: date-time
+          type: string
+        state:
+          enum:
+          - ANONYMOUS
+          - REGISTERING
+          - AUTHENTICATED
+          - STEP_UP_REQUIRED
+          - STEP_UP_IN_PROGRESS
+          - LOGGED_OUT
+          - EXPIRED
+          type: string
+      required:
+      - channel
+      - channelSessionId
+      - createdAt
+      - expiresAt
+      - lastAccessedAt
+      - state
+      type: object
+    ActiveChannelsView:
+      properties:
+        newest:
+          items:
+            $ref: '#/components/schemas/ActiveChannelView'
+          type: array
+        perType:
+          items:
+            $ref: '#/components/schemas/ChannelTypeCount'
+          type: array
+        total:
+          format: int64
+          type: integer
+      required:
+      - newest
+      - perType
+      - total
+      type: object
+    ActiveSessionsView:
+      properties:
+        channels:
+          $ref: '#/components/schemas/ActiveChannelsView'
+        keycloak:
+          $ref: '#/components/schemas/KeycloakSessionsView'
+      required:
+      - channels
+      type: object
+    AdminAccountLabel:
+      properties:
+        accountId:
+          format: int64
+          type: integer
+        displayName:
+          type: string
+      required:
+      - accountId
+      type: object
+    AdminAccountView:
+      properties:
+        accountId:
+          format: int64
+          type: integer
+        displayName:
+          type: string
+        email:
+          type: string
+        methods:
+          items:
+            type: string
+          type: array
+        personId:
+          type: string
+      required:
+      - accountId
+      - methods
+      type: object
+    AdminJourneyTraceResponse:
+      properties:
+        accounts:
+          items:
+            $ref: '#/components/schemas/AdminAccountLabel'
+          type: array
+        entries:
+          items:
+            $ref: '#/components/schemas/JourneyTraceEntryView'
+          type: array
+      required:
+      - accounts
+      - entries
+      type: object
+    AmrEntry:
+      description: One native authenticator proof - which authenticator TYPE, and which specific execution/instance of it.
+      properties:
+        amrSourceId:
+          example: kc-otp-form-exec-1
+          type: string
+        nativeToolId:
+          example: kc-otp-form
+          type: string
+      required:
+      - amrSourceId
+      - nativeToolId
+      type: object
+    AnswerRequest:
+      description: 'An answer to whatever the current step is waiting on instead of a tool run (docs/04-orchestrierung.md
+        #3) - e.g. "accept"/"decline" for the optional device-binding offer of a lookup login. Which values are valid depends
+        on what next.step is currently offering.'
+      properties:
+        answer:
+          example: accept
+          type: string
+      required:
+      - answer
+      type: object
+    BoundCredentialView:
+      properties:
+        method:
+          example: kobil
+          type: string
+        reference:
+          example: dev-1a2b3c4d5e6f
+          type: string
+      required:
+      - method
+      - reference
+      type: object
+    ChannelCreateRequest:
+      description: 'requiredAcr is a lower bound only. Always creates a brand-new ChannelSession for this device (docs/02-domaenenmodell.md
+        #3) - DPoP proves the device, never a lookup key for resuming a session. To end a previous session first (logout),
+        call DELETE .../channels/{channelSessionId} before this.'
+      properties:
+        availableTools:
+          description: toolIds this client supports and has enabled (docs/03-tool-architektur.md, availability) - e.g. GET
+            /tools/catalog minus whatever the user turned off locally. Fixed for this channel's whole lifetime; a candidate
+            list never offers a toolId outside this set, and activating one directly fails too.
+          example:
+          - ident-fsc
+          - enroll-sms
+          - auth-sms
+          items:
+            type: string
+          minItems: 1
+          type: array
+        intent:
+          description: 'The entry intent''s own name, case-insensitively (AuthIntent.fromRequest) - no separate wire vocabulary.
+            Omitted/fast_access (default): DeviceAccountLink found -> LOGIN, else REGISTRATION. lookup_login: always offers
+            lookup-based login (email + credential), even on a linked device. register: always starts fresh REGISTRATION,
+            even on a linked device (second account).'
+          enum:
+          - fast_access
+          - register
+          - lookup_login
+          example: register
+          type: string
+        requiredAcr:
+          example: loa2
+          type: string
+      type: object
+    ChannelPatchRequest:
+      description: Raises the channel's durable required-ACR floor; the step-up trigger of the App channel (docs/05-api.md,
+        step-ups).
+      properties:
+        requiredAcr:
+          example: loa3
+          type: string
+      required:
+      - requiredAcr
+      type: object
+    ChannelToolAvailability:
+      properties:
+        channel:
+          enum:
+          - APP
+          - KEYCLOAK
+          example: APP
+          type: string
+        tools:
+          items:
+            $ref: '#/components/schemas/ToolAvailabilityEntry'
+          type: array
+      required:
+      - channel
+      - tools
+      type: object
+    ChannelTypeCount:
+      properties:
+        channel:
+          enum:
+          - APP
+          - KEYCLOAK
+          type: string
+        count:
+          format: int64
+          type: integer
+      required:
+      - channel
+      - count
+      type: object
+    DemoResetResult:
+      properties:
+        deletedAccounts:
+          format: int32
+          type: integer
+        endedSessions:
+          format: int32
+          type: integer
+      required:
+      - deletedAccounts
+      - endedSessions
+      type: object
+    DeviceLinkResponse:
+      description: 'Whether this device''s DPoP key is already linked to an account (DeviceAccountLink, docs/02-domaenenmodell.md
+        #1) - a pure read, no channel/journey created. Lets the entry screen show "this device belongs to X" before the user
+        picks how to start.'
+      properties:
+        accountId:
+          example: 42
+          format: int64
+          type: integer
+        boundCredentials:
+          description: 'Demo-only: what else this device is known by - one entry per key-bound credential of the linked account
+            living on THIS key, with the reference its own method discloses (docs/09-dpop.md). The `device` method names its
+            credential key, `kobil` the identifier the provider gave this phone. Absence is meaningful: a client that holds
+            local data for a method no longer listed here is holding something stale.'
+          items:
+            $ref: '#/components/schemas/BoundCredentialView'
+          type: array
+        linked:
+          type: boolean
+      required:
+      - linked
+      type: object
+    DisabledToolView:
+      properties:
+        channel:
+          type: string
+        reason:
+          type: string
+        toolId:
+          type: string
+      required:
+      - channel
+      - toolId
+      type: object
+    HealthComponentView:
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+      required:
+      - name
+      - status
+      type: object
+    JourneyTraceEntryView:
+      properties:
+        accountId:
+          format: int64
+          type: integer
+        channelSessionId:
+          format: uuid
+          type: string
+        channelType:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        detail:
+          additionalProperties: true
+          type: object
+        eventType:
+          type: string
+        intent:
+          type: string
+        journeyId:
+          format: uuid
+          type: string
+        journeyState:
+          type: string
+        parentJourneyId:
+          format: uuid
+          type: string
+      required:
+      - channelSessionId
+      - createdAt
+      - detail
+      - eventType
+      type: object
+    KcAccountView:
+      properties:
+        accountId:
+          format: int64
+          type: integer
+        attributes:
+          additionalProperties:
+            type: string
+          type: object
+        email:
+          type: string
+        emailVerified:
+          type: boolean
+        firstName:
+          type: string
+        lastName:
+          type: string
+        username:
+          type: string
+      required:
+      - accountId
+      - attributes
+      - emailVerified
+      - firstName
+      - lastName
+      - username
+      type: object
+    KcChannelUpsertRequest:
+      description: Upsert body for the kc-facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). All fields are
+        optional. accountId is the account Keycloak already knows (sub vorhanden) - the channel is bound to it immediately,
+        once, never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator
+        ACR string, and only raises the channel's floor, never lowers it. amr lists which native Keycloak authenticators (never
+        orchestrator tools) just proved something THIS flow run, one entry per proof - method/loa/factorTypes are resolved
+        server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the kc-facade's own mirror of a ToolDescriptor, not
+        resolved from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged into
+        the channel's evidence and re-checked against the current floor exactly like any other proof; no separate 'combined
+        native acr' field exists, since the orchestrator derives that itself.
+      properties:
+        accountId:
+          example: 42
+          format: int64
+          type: integer
+        amr:
+          items:
+            $ref: '#/components/schemas/AmrEntry'
+          type: array
+        availableTools:
+          description: The Web channel's own declaration of which toolIds its Keycloak theme can render (one com.example.identity.kcext.webtool.WebToolRenderer
+            factory per toolId, registered via META-INF/services) - the kc-facade's counterpart to the App channel's own availableTools
+            (POST /channels). Only read on this channel's first call (a later upsert resumes the already-persisted set); a
+            channel-anonymous caller that omits this gets none of the orchestrator's tools, never all of them.
+          items:
+            type: string
+          type: array
+        intent:
+          description: 'Only read on this channel''s first call, same restriction as availableTools - the kc facade''s own,
+            deliberately narrow counterpart to the App facade''s `intent` request parameter (docs/05-api.md #"POST /app/channels:
+            intent-Parameter"). Omitted (or null) means kc_select_method, the existing login/step-up behaviour. Only kc_select_method
+            and register are accepted here - unlike the App facade, not every AuthIntent.isEntryIntent value: fast_access/lookup_login
+            assume an APP-shaped channel this facade never has.'
+          example: register
+          type: string
+        kcSessionId:
+          description: Required whenever restoreData is present, ignored otherwise. Keycloak's own, durable UserSessionModel
+            id - deliberately NOT read off the peer-auth assertion (the assertion's kc-anchor is always THIS flow run's own
+            channelSessionId, docs/02-domaenenmodell.md Abschnitt 1, so it can't verify a token minted for a DIFFERENT, earlier
+            flow run's channel). Must match what GET .../restore-data was called with to produce this exact restoreData token.
+          type: string
+        restoreData:
+          description: A signed RestoreData token this same UserSession's channel returned earlier via GET .../restore-data,
+            resubmitted verbatim (docs/05-api.md, section 3) - the bulk, one-shot way to seed a brand-new channel with what
+            a PRIOR, unrelated flow run already established, as opposed to accountId/amr above which report what THIS flow
+            run just proved. Both are merged into the channel the same way; only restoreData may already be meaningfully old
+            by the time it arrives here. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
+          type: string
+        targetAcr:
+          example: loa2
+          type: string
+      type: object
+    KeycloakClientSessionsView:
+      properties:
+        client:
+          enum:
+          - WEBSITE
+          - APP
+          type: string
+        clientId:
+          type: string
+        count:
+          format: int64
+          type: integer
+        newest:
+          items:
+            $ref: '#/components/schemas/KeycloakSessionView'
+          type: array
+      required:
+      - client
+      - clientId
+      - count
+      - newest
+      type: object
+    KeycloakInfo:
+      properties:
+        baseUrl:
+          type: string
+        browserClientId:
+          type: string
+        loa1Login:
+          enum:
+          - KEYCLOAK_PASSWORD
+          - ORCHESTRATOR
+          type: string
+        loginTheme:
+          enum:
+          - FREEMARKER
+          - KEYCLOAKIFY
+          type: string
+        realm:
+          type: string
+      required:
+      - baseUrl
+      - browserClientId
+      - loa1Login
+      - loginTheme
+      - realm
+      type: object
+    KeycloakSessionView:
+      properties:
+        accountId:
+          format: int64
+          type: integer
+        channelSessionId:
+          format: uuid
+          type: string
+        channelState:
+          enum:
+          - ANONYMOUS
+          - REGISTERING
+          - AUTHENTICATED
+          - STEP_UP_REQUIRED
+          - STEP_UP_IN_PROGRESS
+          - LOGGED_OUT
+          - EXPIRED
+          type: string
+        displayName:
+          type: string
+        lastAccess:
+          format: date-time
+          type: string
+        sessionId:
+          type: string
+        start:
+          format: date-time
+          type: string
+        username:
+          type: string
+      required:
+      - lastAccess
+      - sessionId
+      - start
+      type: object
+    KeycloakSessionsView:
+      properties:
+        clients:
+          items:
+            $ref: '#/components/schemas/KeycloakClientSessionsView'
+          type: array
+        error:
+          type: string
+      required:
+      - clients
+      type: object
+    MethodsResponse:
+      description: 'The account''s active authentication methods (docs/05-api.md #2). Never contains fsc.'
+      properties:
+        methods:
+          items:
+            $ref: ../openapi.yaml#/components/schemas/ActiveMethodView
+          type: array
+      required:
+      - methods
+      type: object
+    MetricView:
+      properties:
+        meanMillis:
+          format: double
+          type: number
+        name:
+          type: string
+        tags:
+          additionalProperties:
+            type: string
+          type: object
+        value:
+          format: double
+          type: number
+      required:
+      - name
+      - tags
+      - value
+      type: object
+    OperationsInfo:
+      properties:
+        components:
+          items:
+            $ref: '#/components/schemas/HealthComponentView'
+          type: array
+        metrics:
+          items:
+            $ref: '#/components/schemas/MetricView'
+          type: array
+        status:
+          type: string
+      required:
+      - components
+      - metrics
+      - status
+      type: object
+    RegistrationOrderState:
+      properties:
+        enrollFirst:
+          type: boolean
+      required:
+      - enrollFirst
+      type: object
+    RestoreDataResponse:
+      description: The channel's current RestoreData, signed - null if there is nothing worth restoring yet.
+      properties:
+        restoreData:
+          type: string
+      type: object
+    ServerInfo:
+      properties:
+        demoMode:
+          type: boolean
+        disabledTools:
+          items:
+            $ref: '#/components/schemas/DisabledToolView'
+          type: array
+        keycloak:
+          $ref: '#/components/schemas/KeycloakInfo'
+        operations:
+          $ref: '#/components/schemas/OperationsInfo'
+        registrationEnrollFirst:
+          type: boolean
+      required:
+      - demoMode
+      - disabledTools
+      - operations
+      - registrationEnrollFirst
+      type: object
+    TokenResponse:
+      description: Mock Keycloak AccessToken (a spec-shaped unsecured JWT, alg=none - parse and display its payload, no verification
+        needed) plus both token lifetimes. The RefreshToken value itself is deliberately never part of this response - it's
+        a credential and stays server-side; refreshExpiresAt is the only thing about it exposed.
+      properties:
+        accessExpiresAt:
+          example: '2026-08-28T18:05:00Z'
+          format: date-time
+          type: string
+        accessToken:
+          example: eyJhbGciOiJub25lIn0.eyJzdWIiOiI0MiIsImFjciI6ImxvYTIiLCJhbXIiOlsic21zIl19.
+          type: string
+        refreshExpiresAt:
+          example: '2026-08-29T18:00:00Z'
+          format: date-time
+          type: string
+        tokenType:
+          type: string
+      required:
+      - accessExpiresAt
+      - accessToken
+      - refreshExpiresAt
+      type: object
+    ToolAvailabilityEntry:
+      properties:
+        enabled:
+          example: true
+          type: boolean
+        method:
+          example: sms
+          type: string
+        reason:
+          example: Wartungsfenster bis 18 Uhr
+          type: string
+        role:
+          enum:
+          - IDENTIFICATION
+          - CORRELATION
+          - ENROLLMENT
+          - IDENTIFIED_AUTH
+          - LOOKUP_AUTH
+          - PEER_APPROVAL
+          - ATTESTATION
+          example: IDENTIFIED_AUTH
+          type: string
+        toolId:
+          example: auth-sms
+          type: string
+      required:
+      - enabled
+      - method
+      - role
+      - toolId
+      type: object
+    ToolAvailabilityPutRequest:
+      properties:
+        enabled:
+          example: false
+          type: boolean
+        reason:
+          example: Wartungsfenster bis 18 Uhr
+          type: string
+      required:
+      - enabled
+      type: object
+    ToolCatalogEntry:
+      properties:
+        method:
+          example: sms
+          type: string
+        role:
+          example: IDENTIFIED_AUTH
+          type: string
+        toolId:
+          example: auth-sms
+          type: string
+      required:
+      - method
+      - role
+      - toolId
+      type: object
+    ToolOrderPutRequest:
+      properties:
+        toolIds:
+          example:
+          - auth-password
+          - auth-sms
+          items:
+            type: string
+          type: array
+      required:
+      - toolIds
+      type: object
+  securitySchemes:
+    dpop:
+      description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the
+        binding key is derived from it and is never supplied by the caller.
+      in: header
+      name: DPoP
+      type: apiKey
+    kc-peer-auth:
+      bearerFormat: JWT
+      description: 'Signed peer-auth assertion (docs/05-api.md Abschnitt 3, ADR-7). The Web channel''s proof: Keycloak calls
+        server-to-server, and the channel anchor comes out of the assertion.'
+      scheme: bearer
+      type: http
+info:
+  description: App-facing (orchestrator-first) API for the DPoP-bound registration and login demo. See docs/05-api.md for
+    the full contract; the Keycloak-facing kc facade is out of scope for this build (docs/08-projektrahmen.md).
+  title: Identity-Demo Orchestrator API
+  version: v1
+openapi: 3.1.0
+paths:
+  /orchestrator/admin/accounts:
+    get:
+      operationId: accounts
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                items:
+                  $ref: '#/components/schemas/AdminAccountView'
+                type: array
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: All accounts
+      tags:
+      - 'Admin: accounts'
+  /orchestrator/admin/accounts/{accountId}:
+    delete:
+      description: Same cleanup as the account's own deletion journey; its channels end up logged out.
+      operationId: delete
+      parameters:
+      - in: path
+        name: accountId
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        '200':
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Delete one account
+      tags:
+      - 'Admin: accounts'
+  /orchestrator/admin/demo-reset:
+    post:
+      description: 'Deletes every account, ends every session still live (also one without an account), clears the attempt
+        throttles, ends every Keycloak session, restores the preset tool order and locks per channel, the ident-first registration
+        order, the FreeMarker login theme and the orchestrator''s method selection on loa1. No account is created again: the
+        test persons register themselves. The person register (/mock-personenverzeichnis) is a foreign system and stays as
+        it is.'
+      operationId: reset
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/DemoResetResult'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Put the demo back to its start
+      tags:
+      - 'Admin: accounts'
+  /orchestrator/admin/journey-trace:
+    get:
+      description: At most `limit` entries (1-2000), newest first.
+      operationId: recent
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 500
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AdminJourneyTraceResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Newest journey-trace entries across all accounts
+      tags:
+      - 'Admin: journey trace'
+  /orchestrator/admin/registration-order:
+    get:
+      operationId: get
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RegistrationOrderState'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Current REGISTER order
+      tags:
+      - 'Admin: registration order'
+    put:
+      description: Takes effect for the next brand-new REGISTER journey - a running one keeps whichever order it started with.
+      operationId: put_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationOrderState'
+        required: true
+      responses:
+        '200':
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Set REGISTER order
+      tags:
+      - 'Admin: registration order'
+  /orchestrator/admin/sessions:
+    get:
+      description: Channels that are neither logged out nor expired, counted per type, and the newest 10 of them. Under the
+        keycloak profile also Keycloak's open sessions of the website client and the app token client, each with the channel
+        it belongs to if known; if Keycloak cannot be asked, `keycloak.error` says why.
+      operationId: adminSessions
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ActiveSessionsView'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Live channels and open Keycloak sessions
+      tags:
+      - 'Admin: sessions'
+  /orchestrator/admin/tools/availability:
+    get:
+      operationId: list
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                items:
+                  $ref: '#/components/schemas/ChannelToolAvailability'
+                type: array
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Every catalog tool per channel type, in that channel's order, with its enabled state
+      tags:
+      - 'Admin: tool availability'
+  /orchestrator/admin/tools/order/{channel}:
+    put:
+      description: First entry is offered first. Tools left out move behind the listed ones. Applies to every selection screen
+        of that channel type (login, identification, enrollment) from its next step on.
+      operationId: putOrder
+      parameters:
+      - in: path
+        name: channel
+        required: true
+        schema:
+          enum:
+          - APP
+          - KEYCLOAK
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolOrderPutRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Set the order a channel type offers its tools in
+      tags:
+      - 'Admin: tool availability'
+  /orchestrator/admin/tools/{toolId}/availability/{channel}:
+    put:
+      description: Takes effect on the next step computed for any channel of that type - no restart needed.
+      operationId: put
+      parameters:
+      - in: path
+        name: toolId
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: channel
+        required: true
+        schema:
+          enum:
+          - APP
+          - KEYCLOAK
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolAvailabilityPutRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Enable or disable a tool for one channel type
+      tags:
+      - 'Admin: tool availability'
+  /orchestrator/api/v1/app/channels:
+    post:
+      description: 'Always mints a brand-new ChannelSession for this DPoP-bound device (docs/02-domaenenmodell.md #3: the
+        key proves the device, never a lookup key for resuming a session - use GET with a remembered channelSessionId to resume).
+        A device that was already registered still gets offered LOGIN, not a fresh ident-fsc. To end a previous session first
+        (logout), call DELETE on it before this.'
+      operationId: createChannel
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelCreateRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  context: registration
+                  step: selectIdentificationMethod
+                  type: orchestrator
+                stepData:
+                  kind: select-method
+                  options:
+                  - ident-fsc
+                  - ident-eid
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: New channel - an unrecognized device lands on the identification choice.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Create a new App channel
+      tags:
+      - App channels
+  /orchestrator/api/v1/app/channels/device-link:
+    get:
+      description: 'A pure read (docs/02-domaenenmodell.md #1) - no channel/journey created, just the same DPoP proof every
+        other App-facade call already needs. Lets the entry screen show whose device this is before the user picks how to
+        start.'
+      operationId: getDeviceLink
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/DeviceLinkResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Whether this device is already linked to an account
+      tags:
+      - App channels
+  /orchestrator/api/v1/channels/{channelSessionId}:
+    delete:
+      description: 'Ends this channel for good (docs/02-domaenenmodell.md #3: AUTHENTICATED -> LOGGED_OUT, terminal) - cancels
+        any active process and discards the AuthContext. For interactive clients prefer POST .../logouts which shows a confirmation
+        prompt first. Never resumes on this channelSessionId afterwards; call POST .../channels again for a new session (a
+        known device still skips straight to LOGIN there).'
+      operationId: logout
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '204':
+          description: Logged out - no body.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Log out (direct, no confirmation)
+      tags:
+      - Channels
+    get:
+      description: 'The guaranteed resume entry point (docs/05-api.md #2): next always reflects the currently due step.'
+      operationId: getChannel
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  step: auth
+                  toolId: auth-sms
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Resumed mid-step-up, waiting on an SMS TAN.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current channel state
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/account-deletions:
+    post:
+      description: Channel must already be AUTHENTICATED. Starts an unconditional yes/no confirmation (next.context=prompt,
+        next.step=confirm, stepData.prompt - the same generic address every AnswerableState uses) that always comes FIRST,
+        before anything else is checked. Only once accepted does the loa2 gate apply (a step-up first if not yet reached);
+        if that gate needed a step-up, its own fresh proof is enough and deletion follows immediately, otherwise one more
+        fresh re-proof of any active factor is required - never skipped just because the session already carried loa2. On
+        success the account and everything it owns is hard-deleted, every ChannelSession it was ever bound to is logged out
+        server-side, and this response's channel.state is LOGGED_OUT with no next, exactly like a plain logout.
+      operationId: deleteAccount
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: AUTHENTICATED
+                next:
+                  context: prompt
+                  step: confirm
+                  type: orchestrator
+                stepData:
+                  kind: confirm
+                  prompt:
+                    cancelLabel: Abbrechen
+                    confirmLabel: Account löschen
+                    destructive: true
+                    kind: Confirm
+                    title: Account wirklich löschen?
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Confirmation prompt for the account deletion.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Delete the account of an already authenticated channel
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/answer:
+    post:
+      description: 'Generic answer endpoint for any state that pauses for an explicit yes/no instead of a tool run (next.context=prompt,
+        next.step=confirm, stepData.prompt) - the optional device-binding offer right after a lookup login, the account-deletion
+        confirmation, and any future one alike, all through this same address, answer="accept"/"decline". For device binding
+        specifically: agreeing is the ONLY way such a login ever makes this device recognizable for future logins - it never
+        happens as a side effect, because this intent is chosen precisely by people who want no device binding.'
+      operationId: answer
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  currentAmr:
+                  - password
+                  state: AUTHENTICATED
+                next:
+                  context: authentication
+                  step: authenticated
+                  type: orchestrator
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Device binding accepted after a lookup login - journey settles into authenticated.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Answer whatever the current step is waiting on
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/attributes/{attribute}:
+    delete:
+      description: 'Sibling of the methods endpoint, for what is NOT a credential: an account-owned fact, today only the confirmed
+        address (`email`). Same gate, and the same refusal (409) when the consequences would drop the account below this channel''s
+        required level - consequences being the point: every credential that required the attribute is withdrawn with it,
+        transitively. Removing the address therefore also removes a password enrolled against it, and a KOBIL binding that
+        in turn required that password.'
+      operationId: retractAttribute
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - in: path
+        name: attribute
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - fsc
+                  state: AUTHENTICATED
+                next:
+                  context: authentication
+                  step: authenticated
+                  type: orchestrator
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: The address was withdrawn; nothing required it.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Withdraw a confirmed account attribute
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/enrollments:
+    post:
+      description: Channel must already be AUTHENTICATED. Offers AuthPolicy.enrollmentCandidates via the existing enroll-*
+        tools, unchanged; finishing does not require reaching any particular level - one successful enrollment ends this and
+        returns to AUTHENTICATED. Call again to add another.
+      operationId: manageMethods
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - sms
+                  - password
+                  state: AUTHENTICATED
+                next:
+                  context: enrollment
+                  step: selectMethod
+                  type: orchestrator
+                stepData:
+                  kind: select-method
+                  options:
+                  - enroll-device
+                  - confirm-email
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Already AUTHENTICATED with sms+password - offered the still-missing methods.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Voluntarily add another authentication method
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/idclaims:
+    get:
+      description: 'Business-facing claims (accountId/personId/versnr/name/email/acr/amr/auth_time) - a separate resource
+        from the AccessToken''s own claims, not encoded into it. name is the one place the client learns who is logged in
+        (docs/05-api.md); personId and versnr give the role (ADR-34): Versicherter with versnr, Partner with personId only,
+        Interessent with neither.'
+      operationId: getIdClaims
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                accountId: 42
+                acr: loa2
+                amr:
+                - sms
+                - password
+                auth_time: 1798567890
+                email: max.mustermann@example.com
+                name: Max Muster
+                personId: P000000001
+                versnr: '10000001'
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Get the business ID-token claims
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/journey:
+    delete:
+      description: Abandons the currently running AuthJourney, whatever intent started it; the response already offers a fresh
+        start where applicable.
+      operationId: cancel
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  step: input
+                  toolId: ident-fsc
+                  type: tool
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: A cancelled REGISTER journey restarts the same entry intent from scratch.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Cancel the current journey
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/logouts:
+    post:
+      description: Channel must already be AUTHENTICATED. Starts a LOGOUT journey with a confirmation prompt (next.context=prompt,
+        next.step=confirm, stepData.prompt). On accept (via POST .../answer) the channel ends for good (AUTHENTICATED -> LOGGED_OUT,
+        terminal). On decline the channel stays AUTHENTICATED. Analogous to POST .../account-deletions.
+      operationId: startLogout
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Confirmation prompt for the logout.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Start a confirmed logout
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/methods:
+    get:
+      description: 'The methods collection as a real readable resource - identical data to ChannelResponse''s activeMethods
+        (docs/05-api.md #2), just addressable on its own. Never includes fsc (identification is recorded as an IDENTIFIED
+        entry in the account change log, not in authenticationMethods). Empty list, not an error, when no account is known
+        yet for this channel.'
+      operationId: getMethods
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                methods:
+                - id: 7f3e2b1a-0c9d-4e8f-8a1b-2c3d4e5f6a7b
+                  method: sms
+                - id: b2d4f6a8-1c3e-4a5b-9d7f-8e0a1b2c3d4e
+                  label: Laptop
+                  method: device
+              schema:
+                $ref: '#/components/schemas/MethodsResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the account's active authentication methods
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/methods/{methodInstanceId}:
+    delete:
+      description: Channel must already be AUTHENTICATED and the instance currently active. Addressed by its own id (GET .../methods),
+        never by method name - a method can have several active instances (e.g. multiple devices). Rejected (409) if removing
+        it would drop the account below this channel's own required level.
+      operationId: deactivateMethod
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - in: path
+        name: methodInstanceId
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  activeMethods:
+                  - id: 7f3e2b1a-0c9d-4e8f-8a1b-2c3d4e5f6a7b
+                    method: password
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  currentAmr:
+                  - password
+                  state: AUTHENTICATED
+                next:
+                  context: authentication
+                  step: authenticated
+                  type: orchestrator
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: The sms method instance was removed - password alone still satisfies loa1.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Deactivate an authentication method instance
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/peer-logins:
+    post:
+      description: Channel must already be AUTHENTICATED (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN). Same AuthIntent.CONFIRM_PEER_LOGIN
+        as the cold-entry path via POST /app/channels - gates on loa2 (step-up offered first if below it), then offers confirm-qr-login
+        as the one candidate.
+      operationId: confirmPeerLogin
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  step: input
+                  toolId: confirm-qr-login
+                  type: tool
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Already at loa2 - confirm-qr-login offered directly.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Confirm a WEB-channel QR login from this already-authenticated APP channel
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/step-ups:
+    post:
+      description: The App channel's step-up trigger (docs/05-api.md, step-ups). Only raises, never lowers.
+      operationId: raiseRequiredAcr
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChannelPatchRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  context: auth
+                  step: selectMethod
+                  type: orchestrator
+                stepData:
+                  kind: select-method
+                  options:
+                  - auth-sms
+                  - auth-password
+                  - auth-device
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: loa3 requested, current evidence (loa2) doesn't satisfy it - offers the candidate methods.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Raise the channel's required ACR floor
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/token:
+    get:
+      description: 'Covers both first issuance and refresh - call this again whenever a fresh token might be needed. minValiditySeconds
+        (default 15) is the caller''s tolerance: if the current AccessToken still has at least that much life left, it comes
+        back unchanged; otherwise the backend mints a new one (silently using the remembered RefreshToken where possible).
+        The RefreshToken value itself is never returned - it''s a credential and stays server-side.'
+      operationId: getToken
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - in: query
+        name: minValiditySeconds
+        required: false
+        schema:
+          default: 15
+          format: int64
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                accessExpiresAt: '2026-08-28T18:05:00Z'
+                accessToken: eyJhbGciOiJub25lIn0.eyJzdWIiOiI0MiIsImFjciI6ImxvYTIiLCJhbXIiOlsic21zIl19.
+                refreshExpiresAt: '2026-08-29T18:00:00Z'
+                tokenType: Bearer
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Get the mock Keycloak AccessToken
+      tags:
+      - Channels
+  /orchestrator/api/v1/kc/accounts:
+    get:
+      operationId: search
+      parameters:
+      - in: query
+        name: email
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: username
+        required: false
+        schema:
+          type: string
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KcAccountView'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - kc-peer-auth: [
+          ]
+      summary: The account as Keycloak shows it, by exact email or username - never a list
+      tags:
+      - KC account lookup
+  /orchestrator/api/v1/kc/accounts/{accountId}:
+    get:
+      operationId: byId
+      parameters:
+      - in: path
+        name: accountId
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KcAccountView'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - kc-peer-auth: [
+          ]
+      summary: The account as Keycloak shows it, by account id
+      tags:
+      - KC account lookup
+  /orchestrator/api/v1/kc/accounts/{accountId}/sign-outs:
+    post:
+      operationId: signedOut
+      parameters:
+      - in: path
+        name: accountId
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - in: query
+        name: kcSessionId
+        required: true
+        schema:
+          type: string
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - kc-peer-auth: [
+          ]
+      summary: Keycloak ended one session of this account
+      tags:
+      - KC sign-out
+  /orchestrator/api/v1/kc/channels/{channelSessionId}:
+    patch:
+      description: 'Upsert semantics (docs/05-api.md Abschnitt 3): creates the channel on first call under this Keycloak-chosen
+        id, just resumes it on every later one - idempotent by construction, no separate create-then-resume round trip. accountId/targetAcr
+        are only meaningful on step-up.'
+      operationId: upsertChannel
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KcChannelUpsertRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  context: auth
+                  step: selectMethod
+                  type: orchestrator
+                stepData:
+                  kind: select-method
+                  options:
+                  - ident-fsc
+                  - auth-password
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: First call for a fresh Keycloak flow run - offers every kc-usable method.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - kc-peer-auth: [
+          ]
+      summary: Upsert a kc channel and advance its journey
+      tags:
+      - KC channels
+  /orchestrator/api/v1/kc/channels/{channelSessionId}/restore-data:
+    get:
+      description: For the Authenticator's end-of-flow lifecycle hook only (docs/ideen/docs/05-api.md Abschnitt 3) - reads
+        back what this channel accumulated, to stash in a Keycloak UserSessionModel note and resubmit at a later flow's start.
+        kcSessionId is passed explicitly (not read off the channel's own anchor) because the returned token must remain valid
+        across the flow-run boundary the channel itself does not survive - a fresh channel next flow run, but the very same
+        UserSessionModel id. sessionExpiresAt (epoch seconds) is the latest end of that Keycloak session without further activity;
+        the channel's expiry is capped at it (docs/adr/ADR-043).
+      operationId: getRestoreData
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - in: query
+        name: kcSessionId
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: sessionExpiresAt
+        required: false
+        schema:
+          format: int64
+          type: integer
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RestoreDataResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - kc-peer-auth: [
+          ]
+      summary: Fetch this channel's signed RestoreData
+      tags:
+      - KC channels
+  /orchestrator/api/v1/kc/response-jwks/.well-known/jwks.json:
+    get:
+      operationId: keycloakResponseJwks
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                additionalProperties: {
+                  }
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Public Key der Antwortsignatur (Header Orchestrator-Response-Signature)
+      tags:
+      - Keycloak-Kanal
+  /orchestrator/api/v1/texts/{lang}:
+    get:
+      description: 'Map of text id to wording with `{name}` placeholders. `lang` is de or en (a region like en-GB counts as
+        en, anything else falls back to de; Content-Language says which). Send the ETag back as If-None-Match: 304 while unchanged.'
+      operationId: texts
+      parameters:
+      - in: path
+        name: lang
+        required: true
+        schema:
+          type: string
+      - in: header
+        name: If-None-Match
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Wordings of all text references in one language
+      tags:
+      - Texts
+  /orchestrator/api/v1/tools/catalog:
+    get:
+      description: No auth, no channel required - purely descriptive.
+      operationId: catalog
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+              - method: fsc
+                role: IDENTIFICATION
+                toolId: ident-fsc
+              - method: sms
+                role: ENROLLMENT
+                toolId: enroll-sms
+              - method: sms
+                role: IDENTIFIED_AUTH
+                toolId: auth-sms
+              - method: sms
+                role: LOOKUP_AUTH
+                toolId: auth-sms-lookup
+              schema:
+                items:
+                  $ref: '#/components/schemas/ToolCatalogEntry'
+                type: array
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: List every registered tool
+      tags:
+      - Tool catalog
+  /orchestrator/api/v1/tools/{toolSessionId}/{toolId}:
+    delete:
+      description: Moves the journey on according to the state it is standing on - to the next fallback option, back to the
+        selection step, or to the end of the journey if nothing else could be offered.
+      operationId: abandon
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - in: path
+        name: toolId
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  context: auth
+                  step: selectMethod
+                  type: orchestrator
+                stepData:
+                  kind: select-method
+                  options:
+                  - auth-password
+                  - auth-device
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: auth-sms abandoned during a fallback chain - offers the other loa2 candidates.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Abandon this tool attempt
+      tags:
+      - Tools
+  /orchestrator/api/v1/tools/{toolSessionId}/{toolId}/back:
+    post:
+      description: 'Ends this tool attempt without declining it: the journey shows its selection page again, with every method
+        still on offer - this one included, and even when it is the only one. Where the journey has no selection page (a single
+        preferred method), this is the same as abandoning.'
+      operationId: back
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - in: path
+        name: toolId
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  context: registration
+                  step: selectIdentificationMethod
+                  type: orchestrator
+                stepData:
+                  kind: select-method
+                  options:
+                  - ident-fsc
+                  - ident-eid
+                  - ident-nect
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Back from ident-fsc during registration - both identification methods are offered again.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Go back from this tool to the selection
+      tags:
+      - Tools
+  /orchestrator/demo/reset:
+    post:
+      description: 'Deletes every account, ends every session still live (also one without an account), clears the attempt
+        throttles, ends every Keycloak session, restores the preset tool order and locks per channel, the ident-first registration
+        order, the FreeMarker login theme and the orchestrator''s method selection on loa1. No account is created again: the
+        test persons register themselves. The person register (/mock-personenverzeichnis) is a foreign system and stays as
+        it is.'
+      operationId: resetDemo
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/DemoResetResult'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Put the demo back to its start
+      tags:
+      - 'Demo: sessions and reset'
+  /orchestrator/demo/server-info:
+    get:
+      operationId: get_1
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ServerInfo'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Current server status
+      tags:
+      - 'Demo: server info'
+  /orchestrator/demo/sessions:
+    get:
+      description: Channels that are neither logged out nor expired, counted per type, and the newest 10 of them. Under the
+        keycloak profile also Keycloak's open sessions of the website client and the app token client, each with the channel
+        it belongs to if known; if Keycloak cannot be asked, `keycloak.error` says why.
+      operationId: demoSessions
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ActiveSessionsView'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Live channels and open Keycloak sessions
+      tags:
+      - 'Demo: sessions and reset'
+tags:
+- description: Toggle between ident-first and enroll-first REGISTER
+  name: 'Admin: registration order'
+- description: Facade-neutral channel resource - shared by every facade that creates one
+  name: Channels
+- description: Gerätebindung über den externen Dienstleister KOBIL
+  name: 'Tool: KOBIL'
+- description: Live channels and open Keycloak sessions
+  name: 'Admin: sessions'
+- description: Wordings for the text references in every response, per language, with ETag
+  name: Texts
+- description: 'Geraetebindung: Einrichtung und Anmeldung ueber den Geraeteschluessel'
+  name: 'Tool: Gerät'
+- description: 'Leaving an activated tool: back to the selection, or declining it'
+  name: Tools
+- description: Live sessions and the demo reset, without admin login
+  name: 'Demo: sessions and reset'
+- description: The full set of registered tools, independent of any journey
+  name: Tool catalog
+- description: 'QR-Pairing: Freigabe eines Web-Kanals aus einer bereits angemeldeten App'
+  name: 'Tool: QR-Login'
+- description: List and delete accounts, reset the demo
+  name: 'Admin: accounts'
+- description: 'SMS-TAN: Einrichtung als Faktor, Anmeldung und Login ohne DPoP'
+  name: 'Tool: SMS'
+- description: Keycloak reports a logout for the sign-in log
+  name: KC sign-out
+- description: Read-only server status for the welcome page
+  name: 'Demo: server info'
+- description: Journey trace across all accounts and channels
+  name: 'Admin: journey trace'
+- description: Read-through account lookup for Keycloak's user federation
+  name: KC account lookup
+- description: 'Passwort: Einrichtung als Wissensfaktor, Anmeldung und Login ohne DPoP'
+  name: 'Tool: Passwort'
+- description: The App facade's own endpoints - channel creation and the device-link read
+  name: App channels
+- description: Operator kill-switch and order for tools, per channel type
+  name: 'Admin: tool availability'
+- description: Oeffentlicher Schluessel, gegen den Keycloak die Antworten des Orchestrators prueft
+  name: Keycloak-Kanal
+- description: 'E-Mail: Bestaetigung der Adresse, Anmeldung und Login ohne DPoP'
+  name: 'Tool: E-Mail'
+- description: The kc facade's one facade-specific endpoint - upsert channel + advance journey
+  name: KC channels

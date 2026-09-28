@@ -1,0 +1,119 @@
+package com.example.identity.core.orchestrator.kc
+
+import com.example.identity.core.account.AccountProfile
+import com.example.identity.core.account.AccountService
+import com.example.identity.contract.tool_api.directory.PersonMasterData
+import com.example.identity.contract.tool_api.directory.PersonRecord
+import com.example.identity.contract.tool_api.claims.AttributeType
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
+
+/**
+ * An account as Keycloak sees it, read live on every lookup and never copied into Keycloak (ADR-38).
+ * Keycloak's user federation asks for it by account id, email or username. The username is the
+ * confirmed email, else `account-<id>`, which stays stable for an account without an address.
+ */
+data class KcAccountView(
+    val accountId: Long,
+    val username: String,
+    val email: String?,
+    val emailVerified: Boolean,
+    val firstName: String,
+    val lastName: String,
+    /** `orchestratorAccountId` plus the person attributes behind the token claims (person_id, versnr, ...). */
+    val attributes: Map<String, String>,
+)
+
+@Component
+@Transactional(readOnly = true)
+class KcAccountViews(
+    private val accountService: AccountService,
+    private val personMasterData: PersonMasterData,
+) {
+    fun byAccountId(accountId: Long): KcAccountView? = accountService.findAccount(accountId)?.let(::viewOf)
+
+    fun byEmail(email: String): KcAccountView? =
+        accountService.resolveByAnchor(AttributeType.EMAIL, email.trim())?.let(::byAccountId)
+
+    /** `account-<id>` or an email - the two forms [KcAccountView.username] takes. */
+    fun byUsername(username: String): KcAccountView? =
+        username.removePrefix(USERNAME_PREFIX).takeIf { it != username }?.toLongOrNull()?.let(::byAccountId)
+            ?: byEmail(username)
+
+    private fun viewOf(profile: AccountProfile): KcAccountView {
+        val person = profile.personId?.let { personMasterData.masterDataOf(it) }
+        val names = kcUserMirror(profile, person, accountService.establishedClaimValues(profile.accountId, MIRRORED_CLAIM_TYPES))
+        return KcAccountView(
+            accountId = profile.accountId,
+            username = profile.email ?: "$USERNAME_PREFIX${profile.accountId}",
+            email = profile.email,
+            emailVerified = profile.emailConfirmed,
+            firstName = names.firstName,
+            lastName = names.lastName,
+            attributes = names.attributes + (ACCOUNT_ID_ATTRIBUTE to profile.accountId.toString()),
+        )
+    }
+
+    companion object {
+        const val USERNAME_PREFIX = "account-"
+        const val ACCOUNT_ID_ATTRIBUTE = "orchestratorAccountId"
+    }
+}
+
+/**
+ * Keycloak requires a first and last name on every user. This stands in for an account with
+ * neither a [PersonRecord] nor attested name claims. Read live, so the real name replaces it.
+ */
+internal const val UNIDENTIFIED_FIRST_NAME = "Unbekannt"
+internal const val UNIDENTIFIED_LAST_NAME = "(nicht identifiziert)"
+
+/**
+ * The attested claim types Keycloak shows for an account without a bound person: the person
+ * attributes an eID attestation can carry.
+ */
+internal val MIRRORED_CLAIM_TYPES = setOf(
+    AttributeType.FAMILY_NAME, AttributeType.GIVEN_NAMES, AttributeType.BIRTH_DATE,
+    AttributeType.STREET_ADDRESS, AttributeType.POSTAL_CODE, AttributeType.LOCALITY
+)
+
+/** Names and attributes of one account as Keycloak shows them. */
+internal data class KcUserMirror(
+    val firstName: String,
+    val lastName: String,
+    val attributes: Map<String, String>
+)
+
+/**
+ * Names and attributes for the Keycloak user mirror. For a bound account the Personenverzeichnis is
+ * the only source, including the fields it leaves empty, so a cleared field stays cleared (ADR-34).
+ * An Interessent (ADR-18) is mirrored from its own established claims. `personId`, `kvnr` and
+ * `versnr` exist only for a bound account; their absence marks an Interessent.
+ */
+internal fun kcUserMirror(profile: AccountProfile, person: PersonRecord?, attested: Map<AttributeType, String>): KcUserMirror =
+    KcUserMirror(
+        firstName = (if (person != null) person.givenNames else attested[AttributeType.GIVEN_NAMES]) ?: UNIDENTIFIED_FIRST_NAME,
+        lastName = (if (person != null) person.familyName else attested[AttributeType.FAMILY_NAME]) ?: UNIDENTIFIED_LAST_NAME,
+        attributes = masterDataAttributes(profile.personId, person, attested)
+    )
+
+/**
+ * The person attributes as custom user attributes: from the Personenverzeichnis for a bound account
+ * (never topped up from claims), from the account's attested claims for an Interessent.
+ */
+internal fun masterDataAttributes(personId: String?, person: PersonRecord?, attested: Map<AttributeType, String>): Map<String, String> = buildMap {
+    personId?.let { put("personId", it) }
+    if (person != null) {
+        person.kvnr?.let { put("kvnr", it) }
+        person.insuranceNumber?.let { put("versnr", it) }
+        person.birthDate?.let { put("birthDate", it.toString()) }
+        // One street line - the port already joins the Personenverzeichnis' two fields.
+        person.streetAddress?.let { put("streetAddress", it) }
+        person.postalCode?.let { put("postalCode", it) }
+        person.locality?.let { put("locality", it) }
+    } else {
+        attested[AttributeType.BIRTH_DATE]?.let { put("birthDate", it) }
+        attested[AttributeType.STREET_ADDRESS]?.let { put("streetAddress", it) }
+        attested[AttributeType.POSTAL_CODE]?.let { put("postalCode", it) }
+        attested[AttributeType.LOCALITY]?.let { put("locality", it) }
+    }
+}

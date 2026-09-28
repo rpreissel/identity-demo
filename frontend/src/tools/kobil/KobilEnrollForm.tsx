@@ -1,0 +1,123 @@
+import { useState } from 'react'
+import { activate } from '../../kobilSdk'
+import { storeUnlockSecret } from '../../kobilUnlockSecret'
+import { t } from '../../texts'
+import { Tx } from '../../Tx'
+import { DemoNote } from '../../components/DemoArea'
+import { StepActions } from '../../components/PhoneFrame'
+
+interface KobilEnrollFormProps {
+  tenantId?: string
+  kobilUserId?: string
+  activationCode?: string
+  pin?: string
+  unlockSecret?: string
+  onSubmit: (body: Record<string, unknown>) => void
+  error?: string
+}
+
+/**
+ * enroll-kobil/activate - names the device, runs the (mocked) MC SDK activation against KOBIL, and
+ * stores the unlock secret locally behind the chosen access means.
+ *
+ * The PIN is visible to this component because the SDK's activation call takes it, and to nobody
+ * else: it is never shown to the user and never kept after the call.
+ */
+export function KobilEnrollForm({
+  tenantId,
+  kobilUserId,
+  activationCode,
+  pin,
+  unlockSecret,
+  onSubmit,
+  error,
+}: KobilEnrollFormProps) {
+  const [label, setLabel] = useState('')
+  const [namingDone, setNamingDone] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [sdkError, setSdkError] = useState<string>()
+
+  const ready = tenantId !== undefined && kobilUserId !== undefined && activationCode !== undefined && pin !== undefined
+
+  async function handleConfirm(biometricConsent: boolean) {
+    if (!ready) return
+    setBusy(true)
+    setSdkError(undefined)
+    try {
+      await activate({ tenantId, userId: kobilUserId }, activationCode, pin)
+      // Only on consent, and only then does the server keep its counterpart: declining leaves
+      // nothing behind on either side, so the choice has a consequence instead of being a label.
+      if (biometricConsent && unlockSecret) storeUnlockSecret(kobilUserId, unlockSecret)
+      onSubmit({ activated: true, biometricConsent, label: label.trim() || t('Mein Handy') })
+    } catch (err) {
+      setSdkError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!namingDone) {
+    return (
+      <div className="card">
+        <h2>{t('Gerät bei KOBIL registrieren')}</h2>
+        <p>
+          {t('Vergeben Sie einen Namen, um dieses Gerät später wiederzuerkennen (z.\u00A0B. „Diensthandy“).')}
+        </p>
+        {error && <div className="hint">{error}</div>}
+        <form
+          id="kobil-enroll"
+          onSubmit={(event) => {
+            event.preventDefault()
+            setNamingDone(true)
+          }}
+          className="form-grid"
+          style={{ marginTop: '1rem' }}
+        >
+          <div className="form-group">
+            <label htmlFor="kobil-label">{t('Gerätename')}</label>
+            <input
+              id="kobil-label"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder={t('Mein Handy')}
+              autoFocus
+            />
+          </div>
+          <StepActions>
+            <button type="submit" form="kobil-enroll">{t('Weiter')}</button>
+          </StepActions>
+        </form>
+      </div>
+    )
+  }
+
+  return (
+    <div className="card">
+      <h2>{t('Biometrie erlauben?')}</h2>
+      <p>
+        {t(
+          'Mit Ihrem Passwort können Sie dieses Gerät immer entsperren. Zusätzlich können Sie ' +
+            'Biometrie erlauben – dann hinterlegt die App dafür ein Geräteheimnis.',
+        )}
+      </p>
+      <DemoNote>
+        <Tx
+          text={
+            '{modus} Biometrie wird nur simuliert. Die KOBIL-PIN kennt allein das ' +
+            'Backend – sie wird Ihnen nie angezeigt und nicht von Ihnen vergeben.'
+          }
+          modus={<strong>{t('Demo-Modus:')}</strong>}
+        />
+      </DemoNote>
+      {(error || sdkError) && <div className="hint">{error ?? sdkError}</div>}
+      <StepActions>
+        <button type="button" disabled={busy || !ready} onClick={() => handleConfirm(true)}>
+          {t('Biometrie erlauben')}
+        </button>
+        <button type="button" className="secondary" disabled={busy || !ready} onClick={() => handleConfirm(false)}>
+          {t('Nur mit Passwort')}
+        </button>
+      </StepActions>
+    </div>
+  )
+}

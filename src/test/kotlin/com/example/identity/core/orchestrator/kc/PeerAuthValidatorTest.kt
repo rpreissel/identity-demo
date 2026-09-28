@@ -1,0 +1,260 @@
+package com.example.identity.core.orchestrator.kc
+
+import com.example.identity.core.orchestrator.dpop.DpopProofReplay
+import com.example.identity.core.orchestrator.dpop.DpopProofReplayRepository
+import com.example.identity.core.orchestrator.dpop.DpopReplayProtectionService
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.crypto.RSASSASigner
+import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.SignedJWT
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
+import io.mockk.every
+import io.mockk.mockk
+import org.springframework.dao.DataIntegrityViolationException
+import java.time.Instant
+import java.util.Date
+import java.util.UUID
+
+/**
+ * Pure unit test of [PeerAuthValidator] - no Spring context, no HTTP layer. [KeycloakJwkSource]
+ * is mocked to hand back the test's own key directly, same reasoning as [DpopValidatorTest]:
+ * signature/claim-checking logic should be exercised without a real JWKS endpoint.
+ */
+class PeerAuthValidatorTest : BehaviorSpec({
+
+    val issuer = "mock-keycloak"
+    val audience = "identity-demo-orchestrator"
+    val method = "PATCH"
+    val url = "https://example.test/orchestrator/api/v1/kc/channels/abc"
+    val kid = "test-key"
+
+    fun validator(jwkSource: KeycloakJwkSource) = PeerAuthValidator(
+        jwkSource = jwkSource,
+        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository()),
+        expectedIssuer = issuer,
+        expectedAudience = audience,
+        maxClockSkewSeconds = 30,
+        maxAssertionAgeSeconds = 30
+    )
+
+    fun jwkSourceReturning(key: ECKey) = mockk<KeycloakJwkSource> {
+        every { find(kid) } returns key.toPublicJWK()
+    }
+
+    fun signAssertion(
+        key: ECKey,
+        htm: String = method,
+        htu: String = url,
+        issuedAt: Date = Date(),
+        jti: String? = UUID.randomUUID().toString(),
+        iss: String? = issuer,
+        aud: String? = audience,
+        channelAnchor: String? = "channel-anchor-1",
+        subject: String? = null,
+        algorithm: JWSAlgorithm = JWSAlgorithm.ES256,
+        keyId: String = kid
+    ): String {
+        val header = JWSHeader.Builder(algorithm).type(PeerAuthValidator.ASSERTION_TYPE).keyID(keyId).build()
+        val claimsBuilder = JWTClaimsSet.Builder()
+            .issueTime(issuedAt)
+            .claim("htm", htm)
+            .claim("htu", htu)
+        jti?.let { claimsBuilder.jwtID(it) }
+        iss?.let { claimsBuilder.issuer(it) }
+        aud?.let { claimsBuilder.audience(it) }
+        channelAnchor?.let { claimsBuilder.claim("channel_anchor", it) }
+        subject?.let { claimsBuilder.subject(it) }
+        val signedJWT = SignedJWT(header, claimsBuilder.build())
+        signedJWT.sign(ECDSASigner(key.toECPrivateKey()))
+        return signedJWT.serialize()
+    }
+
+    given("a validly signed, fresh assertion") {
+        `when`("validating it") {
+            then("it succeeds and reports the assertion's context") {
+                val key = ECKeyGenerator(Curve.P_256).generate()
+                val jti = UUID.randomUUID().toString()
+                val assertion = signAssertion(key, jti = jti, channelAnchor = "channel-anchor-42")
+
+                val result = validator(jwkSourceReturning(key)).validate(assertion, method, url)
+
+                result.jti shouldBe jti
+                result.channelAnchor shouldBe "channel-anchor-42"
+            }
+        }
+    }
+
+    given("a validly signed assertion with a subject") {
+        then("channelAnchor and the subject both come through") {
+            val key = ECKeyGenerator(Curve.P_256).generate()
+            val assertion = signAssertion(key, channelAnchor = "channel-anchor-7", subject = "kc-sub-7")
+
+            val result = validator(jwkSourceReturning(key)).validate(assertion, method, url)
+
+            result.channelAnchor shouldBe "channel-anchor-7"
+            result.subject shouldBe "kc-sub-7"
+        }
+    }
+
+    given("no assertion at all") {
+        then("a null assertion is rejected as missing") {
+            shouldThrow<PeerAuthValidationException> {
+                validator(mockk()).validate(null, method, url)
+            }
+        }
+        then("a blank assertion is rejected as missing") {
+            shouldThrow<PeerAuthValidationException> {
+                validator(mockk()).validate("   ", method, url)
+            }
+        }
+    }
+
+    given("an assertion that isn't a well-formed JWT at all") {
+        then("it is rejected as an invalid format") {
+            shouldThrow<PeerAuthValidationException> {
+                validator(mockk()).validate("not-a-jwt", method, url)
+            }
+        }
+    }
+
+    given("an unsupported algorithm") {
+        then("it is rejected before any JWKS lookup happens") {
+            val rsaKey = RSAKeyGenerator(2048).keyID(kid).generate()
+            val header = JWSHeader.Builder(JWSAlgorithm.RS512).keyID(kid).build()
+            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date()).claim("htm", method).claim("htu", url).build())
+            jwt.sign(RSASSASigner(rsaKey.toPrivateKey()))
+            shouldThrow<PeerAuthValidationException> { validator(mockk()).validate(jwt.serialize(), method, url) }
+        }
+    }
+
+    given("an RSA-signed assertion") {
+        then("it is refused - the extension signs with ES256 only, nothing else is accepted") {
+            val rsaKey = RSAKeyGenerator(2048).keyID(kid).generate()
+            val header = JWSHeader.Builder(JWSAlgorithm.RS256).type(PeerAuthValidator.ASSERTION_TYPE).keyID(kid).build()
+            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date()).claim("htm", method).claim("htu", url).build())
+            jwt.sign(RSASSASigner(rsaKey.toPrivateKey()))
+            shouldThrow<PeerAuthValidationException> { validator(mockk()).validate(jwt.serialize(), method, url) }
+        }
+    }
+
+    given("an assertion without typ=peer-auth+jwt") {
+        then("it is refused before any JWKS lookup - a JWT of another purpose is never read as one") {
+            val key = ECKeyGenerator(Curve.P_256).keyID(kid).generate()
+            val header = JWSHeader.Builder(JWSAlgorithm.ES256).keyID(kid).build()
+            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date()).claim("htm", method).claim("htu", url).build())
+            jwt.sign(ECDSASigner(key))
+            shouldThrow<PeerAuthValidationException> { validator(mockk()).validate(jwt.serialize(), method, url) }
+        }
+    }
+
+    given("a missing kid header") {
+        then("it is rejected before any JWKS lookup happens") {
+            val key = ECKeyGenerator(Curve.P_256).generate()
+            val header = JWSHeader.Builder(JWSAlgorithm.ES256).build()
+            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date()).claim("htm", method).claim("htu", url).build())
+            jwt.sign(ECDSASigner(key.toECPrivateKey()))
+            shouldThrow<PeerAuthValidationException> { validator(mockk()).validate(jwt.serialize(), method, url) }
+        }
+    }
+
+    given("an unknown kid") {
+        then("it is rejected") {
+            val key = ECKeyGenerator(Curve.P_256).generate()
+            val assertion = signAssertion(key)
+            val jwkSource = mockk<KeycloakJwkSource> { every { find(kid) } returns null }
+            shouldThrow<PeerAuthValidationException> { validator(jwkSource).validate(assertion, method, url) }
+        }
+    }
+
+    given("a signature that doesn't match the key the kid resolves to") {
+        then("it is rejected") {
+            val signingKey = ECKeyGenerator(Curve.P_256).generate()
+            val otherKey = ECKeyGenerator(Curve.P_256).generate()
+            val assertion = signAssertion(signingKey)
+            shouldThrow<PeerAuthValidationException> {
+                validator(jwkSourceReturning(otherKey)).validate(assertion, method, url)
+            }
+        }
+    }
+
+    given("claim mismatches") {
+        val key = ECKeyGenerator(Curve.P_256).generate()
+
+        then("the wrong issuer is rejected") {
+            val assertion = signAssertion(key, iss = "someone-else")
+            shouldThrow<PeerAuthValidationException> { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
+        }
+        then("the wrong audience is rejected") {
+            val assertion = signAssertion(key, aud = "some-other-service")
+            shouldThrow<PeerAuthValidationException> { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
+        }
+        then("a different HTTP method than the request is rejected") {
+            val assertion = signAssertion(key, htm = "GET")
+            shouldThrow<PeerAuthValidationException> { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
+        }
+        then("a different URL than the request is rejected") {
+            val assertion = signAssertion(key, htu = "https://example.test/somewhere-else")
+            shouldThrow<PeerAuthValidationException> { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
+        }
+        then("carrying no channel_anchor is rejected") {
+            val assertion = signAssertion(key, channelAnchor = null)
+            shouldThrow<PeerAuthValidationException> { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
+        }
+        then("a missing jti is rejected") {
+            val assertion = signAssertion(key, jti = null)
+            shouldThrow<PeerAuthValidationException> { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
+        }
+    }
+
+    given("timing problems") {
+        val key = ECKeyGenerator(Curve.P_256).generate()
+
+        then("an assertion issued too far in the future is rejected") {
+            val assertion = signAssertion(key, issuedAt = Date.from(Instant.now().plusSeconds(600)))
+            shouldThrow<PeerAuthValidationException> { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
+        }
+        then("an assertion older than maxAssertionAgeSeconds is rejected") {
+            val assertion = signAssertion(key, issuedAt = Date.from(Instant.now().minusSeconds(600)))
+            shouldThrow<PeerAuthValidationException> { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
+        }
+        then("an assertion just inside the clock-skew allowance is accepted") {
+            val assertion = signAssertion(key, issuedAt = Date.from(Instant.now().plusSeconds(29)))
+            validator(jwkSourceReturning(key)).validate(assertion, method, url)
+        }
+    }
+
+    given("a validly signed, fresh assertion") {
+        `when`("validating that same assertion a second time") {
+            then("it is rejected as a replay") {
+                val key = ECKeyGenerator(Curve.P_256).generate()
+                val assertion = signAssertion(key)
+                val v = validator(jwkSourceReturning(key))
+
+                v.validate(assertion, method, url)
+
+                shouldThrow<PeerAuthValidationException> { v.validate(assertion, method, url) }
+            }
+        }
+    }
+})
+
+/** Same stub shape as [com.example.identity.core.orchestrator.dpop.DpopValidatorTest]'s. */
+private fun inMemoryReplayRepository(): DpopProofReplayRepository {
+    val seen = mutableSetOf<String>()
+    val repository = mockk<DpopProofReplayRepository>()
+    every { repository.insert(any(), any()) } answers {
+        val proofHash = firstArg<String>()
+        if (!seen.add(proofHash)) {
+            throw DataIntegrityViolationException("duplicate proof_hash $proofHash")
+        }
+    }
+    return repository
+}

@@ -1,0 +1,88 @@
+package com.example.identity.tools.auth_email.internal.confirmemail
+
+import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
+import com.example.identity.contract.tool_api.values.Email
+import java.time.Instant
+import java.util.UUID
+import com.example.identity.contract.tool_api.MissingFields
+import com.example.identity.contract.tool_api.StepData
+
+private const val STEP_INPUT = "input"
+private const val STEP_CODE_INPUT = "codeInput"
+private const val FIELD_EMAIL = "email"
+private const val FIELD_CODE = "code"
+
+/**
+ * Pure state of the confirm-email flow (docs/03-tool-architektur.md #3, the optional Flow
+ * pattern) - never leaves this file. Mirrors `auth_sms`'s `EnrollSmsFlow`.
+ */
+internal sealed interface ConfirmEmailState {
+    /** `next.step` for this position. */
+    val step: String
+    val missingFields: List<String>
+    /** Demo-only values for this step - never part of the step data (docs/05-api.md, `demo`). */
+    val demo: Map<String, Any?> get() = emptyMap()
+
+    /** Same derivation for start/patch/read - one place turns this state into `next.step`/`stepData`. */
+    fun describe(): Pair<String, StepData> = step to MissingFields(missingFields)
+
+    data object AwaitingEmail : ConfirmEmailState {
+        override val step = STEP_INPUT
+        override val missingFields = listOf(FIELD_EMAIL)
+    }
+
+    data class AwaitingCode(val email: String, val issuedCodeHash: String, val codeExpiresAt: Instant) : ConfirmEmailState {
+        override val step = STEP_CODE_INPUT
+        override val missingFields = listOf(FIELD_CODE)
+    }
+
+    companion object {
+        /** Turns [ConfirmEmailToolSession]'s persisted, nullable columns back into a [ConfirmEmailState]. */
+        fun of(toolSessionId: UUID, email: String?, issuedCodeHash: String?, codeExpiresAt: Instant?): ConfirmEmailState {
+            val value = email ?: return AwaitingEmail
+            return AwaitingCode(
+                value,
+                checkNotNull(issuedCodeHash) { "confirm-email tool data $toolSessionId has an email but no issuedCodeHash" },
+                checkNotNull(codeExpiresAt) { "confirm-email tool data $toolSessionId has an email but no codeExpiresAt" }
+            )
+        }
+    }
+}
+
+/** What one PATCH submitted - both optional, exactly the API's "only the changed part" rule. */
+internal data class ConfirmEmailInput(val email: String? = null, val code: String? = null)
+
+/** What [ConfirmEmailFlow.decide] concluded should happen. */
+internal sealed interface ConfirmEmailDecision {
+    /**
+     * A well-formatted email was submitted. It wins over a code in the same call, because a changed
+     * address invalidates whatever code was pending for the old one.
+     */
+    data class RequestCode(val email: String) : ConfirmEmailDecision
+    data class InvalidEmail(val raw: String) : ConfirmEmailDecision
+    data class Complete(val email: String) : ConfirmEmailDecision
+    data class WrongCode(val state: ConfirmEmailState.AwaitingCode) : ConfirmEmailDecision
+    /** Nothing usable for the current state - describe it unchanged (start/read, or an empty PATCH). */
+    data class Unchanged(val state: ConfirmEmailState) : ConfirmEmailDecision
+}
+
+internal object ConfirmEmailFlow {
+
+    fun decide(state: ConfirmEmailState, input: ConfirmEmailInput, emailCodeGenerator: EmailCodeGenerator): ConfirmEmailDecision {
+        input.email?.let { raw ->
+            val email = Email.ofOrNull(raw) ?: return ConfirmEmailDecision.InvalidEmail(raw)
+            return ConfirmEmailDecision.RequestCode(email.value)
+        }
+        return when (state) {
+            is ConfirmEmailState.AwaitingEmail -> ConfirmEmailDecision.Unchanged(state)
+            is ConfirmEmailState.AwaitingCode -> {
+                val code = input.code ?: return ConfirmEmailDecision.Unchanged(state)
+                if (emailCodeGenerator.matches(code, state.issuedCodeHash, state.codeExpiresAt)) {
+                    ConfirmEmailDecision.Complete(state.email)
+                } else {
+                    ConfirmEmailDecision.WrongCode(state)
+                }
+            }
+        }
+    }
+}

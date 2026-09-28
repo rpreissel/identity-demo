@@ -1,0 +1,170 @@
+# PROTOTYP: Keycloak und Orchestrator als EIN Deployment mit zwei Containern.
+#
+# Dieselbe Datei fuer OpenShift (openshift/deploy.sh) und den lokalen Test mit Podman
+# (openshift/local-up.sh). Podman ignoriert die Routes und die OpenShift-Annotationen still.
+#
+# Aufbau:
+# - Beide Container teilen sich das Netz des Pods: intern localhost und reines HTTP, der Verkehr
+#   verlaesst den Pod nie. Keycloak auf 8081, weil der Orchestrator 8080 belegt.
+# - TLS nur an den edge-Routes nach aussen; Keycloak erfaehrt ueber KC_PROXY_HEADERS, dass der
+#   Browser per HTTPS kommt.
+# - Kein Geheimnis zwischen den Containern: die Migration meldet sich per signierter Assertion als
+#   orchestrator-migration an (Keycloak prueft gegen http://localhost:8080/...). Das Secret
+#   identity-demo-keycloak-admin dient nur der Admin-Console.
+# - Die oeffentlichen Adressen (Route-Hosts) kommen aus der ConfigMap identity-demo-env, die
+#   deploy.sh bzw. local.yaml anlegt - nicht aus dieser Datei.
+# - strategy Recreate: H2 auf RWO-Volumes, und das System laeuft als genau eine Instanz
+#   (DeploymentTopologyCheck).
+# - Startreihenfolge: keine; der Orchestrator wartet selbst auf Keycloak (AwaitReachable).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: identity-demo-keycloak-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 1Gi}}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: identity-demo-orchestrator-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 1Gi}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-demo
+  labels: {app: identity-demo, identity-demo/part: routing}
+spec:
+  selector: {app: identity-demo}
+  ports:
+    - {name: orchestrator, port: 8080, targetPort: 8080}
+    - {name: keycloak, port: 8081, targetPort: 8081}
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: identity-demo-orchestrator
+  labels: {app: identity-demo, identity-demo/part: routing}
+spec:
+  to: {kind: Service, name: identity-demo}
+  port: {targetPort: orchestrator}
+  tls: {termination: edge, insecureEdgeTerminationPolicy: Redirect}
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: identity-demo-keycloak
+  labels: {app: identity-demo, identity-demo/part: routing}
+spec:
+  to: {kind: Service, name: identity-demo}
+  port: {targetPort: keycloak}
+  tls: {termination: edge, insecureEdgeTerminationPolicy: Redirect}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-demo
+  labels: {app: identity-demo}
+  annotations:
+    # OpenShift: neues Image im ImageStream (nach einem Push) -> neuer Rollout. Podman ignoriert das.
+    image.openshift.io/triggers: >-
+      [{"from":{"kind":"ImageStreamTag","name":"identity-demo-keycloak:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"keycloak\")].image"},
+      {"from":{"kind":"ImageStreamTag","name":"identity-demo-orchestrator:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"orchestrator\")].image"}]
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: identity-demo}}
+  template:
+    metadata:
+      labels: {app: identity-demo}
+    spec:
+      containers:
+        - name: keycloak
+          # Kurzname: OpenShift loest ihn ueber den ImageStream auf (lookupPolicy local, build.yaml),
+          # Podman findet das lokal gebaute localhost/identity-demo-keycloak:latest.
+          image: identity-demo-keycloak:latest
+          imagePullPolicy: IfNotPresent
+          args: ["start-dev", "--http-port=8081"]
+          ports:
+            - {name: keycloak, containerPort: 8081}
+            - {name: management, containerPort: 9000}
+          env:
+            - {name: KC_HTTP_ENABLED, value: 'true'}
+            - {name: KC_PROXY_HEADERS, value: xforwarded}
+            - {name: KC_HOSTNAME_STRICT, value: 'false'}
+            - {name: KC_HEALTH_ENABLED, value: 'true'}
+            - name: KC_HOSTNAME
+              valueFrom: {configMapKeyRef: {name: identity-demo-env, key: PUBLIC_KEYCLOAK_URL}}
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              valueFrom: {secretKeyRef: {name: identity-demo-keycloak-admin, key: username}}
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom: {secretKeyRef: {name: identity-demo-keycloak-admin, key: password}}
+            # Master-Realm-Client orchestrator-migration (MigrationClientBootstrapFactory) prueft
+            # gegen dieses JWKS - im selben Pod, also localhost.
+            - name: KC_SPI_ORCHESTRATOR_BOOTSTRAP__MIGRATION_CLIENT__JWKS_URL
+              value: http://localhost:8080/orchestrator/api/v1/kc/client-jwks/orchestrator-migration/.well-known/jwks.json
+          volumeMounts:
+            - {name: keycloak-data, mountPath: /opt/keycloak/data}
+          # exec statt httpGet: Podman fuehrt httpGet als curl IM Container aus, und das Keycloak-Image
+          # hat kein curl - lokal wuerde Podman Keycloak deshalb laufend neu starten. bash mit
+          # /dev/tcp gibt es dort, und OpenShift fuehrt denselben Befehl genauso aus.
+          startupProbe:
+            exec:
+              command: [bash, -c, 'exec 3<>/dev/tcp/127.0.0.1/9000 && printf "GET /health/started HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && head -n1 <&3 | grep -q " 200 "']
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command: [bash, -c, 'exec 3<>/dev/tcp/127.0.0.1/9000 && printf "GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && head -n1 <&3 | grep -q " 200 "']
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: [bash, -c, 'exec 3<>/dev/tcp/127.0.0.1/9000 && printf "GET /health/live HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && head -n1 <&3 | grep -q " 200 "']
+            periodSeconds: 20
+          resources:
+            requests: {cpu: 250m, memory: 768Mi}
+            limits: {memory: 1536Mi}
+        - name: orchestrator
+          image: identity-demo-orchestrator:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: orchestrator, containerPort: 8080}
+            # Health und Kennzahlen; der Service fuehrt diesen Port nicht nach aussen.
+            - {name: management, containerPort: 9080}
+          env:
+            - {name: SPRING_PROFILES_ACTIVE, value: keycloak}
+            - {name: SPRING_DATASOURCE_URL, value: 'jdbc:h2:file:/data/identitydb'}
+            - {name: KEYCLOAK_SETUP_VARIANT, value: openshift}
+            # Strukturierte Logs (ECS-JSON) mit Anfrage- und Sitzungs-Id (docs/07-betrieb.md Abschnitt 7).
+            - {name: LOGGING_STRUCTURED_FORMAT_CONSOLE, value: ecs}
+            - name: PUBLIC_ORCHESTRATOR_URL
+              valueFrom: {configMapKeyRef: {name: identity-demo-env, key: PUBLIC_ORCHESTRATOR_URL}}
+            - name: PUBLIC_KEYCLOAK_URL
+              valueFrom: {configMapKeyRef: {name: identity-demo-env, key: PUBLIC_KEYCLOAK_URL}}
+          volumeMounts:
+            - {name: orchestrator-data, mountPath: /data}
+          # Actuator auf dem Management-Port (docs/07-betrieb.md Abschnitt 7). readiness wird erst
+          # nach allen ApplicationRunnern bereit, also nach den Keycloak-Migrationen - dasselbe
+          # Fenster, in dem ReadinessGateFilter die API mit 503 beantwortet. readiness prueft die
+          # Datenbank, nicht Keycloak.
+          startupProbe:
+            httpGet: {path: /actuator/health/liveness, port: 9080}
+            periodSeconds: 5
+            failureThreshold: 90
+          readinessProbe:
+            httpGet: {path: /actuator/health/readiness, port: 9080}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /actuator/health/liveness, port: 9080}
+            periodSeconds: 20
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {memory: 1Gi}
+      volumes:
+        - name: keycloak-data
+          persistentVolumeClaim: {claimName: identity-demo-keycloak-data}
+        - name: orchestrator-data
+          persistentVolumeClaim: {claimName: identity-demo-orchestrator-data}

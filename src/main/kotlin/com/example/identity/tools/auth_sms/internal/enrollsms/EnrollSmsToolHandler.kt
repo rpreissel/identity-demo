@@ -1,0 +1,116 @@
+package com.example.identity.tools.auth_sms.internal.enrollsms
+import com.example.identity.contract.tool_api.InvalidInputException
+import com.example.identity.simulation.sms.SmsGateway
+import com.example.identity.contract.texts.Text
+import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollment
+import com.example.identity.tools.auth_sms.internal.TanGenerator
+import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
+import com.example.identity.tools.auth_sms.internal.SmsSendBudget
+
+import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
+import com.example.identity.tools.auth_sms.SMS_ENROLLMENT_TYPE
+import com.example.identity.contract.tool_api.claims.AttributeType
+import com.example.identity.contract.tool_api.claims.Claim
+import com.example.identity.contract.tool_api.claims.ClaimSource
+import com.example.identity.contract.tool_api.EnrollmentRef
+import com.example.identity.contract.tool_api.TooManyRequestsException
+import com.example.identity.contract.tool_api.ToolOutcome
+import org.springframework.data.repository.findByIdOrNull
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
+
+/**
+ * toolId=enroll-sms (docs/06-ablaeufe.md #4): registers a new phone number as a 2nd factor. This
+ * class translates [EnrollSmsFlow]'s decisions into writes and the outward [ToolOutcome].
+ */
+@Component
+class EnrollSmsToolHandler(
+    private val descriptor: EnrollSmsDescriptor,
+    private val toolDataRepository: EnrollSmsToolSessionRepository,
+    private val enrollmentRepository: AuthSmsEnrollmentRepository,
+    private val tanGenerator: TanGenerator,
+    private val smsGateway: SmsGateway,
+    private val sendBudget: SmsSendBudget
+) {
+
+    /** Called directly by EnrollSmsToolController; nothing needs resolving before this can start. */
+    @Transactional
+    fun start(toolSessionId: UUID): ToolOutcome {
+        toolDataRepository.save(EnrollSmsToolSession(toolSessionId = toolSessionId))
+        return outcomeFor(EnrollSmsState.AwaitingPhoneNumber)
+    }
+
+    /**
+     * Every [EnrollSmsDecision.SendTan] passes [SmsSendBudget]: resubmitting a number is never a
+     * wrong guess, so without it anyone knowing a number could use this tool as an SMS bomb. The
+     * caller chose the number, so an exhausted budget may say so: a 429, not a failed attempt of the
+     * journey, since nothing was guessed.
+     */
+    @Transactional
+    fun patch(toolSessionId: UUID, phoneNumber: String?, tan: String?): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown enroll-sms tool session: $toolSessionId" }
+
+        return when (val decision = EnrollSmsFlow.decide(data.toState(), EnrollSmsInput(phoneNumber, tan), tanGenerator)) {
+            is EnrollSmsDecision.InvalidPhoneNumber -> throw InvalidInputException(Text("Bitte eine Mobilnummer mit Ländervorwahl aus der EU oder dem EWR angeben, z. B. +49 170 1234567"))
+
+            is EnrollSmsDecision.WrongTan -> ToolOutcome.Failed.NothingGuessed(Text("TAN ungueltig oder abgelaufen"))
+
+            is EnrollSmsDecision.Unchanged -> outcomeFor(decision.state)
+
+            is EnrollSmsDecision.SendTan -> if (!sendBudget.trySend(decision.phoneNumber)) {
+                throw TooManyRequestsException(Text("Zu viele Codes angefordert. Bitte versuchen Sie es in einigen Minuten erneut."))
+            } else {
+                val issued = tanGenerator.issue()
+                data.phoneNumber = decision.phoneNumber
+                data.issuedTanHash = issued.hash
+                data.tanExpiresAt = issued.expiresAt
+                toolDataRepository.save(data)
+                smsGateway.sendTan(decision.phoneNumber, issued.plainTan)
+
+                val state = EnrollSmsState.AwaitingTan(decision.phoneNumber, issued.hash, issued.expiresAt)
+                val (step, fields) = state.describe()
+                // demoTan: this is a demo, not a real SMS gateway - showing it in the UI means
+                // testers don't need server-log access (docs/06-ablaeufe.md #4).
+                ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plainTan))
+            }
+
+            is EnrollSmsDecision.Complete -> {
+                sendBudget.received(decision.phoneNumber)
+                val enrollment = enrollmentRepository.save(AuthSmsEnrollment(decision.phoneNumber))
+                ToolOutcome.Completed.Enrolled(
+                    enrollmentRef = EnrollmentRef(type = SMS_ENROLLMENT_TYPE, id = enrollment.id.toString()),
+                    amr = listOf(descriptor.method),
+                    achievedAcr = descriptor.maxAcr,
+                    factorTypes = descriptor.factorTypes,
+                    claims = listOf(
+                        Claim(
+                            attributeType = AttributeType.PHONE_NUMBER,
+                            value = decision.phoneNumber,
+                            source = ClaimSource.of(descriptor.toolId),
+                            establishedAcr = descriptor.maxAcr
+                        )
+                    )
+                )
+            }
+        }
+    }
+
+    @Transactional(readOnly = true)
+    fun read(toolSessionId: UUID): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown enroll-sms tool session: $toolSessionId" }
+        return outcomeFor(data.toState())
+    }
+
+    private fun outcomeFor(state: EnrollSmsState): ToolOutcome.InProgress {
+        val (step, fields) = state.describe()
+        return ToolOutcome.InProgress(nextStep = step, stepData = fields)
+    }
+
+    private fun EnrollSmsToolSession.toState(): EnrollSmsState = EnrollSmsState.of(
+        toolSessionId = checkNotNull(toolSessionId),
+        phoneNumber = phoneNumber,
+        issuedTanHash = issuedTanHash,
+        tanExpiresAt = tanExpiresAt
+    )
+}
