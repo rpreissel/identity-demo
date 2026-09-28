@@ -18,6 +18,7 @@ import com.example.identity.simulation.nect.NectProcedure
 import com.example.identity.simulation.nect.NectResult
 import com.example.identity.tools.ident_nect.IdentNectDescriptor
 import com.example.identity.tools.ident_nect.api.v1.NectRedirectStep
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -70,6 +71,58 @@ class IdentNectToolHandlerTest : BehaviorSpec({
             then("it binds the opened case to the session and redirects to Nect") {
                 saved.captured.caseId shouldBe caseId
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "redirect", stepData = NectRedirectStep("/nect/?case=$caseId", caseId))
+            }
+        }
+    }
+
+    given("a channel that names where Nect sends the user back to") {
+        val prefixes = IdentNectProperties(returnUriPrefixes = listOf("https://kc.test/realms/"))
+        val webHandler = IdentNectToolHandler(IdentNectDescriptor, repository, nect, clock = TEST_CLOCK, properties = prefixes)
+        val actionUrl = "https://kc.test/realms/Demo/login-actions/authenticate?session_code=c1&execution=e1&client_id=web&tab_id=t1"
+
+        `when`("the address lies under a configured prefix") {
+            val toolSessionId = UUID.randomUUID()
+            val caseId = UUID.randomUUID()
+            every { nect.createCase(actionUrl, NECT_REQUESTED) } returns NectCaseRef(caseId, "/nect/?case=$caseId")
+            val saved = slot<IdNectToolSession>()
+            every { repository.save(capture(saved)) } answers { saved.captured }
+            webHandler.start(toolSessionId, returnUri = actionUrl)
+
+            then("the case is opened with that address, and the session remembers it") {
+                saved.captured.returnUri shouldBe actionUrl
+                verify(exactly = 1) { nect.createCase(actionUrl, NECT_REQUESTED) }
+            }
+        }
+
+        `when`("a retry follows on such a session") {
+            val toolSessionId = UUID.randomUUID()
+            val oldCase = UUID.randomUUID()
+            val newCase = UUID.randomUUID()
+            every { repository.findById(toolSessionId) } returns Optional.of(
+                IdNectToolSession(toolSessionId = toolSessionId, caseId = oldCase, returnUri = actionUrl, createdAt = TEST_NOW)
+            )
+            every { nect.createCase(actionUrl, NECT_REQUESTED) } returns NectCaseRef(newCase, "/nect/?case=$newCase")
+            every { repository.save(any()) } answers { firstArg() }
+            val outcome = webHandler.patch(toolSessionId, caseId = oldCase, retry = true)
+
+            then("the fresh case keeps the same return address") {
+                // newCase only comes from the stub for actionUrl - the outcome proves which address was used.
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "redirect", stepData = NectRedirectStep("/nect/?case=$newCase", newCase))
+            }
+        }
+
+        `when`("the address lies elsewhere") {
+            val elsewhere = "https://attacker.example/return"
+
+            then("the start is rejected as bad input, and no case is opened") {
+                shouldThrow<IllegalArgumentException> { webHandler.start(UUID.randomUUID(), returnUri = elsewhere) }
+                verify(exactly = 0) { nect.createCase(elsewhere, any()) }
+            }
+        }
+
+        `when`("no prefix is configured at all") {
+            then("only the app channel's own address is left") {
+                shouldThrow<IllegalArgumentException> { handler.start(UUID.randomUUID(), returnUri = actionUrl) }
             }
         }
     }

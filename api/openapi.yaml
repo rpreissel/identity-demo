@@ -527,10 +527,17 @@ components:
           example: P000000004
           type: string
       type: object
+    IdentNectActivateRequest:
+      properties:
+        returnUri:
+          description: Where Nect sends the user back to; without it the app channel's /app/. The web channel names Keycloak's
+            action URL of the running step. Only an address under a configured prefix is accepted (400 otherwise).
+          type: string
+      type: object
     IdentNectPatchRequest:
       properties:
         caseId:
-          description: The case id Nect sent the user back with (?nectCaseId=...).
+          description: The case id Nect sent the user back with (?nectCaseId=...); also accepted as nectCaseId.
           format: uuid
           type: string
         retry:
@@ -2608,7 +2615,8 @@ paths:
       - 'Tool: Versichertennummer'
   /orchestrator/api/v1/channels/{channelSessionId}/tools/ident-nect:
     post:
-      description: No request body. Opens a Nect case; stepData carries the jump URL.
+      description: Opens a Nect case; stepData carries the jump URL. The optional body names where Nect sends the user back
+        to.
       operationId: activate
       parameters:
       - in: path
@@ -2617,6 +2625,11 @@ paths:
         schema:
           format: uuid
           type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentNectActivateRequest'
       responses:
         '201':
           content:

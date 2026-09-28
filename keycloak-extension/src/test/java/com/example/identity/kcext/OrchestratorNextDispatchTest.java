@@ -3,6 +3,8 @@ package com.example.identity.kcext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.MultivaluedMap;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -21,6 +23,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class OrchestratorNextDispatchTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Test
+    void aReturnFromOutsideBringsItsQueryAsToolInputWithoutKeycloaksOwnParameters() {
+        MultivaluedMap<String, String> query = new MultivaluedHashMap<>();
+        query.putSingle("session_code", "c1");
+        query.putSingle("execution", "e1");
+        query.putSingle("client_id", "web");
+        query.putSingle("tab_id", "t1");
+        query.putSingle("client_data", "cd");
+        query.putSingle("nectCaseId", "5b1c");
+
+        MultivaluedMap<String, String> merged = OrchestratorNextDispatch.withQueryParams(new MultivaluedHashMap<>(), query);
+
+        assertEquals(Map.of("nectCaseId", List.of("5b1c")), merged);
+    }
+
+    @Test
+    void aPostedFieldWinsOverTheSameNameInTheQuery() {
+        MultivaluedMap<String, String> form = new MultivaluedHashMap<>();
+        form.putSingle("code", "posted");
+        MultivaluedMap<String, String> query = new MultivaluedHashMap<>();
+        query.putSingle("code", "fromQuery");
+
+        assertEquals(List.of("posted"), OrchestratorNextDispatch.withQueryParams(form, query).get("code"));
+    }
 
     @Test
     void selectMethodWithOptionsYieldsSelect() {

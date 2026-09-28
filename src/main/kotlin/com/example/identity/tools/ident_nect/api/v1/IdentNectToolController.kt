@@ -6,6 +6,7 @@ import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolJourney
 import com.example.identity.contract.tool_api.ToolOutcome
+import com.fasterxml.jackson.annotation.JsonAlias
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -26,8 +27,18 @@ import java.util.UUID
 
 private const val IDENT_NECT_TOOL_ID = "ident-nect"
 
+data class IdentNectActivateRequest(
+    @field:Schema(
+        description = "Where Nect sends the user back to; without it the app channel's /app/. " +
+            "The web channel names Keycloak's action URL of the running step. Only an address under a configured prefix is accepted (400 otherwise)."
+    )
+    val returnUri: String? = null
+)
+
 data class IdentNectPatchRequest(
-    @field:Schema(description = "The case id Nect sent the user back with (?nectCaseId=...).")
+    // nectCaseId: the name Nect appends on the return; the web channel forwards the query as it is.
+    @JsonAlias("nectCaseId")
+    @field:Schema(description = "The case id Nect sent the user back with (?nectCaseId=...); also accepted as nectCaseId.")
     val caseId: UUID? = null,
     @field:Schema(description = "true opens a fresh Nect case instead of reporting one.")
     val retry: Boolean? = null
@@ -49,7 +60,7 @@ class IdentNectToolController(
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/ident-nect")
     @Operation(
         summary = "Activate ident-nect",
-        description = "No request body. Opens a Nect case; stepData carries the jump URL.",
+        description = "Opens a Nect case; stepData carries the jump URL. The optional body names where Nect sends the user back to.",
         responses = [
             ApiResponse(
                 responseCode = "201",
@@ -66,10 +77,11 @@ class IdentNectToolController(
     fun activate(
         @PathVariable channelSessionId: UUID,
         @BindingKey bindingKeyRef: String,
+        @RequestBody(required = false) request: IdentNectActivateRequest?,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val context = toolJourney.beginActivation(channelSessionId, bindingKeyRef, IDENT_NECT_TOOL_ID)
-        val outcome = handler.start(context.toolSessionId)
+        val outcome = handler.start(context.toolSessionId, request?.returnUri?.takeIf { it.isNotBlank() })
         val response = toolJourney.applyOutcome(context, outcome)
         val location = toolJourney.activationLocation(context, uriBuilder.build().toUri())
         return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)

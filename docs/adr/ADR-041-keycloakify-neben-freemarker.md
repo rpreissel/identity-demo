@@ -41,6 +41,14 @@ zweites npm-Paket mit eigenem Build.
 
 ## 3) Was beide Themes teilen
 
+**Der Seitenrahmen zeigt den Seitentitel, nicht den technischen Nutzernamen.** Keycloaks Basisvorlage
+ersetzt den Titel durch den „attempted username“ mit Neustart-Link, sobald ein Nutzer an der
+Anmeldung hängt. Hier hängt er, sobald der Orchestrator ein Konto nennt, bei der Registrierung also
+das Konto im Aufbau mit dem Namen `account-<id>` (ADR-46), das niemandem etwas sagt. Das
+FreeMarker-Theme hat deshalb eine eigene `template.ftl` (Kopie der Basisvorlage mit dieser einen
+Änderung): immer der Seitentitel, der Nutzername nur, wenn er eine E-Mail-Adresse ist. Das
+Keycloakify-Theme (`Layout.tsx`) zeigt von sich aus nur den Titel.
+
 **Texte.** `KcTexts` liest die Texte aus den Messages des aktiven Themes. Das Keycloakify-Theme erbt
 sie vom FreeMarker-Theme, ohne Kopie. Im Browser kommt von den FreeMarker-Texten nichts an, deshalb
 setzt `WebFormRenderer` neben `t` ein zweites Attribut `texts`: die Texte der Seite als einfache Map.

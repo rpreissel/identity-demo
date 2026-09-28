@@ -36,6 +36,8 @@ export type KcContextExtensionPerPage = {
   'tool-ident-eid.ftl': ToolPage & WithPersons & { cardPage: boolean }
   'tool-ident-fsc.ftl': ToolPage & WithPersons & { personalienPage: boolean }
   'tool-ident-kvnr.ftl': ToolPage & WithPersons
+  /** Without jumpUrl the last attempt failed; the page then offers a fresh case. */
+  'tool-ident-nect.ftl': ToolPage & { jumpUrl?: string }
   'tool-qr-enroll.ftl': ToolPage
   'tool-qr-wait.ftl': ToolPage &
     ({ step: 'waitForApp'; pairingCode: string; deepLink: string; qrDataUri: string; statusUrl: string } | { step: 'enterCode' })

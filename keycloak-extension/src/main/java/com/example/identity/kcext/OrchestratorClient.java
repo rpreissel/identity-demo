@@ -143,8 +143,15 @@ final class OrchestratorClient {
 
     /** Same facade-neutral tool endpoints the App channel uses (docs/05-api.md Abschnitt 3). */
     ChannelResponse activateTool(String channelSessionId, String toolId) throws IOException, InterruptedException {
+        return activateTool(channelSessionId, toolId, Map.of());
+    }
+
+    /** With what the tool's renderer asks to send along ({@code WebToolRendererFactory.activationFields}). */
+    ChannelResponse activateTool(String channelSessionId, String toolId, Map<String, String> fields) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/tools/" + toolId;
-        return ChannelResponse.from(send("POST", path, channelSessionId, MAPPER.createObjectNode()));
+        ObjectNode body = MAPPER.createObjectNode();
+        fields.forEach(body::put);
+        return ChannelResponse.from(send("POST", path, channelSessionId, body));
     }
 
     /**

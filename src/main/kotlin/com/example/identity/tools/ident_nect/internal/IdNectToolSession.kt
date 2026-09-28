@@ -7,7 +7,10 @@ import jakarta.persistence.Table
 import java.time.Instant
 import java.util.UUID
 
-/** Tool-session-scoped working data for toolId=ident-nect: the Nect case this run waits for. */
+/**
+ * Tool-session-scoped working data for toolId=ident-nect: the Nect case this run waits for, and
+ * where Nect sends the user back to. [returnUri] is null for the app channel (`/app/`).
+ */
 @Entity
 @Table(schema = "ident_nect", name = "ident_tool_session")
 class IdNectToolSession(
@@ -17,6 +20,9 @@ class IdNectToolSession(
 
     @Column(name = "case_id")
     var caseId: UUID? = null,
+
+    @Column(name = "return_uri", length = 2048)
+    var returnUri: String? = null,
     createdAt: Instant
 ) {
     @Column(name = "created_at", nullable = false)

@@ -14,3 +14,4 @@ com.example.identity.kcext.webtool.identkvnr.IdentKvnrRendererFactory
 com.example.identity.kcext.webtool.qr.AuthQrRendererFactory
 com.example.identity.kcext.webtool.qr.AuthQrLookupRendererFactory
 com.example.identity.kcext.webtool.qr.EnrollQrRendererFactory
+com.example.identity.kcext.webtool.identnect.IdentNectRendererFactory

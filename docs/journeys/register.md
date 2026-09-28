@@ -127,8 +127,9 @@ Ergebnis.
 **Web-Kanal:** Auch im Web-Kanal kann man die Registrierung direkt starten, neben
 `KC_SELECT_METHOD`: `PATCH /kc/channels/{channelSessionId}` mit `intent=register`
 ([05-api.md](../05-api.md) Abschnitt 3). Ein eigenes Registrierungsformular von Keycloak gibt es
-dafür nicht. `ident-fsc`, `ident-eid` und die `enroll-*`-Tools laufen über dieselben Web-Tool-Renderer
-wie jeder andere Schritt. `ident-nect` gibt es nur im App-Kanal.
+dafür nicht. `ident-fsc`, `ident-eid`, `ident-nect` und die `enroll-*`-Tools laufen über dieselben
+Web-Tool-Renderer wie jeder andere Schritt; `ident-nect` kehrt von Nect auf die Action-URL des
+laufenden Schritts zurück (ADR-47).
 
 Findet `Identifying` ein **bereits bestehendes** Konto (über die KVNR oder die Partnernummer), auf
 dem schon ein ausreichend starkes Verfahren eingerichtet ist, läuft der Nachweis über

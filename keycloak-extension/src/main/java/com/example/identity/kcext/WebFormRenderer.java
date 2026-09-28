@@ -166,7 +166,7 @@ final class WebFormRenderer {
                 .setAttribute("texts", KcTexts.forBrowser(session, template));
     }
 
-    private static WebToolRendererFactory rendererFactoryFor(KeycloakSession session, String toolId) {
+    static WebToolRendererFactory rendererFactoryFor(KeycloakSession session, String toolId) {
         return (WebToolRendererFactory) session.getKeycloakSessionFactory()
                 .getProviderFactory(WebToolRenderer.class, toolId);
     }

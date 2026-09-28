@@ -5,10 +5,11 @@ Wie `ident-fsc`, `ident-eid`, `auth-sms` und `enroll-sms` die Bausteine aus
 konkret nutzen – mit dem Schwerpunkt auf dem Datenmodell und den Entscheidungen dahinter. Ein
 durchgehendes Beispiel mit allen Aufrufen steht in [05-api.md](05-api.md).
 
-Ein drittes Identifizierungsverfahren, `ident-nect` (nur im App-Kanal), hat hier keinen eigenen
-Abschnitt. Die App schickt den Nutzer auf die Sprungseite des simulierten Dienstes Nect (`/nect/`);
-dort wählt er Online-Ausweis, Reisepass oder EUDI-Wallet. Das Ergebnis holt der Server danach
-einmalig selbst bei Nect ab (`NectIdent.redeem`), nie über den Client. Die gelieferten Angaben
+Ein drittes Identifizierungsverfahren, `ident-nect`, hat hier keinen eigenen Abschnitt. App oder
+Keycloak-Seite schicken den Nutzer auf die Sprungseite des simulierten Dienstes Nect (`/nect/`); dort
+wählt er Online-Ausweis, Reisepass oder EUDI-Wallet. Zurück kommt er dorthin, wo der Kanal den Fall
+hinbestellt hat: in die App oder auf die Action-URL des laufenden Keycloak-Schritts (ADR-47). Das
+Ergebnis holt der Server danach einmalig selbst bei Nect ab (`NectIdent.redeem`), nie über den Client. Die gelieferten Angaben
 bestätigt er wie bei `ident-eid` auf eigene Verantwortung (`ClaimSource.of("ident-nect")`, bis
 `loa3`, `amr` `nect-<verfahren>`). Die Zuordnung zu einer Person folgt wie bei `ident-eid` über
 `ident-kvnr`. Details und was noch offen ist stehen in [03-tool-architektur.md](03-tool-architektur.md), Abschnitt 1.

@@ -15,3 +15,8 @@ dpop:
 # Geplante Jobs laufen in Tests nicht von selbst (SchedulingConfig); ein Test ruft den Job direkt auf.
 scheduling:
   enabled: false
+
+# Ein Web-Kanal im Test nennt diese Keycloak-Adresse als Rücksprung für ident-nect.
+ident-nect:
+  return-uri-prefixes:
+    - https://kc.test/realms/

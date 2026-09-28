@@ -14,6 +14,7 @@ import { ToolEmailLookup } from './pages/ToolEmailLookup'
 import { ToolIdentEid } from './pages/ToolIdentEid'
 import { ToolIdentFsc } from './pages/ToolIdentFsc'
 import { ToolIdentKvnr } from './pages/ToolIdentKvnr'
+import { ToolIdentNect } from './pages/ToolIdentNect'
 import { ToolPasswordAuth } from './pages/ToolPasswordAuth'
 import { ToolPasswordEnroll } from './pages/ToolPasswordEnroll'
 import { ToolPasswordLookup } from './pages/ToolPasswordLookup'
@@ -58,6 +59,8 @@ export default function KcPage({ kcContext }: { kcContext: KcContext }) {
             return <ToolIdentFsc kcContext={kcContext} />
           case 'tool-ident-kvnr.ftl':
             return <ToolIdentKvnr kcContext={kcContext} />
+          case 'tool-ident-nect.ftl':
+            return <ToolIdentNect kcContext={kcContext} />
           case 'tool-password-auth.ftl':
             return <ToolPasswordAuth kcContext={kcContext} />
           case 'tool-password-enroll.ftl':

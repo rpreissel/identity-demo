@@ -821,13 +821,26 @@ bzw. über den eigenen Einstiegs-Intent `KC_SELECT_METHOD` ([04-orchestrierung.m
 Abschnitt 3), registriert über `REGISTER` (`intent=register`, siehe oben). `ident-fsc`, `ident-eid`,
 `confirm-email` und die `enroll-*`-Tools werden über dieselben `WebToolRenderer` angezeigt.
 
-Eine Lücke, die hier ausdrücklich benannt wird: **`enroll-kobil`/`auth-kobil`,
-`enroll-device`/`auth-device` und `ident-nect` haben keinen `WebToolRenderer`** und fehlen damit im
-Web-Kanal. KOBIL und der Geräteschlüssel brauchen ein Telefon bzw. dessen Schlüsselspeicher, Nect
-seine eigene Sprungseite; von einer Anmeldeseite, die der Server erzeugt, ist keines davon
-erreichbar. Das Theme führt diese `toolId`s deshalb nicht in `availableTools`, und so werden sie dort
-nie angeboten. Derselbe Mechanismus, der alte App-Versionen lauffähig hält, deckt auch diesen Fall
-ab.
+Eine Lücke, die hier ausdrücklich benannt wird: **`enroll-kobil`/`auth-kobil` und
+`enroll-device`/`auth-device` haben keinen `WebToolRenderer`** und fehlen damit im Web-Kanal. KOBIL
+und der Geräteschlüssel brauchen ein Telefon bzw. dessen Schlüsselspeicher; von einer Anmeldeseite,
+die der Server erzeugt, ist keines davon erreichbar. Das Theme führt diese `toolId`s deshalb nicht in
+`availableTools`, und so werden sie dort nie angeboten. Derselbe Mechanismus, der alte App-Versionen
+lauffähig hält, deckt auch diesen Fall ab.
+
+### Ein Tool, das die Anmeldung verlässt: `ident-nect`
+
+`ident-nect` schickt den Nutzer zu Nect und muss ihn zurückbekommen, ohne dass der Browser je mit dem
+Orchestrator spricht. Die Erweiterung gibt dafür beim Aktivieren die **Action-URL des laufenden
+Schritts** als `returnUri` mit (`POST .../tools/ident-nect`, `WebToolRendererFactory.activationFields`),
+also dieselbe Adresse, an die die Seite ihr Formular schicken würde: `login-actions/authenticate` mit
+`session_code`, `execution`, `client_id` und `tab_id`. Nect hängt `nectCaseId` an. Ein GET auf diese
+Adresse mit gültigem Code behandelt Keycloak wie den Formularversand des Schritts, und die Erweiterung
+nimmt die Parameter der Anfrage als Eingabe des Tools (`OrchestratorNextDispatch.withQueryParams`,
+ohne Keycloaks eigene). Der `PATCH` nennt die Fall-ID also als `nectCaseId`; das Tool nimmt den Namen
+als Alias von `caseId` an. Der Orchestrator akzeptiert eine `returnUri` nur unter einem konfigurierten
+Präfix, im Profil `keycloak` die öffentliche Keycloak-Adresse (`ident-nect.return-uri-prefixes`).
+Warum das der Weg ist und nicht Identity Brokering: [ADR-47](adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md).
 
 ### Die QR-Warteseite: Statusabfrage in Keycloak
 

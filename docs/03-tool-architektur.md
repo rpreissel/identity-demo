@@ -266,8 +266,11 @@ Zentral bleibt nur, was ein Modul nicht wissen *kann*: welches Niveau sich aus e
 ### Was `ident-nect` von Nect bekommt
 
 `ident-nect` leitet zum simulierten Identifizierungsdienst Nect weiter (Sprungseite `/nect/`) und holt
-das Ergebnis danach selbst ab (`NectIdent.redeem`). Nur im App-Kanal. Nect veröffentlicht keine
-Feldliste; was es weitergeben **kann**, begrenzt das Dokument selbst:
+das Ergebnis danach selbst ab (`NectIdent.redeem`). In beiden Kanälen: Die Rücksprungadresse gehört
+zum Fall. Die App nennt keine und bekommt `/app/`; der Web-Kanal nennt beim Aktivieren die
+Action-URL des laufenden Keycloak-Schritts (`returnUri`), und der Orchestrator nimmt nur eine Adresse
+unter einem konfigurierten Präfix an (`ident-nect.return-uri-prefixes`, ADR-47). Nect veröffentlicht
+keine Feldliste; was es weitergeben **kann**, begrenzt das Dokument selbst:
 
 Quellen: Online-Ausweis nach [§18 PAuswG](https://www.gesetze-im-internet.de/pauswg/__18.html), Reisepass nach [ICAO 9303](https://www.icao.int/publications/doc-series/doc-9303) (DG1), EUDI-Wallet nach dem [PID-Rulebook](https://github.com/eu-digital-identity-wallet/eudi-doc-attestation-rulebooks-catalog/blob/main/rulebooks/pid/pid-rulebook.md).
 
@@ -295,7 +298,7 @@ Quellen: Online-Ausweis nach [§18 PAuswG](https://www.gesetze-im-internet.de/pa
 `ident-nect` fragt dasselbe an wie `ident-eid`: Name, Vorname, Geburtsdatum, Anschrift und den Anker
 des Dokuments. Nect gibt nur weiter, was angefragt **und** vom Dokument lieferbar ist. Eine Person im
 Personenverzeichnis findet `ident-nect` nicht; die Zuordnung folgt wie nach `ident-eid` über
-`ident-kvnr`. Offen sind der Web-Kanal, die echte Anbindung und ein Anker für den Reisepass.
+`ident-kvnr`. Offen sind die echte Anbindung und ein Anker für den Reisepass.
 
 ---
 

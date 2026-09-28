@@ -54,6 +54,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/).
 | [ADR-44](adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md) | Das Zählwerk liegt im Orchestrator, die Regeln in den Modulen – jedes Modul begrenzt seinen eigenen Versand |
 | [ADR-45](adr/ADR-045-qr-warteseite-fragt-im-hintergrund.md) | Die QR-Warteseite fragt im Hintergrund und schickt ihr Formular nur einmal |
 | [ADR-46](adr/ADR-046-konto-im-aufbau.md) | Ein Konto ist im Aufbau, bis es ein Anmeldeverfahren hat – nicht anmeldefähig, ein Abbruch verwirft es ganz; danach eingerichtet, auch mit offenen Pflichten, und nie zurück |
+| [ADR-47](adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md) | Ein Tool, das die Anmeldung verlässt, kehrt im Web-Kanal auf die Action-URL des laufenden Schritts zurück – nicht über Identity Brokering, nicht über Action Tokens, nicht über einen eigenen Endpunkt |
 
 ADR-4, 13, 23 und 30 sind in anderen Entscheidungen aufgegangen (4 in 14 und 16, 13 in
 `db/migration/KONVENTIONEN.md`, 23 in 21, 30 in 16).

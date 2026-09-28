@@ -1,6 +1,7 @@
 package com.example.identity.kcext;
 
 import com.example.identity.kcext.webtool.WebToolAvailability;
+import com.example.identity.kcext.webtool.WebToolRendererFactory;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
@@ -13,7 +14,9 @@ import org.keycloak.models.UserModel;
 import org.keycloak.models.UserProvider;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -90,7 +93,7 @@ public class OrchestratorAuthenticator implements Authenticator {
                         context.challenge(errorForm(context, KcTexts.of(context.getSession(), "Bitte eine Methode auswählen.")));
                         return;
                     }
-                    response = client.activateTool(channelSessionId, selectedToolId);
+                    response = activateTool(context, selectedToolId);
                 }
             } else if ("confirm".equals(pendingKind)) {
                 String answer = form.getFirst("orchestrator_answer");
@@ -106,6 +109,8 @@ public class OrchestratorAuthenticator implements Authenticator {
                     context.failure(AuthenticationFlowError.INTERNAL_ERROR);
                     return;
                 }
+                // A return from outside is a GET on the action URL: its query is the tool's input.
+                form = OrchestratorNextDispatch.withQueryParams(form, context.getUriInfo().getQueryParameters());
                 response = OrchestratorNextDispatch.dispatchToolAction(client, channelSessionId, toolId, toolSessionId, form);
             }
             handleResponse(context, response, form);
@@ -159,9 +164,7 @@ public class OrchestratorAuthenticator implements Authenticator {
                     staticToolId, options);
             if (staticToolId != null && !staticToolId.isBlank()) {
                 try {
-                    OrchestratorClient.ChannelResponse activated = client.activateTool(
-                            OrchestratorNotes.channelSessionId(context), staticToolId
-                    );
+                    OrchestratorClient.ChannelResponse activated = activateTool(context, staticToolId);
                     handleResponse(context, activated, lastForm);
                     return;
                 } catch (OrchestratorClient.OrchestratorApiException e) {
@@ -189,9 +192,7 @@ public class OrchestratorAuthenticator implements Authenticator {
                 // An auto-activation only names the next tool; no ToolSession exists yet. Activate
                 // it here so PENDING_TOOL_SESSION_ID is never null.
                 try {
-                    OrchestratorClient.ChannelResponse activated = client.activateTool(
-                            OrchestratorNotes.channelSessionId(context), tool.next().toolId()
-                    );
+                    OrchestratorClient.ChannelResponse activated = activateTool(context, tool.next().toolId());
                     handleResponse(context, activated, lastForm);
                 } catch (OrchestratorClient.OrchestratorApiException e) {
                     LOG.warnf("Auto-activation of '%s' failed: %s", tool.next().toolId(), e.getMessage());
@@ -240,6 +241,17 @@ public class OrchestratorAuthenticator implements Authenticator {
         return context.getUser() == null
                 && context.getRealm().isRegistrationAllowed()
                 && !"register".equalsIgnoreCase(intent);
+    }
+
+    /**
+     * Activates a tool with what its renderer asks to send along - for most tools nothing, for one
+     * that sends the user away the action URL of this step as the address to come back to.
+     */
+    private OrchestratorClient.ChannelResponse activateTool(AuthenticationFlowContext context, String toolId) throws IOException, InterruptedException {
+        WebToolRendererFactory factory = WebFormRenderer.rendererFactoryFor(context.getSession(), toolId);
+        Map<String, String> fields = factory == null ? Map.of()
+                : factory.activationFields(() -> context.getActionUrl(context.generateAccessCode()).toString());
+        return client.activateTool(OrchestratorNotes.channelSessionId(context), toolId, fields);
     }
 
     private Response toolForm(AuthenticationFlowContext context, OrchestratorClient.Next next, OrchestratorClient.ChannelResponse response, String error) {

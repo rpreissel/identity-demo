@@ -1,7 +1,9 @@
 # Idee: Nect im Web-Kanal über den Rücksprung auf die Action-URL des laufenden Schritts
 
-Status: **Konzept, nicht umgesetzt, Entscheidung offen** (Stand 2026-09-28, Issue
-`DPoP-demo-p6rl`). Das Dokument beschreibt, wie `ident-nect` in den Web-Kanal käme, ohne dass
+Status: **umgesetzt 2026-09-28** (Issue `DPoP-demo-p6rl`, Entscheidung in
+[ADR-47](../adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md); die Umsetzung beschreibt
+[03-tool-architektur.md](../03-tool-architektur.md) und [05-api.md](../05-api.md) Abschnitt 3).
+Der Text bleibt als Herleitung stehen. Das Dokument beschreibt, wie `ident-nect` in den Web-Kanal käme, ohne dass
 Keycloak etwas anderes tun müsste, als es für seine eigenen Anmeldeseiten ohnehin tut. Drei Vorgaben
 liegen dem Entwurf zugrunde: In Keycloak wird nur benutzt, was Keycloak selbst vorsieht; der
 App-Kanal behält seinen heutigen Weg, und beide Wege teilen sich so viel Code wie möglich; Nect

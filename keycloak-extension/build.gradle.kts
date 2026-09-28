@@ -54,6 +54,8 @@ dependencies {
     testImplementation("org.keycloak:keycloak-model-storage-private:$keycloakVersion")
     testImplementation("org.keycloak:keycloak-common:$keycloakVersion")
     testImplementation("org.keycloak:keycloak-core:$keycloakVersion")
+    // OrchestratorNextDispatchTest: MultivaluedMap, zur Laufzeit von Keycloak gestellt (RESTEasy).
+    testImplementation("jakarta.ws.rs:jakarta.ws.rs-api:3.1.0")
     testImplementation(platform("org.junit:junit-bom:6.0.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     // KcTextCatalog: eigene Nutzertexte aus den kompilierten Klassen einsammeln (docs/adr/ADR-033).

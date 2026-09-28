@@ -40,6 +40,7 @@ const { getKcContextMock } = createGetKcContextMock({
     'tool-sms-enroll.ftl': { toolId: 'enroll-sms', pageTitle: 'SMS', hint: 'Code per SMS', step: 'enroll', demoTan: '123456', demoPersonsJson: PERSONS },
     'tool-ident-fsc.ftl': { toolId: 'ident-fsc', pageTitle: 'Freischaltcode', personalienPage: true, demoPersonsJson: PERSONS },
     'tool-ident-eid.ftl': { toolId: 'ident-eid', pageTitle: 'Online-Ausweis', hint: 'Mit dem Personalausweis', cardPage: true, demoPersonsJson: PERSONS },
+    'tool-ident-nect.ftl': { toolId: 'ident-nect', pageTitle: 'Nect', hint: 'Ausweis, Reisepass oder EUDI-Wallet bei Nect (simuliert)', jumpUrl: 'http://localhost:8080/nect/?case=5b1c2d3e-0000-4000-8000-000000000001' },
     'tool-qr-wait.ftl': {
       toolId: 'auth-qr-lookup',
       pageTitle: 'Mit der App anmelden',

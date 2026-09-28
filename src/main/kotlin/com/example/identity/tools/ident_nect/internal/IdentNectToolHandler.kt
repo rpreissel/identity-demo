@@ -21,7 +21,10 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.util.UUID
 
-/** Where Nect sends the user back to; the app channel picks `nectCaseId` up from its URL. */
+/**
+ * Where Nect sends the user back to when the channel names no address: the app channel picks
+ * `nectCaseId` up from its URL. The web channel names Keycloak's action URL instead (docs/ideen/ident-nect.md).
+ */
 internal const val NECT_CALLBACK_URI = "/app/"
 
 /**
@@ -41,28 +44,35 @@ internal val NECT_REQUESTED = setOf(
  * toolId=ident-nect. Opens a case at Nect; the client reports back the case id. The result never
  * travels through the client: it is redeemed from Nect server-side, once, and only for the case
  * this tool session opened. Each run reports the level and factors of the chosen document (ADR-18).
+ *
+ * The return address belongs to the case: the channel names it at the start (the web channel its
+ * Keycloak action URL, the app nothing), and a retry reuses it. Only an address under one of the
+ * configured prefixes is accepted - a channel may not send the user anywhere else.
  */
 @Component
 class IdentNectToolHandler(
     private val descriptor: IdentNectDescriptor,
     private val repository: IdNectToolSessionRepository,
     private val nect: NectIdent,
-    private val clock: Clock
+    private val clock: Clock,
+    private val properties: IdentNectProperties = IdentNectProperties()
 ) {
 
+    /** [returnUri] is where Nect sends the user back to; null means the app channel's `/app/`. */
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
-        val case = nect.createCase(NECT_CALLBACK_URI, NECT_REQUESTED)
-        repository.save(IdNectToolSession(toolSessionId = toolSessionId, caseId = case.caseId, createdAt = clock.instant()))
+    fun start(toolSessionId: UUID, returnUri: String? = null): ToolOutcome {
+        val callbackUri = acceptedReturnUri(returnUri)
+        val case = nect.createCase(callbackUri, NECT_REQUESTED)
+        repository.save(IdNectToolSession(toolSessionId = toolSessionId, caseId = case.caseId, returnUri = returnUri, createdAt = clock.instant()))
         return redirect(case.caseId, case.jumpUrl)
     }
 
-    /** [retry] opens a fresh case - the old one may be spent or abandoned. */
+    /** [retry] opens a fresh case - the old one may be spent or abandoned - with the same return address. */
     @Transactional
     fun patch(toolSessionId: UUID, caseId: UUID?, retry: Boolean): ToolOutcome {
         val data = checkNotNull(repository.findByIdOrNull(toolSessionId)) { "Unknown ident-nect tool session: $toolSessionId" }
         if (retry) {
-            val case = nect.createCase(NECT_CALLBACK_URI, NECT_REQUESTED)
+            val case = nect.createCase(data.returnUri ?: NECT_CALLBACK_URI, NECT_REQUESTED)
             data.caseId = case.caseId
             repository.save(data)
             return redirect(case.caseId, case.jumpUrl)
@@ -92,6 +102,15 @@ class IdentNectToolHandler(
         val data = checkNotNull(repository.findByIdOrNull(toolSessionId)) { "Unknown ident-nect tool session: $toolSessionId" }
         val caseId = checkNotNull(data.caseId)
         return redirect(caseId, nect.jumpUrl(caseId))
+    }
+
+    /** `require`: a rejected address is the caller's mistake, answered with 400, never a bug. */
+    private fun acceptedReturnUri(returnUri: String?): String {
+        if (returnUri == null) return NECT_CALLBACK_URI
+        require(properties.returnUriPrefixes.any { returnUri.startsWith(it) }) {
+            "ident-nect: return URI outside the configured prefixes"
+        }
+        return returnUri
     }
 
     private fun redirect(caseId: UUID, jumpUrl: String) =

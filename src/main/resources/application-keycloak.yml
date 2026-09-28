@@ -118,3 +118,10 @@ keycloak-setup:
       publicOrchestratorBaseUrl: ${PUBLIC_ORCHESTRATOR_URL:http://localhost:8090}
       publicKeycloakBaseUrl: ${PUBLIC_KEYCLOAK_URL:http://localhost:8091}
       browserRedirectUris: ${PUBLIC_ORCHESTRATOR_URL:http://localhost:8090}/*
+
+# Wohin Nect den Nutzer im Web-Kanal zurueckschicken darf (docs/ideen/ident-nect.md #4): die
+# Keycloak-Erweiterung nennt beim Start von ident-nect die Action-URL des laufenden Schritts,
+# und die liegt unter der oeffentlichen Keycloak-Adresse der gewaehlten Variante.
+ident-nect:
+  return-uri-prefixes:
+    - ${keycloak-setup.variants.${keycloak-setup.variant}.publicKeycloakBaseUrl:${keycloak-setup.base.publicKeycloakBaseUrl}}/realms/

@@ -2,7 +2,11 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.ninjasquad.springmockk.MockkBean
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
+import org.springframework.http.HttpEntity
+import org.springframework.http.HttpMethod
+import org.springframework.web.client.HttpClientErrorException
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldEndWith
@@ -161,6 +165,52 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
                 refused.stepData()["kind"] shouldBe "failed-attempt"
                 report(other.toolSessionId, other.caseId).next() shouldNotBe mapOf("type" to "tool", "toolId" to "ident-nect", "step" to "redirect")
                 evidenceJsonOf(other.channelSessionId) shouldContain "nect-eudi"
+            }
+        }
+
+        given("a web channel that names Keycloak's action URL as the return address") {
+            val actionUrl = "https://kc.test/realms/Demo/login-actions/authenticate?session_code=c1&execution=e1&client_id=web&tab_id=t1"
+
+            then("Nect sends the user back there, and the forwarded query reports the case") {
+                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                val activated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-nect", """{"returnUri":"$actionUrl"}""")
+                val caseId = activated.stepData()["caseId"] as String
+                val toolSessionId = activated.nextRaw()["toolSessionId"] as String
+
+                val redirectUri = finishAtNect(caseId, "eudi", max)
+                redirectUri shouldBe "$actionUrl&nectCaseId=$caseId"
+
+                // Keycloak hands the query on as it is: nectCaseId, not caseId.
+                val attested = patch("/orchestrator/api/v1/tools/$toolSessionId/ident-nect", """{"nectCaseId":"$caseId"}""")
+                attested.next() shouldBe mapOf("type" to "tool", "toolId" to "ident-kvnr", "step" to "input")
+                evidenceJsonOf(channelSessionId) shouldContain "nect-eudi"
+            }
+
+            then("a retry after a cancelled case keeps the return address") {
+                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                val activated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-nect", """{"returnUri":"$actionUrl"}""")
+                val caseId = activated.stepData()["caseId"] as String
+                val toolSessionId = activated.nextRaw()["toolSessionId"] as String
+                post("/mock-nect/cases/$caseId/cancellation")
+                patch("/orchestrator/api/v1/tools/$toolSessionId/ident-nect", """{"caseId":"$caseId"}""").stepData()["kind"] shouldBe "failed-attempt"
+
+                // A Keycloak form posts strings; "true" must count as the flag.
+                val retried = patch("/orchestrator/api/v1/tools/$toolSessionId/ident-nect", """{"retry":"true"}""")
+                val newCase = retried.stepData()["caseId"] as String
+                finishAtNect(newCase, "eudi", max) shouldBe "$actionUrl&nectCaseId=$newCase"
+            }
+
+            then("an address outside the configured prefixes is refused with 400, before any case exists") {
+                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                val refused = shouldThrow<HttpClientErrorException.BadRequest> {
+                    restTemplate.exchange(
+                        "http://localhost:$port/orchestrator/api/v1/channels/$channelSessionId/tools/ident-nect",
+                        HttpMethod.POST,
+                        HttpEntity("""{"returnUri":"https://attacker.example/return"}""", headers()),
+                        String::class.java
+                    )
+                }
+                refused.responseBodyAsString shouldContain "BAD_REQUEST"
             }
         }
 
