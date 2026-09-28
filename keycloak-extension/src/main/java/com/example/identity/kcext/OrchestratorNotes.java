@@ -193,6 +193,11 @@ public final class OrchestratorNotes {
         return LOA_TO_ACR.entrySet().stream().filter(e -> e.getValue().equals(acr)).mapToInt(Map.Entry::getKey).findFirst().orElse(-1);
     }
 
+    /** Ob {@code acr} eines der Niveaus ist, die der Realm kennt. */
+    public static boolean isKnownAcr(String acr) {
+        return acrRank(acr) >= 0;
+    }
+
     /**
      * Keycloak's requested level for the whole top-level flow (e.g. {@code acr_values=2}) as
      * orchestrator ACR, independent of the running Condition-LoA subflow. Channels must use this as
