@@ -4,13 +4,13 @@
 // (docs/07-betrieb.md Abschnitt 3). Die Werte gleichen denen, die TokenService ohne Keycloak
 // verwendet: 5 Minuten AccessToken, 30 Minuten Leerlauf.
 
-// Ein einmal erreichtes loa2 traegt nur wenige Minuten; danach verlangt das Condition-LoA bei einer
+// Ein einmal erreichtes loa2 traegt 30 Minuten, so lange wie der Leerlauf der Sitzung; danach verlangt das Condition-LoA bei einer
 // Anfrage mit acr_values=2 einen frischen Nachweis, statt ihn aus der SSO-Sitzung zu uebernehmen.
 step("loa-2 max-age verkuerzen") {
     up {
         val configId = loa2ConditionConfigId()
         remember("loaMaxAge", flows().getAuthenticatorConfig(configId).config["loa-max-age"].orEmpty())
-        setLoa2MaxAge(configId, "300")
+        setLoa2MaxAge(configId, "1800")
     }
     down {
         recallOrNull("loaMaxAge")?.takeIf { it.isNotEmpty() }?.let { setLoa2MaxAge(loa2ConditionConfigId(), it) }

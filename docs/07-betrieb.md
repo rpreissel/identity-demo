@@ -230,7 +230,7 @@ Wie mit den Verweisen zwischen den Tabellen umgegangen wird:
 - **Die Fristen des Realms stehen in der Migration**, nicht in Keycloaks Voreinstellungen
   (keycloak-migrations, `V5__realm_lifetimes.kc.kts`): AccessToken 5 Minuten, SSO idle 30 Minuten,
   SSO max 10 Stunden, `sslRequired=external`. Die ersten beiden gleichen den Fristen von
-  `TokenService` im Standardprofil. Ein erreichtes loa2 trägt 5 Minuten (`loa-max-age` des
+  `TokenService` im Standardprofil. Ein erreichtes loa2 trägt 30 Minuten (`loa-max-age` des
   LoA-2-Subflows); danach übernimmt Keycloak es nicht mehr aus der SSO-Sitzung, und eine Anfrage
   mit `acr_values=2` verlangt einen frischen Nachweis. loa1 trägt die ganze Sitzung.
 

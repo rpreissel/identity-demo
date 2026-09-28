@@ -73,8 +73,8 @@ class RealmLifetimesMigrationTest : BehaviorSpec({
                 realm.rep.ssoSessionMaxLifespan shouldBe 36000
                 realm.rep.sslRequired shouldBe "external"
             }
-            then("trägt loa2 nur fünf Minuten, die Stufe bleibt") {
-                realm.loa2Condition.config["loa-max-age"] shouldBe "300"
+            then("trägt loa2 dreißig Minuten, die Stufe bleibt") {
+                realm.loa2Condition.config["loa-max-age"] shouldBe "1800"
                 realm.loa2Condition.config["loa-condition-level"] shouldBe "2"
             }
         }
