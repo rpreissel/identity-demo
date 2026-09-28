@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createWebOidc, LoginNotCompletedError } from './webOidc'
+import { createWebOidc, LoginNotCompletedError, SessionEndedError } from './webOidc'
 
 const { completeLoginIfRedirected } = createWebOidc({
   baseUrl: 'https://kc.example',
@@ -59,5 +59,23 @@ describe('createWebOidc', () => {
     expect(url).toBe('https://keycloak.apps.example/realms/Andere/protocol/openid-connect/token')
     expect((init.body as URLSearchParams).get('client_id')).toBe('web-client')
     expect(tokens.accessToken).toBe('a')
+  })
+
+  it('reports a refresh token of an ended Keycloak session as SessionEndedError', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'invalid_grant', error_description: 'Session not active' }), { status: 400 }),
+    ))
+    const oidc = createWebOidc({
+      baseUrl: 'https://kc.example',
+      realm: 'Demo',
+      browserClientId: 'identity-demo-web',
+      loginTheme: 'FREEMARKER',
+      loa1Login: 'ORCHESTRATOR',
+    })
+
+    const err = await oidc.refreshTokens('r0').catch((e: unknown) => e)
+
+    expect(err).toBeInstanceOf(SessionEndedError)
+    expect((err as Error).message).not.toContain('Session not active')
   })
 })

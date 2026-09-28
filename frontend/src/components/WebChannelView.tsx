@@ -2,7 +2,7 @@ import { t } from '../texts'
 import { Tx } from '../Tx'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { setDemoLoa1Login, setDemoLoginTheme, type KeycloakInfo, type Loa1Login, type LoginTheme } from '../api'
-import { createWebOidc, LoginNotCompletedError, type TokenSet } from '../webOidc'
+import { createWebOidc, LoginNotCompletedError, SessionEndedError, type TokenSet } from '../webOidc'
 import { parseJwtPayload } from '../jwt'
 import { shorten } from '../format'
 import { UnavailableTools } from './UnavailableTools'
@@ -150,7 +150,16 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
         setTokens(fresh)
         storeTokens(fresh)
       })
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => {
+        if (err instanceof SessionEndedError) {
+          setTokens(null)
+          storeTokens(null)
+          setView('home')
+          setNotice(err.message)
+        } else {
+          setError(err instanceof Error ? err.message : String(err))
+        }
+      })
   }
 
   function stepUp(thenShow: PortalView) {
@@ -297,7 +306,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
         <ul className="status-list portal-list">
           {row(t('Vor- und Nachname'), personName)}
           {row(t('Status'), role)}
-          {row(t('Versichertennummer'), claimText(idClaims?.versnr))}
+          {row(t('Versicherungsnummer'), claimText(idClaims?.versnr))}
           {row(t('Partnernummer'), claimText(idClaims?.person_id))}
           {row(t('E-Mail'), claimText(idClaims?.email))}
         </ul>

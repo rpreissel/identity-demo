@@ -236,7 +236,7 @@ export function AuthenticationCompletedView({
       <ul className="status-list">
         <StatusRow label={t('Vor- und Nachname')} value={personName} />
         <StatusRow label={t('Status')} value={accountStatus} />
-        <StatusRow label={t('Versichertennummer')} value={claims?.versnr} />
+        <StatusRow label={t('Versicherungsnummer')} value={claims?.versnr} />
         <StatusRow label={t('Partnernummer')} value={claims?.personId} />
         <StatusRow label={t('E-Mail')} value={claims?.email} />
       </ul>

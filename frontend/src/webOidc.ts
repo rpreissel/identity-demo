@@ -66,6 +66,17 @@ export class LoginNotCompletedError extends Error {
   }
 }
 
+/**
+ * Keycloak kennt die Sitzung hinter dem Refresh-Token nicht mehr: abgemeldet, abgelaufen oder das
+ * Konto wurde geloescht. Kein Fehler des Aufrufs, sondern das Ende der Anmeldung in diesem Tab.
+ */
+export class SessionEndedError extends Error {
+  constructor() {
+    super(t('Ihre Anmeldung ist beendet. Bitte melden Sie sich erneut an.'))
+    this.name = 'SessionEndedError'
+  }
+}
+
 export type WebOidc = ReturnType<typeof createWebOidc>
 
 /** The OIDC client for exactly this Keycloak/realm - every endpoint below is derived from [config]. */
@@ -186,6 +197,7 @@ export function createWebOidc(config: WebOidcConfig) {
     })
     const json = await response.json()
     if (!response.ok) {
+      if (params.grant_type === 'refresh_token' && json.error === 'invalid_grant') throw new SessionEndedError()
       throw new Error(json.error_description ?? json.error ?? t('Token-Endpoint antwortete mit {status}', { status: response.status }))
     }
     return {
