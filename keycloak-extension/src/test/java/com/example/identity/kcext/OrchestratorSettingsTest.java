@@ -47,6 +47,17 @@ class OrchestratorSettingsTest {
     }
 
     @Test
+    void validateConfigurationReplacesTheMaskCopiedFromTheAdminApi() {
+        ComponentModel model = component();
+        // So kommt eine Komponente an, deren Config aus der Admin-API kopiert wurde (V2__user_federation).
+        model.getConfig().putSingle("peerAuthSigningKeyJwk", ComponentRepresentation.SECRET_VALUE);
+
+        new OrchestratorStorageProviderFactory().validateConfiguration(null, null, model);
+
+        assertNotNull(OrchestratorSettings.from(model).peerAuthSigningKey());
+    }
+
+    @Test
     void readingAComponentWithoutKeyFailsInsteadOfWriting() {
         ComponentModel model = component();
 

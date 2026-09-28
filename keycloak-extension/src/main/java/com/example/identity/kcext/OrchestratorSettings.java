@@ -10,6 +10,7 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.provider.ProviderConfigProperty;
+import org.keycloak.representations.idm.ComponentRepresentation;
 
 import java.text.ParseException;
 import java.util.List;
@@ -97,7 +98,9 @@ public record OrchestratorSettings(
      */
     static void ensureSigningKey(ComponentModel model) {
         String stored = model.getConfig().getFirst(PEER_AUTH_SIGNING_KEY);
-        if (stored == null || stored.isBlank()) {
+        // Die Maske kommt an, wenn jemand die Config aus der Admin-API kopiert und damit eine neue
+        // Komponente anlegt. Beim Aendern ersetzt Keycloak die Maske vorher selbst durch den alten Wert.
+        if (stored == null || stored.isBlank() || ComponentRepresentation.SECRET_VALUE.equals(stored)) {
             model.getConfig().putSingle(PEER_AUTH_SIGNING_KEY, generateSigningKey().toJSONString());
         }
     }
