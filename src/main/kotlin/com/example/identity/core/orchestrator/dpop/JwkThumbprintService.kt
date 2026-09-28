@@ -21,7 +21,7 @@ class JwkThumbprintService {
                 .digest(canonicalJson.toByteArray(StandardCharsets.UTF_8))
             Base64URL.encode(hash)
         } catch (e: NoSuchAlgorithmException) {
-            throw DpopValidationException("Failed to compute JWK thumbprint", e)
+            throw DpopValidationException(DpopFailure.INVALID_KEY, cause = e)
         }
     }
 
@@ -33,7 +33,7 @@ class JwkThumbprintService {
         val members = jwk.toJSONObject()
         val required = sortedMapOf<String, Any>()
         val kty = members["kty"] as String?
-            ?: throw DpopValidationException("JWK is missing kty")
+            ?: throw DpopValidationException(DpopFailure.INVALID_KEY, "kty missing")
         required["kty"] = kty
 
         when (kty) {
@@ -47,14 +47,14 @@ class JwkThumbprintService {
                 copyIfPresent(members, required, "e")
             }
             "oct" -> copyIfPresent(members, required, "k")
-            else -> throw DpopValidationException("Unsupported key type for thumbprint: $kty")
+            else -> throw DpopValidationException(DpopFailure.INVALID_KEY, "kty $kty")
         }
         return required
     }
 
     private fun copyIfPresent(source: Map<String, Any>, target: MutableMap<String, Any>, key: String) {
         val value = source[key]
-            ?: throw DpopValidationException("JWK is missing required member: $key")
+            ?: throw DpopValidationException(DpopFailure.INVALID_KEY, "$key missing")
         target[key] = value
     }
 

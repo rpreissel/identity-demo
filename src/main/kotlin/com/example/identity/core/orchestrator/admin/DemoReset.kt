@@ -18,7 +18,7 @@ import org.springframework.beans.factory.ObjectProvider
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
-import java.time.Instant
+import java.time.Clock
 
 data class DemoResetResult(val deletedAccounts: Int, val endedSessions: Int)
 
@@ -41,15 +41,16 @@ class DemoReset(
     private val loginThemeSwitch: ObjectProvider<LoginThemeSwitch>,
     private val loa1LoginSwitch: ObjectProvider<Loa1LoginSwitch>,
     private val keycloakRealmSessions: ObjectProvider<KeycloakRealmSessions>,
+    private val clock: Clock,
 ) {
 
     fun reset(): DemoResetResult {
         val liveBefore = channelSessionRepository
-            .findByStateNotInAndExpiresAtAfter(TERMINAL_STATES, Instant.now(), Pageable.unpaged()).size
+            .findByStateNotInAndExpiresAtAfter(TERMINAL_STATES, clock.instant(), Pageable.unpaged()).size
         val accountIds = accountService.allAccountIds()
         accountIds.forEach { accountDeletionService.deleteAccount(it) }
         val liveIds = channelSessionRepository
-            .findByStateNotInAndExpiresAtAfter(TERMINAL_STATES, Instant.now(), Pageable.unpaged())
+            .findByStateNotInAndExpiresAtAfter(TERMINAL_STATES, clock.instant(), Pageable.unpaged())
             .map { it.id }
         // One transaction per channel: cancelling the journey saves the channel, so ending it
         // afterwards must see that same managed instance, not the stale one from the query.

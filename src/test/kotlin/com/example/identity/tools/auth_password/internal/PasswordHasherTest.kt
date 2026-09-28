@@ -3,6 +3,7 @@ package com.example.identity.tools.auth_password.internal
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
+import java.time.Instant
 
 /** Argon2id for every hash; weaker Argon2id parameters move over on the next successful login. */
 class PasswordHasherTest : BehaviorSpec({
@@ -20,7 +21,7 @@ class PasswordHasherTest : BehaviorSpec({
     given("an Argon2id hash with weaker parameters than today's") {
         then("it verifies, is due for a rehash, and the rehash moves it to today's parameters") {
             val weak = org.springframework.security.crypto.argon2.Argon2PasswordEncoder(16, 32, 1, 4_096, 1).encode("correct-horse-battery")
-            val enrollment = AuthPasswordEnrollment(passwordHash = weak)
+            val enrollment = AuthPasswordEnrollment(passwordHash = weak, createdAt = Instant.now())
             PasswordHasher.matches("correct-horse-battery", enrollment.passwordHash) shouldBe true
             PasswordHasher.needsRehash(enrollment.passwordHash) shouldBe true
 

@@ -19,7 +19,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
+import java.time.Clock
 import java.util.UUID
 import com.example.identity.tools.auth_kobil.api.v1.KobilOtpStep
 
@@ -43,6 +43,7 @@ class AuthKobilToolHandler(
     @Value("\${identity.kobil.blocking-risks:ROOTED,EMULATOR,DEBUGGER_ATTACHED,APP_TAMPERED}")
     private val blockingRisks: Set<KobilRisk>,
     @Value("\${identity.kobil.pin-release-ttl-seconds:120}") private val pinReleaseTtlSeconds: Long,
+    private val clock: Clock,
 ) {
 
     /**
@@ -56,6 +57,7 @@ class AuthKobilToolHandler(
             AuthKobilToolSession(
                 toolSessionId = toolSessionId,
                 enrollmentRefId = enrollmentRef.id,
+                createdAt = clock.instant(),
             )
         )
         return inProgress(stateOf(session, passwordAvailable))
@@ -92,7 +94,7 @@ class AuthKobilToolHandler(
             return ToolOutcome.Failed.IdentifiedAuth(Text("Entsperren fehlgeschlagen"))
         }
 
-        session.release(unlock.userVerification, Instant.now().plusSeconds(pinReleaseTtlSeconds))
+        session.release(unlock.userVerification, clock.instant().plusSeconds(pinReleaseTtlSeconds))
 
         val (step, fields) = AuthKobilState.AwaitingOtp(enrollment.kobilTenantId, enrollment.kobilUserId).describe()
         return ToolOutcome.InProgress(
@@ -108,7 +110,7 @@ class AuthKobilToolHandler(
      */
     private fun stateOf(session: AuthKobilToolSession, passwordAvailable: Boolean): AuthKobilState {
         val enrollment = loadEnrollment(session)
-        if (session.liveRelease(Instant.now()) != null) {
+        if (session.liveRelease(clock.instant()) != null) {
             return AuthKobilState.AwaitingOtp(enrollment.kobilTenantId, enrollment.kobilUserId)
         }
         // A stored hash exists exactly when biometrics was consented to; the password counts while
@@ -130,7 +132,7 @@ class AuthKobilToolHandler(
     fun patch(toolSessionId: UUID, otp: String?): ToolOutcome {
         val session = loadSession(toolSessionId)
         val enrollment = loadEnrollment(session)
-        val release = session.liveRelease(Instant.now())
+        val release = session.liveRelease(clock.instant())
 
         val verification = if (release != null && otp != null) {
             ssms.verifyOtp(KobilUserRef(enrollment.kobilTenantId, enrollment.kobilUserId), otp)

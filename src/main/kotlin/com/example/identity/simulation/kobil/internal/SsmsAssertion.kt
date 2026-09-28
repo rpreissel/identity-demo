@@ -26,10 +26,10 @@ class SsmsAssertion(
 
     @Column(name = "risk_signals", nullable = false)
     var riskSignals: String = "",
+
+    @Column(name = "created_at", nullable = false)
+    var createdAt: Instant,
 ) {
     @Column(name = "redeemed_at")
     var redeemedAt: Instant? = null
-
-    @Column(name = "created_at", nullable = false)
-    var createdAt: Instant = Instant.now()
 }

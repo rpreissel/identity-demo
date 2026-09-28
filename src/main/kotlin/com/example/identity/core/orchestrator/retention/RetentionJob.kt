@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 
@@ -39,13 +40,14 @@ class RetentionJob(
     private val accountService: AccountService,
     private val accountDeletionService: AccountDeletionService,
     private val meterRegistry: MeterRegistry,
+    private val clock: Clock,
 ) {
     private val log = LoggerFactory.getLogger(RetentionJob::class.java)
 
     @Scheduled(fixedDelay = 3_600_000, initialDelay = 60_000)
     @Transactional
     fun cleanup() {
-        val now = Instant.now()
+        val now = clock.instant()
         toolSessionRepository.deleteByExpiresAtBefore(now.minus(TOOL_SESSION_RETENTION))
         deleteExpiredJourneys(now.minus(JOURNEY_RETENTION))
         deleteExpiredChannels(now.minus(CHANNEL_SESSION_RETENTION))

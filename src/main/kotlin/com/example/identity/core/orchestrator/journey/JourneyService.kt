@@ -34,8 +34,8 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 import java.util.UUID
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.session.forLog
@@ -76,6 +76,7 @@ class JourneyService(
     private val journeyRecorder: JourneyRecorder,
     private val sessionLifecycle: ChannelSessionLifecycle,
     private val accountDeletionService: AccountDeletionService,
+    private val clock: Clock,
 ) {
     private val strategiesByIntent: Map<AuthIntent, IntentStrategy<*>> = strategies.associateBy { it.intent }
 
@@ -116,7 +117,8 @@ class JourneyService(
         if (parentJourneyId == null) {
             findActive(channel.id)?.let { cancelChain(it.entity, channel) }
         }
-        val journey = AuthJourney(channel.channelSessionId, intent, Instant.now().plus(JOURNEY_TTL))
+        val now = clock.instant()
+        val journey = AuthJourney(channel.channelSessionId, intent, now.plus(JOURNEY_TTL), now)
         journey.accountId = channel.accountId
         journey.parentJourneyId = parentJourneyId
         // A step-up shows on the channel, direct or as a precondition. Only on a logged-in channel:
@@ -167,14 +169,14 @@ class JourneyService(
     fun findActive(channelSessionId: UUID): RunningJourney? =
         journeyRepository
             .findFirstByChannelSessionIdAndLifecycleOrderByCreatedAtDesc(channelSessionId, JourneyLifecycle.STARTED)
-            ?.let(RunningJourney::of)
+            ?.let { RunningJourney.of(it, clock.instant()) }
 
     /**
      * The journey [journeyId] names, but only while it runs. A tool session outlives its journey's
      * end (logout, cancel, a finished sub-journey) - through this lookup it can no longer reach it.
      */
     fun findRunning(journeyId: UUID): RunningJourney? =
-        journeyRepository.findByIdOrNull(journeyId)?.let(RunningJourney::of)
+        journeyRepository.findByIdOrNull(journeyId)?.let { RunningJourney.of(it, clock.instant()) }
 
     /**
      * Debug view of the running journey chain ([JourneyDebugStep]): the active journey and its
@@ -447,7 +449,7 @@ class JourneyService(
     }
 
     private fun logOut(journey: AuthJourney, channel: ChannelSession): Step {
-        journey.consume()
+        journey.consume(clock.instant())
         journeyRepository.save(journey)
         journeyTraceService.record(channel.forLog(), journey.forLog(), "LOGGED_OUT", journeyState = "LoggedOut")
         sessionLifecycle.end(channel, ChannelState.LOGGED_OUT)
@@ -472,7 +474,7 @@ class JourneyService(
     }
 
     private fun finish(journey: AuthJourney, channel: ChannelSession): Step {
-        journey.consume()
+        journey.consume(clock.instant())
         // Flushed before a suspended parent resumes (ux_journey_running_per_channel).
         journeyRepository.saveAndFlush(journey)
         val parent = journey.parentJourneyId?.let { journeyRepository.findByIdOrNull(it) }

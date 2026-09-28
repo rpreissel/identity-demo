@@ -32,6 +32,7 @@ import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.claims.validateValue
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -54,6 +55,7 @@ class AccountService(
     private val eventPublisher: ApplicationEventPublisher,
     private val changeLog: ChangeLog,
     private val personLookupKey: PersonLookupKey,
+    private val clock: Clock,
 ) : AccountDirectory {
 
     private val log = LoggerFactory.getLogger(AccountService::class.java)
@@ -97,7 +99,7 @@ class AccountService(
         // ADR-14: lock the account row so a concurrent confirm-email cannot interleave.
         lockForUpdate(accountId)
         // A value already withdrawn needs no second retraction row.
-        if (!claimLedger.retractEstablished(accountId, attributeType, trustAnchor, reason, Instant.now())) return false
+        if (!claimLedger.retractEstablished(accountId, attributeType, trustAnchor, reason, clock.instant())) return false
         if (attributeType.isLocalAnchor) anchorRegistry.remove(accountId, attributeType)
         return true
     }
@@ -131,7 +133,7 @@ class AccountService(
         reason: String? = null
     ): Int {
         val instanceId = runCatching { UUID.fromString(methodInstanceId) }.getOrNull() ?: return 0
-        val now = Instant.now()
+        val now = clock.instant()
         val retractable = claimLedger.ownedBy(accountId, instanceId)
         retractable.forEach { (type, value) -> claimLedger.retract(accountId, type, value, trustAnchor, reason, now) }
         return retractable.size
@@ -165,7 +167,7 @@ class AccountService(
      */
     @Transactional
     fun createUnidentifiedAccount(): AccountProfile {
-        val account = accountRepository.save(Account(createdAt = Instant.now()))
+        val account = accountRepository.save(Account(createdAt = clock.instant()))
         val accountId = checkNotNull(account.id) { "Account has no id" }
         return AccountProfile(accountId = accountId, personId = null, authenticationMethods = emptyList())
     }
@@ -258,7 +260,7 @@ class AccountService(
         instanceId: UUID = UUID.randomUUID()
     ): AccountProfile {
         lockForUpdate(accountId)
-        val now = Instant.now()
+        val now = clock.instant()
         val active = accountAuthMethodRepository.findByAccountIdAndMethodAndActiveTrueOrderByCreatedAt(accountId, method)
         if (!allowsMultipleInstances) {
             // Re-enrolling a singleton method replaces the old credential. Two active entries of
@@ -300,7 +302,7 @@ class AccountService(
     fun deactivateAuthenticationMethod(accountId: Long, methodInstanceId: String): AccountProfile {
         lockForUpdate(accountId)
         findMethodInstance(accountId, methodInstanceId)?.takeIf { it.active }?.let {
-            val now = Instant.now()
+            val now = clock.instant()
             it.deactivate(now)
             changeLog.methodDeactivated(accountId, it.method, MethodDeactivationReason.REMOVED_BY_HOLDER, now)
         }

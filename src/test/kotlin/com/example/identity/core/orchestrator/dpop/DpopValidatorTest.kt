@@ -18,6 +18,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import org.springframework.dao.DataIntegrityViolationException
+import java.time.Clock
 import java.time.Instant
 import java.util.Date
 import java.util.UUID
@@ -31,9 +32,10 @@ class DpopValidatorTest : BehaviorSpec({
 
     fun validator() = DpopValidator(
         jwkThumbprintService = JwkThumbprintService(),
-        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository()),
+        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository(), clock = Clock.systemUTC()),
         maxClockSkewSeconds = 30,
-        maxProofAgeSeconds = 120
+        maxProofAgeSeconds = 60,
+        clock = Clock.systemUTC()
     )
 
     val method = "POST"
@@ -202,6 +204,16 @@ class DpopValidatorTest : BehaviorSpec({
         then("a proof older than maxProofAgeSeconds is rejected") {
             val proof = signProof(key, issuedAt = Date.from(Instant.now().minusSeconds(600)))
             shouldThrow<DpopValidationException> { validator().validate(proof, method, url) }
+        }
+
+        then("a proof 90 seconds old is rejected: the window is 60 seconds without a nonce") {
+            val proof = signProof(key, issuedAt = Date.from(Instant.now().minusSeconds(90)))
+            shouldThrow<DpopValidationException> { validator().validate(proof, method, url) }
+        }
+
+        then("a proof 50 seconds old is accepted") {
+            val proof = signProof(key, issuedAt = Date.from(Instant.now().minusSeconds(50)))
+            validator().validate(proof, method, url)
         }
 
         then("a proof just inside the clock-skew allowance is accepted") {

@@ -5,7 +5,7 @@ import com.example.identity.contract.texts.Text
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
+import java.time.Clock
 
 /**
  * The browser's half of a QR login, shared by `auth-qr` and `auth-qr-lookup` (docs/07-betrieb.md #5):
@@ -17,6 +17,7 @@ import java.time.Instant
 class QrLoginBrowserSide(
     private val requests: QrLoginRequestRepository,
     private val confirmationCodeDigest: ConfirmationCodeDigest,
+    private val clock: Clock,
 ) {
 
     sealed interface State {
@@ -31,9 +32,10 @@ class QrLoginBrowserSide(
     @Transactional
     fun open(expectedAccountId: Long?): String {
         val pairingCode = PairingCodeGenerator.pairingCode()
+        val now = clock.instant()
         requests.save(
-            QrLoginRequest(pairingCode = pairingCode, expectedAccountId = expectedAccountId)
-                .apply { expiresAt = Instant.now().plus(QR_LOGIN_TTL) }
+            QrLoginRequest(pairingCode = pairingCode, expectedAccountId = expectedAccountId, createdAt = now)
+                .apply { expiresAt = now.plus(QR_LOGIN_TTL) }
         )
         return pairingCode
     }
@@ -42,7 +44,7 @@ class QrLoginBrowserSide(
     @Transactional
     fun advance(pairingCode: String, confirmationCode: String?): State {
         val request = requests.findByIdOrNull(pairingCode) ?: return State.Failed(EXPIRED)
-        val now = Instant.now()
+        val now = clock.instant()
         val expired = request.expiresAt?.let { now.isAfter(it) } ?: true
         return when (request.status) {
             QrLoginStatus.PENDING -> if (expired) State.Failed(EXPIRED) else State.WaitingForApp

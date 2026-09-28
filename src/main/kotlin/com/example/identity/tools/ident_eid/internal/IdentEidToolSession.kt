@@ -30,12 +30,9 @@ class IdentEidToolSession(
 
     /** SHA-256 of the submitted PIN - the PIN itself is never persisted. */
     @Column(name = "pin_hash")
-    var pinHash: String? = null
+    var pinHash: String? = null,
+    createdAt: Instant
 ) {
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

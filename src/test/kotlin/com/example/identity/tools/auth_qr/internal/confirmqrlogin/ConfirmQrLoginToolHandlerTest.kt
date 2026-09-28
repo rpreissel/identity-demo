@@ -13,8 +13,10 @@ import io.kotest.matchers.string.shouldMatch
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
+import java.time.Clock
 import java.util.Optional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Unit test of accept/reject and the expectedAccountId guard: `confirm-qr-login` fails fast in the
@@ -25,17 +27,17 @@ class ConfirmQrLoginToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<ConfirmQrLoginToolSessionRepository>()
     val qrLoginRequestRepository = mockk<QrLoginRequestRepository>()
-    val handler = ConfirmQrLoginToolHandler(ConfirmQrLoginDescriptor, toolDataRepository, qrLoginRequestRepository, ConfirmationCodeDigest("test-pepper"))
+    val handler = ConfirmQrLoginToolHandler(ConfirmQrLoginDescriptor, toolDataRepository, qrLoginRequestRepository, ConfirmationCodeDigest("test-pepper"), clock = Clock.systemUTC())
     val toolSessionId = UUID.randomUUID()
     val pairingCode = "ABCD1234"
 
     given("a confirm-qr-login tool session that already resolved its pairing code") {
-        val data = ConfirmQrLoginToolSession(toolSessionId = toolSessionId).apply { this.pairingCode = pairingCode }
+        val data = ConfirmQrLoginToolSession(toolSessionId = toolSessionId, createdAt = Instant.now()).apply { this.pairingCode = pairingCode }
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
 
         `when`("the pairing's expectedAccountId belongs to a DIFFERENT account than the one confirming") {
             every { qrLoginRequestRepository.findById(pairingCode) } returns Optional.of(
-                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = 42L)
+                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = 42L, createdAt = Instant.now())
             )
 
             then("it fails immediately, never reaching approveIfPending") {
@@ -47,7 +49,7 @@ class ConfirmQrLoginToolHandlerTest : BehaviorSpec({
 
         `when`("the pairing's expectedAccountId matches the confirming account") {
             every { qrLoginRequestRepository.findById(pairingCode) } returns Optional.of(
-                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = 99L)
+                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = 99L, createdAt = Instant.now())
             )
             every { qrLoginRequestRepository.approveIfPending(pairingCode, 99L, any(), any(), any()) } returns 1
 
@@ -60,7 +62,7 @@ class ConfirmQrLoginToolHandlerTest : BehaviorSpec({
 
         `when`("expectedAccountId is null (auth-qr-lookup, no target account to violate)") {
             every { qrLoginRequestRepository.findById(pairingCode) } returns Optional.of(
-                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = null)
+                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = null, createdAt = Instant.now())
             )
             every { qrLoginRequestRepository.approveIfPending(pairingCode, 99L, any(), any(), any()) } returns 1
 

@@ -9,6 +9,7 @@ import com.example.identity.contract.tool_api.claims.ClaimSource
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.LocalDate
 import java.util.UUID
 
@@ -23,13 +24,14 @@ private val PIN_REJECTED = Text("eID-PIN ungueltig")
 @Component
 class IdentEidToolHandler(
     private val descriptor: IdentEidDescriptor,
-    private val repository: IdentEidToolSessionRepository
+    private val repository: IdentEidToolSessionRepository,
+    private val clock: Clock
 ) {
 
     /** Called directly by IdentEidToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        repository.save(IdentEidToolSession(toolSessionId = toolSessionId))
+        repository.save(IdentEidToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor(IdentEidState())
     }
 
@@ -43,7 +45,7 @@ class IdentEidToolHandler(
         val data = checkNotNull(repository.findByIdOrNull(toolSessionId)) { "Unknown ident-eid tool session: $toolSessionId" }
 
         val merged = IdentEidFlow.merge(data.toState(), fields)
-        val (state, outcome) = when (val decision = IdentEidFlow.decide(merged, fields, LocalDate.now())) {
+        val (state, outcome) = when (val decision = IdentEidFlow.decide(merged, fields, LocalDate.now(clock))) {
             IdentEidDecision.Incomplete -> merged to outcomeFor(merged)
 
             IdentEidDecision.CardRejected ->

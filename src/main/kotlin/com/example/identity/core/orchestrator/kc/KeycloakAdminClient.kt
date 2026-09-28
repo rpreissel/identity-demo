@@ -3,6 +3,7 @@ package com.example.identity.core.orchestrator.kc
 import com.example.identity.kcmigrate.federatedUserId
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.time.Clock
 import java.time.Instant
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -30,7 +31,8 @@ class KeycloakAdminClient(
     @Value("\${keycloak-sync.public-base-url}") private val publicBaseUrl: String,
     @Value("\${keycloak-sync.realm}") private val realm: String,
     @Value("\${keycloak-sync.admin-client-id}") private val adminClientId: String,
-    @Value("\${keycloak-sync.app-client-id}") private val appClientId: String
+    @Value("\${keycloak-sync.app-client-id}") private val appClientId: String,
+    private val clock: Clock
 ) {
     private val log = LoggerFactory.getLogger(KeycloakAdminClient::class.java)
     private val restClient = keycloakHttp.restClient(baseUrl)
@@ -119,7 +121,7 @@ class KeycloakAdminClient(
 
     private fun accessToken(): String {
         val current = cachedToken
-        if (current != null && Instant.now().isBefore(current.expiresAt)) return current.value
+        if (current != null && clock.instant().isBefore(current.expiresAt)) return current.value
 
         val form = "grant_type=client_credentials&${clientAuth(adminClientId)}"
         val response = restClient.post()
@@ -133,7 +135,7 @@ class KeycloakAdminClient(
         val token = response["access_token"] as? String ?: error("Keycloak token response has no access_token")
         val expiresInSeconds = (response["expires_in"] as? Number)?.toLong() ?: 60L
         // A minute of slack, so a cached token does not expire on its way to Keycloak.
-        val expiresAt = Instant.now().plusSeconds((expiresInSeconds - 60).coerceAtLeast(5))
+        val expiresAt = clock.instant().plusSeconds((expiresInSeconds - 60).coerceAtLeast(5))
         val fresh = CachedToken(token, expiresAt)
         cachedToken = fresh
         return fresh.value

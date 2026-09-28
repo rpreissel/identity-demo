@@ -4,7 +4,7 @@ import com.example.identity.core.orchestrator.domain.FeatureFlagProvider
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
+import java.time.Clock
 
 /**
  * Read live, never cached, like `ToolAvailabilityService`: a flip applies to the next new journey.
@@ -13,7 +13,10 @@ import java.time.Instant
  */
 @Service
 @Transactional
-class FeatureFlagService(private val repository: FeatureFlagRepository) : FeatureFlagProvider {
+class FeatureFlagService(
+    private val repository: FeatureFlagRepository,
+    private val clock: Clock
+) : FeatureFlagProvider {
 
     /** No row means off, the flag's default. */
     fun isEnabled(flagKey: String): Boolean = repository.findByIdOrNull(flagKey)?.enabled ?: false
@@ -25,7 +28,7 @@ class FeatureFlagService(private val repository: FeatureFlagRepository) : Featur
         val flag = repository.findByIdOrNull(flagKey) ?: FeatureFlag(flagKey = flagKey)
         flag.enabled = enabled
         flag.reason = reason
-        flag.updatedAt = Instant.now()
+        flag.updatedAt = clock.instant()
         repository.save(flag)
     }
 }

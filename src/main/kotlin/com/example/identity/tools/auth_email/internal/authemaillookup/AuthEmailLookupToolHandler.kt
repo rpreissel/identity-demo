@@ -12,6 +12,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -26,12 +27,13 @@ class AuthEmailLookupToolHandler(
     private val accountDirectory: AccountDirectory,
     private val emailCodeGenerator: EmailCodeGenerator,
     private val mailServer: MailServer,
-    private val sendBudget: EmailSendBudget
+    private val sendBudget: EmailSendBudget,
+    private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        toolDataRepository.save(AuthEmailLookupToolSession(toolSessionId = toolSessionId))
+        toolDataRepository.save(AuthEmailLookupToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor(AuthEmailLookupState.AwaitingEmail)
     }
 

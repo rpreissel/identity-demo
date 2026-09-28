@@ -51,7 +51,7 @@ class ActiveSessionsIntegrationTest : IntegrationTestSupport() {
     ): ChannelSession {
         val created = Instant.now().minus(age)
         return channelSessionRepository.save(
-            ChannelSession(type, if (type == ChannelType.APP) "key-${age.seconds}" else null, Instant.now().plus(expiresIn)).apply {
+            ChannelSession(type, if (type == ChannelType.APP) "key-${age.seconds}" else null, Instant.now().plus(expiresIn), now = Instant.now()).apply {
                 this.state = state
                 this.accountId = accountId
                 createdAt = created

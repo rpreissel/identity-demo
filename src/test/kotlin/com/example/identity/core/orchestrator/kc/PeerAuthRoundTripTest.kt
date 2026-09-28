@@ -13,6 +13,7 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
+import java.time.Clock
 import java.util.Date
 import java.util.UUID
 import org.springframework.beans.factory.annotation.Autowired
@@ -80,7 +81,8 @@ class PeerAuthRoundTripTest : BehaviorSpec() {
                 Then("it verifies successfully via the real sign -> fetch -> verify round trip") {
                     val jwkSource = KeycloakJwkSource(
                         jwksUri = "http://localhost:$port/test-peer-auth/jwks.json",
-                        cacheTtlSeconds = 600
+                        cacheTtlSeconds = 600,
+                        clock = Clock.systemUTC()
                     )
                     val validator = PeerAuthValidator(
                         jwkSource = jwkSource,
@@ -88,7 +90,8 @@ class PeerAuthRoundTripTest : BehaviorSpec() {
                         expectedIssuer = "test-issuer",
                         expectedAudience = "identity-demo-orchestrator",
                         maxClockSkewSeconds = 30,
-                        maxAssertionAgeSeconds = 30
+                        maxAssertionAgeSeconds = 30,
+                        clock = Clock.systemUTC()
                     )
                     val htu = "http://localhost:$port/orchestrator/api/v1/kc/channels/${UUID.randomUUID()}"
                     val token = sign(TEST_PEER_AUTH_KEY, "PATCH", htu, "channel-anchor-${UUID.randomUUID()}")

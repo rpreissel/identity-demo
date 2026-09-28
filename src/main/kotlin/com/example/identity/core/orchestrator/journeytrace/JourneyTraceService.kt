@@ -3,6 +3,7 @@ package com.example.identity.core.orchestrator.journeytrace
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
+import java.time.Clock
 import java.time.Instant
 import java.util.UUID
 import io.swagger.v3.oas.annotations.media.Schema
@@ -52,7 +53,8 @@ data class LoggedJourney(
 
 @Service
 class JourneyTraceService(
-    private val journeyTraceRepository: JourneyTraceRepository
+    private val journeyTraceRepository: JourneyTraceRepository,
+    private val clock: Clock
 ) {
 
     /** [journeyState] is a first-class field, like [eventType] - not just another entry in [detail]. */
@@ -74,7 +76,8 @@ class JourneyTraceService(
                 intent = journey.intent,
                 eventType = eventType,
                 journeyState = journeyState,
-                detail = detail
+                detail = detail,
+                createdAt = clock.instant()
             )
         )
     }
@@ -92,7 +95,8 @@ class JourneyTraceService(
                 intent = null,
                 eventType = eventType,
                 journeyState = null,
-                detail = detail
+                detail = detail,
+                createdAt = clock.instant()
             )
         )
     }

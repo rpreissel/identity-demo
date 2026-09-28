@@ -11,6 +11,7 @@ import com.example.identity.contract.tool_api.claims.ClaimSource
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.LocalDate
 import java.util.UUID
 
@@ -26,13 +27,14 @@ class IdentFscToolHandler(
     private val descriptor: IdentFscDescriptor,
     private val repository: IdentFscToolSessionRepository,
     private val activationCodes: ActivationCodes,
-    private val personDirectory: PersonDirectory
+    private val personDirectory: PersonDirectory,
+    private val clock: Clock
 ) {
 
     /** Called directly by IdentFscToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        repository.save(IdentFscToolSession(toolSessionId = toolSessionId))
+        repository.save(IdentFscToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor(IdentFscState())
     }
 

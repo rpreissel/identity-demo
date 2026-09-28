@@ -7,7 +7,7 @@ import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
-import java.time.Instant
+import java.time.Clock
 import java.util.Date
 import java.util.UUID
 import org.springframework.beans.factory.annotation.Value
@@ -26,11 +26,12 @@ class OrchestratorClientAssertionSigner(
     private val keys: NodeSigningKeyRepository,
     @Value("\${keycloak-sync.admin-client-id}") adminClientId: String,
     @Value("\${keycloak-sync.app-client-id}") appClientId: String,
+    private val clock: Clock,
 ) {
     /** Die Clients, fuer die dieser Knoten signiert - jeder mit eigenem Schluessel. */
     val clientIds: Set<String> = setOf(adminClientId, appClientId, KeycloakMigrationToken.CLIENT_ID)
 
-    private val nodeKeys = NodeKeys(keys)
+    private val nodeKeys = NodeKeys(keys, clock)
 
     /** Oeffentlicher Schluessel von [clientId], oder `null` fuer einen Client, den dieser Knoten nicht vertritt. */
     fun publicKeyOf(clientId: String): ECKey? =
@@ -47,7 +48,7 @@ class OrchestratorClientAssertionSigner(
      */
     fun assertionFor(clientId: String, audience: String): String {
         val key = keyOf(clientId)
-        val now = Instant.now()
+        val now = clock.instant()
         val claims = JWTClaimsSet.Builder()
             .issuer(clientId)
             .subject(clientId)

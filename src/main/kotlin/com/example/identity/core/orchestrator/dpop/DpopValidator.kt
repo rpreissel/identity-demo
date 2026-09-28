@@ -11,26 +11,27 @@ import com.nimbusds.jwt.SignedJWT
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.text.ParseException
-import java.time.Instant
+import java.time.Clock
 import java.time.temporal.ChronoUnit
 
 @Component
 class DpopValidator(
     private val jwkThumbprintService: JwkThumbprintService,
     private val replayProtectionService: DpopReplayProtectionService,
+    private val clock: Clock,
     @Value("\${dpop.proof.max-clock-skew-seconds:30}") private val maxClockSkewSeconds: Long,
-    @Value("\${dpop.proof.max-age-seconds:120}") private val maxProofAgeSeconds: Long
+    @Value("\${dpop.proof.max-age-seconds:60}") private val maxProofAgeSeconds: Long
 ) {
 
     fun validate(dpopProof: String?, httpMethod: String, httpUrl: String): DpopProof {
         if (dpopProof.isNullOrBlank()) {
-            throw DpopValidationException("Missing DPoP proof")
+            throw DpopValidationException(DpopFailure.MISSING)
         }
 
         val signedJWT: SignedJWT = try {
             SignedJWT.parse(dpopProof)
         } catch (e: ParseException) {
-            throw DpopValidationException("Invalid DPoP proof format", e)
+            throw DpopValidationException(DpopFailure.MALFORMED, cause = e)
         }
 
         val header = signedJWT.header
@@ -38,13 +39,13 @@ class DpopValidator(
 
         val jwk = header.jwk
         if (jwk == null || jwk.isPrivate) {
-            throw DpopValidationException("DPoP proof must contain a public JWK")
+            throw DpopValidationException(DpopFailure.INVALID_KEY)
         }
 
         val claims: JWTClaimsSet = try {
             signedJWT.jwtClaimsSet
         } catch (e: ParseException) {
-            throw DpopValidationException("Invalid DPoP claims", e)
+            throw DpopValidationException(DpopFailure.INVALID_CLAIMS, cause = e)
         }
 
         validateSignature(signedJWT, jwk, header.algorithm)
@@ -66,17 +67,17 @@ class DpopValidator(
                 claims.getStringClaim("nonce")
             )
         } catch (e: ParseException) {
-            throw DpopValidationException("Invalid DPoP claims", e)
+            throw DpopValidationException(DpopFailure.INVALID_CLAIMS, cause = e)
         }
     }
 
     private fun validateHeader(header: JWSHeader) {
         if (header.type == null || header.type.type == null
             || !DPOP_JWT_TYPE.equals(header.type.type, ignoreCase = true)) {
-            throw DpopValidationException("DPoP proof must have type 'dpop+jwt'")
+            throw DpopValidationException(DpopFailure.WRONG_TYPE)
         }
         if (header.algorithm !in SUPPORTED_ALGORITHMS) {
-            throw DpopValidationException("Unsupported DPoP algorithm: ${header.algorithm}")
+            throw DpopValidationException(DpopFailure.UNSUPPORTED_ALGORITHM, "alg ${header.algorithm}")
         }
     }
 
@@ -84,13 +85,13 @@ class DpopValidator(
         try {
             val valid: Boolean = when (jwk) {
                 is ECKey -> signedJWT.verify(ECDSAVerifier(jwk.toECPublicKey()))
-                else -> throw DpopValidationException("Unsupported key type: ${jwk.keyType}")
+                else -> throw DpopValidationException(DpopFailure.INVALID_KEY, "kty ${jwk.keyType}")
             }
             if (!valid) {
-                throw DpopValidationException("Invalid DPoP proof signature")
+                throw DpopValidationException(DpopFailure.INVALID_SIGNATURE)
             }
         } catch (e: JOSEException) {
-            throw DpopValidationException("Failed to verify DPoP proof signature", e)
+            throw DpopValidationException(DpopFailure.INVALID_SIGNATURE, cause = e)
         }
     }
 
@@ -98,33 +99,33 @@ class DpopValidator(
         try {
             val htm = claims.getStringClaim("htm")
             if (htm == null || !htm.equals(httpMethod, ignoreCase = true)) {
-                throw DpopValidationException("DPoP htm claim does not match request method")
+                throw DpopValidationException(DpopFailure.HTM_MISMATCH)
             }
 
             val htu = claims.getStringClaim("htu")
             if (htu == null) {
-                throw DpopValidationException("DPoP htu claim is missing")
+                throw DpopValidationException(DpopFailure.HTU_MISMATCH, "htu missing")
             }
             if (!htuMatches(htu, httpUrl)) {
-                throw DpopValidationException("DPoP htu claim does not match request URL")
+                throw DpopValidationException(DpopFailure.HTU_MISMATCH)
             }
 
             val issuedAt = claims.issueTime?.toInstant()
-                ?: throw DpopValidationException("DPoP iat claim is missing")
-            val now = Instant.now()
+                ?: throw DpopValidationException(DpopFailure.IAT_MISSING)
+            val now = clock.instant()
             if (issuedAt.isAfter(now.plus(maxClockSkewSeconds, ChronoUnit.SECONDS))) {
-                throw DpopValidationException("DPoP iat claim is in the future")
+                throw DpopValidationException(DpopFailure.IAT_IN_FUTURE)
             }
             if (issuedAt.isBefore(now.minus(maxProofAgeSeconds, ChronoUnit.SECONDS))) {
-                throw DpopValidationException("DPoP iat claim is too old")
+                throw DpopValidationException(DpopFailure.IAT_TOO_OLD)
             }
 
             val jti = claims.getJWTID()
             if (jti.isNullOrBlank()) {
-                throw DpopValidationException("DPoP jti claim is missing")
+                throw DpopValidationException(DpopFailure.JTI_MISSING)
             }
         } catch (e: ParseException) {
-            throw DpopValidationException("Invalid DPoP claims", e)
+            throw DpopValidationException(DpopFailure.INVALID_CLAIMS, cause = e)
         }
     }
 

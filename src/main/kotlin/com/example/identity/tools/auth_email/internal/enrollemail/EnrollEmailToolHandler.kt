@@ -3,6 +3,7 @@ package com.example.identity.tools.auth_email.internal.enrollemail
 import com.example.identity.tools.auth_email.EnrollEmailDescriptor
 import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
 import com.example.identity.contract.tool_api.ToolOutcome
+import java.time.Clock
 import java.util.UUID
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -16,12 +17,13 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class EnrollEmailToolHandler(
     private val descriptor: EnrollEmailDescriptor,
-    private val toolDataRepository: EnrollEmailToolSessionRepository
+    private val toolDataRepository: EnrollEmailToolSessionRepository,
+    private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        toolDataRepository.save(EnrollEmailToolSession(toolSessionId = toolSessionId))
+        toolDataRepository.save(EnrollEmailToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return completed()
     }
 

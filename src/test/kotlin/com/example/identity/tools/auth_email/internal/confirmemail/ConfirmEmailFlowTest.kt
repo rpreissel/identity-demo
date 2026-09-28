@@ -3,6 +3,7 @@ import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import java.time.Clock
 import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 
@@ -13,7 +14,7 @@ import com.example.identity.contract.tool_api.MissingFields
  */
 class ConfirmEmailFlowTest : BehaviorSpec({
 
-    val emailCodeGenerator = EmailCodeGenerator("test-pepper")
+    val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = Clock.systemUTC())
 
     given("AwaitingEmail") {
         val state = ConfirmEmailState.AwaitingEmail

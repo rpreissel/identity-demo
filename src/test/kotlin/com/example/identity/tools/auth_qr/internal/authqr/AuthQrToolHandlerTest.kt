@@ -16,6 +16,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import java.time.Clock
 import java.time.Instant
 import java.util.Optional
 import java.util.UUID
@@ -30,7 +31,7 @@ class AuthQrToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<AuthQrToolSessionRepository>()
     val requests = mockk<QrLoginRequestRepository>()
     val digest = ConfirmationCodeDigest("test-pepper")
-    val handler = AuthQrToolHandler(AuthQrDescriptor, toolDataRepository, QrLoginBrowserSide(requests, digest))
+    val handler = AuthQrToolHandler(AuthQrDescriptor, toolDataRepository, QrLoginBrowserSide(requests, digest, clock = Clock.systemUTC()), clock = Clock.systemUTC())
 
     /** A tool session waiting on a pairing in [status]; returns its id. */
     fun sessionOn(
@@ -40,14 +41,14 @@ class AuthQrToolHandlerTest : BehaviorSpec({
         resolvingAccountId: Long? = null,
         expiresAt: Instant = Instant.now().plusSeconds(60),
     ): UUID {
-        val request = QrLoginRequest(pairingCode = pairingCode, expectedAccountId = expectedAccountId).apply {
+        val request = QrLoginRequest(pairingCode = pairingCode, expectedAccountId = expectedAccountId, createdAt = Instant.now()).apply {
             this.status = status
             this.resolvingAccountId = resolvingAccountId
             this.expiresAt = expiresAt
         }
         every { requests.findById(pairingCode) } returns Optional.of(request)
         val toolSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(AuthQrToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode))
+        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(AuthQrToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode, createdAt = Instant.now()))
         return toolSessionId
     }
 

@@ -34,7 +34,8 @@ class AuthJourney(
     var intent: AuthIntent? = null,
 
     @Column(name = "expires_at", nullable = false)
-    var expiresAt: Instant? = null
+    var expiresAt: Instant? = null,
+    createdAt: Instant
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -72,7 +73,7 @@ class AuthJourney(
     var parentJourneyId: UUID? = null
 
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
+    var createdAt: Instant? = createdAt
 
     @Column(name = "consumed_at")
     var consumedAt: Instant? = null
@@ -81,12 +82,8 @@ class AuthJourney(
     @Column(name = "version", nullable = false)
     var version: Long? = null
 
-    init {
-        createdAt = Instant.now()
-    }
-
-    fun consume() {
-        consumedAt = Instant.now()
+    fun consume(now: Instant) {
+        consumedAt = now
         lifecycle = JourneyLifecycle.CONSUMED
     }
 
@@ -99,8 +96,7 @@ class AuthJourney(
         lifecycle = JourneyLifecycle.CANCELLED
     }
 
-    val isExpired: Boolean
-        get() = expiresAt?.let { Instant.now().isAfter(it) } ?: false
+    fun isExpiredAt(now: Instant): Boolean = expiresAt?.let { now.isAfter(it) } ?: false
 
     companion object {
         const val DEFAULT_ATTEMPT_BUDGET = 3

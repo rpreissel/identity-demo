@@ -18,6 +18,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -31,13 +32,14 @@ class EnrollSmsToolHandler(
     private val enrollmentRepository: AuthSmsEnrollmentRepository,
     private val tanGenerator: TanGenerator,
     private val smsGateway: SmsGateway,
-    private val sendBudget: SmsSendBudget
+    private val sendBudget: SmsSendBudget,
+    private val clock: Clock
 ) {
 
     /** Called directly by EnrollSmsToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        toolDataRepository.save(EnrollSmsToolSession(toolSessionId = toolSessionId))
+        toolDataRepository.save(EnrollSmsToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor(EnrollSmsState.AwaitingPhoneNumber)
     }
 
@@ -77,7 +79,7 @@ class EnrollSmsToolHandler(
 
             is EnrollSmsDecision.Complete -> {
                 sendBudget.received(decision.phoneNumber)
-                val enrollment = enrollmentRepository.save(AuthSmsEnrollment(decision.phoneNumber))
+                val enrollment = enrollmentRepository.save(AuthSmsEnrollment(decision.phoneNumber, createdAt = clock.instant()))
                 ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef(type = SMS_ENROLLMENT_TYPE, id = enrollment.id.toString()),
                     amr = listOf(descriptor.method),

@@ -31,7 +31,7 @@ class NodeSigningKey(
     var privateKeyJwk: String = "",
 
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant = Instant.now(),
+    var createdAt: Instant,
 ) {
     companion object {
         /**

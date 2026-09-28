@@ -16,6 +16,7 @@ import com.example.identity.contract.tool_api.claims.ClaimSource
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -30,13 +31,14 @@ class ConfirmEmailToolHandler(
     private val toolDataRepository: ConfirmEmailToolSessionRepository,
     private val emailCodeGenerator: EmailCodeGenerator,
     private val mailServer: MailServer,
-    private val sendBudget: EmailSendBudget
+    private val sendBudget: EmailSendBudget,
+    private val clock: Clock
 ) {
 
     /** Called directly by ConfirmEmailToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        toolDataRepository.save(ConfirmEmailToolSession(toolSessionId = toolSessionId))
+        toolDataRepository.save(ConfirmEmailToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor(ConfirmEmailState.AwaitingEmail)
     }
 

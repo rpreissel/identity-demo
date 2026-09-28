@@ -15,8 +15,10 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
+import java.time.Clock
 import java.util.Optional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
@@ -26,7 +28,7 @@ class AuthPasswordToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<AuthPasswordToolSessionRepository>()
     val enrollmentRepository = mockk<AuthPasswordEnrollmentRepository>()
-    val handler = AuthPasswordToolHandler(AuthPasswordDescriptor, toolDataRepository, enrollmentRepository)
+    val handler = AuthPasswordToolHandler(AuthPasswordDescriptor, toolDataRepository, enrollmentRepository, clock = Clock.systemUTC())
     val toolSessionId = UUID.randomUUID()
 
     given("start()") {
@@ -51,8 +53,8 @@ class AuthPasswordToolHandlerTest : BehaviorSpec({
     }
 
     given("an active auth-password tool session bound to an enrollment") {
-        val enrollment = AuthPasswordEnrollment(passwordHash = PasswordHasher.hash("hunter2")).apply { id = 1L }
-        val data = AuthPasswordToolSession(toolSessionId = toolSessionId, enrollmentRefId = "1")
+        val enrollment = AuthPasswordEnrollment(passwordHash = PasswordHasher.hash("hunter2"), createdAt = Instant.now()).apply { id = 1L }
+        val data = AuthPasswordToolSession(toolSessionId = toolSessionId, enrollmentRefId = "1", createdAt = Instant.now())
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
         every { enrollmentRepository.findById(1L) } returns Optional.of(enrollment)
 
@@ -77,7 +79,7 @@ class AuthPasswordToolHandlerTest : BehaviorSpec({
 
     given("an auth-password tool session whose enrollment was removed meanwhile, on another channel") {
         val goneSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(goneSessionId) } returns Optional.of(AuthPasswordToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7"))
+        every { toolDataRepository.findById(goneSessionId) } returns Optional.of(AuthPasswordToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7", createdAt = Instant.now()))
         every { enrollmentRepository.findById(7L) } returns Optional.empty()
 
         `when`("a password arrives") {

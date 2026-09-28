@@ -19,6 +19,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -49,6 +50,7 @@ class RetentionJobTest : BehaviorSpec({
         accountService = accountService,
         accountDeletionService = accountDeletionService,
         meterRegistry = SimpleMeterRegistry(),
+        clock = Clock.systemUTC(),
     )
 
     given("expired channels that each carry an AuthContext") {
@@ -56,8 +58,8 @@ class RetentionJobTest : BehaviorSpec({
             val authContextId1 = UUID.randomUUID()
             val authContextId2 = UUID.randomUUID()
             val expired = listOf(
-                ChannelSession().apply { authContextId = authContextId1 },
-                ChannelSession().apply { authContextId = authContextId2 }
+                ChannelSession(now = Instant.now()).apply { authContextId = authContextId1 },
+                ChannelSession(now = Instant.now()).apply { authContextId = authContextId2 }
             )
             val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
             every { channelSessionRepository.findByExpiresAtBefore(any(), any()) } returnsMany listOf(expired, emptyList())
@@ -76,7 +78,7 @@ class RetentionJobTest : BehaviorSpec({
         then("deleteAllById is never called - nothing to orphan, no pointless empty-list call") {
             val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
             every { channelSessionRepository.findByExpiresAtBefore(any(), any()) } returnsMany
-                listOf(listOf(ChannelSession().apply { authContextId = null }), emptyList())
+                listOf(listOf(ChannelSession(now = Instant.now()).apply { authContextId = null }), emptyList())
             val authContextRepository = mockk<AuthContextRepository>(relaxed = true)
 
             job(channelSessionRepository, authContextRepository).cleanup()

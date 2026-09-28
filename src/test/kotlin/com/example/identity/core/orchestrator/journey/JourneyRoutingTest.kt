@@ -16,6 +16,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
+import java.time.Instant
 
 /**
  * A single candidate is started on its own, unless activating it completes it at once
@@ -29,7 +30,7 @@ class JourneyRoutingTest : BehaviorSpec({
         every { ordered(any(), any()) } answers { secondArg<Collection<ToolId>>().toList() }
     }
     val routing = JourneyRouting(ToolHandlerRegistry(listOf(EnrollEmailDescriptor, EnrollSmsDescriptor)), availability)
-    val webChannel = ChannelSession(channel = ChannelType.KEYCLOAK).apply {
+    val webChannel = ChannelSession(channel = ChannelType.KEYCLOAK, now = Instant.now()).apply {
         availableClientTools = mutableSetOf("enroll-email", "enroll-sms")
     }
 

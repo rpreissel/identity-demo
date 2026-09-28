@@ -16,6 +16,9 @@ Die üblichen Fehlerantworten:
 
 - `400 Bad Request`: ungültiger Inhalt oder formal ungültige Anfrage.
 - `401 Unauthorized`: DPoP-Nachweis fehlt oder ist ungültig, oder dem Kanal wird nicht vertraut.
+  Bei DPoP- und Geräte-Proofs nennt der Text nur einen festen Grund (`DpopFailure`, etwa
+  `IAT_IN_FUTURE` bei vorgehender Uhr), bei der Peer-Auth-Assertion von Keycloak gar keinen.
+  Schlüssel-Id, Aussteller, Algorithmus und Claim-Werte stehen nur im Log.
 - `403 Forbidden`: Die Bindung passt nicht, oder eine Regel verbietet die Aktion.
 - `404 Not Found`: Sitzung oder Vorgang unbekannt.
 - `409 Conflict`: unzulässiger Zustandswechsel, nicht erlaubte Aktion, ein zweiter gleichzeitiger

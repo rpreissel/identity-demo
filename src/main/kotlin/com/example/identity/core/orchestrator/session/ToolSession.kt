@@ -33,7 +33,8 @@ class ToolSession(
     var journeyId: UUID? = null,
 
     @Column(name = "expires_at", nullable = false)
-    var expiresAt: Instant? = null
+    var expiresAt: Instant? = null,
+    createdAt: Instant
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -41,7 +42,7 @@ class ToolSession(
     var toolSessionId: UUID? = null
 
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
+    var createdAt: Instant? = createdAt
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 16)
@@ -51,16 +52,10 @@ class ToolSession(
     @Column(name = "version", nullable = false)
     var version: Long? = null
 
-    init {
-        createdAt = Instant.now()
-    }
-
-    val isExpired: Boolean
-        get() = expiresAt?.let { Instant.now().isAfter(it) } ?: false
+    fun isExpiredAt(now: Instant): Boolean = expiresAt?.let { now.isAfter(it) } ?: false
 
     /** Still accepts input: running and within its time. */
-    val isUsable: Boolean
-        get() = status == ToolSessionStatus.RUNNING && !isExpired
+    fun isUsableAt(now: Instant): Boolean = status == ToolSessionStatus.RUNNING && !isExpiredAt(now)
 }
 
 /** Set on the first save, never null afterwards (see `ChannelSession.id`). */

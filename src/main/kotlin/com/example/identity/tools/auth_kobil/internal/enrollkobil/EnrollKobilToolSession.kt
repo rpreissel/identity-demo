@@ -38,7 +38,8 @@ class EnrollKobilToolSession(
      */
     @Column(name = "unlock_secret", nullable = false)
     var unlockSecret: String = "",
+    createdAt: Instant,
 ) {
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant = Instant.now()
+    var createdAt: Instant = createdAt
 }

@@ -18,6 +18,7 @@ import io.mockk.mockk
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.mock.web.MockHttpServletRequest
 import java.net.URI
+import java.time.Clock
 import java.util.Date
 import java.util.UUID
 
@@ -29,9 +30,10 @@ class DeviceProofValidatorTest : BehaviorSpec({
 
     val validator = DeviceProofValidator(
         jwkThumbprintService = JwkThumbprintService(),
-        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository()),
+        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository(), clock = Clock.systemUTC()),
         maxClockSkewSeconds = 30,
-        maxProofAgeSeconds = 120
+        maxProofAgeSeconds = 60,
+        clock = Clock.systemUTC()
     )
 
     val url = "https://example.test/orchestrator/api/v1/tools/${UUID.randomUUID()}/enroll-device"

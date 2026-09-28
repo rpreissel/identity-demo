@@ -5,8 +5,8 @@ import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
+import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 
 /**
  * How long a module's tool-session working data may live (docs/07-betrieb.md #3). The one place
@@ -27,7 +27,8 @@ data class ToolSessionRetentionProperties(
 @Component
 class ToolSessionRetentionDriver(
     private val sweepers: List<ToolSessionSweeper>,
-    private val properties: ToolSessionRetentionProperties
+    private val properties: ToolSessionRetentionProperties,
+    private val clock: Clock
 ) {
     private val log = LoggerFactory.getLogger(ToolSessionRetentionDriver::class.java)
 
@@ -36,7 +37,7 @@ class ToolSessionRetentionDriver(
         initialDelayString = "\${tool-session.initial-sweep-delay:PT1M}"
     )
     fun sweep() {
-        val cutoff = Instant.now().minus(properties.retention)
+        val cutoff = clock.instant().minus(properties.retention)
         sweepers.forEach { sweeper ->
             runCatching { sweeper.sweep(cutoff) }
                 .onFailure { log.error("Tool-session sweep failed for {}", sweeper.javaClass.name, it) }

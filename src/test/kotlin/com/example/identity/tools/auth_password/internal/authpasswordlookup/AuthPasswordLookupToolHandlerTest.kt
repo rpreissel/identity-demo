@@ -13,8 +13,10 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
+import java.time.Clock
 import java.util.Optional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
@@ -24,14 +26,14 @@ class AuthPasswordLookupToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<AuthPasswordLookupToolSessionRepository>()
     val enrollmentRepository = mockk<AuthPasswordEnrollmentRepository>()
-    val handler = AuthPasswordLookupToolHandler(AuthPasswordLookupDescriptor, toolDataRepository, enrollmentRepository)
+    val handler = AuthPasswordLookupToolHandler(AuthPasswordLookupDescriptor, toolDataRepository, enrollmentRepository, clock = Clock.systemUTC())
     val toolSessionId = UUID.randomUUID()
 
     given("an active auth-password-lookup tool session") {
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(AuthPasswordLookupToolSession(toolSessionId = toolSessionId))
+        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(AuthPasswordLookupToolSession(toolSessionId = toolSessionId, createdAt = Instant.now()))
 
         `when`("email and password resolve to an active, matching enrollment") {
-            val enrollment = AuthPasswordEnrollment(passwordHash = PasswordHasher.hash("hunter2")).apply { id = 1L }
+            val enrollment = AuthPasswordEnrollment(passwordHash = PasswordHasher.hash("hunter2"), createdAt = Instant.now()).apply { id = 1L }
             every { enrollmentRepository.findById(1L) } returns Optional.of(enrollment)
 
             then("it authenticates for that account") {

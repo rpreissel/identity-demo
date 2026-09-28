@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
+import java.time.Clock
 
 /**
  * The backend half of tool availability per channel type (the other half is
@@ -23,7 +23,8 @@ class ToolAvailabilityService(
     private val repository: ToolAvailabilityRepository,
     private val toolRegistry: ToolHandlerRegistry,
     private val defaults: ToolDefaults,
-    private val demoMode: DemoMode
+    private val demoMode: DemoMode,
+    private val clock: Clock
 ) {
     /**
      * Demo-only tools are off outside `demo.mode`. Kept apart from the operator's switches, so no
@@ -105,7 +106,7 @@ class ToolAvailabilityService(
         val entry = repository.findByIdOrNull(ToolAvailabilityKey(toolId, channel))
             ?: ToolAvailability(toolId = toolId, channel = channel)
         change(entry)
-        entry.updatedAt = Instant.now()
+        entry.updatedAt = clock.instant()
         repository.save(entry)
     }
 }

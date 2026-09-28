@@ -19,17 +19,12 @@ class DeviceAccountLink(
     var bindingKeyRef: String? = null,
 
     @Column(name = "account_id", nullable = false)
-    var accountId: Long? = null
+    var accountId: Long? = null,
+    now: Instant
 ) {
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
+    var createdAt: Instant? = now
 
     @Column(name = "updated_at", nullable = false)
-    var updatedAt: Instant? = null
-
-    init {
-        val now = Instant.now()
-        createdAt = now
-        updatedAt = now
-    }
+    var updatedAt: Instant? = now
 }

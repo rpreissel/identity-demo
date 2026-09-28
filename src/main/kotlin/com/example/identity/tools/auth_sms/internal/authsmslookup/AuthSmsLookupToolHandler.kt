@@ -13,6 +13,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -28,12 +29,13 @@ class AuthSmsLookupToolHandler(
     private val tanGenerator: TanGenerator,
     private val smsGateway: SmsGateway,
     private val sendBudget: SmsSendBudget,
-    private val accountDirectory: AccountDirectory
+    private val accountDirectory: AccountDirectory,
+    private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        toolDataRepository.save(AuthSmsLookupToolSession(toolSessionId = toolSessionId))
+        toolDataRepository.save(AuthSmsLookupToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor(AuthSmsLookupState.AwaitingEmail)
     }
 

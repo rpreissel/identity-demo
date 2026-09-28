@@ -8,7 +8,7 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import tools.jackson.module.kotlin.jacksonObjectMapper
-import java.time.Instant
+import java.time.Clock
 import java.time.LocalDate
 import java.util.UUID
 
@@ -132,7 +132,7 @@ class NectRejectedException(val text: Text) : RuntimeException(text.template)
  * [fail] and [cancel] are what the jump page does, reached over `/mock-nect/...`.
  */
 @Service
-class NectIdent(private val cases: NectCaseRepository) {
+class NectIdent(private val cases: NectCaseRepository, private val clock: Clock) {
 
     private val json = jacksonObjectMapper()
 
@@ -150,7 +150,7 @@ class NectIdent(private val cases: NectCaseRepository) {
                 id = UUID.randomUUID(),
                 callbackUri = callbackUri,
                 requested = requested.joinToString(",") { it.wireName },
-                createdAt = Instant.now()
+                createdAt = clock.instant()
             )
         )
         return NectCaseRef(checkNotNull(case.id), jumpUrl(checkNotNull(case.id)))
@@ -176,7 +176,7 @@ class NectIdent(private val cases: NectCaseRepository) {
             NectCaseStatus.FAILED -> NectResult.Failed(NectFailure.of(checkNotNull(case.reason)))
             NectCaseStatus.CANCELLED -> NectResult.Cancelled
         }
-        case.redeemedAt = Instant.now()
+        case.redeemedAt = clock.instant()
         return result
     }
 
@@ -203,7 +203,7 @@ class NectIdent(private val cases: NectCaseRepository) {
         if (attributes.name.isNullOrBlank() || attributes.vorname.isNullOrBlank()) {
             throw NectRejectedException(Text("Name und Vorname werden mindestens benötigt"))
         }
-        if (procedure == NectProcedure.EPASS && expiryDate != null && expiryDate.isBefore(LocalDate.now())) {
+        if (procedure == NectProcedure.EPASS && expiryDate != null && expiryDate.isBefore(LocalDate.now(clock))) {
             return finish(case, NectCaseStatus.FAILED, reason = NectFailure.PASSPORT_EXPIRED)
         }
         case.procedure = procedure.wireName
@@ -230,7 +230,7 @@ class NectIdent(private val cases: NectCaseRepository) {
     private fun finish(case: NectCase, status: NectCaseStatus, reason: NectFailure? = null): String {
         case.status = status
         case.reason = reason?.wireName
-        case.finishedAt = Instant.now()
+        case.finishedAt = clock.instant()
         val uri = checkNotNull(case.callbackUri)
         return uri + (if ('?' in uri) "&" else "?") + "nectCaseId=${case.id}"
     }

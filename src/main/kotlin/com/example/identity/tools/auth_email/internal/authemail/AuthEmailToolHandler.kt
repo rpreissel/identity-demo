@@ -13,6 +13,7 @@ import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -27,7 +28,8 @@ class AuthEmailToolHandler(
     private val accountDirectory: AccountDirectory,
     private val emailCodeGenerator: EmailCodeGenerator,
     private val mailServer: MailServer,
-    private val sendBudget: EmailSendBudget
+    private val sendBudget: EmailSendBudget,
+    private val clock: Clock
 ) {
 
     /**
@@ -47,7 +49,7 @@ class AuthEmailToolHandler(
         }
         val issued = emailCodeGenerator.issue()
         toolDataRepository.save(
-            AuthEmailToolSession(toolSessionId = toolSessionId, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt)
+            AuthEmailToolSession(toolSessionId = toolSessionId, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = clock.instant())
         )
         mailServer.sendCode(email, issued.plainCode)
 

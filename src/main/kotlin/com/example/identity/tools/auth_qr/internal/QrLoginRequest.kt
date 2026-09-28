@@ -29,7 +29,8 @@ class QrLoginRequest(
     var pairingCode: String? = null,
 
     @Column(name = "expected_account_id")
-    var expectedAccountId: Long? = null
+    var expectedAccountId: Long? = null,
+    createdAt: Instant
 ) {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -45,12 +46,8 @@ class QrLoginRequest(
     var confirmationAttempts: Int = 0
 
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
+    var createdAt: Instant? = createdAt
 
     @Column(name = "expires_at", nullable = false)
     var expiresAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
 }

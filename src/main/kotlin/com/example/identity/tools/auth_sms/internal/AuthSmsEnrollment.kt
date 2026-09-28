@@ -14,15 +14,12 @@ import java.time.Instant
 @Entity
 @Table(schema = "auth_sms", name = "enrollment")
 class AuthSmsEnrollment(
-    var phoneNumber: String? = null
+    var phoneNumber: String? = null,
+    createdAt: Instant
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
 
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

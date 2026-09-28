@@ -18,8 +18,10 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import java.time.Clock
 import java.util.Optional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories and the account directory mocked with MockK.
@@ -30,10 +32,10 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<AuthEmailLookupToolSessionRepository>()
     val accountDirectory = mockk<AccountDirectory>()
-    val emailCodeGenerator = EmailCodeGenerator("test-pepper")
+    val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = Clock.systemUTC())
     val sendBudget = mockk<EmailSendBudget>(relaxed = true).also { every { it.trySend(any()) } returns true }
-    val mailServer = MailServer()
-    val handler = AuthEmailLookupToolHandler(AuthEmailLookupDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, mailServer, sendBudget)
+    val mailServer = MailServer(clock = Clock.systemUTC())
+    val handler = AuthEmailLookupToolHandler(AuthEmailLookupDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, mailServer, sendBudget, clock = Clock.systemUTC())
 
     // What every unresolved submission answers: the code step, no demo code, nothing naming an account.
     val neutralAnswer = ToolOutcome.InProgress(nextStep = "codeInput", stepData = MissingFields(listOf("code")), demo = emptyMap())
@@ -41,7 +43,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
     /** A fresh session awaiting the email; each submission gets its own, so they cannot see each other's writes. */
     fun awaitingEmail(): Pair<UUID, AuthEmailLookupToolSession> {
         val toolSessionId = UUID.randomUUID()
-        val data = AuthEmailLookupToolSession(toolSessionId = toolSessionId)
+        val data = AuthEmailLookupToolSession(toolSessionId = toolSessionId, createdAt = Instant.now())
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
         every { toolDataRepository.save(any()) } answers { firstArg() }
         return toolSessionId to data
@@ -126,7 +128,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
         val toolSessionId = UUID.randomUUID()
         val issued = emailCodeGenerator.issue()
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(
-            AuthEmailLookupToolSession(toolSessionId = toolSessionId, accountId = 42L, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt)
+            AuthEmailLookupToolSession(toolSessionId = toolSessionId, accountId = 42L, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = Instant.now())
         )
         every { accountDirectory.anchorValue(42L, AttributeType.EMAIL) } returns "max@example.com"
 
@@ -159,7 +161,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
         val toolSessionId = UUID.randomUUID()
         val issued = emailCodeGenerator.issue()
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(
-            AuthEmailLookupToolSession(toolSessionId = toolSessionId, accountId = null, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt)
+            AuthEmailLookupToolSession(toolSessionId = toolSessionId, accountId = null, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = Instant.now())
         )
 
         `when`("submitting even the issued code") {

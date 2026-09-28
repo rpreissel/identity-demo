@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 import com.example.identity.tools.auth_kobil.api.v1.KobilActivationStep
 
@@ -32,6 +33,7 @@ class EnrollKobilToolHandler(
     private val secrets: KobilSecrets,
     private val ssms: KobilSsms,
     @Value("\${identity.kobil.tenant-id:identity-demo}") private val tenantId: String,
+    private val clock: Clock,
 ) {
 
     /**
@@ -55,6 +57,7 @@ class EnrollKobilToolHandler(
                 activationCode = activationCode,
                 pin = pin,
                 unlockSecret = unlockSecret,
+                createdAt = clock.instant(),
             )
         )
 
@@ -100,6 +103,7 @@ class EnrollKobilToolHandler(
                             unlockSecretHash = if (decision.biometricConsent) secrets.hash(session.unlockSecret) else null,
                             bindingKeyRef = bindingKeyRef,
                             label = label,
+                            createdAt = clock.instant(),
                         )
                     )
                 // The activation secrets have done their job: the PIN now lives in the credential,

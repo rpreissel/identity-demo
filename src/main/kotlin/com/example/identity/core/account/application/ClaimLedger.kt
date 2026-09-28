@@ -18,6 +18,7 @@ import com.example.identity.contract.tool_api.claims.TrustLevel
 import com.example.identity.contract.tool_api.claims.trustLevel
 import com.example.identity.contract.tool_api.claims.validateValue
 import org.springframework.stereotype.Component
+import java.time.Clock
 import java.time.Instant
 import java.util.UUID
 
@@ -31,6 +32,7 @@ class ClaimLedger(
     private val accountClaimRepository: AccountClaimRepository,
     private val accountRetractionRepository: AccountRetractionRepository,
     private val changeLog: ChangeLog,
+    private val clock: Clock,
 ) {
 
     /**
@@ -58,7 +60,7 @@ class ClaimLedger(
             }
             .toMutableSet()
         return claims.map { claim ->
-            val establishedAt = Instant.now()
+            val establishedAt = clock.instant()
             if (logged.add(
                     ClaimKey(
                         claim.attributeType,

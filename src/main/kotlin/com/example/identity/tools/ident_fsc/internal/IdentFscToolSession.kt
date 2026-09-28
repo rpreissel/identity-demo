@@ -28,12 +28,9 @@ class IdentFscToolSession(
     var birthDate: LocalDate? = null,
     /** SHA-256 of the submitted code - the code itself is never persisted. */
     @Column(name = "fsc_hash")
-    var fscHash: String? = null
+    var fscHash: String? = null,
+    createdAt: Instant
 ) {
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

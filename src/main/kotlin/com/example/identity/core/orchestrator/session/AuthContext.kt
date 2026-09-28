@@ -24,7 +24,8 @@ class AuthContext(
     var accountId: Long? = null,
 
     @Column(name = "keycloak_session_id", length = 64)
-    var keycloakSessionId: String? = null
+    var keycloakSessionId: String? = null,
+    now: Instant
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -51,7 +52,7 @@ class AuthContext(
     var refreshToken: String? = null
 
     @Column(name = "auth_time", nullable = false)
-    var authTime: Instant? = null
+    var authTime: Instant? = now
 
     @Column(name = "access_expires_at")
     var accessExpiresAt: Instant? = null
@@ -60,15 +61,10 @@ class AuthContext(
     var refreshExpiresAt: Instant? = null
 
     @Column(name = "updated_at", nullable = false)
-    var updatedAt: Instant? = null
+    var updatedAt: Instant? = now
 
     @Version
     @Column(name = "version", nullable = false)
     var version: Long? = null
 
-    init {
-        val now = Instant.now()
-        authTime = now
-        updatedAt = now
-    }
 }

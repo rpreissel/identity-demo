@@ -12,8 +12,10 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import java.time.Clock
 import java.util.Optional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. enroll-qr is a pure opt-in:
@@ -23,7 +25,7 @@ class EnrollQrToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<EnrollQrToolSessionRepository>()
     val qrOptInRepository = mockk<QrOptInRepository>()
-    val handler = EnrollQrToolHandler(EnrollQrDescriptor, toolDataRepository, qrOptInRepository)
+    val handler = EnrollQrToolHandler(EnrollQrDescriptor, toolDataRepository, qrOptInRepository, clock = Clock.systemUTC())
 
     given("start()") {
         `when`("an enroll-qr run begins") {
@@ -41,7 +43,7 @@ class EnrollQrToolHandlerTest : BehaviorSpec({
 
     given("an active enroll-qr tool session") {
         val toolSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(EnrollQrToolSession(toolSessionId = toolSessionId))
+        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(EnrollQrToolSession(toolSessionId = toolSessionId, createdAt = Instant.now()))
         every { qrOptInRepository.save(any()) } answers { firstArg<QrOptIn>().apply { id = 5L } }
 
         `when`("the user confirms") {
@@ -63,7 +65,7 @@ class EnrollQrToolHandlerTest : BehaviorSpec({
         every { toolDataRepository.findById(unknownId) } returns Optional.empty()
         // Its own opt-in repository, so no earlier confirmation counts against the check below.
         val untouchedOptIns = mockk<QrOptInRepository>()
-        val isolatedHandler = EnrollQrToolHandler(EnrollQrDescriptor, toolDataRepository, untouchedOptIns)
+        val isolatedHandler = EnrollQrToolHandler(EnrollQrDescriptor, toolDataRepository, untouchedOptIns, clock = Clock.systemUTC())
 
         `when`("a confirmation arrives") {
             val result = runCatching { isolatedHandler.patch(unknownId) }

@@ -9,8 +9,10 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import java.time.Clock
 import java.util.Optional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, the repository mocked with MockK. enroll-email is a one-shot,
@@ -19,7 +21,7 @@ import java.util.UUID
 class EnrollEmailToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<EnrollEmailToolSessionRepository>()
-    val handler = EnrollEmailToolHandler(EnrollEmailDescriptor, toolDataRepository)
+    val handler = EnrollEmailToolHandler(EnrollEmailDescriptor, toolDataRepository, clock = Clock.systemUTC())
 
     // No amr: control of the address was proven by confirm-email, not in this run.
     val expected = ToolOutcome.Completed.Enrolled(
@@ -45,7 +47,7 @@ class EnrollEmailToolHandlerTest : BehaviorSpec({
 
     given("a completed enroll-email tool session") {
         val toolSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(EnrollEmailToolSession(toolSessionId = toolSessionId))
+        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(EnrollEmailToolSession(toolSessionId = toolSessionId, createdAt = Instant.now()))
 
         `when`("it is read again") {
             val outcome = handler.read(toolSessionId)

@@ -9,6 +9,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -19,13 +20,14 @@ import java.util.UUID
 class AuthQrLookupToolHandler(
     private val descriptor: AuthQrLookupDescriptor,
     private val toolDataRepository: AuthQrLookupToolSessionRepository,
-    private val browserSide: QrLoginBrowserSide
+    private val browserSide: QrLoginBrowserSide,
+    private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
         val pairingCode = browserSide.open(expectedAccountId = null)
-        toolDataRepository.save(AuthQrLookupToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode))
+        toolDataRepository.save(AuthQrLookupToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode, createdAt = clock.instant()))
         return waitingFor(pairingCode)
     }
 

@@ -5,7 +5,7 @@ import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.KeyUse
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
-import java.time.Instant
+import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
@@ -16,7 +16,7 @@ import org.springframework.dao.DataIntegrityViolationException
  * Neustart aendert sie nicht. Erzeugt wird ein Paar beim ersten Zugriff; starten zwei Instanzen
  * gleichzeitig, laeuft die zweite in den Primaerschluessel und liest das bereits angelegte Paar.
  */
-class NodeKeys(private val repository: NodeSigningKeyRepository) {
+class NodeKeys(private val repository: NodeSigningKeyRepository, private val clock: Clock) {
     private val cache = ConcurrentHashMap<String, ECKey>()
 
     /** Das Paar fuer [purpose]; [keyIdPrefix] beginnt die kid eines neu erzeugten. */
@@ -25,8 +25,9 @@ class NodeKeys(private val repository: NodeSigningKeyRepository) {
 
     private fun loadOrCreate(purpose: String, keyIdPrefix: String): ECKey {
         stored(purpose)?.let { return it }
+        val now = clock.instant()
         val generated = ECKeyGenerator(Curve.P_256)
-            .keyID("$keyIdPrefix-" + Instant.now().toEpochMilli())
+            .keyID("$keyIdPrefix-" + now.toEpochMilli())
             .algorithm(JWSAlgorithm.ES256)
             .keyUse(KeyUse.SIGNATURE)
             .generate()
@@ -35,7 +36,7 @@ class NodeKeys(private val repository: NodeSigningKeyRepository) {
                 purpose = purpose,
                 publicKeyJwk = generated.toPublicJWK().toJSONString(),
                 privateKeyJwk = generated.toJSONString(),
-                createdAt = Instant.now(),
+                createdAt = now,
             )
             generated
         } catch (e: DataIntegrityViolationException) {

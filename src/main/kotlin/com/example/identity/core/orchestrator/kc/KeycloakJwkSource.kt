@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.JWKSet
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.net.URI
+import java.time.Clock
 import java.time.Instant
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -18,6 +19,7 @@ import kotlin.concurrent.withLock
 class KeycloakJwkSource(
     @Value("\${kc.peer-auth.jwks-uri}") private val jwksUri: String,
     @Value("\${kc.peer-auth.jwks-cache-ttl-seconds:600}") private val cacheTtlSeconds: Long,
+    private val clock: Clock,
     // Only under the `keycloak` profile; without it the JVM defaults apply.
     private val keycloakHttp: KeycloakHttp? = null,
 ) {
@@ -36,7 +38,7 @@ class KeycloakJwkSource(
 
     private fun currentSet(): JWKSet = lock.withLock {
         val existing = cached
-        if (existing != null && Instant.now().isBefore(cachedAt.plusSeconds(cacheTtlSeconds))) {
+        if (existing != null && clock.instant().isBefore(cachedAt.plusSeconds(cacheTtlSeconds))) {
             existing
         } else {
             fetchAndCache()
@@ -45,14 +47,14 @@ class KeycloakJwkSource(
 
     private fun refreshUnlessRecent(): JWKSet = lock.withLock {
         val existing = cached
-        if (existing != null && Instant.now().isBefore(cachedAt.plus(MIN_REFETCH_INTERVAL))) existing else fetchAndCache()
+        if (existing != null && clock.instant().isBefore(cachedAt.plus(MIN_REFETCH_INTERVAL))) existing else fetchAndCache()
     }
 
     private fun fetchAndCache(): JWKSet {
         val fetched = keycloakHttp?.let { JWKSet.parse(it.getText(jwksUri)) }
             ?: JWKSet.load(URI.create(jwksUri).toURL(), CONNECT_TIMEOUT_MS, READ_TIMEOUT_MS, SIZE_LIMIT_BYTES)
         cached = fetched
-        cachedAt = Instant.now()
+        cachedAt = clock.instant()
         return fetched
     }
 

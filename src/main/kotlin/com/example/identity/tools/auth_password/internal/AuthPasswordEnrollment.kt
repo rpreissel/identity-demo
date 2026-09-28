@@ -15,15 +15,12 @@ import java.time.Instant
 @Entity
 @Table(schema = "auth_password", name = "enrollment")
 class AuthPasswordEnrollment(
-    var passwordHash: String? = null
+    var passwordHash: String? = null,
+    createdAt: Instant
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
 
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

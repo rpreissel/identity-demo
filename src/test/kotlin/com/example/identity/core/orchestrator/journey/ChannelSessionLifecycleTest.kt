@@ -49,12 +49,12 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
     }
 
     fun channel(type: ChannelType, state: ChannelState = ChannelState.AUTHENTICATED) =
-        ChannelSession(channel = type).apply { this.state = state }
+        ChannelSession(channel = type, now = Instant.now()).apply { this.state = state }
 
     fun tokenPair() = TokenPair("access", Instant.now().plusSeconds(60), Instant.now().plusSeconds(600))
 
     /** A logged-in context with tokens, as the channel carries it before [ChannelSessionLifecycle.end]. */
-    fun loggedInContext(keycloakSessionId: String?) = AuthContext(accountId = 1L, keycloakSessionId = keycloakSessionId).apply {
+    fun loggedInContext(keycloakSessionId: String?) = AuthContext(accountId = 1L, keycloakSessionId = keycloakSessionId, now = Instant.now()).apply {
         authContextId = UUID.randomUUID()
         accessToken = "access"
         refreshToken = "refresh"

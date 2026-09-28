@@ -51,8 +51,10 @@ Geräte-Proofs und die Peer-Auth-Assertions von Keycloak.
 **Kein Server-Nonce (`DPoP-Nonce`, RFC 9449 Abschnitt 8) – bewusst.** Der Server gibt keinen Nonce
 vor, den der nächste Proof enthalten muss. Ein Proof ist deshalb nicht nur für den Moment gültig, in
 dem er entsteht: Wer den privaten Schlüssel kurz nutzen kann (etwa Schadcode im Browser), kann Proofs
-für die nächsten gut zwei Minuten im Voraus berechnen (`max-age-seconds` 120 plus Uhrenabweichung
-30) und später einsetzen – jeden nur einmal (D-6). Ein Nonce würde das auf einen Rundlauf verkürzen,
+für die nächsten anderthalb Minuten im Voraus berechnen (`max-age-seconds` 60 plus Uhrenabweichung
+30) und später einsetzen – jeden nur einmal (D-6). Solange es keinen Nonce gibt, bleibt
+`max-age-seconds` deshalb knapp; die Toleranz für ein `iat` in der Zukunft
+(`max-clock-skew-seconds`) fängt Uhren ab, die gegenüber dem Server vorgehen. Ein Nonce würde das auf einen Rundlauf verkürzen,
 kostet aber bei jeder Anfrage eine zusätzliche Antwort mit `use_dpop_nonce` und einen gemeinsamen
 Nonce-Speicher über alle Instanzen. Ein Nonce lässt sich nachrüsten,
 ohne dass sich der Vertrag der Clients ändert (sie müssen nur den Header zurückgeben).

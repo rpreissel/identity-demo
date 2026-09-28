@@ -13,6 +13,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import io.mockk.verifyOrder
+import java.time.Instant
 
 /**
  * Unit test of [AccountDeletionService]: the id fields of [ChannelSession] are cleared before the
@@ -44,7 +45,7 @@ class AccountDeletionServiceTest : BehaviorSpec({
         then("every one of them is logged out with BOTH authContextId and authEvidenceId cleared, not just one") {
             val accountService = mockk<AccountService>(relaxed = true)
             every { accountService.allEnrollmentRefs(1L) } returns emptyList()
-            val session = ChannelSession().apply {
+            val session = ChannelSession(now = Instant.now()).apply {
                 state = ChannelState.AUTHENTICATED
                 authContextId = java.util.UUID.randomUUID()
                 authEvidenceId = java.util.UUID.randomUUID()
@@ -130,7 +131,7 @@ class AccountDeletionServiceTest : BehaviorSpec({
             val accountService = mockk<AccountService>(relaxed = true)
             every { accountService.allEnrollmentRefs(1L) } returns emptyList()
             val channelSessionId = java.util.UUID.randomUUID()
-            val session = ChannelSession().apply { this.channelSessionId = channelSessionId }
+            val session = ChannelSession(now = Instant.now()).apply { this.channelSessionId = channelSessionId }
             val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
             every { channelSessionRepository.findByAccountId(1L) } returns listOf(session)
             every { channelSessionRepository.save(any()) } returns session

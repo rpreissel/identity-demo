@@ -6,8 +6,8 @@ import com.example.identity.core.orchestrator.domain.AuthIntent
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 import java.util.UUID
 import com.example.identity.core.orchestrator.domain.AcrLevels
 
@@ -16,7 +16,8 @@ import com.example.identity.core.orchestrator.domain.AcrLevels
 class SessionManagementService(
     private val channelSessionRepository: ChannelSessionRepository,
     private val toolSessionRepository: ToolSessionRepository,
-    private val deviceAccountLinkRepository: DeviceAccountLinkRepository
+    private val deviceAccountLinkRepository: DeviceAccountLinkRepository,
+    private val clock: Clock
 ) {
 
     // ChannelSession management ------------------------------------------------
@@ -31,7 +32,8 @@ class SessionManagementService(
         ttl: Duration,
         accountId: Long?
     ): ChannelSession {
-        val session = ChannelSession(channel, bindingKeyRef, Instant.now().plus(ttl))
+        val now = clock.instant()
+        val session = ChannelSession(channel, bindingKeyRef, now.plus(ttl), now)
         session.accountId = accountId
         return channelSessionRepository.save(session)
     }
@@ -50,7 +52,8 @@ class SessionManagementService(
         availableTools: Set<String>,
         entryIntent: AuthIntent = AuthIntent.KC_SELECT_METHOD
     ): ChannelSession {
-        val session = ChannelSession(ChannelType.KEYCLOAK, null, Instant.now().plus(ttl))
+        val now = clock.instant()
+        val session = ChannelSession(ChannelType.KEYCLOAK, null, now.plus(ttl), now)
         session.channelSessionId = channelSessionId
         session.channelAnchor = channelAnchor
         session.accountId = accountId
@@ -61,21 +64,21 @@ class SessionManagementService(
 
     fun findChannelSessionById(channelSessionId: UUID): ChannelSession? =
         channelSessionRepository.findByIdOrNull(channelSessionId)
-            ?.takeIf { !it.isExpired }
+            ?.takeIf { !it.isExpiredAt(clock.instant()) }
 
     /** The channel this request works on, read again after a write. Gone only if it expired meanwhile. */
     fun reloadChannelSession(channelSessionId: UUID): ChannelSession =
         checkNotNull(findChannelSessionById(channelSessionId)) { "Channel $channelSessionId vanished mid-request" }
 
     fun updateChannelSession(session: ChannelSession): ChannelSession {
-        session.touch()
+        session.touch(clock.instant())
         return channelSessionRepository.save(session)
     }
 
     fun updateChannelState(channelSessionId: UUID, newState: ChannelState) {
         channelSessionRepository.findByIdOrNull(channelSessionId)?.let { session ->
             session.state = newState
-            session.touch()
+            session.touch(clock.instant())
             channelSessionRepository.save(session)
         }
     }
@@ -88,7 +91,7 @@ class SessionManagementService(
         channelSessionRepository.findByIdOrNull(channelSessionId)?.let { session ->
             val effectiveFloor = session.acrFloor ?: AcrLevels.DEFAULT_REQUIRED_ACR.value
             session.acrFloor = AcrLevels.max(effectiveFloor, requiredAcr)
-            session.touch()
+            session.touch(clock.instant())
             channelSessionRepository.save(session)
         }
     }
@@ -97,7 +100,7 @@ class SessionManagementService(
         channelSessionRepository.findByIdOrNull(channelSessionId)?.let { session ->
             session.accountId = accountId
             session.authContextId = authContextId
-            session.touch()
+            session.touch(clock.instant())
             channelSessionRepository.save(session)
         }
     }
@@ -112,22 +115,24 @@ class SessionManagementService(
     fun linkDeviceToAccount(bindingKeyRef: String, accountId: Long) {
         val existing = deviceAccountLinkRepository.findByIdOrNull(bindingKeyRef)
         if (existing == null) {
-            deviceAccountLinkRepository.save(DeviceAccountLink(bindingKeyRef, accountId))
+            deviceAccountLinkRepository.save(DeviceAccountLink(bindingKeyRef, accountId, clock.instant()))
         } else if (existing.accountId != accountId) {
             existing.accountId = accountId
-            existing.updatedAt = Instant.now()
+            existing.updatedAt = clock.instant()
             deviceAccountLinkRepository.save(existing)
         }
     }
 
     // ToolSession management -----------------------------------------------------
 
-    fun createToolSession(journeyId: UUID, ttl: Duration): ToolSession =
-        toolSessionRepository.save(ToolSession(journeyId, Instant.now().plus(ttl)))
+    fun createToolSession(journeyId: UUID, ttl: Duration): ToolSession {
+        val now = clock.instant()
+        return toolSessionRepository.save(ToolSession(journeyId, now.plus(ttl), now))
+    }
 
     fun findToolSessionById(toolSessionId: UUID): ToolSession? =
         toolSessionRepository.findByIdOrNull(toolSessionId)
-            ?.takeIf { it.isUsable }
+            ?.takeIf { it.isUsableAt(clock.instant()) }
 
     /**
      * Ends a tool session for good as [status] says. Needed at once, not at its TTL: a completed

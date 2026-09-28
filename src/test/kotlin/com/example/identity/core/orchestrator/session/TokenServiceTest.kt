@@ -15,6 +15,7 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.Clock
 import java.time.Instant
 import java.util.Optional
 import java.util.UUID
@@ -36,7 +37,7 @@ class TokenServiceTest : BehaviorSpec({
         authEvidenceId: UUID? = UUID.randomUUID(),
         // A context with tokens belongs to a login whose session is open.
         keycloakSessionId: String? = if (refreshExpiresAt != null) "${TokenService.MOCK_SESSION_PREFIX}test" else null
-    ) = AuthContext(accountId = accountId, keycloakSessionId = keycloakSessionId).apply {
+    ) = AuthContext(accountId = accountId, keycloakSessionId = keycloakSessionId, now = Instant.now()).apply {
         this.accessToken = accessToken
         this.accessExpiresAt = accessExpiresAt
         this.refreshToken = refreshToken
@@ -44,12 +45,13 @@ class TokenServiceTest : BehaviorSpec({
         this.authEvidenceId = authEvidenceId
     }
 
-    fun evidence(accountId: Long? = 42L) = EvidenceTrail(accountId = accountId).apply {
+    fun evidence(accountId: Long? = 42L) = EvidenceTrail(accountId = accountId, now = Instant.now()).apply {
         addAmr(
             listOf(
                 MethodEvidence(MethodName("sms"), AcrLevel.LOA1, amrSourceId = "auth-sms", source = AmrSource.ORCHESTRATOR),
                 MethodEvidence(MethodName("password"), AcrLevel.LOA1, amrSourceId = "auth-password", source = AmrSource.ORCHESTRATOR),
-            )
+            ),
+            now = Instant.now()
         )
     }
 
@@ -72,7 +74,7 @@ class TokenServiceTest : BehaviorSpec({
         authPolicy: AuthPolicy = policy(),
         accountService: AccountService = mockk(relaxed = true),
         personDirectory: PersonDirectory = mockk(relaxed = true)
-    ) = TokenService(repository, authEvidenceService, authPolicy, accountService, personDirectory)
+    ) = TokenService(repository, authEvidenceService, authPolicy, accountService, personDirectory, clock = Clock.systemUTC())
 
     given("an AccessToken that still has well over minValiditySeconds left") {
         val authContextId = UUID.randomUUID()

@@ -19,15 +19,12 @@ class DeviceEnrollment(
     var crv: String? = null,
     var x: String? = null,
     var y: String? = null,
-    var thumbprint: String? = null
+    var thumbprint: String? = null,
+    createdAt: Instant
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
 
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

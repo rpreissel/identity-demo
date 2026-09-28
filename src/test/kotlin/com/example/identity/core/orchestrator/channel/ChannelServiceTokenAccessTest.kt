@@ -11,6 +11,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Token and ID claims exist only for an authenticated APP channel. A KEYCLOAK channel never has
@@ -29,7 +30,7 @@ class ChannelServiceTokenAccessTest : BehaviorSpec({
 
     given("an authenticated KEYCLOAK channel") {
         every { guard.requireChannel(channelSessionId, any()) } returns
-            ChannelSession(channel = ChannelType.KEYCLOAK).apply { state = ChannelState.AUTHENTICATED }
+            ChannelSession(channel = ChannelType.KEYCLOAK, now = Instant.now()).apply { state = ChannelState.AUTHENTICATED }
 
         then("the AccessToken is refused with 409") {
             shouldThrow<OrchestratorException> { service.getToken(channelSessionId, "kc", 30) }

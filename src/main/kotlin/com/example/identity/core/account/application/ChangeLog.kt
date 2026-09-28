@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
+import java.time.Clock
 import java.time.Instant
 
 /** Why a method stopped being active. */
@@ -28,7 +29,7 @@ enum class MethodDeactivationReason {
  * because only the account itself changes the account.
  */
 @Component
-class ChangeLog(private val repository: ChangeLogRepository) {
+class ChangeLog(private val repository: ChangeLogRepository, private val clock: Clock) {
 
     /**
      * An identification run. Only the named references of the tool's report are kept: where to ask,
@@ -87,14 +88,14 @@ class ChangeLog(private val repository: ChangeLogRepository) {
 
     private fun record(
         accountId: Long, type: ChangeType, subject: String? = null, acr: String? = null,
-        at: Instant = Instant.now(), details: Map<String, Any?> = emptyMap(),
+        at: Instant? = null, details: Map<String, Any?> = emptyMap(),
         lookupKey: String? = null, lookupKeyId: String? = null, personId: String? = null,
     ) {
         repository.save(
             ChangeLogEntry(
                 accountId = accountId, changeType = type, subject = subject, acr = acr,
                 details = mapOf("type" to type.name, "version" to type.detailsVersion) + details.filterValues { it != null },
-                occurredAt = at, lookupKey = lookupKey, lookupKeyId = lookupKeyId, personId = personId,
+                occurredAt = at ?: clock.instant(), lookupKey = lookupKey, lookupKeyId = lookupKeyId, personId = personId,
             )
         )
     }
@@ -115,10 +116,11 @@ class ChangeLogRetention(
     private val transactions: TransactionTemplate,
     private val meterRegistry: MeterRegistry,
     @Value("\${account.change-log.retention-years:10}") private val retentionYears: Long,
+    private val clock: Clock,
 ) {
     @Scheduled(fixedDelay = 86_400_000, initialDelay = 300_000)
     fun sweep() {
-        val deleted = purge(Instant.now())
+        val deleted = purge(clock.instant())
         meterRegistry.counter("identity.retention.deleted", "table", "change_log").increment(deleted.toDouble())
     }
 

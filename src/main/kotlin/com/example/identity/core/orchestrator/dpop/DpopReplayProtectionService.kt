@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.security.MessageDigest
+import java.time.Clock
 import java.time.Instant
 
 /**
@@ -15,7 +16,7 @@ import java.time.Instant
  * because the client chooses `jti`.
  */
 @Component
-class DpopReplayProtectionService(private val repository: DpopProofReplayRepository) {
+class DpopReplayProtectionService(private val repository: DpopProofReplayRepository, private val clock: Clock) {
 
     /**
      * Its own transaction: this runs during argument resolution, and a duplicate-key violation must
@@ -27,7 +28,7 @@ class DpopReplayProtectionService(private val repository: DpopProofReplayReposit
         try {
             repository.insert(key, expiresAt)
         } catch (_: DataIntegrityViolationException) {
-            throw DpopValidationException("DPoP proof replay detected")
+            throw DpopValidationException(DpopFailure.REPLAY)
         }
     }
 
@@ -38,7 +39,7 @@ class DpopReplayProtectionService(private val repository: DpopProofReplayReposit
     @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
     @Transactional
     fun cleanupExpiredEntries() {
-        repository.deleteExpired(Instant.now())
+        repository.deleteExpired(clock.instant())
     }
 
     private fun sha256Hex(value: String): String =

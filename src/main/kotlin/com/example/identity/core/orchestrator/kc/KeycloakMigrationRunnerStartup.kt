@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
+import java.time.Clock
 import java.time.Duration
 
 /**
@@ -37,6 +38,7 @@ class KeycloakMigrationRunnerStartup(
     // Eine geaenderte Migration darf das Realm nur im Demomodus neu aufbauen. Im Betrieb verwuerfe
     // das Sitzungen, Nutzer-IDs und Credentials; der Start bricht dann ab.
     private val demoMode: DemoMode,
+    private val clock: Clock,
 ) : ApplicationRunner {
     private val log = LoggerFactory.getLogger(KeycloakMigrationRunnerStartup::class.java)
 
@@ -49,7 +51,7 @@ class KeycloakMigrationRunnerStartup(
         )
         // Antwortet der oeffentliche Endpunkt des Master-Realms, laeuft Keycloak samt Datenbank.
         val probe = keycloakHttp.restClient(baseUrl)
-        AwaitReachable(waitTimeout).await("Keycloak unter $baseUrl") {
+        AwaitReachable(waitTimeout, clock::instant).await("Keycloak unter $baseUrl") {
             probe.get().uri("/realms/master").retrieve().toBodilessEntity()
         }
         val kc = buildAdminClient(baseUrl, migrationToken::accessToken, insecure = keycloakHttp.trustSelfSigned)

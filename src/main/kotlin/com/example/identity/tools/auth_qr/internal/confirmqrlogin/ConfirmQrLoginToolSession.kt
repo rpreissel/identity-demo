@@ -16,15 +16,12 @@ import java.util.UUID
 class ConfirmQrLoginToolSession(
     @Id
     @Column(name = "tool_session_id", nullable = false)
-    var toolSessionId: UUID? = null
+    var toolSessionId: UUID? = null,
+    createdAt: Instant
 ) {
     @Column(name = "pairing_code")
     var pairingCode: String? = null
 
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

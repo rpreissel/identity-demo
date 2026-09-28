@@ -16,8 +16,10 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import java.time.Clock
 import java.util.Optional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
@@ -27,17 +29,17 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<AuthSmsLookupToolSessionRepository>()
     val enrollmentRepository = mockk<AuthSmsEnrollmentRepository>()
-    val tanGenerator = TanGenerator("test-pepper")
+    val tanGenerator = TanGenerator("test-pepper", clock = Clock.systemUTC())
     val sendBudget = mockk<SmsSendBudget>(relaxed = true).also { every { it.trySend(any()) } returns true }
-    val handler = AuthSmsLookupToolHandler(AuthSmsLookupDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(), sendBudget, mockk(relaxed = true))
+    val handler = AuthSmsLookupToolHandler(AuthSmsLookupDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = Clock.systemUTC()), sendBudget, mockk(relaxed = true), clock = Clock.systemUTC())
     val toolSessionId = UUID.randomUUID()
 
     given("an active auth-sms-lookup tool session") {
-        val data = AuthSmsLookupToolSession(toolSessionId = toolSessionId)
+        val data = AuthSmsLookupToolSession(toolSessionId = toolSessionId, createdAt = Instant.now())
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
 
         `when`("the submitted email resolves to an account with an active sms method") {
-            val enrollment = AuthSmsEnrollment(phoneNumber = "+491701234567").apply { id = 1L }
+            val enrollment = AuthSmsEnrollment(phoneNumber = "+491701234567", createdAt = Instant.now()).apply { id = 1L }
             every { enrollmentRepository.findById(1L) } returns Optional.of(enrollment)
             val saved = slot<AuthSmsLookupToolSession>()
             every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
@@ -55,7 +57,7 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
         }
 
         `when`("the account's number has used up its send budget") {
-            val enrollment = AuthSmsEnrollment(phoneNumber = "+491709999999").apply { id = 3L }
+            val enrollment = AuthSmsEnrollment(phoneNumber = "+491709999999", createdAt = Instant.now()).apply { id = 3L }
             every { enrollmentRepository.findById(3L) } returns Optional.of(enrollment)
             every { sendBudget.trySend("+491709999999") } returns false
             val saved = slot<AuthSmsLookupToolSession>()
@@ -87,7 +89,7 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
 
     given("a resolved account with a pending TAN") {
         val issued = tanGenerator.issue()
-        val data = AuthSmsLookupToolSession(toolSessionId = toolSessionId, accountId = 42L, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt)
+        val data = AuthSmsLookupToolSession(toolSessionId = toolSessionId, accountId = 42L, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = Instant.now())
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
 
         `when`("confirming with the correct TAN") {

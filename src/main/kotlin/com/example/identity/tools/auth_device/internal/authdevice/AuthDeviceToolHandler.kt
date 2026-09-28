@@ -13,6 +13,7 @@ import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -24,7 +25,8 @@ import java.util.UUID
 class AuthDeviceToolHandler(
     private val descriptor: AuthDeviceDescriptor,
     private val toolDataRepository: AuthDeviceToolSessionRepository,
-    private val enrollmentRepository: DeviceEnrollmentRepository
+    private val enrollmentRepository: DeviceEnrollmentRepository,
+    private val clock: Clock
 ) {
 
     @Transactional
@@ -40,7 +42,8 @@ class AuthDeviceToolHandler(
         toolDataRepository.save(
             AuthDeviceToolSession(
                 toolSessionId = toolSessionId,
-                enrollmentRefId = enrollmentRef.id
+                enrollmentRefId = enrollmentRef.id,
+                createdAt = clock.instant()
             )
         )
         return outcomeFor()

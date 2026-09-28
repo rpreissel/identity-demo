@@ -14,8 +14,10 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
+import java.time.Clock
 import java.util.Optional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Unit test of the handler's persistence and its idempotent reuse by thumbprint. [EnrollDeviceFlow]
@@ -25,12 +27,12 @@ class EnrollDeviceToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<EnrollDeviceToolSessionRepository>()
     val enrollmentRepository = mockk<DeviceEnrollmentRepository>()
-    val handler = EnrollDeviceToolHandler(EnrollDeviceDescriptor, toolDataRepository, enrollmentRepository)
+    val handler = EnrollDeviceToolHandler(EnrollDeviceDescriptor, toolDataRepository, enrollmentRepository, clock = Clock.systemUTC())
     val toolSessionId = UUID.randomUUID()
     val devicePublicKey = DevicePublicKey(kty = "EC", crv = "P-256", x = "x-coord", y = "y-coord", thumbprint = "thumb-1")
 
     given("an active enroll-device tool session") {
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(EnrollDeviceToolSession(toolSessionId = toolSessionId))
+        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(EnrollDeviceToolSession(toolSessionId = toolSessionId, createdAt = Instant.now()))
 
         `when`("no device with this thumbprint is enrolled yet") {
             every { enrollmentRepository.findByThumbprint("thumb-1") } returns null
@@ -51,7 +53,7 @@ class EnrollDeviceToolHandlerTest : BehaviorSpec({
         }
 
         `when`("this exact thumbprint is already enrolled (re-enrolling the same physical key)") {
-            val existing = DeviceEnrollment(thumbprint = "thumb-1").apply { id = 3L }
+            val existing = DeviceEnrollment(thumbprint = "thumb-1", createdAt = Instant.now()).apply { id = 3L }
             every { enrollmentRepository.findByThumbprint("thumb-1") } returns existing
 
             then("the existing row is reused, not a second INSERT, with BIOMETRIC mapped to POSSESSION+INHERENCE") {

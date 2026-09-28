@@ -14,6 +14,7 @@ import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -27,7 +28,8 @@ class AuthSmsToolHandler(
     private val enrollmentRepository: AuthSmsEnrollmentRepository,
     private val tanGenerator: TanGenerator,
     private val smsGateway: SmsGateway,
-    private val sendBudget: SmsSendBudget
+    private val sendBudget: SmsSendBudget,
+    private val clock: Clock
 ) {
 
     @Transactional
@@ -50,7 +52,8 @@ class AuthSmsToolHandler(
                 toolSessionId = toolSessionId,
                 enrollmentRefId = enrollmentRef.id,
                 issuedTanHash = issued.hash,
-                tanExpiresAt = issued.expiresAt
+                tanExpiresAt = issued.expiresAt,
+                createdAt = clock.instant()
             )
         )
         smsGateway.sendTan(enrollment.phoneNumber.orEmpty(), issued.plainTan)
