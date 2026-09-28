@@ -16,7 +16,7 @@ class IdentEidToolSession(
     @Column(name = "tool_session_id", nullable = false)
     var toolSessionId: UUID? = null,
 
-    /** The simulated eID card's Ausweisdaten, read in one go in the "card" step. */
+    /** The simulated eID card's Ausweisdaten, the first stage of the "input" step. */
     var familyName: String? = null,
     var givenNames: String? = null,
     var birthDate: LocalDate? = null,

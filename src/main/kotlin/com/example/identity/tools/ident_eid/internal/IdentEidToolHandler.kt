@@ -9,12 +9,16 @@ import com.example.identity.contract.tool_api.claims.ClaimSource
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 import java.util.UUID
 
+private val CARD_REJECTED = Text("Die Kartendaten sind ungültig")
+private val PIN_REJECTED = Text("eID-PIN ungueltig")
+
 /**
- * toolId=ident-eid. Attests what a simulated eID card shows, nothing else: first the card read
- * (possession), then a PIN (knowledge). Nobody is looked up; binding to a register person is
- * `ident-kvnr`'s act (ADR-18). Field merging and the ready-to-verify decision live in [IdentEidFlow].
+ * toolId=ident-eid (docs/06-ablaeufe.md #6). Attests what a simulated eID card shows, nothing
+ * else: first the card read (possession), then a PIN (knowledge). Nobody is looked up; binding to a
+ * register person is `ident-kvnr`'s act (ADR-18). Field merging and the decisions live in [IdentEidFlow].
  */
 @Component
 class IdentEidToolHandler(
@@ -31,54 +35,62 @@ class IdentEidToolHandler(
 
     /**
      * A wrong PIN is bounded by the journey's attempt budget, like a real card bounds PIN
-     * attempts. This run resolves no account or person to throttle against.
+     * attempts. This run resolves no account or person to throttle against. A rejection never
+     * says which field failed.
      */
     @Transactional
     fun patch(toolSessionId: UUID, fields: EidPatchFields): ToolOutcome {
         val data = checkNotNull(repository.findByIdOrNull(toolSessionId)) { "Unknown ident-eid tool session: $toolSessionId" }
 
         val merged = IdentEidFlow.merge(data.toState(), fields)
-        data.applyState(merged)
-        repository.save(data)
+        val (state, outcome) = when (val decision = IdentEidFlow.decide(merged, fields, LocalDate.now())) {
+            IdentEidDecision.Incomplete -> merged to outcomeFor(merged)
 
-        return when (val decision = IdentEidFlow.decide(merged)) {
-            IdentEidDecision.Incomplete -> outcomeFor(merged)
+            IdentEidDecision.CardRejected ->
+                IdentEidFlow.rejectCard() to ToolOutcome.Failed.Identification(CARD_REJECTED, attemptedPersonId = null)
 
-            is IdentEidDecision.Verify -> {
-                if (!IdentEidFlow.pinMatchesMock(decision.pinHash)) {
-                    return ToolOutcome.Failed.Identification(Text("eID-PIN ungueltig"), attemptedPersonId = null)
+            is IdentEidDecision.VerifyPin ->
+                if (IdentEidFlow.pinMatchesMock(decision.pinHash)) {
+                    merged to identified(toolSessionId, decision)
+                } else {
+                    IdentEidFlow.rejectPin(merged) to ToolOutcome.Failed.Identification(PIN_REJECTED, attemptedPersonId = null)
                 }
-                ToolOutcome.Completed.Identified(
-                    amr = listOf(descriptor.method),
-                    achievedAcr = descriptor.maxAcr,
-                    factorTypes = descriptor.factorTypes,
-                    claims = listOf(
-                        // Exactly what the card showed, on this procedure's own authority (ADR-18).
-                        // restricted_id becomes the anchor that recognizes the Interessent on the
-                        // next eid run (ADR-19).
-                        Claim(AttributeType.FAMILY_NAME, checkNotNull(decision.claimed.familyName), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
-                        Claim(AttributeType.GIVEN_NAMES, checkNotNull(decision.claimed.givenNames), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
-                        Claim(AttributeType.BIRTH_DATE, checkNotNull(decision.claimed.birthDate).toString(), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
-                        Claim(AttributeType.STREET_ADDRESS, checkNotNull(decision.claimed.streetAddress), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
-                        Claim(AttributeType.POSTAL_CODE, checkNotNull(decision.claimed.postalCode), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
-                        Claim(AttributeType.LOCALITY, checkNotNull(decision.claimed.locality), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
-                        Claim(AttributeType.EID_RESTRICTED_ID, decision.restrictedId, ClaimSource.of(descriptor.toolId), descriptor.maxAcr)
-                    ),
-                    auditDetails = mapOf(
-                        "provider" to "eid-mock-service",
-                        "providerTxId" to "EID-$toolSessionId",
-                        "methodVersion" to "1.0",
-                        "evidenceHash" to IdentEidFlow.evidenceHash(
-                            listOf(
-                                decision.restrictedId, decision.claimed.familyName, decision.claimed.givenNames,
-                                decision.claimed.birthDate.toString(), decision.claimed.streetAddress, decision.claimed.postalCode, decision.claimed.locality,
-                            )
-                        )
+        }
+
+        data.applyState(state)
+        repository.save(data)
+        return outcome
+    }
+
+    private fun identified(toolSessionId: UUID, decision: IdentEidDecision.VerifyPin): ToolOutcome =
+        ToolOutcome.Completed.Identified(
+            amr = listOf(descriptor.method),
+            achievedAcr = descriptor.maxAcr,
+            factorTypes = descriptor.factorTypes,
+            claims = listOf(
+                // Exactly what the card showed, on this procedure's own authority (ADR-18).
+                // restricted_id becomes the anchor that recognizes the Interessent on the
+                // next eid run (ADR-19).
+                Claim(AttributeType.FAMILY_NAME, checkNotNull(decision.claimed.familyName), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
+                Claim(AttributeType.GIVEN_NAMES, checkNotNull(decision.claimed.givenNames), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
+                Claim(AttributeType.BIRTH_DATE, checkNotNull(decision.claimed.birthDate).toString(), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
+                Claim(AttributeType.STREET_ADDRESS, checkNotNull(decision.claimed.streetAddress), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
+                Claim(AttributeType.POSTAL_CODE, checkNotNull(decision.claimed.postalCode), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
+                Claim(AttributeType.LOCALITY, checkNotNull(decision.claimed.locality), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
+                Claim(AttributeType.EID_RESTRICTED_ID, decision.restrictedId, ClaimSource.of(descriptor.toolId), descriptor.maxAcr)
+            ),
+            auditDetails = mapOf(
+                "provider" to "eid-mock-service",
+                "providerTxId" to "EID-$toolSessionId",
+                "methodVersion" to "1.0",
+                "evidenceHash" to IdentEidFlow.evidenceHash(
+                    listOf(
+                        decision.restrictedId, decision.claimed.familyName, decision.claimed.givenNames,
+                        decision.claimed.birthDate.toString(), decision.claimed.streetAddress, decision.claimed.postalCode, decision.claimed.locality,
                     )
                 )
-            }
-        }
-    }
+            )
+        )
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: UUID): ToolOutcome {

@@ -1,5 +1,7 @@
 package com.example.identity.tools.ident_eid.internal
 
+import com.example.identity.contract.texts.Text
+import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.tools.ident_eid.IdentEidDescriptor
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
@@ -73,12 +75,65 @@ class IdentEidToolHandlerTest : BehaviorSpec({
         }
 
         `when`("a wrong PIN arrives") {
-            then("it fails without naming a person - there is none to throttle against") {
-                val outcome = handler.patch(toolSessionId, EidPatchFields(pin = "000000"))
+            val outcome = handler.patch(toolSessionId, EidPatchFields(pin = "000000"))
 
+            then("it fails without naming a person - there is none to throttle against") {
                 outcome.shouldBeInstanceOf<ToolOutcome.Failed.Identification>()
                 outcome.attemptedPersonId.shouldBeNull()
+            }
+
+            then("only the PIN is dropped, the checked card data stays") {
+                data.pinHash.shouldBeNull()
+                data.familyName shouldBe "Muster"
+                data.restrictedId shouldBe "T0103005K1D5S0V8T9W6UM2RTX"
+            }
+        }
+    }
+
+    given("a fresh ident-eid session") {
+        val data = IdentEidToolSession(toolSessionId = toolSessionId)
+        every { repository.findById(toolSessionId) } returns Optional.of(data)
+        every { repository.save(any()) } returns data
+
+        `when`("complete card data with a malformed postal code arrives") {
+            val outcome = handler.patch(toolSessionId, card.copy(postalCode = "1234"))
+
+            then("it fails with the one reason that names no field") {
+                outcome shouldBe ToolOutcome.Failed.Identification(Text("Die Kartendaten sind ungültig"), attemptedPersonId = null)
+            }
+
+            then("the whole card data is dropped, so the next read asks for all of it again") {
+                data.familyName.shouldBeNull()
+                data.postalCode.shouldBeNull()
+                data.restrictedId.shouldBeNull()
+                handler.read(toolSessionId) shouldBe ToolOutcome.InProgress(nextStep = "input", stepData = MissingFields(CARD_FIELDS))
+            }
+        }
+    }
+
+    given("another fresh ident-eid session") {
+        val data = IdentEidToolSession(toolSessionId = toolSessionId)
+        every { repository.findById(toolSessionId) } returns Optional.of(data)
+        every { repository.save(any()) } returns data
+
+        `when`("well-formed card data arrives") {
+            val outcome = handler.patch(toolSessionId, card)
+
+            then("it stays in step input and asks for the PIN") {
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "input", stepData = MissingFields(listOf("pin")))
             }
         }
     }
 })
+
+private val CARD_FIELDS = listOf("familyName", "givenNames", "birthDate", "streetAddress", "postalCode", "locality", "restrictedId")
+
+private val card = EidPatchFields(
+    familyName = "Muster",
+    givenNames = "Max",
+    birthDate = LocalDate.of(1970, 1, 1),
+    streetAddress = "Musterweg 1",
+    postalCode = "12345",
+    locality = "Musterstadt",
+    restrictedId = "T0103005K1D5S0V8T9W6UM2RTX"
+)

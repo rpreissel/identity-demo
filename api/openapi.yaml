@@ -2493,10 +2493,20 @@ paths:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                   state: REGISTERING
                 next:
-                  step: card
+                  step: input
                   toolId: ident-eid
                   toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
                   type: tool
+                stepData:
+                  kind: missing-fields
+                  missingFields:
+                  - familyName
+                  - givenNames
+                  - birthDate
+                  - streetAddress
+                  - postalCode
+                  - locality
+                  - restrictedId
               schema:
                 $ref: '#/components/schemas/ChannelResponse'
           description: Created
@@ -4588,10 +4598,14 @@ paths:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                   state: REGISTERING
                 next:
-                  step: card
+                  step: input
                   toolId: ident-eid
                   toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
                   type: tool
+                stepData:
+                  kind: missing-fields
+                  missingFields:
+                  - pin
               schema:
                 $ref: '#/components/schemas/ChannelResponse'
           description: OK
@@ -4610,7 +4624,9 @@ paths:
       tags:
       - 'Tool: eID'
     patch:
-      description: Only the fields for the current step need to be sent; all of them together also completes in one call.
+      description: Only the fields being supplied or corrected need to be sent; all of them together also completes in one
+        call. The card data is checked for format and completeness as soon as it is complete, and only then is the PIN asked
+        for.
       operationId: patch_3
       parameters:
       - in: path
@@ -4629,32 +4645,31 @@ paths:
           content:
             application/json:
               examples:
-                After card data - pin step:
-                  description: After card data - pin step
+                After card data - the PIN is missing:
+                  description: After card data - the PIN is missing
                   value:
                     channel:
                       channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                       state: REGISTERING
                     next:
-                      step: pin
+                      step: input
                       toolId: ident-eid
                       toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
                       type: tool
-                After pin - attested, the assignment question follows:
-                  description: After pin - attested, the assignment question follows
+                    stepData:
+                      kind: missing-fields
+                      missingFields:
+                      - pin
+                After pin - attested, the assignment step follows:
+                  description: After pin - attested, the assignment step follows
                   value:
                     channel:
                       channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                       state: REGISTERING
                     next:
-                      context: prompt
-                      step: confirm
-                      type: orchestrator
-                    stepData:
-                      kind: confirm
-                      prompt:
-                        kind: Confirm
-                        title: Konto Ihrer Versichertennummer zuordnen?
+                      step: input
+                      toolId: ident-kvnr
+                      type: tool
               schema:
                 $ref: '#/components/schemas/ChannelResponse'
           description: OK

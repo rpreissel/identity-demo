@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.texts.templateOf
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.support.AccountFixtures
 import com.ninjasquad.springmockk.MockkBean
@@ -8,6 +9,7 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain as shouldContainText
 import io.kotest.matchers.string.shouldNotContain as shouldNotContainText
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldNotContain
 import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpStatus
@@ -97,6 +99,37 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 @Suppress("UNCHECKED_CAST")
                 val options = get("/orchestrator/api/v1/channels/$channelSessionId").stepData()["options"] as? List<String>
                 (options ?: listOf(next["toolId"] as String)) shouldNotContain "ident-kvnr"
+            }
+        }
+
+        given("a fresh channel on ident-eid") {
+            `when`("the card data is malformed, then corrected, then a wrong PIN follows") {
+                then("each rejection stays in step input and drops only what it rejected, naming no field") {
+                    val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                    val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-eid")
+                        .nextRaw()["toolSessionId"] as String
+                    val url = "/orchestrator/api/v1/tools/$toolSessionId/ident-eid"
+                    val card = """"familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","streetAddress":"Musterstraße 1","locality":"Musterstadt","restrictedId":"T0103005K1D5S0V8T9W6UM2RTX""""
+                    val stillOnEid = mapOf("type" to "tool", "toolId" to "ident-eid", "step" to "input")
+
+                    val cardRejected = patch(url, """{$card,"postalCode":"1234"}""")
+                    templateOf(cardRejected.stepData()["error"]) shouldBe "Die Kartendaten sind ungültig"
+                    cardRejected.next() shouldBe stillOnEid
+                    @Suppress("UNCHECKED_CAST")
+                    get(url).stepData()["missingFields"] as List<String> shouldContainExactly
+                        listOf("familyName", "givenNames", "birthDate", "streetAddress", "postalCode", "locality", "restrictedId")
+
+                    val cardAccepted = patch(url, """{$card,"postalCode":"12345"}""")
+                    cardAccepted.next() shouldBe stillOnEid
+                    @Suppress("UNCHECKED_CAST")
+                    cardAccepted.stepData()["missingFields"] as List<String> shouldContainExactly listOf("pin")
+
+                    val pinRejected = patch(url, """{"pin":"000000"}""")
+                    templateOf(pinRejected.stepData()["error"]) shouldBe "eID-PIN ungueltig"
+                    pinRejected.next() shouldBe stillOnEid
+                    @Suppress("UNCHECKED_CAST")
+                    get(url).stepData()["missingFields"] as List<String> shouldContainExactly listOf("pin")
+                }
             }
         }
 
