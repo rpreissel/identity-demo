@@ -79,7 +79,7 @@ anmelden.
 - **Nicht bei jeder Interaktion.** Erneuert wird erst, wenn ein Viertel des Fensters seit dem letzten
   Token verbraucht ist (`AppLoginSession.RENEWAL_WINDOW_SHARE`). Ein aktiver Nutzer hat so nie weniger
   als drei Viertel des Leerlauf-Fensters vor sich, und es kostet wenige Keycloak-Aufrufe je Fenster
-  statt einen je Anfrage; bei Keycloaks Standard von 30 Minuten ist das eine Erneuerung alle
+  statt einen je Anfrage; bei den 30 Minuten SSO idle des Realms ist das eine Erneuerung alle
   7,5 Minuten. Davor bleibt das bestehende Fenster.
 - **Lehnt Keycloak die Erneuerung ab** oder ist das Fenster vorbei, endet der Kanal wie beim
   Token-Abruf: `EXPIRED`, Antwort `410`. Damit dieses Ende trotz Fehlerantwort gespeichert wird,
