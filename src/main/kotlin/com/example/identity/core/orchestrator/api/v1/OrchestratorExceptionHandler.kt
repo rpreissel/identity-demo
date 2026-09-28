@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.api.v1
 
 import com.example.identity.contract.texts.Text
+import com.example.identity.core.orchestrator.dpop.DpopFailure
 import com.example.identity.core.orchestrator.dpop.DpopValidationException
 import com.example.identity.core.orchestrator.kc.PeerAuthValidationException
 import com.example.identity.core.orchestrator.session.ChannelSessionEndedException
@@ -25,15 +26,26 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @RestControllerAdvice
 class OrchestratorExceptionHandler {
 
-    /** Missing/invalid DPoP, thrown by [DpopBindingKeyResolver]: 401 (docs/07-betrieb.md #1). */
+    /**
+     * Missing/invalid DPoP or device proof: 401 (docs/07-betrieb.md #1). The response names the
+     * fixed [DpopFailure] only, so a client can tell a skewed clock from a broken key; the detail
+     * goes to the log.
+     */
     @ExceptionHandler(DpopValidationException::class)
-    fun handleDpopValidation(e: DpopValidationException): ResponseEntity<ErrorResponse> =
-        respond(ErrorCode.UNAUTHORIZED, Text("Die Anfrage konnte nicht authentifiziert werden ({detail}).", "detail" to e.message))
+    fun handleDpopValidation(e: DpopValidationException): ResponseEntity<ErrorResponse> {
+        log.info("DPoP rejected: {}", e.message)
+        return respond(ErrorCode.UNAUTHORIZED, Text("Die Anfrage konnte nicht authentifiziert werden ({detail}).", "detail" to e.failure.name))
+    }
 
-    /** Missing/invalid Keycloak peer-auth assertion (docs/12-entscheidungen.md ADR-7) - same contract as DPoP: 401. */
+    /**
+     * Missing/invalid Keycloak peer-auth assertion (docs/12-entscheidungen.md ADR-7): 401 with a
+     * neutral text. Key ids and issuers are for the log, not for whoever sent the request.
+     */
     @ExceptionHandler(PeerAuthValidationException::class)
-    fun handlePeerAuthValidation(e: PeerAuthValidationException): ResponseEntity<ErrorResponse> =
-        respond(ErrorCode.UNAUTHORIZED, Text("Die Anfrage konnte nicht authentifiziert werden ({detail}).", "detail" to e.message))
+    fun handlePeerAuthValidation(e: PeerAuthValidationException): ResponseEntity<ErrorResponse> {
+        log.info("Peer-auth rejected: {}", e.message)
+        return respond(ErrorCode.UNAUTHORIZED, Text("Die Anfrage konnte nicht authentifiziert werden."))
+    }
 
     /** The channel ended with its Keycloak session (ADR-43): 410, like an expired login on a token request. */
     @ExceptionHandler(ChannelSessionEndedException::class)

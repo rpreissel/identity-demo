@@ -21,7 +21,7 @@ data class DeviceProof(
 ) {
     /** Crosses into module code as plain strings ([DevicePublicKey]) - modules never see a raw JWK. */
     fun toDevicePublicKey(): DevicePublicKey {
-        val ecKey = jwk as? ECKey ?: throw DpopValidationException("Unsupported key type: ${jwk.keyType}")
+        val ecKey = jwk as? ECKey ?: throw DpopValidationException(DpopFailure.INVALID_KEY, "kty ${jwk.keyType}")
         return DevicePublicKey(
             kty = ecKey.keyType.value,
             crv = ecKey.curve.name,

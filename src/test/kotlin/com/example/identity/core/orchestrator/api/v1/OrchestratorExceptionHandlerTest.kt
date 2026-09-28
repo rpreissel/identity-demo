@@ -3,6 +3,9 @@ package com.example.identity.core.orchestrator.api.v1
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.InvalidInputException
 import com.example.identity.core.orchestrator.domain.ErrorCode
+import com.example.identity.core.orchestrator.dpop.DpopFailure
+import com.example.identity.core.orchestrator.dpop.DpopValidationException
+import com.example.identity.core.orchestrator.kc.PeerAuthValidationException
 import com.example.identity.contract.tool_api.directory.IdentityConflictException
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.assertions.throwables.shouldThrow
@@ -39,6 +42,20 @@ class OrchestratorExceptionHandlerTest : BehaviorSpec({
             val response = handler.handleIdentityConflict(IdentityConflictException(Text("Person binding cannot change")))
             response.statusCode shouldBe HttpStatus.CONFLICT
             response.body?.error shouldBe ErrorCode.INVALID_STATE_TRANSITION
+        }
+
+        then("a rejected peer-auth assertion answers 401 with a neutral text, without key id or issuer") {
+            val response = handler.handlePeerAuthValidation(PeerAuthValidationException("Unknown peer-auth key id: kid-4711"))
+            response.statusCode shouldBe HttpStatus.UNAUTHORIZED
+            response.body?.text shouldBe Text("Die Anfrage konnte nicht authentifiziert werden.")
+        }
+
+        then("a rejected DPoP proof answers 401 with its fixed code, never the detail") {
+            val response = handler.handleDpopValidation(
+                DpopValidationException(DpopFailure.UNSUPPORTED_ALGORITHM, "alg <script>")
+            )
+            response.statusCode shouldBe HttpStatus.UNAUTHORIZED
+            response.body?.text shouldBe Text("Die Anfrage konnte nicht authentifiziert werden ({detail}).", "detail" to "UNSUPPORTED_ALGORITHM")
         }
 
         for (constraint in listOf("ux_anchor_value", "ux_anchor_account_type")) {

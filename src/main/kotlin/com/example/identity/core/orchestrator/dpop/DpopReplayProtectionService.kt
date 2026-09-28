@@ -27,7 +27,7 @@ class DpopReplayProtectionService(private val repository: DpopProofReplayReposit
         try {
             repository.insert(key, expiresAt)
         } catch (_: DataIntegrityViolationException) {
-            throw DpopValidationException("DPoP proof replay detected")
+            throw DpopValidationException(DpopFailure.REPLAY)
         }
     }
 

@@ -13,7 +13,30 @@ data class DpopProof(
     val nonce: String?
 )
 
-class DpopValidationException : RuntimeException {
-    constructor(message: String) : super(message)
-    constructor(message: String, cause: Throwable) : super(message, cause)
+/**
+ * Why a DPoP or device proof was rejected. The 401 response names only this code; what the server
+ * saw (algorithm, key type, claim values) stays in the log, so a caller learns the rule, not more.
+ */
+enum class DpopFailure {
+    MISSING,
+    MALFORMED,
+    WRONG_TYPE,
+    UNSUPPORTED_ALGORITHM,
+    INVALID_KEY,
+    INVALID_SIGNATURE,
+    INVALID_CLAIMS,
+    HTM_MISMATCH,
+    HTU_MISMATCH,
+    IAT_MISSING,
+    IAT_IN_FUTURE,
+    IAT_TOO_OLD,
+    JTI_MISSING,
+    REPLAY
 }
+
+/** [detail] is for the log only. */
+class DpopValidationException(
+    val failure: DpopFailure,
+    detail: String? = null,
+    cause: Throwable? = null
+) : RuntimeException(listOfNotNull(failure.name, detail).joinToString(": "), cause)

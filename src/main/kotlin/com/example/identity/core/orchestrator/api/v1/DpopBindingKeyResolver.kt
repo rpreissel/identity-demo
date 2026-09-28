@@ -2,6 +2,7 @@ package com.example.identity.core.orchestrator.api.v1
 
 import com.example.identity.core.orchestrator.channel.DeviceChannelAccessGuard
 import com.example.identity.core.orchestrator.dpop.DpopProof
+import com.example.identity.core.orchestrator.dpop.DpopFailure
 import com.example.identity.core.orchestrator.dpop.DpopValidationException
 import com.example.identity.core.orchestrator.dpop.DpopValidator
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
@@ -52,7 +53,7 @@ class DpopBindingKeyResolver(
         }
 
         val authorization = request.getHeader("Authorization")
-            ?: throw DpopValidationException("Missing DPoP proof")
+            ?: throw DpopValidationException(DpopFailure.MISSING)
         val token = if (authorization.startsWith("Bearer ", ignoreCase = true)) {
             authorization.substring(7).trim()
         } else {
