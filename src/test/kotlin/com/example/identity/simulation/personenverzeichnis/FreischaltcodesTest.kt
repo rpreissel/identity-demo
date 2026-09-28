@@ -1,5 +1,7 @@
 package com.example.identity.simulation.personenverzeichnis
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.simulation.personenverzeichnis.internal.Brief
 import com.example.identity.simulation.personenverzeichnis.internal.BriefRepository
 import com.example.identity.simulation.personenverzeichnis.internal.Freischaltcode
@@ -10,8 +12,6 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
-import java.time.Clock
-import java.time.Instant
 import java.util.Optional
 
 class FreischaltcodesTest : BehaviorSpec({
@@ -20,13 +20,13 @@ class FreischaltcodesTest : BehaviorSpec({
         Freischaltcode(
             personId = "P000000007",
             codeHash = "h",
-            expiresAt = Instant.now().plusSeconds(expiresIn),
-            revokedAt = if (revoked) Instant.now() else null
+            expiresAt = TEST_NOW.plusSeconds(expiresIn),
+            revokedAt = if (revoked) TEST_NOW else null
         ).also { it.id = id }
 
     given("pruefe") {
         val codes = mockk<FreischaltcodeRepository>()
-        val service = Freischaltcodes(codes, mockk(), clock = Clock.systemUTC())
+        val service = Freischaltcodes(codes, mockk(), clock = TEST_CLOCK)
 
         then("a current code is valid") {
             every { codes.findByPersonIdAndCodeHash("P000000007", "h") } returns listOf(code(1, 600))
@@ -49,14 +49,14 @@ class FreischaltcodesTest : BehaviorSpec({
     given("ausstellen") {
         val codes = mockk<FreischaltcodeRepository>()
         val briefe = mockk<BriefRepository>()
-        val service = Freischaltcodes(codes, briefe, clock = Clock.systemUTC())
+        val service = Freischaltcodes(codes, briefe, clock = TEST_CLOCK)
         val storedCode = slot<Freischaltcode>()
         val storedBrief = slot<Brief>()
         every { codes.save(capture(storedCode)) } answers { storedCode.captured.also { it.id = 11L } }
         every { briefe.save(capture(storedBrief)) } answers { storedBrief.captured.also { it.id = 21L } }
 
         then("the letter carries the plaintext whose digest is what the register stores") {
-            val brief = service.ausstellen("P000000007", Instant.now().plusSeconds(3600))
+            val brief = service.ausstellen("P000000007", TEST_NOW.plusSeconds(3600))
 
             brief.freischaltcodeId shouldBe 11L
             storedCode.captured.codeHash shouldBe Freischaltcodes.hash(brief.code)
@@ -67,11 +67,11 @@ class FreischaltcodesTest : BehaviorSpec({
     given("juengsterGueltigerCode") {
         val codes = mockk<FreischaltcodeRepository>()
         val briefe = mockk<BriefRepository>()
-        val service = Freischaltcodes(codes, briefe, clock = Clock.systemUTC())
+        val service = Freischaltcodes(codes, briefe, clock = TEST_CLOCK)
         every { codes.findByPersonIdOrderByIdDesc("P000000007") } returns listOf(code(2, 600, revoked = true), code(1, 600))
         every { briefe.findByPersonIdOrderByIdDesc("P000000007") } returns listOf(
-            Brief(personId = "P000000007", freischaltcodeId = 2L, code = "NEU", versandtAm = Instant.now()),
-            Brief(personId = "P000000007", freischaltcodeId = 1L, code = "ALT", versandtAm = Instant.now())
+            Brief(personId = "P000000007", freischaltcodeId = 2L, code = "NEU", versandtAm = TEST_NOW),
+            Brief(personId = "P000000007", freischaltcodeId = 1L, code = "ALT", versandtAm = TEST_NOW)
         )
 
         then("it skips the letter of a revoked code") {
@@ -81,7 +81,7 @@ class FreischaltcodesTest : BehaviorSpec({
 
     given("widerrufen") {
         val codes = mockk<FreischaltcodeRepository>()
-        val service = Freischaltcodes(codes, mockk(), clock = Clock.systemUTC())
+        val service = Freischaltcodes(codes, mockk(), clock = TEST_CLOCK)
         val existing = code(1, 600)
         every { codes.findById(1L) } returns Optional.of(existing)
         every { codes.findById(2L) } returns Optional.empty()

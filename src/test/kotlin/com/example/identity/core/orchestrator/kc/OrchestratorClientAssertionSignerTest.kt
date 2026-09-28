@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jwt.SignedJWT
 import io.kotest.assertions.throwables.shouldThrow
@@ -8,9 +10,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
-import java.time.Clock
 import java.util.Optional
-import java.time.Instant
 
 /**
  * Pure unit test of [OrchestratorClientAssertionSigner]: every Keycloak client signs with its own key, so a
@@ -25,9 +25,9 @@ class OrchestratorClientAssertionSignerTest : BehaviorSpec({
         every { repository.insert(any(), any(), any(), any()) } answers {
             val purpose = firstArg<String>()
             check(purpose !in stored) { "duplicate purpose $purpose" }
-            stored[purpose] = NodeSigningKey(purpose = purpose, publicKeyJwk = secondArg(), privateKeyJwk = thirdArg(), createdAt = Instant.now())
+            stored[purpose] = NodeSigningKey(purpose = purpose, publicKeyJwk = secondArg(), privateKeyJwk = thirdArg(), createdAt = TEST_NOW)
         }
-        return OrchestratorClientAssertionSigner(repository, "orchestrator-admin", "orchestrator-app-token", clock = Clock.systemUTC())
+        return OrchestratorClientAssertionSigner(repository, "orchestrator-admin", "orchestrator-app-token", clock = TEST_CLOCK)
     }
 
     given("the three clients this node represents") {

@@ -1,16 +1,16 @@
 package com.example.identity.tools.auth_email.internal.authemaillookup
+import com.example.identity.TEST_CLOCK
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import java.time.Clock
 import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 
 /** Pure unit test for the code-vs-state decision - mirrors `auth_sms`'s `AuthSmsLookupFlowTest`. */
 class AuthEmailLookupFlowTest : BehaviorSpec({
 
-    val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = Clock.systemUTC())
+    val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
 
     given("AwaitingEmail") {
         val state = AuthEmailLookupState.AwaitingEmail

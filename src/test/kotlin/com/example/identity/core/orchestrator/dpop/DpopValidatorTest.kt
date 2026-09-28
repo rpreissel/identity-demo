@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.dpop
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -18,8 +20,6 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import org.springframework.dao.DataIntegrityViolationException
-import java.time.Clock
-import java.time.Instant
 import java.util.Date
 import java.util.UUID
 
@@ -32,10 +32,10 @@ class DpopValidatorTest : BehaviorSpec({
 
     fun validator() = DpopValidator(
         jwkThumbprintService = JwkThumbprintService(),
-        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository(), clock = Clock.systemUTC()),
+        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository(), clock = TEST_CLOCK),
         maxClockSkewSeconds = 30,
         maxProofAgeSeconds = 60,
-        clock = Clock.systemUTC()
+        clock = TEST_CLOCK
     )
 
     val method = "POST"
@@ -45,7 +45,7 @@ class DpopValidatorTest : BehaviorSpec({
         key: ECKey,
         htm: String = method,
         htu: String = url,
-        issuedAt: Date = Date(),
+        issuedAt: Date = Date.from(TEST_NOW),
         jti: String = UUID.randomUUID().toString(),
         nonce: String? = null,
         headerJwk: com.nimbusds.jose.jwk.JWK = key.toPublicJWK(),
@@ -133,7 +133,7 @@ class DpopValidatorTest : BehaviorSpec({
 
         then("a missing typ header is rejected") {
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).jwk(key.toPublicJWK()).build()
-            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date()).claim("htm", method).claim("htu", url).build())
+            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build())
             jwt.sign(ECDSASigner(key.toECPrivateKey()))
             shouldThrow<DpopValidationException> { validator().validate(jwt.serialize(), method, url) }
         }
@@ -146,14 +146,14 @@ class DpopValidatorTest : BehaviorSpec({
         then("an unsupported algorithm is rejected") {
             val rsaKey = RSAKeyGenerator(2048).generate()
             val header = JWSHeader.Builder(JWSAlgorithm.RS256).type(JOSEObjectType("dpop+jwt")).jwk(rsaKey.toPublicJWK()).build()
-            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date()).claim("htm", method).claim("htu", url).build())
+            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build())
             jwt.sign(RSASSASigner(rsaKey.toPrivateKey()))
             shouldThrow<DpopValidationException> { validator().validate(jwt.serialize(), method, url) }
         }
 
         then("a missing JWK is rejected") {
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).type(JOSEObjectType("dpop+jwt")).build()
-            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date()).claim("htm", method).claim("htu", url).build())
+            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build())
             jwt.sign(ECDSASigner(key.toECPrivateKey()))
             shouldThrow<DpopValidationException> { validator().validate(jwt.serialize(), method, url) }
         }
@@ -164,7 +164,7 @@ class DpopValidatorTest : BehaviorSpec({
         then("a header claiming an EC algorithm but carrying a non-EC JWK is rejected") {
             val rsaKey = RSAKeyGenerator(2048).generate()
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).type(JOSEObjectType("dpop+jwt")).jwk(rsaKey.toPublicJWK()).build()
-            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date()).claim("htm", method).claim("htu", url).build())
+            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build())
             jwt.sign(ECDSASigner(key.toECPrivateKey()))
             shouldThrow<DpopValidationException> { validator().validate(jwt.serialize(), method, url) }
         }
@@ -197,27 +197,27 @@ class DpopValidatorTest : BehaviorSpec({
         val key = ECKeyGenerator(Curve.P_256).generate()
 
         then("a proof issued too far in the future is rejected") {
-            val proof = signProof(key, issuedAt = Date.from(Instant.now().plusSeconds(600)))
+            val proof = signProof(key, issuedAt = Date.from(TEST_NOW.plusSeconds(600)))
             shouldThrow<DpopValidationException> { validator().validate(proof, method, url) }
         }
 
         then("a proof older than maxProofAgeSeconds is rejected") {
-            val proof = signProof(key, issuedAt = Date.from(Instant.now().minusSeconds(600)))
+            val proof = signProof(key, issuedAt = Date.from(TEST_NOW.minusSeconds(600)))
             shouldThrow<DpopValidationException> { validator().validate(proof, method, url) }
         }
 
         then("a proof 90 seconds old is rejected: the window is 60 seconds without a nonce") {
-            val proof = signProof(key, issuedAt = Date.from(Instant.now().minusSeconds(90)))
+            val proof = signProof(key, issuedAt = Date.from(TEST_NOW.minusSeconds(90)))
             shouldThrow<DpopValidationException> { validator().validate(proof, method, url) }
         }
 
         then("a proof 50 seconds old is accepted") {
-            val proof = signProof(key, issuedAt = Date.from(Instant.now().minusSeconds(50)))
+            val proof = signProof(key, issuedAt = Date.from(TEST_NOW.minusSeconds(50)))
             validator().validate(proof, method, url)
         }
 
         then("a proof just inside the clock-skew allowance is accepted") {
-            val proof = signProof(key, issuedAt = Date.from(Instant.now().plusSeconds(29)))
+            val proof = signProof(key, issuedAt = Date.from(TEST_NOW.plusSeconds(29)))
             validator().validate(proof, method, url)
         }
     }
@@ -226,7 +226,7 @@ class DpopValidatorTest : BehaviorSpec({
         then("it is rejected") {
             val key = ECKeyGenerator(Curve.P_256).generate()
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).type(JOSEObjectType("dpop+jwt")).jwk(key.toPublicJWK()).build()
-            val claims = JWTClaimsSet.Builder().issueTime(Date()).claim("htm", method).claim("htu", url).build()
+            val claims = JWTClaimsSet.Builder().issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build()
             val jwt = SignedJWT(header, claims)
             jwt.sign(ECDSASigner(key.toECPrivateKey()))
             shouldThrow<DpopValidationException> { validator().validate(jwt.serialize(), method, url) }

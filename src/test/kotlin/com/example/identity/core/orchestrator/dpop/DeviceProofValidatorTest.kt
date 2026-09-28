@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.dpop
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.device.UserVerification
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
@@ -18,7 +20,6 @@ import io.mockk.mockk
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.mock.web.MockHttpServletRequest
 import java.net.URI
-import java.time.Clock
 import java.util.Date
 import java.util.UUID
 
@@ -30,10 +31,10 @@ class DeviceProofValidatorTest : BehaviorSpec({
 
     val validator = DeviceProofValidator(
         jwkThumbprintService = JwkThumbprintService(),
-        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository(), clock = Clock.systemUTC()),
+        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository(), clock = TEST_CLOCK),
         maxClockSkewSeconds = 30,
         maxProofAgeSeconds = 60,
-        clock = Clock.systemUTC()
+        clock = TEST_CLOCK
     )
 
     val url = "https://example.test/orchestrator/api/v1/tools/${UUID.randomUUID()}/enroll-device"
@@ -44,7 +45,7 @@ class DeviceProofValidatorTest : BehaviorSpec({
         serverPort = 443
     }
 
-    fun signProof(key: ECKey, userVerification: String, issuedAt: Date = Date(), jti: String = UUID.randomUUID().toString()): String {
+    fun signProof(key: ECKey, userVerification: String, issuedAt: Date = Date.from(TEST_NOW), jti: String = UUID.randomUUID().toString()): String {
         val header = JWSHeader.Builder(JWSAlgorithm.ES256)
             .type(JOSEObjectType("device-proof+jwt"))
             .jwk(key.toPublicJWK())
@@ -90,7 +91,7 @@ class DeviceProofValidatorTest : BehaviorSpec({
 
     given("a device proof signed more than maxProofAgeSeconds ago") {
         val key = ECKeyGenerator(Curve.P_256).generate()
-        val staleProof = signProof(key, "pin", issuedAt = Date.from(java.time.Instant.now().minusSeconds(600)))
+        val staleProof = signProof(key, "pin", issuedAt = Date.from(TEST_NOW.minusSeconds(600)))
 
         `when`("validating it") {
             then("it is rejected as expired") {
@@ -110,7 +111,7 @@ class DeviceProofValidatorTest : BehaviorSpec({
             .build()
         val claims = JWTClaimsSet.Builder()
             .jwtID(UUID.randomUUID().toString())
-            .issueTime(Date())
+            .issueTime(Date.from(TEST_NOW))
             .claim("htm", "PATCH")
             .claim("htu", url)
             .claim("userVerification", "pin")

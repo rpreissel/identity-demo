@@ -1,15 +1,15 @@
 package com.example.identity.tools.auth_sms.internal.authsms
 
+import com.example.identity.TEST_CLOCK
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import java.time.Clock
 import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 
 class AuthSmsFlowTest : BehaviorSpec({
 
-    val tanGenerator = TanGenerator("test-pepper", clock = Clock.systemUTC())
+    val tanGenerator = TanGenerator("test-pepper", clock = TEST_CLOCK)
     val issued = tanGenerator.issue()
     val state = AuthSmsState(issued.hash, issued.expiresAt)
 

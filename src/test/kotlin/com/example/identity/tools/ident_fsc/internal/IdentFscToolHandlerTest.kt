@@ -1,5 +1,7 @@
 package com.example.identity.tools.ident_fsc.internal
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.directory.ActivationCodes
 import com.example.identity.tools.ident_fsc.IdentFscDescriptor
@@ -15,11 +17,9 @@ import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import java.time.Clock
 import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
-import java.time.Instant
 
 /**
  * Pins the claims a successful ident-fsc run asserts: FSC is a master-data channel, so every
@@ -32,7 +32,7 @@ class IdentFscToolHandlerTest : BehaviorSpec({
     val repository = mockk<IdentFscToolSessionRepository>()
     val activationCodes = mockk<ActivationCodes> { every { digest(any()) } answers { "digest:" + firstArg<String>() } }
     val personDirectory = mockk<PersonDirectory>()
-    val handler = IdentFscToolHandler(IdentFscDescriptor, repository, activationCodes, personDirectory, clock = Clock.systemUTC())
+    val handler = IdentFscToolHandler(IdentFscDescriptor, repository, activationCodes, personDirectory, clock = TEST_CLOCK)
 
     val birthdate = LocalDate.of(1985, 6, 15)
 
@@ -43,7 +43,7 @@ class IdentFscToolHandlerTest : BehaviorSpec({
         familyName = "Muster",
         givenNames = "Max",
         birthDate = birthdate,
-        createdAt = Instant.now()
+        createdAt = TEST_NOW
     ).also { data ->
         every { repository.findById(toolSessionId) } returns Optional.of(data)
         every { repository.save(any()) } returns data
@@ -92,7 +92,7 @@ class IdentFscToolHandlerTest : BehaviorSpec({
             val data = IdentFscToolSession(
                 toolSessionId = toolSessionId, partnernr = "P000000004", personId = "P000000004",
                 familyName = "Schulz", givenNames = "Paula", birthDate = birthdate,
-                createdAt = Instant.now()
+                createdAt = TEST_NOW
             )
             every { repository.findById(toolSessionId) } returns Optional.of(data)
             every { repository.save(any()) } returns data

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.TEST_CLOCK
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
@@ -8,7 +9,6 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import java.net.InetSocketAddress
-import java.time.Clock
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -30,7 +30,7 @@ class KeycloakJwkSourceBackoffTest : BehaviorSpec({
             start()
         }
         afterSpec { server.stop(0) }
-        val source = KeycloakJwkSource("http://127.0.0.1:${server.address.port}/jwks", cacheTtlSeconds = 600, clock = Clock.systemUTC())
+        val source = KeycloakJwkSource("http://127.0.0.1:${server.address.port}/jwks", cacheTtlSeconds = 600, clock = TEST_CLOCK)
 
         then("a burst of unknown kids costs one fetch, and the known key is still found") {
             repeat(20) { source.find("made-up-$it") shouldBe null }

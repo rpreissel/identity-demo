@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.admin
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AccountService
 import com.example.identity.kcmigrate.federatedUserId
@@ -19,7 +21,6 @@ import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.ObjectProvider
-import java.time.Clock
 import java.time.Instant
 
 /** Keycloak's half of [ActiveSessions], against a fake instead of a running Keycloak. */
@@ -36,26 +37,26 @@ class ActiveSessionsKeycloakTest {
     private fun service(source: KeycloakUserSessions?) = ActiveSessions(
         repository, authContexts, accountService, personDirectory,
         mockk<ObjectProvider<KeycloakUserSessions>> { every { ifAvailable } returns source },
-        clock = Clock.systemUTC(),
+        clock = TEST_CLOCK,
     )
 
     private val start = Instant.parse("2026-09-26T10:00:00Z")
 
     private fun session(id: String, userId: String?) = KeycloakUserSession(id, "user-$id", userId, start, start.plusSeconds(60))
 
-    private val appContext = AuthContext(accountId = 7, keycloakSessionId = "kc-app", now = Instant.now()).apply { authContextId = java.util.UUID.randomUUID() }
+    private val appContext = AuthContext(accountId = 7, keycloakSessionId = "kc-app", now = TEST_NOW).apply { authContextId = java.util.UUID.randomUUID() }
 
     @Test
     fun `groups by client, names the account and finds the channel of each session`() {
-        val appChannel = ChannelSession(ChannelType.APP, "key", start.plusSeconds(600), now = Instant.now()).apply {
+        val appChannel = ChannelSession(ChannelType.APP, "key", start.plusSeconds(600), now = TEST_NOW).apply {
             state = ChannelState.AUTHENTICATED
             authContextId = appContext.authContextId
         }
-        val older = ChannelSession(ChannelType.KEYCLOAK, null, start.plusSeconds(600), now = Instant.now()).apply {
+        val older = ChannelSession(ChannelType.KEYCLOAK, null, start.plusSeconds(600), now = TEST_NOW).apply {
             durableKcSessionId = "kc-web"
             createdAt = start
         }
-        val newer = ChannelSession(ChannelType.KEYCLOAK, null, start.plusSeconds(600), now = Instant.now()).apply {
+        val newer = ChannelSession(ChannelType.KEYCLOAK, null, start.plusSeconds(600), now = TEST_NOW).apply {
             durableKcSessionId = "kc-web"
             state = ChannelState.AUTHENTICATED
             createdAt = start.plusSeconds(5)

@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_password.internal.authpasswordlookup
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_password.internal.PasswordHasher
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
@@ -13,10 +15,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
-import java.time.Clock
 import java.util.Optional
 import java.util.UUID
-import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
@@ -26,14 +26,14 @@ class AuthPasswordLookupToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<AuthPasswordLookupToolSessionRepository>()
     val enrollmentRepository = mockk<AuthPasswordEnrollmentRepository>()
-    val handler = AuthPasswordLookupToolHandler(AuthPasswordLookupDescriptor, toolDataRepository, enrollmentRepository, clock = Clock.systemUTC())
+    val handler = AuthPasswordLookupToolHandler(AuthPasswordLookupDescriptor, toolDataRepository, enrollmentRepository, clock = TEST_CLOCK)
     val toolSessionId = UUID.randomUUID()
 
     given("an active auth-password-lookup tool session") {
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(AuthPasswordLookupToolSession(toolSessionId = toolSessionId, createdAt = Instant.now()))
+        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(AuthPasswordLookupToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW))
 
         `when`("email and password resolve to an active, matching enrollment") {
-            val enrollment = AuthPasswordEnrollment(passwordHash = PasswordHasher.hash("hunter2"), createdAt = Instant.now()).apply { id = 1L }
+            val enrollment = AuthPasswordEnrollment(passwordHash = PasswordHasher.hash("hunter2"), createdAt = TEST_NOW).apply { id = 1L }
             every { enrollmentRepository.findById(1L) } returns Optional.of(enrollment)
 
             then("it authenticates for that account") {

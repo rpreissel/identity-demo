@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.core.orchestrator.dpop.DpopProofReplay
 import com.example.identity.core.orchestrator.dpop.DpopProofReplayRepository
 import com.example.identity.core.orchestrator.dpop.DpopReplayProtectionService
@@ -19,8 +21,6 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import org.springframework.dao.DataIntegrityViolationException
-import java.time.Clock
-import java.time.Instant
 import java.util.Date
 import java.util.UUID
 
@@ -39,12 +39,12 @@ class PeerAuthValidatorTest : BehaviorSpec({
 
     fun validator(jwkSource: KeycloakJwkSource) = PeerAuthValidator(
         jwkSource = jwkSource,
-        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository(), clock = Clock.systemUTC()),
+        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository(), clock = TEST_CLOCK),
         expectedIssuer = issuer,
         expectedAudience = audience,
         maxClockSkewSeconds = 30,
         maxAssertionAgeSeconds = 30,
-        clock = Clock.systemUTC()
+        clock = TEST_CLOCK
     )
 
     fun jwkSourceReturning(key: ECKey) = mockk<KeycloakJwkSource> {
@@ -55,7 +55,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         key: ECKey,
         htm: String = method,
         htu: String = url,
-        issuedAt: Date = Date(),
+        issuedAt: Date = Date.from(TEST_NOW),
         jti: String? = UUID.randomUUID().toString(),
         iss: String? = issuer,
         aud: String? = audience,
@@ -131,7 +131,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         then("it is rejected before any JWKS lookup happens") {
             val rsaKey = RSAKeyGenerator(2048).keyID(kid).generate()
             val header = JWSHeader.Builder(JWSAlgorithm.RS512).keyID(kid).build()
-            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date()).claim("htm", method).claim("htu", url).build())
+            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build())
             jwt.sign(RSASSASigner(rsaKey.toPrivateKey()))
             shouldThrow<PeerAuthValidationException> { validator(mockk()).validate(jwt.serialize(), method, url) }
         }
@@ -141,7 +141,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         then("it is refused - the extension signs with ES256 only, nothing else is accepted") {
             val rsaKey = RSAKeyGenerator(2048).keyID(kid).generate()
             val header = JWSHeader.Builder(JWSAlgorithm.RS256).type(PeerAuthValidator.ASSERTION_TYPE).keyID(kid).build()
-            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date()).claim("htm", method).claim("htu", url).build())
+            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build())
             jwt.sign(RSASSASigner(rsaKey.toPrivateKey()))
             shouldThrow<PeerAuthValidationException> { validator(mockk()).validate(jwt.serialize(), method, url) }
         }
@@ -151,7 +151,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         then("it is refused before any JWKS lookup - a JWT of another purpose is never read as one") {
             val key = ECKeyGenerator(Curve.P_256).keyID(kid).generate()
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).keyID(kid).build()
-            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date()).claim("htm", method).claim("htu", url).build())
+            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build())
             jwt.sign(ECDSASigner(key))
             shouldThrow<PeerAuthValidationException> { validator(mockk()).validate(jwt.serialize(), method, url) }
         }
@@ -161,7 +161,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         then("it is rejected before any JWKS lookup happens") {
             val key = ECKeyGenerator(Curve.P_256).generate()
             val header = JWSHeader.Builder(JWSAlgorithm.ES256).build()
-            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date()).claim("htm", method).claim("htu", url).build())
+            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build())
             jwt.sign(ECDSASigner(key.toECPrivateKey()))
             shouldThrow<PeerAuthValidationException> { validator(mockk()).validate(jwt.serialize(), method, url) }
         }
@@ -220,15 +220,15 @@ class PeerAuthValidatorTest : BehaviorSpec({
         val key = ECKeyGenerator(Curve.P_256).generate()
 
         then("an assertion issued too far in the future is rejected") {
-            val assertion = signAssertion(key, issuedAt = Date.from(Instant.now().plusSeconds(600)))
+            val assertion = signAssertion(key, issuedAt = Date.from(TEST_NOW.plusSeconds(600)))
             shouldThrow<PeerAuthValidationException> { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
         }
         then("an assertion older than maxAssertionAgeSeconds is rejected") {
-            val assertion = signAssertion(key, issuedAt = Date.from(Instant.now().minusSeconds(600)))
+            val assertion = signAssertion(key, issuedAt = Date.from(TEST_NOW.minusSeconds(600)))
             shouldThrow<PeerAuthValidationException> { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
         }
         then("an assertion just inside the clock-skew allowance is accepted") {
-            val assertion = signAssertion(key, issuedAt = Date.from(Instant.now().plusSeconds(29)))
+            val assertion = signAssertion(key, issuedAt = Date.from(TEST_NOW.plusSeconds(29)))
             validator(jwkSourceReturning(key)).validate(assertion, method, url)
         }
     }

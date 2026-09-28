@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.authsms
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import com.example.identity.tools.auth_sms.internal.SmsSendBudget
@@ -21,10 +23,8 @@ import io.mockk.slot
 import io.mockk.verify
 import io.kotest.matchers.collections.shouldBeEmpty
 import com.example.identity.contract.tool_api.TooManyRequestsException
-import java.time.Clock
 import java.util.Optional
 import java.util.UUID
-import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
@@ -34,9 +34,9 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<AuthSmsToolSessionRepository>()
     val enrollmentRepository = mockk<AuthSmsEnrollmentRepository>()
-    val tanGenerator = TanGenerator("test-pepper", clock = Clock.systemUTC())
+    val tanGenerator = TanGenerator("test-pepper", clock = TEST_CLOCK)
     val sendBudget = mockk<SmsSendBudget>(relaxed = true).also { every { it.trySend(any()) } returns true }
-    val handler = AuthSmsToolHandler(AuthSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = Clock.systemUTC()), sendBudget, clock = Clock.systemUTC())
+    val handler = AuthSmsToolHandler(AuthSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = TEST_CLOCK), sendBudget, clock = TEST_CLOCK)
     val toolSessionId = UUID.randomUUID()
 
     given("start()") {
@@ -58,7 +58,7 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
         }
 
         `when`("the referenced enrollment exists") {
-            val enrollment = AuthSmsEnrollment(phoneNumber = "+491701234567", createdAt = Instant.now()).apply { id = 1L }
+            val enrollment = AuthSmsEnrollment(phoneNumber = "+491701234567", createdAt = TEST_NOW).apply { id = 1L }
             every { enrollmentRepository.findById(1L) } returns Optional.of(enrollment)
             val saved = slot<AuthSmsToolSession>()
             every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
@@ -72,11 +72,11 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
         }
 
         `when`("the number's send budget is used up") {
-            val enrollment = AuthSmsEnrollment(phoneNumber = "+491707654321", createdAt = Instant.now()).apply { id = 2L }
+            val enrollment = AuthSmsEnrollment(phoneNumber = "+491707654321", createdAt = TEST_NOW).apply { id = 2L }
             every { enrollmentRepository.findById(2L) } returns Optional.of(enrollment)
             every { sendBudget.trySend("+491707654321") } returns false
-            val gateway = SmsGateway(clock = Clock.systemUTC())
-            val throttledHandler = AuthSmsToolHandler(AuthSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, gateway, sendBudget, clock = Clock.systemUTC())
+            val gateway = SmsGateway(clock = TEST_CLOCK)
+            val throttledHandler = AuthSmsToolHandler(AuthSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, gateway, sendBudget, clock = TEST_CLOCK)
             val result = runCatching { throttledHandler.start(toolSessionId, EnrollmentRef(SMS_ENROLLMENT_TYPE, "2")) }
 
             then("it refuses with TooManyRequestsException and sends nothing") {
@@ -88,8 +88,8 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
 
     given("an active auth-sms tool session with a pending TAN") {
         val issued = tanGenerator.issue()
-        val data = AuthSmsToolSession(toolSessionId = toolSessionId, enrollmentRefId = "1", issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = Instant.now())
-        every { enrollmentRepository.findById(1L) } returns Optional.of(AuthSmsEnrollment(phoneNumber = "+491701234567", createdAt = Instant.now()).apply { id = 1L })
+        val data = AuthSmsToolSession(toolSessionId = toolSessionId, enrollmentRefId = "1", issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
+        every { enrollmentRepository.findById(1L) } returns Optional.of(AuthSmsEnrollment(phoneNumber = "+491701234567", createdAt = TEST_NOW).apply { id = 1L })
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
 
         `when`("confirming with the correct TAN") {
@@ -112,7 +112,7 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
         val goneSessionId = UUID.randomUUID()
         val issued = tanGenerator.issue()
         every { toolDataRepository.findById(goneSessionId) } returns
-            Optional.of(AuthSmsToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7", issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = Instant.now()))
+            Optional.of(AuthSmsToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7", issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = TEST_NOW))
         every { enrollmentRepository.findById(7L) } returns Optional.empty()
 
         `when`("the right TAN arrives") {

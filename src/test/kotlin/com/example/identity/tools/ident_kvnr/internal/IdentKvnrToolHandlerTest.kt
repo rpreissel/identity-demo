@@ -1,5 +1,7 @@
 package com.example.identity.tools.ident_kvnr.internal
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.tools.ident_kvnr.IdentKvnrDescriptor
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -13,10 +15,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
-import java.time.Clock
 import java.util.Optional
 import java.util.UUID
-import java.time.Instant
 
 /**
  * Pins what the correlation step asserts (ADR-18): the register's person reference and KVNR, both
@@ -29,8 +29,8 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
     val toolSessionId = UUID.randomUUID()
     val repository = mockk<IdentKvnrToolSessionRepository>()
     val personDirectory = mockk<PersonDirectory>()
-    val handler = IdentKvnrToolHandler(IdentKvnrDescriptor, repository, personDirectory, clock = Clock.systemUTC())
-    val data = IdentKvnrToolSession(toolSessionId = toolSessionId, createdAt = Instant.now())
+    val handler = IdentKvnrToolHandler(IdentKvnrDescriptor, repository, personDirectory, clock = TEST_CLOCK)
+    val data = IdentKvnrToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
 
     beforeTest {
         every { repository.findById(toolSessionId) } returns Optional.of(data)

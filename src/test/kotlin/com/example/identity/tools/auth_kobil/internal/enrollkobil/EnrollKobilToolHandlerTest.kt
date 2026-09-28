@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_kobil.internal.enrollkobil
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -23,10 +25,8 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.time.Clock
 import java.util.Optional
 import java.util.UUID
-import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories and KOBIL mocked with MockK. Covers what start
@@ -40,7 +40,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
     val secrets = KobilSecrets(pinLength = 8)
     val ssms = mockk<KobilSsms>()
     val tenantId = "identity-demo"
-    val handler = EnrollKobilToolHandler(EnrollKobilDescriptor, toolDataRepository, enrollmentRepository, secrets, ssms, tenantId, clock = Clock.systemUTC())
+    val handler = EnrollKobilToolHandler(EnrollKobilDescriptor, toolDataRepository, enrollmentRepository, secrets, ssms, tenantId, clock = TEST_CLOCK)
 
     /** A session mid-setup for KOBIL user [kobilUserId], still holding its minted secrets. */
     fun activating(kobilUserId: String): Pair<UUID, EnrollKobilToolSession> {
@@ -52,7 +52,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
             activationCode = "ACT23456",
             pin = "12345678",
             unlockSecret = "unlock-secret-$kobilUserId",
-            createdAt = Instant.now(),
+            createdAt = TEST_NOW,
         )
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
         return toolSessionId to data
@@ -147,7 +147,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
 
     given("a session whose activation was already written once") {
         every { ssms.deviceOf(KobilUserRef(tenantId, "kob-again")) } returns "dev-again"
-        val existing = KobilEnrollment(kobilTenantId = tenantId, kobilUserId = "kob-again", kobilDeviceId = "dev-again", pin = "12345678", bindingKeyRef = "jkt", createdAt = Instant.now())
+        val existing = KobilEnrollment(kobilTenantId = tenantId, kobilUserId = "kob-again", kobilDeviceId = "dev-again", pin = "12345678", bindingKeyRef = "jkt", createdAt = TEST_NOW)
             .apply { id = 77L }
         every { enrollmentRepository.findByKobilUserId("kob-again") } returns existing
 

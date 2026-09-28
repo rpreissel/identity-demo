@@ -1,5 +1,7 @@
 package com.example.identity.tools.ident_eid.internal
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.tools.ident_eid.IdentEidDescriptor
@@ -14,11 +16,9 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
-import java.time.Clock
 import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
-import java.time.Instant
 
 /**
  * Pins the claims a successful ident-eid run asserts: what the card showed, including the address,
@@ -30,7 +30,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
 
     val toolSessionId = UUID.randomUUID()
     val repository = mockk<IdentEidToolSessionRepository>()
-    val handler = IdentEidToolHandler(IdentEidDescriptor, repository, clock = Clock.systemUTC())
+    val handler = IdentEidToolHandler(IdentEidDescriptor, repository, clock = TEST_CLOCK)
 
     given("an ident-eid session with the card read, waiting for the PIN") {
         val data = IdentEidToolSession(
@@ -42,7 +42,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
             postalCode = "12345",
             locality = "Musterstadt",
             restrictedId = "T0103005K1D5S0V8T9W6UM2RTX",
-            createdAt = Instant.now()
+            createdAt = TEST_NOW
         )
         every { repository.findById(toolSessionId) } returns Optional.of(data)
         every { repository.save(any()) } returns data
@@ -94,7 +94,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
     }
 
     given("a fresh ident-eid session") {
-        val data = IdentEidToolSession(toolSessionId = toolSessionId)
+        val data = IdentEidToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
         every { repository.findById(toolSessionId) } returns Optional.of(data)
         every { repository.save(any()) } returns data
 
@@ -115,7 +115,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
     }
 
     given("another fresh ident-eid session") {
-        val data = IdentEidToolSession(toolSessionId = toolSessionId)
+        val data = IdentEidToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
         every { repository.findById(toolSessionId) } returns Optional.of(data)
         every { repository.save(any()) } returns data
 

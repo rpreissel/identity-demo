@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.TEST_NOW
+import com.example.identity.TEST_CLOCK
 import com.example.identity.core.orchestrator.dpop.DpopReplayProtectionService
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -13,7 +15,6 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
-import java.time.Clock
 import java.util.Date
 import java.util.UUID
 import org.springframework.beans.factory.annotation.Autowired
@@ -67,7 +68,7 @@ class PeerAuthRoundTripTest : BehaviorSpec() {
             .claim("htu", htu)
             .claim("channel_anchor", channelAnchor)
             .jwtID(UUID.randomUUID().toString())
-            .issueTime(Date())
+            .issueTime(Date.from(TEST_NOW))
             .build()
         val header = JWSHeader.Builder(JWSAlgorithm.ES256).type(PeerAuthValidator.ASSERTION_TYPE).keyID(key.keyID).build()
         val jwt = SignedJWT(header, claims)
@@ -82,7 +83,7 @@ class PeerAuthRoundTripTest : BehaviorSpec() {
                     val jwkSource = KeycloakJwkSource(
                         jwksUri = "http://localhost:$port/test-peer-auth/jwks.json",
                         cacheTtlSeconds = 600,
-                        clock = Clock.systemUTC()
+                        clock = TEST_CLOCK
                     )
                     val validator = PeerAuthValidator(
                         jwkSource = jwkSource,
@@ -91,7 +92,7 @@ class PeerAuthRoundTripTest : BehaviorSpec() {
                         expectedAudience = "identity-demo-orchestrator",
                         maxClockSkewSeconds = 30,
                         maxAssertionAgeSeconds = 30,
-                        clock = Clock.systemUTC()
+                        clock = TEST_CLOCK
                     )
                     val htu = "http://localhost:$port/orchestrator/api/v1/kc/channels/${UUID.randomUUID()}"
                     val token = sign(TEST_PEER_AUTH_KEY, "PATCH", htu, "channel-anchor-${UUID.randomUUID()}")

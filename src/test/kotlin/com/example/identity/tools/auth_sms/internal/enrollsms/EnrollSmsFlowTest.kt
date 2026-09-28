@@ -1,10 +1,10 @@
 package com.example.identity.tools.auth_sms.internal.enrollsms
+import com.example.identity.TEST_CLOCK
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import java.time.Clock
 import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 
@@ -16,7 +16,7 @@ import com.example.identity.contract.tool_api.MissingFields
 class EnrollSmsFlowTest : BehaviorSpec({
 
     // Explicit pepper so issue()/matches() stay reproducible within the test run.
-    val tanGenerator = TanGenerator("test-pepper", clock = Clock.systemUTC())
+    val tanGenerator = TanGenerator("test-pepper", clock = TEST_CLOCK)
 
     given("AwaitingPhoneNumber") {
         val state = EnrollSmsState.AwaitingPhoneNumber

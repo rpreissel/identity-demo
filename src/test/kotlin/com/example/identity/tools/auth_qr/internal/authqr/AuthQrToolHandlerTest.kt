@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_qr.internal.authqr
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -16,7 +18,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.time.Clock
 import java.time.Instant
 import java.util.Optional
 import java.util.UUID
@@ -31,7 +32,7 @@ class AuthQrToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<AuthQrToolSessionRepository>()
     val requests = mockk<QrLoginRequestRepository>()
     val digest = ConfirmationCodeDigest("test-pepper")
-    val handler = AuthQrToolHandler(AuthQrDescriptor, toolDataRepository, QrLoginBrowserSide(requests, digest, clock = Clock.systemUTC()), clock = Clock.systemUTC())
+    val handler = AuthQrToolHandler(AuthQrDescriptor, toolDataRepository, QrLoginBrowserSide(requests, digest, clock = TEST_CLOCK), clock = TEST_CLOCK)
 
     /** A tool session waiting on a pairing in [status]; returns its id. */
     fun sessionOn(
@@ -39,16 +40,16 @@ class AuthQrToolHandlerTest : BehaviorSpec({
         status: QrLoginStatus,
         expectedAccountId: Long = 42L,
         resolvingAccountId: Long? = null,
-        expiresAt: Instant = Instant.now().plusSeconds(60),
+        expiresAt: Instant = TEST_NOW.plusSeconds(60),
     ): UUID {
-        val request = QrLoginRequest(pairingCode = pairingCode, expectedAccountId = expectedAccountId, createdAt = Instant.now()).apply {
+        val request = QrLoginRequest(pairingCode = pairingCode, expectedAccountId = expectedAccountId, createdAt = TEST_NOW).apply {
             this.status = status
             this.resolvingAccountId = resolvingAccountId
             this.expiresAt = expiresAt
         }
         every { requests.findById(pairingCode) } returns Optional.of(request)
         val toolSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(AuthQrToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode, createdAt = Instant.now()))
+        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(AuthQrToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode, createdAt = TEST_NOW))
         return toolSessionId
     }
 
@@ -82,7 +83,7 @@ class AuthQrToolHandlerTest : BehaviorSpec({
     }
 
     given("patch() on a pairing that ran out before the app decided") {
-        val toolSessionId = sessionOn("EXPIRED1", QrLoginStatus.PENDING, expiresAt = Instant.now().minusSeconds(1))
+        val toolSessionId = sessionOn("EXPIRED1", QrLoginStatus.PENDING, expiresAt = TEST_NOW.minusSeconds(1))
 
         `when`("the browser polls") {
             val outcome = handler.patch(toolSessionId, confirmationCode = null)

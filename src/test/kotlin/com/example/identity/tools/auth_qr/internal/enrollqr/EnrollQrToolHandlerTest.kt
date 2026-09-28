@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_qr.internal.enrollqr
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.tools.auth_qr.EnrollQrDescriptor
@@ -12,10 +14,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.time.Clock
 import java.util.Optional
 import java.util.UUID
-import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. enroll-qr is a pure opt-in:
@@ -25,7 +25,7 @@ class EnrollQrToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<EnrollQrToolSessionRepository>()
     val qrOptInRepository = mockk<QrOptInRepository>()
-    val handler = EnrollQrToolHandler(EnrollQrDescriptor, toolDataRepository, qrOptInRepository, clock = Clock.systemUTC())
+    val handler = EnrollQrToolHandler(EnrollQrDescriptor, toolDataRepository, qrOptInRepository, clock = TEST_CLOCK)
 
     given("start()") {
         `when`("an enroll-qr run begins") {
@@ -43,7 +43,7 @@ class EnrollQrToolHandlerTest : BehaviorSpec({
 
     given("an active enroll-qr tool session") {
         val toolSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(EnrollQrToolSession(toolSessionId = toolSessionId, createdAt = Instant.now()))
+        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(EnrollQrToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW))
         every { qrOptInRepository.save(any()) } answers { firstArg<QrOptIn>().apply { id = 5L } }
 
         `when`("the user confirms") {
@@ -65,7 +65,7 @@ class EnrollQrToolHandlerTest : BehaviorSpec({
         every { toolDataRepository.findById(unknownId) } returns Optional.empty()
         // Its own opt-in repository, so no earlier confirmation counts against the check below.
         val untouchedOptIns = mockk<QrOptInRepository>()
-        val isolatedHandler = EnrollQrToolHandler(EnrollQrDescriptor, toolDataRepository, untouchedOptIns, clock = Clock.systemUTC())
+        val isolatedHandler = EnrollQrToolHandler(EnrollQrDescriptor, toolDataRepository, untouchedOptIns, clock = TEST_CLOCK)
 
         `when`("a confirmation arrives") {
             val result = runCatching { isolatedHandler.patch(unknownId) }

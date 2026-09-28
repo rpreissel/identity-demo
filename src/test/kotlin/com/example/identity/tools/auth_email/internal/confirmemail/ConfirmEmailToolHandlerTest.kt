@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_email.internal.confirmemail
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
@@ -19,10 +21,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.time.Clock
 import java.util.Optional
 import java.util.UUID
-import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
@@ -32,13 +32,13 @@ import java.time.Instant
 class ConfirmEmailToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<ConfirmEmailToolSessionRepository>()
-    val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = Clock.systemUTC())
+    val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
     val sendBudget = mockk<EmailSendBudget>(relaxed = true).also { every { it.trySend(any()) } returns true }
-    val handler = ConfirmEmailToolHandler(ConfirmEmailDescriptor, toolDataRepository, emailCodeGenerator, MailServer(clock = Clock.systemUTC()), sendBudget, clock = Clock.systemUTC())
+    val handler = ConfirmEmailToolHandler(ConfirmEmailDescriptor, toolDataRepository, emailCodeGenerator, MailServer(clock = TEST_CLOCK), sendBudget, clock = TEST_CLOCK)
     val toolSessionId = UUID.randomUUID()
 
     given("an active enroll-email tool session with no email yet") {
-        val data = ConfirmEmailToolSession(toolSessionId = toolSessionId, createdAt = Instant.now())
+        val data = ConfirmEmailToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
 
         `when`("submitting an email") {
@@ -67,7 +67,7 @@ class ConfirmEmailToolHandlerTest : BehaviorSpec({
 
     given("an active enroll-email tool session with a pending code") {
         val issued = emailCodeGenerator.issue()
-        val data = ConfirmEmailToolSession(toolSessionId = toolSessionId, email = "max@example.com", issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = Instant.now())
+        val data = ConfirmEmailToolSession(toolSessionId = toolSessionId, email = "max@example.com", issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
 
             `when`("confirming with the correct code") {

@@ -1,5 +1,7 @@
 package com.example.identity.core.account
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.core.account.application.PersonLookupKey
 import com.example.identity.core.account.application.ChangeLog
 import com.example.identity.core.account.infrastructure.AccountAuthMethodRepository
@@ -30,8 +32,6 @@ import io.mockk.Called
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.time.Clock
-import java.time.Instant
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.repository.findByIdOrNull
 
@@ -49,7 +49,7 @@ class AccountServiceTest : BehaviorSpec({
         val eventPublisher = mockk<ApplicationEventPublisher>(relaxed = true)
         val service = AccountService(accountRepository, accountClaimRepository, accountAnchorRepository, mockk(relaxed = true), mockk(relaxed = true), eventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
-        val account = Account(createdAt = Instant.now()).apply { id = 7L }
+        val account = Account(createdAt = TEST_NOW).apply { id = 7L }
         every { accountRepository.findByIdOrNull(7L) } returns account
         every { accountRepository.findForUpdate(7L) } returns account
         every { accountAnchorRepository.findByAccountIdAndAttributeType(7L, AttributeType.PERSON_ID) } returns null
@@ -91,11 +91,11 @@ class AccountServiceTest : BehaviorSpec({
         val eventPublisher = mockk<ApplicationEventPublisher>(relaxed = true)
         val service = AccountService(accountRepository, accountClaimRepository, accountAnchorRepository, mockk(relaxed = true), mockk(relaxed = true), eventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
-        val account = Account(createdAt = Instant.now()).apply { id = 7L }
+        val account = Account(createdAt = TEST_NOW).apply { id = 7L }
         every { accountRepository.findByIdOrNull(7L) } returns account
         every { accountRepository.findForUpdate(7L) } returns account
         every { accountClaimRepository.save(any()) } answers { firstArg() }
-        val existingAnchor = AccountAnchor(attributeType = AttributeType.PERSON_ID, value = "P000000042", accountId = 7L, establishedAt = Instant.now())
+        val existingAnchor = AccountAnchor(attributeType = AttributeType.PERSON_ID, value = "P000000042", accountId = 7L, establishedAt = TEST_NOW)
 
         `when`("re-asserting the same person_id") {
             every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.PERSON_ID, "P000000042") } returns existingAnchor
@@ -150,7 +150,7 @@ class AccountServiceTest : BehaviorSpec({
         every { accountRetractionRepository.save(any()) } answers { firstArg() }
         val service = AccountService(accountRepository, accountClaimRepository, accountAnchorRepository, mockk(relaxed = true), accountRetractionRepository, eventPublisher, mockk(relaxed = true), mockk(relaxed = true))
 
-        val account = Account(createdAt = Instant.now()).apply { id = 7L }
+        val account = Account(createdAt = TEST_NOW).apply { id = 7L }
         every { accountRepository.findByIdOrNull(7L) } returns account
         every { accountRepository.findForUpdate(7L) } returns account
 
@@ -181,7 +181,7 @@ class AccountServiceTest : BehaviorSpec({
 
         `when`("recording an anchor another account already holds") {
             every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.EMAIL, "other@example.com") } returns
-                AccountAnchor(attributeType = AttributeType.EMAIL, value = "other@example.com", accountId = 99L, establishedAt = Instant.now())
+                AccountAnchor(attributeType = AttributeType.EMAIL, value = "other@example.com", accountId = 99L, establishedAt = TEST_NOW)
 
             then("the claim is rejected instead of silently skipping the anchor (ADR-11)") {
                 shouldThrow<IdentityConflictException> {
@@ -199,7 +199,7 @@ class AccountServiceTest : BehaviorSpec({
         }
 
         `when`("re-binding this account's own anchor to a new value") {
-            val oldAnchor = AccountAnchor(attributeType = AttributeType.EMAIL, value = "old@example.com", accountId = 7L, establishedAt = Instant.now())
+            val oldAnchor = AccountAnchor(attributeType = AttributeType.EMAIL, value = "old@example.com", accountId = 7L, establishedAt = TEST_NOW)
             every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.EMAIL, "new@example.com") } returns null
             every { accountAnchorRepository.findByAccountIdAndAttributeType(7L, AttributeType.EMAIL) } returns oldAnchor
 
@@ -226,9 +226,9 @@ class AccountServiceTest : BehaviorSpec({
             val authMethods = mockk<AccountAuthMethodRepository>()
             val service = AccountService(accounts, mockk(), anchors, authMethods, mockk(), mockk(), mockk(relaxed = true), mockk(relaxed = true))
             every { anchors.findByAttributeTypeAndValue(AttributeType.EMAIL, "max@example.com") } returns
-                AccountAnchor(attributeType = AttributeType.EMAIL, value = "max@example.com", accountId = 7L, establishedAt = Instant.now())
+                AccountAnchor(attributeType = AttributeType.EMAIL, value = "max@example.com", accountId = 7L, establishedAt = TEST_NOW)
             every { anchors.findByAttributeTypeAndValue(AttributeType.PERSON_ID, "P000000042") } returns
-                AccountAnchor(attributeType = AttributeType.PERSON_ID, value = "P000000042", accountId = 7L, establishedAt = Instant.now())
+                AccountAnchor(attributeType = AttributeType.PERSON_ID, value = "P000000042", accountId = 7L, establishedAt = TEST_NOW)
             every { authMethods.existsByAccountId(7L) } returns true
             service.resolveAccountByEmail("  Max@Example.COM ") shouldBe 7L
             service.resolveAccountByPersonId("P000000042") shouldBe 7L
@@ -249,11 +249,11 @@ class AccountServiceTest : BehaviorSpec({
 
         then("KVNR changes follow personenverzeichnis without creating or reading a local KVNR anchor") {
             val persons = mockk<PersonDirectory>()
-            val account = Account(createdAt = Instant.now()).apply { id = 7L }
+            val account = Account(createdAt = TEST_NOW).apply { id = 7L }
             every { accountRepository.findByIdOrNull(7L) } returns account
             every { accountAuthMethodRepository.existsByAccountId(7L) } returns true
             every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.PERSON_ID, "P000000042") } returns
-                AccountAnchor(attributeType = AttributeType.PERSON_ID, value = "P000000042", accountId = 7L, establishedAt = Instant.now())
+                AccountAnchor(attributeType = AttributeType.PERSON_ID, value = "P000000042", accountId = 7L, establishedAt = TEST_NOW)
             every { persons.findPersonIdByKvnr("A123456789") } returns "P000000042"
             service.findAccountByKvnr(" a123456789 ", persons)?.accountId shouldBe 7L
 
@@ -275,12 +275,12 @@ class AccountServiceTest : BehaviorSpec({
         }
 
         then("typed extensions resolve both person ID and email through anchors") {
-            val account = Account(createdAt = Instant.now()).apply { id = 7L }
+            val account = Account(createdAt = TEST_NOW).apply { id = 7L }
             every { accountRepository.findByIdOrNull(7L) } returns account
             every { accountAuthMethodRepository.existsByAccountId(7L) } returns true
             for ((type, value) in listOf(AttributeType.EMAIL to "max@example.com", AttributeType.PERSON_ID to "P000000042")) {
                 every { accountAnchorRepository.findByAttributeTypeAndValue(type, value) } returns
-                    AccountAnchor(attributeType = type, value = value, accountId = 7L, establishedAt = Instant.now())
+                    AccountAnchor(attributeType = type, value = value, accountId = 7L, establishedAt = TEST_NOW)
             }
             service.findAccountByEmail("  Max@Example.COM ")?.accountId shouldBe 7L
             service.findAccountByPersonId("P000000042")?.accountId shouldBe 7L
@@ -292,7 +292,7 @@ class AccountServiceTest : BehaviorSpec({
 
         `when`("resolving an account by anchor") {
             every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.EMAIL, "max@example.com") } returns
-                AccountAnchor(attributeType = AttributeType.EMAIL, value = "max@example.com", accountId = 7L, establishedAt = Instant.now())
+                AccountAnchor(attributeType = AttributeType.EMAIL, value = "max@example.com", accountId = 7L, establishedAt = TEST_NOW)
 
             then("the lookup runs normalized") {
                 every { accountAuthMethodRepository.existsByAccountId(7L) } returns true
@@ -309,7 +309,7 @@ class AccountServiceTest : BehaviorSpec({
 
         `when`("reading an account's anchor value") {
             every { accountAnchorRepository.findByAccountIdAndAttributeType(7L, AttributeType.EMAIL) } returns
-                AccountAnchor(attributeType = AttributeType.EMAIL, value = "max@example.com", accountId = 7L, establishedAt = Instant.now())
+                AccountAnchor(attributeType = AttributeType.EMAIL, value = "max@example.com", accountId = 7L, establishedAt = TEST_NOW)
 
             then("it returns the stored normalized value") {
                 service.anchorValue(7L, AttributeType.EMAIL) shouldBe "max@example.com"
@@ -334,6 +334,6 @@ private fun AccountService(
     changeLog: ChangeLog,
     personLookupKey: PersonLookupKey,
 ): AccountService {
-    val ledger = ClaimLedger(accountClaimRepository, accountRetractionRepository, changeLog, clock = Clock.systemUTC())
-    return AccountService(accountRepository, ledger, AnchorRegistry(accountAnchorRepository, ledger), accountAuthMethodRepository, eventPublisher, changeLog, personLookupKey, Clock.systemUTC())
+    val ledger = ClaimLedger(accountClaimRepository, accountRetractionRepository, changeLog, clock = TEST_CLOCK)
+    return AccountService(accountRepository, ledger, AnchorRegistry(accountAnchorRepository, ledger), accountAuthMethodRepository, eventPublisher, changeLog, personLookupKey, TEST_CLOCK)
 }

@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.core.account.SignInLog
 import com.example.identity.core.orchestrator.domain.ErrorCode
 import com.example.identity.core.orchestrator.domain.OrchestratorException
@@ -10,9 +12,7 @@ import io.mockk.every
 import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.verify
-import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 
 /**
  * Unit test of [AccountLockoutService] with the counter and the sign-in log mocked. Checks the
@@ -26,7 +26,7 @@ class AccountLockoutServiceTest : BehaviorSpec({
     given("an account the counter reports as locked") {
         val counter = mockk<AttemptCounter>()
         every { counter.isLocked(ThrottleScope.ACCOUNT, key) } returns true
-        val service = AccountLockoutService(counter, mockk(relaxed = true), clock = Clock.systemUTC())
+        val service = AccountLockoutService(counter, mockk(relaxed = true), clock = TEST_CLOCK)
 
         `when`("asking whether it is locked") {
             val locked = service.isLocked(accountId)
@@ -50,7 +50,7 @@ class AccountLockoutServiceTest : BehaviorSpec({
     given("an account the counter reports as not locked") {
         val counter = mockk<AttemptCounter>()
         every { counter.isLocked(ThrottleScope.ACCOUNT, key) } returns false
-        val service = AccountLockoutService(counter, mockk(relaxed = true), clock = Clock.systemUTC())
+        val service = AccountLockoutService(counter, mockk(relaxed = true), clock = TEST_CLOCK)
 
         `when`("asserting that it is not locked") {
             val result = runCatching { service.assertNotLocked(accountId) }
@@ -64,10 +64,10 @@ class AccountLockoutServiceTest : BehaviorSpec({
     given("an unlocked account whose next failure trips the lock") {
         val counter = mockk<AttemptCounter>()
         val signInLog = mockk<SignInLog>(relaxed = true)
-        val lockedUntil = Instant.now().plus(Duration.ofMinutes(15))
+        val lockedUntil = TEST_NOW.plus(Duration.ofMinutes(15))
         every { counter.lockedUntil(ThrottleScope.ACCOUNT, key) } returnsMany listOf(null, lockedUntil)
         justRun { counter.recordFailure(ThrottleScope.ACCOUNT, key, any(), any()) }
-        val service = AccountLockoutService(counter, signInLog, clock = Clock.systemUTC())
+        val service = AccountLockoutService(counter, signInLog, clock = TEST_CLOCK)
 
         `when`("a failure is recorded") {
             service.recordFailure(accountId, "APP", "sms")
@@ -89,10 +89,10 @@ class AccountLockoutServiceTest : BehaviorSpec({
     given("an account already locked before the failure") {
         val counter = mockk<AttemptCounter>()
         val signInLog = mockk<SignInLog>(relaxed = true)
-        val lockedUntil = Instant.now().plus(Duration.ofMinutes(10))
+        val lockedUntil = TEST_NOW.plus(Duration.ofMinutes(10))
         every { counter.lockedUntil(ThrottleScope.ACCOUNT, key) } returnsMany listOf(lockedUntil, lockedUntil)
         justRun { counter.recordFailure(ThrottleScope.ACCOUNT, key, any(), any()) }
-        val service = AccountLockoutService(counter, signInLog, clock = Clock.systemUTC())
+        val service = AccountLockoutService(counter, signInLog, clock = TEST_CLOCK)
 
         `when`("a failure is recorded") {
             service.recordFailure(accountId, "KEYCLOAK", "password")
@@ -109,7 +109,7 @@ class AccountLockoutServiceTest : BehaviorSpec({
         val signInLog = mockk<SignInLog>(relaxed = true)
         every { counter.lockedUntil(ThrottleScope.ACCOUNT, key) } returns null
         justRun { counter.recordFailure(ThrottleScope.ACCOUNT, key, any(), any()) }
-        val service = AccountLockoutService(counter, signInLog, clock = Clock.systemUTC())
+        val service = AccountLockoutService(counter, signInLog, clock = TEST_CLOCK)
 
         `when`("a failure is recorded") {
             service.recordFailure(accountId, "APP", "sms")
@@ -124,7 +124,7 @@ class AccountLockoutServiceTest : BehaviorSpec({
     given("an account with counted failures") {
         val counter = mockk<AttemptCounter>()
         justRun { counter.reset(ThrottleScope.ACCOUNT, key) }
-        val service = AccountLockoutService(counter, mockk(relaxed = true), clock = Clock.systemUTC())
+        val service = AccountLockoutService(counter, mockk(relaxed = true), clock = TEST_CLOCK)
 
         `when`("a success is recorded") {
             service.recordSuccess(accountId)

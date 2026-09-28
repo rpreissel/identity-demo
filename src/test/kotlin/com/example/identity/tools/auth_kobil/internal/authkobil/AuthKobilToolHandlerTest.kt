@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_kobil.internal.authkobil
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -28,7 +30,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.time.Clock
 import java.time.Instant
 import java.util.Optional
 import java.util.UUID
@@ -49,7 +50,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
         AuthKobilDescriptor, toolDataRepository, enrollmentRepository, secrets, ssms, passwordCredentials,
         blockingRisks = setOf(KobilRisk.ROOTED, KobilRisk.EMULATOR, KobilRisk.DEBUGGER_ATTACHED, KobilRisk.APP_TAMPERED),
         pinReleaseTtlSeconds = 120,
-        clock = Clock.systemUTC(),
+        clock = TEST_CLOCK,
     )
     val tenantId = "identity-demo"
 
@@ -62,16 +63,16 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             pin = "12345678",
             unlockSecretHash = if (biometricConsent) secrets.hash("unlock-secret-$enrollmentId") else null,
             bindingKeyRef = "jkt-$enrollmentId",
-            createdAt = Instant.now(),
+            createdAt = TEST_NOW,
         ).apply { id = enrollmentId }
         every { enrollmentRepository.findById(enrollmentId) } returns Optional.of(enrollment)
         return enrollment
     }
 
     /** A session on [enrollmentId], optionally with a PIN release by [release] that ends at [releaseEndsAt]. */
-    fun session(enrollmentId: Long, release: UserVerification? = null, releaseEndsAt: Instant = Instant.now().plusSeconds(60)): Pair<UUID, AuthKobilToolSession> {
+    fun session(enrollmentId: Long, release: UserVerification? = null, releaseEndsAt: Instant = TEST_NOW.plusSeconds(60)): Pair<UUID, AuthKobilToolSession> {
         val toolSessionId = UUID.randomUUID()
-        val data = AuthKobilToolSession(toolSessionId = toolSessionId, enrollmentRefId = enrollmentId.toString(), createdAt = Instant.now())
+        val data = AuthKobilToolSession(toolSessionId = toolSessionId, enrollmentRefId = enrollmentId.toString(), createdAt = TEST_NOW)
         release?.let { data.release(it, releaseEndsAt) }
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
         return toolSessionId to data
@@ -204,7 +205,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
         }
 
         `when`("an OTP arrives after the PIN release has run out") {
-            val (toolSessionId, _) = session(20L, UserVerification.BIOMETRIC, releaseEndsAt = Instant.now().minusSeconds(1))
+            val (toolSessionId, _) = session(20L, UserVerification.BIOMETRIC, releaseEndsAt = TEST_NOW.minusSeconds(1))
             val outcome = handler.patch(toolSessionId, "otp-after-expiry")
 
             then("it fails as not unlocked and does not redeem the OTP at KOBIL") {

@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.retention
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.core.orchestrator.session.AccountDeletionService
 import com.example.identity.core.account.AccountService
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
@@ -19,7 +21,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -50,7 +51,7 @@ class RetentionJobTest : BehaviorSpec({
         accountService = accountService,
         accountDeletionService = accountDeletionService,
         meterRegistry = SimpleMeterRegistry(),
-        clock = Clock.systemUTC(),
+        clock = TEST_CLOCK,
     )
 
     given("expired channels that each carry an AuthContext") {
@@ -58,8 +59,8 @@ class RetentionJobTest : BehaviorSpec({
             val authContextId1 = UUID.randomUUID()
             val authContextId2 = UUID.randomUUID()
             val expired = listOf(
-                ChannelSession(now = Instant.now()).apply { authContextId = authContextId1 },
-                ChannelSession(now = Instant.now()).apply { authContextId = authContextId2 }
+                ChannelSession(now = TEST_NOW).apply { authContextId = authContextId1 },
+                ChannelSession(now = TEST_NOW).apply { authContextId = authContextId2 }
             )
             val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
             every { channelSessionRepository.findByExpiresAtBefore(any(), any()) } returnsMany listOf(expired, emptyList())
@@ -78,7 +79,7 @@ class RetentionJobTest : BehaviorSpec({
         then("deleteAllById is never called - nothing to orphan, no pointless empty-list call") {
             val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
             every { channelSessionRepository.findByExpiresAtBefore(any(), any()) } returnsMany
-                listOf(listOf(ChannelSession(now = Instant.now()).apply { authContextId = null }), emptyList())
+                listOf(listOf(ChannelSession(now = TEST_NOW).apply { authContextId = null }), emptyList())
             val authContextRepository = mockk<AuthContextRepository>(relaxed = true)
 
             job(channelSessionRepository, authContextRepository).cleanup()
@@ -108,7 +109,7 @@ class RetentionJobTest : BehaviorSpec({
             job(channelSessionRepository).cleanup()
 
             verify { channelSessionRepository.findByExpiresAtBefore(capture(cutoffSlot), any()) }
-            val expected = Instant.now().minus(Duration.ofDays(14))
+            val expected = TEST_NOW.minus(Duration.ofDays(14))
             val drift = Duration.between(cutoffSlot.captured, expected).abs()
             (drift < Duration.ofMinutes(1)) shouldBe true
         }
@@ -126,7 +127,7 @@ class RetentionJobTest : BehaviorSpec({
             every { journeyTraceRepository.deleteByCreatedAtBefore(capture(logCutoff)) } returns 0
             every { attemptThrottleRepository.deleteStaleCounters(capture(throttleCutoff), capture(throttleNow)) } returns 0
 
-            val before = Instant.now()
+            val before = TEST_NOW
             job(
                 channelSessionRepository,
                 journeyTraceRepository = journeyTraceRepository,

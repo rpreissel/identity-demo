@@ -1,5 +1,6 @@
 package com.example.identity.simulation.nect
 
+import com.example.identity.TEST_CLOCK
 import com.example.identity.simulation.nect.internal.NectCase
 import com.example.identity.simulation.nect.internal.NectCaseRepository
 import io.kotest.assertions.throwables.shouldThrow
@@ -10,7 +11,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
-import java.time.Clock
 import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
@@ -28,7 +28,7 @@ class NectIdentTest : BehaviorSpec({
         val saved = slot<NectCase>()
         every { repository.save(capture(saved)) } answers { store[checkNotNull(saved.captured.id)] = saved.captured; saved.captured }
         every { repository.findById(any()) } answers { Optional.ofNullable(store[firstArg<UUID>()]) }
-        return NectIdent(repository, clock = Clock.systemUTC())
+        return NectIdent(repository, clock = TEST_CLOCK)
     }
 
     val max = NectAttributes(name = "Muster", vorname = "Max", geburtsdatum = LocalDate.of(1985, 6, 15))
@@ -59,7 +59,7 @@ class NectIdentTest : BehaviorSpec({
         then("an expired passport fails the case") {
             val nect = fixture()
             val case = nect.createCase("/app/", everything)
-            nect.complete(case.caseId, NectProcedure.EPASS, max, pin = null, expiryDate = LocalDate.now().minusDays(1))
+            nect.complete(case.caseId, NectProcedure.EPASS, max, pin = null, expiryDate = LocalDate.now(TEST_CLOCK).minusDays(1))
             nect.redeem(case.caseId) shouldBe NectResult.Failed(NectFailure.PASSPORT_EXPIRED)
         }
 

@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_qr.internal.authqrlookup
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -15,8 +17,6 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
-import java.time.Clock
-import java.time.Instant
 import java.util.Optional
 import java.util.UUID
 
@@ -30,7 +30,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<AuthQrLookupToolSessionRepository>()
     val requests = mockk<QrLoginRequestRepository>()
     val digest = ConfirmationCodeDigest("test-pepper")
-    val handler = AuthQrLookupToolHandler(AuthQrLookupDescriptor, toolDataRepository, QrLoginBrowserSide(requests, digest, clock = Clock.systemUTC()), clock = Clock.systemUTC())
+    val handler = AuthQrLookupToolHandler(AuthQrLookupDescriptor, toolDataRepository, QrLoginBrowserSide(requests, digest, clock = TEST_CLOCK), clock = TEST_CLOCK)
 
     /** A tool session waiting on a pairing without expected account; returns its id. */
     fun sessionOn(
@@ -39,16 +39,16 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
         resolvingAccountId: Long? = null,
         confirmationAttempts: Int = 0,
     ): UUID {
-        val request = QrLoginRequest(pairingCode = pairingCode, expectedAccountId = null, createdAt = Instant.now()).apply {
+        val request = QrLoginRequest(pairingCode = pairingCode, expectedAccountId = null, createdAt = TEST_NOW).apply {
             this.status = status
             this.resolvingAccountId = resolvingAccountId
             this.confirmationAttempts = confirmationAttempts
-            expiresAt = Instant.now().plusSeconds(60)
+            expiresAt = TEST_NOW.plusSeconds(60)
         }
         every { requests.findById(pairingCode) } returns Optional.of(request)
         val toolSessionId = UUID.randomUUID()
         every { toolDataRepository.findById(toolSessionId) } returns
-            Optional.of(AuthQrLookupToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode, createdAt = Instant.now()))
+            Optional.of(AuthQrLookupToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode, createdAt = TEST_NOW))
         return toolSessionId
     }
 

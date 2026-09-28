@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_email.internal.enrollemail
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
 import com.example.identity.tools.auth_email.EnrollEmailDescriptor
@@ -9,10 +11,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
-import java.time.Clock
 import java.util.Optional
 import java.util.UUID
-import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, the repository mocked with MockK. enroll-email is a one-shot,
@@ -21,7 +21,7 @@ import java.time.Instant
 class EnrollEmailToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<EnrollEmailToolSessionRepository>()
-    val handler = EnrollEmailToolHandler(EnrollEmailDescriptor, toolDataRepository, clock = Clock.systemUTC())
+    val handler = EnrollEmailToolHandler(EnrollEmailDescriptor, toolDataRepository, clock = TEST_CLOCK)
 
     // No amr: control of the address was proven by confirm-email, not in this run.
     val expected = ToolOutcome.Completed.Enrolled(
@@ -47,7 +47,7 @@ class EnrollEmailToolHandlerTest : BehaviorSpec({
 
     given("a completed enroll-email tool session") {
         val toolSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(EnrollEmailToolSession(toolSessionId = toolSessionId, createdAt = Instant.now()))
+        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(EnrollEmailToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW))
 
         `when`("it is read again") {
             val outcome = handler.read(toolSessionId)

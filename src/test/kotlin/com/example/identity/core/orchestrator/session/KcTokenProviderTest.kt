@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpHeaders
@@ -21,7 +23,6 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import java.time.Clock
 import java.time.Instant
 import java.util.Optional
 import java.util.UUID
@@ -39,9 +40,9 @@ class KcTokenProviderTest : BehaviorSpec({
         authEvidenceService: AuthEvidenceService = mockk { every { getAuthEvidence(any()) } returns null },
         authPolicy: AuthPolicy = mockk(relaxed = true),
         accountService: AccountService = mockk(relaxed = true)
-    ) = KcTokenProvider(authContextRepository, keycloakAdminClient, authEvidenceService, authPolicy, accountService, clock = Clock.systemUTC())
+    ) = KcTokenProvider(authContextRepository, keycloakAdminClient, authEvidenceService, authPolicy, accountService, clock = TEST_CLOCK)
 
-    fun appChannel(authContextId: UUID) = ChannelSession(channel = ChannelType.APP, now = Instant.now()).apply {
+    fun appChannel(authContextId: UUID) = ChannelSession(channel = ChannelType.APP, now = TEST_NOW).apply {
         this.authContextId = authContextId
     }
 
@@ -54,8 +55,8 @@ class KcTokenProviderTest : BehaviorSpec({
     given("an AccessToken that still has well over minValiditySeconds left") {
         then("it is returned unchanged - no grant call") {
             val authContextId = UUID.randomUUID()
-            val expiry = Instant.now().plusSeconds(300)
-            val ctx = AuthContext(accountId = 42L, now = Instant.now()).apply { accessToken = "existing-token"; accessExpiresAt = expiry }
+            val expiry = TEST_NOW.plusSeconds(300)
+            val ctx = AuthContext(accountId = 42L, now = TEST_NOW).apply { accessToken = "existing-token"; accessExpiresAt = expiry }
             val authContextRepository = mockk<AuthContextRepository>()
             every { authContextRepository.findById(authContextId) } returns Optional.of(ctx)
             val keycloakAdminClient = mockk<KeycloakAdminClient>()
@@ -73,9 +74,9 @@ class KcTokenProviderTest : BehaviorSpec({
         then("renews via Keycloak's own refresh_token grant") {
             val authContextId = UUID.randomUUID()
             val accountId = 3L
-            val ctx = AuthContext(accountId = accountId, keycloakSessionId = "kc-session", now = Instant.now()).apply {
-                accessToken = "stale"; accessExpiresAt = Instant.now().minusSeconds(5)
-                refreshToken = "existing-refresh"; refreshExpiresAt = Instant.now().plusSeconds(600)
+            val ctx = AuthContext(accountId = accountId, keycloakSessionId = "kc-session", now = TEST_NOW).apply {
+                accessToken = "stale"; accessExpiresAt = TEST_NOW.minusSeconds(5)
+                refreshToken = "existing-refresh"; refreshExpiresAt = TEST_NOW.plusSeconds(600)
             }
             val authContextRepository = mockk<AuthContextRepository>()
             every { authContextRepository.findById(authContextId) } returns Optional.of(ctx)
@@ -93,8 +94,8 @@ class KcTokenProviderTest : BehaviorSpec({
     }
 
     given("a RefreshToken whose window has lapsed, or that Keycloak refuses") {
-        fun contextWith(refreshExpiresAt: Instant) = AuthContext(accountId = 3L, keycloakSessionId = "kc-session", now = Instant.now()).apply {
-            accessToken = "stale"; accessExpiresAt = Instant.now().minusSeconds(5)
+        fun contextWith(refreshExpiresAt: Instant) = AuthContext(accountId = 3L, keycloakSessionId = "kc-session", now = TEST_NOW).apply {
+            accessToken = "stale"; accessExpiresAt = TEST_NOW.minusSeconds(5)
             refreshToken = "existing-refresh"; this.refreshExpiresAt = refreshExpiresAt
         }
         fun repositoryWith(id: UUID, ctx: AuthContext) = mockk<AuthContextRepository>().also {
@@ -106,7 +107,7 @@ class KcTokenProviderTest : BehaviorSpec({
             val id = UUID.randomUUID()
             val keycloakAdminClient = mockk<KeycloakAdminClient>()
             shouldThrow<SessionExpiredException> {
-                provider(repositoryWith(id, contextWith(Instant.now().minusSeconds(1))), keycloakAdminClient).tokenFor(appChannel(id))
+                provider(repositoryWith(id, contextWith(TEST_NOW.minusSeconds(1))), keycloakAdminClient).tokenFor(appChannel(id))
             }
             verify(exactly = 0) { keycloakAdminClient.requestAccountToken(any(), any(), any(), any()) }
         }
@@ -117,7 +118,7 @@ class KcTokenProviderTest : BehaviorSpec({
             every { keycloakAdminClient.refreshAccountToken("existing-refresh") } throws
                 HttpClientErrorException.create(HttpStatus.BAD_REQUEST, "invalid_grant", HttpHeaders.EMPTY, ByteArray(0), null)
             shouldThrow<SessionExpiredException> {
-                provider(repositoryWith(id, contextWith(Instant.now().plusSeconds(600))), keycloakAdminClient).tokenFor(appChannel(id))
+                provider(repositoryWith(id, contextWith(TEST_NOW.plusSeconds(600))), keycloakAdminClient).tokenFor(appChannel(id))
             }
             verify(exactly = 0) { keycloakAdminClient.requestAccountToken(any(), any(), any(), any()) }
         }
@@ -128,8 +129,8 @@ class KcTokenProviderTest : BehaviorSpec({
             val authContextId = UUID.randomUUID()
             val accountId = 7L
             val authEvidenceId = UUID.randomUUID()
-            val ctx = AuthContext(accountId = accountId, now = Instant.now()).apply {
-                accessToken = "stale"; accessExpiresAt = Instant.now().minusSeconds(5)
+            val ctx = AuthContext(accountId = accountId, now = TEST_NOW).apply {
+                accessToken = "stale"; accessExpiresAt = TEST_NOW.minusSeconds(5)
                 this.authEvidenceId = authEvidenceId
             }
             val authContextRepository = mockk<AuthContextRepository>()
@@ -141,7 +142,7 @@ class KcTokenProviderTest : BehaviorSpec({
                 AccountTokenResponse(token, 300, "fresh-refresh", 600)
             val authPolicy = mockk<AuthPolicy> { every { resolveAcr(any(), any()) } returns AcrLevel.LOA2 }
             val authEvidenceService = mockk<AuthEvidenceService> {
-                every { getAuthEvidence(authEvidenceId) } returns EvidenceTrail(accountId = accountId, now = Instant.now())
+                every { getAuthEvidence(authEvidenceId) } returns EvidenceTrail(accountId = accountId, now = TEST_NOW)
             }
             val accountService = mockk<AccountService> {
                 every { findAccount(accountId) } returns com.example.identity.core.account.AccountProfile(
@@ -149,7 +150,7 @@ class KcTokenProviderTest : BehaviorSpec({
                     authenticationMethods = listOf(
                         com.example.identity.core.account.AuthMethodView(
                             id = "m1", method = "password", active = true,
-                            createdAt = Instant.now(), enrolledUnderAcr = "loa1", details = null,
+                            createdAt = TEST_NOW, enrolledUnderAcr = "loa1", details = null,
                             enrollmentRef = com.example.identity.contract.tool_api.EnrollmentRef("auth_password.enrollment", "1")
                         )
                     )
@@ -170,7 +171,7 @@ class KcTokenProviderTest : BehaviorSpec({
     given("a first token that Keycloak refuses to mint (ADR-43)") {
         then("no session was opened: SessionRefusedException, and nothing is cached") {
             val authContextId = UUID.randomUUID()
-            val ctx = AuthContext(accountId = 9L, now = Instant.now())
+            val ctx = AuthContext(accountId = 9L, now = TEST_NOW)
             val authContextRepository = mockk<AuthContextRepository>()
             every { authContextRepository.findById(authContextId) } returns Optional.of(ctx)
             val keycloakAdminClient = mockk<KeycloakAdminClient>()
@@ -186,7 +187,7 @@ class KcTokenProviderTest : BehaviorSpec({
     }
 
     given("a step-up cleared the cached tokens of a login whose session is open (ADR-43)") {
-        fun afterStepUp(window: Instant) = AuthContext(accountId = 5L, keycloakSessionId = "kc-session-5", now = Instant.now()).apply {
+        fun afterStepUp(window: Instant) = AuthContext(accountId = 5L, keycloakSessionId = "kc-session-5", now = TEST_NOW).apply {
             refreshExpiresAt = window
         }
         fun repositoryWith(id: UUID, ctx: AuthContext) = mockk<AuthContextRepository>().also {
@@ -196,7 +197,7 @@ class KcTokenProviderTest : BehaviorSpec({
 
         then("the grant continues exactly that session - it never opens a second one") {
             val id = UUID.randomUUID()
-            val ctx = afterStepUp(Instant.now().plusSeconds(600))
+            val ctx = afterStepUp(TEST_NOW.plusSeconds(600))
             val keycloakAdminClient = mockk<KeycloakAdminClient>()
             every { keycloakAdminClient.requestAccountToken(5L, any(), any(), "kc-session-5") } returns
                 AccountTokenResponse(keycloakToken(sid = "kc-session-5"), 300, "fresh-refresh", 500)
@@ -214,7 +215,7 @@ class KcTokenProviderTest : BehaviorSpec({
                 HttpClientErrorException.create(HttpStatus.BAD_REQUEST, "invalid_grant", HttpHeaders.EMPTY, ByteArray(0), null)
 
             shouldThrow<SessionExpiredException> {
-                provider(repositoryWith(id, afterStepUp(Instant.now().plusSeconds(600))), keycloakAdminClient).tokenFor(appChannel(id))
+                provider(repositoryWith(id, afterStepUp(TEST_NOW.plusSeconds(600))), keycloakAdminClient).tokenFor(appChannel(id))
             }
             verify(exactly = 0) { keycloakAdminClient.requestAccountToken(any(), any(), any(), null) }
         }
@@ -224,7 +225,7 @@ class KcTokenProviderTest : BehaviorSpec({
             val keycloakAdminClient = mockk<KeycloakAdminClient>()
 
             shouldThrow<SessionExpiredException> {
-                provider(repositoryWith(id, afterStepUp(Instant.now().minusSeconds(1))), keycloakAdminClient).tokenFor(appChannel(id))
+                provider(repositoryWith(id, afterStepUp(TEST_NOW.minusSeconds(1))), keycloakAdminClient).tokenFor(appChannel(id))
             }
             verify(exactly = 0) { keycloakAdminClient.requestAccountToken(any(), any(), any(), any()) }
         }

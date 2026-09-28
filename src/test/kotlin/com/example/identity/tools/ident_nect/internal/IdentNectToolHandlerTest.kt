@@ -1,5 +1,7 @@
 package com.example.identity.tools.ident_nect.internal
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -23,11 +25,9 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.time.Clock
 import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
-import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, the repository and Nect mocked with MockK. Covers the case
@@ -37,14 +37,14 @@ class IdentNectToolHandlerTest : BehaviorSpec({
 
     val repository = mockk<IdNectToolSessionRepository>()
     val nect = mockk<NectIdent>()
-    val handler = IdentNectToolHandler(IdentNectDescriptor, repository, nect, clock = Clock.systemUTC())
+    val handler = IdentNectToolHandler(IdentNectDescriptor, repository, nect, clock = TEST_CLOCK)
     val source = ClaimSource.of(IdentNectDescriptor.toolId)
 
     /** A tool session waiting for a fresh case; returns both ids. */
     fun waitingForCase(): Pair<UUID, UUID> {
         val toolSessionId = UUID.randomUUID()
         val caseId = UUID.randomUUID()
-        every { repository.findById(toolSessionId) } returns Optional.of(IdNectToolSession(toolSessionId = toolSessionId, caseId = caseId, createdAt = Instant.now()))
+        every { repository.findById(toolSessionId) } returns Optional.of(IdNectToolSession(toolSessionId = toolSessionId, caseId = caseId, createdAt = TEST_NOW))
         return toolSessionId to caseId
     }
 

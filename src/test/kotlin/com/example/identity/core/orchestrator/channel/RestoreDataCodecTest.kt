@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.orchestrator.domain.AmrSource
@@ -15,9 +17,7 @@ import com.nimbusds.jwt.SignedJWT
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
-import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 import java.util.Date
 
 /**
@@ -51,7 +51,7 @@ class RestoreDataCodecTest : BehaviorSpec({
     )
 
     given("a token encoded for a Keycloak session") {
-        val codec = RestoreDataCodec(clock = Clock.systemUTC())
+        val codec = RestoreDataCodec(clock = TEST_CLOCK)
         val token = codec.encode(restoreData, kcSessionId)
 
         `when`("decoding it for the same session") {
@@ -79,7 +79,7 @@ class RestoreDataCodecTest : BehaviorSpec({
         }
 
         `when`("another codec, with its own secret, decodes it") {
-            val decoded = RestoreDataCodec(clock = Clock.systemUTC()).decode(token, kcSessionId)
+            val decoded = RestoreDataCodec(clock = TEST_CLOCK).decode(token, kcSessionId)
 
             then("it returns null") {
                 decoded.shouldBeNull()
@@ -90,7 +90,7 @@ class RestoreDataCodecTest : BehaviorSpec({
             val (header, _, signature) = token.split(".")
             val forgedClaims = JWTClaimsSet.Builder()
                 .subject(kcSessionId)
-                .expirationTime(Date.from(Instant.now().plus(Duration.ofHours(1))))
+                .expirationTime(Date.from(TEST_NOW.plus(Duration.ofHours(1))))
                 .claim("accountId", 999L)
                 .build()
             val forged = "$header.${Base64URL.encode(forgedClaims.toString())}.$signature"
@@ -103,7 +103,7 @@ class RestoreDataCodecTest : BehaviorSpec({
     }
 
     given("a token with an account and no evidence") {
-        val codec = RestoreDataCodec(clock = Clock.systemUTC())
+        val codec = RestoreDataCodec(clock = TEST_CLOCK)
         val accountOnly = RestoreData(accountId = 42L)
         val token = codec.encode(accountOnly, kcSessionId)
 
@@ -118,7 +118,7 @@ class RestoreDataCodecTest : BehaviorSpec({
 
     given("a correctly signed token whose expiry has passed") {
         // A validity already over when the token is made: expired from the start.
-        val codec = RestoreDataCodec(ttl = Duration.ofSeconds(-1), clock = Clock.systemUTC())
+        val codec = RestoreDataCodec(ttl = Duration.ofSeconds(-1), clock = TEST_CLOCK)
         val expired = codec.encode(RestoreData(accountId = 42L), kcSessionId)
 
         `when`("decoding it") {
@@ -131,7 +131,7 @@ class RestoreDataCodecTest : BehaviorSpec({
     }
 
     given("a string that is no JWT") {
-        val codec = RestoreDataCodec(clock = Clock.systemUTC())
+        val codec = RestoreDataCodec(clock = TEST_CLOCK)
 
         `when`("decoding it") {
             val decoded = codec.decode("not-a-token", kcSessionId)

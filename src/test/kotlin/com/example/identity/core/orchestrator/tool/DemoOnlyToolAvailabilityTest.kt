@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.tool
 
+import com.example.identity.TEST_CLOCK
 import com.example.identity.demo.demo_mode.DemoMode
 import com.example.identity.tools.auth_device.AuthDeviceDescriptor
 import com.example.identity.tools.auth_device.EnrollDeviceDescriptor
@@ -15,7 +16,6 @@ import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
-import java.time.Clock
 import java.util.Optional
 
 /**
@@ -33,7 +33,7 @@ class DemoOnlyToolAvailabilityTest : BehaviorSpec({
     }
     every { repository.findByChannel(any()) } returns emptyList()
 
-    fun service(demoMode: Boolean) = ToolAvailabilityService(repository, registry, ToolDefaults(), DemoMode(demoMode), clock = Clock.systemUTC())
+    fun service(demoMode: Boolean) = ToolAvailabilityService(repository, registry, ToolDefaults(), DemoMode(demoMode), clock = TEST_CLOCK)
 
     given("the tools whose level this instance cannot back (ADR-36)") {
         then("the device tools (claimed user verification), KOBIL, eID and Nect (simulated counterparts) declare themselves demo-only") {

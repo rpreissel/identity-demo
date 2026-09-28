@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_email.internal.authemail
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -21,10 +23,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.time.Clock
 import java.util.Optional
 import java.util.UUID
-import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories and the account directory mocked with MockK.
@@ -34,10 +34,10 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<AuthEmailToolSessionRepository>()
     val accountDirectory = mockk<AccountDirectory>()
-    val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = Clock.systemUTC())
+    val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
     val sendBudget = mockk<EmailSendBudget>(relaxed = true).also { every { it.trySend(any()) } returns true }
-    val mailServer = MailServer(clock = Clock.systemUTC())
-    val handler = AuthEmailToolHandler(AuthEmailDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, mailServer, sendBudget, clock = Clock.systemUTC())
+    val mailServer = MailServer(clock = TEST_CLOCK)
+    val handler = AuthEmailToolHandler(AuthEmailDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, mailServer, sendBudget, clock = TEST_CLOCK)
 
     given("start()") {
         `when`("the account has no confirmed email address") {
@@ -72,8 +72,8 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
         }
 
         `when`("the address has used up its send budget") {
-            val gateway = MailServer(clock = Clock.systemUTC())
-            val throttledHandler = AuthEmailToolHandler(AuthEmailDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, gateway, sendBudget, clock = Clock.systemUTC())
+            val gateway = MailServer(clock = TEST_CLOCK)
+            val throttledHandler = AuthEmailToolHandler(AuthEmailDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, gateway, sendBudget, clock = TEST_CLOCK)
             every { accountDirectory.anchorValue(3L, AttributeType.EMAIL) } returns "flooded@example.com"
             every { sendBudget.trySend("flooded@example.com") } returns false
             val result = runCatching { throttledHandler.start(UUID.randomUUID(), accountId = 3L) }
@@ -89,7 +89,7 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
         val toolSessionId = UUID.randomUUID()
         val issued = emailCodeGenerator.issue()
         every { toolDataRepository.findById(toolSessionId) } returns
-            Optional.of(AuthEmailToolSession(toolSessionId = toolSessionId, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = Instant.now()))
+            Optional.of(AuthEmailToolSession(toolSessionId = toolSessionId, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW))
         every { accountDirectory.anchorValue(42L, AttributeType.EMAIL) } returns "max@example.com"
 
         `when`("confirming with the correct code") {
