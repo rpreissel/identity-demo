@@ -58,7 +58,8 @@ class JourneyTraceEntry(
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "detail")
-    var detail: Map<String, Any?>? = null
+    var detail: Map<String, Any?>? = null,
+    createdAt: Instant
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -66,9 +67,5 @@ class JourneyTraceEntry(
     var logId: UUID? = null
 
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

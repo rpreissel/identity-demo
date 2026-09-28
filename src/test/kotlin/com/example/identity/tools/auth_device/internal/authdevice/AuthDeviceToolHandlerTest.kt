@@ -16,8 +16,10 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
+import java.time.Clock
 import java.util.Optional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
@@ -27,7 +29,7 @@ class AuthDeviceToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<AuthDeviceToolSessionRepository>()
     val enrollmentRepository = mockk<DeviceEnrollmentRepository>()
-    val handler = AuthDeviceToolHandler(AuthDeviceDescriptor, toolDataRepository, enrollmentRepository)
+    val handler = AuthDeviceToolHandler(AuthDeviceDescriptor, toolDataRepository, enrollmentRepository, clock = Clock.systemUTC())
     val toolSessionId = UUID.randomUUID()
 
     given("start()") {
@@ -57,7 +59,7 @@ class AuthDeviceToolHandlerTest : BehaviorSpec({
         }
 
         `when`("the referenced auth_device.enrollment row exists") {
-            every { enrollmentRepository.findById(1L) } returns Optional.of(DeviceEnrollment(thumbprint = "thumb-1").apply { id = 1L })
+            every { enrollmentRepository.findById(1L) } returns Optional.of(DeviceEnrollment(thumbprint = "thumb-1", createdAt = Instant.now()).apply { id = 1L })
             every { toolDataRepository.save(any()) } answers { firstArg() }
             val outcome = handler.start(toolSessionId, EnrollmentRef(DEVICE_ENROLLMENT_TYPE, "1"))
 
@@ -69,9 +71,9 @@ class AuthDeviceToolHandlerTest : BehaviorSpec({
     }
 
     given("an active auth-device tool session bound to an enrollment") {
-        val data = AuthDeviceToolSession(toolSessionId = toolSessionId, enrollmentRefId = "1")
+        val data = AuthDeviceToolSession(toolSessionId = toolSessionId, enrollmentRefId = "1", createdAt = Instant.now())
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
-        every { enrollmentRepository.findById(1L) } returns Optional.of(DeviceEnrollment(thumbprint = "thumb-1").apply { id = 1L })
+        every { enrollmentRepository.findById(1L) } returns Optional.of(DeviceEnrollment(thumbprint = "thumb-1", createdAt = Instant.now()).apply { id = 1L })
 
         `when`("the presented device key's thumbprint matches the enrolled one") {
             val devicePublicKey = DevicePublicKey(kty = "EC", crv = "P-256", x = "x-coord", y = "y-coord", thumbprint = "thumb-1")
@@ -96,7 +98,7 @@ class AuthDeviceToolHandlerTest : BehaviorSpec({
 
     given("an auth-device tool session whose enrollment was removed meanwhile, on another channel") {
         val goneSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(goneSessionId) } returns Optional.of(AuthDeviceToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7"))
+        every { toolDataRepository.findById(goneSessionId) } returns Optional.of(AuthDeviceToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7", createdAt = Instant.now()))
         every { enrollmentRepository.findById(7L) } returns Optional.empty()
 
         `when`("the device proof arrives") {

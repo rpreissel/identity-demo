@@ -12,9 +12,11 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
+import java.time.Clock
 import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Pins the claims a successful ident-eid run asserts: what the card showed, including the address,
@@ -26,7 +28,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
 
     val toolSessionId = UUID.randomUUID()
     val repository = mockk<IdentEidToolSessionRepository>()
-    val handler = IdentEidToolHandler(IdentEidDescriptor, repository)
+    val handler = IdentEidToolHandler(IdentEidDescriptor, repository, clock = Clock.systemUTC())
 
     given("an ident-eid session with the card read, waiting for the PIN") {
         val data = IdentEidToolSession(
@@ -37,7 +39,8 @@ class IdentEidToolHandlerTest : BehaviorSpec({
             streetAddress = "Musterweg 1",
             postalCode = "12345",
             locality = "Musterstadt",
-            restrictedId = "T0103005K1D5S0V8T9W6UM2RTX"
+            restrictedId = "T0103005K1D5S0V8T9W6UM2RTX",
+            createdAt = Instant.now()
         )
         every { repository.findById(toolSessionId) } returns Optional.of(data)
         every { repository.save(any()) } returns data

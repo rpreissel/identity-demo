@@ -43,11 +43,12 @@ class KobilEnrollment(
 
     @Column(name = "label")
     var label: String? = null,
+    createdAt: Instant,
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
 
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant = Instant.now()
+    var createdAt: Instant = createdAt
 }

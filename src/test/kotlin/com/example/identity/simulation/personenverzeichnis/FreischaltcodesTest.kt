@@ -10,6 +10,7 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import java.time.Clock
 import java.time.Instant
 import java.util.Optional
 
@@ -25,7 +26,7 @@ class FreischaltcodesTest : BehaviorSpec({
 
     given("pruefe") {
         val codes = mockk<FreischaltcodeRepository>()
-        val service = Freischaltcodes(codes, mockk())
+        val service = Freischaltcodes(codes, mockk(), clock = Clock.systemUTC())
 
         then("a current code is valid") {
             every { codes.findByPersonIdAndCodeHash("P000000007", "h") } returns listOf(code(1, 600))
@@ -48,7 +49,7 @@ class FreischaltcodesTest : BehaviorSpec({
     given("ausstellen") {
         val codes = mockk<FreischaltcodeRepository>()
         val briefe = mockk<BriefRepository>()
-        val service = Freischaltcodes(codes, briefe)
+        val service = Freischaltcodes(codes, briefe, clock = Clock.systemUTC())
         val storedCode = slot<Freischaltcode>()
         val storedBrief = slot<Brief>()
         every { codes.save(capture(storedCode)) } answers { storedCode.captured.also { it.id = 11L } }
@@ -66,7 +67,7 @@ class FreischaltcodesTest : BehaviorSpec({
     given("juengsterGueltigerCode") {
         val codes = mockk<FreischaltcodeRepository>()
         val briefe = mockk<BriefRepository>()
-        val service = Freischaltcodes(codes, briefe)
+        val service = Freischaltcodes(codes, briefe, clock = Clock.systemUTC())
         every { codes.findByPersonIdOrderByIdDesc("P000000007") } returns listOf(code(2, 600, revoked = true), code(1, 600))
         every { briefe.findByPersonIdOrderByIdDesc("P000000007") } returns listOf(
             Brief(personId = "P000000007", freischaltcodeId = 2L, code = "NEU", versandtAm = Instant.now()),
@@ -80,7 +81,7 @@ class FreischaltcodesTest : BehaviorSpec({
 
     given("widerrufen") {
         val codes = mockk<FreischaltcodeRepository>()
-        val service = Freischaltcodes(codes, mockk())
+        val service = Freischaltcodes(codes, mockk(), clock = Clock.systemUTC())
         val existing = code(1, 600)
         every { codes.findById(1L) } returns Optional.of(existing)
         every { codes.findById(2L) } returns Optional.empty()

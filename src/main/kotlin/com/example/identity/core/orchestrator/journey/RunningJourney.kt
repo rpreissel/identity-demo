@@ -3,6 +3,7 @@ package com.example.identity.core.orchestrator.journey
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.core.orchestrator.domain.journey.JourneyLifecycle
 import com.example.identity.core.orchestrator.domain.AuthIntent
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -17,7 +18,7 @@ class RunningJourney private constructor(internal val entity: AuthJourney) {
     val intent: AuthIntent get() = entity.requireIntent()
 
     companion object {
-        fun of(journey: AuthJourney): RunningJourney? =
-            journey.takeIf { it.lifecycle == JourneyLifecycle.STARTED && !it.isExpired }?.let(::RunningJourney)
+        fun of(journey: AuthJourney, now: Instant): RunningJourney? =
+            journey.takeIf { it.lifecycle == JourneyLifecycle.STARTED && !it.isExpiredAt(now) }?.let(::RunningJourney)
     }
 }

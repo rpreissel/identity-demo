@@ -4,6 +4,7 @@ import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 @Service
@@ -11,11 +12,12 @@ import java.util.UUID
 class AuthEvidenceService(
     private val authEvidenceRepository: EvidenceTrailRepository,
     private val authContextRepository: AuthContextRepository,
-    private val sessionManagementService: SessionManagementService
+    private val sessionManagementService: SessionManagementService,
+    private val clock: Clock
 ) {
 
     fun createForAccount(accountId: Long): EvidenceTrail =
-        authEvidenceRepository.save(EvidenceTrail(accountId = accountId))
+        authEvidenceRepository.save(EvidenceTrail(accountId = accountId, now = clock.instant()))
 
     fun getAuthEvidence(authEvidenceId: UUID): EvidenceTrail? =
         authEvidenceRepository.findByIdOrNull(authEvidenceId)
@@ -42,7 +44,7 @@ class AuthEvidenceService(
     fun applyEvidence(authEvidenceId: UUID, updates: List<MethodEvidence>) {
         val evidence = authEvidenceRepository.findByIdOrNull(authEvidenceId)
             ?: error("EvidenceTrail not found: $authEvidenceId")
-        evidence.addAmr(updates)
+        evidence.addAmr(updates, clock.instant())
         authEvidenceRepository.save(evidence)
         invalidateCachedTokens(authEvidenceId)
     }
@@ -55,7 +57,7 @@ class AuthEvidenceService(
     fun applyEvidenceUpdate(authEvidenceId: UUID, updates: List<MethodEvidence>, source: String) {
         val evidence = authEvidenceRepository.findByIdOrNull(authEvidenceId)
             ?: error("EvidenceTrail not found: $authEvidenceId")
-        evidence.replaceForSource(source, updates)
+        evidence.replaceForSource(source, updates, clock.instant())
         authEvidenceRepository.save(evidence)
         invalidateCachedTokens(authEvidenceId)
     }

@@ -27,7 +27,8 @@ class ChannelSession(
     var bindingKeyRef: String? = null,
 
     @Column(name = "expires_at", nullable = false)
-    var expiresAt: Instant? = null
+    var expiresAt: Instant? = null,
+    now: Instant
 ) {
     /**
      * KEYCLOAK-only channel anchor (docs/02-domaenenmodell.md Abschnitt 1): this flow run's own
@@ -102,10 +103,10 @@ class ChannelSession(
     var availableClientTools: MutableSet<String> = mutableSetOf()
 
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
+    var createdAt: Instant? = now
 
     @Column(name = "last_accessed_at", nullable = false)
-    var lastAccessedAt: Instant? = null
+    var lastAccessedAt: Instant? = now
 
     @Version
     @Column(name = "version", nullable = false)
@@ -114,16 +115,13 @@ class ChannelSession(
     init {
         channelSessionId = UUID.randomUUID()
         state = ChannelState.ANONYMOUS
-        createdAt = Instant.now()
-        lastAccessedAt = Instant.now()
     }
 
-    fun touch() {
-        lastAccessedAt = Instant.now()
+    fun touch(now: Instant) {
+        lastAccessedAt = now
     }
 
-    val isExpired: Boolean
-        get() = expiresAt?.let { Instant.now().isAfter(it) } ?: false
+    fun isExpiredAt(now: Instant): Boolean = expiresAt?.let { now.isAfter(it) } ?: false
 }
 
 /* Set on the first save, never null afterwards. The assumption stands once, next to the column. */

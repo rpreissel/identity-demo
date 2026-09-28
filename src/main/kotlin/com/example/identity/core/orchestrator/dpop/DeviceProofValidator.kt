@@ -13,7 +13,7 @@ import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import java.text.ParseException
-import java.time.Instant
+import java.time.Clock
 import java.time.temporal.ChronoUnit
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
@@ -28,6 +28,7 @@ import org.springframework.stereotype.Component
 class DeviceProofValidator(
     private val jwkThumbprintService: JwkThumbprintService,
     private val replayProtectionService: DpopReplayProtectionService,
+    private val clock: Clock,
     @Value("\${dpop.proof.max-clock-skew-seconds:30}") private val maxClockSkewSeconds: Long,
     @Value("\${dpop.proof.max-age-seconds:60}") private val maxProofAgeSeconds: Long
 ) : DeviceProofs {
@@ -116,7 +117,7 @@ class DeviceProofValidator(
 
             val issuedAt = claims.issueTime?.toInstant()
                 ?: throw DpopValidationException(DpopFailure.IAT_MISSING)
-            val now = Instant.now()
+            val now = clock.instant()
             if (issuedAt.isAfter(now.plus(maxClockSkewSeconds, ChronoUnit.SECONDS))) {
                 throw DpopValidationException(DpopFailure.IAT_IN_FUTURE)
             }

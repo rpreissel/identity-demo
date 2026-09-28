@@ -18,6 +18,7 @@ import com.example.identity.contract.tool_api.ToolId
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Builds the account an integration test needs as a precondition, through the domain services
@@ -120,7 +121,7 @@ class AccountFixtures(
         val instanceId = UUID.randomUUID()
         when (method) {
             is Method.Sms -> {
-                val enrollment = smsEnrollmentRepository.save(AuthSmsEnrollment(phoneNumber = method.phoneNumber))
+                val enrollment = smsEnrollmentRepository.save(AuthSmsEnrollment(phoneNumber = method.phoneNumber, createdAt = Instant.now()))
                 accountService.recordClaims(
                     accountId,
                     listOf(Claim(AttributeType.PHONE_NUMBER, method.phoneNumber, ENROLL_SMS_SOURCE, AcrLevel.LOA1)),
@@ -155,7 +156,7 @@ class AccountFixtures(
             )
 
             is Method.Device -> {
-                val enrollment = deviceEnrollmentRepository.save(DeviceEnrollment(thumbprint = method.thumbprint))
+                val enrollment = deviceEnrollmentRepository.save(DeviceEnrollment(thumbprint = method.thumbprint, createdAt = Instant.now()))
                 accountService.addAuthenticationMethod(
                     accountId, "device",
                     EnrollmentRef("auth_device.enrollment", enrollment.id.toString()),

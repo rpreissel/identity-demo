@@ -9,6 +9,7 @@ import com.example.identity.contract.tool_api.claims.ClaimSource
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -19,13 +20,14 @@ import java.util.UUID
 @Component
 class IdentEidToolHandler(
     private val descriptor: IdentEidDescriptor,
-    private val repository: IdentEidToolSessionRepository
+    private val repository: IdentEidToolSessionRepository,
+    private val clock: Clock
 ) {
 
     /** Called directly by IdentEidToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        repository.save(IdentEidToolSession(toolSessionId = toolSessionId))
+        repository.save(IdentEidToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor(IdentEidState())
     }
 

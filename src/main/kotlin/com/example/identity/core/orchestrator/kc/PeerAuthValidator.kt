@@ -14,7 +14,7 @@ import com.nimbusds.jwt.SignedJWT
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.text.ParseException
-import java.time.Instant
+import java.time.Clock
 import java.time.temporal.ChronoUnit
 
 /**
@@ -26,6 +26,7 @@ import java.time.temporal.ChronoUnit
 class PeerAuthValidator(
     private val jwkSource: KeycloakJwkSource,
     private val replayProtectionService: DpopReplayProtectionService,
+    private val clock: Clock,
     @Value("\${kc.peer-auth.issuer}") private val expectedIssuer: String,
     @Value("\${kc.peer-auth.audience}") private val expectedAudience: String,
     @Value("\${kc.peer-auth.max-clock-skew-seconds:30}") private val maxClockSkewSeconds: Long,
@@ -119,7 +120,7 @@ class PeerAuthValidator(
 
         val issuedAt = claims.issueTime?.toInstant()
             ?: throw PeerAuthValidationException("Peer-auth iat claim is missing")
-        val now = Instant.now()
+        val now = clock.instant()
         if (issuedAt.isAfter(now.plus(maxClockSkewSeconds, ChronoUnit.SECONDS))) {
             throw PeerAuthValidationException("Peer-auth iat claim is in the future")
         }

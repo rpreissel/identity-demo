@@ -246,6 +246,13 @@ Modulen:
 Die Regel bekommt jede Tatsache als Wert (oder als Funktion, wenn das Nachschlagen teuer ist und
 nur in einem Zweig gebraucht wird). Deshalb lässt sie sich ohne Datenbank und ohne Spring testen.
 
+**Die Uhr ist eine Tatsache wie jede andere.** Die Anwendung liest die Zeit nur aus der einen
+`java.time.Clock`-Bean (`ClockConfig` im Wurzelpaket `com.example.identity`, kein Modul: der Typ
+kommt aus dem JDK, eine Abhängigkeit zwischen Modulen entsteht nicht). Dienste bekommen sie per
+Konstruktor; Entitäten und Regeln bekommen den Zeitpunkt vom Aufrufer (`isExpiredAt(now)`,
+`touch(now)`, `createdAt` im Konstruktor). So lassen sich Ablauf, Proof-Fenster, Zählfenster und
+Aufbewahrung mit einer gestellten Uhr prüfen, ohne zu warten.
+
 **Wo man zu lesen anfängt.**
 
 1. Eine Strategie unter `orchestrator/domain/journey/strategy`, etwa `StepUpStrategy.kt`, mit
@@ -370,6 +377,7 @@ freigegeben, und jeder, der ihn erreicht, bekäme vollen Lese- und Schreibzugrif
   - Aus einer offenen Transaktion darf kein Keycloak-Aufruf herausgehen. Sonst hält die Transaktion Zeilensperren so lange, wie der fremde Dienst zum Antworten braucht. Einzige Ausnahme ist `KcTokenProvider`: dort ist das Token die Antwort selbst.
   - Nichts außerhalb von `api` hängt an `api.v1`. Dort stehen nur Routen, Request-DTOs, Parameterbindung und die OpenAPI-Beschreibung. Die Kanal-Services, die Zugriffsprüfungen (`ChannelAccessGuard`), `DemoDisclosure` und die Antwortformen liegen darunter in `orchestrator/channel`. Die Antwortformen sind wie `ChannelResponse` in `tool_api` unversioniert, weil es eine globale Version gibt ([API](05-api.md) Abschnitt 1). Ein v2 könnte damit neben v1 stehen, ohne v1 zu importieren.
   - Nur `DemoDisclosure` erzeugt ein `DemoInfo`. Damit entfernt `demo.mode=false` die Klartext-TANs aus jeder Antwort, statt sie an einer von mehreren Stellen zu filtern ([ADR-28](adr/ADR-028-demo-werte-abschaltbar.md)).
+- `ClockArchitectureTest` prüft, dass außer `ClockConfig` keine Klasse der Anwendung die Systemuhr selbst liest (`Instant.now()`, `LocalDate.now()`, `System.currentTimeMillis()`, `Clock.system*()`, `Date()`), siehe Abschnitt 3, [Fachkern und Technik](#fachkern-und-technik).
 - `ToolSessionCoverageTest` prüft gegen das tatsächliche Schema, dass ein Aufräumlauf jede `*_tool_session`-Tabelle leert ([Betrieb](07-betrieb.md) Abschnitt 3).
 - `EventPublicationRegistryTest` prüft, dass ein fehlschlagender `@ApplicationModuleListener` eine offene Zeile hinterlässt ([Betrieb](07-betrieb.md) Abschnitt 3a).
 - `checkOpenApiSnapshot` und `generateFrontendApiTypes` halten den API-Vertrag und die daraus erzeugten Frontend-Typen deckungsgleich ([API](05-api.md) Abschnitt 1).

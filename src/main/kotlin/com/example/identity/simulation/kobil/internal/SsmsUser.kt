@@ -38,7 +38,7 @@ class SsmsUser(
     /** Comma-separated [com.example.identity.simulation.kobil.KobilRisk] names; empty means a clean device. */
     @Column(name = "risk_signals", nullable = false)
     var riskSignals: String = "",
-) {
+
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant = Instant.now()
-}
+    var createdAt: Instant,
+)

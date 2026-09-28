@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.Base64
@@ -17,7 +18,7 @@ import javax.crypto.spec.SecretKeySpec
  * does not have.
  */
 @Component
-class TanGenerator(@Value("\${identity.secrets.otp-pepper:}") configuredPepper: String) {
+class TanGenerator(@Value("\${identity.secrets.otp-pepper:}") configuredPepper: String, private val clock: Clock) {
 
     /**
      * Blank means a random pepper per boot: safe by default, but a restart invalidates TANs in
@@ -33,12 +34,12 @@ class TanGenerator(@Value("\${identity.secrets.otp-pepper:}") configuredPepper: 
 
     fun issue(): Issued {
         val tan = (random.nextInt(900_000) + 100_000).toString()
-        return Issued(tan, hash(tan), Instant.now().plus(validity))
+        return Issued(tan, hash(tan), clock.instant().plus(validity))
     }
 
     fun matches(candidate: String, hash: String?, expiresAt: Instant?): Boolean {
         if (hash == null || expiresAt == null) return false
-        if (Instant.now().isAfter(expiresAt)) return false
+        if (clock.instant().isAfter(expiresAt)) return false
         // Constant-time: `==` on the hex strings leaks how many leading characters matched.
         return MessageDigest.isEqual(hash(candidate.trim()).toByteArray(), hash.toByteArray())
     }

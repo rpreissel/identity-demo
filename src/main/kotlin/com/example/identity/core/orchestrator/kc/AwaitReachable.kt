@@ -12,8 +12,8 @@ import java.time.Instant
  */
 class AwaitReachable(
     private val timeout: Duration,
+    private val now: () -> Instant,
     private val interval: Duration = Duration.ofSeconds(2),
-    private val now: () -> Instant = Instant::now,
     private val sleep: (Duration) -> Unit = { Thread.sleep(it.toMillis()) },
 ) {
     private val log = LoggerFactory.getLogger(AwaitReachable::class.java)

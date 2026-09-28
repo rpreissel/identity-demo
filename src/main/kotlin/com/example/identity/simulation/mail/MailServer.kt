@@ -2,6 +2,7 @@ package com.example.identity.simulation.mail
 
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.time.Clock
 import java.time.Instant
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.atomic.AtomicLong
@@ -15,13 +16,13 @@ data class SentMail(val sequence: Long, val address: String, val code: String, v
  * address's domain. The tester reads the code on the page `/briefkasten/` (`/mock-mail/outbox`).
  */
 @Service
-class MailServer {
+class MailServer(private val clock: Clock) {
 
     private val outbox = ConcurrentLinkedDeque<SentMail>()
     private val sequence = AtomicLong()
 
     fun sendCode(address: String, code: String) {
-        outbox.addFirst(SentMail(sequence.incrementAndGet(), address, code, Instant.now()))
+        outbox.addFirst(SentMail(sequence.incrementAndGet(), address, code, clock.instant()))
         while (outbox.size > OUTBOX_SIZE) outbox.pollLast()
         log.info("Simulated mail sent to ***@{}", address.substringAfter('@', "?"))
     }

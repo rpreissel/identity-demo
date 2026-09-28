@@ -29,7 +29,8 @@ import com.example.identity.core.orchestrator.domain.AmrSource
 @Table(schema = "orchestrator", name = "auth_evidence")
 class EvidenceTrail(
     @Column(name = "account_id", nullable = false)
-    var accountId: Long? = null
+    var accountId: Long? = null,
+    now: Instant
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -74,15 +75,11 @@ class EvidenceTrail(
     val currentFactorTypes: Set<FactorType> get() = amrEvidence.flatMap { it.factorTypes }.toSet()
 
     @Column(name = "updated_at", nullable = false)
-    var updatedAt: Instant? = null
+    var updatedAt: Instant? = now
 
     @Version
     @Column(name = "version", nullable = false)
     var version: Long? = null
-
-    init {
-        updatedAt = Instant.now()
-    }
 
     /**
      * Merge: adds or updates the given methods, never removes one. Used for the proof of a single
@@ -90,7 +87,7 @@ class EvidenceTrail(
      * whose report the orchestrator cannot verify (ADR-7). The reverse never happens. [factorTypes]
      * stay unioned over the trail.
      */
-    fun addAmr(updates: List<MethodEvidence>) {
+    fun addAmr(updates: List<MethodEvidence>, now: Instant) {
         for (update in updates) {
             val method = update.method.value
             val existing = amrEvidence.find { it.method == method }
@@ -106,7 +103,7 @@ class EvidenceTrail(
             )
             amrEvidence = (amrEvidence.filterNot { it.method == method } + record).toMutableList()
         }
-        updatedAt = Instant.now()
+        updatedAt = now
     }
 
     /**
@@ -115,13 +112,13 @@ class EvidenceTrail(
      * and is dropped. Records owned by another source stay, so Keycloak never downgrades an
      * orchestrator proof. The rest is upserted as in [addAmr].
      */
-    fun replaceForSource(source: String, updates: List<MethodEvidence>) {
+    fun replaceForSource(source: String, updates: List<MethodEvidence>, now: Instant) {
         val stillValid = updates.map { it.method.value }.toSet()
         val expired = amrEvidence.filter { it.source == source && it.method !in stillValid }
         if (expired.isNotEmpty()) {
             amrEvidence = amrEvidence.filterNot { it in expired }.toMutableList()
         }
-        addAmr(updates)
+        addAmr(updates, now)
     }
 }
 

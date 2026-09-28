@@ -3,6 +3,7 @@ import com.example.identity.tools.auth_sms.internal.TanGenerator
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import java.time.Clock
 import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 
@@ -12,7 +13,7 @@ import com.example.identity.contract.tool_api.MissingFields
  */
 class AuthSmsLookupFlowTest : BehaviorSpec({
 
-    val tanGenerator = TanGenerator("test-pepper")
+    val tanGenerator = TanGenerator("test-pepper", clock = Clock.systemUTC())
 
     given("AwaitingEmail") {
         val state = AuthSmsLookupState.AwaitingEmail

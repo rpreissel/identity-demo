@@ -6,6 +6,7 @@ import com.example.identity.contract.tool_api.EnrollmentRef
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 
 /**
  * Implements [PasswordCredentialPort] for callers outside a ToolSession (Keycloak's native password
@@ -13,7 +14,8 @@ import org.springframework.transaction.annotation.Transactional
  */
 @Component
 internal class PasswordCredentialPortImpl(
-    private val enrollmentRepository: AuthPasswordEnrollmentRepository
+    private val enrollmentRepository: AuthPasswordEnrollmentRepository,
+    private val clock: Clock
 ) : PasswordCredentialPort {
 
     @Transactional
@@ -30,7 +32,7 @@ internal class PasswordCredentialPortImpl(
     @Transactional
     override fun setNew(password: String): EnrollmentRef {
         PasswordPolicy.check(password)?.let(PasswordPolicy::reject)
-        val enrollment = enrollmentRepository.save(AuthPasswordEnrollment(passwordHash = PasswordHasher.hash(password)))
+        val enrollment = enrollmentRepository.save(AuthPasswordEnrollment(passwordHash = PasswordHasher.hash(password), createdAt = clock.instant()))
         return EnrollmentRef(type = PASSWORD_ENROLLMENT_TYPE, id = enrollment.id.toString())
     }
 }

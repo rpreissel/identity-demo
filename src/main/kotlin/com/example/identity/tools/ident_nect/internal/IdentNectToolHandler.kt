@@ -18,6 +18,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /** Where Nect sends the user back to; the app channel picks `nectCaseId` up from its URL. */
@@ -45,13 +46,14 @@ internal val NECT_REQUESTED = setOf(
 class IdentNectToolHandler(
     private val descriptor: IdentNectDescriptor,
     private val repository: IdNectToolSessionRepository,
-    private val nect: NectIdent
+    private val nect: NectIdent,
+    private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
         val case = nect.createCase(NECT_CALLBACK_URI, NECT_REQUESTED)
-        repository.save(IdNectToolSession(toolSessionId = toolSessionId, caseId = case.caseId))
+        repository.save(IdNectToolSession(toolSessionId = toolSessionId, caseId = case.caseId, createdAt = clock.instant()))
         return redirect(case.caseId, case.jumpUrl)
     }
 

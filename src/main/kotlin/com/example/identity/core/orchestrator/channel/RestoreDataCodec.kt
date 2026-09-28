@@ -14,8 +14,8 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import org.springframework.stereotype.Component
 import java.security.SecureRandom
+import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 import java.util.Date
 
 /**
@@ -25,14 +25,15 @@ import java.util.Date
  * fresh per boot: a restart invalidates tokens in flight, acceptable for a one-session value.
  */
 @Component
-class RestoreDataCodec(private val ttl: Duration = TTL) {
+class RestoreDataCodec(private val clock: Clock, private val ttl: Duration = TTL) {
     private val secret = ByteArray(32).also { SecureRandom().nextBytes(it) }
 
     fun encode(restoreData: RestoreData, kcSessionId: String): String {
+        val now = clock.instant()
         val claims = JWTClaimsSet.Builder()
             .subject(kcSessionId)
-            .issueTime(Date.from(Instant.now()))
-            .expirationTime(Date.from(Instant.now().plus(ttl)))
+            .issueTime(Date.from(now))
+            .expirationTime(Date.from(now.plus(ttl)))
             .claim("accountId", restoreData.accountId)
             .claim("factors", restoreData.evidence?.factors?.map { it.toClaim() })
             .build()
@@ -52,7 +53,7 @@ class RestoreDataCodec(private val ttl: Duration = TTL) {
             if (!jwt.verify(MACVerifier(secret))) return null
             val claims = jwt.jwtClaimsSet
             if (claims.subject != kcSessionId) return null
-            if (claims.expirationTime?.before(Date()) != false) return null
+            if (claims.expirationTime?.before(Date.from(clock.instant())) != false) return null
             @Suppress("UNCHECKED_CAST")
             val factorsClaim = claims.getClaim("factors") as? List<Map<String, Any?>>
             val factors = factorsClaim?.map { it.toMethodEvidence() }

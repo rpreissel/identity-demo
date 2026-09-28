@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
+import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -35,6 +36,7 @@ data class SignInRecord(
 class SignInLog(
     private val repository: SignInLogRepository,
     private val accounts: AccountRepository,
+    private val clock: Clock,
 ) {
 
     /** An entry journey (logging in, registering, a peer login) left the channel authenticated. */
@@ -78,6 +80,7 @@ class SignInLog(
             SignInLogEntry(
                 accountId = accountId, signInType = type, channel = channel, acr = acr,
                 details = mapOf("type" to type.name, "version" to type.detailsVersion) + details.filterValues { it != null },
+                occurredAt = clock.instant(),
             )
         )
     }
@@ -94,10 +97,11 @@ class SignInLogRetention(
     private val transactions: TransactionTemplate,
     private val meterRegistry: MeterRegistry,
     @Value("\${account.sign-in-log.retention-months:6}") private val retentionMonths: Long,
+    private val clock: Clock,
 ) {
     @Scheduled(fixedDelay = 86_400_000, initialDelay = 300_000)
     fun sweep() {
-        val deleted = purge(Instant.now())
+        val deleted = purge(clock.instant())
         meterRegistry.counter("identity.retention.deleted", "table", "sign_in_log").increment(deleted.toDouble())
     }
 

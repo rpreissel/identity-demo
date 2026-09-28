@@ -2,6 +2,7 @@ package com.example.identity.core.orchestrator.session
 
 import com.nimbusds.jwt.JWTParser
 import org.springframework.stereotype.Service
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 
@@ -15,7 +16,8 @@ import java.time.Instant
 class AppLoginSession(
     private val tokenProvider: TokenProvider,
     private val authContextService: AuthContextService,
-    private val sessionManagementService: SessionManagementService
+    private val sessionManagementService: SessionManagementService,
+    private val clock: Clock
 ) {
 
     /** The first call of a login opens the session; later calls return, refresh or re-mint the token. */
@@ -36,7 +38,7 @@ class AppLoginSession(
         val issuedAt = context.accessToken?.let(::issuedAtOf)
         val windowEnd = context.refreshExpiresAt
         if (issuedAt != null && windowEnd != null) {
-            val used = Duration.between(issuedAt, Instant.now()).toMillis().toDouble()
+            val used = Duration.between(issuedAt, clock.instant()).toMillis().toDouble()
             val length = Duration.between(issuedAt, windowEnd).toMillis().toDouble()
             if (length > 0 && used < length * RENEWAL_WINDOW_SHARE) return
         }

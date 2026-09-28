@@ -10,8 +10,8 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 import java.util.UUID
 import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
 import com.example.identity.contract.tool_api.MissingFields
@@ -27,6 +27,7 @@ class ConfirmQrLoginToolHandler(
     private val toolDataRepository: ConfirmQrLoginToolSessionRepository,
     private val qrLoginRequestRepository: QrLoginRequestRepository,
     private val confirmationCodeDigest: ConfirmationCodeDigest,
+    private val clock: Clock,
 ) {
 
     /**
@@ -35,7 +36,7 @@ class ConfirmQrLoginToolHandler(
      */
     @Transactional
     fun start(toolSessionId: UUID, pairingCode: String? = null): ToolOutcome {
-        val data = ConfirmQrLoginToolSession(toolSessionId = toolSessionId)
+        val data = ConfirmQrLoginToolSession(toolSessionId = toolSessionId, createdAt = clock.instant())
         toolDataRepository.save(data)
         if (pairingCode.isNullOrBlank()) {
             return ToolOutcome.InProgress(nextStep = "input", stepData = MissingFields(listOf("pairingCode")))
@@ -73,7 +74,7 @@ class ConfirmQrLoginToolHandler(
                     return ToolOutcome.Failed.NothingGuessed(Text("Bestätigung passt nicht zu diesem Konto"))
                 }
                 val confirmationCode = PairingCodeGenerator.confirmationCode()
-                val now = Instant.now()
+                val now = clock.instant()
                 val rows = qrLoginRequestRepository.approveIfPending(
                     resolvedCode, accountId, confirmationCodeDigest.of(confirmationCode), now, now.plus(CONFIRMATION_TTL)
                 )
@@ -86,7 +87,7 @@ class ConfirmQrLoginToolHandler(
             }
             DONE -> if (approvedBy(resolvedCode, accountId)) ToolOutcome.Completed.Approved() else confirmStepFor(resolvedCode)
             REJECT -> {
-                val rows = qrLoginRequestRepository.denyIfPending(resolvedCode, Instant.now())
+                val rows = qrLoginRequestRepository.denyIfPending(resolvedCode, clock.instant())
                 if (rows == 1) {
                     ToolOutcome.Failed.NothingGuessed(Text("Vom Nutzer abgelehnt"))
                 } else {
@@ -102,7 +103,7 @@ class ConfirmQrLoginToolHandler(
             return ToolOutcome.InProgress(nextStep = "input", stepData = MissingFields(listOf("pairingCode")))
         }
         val request = qrLoginRequestRepository.findByIdOrNull(pairingCode)
-        if (request == null || request.status != QrLoginStatus.PENDING || Instant.now().isAfter(request.expiresAt)) {
+        if (request == null || request.status != QrLoginStatus.PENDING || clock.instant().isAfter(request.expiresAt)) {
             // Stays on `input` - an unknown/expired/already-decided code is retryable, not a
             // dead end (docs/05-api.md, Peer-Login bestätigen).
             return ToolOutcome.Failed.NothingGuessed(Text("Anfrage nicht gefunden oder abgelaufen"))

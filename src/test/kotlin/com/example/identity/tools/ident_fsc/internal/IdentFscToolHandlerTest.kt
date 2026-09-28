@@ -15,9 +15,11 @@ import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.time.Clock
 import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Pins the claims a successful ident-fsc run asserts: FSC is a master-data channel, so every
@@ -30,7 +32,7 @@ class IdentFscToolHandlerTest : BehaviorSpec({
     val repository = mockk<IdentFscToolSessionRepository>()
     val activationCodes = mockk<ActivationCodes> { every { digest(any()) } answers { "digest:" + firstArg<String>() } }
     val personDirectory = mockk<PersonDirectory>()
-    val handler = IdentFscToolHandler(IdentFscDescriptor, repository, activationCodes, personDirectory)
+    val handler = IdentFscToolHandler(IdentFscDescriptor, repository, activationCodes, personDirectory, clock = Clock.systemUTC())
 
     val birthdate = LocalDate.of(1985, 6, 15)
 
@@ -40,7 +42,8 @@ class IdentFscToolHandlerTest : BehaviorSpec({
         personId = "P000000007",
         familyName = "Muster",
         givenNames = "Max",
-        birthDate = birthdate
+        birthDate = birthdate,
+        createdAt = Instant.now()
     ).also { data ->
         every { repository.findById(toolSessionId) } returns Optional.of(data)
         every { repository.save(any()) } returns data
@@ -88,7 +91,8 @@ class IdentFscToolHandlerTest : BehaviorSpec({
         then("the code identifies, and no KVNR claim is asserted") {
             val data = IdentFscToolSession(
                 toolSessionId = toolSessionId, partnernr = "P000000004", personId = "P000000004",
-                familyName = "Schulz", givenNames = "Paula", birthDate = birthdate
+                familyName = "Schulz", givenNames = "Paula", birthDate = birthdate,
+                createdAt = Instant.now()
             )
             every { repository.findById(toolSessionId) } returns Optional.of(data)
             every { repository.save(any()) } returns data

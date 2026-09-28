@@ -16,12 +16,9 @@ class IdNectToolSession(
     var toolSessionId: UUID? = null,
 
     @Column(name = "case_id")
-    var caseId: UUID? = null
+    var caseId: UUID? = null,
+    createdAt: Instant
 ) {
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

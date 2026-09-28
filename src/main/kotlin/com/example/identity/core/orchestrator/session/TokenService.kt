@@ -11,6 +11,7 @@ import com.nimbusds.jwt.PlainJWT
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.Date
@@ -36,7 +37,8 @@ class TokenService(
     private val authEvidenceService: AuthEvidenceService,
     private val authPolicy: AuthPolicy,
     private val accountService: AccountService,
-    private val personDirectory: PersonDirectory
+    private val personDirectory: PersonDirectory,
+    private val clock: Clock
 ) {
 
     /**
@@ -50,7 +52,7 @@ class TokenService(
         val authContext = checkNotNull(authContextRepository.findByIdOrNull(authContextId)) {
             "AuthContext not found: $authContextId"
         }
-        val now = Instant.now()
+        val now = clock.instant()
 
         val currentExpiry = authContext.accessExpiresAt
         if (authContext.accessToken != null && currentExpiry != null &&

@@ -15,6 +15,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -26,13 +27,14 @@ import java.util.UUID
 class EnrollPasswordToolHandler(
     private val descriptor: EnrollPasswordDescriptor,
     private val toolDataRepository: EnrollPasswordToolSessionRepository,
-    private val enrollmentRepository: AuthPasswordEnrollmentRepository
+    private val enrollmentRepository: AuthPasswordEnrollmentRepository,
+    private val clock: Clock
 ) {
 
     /** Called directly by EnrollPasswordToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        toolDataRepository.save(EnrollPasswordToolSession(toolSessionId = toolSessionId))
+        toolDataRepository.save(EnrollPasswordToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor()
     }
 
@@ -47,7 +49,7 @@ class EnrollPasswordToolHandler(
                 PasswordPolicy.reject(decision.rejection)
 
             is EnrollPasswordDecision.Enroll -> {
-                val enrollment = enrollmentRepository.save(AuthPasswordEnrollment(passwordHash = PasswordHasher.hash(decision.password)))
+                val enrollment = enrollmentRepository.save(AuthPasswordEnrollment(passwordHash = PasswordHasher.hash(decision.password), createdAt = clock.instant()))
                 ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef(type = PASSWORD_ENROLLMENT_TYPE, id = enrollment.id.toString()),
                     amr = listOf(descriptor.method),

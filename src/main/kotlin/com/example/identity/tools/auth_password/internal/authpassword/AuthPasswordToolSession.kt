@@ -16,12 +16,9 @@ class AuthPasswordToolSession(
     var toolSessionId: UUID? = null,
 
     @Column(name = "enrollment_ref_id")
-    var enrollmentRefId: String? = null
+    var enrollmentRefId: String? = null,
+    createdAt: Instant
 ) {
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

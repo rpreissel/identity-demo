@@ -15,6 +15,7 @@ import com.nimbusds.jwt.SignedJWT
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.Date
@@ -50,7 +51,7 @@ class RestoreDataCodecTest : BehaviorSpec({
     )
 
     given("a token encoded for a Keycloak session") {
-        val codec = RestoreDataCodec()
+        val codec = RestoreDataCodec(clock = Clock.systemUTC())
         val token = codec.encode(restoreData, kcSessionId)
 
         `when`("decoding it for the same session") {
@@ -78,7 +79,7 @@ class RestoreDataCodecTest : BehaviorSpec({
         }
 
         `when`("another codec, with its own secret, decodes it") {
-            val decoded = RestoreDataCodec().decode(token, kcSessionId)
+            val decoded = RestoreDataCodec(clock = Clock.systemUTC()).decode(token, kcSessionId)
 
             then("it returns null") {
                 decoded.shouldBeNull()
@@ -102,7 +103,7 @@ class RestoreDataCodecTest : BehaviorSpec({
     }
 
     given("a token with an account and no evidence") {
-        val codec = RestoreDataCodec()
+        val codec = RestoreDataCodec(clock = Clock.systemUTC())
         val accountOnly = RestoreData(accountId = 42L)
         val token = codec.encode(accountOnly, kcSessionId)
 
@@ -117,7 +118,7 @@ class RestoreDataCodecTest : BehaviorSpec({
 
     given("a correctly signed token whose expiry has passed") {
         // A validity already over when the token is made: expired from the start.
-        val codec = RestoreDataCodec(ttl = Duration.ofSeconds(-1))
+        val codec = RestoreDataCodec(ttl = Duration.ofSeconds(-1), clock = Clock.systemUTC())
         val expired = codec.encode(RestoreData(accountId = 42L), kcSessionId)
 
         `when`("decoding it") {
@@ -130,7 +131,7 @@ class RestoreDataCodecTest : BehaviorSpec({
     }
 
     given("a string that is no JWT") {
-        val codec = RestoreDataCodec()
+        val codec = RestoreDataCodec(clock = Clock.systemUTC())
 
         `when`("decoding it") {
             val decoded = codec.decode("not-a-token", kcSessionId)

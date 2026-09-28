@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component
 import org.springframework.web.client.body
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.time.Clock
 import java.time.Instant
 
 /**
@@ -21,6 +22,7 @@ class KeycloakMigrationToken(
     private val clientAssertions: OrchestratorClientAssertionSigner,
     @Value("\${keycloak-migrate.base-url}") baseUrl: String,
     @Value("\${keycloak-sync.public-base-url}") private val publicBaseUrl: String,
+    private val clock: Clock,
 ) {
     private val restClient = keycloakHttp.restClient(baseUrl)
 
@@ -28,7 +30,7 @@ class KeycloakMigrationToken(
     private var cached: CachedToken? = null
 
     fun accessToken(): String {
-        cached?.takeIf { Instant.now().isBefore(it.expiresAt) }?.let { return it.value }
+        cached?.takeIf { clock.instant().isBefore(it.expiresAt) }?.let { return it.value }
 
         // aud: die oeffentliche Realm-Adresse, wie bei KeycloakAdminClient.clientAuth.
         val assertion = clientAssertions.assertionFor(CLIENT_ID, "$publicBaseUrl/realms/$MASTER_REALM")
@@ -45,7 +47,7 @@ class KeycloakMigrationToken(
         val token = response["access_token"] as? String ?: error("Keycloak-Token-Antwort (master) ohne access_token")
         val expiresInSeconds = (response["expires_in"] as? Number)?.toLong() ?: 60L
         // Etwas Luft vor dem echten Ablauf; bei 60 Sekunden Lebensdauer bleibt ein halbes Token.
-        val fresh = CachedToken(token, Instant.now().plusSeconds((expiresInSeconds / 2).coerceAtLeast(5)))
+        val fresh = CachedToken(token, clock.instant().plusSeconds((expiresInSeconds / 2).coerceAtLeast(5)))
         cached = fresh
         return fresh.value
     }

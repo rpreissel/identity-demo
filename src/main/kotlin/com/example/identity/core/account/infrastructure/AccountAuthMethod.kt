@@ -50,7 +50,7 @@ class AccountAuthMethod(
     var active: Boolean = true
 
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = Instant.now()
+    var createdAt: Instant? = null
 
     @Column(name = "deactivated_at")
     var deactivatedAt: Instant? = null

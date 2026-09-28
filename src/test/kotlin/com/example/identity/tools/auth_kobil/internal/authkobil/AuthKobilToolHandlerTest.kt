@@ -28,6 +28,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import java.time.Clock
 import java.time.Instant
 import java.util.Optional
 import java.util.UUID
@@ -48,6 +49,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
         AuthKobilDescriptor, toolDataRepository, enrollmentRepository, secrets, ssms, passwordCredentials,
         blockingRisks = setOf(KobilRisk.ROOTED, KobilRisk.EMULATOR, KobilRisk.DEBUGGER_ATTACHED, KobilRisk.APP_TAMPERED),
         pinReleaseTtlSeconds = 120,
+        clock = Clock.systemUTC(),
     )
     val tenantId = "identity-demo"
 
@@ -60,6 +62,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             pin = "12345678",
             unlockSecretHash = if (biometricConsent) secrets.hash("unlock-secret-$enrollmentId") else null,
             bindingKeyRef = "jkt-$enrollmentId",
+            createdAt = Instant.now(),
         ).apply { id = enrollmentId }
         every { enrollmentRepository.findById(enrollmentId) } returns Optional.of(enrollment)
         return enrollment
@@ -68,7 +71,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
     /** A session on [enrollmentId], optionally with a PIN release by [release] that ends at [releaseEndsAt]. */
     fun session(enrollmentId: Long, release: UserVerification? = null, releaseEndsAt: Instant = Instant.now().plusSeconds(60)): Pair<UUID, AuthKobilToolSession> {
         val toolSessionId = UUID.randomUUID()
-        val data = AuthKobilToolSession(toolSessionId = toolSessionId, enrollmentRefId = enrollmentId.toString())
+        val data = AuthKobilToolSession(toolSessionId = toolSessionId, enrollmentRefId = enrollmentId.toString(), createdAt = Instant.now())
         release?.let { data.release(it, releaseEndsAt) }
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
         return toolSessionId to data

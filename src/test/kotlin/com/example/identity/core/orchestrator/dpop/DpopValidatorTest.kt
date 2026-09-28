@@ -18,6 +18,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import org.springframework.dao.DataIntegrityViolationException
+import java.time.Clock
 import java.time.Instant
 import java.util.Date
 import java.util.UUID
@@ -31,9 +32,10 @@ class DpopValidatorTest : BehaviorSpec({
 
     fun validator() = DpopValidator(
         jwkThumbprintService = JwkThumbprintService(),
-        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository()),
+        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository(), clock = Clock.systemUTC()),
         maxClockSkewSeconds = 30,
-        maxProofAgeSeconds = 60
+        maxProofAgeSeconds = 60,
+        clock = Clock.systemUTC()
     )
 
     val method = "POST"

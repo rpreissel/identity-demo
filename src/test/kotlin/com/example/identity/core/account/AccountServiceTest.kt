@@ -30,6 +30,7 @@ import io.mockk.Called
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import java.time.Clock
 import java.time.Instant
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.repository.findByIdOrNull
@@ -333,6 +334,6 @@ private fun AccountService(
     changeLog: ChangeLog,
     personLookupKey: PersonLookupKey,
 ): AccountService {
-    val ledger = ClaimLedger(accountClaimRepository, accountRetractionRepository, changeLog)
-    return AccountService(accountRepository, ledger, AnchorRegistry(accountAnchorRepository, ledger), accountAuthMethodRepository, eventPublisher, changeLog, personLookupKey)
+    val ledger = ClaimLedger(accountClaimRepository, accountRetractionRepository, changeLog, clock = Clock.systemUTC())
+    return AccountService(accountRepository, ledger, AnchorRegistry(accountAnchorRepository, ledger), accountAuthMethodRepository, eventPublisher, changeLog, personLookupKey, Clock.systemUTC())
 }

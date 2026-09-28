@@ -15,6 +15,7 @@ import com.example.identity.core.orchestrator.domain.AuthIntent
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
+import java.time.Instant
 
 /**
  * The persisted type names of the journey states (`@t`). The states carry no serialization
@@ -57,7 +58,7 @@ class JourneyStateCodecTest : BehaviorSpec({
             )
             JourneyStateCodec.STATE_ROOTS.forEach { root ->
                 JourneyStateCodec.concreteStates(root).mapNotNull { it.objectInstance }.forEach { state ->
-                    val journey = AuthJourney(channelSessionId = UUID.randomUUID(), intent = intentOf.getValue(root))
+                    val journey = AuthJourney(channelSessionId = UUID.randomUUID(), intent = intentOf.getValue(root), createdAt = Instant.now())
                     codec.write(journey, state)
                     journey.stateType shouldBe state.javaClass.simpleName
                     codec.read(journey) shouldBe state

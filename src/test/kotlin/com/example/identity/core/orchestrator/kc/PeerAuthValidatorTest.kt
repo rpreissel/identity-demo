@@ -19,6 +19,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import org.springframework.dao.DataIntegrityViolationException
+import java.time.Clock
 import java.time.Instant
 import java.util.Date
 import java.util.UUID
@@ -38,11 +39,12 @@ class PeerAuthValidatorTest : BehaviorSpec({
 
     fun validator(jwkSource: KeycloakJwkSource) = PeerAuthValidator(
         jwkSource = jwkSource,
-        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository()),
+        replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository(), clock = Clock.systemUTC()),
         expectedIssuer = issuer,
         expectedAudience = audience,
         maxClockSkewSeconds = 30,
-        maxAssertionAgeSeconds = 30
+        maxAssertionAgeSeconds = 30,
+        clock = Clock.systemUTC()
     )
 
     fun jwkSourceReturning(key: ECKey) = mockk<KeycloakJwkSource> {

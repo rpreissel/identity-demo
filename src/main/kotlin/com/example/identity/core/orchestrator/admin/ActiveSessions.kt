@@ -18,6 +18,7 @@ import org.springframework.beans.factory.ObjectProvider
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
+import java.time.Clock
 import java.time.Instant
 import java.util.UUID
 
@@ -82,13 +83,14 @@ class ActiveSessions(
     private val accountService: AccountService,
     private val personDirectory: PersonDirectory,
     private val keycloakUserSessions: ObjectProvider<KeycloakUserSessions>,
+    private val clock: Clock,
 ) {
     private val log = LoggerFactory.getLogger(ActiveSessions::class.java)
 
     fun report(): ActiveSessionsView = ActiveSessionsView(channels(), keycloakUserSessions.ifAvailable?.let { keycloak(it) })
 
     private fun channels(): ActiveChannelsView {
-        val now = Instant.now()
+        val now = clock.instant()
         val perType = ChannelType.entries.map { type ->
             ChannelTypeCount(type, channelSessionRepository.countByChannelAndStateNotInAndExpiresAtAfter(type, TERMINAL, now))
         }

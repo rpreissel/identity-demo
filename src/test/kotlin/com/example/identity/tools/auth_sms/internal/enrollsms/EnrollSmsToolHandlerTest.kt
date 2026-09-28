@@ -24,8 +24,10 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import java.time.Clock
 import java.util.Optional
 import java.util.UUID
+import java.time.Instant
 
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
@@ -37,13 +39,13 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<EnrollSmsToolSessionRepository>()
     val enrollmentRepository = mockk<AuthSmsEnrollmentRepository>()
     // Explicit pepper so issue()/matches() stay reproducible within the test run.
-    val tanGenerator = TanGenerator("test-pepper")
+    val tanGenerator = TanGenerator("test-pepper", clock = Clock.systemUTC())
     val sendBudget = mockk<SmsSendBudget>(relaxed = true).also { every { it.trySend(any()) } returns true }
-    val handler = EnrollSmsToolHandler(EnrollSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(), sendBudget)
+    val handler = EnrollSmsToolHandler(EnrollSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = Clock.systemUTC()), sendBudget, clock = Clock.systemUTC())
     val toolSessionId = UUID.randomUUID()
 
     given("an active enroll-sms tool session with no phone number yet") {
-        val data = EnrollSmsToolSession(toolSessionId = toolSessionId)
+        val data = EnrollSmsToolSession(toolSessionId = toolSessionId, createdAt = Instant.now())
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
 
         `when`("submitting a valid phone number") {
@@ -62,7 +64,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
     }
 
     given("an active enroll-sms tool session whose number has used up its send budget") {
-        val data = EnrollSmsToolSession(toolSessionId = toolSessionId)
+        val data = EnrollSmsToolSession(toolSessionId = toolSessionId, createdAt = Instant.now())
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
         every { sendBudget.trySend("+491709999999") } returns false
 
@@ -82,7 +84,8 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
             toolSessionId = toolSessionId,
             phoneNumber = "+491701234567",
             issuedTanHash = issued.hash,
-            tanExpiresAt = issued.expiresAt
+            tanExpiresAt = issued.expiresAt,
+            createdAt = Instant.now()
         )
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
 

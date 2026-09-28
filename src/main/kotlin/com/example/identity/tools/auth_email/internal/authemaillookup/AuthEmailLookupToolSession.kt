@@ -25,12 +25,9 @@ class AuthEmailLookupToolSession(
     var issuedCodeHash: String? = null,
 
     @Column(name = "code_expires_at")
-    var codeExpiresAt: Instant? = null
+    var codeExpiresAt: Instant? = null,
+    createdAt: Instant
 ) {
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

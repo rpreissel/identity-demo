@@ -18,7 +18,7 @@ import com.example.identity.core.orchestrator.domain.OrchestratorException
 class KcChannelAccessGuardTest : BehaviorSpec({
 
     fun channel(channelAnchor: String? = null) =
-        ChannelSession(ChannelType.KEYCLOAK, null, Instant.now().plusSeconds(3600)).apply {
+        ChannelSession(ChannelType.KEYCLOAK, null, Instant.now().plusSeconds(3600), now = Instant.now()).apply {
             this.channelAnchor = channelAnchor
         }
 

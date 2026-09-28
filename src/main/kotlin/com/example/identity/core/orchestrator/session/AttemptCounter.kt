@@ -4,6 +4,7 @@ import org.springframework.dao.DataIntegrityViolationException
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 
@@ -20,6 +21,7 @@ class AttemptCounter(
     private val repository: AttemptThrottleRepository,
     private val rowInitializer: AttemptThrottleRowInitializer,
     private val meterRegistry: MeterRegistry,
+    private val clock: Clock,
 ) {
 
     /** Until when [subject] is locked: `null` if never, possibly in the past. */
@@ -27,11 +29,11 @@ class AttemptCounter(
 
     fun isLocked(scope: ThrottleScope, subject: String): Boolean {
         val lockedUntil = repository.findLockedUntil(scope.name, subject) ?: return false
-        return Instant.now().isBefore(lockedUntil).also { if (it) countBlocked(scope.name) }
+        return clock.instant().isBefore(lockedUntil).also { if (it) countBlocked(scope.name) }
     }
 
     fun recordFailure(scope: ThrottleScope, subject: String, maxFailures: Int, lockout: Duration) {
-        val now = Instant.now()
+        val now = clock.instant()
         val lockUntil = now.plus(lockout)
         if (repository.incrementFailure(scope.name, subject, maxFailures, lockUntil, now) == 0) {
             ensureRow(scope.name, subject)
@@ -43,7 +45,7 @@ class AttemptCounter(
 
     /** [scope] is a [ThrottleScope] name or a module budget's namespace. */
     fun reset(scope: String, subject: String) {
-        repository.resetCounter(scope, subject, Instant.now())
+        repository.resetCounter(scope, subject, clock.instant())
     }
 
     fun recordWindowedAttempt(scope: ThrottleScope, subject: String, maxPerWindow: Int, window: Duration): Boolean =
@@ -58,7 +60,7 @@ class AttemptCounter(
      * @return true while this attempt is within budget, false once it exceeds [maxPerWindow].
      */
     fun recordWindowedAttempt(scope: String, subject: String, maxPerWindow: Int, window: Duration): Boolean {
-        val now = Instant.now()
+        val now = clock.instant()
         val windowStart = now.minus(window)
         if (repository.incrementWithinWindow(scope, subject, windowStart, now) == 0) {
             ensureRow(scope, subject)

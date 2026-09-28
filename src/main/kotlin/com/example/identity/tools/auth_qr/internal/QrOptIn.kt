@@ -13,14 +13,10 @@ import java.time.Instant
  */
 @Entity
 @Table(schema = "auth_qr", name = "enrollment")
-class QrOptIn {
+class QrOptIn(createdAt: Instant) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
 
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

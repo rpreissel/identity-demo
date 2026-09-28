@@ -72,7 +72,7 @@ class ChangeLogEntry(
     val personId: String? = null,
 
     @Column(name = "occurred_at", nullable = false, updatable = false)
-    val occurredAt: Instant = Instant.now(),
+    val occurredAt: Instant,
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

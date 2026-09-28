@@ -48,8 +48,4 @@ class ToolAvailability(
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant? = null
-
-    init {
-        updatedAt = Instant.now()
-    }
 }

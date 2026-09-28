@@ -10,6 +10,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 
@@ -22,12 +23,13 @@ import com.example.identity.contract.tool_api.MissingFields
 class IdentKvnrToolHandler(
     private val descriptor: IdentKvnrDescriptor,
     private val repository: IdentKvnrToolSessionRepository,
-    private val personDirectory: PersonDirectory
+    private val personDirectory: PersonDirectory,
+    private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        repository.save(IdentKvnrToolSession(toolSessionId = toolSessionId))
+        repository.save(IdentKvnrToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return inProgress()
     }
 

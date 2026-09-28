@@ -3,7 +3,7 @@ package com.example.identity.core.orchestrator.session
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
+import java.time.Clock
 
 /**
  * Creates a missing counter row for [AttemptCounter] in its own transaction. A separate bean,
@@ -12,7 +12,7 @@ import java.time.Instant
  * upsert: H2 rejects `ON CONFLICT`. A row at 0 whose caller rolls back is harmless.
  */
 @Component
-class AttemptThrottleRowInitializer(private val repository: AttemptThrottleRepository) {
+class AttemptThrottleRowInitializer(private val repository: AttemptThrottleRepository, private val clock: Clock) {
 
     /**
      * Idempotent. A concurrent creation surfaces as a unique violation, which [AttemptCounter]
@@ -21,6 +21,6 @@ class AttemptThrottleRowInitializer(private val repository: AttemptThrottleRepos
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun createIfAbsent(scope: String, subject: String) {
         if (repository.existsById(AttemptThrottleId(scope, subject))) return
-        repository.insertAtZero(scope, subject, Instant.now())
+        repository.insertAtZero(scope, subject, clock.instant())
     }
 }

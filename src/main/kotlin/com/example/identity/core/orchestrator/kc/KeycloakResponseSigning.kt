@@ -16,7 +16,7 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import java.security.MessageDigest
-import java.time.Instant
+import java.time.Clock
 import java.util.Date
 import org.springframework.stereotype.Component
 import org.springframework.web.bind.annotation.GetMapping
@@ -31,8 +31,8 @@ import org.springframework.web.util.ContentCachingResponseWrapper
  * `iss`/`aud` spiegelbildlich zur Anfrage. Eigener Schluessel ([PURPOSE]), ein Schluessel je Zweck.
  */
 @Component
-class KeycloakResponseSigner(repository: NodeSigningKeyRepository) {
-    private val nodeKeys = NodeKeys(repository)
+class KeycloakResponseSigner(repository: NodeSigningKeyRepository, private val clock: Clock) {
+    private val nodeKeys = NodeKeys(repository, clock)
 
     private fun key(): ECKey = nodeKeys.keyFor(PURPOSE, KEY_ID_PREFIX)
 
@@ -40,7 +40,7 @@ class KeycloakResponseSigner(repository: NodeSigningKeyRepository) {
 
     fun sign(request: JWTClaimsSet, status: Int, body: ByteArray): String {
         val key = key()
-        val now = Instant.now()
+        val now = clock.instant()
         val claims = JWTClaimsSet.Builder()
             .issuer(request.audience.singleOrNull())
             .audience(request.issuer)

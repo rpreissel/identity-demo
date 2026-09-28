@@ -6,8 +6,8 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 
 /**
  * Account-level lockout after failed AUTH attempts, with two entry points. An IDENTIFIED_AUTH tool
@@ -18,7 +18,11 @@ import java.time.Instant
  */
 @Service
 @Transactional
-class AccountLockoutService(private val counter: AttemptCounter, private val signInLog: SignInLog) {
+class AccountLockoutService(
+    private val counter: AttemptCounter,
+    private val signInLog: SignInLog,
+    private val clock: Clock
+) {
 
     fun isLocked(accountId: Long): Boolean = counter.isLocked(ThrottleScope.ACCOUNT, key(accountId))
 
@@ -39,7 +43,7 @@ class AccountLockoutService(private val counter: AttemptCounter, private val sig
         counter.recordFailure(ThrottleScope.ACCOUNT, key(accountId), MAX_FAILURES, LOCKOUT_DURATION)
         signInLog.signInFailed(accountId, channel, method)
         val lockedNow = counter.lockedUntil(ThrottleScope.ACCOUNT, key(accountId))
-        if (lockedNow != null && lockedNow != lockedBefore && Instant.now().isBefore(lockedNow)) {
+        if (lockedNow != null && lockedNow != lockedBefore && clock.instant().isBefore(lockedNow)) {
             signInLog.lockedOut(accountId, channel, lockedNow)
         }
     }

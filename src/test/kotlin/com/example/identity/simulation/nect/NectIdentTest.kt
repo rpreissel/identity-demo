@@ -10,6 +10,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import java.time.Clock
 import java.time.LocalDate
 import java.util.Optional
 import java.util.UUID
@@ -27,7 +28,7 @@ class NectIdentTest : BehaviorSpec({
         val saved = slot<NectCase>()
         every { repository.save(capture(saved)) } answers { store[checkNotNull(saved.captured.id)] = saved.captured; saved.captured }
         every { repository.findById(any()) } answers { Optional.ofNullable(store[firstArg<UUID>()]) }
-        return NectIdent(repository)
+        return NectIdent(repository, clock = Clock.systemUTC())
     }
 
     val max = NectAttributes(name = "Muster", vorname = "Max", geburtsdatum = LocalDate.of(1985, 6, 15))

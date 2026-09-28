@@ -2,6 +2,7 @@ package com.example.identity.simulation.sms
 
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.time.Clock
 import java.time.Instant
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.atomic.AtomicLong
@@ -16,13 +17,13 @@ data class SentSms(val sequence: Long, val phoneNumber: String, val tan: String,
  * (`/mock-sms/outbox`).
  */
 @Service
-class SmsGateway {
+class SmsGateway(private val clock: Clock) {
 
     private val outbox = ConcurrentLinkedDeque<SentSms>()
     private val sequence = AtomicLong()
 
     fun sendTan(phoneNumber: String, tan: String) {
-        outbox.addFirst(SentSms(sequence.incrementAndGet(), phoneNumber, tan, Instant.now()))
+        outbox.addFirst(SentSms(sequence.incrementAndGet(), phoneNumber, tan, clock.instant()))
         while (outbox.size > OUTBOX_SIZE) outbox.pollLast()
         log.info("Simulated SMS sent to {}", masked(phoneNumber))
     }

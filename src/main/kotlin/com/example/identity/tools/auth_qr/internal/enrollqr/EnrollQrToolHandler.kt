@@ -9,6 +9,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -19,12 +20,13 @@ import java.util.UUID
 class EnrollQrToolHandler(
     private val descriptor: EnrollQrDescriptor,
     private val toolDataRepository: EnrollQrToolSessionRepository,
-    private val qrOptInRepository: QrOptInRepository
+    private val qrOptInRepository: QrOptInRepository,
+    private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        toolDataRepository.save(EnrollQrToolSession(toolSessionId = toolSessionId))
+        toolDataRepository.save(EnrollQrToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor()
     }
 
@@ -32,7 +34,7 @@ class EnrollQrToolHandler(
     fun patch(toolSessionId: UUID): ToolOutcome {
         checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown enroll-qr tool session: $toolSessionId" }
 
-        val optIn = qrOptInRepository.save(QrOptIn())
+        val optIn = qrOptInRepository.save(QrOptIn(clock.instant()))
         return ToolOutcome.Completed.Enrolled(
             enrollmentRef = EnrollmentRef(type = QR_OPTIN_ENROLLMENT_TYPE, id = optIn.id.toString()),
             amr = emptyList(),

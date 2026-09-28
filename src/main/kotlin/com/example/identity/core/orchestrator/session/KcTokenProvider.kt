@@ -9,7 +9,7 @@ import com.nimbusds.jwt.SignedJWT
 import org.springframework.context.annotation.Profile
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
-import java.time.Instant
+import java.time.Clock
 
 /**
  * `keycloak`-profile [TokenProvider]: fetches a real Keycloak-signed access token via the
@@ -26,7 +26,8 @@ class KcTokenProvider(
     private val keycloakAdminClient: KeycloakAdminClient,
     private val authEvidenceService: AuthEvidenceService,
     private val authPolicy: AuthPolicy,
-    private val accountService: AccountService
+    private val accountService: AccountService,
+    private val clock: Clock
 ) : TokenProvider {
 
     override fun tokenFor(channel: ChannelSession, minValiditySeconds: Long): TokenPair {
@@ -35,7 +36,7 @@ class KcTokenProvider(
             "AuthContext not found: $authContextId"
         }
         val accountId = checkNotNull(authContext.accountId) { "AuthContext $authContextId has no accountId" }
-        val now = Instant.now()
+        val now = clock.instant()
 
         val currentExpiry = authContext.accessExpiresAt
         if (authContext.accessToken != null && currentExpiry != null &&

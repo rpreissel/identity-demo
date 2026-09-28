@@ -22,12 +22,9 @@ class EnrollSmsToolSession(
     var issuedTanHash: String? = null,
 
     @Column(name = "tan_expires_at")
-    var tanExpiresAt: Instant? = null
+    var tanExpiresAt: Instant? = null,
+    createdAt: Instant
 ) {
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

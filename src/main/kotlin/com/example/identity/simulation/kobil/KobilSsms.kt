@@ -9,7 +9,7 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.security.SecureRandom
-import java.time.Instant
+import java.time.Clock
 import java.util.UUID
 
 /** A user as KOBIL knows it: an id within a tenant. */
@@ -46,6 +46,7 @@ class KobilRejectedException(val text: Text) : RuntimeException(text.template)
 class KobilSsms(
     private val users: SsmsUserRepository,
     private val assertions: SsmsAssertionRepository,
+    private val clock: Clock,
 ) {
 
     private val random = SecureRandom()
@@ -55,7 +56,7 @@ class KobilSsms(
     @Transactional
     fun provisionUser(tenantId: String, subjectRef: String): KobilUserRef {
         val userId = "kob-" + UUID.randomUUID().toString().take(12)
-        users.save(SsmsUser(userId = userId, tenantId = tenantId, subjectRef = subjectRef))
+        users.save(SsmsUser(userId = userId, tenantId = tenantId, subjectRef = subjectRef, createdAt = clock.instant()))
         return KobilUserRef(tenantId, userId)
     }
 
@@ -85,7 +86,7 @@ class KobilSsms(
     fun verifyOtp(user: KobilUserRef, otp: String): KobilOtpVerification? {
         val assertion = assertions.findByIdOrNull(otp) ?: return null
         if (assertion.userId != user.userId || assertion.redeemedAt != null) return null
-        assertion.redeemedAt = Instant.now()
+        assertion.redeemedAt = clock.instant()
         return KobilOtpVerification(assertion.deviceId!!, parseRisks(assertion.riskSignals))
     }
 
@@ -143,6 +144,7 @@ class KobilSsms(
                 userId = stored.userId,
                 deviceId = deviceId,
                 riskSignals = stored.riskSignals,
+                createdAt = clock.instant(),
             )
         )
         return otp

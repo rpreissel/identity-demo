@@ -14,6 +14,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -24,13 +25,14 @@ import java.util.UUID
 class EnrollDeviceToolHandler(
     private val descriptor: EnrollDeviceDescriptor,
     private val toolDataRepository: EnrollDeviceToolSessionRepository,
-    private val enrollmentRepository: DeviceEnrollmentRepository
+    private val enrollmentRepository: DeviceEnrollmentRepository,
+    private val clock: Clock
 ) {
 
     /** Called directly by EnrollDeviceToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        toolDataRepository.save(EnrollDeviceToolSession(toolSessionId = toolSessionId))
+        toolDataRepository.save(EnrollDeviceToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor()
     }
 
@@ -58,7 +60,8 @@ class EnrollDeviceToolHandler(
                     crv = decision.devicePublicKey.crv,
                     x = decision.devicePublicKey.x,
                     y = decision.devicePublicKey.y,
-                    thumbprint = decision.devicePublicKey.thumbprint
+                    thumbprint = decision.devicePublicKey.thumbprint,
+                    createdAt = clock.instant()
                 )
             )
 

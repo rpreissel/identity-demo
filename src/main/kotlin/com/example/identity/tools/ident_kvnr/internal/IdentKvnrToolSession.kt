@@ -17,12 +17,9 @@ class IdentKvnrToolSession(
 
     var kvnr: String? = null,
 
-    var partnernr: String? = null
+    var partnernr: String? = null,
+    createdAt: Instant
 ) {
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

@@ -16,12 +16,9 @@ class AuthQrLookupToolSession(
     var toolSessionId: UUID? = null,
 
     @Column(name = "pairing_code", nullable = false)
-    var pairingCode: String? = null
+    var pairingCode: String? = null,
+    createdAt: Instant
 ) {
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = null
-
-    init {
-        createdAt = Instant.now()
-    }
+    var createdAt: Instant? = createdAt
 }

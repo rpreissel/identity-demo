@@ -18,6 +18,7 @@ class AuthKobilToolSession(
 
     @Column(name = "enrollment_ref_id")
     var enrollmentRefId: String? = null,
+    createdAt: Instant,
 ) {
     /**
      * Null until the PIN has been released; then the access means that unlocked it. One nullable
@@ -31,7 +32,7 @@ class AuthKobilToolSession(
     var pinReleaseExpiresAt: Instant? = null
 
     @Column(name = "created_at", nullable = false)
-    var createdAt: Instant = Instant.now()
+    var createdAt: Instant = createdAt
 
     /** The release, or null while there is none that still counts - an expired one is none. */
     fun liveRelease(now: Instant): UserVerification? {

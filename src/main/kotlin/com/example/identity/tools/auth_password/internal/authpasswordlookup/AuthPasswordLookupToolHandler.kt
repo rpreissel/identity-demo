@@ -10,6 +10,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 
 /**
@@ -21,12 +22,13 @@ import java.util.UUID
 class AuthPasswordLookupToolHandler(
     private val descriptor: AuthPasswordLookupDescriptor,
     private val toolDataRepository: AuthPasswordLookupToolSessionRepository,
-    private val enrollmentRepository: AuthPasswordEnrollmentRepository
+    private val enrollmentRepository: AuthPasswordEnrollmentRepository,
+    private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: UUID): ToolOutcome {
-        toolDataRepository.save(AuthPasswordLookupToolSession(toolSessionId = toolSessionId))
+        toolDataRepository.save(AuthPasswordLookupToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor()
     }
 

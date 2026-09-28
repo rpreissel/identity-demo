@@ -11,13 +11,14 @@ import com.nimbusds.jwt.SignedJWT
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.text.ParseException
-import java.time.Instant
+import java.time.Clock
 import java.time.temporal.ChronoUnit
 
 @Component
 class DpopValidator(
     private val jwkThumbprintService: JwkThumbprintService,
     private val replayProtectionService: DpopReplayProtectionService,
+    private val clock: Clock,
     @Value("\${dpop.proof.max-clock-skew-seconds:30}") private val maxClockSkewSeconds: Long,
     @Value("\${dpop.proof.max-age-seconds:60}") private val maxProofAgeSeconds: Long
 ) {
@@ -111,7 +112,7 @@ class DpopValidator(
 
             val issuedAt = claims.issueTime?.toInstant()
                 ?: throw DpopValidationException(DpopFailure.IAT_MISSING)
-            val now = Instant.now()
+            val now = clock.instant()
             if (issuedAt.isAfter(now.plus(maxClockSkewSeconds, ChronoUnit.SECONDS))) {
                 throw DpopValidationException(DpopFailure.IAT_IN_FUTURE)
             }
