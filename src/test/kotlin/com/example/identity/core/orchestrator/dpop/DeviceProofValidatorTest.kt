@@ -31,7 +31,7 @@ class DeviceProofValidatorTest : BehaviorSpec({
         jwkThumbprintService = JwkThumbprintService(),
         replayProtectionService = DpopReplayProtectionService(inMemoryReplayRepository()),
         maxClockSkewSeconds = 30,
-        maxProofAgeSeconds = 120
+        maxProofAgeSeconds = 60
     )
 
     val url = "https://example.test/orchestrator/api/v1/tools/${UUID.randomUUID()}/enroll-device"

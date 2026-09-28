@@ -19,7 +19,7 @@ class DpopValidator(
     private val jwkThumbprintService: JwkThumbprintService,
     private val replayProtectionService: DpopReplayProtectionService,
     @Value("\${dpop.proof.max-clock-skew-seconds:30}") private val maxClockSkewSeconds: Long,
-    @Value("\${dpop.proof.max-age-seconds:120}") private val maxProofAgeSeconds: Long
+    @Value("\${dpop.proof.max-age-seconds:60}") private val maxProofAgeSeconds: Long
 ) {
 
     fun validate(dpopProof: String?, httpMethod: String, httpUrl: String): DpopProof {

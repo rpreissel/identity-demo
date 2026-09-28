@@ -182,7 +182,7 @@ kc:
 dpop:
   proof:
     max-clock-skew-seconds: 30
-    max-age-seconds: 120
+    max-age-seconds: 60
 
 # Einstellungen dieses Systems (Geheimnisse, KOBIL-Mandant); dpop.* oben ist nur der Nachweis nach RFC 9449.
 identity:

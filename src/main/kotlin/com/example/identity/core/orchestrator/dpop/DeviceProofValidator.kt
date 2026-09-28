@@ -29,7 +29,7 @@ class DeviceProofValidator(
     private val jwkThumbprintService: JwkThumbprintService,
     private val replayProtectionService: DpopReplayProtectionService,
     @Value("\${dpop.proof.max-clock-skew-seconds:30}") private val maxClockSkewSeconds: Long,
-    @Value("\${dpop.proof.max-age-seconds:120}") private val maxProofAgeSeconds: Long
+    @Value("\${dpop.proof.max-age-seconds:60}") private val maxProofAgeSeconds: Long
 ) : DeviceProofs {
 
     /** The [DeviceProofs] contract - hands back only the opaque, verified result. */

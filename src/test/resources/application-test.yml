@@ -10,7 +10,7 @@ spring:
 dpop:
   proof:
     max-clock-skew-seconds: 30
-    max-age-seconds: 120
+    max-age-seconds: 60
 
 # Geplante Jobs laufen in Tests nicht von selbst (SchedulingConfig); ein Test ruft den Job direkt auf.
 scheduling:
