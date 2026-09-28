@@ -224,6 +224,12 @@ Wie mit den Verweisen zwischen den Tabellen umgegangen wird:
   schiebt jede Erneuerung des Tokens es weiter, auch die bei einer Journey-Interaktion. Wer die
   Sitzungsdauer ändern will, ändert sie im Realm, nicht im Orchestrator. Die Aufbewahrungsfrist oben
   beginnt entsprechend früher.
+- **Die Fristen des Realms stehen in der Migration**, nicht in Keycloaks Voreinstellungen
+  (keycloak-migrations, `V5__realm_lifetimes.kc.kts`): AccessToken 5 Minuten, SSO idle 30 Minuten,
+  SSO max 10 Stunden, `sslRequired=external`. Die ersten beiden gleichen den Fristen von
+  `TokenService` im Standardprofil. Ein erreichtes loa2 trägt 5 Minuten (`loa-max-age` des
+  LoA-2-Subflows); danach übernimmt Keycloak es nicht mehr aus der SSO-Sitzung, und eine Anfrage
+  mit `acr_values=2` verlangt einen frischen Nachweis. loa1 trägt die ganze Sitzung.
 
 Im Demomodus gilt beim Start außerdem: Hat der Orchestrator kein einziges Konto, etwa nach einem
 frischen Volume oder einer neu aufgesetzten Datenbank, gehört jede Sitzung in Keycloak zu einem Konto,

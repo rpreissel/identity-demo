@@ -323,7 +323,10 @@ nach Profil:
 
   Aufrufen darf den Grant nur der vertrauliche Client des Orchestrators (`orchestrator-app-token`,
   Client-Attribut `identity-demo.account-token-grant`, Anmeldung per `private_key_jwt`); jeder andere
-  Client, auch der öffentliche Browser-Client, wird mit `unauthorized_client` abgewiesen. Jede
+  Client, auch der öffentliche Browser-Client, wird mit `unauthorized_client` abgewiesen. Von
+  `acr` und `amr` prüft der Grant nur die Form: `acr` ist `loa1` oder `loa2`, jeder
+  `amr`-Wert passt auf `[a-z0-9_-]+`; sonst antwortet er mit `invalid_grant`. Eine abgelehnte
+  `session_id` steht im Keycloak-Ereignis, nicht in der Fehlerantwort. Jede
   Anmeldung, also jeder App-Kanal, hat ihre eigene Keycloak-Sitzung, auch bei mehreren Geräten
   desselben Kontos ([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)).
 

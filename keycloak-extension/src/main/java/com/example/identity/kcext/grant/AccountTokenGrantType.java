@@ -81,6 +81,13 @@ public class AccountTokenGrantType extends OAuth2GrantTypeBase {
         event.user(user);
         event.detail(Details.USERNAME, user.getUsername());
 
+        String acr = formParams.getFirst(ACR_PARAM);
+        String amr = formParams.getFirst(AMR_PARAM);
+        String claimsProblem = AccountTokenClaims.problem(acr, amr);
+        if (claimsProblem != null) {
+            return reject(claimsProblem);
+        }
+
         String scope = getRequestedScopes();
 
         RootAuthenticationSessionModel rootAuthSession = new AuthenticationSessionManager(session).createAuthenticationSession(realm, false);
@@ -103,16 +110,16 @@ public class AccountTokenGrantType extends OAuth2GrantTypeBase {
         } else {
             userSession = continuedSession(user, sessionId);
             if (userSession == null) {
-                return reject("Session " + sessionId + " has ended or is not this login's");
+                // Die Session-Id steht im Ereignis, nicht in der OAuth-Fehlerantwort.
+                event.session(sessionId);
+                return reject("Session has ended or is not this login's");
             }
         }
-        // The same note keys the Web channel writes, read by OrchestratorAcrAmrMapper. Trusted as
-        // sent: only the orchestrator's own client gets here.
-        String acr = formParams.getFirst(ACR_PARAM);
+        // The same note keys the Web channel writes, read by OrchestratorAcrAmrMapper. Only the
+        // orchestrator's own client gets here; AccountTokenClaims has checked the form of the values.
         if (acr != null && !acr.isBlank()) {
             userSession.setNote(OrchestratorNotes.USER_SESSION_NOTE_ACR, acr);
         }
-        String amr = formParams.getFirst(AMR_PARAM);
         if (amr != null) {
             userSession.setNote(OrchestratorNotes.USER_SESSION_NOTE_AMR, amr);
         }

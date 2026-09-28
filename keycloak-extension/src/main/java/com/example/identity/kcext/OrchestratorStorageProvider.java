@@ -145,11 +145,13 @@ public class OrchestratorStorageProvider implements UserStorageProvider, UserReg
         if (!supportsCredentialType(input.getType())) return false;
         Long accountId = OrchestratorNotes.accountId(user);
         if (accountId == null) return false;
+        // Ein Ausfall ist kein falsches Passwort: false zaehlte Keycloaks Brute-Force-Schutz dem
+        // Nutzer an und sperrte bei kurzem Ausfall alle, die sich gerade anmelden.
         try {
             return client.verifyPassword(accountId, input.getChallengeResponse());
         } catch (IOException | InterruptedException e) {
-            LOG.warnf(e, "Failed to verify password for account %d", accountId);
-            return false;
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+            throw new ModelException("Orchestrator password verification failed", e);
         }
     }
 
