@@ -552,9 +552,7 @@ class JourneyService(
         channel.state = target
         if (target != ChannelState.AUTHENTICATED) {
             channel.authContextId = null
-            channel.authContext = null
             channel.authEvidenceId = null
-            channel.authEvidence = null
             val abandonedAccountId = channel.accountId
             channel.accountId = if (channel.entryIntent.startsFromDeviceLink && channel.bindingKeyRef != null) {
                 sessionManagementService.findLinkedAccountId(channel.bindingKeyRef!!)

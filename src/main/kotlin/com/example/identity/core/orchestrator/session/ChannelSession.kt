@@ -8,8 +8,6 @@ import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.Version
 import org.hibernate.annotations.JdbcTypeCode
@@ -67,17 +65,9 @@ class ChannelSession(
     @Column(name = "auth_context_id")
     var authContextId: UUID? = null
 
-    @ManyToOne
-    @JoinColumn(name = "auth_context_id", insertable = false, updatable = false)
-    var authContext: AuthContext? = null
-
     /** Both channel types (docs/05-api.md Abschnitt 3): the evidence itself. */
     @Column(name = "auth_evidence_id")
     var authEvidenceId: UUID? = null
-
-    @ManyToOne
-    @JoinColumn(name = "auth_evidence_id", insertable = false, updatable = false)
-    var authEvidence: EvidenceTrail? = null
 
     /**
      * Whether at least one factor was proven on this channel. Weaker than `state == AUTHENTICATED`,

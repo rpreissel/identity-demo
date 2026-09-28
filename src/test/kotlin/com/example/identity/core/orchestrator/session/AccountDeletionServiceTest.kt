@@ -15,9 +15,8 @@ import io.mockk.verify
 import io.mockk.verifyOrder
 
 /**
- * Unit test of [AccountDeletionService]: the id fields and the mirrored navigation properties of
- * [ChannelSession] (same FKs) are all cleared before the [AuthContext]/[EvidenceTrail] rows are
- * deleted. One left set fails the flush with a Hibernate `TransientPropertyValueException`.
+ * Unit test of [AccountDeletionService]: the id fields of [ChannelSession] are cleared before the
+ * [AuthContext]/[EvidenceTrail] rows they point to are deleted.
  */
 class AccountDeletionServiceTest : BehaviorSpec({
 
@@ -42,15 +41,13 @@ class AccountDeletionServiceTest : BehaviorSpec({
     )
 
     given("an account with channel sessions still bound to it") {
-        then("every one of them is logged out with BOTH authContextId/authEvidenceId and their navigation properties cleared, not just one") {
+        then("every one of them is logged out with BOTH authContextId and authEvidenceId cleared, not just one") {
             val accountService = mockk<AccountService>(relaxed = true)
             every { accountService.allEnrollmentRefs(1L) } returns emptyList()
             val session = ChannelSession().apply {
                 state = ChannelState.AUTHENTICATED
                 authContextId = java.util.UUID.randomUUID()
-                authContext = AuthContext(accountId = 1L)
                 authEvidenceId = java.util.UUID.randomUUID()
-                authEvidence = EvidenceTrail(accountId = 1L)
             }
             val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
             every { channelSessionRepository.findByAccountId(1L) } returns listOf(session)
@@ -60,9 +57,7 @@ class AccountDeletionServiceTest : BehaviorSpec({
 
             session.state shouldBe ChannelState.LOGGED_OUT
             session.authContextId shouldBe null
-            session.authContext shouldBe null
             session.authEvidenceId shouldBe null
-            session.authEvidence shouldBe null
             verify { channelSessionRepository.save(session) }
         }
     }

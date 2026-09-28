@@ -8,6 +8,7 @@ import com.example.identity.core.orchestrator.kc.KeycloakClientSessions
 import com.example.identity.core.orchestrator.kc.KeycloakSessionClient
 import com.example.identity.core.orchestrator.kc.KeycloakUserSessions
 import com.example.identity.core.orchestrator.session.ChannelSession
+import com.example.identity.core.orchestrator.session.AuthContextRepository
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
 import com.example.identity.core.orchestrator.session.channelType
 import com.example.identity.core.orchestrator.session.id
@@ -77,6 +78,7 @@ data class ActiveSessionsView(
 @Service
 class ActiveSessions(
     private val channelSessionRepository: ChannelSessionRepository,
+    private val authContextRepository: AuthContextRepository,
     private val accountService: AccountService,
     private val personDirectory: PersonDirectory,
     private val keycloakUserSessions: ObjectProvider<KeycloakUserSessions>,
@@ -113,8 +115,12 @@ class ActiveSessions(
         val ids = newest.map { it.sessionId }
         // The link each channel type keeps to its Keycloak session (ChannelSession, AuthContext).
         val channels = if (ids.isEmpty()) emptyList() else when (client) {
-            KeycloakSessionClient.APP -> channelSessionRepository.findByAuthContextKeycloakSessionIdIn(ids)
-                .map { it.authContext?.keycloakSessionId to it }
+            KeycloakSessionClient.APP -> {
+                val sessionByContext = authContextRepository.findByKeycloakSessionIdIn(ids)
+                    .associate { it.authContextId to it.keycloakSessionId }
+                channelSessionRepository.findByAuthContextIdIn(sessionByContext.keys.filterNotNull())
+                    .map { sessionByContext[it.authContextId] to it }
+            }
             KeycloakSessionClient.WEBSITE -> channelSessionRepository.findByDurableKcSessionIdIn(ids)
                 .map { it.durableKcSessionId to it }
         }

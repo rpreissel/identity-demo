@@ -10,6 +10,7 @@ import com.example.identity.core.orchestrator.kc.KeycloakSessionClient
 import com.example.identity.core.orchestrator.kc.KeycloakUserSession
 import com.example.identity.core.orchestrator.kc.KeycloakUserSessions
 import com.example.identity.core.orchestrator.session.AuthContext
+import com.example.identity.core.orchestrator.session.AuthContextRepository
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
 import com.example.identity.contract.tool_api.directory.PersonDirectory
@@ -24,6 +25,7 @@ import java.time.Instant
 class ActiveSessionsKeycloakTest {
 
     private val repository = mockk<ChannelSessionRepository>(relaxed = true)
+    private val authContexts = mockk<AuthContextRepository>(relaxed = true)
     private val accountService = mockk<AccountService> {
         every { findAccount(any()) } returns null
         every { findAccount(7) } returns AccountProfile(7, "p-7", emptyList())
@@ -31,7 +33,7 @@ class ActiveSessionsKeycloakTest {
     private val personDirectory = mockk<PersonDirectory> { every { displayName("p-7") } returns "Mara Muster" }
 
     private fun service(source: KeycloakUserSessions?) = ActiveSessions(
-        repository, accountService, personDirectory,
+        repository, authContexts, accountService, personDirectory,
         mockk<ObjectProvider<KeycloakUserSessions>> { every { ifAvailable } returns source },
     )
 
@@ -39,11 +41,13 @@ class ActiveSessionsKeycloakTest {
 
     private fun session(id: String, userId: String?) = KeycloakUserSession(id, "user-$id", userId, start, start.plusSeconds(60))
 
+    private val appContext = AuthContext(accountId = 7, keycloakSessionId = "kc-app").apply { authContextId = java.util.UUID.randomUUID() }
+
     @Test
     fun `groups by client, names the account and finds the channel of each session`() {
         val appChannel = ChannelSession(ChannelType.APP, "key", start.plusSeconds(600)).apply {
             state = ChannelState.AUTHENTICATED
-            authContext = AuthContext(accountId = 7, keycloakSessionId = "kc-app")
+            authContextId = appContext.authContextId
         }
         val older = ChannelSession(ChannelType.KEYCLOAK, null, start.plusSeconds(600)).apply {
             durableKcSessionId = "kc-web"
@@ -54,7 +58,8 @@ class ActiveSessionsKeycloakTest {
             state = ChannelState.AUTHENTICATED
             createdAt = start.plusSeconds(5)
         }
-        every { repository.findByAuthContextKeycloakSessionIdIn(listOf("kc-app")) } returns listOf(appChannel)
+        every { authContexts.findByKeycloakSessionIdIn(listOf("kc-app")) } returns listOf(appContext)
+        every { repository.findByAuthContextIdIn(listOf(appContext.authContextId!!)) } returns listOf(appChannel)
         every { repository.findByDurableKcSessionIdIn(listOf("kc-web", "kc-other")) } returns listOf(older, newer)
         val fake = KeycloakUserSessions {
             mapOf(

@@ -41,15 +41,12 @@ class AccountDeletionService(
         deviceAccountLinkRepository.deleteByAccountId(accountId)
 
         // Every channel session of this account is logged out, on every device (docs/05-api.md
-        // #2). Both the id and the navigation property must be cleared for authContext and
-        // authEvidence, or Hibernate still reaches the deleted row as a transient instance.
+        // #2). ChannelSession holds only the ids, so nothing reaches the rows deleted below.
         val channelSessions = channelSessionRepository.findByAccountId(accountId)
         channelSessions.forEach { session ->
             session.state = ChannelState.LOGGED_OUT
             session.authContextId = null
-            session.authContext = null
             session.authEvidenceId = null
-            session.authEvidence = null
             channelSessionRepository.save(session)
         }
         authContextRepository.findByAccountId(accountId).forEach { authContextRepository.delete(it) }

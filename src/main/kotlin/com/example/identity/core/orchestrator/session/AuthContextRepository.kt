@@ -12,4 +12,6 @@ interface AuthContextRepository : JpaRepository<AuthContext, UUID> {
     fun findByAuthEvidenceId(authEvidenceId: UUID): List<AuthContext>
 
     fun findByKeycloakSessionId(keycloakSessionId: String): List<AuthContext>
+
+    fun findByKeycloakSessionIdIn(keycloakSessionIds: Collection<String>): List<AuthContext>
 }
