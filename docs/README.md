@@ -47,7 +47,7 @@ Die Doku beschreibt das Zielbild. Weichen Code und Doku voneinander ab, gilt die
 - **[12-entscheidungen.md](12-entscheidungen.md)**: Warum ist das so? Der Index aller
   Architekturentscheidungen.
 - **[adr/](adr/)**: Eine Datei je Entscheidung, mit erwogener Alternative und ihrem Preis.
-- **[review-2026-09-27-dritte-bewertung.md](review-2026-09-27-dritte-bewertung.md)**: Wo steht
+- **[review-2026-09-29-vierte-bewertung.md](review-2026-09-29-vierte-bewertung.md)**: Wo steht
   der Kern heute? Befunde zu Sicherheit, Keycloak, Architektur und Codequalität mit
   Gegenmaßnahmen und Reihenfolge.
 
