@@ -1,6 +1,8 @@
 package com.example.identity.core.orchestrator.kc
 
 import com.example.identity.TEST_CLOCK
+import com.example.identity.contract.tool_api.directory.InvitationEnded
+import com.example.identity.kcmigrate.federatedInvitationUserId
 import com.sun.net.httpserver.HttpServer
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -21,6 +23,7 @@ class KeycloakAdminClientTest : BehaviorSpec({
     class FakeKeycloak(val accepted: Set<String>) {
         val tokensIssued = AtomicInteger()
         val deletes = mutableListOf<String>()
+        val logouts = mutableListOf<String>()
         val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
             createContext("/realms/demo/protocol/openid-connect/token") { ex ->
                 val body = """{"access_token":"t${tokensIssued.incrementAndGet()}","expires_in":300}""".toByteArray()
@@ -32,6 +35,11 @@ class KeycloakAdminClientTest : BehaviorSpec({
                 val token = ex.requestHeaders.getFirst("Authorization").removePrefix("Bearer ")
                 deletes += token
                 ex.sendResponseHeaders(if (token in accepted) 204 else 401, -1)
+                ex.close()
+            }
+            createContext("/admin/realms/demo/users/") { ex ->
+                logouts += ex.requestURI.path
+                ex.sendResponseHeaders(204, -1)
                 ex.close()
             }
             start()
@@ -72,6 +80,21 @@ class KeycloakAdminClientTest : BehaviorSpec({
                 result.isFailure shouldBe true
                 keycloak.tokensIssued.get() shouldBe 2
                 keycloak.deletes.size shouldBe 2
+            }
+        }
+        keycloak.server.stop(0)
+    }
+
+    given("eine beendete Einladung (ADR-48)") {
+        val keycloak = FakeKeycloak(accepted = setOf("t1"))
+        val listener = KeycloakInvitationLogoutListener(client(keycloak))
+        val invitation = "a".repeat(64)
+
+        `when`("das Personenverzeichnis InvitationEnded meldet") {
+            listener.onInvitationEnded(InvitationEnded(invitation))
+
+            then("meldet Keycloak den Einladungs-Nutzer sofort ab, nicht erst beim naechsten Refresh") {
+                keycloak.logouts shouldBe listOf("/admin/realms/demo/users/${federatedInvitationUserId(invitation)}/logout")
             }
         }
         keycloak.server.stop(0)

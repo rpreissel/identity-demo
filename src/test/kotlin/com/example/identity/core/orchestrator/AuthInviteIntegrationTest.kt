@@ -203,6 +203,20 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
             }
         }
 
+        Given("a one-time password without any number") {
+            When("only the password is entered") {
+                Then("it fails like a wrong password: the password alone never finds an invitation") {
+                    val issued = issue("P000000001", "loa1")
+                    val (_, toolSessionId) = openInviteTool("loa1")
+
+                    val failed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
+                        """{"code":"${issued.code}"}""").body!!
+
+                    failed.channel()["state"] shouldBe "ANONYMOUS"
+                }
+            }
+        }
+
         Given("an invitation the register revoked") {
             When("Max enters its password") {
                 Then("a revoked password no longer signs in") {
