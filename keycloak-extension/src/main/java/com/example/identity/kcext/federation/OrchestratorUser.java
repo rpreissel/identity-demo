@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.federation;
 
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;

@@ -1,12 +1,15 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.login;
 
+import com.example.identity.kcext.client.OrchestratorClient;
+import com.example.identity.kcext.federation.AccountUsers;
+import com.example.identity.kcext.token.OrchestratorAcrAmrMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.jboss.logging.Logger;
-import org.keycloak.common.util.Time;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.authenticators.util.AcrStore;
+import org.keycloak.common.util.Time;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
@@ -28,13 +31,13 @@ public final class OrchestratorNotes {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /** This flow run's channelSessionId, derived once and reused by every step of the same run. */
-    static final String CHANNEL_SESSION_ID = "orchestrator_channel_session_id";
+    public static final String CHANNEL_SESSION_ID = "orchestrator_channel_session_id";
     /** The entry intent CHANNEL_SESSION_ID was opened for ("" = the default login/step-up) - see {@link #channelSessionIdFor}. */
     static final String CHANNEL_INTENT = "orchestrator_channel_intent";
     /** Which pending step this authenticator is currently showing - "select" or "tool". */
-    static final String PENDING_KIND = "orchestrator_pending_kind";
-    static final String PENDING_TOOL_ID = "orchestrator_pending_tool_id";
-    static final String PENDING_TOOL_SESSION_ID = "orchestrator_pending_tool_session_id";
+    public static final String PENDING_KIND = "orchestrator_pending_kind";
+    public static final String PENDING_TOOL_ID = "orchestrator_pending_tool_id";
+    public static final String PENDING_TOOL_SESSION_ID = "orchestrator_pending_tool_session_id";
     /** JSON array of {nativeToolId, amrSourceId} - the full, current set (docs/05-api.md Abschnitt 3: no delta). */
     static final String NATIVE_AMR = "orchestrator_native_amr";
     /** Set once restoreData was already submitted this flow run, so a later resume doesn't resend it. */
@@ -51,7 +54,7 @@ public final class OrchestratorNotes {
     static final String USER_SESSION_NOTE_RESTORE_DATA = "orchestrator_restore_data";
 
     /** The orchestrator accountId, once known - a durable Keycloak user attribute, read back on every later step-up. */
-    static final String USER_ATTR_ACCOUNT_ID = AccountUsers.ACCOUNT_ID_ATTRIBUTE;
+    public static final String USER_ATTR_ACCOUNT_ID = AccountUsers.ACCOUNT_ID_ATTRIBUTE;
 
     private OrchestratorNotes() {
     }
@@ -179,7 +182,7 @@ public final class OrchestratorNotes {
         }
     }
 
-    static Long accountId(UserModel user) {
+    public static Long accountId(UserModel user) {
         String value = user == null ? null : user.getFirstAttribute(USER_ATTR_ACCOUNT_ID);
         return value == null || value.isBlank() ? null : Long.parseLong(value);
     }

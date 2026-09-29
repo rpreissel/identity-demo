@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

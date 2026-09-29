@@ -151,7 +151,7 @@ tasks.register<JavaExec>("exportTexts") {
     description = "Schreibt die Text-Vorlagen der Extension nach build/texts/keycloak/texts_source.properties (Wurzelprojekt)."
     dependsOn("testClasses", ":exportKeycloakThemeTexts")
     classpath = sourceSets["test"].runtimeClasspath
-    mainClass.set("com.example.identity.kcext.KcTextCatalog")
+    mainClass.set("com.example.identity.kcext.client.KcTextCatalog")
     systemProperty("texts.keycloakThemeCatalog", rootProject.file("keycloak-theme/build/texts-catalog.json").absolutePath)
     args(
         layout.buildDirectory.dir("classes/java/main").get().asFile.absolutePath,

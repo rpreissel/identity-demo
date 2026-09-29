@@ -1,5 +1,6 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.login;
 
+import com.example.identity.kcext.client.OrchestratorClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;

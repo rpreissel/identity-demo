@@ -1,5 +1,7 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.login;
 
+import com.example.identity.kcext.client.KcTexts;
+import com.example.identity.kcext.client.OrchestratorClient;
 import jakarta.ws.rs.core.MultivaluedMap;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.InitiatedActionSupport;

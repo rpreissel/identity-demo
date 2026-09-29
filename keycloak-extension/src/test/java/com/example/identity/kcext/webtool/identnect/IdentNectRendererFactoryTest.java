@@ -1,6 +1,6 @@
 package com.example.identity.kcext.webtool.identnect;
 
-import com.example.identity.kcext.OrchestratorSettings;
+import com.example.identity.kcext.client.OrchestratorSettings;
 import com.example.identity.kcext.webtool.WebToolRenderContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * ident-nect in the web channel (docs/ideen/ident-nect.md): the activation names the step's action
+ * ident-nect in the web channel (docs/adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md): the activation names the step's action
  * URL as the way back, and the page links to the jump page as the browser reaches it.
  */
 class IdentNectRendererFactoryTest {

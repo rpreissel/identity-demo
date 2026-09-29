@@ -1,5 +1,7 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.federation;
 
+import com.example.identity.kcext.client.OrchestratorClient;
+import com.example.identity.kcext.client.OrchestratorSettings;
 import org.keycloak.Config;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
@@ -25,7 +27,7 @@ public class OrchestratorStorageProviderFactory implements UserStorageProviderFa
      * Die Komponente dieses Realms, gesucht ueber die providerId, weil ihre Id je Umgebung variiert.
      * Leer, solange die Migration sie nicht angelegt hat.
      */
-    static Optional<ComponentModel> componentIn(RealmModel realm) {
+    public static Optional<ComponentModel> componentIn(RealmModel realm) {
         return realm.getStorageProviders(UserStorageProvider.class)
                 .filter(component -> PROVIDER_ID.equals(component.getProviderId()))
                 .findFirst();

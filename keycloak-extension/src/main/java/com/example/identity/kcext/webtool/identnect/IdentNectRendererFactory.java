@@ -1,6 +1,6 @@
 package com.example.identity.kcext.webtool.identnect;
 
-import com.example.identity.kcext.KcText;
+import com.example.identity.kcext.client.KcText;
 import com.example.identity.kcext.webtool.AbstractWebToolRendererFactory;
 import com.example.identity.kcext.webtool.WebToolRenderContext;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 /**
- * Web-channel counterpart to ident-nect (docs/ideen/ident-nect.md): one step {@code redirect}. The
+ * Web-channel counterpart to ident-nect (docs/adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md): one step {@code redirect}. The
  * page shows "Weiter zu Nect", a link to Nect's jump page; Nect sends the user back to the action
  * URL of this very step, which this factory named at activation, with {@code ?nectCaseId=...}
  * appended. The authenticator hands the query on as the tool's input. After a failed attempt the

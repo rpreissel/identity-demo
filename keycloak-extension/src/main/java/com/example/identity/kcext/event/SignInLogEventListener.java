@@ -1,5 +1,8 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.event;
 
+import com.example.identity.kcext.client.OrchestratorClient;
+import com.example.identity.kcext.client.OrchestratorSettings;
+import com.example.identity.kcext.federation.OrchestratorStorageProviderFactory;
 import org.jboss.logging.Logger;
 import org.keycloak.Config;
 import org.keycloak.events.Event;

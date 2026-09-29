@@ -1,5 +1,6 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.client;
 
+import com.example.identity.kcext.federation.OrchestratorStorageProviderFactory;
 import org.junit.jupiter.api.Test;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;

@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.login;
 
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserSessionModel;

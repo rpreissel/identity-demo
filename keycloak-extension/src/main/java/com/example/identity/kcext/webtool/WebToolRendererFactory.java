@@ -1,6 +1,6 @@
 package com.example.identity.kcext.webtool;
 
-import com.example.identity.kcext.KcText;
+import com.example.identity.kcext.client.KcText;
 import org.keycloak.provider.ProviderFactory;
 
 import java.util.Map;
@@ -28,7 +28,7 @@ public interface WebToolRendererFactory extends ProviderFactory<WebToolRenderer>
      * What this tool needs to hear when it is activated, sent as the body of
      * {@code POST .../tools/{toolId}}; nothing for most tools. {@code actionUrl} yields Keycloak's
      * action URL of the running step, evaluated only when asked for: a tool that sends the user
-     * away names it as the address to come back to (docs/ideen/ident-nect.md #3).
+     * away names it as the address to come back to (docs/adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md).
      */
     default Map<String, String> activationFields(Supplier<String> actionUrl) {
         return Map.of();

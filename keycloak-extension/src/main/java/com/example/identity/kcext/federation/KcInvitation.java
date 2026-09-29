@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.federation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.LinkedHashMap;
@@ -9,7 +9,7 @@ import java.util.Map;
  * An invitation as the orchestrator shows it to Keycloak ({@code KcInvitationLookupController}) -
  * read through on every lookup, never stored here.
  */
-record KcInvitation(
+public record KcInvitation(
         String invitation,
         String username,
         boolean enabled,
@@ -17,7 +17,7 @@ record KcInvitation(
         String lastName,
         Map<String, String> attributes
 ) {
-    static KcInvitation from(JsonNode json) {
+    public static KcInvitation from(JsonNode json) {
         Map<String, String> attributes = new LinkedHashMap<>();
         json.path("attributes").properties().forEach(e -> attributes.put(e.getKey(), e.getValue().asText()));
         return new KcInvitation(

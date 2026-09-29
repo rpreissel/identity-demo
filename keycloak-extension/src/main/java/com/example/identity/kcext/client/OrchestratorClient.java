@@ -1,5 +1,8 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.client;
 
+import com.example.identity.kcext.federation.KcAccount;
+import com.example.identity.kcext.federation.KcInvitation;
+import com.example.identity.kcext.federation.KcSubject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -24,7 +27,7 @@ import java.util.Objects;
  * signed peer-auth assertion instead of a bearer token: Keycloak itself is the caller identity
  * (docs/12-entscheidungen.md ADR-7).
  */
-final class OrchestratorClient {
+public final class OrchestratorClient {
 
     /**
      * Unbekannte Felder werden ueberlesen: Die Extension laeuft in einem eigenen Image und muss
@@ -45,7 +48,7 @@ final class OrchestratorClient {
     private final PeerAuthAssertionSigner signer;
     private final OrchestratorResponseVerifier verifier;
 
-    OrchestratorClient(String baseUrl, String issuer, String audience, com.nimbusds.jose.jwk.ECKey signingKey) {
+  public   OrchestratorClient(String baseUrl, String issuer, String audience, com.nimbusds.jose.jwk.ECKey signingKey) {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.signer = new PeerAuthAssertionSigner(issuer, audience, signingKey);
         // The orchestrator answers as the audience of our assertions, addressed to their issuer (us).
@@ -59,7 +62,7 @@ final class OrchestratorClient {
      * Keycloak's UserSessionModel id; it travels only with {@code restoreData}, so the server can
      * check that token was minted for this browser's durable identity.
      */
-    ChannelResponse upsertChannel(
+    public ChannelResponse upsertChannel(
             String channelSessionId,
             Long accountId,
             String targetAcr,
@@ -102,7 +105,7 @@ final class OrchestratorClient {
      * {@code channelSessionId} anchor; {@code durableKcSessionId} only names what the returned
      * token is bound to. {@code sessionExpiresAt} (epoch seconds) caps the channel's expiry (ADR-43).
      */
-    String restoreData(String channelSessionId, String durableKcSessionId, long sessionExpiresAt) throws IOException, InterruptedException {
+    public String restoreData(String channelSessionId, String durableKcSessionId, long sessionExpiresAt) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/kc/channels/" + channelSessionId + "/restore-data?kcSessionId=" + urlEncode(durableKcSessionId)
                 + "&sessionExpiresAt=" + sessionExpiresAt;
         JsonNode response = send("GET", path, channelSessionId, null);
@@ -115,7 +118,7 @@ final class OrchestratorClient {
      * authenticated channel (docs/05-api.md, "Anmeldeverfahren verwalten im Web-Kanal"). The
      * binding-key guard accepts a peer-auth assertion like a DPoP proof.
      */
-    ChannelResponse startEnrollments(String channelSessionId) throws IOException, InterruptedException {
+    public ChannelResponse startEnrollments(String channelSessionId) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/enrollments";
         return ChannelResponse.from(send("POST", path, channelSessionId, MAPPER.createObjectNode()));
     }
@@ -124,7 +127,7 @@ final class OrchestratorClient {
      * GET .../channels/{channelSessionId}/methods: the active methods for the management screen
      * (docs/05-api.md, "Anmeldeverfahren verwalten im Web-Kanal").
      */
-    List<MethodView> getMethods(String channelSessionId) throws IOException, InterruptedException {
+    public List<MethodView> getMethods(String channelSessionId) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/methods";
         JsonNode response = send("GET", path, channelSessionId, null);
         List<MethodView> methods = new ArrayList<>();
@@ -136,18 +139,18 @@ final class OrchestratorClient {
      * DELETE .../channels/{channelSessionId}/methods/{methodInstanceId}: deactivates one method.
      * Like enrollment, it may first ask for a loa2 step-up.
      */
-    ChannelResponse deactivateMethod(String channelSessionId, String methodInstanceId) throws IOException, InterruptedException {
+    public ChannelResponse deactivateMethod(String channelSessionId, String methodInstanceId) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/methods/" + methodInstanceId;
         return ChannelResponse.from(send("DELETE", path, channelSessionId, null));
     }
 
     /** Same facade-neutral tool endpoints the App channel uses (docs/05-api.md Abschnitt 3). */
-    ChannelResponse activateTool(String channelSessionId, String toolId) throws IOException, InterruptedException {
+    public ChannelResponse activateTool(String channelSessionId, String toolId) throws IOException, InterruptedException {
         return activateTool(channelSessionId, toolId, Map.of());
     }
 
     /** With what the tool's renderer asks to send along ({@code WebToolRendererFactory.activationFields}). */
-    ChannelResponse activateTool(String channelSessionId, String toolId, Map<String, String> fields) throws IOException, InterruptedException {
+    public ChannelResponse activateTool(String channelSessionId, String toolId, Map<String, String> fields) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/tools/" + toolId;
         ObjectNode body = MAPPER.createObjectNode();
         fields.forEach(body::put);
@@ -159,7 +162,7 @@ final class OrchestratorClient {
      * {@code htu} to bind, and toolSessionId is not self-authorizing (docs/02-domaenenmodell.md
      * Abschnitt 1), so the anchor claim alone ties this call to the right channel.
      */
-    ChannelResponse patchTool(String channelSessionId, String toolSessionId, String toolId, Map<String, String> fields) throws IOException, InterruptedException {
+    public ChannelResponse patchTool(String channelSessionId, String toolSessionId, String toolId, Map<String, String> fields) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/tools/" + toolSessionId + "/" + toolId;
         ObjectNode body = MAPPER.createObjectNode();
         fields.forEach(body::put);
@@ -170,19 +173,19 @@ final class OrchestratorClient {
      * GET .../tools/{toolSessionId}/{toolId}: the tool's current step, read only. Same anchor
      * convention as {@link #patchTool}.
      */
-    ChannelResponse readTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
+    public ChannelResponse readTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/tools/" + toolSessionId + "/" + toolId;
         return ChannelResponse.from(send("GET", path, channelSessionId, null));
     }
 
     /** DELETE .../tools/{toolSessionId}/{toolId} - declines the running tool ("Abbrechen"). */
-    ChannelResponse abandonTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
+    public ChannelResponse abandonTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/tools/" + toolSessionId + "/" + toolId;
         return ChannelResponse.from(send("DELETE", path, channelSessionId, null));
     }
 
     /** POST .../tools/{toolSessionId}/{toolId}/back - leaves the running tool without declining it ("Zurück"). */
-    ChannelResponse backFromTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
+    public ChannelResponse backFromTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/tools/" + toolSessionId + "/" + toolId + "/back";
         return ChannelResponse.from(send("POST", path, channelSessionId, MAPPER.createObjectNode()));
     }
@@ -192,7 +195,7 @@ final class OrchestratorClient {
      * before any tool was picked. A cancelled sub-journey resumes its parent, a cancelled top-level
      * journey restarts the channel's entry journey; the response's {@code next} says what to render.
      */
-    ChannelResponse abandonJourney(String channelSessionId) throws IOException, InterruptedException {
+    public ChannelResponse abandonJourney(String channelSessionId) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/journey";
         return ChannelResponse.from(send("DELETE", path, channelSessionId, null));
     }
@@ -201,7 +204,7 @@ final class OrchestratorClient {
      * POST .../channels/{channelSessionId}/answer: the yes/no reply to a prompt
      * (next.context=prompt, next.step=confirm). {@code answer} is {@code "accept"} or {@code "decline"}.
      */
-    ChannelResponse answer(String channelSessionId, String answer) throws IOException, InterruptedException {
+    public ChannelResponse answer(String channelSessionId, String answer) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/answer";
         ObjectNode body = MAPPER.createObjectNode();
         body.put("answer", answer);
@@ -214,7 +217,7 @@ final class OrchestratorClient {
      * {@code channel_anchor} claim carries the same account id. The orchestrator's
      * {@code MgmtPasswordController} checks both match.
      */
-    boolean verifyPassword(long accountId, String password) throws IOException, InterruptedException {
+    public boolean verifyPassword(long accountId, String password) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/tools/auth-password/mgmt/" + accountId;
         ObjectNode body = MAPPER.createObjectNode();
         body.put("password", password);
@@ -227,13 +230,13 @@ final class OrchestratorClient {
      * log (ADR-39). The Web channel's logout is Keycloak's own; the orchestrator would not learn of
      * it otherwise. Same anchor convention as the password calls.
      */
-    void reportSignOut(long accountId, String kcSessionId) throws IOException, InterruptedException {
+    public void reportSignOut(long accountId, String kcSessionId) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/kc/accounts/" + accountId + "/sign-outs?kcSessionId=" + urlEncode(kcSessionId);
         send("POST", path, String.valueOf(accountId), null);
     }
 
     /** See {@link #verifyPassword(long, String)} - same anchor convention. */
-    void setPassword(long accountId, String newPassword) throws IOException, InterruptedException {
+    public void setPassword(long accountId, String newPassword) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/tools/enroll-password/mgmt/" + accountId;
         ObjectNode body = MAPPER.createObjectNode();
         body.put("newPassword", newPassword);
@@ -244,17 +247,17 @@ final class OrchestratorClient {
      * The account behind a federated user, read by id; the anchor names the account like the
      * password endpoints do. {@code null} when there is no such account.
      */
-    KcAccount accountById(long accountId) throws IOException, InterruptedException {
+    public KcAccount accountById(long accountId) throws IOException, InterruptedException {
         return lookup("/orchestrator/api/v1/kc/accounts/" + accountId, String.valueOf(accountId));
     }
 
     /** By exact email - never a list; {@code null} when no account holds this address. */
-    KcAccount accountByEmail(String email) throws IOException, InterruptedException {
+    public KcAccount accountByEmail(String email) throws IOException, InterruptedException {
         return lookup("/orchestrator/api/v1/kc/accounts?email=" + urlEncode(email), ACCOUNT_LOOKUP_ANCHOR);
     }
 
     /** By username ({@code account-<id>} or the email); {@code null} when there is none. */
-    KcAccount accountByUsername(String username) throws IOException, InterruptedException {
+    public KcAccount accountByUsername(String username) throws IOException, InterruptedException {
         return lookup("/orchestrator/api/v1/kc/accounts?username=" + urlEncode(username), ACCOUNT_LOOKUP_ANCHOR);
     }
 
@@ -262,7 +265,7 @@ final class OrchestratorClient {
      * An invitation by its identity (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md); {@code null} when
      * there is none. The anchor names the invitation looked up.
      */
-    KcInvitation invitationById(String invitation) throws IOException, InterruptedException {
+    public KcInvitation invitationById(String invitation) throws IOException, InterruptedException {
         try {
             return KcInvitation.from(send("GET", "/orchestrator/api/v1/kc/invitations/" + urlEncode(invitation), invitation, null));
         } catch (OrchestratorApiException e) {
@@ -346,8 +349,8 @@ final class OrchestratorClient {
     }
 
     /** Mirrors ActiveMethodView (tool_api/Envelope.kt) - id/method/label, nothing more. */
-    record MethodView(String id, String method, String label) {
-        static MethodView from(JsonNode json) {
+    public record MethodView(String id, String method, String label) {
+        public static MethodView from(JsonNode json) {
             JsonNode labelNode = json.get("label");
             return new MethodView(
                     json.path("id").asText(null),
@@ -357,17 +360,17 @@ final class OrchestratorClient {
         }
     }
 
-    record AmrEntry(String nativeToolId, String amrSourceId) {
+    public record AmrEntry(String nativeToolId, String amrSourceId) {
     }
 
     /** Mirrors AmrEntry (docs/05-api.md Abschnitt 3) - just the two stable ids, never method/loa directly. */
-    static final class OrchestratorApiException extends IOException {
+    public static final class OrchestratorApiException extends IOException {
         final int status;
         final String errorCode;
         /** What the user is told - a text reference, resolved per login language ({@link #message}). */
         final JsonNode text;
 
-        OrchestratorApiException(int status, String body) {
+      public   OrchestratorApiException(int status, String body) {
             super("Orchestrator call failed: " + status + " " + body);
             this.status = status;
             String parsedCode = null;
@@ -389,13 +392,13 @@ final class OrchestratorClient {
         }
 
         /** The error in the login's language, or null when the orchestrator sent no text. */
-        String message(org.keycloak.models.KeycloakSession session) {
+        public String message(org.keycloak.models.KeycloakSession session) {
             return OrchestratorTexts.resolve(session, text);
         }
     }
 
     /** Parsed view of ChannelResponse (tool_api/Envelope.kt) - only the fields this plugin reads. */
-    record ChannelResponse(
+    public record ChannelResponse(
             String channelSessionId,
             String channelState,
             Next next,
@@ -413,7 +416,7 @@ final class OrchestratorClient {
          * Schluessel heraus, und der generierte stepData-Union-Typ wirft bei einer unbekannten Form
          * (siehe ContractModelTest). Die Extension muss einen neueren Orchestrator ueberstehen.
          */
-        static ChannelResponse from(JsonNode json) {
+        public static ChannelResponse from(JsonNode json) {
             com.example.identity.kcext.api.model.ChannelResponse wire;
             try {
                 wire = MAPPER.treeToValue(stripOpenBags(json), com.example.identity.kcext.api.model.ChannelResponse.class);
@@ -479,20 +482,20 @@ final class OrchestratorClient {
             return copy;
         }
 
-        List<String> stepDataOptions() {
+        public List<String> stepDataOptions() {
             List<String> options = new ArrayList<>();
             stepData.getOrDefault("options", MAPPER.createArrayNode()).forEach(n -> options.add(n.asText()));
             return options;
         }
 
         /** The failed attempt's text reference, if the last attempt failed. */
-        JsonNode stepDataError() {
+        public JsonNode stepDataError() {
             return stepData.get("error");
         }
     }
 
-    record Next(String type, String toolId, String context, String step, String toolSessionId) {
-        static Next from(JsonNode json) {
+    public record Next(String type, String toolId, String context, String step, String toolSessionId) {
+        public static Next from(JsonNode json) {
             return new Next(
                     json.path("type").asText(null),
                     json.path("toolId").asText(null),
@@ -502,21 +505,21 @@ final class OrchestratorClient {
             );
         }
 
-        boolean isTool() {
+        public boolean isTool() {
             return "tool".equals(type);
         }
 
-        boolean isSelectMethod() {
+        public boolean isSelectMethod() {
             // "selectIdentificationMethod" is REGISTER's identification choice; it renders the same
             // selection screen as "selectMethod" (docs/04-orchestrierung.md #4).
             return "orchestrator".equals(type) && ("selectMethod".equals(step) || "selectIdentificationMethod".equals(step));
         }
 
-        boolean isAuthenticated() {
+        public boolean isAuthenticated() {
             return "orchestrator".equals(type) && "authenticated".equals(step);
         }
 
-        boolean isConfirm() {
+        public boolean isConfirm() {
             return "orchestrator".equals(type) && "confirm".equals(step);
         }
     }

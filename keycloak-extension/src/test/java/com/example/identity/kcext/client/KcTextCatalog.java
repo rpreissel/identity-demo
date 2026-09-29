@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,8 +40,8 @@ public final class KcTextCatalog {
     public record Entry(String id, String template, List<String> locations) {
     }
 
-    private static final String KC_TEXT = "com/example/identity/kcext/KcText";
-    private static final String KC_TEXTS = "com/example/identity/kcext/KcTexts";
+    private static final String KC_TEXT = "com/example/identity/kcext/client/KcText";
+    private static final String KC_TEXTS = "com/example/identity/kcext/client/KcTexts";
     private static final Pattern FTL_CALL = Pattern.compile("\\bt\\.of\\(\\s*");
     private static final Pattern FTL_LITERAL = Pattern.compile("\"((?:[^\"\\\\]|\\\\.)*)\"|'((?:[^'\\\\]|\\\\.)*)'");
 

@@ -1,3 +1,3 @@
-com.example.identity.kcext.OrchestratorResumeAuthenticatorFactory
-com.example.identity.kcext.OrchestratorAuthenticatorFactory
-com.example.identity.kcext.OrchestratorUpdateAuthenticatorFactory
+com.example.identity.kcext.login.OrchestratorResumeAuthenticatorFactory
+com.example.identity.kcext.login.OrchestratorAuthenticatorFactory
+com.example.identity.kcext.login.OrchestratorUpdateAuthenticatorFactory

@@ -1,5 +1,7 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.resource;
 
+import com.example.identity.kcext.client.OrchestratorClient;
+import com.example.identity.kcext.login.OrchestratorNotes;
 import org.junit.jupiter.api.Test;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.RealmModel;

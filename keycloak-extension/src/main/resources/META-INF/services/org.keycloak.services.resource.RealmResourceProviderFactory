@@ -1,2 +1,2 @@
-com.example.identity.kcext.OrchestratorJwksResourceProviderFactory
-com.example.identity.kcext.QrWaitStatusResourceProviderFactory
+com.example.identity.kcext.resource.OrchestratorJwksResourceProviderFactory
+com.example.identity.kcext.resource.QrWaitStatusResourceProviderFactory

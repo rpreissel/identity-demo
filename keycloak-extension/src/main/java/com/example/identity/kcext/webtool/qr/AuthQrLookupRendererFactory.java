@@ -1,6 +1,6 @@
 package com.example.identity.kcext.webtool.qr;
 
-import com.example.identity.kcext.KcText;
+import com.example.identity.kcext.client.KcText;
 /** Web-channel counterpart of `auth-qr-lookup` - account unknown until the app side reveals it. */
 public class AuthQrLookupRendererFactory extends QrWaitRendererFactory {
 

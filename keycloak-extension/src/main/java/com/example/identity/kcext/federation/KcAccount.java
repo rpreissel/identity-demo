@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.federation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -10,7 +10,7 @@ import java.util.Map;
  * An account as the orchestrator shows it to Keycloak ({@code KcAccountLookupController}) - read
  * through on every lookup, never stored here.
  */
-record KcAccount(
+public record KcAccount(
         long accountId,
         String username,
         String email,
@@ -19,7 +19,7 @@ record KcAccount(
         String lastName,
         Map<String, String> attributes
 ) {
-    static KcAccount from(JsonNode json) {
+    public static KcAccount from(JsonNode json) {
         Map<String, String> attributes = new LinkedHashMap<>();
         json.path("attributes").properties().forEach(e -> attributes.put(e.getKey(), e.getValue().asText()));
         return new KcAccount(

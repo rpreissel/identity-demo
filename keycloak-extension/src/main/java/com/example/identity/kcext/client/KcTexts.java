@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.client;
 
 import org.jboss.logging.Logger;
 import org.keycloak.models.KeycloakSession;

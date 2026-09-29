@@ -1,4 +1,6 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.federation;
+
+import com.example.identity.kcext.client.OrchestratorSettings;
 
 import java.util.Optional;
 import org.keycloak.Config;

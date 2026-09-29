@@ -1,6 +1,6 @@
 package com.example.identity.kcext.webtool.qr;
 
-import com.example.identity.kcext.KcText;
+import com.example.identity.kcext.client.KcText;
 /** Web-channel counterpart of `auth-qr` - account already known via the channel (step-up/re-auth). */
 public class AuthQrRendererFactory extends QrWaitRendererFactory {
 

@@ -1,8 +1,9 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.login;
 
+import com.example.identity.kcext.client.OrchestratorSettings;
 import org.keycloak.Config;
-import org.keycloak.authentication.Authenticator;
 import org.keycloak.authentication.AuthenticationFlowCallbackFactory;
+import org.keycloak.authentication.Authenticator;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;

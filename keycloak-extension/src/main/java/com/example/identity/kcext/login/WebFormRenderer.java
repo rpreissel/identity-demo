@@ -1,5 +1,10 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.login;
 
+import com.example.identity.kcext.client.KcTexts;
+import com.example.identity.kcext.client.OrchestratorClient;
+import com.example.identity.kcext.client.OrchestratorSettings;
+import com.example.identity.kcext.client.OrchestratorTexts;
+import com.example.identity.kcext.resource.QrWaitStatusResourceProvider;
 import com.example.identity.kcext.webtool.WebToolRenderContext;
 import com.example.identity.kcext.webtool.WebToolRenderer;
 import com.example.identity.kcext.webtool.WebToolRendererFactory;

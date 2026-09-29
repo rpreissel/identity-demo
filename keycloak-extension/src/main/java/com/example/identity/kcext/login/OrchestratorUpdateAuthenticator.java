@@ -1,5 +1,6 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.login;
 
+import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.webtool.WebToolAvailability;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowContext;

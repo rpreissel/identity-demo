@@ -1,4 +1,7 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.login;
+
+import com.example.identity.kcext.client.OrchestratorClient;
+import com.example.identity.kcext.federation.KcSubject;
 
 import java.util.Objects;
 

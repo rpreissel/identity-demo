@@ -1,4 +1,6 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.federation;
+
+import com.example.identity.kcext.client.OrchestratorClient;
 
 import java.io.IOException;
 import org.keycloak.component.ComponentModel;

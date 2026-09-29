@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.federation;
 
 import org.junit.jupiter.api.Test;
 import org.keycloak.component.ComponentModel;

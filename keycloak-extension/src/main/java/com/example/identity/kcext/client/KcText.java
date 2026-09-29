@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.client;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

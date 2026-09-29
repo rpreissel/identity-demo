@@ -1,8 +1,8 @@
 package com.example.identity.kcext.grant;
 
-import com.example.identity.kcext.AccountUsers;
+import com.example.identity.kcext.federation.AccountUsers;
 
-import com.example.identity.kcext.OrchestratorNotes;
+import com.example.identity.kcext.login.OrchestratorNotes;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;

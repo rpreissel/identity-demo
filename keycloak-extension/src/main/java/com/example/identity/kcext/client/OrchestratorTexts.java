@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.client;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
  * per orchestrator and language, revalidated by ETag at most once a minute. If the orchestrator is
  * unreachable, the last copy stays in use; without any copy a reference shows its template or id.
  */
-final class OrchestratorTexts {
+public final class OrchestratorTexts {
 
     private static final Logger LOG = Logger.getLogger(OrchestratorTexts.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -44,7 +44,7 @@ final class OrchestratorTexts {
     }
 
     /** {@code ref} in the login's language; null for a missing reference. */
-    static String resolve(KeycloakSession session, JsonNode ref) {
+    public static String resolve(KeycloakSession session, JsonNode ref) {
         if (ref == null || ref.isNull() || !ref.hasNonNull("key")) return null;
         return resolve(bundle(OrchestratorSettings.of(session), language(session)), ref);
     }

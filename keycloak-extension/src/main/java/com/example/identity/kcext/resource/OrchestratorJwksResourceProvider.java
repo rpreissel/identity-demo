@@ -1,5 +1,6 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.resource;
 
+import com.example.identity.kcext.client.OrchestratorSettings;
 import com.nimbusds.jose.jwk.JWKSet;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;

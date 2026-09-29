@@ -1,2 +1,2 @@
-com.example.identity.kcext.OrchestratorStorageProviderFactory
-com.example.identity.kcext.InvitationStorageProviderFactory
+com.example.identity.kcext.federation.OrchestratorStorageProviderFactory
+com.example.identity.kcext.federation.InvitationStorageProviderFactory

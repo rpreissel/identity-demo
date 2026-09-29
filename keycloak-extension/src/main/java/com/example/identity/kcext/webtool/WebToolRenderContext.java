@@ -1,6 +1,6 @@
 package com.example.identity.kcext.webtool;
 
-import com.example.identity.kcext.OrchestratorSettings;
+import com.example.identity.kcext.client.OrchestratorSettings;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.Map;

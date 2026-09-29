@@ -1,5 +1,6 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.login;
 
+import com.example.identity.kcext.client.OrchestratorClient;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 
@@ -50,7 +51,7 @@ final class OrchestratorNextDispatch {
      * The parameters Keycloak itself puts on an action URL; everything else in the query is the
      * tool's input, as if it had been posted. That is how a return from outside reaches a tool: the
      * address the user comes back to is the running step's action URL, and whoever sends them back
-     * appends its own parameters ({@code ?nectCaseId=...}, docs/ideen/ident-nect.md #3).
+     * appends its own parameters ({@code ?nectCaseId=...}, docs/adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md).
      */
     static final Set<String> KEYCLOAK_ACTION_PARAMS = Set.of(
             "session_code", "execution", "client_id", "tab_id", "client_data", "auth_session_id", "kc_locale", "token");

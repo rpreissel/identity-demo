@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.federation;
 
 import jakarta.ws.rs.DELETE;
 import org.keycloak.models.session.UserSessionPersisterProvider;

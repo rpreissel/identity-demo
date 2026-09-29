@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.resource;
 
 import org.keycloak.Config;
 import org.keycloak.models.KeycloakSession;

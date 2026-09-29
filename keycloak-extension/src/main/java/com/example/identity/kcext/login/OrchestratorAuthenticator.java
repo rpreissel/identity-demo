@@ -1,5 +1,8 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.login;
 
+import com.example.identity.kcext.client.KcTexts;
+import com.example.identity.kcext.client.OrchestratorClient;
+import com.example.identity.kcext.federation.KcSubject;
 import com.example.identity.kcext.webtool.WebToolAvailability;
 import com.example.identity.kcext.webtool.WebToolRendererFactory;
 import jakarta.ws.rs.core.MultivaluedMap;

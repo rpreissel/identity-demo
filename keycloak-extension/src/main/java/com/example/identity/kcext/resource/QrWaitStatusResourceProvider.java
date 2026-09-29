@@ -1,5 +1,8 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.resource;
 
+import com.example.identity.kcext.client.OrchestratorClient;
+import com.example.identity.kcext.client.OrchestratorSettings;
+import com.example.identity.kcext.login.OrchestratorNotes;
 import com.example.identity.kcext.webtool.qr.AuthQrLookupRendererFactory;
 import com.example.identity.kcext.webtool.qr.AuthQrRendererFactory;
 import jakarta.ws.rs.GET;

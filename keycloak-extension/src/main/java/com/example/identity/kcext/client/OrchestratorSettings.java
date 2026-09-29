@@ -1,5 +1,6 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.client;
 
+import com.example.identity.kcext.federation.OrchestratorStorageProviderFactory;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.Curve;
@@ -96,7 +97,7 @@ public record OrchestratorSettings(
      * instanziiert den Provider bei jeder User-Anlage, und parallele Anlagen scheitern dann an der
      * optimistischen Sperre auf COMPONENT_CONFIG.
      */
-    static void ensureSigningKey(ComponentModel model) {
+    public static void ensureSigningKey(ComponentModel model) {
         String stored = model.getConfig().getFirst(PEER_AUTH_SIGNING_KEY);
         // Die Maske kommt an, wenn jemand die Config aus der Admin-API kopiert und damit eine neue
         // Komponente anlegt. Beim Aendern ersetzt Keycloak die Maske vorher selbst durch den alten Wert.
@@ -146,7 +147,7 @@ public record OrchestratorSettings(
     }
 
     /** Ein Client mit genau diesen Einstellungen. */
-    OrchestratorClient newClient() {
+    public OrchestratorClient newClient() {
         return new OrchestratorClient(orchestratorBaseUrl, peerAuthIssuer, peerAuthAudience, peerAuthSigningKey);
     }
 

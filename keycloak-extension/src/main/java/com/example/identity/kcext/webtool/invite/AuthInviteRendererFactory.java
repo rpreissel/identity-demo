@@ -1,6 +1,6 @@
 package com.example.identity.kcext.webtool.invite;
 
-import com.example.identity.kcext.KcText;
+import com.example.identity.kcext.client.KcText;
 import com.example.identity.kcext.webtool.AbstractWebToolRendererFactory;
 import com.example.identity.kcext.webtool.WebToolRenderContext;
 import jakarta.ws.rs.core.Response;

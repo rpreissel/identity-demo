@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.federation;
 
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;

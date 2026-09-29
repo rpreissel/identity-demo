@@ -1,4 +1,4 @@
-package com.example.identity.kcext;
+package com.example.identity.kcext.event;
 
 import org.junit.jupiter.api.Test;
 import org.keycloak.events.EventType;
