@@ -19,6 +19,7 @@ import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.contract.texts.Text
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -78,6 +79,18 @@ class LookupLoginStrategyTest : BehaviorSpec({
             }
             then("Enrolled is not offered by any state of this intent") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
+            }
+        }
+    }
+
+    given("Credential, auth-invite offered in the App") {
+        val state = LookupLoginState.Credential(Offer(listOf(ToolId("auth-invite"))))
+
+        `when`("a one-time password proves an invitation, not an account") {
+            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("invite"), subject = Subject.Invitation("a".repeat(64)))
+            val transition = strategy.transition(state, JourneyEvent.Completed(AuthSmsLookupDescriptor, outcome), ctx())
+            then("aborts before anything is bound: process access is for the website only (ADR-48)") {
+                transition shouldBe Transition.Abort(Text("Ein Einmalkennwort gilt nur auf der Website"))
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
@@ -47,14 +48,14 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
             // The first proof has no account yet, so a lookup tool resolves it; the executor
             // decides that from the tool's role (accountOfProof), not this state.
             is LookupLoginState.Credential -> when (event) {
-                is JourneyEvent.Completed -> Transition.Perform(proofAction(event), resumeState = state)
+                is JourneyEvent.Completed -> completed(event, state)
                 is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
                 else -> settleOrRaise(ctx)
             }
 
             // A further factor runs against the account bound by the first one.
             is LookupLoginState.AdditionalFactor -> when (event) {
-                is JourneyEvent.Completed -> Transition.Perform(proofAction(event), resumeState = state)
+                is JourneyEvent.Completed -> completed(event, state)
                 // Giving up cannot finish anyway: the floor is still unmet.
                 is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
                 else -> settleOrRaise(ctx)
@@ -81,6 +82,20 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
                 else -> error("ConfirmDeviceRebind only accepts JourneyEvent.Answered")
             }
         }
+
+    /**
+     * A one-time password opens a process access on the website only (ADR-48): the App channel's
+     * journeys and tokens know no subject other than an account. The tool is switched off for the
+     * App by default; should an App announce it anyway, the journey ends with a clear refusal
+     * instead of binding an invitation it cannot serve.
+     */
+    private fun completed(event: JourneyEvent.Completed, state: LookupLoginState): Transition {
+        val outcome = event.outcome
+        if (outcome is ToolOutcome.Completed.Authenticated && outcome.subject is Subject.Invitation) {
+            return Transition.Abort(Text("Ein Einmalkennwort gilt nur auf der Website"))
+        }
+        return Transition.Perform(proofAction(event), resumeState = state)
+    }
 
     /** Only authentication tools are offered; any other outcome means a tool ran that was never offered. */
     private fun proofAction(event: JourneyEvent.Completed): Action =

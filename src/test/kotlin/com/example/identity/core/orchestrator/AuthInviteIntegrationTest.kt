@@ -7,6 +7,7 @@ import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.ints.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import java.time.Clock
 import java.time.Duration
@@ -155,15 +156,87 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
         }
 
         Given("a completed invitation") {
-            Then("its password no longer signs in") {
-                val issued = issue("P000000001", "loa1")
-                complete(issued.invitation)
-                val (_, toolSessionId) = openInviteTool("loa1")
+            When("Max enters its password again") {
+                Then("its password no longer signs in") {
+                    val issued = issue("P000000001", "loa1")
+                    complete(issued.invitation)
+                    val (_, toolSessionId) = openInviteTool("loa1")
 
-                val failed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
-                    """{"kvnr":"A123456789","code":"${issued.code}"}""")
+                    val failed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
+                        """{"kvnr":"A123456789","code":"${issued.code}"}""")
 
-                failed.body!!.channel()["state"] shouldBe "ANONYMOUS"
+                    failed.body!!.channel()["state"] shouldBe "ANONYMOUS"
+                }
+            }
+        }
+
+        Given("an open loa2 invitation for Paula, known by her Partnernummer only") {
+            When("Keycloak reads the tool") {
+                Then("it shows its one step") {
+                    issue("P000000004", "loa2")
+                    val (_, toolSessionId) = openInviteTool("loa2")
+
+                    val read = kcCall(HttpMethod.GET, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite").body!!
+
+                    read.nextRaw()["step"] shouldBe "auth"
+                }
+            }
+
+            When("she enters the Partnernummer and the password") {
+                Then("the channel is signed in at the invitation's level, and account functions are refused") {
+                    val issued = issue("P000000004", "loa2")
+                    val (channelSessionId, toolSessionId) = openInviteTool("loa2")
+
+                    val completed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
+                        """{"partnernr":"P000000004","code":"${issued.code}"}""").body!!
+
+                    completed.channel()["state"] shouldBe "AUTHENTICATED"
+                    (completed["authData"] as Map<*, *>)["acr"] shouldBe "loa2"
+                    // A process access serves its process and nothing else.
+                    assertThrows<HttpClientErrorException> {
+                        kcCall(HttpMethod.POST, "/orchestrator/api/v1/channels/$channelSessionId/enrollments")
+                    }.statusCode shouldBe HttpStatus.CONFLICT
+                    assertThrows<HttpClientErrorException> {
+                        kcCall(HttpMethod.POST, "/orchestrator/api/v1/channels/$channelSessionId/account-deletions")
+                    }.statusCode shouldBe HttpStatus.CONFLICT
+                }
+            }
+        }
+
+        Given("an invitation the register revoked") {
+            When("Max enters its password") {
+                Then("a revoked password no longer signs in") {
+                    val issued = issue("P000000001", "loa1")
+                    restTemplate.exchange("http://localhost:$port/mock-personenverzeichnis/einladungen/${issued.invitation}",
+                        HttpMethod.DELETE, HttpEntity<Void>(HttpHeaders()), Void::class.java).statusCode shouldBe HttpStatus.NO_CONTENT
+                    val (_, toolSessionId) = openInviteTool("loa1")
+
+                    val failed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
+                        """{"kvnr":"A123456789","code":"${issued.code}"}""").body!!
+
+                    failed.channel()["state"] shouldBe "ANONYMOUS"
+                }
+            }
+        }
+
+        Given("an App that announces auth-invite anyway") {
+            When("a right one-time password is entered there") {
+                Then("it is refused, not bound: process access is for the website only") {
+                    val issued = issue("P000000001", "loa1")
+                    val start = post("/orchestrator/api/v1/app/channels", """{"intent":"lookup_login"}""")
+                    val appChannel = start.channel()["channelSessionId"] as String
+                    val toolSessionId = post("/orchestrator/api/v1/channels/$appChannel/tools/auth-invite").nextRaw()["toolSessionId"] as String
+
+                    val refused = assertThrows<HttpClientErrorException> {
+                        patch("/orchestrator/api/v1/tools/$toolSessionId/auth-invite", """{"kvnr":"A123456789","code":"${issued.code}"}""")
+                    }
+
+                    refused.statusCode.is4xxClientError shouldBe true
+                    refused.responseBodyAsString shouldContain "PROCESS_ABORTED"
+                    jdbcTemplate.queryForObject(
+                        "SELECT invitation FROM orchestrator.channel_session WHERE id = ?", String::class.java, UUID.fromString(appChannel)
+                    ) shouldBe null
+                }
             }
         }
     }
