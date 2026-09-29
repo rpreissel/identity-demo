@@ -39,6 +39,9 @@ braucht (Sitzungen, Fehlversuche, Zustimmungen), liegt in seinem föderierten Sp
 - **Schreibgeschützt:** Was das Konto besitzt, lässt sich in Keycloak nicht ändern
   (`ReadOnlyException`). Ein Schreibweg an Keycloak vorbei wäre wieder eine zweite Wahrheit.
 - **Keine Liste:** Suchen finden genau einen Nutzer über exakten Benutzernamen, E-Mail oder Konto-Id.
+  Keycloak fragt jede Federation nach jedem Namen, auch nach dem Namen eines Einladungs-Nutzers
+  (ADR-48) oder nach dem, was jemand in die Passwortmaske tippt. Ein Name, der weder `account-<Id>`
+  noch eine E-Mail-Adresse ist, gilt deshalb als unbekannt (`404`), nicht als fehlerhafte Anfrage.
 - **Kein Schlüssel je Konto in Keycloak.** Bis 2026-09-26 las der Grant den Public Key eines Kontos
   frisch beim Orchestrator, statt ihn hochzuladen. Seit dem Wegfall des Schlüsselpaars (ADR-9) prüft
   der Grant nur noch den aufrufenden Client.

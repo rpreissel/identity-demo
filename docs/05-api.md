@@ -553,7 +553,9 @@ einzelnen Tools stehen unten.
 Jede Antwort kann zusätzlich ein klar gekennzeichnetes `demo`-Objekt enthalten. Es ist **kein Teil
 des produktiven Vertrags** und in einer echten Umgebung abgeschaltet. Es enthält `accountId` und
 `personId`, `persons` (die Testpersonen des Personenverzeichnisses für die Auswahl „Testperson
-übernehmen“, samt E-Mail-Adresse, Mobilnummer und Freischaltcode) sowie je nach Tool `tan` (die
+übernehmen“, samt E-Mail-Adresse, Mobilnummer und Freischaltcode), `invitations` (die offenen
+Einladungen mit ihrem Einmalkennwort für die Auswahl „Einladung übernehmen“,
+[ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)) sowie je nach Tool `tan` (die
 gerade ausgestellte TAN bzw. den Code) oder `password` (festes Demo-Passwort). Tools liefern ihre
 Demo-Werte im eigenen Feld `ToolOutcome.InProgress.demo`, getrennt von `stepData`.
 

@@ -391,6 +391,8 @@ erDiagram
   account.anchor }o..o| personenverzeichnis.person : "PERSON_ID-/INSURANCE_NUMBER-Anker"
   personenverzeichnis.person ||--o{ personenverzeichnis.freischaltcode : "stellt aus"
   personenverzeichnis.person ||--o{ personenverzeichnis.brief : "verschickt"
+  personenverzeichnis.person ||--o{ personenverzeichnis.einladung : "lädt ein (ADR-48)"
+  personenverzeichnis.einladung ||--o| personenverzeichnis.brief : "Einmalkennwort im Brief"
 
   account.account {
     bigint id PK "Identität des Kontos; hier wird für Änderungen gesperrt"
@@ -462,8 +464,18 @@ erDiagram
   personenverzeichnis.brief {
     bigint id PK
     varchar person_id FK
-    bigint freischaltcode_id FK
+    bigint freischaltcode_id FK "ck: genau einer von beiden"
+    varchar einladung_id FK "ck: genau einer von beiden"
     varchar code "Klartext, wie auf Papier"
+  }
+  personenverzeichnis.einladung {
+    varchar id PK "SHA-256 über Person, Kennwort und Vorgang"
+    varchar person_id FK
+    varchar vorgang
+    varchar niveau "loa1 oder loa2"
+    timestamp gueltig_bis
+    timestamp abgeschlossen_am "vom Fachsystem gemeldet"
+    timestamp widerrufen_am
   }
 ```
 

@@ -23,7 +23,7 @@ import java.util.UUID
 
 /**
  * Where Nect sends the user back to when the channel names no address: the app channel picks
- * `nectCaseId` up from its URL. The web channel names Keycloak's action URL instead (docs/ideen/ident-nect.md).
+ * `nectCaseId` up from its URL. The web channel names Keycloak's action URL instead (docs/adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md).
  */
 internal const val NECT_CALLBACK_URI = "/app/"
 

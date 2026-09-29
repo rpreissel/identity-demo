@@ -122,7 +122,9 @@ zu lesen sieht, wo man ist:
   Access Token den Claim `process`, zeigt die Seite nur die Vorgangsansicht: Name, Nummern, Niveau,
   „Vorgang beenden“ und „Abmelden“. „Vorgang beenden“ spielt das Fachsystem und meldet den Vorgang beim
   Personenverzeichnis ab (`POST /mock-personenverzeichnis/einladungen/{id}/abschluss`, Id aus dem Claim
-  `invitation`); der folgende Refresh scheitert, und die Seite zeigt die beendete Sitzung. Die
+  `invitation`). Keycloak erfährt das Ende kurz danach über das Ereignis des Verzeichnisses; die Seite
+  erneuert deshalb bis zu fünfmal im Sekundenabstand, bis Keycloak die Erneuerung ablehnt, und zeigt
+  dann die beendete Sitzung. Die
   Demo-Spalte zeigt unter den Token-Details die Vorgangs-Marker. Mit Konto zeigt die Ansicht „Vorgang“,
   dass das Token keinen Marker trägt.
 - **Admin** (`/admin/`): die Sicht des Betreibers, hinter der Admin-Anmeldung (HTTP Basic auf
@@ -140,7 +142,8 @@ zu lesen sieht, wo man ist:
   widerrufen). Fachlich spricht sie nur `/mock-personenverzeichnis/*` an. Von
   `/orchestrator` lädt sie nur die Texte der gemeinsamen Komponenten.
 - **Briefkasten** (`/briefkasten/`): die simulierte Seite der Empfänger. Briefe, SMS und E-Mails an
-  Testpersonen stehen in einer Liste, neueste zuerst, mit den Codes im Klartext. Sie liest die
+  Testpersonen stehen in einer Liste, neueste zuerst, mit den Codes im Klartext. Ein Brief mit
+  Einmalkennwort nennt darunter in einer kleinen Zeile den Vorgang. Sie liest die
   Postausgänge der Simulationen (`/mock-personenverzeichnis/briefe`, `/mock-sms/outbox`,
   `/mock-mail/outbox`), die es nur im Demomodus gibt, und lädt alle drei Sekunden nach.
 - **Nect-Sprungseite** (`/nect/`): der simulierte Identifizierungsdienst Nect (Online-Ausweis,

@@ -17,14 +17,19 @@ beides: Sie ist an die Auth-Session gebunden, ohne das Session-Cookie des Browse
 Code ist genau das, was Keycloak selbst im `state`-Parameter an fremde Identity Provider gibt. Die
 Auth-Session bleibt dieselbe, damit auch Tab-ID, Kanal-ID und `channel_anchor`; nichts ist zu retten.
 
-**Erwogene Alternativen** (Befunde aus den Quellen von Keycloak 26.6.4, Herleitung in
-[ideen/ident-nect.md](../ideen/ident-nect.md)):
+**Erwogene Alternativen** (Befunde aus den Quellen von Keycloak 26.6.4):
 
 - **Identity Brokering mit einem OIDC-Adapter vor Nect.** Verworfen. Ein Broker-Login ist immer
   die Anmeldung eines Nutzers: Ohne Federated-Identity-Link setzt Keycloak den Ablauf zurück
   (alle Auth-Notes, der Ausführungsstand, der Nutzer), der First-Broker-Login-Flow muss mit einem
   Nutzer enden, und danach schreibt Keycloak immer einen Link. Der ursprüngliche Browser-Flow läuft
-  nie weiter. Der Link widerspricht ADR-18, weil er eine Nect-Identität an ein Konto bindet.
+  nie weiter. Der Link widerspricht ADR-18, weil er eine Nect-Identität an ein Konto bindet: Bei
+  stabilem `sub` (Online-Ausweis) meldete der nächste Nect-Login direkt als dieses Konto an, ohne
+  Journey; bei wechselndem `sub` (Reisepass) entstünde je Identifizierung ein neuer Link, und der
+  zweite Link desselben Kontos zum selben IdP endet mit „already linked“.
+- **Transient Users** als Ausweg ohne Nutzer. Verworfen: als EXPERIMENTAL markiert, und ein späterer
+  Tausch gegen das Orchestrator-Konto scheitert, weil Keycloak beim Setzen eines anderen Nutzers
+  `USER_CONFLICT` wirft.
 - **Action Tokens** (die Links für Passwort zurücksetzen und E-Mail bestätigen). Verworfen: Keycloak
   prüft vor jedem Handler, dass der im Token genannte Nutzer existiert.
 - **Ein eigener Rücksprung-Endpunkt** nach dem Muster der QR-Warteseite (ADR-45), der die
