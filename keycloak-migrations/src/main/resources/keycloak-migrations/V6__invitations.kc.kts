@@ -2,7 +2,7 @@
 
 // Anmeldung mit Einmalkennwort fuer einen Vorgang (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
 // Keycloak liest Einladungen wie Konten aus dem Orchestrator, aber ueber eine eigene Nutzer-Federation
-// mit fester Id (INVITATION_STORAGE_COMPONENT_ID): ihre Nutzer heissen f:orch-invitations:<Id> und
+// mit fester UUID (INVITATION_STORAGE_COMPONENT_ID): ihre Nutzer heissen f:<diese UUID>:<Id> und
 // teilen sich nie ein sub mit einem Konto. Zwei Attribut-Mapper tragen die Marker process und
 // invitation in die Tokens; fehlt das Attribut, fehlt der Claim, Konto-Tokens bleiben also unveraendert.
 // Die Einladungen selbst gehoeren dem Personenverzeichnis; der Orchestrator liest sie dort ueber einen Port.

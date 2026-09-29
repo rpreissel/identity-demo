@@ -1,4 +1,5 @@
 import type { PageContext } from '../KcContext'
+import { DemoPersonPicker } from '../components/DemoPersonPicker'
 import { Field } from '../components/Field'
 import { PartnerNumber } from '../components/PartnerNumber'
 import { ToolForm } from '../components/ToolForm'
@@ -10,7 +11,7 @@ import { t } from '../../texts'
  * counts without one (ADR-34).
  */
 export function ToolAuthInvite({ kcContext }: { kcContext: PageContext<'tool-auth-invite.ftl'> }) {
-  const { pageTitle: title } = kcContext
+  const { pageTitle: title, demoInvitationsJson } = kcContext
   return (
     <ToolForm
       kcContext={kcContext}
@@ -18,6 +19,12 @@ export function ToolAuthInvite({ kcContext }: { kcContext: PageContext<'tool-aut
       hint={t('Geben Sie Ihre Versichertennummer und das Einmalkennwort aus unserem Brief ein.')}
       submitLabel={t('Anmelden')}
     >
+      <DemoPersonPicker
+        personsJson={demoInvitationsJson}
+        labelKey="label"
+        title={t('Einladung übernehmen')}
+        fields={{ kvnr: 'kvnr', partnernr: 'partnernr', code: 'code' }}
+      />
       <Field id="kvnr" label={t('Versichertennummer')} />
       <PartnerNumber />
       <Field id="code" label={t('Einmalkennwort')} autoComplete="one-time-code" placeholder="XXXX-XXXX-XXXX" required />

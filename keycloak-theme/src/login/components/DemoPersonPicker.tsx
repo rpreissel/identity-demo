@@ -9,7 +9,19 @@ type Person = Record<string, string | null | undefined>
  * is taken on load. The inputs stay free text; without demo values (ADR-28) there is no list and
  * the form starts empty.
  */
-export function DemoPersonPicker({ personsJson, fields }: { personsJson?: string | null; fields: Record<string, string> }) {
+export function DemoPersonPicker({
+  personsJson,
+  fields,
+  labelKey,
+  title,
+}: {
+  personsJson?: string | null
+  fields: Record<string, string>
+  /** An entry field that already holds the whole option text (the invitation picker, ADR-48). */
+  labelKey?: string
+  /** Replaces "Testperson übernehmen". */
+  title?: string
+}) {
   const [persons] = useState<Person[]>(() => {
     if (!personsJson || personsJson === 'null') return []
     try {
@@ -29,7 +41,7 @@ export function DemoPersonPicker({ personsJson, fields }: { personsJson?: string
   return (
     <div className="orc-field orc-demo-picker">
       <label htmlFor="demoPerson">
-        <span className="orc-demo-tag">{t('Demo')}</span> {t('Testperson übernehmen')}
+        <span className="orc-demo-tag">{t('Demo')}</span> {title ?? t('Testperson übernehmen')}
       </label>
       <select
         id="demoPerson"
@@ -42,7 +54,7 @@ export function DemoPersonPicker({ personsJson, fields }: { personsJson?: string
         <option value="">{t('— manuell eingeben —')}</option>
         {persons.map((p, i) => (
           <option key={i} value={String(i)}>
-            {p.givenNames} {p.familyName} ({p.email || p.kvnr || p.personId})
+            {labelKey ? p[labelKey] : `${p.givenNames} ${p.familyName} (${p.email || p.kvnr || p.personId})`}
           </option>
         ))}
       </select>

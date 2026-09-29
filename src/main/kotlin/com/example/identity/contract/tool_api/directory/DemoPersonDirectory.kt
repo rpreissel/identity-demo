@@ -15,7 +15,21 @@ interface DemoPersonDirectory {
      * shows it anyway.
      */
     fun latestValidActivationCode(personId: String): String?
+
+    /**
+     * Every open invitation with the plaintext of its one-time password (ADR-48), for the picker on
+     * the one-time password page - in plain text only because the demo mailbox shows it anyway.
+     */
+    fun openInvitations(): List<DemoInvitationRecord>
 }
+
+/** One open invitation for the picker: whose it is, which process, and the password from the letter. */
+data class DemoInvitationRecord(
+    val personId: String,
+    val process: String,
+    val processName: String,
+    val code: String,
+)
 
 /**
  * One register person for the picker: the master data plus the contact details only the demo reads.

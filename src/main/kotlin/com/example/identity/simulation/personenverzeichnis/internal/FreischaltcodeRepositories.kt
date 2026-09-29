@@ -10,4 +10,5 @@ interface FreischaltcodeRepository : JpaRepository<Freischaltcode, Long> {
 interface BriefRepository : JpaRepository<Brief, Long> {
     fun findByPersonIdOrderByIdDesc(personId: String): List<Brief>
     fun findAllByOrderByIdDesc(): List<Brief>
+    fun findFirstByEinladungIdOrderByIdDesc(einladungId: String): Brief?
 }

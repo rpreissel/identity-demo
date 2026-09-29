@@ -41,4 +41,5 @@ class Einladung(
 
 interface EinladungRepository : JpaRepository<Einladung, String> {
     fun findByPersonIdOrderByAusgestelltAmDesc(personId: String): List<Einladung>
+    fun findAllByOrderByAusgestelltAmDesc(): List<Einladung>
 }

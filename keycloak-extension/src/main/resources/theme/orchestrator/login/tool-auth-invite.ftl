@@ -1,5 +1,6 @@
 <#import "template.ftl" as layout>
 <#import "page-notes.ftl" as pageNotes>
+<#import "demo-person-picker.ftl" as demoPerson>
 <#-- One step (AuthInviteRendererFactory): the number and the one-time password together. The KVNR
      comes first; the Partnernummer only counts without one (ADR-34). -->
 <@layout.registrationLayout displayMessage=true; section>
@@ -9,6 +10,8 @@
         <@pageNotes.notes/>
         <p class="orchestrator-subtitle">${t.of("Geben Sie Ihre Versichertennummer und das Einmalkennwort aus unserem Brief ein.")}</p>
         <form id="kc-orchestrator-tool-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
+            <@demoPerson.personPicker personsJson=demoInvitationsJson! pickerId="demoInvitation" labelKey="label"
+                title=t.of("Einladung übernehmen") fieldMapJson='{"kvnr":"kvnr","partnernr":"partnernr","code":"code"}' />
             <div class="${properties.kcFormGroupClass!}">
                 <label for="kvnr" class="${properties.kcLabelClass!}">${t.of("Versichertennummer")}</label>
                 <input type="text" id="kvnr" name="kvnr" class="${properties.kcInputClass!}" autocomplete="off"/>

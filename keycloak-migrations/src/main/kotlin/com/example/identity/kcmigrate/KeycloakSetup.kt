@@ -166,9 +166,10 @@ fun interface KeycloakSetupSource {
 /**
  * Die feste Id der Nutzer-Federation. Keycloak bildet daraus `f:<diese Id>:<accountId>` und damit das
  * `sub` jedes Tokens; eine bei jedem Aufbau neue Id würde alle `sub`, Zustimmungen und Sitzungen
- * ändern. Der Orchestrator rechnet mit derselben Konstante.
+ * ändern. Der Orchestrator rechnet mit derselben Konstante. Eine UUID, weil Keycloak für die Ids
+ * föderierter Nutzer `f:<UUID>:…` erwartet (`KeyUtils`); bis Migration V7 hieß sie `orch-accounts`.
  */
-const val USER_STORAGE_COMPONENT_ID = "orch-accounts"
+const val USER_STORAGE_COMPONENT_ID = "99d232b8-f2f9-4095-87b4-346412a40be9"
 
 /** Die Keycloak-Id des föderierten Nutzers zu [accountId] (`StorageId` in Keycloak). */
 fun federatedUserId(accountId: Long): String = "f:$USER_STORAGE_COMPONENT_ID:$accountId"
@@ -179,10 +180,11 @@ fun accountIdOfFederatedUser(userId: String): Long? =
 
 /**
  * Die feste Id der zweiten Nutzer-Federation, der Einladungen (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
- * Ihre Nutzer heißen `f:orch-invitations:<Hash des Einmalkennworts>` und teilen sich nie ein `sub`
- * mit einem Konto, auch nicht mit dem Konto derselben Person.
+ * Ihre Nutzer heißen `f:<diese Id>:<Id der Einladung>` und teilen sich nie ein `sub` mit einem
+ * Konto, auch nicht mit dem Konto derselben Person. Eine UUID wie [USER_STORAGE_COMPONENT_ID]; bis
+ * Migration V7 hieß sie `orch-invitations`.
  */
-const val INVITATION_STORAGE_COMPONENT_ID = "orch-invitations"
+const val INVITATION_STORAGE_COMPONENT_ID = "05a332f1-f79d-46f6-9954-a3c95432e5c4"
 
 /** Die Keycloak-Id des Nutzers einer Einladung. */
 fun federatedInvitationUserId(invitation: String): String = "f:$INVITATION_STORAGE_COMPONENT_ID:$invitation"

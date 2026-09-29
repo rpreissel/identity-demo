@@ -27,8 +27,10 @@ braucht (Sitzungen, Fehlversuche, Zustimmungen), liegt in seinem föderierten Sp
 
 **Festlegungen**:
 
-- **Feste Komponenten-Id** `orch-accounts` (`USER_STORAGE_COMPONENT_ID`, Migration V2). Keycloak bildet
-  daraus die Nutzer-Id `f:orch-accounts:<accountId>` und damit das `sub` jedes Tokens. Eine bei jedem
+- **Feste Komponenten-Id**, eine UUID (`USER_STORAGE_COMPONENT_ID`, Migration V2). Keycloak bildet
+  daraus die Nutzer-Id `f:<UUID>:<accountId>` und damit das `sub` jedes Tokens. Eine UUID, weil
+  Keycloak für föderierte Nutzer dieses Format erwartet und sonst beim Speichern jeder Sitzung warnt
+  (`KeyUtils`, „future migration might fail“); bis 2026-09-29 hieß sie `orch-accounts`. Eine bei jedem
   Realm-Aufbau neu vergebene Id würde jedes `sub`, jede Zustimmung und jede Sitzung ändern.
 - **Die Nutzer-Id ist die Konto-Id, nicht der Benutzername.** Der Benutzername ist die bestätigte
   E-Mail (sonst `account-<id>`) und ändert sich mit ihr; das `sub` darf das nicht.

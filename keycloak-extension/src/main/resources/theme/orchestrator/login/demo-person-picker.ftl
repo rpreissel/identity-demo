@@ -1,11 +1,12 @@
 <#-- Demo persona picker for the tool-*.ftl pages, like DemoPersonPicker.tsx: a <select> above
      free-text inputs that fills them from a persona and prefills the first one (ADR-28).
      fieldMapJson maps input id to person field, e.g. '{"email":"email"}'. pickerId only matters
-     where one page carries two pickers. -->
-<#macro personPicker personsJson fieldMapJson pickerId="demoPerson">
+     where one page carries two pickers. labelKey names an entry field that already holds the whole
+     option text (the invitation picker, ADR-48); title replaces "Testperson übernehmen". -->
+<#macro personPicker personsJson fieldMapJson pickerId="demoPerson" labelKey="" title="">
     <#if personsJson?? && personsJson != "null">
         <div class="${properties.kcFormGroupClass!} orchestrator-demo-picker">
-            <label for="${pickerId}" class="${properties.kcLabelClass!}"><span class="orchestrator-demo-tag">${t.of("Demo")}</span> ${t.of("Testperson übernehmen")}</label>
+            <label for="${pickerId}" class="${properties.kcLabelClass!}"><span class="orchestrator-demo-tag">${t.of("Demo")}</span> <#if title?has_content>${title}<#else>${t.of("Testperson übernehmen")}</#if></label>
             <select id="${pickerId}" class="${properties.kcInputClass!}">
                 <option value="">${t.of("— manuell eingeben —")}</option>
             </select>
@@ -18,7 +19,7 @@
                 persons.forEach(function (p, i) {
                     var opt = document.createElement('option');
                     opt.value = String(i);
-                    opt.textContent = p.givenNames + ' ' + p.familyName + ' (' + (p.email || p.kvnr || p.personId) + ')';
+                    opt.textContent = <#if labelKey?has_content>p['${labelKey}']<#else>p.givenNames + ' ' + p.familyName + ' (' + (p.email || p.kvnr || p.personId) + ')'</#if>;
                     select.appendChild(opt);
                 });
                 function apply(p) {

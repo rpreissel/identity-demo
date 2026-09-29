@@ -38,7 +38,7 @@ Vorgang“, nicht „einmal nutzbar“, wie beim Freischaltcode
    Kompatibilität). Kontofunktionen (Verfahren verwalten, Konto löschen, QR-Bestätigung) lehnen einen
    solchen Kanal ab, und er gibt keine Evidenz an einen späteren Flow-Durchlauf weiter.
 5. **In Keycloak ist die Einladung ein eigener föderierter Nutzer** aus einer zweiten
-   Nutzer-Federation mit fester Id `orch-invitations`: `f:orch-invitations:<Id>`. Er trägt dieselben
+   Nutzer-Federation mit fester UUID als Komponenten-Id (`INVITATION_STORAGE_COMPONENT_ID`): `f:<UUID>:<Id>`. Er trägt dieselben
    Stammdaten-Attribute wie ein Konto derselben Person und zusätzlich `orchestratorInvitation` und
    `orchestratorProcess`; zwei Attribut-Mapper im Scope `orchestrator-claims` machen daraus die Claims
    `invitation` und `process`. Er ist aktiviert, solange die Einladung offen ist, und hat weder

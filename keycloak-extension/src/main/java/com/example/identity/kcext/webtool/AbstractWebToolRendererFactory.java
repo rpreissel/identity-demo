@@ -17,6 +17,12 @@ public abstract class AbstractWebToolRendererFactory implements WebToolRendererF
         return persons != null ? persons.toString() : "null";
     }
 
+    /** The open invitations of the demo (ADR-48), for the picker on the one-time password page. */
+    protected static String demoInvitationsJson(WebToolRenderContext ctx) {
+        JsonNode invitations = ctx.demo().get("invitations");
+        return invitations != null ? invitations.toString() : "null";
+    }
+
     @Override
     public WebToolRenderer create(KeycloakSession session) {
         return this;

@@ -492,7 +492,8 @@ Web-Kanal.
    (`loa1` oder `loa2`), Frist. Es erzeugt ein Einmalkennwort mit zwölf Zeichen in Vierergruppen,
    speichert nur die Id (SHA-256 über `personId:KENNWORT:vorgang`) und schickt den Klartext per
    Brief. In der Demo geschieht das auf der Seite „Einladungen“ von `/personenverzeichnis/`; der Brief
-   liegt im Briefkasten.
+   liegt im Briefkasten. Auf der Anmeldeseite bietet die Demo eine Auswahl der offenen Einladungen an,
+   die Nummer und Kennwort einträgt (`invitations` im Demo-Block, ADR-28).
 2. **Anmelden.** Die Website startet eine gewöhnliche Anmeldung über den Browser-Client. Ohne Konto
    bietet die Auswahl `auth-invite` an. Die Person gibt Versicherungs- oder Partnernummer und das
    Kennwort ein. Der Controller löst die Nummer zur Person auf; das Tool fragt das Verzeichnis, ob das
@@ -501,7 +502,7 @@ Web-Kanal.
    aus.
 3. **Binden.** Bei Erfolg wird die Einladung Subjekt des Kanals, kein Konto wird gesucht oder
    angelegt. Liegt das Niveau der Einladung unter dem verlangten, bricht die Journey vorher ab. Keycloak
-   setzt den Nutzer `f:orch-invitations:<Id>`; seine Tokens tragen die Stammdaten der Person und die
+   setzt den Nutzer aus der Einladungs-Federation (`f:<UUID>:<Id>`); seine Tokens tragen die Stammdaten der Person und die
    Claims `process` und `invitation`, aber kein `orchestrator_account_id`.
 4. **Wiederkommen.** Bis zur Frist oder zum Abschluss kann sich die Person beliebig oft wieder
    anmelden, wie beim Freischaltcode.

@@ -83,7 +83,7 @@ schließen soll.
 - **I-15 Ein Konto ist genau ein Keycloak-Nutzer, und kein Nutzer steht für ein anderes Konto.**
   - Mechanismus: `type:OrchestratorUser` (die Nutzer-Id ist `f:<Komponente>:<accountId>`, berechnet statt gesucht; es gibt keine Kopie, die ein anderes Konto tragen könnte), `test:OrchestratorUserTest`, `test:KcAccountLookupIntegrationTest`
 - **I-31 Eine Einladung ist in Keycloak nie ein Konto: Sie hat einen Nutzer eigener Art, und keine Anmeldung setzt die Sitzung des jeweils anderen fort ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
-  - Mechanismus: `type:InvitationUser` (Nutzer-Id `f:orch-invitations:<Id>`, das Konto-Attribut ist immer leer), `test:InvitationUserTest`, `test:LoginCompletionTest`
+  - Mechanismus: `type:InvitationUser` (Nutzer-Id aus der eigenen Federation, `f:<UUID>:<Id>`; das Konto-Attribut ist immer leer), `test:InvitationUserTest`, `test:LoginCompletionTest`
 - **I-16 Jeder Keycloak-Client des Orchestrators signiert mit seinem eigenen Schlüssel.**
   - Mechanismus: `test:OrchestratorClientAssertionSignerTest`
 - **I-17 Das Vertrauen in ein selbstsigniertes Keycloak-Zertifikat gilt nie JVM-weit.**

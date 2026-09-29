@@ -37,6 +37,6 @@ public class AuthInviteRendererFactory extends AbstractWebToolRendererFactory {
     @Override
     public Response render(LoginFormsProvider form, WebToolRenderContext ctx) {
         if (!"auth".equals(ctx.step())) return null;
-        return form.createForm(template());
+        return form.setAttribute("demoInvitationsJson", demoInvitationsJson(ctx)).createForm(template());
     }
 }

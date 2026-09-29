@@ -814,7 +814,7 @@ bei `APP`). Keycloaks `OrchestratorAuthenticator` schreibt es sofort in seine Se
 nennt, wer angemeldet ist: `{"type": "account", "id": "42"}` für ein Konto oder
 `{"type": "invitation", "id": "<Hash>"}` für eine Einladung nach einem Einmalkennwort
 ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Keycloak setzt danach den Nutzer aus
-der passenden Federation (`f:orch-accounts:…` oder `f:orch-invitations:…`) und lässt nie ein Subjekt
+der passenden Federation (Konten oder Einladungen, je mit eigener fester UUID als Komponenten-Id) und lässt nie ein Subjekt
 die Sitzung eines anderen fortsetzen (`LoginCompletion`). `accountId` steht nur noch zur
 Kompatibilität daneben und ist als veraltet markiert. `amr` ordnet jeder Methode ihre Quelle zu
 (`"kc"` für eine eigene Angabe Keycloaks, `"orchestrator"` für ein abgeschlossenes Tool des

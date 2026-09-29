@@ -253,7 +253,7 @@ findet nur exakte Treffer ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
   Platzhalternamen. Alles davon ist in Keycloak schreibgeschützt.
 - **Frische:** Keycloak cacht einen föderierten Nutzer höchstens 60 Sekunden (Migration V2). Eine
   geänderte Adresse oder ein geänderter Name ist spätestens dann sichtbar.
-- **Nutzer-Id und `sub`:** `f:orch-accounts:<accountId>`. Die Komponenten-Id ist fest
+- **Nutzer-Id und `sub`:** `f:<UUID>:<accountId>`. Die Komponenten-Id ist eine feste UUID
   (`USER_STORAGE_COMPONENT_ID`); eine neu gewürfelte Id würde jedes `sub` ändern.
 - **Was Keycloak selbst hält:** Sitzungen, Fehlversuche (Brute-Force-Schutz), Zustimmungen und
   sonstige föderierte Daten eines Nutzers.
@@ -261,10 +261,10 @@ findet nur exakte Treffer ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
   (`DELETE /admin/realms/{realm}/orchestrator-accounts/{accountId}`, `AccountRemoval`). Das ist das
   einzige Ereignis eines Kontos, das Keycloak erreicht; eine Änderung am Konto braucht keinen Aufruf.
 - **Einladungen** ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)): Eine zweite
-  Nutzer-Federation (`InvitationStorageProvider`, feste Komponenten-Id `orch-invitations`, Migration
+  Nutzer-Federation (`InvitationStorageProvider`, feste UUID `INVITATION_STORAGE_COMPONENT_ID`, Migration
   V6) liest Einladungen des Personenverzeichnisses als eigene Nutzer, nur per Id
   (`KcInvitationLookupController`), Cache ebenfalls 60 Sekunden. Nutzer-Id und `sub` sind
-  `f:orch-invitations:<Id der Einladung>`. Der Nutzer trägt die Stammdaten der Person und die Attribute
+  `f:<UUID der Einladungs-Federation>:<Id der Einladung>`. Der Nutzer trägt die Stammdaten der Person und die Attribute
   `orchestratorInvitation` und `orchestratorProcess` (Claims `invitation` und `process`); er ist nur
   aktiviert, solange die Einladung offen ist. Meldet das Verzeichnis ein Ende (`InvitationEnded`),
   meldet `KeycloakInvitationLogoutListener` den Nutzer ab

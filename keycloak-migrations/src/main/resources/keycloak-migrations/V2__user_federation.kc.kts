@@ -2,7 +2,8 @@
 
 // Keycloak liest die Konten, statt sie zu spiegeln (ADR-38). Die orchestrator-Komponente aus V1 wird
 // zur Nutzer-Federation ohne Import, mit fester Id (USER_STORAGE_COMPONENT_ID): aus ihr bildet
-// Keycloak die Id jedes föderierten Nutzers und damit das sub. Cache höchstens 60 s, dann sind
+// Keycloak die Id jedes föderierten Nutzers und damit das sub. Die Id ist eine UUID, weil Keycloak
+// für föderierte Nutzer `f:<UUID>:…` erwartet (KeyUtils). Cache höchstens 60 s, dann sind
 // geänderte Stammdaten sichtbar. Das Entfernen der alten Komponente löscht die an ihr hängenden
 // Nutzer; das ist gewollt. Der Peer-Auth-Signaturschlüssel wird nicht kopiert: Die Admin-API liefert
 // ihn nur maskiert, die neue Komponente erzeugt beim Anlegen einen eigenen.

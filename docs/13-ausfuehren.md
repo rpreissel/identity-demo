@@ -262,6 +262,11 @@ npm run test:e2e:keycloak     # Playwright gegen die Login-Seiten von Keycloak
   (`podman compose up -d`). Andere Adressen lassen sich über `ORCHESTRATOR_URL`, `KEYCLOAK_URL`,
   `ADMIN_USER` und `ADMIN_PASSWORD` setzen. Diese Suite läuft nicht in der CI. Sie setzt die Demo
   zu Beginn zurück und registriert das Konto, mit dem sie sich anmeldet, selbst über die Website.
+  `vorgangszugang.spec.ts` prüft die Anmeldung mit Einmalkennwort in beiden Themes: Einladung beim
+  Personenverzeichnis ausstellen, anmelden, Vorgangs-Marker im Token, „Vorgang beenden“ beendet die
+  Sitzung, das Kennwort ist danach verbraucht, die Demo-Auswahl der Einladungen und die Abweisung
+  einer Einladung unter dem verlangten Niveau
+  ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).
 
 Beim ersten Mal braucht Playwright seinen Browser: `npx playwright install chromium`.
 

@@ -39,6 +39,19 @@ private val DEMO_RESTRICTED_IDS = mapOf(
     "P000000004" to "T0405337C2D8R5H9F1QW3V61MZ",
 )
 
+/**
+ * An open invitation as the picker on the one-time password page offers it (ADR-48): picking it
+ * fills the number and the password from the letter.
+ */
+data class DemoInvitation(
+    /** What the picker shows: the person and the process. */
+    val label: String,
+    val kvnr: String?,
+    /** The Partnernummer, for a person without a KVNR. */
+    val partnernr: String,
+    val code: String,
+)
+
 /** Reads the personas off the register over its demo port. Only [DisclosingDemoDisclosure] calls this. */
 @Component
 class DemoPersonas(private val register: DemoPersonDirectory) {
@@ -58,5 +71,19 @@ class DemoPersonas(private val register: DemoPersonDirectory) {
             fscCode = register.latestValidActivationCode(person.personId),
             restrictedId = DEMO_RESTRICTED_IDS[person.personId]
         )
+    }
+
+    fun invitations(): List<DemoInvitation> {
+        val persons = register.allPersons().associateBy { it.person.personId }
+        return register.openInvitations().map { invitation ->
+            val person = persons[invitation.personId]?.person
+            val name = listOfNotNull(person?.givenNames, person?.familyName).joinToString(" ").ifBlank { invitation.personId }
+            DemoInvitation(
+                label = "$name – ${invitation.processName}",
+                kvnr = person?.kvnr,
+                partnernr = invitation.personId,
+                code = invitation.code,
+            )
+        }
     }
 }

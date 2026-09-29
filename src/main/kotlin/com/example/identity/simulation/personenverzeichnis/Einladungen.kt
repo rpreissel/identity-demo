@@ -2,6 +2,7 @@ package com.example.identity.simulation.personenverzeichnis
 
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.claims.AcrLevel
+import com.example.identity.contract.tool_api.directory.DemoInvitationRecord
 import com.example.identity.contract.tool_api.directory.InvitationEnded
 import com.example.identity.contract.tool_api.directory.InvitationGrant
 import com.example.identity.contract.tool_api.directory.InvitationView
@@ -85,6 +86,17 @@ class Einladungen(
 
     /** Das Register zieht die Einladung zurück. */
     fun widerrufen(id: String): EinladungView? = beenden(id) { it.widerrufenAm = it.widerrufenAm ?: clock.instant() }
+
+    /** Nur für die Demo-Auswahl: jede offene Einladung mit dem Kennwort aus ihrem Brief, neueste zuerst. */
+    @Transactional(readOnly = true)
+    fun offeneMitKennwort(): List<DemoInvitationRecord> {
+        val now = clock.instant()
+        return einladungen.findAllByOrderByAusgestelltAmDesc().filter { it.istOffenAm(now) }.mapNotNull { einladung ->
+            val brief = briefe.findFirstByEinladungIdOrderByIdDesc(checkNotNull(einladung.id)) ?: return@mapNotNull null
+            val vorgang = checkNotNull(einladung.vorgang)
+            DemoInvitationRecord(checkNotNull(einladung.personId), vorgang, VORGAENGE.firstOrNull { it.id == vorgang }?.name ?: vorgang, checkNotNull(brief.code))
+        }
+    }
 
     /** Alle Briefe, neueste zuerst, die Einmalkennwort-Briefe mit ihrem Vorgang. */
     @Transactional(readOnly = true)

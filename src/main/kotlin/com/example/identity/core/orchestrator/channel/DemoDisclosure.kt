@@ -32,8 +32,8 @@ interface DemoDisclosure {
 }
 
 /**
- * The disclosing implementation, active in demo mode. `persons` ([DemoPersonas]) is attached here
- * for every caller, so the frontend's persona picker works everywhere.
+ * The disclosing implementation, active in demo mode. `persons` and `invitations` ([DemoPersonas])
+ * are attached here for every caller, so the pickers work everywhere.
  */
 @Component
 @OnlyInDemoMode
@@ -53,7 +53,7 @@ class DisclosingDemoDisclosure(private val personas: DemoPersonas) : DemoDisclos
             personId = personId,
             journeys = journeys,
             session = session,
-            values = (values ?: emptyMap()) + ("persons" to personas.all())
+            values = (values ?: emptyMap()) + ("persons" to personas.all()) + ("invitations" to personas.invitations())
         )
     }
 }
