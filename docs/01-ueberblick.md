@@ -12,6 +12,8 @@ Eine Krankenversicherung bietet eine **App** und eine **Website** an. Beide nutz
 Konten. Wer neu ist, **registriert** sich einmal, indem er sich ausweist (etwa mit einem
 Freischaltcode per Brief oder dem Online-Ausweis), und richtet dabei Anmeldeverfahren ein: SMS,
 Passwort, E-Mail, einen Geräteschlüssel. Danach **meldet** er sich mit diesen Verfahren **an**.
+Für einzelne Vorgänge geht es auch ohne Konto: Die Versicherung schickt einen Brief mit einem
+**Einmalkennwort**, und die Anmeldung damit gilt nur für diesen einen Vorgang.
 
 Nicht jede Aktion verlangt dasselbe Vertrauen. Das System kennt drei **Sicherheitsniveaus**
 (`loa1` bis `loa3`). Verlangt eine Aktion mehr, als die laufende Anmeldung nachgewiesen hat, muss
@@ -22,7 +24,9 @@ flowchart LR
   N["Neuer Nutzer"] -- einmalig --> R["Registrierung"]
   R --> L
   B["Wiederkehrender Nutzer"] --> L["Login"]
+  E["Person mit Brief"] -- "ohne Konto, Website" --> V["Einmalkennwort"]
   L -- "öffnet die Keycloak-Sitzung" --> T["AccessToken"]
+  V -- "Token nur für diesen Vorgang" --> T
   T -- "direkt, ohne Orchestrator" --> F["Fachdienste"]
 ```
 
@@ -60,7 +64,7 @@ flowchart LR
 - **Orchestrator**: der Kern dieses Projekts. Er entscheidet, welche Schritte ein Nutzer
   durchläuft, führt die Konten und bewertet die Nachweise.
 - **Personenverzeichnis**: die Stammdaten der Versicherung (Personen, Versicherungsnummer, KVNR);
-  stellt die Freischaltcodes aus. Simuliert.
+  stellt die Freischaltcodes und die Einladungen mit Einmalkennwort aus. Simuliert.
 - **Externe Dienste**: Nect (Identifizierung per Ausweis, Reisepass, EUDI-Wallet), KOBIL
   (Gerätebindung), der Online-Ausweis (eID) sowie der Versand von SMS und E-Mail. Alle simuliert.
   Was ein echtes System zusagen müsste, steht in [port-vertraege.md](port-vertraege.md).
@@ -116,6 +120,13 @@ Die Doku ist deutsch, der Code englisch. Hinter jedem Begriff steht in Klammern 
   Anker zu schreiben.
 - **Obergrenze eines Verfahrens** (`maxAcr`, `enrolledUnderAcr`): das höchste Niveau, das ein
   Verfahren technisch hergibt bzw. unter dem es eingerichtet wurde.
+- **Einladung** und **Einmalkennwort** (`auth-invite`, [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)):
+  Das Personenverzeichnis lädt eine Person per Brief zu einem **Vorgang** ein. Mit Versicherungs-
+  oder Partnernummer und dem Einmalkennwort meldet sie sich auf der Website an, auch ohne Konto; die
+  Tokens tragen den Vorgang (`process`) und gelten nur für ihn. Das Kennwort gilt bis zur Frist oder
+  bis der Vorgang abgeschlossen ist.
+- **Subjekt** (`Subject`): wem ein angemeldeter Kanal gehört, einem Konto oder einer Einladung; nie
+  beidem.
 - **Geräteverknüpfung** (`DeviceAccountLink`, `binding_key_ref`): welches Gerät zu welchem Konto
   gehört, erkannt am DPoP-Schlüssel. Sie zählt nicht als Anmeldung.
 

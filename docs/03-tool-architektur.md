@@ -181,9 +181,12 @@ Die Entscheidungen dahinter:
 - `role=ATTESTATION` (`confirm-email`) kennzeichnet den Nachweis, ein Attribut des Kontos zu
   kontrollieren: kein Credential, keine Identität. Wann ein Tool diese Rolle hat, steht in
   Abschnitt 2 („`ATTEST`").
-- `role=LOOKUP_AUTH` kennzeichnet die `-lookup`-Varianten. Sie haben dieselbe `method` wie ihr
-  Gegenstück mit `IDENTIFIED_AUTH`, finden das Konto aber über eine eingegebene E-Mail-Adresse
-  statt über den Kanal. Ohne diese Unterscheidung wäre die Auswahl der Kandidaten mehrdeutig.
+- `role=LOOKUP_AUTH` kennzeichnet Anmeldungen, die ihr Subjekt aus der Eingabe selbst finden statt
+  über den Kanal. Die `-lookup`-Varianten haben dieselbe `method` wie ihr Gegenstück mit
+  `IDENTIFIED_AUTH` und finden das Konto über eine eingegebene E-Mail-Adresse; ohne diese
+  Unterscheidung wäre die Auswahl der Kandidaten mehrdeutig. `auth-invite` hat kein Gegenstück und
+  findet über Nummer und Einmalkennwort eine Einladung statt eines Kontos (Abschnitt 1, „Was
+  `auth-invite` vom Personenverzeichnis bekommt“).
 - `role=CORRELATION` (`ident-kvnr`) kennzeichnet einen Schritt, der nur zuordnet. Für sich beweist
   er nichts: Eine eingetippte KVNR oder Partnernummer ist kein Nachweis. Er ist nie Kandidat einer
   (erneuten) Identifizierung, denn `forIdentification` und `reIdentCandidates` prüfen die Rolle,

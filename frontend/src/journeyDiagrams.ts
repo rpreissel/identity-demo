@@ -19,7 +19,8 @@ export const JOURNEY_DIAGRAMS: Record<
   | 'reIdentify'
   | 'confirmPeerLogin'
   | 'webLoginLoa1'
-  | 'webLoginLoa2',
+  | 'webLoginLoa2'
+  | 'webLoginInvite',
   JourneyDiagramSpec
 > = {
   channel: {
@@ -147,6 +148,11 @@ export const JOURNEY_DIAGRAMS: Record<
   webLoginLoa2: {
     title: t('Login (loa2)'),
     steps: [t('Redirect zu Keycloak'), t('Login + 2. Faktor'), t('Zurück mit AccessToken (loa2)')],
+  },
+  // Process access by one-time password (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
+  webLoginInvite: {
+    title: t('Vorgang mit Einmalkennwort'),
+    steps: [t('Redirect zu Keycloak'), t('Nummer + Einmalkennwort aus dem Brief'), t('Zurück mit AccessToken (nur dieser Vorgang)')],
   },
 }
 

@@ -14,7 +14,7 @@ classDiagram
     ChannelType channel
     string bindingKeyRef
     string channelAnchor
-    long accountId
+    Subject subject
     UUID authContextId
     UUID authEvidenceId
     ChannelState state
@@ -34,8 +34,13 @@ classDiagram
   class DeviceAccountLink { string bindingKeyRef; long accountId }
   class AuthEvidence {
     UUID authEvidenceId
-    long accountId
+    Subject subject
     AmrRecord[] amrEvidence
+  }
+  class Subject {
+    <<sealed>>
+    Account(long id)
+    Invitation(string hash)
   }
   class AuthContext {
     UUID authContextId
@@ -50,6 +55,8 @@ classDiagram
   AuthJourney "0..1" --> "0..*" AuthJourney : Sub-Journey von
   ChannelSession "1" --> "0..1" AuthEvidence : Nachweise
   ChannelSession "1" --> "0..1" AuthContext : Tokens (nur APP)
+  ChannelSession ..> Subject : Konto oder Einladung
+  AuthEvidence ..> Subject : dasselbe Subjekt
   AuthContext "0..1" --> "1" AuthEvidence : gehört zu
   AuthJourney "0..1" --> "1" AuthEvidence : ergänzt
 ```

@@ -398,7 +398,7 @@ Die Varianten von `Action`:
 
 - **`RecordIdentification(tool, outcome)`** — Eine Identifizierung (`ident-fsc`/`ident-eid`/`ident-nect`) oder Zuordnung (`ident-kvnr`) hat eine Identität festgestellt. **Ein** Handler für beide Fälle: Ob schon ein Konto gebunden ist, liest er zur Laufzeit aus Journey und Kanal; die Strategie legt das nicht über die Variante fest
 - **`AdoptCredential(tool, outcome)`** — Ein neues Verfahren wurde eingerichtet
-- **`AcceptProof(tool, outcome)`** — Ein Nachweis wurde erbracht. Ob das Tool das Konto selbst *nennen* darf, leitet der Executor aus `MethodRole.LOOKUP_AUTH` und der aktuellen Zuordnung zum Konto ab; widerspricht ein genanntes Konto einem schon gebundenen, gibt es `409`
+- **`AcceptProof(tool, outcome)`** — Ein Nachweis wurde erbracht. Ob das Tool sein Subjekt selbst *nennen* darf, leitet der Executor aus `MethodRole.LOOKUP_AUTH` und der aktuellen Zuordnung ab; widerspricht ein genanntes Konto einem schon gebundenen, gibt es `409`. Nennt das Tool eine Einladung (`Subject.Invitation`, `auth-invite`), bindet der Executor sie statt eines Kontos als Subjekt des Kanals, nur im Web-Kanal und nur auf einem Kanal ohne Subjekt ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md))
 - **`AdoptAttestation(tool, outcome)`** — Ein Attribut des Kontos wurde bestätigt (z. B. die E-Mail-Adresse). Das allein darf nie zu einem *anderen* Konto wechseln; dafür braucht es eine echte Identifizierung in derselben Sitzung
 - **`ApplyRestoredEvidence(source, methods)`** — siehe „RestoreData als erster Übergang" unten
 - **`RecordApproval(tool, outcome)`** — Ein `PEER_APPROVAL`-Tool hat über die Anfrage eines anderen Kanals entschieden (`CONFIRM_PEER_LOGIN`); das wird nur verbucht und ändert keinen eigenen Nachweis
@@ -589,8 +589,9 @@ gestörte Abläufe an, nicht erwartbare Eingabefehler ([API](05-api.md)).
 
 Über die Journey hinaus gibt es einen zweiten Schutz für das ganze Konto:
 `ToolJourneyService.chargeThrottles` bucht jeden abgeschlossenen Anmeldeversuch auf das Konto
-(`AccountLockoutService`, bei der Anmeldung über die E-Mail-Adresse über `attemptedAccountId`) und jeden
-Identifizierungsversuch auf die Person (`PersonLockoutService`). Das Versuchsbudget oben gilt nur
+(`AccountLockoutService`, bei der Anmeldung über die E-Mail-Adresse über `Attempted.Account`) und jeden
+Identifizierungsversuch und jedes falsche Einmalkennwort auf die Person (`PersonLockoutService`,
+beim Einmalkennwort über `Attempted.Person`). Das Versuchsbudget oben gilt nur
 für die Journey; die Sperre des Kontos gilt über alle Journeys und Kanäle hinweg. Welche Arten von
 Versuchen bewusst nicht zählen und warum, steht in [Betrieb](07-betrieb.md) Abschnitt 4.
 

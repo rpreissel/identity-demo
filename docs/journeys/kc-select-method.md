@@ -19,15 +19,21 @@ stateDiagram-v2
   [*] --> SelectMethod
   SelectMethod --> SelectMethod: ein Tool abgelehnt, weitere übrig
   SelectMethod --> [*]: alle abgelehnt -> Cancel
-  SelectMethod --> Finished: Nachweis erbracht, Niveau erreicht
+  SelectMethod --> [*]: Einmalkennwort unter dem verlangten Niveau -> Abort
+  SelectMethod --> Finished: Nachweis erbracht, Niveau erreicht (Konto oder Einladung)
 ```
 
 Derselbe Zustand bedient zwei Fälle im Web-Kanal. Sie unterscheiden sich nur im Feld
 `accountAlreadyKnown`:
 
-- **Erste Anmeldung** (`ctx.account` ist `null`): Die Journey findet das Konto selbst, und zwar über
-  die Anmelde-Tools, die mit der E-Mail-Adresse arbeiten (`CandidateTools.forLookupLogin`), nie über
-  eine Identifizierung. Diesen Fall gibt es nur, wenn der Schalter `loa1` auf den Orchestrator stellt
+- **Erste Anmeldung** (`ctx.account` ist `null`): Angeboten werden alle Tools, die ihr Subjekt aus der
+  Eingabe selbst finden (`CandidateTools.forLookupLogin`), nie eine Identifizierung. Das sind die
+  Anmeldungen über die E-Mail-Adresse, die ein Konto finden, und `auth-invite`, das mit
+  Versicherungs- oder Partnernummer und Einmalkennwort eine Einladung findet
+  ([ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Nach einem Einmalkennwort ist
+  das Subjekt des Kanals die Einladung, kein Konto; die Journey ist dann sofort fertig, denn weitere
+  Nachweise kann eine Einladung nicht sammeln. Verlangt die Anmeldung ein höheres Niveau, als die
+  Einladung trägt, bricht sie ab, bevor etwas gebunden wird. Diesen Fall gibt es nur, wenn der Schalter `loa1` auf den Orchestrator stellt
   ([ADR-42](../adr/ADR-042-loa1-anmeldung-umschalten.md)); sonst meldet Keycloaks Passwortformular
   das Konto schon vorher.
 - **Step-up** (das Konto ist schon vor Beginn der Journey auf dem Kanal gesetzt): Angeboten werden nur

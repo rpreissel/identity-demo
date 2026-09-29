@@ -303,6 +303,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
         entries={[
           { label: t('Anmelden'), diagram: 'webLoginLoa1' },
           { label: t('Sicher anmelden'), diagram: 'webLoginLoa2' },
+          { label: t('Mit Einmalkennwort anmelden'), diagram: 'webLoginInvite' },
         ]}
       />
     </>

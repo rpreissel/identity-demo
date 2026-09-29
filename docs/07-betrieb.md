@@ -393,7 +393,7 @@ gehören; jeder hat einen eigenen `@Service` mit eigenen Grenzen:
   - *Antwort, wenn die Grenze überschritten ist:* `423 Locked` (`ACCOUNT_LOCKED`) bei IDENTIFIED_AUTH. Bei LOOKUP_AUTH steckt die Sperre in der gewöhnlichen Antwort „E-Mail oder Code ungültig“; sonst ließe sich daraus ablesen, ob ein Konto existiert
 - **`PersonLockoutService`**
   - *Bereich:* `PERSON`
-  - *Zählt:* Fehlgeschlagene Identifizierungsversuche für eine Person (`ident-fsc` rät ein Geheimnis, und ein Treffer übernimmt das Konto). Zählt nur, wo der Versuch überhaupt eine Person benennt: `ident-eid` bestätigt nur die Karte (ADR-18) und findet niemanden; seine PIN-Versuche begrenzt das Versuchsbudget der Journey
+  - *Zählt:* Fehlgeschlagene Identifizierungsversuche für eine Person (`ident-fsc` rät ein Geheimnis, und ein Treffer übernimmt das Konto) und falsche Einmalkennwörter (`auth-invite`, das Kennwort gehört einer Person, ADR-48). Zählt nur, wo der Versuch überhaupt eine Person benennt: `ident-eid` bestätigt nur die Karte (ADR-18) und findet niemanden; seine PIN-Versuche begrenzt das Versuchsbudget der Journey
   - *Antwort, wenn die Grenze überschritten ist:* immer in der gewöhnlichen Fehlerantwort, nie als eigener Fehler
 - **`ChannelCreationThrottleService`**
   - *Bereich:* `BINDING_KEY`
