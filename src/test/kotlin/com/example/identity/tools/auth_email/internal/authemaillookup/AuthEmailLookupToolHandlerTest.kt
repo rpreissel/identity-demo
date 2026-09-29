@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_email.internal.authemaillookup
 
+import com.example.identity.contract.tool_api.Attempted
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -137,7 +139,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
 
             then("it authenticates for that account at the descriptor's own maxAcr and factorTypes") {
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
-                authenticated.accountId shouldBe 42L
+                authenticated.subject shouldBe Subject.Account(42L)
                 authenticated.amr shouldBe listOf("email")
                 authenticated.achievedAcr shouldBe AuthEmailLookupDescriptor.maxAcr
                 authenticated.factorTypes shouldBe AuthEmailLookupDescriptor.factorTypes
@@ -152,7 +154,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, "000000")
 
             then("it fails against the resolved account, so the orchestrator charges that account") {
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Code ungueltig"), attemptedAccountId = 42L)
+                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Code ungueltig"), attempted = Attempted.Account(42L))
             }
         }
     }
@@ -168,7 +170,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, issued.plainCode)
 
             then("it fails with the same wording and names no account to charge") {
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Code ungueltig"), attemptedAccountId = null)
+                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Code ungueltig"), attempted = null)
             }
         }
     }

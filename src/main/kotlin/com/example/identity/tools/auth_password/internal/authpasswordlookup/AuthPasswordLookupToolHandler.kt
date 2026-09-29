@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_password.internal.authpasswordlookup
+import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_password.internal.PasswordHasher
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
@@ -6,6 +7,7 @@ import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentR
 import com.example.identity.tools.auth_password.PASSWORD_ENROLLMENT_TYPE
 import com.example.identity.tools.auth_password.AuthPasswordLookupDescriptor
 import com.example.identity.contract.tool_api.EnrollmentRef
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
@@ -60,13 +62,13 @@ class AuthPasswordLookupToolHandler(
                         amr = listOf(descriptor.method),
                         achievedAcr = descriptor.maxAcr,
                         factorTypes = descriptor.factorTypes,
-                        accountId = accountId
+                        subject = Subject.Account(accountId)
                     )
                 } else {
                     // Naming the account here is what lets the orchestrator count this attempt;
                     // the client-facing part of the outcome stays identical for known and unknown
                     // addresses.
-                    ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Passwort ungueltig"), attemptedAccountId = accountId)
+                    ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Passwort ungueltig"), attempted = accountId?.let(Attempted::Account))
                 }
             }
         }

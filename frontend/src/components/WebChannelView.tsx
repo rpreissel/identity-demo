@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { setDemoLoa1Login, setDemoLoginTheme, type KeycloakInfo, type Loa1Login, type LoginTheme } from '../api'
 import { createWebOidc, LoginNotCompletedError, SessionEndedError, type TokenSet } from '../webOidc'
 import { parseJwtPayload } from '../jwt'
+import { personenverzeichnisApi, type Vorgang } from '../personenverzeichnisApi'
 import { shorten } from '../format'
 import { UnavailableTools } from './UnavailableTools'
 import { Disclosure } from './Disclosure'
@@ -45,7 +46,7 @@ function formatRemaining(expiresAt: number): string {
 /** The portal page to show again after a round trip to Keycloak (a step-up started from it). */
 const VIEW_KEY = 'identity-demo-web-view'
 
-type PortalView = 'home' | 'profile' | 'security' | 'protected'
+type PortalView = 'home' | 'profile' | 'security' | 'protected' | 'process'
 
 function readStored<T extends string>(storage: () => Storage, key: string, allowed: readonly T[]): T | undefined {
   try {
@@ -88,11 +89,17 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
   const [loa1Login, setLoa1Login] = useState<Loa1Login>(keycloak.loa1Login)
   const [loa1Error, setLoa1Error] = useState('')
   const [view, setView] = useState<PortalView>(
-    () => readStored(() => sessionStorage, VIEW_KEY, ['home', 'profile', 'security', 'protected']) ?? 'home',
+    () => readStored(() => sessionStorage, VIEW_KEY, ['home', 'profile', 'security', 'protected', 'process']) ?? 'home',
   )
   const [loginTheme, setLoginTheme] = useState<LoginTheme>(keycloak.loginTheme)
   const [themeError, setThemeError] = useState('')
+  const [vorgaenge, setVorgaenge] = useState<Vorgang[]>([])
   const completingRef = useRef(false)
+
+  // The process names for the demo process page; the register invites to them.
+  useEffect(() => {
+    personenverzeichnisApi.vorgaenge().then(setVorgaenge).catch(() => setVorgaenge([]))
+  }, [])
 
   // Picks up `?code=...` after the redirect back. A ref guards against StrictMode's double
   // invocation: a second exchange would try to redeem the already-used code and fail.
@@ -219,6 +226,46 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
   const personName = typeof idClaims?.name === 'string' ? idClaims.name : undefined
   const role = idClaims ? accountRole(idClaims.person_id, idClaims.versnr) : undefined
   const claimText = (value: unknown) => (typeof value === 'string' && value !== '' ? value : undefined)
+  // A token from a one-time password carries the process it is good for, and only then
+  // (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). The page then shows that process and nothing else.
+  const process = claimText(accessClaims?.process)
+  const invitation = claimText(accessClaims?.invitation)
+  const processName = (id: string) => vorgaenge.find((v) => v.id === id)?.name ?? id
+
+  /**
+   * Stands in for the business system: it reports the process done to the register, with the
+   * invitation's id from the token. The register ends the invitation, and Keycloak refuses the next
+   * token - the renewal right after shows it.
+   */
+  async function completeProcess() {
+    if (!invitation) return
+    clearMessages()
+    try {
+      await personenverzeichnisApi.einladungAbschliessen(invitation)
+      setNotice(t('Der Vorgang ist abgeschlossen. Das Einmalkennwort gilt nicht mehr.'))
+      // The logout reaches Keycloak shortly after, as an event of the register. Until then a
+      // renewal may still succeed, so the page asks a few times, a second apart.
+      let refreshToken = tokens?.refreshToken
+      for (let attempt = 0; refreshToken && attempt < 5; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        try {
+          const fresh = await refreshTokens(refreshToken)
+          setTokens(fresh)
+          storeTokens(fresh)
+          refreshToken = fresh.refreshToken
+        } catch (err) {
+          if (!(err instanceof SessionEndedError)) throw err
+          setTokens(null)
+          storeTokens(null)
+          setView('home')
+          setNotice(t('Der Vorgang ist abgeschlossen, Keycloak hat die Sitzung beendet.'))
+          return
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
 
   const signedOut = (
     <>
@@ -239,6 +286,14 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
           </h2>
           <p>{t('Befunde und Rechnungen. Dafür brauchen Sie eine besonders gesicherte Anmeldung.')}</p>
           <button onClick={() => login('2', 'protected')}>{t('Sicher anmelden')}</button>
+        </div>
+        <div className="portal-tile">
+          <h2>
+            <span aria-hidden="true">📮 </span>
+            {t('Vorgang mit Einmalkennwort')}
+          </h2>
+          <p>{t('Sie haben einen Brief mit einem Einmalkennwort bekommen? Damit erledigen Sie diesen einen Vorgang, auch ohne Konto.')}</p>
+          <button onClick={() => login('1', 'process')}>{t('Mit Einmalkennwort anmelden')}</button>
         </div>
       </div>
       <p className="portal-note">
@@ -296,6 +351,15 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
               <span>{belowLoa2 ? t('Verlangt eine besonders gesicherte Anmeldung') : t('Befunde und Rechnungen')}</span>
             </button>
           </li>
+          <li>
+            <button onClick={() => setView('process')}>
+              <strong>
+                <span aria-hidden="true">📮 </span>
+                {t('Vorgang')}
+              </strong>
+              <span>{t('Ein Vorgang, zu dem wir per Brief eingeladen haben')}</span>
+            </button>
+          </li>
         </ul>
       </>
     ),
@@ -337,6 +401,34 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
             { label: t('Anmeldeverfahren verwalten'), diagram: 'manageMethods' },
           ]}
         />
+      </>
+    ),
+    process: process ? (
+      <>
+        <h1>{t('Vorgang: {vorgang}', { vorgang: processName(process) })}</h1>
+        <p>{t('Sie sind mit einem Einmalkennwort angemeldet. Diese Anmeldung gilt nur für diesen Vorgang.')}</p>
+        <ul className="status-list portal-list">
+          {row(t('Vor- und Nachname'), personName)}
+          {row(t('Versicherungsnummer'), claimText(idClaims?.versnr))}
+          {row(t('Partnernummer'), claimText(idClaims?.person_id))}
+          {row(t('Sicherheitsniveau'), currentAcr)}
+        </ul>
+        <section className="portal-section">
+          <h2>{t('Vorgang beenden')}</h2>
+          <p>{t('Ist der Vorgang erledigt, meldet das Fachsystem ihn beim Personenverzeichnis ab. Danach gilt das Einmalkennwort nicht mehr, und Keycloak stellt keine Tokens mehr aus.')}</p>
+          <div className="form-actions">
+            <button onClick={completeProcess}>{t('Vorgang beenden')}</button>
+            <button className="secondary" onClick={logout}>{t('Abmelden')}</button>
+          </div>
+        </section>
+      </>
+    ) : (
+      <>
+        {back}
+        <h1>{t('Vorgang')}</h1>
+        <p>{t('Sie sind mit Ihrem Konto angemeldet. Ihr Token trägt keinen Vorgang, es gilt für jeden Vorgang ohne Einschränkung.')}</p>
+        <p>{t('Um sich mit einem Einmalkennwort anzumelden, melden Sie sich zuerst ab: Eine Keycloak-Sitzung gehört genau einem Nutzer.')}</p>
+        <button className="secondary" onClick={logout}>{t('Abmelden')}</button>
       </>
     ),
     protected: (
@@ -405,7 +497,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
                   </Demo>
                   {notice && <div className="hint">{notice}</div>}
                   {error && <div className="error-card">{error}</div>}
-                  {tokens ? signedIn[view] : signedOut}
+                  {tokens ? signedIn[process ? 'process' : view] : signedOut}
                 </main>
               </div>
             </BrowserFrame>
@@ -527,6 +619,17 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
                       </span>
                     </li>
                   </ul>
+                  {process && (
+                    <>
+                      <h4>{t('Vorgangs-Marker')}</h4>
+                      <ul className="status-list">
+                        <li><span className="label">process</span><span className="value">{process}</span></li>
+                        <li><span className="label">invitation</span><span className="value" title={invitation}>{invitation && shorten(invitation, 12, 8)}</span></li>
+                        <li><span className="label">sub</span><span className="value">{String(accessClaims?.sub ?? '')}</span></li>
+                        <li><span className="label">orchestrator_account_id</span><span className="value">{t('fehlt - kein Konto')}</span></li>
+                      </ul>
+                    </>
+                  )}
                   {accessClaims && <ClaimList title="AccessToken-Claims" claims={accessClaims} />}
                   {idClaims && <ClaimList title="IdToken-Claims" claims={idClaims} />}
                 </Disclosure>

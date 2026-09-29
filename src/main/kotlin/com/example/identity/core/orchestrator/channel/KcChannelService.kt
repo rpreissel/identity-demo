@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.account.AccountService
@@ -164,7 +165,7 @@ class KcChannelService(
                 )
             }
             if (effectiveAccountId != null && channel.accountId == null) {
-                channel.accountId = effectiveAccountId
+                channel.subject = Subject.Account(effectiveAccountId)
                 sessionManagementService.updateChannelSession(channel)
             }
         }
@@ -213,6 +214,9 @@ class KcChannelService(
             channel.expiresAt = cappedExpiry
             sessionManagementService.updateChannelSession(channel)
         }
+        // The evidence of a process access belongs to its invitation. Carried into a later flow run,
+        // it would count for whatever account that run signs in (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
+        if (channel.invitation != null) return null
         val storedEvidence = channel.authEvidenceId?.let { authEvidenceService.getAuthEvidence(it) }
         val factors = storedEvidence?.amrEvidence?.map { it.toMethodEvidence() }
         if (channel.accountId == null && factors.isNullOrEmpty()) return null

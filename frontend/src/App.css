@@ -701,6 +701,10 @@ a.method-choice:active {
   font-family: var(--mono);
   font-size: 0.85rem;
   color: var(--text-h);
+  /* Long token values (an invitation's sub is 83 characters) wrap instead of widening the column. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .status-list .value.value-plain {
@@ -1211,6 +1215,13 @@ button.small,
   font-weight: 700;
   letter-spacing: 0.15em;
   color: #111;
+}
+
+/* What a letter carries besides its code: one small line under the kind. */
+.mailbox-detail {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted, var(--text));
 }
 
 /* Personenverzeichnis: letters, SMS and e-mails in one list; the code is what the reader looks for. */

@@ -9,6 +9,7 @@ import { OrchestratorError } from './pages/OrchestratorError'
 import { OrchestratorManageMethods } from './pages/OrchestratorManageMethods'
 import { OrchestratorSelect } from './pages/OrchestratorSelect'
 import { OrchestratorTool } from './pages/OrchestratorTool'
+import { ToolAuthInvite } from './pages/ToolAuthInvite'
 import { ToolEmailAuth } from './pages/ToolEmailAuth'
 import { ToolEmailLookup } from './pages/ToolEmailLookup'
 import { ToolIdentEid } from './pages/ToolIdentEid'
@@ -49,6 +50,8 @@ export default function KcPage({ kcContext }: { kcContext: KcContext }) {
             return <OrchestratorSelect kcContext={kcContext} />
           case 'orchestrator-tool.ftl':
             return <OrchestratorTool kcContext={kcContext} />
+          case 'tool-auth-invite.ftl':
+            return <ToolAuthInvite kcContext={kcContext} />
           case 'tool-email-auth.ftl':
             return <ToolEmailAuth kcContext={kcContext} />
           case 'tool-email-lookup.ftl':

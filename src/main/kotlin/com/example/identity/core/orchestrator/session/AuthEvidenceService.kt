@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -17,7 +18,11 @@ class AuthEvidenceService(
 ) {
 
     fun createForAccount(accountId: Long): EvidenceTrail =
-        authEvidenceRepository.save(EvidenceTrail(accountId = accountId, now = clock.instant()))
+        authEvidenceRepository.save(EvidenceTrail(Subject.Account(accountId), clock.instant()))
+
+    /** The evidence of a channel signed in with a one-time password: it belongs to the invitation. */
+    fun createForInvitation(invitation: String): EvidenceTrail =
+        authEvidenceRepository.save(EvidenceTrail(Subject.Invitation(invitation), clock.instant()))
 
     fun getAuthEvidence(authEvidenceId: UUID): EvidenceTrail? =
         authEvidenceRepository.findByIdOrNull(authEvidenceId)
@@ -31,7 +36,7 @@ class AuthEvidenceService(
     fun rebindToAccount(authEvidenceId: UUID, accountId: Long) {
         val evidence = authEvidenceRepository.findByIdOrNull(authEvidenceId)
             ?: error("EvidenceTrail not found: $authEvidenceId")
-        evidence.accountId = accountId
+        evidence.subject = Subject.Account(accountId)
         authEvidenceRepository.save(evidence)
         authContextRepository.findByAuthEvidenceId(authEvidenceId).forEach { authContext ->
             authContext.accountId = accountId

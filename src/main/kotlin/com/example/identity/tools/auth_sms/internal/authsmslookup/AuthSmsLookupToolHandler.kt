@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_sms.internal.authsmslookup
+import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_sms.internal.TanGenerator
@@ -9,6 +10,7 @@ import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.tools.auth_sms.AuthSmsLookupDescriptor
 import com.example.identity.tools.auth_sms.SMS_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.EnrollmentRef
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
@@ -91,14 +93,14 @@ class AuthSmsLookupToolHandler(
                     amr = listOf(descriptor.method),
                     achievedAcr = descriptor.maxAcr,
                     factorTypes = descriptor.factorTypes,
-                    accountId = decision.accountId
+                    subject = Subject.Account(decision.accountId)
                 )
             }
 
             is AuthSmsLookupDecision.WrongTan ->
                 // accountId names the throttle subject for the orchestrator; it is null exactly
                 // when nothing resolved, so there is nothing to count either.
-                ToolOutcome.Failed.LookupAuth(Text("E-Mail oder TAN ungueltig"), attemptedAccountId = decision.accountId)
+                ToolOutcome.Failed.LookupAuth(Text("E-Mail oder TAN ungueltig"), attempted = decision.accountId?.let(Attempted::Account))
         }
     }
 

@@ -481,3 +481,36 @@ Der Browser zeigt QR-Code und Pairing-Code und wartet, bis die App entscheidet
 „Abbrechen“ beendet das Fragen und lehnt das Tool ab (`orchestrator_abandon`). Warum die Seite
 nicht mehr per Formular fragt und welche Regeln die Abfrage hat, steht in
 [ADR-45](adr/ADR-045-qr-warteseite-fragt-im-hintergrund.md).
+
+## 9) `auth-invite`: Vorgangszugang mit Einmalkennwort
+
+Eine Person ohne Konto erledigt genau einen Vorgang, zu dem das Personenverzeichnis sie per Brief
+eingeladen hat ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Zunächst nur im
+Web-Kanal.
+
+1. **Einladen.** Das Personenverzeichnis stellt für eine Person eine Einladung aus: Vorgang, Niveau
+   (`loa1` oder `loa2`), Frist. Es erzeugt ein Einmalkennwort mit zwölf Zeichen in Vierergruppen,
+   speichert nur die Id (SHA-256 über `personId:KENNWORT:vorgang`) und schickt den Klartext per
+   Brief. In der Demo geschieht das auf der Seite „Einladungen“ von `/personenverzeichnis/`; der Brief
+   liegt im Briefkasten.
+2. **Anmelden.** Die Website startet eine gewöhnliche Anmeldung über den Browser-Client. Ohne Konto
+   bietet die Auswahl `auth-invite` an. Die Person gibt Versicherungs- oder Partnernummer und das
+   Kennwort ein. Der Controller löst die Nummer zur Person auf; das Tool fragt das Verzeichnis, ob das
+   Kennwort eine offene Einladung genau dieser Person öffnet (`Invitations.redeem`). Ein Fehlversuch
+   zählt gegen die Person (Personen-Drossel wie beim Freischaltcode) und sieht für jede Ursache gleich
+   aus.
+3. **Binden.** Bei Erfolg wird die Einladung Subjekt des Kanals, kein Konto wird gesucht oder
+   angelegt. Liegt das Niveau der Einladung unter dem verlangten, bricht die Journey vorher ab. Keycloak
+   setzt den Nutzer `f:orch-invitations:<Id>`; seine Tokens tragen die Stammdaten der Person und die
+   Claims `process` und `invitation`, aber kein `orchestrator_account_id`.
+4. **Wiederkommen.** Bis zur Frist oder zum Abschluss kann sich die Person beliebig oft wieder
+   anmelden, wie beim Freischaltcode.
+5. **Beenden.** Das Fachsystem meldet den Vorgang beim Personenverzeichnis ab, mit der Id der
+   Einladung, die es selbst bilden kann. Das Verzeichnis meldet `InvitationEnded`; der Orchestrator
+   meldet den Einladungs-Nutzer in Keycloak ab, und jeder weitere Refresh scheitert, weil Keycloak den
+   Nutzer nun deaktiviert liest. Ein Widerruf läuft genauso, eine abgelaufene Frist wirkt von selbst.
+
+Ein Einladungs-Kanal kann keine Kontofunktion aufrufen (Verfahren verwalten, Konto löschen,
+QR-Bestätigung), gibt keine Evidenz an einen späteren Flow-Durchlauf weiter und kann nicht per Step-up
+über das Niveau der Einladung steigen. Konto und Einladung teilen sich nie eine Keycloak-Sitzung;
+gewechselt wird über die Abmeldung.

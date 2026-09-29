@@ -44,7 +44,12 @@ data class JourneyContext(
      * Runtime feature flags currently enabled ([FeatureFlags] names them). Resolved here because a
      * strategy never depends on a `@Service` itself.
      */
-    val featureFlags: Set<String> = emptySet()
+    val featureFlags: Set<String> = emptySet(),
+    /**
+     * The invitation this channel signed in with instead of an account
+     * (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). Never set together with [account].
+     */
+    val invitation: String? = null
 ) {
     /**
      * The resolved account, for states that cannot be reached without one (step-up, method change,

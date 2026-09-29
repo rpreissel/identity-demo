@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.contract.tool_api.Subject
+import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.DemoStepReason
@@ -527,7 +529,7 @@ class JourneyService(
             detail = mapOf(
                 "toolId" to tool.toolId,
                 "reason" to outcome.reason,
-                "attemptedAccountId" to (outcome as? ToolOutcome.Failed.LookupAuth)?.attemptedAccountId,
+                "attemptedAccountId" to ((outcome as? ToolOutcome.Failed.LookupAuth)?.attempted as? Attempted.Account)?.id,
                 "attemptedPersonId" to (outcome as? ToolOutcome.Failed.Identification)?.attemptedPersonId,
                 "attemptBudgetLeft" to journey.attemptBudget
             )
@@ -556,8 +558,8 @@ class JourneyService(
             channel.authContextId = null
             channel.authEvidenceId = null
             val abandonedAccountId = channel.accountId
-            channel.accountId = if (channel.entryIntent.startsFromDeviceLink && channel.bindingKeyRef != null) {
-                sessionManagementService.findLinkedAccountId(channel.bindingKeyRef!!)
+            channel.subject = if (channel.entryIntent.startsFromDeviceLink && channel.bindingKeyRef != null) {
+                sessionManagementService.findLinkedAccountId(channel.bindingKeyRef!!)?.let(Subject::Account)
             } else {
                 null
             }

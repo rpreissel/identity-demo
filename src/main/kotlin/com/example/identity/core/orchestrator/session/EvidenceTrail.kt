@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
@@ -28,10 +29,35 @@ import com.example.identity.core.orchestrator.domain.AmrSource
 @Entity
 @Table(schema = "orchestrator", name = "auth_evidence")
 class EvidenceTrail(
-    @Column(name = "account_id", nullable = false)
-    var accountId: Long? = null,
-    now: Instant
+    subject: Subject,
+    now: Instant,
 ) {
+    /** The account of [subject], if the subject is one. Written only through [subject]. */
+    @Column(name = "account_id")
+    var accountId: Long? = null
+        protected set
+
+    /** The invitation of [subject], if the subject is one. Written only through [subject]. */
+    @Column(name = "invitation", length = 64)
+    var invitation: String? = null
+        protected set
+
+    /**
+     * Whom this evidence belongs to: an account, or an invitation
+     * (ADR-48 (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Always one of them; the
+     * database holds that (`ck_auth_evidence_one_subject`).
+     */
+    var subject: Subject
+        get() = accountId?.let(Subject::Account) ?: Subject.Invitation(checkNotNull(invitation))
+        set(value) {
+            accountId = (value as? Subject.Account)?.id
+            invitation = (value as? Subject.Invitation)?.hash
+        }
+
+    init {
+        this.subject = subject
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", nullable = false)

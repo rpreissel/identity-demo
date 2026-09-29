@@ -12,6 +12,7 @@ import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
 import com.example.identity.contract.tool_api.envelope.Next
 import com.example.identity.contract.tool_api.ToolId
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Component
 
@@ -52,7 +53,11 @@ class JourneyTraceDetails(
         val specific = when (outcome) {
             is ToolOutcome.Completed.Identified -> mapOf("personId" to outcome.personId)
             is ToolOutcome.Completed.Enrolled -> mapOf("enrollmentRef" to outcome.enrollmentRef.toString())
-            is ToolOutcome.Completed.Authenticated -> mapOf("accountId" to outcome.accountId)
+            is ToolOutcome.Completed.Authenticated -> when (val subject = outcome.subject) {
+                is Subject.Account -> mapOf("accountId" to subject.id)
+                is Subject.Invitation -> mapOf("invitation" to subject.hash)
+                null -> mapOf("accountId" to null)
+            }
             is ToolOutcome.Completed.Approved -> emptyMap()
             // Attribute types only, never values: a confirmed address does not belong in a debug trace.
             is ToolOutcome.Completed.Attested ->

@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_sms.internal.authsmslookup
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.simulation.sms.SmsGateway
@@ -97,7 +98,7 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
                 val outcome = handler.patch(toolSessionId, issued.plainTan)
 
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
-                authenticated.accountId shouldBe 42L
+                authenticated.subject shouldBe Subject.Account(42L)
                 authenticated.amr shouldBe listOf("sms")
             }
         }

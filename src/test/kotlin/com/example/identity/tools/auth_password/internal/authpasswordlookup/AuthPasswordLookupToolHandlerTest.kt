@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_password.internal.authpasswordlookup
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -43,7 +44,7 @@ class AuthPasswordLookupToolHandlerTest : BehaviorSpec({
                 )
 
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
-                authenticated.accountId shouldBe 42L
+                authenticated.subject shouldBe Subject.Account(42L)
                 authenticated.amr shouldBe listOf("password")
             }
         }
@@ -61,7 +62,7 @@ class AuthPasswordLookupToolHandlerTest : BehaviorSpec({
             then("it fails with the same constant-shape message, naming no account") {
                 val outcome = handler.patch(toolSessionId, email = "unknown@example.com", password = "hunter2", accountId = null, enrollmentRef = null)
 
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Passwort ungueltig"), attemptedAccountId = null)
+                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Passwort ungueltig"), attempted = null)
             }
         }
     }

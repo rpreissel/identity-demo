@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_email.internal.authemail
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -100,7 +101,7 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
                 authenticated.amr shouldBe listOf("email")
                 authenticated.achievedAcr shouldBe AuthEmailDescriptor.maxAcr
                 authenticated.factorTypes shouldBe AuthEmailDescriptor.factorTypes
-                authenticated.accountId shouldBe null
+                authenticated.subject shouldBe null
             }
 
             then("the address's send budget starts over: whoever asked received the code") {

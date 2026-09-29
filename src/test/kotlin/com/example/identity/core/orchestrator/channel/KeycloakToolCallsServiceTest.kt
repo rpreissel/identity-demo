@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -150,7 +151,7 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
 
         `when`("a LOOKUP_AUTH tool reports its failure") {
             val result = runCatching {
-                service.apply(accountId, AuthPasswordLookupDescriptor, ToolOutcome.Failed.LookupAuth(Text("Passwort falsch"), attemptedAccountId = accountId))
+                service.apply(accountId, AuthPasswordLookupDescriptor, ToolOutcome.Failed.LookupAuth(Text("Passwort falsch"), attempted = accountId?.let(Attempted::Account)))
             }
 
             then("it refuses with IllegalStateException") {

@@ -37,6 +37,7 @@ class JourneyContextFactory(
         return JourneyContext(
             channel = channel.channelType,
             account = accountId?.let { accountService.findAccount(it) },
+            invitation = channel.invitation,
             evidence = evidence?.toCoreEvidence() ?: AuthEvidence(emptyList()),
             acrFloor = acrFloorOf(channel),
             bindingKeyRef = channel.bindingKeyRef,

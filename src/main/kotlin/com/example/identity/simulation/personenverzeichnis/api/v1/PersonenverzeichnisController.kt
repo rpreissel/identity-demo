@@ -6,6 +6,9 @@ import org.springframework.http.HttpHeaders
 import com.example.identity.contract.texts.TextBundle
 import com.example.identity.contract.texts.Text
 import com.example.identity.simulation.personenverzeichnis.BriefView
+import com.example.identity.simulation.personenverzeichnis.EinladungView
+import com.example.identity.simulation.personenverzeichnis.Einladungen
+import com.example.identity.simulation.personenverzeichnis.Vorgang
 import com.example.identity.simulation.personenverzeichnis.Personenverzeichnis
 import com.example.identity.simulation.personenverzeichnis.Freischaltcodes
 import com.example.identity.simulation.personenverzeichnis.FreischaltcodeView
@@ -29,6 +32,8 @@ import java.time.Instant
 
 data class FreischaltcodeAusstellenRequest(val gueltigBis: Instant)
 
+data class EinladungAusstellenRequest(val vorgang: String, val niveau: String, val gueltigBis: Instant)
+
 /**
  * The register's management face for the `/personenverzeichnis/` page, a stand-in for the real
  * register's operator UI. Not under `/orchestrator`, because it is the foreign system, and without
@@ -42,6 +47,7 @@ data class FreischaltcodeAusstellenRequest(val gueltigBis: Instant)
 class PersonenverzeichnisController(
     private val register: Personenverzeichnis,
     private val freischaltcodes: Freischaltcodes,
+    private val einladungen: Einladungen,
 ) {
 
     @GetMapping("personen")
@@ -78,9 +84,37 @@ class PersonenverzeichnisController(
     fun widerrufen(@PathVariable freischaltcodeId: Long): ResponseEntity<Void> =
         if (freischaltcodes.widerrufen(freischaltcodeId)) ResponseEntity.noContent().build() else ResponseEntity.notFound().build()
 
+    @GetMapping("vorgaenge")
+    @Operation(summary = "Vorgänge, zu denen das Verzeichnis einlädt")
+    fun vorgaenge(): List<Vorgang> = einladungen.vorgaenge()
+
+    @GetMapping("personen/{personId}/einladungen")
+    @Operation(summary = "Einladungen einer Person", description = "Ohne Klartext - den trägt nur der Brief (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).")
+    fun einladungenDerPerson(@PathVariable personId: String): List<EinladungView> = einladungen.fuerPerson(personId)
+
+    @PostMapping("personen/{personId}/einladungen")
+    @Operation(summary = "Einladung mit Einmalkennwort ausstellen", description = "Antwortet mit dem Brief, der das Einmalkennwort im Klartext trägt.")
+    fun einladungAusstellen(@PathVariable personId: String, @RequestBody request: EinladungAusstellenRequest): ResponseEntity<BriefView> =
+        einladungen.ausstellen(personId, request.vorgang, request.niveau, request.gueltigBis)
+            ?.let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
+            ?: ResponseEntity.notFound().build()
+
+    @PostMapping("einladungen/{einladungId}/abschluss")
+    @Operation(
+        summary = "Vorgang abschließen",
+        description = "Das Fachsystem meldet den Vorgang als erledigt, mit der Id der Einladung (dem Hash). Die Einladung endet und mit ihr ihre Sitzungen."
+    )
+    fun einladungAbschliessen(@PathVariable einladungId: String): ResponseEntity<EinladungView> =
+        einladungen.abschliessen(einladungId)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
+
+    @DeleteMapping("einladungen/{einladungId}")
+    @Operation(summary = "Einladung widerrufen")
+    fun einladungWiderrufen(@PathVariable einladungId: String): ResponseEntity<Void> =
+        if (einladungen.widerrufen(einladungId) != null) ResponseEntity.noContent().build() else ResponseEntity.notFound().build()
+
     @GetMapping("briefe")
     @Operation(summary = "Briefkasten", description = "Alle verschickten Briefe, neueste zuerst.")
-    fun briefe(): List<BriefView> = freischaltcodes.briefkasten()
+    fun briefe(): List<BriefView> = einladungen.briefkasten()
 
     /** The register answers for itself; its refusals are not this application's error contract. */
     @ExceptionHandler(PersonRejectedException::class)

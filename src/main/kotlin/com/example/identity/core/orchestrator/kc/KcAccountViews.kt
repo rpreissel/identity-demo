@@ -5,6 +5,7 @@ import com.example.identity.core.account.AccountService
 import com.example.identity.contract.tool_api.directory.PersonMasterData
 import com.example.identity.contract.tool_api.directory.PersonRecord
 import com.example.identity.contract.tool_api.claims.AttributeType
+import com.example.identity.contract.tool_api.values.Email
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -32,8 +33,15 @@ class KcAccountViews(
 ) {
     fun byAccountId(accountId: Long): KcAccountView? = accountService.findAccount(accountId)?.let(::viewOf)
 
-    fun byEmail(email: String): KcAccountView? =
-        accountService.resolveByAnchor(AttributeType.EMAIL, email.trim())?.let(::byAccountId)
+    /**
+     * Keycloak asks every federation for any name it meets, among them `invitation-<id>` of the
+     * invitation federation (ADR-48) and whatever someone typed into the password form. A name that
+     * is no email address is simply nobody here, not a bad request.
+     */
+    fun byEmail(email: String): KcAccountView? {
+        if (Email.ofOrNull(email) == null) return null
+        return accountService.resolveByAnchor(AttributeType.EMAIL, email.trim())?.let(::byAccountId)
+    }
 
     /** `account-<id>` or an email - the two forms [KcAccountView.username] takes. */
     fun byUsername(username: String): KcAccountView? =

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.MethodRole
@@ -38,7 +39,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 class KcSelectMethodStrategyTest : BehaviorSpec({
 
     val strategy = KcSelectMethodStrategy()
-    val lookupTools = listOf("auth-sms-lookup", "auth-password-lookup", "auth-qr-lookup").map(::ToolId)
+    val lookupTools = listOf("auth-sms-lookup", "auth-password-lookup", "auth-qr-lookup", "auth-invite").map(::ToolId)
 
     fun webCtx(
         account: AccountProfile? = null,
@@ -87,7 +88,7 @@ class KcSelectMethodStrategyTest : BehaviorSpec({
         }
 
         `when`("a lookup tool authenticates") {
-            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("password"), accountId = 1L)
+            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("password"), subject = Subject.Account(1L))
             val transition = strategy.transition(state, JourneyEvent.Completed(AuthPasswordLookupDescriptor, outcome), webCtx())
 
             then("it performs AcceptProof and resumes in the same state") {

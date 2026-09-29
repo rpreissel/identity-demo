@@ -258,6 +258,19 @@ final class OrchestratorClient {
         return lookup("/orchestrator/api/v1/kc/accounts?username=" + urlEncode(username), ACCOUNT_LOOKUP_ANCHOR);
     }
 
+    /**
+     * An invitation by its identity (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md); {@code null} when
+     * there is none. The anchor names the invitation looked up.
+     */
+    KcInvitation invitationById(String invitation) throws IOException, InterruptedException {
+        try {
+            return KcInvitation.from(send("GET", "/orchestrator/api/v1/kc/invitations/" + urlEncode(invitation), invitation, null));
+        } catch (OrchestratorApiException e) {
+            if (e.status == 404) return null;
+            throw e;
+        }
+    }
+
     /** The peer-auth anchor of a search by address - {@code KcAccountLookupController.LOOKUP_ANCHOR}. */
     private static final String ACCOUNT_LOOKUP_ANCHOR = "account-lookup";
 
@@ -388,7 +401,7 @@ final class OrchestratorClient {
             Next next,
             Map<String, JsonNode> stepData,
             Map<String, JsonNode> demo,
-            Long authDataAccountId,
+            KcSubject authDataSubject,
             String authDataAcr,
             Map<String, String> authDataAmr
     ) {
@@ -433,10 +446,23 @@ final class OrchestratorClient {
                     ),
                     stepData,
                     demo,
-                    authData == null ? null : authData.getAccountId(),
+                    subjectOf(authData),
                     authData == null ? null : authData.getAcr(),
                     authData == null || authData.getAmr() == null ? Map.of() : authData.getAmr()
             );
+        }
+
+        /** Whom the channel is signed in as; an orchestrator without {@code subject} still names the account. */
+        private static KcSubject subjectOf(com.example.identity.kcext.api.model.AuthData authData) {
+            if (authData == null) return null;
+            var subject = authData.getSubject();
+            if (subject != null) {
+                return switch (subject.getType()) {
+                    case ACCOUNT -> new KcSubject(KcSubject.Kind.ACCOUNT, subject.getId());
+                    case INVITATION -> KcSubject.invitation(subject.getId());
+                };
+            }
+            return authData.getAccountId() == null ? null : KcSubject.account(authData.getAccountId());
         }
 
         /**

@@ -2,7 +2,14 @@ components:
   schemas:
     BriefView:
       properties:
+        art:
+          enum:
+          - FREISCHALTCODE
+          - EINMALKENNWORT
+          type: string
         code:
+          type: string
+        einladungId:
           type: string
         freischaltcodeId:
           format: int64
@@ -15,12 +22,61 @@ components:
         versandtAm:
           format: date-time
           type: string
+        vorgang:
+          type: string
       required:
+      - art
       - code
-      - freischaltcodeId
       - id
       - personId
       - versandtAm
+      type: object
+    EinladungAusstellenRequest:
+      properties:
+        gueltigBis:
+          format: date-time
+          type: string
+        niveau:
+          type: string
+        vorgang:
+          type: string
+      required:
+      - gueltigBis
+      - niveau
+      - vorgang
+      type: object
+    EinladungView:
+      properties:
+        abgeschlossenAm:
+          format: date-time
+          type: string
+        ausgestelltAm:
+          format: date-time
+          type: string
+        gueltigBis:
+          format: date-time
+          type: string
+        id:
+          type: string
+        niveau:
+          type: string
+        offen:
+          type: boolean
+        personId:
+          type: string
+        vorgang:
+          type: string
+        widerrufenAm:
+          format: date-time
+          type: string
+      required:
+      - ausgestelltAm
+      - gueltigBis
+      - id
+      - niveau
+      - offen
+      - personId
+      - vorgang
       type: object
     FreischaltcodeAusstellenRequest:
       properties:
@@ -79,6 +135,16 @@ components:
         vorname:
           type: string
       type: object
+    Vorgang:
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required:
+      - id
+      - name
+      type: object
   securitySchemes:
     dpop:
       description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the
@@ -119,6 +185,54 @@ paths:
                 $ref: ../openapi.yaml#/components/schemas/ErrorResponse
           description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
       summary: Briefkasten
+      tags:
+      - Mock Personenverzeichnis
+  /mock-personenverzeichnis/einladungen/{einladungId}:
+    delete:
+      operationId: einladungWiderrufen
+      parameters:
+      - in: path
+        name: einladungId
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Einladung widerrufen
+      tags:
+      - Mock Personenverzeichnis
+  /mock-personenverzeichnis/einladungen/{einladungId}/abschluss:
+    post:
+      description: Das Fachsystem meldet den Vorgang als erledigt, mit der Id der Einladung (dem Hash). Die Einladung endet
+        und mit ihr ihre Sitzungen.
+      operationId: einladungAbschliessen
+      parameters:
+      - in: path
+        name: einladungId
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/EinladungView'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Vorgang abschließen
       tags:
       - Mock Personenverzeichnis
   /mock-personenverzeichnis/freischaltcodes/{freischaltcodeId}:
@@ -222,6 +336,65 @@ paths:
       summary: Person ändern
       tags:
       - Mock Personenverzeichnis
+  /mock-personenverzeichnis/personen/{personId}/einladungen:
+    get:
+      description: Ohne Klartext - den trägt nur der Brief (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
+      operationId: einladungenDerPerson
+      parameters:
+      - in: path
+        name: personId
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                items:
+                  $ref: '#/components/schemas/EinladungView'
+                type: array
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Einladungen einer Person
+      tags:
+      - Mock Personenverzeichnis
+    post:
+      description: Antwortet mit dem Brief, der das Einmalkennwort im Klartext trägt.
+      operationId: einladungAusstellen
+      parameters:
+      - in: path
+        name: personId
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EinladungAusstellenRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/BriefView'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Einladung mit Einmalkennwort ausstellen
+      tags:
+      - Mock Personenverzeichnis
   /mock-personenverzeichnis/personen/{personId}/freischaltcodes:
     get:
       description: Ohne Klartext - den trägt nur der Brief.
@@ -311,6 +484,27 @@ paths:
                 $ref: ../openapi.yaml#/components/schemas/ErrorResponse
           description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
       summary: Texte des Dienstes in einer Sprache (mit ETag)
+      tags:
+      - Mock Personenverzeichnis
+  /mock-personenverzeichnis/vorgaenge:
+    get:
+      operationId: vorgaenge
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                items:
+                  $ref: '#/components/schemas/Vorgang'
+                type: array
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Vorgänge, zu denen das Verzeichnis einlädt
       tags:
       - Mock Personenverzeichnis
 tags:

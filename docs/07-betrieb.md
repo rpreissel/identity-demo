@@ -259,7 +259,17 @@ findet nur exakte Treffer ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
   sonstige föderierte Daten eines Nutzers.
 - **Konto gelöscht:** `KeycloakAccountRemovalListener` räumt genau diese Keycloak-eigenen Daten ab
   (`DELETE /admin/realms/{realm}/orchestrator-accounts/{accountId}`, `AccountRemoval`). Das ist das
-  einzige Ereignis, das Keycloak erreicht; eine Änderung am Konto braucht keinen Aufruf.
+  einzige Ereignis eines Kontos, das Keycloak erreicht; eine Änderung am Konto braucht keinen Aufruf.
+- **Einladungen** ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)): Eine zweite
+  Nutzer-Federation (`InvitationStorageProvider`, feste Komponenten-Id `orch-invitations`, Migration
+  V6) liest Einladungen des Personenverzeichnisses als eigene Nutzer, nur per Id
+  (`KcInvitationLookupController`), Cache ebenfalls 60 Sekunden. Nutzer-Id und `sub` sind
+  `f:orch-invitations:<Id der Einladung>`. Der Nutzer trägt die Stammdaten der Person und die Attribute
+  `orchestratorInvitation` und `orchestratorProcess` (Claims `invitation` und `process`); er ist nur
+  aktiviert, solange die Einladung offen ist. Meldet das Verzeichnis ein Ende (`InvitationEnded`),
+  meldet `KeycloakInvitationLogoutListener` den Nutzer ab
+  (`POST /admin/realms/{realm}/users/{id}/logout`), über dieselbe Registry wie die Löschung. Ein
+  Einladungs-Nutzer hat keine Keycloak-Daten, die aufzuräumen wären, außer seinen Sitzungen.
 
 Das Abräumen nach einer Löschung läuft über die **Event Publication Registry** von Spring Modulith
 ([ADR-29](adr/ADR-029-event-publication-registry-statt-eigener-outbox.md)), damit ein fehlgeschlagener

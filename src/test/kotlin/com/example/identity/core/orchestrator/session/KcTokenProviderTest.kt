@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import org.springframework.web.client.HttpClientErrorException
@@ -142,7 +143,7 @@ class KcTokenProviderTest : BehaviorSpec({
                 AccountTokenResponse(token, 300, "fresh-refresh", 600)
             val authPolicy = mockk<AuthPolicy> { every { resolveAcr(any(), any()) } returns AcrLevel.LOA2 }
             val authEvidenceService = mockk<AuthEvidenceService> {
-                every { getAuthEvidence(authEvidenceId) } returns EvidenceTrail(accountId = accountId, now = TEST_NOW)
+                every { getAuthEvidence(authEvidenceId) } returns EvidenceTrail(Subject.Account(accountId), TEST_NOW)
             }
             val accountService = mockk<AccountService> {
                 every { findAccount(accountId) } returns com.example.identity.core.account.AccountProfile(

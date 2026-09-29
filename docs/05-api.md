@@ -809,17 +809,32 @@ holt die Keycloak-Erweiterung das Antwort-JWKS des Orchestrators einmal je Orche
 es ebenfalls zwischengespeichert (`OrchestratorResponseVerifier`, Nimbus `JWKSourceBuilder` mit
 Wiederholung), nicht bei jedem Aufruf.
 
-Jede Antwort an einen `KEYCLOAK`-Kanal enthält zusätzlich `authData` (`accountId`/`acr`/`amr`, nie
-bei `APP`). Keycloaks `OrchestratorAuthenticator` schreibt es sofort in seine Session-Notes. `amr`
-ordnet jeder Methode ihre Quelle zu (`"kc"` für eine eigene Angabe Keycloaks, `"orchestrator"` für
-ein abgeschlossenes Tool des Orchestrators). Das ist nur eine Information; den kombinierten `acr`
-bestimmt ausschließlich der Orchestrator.
+Jede Antwort an einen `KEYCLOAK`-Kanal enthält zusätzlich `authData` (`subject`/`acr`/`amr`, nie
+bei `APP`). Keycloaks `OrchestratorAuthenticator` schreibt es sofort in seine Session-Notes. `subject`
+nennt, wer angemeldet ist: `{"type": "account", "id": "42"}` für ein Konto oder
+`{"type": "invitation", "id": "<Hash>"}` für eine Einladung nach einem Einmalkennwort
+([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Keycloak setzt danach den Nutzer aus
+der passenden Federation (`f:orch-accounts:…` oder `f:orch-invitations:…`) und lässt nie ein Subjekt
+die Sitzung eines anderen fortsetzen (`LoginCompletion`). `accountId` steht nur noch zur
+Kompatibilität daneben und ist als veraltet markiert. `amr` ordnet jeder Methode ihre Quelle zu
+(`"kc"` für eine eigene Angabe Keycloaks, `"orchestrator"` für ein abgeschlossenes Tool des
+Orchestrators). Das ist nur eine Information; den kombinierten `acr` bestimmt ausschließlich der
+Orchestrator.
 
 Der Web-Kanal kennt kein Gerät; `DeviceAccountLink` gibt es nur im App-Kanal
 ([02-domaenenmodell.md](02-domaenenmodell.md)). Angemeldet wird über den Login per E-Mail-Adresse
 bzw. über den eigenen Einstiegs-Intent `KC_SELECT_METHOD` ([04-orchestrierung.md](04-orchestrierung.md)
 Abschnitt 3), registriert über `REGISTER` (`intent=register`, siehe oben). `ident-fsc`, `ident-eid`,
 `confirm-email` und die `enroll-*`-Tools werden über dieselben `WebToolRenderer` angezeigt.
+
+**Einmalkennwort (`auth-invite`).** Ohne Konto bietet die Auswahl neben den Lookup-Anmeldungen das
+Einmalkennwort an. Es endet mit einer Einladung als Subjekt statt eines Kontos; das Niveau ist das der
+Einladung, und eine Anmeldung, die mehr verlangt, bricht ab, bevor etwas gebunden wird. Keycloak liest
+den Einladungs-Nutzer über `GET /orchestrator/api/v1/kc/invitations/{invitation}`, gesichert wie die
+Kontosuche (Peer-Auth-Assertion, `channel_anchor` = Id der Einladung); die Antwort trägt
+`enabled = false`, sobald die Einladung abgeschlossen, widerrufen oder abgelaufen ist. Ein
+Einladungs-Kanal gibt bei `restore-data` nichts zurück: Seine Evidenz gehört der Einladung und darf in
+keinen späteren Durchlauf für ein Konto wandern.
 
 Eine Lücke, die hier ausdrücklich benannt wird: **`enroll-kobil`/`auth-kobil` und
 `enroll-device`/`auth-device` haben keinen `WebToolRenderer`** und fehlen damit im Web-Kanal. KOBIL

@@ -4,6 +4,7 @@ import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.tools.auth_qr.AuthQrLookupDescriptor
 import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
@@ -87,7 +88,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, confirmationCode = "000000")
 
             then("it fails without charging the approving account: the guess was the pairing's code, not its secret") {
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("Bestätigungscode falsch"), attemptedAccountId = null)
+                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("Bestätigungscode falsch"), attempted = null)
             }
         }
 
@@ -99,7 +100,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
                     amr = listOf("qr"),
                     achievedAcr = AuthQrLookupDescriptor.maxAcr,
                     factorTypes = AuthQrLookupDescriptor.factorTypes,
-                    accountId = 99L,
+                    subject = Subject.Account(99L),
                 )
             }
         }
@@ -116,7 +117,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
             then("it says the pairing is burned, still naming no account") {
                 outcome shouldBe ToolOutcome.Failed.LookupAuth(
                     Text("Zu viele falsche Bestätigungscodes. Bitte starten Sie die Anmeldung per QR-Code neu."),
-                    attemptedAccountId = null,
+                    attempted = null,
                 )
             }
         }
@@ -129,7 +130,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, confirmationCode = "123456")
 
             then("it does not log in a second browser") {
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("Anfrage wurde bereits bearbeitet oder ist abgelaufen"), attemptedAccountId = null)
+                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("Anfrage wurde bereits bearbeitet oder ist abgelaufen"), attempted = null)
             }
         }
     }
@@ -141,7 +142,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, confirmationCode = null)
 
             then("it fails as declined, naming no account") {
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("Vom Nutzer abgelehnt"), attemptedAccountId = null)
+                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("Vom Nutzer abgelehnt"), attempted = null)
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.kcmigrate.federatedInvitationUserId
 import com.example.identity.kcmigrate.federatedUserId
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -54,6 +55,17 @@ class KeycloakAdminClient(
      * login failures, consents, federated storage). Goes through the extension's own endpoint,
      * because Keycloak's `DELETE users/{id}` first looks the user up, which no longer succeeds.
      */
+    /**
+     * Ends every Keycloak session of an invitation's user (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
+     * Keycloak finds the user through the invitation federation even after the invitation has ended.
+     */
+    fun logoutInvitation(invitation: String) {
+        asAdmin {
+            it.post().uri("/admin/realms/{realm}/users/{userId}/logout", realm, federatedInvitationUserId(invitation))
+                .retrieve().toBodilessEntity()
+        }
+    }
+
     fun removeAccount(accountId: Long) {
         asAdmin { it.delete().uri("/admin/realms/{realm}/orchestrator-accounts/{accountId}", realm, accountId).retrieve().toBodilessEntity() }
         log.info("Keycloak: removed local state of federated user for accountId={}", accountId)

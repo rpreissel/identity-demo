@@ -125,14 +125,14 @@ public class OrchestratorAuthenticator implements Authenticator {
 
     private void handleResponse(AuthenticationFlowContext context, OrchestratorClient.ChannelResponse response, MultivaluedMap<String, String> lastForm) {
         AuthenticationSessionModel authSession = context.getAuthenticationSession();
-        Long knownAccountId = OrchestratorNotes.accountId(context.getUser());
+        KcSubject knownSubject = KcSubject.of(context.getUser());
 
-        if (response.authDataAccountId() != null && context.getUser() == null) {
-            UserModel user = AccountUsers.findByAccountId(context.getSession(), context.getRealm(), String.valueOf(response.authDataAccountId()));
+        if (response.authDataSubject() != null && context.getUser() == null) {
+            UserModel user = response.authDataSubject().findUser(context.getSession(), context.getRealm());
             if (user == null) {
-                // The orchestrator just named this account - not finding it is an inconsistency,
+                // The orchestrator just named this subject - not finding it is an inconsistency,
                 // never a reason to invent a user (Keycloak creates no users).
-                LOG.errorf("Orchestrator named account %d, but the federation does not know it", response.authDataAccountId());
+                LOG.errorf("Orchestrator named %s, but its federation does not know it", response.authDataSubject());
                 context.failure(AuthenticationFlowError.INTERNAL_ERROR);
                 return;
             }
@@ -141,7 +141,7 @@ public class OrchestratorAuthenticator implements Authenticator {
         }
         String certifiedAcr = context.getAuthenticatorConfig() == null ? null
                 : context.getAuthenticatorConfig().getConfig().get("targetAcr");
-        LoginCompletion.Verdict verdict = LoginCompletion.judge(response, knownAccountId, certifiedAcr);
+        LoginCompletion.Verdict verdict = LoginCompletion.judge(response, knownSubject, certifiedAcr);
         if (verdict instanceof LoginCompletion.Refuse refuse) {
             LOG.errorf("Orchestrator answer refused for channel %s: %s", response.channelSessionId(), refuse.reason());
             context.failure(AuthenticationFlowError.INTERNAL_ERROR);

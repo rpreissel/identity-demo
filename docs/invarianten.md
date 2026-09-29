@@ -70,6 +70,10 @@ schließen soll.
   - Mechanismus: `test:AccountServiceTest`, `test:KcAccountLookupIntegrationTest`; `AccountService.resolveByAnchor` liefert nur Konten mit Verfahren
 - **I-28 Ein eingerichtetes Konto fällt nie in den Aufbau zurück: Eine Verfahrensinstanz wird deaktiviert, nie gelöscht; gelöscht wird nur das ganze Konto ([ADR-46](adr/ADR-046-konto-im-aufbau.md)).**
   - Mechanismus: `type:AccountAuthMethodRepository` (kennt kein `delete`), `type:AccountProfile` (`isSetUp` zählt deaktivierte Instanzen mit), `sql:fk_auth_method_account` (Instanzen gehen nur mit dem Konto), `test:ModelBasedJourneyTest`
+- **I-29 Ein Kanal gehört höchstens einem Subjekt: einem Konto oder einer Einladung, nie beiden. Seine Evidenz gehört demselben Subjekt ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
+  - Mechanismus: `sql:ck_channel_session_one_subject`, `sql:ck_auth_evidence_one_subject`, `test:AuthInviteIntegrationTest`
+- **I-30 Die Evidenz einer Einladung wandert in keinen späteren Anmeldedurchlauf ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
+  - Mechanismus: `test:AuthInviteIntegrationTest` (`restore-data` bleibt für einen Einladungs-Kanal leer)
 
 - **I-21 Was eine ersetzte Instanz nachwies und die neue nicht, gilt nicht mehr; jede Passwort-Instanz trägt ihren eigenen Nachweis.**
   - Mechanismus: `test:AccountServiceDbTest`, `test:MgmtPasswordIntegrationTest`
@@ -78,6 +82,8 @@ schließen soll.
 
 - **I-15 Ein Konto ist genau ein Keycloak-Nutzer, und kein Nutzer steht für ein anderes Konto.**
   - Mechanismus: `type:OrchestratorUser` (die Nutzer-Id ist `f:<Komponente>:<accountId>`, berechnet statt gesucht; es gibt keine Kopie, die ein anderes Konto tragen könnte), `test:OrchestratorUserTest`, `test:KcAccountLookupIntegrationTest`
+- **I-31 Eine Einladung ist in Keycloak nie ein Konto: Sie hat einen Nutzer eigener Art, und keine Anmeldung setzt die Sitzung des jeweils anderen fort ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
+  - Mechanismus: `type:InvitationUser` (Nutzer-Id `f:orch-invitations:<Id>`, das Konto-Attribut ist immer leer), `test:InvitationUserTest`, `test:LoginCompletionTest`
 - **I-16 Jeder Keycloak-Client des Orchestrators signiert mit seinem eigenen Schlüssel.**
   - Mechanismus: `test:OrchestratorClientAssertionSignerTest`
 - **I-17 Das Vertrauen in ein selbstsigniertes Keycloak-Zertifikat gilt nie JVM-weit.**

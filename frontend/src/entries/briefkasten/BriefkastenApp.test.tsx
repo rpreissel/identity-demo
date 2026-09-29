@@ -8,7 +8,7 @@ const answers: Record<string, unknown> = {
     { id: 'P000000001', vorname: 'Erika', name: 'Muster', mobilnummer: '+49 170 0000001', email: 'erika@example.org' },
   ],
   '/mock-personenverzeichnis/briefe': [
-    { id: 1, personId: 'P000000001', freischaltcodeId: 7, code: 'FSC-1111', versandtAm: '2026-09-27T08:00:00Z' },
+    { id: 1, personId: 'P000000001', art: 'FREISCHALTCODE', freischaltcodeId: 7, code: 'FSC-1111', versandtAm: '2026-09-27T08:00:00Z' },
   ],
   '/mock-sms/outbox': [{ sequence: 1, phoneNumber: '+491700000001', tan: '123456', sentAt: '2026-09-27T08:02:00Z' }],
   '/mock-mail/outbox': [{ sequence: 1, address: 'Erika@example.org', code: '654321', sentAt: '2026-09-27T08:01:00Z' }],

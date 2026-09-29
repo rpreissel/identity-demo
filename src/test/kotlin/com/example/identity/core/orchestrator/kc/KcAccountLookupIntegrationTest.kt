@@ -92,6 +92,10 @@ class KcAccountLookupIntegrationTest : IntegrationTestSupport() {
                 status("accounts/999999") shouldBe HttpStatus.NOT_FOUND
                 anchor("account-lookup")
                 status("accounts?email=nobody@example.com") shouldBe HttpStatus.NOT_FOUND
+                // Keycloak asks every federation for every name, also the invitation federation's
+                // invitation-<id> (ADR-48): a name that is no address is nobody, not a bad request.
+                status("accounts?username=invitation-9f86d081") shouldBe HttpStatus.NOT_FOUND
+                status("accounts?email=not-an-address") shouldBe HttpStatus.NOT_FOUND
                 status("accounts") shouldBe HttpStatus.BAD_REQUEST
 
                 val accountId = accountFixtures.seedAccount()

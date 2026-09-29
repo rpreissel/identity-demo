@@ -27,7 +27,7 @@ class ToolOutcomeTest : BehaviorSpec({
     )
     val failed: List<ToolOutcome.Failed> = listOf(
         ToolOutcome.Failed.IdentifiedAuth(Text("x")),
-        ToolOutcome.Failed.LookupAuth(Text("x"), attemptedAccountId = null),
+        ToolOutcome.Failed.LookupAuth(Text("x"), attempted = null),
         ToolOutcome.Failed.Identification(Text("x"), attemptedPersonId = null),
         ToolOutcome.Failed.NothingGuessed(Text("x")),
     )

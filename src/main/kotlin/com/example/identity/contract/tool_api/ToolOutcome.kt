@@ -45,8 +45,11 @@ sealed interface ToolOutcome {
         /** An [IDENTIFIED_AUTH][MethodRole.IDENTIFIED_AUTH] attempt - against the account the channel already knows. */
         data class IdentifiedAuth(override val reason: Text) : Failed
 
-        /** A [LOOKUP_AUTH][MethodRole.LOOKUP_AUTH] attempt - against the account the input resolved, `null` if it resolved none. */
-        data class LookupAuth(override val reason: Text, val attemptedAccountId: Long?) : Failed
+        /**
+         * A [LOOKUP_AUTH][MethodRole.LOOKUP_AUTH] attempt - against whom the input resolved ([Attempted]),
+         * `null` if it resolved nobody.
+         */
+        data class LookupAuth(override val reason: Text, val attempted: Attempted?) : Failed
 
         /**
          * An [IDENTIFICATION][MethodRole.IDENTIFICATION] or [CORRELATION][MethodRole.CORRELATION]
@@ -164,8 +167,11 @@ sealed interface ToolOutcome {
             override val amr: List<String>,
             override val achievedAcr: AcrLevel? = null,
             override val factorTypes: Set<FactorType> = emptySet(),
-            /** Set only by a [LOOKUP_AUTH][MethodRole.LOOKUP_AUTH] tool, which resolves the account itself. */
-            val accountId: Long? = null
+            /**
+             * Set only by a [LOOKUP_AUTH][MethodRole.LOOKUP_AUTH] tool, which resolves whom it proved
+             * itself: an account, or the invitation of a one-time password ([Subject]).
+             */
+            val subject: Subject? = null,
         ) : Completed
 
         /**

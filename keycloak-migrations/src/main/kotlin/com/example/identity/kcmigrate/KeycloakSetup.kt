@@ -176,3 +176,13 @@ fun federatedUserId(accountId: Long): String = "f:$USER_STORAGE_COMPONENT_ID:$ac
 /** Die Umkehrung von [federatedUserId]; `null` für einen Nutzer, der nicht aus der Federation stammt. */
 fun accountIdOfFederatedUser(userId: String): Long? =
     userId.removePrefix("f:$USER_STORAGE_COMPONENT_ID:").takeIf { it != userId }?.toLongOrNull()
+
+/**
+ * Die feste Id der zweiten Nutzer-Federation, der Einladungen (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
+ * Ihre Nutzer heißen `f:orch-invitations:<Hash des Einmalkennworts>` und teilen sich nie ein `sub`
+ * mit einem Konto, auch nicht mit dem Konto derselben Person.
+ */
+const val INVITATION_STORAGE_COMPONENT_ID = "orch-invitations"
+
+/** Die Keycloak-Id des Nutzers einer Einladung. */
+fun federatedInvitationUserId(invitation: String): String = "f:$INVITATION_STORAGE_COMPONENT_ID:$invitation"

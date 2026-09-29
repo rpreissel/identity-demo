@@ -11,9 +11,9 @@ leitet nichts aus Client-Angaben ab, die das System hätte prüfen müssen.
 
 ---
 
-## Personenverzeichnis (`PersonDirectory`, `Freischaltcodes`)
+## Personenverzeichnis (`PersonDirectory`, `Freischaltcodes`, `Invitations`)
 
-Genutzt von `ident-fsc`, `ident-kvnr` und dem Abgleich jeder Identifizierung. **Nicht** `demoOnly`:
+Genutzt von `ident-fsc`, `ident-kvnr`, `auth-invite` und dem Abgleich jeder Identifizierung. **Nicht** `demoOnly`:
 Mit `demo.mode=false` ist es der einzige Weg zu einer Identifizierung, also ist dieser Vertrag der
 wichtigste.
 
@@ -26,6 +26,15 @@ wichtigste.
   gespeichert nie im Klartext (Hash mit Pepper), mit Ablauf; widerrufbar. Bis zum Ablauf bewusst
   wiederverwendbar (Re-Identifizierung, ADR-31). Die Länge und damit die Ratesicherheit ist Sache des
   Systems; der Kern drosselt Fehlversuche je Person (`PersonLockoutService`).
+- **Einladungen mit Einmalkennwort**
+  ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)): nur vom Verzeichnis ausgestellt, für
+  eine Person, einen Vorgang, ein Niveau (`loa1`/`loa2`) und eine Frist; das Kennwort per Post. Die Id
+  ist SHA-256 über `personId:KENNWORT:vorgang` (Kennwort ohne Trennzeichen, groß), damit das
+  Fachsystem sie selbst bilden kann; gespeichert wird nur sie. `redeem` findet nur eine offene
+  Einladung genau dieser Person, nie über das Kennwort allein. Abschluss und Widerruf meldet das System
+  als `InvitationEnded`, mindestens einmal; der Kern beendet daraufhin die Keycloak-Sitzungen der
+  Einladung. Ein echtes System braucht dafür eine eigene Schnittstelle zum Fachsystem; die Demo zeigt
+  sie als Seite „Einladungen“ im Personenverzeichnis.
 - **Änderungen werden gemeldet** (ADR-34): Das System meldet jede Änderung an einer Person; der Kern
   verarbeitet sie einspurig (`PersonChangeListener`). Ein echtes System muss mindestens einmal
   zustellen und Reihenfolge je Person wahren. E-Mail-Adresse und Mobilnummer meldet es nicht: Das

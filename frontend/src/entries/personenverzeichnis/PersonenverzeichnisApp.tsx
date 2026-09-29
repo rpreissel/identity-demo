@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import '../../App.css'
 import { ChannelNav, type NavTab } from '../../components/ChannelNav'
-import { personenverzeichnisApi, type Brief, type Freischaltcode, type RegisterPerson } from '../../personenverzeichnisApi'
+import { personenverzeichnisApi, type Brief, type Einladung, type Freischaltcode, type RegisterPerson, type Vorgang } from '../../personenverzeichnisApi'
 import { language, t } from '../../texts'
 import { Tx } from '../../Tx'
 import { useHashTab } from '../../useHashTab'
 
-type Tab = 'personen' | 'freischaltcodes'
-const TAB_KEYS = ['personen', 'freischaltcodes'] as const
+type Tab = 'personen' | 'freischaltcodes' | 'einladungen'
+const TAB_KEYS = ['personen', 'freischaltcodes', 'einladungen'] as const
 const TABS: NavTab<Tab>[] = [
   { key: 'personen', label: t('Personen') },
   { key: 'freischaltcodes', label: t('Freischaltcodes') },
+  { key: 'einladungen', label: t('Einladungen') },
 ]
 
 const FIELDS: { key: keyof RegisterPerson; label: string; type?: string }[] = [
@@ -78,6 +79,7 @@ export function PersonenverzeichnisApp() {
         {error && <div className="card error-card"><h2>{t('Fehler')}</h2><p>{error}</p></div>}
         {tab === 'personen' && <PersonenTab personen={personen} onChanged={reload} onError={setError} />}
         {tab === 'freischaltcodes' && <FreischaltcodesTab personen={personen} onError={setError} />}
+        {tab === 'einladungen' && <EinladungenTab personen={personen} onError={setError} />}
       </div>
     </div>
   )
@@ -257,12 +259,145 @@ function FreischaltcodesTab({ personen, onError }: { personen: RegisterPerson[];
   )
 }
 
-function BriefCard({ brief, person }: { brief: Brief; person: RegisterPerson | undefined }) {
+function inOneMonth(): string {
+  const d = new Date()
+  d.setMonth(d.getMonth() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
+function einladungStatus(e: Einladung): string {
+  if (e.abgeschlossenAm) return t('Vorgang abgeschlossen {datum}', { datum: formatDate(e.abgeschlossenAm) })
+  if (e.widerrufenAm) return t('widerrufen {datum}', { datum: formatDate(e.widerrufenAm) })
+  return e.offen ? `✅ ${t('offen')}` : t('abgelaufen')
+}
+
+/**
+ * Invitations to one process by one-time password (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). The
+ * register issues them like Freischaltcodes and sends the password by letter; the application only
+ * asks it at login (auth-invite). The id is the SHA-256 over person, password and process - the
+ * business system ends the invitation with it.
+ */
+function EinladungenTab({ personen, onError }: { personen: RegisterPerson[]; onError: (m: string | null) => void }) {
+  const [personId, setPersonId] = useState<string | null>(null)
+  const [einladungen, setEinladungen] = useState<Einladung[]>([])
+  const [vorgaenge, setVorgaenge] = useState<Vorgang[]>([])
+  const [vorgang, setVorgang] = useState('')
+  const [niveau, setNiveau] = useState<'loa1' | 'loa2'>('loa1')
+  const [gueltigBis, setGueltigBis] = useState(inOneMonth)
+  const [issued, setIssued] = useState<Brief | null>(null)
+  const selected = personId ?? personen[0]?.id ?? null
+  const gewaehlterVorgang = vorgang || vorgaenge[0]?.id || ''
+
+  useEffect(() => {
+    personenverzeichnisApi.vorgaenge().then(setVorgaenge).catch((e: Error) => onError(e.message))
+  }, [onError])
+
+  const reload = useCallback(() => {
+    if (selected == null) return
+    personenverzeichnisApi.einladungen(selected).then(setEinladungen).catch((e: Error) => onError(e.message))
+  }, [selected, onError])
+  useEffect(reload, [reload])
+
+  const vorgangName = (id: string) => vorgaenge.find((v) => v.id === id)?.name ?? id
+
+  async function run(action: () => Promise<unknown>) {
+    try {
+      await action()
+      reload()
+    } catch (err) {
+      onError((err as Error).message)
+    }
+  }
+
+  return (
+    <div className="card">
+      <h2>{t('Einladungen')}</h2>
+      <div className="form-group">
+        <label htmlFor="inv-person">{t('Person')}</label>
+        <select id="inv-person" value={selected ?? ''} onChange={(e) => { setPersonId(e.target.value); setIssued(null) }}>
+          {personen.map((p) => <option key={p.id} value={p.id}>{p.kvnr ? `${fullName(p)} (${p.kvnr})` : fullName(p)}</option>)}
+        </select>
+      </div>
+
+      <div className="journey-trace-table-scroll">
+        <table className="journey-trace-table">
+          <thead><tr><th>{t('Vorgang')}</th><th>{t('Niveau')}</th><th>{t('Status')}</th><th>{t('Gültig bis')}</th><th>{t('Id')}</th><th /></tr></thead>
+          <tbody>
+            {einladungen.length === 0 && <tr><td colSpan={6}>{t('Keine Einladungen.')}</td></tr>}
+            {einladungen.map((e) => (
+              <tr key={e.id}>
+                <td>{vorgangName(e.vorgang)}</td>
+                <td>{e.niveau}</td>
+                <td>{einladungStatus(e)}</td>
+                <td>{formatDate(e.gueltigBis)}</td>
+                <td><code title={e.id}>{e.id.slice(0, 12)}…</code></td>
+                <td>
+                  {e.offen && (
+                    <>
+                      <button className="secondary small" onClick={() => run(() => personenverzeichnisApi.einladungAbschliessen(e.id))}>{t('Vorgang abschließen')}</button>{' '}
+                      <button className="secondary small" onClick={() => run(() => personenverzeichnisApi.einladungWiderrufen(e.id))}>{t('Widerrufen')}</button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="hint">
+        {t('Das Personenverzeichnis speichert nur den Hash über Person, Einmalkennwort und Vorgang.')}{' '}
+        <Tx text="Den Klartext trägt allein der Brief, er liegt im {briefkasten}." briefkasten={<a href="/briefkasten/" target="identity-demo-briefkasten">{t('Briefkasten')}</a>} />
+      </p>
+
+      <h3>{t('Neue Einladung ausstellen')}</h3>
+      <div className="form-group">
+        <label htmlFor="inv-vorgang">{t('Vorgang')}</label>
+        <select id="inv-vorgang" value={gewaehlterVorgang} onChange={(e) => setVorgang(e.target.value)}>
+          {vorgaenge.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+        </select>
+      </div>
+      <div className="form-group">
+        <label htmlFor="inv-niveau">{t('Niveau')}</label>
+        <select id="inv-niveau" value={niveau} onChange={(e) => setNiveau(e.target.value as 'loa1' | 'loa2')}>
+          <option value="loa1">loa1</option>
+          <option value="loa2">loa2</option>
+        </select>
+      </div>
+      <div className="form-group">
+        <label htmlFor="inv-gueltig">{t('Gültig bis')}</label>
+        <input id="inv-gueltig" type="date" value={gueltigBis} onChange={(e) => setGueltigBis(e.target.value)} />
+      </div>
+      <div className="form-actions">
+        <button
+          disabled={selected == null || gewaehlterVorgang === ''}
+          onClick={() => run(async () => {
+            if (selected == null) return
+            setIssued(await personenverzeichnisApi.einladungAusstellen(selected, gewaehlterVorgang, niveau, new Date(`${gueltigBis}T23:59:59`).toISOString()))
+          })}
+        >
+          {t('Ausstellen und Brief versenden')}
+        </button>
+      </div>
+      {issued && <BriefCard brief={issued} person={personen.find((p) => p.id === issued.personId)} vorgangName={issued.vorgang && vorgangName(issued.vorgang)} />}
+    </div>
+  )
+}
+
+function BriefCard({ brief, person, vorgangName }: { brief: Brief; person: RegisterPerson | undefined; vorgangName?: string }) {
   return (
     <div className="brief">
       <div className="brief-meta">{t('An {name} · versandt {datum}', { name: fullName(person), datum: formatDate(brief.versandtAm) })}</div>
-      <div>{t('Ihr Freischaltcode lautet:')}</div>
-      <div className="brief-code">{brief.code}</div>
+      {brief.art === 'EINMALKENNWORT' ? (
+        <>
+          <div>{t('Für den Vorgang „{vorgang}“ können Sie sich unter /web/ mit Ihrer Versichertennummer und diesem Einmalkennwort anmelden:', { vorgang: vorgangName ?? brief.vorgang ?? '' })}</div>
+          <div className="brief-code">{brief.code}</div>
+        </>
+      ) : (
+        <>
+          <div>{t('Ihr Freischaltcode lautet:')}</div>
+          <div className="brief-code">{brief.code}</div>
+        </>
+      )}
     </div>
   )
 }

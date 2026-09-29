@@ -100,9 +100,10 @@ export interface AnswerRequest {
  */
 export interface AuthData {
     /**
-     * 
+     * Kept for compatibility; read [subject]. Set only when the subject is an account.
      * @type {number}
      * @memberof AuthData
+     * @deprecated
      */
     accountId?: number;
     /**
@@ -117,6 +118,12 @@ export interface AuthData {
      * @memberof AuthData
      */
     amr?: { [key: string]: string; };
+    /**
+     * 
+     * @type {AuthSubject}
+     * @memberof AuthData
+     */
+    subject?: AuthSubject;
 }
 /**
  * 
@@ -149,6 +156,31 @@ export interface AuthEmailPatchRequest {
      * @memberof AuthEmailPatchRequest
      */
     code?: string;
+}
+/**
+ * 
+ * @export
+ * @interface AuthInvitePatchRequest
+ */
+export interface AuthInvitePatchRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof AuthInvitePatchRequest
+     */
+    code?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AuthInvitePatchRequest
+     */
+    kvnr?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AuthInvitePatchRequest
+     */
+    partnernr?: string;
 }
 /**
  * 
@@ -227,6 +259,36 @@ export interface AuthSmsPatchRequest {
      */
     tan?: string;
 }
+/**
+ * 
+ * @export
+ * @interface AuthSubject
+ */
+export interface AuthSubject {
+    /**
+     * 
+     * @type {string}
+     * @memberof AuthSubject
+     */
+    id: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AuthSubject
+     */
+    type: AuthSubjectTypeEnum;
+}
+
+
+/**
+ * @export
+ */
+export const AuthSubjectTypeEnum = {
+    account: 'account',
+    invitation: 'invitation'
+} as const;
+export type AuthSubjectTypeEnum = typeof AuthSubjectTypeEnum[keyof typeof AuthSubjectTypeEnum];
+
 /**
  * 
  * @export
@@ -870,11 +932,24 @@ export interface IdentKvnrPatchRequest {
 /**
  * 
  * @export
+ * @interface IdentNectActivateRequest
+ */
+export interface IdentNectActivateRequest {
+    /**
+     * Where Nect sends the user back to; without it the app channel's /app/. The web channel names Keycloak's action URL of the running step. Only an address under a configured prefix is accepted (400 otherwise).
+     * @type {string}
+     * @memberof IdentNectActivateRequest
+     */
+    returnUri?: string;
+}
+/**
+ * 
+ * @export
  * @interface IdentNectPatchRequest
  */
 export interface IdentNectPatchRequest {
     /**
-     * The case id Nect sent the user back with (?nectCaseId=...).
+     * The case id Nect sent the user back with (?nectCaseId=...); also accepted as nectCaseId.
      * @type {string}
      * @memberof IdentNectPatchRequest
      */
@@ -1026,6 +1101,49 @@ export interface KcChannelUpsertRequest {
      * @memberof KcChannelUpsertRequest
      */
     targetAcr?: string;
+}
+/**
+ * 
+ * @export
+ * @interface KcInvitationView
+ */
+export interface KcInvitationView {
+    /**
+     * 
+     * @type {{ [key: string]: string; }}
+     * @memberof KcInvitationView
+     */
+    attributes: { [key: string]: string; };
+    /**
+     * 
+     * @type {boolean}
+     * @memberof KcInvitationView
+     */
+    enabled: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof KcInvitationView
+     */
+    firstName: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof KcInvitationView
+     */
+    invitation: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof KcInvitationView
+     */
+    lastName: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof KcInvitationView
+     */
+    username: string;
 }
 /**
  * What the KOBIL SDK needs to activate this device.

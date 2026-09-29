@@ -116,6 +116,14 @@ anmeldefähig, auch wenn die Registrierung noch Pflichten offen hat, etwa bei �
 Anmeldeverfahren einrichten“ die Identifizierung. Zurück in den Aufbau führt kein Weg: Ein Verfahren
 wird deaktiviert, nie gelöscht (I-28).
 
+**Subjekt: Konto oder Einladung.** Ein angemeldeter Kanal gehört meist einem Konto. Nach einem
+Einmalkennwort gehört er stattdessen einer Einladung des Personenverzeichnisses (`invitation`,
+[ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)): eine Person für einen Vorgang, ohne
+Konto. Nie beides zugleich, und die Evidenz gehört demselben Subjekt wie der Kanal. Im Code ist das
+ein Sealed-Typ (`ChannelSession.subject`, `EvidenceTrail.subject`: `Subject.Account` oder
+`Subject.Invitation`); die Datenbank hält es in zwei Spalten, von denen eine Prüfregel höchstens eine
+zulässt.
+
 **Lebensdauer.** Bis zur Anmeldung gilt eine feste Frist (App 24 Stunden, Web ein
 Anmeldedurchlauf von 30 Minuten). Mit `AUTHENTICATED` öffnet der Kanal genau eine Keycloak-Sitzung
 (im Standardprofil die simulierte), und ab dann ist `expiresAt` das Sitzungsfenster, das Keycloak
@@ -481,6 +489,7 @@ erDiagram
     varchar binding_key_ref "ck: genau bei channel = APP gesetzt"
     varchar state
     varchar acr_floor "dauerhafte Untergrenze des Kanals"
+    varchar invitation "Subjekt ist Konto (account_id) oder Einladung, ck nie beides"
     timestamp expires_at "ix, Aufbewahrung"
   }
   orchestrator.auth_journey {
@@ -505,6 +514,7 @@ erDiagram
   orchestrator.auth_evidence {
     uuid id PK
     json amr_evidence "aktuelles ACR wird abgeleitet, nie gespeichert"
+    varchar invitation "ck: genau eins von account_id und invitation"
   }
   orchestrator.device_account_link {
     varchar binding_key_ref PK "einzige langlebige Zuordnung Gerät -> Konto"

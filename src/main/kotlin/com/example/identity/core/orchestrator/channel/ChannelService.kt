@@ -324,7 +324,8 @@ class ChannelService(
         if (channel.state != ChannelState.AUTHENTICATED) {
             throw OrchestratorException.invalidState(Text("Channel must be AUTHENTICATED to manage methods"))
         }
-        checkNotNull(channel.accountId) { "AUTHENTICATED channel without accountId" }
+        // A process access (one-time password) is signed in without an account and serves only its process.
+        if (channel.accountId == null) throw OrchestratorException.invalidState(Text("Nur mit einem Konto moeglich"))
 
         val step = journeyService.start(live, AuthIntent.MANAGE_AUTH_METHODS, seed = wish)
         return responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)
@@ -341,7 +342,8 @@ class ChannelService(
         if (channel.state != ChannelState.AUTHENTICATED) {
             throw OrchestratorException.invalidState(Text("Channel must be AUTHENTICATED to confirm a peer login"))
         }
-        checkNotNull(channel.accountId) { "AUTHENTICATED channel without accountId" }
+        // A process access (one-time password) is signed in without an account and serves only its process.
+        if (channel.accountId == null) throw OrchestratorException.invalidState(Text("Nur mit einem Konto moeglich"))
 
         val step = journeyService.start(
             live, AuthIntent.CONFIRM_PEER_LOGIN,
@@ -360,7 +362,8 @@ class ChannelService(
         if (channel.state != ChannelState.AUTHENTICATED) {
             throw OrchestratorException.invalidState(Text("Channel must be AUTHENTICATED to delete the account"))
         }
-        checkNotNull(channel.accountId) { "AUTHENTICATED channel without accountId" }
+        // A process access (one-time password) is signed in without an account and serves only its process.
+        if (channel.accountId == null) throw OrchestratorException.invalidState(Text("Nur mit einem Konto moeglich"))
 
         val step = journeyService.start(live, AuthIntent.DELETE_ACCOUNT)
         return responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)

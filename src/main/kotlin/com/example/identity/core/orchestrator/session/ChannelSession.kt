@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.AuthIntent
@@ -55,8 +56,27 @@ class ChannelSession(
     @Column(name = "id", nullable = false)
     var channelSessionId: UUID? = null
 
+    /** The account of [subject], if the subject is one. Written only through [subject]. */
     @Column(name = "account_id")
     var accountId: Long? = null
+        protected set
+
+    /** The invitation of [subject], if the subject is one. Written only through [subject]. */
+    @Column(name = "invitation", length = 64)
+    var invitation: String? = null
+        protected set
+
+    /**
+     * Whom this channel works for: an account, or the invitation a one-time password opened
+     * (ADR-48 (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)); `null` while nobody is known.
+     * Stored as two columns, of which the database allows at most one (`ck_channel_session_one_subject`).
+     */
+    var subject: Subject?
+        get() = accountId?.let(Subject::Account) ?: invitation?.let(Subject::Invitation)
+        set(value) {
+            accountId = (value as? Subject.Account)?.id
+            invitation = (value as? Subject.Invitation)?.hash
+        }
 
     @Enumerated(EnumType.STRING)
     @Column(name = "state", nullable = false, length = 32)

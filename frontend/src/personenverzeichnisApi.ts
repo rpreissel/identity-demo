@@ -33,9 +33,33 @@ export interface Freischaltcode {
 export interface Brief {
   id: number
   personId: string
-  freischaltcodeId: number
   code: string
   versandtAm: string
+  /** What the letter carries (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). */
+  art: 'FREISCHALTCODE' | 'EINMALKENNWORT'
+  freischaltcodeId?: number
+  /** Only for a one-time password: the invitation and its process. */
+  einladungId?: string
+  vorgang?: string
+}
+
+/** A process the register invites to. */
+export interface Vorgang {
+  id: string
+  name: string
+}
+
+/** An invitation to one process - its id is the SHA-256 over person, one-time password and process. */
+export interface Einladung {
+  id: string
+  personId: string
+  vorgang: string
+  niveau: 'loa1' | 'loa2'
+  gueltigBis: string
+  ausgestelltAm: string
+  abgeschlossenAm?: string
+  widerrufenAm?: string
+  offen: boolean
 }
 
 const BASE = '/mock-personenverzeichnis'
@@ -64,4 +88,11 @@ export const personenverzeichnisApi = {
     call<Brief>('POST', `/personen/${personId}/freischaltcodes`, { gueltigBis }),
   widerrufen: (freischaltcodeId: number) => call<void>('DELETE', `/freischaltcodes/${freischaltcodeId}`),
   briefe: () => call<Brief[]>('GET', '/briefe'),
+  vorgaenge: () => call<Vorgang[]>('GET', '/vorgaenge'),
+  einladungen: (personId: string) => call<Einladung[]>('GET', `/personen/${personId}/einladungen`),
+  einladungAusstellen: (personId: string, vorgang: string, niveau: string, gueltigBis: string) =>
+    call<Brief>('POST', `/personen/${personId}/einladungen`, { vorgang, niveau, gueltigBis }),
+  /** Stands in for the business system that ends the process (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). */
+  einladungAbschliessen: (einladungId: string) => call<Einladung>('POST', `/einladungen/${einladungId}/abschluss`),
+  einladungWiderrufen: (einladungId: string) => call<void>('DELETE', `/einladungen/${einladungId}`),
 }

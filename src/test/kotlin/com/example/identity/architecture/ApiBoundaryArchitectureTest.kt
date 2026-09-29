@@ -50,6 +50,7 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
         "com.example.identity.core.orchestrator.api.v1.kc.KcChannelController",
         "com.example.identity.core.orchestrator.api.v1.kc.KcAccountLookupController",
         "com.example.identity.core.orchestrator.api.v1.kc.KcSignOutController",
+        "com.example.identity.core.orchestrator.api.v1.kc.KcInvitationLookupController",
     )
     val publicByDesign = mapOf(
         "com.example.identity.core.orchestrator.api.v1.TextsController" to "the wordings every client renders, before any channel exists",

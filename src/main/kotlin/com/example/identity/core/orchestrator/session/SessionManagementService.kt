@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.AuthIntent
@@ -34,7 +35,7 @@ class SessionManagementService(
     ): ChannelSession {
         val now = clock.instant()
         val session = ChannelSession(channel, bindingKeyRef, now.plus(ttl), now)
-        session.accountId = accountId
+        session.subject = accountId?.let(Subject::Account)
         return channelSessionRepository.save(session)
     }
 
@@ -56,7 +57,7 @@ class SessionManagementService(
         val session = ChannelSession(ChannelType.KEYCLOAK, null, now.plus(ttl), now)
         session.channelSessionId = channelSessionId
         session.channelAnchor = channelAnchor
-        session.accountId = accountId
+        session.subject = accountId?.let(Subject::Account)
         session.entryIntent = entryIntent
         session.availableClientTools = availableTools.toMutableSet()
         return channelSessionRepository.save(session)
@@ -98,7 +99,7 @@ class SessionManagementService(
 
     fun bindAccountAndAuthContext(channelSessionId: UUID, accountId: Long, authContextId: UUID) {
         channelSessionRepository.findByIdOrNull(channelSessionId)?.let { session ->
-            session.accountId = accountId
+            session.subject = accountId?.let(Subject::Account)
             session.authContextId = authContextId
             session.touch(clock.instant())
             channelSessionRepository.save(session)

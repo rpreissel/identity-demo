@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_email.internal.authemaillookup
+import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
@@ -8,6 +9,7 @@ import com.example.identity.tools.auth_email.AuthEmailLookupDescriptor
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.directory.resolveAccountByEmail
 import com.example.identity.contract.tool_api.claims.AttributeType
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
@@ -85,14 +87,14 @@ class AuthEmailLookupToolHandler(
                     amr = listOf(descriptor.method),
                     achievedAcr = descriptor.maxAcr,
                     factorTypes = descriptor.factorTypes,
-                    accountId = decision.accountId
+                    subject = Subject.Account(decision.accountId)
                 )
             }
 
             is AuthEmailLookupDecision.WrongCode ->
                 // accountId names the throttle subject for the orchestrator; it is null exactly
                 // when nothing resolved, so there is nothing to count either.
-                ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Code ungueltig"), attemptedAccountId = decision.accountId)
+                ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Code ungueltig"), attempted = decision.accountId?.let(Attempted::Account))
         }
     }
 

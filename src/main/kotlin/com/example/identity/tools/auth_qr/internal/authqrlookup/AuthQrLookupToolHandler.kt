@@ -5,6 +5,7 @@ import com.example.identity.tools.auth_qr.AuthQrLookupDescriptor
 import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
 import com.example.identity.tools.auth_qr.internal.QrLoginBrowserSide
 import com.example.identity.contract.tool_api.MissingFields
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
@@ -46,11 +47,11 @@ class AuthQrLookupToolHandler(
                 amr = listOf(descriptor.method),
                 achievedAcr = descriptor.maxAcr,
                 factorTypes = descriptor.factorTypes,
-                accountId = state.accountId
+                subject = Subject.Account(state.accountId)
             )
             // What is guessed here is the confirmation code, bounded by the pairing's own attempt
             // budget - not a secret of the account that approved.
-            is QrLoginBrowserSide.State.Failed -> ToolOutcome.Failed.LookupAuth(state.reason, attemptedAccountId = null)
+            is QrLoginBrowserSide.State.Failed -> ToolOutcome.Failed.LookupAuth(state.reason, attempted = null)
         }
     }
 

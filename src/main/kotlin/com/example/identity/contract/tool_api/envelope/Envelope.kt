@@ -5,6 +5,7 @@ import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.texts.Text
 import com.fasterxml.jackson.annotation.JsonAnyGetter
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.swagger.v3.oas.annotations.media.Schema
 import java.util.UUID
 
@@ -79,7 +80,11 @@ data class ChannelBlock(
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class AuthData(
-    @field:Schema(example = "42")
+    @field:Schema(
+        example = "42",
+        deprecated = true,
+        description = "Kept for compatibility; read [subject]. Set only when the subject is an account."
+    )
     val accountId: Long? = null,
     @field:Schema(example = "loa2")
     val acr: String? = null,
@@ -90,8 +95,26 @@ data class AuthData(
             "still resolves the combined acr above, regardless of source.",
         example = "{\"password\": \"kc\", \"sms\": \"orchestrator\"}"
     )
-    val amr: Map<String, String>? = null
+    val amr: Map<String, String>? = null,
+    /** Whom the channel is signed in as, once it is known: an account or an invitation. */
+    val subject: AuthSubject? = null
 )
+
+/**
+ * The subject of a Keycloak channel. An account in the ordinary case; an invitation after a
+ * one-time password (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md), whose id is the SHA-256 of that
+ * password. Keycloak signs in the matching user of its own federation, never an account for an invitation.
+ */
+data class AuthSubject(
+    val type: AuthSubjectType,
+    @field:Schema(example = "42")
+    val id: String,
+)
+
+enum class AuthSubjectType {
+    @JsonProperty("account") ACCOUNT,
+    @JsonProperty("invitation") INVITATION,
+}
 
 /**
  * The response envelope for every channel- and tool-level endpoint. `channel` carries the

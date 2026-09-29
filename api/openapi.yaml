@@ -72,6 +72,8 @@ components:
     AuthData:
       properties:
         accountId:
+          deprecated: true
+          description: Kept for compatibility; read [subject]. Set only when the subject is an account.
           example: 42
           format: int64
           type: integer
@@ -88,6 +90,8 @@ components:
             password: kc
             sms: orchestrator
           type: object
+        subject:
+          $ref: '#/components/schemas/AuthSubject'
       type: object
     AuthEmailLookupPatchRequest:
       properties:
@@ -102,6 +106,18 @@ components:
       properties:
         code:
           example: '123456'
+          type: string
+      type: object
+    AuthInvitePatchRequest:
+      properties:
+        code:
+          example: ABCD-EFGH-JKMN
+          type: string
+        kvnr:
+          example: A123456789
+          type: string
+        partnernr:
+          example: P000000004
           type: string
       type: object
     AuthKobilPatchRequest:
@@ -139,6 +155,20 @@ components:
         tan:
           example: '123456'
           type: string
+      type: object
+    AuthSubject:
+      properties:
+        id:
+          example: '42'
+          type: string
+        type:
+          enum:
+          - account
+          - invitation
+          type: string
+      required:
+      - id
+      - type
       type: object
     BiometricUnlock:
       allOf:
@@ -651,6 +681,30 @@ components:
         targetAcr:
           example: loa2
           type: string
+      type: object
+    KcInvitationView:
+      properties:
+        attributes:
+          additionalProperties:
+            type: string
+          type: object
+        enabled:
+          type: boolean
+        firstName:
+          type: string
+        invitation:
+          type: string
+        lastName:
+          type: string
+        username:
+          type: string
+      required:
+      - attributes
+      - enabled
+      - firstName
+      - invitation
+      - lastName
+      - username
       type: object
     KobilActivationStep:
       description: What the KOBIL SDK needs to activate this device.
@@ -1751,7 +1805,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-device:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_21
+      operationId: activate_22
       parameters:
       - in: path
         name: channelSessionId
@@ -1792,7 +1846,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-email:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_19
+      operationId: activate_20
       parameters:
       - in: path
         name: channelSessionId
@@ -1834,7 +1888,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-email-lookup:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_20
+      operationId: activate_21
       parameters:
       - in: path
         name: channelSessionId
@@ -1872,6 +1926,47 @@ paths:
       summary: Activate auth-email-lookup
       tags:
       - 'Tool: E-Mail'
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-invite:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_19
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: input
+                  toolId: auth-invite
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-invite
+      tags:
+      - 'Tool: Einmalkennwort'
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-kobil:
     post:
       operationId: activate_18
@@ -2877,6 +2972,39 @@ paths:
       summary: Fetch this channel's signed RestoreData
       tags:
       - KC channels
+  /orchestrator/api/v1/kc/invitations/{invitation}:
+    get:
+      operationId: byInvitation
+      parameters:
+      - in: path
+        name: invitation
+        required: true
+        schema:
+          type: string
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KcInvitationView'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - kc-peer-auth: [
+          ]
+      summary: The invitation as Keycloak shows it, as a user of its own
+      tags:
+      - KC invitation lookup
   /orchestrator/api/v1/kc/response-jwks/.well-known/jwks.json:
     get:
       operationId: keycloakResponseJwks
@@ -3042,7 +3170,7 @@ paths:
       - KC password management
   /orchestrator/api/v1/tools/{toolSessionId}/auth-device:
     get:
-      operationId: read_20
+      operationId: read_21
       parameters:
       - in: path
         name: toolSessionId
@@ -3083,7 +3211,7 @@ paths:
     patch:
       description: Body carries a self-signed device-proof JWT (typ=device-proof+jwt) over this exact URL, produced after
         the user confirms the mocked PIN/biometric prompt.
-      operationId: patch_20
+      operationId: patch_21
       parameters:
       - in: path
         name: toolSessionId
@@ -3130,7 +3258,7 @@ paths:
       - 'Tool: Gerät'
   /orchestrator/api/v1/tools/{toolSessionId}/auth-email:
     get:
-      operationId: read_18
+      operationId: read_19
       parameters:
       - in: path
         name: toolSessionId
@@ -3170,7 +3298,7 @@ paths:
       tags:
       - 'Tool: E-Mail'
     patch:
-      operationId: patch_18
+      operationId: patch_19
       parameters:
       - in: path
         name: toolSessionId
@@ -3218,7 +3346,7 @@ paths:
       - 'Tool: E-Mail'
   /orchestrator/api/v1/tools/{toolSessionId}/auth-email-lookup:
     get:
-      operationId: read_19
+      operationId: read_20
       parameters:
       - in: path
         name: toolSessionId
@@ -3259,7 +3387,7 @@ paths:
     patch:
       description: First call with email resolves the account and triggers the confirmation code send; a second call with
         code confirms it.
-      operationId: patch_19
+      operationId: patch_20
       parameters:
       - in: path
         name: toolSessionId
@@ -3320,6 +3448,79 @@ paths:
       summary: Supply email, then code
       tags:
       - 'Tool: E-Mail'
+  /orchestrator/api/v1/tools/{toolSessionId}/auth-invite:
+    get:
+      operationId: read_18
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current auth-invite state
+      tags:
+      - 'Tool: Einmalkennwort'
+    patch:
+      description: KVNR, or Partnernummer without a KVNR, together with the one-time password from the letter.
+      operationId: patch_18
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthInvitePatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: AUTHENTICATED
+                next:
+                  type: authenticated
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Accepted - the channel is signed in for the invitation's process.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Supply the number and the one-time password
+      tags:
+      - 'Tool: Einmalkennwort'
   /orchestrator/api/v1/tools/{toolSessionId}/auth-kobil:
     get:
       operationId: read_17
@@ -4229,7 +4430,7 @@ paths:
       - 'Tool: Gerät'
   /orchestrator/api/v1/tools/{toolSessionId}/enroll-email:
     get:
-      operationId: read_21
+      operationId: read_22
       parameters:
       - in: path
         name: toolSessionId
@@ -5060,6 +5261,8 @@ tags:
   name: Channels
 - description: Gerätebindung über den externen Dienstleister KOBIL
   name: 'Tool: KOBIL'
+- description: Read-through invitation lookup for Keycloak's user federation
+  name: KC invitation lookup
 - description: Wordings for the text references in every response, per language, with ETag
   name: Texts
 - description: 'Geraetebindung: Einrichtung und Anmeldung ueber den Geraeteschluessel'
@@ -5076,6 +5279,8 @@ tags:
   name: 'Tool: Freischaltcode'
 - description: 'SMS-TAN: Einrichtung als Faktor, Anmeldung und Login ohne DPoP'
   name: 'Tool: SMS'
+- description: KVNR or Partnernummer plus a one-time password for one process
+  name: 'Tool: Einmalkennwort'
 - description: Keycloak reports a logout for the sign-in log
   name: KC sign-out
 - description: Simulated eID card read, then PIN - attests what the card shows

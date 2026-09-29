@@ -78,11 +78,24 @@ class ContractModelTest {
         assertEquals("STEP_UP_IN_PROGRESS", flach.channelState());
         assertEquals("auth-sms", flach.next().toolId());
         assertEquals("7d2b1d7e-0000-4000-8000-000000000001", flach.next().toolSessionId());
-        assertEquals(42L, flach.authDataAccountId());
+        assertEquals(KcSubject.account(42L), flach.authDataSubject());
         assertEquals("orchestrator", flach.authDataAmr().get("sms"));
         // Die beiden Beutel kommen unveraendert durch, auch in einer Form von morgen.
         assertEquals("Bitte bestaetigen", flach.stepData().get("prompt").asText());
         assertEquals("123456", flach.demo().get("tan").asText());
+    }
+
+    @Test
+    void einEinladungsSubjektKommtAlsEinladungDurch() {
+        String json = """
+            {
+              "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED"},
+              "next": {"type": "authenticated"},
+              "authData": {"acr": "loa1", "amr": {"invite": "orchestrator"}, "subject": {"type": "invitation", "id": "9f86d081"}}
+            }
+            """;
+        OrchestratorClient.ChannelResponse flach = OrchestratorClient.ChannelResponse.from(assertDoesNotThrowJson(json));
+        assertEquals(KcSubject.invitation("9f86d081"), flach.authDataSubject());
     }
 
     private JsonNode assertDoesNotThrowJson(String json) {

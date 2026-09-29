@@ -29,6 +29,8 @@ import com.example.identity.contract.tool_api.ToolJourney
 import com.example.identity.contract.tool_api.ToolCategory
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
+import com.example.identity.contract.tool_api.Attempted
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
 import java.net.URI
 import java.time.Duration
@@ -240,7 +242,12 @@ class ToolJourneyService(
                 }
                 when (outcome) {
                     is ToolOutcome.Failed.IdentifiedAuth -> channelAccountId?.let { accountLockoutService.recordFailure(it, channelType, descriptor.method) }
-                    is ToolOutcome.Failed.LookupAuth -> outcome.attemptedAccountId?.let { accountLockoutService.recordFailure(it, channelType, descriptor.method) }
+                    is ToolOutcome.Failed.LookupAuth -> when (val attempted = outcome.attempted) {
+                        is Attempted.Account -> accountLockoutService.recordFailure(attempted.id, channelType, descriptor.method)
+                        // A one-time password belongs to a person, like a Freischaltcode.
+                        is Attempted.Person -> personLockoutService.recordFailure(attempted.id)
+                        null -> Unit
+                    }
                     // A guessed Freischaltcode or PIN is a credential guess, and success adopts the
                     // person's account outright.
                     is ToolOutcome.Failed.Identification -> outcome.attemptedPersonId?.let { personLockoutService.recordFailure(it) }
@@ -254,7 +261,7 @@ class ToolJourneyService(
                     "${descriptor.toolId} (${descriptor.role}) answered with ${outcome::class.simpleName}"
                 }
                 when (outcome) {
-                    is ToolOutcome.Completed.Authenticated -> (outcome.accountId ?: channelAccountId)?.let { accountLockoutService.recordSuccess(it) }
+                    is ToolOutcome.Completed.Authenticated -> ((outcome.subject as? Subject.Account)?.id ?: channelAccountId)?.let { accountLockoutService.recordSuccess(it) }
                     is ToolOutcome.Completed.Identified -> outcome.personId?.let { personLockoutService.recordSuccess(it) }
                     // Nothing was guessed, nothing to reset.
                     is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Attested, is ToolOutcome.Completed.Approved -> Unit

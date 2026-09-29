@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.admin.ActiveSessions
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
@@ -53,7 +54,7 @@ class ActiveSessionsIntegrationTest : IntegrationTestSupport() {
         return channelSessionRepository.save(
             ChannelSession(type, if (type == ChannelType.APP) "key-${age.seconds}" else null, Instant.now().plus(expiresIn), now = Instant.now()).apply {
                 this.state = state
-                this.accountId = accountId
+                this.subject = accountId?.let(Subject::Account)
                 createdAt = created
                 lastAccessedAt = created
             },

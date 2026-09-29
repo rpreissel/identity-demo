@@ -79,8 +79,9 @@ class KcTextCatalogTest {
             boolean toolName = entry.locations().stream().anyMatch(l -> l.contains("RendererFactory.title") || l.contains("RendererFactory.hint"));
             if (toolName && !frontendIds.contains(entry.id())) differing.add("\"" + entry.template() + "\" (" + entry.locations() + ")");
         }
-        // auth-qr/auth-qr-lookup exist only on the web channel - the app has no screen for them.
-        differing.removeIf(d -> d.contains("AuthQrRendererFactory") || d.contains("AuthQrLookupRendererFactory"));
+        // auth-qr/auth-qr-lookup and auth-invite exist only on the web channel - the app has no screen for them.
+        differing.removeIf(d -> d.contains("AuthQrRendererFactory") || d.contains("AuthQrLookupRendererFactory")
+                || d.contains("AuthInviteRendererFactory"));
         assertEquals(List.of(), differing, "tool title/hint not worded like the app's - align the templates");
     }
 

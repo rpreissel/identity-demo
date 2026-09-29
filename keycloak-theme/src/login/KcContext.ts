@@ -36,6 +36,7 @@ export type KcContextExtensionPerPage = {
   'tool-ident-eid.ftl': ToolPage & WithPersons & { cardPage: boolean }
   'tool-ident-fsc.ftl': ToolPage & WithPersons & { personalienPage: boolean }
   'tool-ident-kvnr.ftl': ToolPage & WithPersons
+  'tool-auth-invite.ftl': ToolPage
   /** Without jumpUrl the last attempt failed; the page then offers a fresh case. */
   'tool-ident-nect.ftl': ToolPage & { jumpUrl?: string }
   'tool-qr-enroll.ftl': ToolPage

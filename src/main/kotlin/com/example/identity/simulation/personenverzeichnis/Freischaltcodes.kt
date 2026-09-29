@@ -22,13 +22,21 @@ data class FreischaltcodeView(
     val valid: Boolean
 )
 
+/** What a letter carries: a Freischaltcode or a one-time password for a process. */
+enum class BriefArt { FREISCHALTCODE, EINMALKENNWORT }
+
 /** A simulated letter from the register's mailbox, plaintext code included. */
 data class BriefView(
     val id: Long,
     val personId: String,
-    val freischaltcodeId: Long,
     val code: String,
-    val versandtAm: Instant
+    val versandtAm: Instant,
+    val art: BriefArt,
+    /** Only for a Freischaltcode letter. */
+    val freischaltcodeId: Long? = null,
+    /** Only for a one-time password letter: the invitation, and the process it is for. */
+    val einladungId: String? = null,
+    val vorgang: String? = null,
 )
 
 /**
@@ -102,8 +110,7 @@ class Freischaltcodes(
     private fun Freischaltcode.toView(now: Instant) =
         FreischaltcodeView(checkNotNull(id), checkNotNull(personId), checkNotNull(expiresAt), revokedAt, isValidAt(now))
 
-    private fun Brief.toView() =
-        BriefView(checkNotNull(id), checkNotNull(personId), checkNotNull(freischaltcodeId), checkNotNull(code), checkNotNull(versandtAm))
+    private fun Brief.toView() = toBriefView()
 
     companion object {
         /** Unambiguous characters only - no 0/O, 1/I/L - since the code is read off a letter. */
@@ -114,3 +121,14 @@ class Freischaltcodes(
             MessageDigest.getInstance("SHA-256").digest(code.toByteArray()).joinToString("") { "%02x".format(it) }
     }
 }
+
+internal fun Brief.toBriefView(vorgang: String? = null) = BriefView(
+    id = checkNotNull(id),
+    personId = checkNotNull(personId),
+    code = checkNotNull(code),
+    versandtAm = checkNotNull(versandtAm),
+    art = if (einladungId != null) BriefArt.EINMALKENNWORT else BriefArt.FREISCHALTCODE,
+    freischaltcodeId = freischaltcodeId,
+    einladungId = einladungId,
+    vorgang = vorgang,
+)

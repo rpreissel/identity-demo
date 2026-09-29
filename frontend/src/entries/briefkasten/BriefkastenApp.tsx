@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import '../../App.css'
 import { ChannelNav } from '../../components/ChannelNav'
 import { outboxApi, type SentMail, type SentSms } from '../../outboxApi'
-import { personenverzeichnisApi, type Brief, type RegisterPerson } from '../../personenverzeichnisApi'
+import { personenverzeichnisApi, type Brief, type RegisterPerson, type Vorgang } from '../../personenverzeichnisApi'
 import { language, t } from '../../texts'
 
 /** One thing sent to a person, whatever the way: a letter, an SMS or an e-mail. */
@@ -12,6 +12,8 @@ interface MailboxEntry {
   to: string
   code: string
   at: string
+  /** What a letter carries, when it is not a Freischaltcode. */
+  detail?: string
 }
 
 /** How often the page looks again - codes arrive while another window is used. */
@@ -43,6 +45,12 @@ export function BriefkastenApp() {
   const [sms, setSms] = useState<SentSms[]>([])
   const [mails, setMails] = useState<SentMail[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [vorgaenge, setVorgaenge] = useState<Vorgang[]>([])
+
+  // Names for the processes a one-time password letter is for; without them the id is shown.
+  useEffect(() => {
+    personenverzeichnisApi.vorgaenge().then(setVorgaenge).catch(() => {})
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -65,6 +73,7 @@ export function BriefkastenApp() {
     ...briefe.map((b) => ({
       key: `brief-${b.id}`, kind: 'brief' as const, code: b.code, at: b.versandtAm,
       to: fullName(personen.find((p) => p.id === b.personId)),
+      detail: b.art === 'EINMALKENNWORT' ? t('Einmalkennwort für {vorgang}', { vorgang: vorgaenge.find((v) => v.id === b.vorgang)?.name ?? b.vorgang ?? '' }) : undefined,
     })),
     ...sms.map((m) => ({
       key: `sms-${m.sequence}`, kind: 'sms' as const, code: m.tan, at: m.sentAt,
@@ -105,7 +114,10 @@ export function BriefkastenApp() {
                 <tbody>
                   {entries.map((entry) => (
                     <tr key={entry.key}>
-                      <td>{kindLabel[entry.kind]}</td>
+                      <td>
+                        {kindLabel[entry.kind]}
+                        {entry.detail && <span className="mailbox-detail">{entry.detail}</span>}
+                      </td>
                       <td>{entry.to}</td>
                       <td className="mailbox-code">{entry.code}</td>
                       <td>{formatDate(entry.at)}</td>

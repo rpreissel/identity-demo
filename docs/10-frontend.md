@@ -117,7 +117,14 @@ zu lesen sieht, wo man ist:
   Keycloak gibt es nicht. In der Demo-Spalte wählt man, womit die Anmeldung beginnt: gleich alle
   Verfahren zur Wahl (Standard) oder erst das Passwort ([ADR-42](adr/ADR-042-loa1-anmeldung-umschalten.md)).
   Konten gibt es anfangs keine; eine Testperson registriert sich über „Registrieren“ auf der
-  Anmeldeseite, wie in der App.
+  Anmeldeseite, wie in der App. Die Kachel „Vorgang mit Einmalkennwort“ meldet eine Person ohne Konto
+  für einen Vorgang an ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Trägt das
+  Access Token den Claim `process`, zeigt die Seite nur die Vorgangsansicht: Name, Nummern, Niveau,
+  „Vorgang beenden“ und „Abmelden“. „Vorgang beenden“ spielt das Fachsystem und meldet den Vorgang beim
+  Personenverzeichnis ab (`POST /mock-personenverzeichnis/einladungen/{id}/abschluss`, Id aus dem Claim
+  `invitation`); der folgende Refresh scheitert, und die Seite zeigt die beendete Sitzung. Die
+  Demo-Spalte zeigt unter den Token-Details die Vorgangs-Marker. Mit Konto zeigt die Ansicht „Vorgang“,
+  dass das Token keinen Marker trägt.
 - **Admin** (`/admin/`): die Sicht des Betreibers, hinter der Admin-Anmeldung (HTTP Basic auf
   `/orchestrator/admin/**`, `AdminSecurityConfig`). Reiter: *Einstellungen* (Verfahren je Kanal
   sperren und ordnen, Reihenfolge der Registrierung, Oberfläche der Keycloak-Anmeldeseiten, Beginn
@@ -129,7 +136,8 @@ zu lesen sieht, wo man ist:
   mit der Sitzung des Orchestrators, zu der sie gehören. Dieselbe Ansicht (`ActiveSessionsView`)
   zeigt die Startseite vor dem Zurücksetzen.
 - **Personenverzeichnis** (`/personenverzeichnis/`): das simulierte **Fremdsystem** (ADR-31) mit
-  Personen und Freischaltcodes. Fachlich spricht sie nur `/mock-personenverzeichnis/*` an. Von
+  Personen, Freischaltcodes und Einladungen mit Einmalkennwort (ausstellen, Vorgang abschließen,
+  widerrufen). Fachlich spricht sie nur `/mock-personenverzeichnis/*` an. Von
   `/orchestrator` lädt sie nur die Texte der gemeinsamen Komponenten.
 - **Briefkasten** (`/briefkasten/`): die simulierte Seite der Empfänger. Briefe, SMS und E-Mails an
   Testpersonen stehen in einer Liste, neueste zuerst, mit den Codes im Klartext. Sie liest die

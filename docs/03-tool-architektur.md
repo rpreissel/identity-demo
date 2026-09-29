@@ -137,6 +137,7 @@ Methoden der Rollen `ENROLLMENT` und `IDENTIFIED_AUTH`/`LOOKUP_AUTH` Authentisie
 | `enroll-kobil` / `auth-kobil` | `ENROLLMENT` / `IDENTIFIED_AUTH` | `kobil` | `{possession,knowledge,inherence}` | `loa2` | `true` |
 | `enroll-qr` / `auth-qr` / `auth-qr-lookup` | `ENROLLMENT` / `IDENTIFIED_AUTH` / `LOOKUP_AUTH` | `qr` | `{}` / `{possession,knowledge}` / `{possession,knowledge}` | `loa1` / `loa2` / `loa2` | `false` |
 | `confirm-qr-login` | `PEER_APPROVAL` | `qr` | `{}` | `loa2` | — |
+| `auth-invite` | `LOOKUP_AUTH` | `invite` | `{possession}` | `loa2` (je Einladung `loa1` oder `loa2`) | — |
 
 Die Entscheidungen dahinter:
 
@@ -302,6 +303,18 @@ Personenverzeichnis findet `ident-nect` nicht; die Zuordnung folgt wie nach `ide
 
 ---
 
+### Was `auth-invite` vom Personenverzeichnis bekommt
+
+`auth-invite` meldet eine Person ohne Konto für genau einen Vorgang an
+([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Die Einladungen gehören dem
+Personenverzeichnis; das Tool fragt es über den Port `Invitations` (`redeem(personId, code)`), wie
+`ident-fsc` den Freischaltcode über `ActivationCodes`. Der Controller löst Versicherungs- oder
+Partnernummer über `PersonDirectory` zur Person auf und fragt die Personen-Drossel; das Tool prüft das
+Kennwort gegen die offenen Einladungen dieser Person. Das Ergebnis ist `Completed.Authenticated` mit
+`Subject.Invitation` und dem Niveau der Einladung. Die Journey bindet dann kein Konto, sondern die
+Einladung als Subjekt des Kanals (`ChannelSession.invitation`). Angeboten wird das Tool nur im
+Web-Kanal; in der Voreinstellung des App-Kanals ist es gesperrt.
+
 ## 2) `ToolDescriptor` und `ToolOutcome`
 
 Jedes Tool bringt eine eigene Descriptor-Bean mit (`object EnrollSmsDescriptor : ToolDescriptor`, je
@@ -345,7 +358,7 @@ abgeschlossen oder ist fehlgeschlagen.
 | `Completed.Identified(claims, ...)` | Identität festgestellt; höchstens ein `PERSON_ID`-Claim (eine Partnernummer). Verfahren, die nur bezeugen, was sie lesen (`ident-eid`, `ident-nect`), liefern keinen |
 | `Completed.Attested(claims)` | Attribut bestätigt; kein `enrollmentRef`, `amr` leer, kein eigenes Niveau (Abschnitt „ATTEST" unten) |
 | `Completed.Enrolled(enrollmentRef, ...)` | Verfahren eingerichtet |
-| `Completed.Authenticated(accountId?, ...)` | Nachweis erbracht; `accountId` setzen nur die `-lookup`-Tools |
+| `Completed.Authenticated(subject?, ...)` | Nachweis erbracht; `subject` setzen nur die `LOOKUP_AUTH`-Tools: das Konto (`Subject.Account`) oder, bei `auth-invite`, die Einladung (`Subject.Invitation`) |
 | `Completed.Approved(...)` | Ein `PEER_APPROVAL`-Tool (`confirm-qr-login`) hat eine fremde Anfrage bestätigt |
 
 Ein Fehlschlag nennt über seine Variante, gegen wen der Versuch lief – davon hängt ab, welche
@@ -353,8 +366,9 @@ Sperre nach zu vielen Versuchen greift. Das Subjekt ist ein Pflichtfeld; „niem
 ausdrückliches `null`, kein vergessener Standardwert:
 
 - **`IdentifiedAuth(reason)`** (`IDENTIFIED_AUTH`): gegen das Konto, das der Kanal schon kennt.
-- **`LookupAuth(reason, attemptedAccountId)`** (`LOOKUP_AUTH`): gegen das Konto, das die Eingabe
-  ergab, oder `null`.
+- **`LookupAuth(reason, attempted)`** (`LOOKUP_AUTH`): gegen das Konto (`Attempted.Account`), das
+  die Eingabe ergab, oder `null`. Ein Einmalkennwort gehört einer Person: `auth-invite` nennt
+  `Attempted.Person`, und es zählt die Personen-Drossel wie beim Freischaltcode.
 - **`Identification(reason, attemptedPersonId)`** (`IDENTIFICATION`, `CORRELATION`): gegen die
   Person, die die Eingabe ergab, oder `null`.
 - **`NothingGuessed(reason)`** (`ENROLLMENT`, `ATTESTATION`, `PEER_APPROVAL`): Kein Geheimnis eines

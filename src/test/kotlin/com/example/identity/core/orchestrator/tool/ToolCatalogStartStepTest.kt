@@ -41,7 +41,8 @@ class ToolCatalogStartStepTest(toolRegistry: ToolHandlerRegistry) : BehaviorSpec
         "enroll-qr" to "enroll",
         "auth-qr" to "waitForApp",
         "auth-qr-lookup" to "waitForApp",
-        "confirm-qr-login" to "input"
+        "confirm-qr-login" to "input",
+        "auth-invite" to "auth"
     )
 
     given("the real Spring-collected tool catalog") {

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import io.kotest.core.spec.style.BehaviorSpec
@@ -25,7 +26,7 @@ class AuthEvidenceServiceTest : BehaviorSpec({
     given("a step-up that adds a single tool's evidence (applyEvidence)") {
         then("clears the cached AccessToken of every AuthContext minted from that evidence") {
             val authEvidenceId = UUID.randomUUID()
-            val evidence = EvidenceTrail(accountId = 1L, now = TEST_NOW)
+            val evidence = EvidenceTrail(Subject.Account(1L), TEST_NOW)
             val authEvidenceRepository = mockk<EvidenceTrailRepository>()
             every { authEvidenceRepository.findById(authEvidenceId) } returns Optional.of(evidence)
             every { authEvidenceRepository.save(any()) } answers { firstArg() }
@@ -55,7 +56,7 @@ class AuthEvidenceServiceTest : BehaviorSpec({
     given("no AuthContext was ever minted from this evidence") {
         then("is a no-op - nothing to invalidate, no pointless save") {
             val authEvidenceId = UUID.randomUUID()
-            val evidence = EvidenceTrail(accountId = 1L, now = TEST_NOW)
+            val evidence = EvidenceTrail(Subject.Account(1L), TEST_NOW)
             val authEvidenceRepository = mockk<EvidenceTrailRepository>()
             every { authEvidenceRepository.findById(authEvidenceId) } returns Optional.of(evidence)
             every { authEvidenceRepository.save(any()) } answers { firstArg() }

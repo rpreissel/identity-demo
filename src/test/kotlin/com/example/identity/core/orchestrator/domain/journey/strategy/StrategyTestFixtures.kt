@@ -16,6 +16,7 @@ import com.example.identity.tools.auth_password.AuthPasswordDescriptor
 import com.example.identity.tools.auth_password.EnrollPasswordDescriptor
 import com.example.identity.tools.auth_qr.AuthQrDescriptor
 import com.example.identity.tools.auth_qr.AuthQrLookupDescriptor
+import com.example.identity.tools.auth_invite.AuthInviteDescriptor
 import com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor
 import com.example.identity.tools.auth_qr.EnrollQrDescriptor
 import com.example.identity.tools.auth_sms.AuthSmsLookupDescriptor
@@ -52,7 +53,8 @@ object StrategyTestFixtures {
             EnrollPasswordDescriptor, AuthPasswordDescriptor, AuthPasswordLookupDescriptor,
             EnrollDeviceDescriptor, AuthDeviceDescriptor,
             EnrollKobilDescriptor, AuthKobilDescriptor,
-            EnrollQrDescriptor, AuthQrDescriptor, AuthQrLookupDescriptor, ConfirmQrLoginDescriptor
+            EnrollQrDescriptor, AuthQrDescriptor, AuthQrLookupDescriptor, ConfirmQrLoginDescriptor,
+            AuthInviteDescriptor
         )
     )
     val policy = DefaultAuthPolicy(catalog)

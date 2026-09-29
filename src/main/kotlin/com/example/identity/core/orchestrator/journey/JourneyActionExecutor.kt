@@ -36,6 +36,7 @@ import com.example.identity.contract.tool_api.directory.Resolution
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.claims.assertClaimsCovered
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -166,7 +167,7 @@ class JourneyActionExecutor(
      */
     private fun rebindAccount(journey: AuthJourney, channel: ChannelSession, from: Long, to: Long) {
         journey.accountId = to
-        channel.accountId = to
+        channel.subject = Subject.Account(to)
         channel.authEvidenceId?.let { authEvidenceService.rebindToAccount(it, to) }
         if (channel.channel == ChannelType.APP) {
             channel.bindingKeyRef?.let { bindingKeyRef ->
@@ -279,7 +280,12 @@ class JourneyActionExecutor(
 
     private fun performAcceptProof(journey: AuthJourney, channel: ChannelSession, action: Action.AcceptProof) {
         val authenticated = action.outcome
-        val accountId = accountOfProof(action.tool.role, action.outcome.accountId, channel.accountId)
+        val named = when (val subject = authenticated.subject) {
+            is Subject.Invitation -> return acceptInvitation(journey, channel, action, subject.hash)
+            is Subject.Account -> subject.id
+            null -> null
+        }
+        val accountId = accountOfProof(action.tool.role, named, channel.accountId)
         bindAccount(journey, channel, accountId)
         linkDeviceIfIntentImplies(journey, channel, accountId)
         // Capped by the instance that was used, see proofLevel (ADR-5).
@@ -287,6 +293,26 @@ class JourneyActionExecutor(
             accountService.findActiveMethods(accountId, action.tool.method), action.tool.keyBinding, channel.bindingKeyRef, authenticated.achievedAcr
         )
         journeyRecorder.recordToolCompletion(journey, channel, action.tool, authenticated, effectiveAcr)
+    }
+
+    /**
+     * A one-time password names an invitation instead of an account
+     * (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md): it becomes the channel's subject, and no account
+     * is bound, found or created. Only an anonymous channel can take it: an
+     * account in hand and an invitation never share a session, and a second invitation does not
+     * replace the first.
+     */
+    private fun acceptInvitation(journey: AuthJourney, channel: ChannelSession, action: Action.AcceptProof, invitation: String) {
+        // Web only for now: the App's journeys and tokens know no subject other than an account.
+        check(channel.channel == ChannelType.KEYCLOAK) { "A one-time password signs in on the Web channel only" }
+        check(action.tool.role == MethodRole.LOOKUP_AUTH) { "Only a lookup tool may name an invitation" }
+        check(channel.accountId == null && channel.invitation == null && channel.authEvidenceId == null) {
+            "A process access needs a channel without a subject"
+        }
+        channel.subject = Subject.Invitation(invitation)
+        channel.authEvidenceId = authEvidenceService.createForInvitation(invitation).authEvidenceId
+        sessionManagementService.updateChannelSession(channel)
+        journeyRecorder.recordToolCompletion(journey, channel, action.tool, action.outcome, action.outcome.achievedAcr)
     }
 
     /**
@@ -409,7 +435,7 @@ class JourneyActionExecutor(
      */
     private fun bindAccount(journey: AuthJourney, channel: ChannelSession, accountId: Long) {
         journey.accountId = accountId
-        channel.accountId = accountId
+        channel.subject = Subject.Account(accountId)
         if (channel.authEvidenceId == null) {
             // Fresh login: start a new evidence trail rather than reuse a stale one.
             val evidenceId = checkNotNull(authEvidenceService.createForAccount(accountId).authEvidenceId)

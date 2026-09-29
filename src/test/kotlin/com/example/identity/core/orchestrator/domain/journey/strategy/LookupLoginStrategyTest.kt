@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginStrategy
 import com.example.identity.tools.auth_sms.AuthSmsLookupDescriptor
 import com.example.identity.core.orchestrator.domain.journey.Action
@@ -49,7 +50,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
         val state = LookupLoginState.Credential(Offer(listOf(ToolId("auth-sms-lookup"))))
 
         `when`("the tool completes Authenticated with its own account (the first, account-resolving proof)") {
-            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("sms"), accountId = 42L)
+            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("sms"), subject = Subject.Account(42L))
             val event = JourneyEvent.Completed(AuthSmsLookupDescriptor, outcome)
             val transition = strategy.transition(state, event, ctx())
             then("trusts the tool's own account") {
@@ -102,7 +103,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
                 transition.shouldBeInstanceOf<Transition.To>()
                 val to = transition.state
                 to.shouldBeInstanceOf<LookupLoginState.Credential>()
-                to.offered shouldContainExactly listOf(ToolId("auth-sms-lookup"), ToolId("auth-email-lookup"), ToolId("auth-password-lookup"), ToolId("auth-qr-lookup"))
+                to.offered shouldContainExactly listOf(ToolId("auth-sms-lookup"), ToolId("auth-email-lookup"), ToolId("auth-password-lookup"), ToolId("auth-qr-lookup"), ToolId("auth-invite"))
             }
         }
 

@@ -32,6 +32,8 @@ import com.example.identity.core.orchestrator.session.TokenService
 import com.example.identity.core.orchestrator.session.toCoreEvidence
 import com.example.identity.contract.tool_api.envelope.ActiveMethodView
 import com.example.identity.contract.tool_api.envelope.AuthData
+import com.example.identity.contract.tool_api.envelope.AuthSubject
+import com.example.identity.contract.tool_api.envelope.AuthSubjectType
 import com.example.identity.contract.tool_api.envelope.ChannelBlock
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.MethodRole
@@ -99,7 +101,9 @@ class ChannelResponseAssembler(
             val account = channel.accountId?.let { id -> accountService.findAccount(id) }
             authPolicy.resolveAcr(it.toCoreEvidence(), account)
         }
-        return AuthData(accountId = channel.accountId, acr = acr?.value, amr = amr)
+        val subject = channel.accountId?.let { AuthSubject(AuthSubjectType.ACCOUNT, it.toString()) }
+            ?: channel.invitation?.let { AuthSubject(AuthSubjectType.INVITATION, it) }
+        return AuthData(accountId = channel.accountId, acr = acr?.value, amr = amr, subject = subject)
     }
 
     /**

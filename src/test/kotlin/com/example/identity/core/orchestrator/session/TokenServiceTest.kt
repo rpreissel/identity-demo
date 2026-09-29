@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import io.kotest.assertions.throwables.shouldThrow
@@ -46,7 +47,7 @@ class TokenServiceTest : BehaviorSpec({
         this.authEvidenceId = authEvidenceId
     }
 
-    fun evidence(accountId: Long? = 42L) = EvidenceTrail(accountId = accountId, now = TEST_NOW).apply {
+    fun evidence(accountId: Long = 42L) = EvidenceTrail(Subject.Account(accountId), TEST_NOW).apply {
         addAmr(
             listOf(
                 MethodEvidence(MethodName("sms"), AcrLevel.LOA1, amrSourceId = "auth-sms", source = AmrSource.ORCHESTRATOR),

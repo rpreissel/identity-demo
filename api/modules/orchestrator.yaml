@@ -389,6 +389,30 @@ components:
           example: loa2
           type: string
       type: object
+    KcInvitationView:
+      properties:
+        attributes:
+          additionalProperties:
+            type: string
+          type: object
+        enabled:
+          type: boolean
+        firstName:
+          type: string
+        invitation:
+          type: string
+        lastName:
+          type: string
+        username:
+          type: string
+      required:
+      - attributes
+      - enabled
+      - firstName
+      - invitation
+      - lastName
+      - username
+      type: object
     KeycloakClientSessionsView:
       properties:
         client:
@@ -1850,6 +1874,39 @@ paths:
       summary: Fetch this channel's signed RestoreData
       tags:
       - KC channels
+  /orchestrator/api/v1/kc/invitations/{invitation}:
+    get:
+      operationId: byInvitation
+      parameters:
+      - in: path
+        name: invitation
+        required: true
+        schema:
+          type: string
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KcInvitationView'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - kc-peer-auth: [
+          ]
+      summary: The invitation as Keycloak shows it, as a user of its own
+      tags:
+      - KC invitation lookup
   /orchestrator/api/v1/kc/response-jwks/.well-known/jwks.json:
     get:
       operationId: keycloakResponseJwks
@@ -2117,6 +2174,8 @@ tags:
   name: Channels
 - description: Gerätebindung über den externen Dienstleister KOBIL
   name: 'Tool: KOBIL'
+- description: Read-through invitation lookup for Keycloak's user federation
+  name: KC invitation lookup
 - description: Live channels and open Keycloak sessions
   name: 'Admin: sessions'
 - description: Wordings for the text references in every response, per language, with ETag
