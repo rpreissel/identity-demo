@@ -179,7 +179,7 @@ class KcChannelService(
             val channel = kcChannelAccessGuard.requireChannel(channelSessionId, assertion)
             // Step-up (docs/05-api.md Abschnitt 3): binds the channel to the account Keycloak knows,
             // once. A request naming another subject - another account, or an account where an
-            // invitation signed in, or the reverse - is a mismatch, not a rebind (I-5, I-29).
+            // invitation signed in, or the reverse - is a mismatch, not a rebind (I-5).
             val bound = channel.subject
             if (effectiveSubject is Subject.Invitation && bound != effectiveSubject) throw invitationNotRaised()
             if (effectiveSubject != null && bound != null && bound != effectiveSubject) {

@@ -97,7 +97,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
     }
 
     init {
-        given("a Web channel signed in as an invitation (I-29)") {
+        given("a Web channel signed in as an invitation (I-5)") {
             fun signedInAsInvitation(): Pair<UUID, String> {
                 val issued = issue("P000000001", "loa1")
                 val (channelSessionId, toolSessionId) = openInviteTool("loa1")
