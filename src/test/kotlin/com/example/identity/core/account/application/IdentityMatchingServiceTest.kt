@@ -24,11 +24,11 @@ import java.time.Instant
 import java.time.LocalDate
 
 /**
- * Pins the resolution policy of the central identity matching (docs/02-domaenenmodell.md #6; docs/ideen/account-attribute-und-trust-
- * vereinheitlichen.md, "Gemeinsame Aufloesung"): the tool-attested consistency check and
- * anchor-only resolution (ADR-19). Anchors resolve through `account.anchor`, PERSON_ID ranks
- * highest, and the eID card pseudonym is the recognition anchor for eid. The consistency check
- * compares only name/vorname/geburtsdatum, since the register cannot confirm the other claims.
+ * Pins the resolution policy of the central identity matching (docs/02-domaenenmodell.md #6): the
+ * tool-attested consistency check and anchor-only resolution (ADR-19). Anchors resolve through
+ * `account.anchor`, PERSON_ID ranks highest, and the eID card pseudonym is the recognition anchor
+ * for eid. The consistency check compares only name/vorname/geburtsdatum, since the register cannot
+ * confirm the other claims.
  */
 class IdentityMatchingServiceTest : BehaviorSpec({
 

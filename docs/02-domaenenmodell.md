@@ -356,7 +356,7 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
   verschiedene Sicherheitsregeln. `ClaimSource` (woher eine Aussage kommt) und `AmrSource` (woher
   ein Nachweis der Sitzung kommt) haben unterschiedliche Werte.
 - Entscheidungen: [12-entscheidungen.md](12-entscheidungen.md) ADR-10/ADR-11/ADR-12/ADR-19 und `db/migration/KONVENTIONEN.md`. Offene Umbenennungen:
-  [ideen/account-attribute-und-trust-vereinheitlichen.md](ideen/account-attribute-und-trust-vereinheitlichen.md).
+  [ideen/begriffe-vereinheitlichen.md](ideen/begriffe-vereinheitlichen.md).
   Das Zusammenführen von Konten ist eine zurückgestellte Verbesserung
   ([12-entscheidungen.md](12-entscheidungen.md)).
 

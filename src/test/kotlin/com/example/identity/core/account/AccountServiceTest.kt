@@ -111,7 +111,7 @@ class AccountServiceTest : BehaviorSpec({
             every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.PERSON_ID, "P000000099") } returns null
             every { accountAnchorRepository.findByAccountIdAndAttributeType(7L, AttributeType.PERSON_ID) } returns existingAnchor
 
-            then("it is rejected - person_id is immutable after first binding (docs/ideen/account-attribute-und-trust-vereinheitlichen.md)") {
+            then("it is rejected - person_id is immutable after first binding (docs/02-domaenenmodell.md Abschnitt 6)") {
                 shouldThrow<IdentityConflictException> {
                     service.recordClaim(7L, Claim(AttributeType.PERSON_ID, "P000000099", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
                 }
@@ -209,7 +209,7 @@ class AccountServiceTest : BehaviorSpec({
                 provenAcr = AcrLevel.LOA2
             )
 
-            then("the existing row is UPDATED in place, not deleted and re-inserted (real unique-constraint ordering, docs/ideen/account-attribute-und-trust-vereinheitlichen.md)") {
+            then("the existing row is UPDATED in place, not deleted and re-inserted (real unique-constraint ordering, docs/02-domaenenmodell.md Abschnitt 6)") {
                 verify(exactly = 0) { accountAnchorRepository.delete(any()) }
                 // savedAnchors is shared with the first `when`; the rebind saves the mutated
                 // oldAnchor instance, not a fresh AccountAnchor.
