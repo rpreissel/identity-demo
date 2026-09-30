@@ -34,9 +34,14 @@ class InvariantRegisterTest : BehaviorSpec({
         }
     val migrations = filesUnder("src/main/resources/db/migration", "sql").joinToString("\n") { it.readText() }
 
-    /** One entry per "- **I-n ...**" bullet: its id and the lines belonging to it. */
-    val entries: Map<String, String> = Regex("""(?m)^- \*\*(I-\d+) .*?(?=^- \*\*I-|\z)""", RegexOption.DOT_MATCHES_ALL)
-        .findAll(register).associate { it.groupValues[1] to it.value }
+    /** One entry per "- **I-n ...**" bullet: its id and the lines belonging to it, up to the next bullet or heading. */
+    val entryMatches = Regex("""(?m)^- \*\*(I-\d+) .*?(?=^- \*\*I-|^#|\z)""", RegexOption.DOT_MATCHES_ALL)
+        .findAll(register).map { it.groupValues[1] to it.value }.toList()
+    val entries: Map<String, String> = entryMatches.toMap()
+
+    /** Numbers that were merged or dropped, listed at the end of the register - never to be reused. */
+    val retired: Set<String> = Regex("""(?m)^- (I-\d+) """).findAll(register.substringAfter("## Nicht mehr vergebene Nummern", ""))
+        .map { it.groupValues[1] }.toSet()
 
     val mechanism = Regex("`(test|archunit|type|sql):([A-Za-z0-9_]+)`")
 
@@ -45,8 +50,21 @@ class InvariantRegisterTest : BehaviorSpec({
             (if (entries.size < 10) listOf("only ${entries.size} entries found") else emptyList()).shouldBeEmpty()
         }
 
+        then("every number is used once and never again after it was retired") {
+            entryMatches.groupingBy { it.first }.eachCount().filterValues { it > 1 }.keys.shouldBeEmpty()
+            entries.keys.intersect(retired).shouldBeEmpty()
+        }
+
+        then("every rule explains in plain words what it is about") {
+            entries.filter { (_, text) -> "\n  - Worum es geht: " !in text }.keys.shouldBeEmpty()
+        }
+
         then("every rule names a mechanism or is marked as a gap") {
             entries.filter { (_, text) -> mechanism.find(text) == null && "Lücke" !in text }.keys.shouldBeEmpty()
+        }
+
+        then("every gap names the issue that is to close it") {
+            entries.filter { (_, text) -> "Lücke" in text && !Regex("""Issue `DPoP-demo-[\w.]+`""").containsMatchIn(text) }.keys.shouldBeEmpty()
         }
 
         then("every named mechanism exists") {
