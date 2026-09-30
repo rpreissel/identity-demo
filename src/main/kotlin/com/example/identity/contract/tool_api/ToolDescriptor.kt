@@ -29,7 +29,7 @@ interface ToolDescriptor {
      */
     val method: String
 
-    /** The role this tool plays for [method]. See [ToolRole]. Its [ToolRole.category] is the tool's coarse grouping. */
+    /** The role this tool plays for [method]. See [ToolRole]. */
     val role: ToolRole
 
     /**
@@ -148,39 +148,14 @@ fun interface CallerKeyBinding {
     fun livesOn(instanceDetails: Map<String, Any?>?, callerBindingKeyRef: String?): Boolean
 }
 
-/** Coarse grouping of a tool. See [ToolRole.category]. */
-enum class ToolCategory {
-    /** Establishes who the subject is, raising the identity axis (IAL). Never a credential. */
-    IDENT,
-
-    /** Creates a durable credential the account can authenticate with later. */
-    ENROLL,
-
-    /** Proves an existing credential, raising the authenticator axis (AAL). */
-    AUTH,
-
-    /**
-     * Decides on another channel's pending request instead of proving anything about its own
-     * channel. Contributes nothing to the own ACR/AMR and never closes a gap
-     * (docs/03-tool-architektur.md).
-     */
-    SIDE_ACTION,
-
-    /**
-     * Proves the subject controls an attribute the account owns as an anchor and others depend on,
-     * e.g. the email address. Resolves nobody, creates no credential, adds nothing to ACR/AMR
-     * (docs/03-tool-architektur.md #2).
-     */
-    ATTEST
-}
-
 /**
  * The role a tool plays for its [ToolDescriptor.method]. `(method, role)` identifies a concrete
- * procedure; `(method, category)` does not, since several roles share a category.
+ * procedure. Decisions ask for the role itself, never a coarser grouping: identification and
+ * correlation look alike but only identification proves anything.
  */
-enum class ToolRole(val category: ToolCategory, val defaultStartStep: String) {
+enum class ToolRole(val defaultStartStep: String) {
     /** Resolves identity (e.g. `ident-fsc`). Never establishes a durable credential. */
-    IDENTIFICATION(ToolCategory.IDENT, "input"),
+    IDENTIFICATION("input"),
 
     /**
      * Attaches an already attested identity to its register person (e.g. `ident-kvnr` with the
@@ -189,31 +164,33 @@ enum class ToolRole(val category: ToolCategory, val defaultStartStep: String) {
      * is only accepted if the person matches what the account had attested. [ToolDescriptor.maxAcr]
      * describes the attestation the step rests on, not what typing the number proved.
      */
-    CORRELATION(ToolCategory.IDENT, "input"),
+    CORRELATION("input"),
 
     /** Creates a new credential for the method (e.g. `enroll-sms`). */
-    ENROLLMENT(ToolCategory.ENROLL, "enroll"),
+    ENROLLMENT("enroll"),
 
     /** Proves a credential for an account the channel already knows (e.g. `auth-sms`). */
-    KNOWN_ACCOUNT_AUTH(ToolCategory.AUTH, "auth"),
+    KNOWN_ACCOUNT_AUTH("auth"),
 
     /**
      * Proves the same credential as its [KNOWN_ACCOUNT_AUTH] sibling, but resolves the account from a
      * submitted identifier (e.g. `auth-sms-lookup`).
      */
-    ACCOUNT_LOOKUP_AUTH(ToolCategory.AUTH, "auth"),
+    ACCOUNT_LOOKUP_AUTH("auth"),
 
     /**
      * Approves or declines a pending request from another channel (e.g. `confirm-qr-login` deciding
      * an `auth-qr` pairing, docs/03-tool-architektur.md). All other roles act on their own channel.
+     * Contributes nothing to its own channel's ACR/AMR and never closes a gap.
      */
-    PEER_APPROVAL(ToolCategory.SIDE_ACTION, "input"),
+    PEER_APPROVAL("input"),
 
     /**
-     * Attests an attribute the account owns (e.g. `confirm-email`): asserts claims, resolves no
-     * identity, leaves no credential. See [ToolCategory.ATTEST].
+     * Attests an attribute the account owns and others depend on (e.g. `confirm-email`): asserts
+     * claims, resolves no identity, leaves no credential, adds nothing to ACR/AMR
+     * (docs/03-tool-architektur.md #2).
      */
-    ATTESTATION(ToolCategory.ATTEST, "input")
+    ATTESTATION("input")
 }
 
 /** A kind of authentication factor a method can provide. */

@@ -19,7 +19,6 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimRequirement
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolRole
-import com.example.identity.contract.tool_api.ToolCategory
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import java.time.Clock
@@ -121,7 +120,7 @@ class DefaultAuthPolicy(
         val account = checkNotNull(ctx.account) { "enrollmentCandidates requires an account in CandidateContext" }
         val activeMethods = account.authenticationMethods.filter { it.active }.map { it.method }.toSet()
         return toolRegistry.descriptors()
-            .filter { it.role.category == ToolCategory.ENROLL }
+            .filter { it.role == ToolRole.ENROLLMENT }
             // Singleton methods disappear once active; multi-instance methods (device) stay, so a
             // new device can add its own instance.
             .filter { it.method !in activeMethods || it.allowsMultipleInstances }

@@ -9,7 +9,6 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.CallerKeyBinding
 import com.example.identity.contract.tool_api.ToolRole
-import com.example.identity.contract.tool_api.ToolCategory
 
 /*
  * At which level a credential counts, which device link follows from succeeding, and what else falls
@@ -91,7 +90,7 @@ class MethodDependencies(
             val standing = account.activeAuthenticationMethods.filter { it.id !in fallingIds }
             val next = standing.filter { instance ->
                 catalog.descriptors()
-                    .filter { it.method == instance.method && it.role.category == ToolCategory.ENROLL }
+                    .filter { it.method == instance.method && it.role == ToolRole.ENROLLMENT }
                     .any { descriptor -> descriptor.requires.any { it.attributeType in lostSoFar } }
             }
             if (next.isEmpty()) return casualties.drop(falling.size)

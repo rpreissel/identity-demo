@@ -541,15 +541,12 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   auf eine eingegebene TAN. Seine Kennung ist eine andere als die des Tools selbst.
   *Im Code:* `ToolSession`, `toolSessionId` (nicht `toolId`).
   *Mehr dazu:* [02-domaenenmodell](../02-domaenenmodell.md) Abschnitt 1.
-- **Tool-Kategorie**: siehe Tool-Rolle.
 - **Tool-Rolle**: Was ein Tool fachlich tut: identifizieren, zuordnen, ein Verfahren einrichten, ein
   bekanntes Konto anmelden, ein Konto anhand der Eingabe suchen und anmelden, eine Anmeldung in einem
   anderen Kanal freigeben oder eine Angabe bestätigen. Aus der Rolle folgt, ob und wie ein Ergebnis
-  das Sicherheitsniveau erhöht. Grob zusammengefasst ergeben die Rollen fünf Kategorien:
-  identifizieren, einrichten, anmelden, bestätigen und eine Nebenhandlung für einen anderen Kanal.
+  das Sicherheitsniveau erhöht.
   *Im Code:* `ToolRole` mit `IDENTIFICATION`, `CORRELATION`, `ENROLLMENT`, `KNOWN_ACCOUNT_AUTH`,
-  `ACCOUNT_LOOKUP_AUTH`, `PEER_APPROVAL`, `ATTESTATION`; die Kategorie `ToolCategory` mit `IDENT`,
-  `ENROLL`, `AUTH`, `ATTEST`, `SIDE_ACTION`.
+  `ACCOUNT_LOOKUP_AUTH`, `PEER_APPROVAL`, `ATTESTATION`.
   *Mehr dazu:* [03-tool-architektur](../03-tool-architektur.md) Abschnitt 2.
 - **Tool-Sperre**: Der Betreiber kann ein Tool für den App-Kanal oder den Web-Kanal abschalten und
   die Reihenfolge festlegen, in der Tools angeboten werden. Ein gesperrtes Tool erscheint in keinem

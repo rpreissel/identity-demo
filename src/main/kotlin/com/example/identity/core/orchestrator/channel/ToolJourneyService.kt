@@ -26,11 +26,11 @@ import com.example.identity.contract.tool_api.envelope.Next
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ToolCategory
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.tool_api.Subject
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolOutcome
 import java.net.URI
 import java.time.Duration
@@ -90,7 +90,7 @@ class ToolJourneyService(
         // Only for a tool whose account the channel knows (KNOWN_ACCOUNT_AUTH). ACCOUNT_LOOKUP_AUTH and IDENT
         // tools are rate-limited where they resolve their subject ([Lockouts]) and
         // answer with their ordinary failure instead of this explicit 423.
-        if (descriptor.role.category == ToolCategory.AUTH) {
+        if (descriptor.role == ToolRole.KNOWN_ACCOUNT_AUTH) {
             channel.accountId?.let { accountLockoutService.assertNotLocked(it) }
         }
 

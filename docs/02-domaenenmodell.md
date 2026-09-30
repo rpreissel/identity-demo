@@ -180,11 +180,11 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
   nachgewiesen sein.
 - `JourneyLifecycle`: `STARTED`, `SUSPENDED`, `SUCCEEDED`, `FAILED`, `CANCELLED`, `EXPIRED`,
   `CONSUMED`
-- `ToolCategory`: `IDENT`, `ENROLL`, `AUTH`, `SIDE_ACTION`, `ATTEST` – das Modul gibt sie selbst
-  an. `SIDE_ACTION` bestätigt eine Anfrage auf einem anderen Kanal und trägt nichts zum Nachweis
-  des eigenen Kanals bei. `ATTEST` bestätigt ein Attribut, das dem Konto gehört (etwa die
-  E-Mail-Adresse), und trägt ebenfalls nichts zum Niveau bei
-  ([Tool-Architektur](03-tool-architektur.md)).
+- `ToolRole`: `IDENTIFICATION`, `CORRELATION`, `ENROLLMENT`, `KNOWN_ACCOUNT_AUTH`,
+  `ACCOUNT_LOOKUP_AUTH`, `PEER_APPROVAL`, `ATTESTATION` – das Modul gibt sie selbst an. `PEER_APPROVAL`
+  bestätigt eine Anfrage auf einem anderen Kanal und trägt nichts zum Nachweis des eigenen Kanals
+  bei. `ATTESTATION` bestätigt ein Attribut, das dem Konto gehört (etwa die E-Mail-Adresse), und
+  trägt ebenfalls nichts zum Niveau bei ([Tool-Architektur](03-tool-architektur.md)).
 - `FactorType`: `KNOWLEDGE`, `POSSESSION`, `INHERENCE` – gibt das Modul ebenfalls selbst an; darauf
   beruht die Prüfung, ob verschiedene Faktortypen vorliegen ([Orchestrierung](04-orchestrierung.md)).
 

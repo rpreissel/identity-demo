@@ -4,8 +4,8 @@
 
 ## Entscheidung
 
-Eine E-Mail-Adresse zu bestätigen ist ein eigenes Tool, `confirm-email`. Es hat die Kategorie
-`ToolCategory.ATTEST` (Rolle `ATTESTATION`) und ein eigenes Ergebnis,
+Eine E-Mail-Adresse zu bestätigen ist ein eigenes Tool, `confirm-email`. Es hat die Rolle
+`ATTESTATION` und ein eigenes Ergebnis,
 `ToolOutcome.Completed.Attested`: mit Claims, aber ohne `enrollmentRef`, ohne `amr`, ohne eigenes
 Niveau und ohne eingerichtetes Verfahren. Die bestätigte Adresse wird damit Teil des Kontos und kein Verfahren.
 

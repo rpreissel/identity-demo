@@ -8,7 +8,6 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.ToolRole
-import com.example.identity.contract.tool_api.ToolCategory
 import com.example.identity.contract.tool_api.ToolOutcome
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -110,7 +109,6 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
     given("the descriptor") {
         then("it declares itself a correlation step - stated, not inferred from an empty factor set") {
             IdentKvnrDescriptor.role shouldBe ToolRole.CORRELATION
-            IdentKvnrDescriptor.role.category shouldBe ToolCategory.IDENT
         }
 
         then("it is only offerable once an attestation established the identity to match against") {

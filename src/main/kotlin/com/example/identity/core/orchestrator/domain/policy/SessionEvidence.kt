@@ -5,7 +5,6 @@ import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolRole
-import com.example.identity.contract.tool_api.ToolCategory
 import com.example.identity.contract.tool_api.ToolDescriptor
 import java.time.Instant
 
@@ -34,8 +33,8 @@ enum class EvidenceAxis {
  * Which assurance axis a completed run of this tool raises, or `null` for neither. For `null` no
  * [MethodEvidence] is recorded, so such a tool cannot move an ACR.
  *
- * Keyed on [ToolRole], not [ToolCategory]: `IDENT` matches both an identification and a
- * [ToolRole.CORRELATION] step. Exhaustive on purpose, so a new role must state its axis.
+ * Exhaustive over [ToolRole] on purpose, so a new role must state its axis. An identification and a
+ * [ToolRole.CORRELATION] step look alike, but only the identification raises the IAL.
  */
 fun ToolDescriptor.evidenceAxis(): EvidenceAxis? = when (role) {
     // Proves who the subject is - the only role that may raise the IAL.

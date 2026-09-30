@@ -233,8 +233,6 @@ Eintrags führt zum Buchstaben dort.
   [Glossar](glossar.md#u)
 - **`tool_api`** → die Modulgrenze, über die die Verfahren am **Orchestrator** hängen.
   [Glossar](glossar.md#o)
-- **`ToolCategory`** (`IDENT`, `ENROLL`, `AUTH`, `ATTEST`, `SIDE_ACTION`) → **Tool-Kategorie**.
-  [Glossar](glossar.md#t)
 - **`ToolDescriptor`** → wie sich ein **Tool** selbst beschreibt: Rolle, Verfahren, Faktortypen,
   Obergrenze. [Glossar](glossar.md#t)
 - **`toolId`** → **Tool**: ein einzelner Ablauf, etwa `enroll-sms`. [Glossar](glossar.md#t)

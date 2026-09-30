@@ -259,7 +259,7 @@ Die Entscheidungen dahinter:
   die Anmeldung bestätigt, muss laut `ConfirmPeerLoginStrategy.gate()` vorher selbst frisch loa2
   nachgewiesen haben. Das ist MFA aus einem einzigen Verfahren wie bei `ident-eid` und passt zu
   `maxAcr=loa2`.
-- `confirm-qr-login` hat die Rolle `ToolRole.PEER_APPROVAL` (Kategorie `SIDE_ACTION`), denn
+- `confirm-qr-login` hat die Rolle `ToolRole.PEER_APPROVAL`, denn
   keine der übrigen Rollen passt auf „bestätigt, was jemand anderes tut".
 
 Zentral bleibt nur, was ein Modul nicht wissen *kann*: welches Niveau sich aus einer
@@ -331,15 +331,15 @@ aus Abschnitt 1:
 |---|---|
 | `toolId` | z. B. `"auth-sms"` – frei vergeben, nie aus `role` und `method` abgeleitet (öffentlicher API-Vertrag) |
 | `method` | z. B. `"sms"` – verbindet `enroll-sms`, `auth-sms` und `auth-sms-lookup` |
-| `role` | `IDENTIFICATION` \| `CORRELATION` \| `ATTESTATION` \| `ENROLLMENT` \| `KNOWN_ACCOUNT_AUTH` \| `ACCOUNT_LOOKUP_AUTH` \| `PEER_APPROVAL`; die Kategorie (`role.category`: `IDENT`/`ATTEST`/`ENROLL`/`AUTH`/`SIDE_ACTION`) wird direkt daraus gelesen und nicht auf dem Descriptor wiederholt |
+| `role` | `IDENTIFICATION` \| `CORRELATION` \| `ATTESTATION` \| `ENROLLMENT` \| `KNOWN_ACCOUNT_AUTH` \| `ACCOUNT_LOOKUP_AUTH` \| `PEER_APPROVAL`; jede Entscheidung fragt die Rolle selbst, keine gröbere Einteilung |
 | `factorTypes`, `maxAcr` | feste Obergrenzen dieses Tools |
 | `claims` | welche Attribute das Tool mit welcher `ClaimSource` bezeugen darf; ein Durchlauf meldet nie mehr |
 | `startStep` | erster Schritt eines neuen Durchlaufs, standardmäßig aus der Rolle abgeleitet (`role.defaultStartStep`) |
 | `requires`, `allowsMultipleInstances`, `keyBinding`, `instanceDisclosure` | standardmäßig leere Menge, `false`, `null` bzw. `null` |
 
 `(method, role)` ist der eindeutige Schlüssel für „das konkrete Verfahren dieser Art für dieses
-Credential". `(method, role.category)` allein reicht nicht, weil sich `KNOWN_ACCOUNT_AUTH` und
-`ACCOUNT_LOOKUP_AUTH` die Kategorie `AUTH` teilen. `ToolHandlerRegistry` lehnt beim Einsammeln der
+Credential": `auth-sms` und `auth-sms-lookup` gehören zum selben Verfahren, haben aber verschiedene
+Rollen. `ToolHandlerRegistry` lehnt beim Einsammeln der
 Descriptors ein doppeltes Paar `(method, role)` ab, statt unbemerkt einen der beiden zu nehmen.
 
 `tool_api` kennt **keine** konkreten Verfahren. Jedes Modul deklariert seine eigene Konstante (z. B.
@@ -434,12 +434,11 @@ im Änderungsprotokoll wiedergefunden, auch nach der Löschung ihres Kontos (ADR
 `ToolHandlerRegistry` verweigert den Start, wenn ein Verfahren der Rolle `IDENTIFICATION` eines der
 drei nicht deklariert.
 
-`ToolCategory.SIDE_ACTION` benennt, was `PEER_APPROVAL`-Tools gemeinsam haben: Sie tragen nichts
-zu ACR und AMR des *eigenen* Kanals bei, werden nie vorausgewählt, um eine Lücke zu schließen, und
-nur ausdrücklich per `intent` gestartet. Bewusst heißt die Kategorie **nicht** `MISC` oder `OTHER`:
-Das würde die Vollständigkeit aushebeln, die `ToolCategory` als abgeschlossenes `enum` sichert.
-`AuthPolicy.candidateTools` und `enrollmentCandidates` haben einen eigenen Zweig für
-`SIDE_ACTION`, der nichts anbietet. Lehnt jemand eine fremde Anfrage ab, braucht das **kein**
+Tools der Rolle `PEER_APPROVAL` tragen nichts zu ACR und AMR des *eigenen* Kanals bei
+(`evidenceAxis` ist für sie `null`), werden nie als Kandidat angeboten, um eine Lücke zu schließen,
+und nur ausdrücklich per `intent` gestartet. Weil `ToolRole` ein abgeschlossenes `enum` ist und
+`evidenceAxis` jede Rolle ausdrücklich behandelt, muss eine neue Rolle angeben, was sie zum Niveau
+beiträgt. Lehnt jemand eine fremde Anfrage ab, braucht das **kein**
 eigenes `ToolOutcome`; `Failed(reason = "Vom Nutzer abgelehnt")` genügt.
 
 - `InProgress.stepData` ist **für den Client bestimmt** (z. B. `missingFields`); `Completed` und
