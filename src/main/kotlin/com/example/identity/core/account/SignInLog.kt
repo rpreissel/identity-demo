@@ -64,11 +64,34 @@ class SignInLog(
     fun signedOut(accountId: Long, channel: String?, endedBy: String) =
         record(accountId, SignInType.SIGNED_OUT, channel, details = mapOf("endedBy" to endedBy))
 
+    /** A process access (ADR-48) left a Web channel signed in as [invitation]. */
+    @Transactional(propagation = Propagation.REQUIRED)
+    fun invitationSignedIn(invitation: String, channel: String?, acr: String?, amr: List<String>) =
+        save(SignInLogEntry(invitation = invitation, signInType = SignInType.SIGNED_IN, channel = channel, acr = acr,
+            details = details(SignInType.SIGNED_IN, mapOf("amr" to amr)), occurredAt = clock.instant()))
+
+    /** A session of [invitation] ended on purpose; [endedBy] as in [signedOut]. */
+    @Transactional(propagation = Propagation.REQUIRED)
+    fun invitationSignedOut(invitation: String, channel: String?, endedBy: String) =
+        save(SignInLogEntry(invitation = invitation, signInType = SignInType.SIGNED_OUT, channel = channel,
+            details = details(SignInType.SIGNED_OUT, mapOf("endedBy" to endedBy)), occurredAt = clock.instant()))
+
     @Transactional(readOnly = true)
     fun of(accountId: Long): List<SignInRecord> =
-        repository.findByAccountIdOrderByOccurredAt(accountId).map {
-            SignInRecord(it.signInType.name, it.channel, it.acr, it.details.orEmpty(), it.occurredAt)
-        }
+        repository.findByAccountIdOrderByOccurredAt(accountId).map { it.toRecord() }
+
+    @Transactional(readOnly = true)
+    fun ofInvitation(invitation: String): List<SignInRecord> =
+        repository.findByInvitationOrderByOccurredAt(invitation).map { it.toRecord() }
+
+    private fun SignInLogEntry.toRecord() = SignInRecord(signInType.name, channel, acr, details.orEmpty(), occurredAt)
+
+    private fun details(type: SignInType, details: Map<String, Any?>) =
+        mapOf("type" to type.name, "version" to type.detailsVersion) + details.filterValues { it != null }
+
+    private fun save(entry: SignInLogEntry) {
+        repository.save(entry)
+    }
 
     private fun record(
         accountId: Long, type: SignInType, channel: String?, acr: String? = null, details: Map<String, Any?> = emptyMap(),
@@ -76,11 +99,10 @@ class SignInLog(
         // The log goes with the account - a session ending right after its account was deleted
         // (DELETE_ACCOUNT logs the channel out last) has nothing left to log against.
         if (!accounts.existsById(accountId)) return
-        repository.save(
+        save(
             SignInLogEntry(
                 accountId = accountId, signInType = type, channel = channel, acr = acr,
-                details = mapOf("type" to type.name, "version" to type.detailsVersion) + details.filterValues { it != null },
-                occurredAt = clock.instant(),
+                details = details(type, details), occurredAt = clock.instant(),
             )
         )
     }

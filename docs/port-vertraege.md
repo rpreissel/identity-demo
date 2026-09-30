@@ -67,7 +67,7 @@ Genutzt von `ident-nect` (loa3).
 - **Bindung an den Vorgang:** Der Fall gehört zu genau diesem Ablauf (Callback-URI); ein fremder
   Fall wird abgelehnt. Die Callback-URI nennt der Kanal beim Start (Web: Keycloaks Action-URL des
   laufenden Schritts), und `ident-nect` nimmt nur Adressen unter einem konfigurierten Präfix an; ein
-  `retry` behält sie. Nect hängt `nectCaseId` an eine Adresse an, die schon Parameter trägt.
+  `retry` behält sie, außer der Kanal nennt eine frische (Web: Keycloaks Code gilt nur einmal, ADR-47). Nect hängt `nectCaseId` an eine Adresse an, die schon Parameter trägt.
 - **Nur angefragte Attribute** werden geliefert; die Echtheit von Dokument und Person (Selfie gegen
   Passbild, Ablauf des Passes) prüft Nect und meldet das Ergebnis.
 

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.channel.KcChannelService
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.ninjasquad.springmockk.MockkBean
@@ -185,7 +186,7 @@ class AppLoginSessionIntegrationTest : IntegrationTestSupport() {
                 jdbcTemplate.update("UPDATE orchestrator.auth_context SET keycloak_session_id = 'kc-session-1' WHERE id = ?", authContextId(signedOut))
                 jdbcTemplate.update("UPDATE orchestrator.auth_context SET keycloak_session_id = 'kc-session-2' WHERE id = ?", authContextId(other))
 
-                kcChannelService.signedOutAtKeycloak(accountId, "kc-session-1")
+                kcChannelService.signedOutAtKeycloak(Subject.Account(accountId), "kc-session-1")
 
                 stateOf(signedOut) shouldBe "LOGGED_OUT"
                 stateOf(other) shouldBe "AUTHENTICATED"

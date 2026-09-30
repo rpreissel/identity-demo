@@ -19,7 +19,7 @@ public class InvitationStorageProviderFactory implements UserStorageProviderFact
 
     public static final String PROVIDER_ID = "orchestrator-invitations";
 
-    static Optional<ComponentModel> componentIn(RealmModel realm) {
+    public static Optional<ComponentModel> componentIn(RealmModel realm) {
         return realm.getStorageProviders(UserStorageProvider.class)
                 .filter(component -> PROVIDER_ID.equals(component.getProviderId()))
                 .findFirst();

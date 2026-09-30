@@ -100,13 +100,6 @@ export interface AnswerRequest {
  */
 export interface AuthData {
     /**
-     * Kept for compatibility; read [subject]. Set only when the subject is an account.
-     * @type {number}
-     * @memberof AuthData
-     * @deprecated
-     */
-    accountId?: number;
-    /**
      * 
      * @type {string}
      * @memberof AuthData
@@ -960,6 +953,12 @@ export interface IdentNectPatchRequest {
      * @memberof IdentNectPatchRequest
      */
     retry?: boolean;
+    /**
+     * With retry: where Nect sends the user back to this time, checked like on activation. The web channel names a fresh action URL, because Keycloak's action code is single-use; without it the address from the activation stays.
+     * @type {string}
+     * @memberof IdentNectPatchRequest
+     */
+    returnUri?: string;
 }
 /**
  * 
@@ -1054,17 +1053,11 @@ export interface KcAccountView {
     username: string;
 }
 /**
- * Upsert body for the kc-facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). All fields are optional. accountId is the account Keycloak already knows (sub vorhanden) - the channel is bound to it immediately, once, never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator ACR string, and only raises the channel's floor, never lowers it. amr lists which native Keycloak authenticators (never orchestrator tools) just proved something THIS flow run, one entry per proof - method/loa/factorTypes are resolved server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the kc-facade's own mirror of a ToolDescriptor, not resolved from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged into the channel's evidence and re-checked against the current floor exactly like any other proof; no separate 'combined native acr' field exists, since the orchestrator derives that itself.
+ * Upsert body for the kc-facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). All fields are optional. subject is whom Keycloak already knows (sub vorhanden) - an account binds the channel immediately, once, never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator ACR string, and only raises the channel's floor, never lowers it. amr lists which native Keycloak authenticators (never orchestrator tools) just proved something THIS flow run, one entry per proof - method/loa/factorTypes are resolved server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the kc-facade's own mirror of a ToolDescriptor, not resolved from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged into the channel's evidence and re-checked against the current floor exactly like any other proof; no separate 'combined native acr' field exists, since the orchestrator derives that itself.
  * @export
  * @interface KcChannelUpsertRequest
  */
 export interface KcChannelUpsertRequest {
-    /**
-     * 
-     * @type {number}
-     * @memberof KcChannelUpsertRequest
-     */
-    accountId?: number;
     /**
      * 
      * @type {Array<AmrEntry>}
@@ -1090,11 +1083,17 @@ export interface KcChannelUpsertRequest {
      */
     kcSessionId?: string;
     /**
-     * A signed RestoreData token this same UserSession's channel returned earlier via GET .../restore-data, resubmitted verbatim (docs/05-api.md, section 3) - the bulk, one-shot way to seed a brand-new channel with what a PRIOR, unrelated flow run already established, as opposed to accountId/amr above which report what THIS flow run just proved. Both are merged into the channel the same way; only restoreData may already be meaningfully old by the time it arrives here. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
+     * A signed RestoreData token this same UserSession's channel returned earlier via GET .../restore-data, resubmitted verbatim (docs/05-api.md, section 3) - the bulk, one-shot way to seed a brand-new channel with what a PRIOR, unrelated flow run already established, as opposed to subject/amr above which report what THIS flow run just proved. Both are merged into the channel the same way; only restoreData may already be meaningfully old by the time it arrives here. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
      * @type {string}
      * @memberof KcChannelUpsertRequest
      */
     restoreData?: string;
+    /**
+     * Whom Keycloak knows this flow run belongs to: an account or an invitation (ADR-48), the same shape as authData.subject in the answer. A channel already bound to another subject refuses it (409); an account binds a channel that has none, an invitation never does - only its own proof binds it.
+     * @type {AuthSubject}
+     * @memberof KcChannelUpsertRequest
+     */
+    subject?: AuthSubject;
     /**
      * 
      * @type {string}

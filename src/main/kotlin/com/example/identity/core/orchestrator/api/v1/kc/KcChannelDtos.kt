@@ -1,14 +1,15 @@
 package com.example.identity.core.orchestrator.api.v1.kc
 
 import com.example.identity.core.orchestrator.channel.AmrEntry
+import com.example.identity.contract.tool_api.envelope.AuthSubject
 import com.fasterxml.jackson.annotation.JsonInclude
 import io.swagger.v3.oas.annotations.media.Schema
 
 @Schema(
     description = "Upsert body for the kc-facade's one facade-specific endpoint (docs/05-api.md " +
-        "Abschnitt 3). All fields are optional. accountId is the account " +
-        "Keycloak already knows (sub vorhanden) - the channel is bound to it immediately, once, " +
-        "never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already " +
+        "Abschnitt 3). All fields are optional. subject is whom Keycloak already knows " +
+        "(sub vorhanden) - an account binds the channel immediately, once, never overwritten by a " +
+        "later call. targetAcr is Keycloak's requested LoA level, already " +
         "translated into an orchestrator ACR string, and only raises the channel's floor, never " +
         "lowers it. amr lists which native Keycloak authenticators (never orchestrator tools) " +
         "just proved something THIS flow run, one entry per proof - method/loa/factorTypes are " +
@@ -19,8 +20,13 @@ import io.swagger.v3.oas.annotations.media.Schema
         "'combined native acr' field exists, since the orchestrator derives that itself."
 )
 data class KcChannelUpsertRequest(
-    @field:Schema(example = "42")
-    val accountId: Long? = null,
+    @field:Schema(
+        description = "Whom Keycloak knows this flow run belongs to: an account or an invitation " +
+            "(ADR-48), the same shape as authData.subject in the answer. A channel already bound to " +
+            "another subject refuses it (409); an account binds a channel that has none, an " +
+            "invitation never does - only its own proof binds it."
+    )
+    val subject: AuthSubject? = null,
     @field:Schema(example = "loa2")
     val targetAcr: String? = null,
     val amr: List<AmrEntry>? = null,
@@ -28,7 +34,7 @@ data class KcChannelUpsertRequest(
         description = "A signed RestoreData token this same UserSession's channel returned " +
             "earlier via GET .../restore-data, resubmitted verbatim (docs/05-api.md, section 3) - " +
             "the bulk, one-shot way to seed a brand-new channel with what a PRIOR, " +
-            "unrelated flow run already established, as opposed to accountId/amr above which " +
+            "unrelated flow run already established, as opposed to subject/amr above which " +
             "report what THIS flow run just proved. Both are merged into the channel the same " +
             "way; only restoreData may already be meaningfully old by the time it arrives here. " +
             "Opaque to every caller but the orchestrator itself - see RestoreDataCodec."

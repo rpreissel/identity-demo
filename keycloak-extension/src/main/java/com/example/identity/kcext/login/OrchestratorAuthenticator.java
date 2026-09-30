@@ -48,7 +48,7 @@ public class OrchestratorAuthenticator implements Authenticator {
             String channelSessionId = OrchestratorNotes.channelSessionIdFor(context.getAuthenticationSession(), intent);
             // Taken from context.getUser(), not from an existing UserSessionModel: on a step-up the
             // cookie authenticator already attached the user before this flow run has a session.
-            Long accountId = OrchestratorNotes.accountId(context.getUser());
+            KcSubject subject = KcSubject.of(context.getUser());
             // Keycloak's requested level wins; the static config is the fallback without acr_values.
             String staticTargetAcr = context.getAuthenticatorConfig() == null ? null
                     : context.getAuthenticatorConfig().getConfig().get("targetAcr");
@@ -60,13 +60,15 @@ public class OrchestratorAuthenticator implements Authenticator {
             // No native amr and no restoreData here: Resume and Update report those once, when
             // they happen. Sending them again would only repeat a no-op evidence merge.
             OrchestratorClient.ChannelResponse response = client.upsertChannel(
-                    channelSessionId, accountId, targetAcr, List.of(), null, null,
+                    channelSessionId, subject, targetAcr, List.of(), null, null,
                     WebToolAvailability.renderableToolIds(context.getSession()), intent
             );
             handleResponse(context, response, null);
         } catch (OrchestratorClient.OrchestratorApiException e) {
             LOG.warnf("Orchestrator upsertChannel failed: %s", e.getMessage());
-            context.challenge(errorForm(context, KcTexts.of(context.getSession(), "Anmeldung derzeit nicht möglich.")));
+            // A refusal carries the orchestrator's reason, e.g. that a process access is not raised (ADR-48).
+            String message = ApiFailure.of(e.status()) == ApiFailure.REJECTED ? e.message(context.getSession()) : null;
+            context.challenge(errorForm(context, message != null ? message : KcTexts.of(context.getSession(), "Anmeldung derzeit nicht möglich.")));
         } catch (Exception e) {
             LOG.error("OrchestratorAuthenticator.authenticate failed", e);
             context.failure(AuthenticationFlowError.INTERNAL_ERROR);
@@ -114,12 +116,23 @@ public class OrchestratorAuthenticator implements Authenticator {
                 }
                 // A return from outside is a GET on the action URL: its query is the tool's input.
                 form = OrchestratorNextDispatch.withQueryParams(form, context.getUriInfo().getQueryParameters());
+                WebToolRendererFactory factory = WebFormRenderer.rendererFactoryFor(context.getSession(), toolId);
+                if (factory != null) {
+                    factory.actionFields(form::getFirst, () -> context.getActionUrl(context.generateAccessCode()).toString())
+                            .forEach(form::putSingle);
+                }
                 response = OrchestratorNextDispatch.dispatchToolAction(client, channelSessionId, toolId, toolSessionId, form);
             }
             handleResponse(context, response, form);
         } catch (OrchestratorClient.OrchestratorApiException e) {
             LOG.infof("Orchestrator tool call failed: %s", e.getMessage());
-            context.failureChallenge(AuthenticationFlowError.INVALID_CREDENTIALS, currentChallenge(context, e.message(context.getSession())));
+            // Never failureChallenge: Keycloak's brute-force protection would book it against the
+            // user. The orchestrator counts real attempts itself (docs/adr/ADR-044).
+            if (ApiFailure.of(e.status()) == ApiFailure.REJECTED) {
+                context.challenge(currentChallenge(context, e.message(context.getSession())));
+            } else {
+                context.challenge(errorForm(context, KcTexts.of(context.getSession(), "Anmeldung derzeit nicht möglich.")));
+            }
         } catch (Exception e) {
             LOG.error("OrchestratorAuthenticator.action failed", e);
             context.failure(AuthenticationFlowError.INTERNAL_ERROR);

@@ -1,6 +1,8 @@
 package com.example.identity.core.orchestrator.api.v1.kc
 
 import com.example.identity.core.orchestrator.channel.KcChannelService
+import com.example.identity.contract.tool_api.Subject
+import com.example.identity.contract.tool_api.envelope.AuthSubjectType
 import com.example.identity.core.orchestrator.kc.PeerAuthValidationException
 import com.example.identity.core.orchestrator.kc.PeerAuthValidator
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
@@ -76,7 +78,7 @@ class KcChannelController(
         val response = kcChannelService.upsertChannel(
             channelSessionId = channelSessionId,
             assertion = assertion,
-            accountId = body.accountId,
+            subject = subjectOf(body),
             targetAcr = body.targetAcr,
             amr = body.amr,
             restoreDataToken = body.restoreData,
@@ -85,6 +87,16 @@ class KcChannelController(
             intent = body.intent
         )
         return ResponseEntity.ok(response)
+    }
+
+    /** The subject the request names, as the domain knows it. */
+    private fun subjectOf(body: KcChannelUpsertRequest): Subject? = body.subject?.let {
+        when (it.type) {
+            AuthSubjectType.ACCOUNT -> Subject.Account(
+                requireNotNull(it.id.toLongOrNull()) { "subject.id of an account is no number" }
+            )
+            AuthSubjectType.INVITATION -> Subject.Invitation(it.id)
+        }
     }
 
     @GetMapping("/{channelSessionId}/restore-data")

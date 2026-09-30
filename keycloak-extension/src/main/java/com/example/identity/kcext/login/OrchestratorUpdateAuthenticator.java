@@ -1,6 +1,7 @@
 package com.example.identity.kcext.login;
 
 import com.example.identity.kcext.client.OrchestratorClient;
+import com.example.identity.kcext.federation.KcSubject;
 import com.example.identity.kcext.webtool.WebToolAvailability;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowContext;
@@ -48,13 +49,13 @@ public class OrchestratorUpdateAuthenticator implements Authenticator {
             String channelSessionId = OrchestratorNotes.channelSessionId(context);
             // The user can already be known here: a native authenticator ahead of this one may
             // have resolved it (docs/05-api.md Abschnitt 3).
-            Long accountId = OrchestratorNotes.accountId(context.getUser());
+            KcSubject subject = KcSubject.of(context.getUser());
             // The floor must reach Keycloak's full requested level, not just loa1; otherwise this
             // password report finishes the entry journey before LoA-2 can raise it (see requestedAcr).
             String targetAcr = OrchestratorNotes.requestedAcr(context);
 
             OrchestratorClient.ChannelResponse response = client.upsertChannel(
-                    channelSessionId, accountId, targetAcr, OrchestratorNotes.nativeAmr(context), null, null,
+                    channelSessionId, subject, targetAcr, OrchestratorNotes.nativeAmr(context), null, null,
                     WebToolAvailability.renderableToolIds(context.getSession()), null
             );
             OrchestratorNotes.applyAuthData(authSession, response);

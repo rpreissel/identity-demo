@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.channel.KcChannelService
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.ninjasquad.springmockk.MockkBean
@@ -109,7 +110,7 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
                 UUID.fromString(channel)
             ).firstOrNull() ?: return null
             return runCatching {
-                kcChannelService.signedOutAtKeycloak((login["ACCOUNT_ID"] as Number).toLong(), login["KEYCLOAK_SESSION_ID"] as String)
+                kcChannelService.signedOutAtKeycloak(Subject.Account((login["ACCOUNT_ID"] as Number).toLong()), login["KEYCLOAK_SESSION_ID"] as String)
             }.fold({ sessionGone += channel; null }, { "sign-out failed: $it" })
         }
 

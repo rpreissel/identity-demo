@@ -764,10 +764,10 @@ aktualisiert:
 
 Inhalt der Anfrage (alle Felder optional, `KcChannelUpsertRequest`):
 
-- **`accountId`** — Das Konto, das Keycloak schon kennt (`sub` ist vorhanden, Step-up). Es ordnet den Kanal sofort diesem Konto zu und wird später nie überschrieben.
+- **`subject`** — Wem dieser Durchlauf in Keycloak gehört: `{"type":"account","id":"42"}` oder `{"type":"invitation","id":"…"}` ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)), dieselbe Form wie `authData.subject` der Antwort. Ein Konto ordnet einen Kanal ohne Subjekt sofort diesem Konto zu; eine Einladung bindet nur ihr eigener Nachweis, und ein Kanal, der ihr nicht schon gehört, wird mit `409` abgelehnt: Ein Vorgangszugang wird nicht aufgewertet (ADR-48, Nachtrag K-5). Ist der Kanal schon einem anderen Subjekt zugeordnet – einem anderen Konto, einer Einladung statt eines Kontos oder umgekehrt –, antwortet der Orchestrator `409` und ändert nichts.
 - **`targetAcr`** — Das von Keycloak angefragte LoA, bereits in einen ACR-Wert des Orchestrators übersetzt. Es hebt die Untergrenze des Kanals nur an, nie ab, und filtert die Kandidaten von `KC_SELECT_METHOD` ([Orchestrierung](04-orchestrierung.md) Abschnitt 3).
 - **`amr`** — Liste `{nativeToolId, amrSourceId}`: was ein eigenes Keycloak-Verfahren (nie ein Tool des Orchestrators) in DIESEM Anmeldedurchlauf nachgewiesen hat. Methode, LoA und Faktortypen ermittelt der Orchestrator auf dem Server über `nativeToolId` (`NativeAuthenticatorDescriptor`). Es ist immer die VOLLSTÄNDIGE, derzeit gültige Menge, keine Änderungsliste.
-- **`restoreData` / `kcSessionId`** — Ein signiertes Token aus `GET .../restore-data` einer FRÜHEREN, unabhängigen `ChannelSession` derselben Keycloak-Nutzersitzung. Es gibt die dort erbrachten Nachweise an einen frisch angelegten Kanal weiter. `kcSessionId` bindet das Token an Keycloaks dauerhaftes `UserSessionModel`. Ein falsches, abgelaufenes oder manipuliertes Token wird als `null` behandelt, nie als Fehler.
+- **`restoreData` / `kcSessionId`** — Ein signiertes Token aus `GET .../restore-data` einer FRÜHEREN, unabhängigen `ChannelSession` derselben Keycloak-Nutzersitzung. Es gibt die dort erbrachten Nachweise samt ihrem Zeitpunkt an einen frisch angelegten Kanal weiter; über `loa1` zählen sie nur 30 Minuten ([Orchestrierung](04-orchestrierung.md) Abschnitt 8). `kcSessionId` bindet das Token an Keycloaks dauerhaftes `UserSessionModel`. Ein falsches, abgelaufenes oder manipuliertes Token wird als `null` behandelt, nie als Fehler.
 - **`availableTools`** — Welche `toolId`s das Keycloak-Theme darstellen kann (ein `WebToolRenderer` je Tool). Nur beim ersten Aufruf gelesen; das Gegenstück zu `availableTools` bei `POST /app/channels`.
 - **`intent`** — Nur beim ersten Aufruf gelesen. Fehlt er, gilt `kc_select_method`; sonst ist nur `register` erlaubt. Ein unbekannter oder unzulässiger Wert wird abgelehnt (`409`).
 
@@ -817,8 +817,7 @@ nennt, wer angemeldet ist: `{"type": "account", "id": "42"}` für ein Konto oder
 `{"type": "invitation", "id": "<Hash>"}` für eine Einladung nach einem Einmalkennwort
 ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Keycloak setzt danach den Nutzer aus
 der passenden Federation (Konten oder Einladungen, je mit eigener fester UUID als Komponenten-Id) und lässt nie ein Subjekt
-die Sitzung eines anderen fortsetzen (`LoginCompletion`). `accountId` steht nur noch zur
-Kompatibilität daneben und ist als veraltet markiert. `amr` ordnet jeder Methode ihre Quelle zu
+die Sitzung eines anderen fortsetzen (`LoginCompletion`). `amr` ordnet jeder Methode ihre Quelle zu
 (`"kc"` für eine eigene Angabe Keycloaks, `"orchestrator"` für ein abgeschlossenes Tool des
 Orchestrators). Das ist nur eine Information; den kombinierten `acr` bestimmt ausschließlich der
 Orchestrator.
@@ -938,6 +937,10 @@ Instanz kein `enrolledUnderAcr` ([Tool-Architektur](03-tool-architektur.md) Absc
   allein; sein Event-Listener `orchestrator-sign-in-log` ruft das nach dem Commit auf und wartet auf
   nichts. Kanäle, die diese Keycloak-Sitzung trugen, enden damit, Web- wie App-Kanal (ADR-43);
   `channel_anchor` ist wie oben die `accountId`.
+- `POST /orchestrator/api/v1/kc/invitations/{invitation}/sign-outs?kcSessionId=…` – dasselbe für
+  einen Vorgangszugang (ADR-48): Die Web-Kanäle dieser Keycloak-Sitzung enden, das
+  Anmeldeprotokoll bekommt eine Zeile der Einladung, `204`. `channel_anchor` ist die Id der
+  Einladung.
 
 ## 4) Zusammenspiel von Prozess-API und Tool-Ressourcen
 

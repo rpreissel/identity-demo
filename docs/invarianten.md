@@ -35,6 +35,8 @@ schließen soll.
 - **I-23 `AUTHENTICATED` erzeugt eine Keycloak-Sitzung, und der Kanal überlebt sie nie; die Sitzungsdauer bestimmt Keycloak ([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)).**
   - Mechanismus: `type:AppLoginSession` (der App-Kanal holt beim Übergang nach `AUTHENTICATED` sein erstes Token; jedes Token, auch die Erneuerung bei einer Journey-Interaktion, setzt `expiresAt` auf das gemeldete Sitzungsfenster), `type:SessionRefusedException` (lehnt Keycloak ab, rollt der Übergang zurück), `type:ChannelSessionEndedException` (eine Sitzung, die sich nicht mehr erneuern lässt, beendet den Kanal, und das bleibt), `type:SessionEnd` (Web-Kanal: Keycloak meldet am Ende des Durchlaufs das späteste Sitzungsende), `test:ModelBasedJourneyTest` (Sitzung altert, läuft ab, Abmeldung in Keycloak; nach jedem Schritt geprüft), `test:AppLoginSessionIntegrationTest`, `test:SessionRefusedIntegrationTest`, `test:KcChannelIntegrationTest`, `test:SessionEndTest`
   - Lücke: Web-Kanal zwischen letztem Journey-Schritt und Ende des Keycloak-Durchlaufs; verlorene Meldungen (`restore-data`, Abmeldung) sind nur best effort; Issue `DPoP-demo-oe06`.
+- **I-32 Ein Niveau über loa1 beruht nur auf Nachweisen der letzten 30 Minuten; ein wiederhergestellter Nachweis wird dadurch nicht jünger (04 §8).**
+  - Mechanismus: `test:DefaultAuthPolicyTest`, `test:RestoreDataCodecTest`, `test:KcChannelIntegrationTest`
 - **I-24 Zu einem Kanal gehört genau eine Keycloak-Sitzung: Sie wird einmal geöffnet und nie ersetzt; ein Step-up läuft in derselben Sitzung.**
   - Mechanismus: `type:KcTokenProvider` (nur ohne bekannte `keycloakSessionId` wird eine Sitzung geöffnet, danach setzt der Grant per `session_id` genau diese fort), `type:AccountTokenGrantType` (setzt nur eine gültige, eigene Sitzung desselben Nutzers fort, sonst Ablehnung), `test:ModelBasedJourneyTest`, `test:KcTokenProviderTest`, `test:TokenServiceTest`, `test:AppLoginSessionIntegrationTest`
 
@@ -71,7 +73,7 @@ schließen soll.
 - **I-28 Ein eingerichtetes Konto fällt nie in den Aufbau zurück: Eine Verfahrensinstanz wird deaktiviert, nie gelöscht; gelöscht wird nur das ganze Konto ([ADR-46](adr/ADR-046-konto-im-aufbau.md)).**
   - Mechanismus: `type:AccountAuthMethodRepository` (kennt kein `delete`), `type:AccountProfile` (`isSetUp` zählt deaktivierte Instanzen mit), `sql:fk_auth_method_account` (Instanzen gehen nur mit dem Konto), `test:ModelBasedJourneyTest`
 - **I-29 Ein Kanal gehört höchstens einem Subjekt: einem Konto oder einer Einladung, nie beiden. Seine Evidenz gehört demselben Subjekt ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
-  - Mechanismus: `sql:ck_channel_session_one_subject`, `sql:ck_auth_evidence_one_subject`, `test:AuthInviteIntegrationTest`
+  - Mechanismus: `sql:ck_channel_session_one_subject`, `sql:ck_auth_evidence_one_subject`, `sql:ck_sign_in_log_one_subject`, `test:AuthInviteIntegrationTest` (auch: Keycloak nennt ein anderes Subjekt → `409`)
 - **I-30 Die Evidenz einer Einladung wandert in keinen späteren Anmeldedurchlauf ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
   - Mechanismus: `test:AuthInviteIntegrationTest` (`restore-data` bleibt für einen Einladungs-Kanal leer)
 

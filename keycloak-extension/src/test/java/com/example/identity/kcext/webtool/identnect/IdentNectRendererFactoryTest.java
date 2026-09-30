@@ -34,6 +34,23 @@ class IdentNectRendererFactoryTest {
     }
 
     @Test
+    void aRetryNamesAFreshActionUrl_theActivationsCodeIsSpent() {
+        String freshActionUrl = "https://kc/realms/Demo/login-actions/authenticate?session_code=fresh&execution=e";
+        Map<String, String> form = Map.of("retry", "true");
+
+        assertEquals(Map.of("returnUri", freshActionUrl), new IdentNectRendererFactory().actionFields(form::get, () -> freshActionUrl));
+    }
+
+    @Test
+    void reportingACaseAsksForNoAddress() {
+        Map<String, String> form = Map.of("nectCaseId", "5b1c");
+
+        assertEquals(Map.of(), new IdentNectRendererFactory().actionFields(form::get, () -> {
+            throw new AssertionError("no action URL wanted");
+        }));
+    }
+
+    @Test
     void theJumpPageGetsTheOrchestratorsPublicOriginInFront() {
         Map<String, JsonNode> stepData = Map.of("jumpUrl", JSON.valueToTree("/nect/?case=5b1c"), "caseId", JSON.valueToTree("5b1c"));
 

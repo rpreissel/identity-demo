@@ -16,6 +16,11 @@ components:
         retry:
           description: true opens a fresh Nect case instead of reporting one.
           type: boolean
+        returnUri:
+          description: 'With retry: where Nect sends the user back to this time, checked like on activation. The web channel
+            names a fresh action URL, because Keycloak''s action code is single-use; without it the address from the activation
+            stays.'
+          type: string
       type: object
     NectRedirectStep:
       description: The user leaves for Nect's jump page; the app comes back with ?nectCaseId=... and reports it.

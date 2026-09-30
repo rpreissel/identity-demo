@@ -159,7 +159,7 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
                     """{"confirmationCode":"$confirmationCode"}"""
                 )
                 resolved.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
-                (resolved["authData"] as Map<*, *>)["accountId"] shouldBe accountId
+                (resolved["authData"] as Map<*, *>)["subject"] shouldBe mapOf("type" to "account", "id" to accountId.toString())
 
                 val done = patch("/orchestrator/api/v1/tools/$confirmToolSessionId/confirm-qr-login", """{"decision":"done"}""")
                 done.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")

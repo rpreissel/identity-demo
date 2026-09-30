@@ -14,8 +14,11 @@ import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuth
 import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterDispatchStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpStrategy
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import java.time.Clock
+import java.time.Duration
 
 /**
  * Wires the domain's rule objects into Spring, so the domain itself carries no framework
@@ -29,7 +32,11 @@ import org.springframework.context.annotation.Configuration
 class DomainBeans {
 
     @Bean
-    fun authPolicy(catalog: ToolCatalog): AuthPolicy = DefaultAuthPolicy(catalog)
+    fun authPolicy(
+        catalog: ToolCatalog,
+        clock: Clock,
+        @Value("\${identity.policy.elevated-level-max-age:PT30M}") elevatedLevelMaxAge: Duration,
+    ): AuthPolicy = DefaultAuthPolicy(catalog, clock, elevatedLevelMaxAge)
 
     @Bean
     fun confirmPeerLoginStrategy(): IntentStrategy<*> = ConfirmPeerLoginStrategy()

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.account.SignInLog
@@ -114,18 +115,23 @@ class JourneyRecorder(
      * step-up a step-up, anything else records nothing. [acr] is the level the session holds now.
      */
     fun recordSignIn(journey: AuthJourney, channel: ChannelSession, acr: AcrLevel) {
-        val accountId = channel.accountId ?: return
         val intent = journey.intent ?: return
         val amr = channel.authEvidenceId?.let { authEvidenceService.getAuthEvidence(it) }?.currentAmr.orEmpty()
-        when {
-            intent == AuthIntent.STEP_UP -> signInLog.steppedUp(accountId, channel.channel?.name, acr.value, amr)
-            intent.isEntryIntent -> signInLog.signedIn(accountId, channel.channel?.name, acr.value, amr, intent.name)
+        when (val subject = channel.subject ?: return) {
+            is Subject.Account -> when {
+                intent == AuthIntent.STEP_UP -> signInLog.steppedUp(subject.id, channel.channel?.name, acr.value, amr)
+                intent.isEntryIntent -> signInLog.signedIn(subject.id, channel.channel?.name, acr.value, amr, intent.name)
+            }
+            // A process access has one proof and no step-up (ADR-48).
+            is Subject.Invitation -> signInLog.invitationSignedIn(subject.hash, channel.channel?.name, acr.value, amr)
         }
     }
 
     /** A session the holder ended on purpose. An expiry is not recorded. */
     fun recordSignOut(channel: ChannelSession, endedBy: String) {
-        val accountId = channel.accountId ?: return
-        signInLog.signedOut(accountId, channel.channel?.name, endedBy)
+        when (val subject = channel.subject ?: return) {
+            is Subject.Account -> signInLog.signedOut(subject.id, channel.channel?.name, endedBy)
+            is Subject.Invitation -> signInLog.invitationSignedOut(subject.hash, channel.channel?.name, endedBy)
+        }
     }
 }

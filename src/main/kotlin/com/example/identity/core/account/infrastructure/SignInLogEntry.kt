@@ -36,13 +36,17 @@ enum class SignInType(val detailsVersion: Int) {
 
 /**
  * One line of the sign-in log. Unlike [ChangeLogEntry] it is deleted with the account and lives
- * only months.
+ * only months. It belongs to an account or to an invitation (ADR-48), never both
+ * (`ck_sign_in_log_one_subject`).
  */
 @Entity
 @Table(schema = "account", name = "sign_in_log")
 class SignInLogEntry(
-    @Column(name = "account_id", nullable = false, updatable = false)
-    val accountId: Long = 0,
+    @Column(name = "account_id", updatable = false)
+    val accountId: Long? = null,
+
+    @Column(name = "invitation", updatable = false, length = 64)
+    val invitation: String? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "sign_in_type", nullable = false, updatable = false, length = 32)
@@ -70,6 +74,8 @@ class SignInLogEntry(
 
 interface SignInLogRepository : JpaRepository<SignInLogEntry, Long> {
     fun findByAccountIdOrderByOccurredAt(accountId: Long): List<SignInLogEntry>
+
+    fun findByInvitationOrderByOccurredAt(invitation: String): List<SignInLogEntry>
 
     /** One retention batch, oldest first (`SignInLogRetention`). */
     @Query("select e.id from SignInLogEntry e where e.occurredAt < :cutoff order by e.occurredAt")

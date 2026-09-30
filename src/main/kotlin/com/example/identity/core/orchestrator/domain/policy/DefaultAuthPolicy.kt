@@ -22,6 +22,8 @@ import com.example.identity.contract.tool_api.MethodRole
 import com.example.identity.contract.tool_api.ToolCategory
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
+import java.time.Clock
+import java.time.Duration
 
 /**
  * Default policy (docs/04-orchestrierung.md #8). Each tool's maxAcr gives its own level. Two AUTH
@@ -29,11 +31,31 @@ import com.example.identity.contract.tool_api.ToolId
  * level either was enrolled under (ADR-5). Otherwise a low-trust session could add two weak factors
  * and escalate past anything ever proven. `resolveAcr` is `max(IAL, AAL)`, computed separately so
  * that an identification never combines with an unrelated auth factor into a false MFA bump.
+ *
+ * A level above loa1 ages: only proofs younger than [elevatedMaxAge] count toward it, older ones
+ * still carry loa1 (docs/04-orchestrierung.md #8, like Keycloak's `loa-max-age`).
  */
-class DefaultAuthPolicy(private val toolRegistry: ToolCatalog) : AuthPolicy {
+class DefaultAuthPolicy(
+    private val toolRegistry: ToolCatalog,
+    private val clock: Clock,
+    private val elevatedMaxAge: Duration = DEFAULT_ELEVATED_MAX_AGE,
+) : AuthPolicy {
 
     override fun resolveAcr(evidence: AuthEvidence, account: AccountProfile?): AcrLevel =
+        AcrLevel.max(AcrLevel.min(levelOf(evidence), AGELESS_CEILING), levelOf(recent(evidence)))
+
+    private fun levelOf(evidence: AuthEvidence): AcrLevel =
         AcrLevel.max(identityAssuranceLevel(evidence), authenticatorAssuranceLevel(evidence))
+
+    /** The proofs that still count above loa1. */
+    private fun recent(evidence: AuthEvidence): AuthEvidence {
+        val since = clock.instant().minus(elevatedMaxAge)
+        return AuthEvidence(evidence.factors.filter { it.provenAt?.isBefore(since) == false })
+    }
+
+    /** The proofs that count toward [requiredAcr]: all of them up to loa1, only recent ones above. */
+    private fun countingToward(evidence: AuthEvidence, requiredAcr: AcrLevel): AuthEvidence =
+        if (AcrLevel.rank(requiredAcr) > AcrLevel.rank(AGELESS_CEILING)) recent(evidence) else evidence
 
     /**
      * IAL: the highest loa any identification has established in this session. An identification
@@ -52,11 +74,12 @@ class DefaultAuthPolicy(private val toolRegistry: ToolCatalog) : AuthPolicy {
     }
 
     override fun isSatisfied(evidence: AuthEvidence, requiredAcr: AcrLevel, account: AccountProfile?): Boolean {
-        val levelOk = AcrLevel.rank(resolveAcr(evidence, account)) >= AcrLevel.rank(requiredAcr)
+        val counting = countingToward(evidence, requiredAcr)
+        val levelOk = AcrLevel.rank(levelOf(counting)) >= AcrLevel.rank(requiredAcr)
         // Checked per axis, not as one union: a tool covering two factor types on its own axis is
         // MFA (e.g. ident-eid: card + PIN), but identity and auth factors never combine.
-        val identityFactorTypes = evidence.factors.filter { it.axis == EvidenceAxis.IDENTITY }.flatMap { it.factorTypes }.toSet()
-        val authenticatorFactorTypes = evidence.factors.filter { it.axis == EvidenceAxis.AUTHENTICATOR }.flatMap { it.factorTypes }.toSet()
+        val identityFactorTypes = counting.factors.filter { it.axis == EvidenceAxis.IDENTITY }.flatMap { it.factorTypes }.toSet()
+        val authenticatorFactorTypes = counting.factors.filter { it.axis == EvidenceAxis.AUTHENTICATOR }.flatMap { it.factorTypes }.toSet()
         val mfaOk = !requiresMfa(requiredAcr) || identityFactorTypes.size >= 2 || authenticatorFactorTypes.size >= 2
         return levelOk && mfaOk
     }
@@ -107,8 +130,9 @@ class DefaultAuthPolicy(private val toolRegistry: ToolCatalog) : AuthPolicy {
     }
 
     override fun authCandidates(ctx: CandidateContext): List<ToolId> {
-        val evidence = ctx.evidence
         val requiredAcr = ctx.requiredAcr
+        // An aged proof neither counts nor blocks its method from being offered again.
+        val evidence = countingToward(ctx.evidence, requiredAcr)
         val account = checkNotNull(ctx.account) { "authCandidates requires an account in CandidateContext" }
         val bindingKeyRef = ctx.bindingKeyRef
         val linkedAccountId = ctx.linkedAccountId
@@ -147,7 +171,7 @@ class DefaultAuthPolicy(private val toolRegistry: ToolCatalog) : AuthPolicy {
             val projected = AuthEvidence(
                 evidence.factors + MethodEvidence(
                     MethodName(m.method), cappedAcr, m.enrolledUnderAcr?.let(AcrLevel::of), descriptor.factorTypes,
-                    source = "simulation", amrSourceId = "simulation"
+                    source = "simulation", amrSourceId = "simulation", provenAt = clock.instant()
                 ),
             )
             val projectedAcr = applyMfaBump(baseAcr(projected.factors), projected)
@@ -159,8 +183,8 @@ class DefaultAuthPolicy(private val toolRegistry: ToolCatalog) : AuthPolicy {
     }
 
     override fun reIdentCandidates(ctx: CandidateContext): List<ToolId> {
-        val evidence = ctx.evidence
         val requiredAcr = ctx.requiredAcr
+        val evidence = countingToward(ctx.evidence, requiredAcr)
         val usedMethods = evidence.factors.map { it.method.value }.toSet()
         // An identification's amr need not be its method name (ident-nect reports
         // `nect-<procedure>`), so "already used" also checks which tool produced the evidence.
@@ -215,6 +239,12 @@ class DefaultAuthPolicy(private val toolRegistry: ToolCatalog) : AuthPolicy {
     private fun requiresMfa(requiredAcr: AcrLevel) = AcrLevel.rank(requiredAcr) >= AcrLevel.rank(MFA_FROM_ACR)
 
     companion object {
+        /** Keycloak's `loa-max-age` for LoA 2 (keycloak-migrations V5). */
+        val DEFAULT_ELEVATED_MAX_AGE: Duration = Duration.ofMinutes(30)
+
+        /** The highest level an aged proof still carries. */
+        private val AGELESS_CEILING = AcrLevel.LOA1
+
         private val MFA_FROM_ACR = AcrLevel.LOA3
 
         /** The highest level the combination bump may produce (see [combinedAcr]). */

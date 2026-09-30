@@ -60,11 +60,12 @@ public final class OrchestratorClient {
      * as the peer-auth anchor (docs/02-domaenenmodell.md Abschnitt 1): unique per flow run, so two
      * tabs stepping up the same SSO session never share an anchor. {@code durableKcSessionId} is
      * Keycloak's UserSessionModel id; it travels only with {@code restoreData}, so the server can
-     * check that token was minted for this browser's durable identity.
+     * check that token was minted for this browser's durable identity. {@code subject} is whom
+     * Keycloak knows this run belongs to.
      */
     public ChannelResponse upsertChannel(
             String channelSessionId,
-            Long accountId,
+            KcSubject subject,
             String targetAcr,
             List<AmrEntry> amr,
             String restoreData,
@@ -74,7 +75,11 @@ public final class OrchestratorClient {
     ) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/kc/channels/" + channelSessionId;
         ObjectNode body = MAPPER.createObjectNode();
-        if (accountId != null) body.put("accountId", accountId);
+        if (subject != null) {
+            ObjectNode subjectNode = body.putObject("subject");
+            subjectNode.put("type", subject.kind().name().toLowerCase());
+            subjectNode.put("id", subject.id());
+        }
         if (targetAcr != null) body.put("targetAcr", targetAcr);
         // Only counts on the channel's first call; omitted means kc_select_method.
         if (intent != null && !intent.isBlank()) body.put("intent", intent);
@@ -226,13 +231,14 @@ public final class OrchestratorClient {
     }
 
     /**
-     * Reports that Keycloak ended session {@code kcSessionId} of {@code accountId}, for the sign-in
-     * log (ADR-39). The Web channel's logout is Keycloak's own; the orchestrator would not learn of
-     * it otherwise. Same anchor convention as the password calls.
+     * Reports that Keycloak ended session {@code kcSessionId} of {@code subject}, for the sign-in
+     * log (ADR-39, ADR-48). The Web channel's logout is Keycloak's own; the orchestrator would not
+     * learn of it otherwise. The anchor names the account or invitation, as with the lookups.
      */
-    public void reportSignOut(long accountId, String kcSessionId) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/kc/accounts/" + accountId + "/sign-outs?kcSessionId=" + urlEncode(kcSessionId);
-        send("POST", path, String.valueOf(accountId), null);
+    public void reportSignOut(KcSubject subject, String kcSessionId) throws IOException, InterruptedException {
+        String collection = subject.kind() == KcSubject.Kind.ACCOUNT ? "accounts" : "invitations";
+        String path = "/orchestrator/api/v1/kc/" + collection + "/" + urlEncode(subject.id()) + "/sign-outs?kcSessionId=" + urlEncode(kcSessionId);
+        send("POST", path, subject.id(), null);
     }
 
     /** See {@link #verifyPassword(long, String)} - same anchor convention. */
@@ -391,6 +397,10 @@ public final class OrchestratorClient {
             this.text = parsedText;
         }
 
+        public int status() {
+            return status;
+        }
+
         /** The error in the login's language, or null when the orchestrator sent no text. */
         public String message(org.keycloak.models.KeycloakSession session) {
             return OrchestratorTexts.resolve(session, text);
@@ -455,17 +465,14 @@ public final class OrchestratorClient {
             );
         }
 
-        /** Whom the channel is signed in as; an orchestrator without {@code subject} still names the account. */
+        /** Whom the channel is signed in as, or {@code null} while nobody is known. */
         private static KcSubject subjectOf(com.example.identity.kcext.api.model.AuthData authData) {
-            if (authData == null) return null;
-            var subject = authData.getSubject();
-            if (subject != null) {
-                return switch (subject.getType()) {
-                    case ACCOUNT -> new KcSubject(KcSubject.Kind.ACCOUNT, subject.getId());
-                    case INVITATION -> KcSubject.invitation(subject.getId());
-                };
-            }
-            return authData.getAccountId() == null ? null : KcSubject.account(authData.getAccountId());
+            var subject = authData == null ? null : authData.getSubject();
+            if (subject == null) return null;
+            return switch (subject.getType()) {
+                case ACCOUNT -> KcSubject.account(Long.parseLong(subject.getId()));
+                case INVITATION -> KcSubject.invitation(subject.getId());
+            };
         }
 
         /**

@@ -2,6 +2,8 @@ package com.example.identity.kcext.event;
 
 import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.client.OrchestratorSettings;
+import com.example.identity.kcext.federation.InvitationStorageProviderFactory;
+import com.example.identity.kcext.federation.KcSubject;
 import com.example.identity.kcext.federation.OrchestratorStorageProviderFactory;
 import org.jboss.logging.Logger;
 import org.keycloak.Config;
@@ -10,16 +12,17 @@ import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventListenerProviderFactory;
 import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
+import org.keycloak.component.ComponentModel;
 import org.keycloak.models.AbstractKeycloakTransaction;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.RealmModel;
 import org.keycloak.storage.StorageId;
 
-import java.util.OptionalLong;
+import java.util.Optional;
 
 /**
- * Reports every Keycloak logout of an orchestrator account for the account's sign-in log (ADR-39):
+ * Reports every Keycloak logout of an orchestrator account or invitation for the sign-in log (ADR-39, ADR-48):
  * the Web channel's logout is Keycloak's own, so the orchestrator would not learn of it otherwise.
  * Sent after Keycloak's transaction committed and fire-and-forget: a lost report costs one log line,
  * a failed logout would cost the user.
@@ -44,21 +47,23 @@ public class SignInLogEventListener implements EventListenerProvider {
         if (component == null) {
             return;
         }
-        OptionalLong reportable = accountToReport(event.getType(), event.getUserId(), event.getSessionId(), component.getId());
+        String invitationComponentId = InvitationStorageProviderFactory.componentIn(realm).map(ComponentModel::getId).orElse(null);
+        Optional<KcSubject> reportable = subjectToReport(
+                event.getType(), event.getUserId(), event.getSessionId(), component.getId(), invitationComponentId);
         if (reportable.isEmpty()) {
             return;
         }
-        long accountId = reportable.getAsLong();
+        KcSubject subject = reportable.get();
         OrchestratorClient client = OrchestratorSettings.from(component).newClient();
         String kcSessionId = event.getSessionId();
         session.getTransactionManager().enlistAfterCompletion(new AbstractKeycloakTransaction() {
             @Override
             protected void commitImpl() {
                 try {
-                    client.reportSignOut(accountId, kcSessionId);
+                    client.reportSignOut(subject, kcSessionId);
                 } catch (Exception e) {
                     if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-                    LOG.warnf("Could not report the logout of account %d to the orchestrator: %s", accountId, e.getMessage());
+                    LOG.warnf("Could not report the logout of %s to the orchestrator: %s", subject, e.getMessage());
                 }
             }
 
@@ -70,21 +75,27 @@ public class SignInLogEventListener implements EventListenerProvider {
     }
 
     /**
-     * The account to report, if any: only a {@code LOGOUT} with a session, of a user from the
-     * orchestrator's user storage whose external id is an account id.
+     * The subject to report, if any: only a {@code LOGOUT} with a session, of a user from one of the
+     * orchestrator's two federations - an account (numeric external id) or an invitation (ADR-48).
      */
-    static OptionalLong accountToReport(EventType type, String userId, String sessionId, String storageComponentId) {
+    static Optional<KcSubject> subjectToReport(
+            EventType type, String userId, String sessionId, String accountComponentId, String invitationComponentId) {
         if (type != EventType.LOGOUT || userId == null || sessionId == null) {
-            return OptionalLong.empty();
+            return Optional.empty();
         }
-        if (!storageComponentId.equals(StorageId.providerId(userId))) {
-            return OptionalLong.empty();
+        String provider = StorageId.providerId(userId);
+        String externalId = StorageId.externalId(userId);
+        if (accountComponentId.equals(provider)) {
+            try {
+                return Optional.of(KcSubject.account(Long.parseLong(externalId)));
+            } catch (NumberFormatException e) {
+                return Optional.empty();
+            }
         }
-        try {
-            return OptionalLong.of(Long.parseLong(StorageId.externalId(userId)));
-        } catch (NumberFormatException e) {
-            return OptionalLong.empty();
+        if (invitationComponentId != null && invitationComponentId.equals(provider) && externalId != null && !externalId.isBlank()) {
+            return Optional.of(KcSubject.invitation(externalId));
         }
+        return Optional.empty();
     }
 
     @Override

@@ -126,6 +126,8 @@ class EvidenceTrail(
                 factorTypes = (existing?.factorTypes ?: emptySet()) + update.factorTypes,
                 amrSourceId = update.amrSourceId,
                 axis = update.axis,
+                // A restored proof keeps its age; anything else was proven just now.
+                provenAt = update.provenAt ?: now,
             )
             amrEvidence = (amrEvidence.filterNot { it.method == method } + record).toMutableList()
         }
@@ -159,6 +161,8 @@ data class AmrRecord(
     val amrSourceId: String,
     /** Mirrors `AuthEvidence.MethodEvidence.axis` ([EvidenceAxis]). Defaulted for rows without it. */
     val axis: EvidenceAxis = EvidenceAxis.AUTHENTICATOR,
+    /** Mirrors `AuthEvidence.MethodEvidence.provenAt`. Rows from before it count as of unknown age. */
+    val provenAt: Instant? = null,
 )
 
 /**
@@ -167,7 +171,7 @@ data class AmrRecord(
  * through here.
  */
 fun AmrRecord.toMethodEvidence(): MethodEvidence =
-    MethodEvidence(MethodName(method), AcrLevel.of(loa), enrolledUnderAcr?.let(AcrLevel::of), factorTypes, source, amrSourceId, axis)
+    MethodEvidence(MethodName(method), AcrLevel.of(loa), enrolledUnderAcr?.let(AcrLevel::of), factorTypes, source, amrSourceId, axis, provenAt)
 
 /** The core [AuthEvidence] this channel's evidence currently is. */
 fun EvidenceTrail.toCoreEvidence(): AuthEvidence = AuthEvidence(amrEvidence.map { it.toMethodEvidence() })

@@ -19,6 +19,8 @@ interface ChannelSessionRepository : JpaRepository<ChannelSession, UUID> {
     /** Every channel this account was bound to, invalidated on account deletion. */
     fun findByAccountId(accountId: Long): List<ChannelSession>
 
+    fun findByInvitation(invitation: String): List<ChannelSession>
+
     /** Whether a channel that is neither ended nor expired still works with [accountId] (ADR-46). */
     fun existsByAccountIdAndStateNotInAndExpiresAtAfter(accountId: Long, states: Collection<ChannelState>, now: Instant): Boolean
 

@@ -218,7 +218,8 @@ Wie mit den Verweisen zwischen den Tabellen umgegangen wird:
 - **`KEYCLOAK`-Kanäle haben dieselbe Aufbewahrungsfrist wie alle anderen.** Die Abmeldung im
   Web-Kanal gehört Keycloak ([05-api.md](05-api.md) Abschnitt 3); Keycloak meldet sie dem
   Orchestrator (`SignInLogEventListener` → `KcChannelService.signedOutAtKeycloak`), und das beendet
-  die noch laufenden Kanäle dieser Sitzung sofort, Web- wie App-Kanal. Der Orchestrator fragt
+  die noch laufenden Kanäle dieser Sitzung sofort, Web- wie App-Kanal; für einen Vorgangszugang
+  (ADR-48) die Web-Kanäle der Einladung. Der Orchestrator fragt
   Keycloak dafür nicht ab.
 - **Die Lebensdauer eines angemeldeten Kanals ist die seiner Keycloak-Sitzung**
   ([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)). Die festen Fristen
@@ -232,7 +233,10 @@ Wie mit den Verweisen zwischen den Tabellen umgegangen wird:
   SSO max 10 Stunden, `sslRequired=external`. Die ersten beiden gleichen den Fristen von
   `TokenService` im Standardprofil. Ein erreichtes loa2 trägt 30 Minuten (`loa-max-age` des
   LoA-2-Subflows); danach übernimmt Keycloak es nicht mehr aus der SSO-Sitzung, und eine Anfrage
-  mit `acr_values=2` verlangt einen frischen Nachweis. loa1 trägt die ganze Sitzung.
+  mit `acr_values=2` verlangt einen frischen Nachweis. loa1 trägt die ganze Sitzung. Für Nachweise
+  der Orchestrator-Tools gilt dieselbe Frist im Orchestrator selbst
+  (`identity.policy.elevated-level-max-age`, 04 §8 „Ein Nachweis über loa1 altert“); beide Werte
+  werden zusammen geändert.
 
 Im Demomodus gilt beim Start außerdem: Hat der Orchestrator kein einziges Konto, etwa nach einem
 frischen Volume oder einer neu aufgesetzten Datenbank, gehört jede Sitzung in Keycloak zu einem Konto,

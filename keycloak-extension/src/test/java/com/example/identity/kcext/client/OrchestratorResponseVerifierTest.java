@@ -29,7 +29,7 @@ class OrchestratorResponseVerifierTest {
 
     private static final String ORCHESTRATOR = "identity-demo-orchestrator";
     private static final String KEYCLOAK = "identity-demo-keycloak";
-    private static final byte[] BODY = "{\"authData\":{\"accountId\":7}}".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] BODY = "{\"authData\":{\"acr\":\"loa1\"}}".getBytes(StandardCharsets.UTF_8);
 
     private final ECKey orchestratorKey = key("orchestrator-response-1");
     private final OrchestratorResponseVerifier verifier = new OrchestratorResponseVerifier(
@@ -50,7 +50,7 @@ class OrchestratorResponseVerifierTest {
     @Test
     void aChangedBodyIsRefused() throws Exception {
         String signature = sign(orchestratorKey, "jti-1", 200, BODY);
-        byte[] forged = "{\"authData\":{\"accountId\":8}}".getBytes(StandardCharsets.UTF_8);
+        byte[] forged = "{\"authData\":{\"acr\":\"loa2\"}}".getBytes(StandardCharsets.UTF_8);
         assertThrows(OrchestratorResponseVerifier.OrchestratorResponseRejectedException.class,
                 () -> verifier.verify(signature, "jti-1", 200, forged));
     }

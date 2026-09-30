@@ -339,8 +339,8 @@ components:
       type: object
     KcChannelUpsertRequest:
       description: Upsert body for the kc-facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). All fields are
-        optional. accountId is the account Keycloak already knows (sub vorhanden) - the channel is bound to it immediately,
-        once, never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator
+        optional. subject is whom Keycloak already knows (sub vorhanden) - an account binds the channel immediately, once,
+        never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator
         ACR string, and only raises the channel's floor, never lowers it. amr lists which native Keycloak authenticators (never
         orchestrator tools) just proved something THIS flow run, one entry per proof - method/loa/factorTypes are resolved
         server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the kc-facade's own mirror of a ToolDescriptor, not
@@ -348,10 +348,6 @@ components:
         the channel's evidence and re-checked against the current floor exactly like any other proof; no separate 'combined
         native acr' field exists, since the orchestrator derives that itself.
       properties:
-        accountId:
-          example: 42
-          format: int64
-          type: integer
         amr:
           items:
             $ref: '#/components/schemas/AmrEntry'
@@ -381,10 +377,15 @@ components:
         restoreData:
           description: A signed RestoreData token this same UserSession's channel returned earlier via GET .../restore-data,
             resubmitted verbatim (docs/05-api.md, section 3) - the bulk, one-shot way to seed a brand-new channel with what
-            a PRIOR, unrelated flow run already established, as opposed to accountId/amr above which report what THIS flow
-            run just proved. Both are merged into the channel the same way; only restoreData may already be meaningfully old
-            by the time it arrives here. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
+            a PRIOR, unrelated flow run already established, as opposed to subject/amr above which report what THIS flow run
+            just proved. Both are merged into the channel the same way; only restoreData may already be meaningfully old by
+            the time it arrives here. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
           type: string
+        subject:
+          $ref: ../openapi.yaml#/components/schemas/AuthSubject
+          description: 'Whom Keycloak knows this flow run belongs to: an account or an invitation (ADR-48), the same shape
+            as authData.subject in the answer. A channel already bound to another subject refuses it (409); an account binds
+            a channel that has none, an invitation never does - only its own proof binds it.'
         targetAcr:
           example: loa2
           type: string
@@ -1907,6 +1908,40 @@ paths:
       summary: The invitation as Keycloak shows it, as a user of its own
       tags:
       - KC invitation lookup
+  /orchestrator/api/v1/kc/invitations/{invitation}/sign-outs:
+    post:
+      operationId: invitationSignedOut
+      parameters:
+      - in: path
+        name: invitation
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: kcSessionId
+        required: true
+        schema:
+          type: string
+      - in: header
+        name: Authorization
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - kc-peer-auth: [
+          ]
+      summary: Keycloak ended one session of this invitation
+      tags:
+      - KC sign-out
   /orchestrator/api/v1/kc/response-jwks/.well-known/jwks.json:
     get:
       operationId: keycloakResponseJwks

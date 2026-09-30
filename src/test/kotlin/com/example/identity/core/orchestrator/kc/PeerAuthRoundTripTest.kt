@@ -77,28 +77,28 @@ class PeerAuthRoundTripTest : BehaviorSpec() {
     }
 
     init {
-        Given("a peer-auth assertion signed with a key the JWKS endpoint publishes") {
-            When("a PeerAuthValidator pointed at that jwks.json validates it") {
-                Then("it verifies successfully via the real sign -> fetch -> verify round trip") {
-                    val jwkSource = KeycloakJwkSource(
-                        jwksUri = "http://localhost:$port/test-peer-auth/jwks.json",
-                        cacheTtlSeconds = 600,
-                        clock = TEST_CLOCK
-                    )
-                    val validator = PeerAuthValidator(
-                        jwkSource = jwkSource,
-                        replayProtectionService = replayProtectionService,
-                        expectedIssuer = "test-issuer",
-                        expectedAudience = "identity-demo-orchestrator",
-                        maxClockSkewSeconds = 30,
-                        maxAssertionAgeSeconds = 30,
-                        clock = TEST_CLOCK
-                    )
-                    val htu = "http://localhost:$port/orchestrator/api/v1/kc/channels/${UUID.randomUUID()}"
-                    val token = sign(TEST_PEER_AUTH_KEY, "PATCH", htu, "channel-anchor-${UUID.randomUUID()}")
+        given("a peer-auth assertion signed with a key the JWKS endpoint publishes") {
+            `when`("a PeerAuthValidator pointed at that jwks.json validates it") {
+                val jwkSource = KeycloakJwkSource(
+                    jwksUri = "http://localhost:$port/test-peer-auth/jwks.json",
+                    cacheTtlSeconds = 600,
+                    clock = TEST_CLOCK
+                )
+                val validator = PeerAuthValidator(
+                    jwkSource = jwkSource,
+                    replayProtectionService = replayProtectionService,
+                    expectedIssuer = "test-issuer",
+                    expectedAudience = "identity-demo-orchestrator",
+                    maxClockSkewSeconds = 30,
+                    maxAssertionAgeSeconds = 30,
+                    clock = TEST_CLOCK
+                )
+                val htu = "http://localhost:$port/orchestrator/api/v1/kc/channels/${UUID.randomUUID()}"
+                val token = sign(TEST_PEER_AUTH_KEY, "PATCH", htu, "channel-anchor-${UUID.randomUUID()}")
 
-                    val assertion = validator.validate(token, "PATCH", htu)
+                val assertion = validator.validate(token, "PATCH", htu)
 
+                then("it verifies successfully via the real sign -> fetch -> verify round trip") {
                     assertion.shouldNotBeNull()
                     assertion.channelAnchor.shouldNotBeNull()
                 }

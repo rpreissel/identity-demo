@@ -7,6 +7,7 @@ import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.MethodRole
 import com.example.identity.contract.tool_api.ToolCategory
 import com.example.identity.contract.tool_api.ToolDescriptor
+import java.time.Instant
 
 /**
  * An auth method identifier ("sms", "password", "eid", ...). Not an enum: every module declares its
@@ -78,6 +79,11 @@ data class MethodEvidence(
     val amrSourceId: String,
     /** Which trust question this entry answers; only an identification sets [EvidenceAxis.IDENTITY]. */
     val axis: EvidenceAxis = EvidenceAxis.AUTHENTICATOR,
+    /**
+     * When this method was proven. Above loa1 only recent proofs count ([AuthPolicy]); `null` is a
+     * proof of unknown age and counts only up to loa1. Recording a proof stamps it with the time.
+     */
+    val provenAt: Instant? = null,
 )
 
 /**
