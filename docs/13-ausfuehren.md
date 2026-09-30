@@ -287,3 +287,33 @@ cd frontend && ./record-demo-video.sh
 
 Die Texte der Karten und Untertitel stehen im Spec. Sie beschreiben nur, was die Doku belegt
 ([01-ueberblick.md](01-ueberblick.md), [ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
+
+## 9) Die Doku als Website
+
+Die Doku unter `docs/` ist auch als Website mit Inhaltsverzeichnis, Suche, gezeichneten Diagrammen
+und abspielbarem Demo-Video veröffentlicht: <https://rpreissel.github.io/identity-demo/>. Die
+Website liest die Markdown-Dateien unverändert; alles, was nur sie braucht, steht in `site/`
+(VitePress). Deshalb gilt für die Doku weiter nur, was auch auf GitHub funktioniert: relative
+`.md`-Links, keine Front Matter, Mermaid in ```` ```mermaid ````-Blöcken.
+
+- Das Inhaltsverzeichnis links ist [README.md](README.md): Jede `## `-Überschrift wird eine Gruppe,
+  jeder fett gesetzte Link darunter ein Eintrag. Eine neue Datei erscheint erst, wenn sie dort
+  verlinkt ist.
+- Jeder Unterordner hat eine `README.md`, die GitHub beim Blättern und die Website als Startseite
+  des Ordners zeigt. Der Build bricht ab, wenn eine Datei darin nicht verlinkt ist (für `adr/`
+  gilt [12-entscheidungen.md](12-entscheidungen.md) als Liste). Er bricht auch bei toten Links ab.
+- Links, die aus `docs/` herausführen (etwa in den Code), zeigen auf der Website auf die Datei
+  auf GitHub. Ebenso Links auf Dateien, die bewusst nicht im Buch stehen
+  ([00-agent-quickstart.md](00-agent-quickstart.md); Liste `excluded` in
+  `site/.vitepress/config.mts`).
+- Ein Absatz, der nur aus einem Link auf eine `.mp4`-Datei besteht, wird auf der Website ein
+  Player; auf GitHub bleibt er ein Link.
+
+Lokal ansehen (Node 22; für das Video vorher `git lfs pull`):
+
+```bash
+cd site && npm ci && npm run dev
+```
+
+Veröffentlicht wird bei jedem Push auf `main`, der `docs/` oder `site/` ändert
+(`.github/workflows/docs.yml`); ein Pull Request baut die Website nur, damit tote Links auffallen.

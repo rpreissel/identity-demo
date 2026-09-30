@@ -1,0 +1,44 @@
+.doc-video {
+  margin: 16px 0;
+}
+
+.doc-video video {
+  width: 100%;
+  border-radius: 8px;
+  background: #000;
+}
+
+.doc-video figcaption {
+  margin-top: 4px;
+  font-size: 0.9em;
+}
+
+.mermaid-diagram {
+  margin: 16px 0;
+  overflow-x: auto;
+}
+
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  border: 1px dashed var(--vp-c-divider);
+  border-radius: 8px;
+  color: var(--vp-c-text-3);
+  font-size: 0.9em;
+}
+
+.mermaid-error {
+  color: var(--vp-c-danger-1);
+}
+
+.mermaid-error pre {
+  font-size: 0.85em;
+  white-space: pre-wrap;
+}

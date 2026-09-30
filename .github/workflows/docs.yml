@@ -1,0 +1,64 @@
+name: Doku-Website
+
+# Baut docs/ mit VitePress (site/) und veroeffentlicht es auf GitHub Pages. Ein Pull Request baut
+# nur - der Build bricht bei toten Links und unverlinkten Dateien ab (docs/13-ausfuehren.md
+# Abschnitt 9). Einmalig noetig: Settings -> Pages -> Source "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "site/**", ".github/workflows/docs.yml"]
+  pull_request:
+    paths: ["docs/**", "site/**", ".github/workflows/docs.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Website bauen
+    runs-on: ubuntu-latest
+    steps:
+      # lfs: das Video liegt in Git LFS; ohne lfs wuerde nur die Zeiger-Datei veroeffentlicht.
+      # fetch-depth 0: "Zuletzt geaendert" je Seite kommt aus der Git-Historie.
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Bauen
+        working-directory: site
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: site/.vitepress/dist
+
+  deploy:
+    name: Veroeffentlichen
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

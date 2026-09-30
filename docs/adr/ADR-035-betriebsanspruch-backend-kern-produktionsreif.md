@@ -2,10 +2,9 @@
 
 **Status**: entschieden (2026-09-25).
 
-**Entscheidung**: Das Projekt dient heute dazu, kritische Kolleginnen und Kollegen von der Richtung zu
-überzeugen. Überzeugen soll es durch einen **produktionsreifen Backend-Kern**, nicht durch eine
-Oberfläche. Frontends und Ausführungsumgebungen werden später gehärtet; bis dahin gelten sie als
-Vorführrahmen.
+**Entscheidung**: Das Projekt soll zeigen, dass der Ansatz trägt. Den Beleg liefert ein
+**produktionsreifer Backend-Kern**, nicht eine Oberfläche. Frontends und Ausführungsumgebungen
+werden später gehärtet; bis dahin gelten sie als Vorführrahmen.
 
 Das Projekt zerfällt dafür in drei Bereiche mit verschiedenem Anspruch:
 
@@ -35,11 +34,10 @@ Das Projekt zerfällt dafür in drei Bereiche mit verschiedenem Anspruch:
    - Anspruch: vorführfähig. Sie werden in einer eigenen Runde gehärtet; bis dahin darf keine
      Instanz mit echten Personendaten laufen.
 
-**Warum so geschnitten**: Die kritische Frage an das Projekt lautet „trägt dieser Ansatz?“ – und die
-beantwortet der Kern: Orchestrierung, Niveaus, Kontobindung, DPoP-Bindung. Eine gehärtete Oberfläche
-oder ein gehärtetes Deployment beweist nichts über den Ansatz, kostet aber dieselbe Zeit. Umgekehrt
-wäre ein Kern mit Konventions-Invarianten angreifbar, sobald jemand genau hinsieht; genau das tun
-kritische Kollegen.
+**Warum so geschnitten**: Ob der Ansatz trägt, entscheidet sich am Kern: Orchestrierung, Niveaus,
+Kontobindung, DPoP-Bindung. Eine gehärtete Oberfläche oder ein gehärtetes Deployment sagt nichts über
+den Ansatz aus, kostet aber dieselbe Zeit. Umgekehrt hielte ein Kern, dessen Invarianten nur auf
+Konvention beruhen, keiner genauen Prüfung stand.
 
 **Erwogene Alternative**: Das ganze Projekt als Referenz deklarieren und nur die ausnutzbaren
 Befunde schließen. Verworfen: Dann bleibt P-1 (Invarianten per Konvention) offen, und das Argument

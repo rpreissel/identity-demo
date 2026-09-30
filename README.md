@@ -7,6 +7,9 @@ den Schlüssel des Geräts gebunden, und auf der Website übernimmt Keycloak die
 
 Probieren Sie es aus: Nach wenigen Minuten läuft alles auf Ihrem Rechner.
 
+Die Dokumentation lässt sich hier in [docs/](docs/README.md) lesen oder als Website mit Suche:
+<https://rpreissel.github.io/identity-demo/>.
+
 ## Die Demo als Video
 
 Das Video [docs/media/demo.mp4](docs/media/demo.mp4) dauert knapp sieben Minuten und hat

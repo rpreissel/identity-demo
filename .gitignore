@@ -74,3 +74,8 @@ Thumbs.db
 # Playwright e2e artifacts
 test-results/
 playwright-report/
+
+# Doku-Website (VitePress)
+site/node_modules/
+site/.vitepress/cache/
+site/.vitepress/dist/
