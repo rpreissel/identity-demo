@@ -59,12 +59,16 @@ Die Doku beschreibt das Zielbild. Weichen Code und Doku voneinander ab, gilt die
   jede gesichert?
 - **[port-vertraege.md](port-vertraege.md)**: Was muss ein echtes Fremdsystem zusagen, bevor es ein
   simuliertes ersetzt?
-- **[glossar/glossar.md](glossar/glossar.md)**: Was bedeuten die Fachbegriffe zu Authentifizierung,
-  Identifizierung und Gerätebindung? Externes Glossar, unverändert übernommen.
-- **[glossar/abgleich.md](glossar/abgleich.md)**: Wie heißen die Begriffe des Glossars in diesem
-  Projekt, und wo weicht es bewusst ab?
-- Die wichtigsten Begriffe des Projekts und ihre Namen im Code stehen im
-  [Überblick](01-ueberblick.md), Abschnitt 3.
+- **[glossar/glossar.md](glossar/glossar.md)**: Was bedeutet ein Begriff des Projekts, wie heißt er
+  im Code, und wo steht er ausführlich? Alphabetisch.
+- **[glossar/glossar-englisch.md](glossar/glossar-englisch.md)**: Welcher deutsche Begriff steht
+  hinter einem Namen im Code (`AuthJourney`, `acrFloor`, `auth-invite`)? Englisch sortiert, deutsch
+  beschrieben.
+- **[glossar/externes-glossar.md](glossar/externes-glossar.md)**: Was bedeuten die Fachbegriffe zu
+  Authentifizierung, Identifizierung und Gerätebindung? Externes Glossar, unverändert übernommen.
+- **[glossar/abgleich-externes-glossar.md](glossar/abgleich-externes-glossar.md)**: Wie heißen die
+  Begriffe des externen Glossars in diesem Projekt, und wo weicht es bewusst ab?
+- Die wichtigsten Begriffe zum Einstieg stehen im [Überblick](01-ueberblick.md), Abschnitt 3.
 
 ## Ideen
 

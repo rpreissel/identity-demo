@@ -70,7 +70,7 @@ Diese Demo läuft im Browser, und das begrenzt, wie gut ihre Schlüssel geschüt
 DPoP-Schlüssel und der Schlüssel des Anmeldeverfahrens `device` entstehen über die Web Crypto API
 und liegen in IndexedDB. Mit `extractable=false` kann kein Skript den privaten Schlüssel auslesen,
 auch kein fremdes. Das Niveau eines **Secure Element** oder **TPM** aus dem
-[Glossar](glossar/glossar.md) erreicht das aber nicht: Der Schlüssel liegt in den Daten des
+[externen Glossar](glossar/externes-glossar.md) erreicht das aber nicht: Der Schlüssel liegt in den Daten des
 Browsers, nicht in eigener Hardware, und die Prüfung per PIN oder Biometrie simuliert die Demo nur.
 
 Noch schwächer geschützt ist das Entsperrgeheimnis von KOBIL: Es liegt im `localStorage` des

@@ -131,10 +131,10 @@ Sieben Wörter haben in diesem Kapitel eine feste Bedeutung:
 **Tool** und **Methode**: `enroll-sms` und `auth-sms` sind zwei Tools für *eine* Methode (`sms`). Ein
 Konto hat Methoden; angeboten und gestartet werden Tools.
 
-**Begriffe aus dem [Glossar](glossar/glossar.md).** Die Doku nutzt die Wörter des Projekts; so
-entsprechen sie denen des Glossars:
+**Begriffe aus dem [externen Glossar](glossar/externes-glossar.md).** Die Doku nutzt die Wörter des
+Projekts ([Glossar](glossar/glossar.md)); so entsprechen sie denen des externen Glossars:
 
-- **Authentisierung und Authentifizierung.** Das Glossar trennt beides: Den Nachweis, den ein Tool
+- **Authentisierung und Authentifizierung.** Das externe Glossar trennt beides: Den Nachweis, den ein Tool
   im Namen des Clients liefert, nennt es *Authentisierung* (Seite des Clients), die Prüfung dieses
   Nachweises durch die `AuthPolicy` *Authentifizierung* (Seite des Servers). Das Projekt sagt für
   beides „Authentifizierung“. Das ist eine bewusste Sprachregelung, keine Unkenntnis der
@@ -671,7 +671,7 @@ gleichwertige Wege dorthin:
 
 1. ein einzelnes Tool mit zwei eigenen Faktortypen (`device`: Besitz plus Wissen oder Inhärenz),
 2. zwei kombinierte Anmelde-Tools mit je einem Faktor unterschiedlicher Art (SMS plus Passwort).
-   Im Sinne des [Glossars](glossar/glossar.md) ist das eine **mehrstufige Authentifizierung**, keine
+   Im Sinne des [externen Glossars](glossar/externes-glossar.md) ist das eine **mehrstufige Authentifizierung**, keine
    MFA im engeren Sinn, denn jedes der beiden Mittel trägt nur einen Faktor. NIST SP 800-63B stellt
    sie für AAL2 der MFA gleich (mehrere Authenticators, die zusammen zwei Faktortypen abdecken);
    deshalb zählt sie hier gleich viel wie Weg 1. Die Regel bleibt, nur der Name ist genau,

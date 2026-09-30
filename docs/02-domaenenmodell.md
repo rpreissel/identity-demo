@@ -63,7 +63,7 @@ classDiagram
 
 `DeviceAccountLink`, die **Geräteverknüpfung**, hängt bewusst **nicht** an `ChannelSession`. Es ist
 die einzige langlebige Zuordnung von Gerät zu Konto (`bindingKeyRef -> accountId`), zählt nicht als
-Anmeldung (keine Gerätebindung im Sinne des Glossars) und hängt an keiner
+Anmeldung (keine Gerätebindung im Sinne des externen Glossars) und hängt an keiner
 einzelnen `ChannelSession`; Details in [DPoP-Bindung](09-dpop.md) Abschnitt 3. Es gibt sie **nur im
 App-Kanal**: Im Web-Kanal bleibt `bindingKeyRef` `null`.
 
@@ -299,7 +299,7 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
   (gleicher Typ, Wert, Quelle und Verfahren), wird nicht noch einmal geschrieben. Ein eID-Lauf mit
   unveränderter Karte erzeugt also keine sieben neuen Zeilen. Die Spalte `normalized_value`
   (`@PrePersist`/`@PreUpdate`) hält die Regel zur Normalisierung an genau einer Stelle fest. Im
-  Sinne des [Glossars](glossar/glossar.md) sind diese Claims **bescheinigte Attribute**, sobald ein
+  Sinne des [externen Glossars](glossar/externes-glossar.md) sind diese Claims **bescheinigte Attribute**, sobald ein
   Identifizierungsverfahren oder das Personenverzeichnis für sie einsteht; was nur der Nutzer selbst
   angibt (`SELF_REPORTED`), bleibt unbescheinigt.
 

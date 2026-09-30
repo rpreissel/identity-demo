@@ -1,6 +1,6 @@
-# Glossar-Abgleich
+# Abgleich mit dem externen Glossar
 
-Dieses Dokument legt die Begriffe aus dem [Glossar](glossar.md) neben dieses Projekt. Zu jedem
+Dieses Dokument legt die Begriffe aus dem [externen Glossar](externes-glossar.md) neben dieses Projekt. Zu jedem
 Begriff steht, was ihm im Projekt entspricht, und wo das Projekt bewusst anders vorgeht, warum.
 
 Es richtet sich zuerst an den Autor des Glossars. Er muss den Code dafür nicht kennen: Abschnitt 1

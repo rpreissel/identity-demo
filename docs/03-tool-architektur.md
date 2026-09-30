@@ -118,7 +118,7 @@ abgeleitet; über sie werden Handler und Datenklasse des Moduls ausgewählt.
 
 Der Tool-Katalog ist **keine zentral gepflegte Tabelle**. Er entsteht aus den Angaben, die die Module
 über sich selbst machen (`ToolDescriptor`, Abschnitt 2). In den Begriffen des
-[Glossars](glossar/glossar.md): Tools der Rolle `IDENTIFICATION` sind Identifizierungsmittel, die
+[externen Glossars](glossar/externes-glossar.md): Tools der Rolle `IDENTIFICATION` sind Identifizierungsmittel, die
 Methoden der Rollen `ENROLLMENT` und `IDENTIFIED_AUTH`/`LOOKUP_AUTH` Authentisierungsmittel
 ([Orchestrierung](04-orchestrierung.md), Abschnitt „Begriffe“).
 

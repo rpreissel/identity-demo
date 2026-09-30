@@ -130,8 +130,9 @@ Die Doku ist deutsch, der Code englisch. Hinter jedem Begriff steht in Klammern 
 - **Geräteverknüpfung** (`DeviceAccountLink`, `binding_key_ref`): welches Gerät zu welchem Konto
   gehört, erkannt am DPoP-Schlüssel. Sie zählt nicht als Anmeldung.
 
-Das [Glossar](glossar/glossar.md) ist ein externes Nachschlagewerk; wie seine Begriffe hier
-heißen, zeigt der [Abgleich](glossar/abgleich.md).
+Alle Begriffe des Projekts, auch die hier nicht genannten, stehen im [Glossar](glossar/glossar.md).
+Das [externe Glossar](glossar/externes-glossar.md) ist ein fremdes Nachschlagewerk; wie seine
+Begriffe hier heißen, zeigt der [Abgleich](glossar/abgleich-externes-glossar.md).
 
 ---
 
