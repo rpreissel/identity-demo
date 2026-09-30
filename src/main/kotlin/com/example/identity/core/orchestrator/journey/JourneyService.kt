@@ -1,5 +1,10 @@
 package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.core.orchestrator.domain.JourneyId
+import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.core.orchestrator.session.id
@@ -11,7 +16,6 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.JourneyLifecycle
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.domain.journey.state.AnswerableState
@@ -33,15 +37,12 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Duration
-import java.util.UUID
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.session.forLog
-import com.example.identity.contract.tool_api.StepData
 
 /**
  * Drives a journey between the [IntentStrategy] SPI and the rest of the orchestrator. A strategy
@@ -110,7 +111,7 @@ class JourneyService(
         channel: ChannelSession,
         intent: AuthIntent,
         seed: JourneyState?,
-        parentJourneyId: UUID?,
+        parentJourneyId: JourneyId?,
         seedAction: Action?
     ): Step {
         // One running journey per channel (docs/invarianten.md I-3). A new top-level journey
@@ -168,7 +169,7 @@ class JourneyService(
     }
 
     /** The running journey of this channel, if any. A suspended parent is not it. */
-    fun findActive(channelSessionId: UUID): RunningJourney? =
+    fun findActive(channelSessionId: ChannelSessionId): RunningJourney? =
         journeyRepository
             .findFirstByChannelSessionIdAndLifecycleOrderByCreatedAtDesc(channelSessionId, JourneyLifecycle.STARTED)
             ?.let { RunningJourney.of(it, clock.instant()) }
@@ -177,8 +178,8 @@ class JourneyService(
      * The journey [journeyId] names, but only while it runs. A tool session outlives its journey's
      * end (logout, cancel, a finished sub-journey) - through this lookup it can no longer reach it.
      */
-    fun findRunning(journeyId: UUID): RunningJourney? =
-        journeyRepository.findByIdOrNull(journeyId)?.let { RunningJourney.of(it, clock.instant()) }
+    fun findRunning(journeyId: JourneyId): RunningJourney? =
+        journeyRepository.findByJourneyId(journeyId)?.let { RunningJourney.of(it, clock.instant()) }
 
     /**
      * Debug view of the running journey chain ([JourneyDebugStep]): the active journey and its
@@ -190,7 +191,7 @@ class JourneyService(
         val chain = mutableListOf(innermost)
         var current = innermost
         while (true) {
-            val parent = current.parentJourneyId?.let { journeyRepository.findByIdOrNull(it) } ?: break
+            val parent = current.parentJourneyId?.let { journeyRepository.findByJourneyId(it) } ?: break
             chain.add(parent)
             current = parent
         }
@@ -230,7 +231,7 @@ class JourneyService(
         markCancelled(running, channel)
         var parentId = running.parentJourneyId
         while (parentId != null) {
-            val parent = journeyRepository.findByIdOrNull(parentId) ?: break
+            val parent = journeyRepository.findByJourneyId(parentId) ?: break
             if (parent.lifecycle != JourneyLifecycle.SUSPENDED) break
             markCancelled(parent, channel)
             parentId = parent.parentJourneyId
@@ -266,7 +267,7 @@ class JourneyService(
      * does not offer. So LOGIN_LOOKUP cannot be talked into an identification: none of its states
      * lists one.
      */
-    fun activate(running: RunningJourney, live: LiveChannel, tool: ToolDescriptor, toolSessionId: UUID) {
+    fun activate(running: RunningJourney, live: LiveChannel, tool: ToolDescriptor, toolSessionId: ToolSessionId) {
         keepSessionAlive(live)
         val journey = running.entity
         val channel = live.session
@@ -282,14 +283,14 @@ class JourneyService(
     }
 
     /** See [JourneyActionExecutor.matchesAttestedIdentity]. */
-    fun matchesAttestedIdentity(journey: RunningJourney, channel: ChannelSession, personId: String): Boolean =
+    fun matchesAttestedIdentity(journey: RunningJourney, channel: ChannelSession, personId: PartnerNumber): Boolean =
         actionExecutor.matchesAttestedIdentity(journey.entity, channel, personId)
 
     /**
      * `active` stays in the stored state of an ended journey. [RunningJourney] ensures such a
      * journey is never asked, so no lifecycle check is needed here.
      */
-    fun isCurrent(journey: RunningJourney, toolId: ToolId, toolSessionId: UUID): Boolean =
+    fun isCurrent(journey: RunningJourney, toolId: ToolId, toolSessionId: ToolSessionId): Boolean =
         codec.read(journey.entity).active?.let { it.toolId == toolId && it.toolSessionId == toolSessionId } ?: false
 
     fun applyOutcome(
@@ -464,7 +465,7 @@ class JourneyService(
      * nothing to restart.
      */
     private fun cancelToParentOrEntry(journey: AuthJourney, channel: ChannelSession): Step {
-        val parent = journey.parentJourneyId?.let { journeyRepository.findByIdOrNull(it) }
+        val parent = journey.parentJourneyId?.let { journeyRepository.findByJourneyId(it) }
         if (parent != null && parent.lifecycle == JourneyLifecycle.SUSPENDED) {
             markCancelled(journey, channel)
             parent.lifecycle = JourneyLifecycle.STARTED
@@ -479,7 +480,7 @@ class JourneyService(
         journey.consume(clock.instant())
         // Flushed before a suspended parent resumes (ux_journey_running_per_channel).
         journeyRepository.saveAndFlush(journey)
-        val parent = journey.parentJourneyId?.let { journeyRepository.findByIdOrNull(it) }
+        val parent = journey.parentJourneyId?.let { journeyRepository.findByJourneyId(it) }
             ?.takeIf { it.lifecycle == JourneyLifecycle.SUSPENDED }
         // Before the sign-in log: a login whose session is gone is no sign-in.
         if (parent == null) openLoginSession(channel)
@@ -573,7 +574,7 @@ class JourneyService(
      * with its methods, so nobody logs into a half-registered account and its address is free
      * again. A registered account stays. The channel no longer points to it at this point.
      */
-    private fun discardIfBeingSetUp(accountId: Long?) {
+    private fun discardIfBeingSetUp(accountId: AccountId?) {
         if (accountId == null || !accountService.isBeingSetUp(accountId)) return
         accountDeletionService.deleteAccount(accountId)
     }

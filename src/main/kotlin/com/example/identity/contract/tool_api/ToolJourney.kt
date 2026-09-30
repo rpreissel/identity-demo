@@ -1,8 +1,11 @@
 package com.example.identity.contract.tool_api
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import java.net.URI
-import java.util.UUID
 
 /**
  * The handle a tool controller holds for one request. Obtained from [ToolJourney.beginActivation]
@@ -11,12 +14,12 @@ import java.util.UUID
 interface ToolContext {
     /** The toolId this context was obtained for. */
     val toolId: String
-    val toolSessionId: UUID
+    val toolSessionId: ToolSessionId
     /**
      * The account in hand: the one this channel knows (device link, earlier login, or bound by the
      * running journey), or `null` while nobody is known yet.
      */
-    val accountId: Long?
+    val accountId: AccountId?
 }
 
 /**
@@ -41,7 +44,7 @@ interface ToolJourney {
      * @param bindingKeyRef the caller's resolved DPoP binding key (see [BindingKey]).
      * @throws RuntimeException if the channel or binding is invalid, or the journey does not offer [toolId].
      */
-    fun beginActivation(channelSessionId: UUID, bindingKeyRef: String, toolId: String): AuthorizedToolContext
+    fun beginActivation(channelSessionId: ChannelSessionId, bindingKeyRef: String, toolId: String): AuthorizedToolContext
 
     /**
      * Loads the context of an existing tool session for the read path. Whether it is still the
@@ -50,7 +53,7 @@ interface ToolJourney {
      * @throws RuntimeException if the tool session does not exist or the binding key does not
      * match its channel.
      */
-    fun loadContext(toolSessionId: UUID, bindingKeyRef: String, toolId: String): ToolContext
+    fun loadContext(toolSessionId: ToolSessionId, bindingKeyRef: String, toolId: String): ToolContext
 
     /**
      * The `Location` header value for a just-created tool resource.
@@ -65,7 +68,7 @@ interface ToolJourney {
      *
      * @throws RuntimeException if it is not the journey's current tool.
      */
-    fun loadCurrent(toolSessionId: UUID, bindingKeyRef: String, toolId: String): AuthorizedToolContext
+    fun loadCurrent(toolSessionId: ToolSessionId, bindingKeyRef: String, toolId: String): AuthorizedToolContext
 
     /** @return whether [context]'s toolId is still the journey's current tool. */
     fun isCurrentTool(context: ToolContext): Boolean
@@ -91,7 +94,7 @@ interface ToolJourney {
      * an unknown one. `false` without an account. The journey repeats the check when binding.
      * Stays here rather than on [IdentityResolver]: only the journey consults that port.
      */
-    fun matchesAttestedIdentity(context: AuthorizedToolContext, personId: String): Boolean
+    fun matchesAttestedIdentity(context: AuthorizedToolContext, personId: PartnerNumber): Boolean
 
     /**
      * Builds the response for a GET call.

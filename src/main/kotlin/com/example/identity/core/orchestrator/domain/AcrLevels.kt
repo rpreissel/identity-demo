@@ -24,14 +24,14 @@ object AcrLevels {
     // fields.
 
     /** [AcrLevel.rank], for a raw string - null or unknown counts as rank 0. */
-    fun rank(acr: String?): Int = AcrLevel.rank(AcrLevel.of(acr))
+    fun rank(acr: String?): Int = AcrLevel.rank(AcrLevel.parse(acr))
 
     /** [AcrLevel.levelAt], as the raw level name - "none" if out of range. */
     fun levelAt(rank: Int): String = AcrLevel.levelAt(rank).value
 
     /** [AcrLevel.max], for raw strings - a null side falls back to the other, both null -> "none". */
-    fun max(a: String?, b: String?): String = AcrLevel.max(AcrLevel.of(a), AcrLevel.of(b)).value
+    fun max(a: String?, b: String?): String = AcrLevel.max(AcrLevel.parse(a), AcrLevel.parse(b)).value
 
     /** [AcrLevel.min], for raw strings - any null side means nothing was established -> "none". */
-    fun min(a: String?, b: String?): String = AcrLevel.min(AcrLevel.of(a), AcrLevel.of(b)).value
+    fun min(a: String?, b: String?): String = AcrLevel.min(AcrLevel.parse(a), AcrLevel.parse(b)).value
 }

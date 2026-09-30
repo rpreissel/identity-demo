@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_kobil.internal.enrollkobil
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_kobil.EnrollKobilDescriptor
 import com.example.identity.tools.auth_kobil.KOBIL_BINDING_KEY_REF
 import com.example.identity.tools.auth_kobil.KOBIL_DEVICE_ID
@@ -13,11 +14,9 @@ import com.example.identity.simulation.kobil.KobilUserRef
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 import com.example.identity.tools.auth_kobil.api.v1.KobilActivationStep
 
 /**
@@ -42,7 +41,7 @@ class EnrollKobilToolHandler(
      * pause in, and a second round trip would only add one.
      */
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId): ToolOutcome {
         val user = ssms.provisionUser(tenantId, subjectRef = toolSessionId.toString())
         val activationCode = ssms.issueActivationCode(user)
         val pin = secrets.newPin()
@@ -71,13 +70,13 @@ class EnrollKobilToolHandler(
      */
     @Transactional
     fun patch(
-        toolSessionId: UUID,
+        toolSessionId: ToolSessionId,
         activated: Boolean?,
         biometricConsent: Boolean?,
         bindingKeyRef: String,
         label: String?,
     ): ToolOutcome {
-        val session = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) {
+        val session = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) {
             "Unknown enroll-kobil tool session: $toolSessionId"
         }
         val user = KobilUserRef(session.kobilTenantId, session.kobilUserId)
@@ -131,8 +130,8 @@ class EnrollKobilToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        val session = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) {
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        val session = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) {
             "Unknown enroll-kobil tool session: $toolSessionId"
         }
         return outcomeFor(session)

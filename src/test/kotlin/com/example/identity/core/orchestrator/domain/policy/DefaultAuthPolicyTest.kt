@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.domain.policy
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import java.time.Duration
@@ -49,7 +51,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
             // What the catalog demands of every identification (ToolHandlerRegistry, ADR-39).
             override val claims =
                 if (role == ToolRole.IDENTIFICATION) setOf(AttributeType.FAMILY_NAME, AttributeType.GIVEN_NAMES, AttributeType.BIRTH_DATE)
-                    .map { ClaimDeclaration(it, ClaimSource.of(toolId)) }.toSet()
+                    .map { ClaimDeclaration(it, ClaimSource(toolId.value)) }.toSet()
                 else emptySet()
         }
 
@@ -67,13 +69,13 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         requiredAcr: AcrLevel,
         account: AccountProfile? = null,
         bindingKeyRef: String? = null,
-        linkedAccountId: Long? = null,
+        linkedAccountId: AccountId? = null,
         availableTools: Set<ToolId>? = null
     ) = CandidateContext(evidence, requiredAcr, account, bindingKeyRef, linkedAccountId, availableTools)
 
 
     fun account(vararg methods: AuthMethodView) = AccountProfile(
-        accountId = 1L, personId = "P000000001", authenticationMethods = methods.toList()
+        accountId = AccountId(1L), personId = PartnerNumber("P000000001"), authenticationMethods = methods.toList()
     )
 
     fun method(method: String, enrolledUnderAcr: AcrLevel, active: Boolean = true) =
@@ -263,7 +265,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
             }
 
             then("it is NOT offered once the device has been rebound to a different account") {
-                devicePolicy.authCandidates(candidates(fresh, AcrLevel.LOA2, acc, "key-1", linkedAccountId = 999L, availableTools = null)).shouldBeEmpty()
+                devicePolicy.authCandidates(candidates(fresh, AcrLevel.LOA2, acc, "key-1", linkedAccountId = AccountId(999L), availableTools = null)).shouldBeEmpty()
             }
         }
 
@@ -490,7 +492,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
 
     given("requiresSatisfied - the generic ToolDescriptor.requires gate") {
         fun profile(vararg established: Pair<AttributeType, ClaimTrust>) = AccountProfile(
-            accountId = 1L, personId = null, authenticationMethods = emptyList(),
+            accountId = AccountId(1L), personId = null, authenticationMethods = emptyList(),
             establishedClaims = established.toMap()
         )
 

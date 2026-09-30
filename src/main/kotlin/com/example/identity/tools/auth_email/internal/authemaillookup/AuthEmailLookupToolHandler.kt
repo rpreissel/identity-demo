@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_email.internal.authemaillookup
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.contract.texts.Text
@@ -11,11 +12,9 @@ import com.example.identity.contract.tool_api.directory.resolveAccountByEmail
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 /**
  * toolId=auth-email-lookup: login without a known account (docs/04-orchestrierung.md). Proves
@@ -34,7 +33,7 @@ class AuthEmailLookupToolHandler(
 ) {
 
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId): ToolOutcome {
         toolDataRepository.save(AuthEmailLookupToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor(AuthEmailLookupState.AwaitingEmail)
     }
@@ -46,8 +45,8 @@ class AuthEmailLookupToolHandler(
      * [EmailSendLimit] join that branch, so neither reveals an account (ADR-44).
      */
     @Transactional
-    fun submitEmail(toolSessionId: UUID, email: String, locked: Boolean): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-email-lookup tool session: $toolSessionId" }
+    fun submitEmail(toolSessionId: ToolSessionId, email: String, locked: Boolean): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-email-lookup tool session: $toolSessionId" }
 
         val candidateAccountId = accountDirectory.resolveAccountByEmail(email).takeUnless { locked }
         val confirmedEmail = candidateAccountId
@@ -75,8 +74,8 @@ class AuthEmailLookupToolHandler(
 
     /** Called directly by AuthEmailLookupToolController (docs/08-projektrahmen.md A11). */
     @Transactional
-    fun patch(toolSessionId: UUID, code: String?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-email-lookup tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, code: String?): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-email-lookup tool session: $toolSessionId" }
 
         return when (val decision = AuthEmailLookupFlow.decideCode(data.toState(), code, emailCodeGenerator)) {
             is AuthEmailLookupDecision.Unchanged -> outcomeFor(decision.state)
@@ -99,8 +98,8 @@ class AuthEmailLookupToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-email-lookup tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-email-lookup tool session: $toolSessionId" }
         return outcomeFor(data.toState())
     }
 

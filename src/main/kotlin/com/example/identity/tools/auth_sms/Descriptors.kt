@@ -28,7 +28,7 @@ object EnrollSmsDescriptor : ToolDescriptor {
     // A confirmed TAN proves the subject holds this number, so it goes into the claim log. No
     // anchor and no uniqueness: several accounts may share one number (a family phone), and
     // auth-sms-lookup never resolves by number.
-    override val claims = setOf(ClaimDeclaration(AttributeType.PHONE_NUMBER, ClaimSource.of(toolId)))
+    override val claims = setOf(ClaimDeclaration(AttributeType.PHONE_NUMBER, ClaimSource(toolId.value)))
 }
 
 @Component

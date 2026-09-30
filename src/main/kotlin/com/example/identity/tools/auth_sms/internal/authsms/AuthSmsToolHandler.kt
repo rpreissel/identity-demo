@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_sms.internal.authsms
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_sms.internal.TanGenerator
@@ -15,7 +16,6 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 /**
  * toolId=auth-sms (docs/06-ablaeufe.md #3). [start]'s [enrollmentRef] is resolved by the
@@ -33,7 +33,7 @@ class AuthSmsToolHandler(
 ) {
 
     @Transactional
-    fun start(toolSessionId: UUID, enrollmentRef: EnrollmentRef): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId, enrollmentRef: EnrollmentRef): ToolOutcome {
         if (enrollmentRef.type != SMS_ENROLLMENT_TYPE) {
             throw UnresolvableReferenceException(Text("Unerwarteter Enrollment-Typ"), "type=${enrollmentRef.type}")
         }
@@ -66,8 +66,8 @@ class AuthSmsToolHandler(
 
     /** Called directly by AuthSmsToolController, not generically dispatched (docs/08-projektrahmen.md A11). */
     @Transactional
-    fun patch(toolSessionId: UUID, tan: String?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-sms tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, tan: String?): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-sms tool session: $toolSessionId" }
         val state = data.toState()
 
         return when (AuthSmsFlow.decide(state, AuthSmsInput(tan), tanGenerator)) {
@@ -89,8 +89,8 @@ class AuthSmsToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-sms tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-sms tool session: $toolSessionId" }
         return outcomeFor(data.toState())
     }
 

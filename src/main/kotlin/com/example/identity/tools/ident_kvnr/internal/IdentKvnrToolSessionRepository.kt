@@ -1,5 +1,6 @@
 package com.example.identity.tools.ident_kvnr.internal
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -10,6 +11,8 @@ import java.util.UUID
 
 @Repository
 interface IdentKvnrToolSessionRepository : JpaRepository<IdentKvnrToolSession, UUID> {
+    fun findByToolSessionId(toolSessionId: ToolSessionId): IdentKvnrToolSession?
+
     @Modifying
     @Query("delete from IdentKvnrToolSession e where e.createdAt < :cutoff")
     fun deleteByCreatedAtBefore(@Param("cutoff") cutoff: Instant): Int

@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_email.api.v1
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_email.internal.enrollemail.EnrollEmailToolHandler
 import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
@@ -11,7 +13,6 @@ import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
-import java.util.UUID
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -53,7 +54,7 @@ class EnrollEmailToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
@@ -67,7 +68,7 @@ class EnrollEmailToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/enroll-email")
     @Operation(summary = "Read the current enroll-email state")
     fun read(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, ENROLL_EMAIL_TOOL_ID)

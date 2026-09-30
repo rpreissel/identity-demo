@@ -1,8 +1,8 @@
 package com.example.identity.tools.auth_sms.internal.authsms
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import java.time.Instant
-import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.StepData
 
@@ -22,7 +22,7 @@ internal data class AuthSmsState(val issuedTanHash: String, val tanExpiresAt: In
 
     companion object {
         /** Turns [AuthSmsToolSession]'s persisted columns back into a [AuthSmsState]. */
-        fun of(toolSessionId: UUID, issuedTanHash: String?, tanExpiresAt: Instant?): AuthSmsState = AuthSmsState(
+        fun of(toolSessionId: ToolSessionId, issuedTanHash: String?, tanExpiresAt: Instant?): AuthSmsState = AuthSmsState(
             checkNotNull(issuedTanHash) { "auth-sms tool data $toolSessionId without issuedTanHash" },
             checkNotNull(tanExpiresAt) { "auth-sms tool data $toolSessionId without tanExpiresAt" }
         )

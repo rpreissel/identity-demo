@@ -12,7 +12,7 @@ wählt er Online-Ausweis, Reisepass oder EUDI-Wallet. Zurück kommt er dorthin, 
 hinbestellt hat: in die App oder auf die Action-URL des laufenden Keycloak-Schritts (ADR-47). Das
 Ergebnis holt der Server danach einmalig selbst bei Nect ab (`NectIdent.redeem`), nie über den
 Client. Die gelieferten Angaben bestätigt er wie bei `ident-eid` auf eigene Verantwortung
-(`ClaimSource.of("ident-nect")`, bis `loa3`, `amr` `nect-<verfahren>`). Die Zuordnung zu einer
+(`ClaimSource("ident-nect")`, bis `loa3`, `amr` `nect-<verfahren>`). Die Zuordnung zu einer
 Person folgt wie bei `ident-eid` über `ident-kvnr`. Details und was noch offen ist stehen in
 [03-tool-architektur.md](03-tool-architektur.md), Abschnitt 1.
 
@@ -283,7 +283,7 @@ Dabei gilt:
 Der eigentliche Unterschied zu `ident-fsc` liegt darin, wer für die Daten einsteht. Bei
 `ident-fsc` ist das Personenverzeichnis die Quelle und das Tool nur der Weg dorthin
 (`ClaimSource.PERSON_DIRECTORY`); der Freischaltcode belegt das Verfahren. `ident-eid` bestätigt
-dagegen auf **eigene** Verantwortung (`ClaimSource.of(toolId)`), was die Karte zeigt: Name,
+dagegen auf **eigene** Verantwortung (`ClaimSource(toolId.value)`), was die Karte zeigt: Name,
 Vorname, Geburtsdatum und Adresse als Claims, dazu als siebten Claim die `restrictedId`. Sie ist
 ein lokaler Anker, über den ein Interessent wiedererkannt wird (ADR-19: Eine neue Karte ersetzt den
 Wert an derselben Stelle, ein fremdes Konto hält ihn nie). Eine PersonId behauptet `ident-eid` nicht

@@ -255,6 +255,32 @@ Konstruktor; Entitäten und Regeln bekommen den Zeitpunkt vom Aufrufer (`isExpir
 `touch(now)`, `createdAt` im Konstruktor). So lassen sich Ablauf, Proof-Fenster, Zählfenster und
 Aufbewahrung mit einer gestellten Uhr prüfen, ohne zu warten.
 
+**Ids und Werte sind Wertklassen.** Jede eindeutige Id hat einen eigenen Typ (`AccountId`,
+`ChannelSessionId`, `ToolSessionId`, `InvitationId` in `tool_api.ids`, `JourneyId` und
+`SessionEvidenceId` im Fachkern des Orchestrators; die Person-Id ist die `PartnerNumber`), ebenso
+jeder Wert mit eigenem Format (`Email`, `PhoneNumber`, `Kvnr`, `MemberNumber`, `AcrLevel`). Sie
+gelten überall, auch in Entitäten, Repositories, DTOs und Controller-Parametern; im JSON und in der
+Datenbank steht der nackte Wert. Erzeugt wird eine Wertklasse auf genau zwei Wegen: der
+Konstruktor nimmt einen Wert in Normalform und prüft ihn im `init`-Block, `parse(raw)` nimmt Text
+von außen, normalisiert ihn und liefert `null`, wenn er nicht passt. `parse` gibt es nur, wo
+Nutzereingaben ankommen. Ausgepackt (`.value`) wird nur an einer Grenze: im Repository, wo JPA den
+nackten Wert braucht (Primärschlüssel `Long` des Kontos, Id-Listen), und dort, wo ein Fremdsystem
+oder ein Zähler einen `String` erwartet.
+
+Weil Kotlin Wertklassen auf der JVM auflöst, brauchen sie an einigen Stellen eine Hilfe; jede steht
+an einer Stelle und ist dort begründet:
+
+- **JPA.** UUID- und String-Ids speichert Hibernate direkt, `AccountId` über `AccountIdConverter`.
+  Deshalb nimmt eine Repository-Methode `AccountId?`, und Id-Listen gehen ausgepackt an die Abfrage
+  (offen bei Spring Data: spring-data-commons#2868). Der Id-Typ eines Repositorys bleibt primitiv;
+  gesucht wird über eine abgeleitete Methode wie `findByToolSessionId`.
+- **OpenAPI.** `ValueClassOpenApiConfig` nimmt den Hash aus Methodennamen (`activate-Ab3dE_f`) und gibt
+  Pfadparametern das Schema ihres Werts. swagger-core braucht das Jackson-2-Kotlin-Modul.
+- **Architekturtests.** Eine Regel über Methodennamen vergleicht den Namen ohne diesen Hash, sonst
+  trifft sie nichts mehr.
+- **MockK.** `any()` erzeugt Wertklassen über ihren Konstruktor; `ProjectConfig` registriert für die
+  Klassen mit Formatprüfung einen gültigen Platzhalter.
+
 **Wo man zu lesen anfängt.**
 
 1. Eine Strategie unter `orchestrator/domain/journey/strategy`, etwa `StepUpStrategy.kt`, mit
@@ -327,7 +353,7 @@ freigegeben, und jeder, der ihn erreicht, bekäme vollen Lese- und Schreibzugrif
 |----|--------------|------------|
 | A1 | Build-Tool: Gradle mit Kotlin-DSL | Einheitliche, typsichere Build-Konfiguration |
 | A2 | Gradle Wrapper muss enthalten sein | Reproduzierbarkeit ohne lokale Gradle-Installation |
-| A3 | JVM-Version 21 (Ziel des Bytecodes), Kotlin 2.4.0 | Voraussetzung für Spring Boot 4.x; Kotlin als Implementierungssprache |
+| A3 | JVM-Version 21 (Ziel des Bytecodes), Kotlin 2.4.20 | Voraussetzung für Spring Boot 4.x; Kotlin als Implementierungssprache |
 | A4 | Aktuelle Spring Boot-Version verwenden | Sicherheit und Aktualität |
 | A5 | Versionen zentral in `gradle/libs.versions.toml` pflegen | Zentrale Versionsverwaltung, konsistente Abhängigkeiten |
 | A6 | Frontend-Build ist in den Gradle-Build integriert | Einheitlicher Build-Prozess für Backend und Frontend |

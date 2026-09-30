@@ -74,7 +74,7 @@ class RetentionJob(
         var batch = journeyRepository.findIdsForRetention(cutoff, PageRequest.of(0, RETENTION_BATCH_SIZE))
         while (batch.isNotEmpty()) {
             toolSessionRepository.deleteByJourneyIdIn(batch)
-            journeyRepository.deleteAllByIdInBatch(batch)
+            journeyRepository.deleteAllByJourneyIdInBatch(batch)
             batch = journeyRepository.findIdsForRetention(cutoff, PageRequest.of(0, RETENTION_BATCH_SIZE))
         }
     }
@@ -97,7 +97,7 @@ class RetentionJob(
             val journeyIds = journeyRepository.findIdsByChannelSessionIdIn(channelSessionIds)
             if (journeyIds.isNotEmpty()) {
                 toolSessionRepository.deleteByJourneyIdIn(journeyIds)
-                journeyRepository.deleteAllByIdInBatch(journeyIds)
+                journeyRepository.deleteAllByJourneyIdInBatch(journeyIds)
             }
         }
         // One statement per table and batch; deleteAll would delete row by row.
@@ -106,7 +106,7 @@ class RetentionJob(
             appTokenSessionRepository.deleteAllByIdInBatch(orphanedAppTokenSessionIds)
         }
         if (orphanedSessionEvidenceIds.isNotEmpty()) {
-            sessionEvidenceRepository.deleteAllByIdInBatch(orphanedSessionEvidenceIds)
+            sessionEvidenceRepository.deleteAllBySessionEvidenceIdInBatch(orphanedSessionEvidenceIds)
         }
         countDeleted("channel_session", channels.size)
         log.info("Retention: deleted {} channel session(s)", channels.size)

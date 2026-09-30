@@ -1,8 +1,8 @@
 package com.example.identity.contract.tool_api.envelope
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.fasterxml.jackson.annotation.JsonInclude
 import io.swagger.v3.oas.annotations.media.Schema
-import java.util.UUID
 
 /**
  * A pure address for the client's next step, never mixed with content (ADR-6). [type] is `"tool"`
@@ -19,11 +19,11 @@ data class Next(
     val context: String? = null,
     @field:Schema(example = "auth")
     val step: String,
-    val toolSessionId: UUID? = null
+    val toolSessionId: ToolSessionId? = null
 ) {
     companion object {
         /** Addresses a running tool: the client calls `/tools/{toolSessionId}/{toolId}` next. */
-        fun tool(toolId: String, step: String, toolSessionId: UUID? = null) =
+        fun tool(toolId: String, step: String, toolSessionId: ToolSessionId? = null) =
             Next(type = "tool", toolId = toolId, step = step, toolSessionId = toolSessionId)
 
         /** Addresses an orchestrator-served page (a selection or completion screen), which has no tool session yet. */

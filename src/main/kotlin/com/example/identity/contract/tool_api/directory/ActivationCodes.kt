@@ -1,5 +1,7 @@
 package com.example.identity.contract.tool_api.directory
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
+
 
 /**
  * The Freischaltcode check of the person register (ADR-31): what an identification tool asks when
@@ -11,5 +13,5 @@ interface ActivationCodes {
     fun digest(code: String): String
 
     /** Whether [codeDigest] (see [digest]) is a currently valid code of [personId]. */
-    fun isValid(personId: String, codeDigest: String): Boolean
+    fun isValid(personId: PartnerNumber, codeDigest: String): Boolean
 }

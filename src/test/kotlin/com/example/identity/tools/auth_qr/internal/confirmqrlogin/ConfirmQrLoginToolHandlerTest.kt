@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_qr.internal.confirmqrlogin
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -28,20 +30,20 @@ class ConfirmQrLoginToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<ConfirmQrLoginToolSessionRepository>()
     val qrLoginRequestRepository = mockk<QrLoginRequestRepository>()
     val handler = ConfirmQrLoginToolHandler(ConfirmQrLoginDescriptor, toolDataRepository, qrLoginRequestRepository, ConfirmationCodeDigest("test-pepper"), clock = TEST_CLOCK)
-    val toolSessionId = UUID.randomUUID()
+    val toolSessionId = ToolSessionId(UUID.randomUUID())
     val pairingCode = "ABCD1234"
 
     given("a confirm-qr-login tool session that already resolved its pairing code") {
         val data = ConfirmQrLoginToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW).apply { this.pairingCode = pairingCode }
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
 
         `when`("the pairing's expectedAccountId belongs to a DIFFERENT account than the one confirming") {
             every { qrLoginRequestRepository.findById(pairingCode) } returns Optional.of(
-                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = 42L, createdAt = TEST_NOW)
+                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = AccountId(42L), createdAt = TEST_NOW)
             )
 
             then("it fails immediately, never reaching approveIfPending") {
-                val outcome = handler.patch(toolSessionId, pairingCode = null, decision = "accept", accountId = 99L, hasQrEnrollment = true)
+                val outcome = handler.patch(toolSessionId, pairingCode = null, decision = "accept", accountId = AccountId(99L), hasQrEnrollment = true)
 
                 outcome shouldBe ToolOutcome.Failed.NothingGuessed(Text("Bestätigung passt nicht zu diesem Konto"))
             }
@@ -49,12 +51,12 @@ class ConfirmQrLoginToolHandlerTest : BehaviorSpec({
 
         `when`("the pairing's expectedAccountId matches the confirming account") {
             every { qrLoginRequestRepository.findById(pairingCode) } returns Optional.of(
-                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = 99L, createdAt = TEST_NOW)
+                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = AccountId(99L), createdAt = TEST_NOW)
             )
-            every { qrLoginRequestRepository.approveIfPending(pairingCode, 99L, any(), any(), any()) } returns 1
+            every { qrLoginRequestRepository.approveIfPending(pairingCode, AccountId(99L), any(), any(), any()) } returns 1
 
             then("it approves and shows the six-digit code for the browser - it does not finish yet") {
-                val outcome = handler.patch(toolSessionId, pairingCode = null, decision = "accept", accountId = 99L, hasQrEnrollment = true)
+                val outcome = handler.patch(toolSessionId, pairingCode = null, decision = "accept", accountId = AccountId(99L), hasQrEnrollment = true)
 
                 outcome.shouldBeApproved()
             }
@@ -64,10 +66,10 @@ class ConfirmQrLoginToolHandlerTest : BehaviorSpec({
             every { qrLoginRequestRepository.findById(pairingCode) } returns Optional.of(
                 QrLoginRequest(pairingCode = pairingCode, expectedAccountId = null, createdAt = TEST_NOW)
             )
-            every { qrLoginRequestRepository.approveIfPending(pairingCode, 99L, any(), any(), any()) } returns 1
+            every { qrLoginRequestRepository.approveIfPending(pairingCode, AccountId(99L), any(), any(), any()) } returns 1
 
             then("it approves - any account may confirm - and shows the code for the browser") {
-                val outcome = handler.patch(toolSessionId, pairingCode = null, decision = "accept", accountId = 99L, hasQrEnrollment = true)
+                val outcome = handler.patch(toolSessionId, pairingCode = null, decision = "accept", accountId = AccountId(99L), hasQrEnrollment = true)
 
                 outcome.shouldBeApproved()
             }
@@ -75,7 +77,7 @@ class ConfirmQrLoginToolHandlerTest : BehaviorSpec({
 
         `when`("the account has no active qr enrollment at all") {
             then("it fails before even looking at expectedAccountId") {
-                val outcome = handler.patch(toolSessionId, pairingCode = null, decision = "accept", accountId = 99L, hasQrEnrollment = false)
+                val outcome = handler.patch(toolSessionId, pairingCode = null, decision = "accept", accountId = AccountId(99L), hasQrEnrollment = false)
 
                 outcome shouldBe ToolOutcome.Failed.NothingGuessed(Text("QR-Login ist für dieses Konto nicht aktiviert."))
             }

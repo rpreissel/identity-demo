@@ -1,37 +1,30 @@
 package com.example.identity.core.account
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.directory.PersonChanged
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.account.infrastructure.Account
+import com.example.identity.core.account.infrastructure.accountId
 import com.example.identity.core.account.application.AnchorRegistry
 import com.example.identity.core.account.application.ClaimLedger
-import com.example.identity.core.account.infrastructure.AccountAnchorRepository
-import com.example.identity.core.account.infrastructure.AccountClaim
-import com.example.identity.core.account.infrastructure.AccountClaimRepository
 import com.example.identity.core.account.infrastructure.AccountAuthMethod
 import com.example.identity.core.account.infrastructure.AccountAuthMethodRepository
 import com.example.identity.core.account.infrastructure.AccountRepository
-import com.example.identity.core.account.infrastructure.AccountRetraction
-import com.example.identity.core.account.infrastructure.AccountRetractionRepository
 import com.example.identity.core.account.application.MethodDeactivationReason
 import com.example.identity.core.account.application.ChangeLog
 import com.example.identity.core.account.application.PersonLookupKey
-import com.example.identity.core.account.infrastructure.strongestEstablishedValues
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.claims.AttributeAuthority
 import com.example.identity.contract.tool_api.directory.IdentityConflictException
-import com.example.identity.contract.tool_api.claims.normalizeAnchorValue
 import com.example.identity.contract.tool_api.claims.anchorRule
 import com.example.identity.contract.tool_api.claims.authority
 import com.example.identity.contract.tool_api.claims.isLocalAnchor
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.claims.ClaimTrust
-import com.example.identity.contract.tool_api.claims.claimTrust
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.EnrollmentRef
-import com.example.identity.contract.tool_api.claims.validateValue
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -39,12 +32,11 @@ import java.util.UUID
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 /** Fired once an account row is gone; the only account event, as Keycloak reads accounts itself (ADR-38). */
-data class AccountDeleted(val accountId: Long)
+data class AccountDeleted(val accountId: AccountId)
 
 @Service
 class AccountService(
@@ -62,7 +54,7 @@ class AccountService(
 
     /** Single-claim convenience wrapper around [recordClaims]. */
     @Transactional
-    fun recordClaim(accountId: Long, claim: Claim, provenAcr: AcrLevel) =
+    fun recordClaim(accountId: AccountId, claim: Claim, provenAcr: AcrLevel) =
         recordClaims(accountId, listOf(claim), provenAcr)
 
     /**
@@ -71,7 +63,7 @@ class AccountService(
      * same query as the retraction, so the projection cannot disagree with the write it predicts.
      */
     @Transactional(readOnly = true)
-    fun claimedTypesOf(accountId: Long, methodInstanceId: String): Set<AttributeType> {
+    fun claimedTypesOf(accountId: AccountId, methodInstanceId: String): Set<AttributeType> {
         val instanceId = runCatching { UUID.fromString(methodInstanceId) }.getOrNull() ?: return emptySet()
         return claimLedger.ownedBy(accountId, instanceId).map { it.first }.toSet()
     }
@@ -86,7 +78,7 @@ class AccountService(
      */
     @Transactional
     fun retractAttribute(
-        accountId: Long,
+        accountId: AccountId,
         attributeType: AttributeType,
         retractionSource: RetractionSource,
         reason: String? = null
@@ -109,7 +101,7 @@ class AccountService(
      * phone number. Values the replacement asserts itself stay: retractions work by value (ADR-12) and
      * the new claims are already recorded, so retracting them would cancel those as well.
      */
-    private fun retractReplacedClaims(accountId: Long, replaced: List<UUID>, replacement: UUID, now: Instant) {
+    private fun retractReplacedClaims(accountId: AccountId, replaced: List<UUID>, replacement: UUID, now: Instant) {
         if (replaced.isEmpty()) return
         val kept = claimLedger.ownedBy(accountId, replacement)
         replaced.flatMap { claimLedger.ownedBy(accountId, it) }.distinct().filterNot { it in kept }.forEach { (type, value) ->
@@ -127,7 +119,7 @@ class AccountService(
      */
     @Transactional
     fun retractClaimsOf(
-        accountId: Long,
+        accountId: AccountId,
         methodInstanceId: String,
         retractionSource: RetractionSource,
         reason: String? = null
@@ -148,7 +140,7 @@ class AccountService(
      */
     @Transactional
     fun recordClaims(
-        accountId: Long,
+        accountId: AccountId,
         claims: List<Claim>,
         provenAcr: AcrLevel,
         authMethodId: UUID? = null
@@ -168,8 +160,7 @@ class AccountService(
     @Transactional
     fun createAccountInSetup(): AccountProfile {
         val account = accountRepository.save(Account(createdAt = clock.instant()))
-        val accountId = checkNotNull(account.id) { "Account has no id" }
-        return AccountProfile(accountId = accountId, personId = null, authenticationMethods = emptyList())
+        return AccountProfile(accountId = account.accountId, personId = null, authenticationMethods = emptyList())
     }
 
     /**
@@ -180,7 +171,7 @@ class AccountService(
      * several values of one attribute and a batch allows only one per attribute.
      */
     @Transactional
-    fun absorbDisposableAccount(from: Long, into: Long) {
+    fun absorbDisposableAccount(from: AccountId, into: AccountId) {
         check(from != into) { "absorbDisposableAccount($from): an account cannot absorb itself" }
         val source = findAccount(from) ?: error("Account not found: $from")
         if (!source.isDisposable) {
@@ -195,7 +186,7 @@ class AccountService(
         // Each anchor keeps the level it was originally paid with (AnchorRule.acrFloor), not the
         // current session's, so absorbing neither under- nor overpays.
         val anchorAcr = anchors.mapNotNull { anchor ->
-            anchor.attributeType?.let { type -> type to (anchor.establishedAcr?.let(AcrLevel::of) ?: AcrLevel.NONE) }
+            anchor.attributeType?.let { type -> type to (anchor.establishedAcr?.let(AcrLevel::parse) ?: AcrLevel.NONE) }
         }.toMap()
         val claims = claimLedger.established(from).sortedBy { it.establishedAt }
 
@@ -212,9 +203,9 @@ class AccountService(
                     attributeType = type,
                     value = checkNotNull(claim.value) { "Claim without a value on account $from" },
                     source = ClaimSource(checkNotNull(claim.claimSource) { "Claim without a source on account $from" }),
-                    establishedAcr = claim.establishedAcr?.let(AcrLevel::of)
+                    establishedAcr = claim.establishedAcr?.let(AcrLevel::parse)
                 ),
-                provenAcr = anchorAcr[type] ?: claim.establishedAcr?.let(AcrLevel::of) ?: AcrLevel.NONE
+                provenAcr = anchorAcr[type] ?: claim.establishedAcr?.let(AcrLevel::parse) ?: AcrLevel.NONE
             )
         }
         log.info("Account {} absorbed disposable account {} ({} claims)", into, from, claims.size)
@@ -227,13 +218,13 @@ class AccountService(
      * Called after the run's claims are recorded, so they are part of it.
      */
     @Transactional
-    fun addIdentification(accountId: Long, method: String, loa: String?, role: String? = null, report: Map<String, Any?> = emptyMap()) {
+    fun addIdentification(accountId: AccountId, method: String, loa: String?, role: String? = null, report: Map<String, Any?> = emptyMap()) {
         val verified = claimLedger.provenValues(accountId, PERSON_LOOKUP_ATTRIBUTES)
         val lookupKey = personLookupKey.of(
             verified[AttributeType.FAMILY_NAME], verified[AttributeType.GIVEN_NAMES], verified[AttributeType.BIRTH_DATE]?.let(LocalDate::parse)
         )
         val personId = anchorRegistry.valueOf(accountId, AttributeType.PERSON_ID)
-        changeLog.identified(accountId, method, loa, role, report, lookupKey, personId)
+        changeLog.identified(accountId, method, loa, role, report, lookupKey, personId?.let(::PartnerNumber))
     }
 
     /**
@@ -243,7 +234,7 @@ class AccountService(
      */
     @Transactional
     fun addAuthenticationMethod(
-        accountId: Long,
+        accountId: AccountId,
         method: String,
         enrollmentRef: EnrollmentRef,
         enrolledUnderAcr: String?,
@@ -299,7 +290,7 @@ class AccountService(
      * channel's floor. Addressed by [methodInstanceId], since several devices share one method name.
      */
     @Transactional
-    fun deactivateAuthenticationMethod(accountId: Long, methodInstanceId: String): AccountProfile {
+    fun deactivateAuthenticationMethod(accountId: AccountId, methodInstanceId: String): AccountProfile {
         lockForUpdate(accountId)
         findMethodInstance(accountId, methodInstanceId)?.takeIf { it.active }?.let {
             val now = clock.instant()
@@ -310,12 +301,12 @@ class AccountService(
     }
 
     @Transactional(readOnly = true)
-    fun findAccount(accountId: Long): AccountProfile? =
-        accountRepository.findByIdOrNull(accountId)?.let { toProfile(it) }
+    fun findAccount(accountId: AccountId): AccountProfile? =
+        accountRepository.findAccount(accountId)?.let { toProfile(it) }
 
     /** For the demo admin pages only; the login path must not depend on a full list (10 million+ accounts). */
     @Transactional(readOnly = true)
-    fun allAccountIds(): List<Long> = accountRepository.findAllIds()
+    fun allAccountIds(): List<AccountId> = accountRepository.findAllIds()
 
     /**
      * Deletes the account row; anchors, methods and claims cascade. The change log survives without
@@ -323,9 +314,9 @@ class AccountService(
      * on a method module, so the caller first cleans up the credentials behind [allEnrollmentRefs].
      */
     @Transactional
-    fun deleteAccount(accountId: Long) {
+    fun deleteAccount(accountId: AccountId) {
         changeLog.accountDeleted(accountId)
-        accountRepository.deleteById(accountId)
+        accountRepository.deleteAccount(accountId)
         eventPublisher.publishEvent(AccountDeleted(accountId))
     }
 
@@ -334,17 +325,17 @@ class AccountService(
      * [AccountProfile.isSetUp]). Two existence checks, no profile.
      */
     @Transactional(readOnly = true)
-    fun isBeingSetUp(accountId: Long): Boolean =
-        accountRepository.existsById(accountId) && !accountAuthMethodRepository.existsByAccountId(accountId)
+    fun isBeingSetUp(accountId: AccountId): Boolean =
+        accountRepository.existsAccount(accountId) && !accountAuthMethodRepository.existsByAccountId(accountId)
 
     /** Accounts still being set up and created before [cutoff], oldest first, at most [limit] (ADR-46). */
     @Transactional(readOnly = true)
-    fun accountsBeingSetUpCreatedBefore(cutoff: Instant, limit: Int): List<Long> =
+    fun accountsBeingSetUpCreatedBefore(cutoff: Instant, limit: Int): List<AccountId> =
         accountRepository.findIdsBeingSetUpCreatedBefore(cutoff, PageRequest.of(0, limit))
 
     /** Including deactivated methods, so account deletion also removes a replaced credential's row. */
     @Transactional(readOnly = true)
-    fun allEnrollmentRefs(accountId: Long): List<EnrollmentRef> =
+    fun allEnrollmentRefs(accountId: AccountId): List<EnrollmentRef> =
         accountAuthMethodRepository.findByAccountIdOrderByCreatedAt(accountId).map { it.enrollmentRef }
 
     /**
@@ -352,21 +343,21 @@ class AccountService(
      * to a new account. Such a row must survive this account's deletion or revocation.
      */
     @Transactional(readOnly = true)
-    fun isEnrollmentSharedWithOtherAccount(accountId: Long, enrollmentRef: EnrollmentRef): Boolean =
+    fun isEnrollmentSharedWithOtherAccount(accountId: AccountId, enrollmentRef: EnrollmentRef): Boolean =
         accountAuthMethodRepository.existsByEnrollmentTypeAndEnrollmentIdAndAccountIdNot(enrollmentRef.type, enrollmentRef.id, accountId)
 
     /** For a caller revoking a single credential. */
     @Transactional(readOnly = true)
-    fun enrollmentRefFor(accountId: Long, methodInstanceId: String): EnrollmentRef? =
+    fun enrollmentRefFor(accountId: AccountId, methodInstanceId: String): EnrollmentRef? =
         findMethodInstance(accountId, methodInstanceId)?.enrollmentRef
 
     @Transactional(readOnly = true)
-    fun findActiveMethod(accountId: Long, method: String): AuthMethodView? =
+    fun findActiveMethod(accountId: AccountId, method: String): AuthMethodView? =
         findActiveMethods(accountId, method).firstOrNull()
 
     /** All active instances of [method], e.g. one `device` entry per physical device. */
     @Transactional(readOnly = true)
-    fun findActiveMethods(accountId: Long, method: String): List<AuthMethodView> =
+    fun findActiveMethods(accountId: AccountId, method: String): List<AuthMethodView> =
         accountAuthMethodRepository.findByAccountIdAndMethodAndActiveTrueOrderByCreatedAt(accountId, method).map { it.toView() }
 
     // AccountDirectory (tool_api) -------------------------------------------------------------
@@ -376,13 +367,13 @@ class AccountService(
      * anchors and master data right, never for a login - that is [resolveByAnchor] (ADR-46).
      */
     @Transactional(readOnly = true)
-    fun anchorHolder(type: AttributeType, value: String): Long? = anchorRegistry.holderOf(type, value)
+    fun anchorHolder(type: AttributeType, value: String): AccountId? = anchorRegistry.holderOf(type, value)
 
     /** Only accounts that are set up: one without a login method is not there for a login (ADR-46). */
-    override fun resolveByAnchor(type: AttributeType, value: String): Long? =
+    override fun resolveByAnchor(type: AttributeType, value: String): AccountId? =
         anchorRegistry.holderOf(type, value)?.takeIf { accountAuthMethodRepository.existsByAccountId(it) }
 
-    override fun anchorValue(accountId: Long, type: AttributeType): String? {
+    override fun anchorValue(accountId: AccountId, type: AttributeType): String? {
         check(type.isLocalAnchor) { "$type is not a local account anchor, it is owned by ${type.authority}" }
         return anchorRegistry.valueOf(accountId, type)
     }
@@ -392,13 +383,13 @@ class AccountService(
      * counterpart of [AccountProfile.establishedClaims], e.g. for the ID-token name of a prospect
      * without a register person (ADR-18).
      */
-    fun establishedClaimValues(accountId: Long, types: Set<AttributeType>): Map<AttributeType, String> =
+    fun establishedClaimValues(accountId: AccountId, types: Set<AttributeType>): Map<AttributeType, String> =
         claimLedger.establishedValues(accountId, types)
 
-    override fun activeEnrollment(accountId: Long, method: String): EnrollmentRef? =
+    override fun activeEnrollment(accountId: AccountId, method: String): EnrollmentRef? =
         findActiveMethod(accountId, method)?.enrollmentRef
 
-    override fun activeInstanceEnrollment(accountId: Long, method: String, livesOnCallerKey: (instanceDetails: Map<String, Any?>?) -> Boolean): EnrollmentRef? =
+    override fun activeInstanceEnrollment(accountId: AccountId, method: String, livesOnCallerKey: (instanceDetails: Map<String, Any?>?) -> Boolean): EnrollmentRef? =
         findActiveMethods(accountId, method).firstOrNull { livesOnCallerKey(it.details) }?.enrollmentRef
 
     /**
@@ -410,9 +401,9 @@ class AccountService(
      * @return the account that followed the change, or null when nobody is bound to the person.
      */
     @Transactional
-    fun applyDirectoryChange(change: PersonChanged): Long? {
+    fun applyDirectoryChange(change: PersonChanged): AccountId? {
         // An account still being set up follows the register too (ADR-46).
-        val accountId = anchorHolder(AttributeType.PERSON_ID, change.personId) ?: return null
+        val accountId = anchorHolder(AttributeType.PERSON_ID, change.personId.value) ?: return null
         if (AttributeType.KVNR in change.changed) {
             retractAttribute(accountId, AttributeType.KVNR, RetractionSource.PERSON_DIRECTORY, "KVNR im Personenverzeichnis geändert")
             change.kvnr?.let {
@@ -434,31 +425,31 @@ class AccountService(
      * that account's own change event may not have arrived yet. It is withdrawn there, or the change
      * would fail on the anchor conflict and be retried forever.
      */
-    private fun releaseFromOtherAccount(type: AttributeType, value: String, keeper: Long) {
+    private fun releaseFromOtherAccount(type: AttributeType, value: String, keeper: AccountId) {
         val previousHolder = anchorRegistry.holderOf(type, value) ?: return
         if (previousHolder == keeper) return
         log.info("{} anchor moved by the Personenverzeichnis: released from account {} for account {}", type.wireName, previousHolder, keeper)
         retractAttribute(previousHolder, type, RetractionSource.PERSON_DIRECTORY, "Im Personenverzeichnis einer anderen Person zugeordnet")
     }
 
-    private fun lockForUpdate(accountId: Long): Account =
+    private fun lockForUpdate(accountId: AccountId): Account =
         accountRepository.findForUpdate(accountId) ?: error("Account not found: $accountId")
 
-    private fun findMethodInstance(accountId: Long, methodInstanceId: String): AccountAuthMethod? {
+    private fun findMethodInstance(accountId: AccountId, methodInstanceId: String): AccountAuthMethod? {
         val id = runCatching { UUID.fromString(methodInstanceId) }.getOrNull() ?: return null
         return accountAuthMethodRepository.findByIdAndAccountId(id, accountId)
     }
 
-    private fun getProfileOrThrow(accountId: Long): AccountProfile =
+    private fun getProfileOrThrow(accountId: AccountId): AccountProfile =
         findAccount(accountId) ?: error("Account not found: $accountId")
 
     private fun toProfile(account: Account): AccountProfile {
-        val accountId = checkNotNull(account.id) { "Account has no id" }
+        val accountId = account.accountId
         val anchors = anchorRegistry.anchorsOf(accountId).associateBy { it.attributeType }
         val emailAnchor = anchors[AttributeType.EMAIL]
         return AccountProfile(
             accountId = accountId,
-            personId = anchors[AttributeType.PERSON_ID]?.value,
+            personId = anchors[AttributeType.PERSON_ID]?.value?.let(::PartnerNumber),
             authenticationMethods = accountAuthMethodRepository.findByAccountIdOrderByCreatedAt(accountId).map { it.toView() },
             email = emailAnchor?.value,
             emailConfirmedAt = emailAnchor?.establishedAt,

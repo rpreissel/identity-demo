@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_email.internal.authemail
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 
@@ -41,7 +42,7 @@ class AuthEmailFlowTest : BehaviorSpec({
 
     given("toState()") {
         then("it reconstructs the pending code") {
-            AuthEmailState.of(UUID.randomUUID(), issued.hash, issued.expiresAt) shouldBe state
+            AuthEmailState.of(ToolSessionId(UUID.randomUUID()), issued.hash, issued.expiresAt) shouldBe state
         }
     }
 })

@@ -1,5 +1,8 @@
 package com.example.identity.core.orchestrator.api.v1.kc
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.core.orchestrator.channel.KcChannelService
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.envelope.AuthSubjectType
@@ -16,7 +19,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import java.time.Instant
-import java.util.UUID
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
@@ -64,7 +66,7 @@ class KcChannelController(
         ]
     )
     fun upsertChannel(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @RequestHeader("Authorization") authorization: String?,
         @RequestBody(required = false) request: KcChannelUpsertRequest?,
         httpRequest: HttpServletRequest
@@ -93,9 +95,9 @@ class KcChannelController(
     private fun subjectOf(body: KcChannelUpsertRequest): Subject? = body.subject?.let {
         when (it.type) {
             AuthSubjectType.ACCOUNT -> Subject.Account(
-                requireNotNull(it.id.toLongOrNull()) { "subject.id of an account is no number" }
+                AccountId(requireNotNull(it.id.toLongOrNull()) { "subject.id of an account is no number" })
             )
-            AuthSubjectType.INVITATION -> Subject.Invitation(it.id)
+            AuthSubjectType.INVITATION -> Subject.Invitation(InvitationId(it.id))
         }
     }
 
@@ -112,7 +114,7 @@ class KcChannelController(
             "further activity; the channel's expiry is capped at it (docs/adr/ADR-043)."
     )
     fun getRestoreData(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @RequestParam kcSessionId: String,
         @RequestParam(required = false) sessionExpiresAt: Long?,
         @RequestHeader("Authorization") authorization: String?,

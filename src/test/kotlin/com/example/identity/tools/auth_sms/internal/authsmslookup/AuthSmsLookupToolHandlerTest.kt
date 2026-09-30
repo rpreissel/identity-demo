@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.authsmslookup
+import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
@@ -33,11 +35,11 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
     val tanGenerator = TanGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val handler = AuthSmsLookupToolHandler(AuthSmsLookupDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = TEST_CLOCK), sendLimit, mockk(relaxed = true), clock = TEST_CLOCK)
-    val toolSessionId = UUID.randomUUID()
+    val toolSessionId = ToolSessionId(UUID.randomUUID())
 
     given("an active auth-sms-lookup tool session") {
         val data = AuthSmsLookupToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
 
         `when`("the submitted email resolves to an account with an active sms method") {
             val enrollment = AuthSmsEnrollment(phoneNumber = "+491701234567", createdAt = TEST_NOW).apply { id = 1L }
@@ -46,13 +48,13 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
             every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
 
             then("it persists the resolved account and a fresh TAN, revealing the demo TAN") {
-                val outcome = handler.submitEmail(toolSessionId, accountId = 42L, enrollmentRef = EnrollmentRef(SMS_ENROLLMENT_TYPE, "1"))
+                val outcome = handler.submitEmail(toolSessionId, accountId = AccountId(42L), enrollmentRef = EnrollmentRef(SMS_ENROLLMENT_TYPE, "1"))
 
                 outcome.shouldBeInstanceOf<ToolOutcome.InProgress>()
                 outcome.nextStep shouldBe "tanInput"
                 // Der Demo-Anteil ist ein eigenes Feld, kein reservierter Schluessel in den Schrittdaten.
                 outcome.demo?.get("tan").shouldNotBeNull()
-                saved.captured.accountId shouldBe 42L
+                saved.captured.accountId shouldBe AccountId(42)
                 saved.captured.issuedTanHash.shouldNotBeNull()
             }
         }
@@ -65,7 +67,7 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
             every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
 
             then("it answers exactly like for an unknown address: no TAN sent, no account stored") {
-                val outcome = handler.submitEmail(toolSessionId, accountId = 42L, enrollmentRef = EnrollmentRef(SMS_ENROLLMENT_TYPE, "3"))
+                val outcome = handler.submitEmail(toolSessionId, accountId = AccountId(42L), enrollmentRef = EnrollmentRef(SMS_ENROLLMENT_TYPE, "3"))
 
                 (outcome as ToolOutcome.InProgress).nextStep shouldBe "tanInput"
                 outcome.demo?.get("tan") shouldBe null
@@ -90,15 +92,15 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
 
     given("a resolved account with a pending TAN") {
         val issued = tanGenerator.issue()
-        val data = AuthSmsLookupToolSession(toolSessionId = toolSessionId, accountId = 42L, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
+        val data = AuthSmsLookupToolSession(toolSessionId = toolSessionId, accountId = AccountId(42L), issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
 
         `when`("confirming with the correct TAN") {
             then("it authenticates for that account") {
                 val outcome = handler.patch(toolSessionId, issued.plainTan)
 
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
-                authenticated.subject shouldBe Subject.Account(42L)
+                authenticated.subject shouldBe Subject.Account(AccountId(42L))
                 authenticated.amr shouldBe listOf("sms")
             }
         }

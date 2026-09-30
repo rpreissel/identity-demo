@@ -1,5 +1,7 @@
 package com.example.identity.contract.tool_api.directory
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.claims.anchorRule
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -28,20 +30,20 @@ interface IdentityResolver {
      * otherwise typing a stranger's number would bind the stranger's anchor to your account.
      * `false` if the account attested nothing, since an empty comparison would succeed vacuously.
      */
-    fun attestedIdentityMatches(accountId: Long, personId: String): Boolean
+    fun attestedIdentityMatches(accountId: AccountId, personId: PartnerNumber): Boolean
 
     /**
      * May account [accountId] take these attested [claims] without becoming somebody else? `true`
      * if it has attested no identity yet, or the claims name the same person (compared in passport
      * form, ignoring case, umlaut spelling and diacritics). Applies to a prospect too (ADR-18).
      */
-    fun attestationFits(accountId: Long, claims: Set<Claim>): Boolean
+    fun attestationFits(accountId: AccountId, claims: Set<Claim>): Boolean
 }
 
 /** Result of resolving attested claims against the existing account stock. Never a boolean. */
 sealed interface Resolution {
     /** An existing account owns (part of) these claims; [matchedVia] is mandatory provenance. */
-    data class ExistingAccount(val accountId: Long, val matchedVia: MatchedVia) : Resolution
+    data class ExistingAccount(val accountId: AccountId, val matchedVia: MatchedVia) : Resolution
 
     /** Nothing in the stock matches - the identified subject has no account yet. */
     object Unresolved : Resolution

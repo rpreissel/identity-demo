@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_device.internal.authdevice
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -30,7 +31,7 @@ class AuthDeviceToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<AuthDeviceToolSessionRepository>()
     val enrollmentRepository = mockk<DeviceEnrollmentRepository>()
     val handler = AuthDeviceToolHandler(AuthDeviceDescriptor, toolDataRepository, enrollmentRepository, clock = TEST_CLOCK)
-    val toolSessionId = UUID.randomUUID()
+    val toolSessionId = ToolSessionId(UUID.randomUUID())
 
     given("start()") {
         `when`("the enrollment reference has the wrong type") {
@@ -72,7 +73,7 @@ class AuthDeviceToolHandlerTest : BehaviorSpec({
 
     given("an active auth-device tool session bound to an enrollment") {
         val data = AuthDeviceToolSession(toolSessionId = toolSessionId, enrollmentRefId = "1", createdAt = TEST_NOW)
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
         every { enrollmentRepository.findById(1L) } returns Optional.of(DeviceEnrollment(thumbprint = "thumb-1", createdAt = TEST_NOW).apply { id = 1L })
 
         `when`("the presented device key's thumbprint matches the enrolled one") {
@@ -97,8 +98,8 @@ class AuthDeviceToolHandlerTest : BehaviorSpec({
     }
 
     given("an auth-device tool session whose enrollment was removed meanwhile, on another channel") {
-        val goneSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(goneSessionId) } returns Optional.of(AuthDeviceToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7", createdAt = TEST_NOW))
+        val goneSessionId = ToolSessionId(UUID.randomUUID())
+        every { toolDataRepository.findByToolSessionId(goneSessionId) } returns AuthDeviceToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7", createdAt = TEST_NOW)
         every { enrollmentRepository.findById(7L) } returns Optional.empty()
 
         `when`("the device proof arrives") {

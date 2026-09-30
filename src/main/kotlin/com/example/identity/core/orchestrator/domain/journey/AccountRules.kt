@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
@@ -24,7 +26,7 @@ sealed interface IdentificationTarget {
     data object NewAccount : IdentificationTarget
 
     /** The account in hand takes the attestation. */
-    data class AccountInHand(val accountId: Long) : IdentificationTarget
+    data class AccountInHand(val accountId: AccountId) : IdentificationTarget
 
     companion object {
         /**
@@ -59,7 +61,7 @@ sealed interface AccountMerge {
      * over and takes the attestation along. Also the answer when both are disposable, so the anchor
      * that did the resolving stays where the rest of the stock expects it.
      */
-    data class MoveInto(val from: Long, val into: Long) : AccountMerge
+    data class MoveInto(val from: AccountId, val into: AccountId) : AccountMerge
 
     /**
      * The resolved account is disposable ("Enrollment zuerst"): the account in hand holds this
@@ -67,7 +69,7 @@ sealed interface AccountMerge {
      * again through its `restricted_id` anchor (ADR-19). The session absorbs it; otherwise that
      * leftover would block its own card forever.
      */
-    data class AbsorbResolved(val resolved: Long, val into: Long) : AccountMerge
+    data class AbsorbResolved(val resolved: AccountId, val into: AccountId) : AccountMerge
 
     companion object {
         /**
@@ -95,7 +97,7 @@ sealed interface AccountMerge {
  * - The resolved person must match the attested identity. The tool checks this too; failing here
  *   means a tool skipped it.
  */
-fun checkCorrelation(account: AccountProfile, toolId: ToolId, claimedPersonId: String?, matches: (String) -> Boolean) {
+fun checkCorrelation(account: AccountProfile, toolId: ToolId, claimedPersonId: PartnerNumber?, matches: (PartnerNumber) -> Boolean) {
     if (account.personId != null) {
         throw IdentityConflictException(Text("Dieses Konto ist bereits einer Person zugeordnet"))
     }
@@ -113,7 +115,7 @@ fun checkCorrelation(account: AccountProfile, toolId: ToolId, claimedPersonId: S
  * The attested identity must also fit a target with a register person ([matches], as in ADR-18):
  * owning a mailbox says "this mailbox is mine", not "I am that person".
  */
-fun checkAttestationMove(evidence: SessionEvidence, targetPersonId: String?, matches: (String) -> Boolean) {
+fun checkAttestationMove(evidence: SessionEvidence, targetPersonId: PartnerNumber?, matches: (PartnerNumber) -> Boolean) {
     if (evidence.methods.none { it.axis == EvidenceAxis.IDENTITY }) {
         throw IdentityConflictException(Text("Diese Adresse gehoert bereits zu einem Konto. Melden Sie sich damit an, statt sich neu zu registrieren."))
     }
@@ -128,7 +130,7 @@ fun checkAttestationMove(evidence: SessionEvidence, targetPersonId: String?, mat
  * account the channel already knows. A named account must still agree with one in hand: nothing
  * legitimately switches accounts mid-journey.
  */
-fun accountOfProof(role: ToolRole, namedByTool: Long?, inHand: Long?): Long {
+fun accountOfProof(role: ToolRole, namedByTool: AccountId?, inHand: AccountId?): AccountId {
     val named = namedByTool?.takeIf { role == ToolRole.ACCOUNT_LOOKUP_AUTH }
     if (named != null && inHand != null && named != inHand) {
         throw IdentityConflictException(Text("Der Nachweis gehoert zu einem anderen Konto als dieser Sitzung"))

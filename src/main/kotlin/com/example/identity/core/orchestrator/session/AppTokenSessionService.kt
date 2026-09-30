@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.core.orchestrator.domain.SessionEvidenceId
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -14,7 +16,7 @@ class AppTokenSessionService(
     private val clock: Clock
 ) {
 
-    fun createForAccount(accountId: Long, sessionEvidenceId: UUID): AppTokenSession =
+    fun createForAccount(accountId: AccountId, sessionEvidenceId: SessionEvidenceId): AppTokenSession =
         appTokenSessionRepository.save(AppTokenSession(accountId = accountId, now = clock.instant()).apply { this.sessionEvidenceId = sessionEvidenceId })
 
     fun save(appTokenSession: AppTokenSession): AppTokenSession = appTokenSessionRepository.save(appTokenSession)

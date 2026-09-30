@@ -2,8 +2,14 @@ package io.kotest.provided
 
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.texts.TextCatalog
+import com.example.identity.contract.tool_api.values.Email
+import com.example.identity.contract.tool_api.values.Kvnr
+import com.example.identity.contract.tool_api.values.MemberNumber
+import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.contract.tool_api.values.PhoneNumber
 import io.kotest.core.config.AbstractProjectConfig
 import io.kotest.extensions.spring.SpringExtension
+import io.mockk.registerInstanceFactory
 
 /**
  * Registers SpringExtension globally so specs can constructor-inject Spring beans, and the
@@ -23,5 +29,12 @@ class ProjectConfig : AbstractProjectConfig() {
                 "Text not in the catalog (template not a literal?): \"${text.template}\""
             }
         }
+        // MockK builds a placeholder for `any()` through the constructor of a value class, and a
+        // random string fails these format checks. A valid value per class keeps `any()` usable.
+        registerInstanceFactory { PartnerNumber("P000000000") }
+        registerInstanceFactory { Email("any@example.com") }
+        registerInstanceFactory { Kvnr("A000000000") }
+        registerInstanceFactory { MemberNumber("00000000") }
+        registerInstanceFactory { PhoneNumber("+491700000000") }
     }
 }

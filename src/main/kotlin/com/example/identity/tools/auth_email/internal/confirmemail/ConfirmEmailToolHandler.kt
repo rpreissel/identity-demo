@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_email.internal.confirmemail
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.InvalidInputException
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.contract.texts.Text
@@ -6,18 +7,14 @@ import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import com.example.identity.tools.auth_email.internal.EmailSendLimit
 
 import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
-import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
-import com.example.identity.contract.tool_api.directory.resolveAccountByEmail
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.TooManyRequestsException
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.ClaimSource
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 /**
  * toolId=confirm-email, role=ATTESTATION: proves control of an address with a code exchange like
@@ -37,7 +34,7 @@ class ConfirmEmailToolHandler(
 
     /** Called directly by ConfirmEmailToolController; nothing needs resolving before this can start. */
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId): ToolOutcome {
         toolDataRepository.save(ConfirmEmailToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor(ConfirmEmailState.AwaitingEmail)
     }
@@ -49,8 +46,8 @@ class ConfirmEmailToolHandler(
      * a 429, not a failed attempt of the journey, since nothing was guessed.
      */
     @Transactional
-    fun patch(toolSessionId: UUID, email: String?, code: String?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown confirm-email tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, email: String?, code: String?): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown confirm-email tool session: $toolSessionId" }
 
         return when (val decision = ConfirmEmailFlow.decide(data.toState(), ConfirmEmailInput(email, code), emailCodeGenerator)) {
             is ConfirmEmailDecision.InvalidEmail -> throw InvalidInputException(Text("Ungueltige E-Mail-Adresse"))
@@ -87,7 +84,7 @@ class ConfirmEmailToolHandler(
                     claims = listOf(
                         // The code exchange itself is the proof. No enrollmentRef and no amr: this run
                         // established a fact about the account, it authenticated nobody.
-                        Claim(AttributeType.EMAIL, decision.email, ClaimSource.of(descriptor.toolId), descriptor.maxAcr)
+                        Claim(AttributeType.EMAIL, decision.email, ClaimSource(descriptor.toolId.value), descriptor.maxAcr)
                     )
                 )
             }
@@ -95,8 +92,8 @@ class ConfirmEmailToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown confirm-email tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown confirm-email tool session: $toolSessionId" }
         return outcomeFor(data.toState())
     }
 

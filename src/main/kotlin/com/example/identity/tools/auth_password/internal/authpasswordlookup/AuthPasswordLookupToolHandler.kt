@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_password.internal.authpasswordlookup
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_password.internal.PasswordHasher
@@ -13,7 +15,6 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 /**
  * toolId=auth-password-lookup: login without a known account (docs/04-orchestrierung.md). Takes
@@ -29,7 +30,7 @@ class AuthPasswordLookupToolHandler(
 ) {
 
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId): ToolOutcome {
         toolDataRepository.save(AuthPasswordLookupToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor()
     }
@@ -40,8 +41,8 @@ class AuthPasswordLookupToolHandler(
      * docs/04-orchestrierung.md), and costs the same: `PasswordHasher.matches` runs unconditionally.
      */
     @Transactional
-    fun patch(toolSessionId: UUID, email: String?, password: String?, accountId: Long?, enrollmentRef: EnrollmentRef?): ToolOutcome {
-        checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-password-lookup tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, email: String?, password: String?, accountId: AccountId?, enrollmentRef: EnrollmentRef?): ToolOutcome {
+        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-password-lookup tool session: $toolSessionId" }
 
         return when (val decision = AuthPasswordLookupFlow.decide(AuthPasswordLookupInput(email, password))) {
             is AuthPasswordLookupDecision.Incomplete -> outcomeFor(decision.missingFields)
@@ -75,8 +76,8 @@ class AuthPasswordLookupToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-password-lookup tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-password-lookup tool session: $toolSessionId" }
         return outcomeFor()
     }
 

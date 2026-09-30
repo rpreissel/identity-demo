@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.core.orchestrator.domain.SessionEvidenceId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.ErrorCode
@@ -54,7 +56,7 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
     fun tokenPair() = TokenPair("access", Instant.now().plusSeconds(60), Instant.now().plusSeconds(600))
 
     /** A logged-in context with tokens, as the channel carries it before [ChannelSessionLifecycle.end]. */
-    fun loggedInContext(keycloakSessionId: String?) = AppTokenSession(accountId = 1L, keycloakSessionId = keycloakSessionId, now = Instant.now()).apply {
+    fun loggedInContext(keycloakSessionId: String?) = AppTokenSession(accountId = AccountId(1L), keycloakSessionId = keycloakSessionId, now = Instant.now()).apply {
         appTokenSessionId = UUID.randomUUID()
         accessToken = "access"
         refreshToken = "refresh"
@@ -212,7 +214,7 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
         val context = loggedInContext(keycloakSessionId = "kc-session-1")
         val channel = channel(ChannelType.APP).apply {
             appTokenSessionId = context.appTokenSessionId
-            sessionEvidenceId = UUID.randomUUID()
+            sessionEvidenceId = SessionEvidenceId(UUID.randomUUID())
         }
         every { f.appTokenSessionService.getAppTokenSession(context.appTokenSessionId!!) } returns context
 

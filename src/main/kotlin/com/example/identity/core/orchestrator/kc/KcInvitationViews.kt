@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.contract.tool_api.directory.PersonMasterData
 import com.example.identity.contract.tool_api.directory.Invitations
 import org.springframework.stereotype.Component
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Component
  * refuses every further token.
  */
 data class KcInvitationView(
-    val invitation: String,
+    val invitation: InvitationId,
     val username: String,
     val enabled: Boolean,
     val firstName: String,
@@ -25,7 +26,7 @@ class KcInvitationViews(
     private val invitations: Invitations,
     private val personMasterData: PersonMasterData,
 ) {
-    fun byInvitation(invitation: String): KcInvitationView? {
+    fun byInvitation(invitation: InvitationId): KcInvitationView? {
         val view = invitations.find(invitation) ?: return null
         val person = personMasterData.masterDataOf(view.personId)
         return KcInvitationView(
@@ -35,7 +36,7 @@ class KcInvitationViews(
             firstName = person?.givenNames ?: UNIDENTIFIED_FIRST_NAME,
             lastName = person?.familyName ?: UNIDENTIFIED_LAST_NAME,
             attributes = masterDataAttributes(view.personId, person, emptyMap()) +
-                mapOf(INVITATION_ATTRIBUTE to view.invitation, PROCESS_ATTRIBUTE to view.process),
+                mapOf(INVITATION_ATTRIBUTE to view.invitation.value, PROCESS_ATTRIBUTE to view.process),
         )
     }
 

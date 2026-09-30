@@ -1,5 +1,6 @@
 package com.example.identity.simulation.personenverzeichnis.api.v1
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.demo.demo_mode.DemoSurface
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.http.HttpHeaders
@@ -65,16 +66,16 @@ class PersonenverzeichnisController(
 
     @PutMapping("personen/{personId}")
     @Operation(summary = "Person ändern", description = "Alles außer der Partnernummer; Regeln wie beim Anlegen. Änderungen gehen als Ereignis an die Konten (ADR-34).")
-    fun aendern(@PathVariable personId: String, @RequestBody person: PersonData): ResponseEntity<PersonData> =
+    fun aendern(@PathVariable personId: PartnerNumber, @RequestBody person: PersonData): ResponseEntity<PersonData> =
         register.aendern(personId, person)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
 
     @GetMapping("personen/{personId}/freischaltcodes")
     @Operation(summary = "Freischaltcodes einer Person", description = "Ohne Klartext - den trägt nur der Brief.")
-    fun freischaltcodes(@PathVariable personId: String): List<FreischaltcodeView> = freischaltcodes.fuerPerson(personId)
+    fun freischaltcodes(@PathVariable personId: PartnerNumber): List<FreischaltcodeView> = freischaltcodes.fuerPerson(personId)
 
     @PostMapping("personen/{personId}/freischaltcodes")
     @Operation(summary = "Freischaltcode ausstellen", description = "Antwortet mit dem Brief, der den Klartext trägt.")
-    fun ausstellen(@PathVariable personId: String, @RequestBody request: FreischaltcodeAusstellenRequest): ResponseEntity<BriefView> {
+    fun ausstellen(@PathVariable personId: PartnerNumber, @RequestBody request: FreischaltcodeAusstellenRequest): ResponseEntity<BriefView> {
         if (register.findPersonById(personId) == null) return ResponseEntity.notFound().build()
         return ResponseEntity.status(HttpStatus.CREATED).body(freischaltcodes.ausstellen(personId, request.gueltigBis))
     }
@@ -90,11 +91,11 @@ class PersonenverzeichnisController(
 
     @GetMapping("personen/{personId}/einladungen")
     @Operation(summary = "Einladungen einer Person", description = "Ohne Klartext - den trägt nur der Brief (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).")
-    fun einladungenDerPerson(@PathVariable personId: String): List<EinladungView> = einladungen.fuerPerson(personId)
+    fun einladungenDerPerson(@PathVariable personId: PartnerNumber): List<EinladungView> = einladungen.fuerPerson(personId)
 
     @PostMapping("personen/{personId}/einladungen")
     @Operation(summary = "Einladung mit Einmalkennwort ausstellen", description = "Antwortet mit dem Brief, der das Einmalkennwort im Klartext trägt.")
-    fun einladungAusstellen(@PathVariable personId: String, @RequestBody request: EinladungAusstellenRequest): ResponseEntity<BriefView> =
+    fun einladungAusstellen(@PathVariable personId: PartnerNumber, @RequestBody request: EinladungAusstellenRequest): ResponseEntity<BriefView> =
         einladungen.ausstellen(personId, request.vorgang, request.niveau, request.gueltigBis)
             ?.let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
             ?: ResponseEntity.notFound().build()

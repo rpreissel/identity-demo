@@ -10,13 +10,9 @@ import com.example.identity.core.orchestrator.domain.policy.MethodName
 import com.example.identity.core.orchestrator.domain.policy.Reachability
 import com.example.identity.core.orchestrator.domain.policy.UnreachableReason
 import com.example.identity.core.account.AccountProfile
-import com.example.identity.core.account.AuthMethodView
 import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.core.orchestrator.domain.ToolCatalog
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.claims.ClaimTrust
-import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.claims.ClaimRequirement
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
@@ -91,10 +87,10 @@ class DefaultAuthPolicy(
         val factorTypesUnion = descriptors.flatMap { it.second.factorTypes }.toSet()
         val distinctMethods = descriptors.map { it.second.method }.distinct().size
         val bestAcr = descriptors
-            .map { (m, d) -> AcrLevel.min(AcrLevel.of(m.enrolledUnderAcr), d.maxAcr) }
+            .map { (m, d) -> AcrLevel.min(AcrLevel.parse(m.enrolledUnderAcr), d.maxAcr) }
             .maxByOrNull { AcrLevel.rank(it) }
             ?: AcrLevel.NONE
-        val maxEnrolledUnderAcr = active.maxOfOrNull { AcrLevel.rank(AcrLevel.of(it.enrolledUnderAcr)) }?.let { AcrLevel.levelAt(it) } ?: AcrLevel.NONE
+        val maxEnrolledUnderAcr = active.maxOfOrNull { AcrLevel.rank(AcrLevel.parse(it.enrolledUnderAcr)) }?.let { AcrLevel.levelAt(it) } ?: AcrLevel.NONE
         val effectiveAcr = combinedAcr(bestAcr, distinctMethods, factorTypesUnion, maxEnrolledUnderAcr)
 
         val levelOk = AcrLevel.rank(effectiveAcr) >= AcrLevel.rank(requiredAcr)
@@ -161,15 +157,15 @@ class DefaultAuthPolicy(
         // Below loa3, MFA is needed when no single offerable method's capped level reaches
         // requiredAcr. Then every method adding a factor type not yet proven is worth offering.
         val singleMethodSuffices = eligible.any { (m, descriptor) ->
-            AcrLevel.rank(AcrLevel.min(AcrLevel.of(m.enrolledUnderAcr), descriptor.maxAcr)) >= AcrLevel.rank(requiredAcr)
+            AcrLevel.rank(AcrLevel.min(AcrLevel.parse(m.enrolledUnderAcr), descriptor.maxAcr)) >= AcrLevel.rank(requiredAcr)
         }
 
         return eligible.filter { (m, _) -> m.method !in usedMethods }.mapNotNull { (m, descriptor) ->
-            val cappedAcr = AcrLevel.min(AcrLevel.of(m.enrolledUnderAcr), descriptor.maxAcr)
+            val cappedAcr = AcrLevel.min(AcrLevel.parse(m.enrolledUnderAcr), descriptor.maxAcr)
             // The evidence as it would be if this candidate were also proven.
             val projected = SessionEvidence(
                 evidence.methods + MethodEvidence(
-                    MethodName(m.method), cappedAcr, m.enrolledUnderAcr?.let(AcrLevel::of), descriptor.factorTypes,
+                    MethodName(m.method), cappedAcr, m.enrolledUnderAcr?.let(AcrLevel::parse), descriptor.factorTypes,
                     source = "simulation", amrSourceId = "simulation", provenAt = clock.instant()
                 ),
             )

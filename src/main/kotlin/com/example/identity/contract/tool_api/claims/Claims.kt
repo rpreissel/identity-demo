@@ -75,7 +75,7 @@ enum class AttributeType(val wireName: String) {
 }
 
 /**
- * Who established a [Claim]: the register ([PERSON_DIRECTORY]), a tool run ([of] a [ToolId]), or
+ * Who established a [Claim]: the register ([PERSON_DIRECTORY]), a tool run (named by its [ToolId]), or
  * only the user ([SELF_REPORTED]).
  */
 @JvmInline
@@ -88,9 +88,6 @@ value class ClaimSource(val value: String) {
 
         /** A value the user entered with nothing backing it. */
         val SELF_REPORTED = ClaimSource("self-reported")
-
-        /** A claim established by a concrete tool run, e.g. an eID procedure. */
-        fun of(toolId: ToolId): ClaimSource = ClaimSource(toolId.value)
     }
 }
 
@@ -146,7 +143,7 @@ fun Claim.validateValue() {
         "${attributeType.wireName} claim must not be blank"
     }
     when (attributeType) {
-        AttributeType.PERSON_ID -> check(PartnerNumber.ofOrNull(value) != null) {
+        AttributeType.PERSON_ID -> check(PartnerNumber.parse(value) != null) {
             "person_id claim must be a Partnernummer (P and nine digits)"
         }
         AttributeType.BIRTH_DATE -> check(runCatching { LocalDate.parse(value.trim()) }.isSuccess) {

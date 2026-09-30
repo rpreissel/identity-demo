@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.ErrorCode
 import com.example.identity.core.orchestrator.domain.OrchestratorException
@@ -20,7 +21,7 @@ import java.time.Instant
  */
 class ChannelServiceTokenAccessTest : BehaviorSpec({
 
-    val channelSessionId = UUID.randomUUID()
+    val channelSessionId = ChannelSessionId(UUID.randomUUID())
     val guard = mockk<ChannelAccessGuard>()
     val service = ChannelService(
         mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),

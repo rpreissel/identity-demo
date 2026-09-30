@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.orchestrator.domain.policy.fromNow
 import com.example.identity.TEST_CLOCK
 import com.example.identity.core.orchestrator.domain.ChannelType
@@ -81,8 +83,8 @@ object StrategyTestFixtures {
      */
     fun account(
         vararg methods: AuthMethodView,
-        accountId: Long = 1L,
-        personId: String? = "P000000001",
+        accountId: AccountId = AccountId(1L),
+        personId: PartnerNumber? = PartnerNumber("P000000001"),
         emailConfirmed: Boolean = true,
         attestedIdentity: Boolean = false
     ) = AccountProfile(
@@ -145,7 +147,7 @@ object StrategyTestFixtures {
         bindingKeyRef: String = BINDING_KEY,
         // Defaults to a device linked to the context's own account; a device-rebind conflict test
         // (docs/09-dpop.md) passes a different accountId.
-        linkedAccountId: Long? = account?.accountId,
+        linkedAccountId: AccountId? = account?.accountId,
         isSubJourney: Boolean = false,
         availableTools: Set<ToolId> = allToolIds,
         channel: ChannelType = ChannelType.APP

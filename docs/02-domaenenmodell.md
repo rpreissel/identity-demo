@@ -309,7 +309,7 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
   angibt (`SELF_REPORTED`), bleibt unbescheinigt.
 
   Die Quelle sagt, wer für einen Wert einsteht: das Personenverzeichnis (`PERSON_DIRECTORY`, in der
-  Datenbank `person_directory`), ein Verfahren selbst (`ClaimSource.of(toolId)`, z. B. `ident-eid`),
+  Datenbank `person_directory`), ein Verfahren selbst (`ClaimSource(toolId.value)`, z. B. `ident-eid`),
   oder der Nutzer (`SELF_REPORTED`). Daraus folgt die **Stufe** der Angabe (`ClaimTrust`), in dieser
   Rangfolge: *belegt* (`AUTHORITATIVE`, Stammdaten), *nachgewiesen* (`PROVEN`, von einem Verfahren
   geprüft) und *behauptet* (`SELF_REPORTED`). Gibt es für ein Attribut mehr als einen Wert,

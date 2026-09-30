@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.api.v1.kc
 
+import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.contract.tool_api.envelope.API_V1
 import com.example.identity.core.orchestrator.dpop.buildRequestUrl
 import com.example.identity.core.orchestrator.kc.KcInvitationView
@@ -32,14 +33,14 @@ class KcInvitationLookupController(
     @GetMapping("$API_V1/kc/invitations/{invitation}")
     @Operation(summary = "The invitation as Keycloak shows it, as a user of its own")
     fun byInvitation(
-        @PathVariable invitation: String,
+        @PathVariable invitation: InvitationId,
         @RequestHeader("Authorization") authorization: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<KcInvitationView> {
         val token = authorization?.trim()?.let { if (it.startsWith("Bearer ", ignoreCase = true)) it.substring(7).trim() else it }
             ?: throw PeerAuthValidationException("Missing Authorization header")
         val assertion = peerAuthValidator.validate(token, httpRequest.method, buildRequestUrl(httpRequest))
-        if (assertion.channelBinding != invitation) {
+        if (assertion.channelBinding != invitation.value) {
             throw PeerAuthValidationException("Peer-auth channel_binding does not match this lookup")
         }
         return views.byInvitation(invitation)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()

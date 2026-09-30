@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.authsms
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import io.kotest.core.spec.style.BehaviorSpec
@@ -41,7 +42,7 @@ class AuthSmsFlowTest : BehaviorSpec({
 
     given("toState()") {
         then("it reconstructs the pending TAN") {
-            AuthSmsState.of(UUID.randomUUID(), issued.hash, issued.expiresAt) shouldBe state
+            AuthSmsState.of(ToolSessionId(UUID.randomUUID()), issued.hash, issued.expiresAt) shouldBe state
         }
     }
 })

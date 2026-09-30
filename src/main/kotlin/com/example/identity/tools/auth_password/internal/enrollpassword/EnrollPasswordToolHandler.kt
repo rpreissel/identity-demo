@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_password.internal.enrollpassword
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_password.internal.PasswordHasher
 import com.example.identity.tools.auth_password.internal.PasswordPolicy
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
@@ -12,11 +13,9 @@ import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.claims.PASSWORD_EXISTS_MARKER
 import com.example.identity.contract.tool_api.ToolOutcome
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 /**
  * toolId=enroll-password: registers a password as a knowledge factor (docs/06-ablaeufe.md #4). A
@@ -33,15 +32,15 @@ class EnrollPasswordToolHandler(
 
     /** Called directly by EnrollPasswordToolController; nothing needs resolving before this can start. */
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId): ToolOutcome {
         toolDataRepository.save(EnrollPasswordToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor()
     }
 
     /** Called directly by EnrollPasswordToolController (docs/08-projektrahmen.md A11). */
     @Transactional
-    fun patch(toolSessionId: UUID, password: String?): ToolOutcome {
-        checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown enroll-password tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, password: String?): ToolOutcome {
+        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-password tool session: $toolSessionId" }
 
         return when (val decision = EnrollPasswordFlow.decide(EnrollPasswordInput(password))) {
             EnrollPasswordDecision.Unchanged -> outcomeFor()
@@ -61,7 +60,7 @@ class EnrollPasswordToolHandler(
                         Claim(
                             attributeType = AttributeType.PASSWORD_EXISTS,
                             value = PASSWORD_EXISTS_MARKER,
-                            source = ClaimSource.of(descriptor.toolId),
+                            source = ClaimSource(descriptor.toolId.value),
                             establishedAcr = descriptor.maxAcr
                         )
                     )
@@ -71,8 +70,8 @@ class EnrollPasswordToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown enroll-password tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-password tool session: $toolSessionId" }
         return outcomeFor()
     }
 

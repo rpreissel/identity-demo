@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.api.v1.kc
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.kc.KcAccountView
 import com.example.identity.core.orchestrator.kc.KcAccountViews
 import com.example.identity.core.orchestrator.kc.PeerAuthValidationException
@@ -34,7 +35,7 @@ class KcAccountLookupController(
     @GetMapping("$API_V1/kc/accounts/{accountId}")
     @Operation(summary = "The account as Keycloak shows it, by account id")
     fun byId(
-        @PathVariable accountId: Long,
+        @PathVariable accountId: AccountId,
         @RequestHeader("Authorization") authorization: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<KcAccountView> {

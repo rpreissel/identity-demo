@@ -17,7 +17,7 @@ import io.kotest.matchers.shouldBe
  */
 class ToolOutcomeTest : BehaviorSpec({
 
-    val email = Claim(AttributeType.EMAIL, "max@example.com", ClaimSource.of(ConfirmEmailDescriptor.toolId), AcrLevel.LOA1)
+    val email = Claim(AttributeType.EMAIL, "max@example.com", ClaimSource(ConfirmEmailDescriptor.toolId.value), AcrLevel.LOA1)
     val completed: List<ToolOutcome.Completed> = listOf(
         ToolOutcome.Completed.Identified(),
         ToolOutcome.Completed.Enrolled(EnrollmentRef("t", "1")),

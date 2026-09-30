@@ -1,5 +1,6 @@
 package com.example.identity.contract.tool_api
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.validateValue
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -55,7 +56,7 @@ sealed interface ToolOutcome {
          * An [IDENTIFICATION][ToolRole.IDENTIFICATION] or [CORRELATION][ToolRole.CORRELATION]
          * attempt - against the person the input resolved, `null` if it resolved none.
          */
-        data class Identification(override val reason: Text, val attemptedPersonId: String?) : Failed
+        data class Identification(override val reason: Text, val attemptedPersonId: PartnerNumber?) : Failed
 
         /**
          * An [ENROLLMENT][ToolRole.ENROLLMENT], [ATTESTATION][ToolRole.ATTESTATION] or
@@ -108,8 +109,8 @@ sealed interface ToolOutcome {
             val auditDetails: Map<String, Any?>? = null
         ) : Completed {
             /** The `PERSON_ID` claim's value, parsed - `null` when this run resolved nobody. */
-            val personId: String?
-                get() = claims.firstOrNull { it.attributeType == AttributeType.PERSON_ID }?.value?.trim()
+            val personId: PartnerNumber?
+                get() = claims.firstOrNull { it.attributeType == AttributeType.PERSON_ID }?.value?.let(PartnerNumber::parse)
 
             init {
                 val personIdClaims = claims.count { it.attributeType == AttributeType.PERSON_ID }

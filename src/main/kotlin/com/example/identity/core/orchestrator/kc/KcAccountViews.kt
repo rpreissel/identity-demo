@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AccountService
 import com.example.identity.contract.tool_api.directory.PersonMasterData
@@ -15,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional
  * confirmed email, else `account-<id>`, which stays stable for an account without an address.
  */
 data class KcAccountView(
-    val accountId: Long,
+    val accountId: AccountId,
     val username: String,
     val email: String?,
     val emailVerified: Boolean,
@@ -31,7 +33,7 @@ class KcAccountViews(
     private val accountService: AccountService,
     private val personMasterData: PersonMasterData,
 ) {
-    fun byAccountId(accountId: Long): KcAccountView? = accountService.findAccount(accountId)?.let(::viewOf)
+    fun byAccountId(accountId: AccountId): KcAccountView? = accountService.findAccount(accountId)?.let(::viewOf)
 
     /**
      * Keycloak asks every federation for any name it meets, among them `invitation-<id>` of the
@@ -39,13 +41,13 @@ class KcAccountViews(
      * is no email address is simply nobody here, not a bad request.
      */
     fun byEmail(email: String): KcAccountView? {
-        if (Email.ofOrNull(email) == null) return null
+        if (Email.parse(email) == null) return null
         return accountService.resolveByAnchor(AttributeType.EMAIL, email.trim())?.let(::byAccountId)
     }
 
     /** `account-<id>` or an email - the two forms [KcAccountView.username] takes. */
     fun byUsername(username: String): KcAccountView? =
-        username.removePrefix(USERNAME_PREFIX).takeIf { it != username }?.toLongOrNull()?.let(::byAccountId)
+        username.removePrefix(USERNAME_PREFIX).takeIf { it != username }?.toLongOrNull()?.let { byAccountId(AccountId(it)) }
             ?: byEmail(username)
 
     private fun viewOf(profile: AccountProfile): KcAccountView {
@@ -108,8 +110,8 @@ internal fun kcUserMirror(profile: AccountProfile, person: PersonRecord?, attest
  * The person attributes as custom user attributes: from the Personenverzeichnis for a bound account
  * (never topped up from claims), from the account's attested claims for a prospect.
  */
-internal fun masterDataAttributes(personId: String?, person: PersonRecord?, attested: Map<AttributeType, String>): Map<String, String> = buildMap {
-    personId?.let { put("personId", it) }
+internal fun masterDataAttributes(personId: PartnerNumber?, person: PersonRecord?, attested: Map<AttributeType, String>): Map<String, String> = buildMap {
+    personId?.let { put("personId", it.value) }
     if (person != null) {
         person.kvnr?.let { put("kvnr", it) }
         person.memberNumber?.let { put("versnr", it) }

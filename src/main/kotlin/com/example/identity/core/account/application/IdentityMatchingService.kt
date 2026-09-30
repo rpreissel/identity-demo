@@ -1,5 +1,7 @@
 package com.example.identity.core.account.application
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.infrastructure.strongestEstablishedValues
 import com.example.identity.core.account.domain.passportForm
 import com.example.identity.core.account.infrastructure.AccountAnchorRepository
@@ -18,7 +20,6 @@ import com.example.identity.contract.tool_api.claims.isLocalAnchor
 import com.example.identity.contract.tool_api.claims.ClaimTrust
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
-import com.example.identity.contract.tool_api.claims.claimTrust
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 
@@ -58,7 +59,7 @@ class IdentityMatchingService(
         } else {
             null
         }
-        return resolveByAnchor(claims, externalPersonId) ?: Resolution.Unresolved
+        return resolveByAnchor(claims, externalPersonId?.value) ?: Resolution.Unresolved
     }
 
     /**
@@ -66,7 +67,7 @@ class IdentityMatchingService(
      * earlier step and lives on the account; only the person reference is new. Per attribute the
      * strongest surviving claim wins, recency only breaks ties (docs/02-domaenenmodell.md #6).
      */
-    override fun attestedIdentityMatches(accountId: Long, personId: String): Boolean {
+    override fun attestedIdentityMatches(accountId: AccountId, personId: PartnerNumber): Boolean {
         val attested = accountClaimRepository.findEstablished(accountId)
             .strongestEstablishedValues(ATTESTABLE_IDENTITY_ATTRIBUTES + ADDRESS_ATTRIBUTES)
         // All of them, not "whatever was attested": ClaimedIdentity skips a null field by design, so
@@ -87,7 +88,7 @@ class IdentityMatchingService(
         )
     }
 
-    override fun attestationFits(accountId: Long, claims: Set<Claim>): Boolean {
+    override fun attestationFits(accountId: AccountId, claims: Set<Claim>): Boolean {
         val attested = accountClaimRepository.findEstablished(accountId).strongestEstablishedValues(ATTESTABLE_IDENTITY_ATTRIBUTES)
         return ATTESTABLE_IDENTITY_ATTRIBUTES.all { type ->
             val before = attested[type] ?: return@all true

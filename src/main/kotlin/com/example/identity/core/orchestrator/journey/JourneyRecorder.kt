@@ -78,7 +78,7 @@ class JourneyRecorder(
             // This run's achieved or capped level, else the tool's declared ceiling.
                 loa = effectiveAcr ?: tool.maxAcr,
             // The account's enrollment record for this method (docs/06-ablaeufe.md #1).
-                enrolledUnderAcr = accountId?.let { accountService.findActiveMethod(it, method)?.enrolledUnderAcr }?.let(AcrLevel::of),
+                enrolledUnderAcr = accountId?.let { accountService.findActiveMethod(it, method)?.enrolledUnderAcr }?.let(AcrLevel::parse),
                 factorTypes = outcome.factorTypes,
                 source = AmrSource.ORCHESTRATOR,
                 amrSourceId = tool.toolId.value,

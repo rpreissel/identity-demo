@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_password.api.v1
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_password.AuthPasswordDescriptor
 import com.example.identity.tools.auth_password.internal.authpassword.AuthPasswordToolHandler
@@ -16,7 +18,6 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
-import java.util.UUID
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -65,7 +66,7 @@ class AuthPasswordToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
@@ -97,7 +98,7 @@ class AuthPasswordToolController(
         ]
     )
     fun patch(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestBody(required = false) request: AuthPasswordPatchRequest?
     ): ResponseEntity<ChannelResponse> {
@@ -125,7 +126,7 @@ class AuthPasswordToolController(
         ]
     )
     fun read(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, AUTH_PASSWORD_TOOL_ID)

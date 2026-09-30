@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_email.internal.authemail
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
@@ -10,11 +12,9 @@ import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 /**
  * toolId=auth-email, device-linked case (docs/03-tool-architektur.md). No EnrollmentRef: the
@@ -37,7 +37,7 @@ class AuthEmailToolHandler(
      * (-> 422) like its siblings do for an unresolvable EnrollmentRef.
      */
     @Transactional
-    fun start(toolSessionId: UUID, accountId: Long): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId, accountId: AccountId): ToolOutcome {
         // Returns the normalized confirmed address from the anchor projection, or null when
         // none was ever established for this account.
         val email = accountDirectory.anchorValue(accountId, AttributeType.EMAIL)
@@ -62,8 +62,8 @@ class AuthEmailToolHandler(
      * the channel's account, whose address a correct code resets in [EmailSendLimit].
      */
     @Transactional
-    fun patch(toolSessionId: UUID, code: String?, accountId: Long?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-email tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, code: String?, accountId: AccountId?): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-email tool session: $toolSessionId" }
         val state = data.toState()
 
         return when (AuthEmailFlow.decide(state, AuthEmailInput(code), emailCodeGenerator)) {
@@ -81,8 +81,8 @@ class AuthEmailToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-email tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-email tool session: $toolSessionId" }
         return outcomeFor(data.toState())
     }
 

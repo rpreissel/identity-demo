@@ -1,5 +1,7 @@
 package com.example.identity.core.account
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.infrastructure.ChangeLogRepository
 import com.example.identity.core.account.application.PersonLookupKey
 import org.springframework.stereotype.Service
@@ -9,7 +11,7 @@ import java.time.LocalDate
 
 /** One line of the change log, as the search hands it out. */
 data class ChangeLogRecord(
-    val accountId: Long,
+    val accountId: AccountId,
     val changeType: String,
     val subject: String?,
     val acr: String?,
@@ -36,12 +38,12 @@ class ChangeLogSearch(
 
     /** The same for a register person id, when the person is known to the register. */
     @Transactional(readOnly = true)
-    fun byPersonId(personId: String): List<ChangeLogRecord> =
-        trailOf(repository.accountsWithPersonId(personId.trim()))
+    fun byPersonId(personId: PartnerNumber): List<ChangeLogRecord> =
+        trailOf(repository.accountsWithPersonId(personId))
 
-    private fun trailOf(accountIds: List<Long>): List<ChangeLogRecord> =
+    private fun trailOf(accountIds: List<AccountId>): List<ChangeLogRecord> =
         if (accountIds.isEmpty()) emptyList()
         else repository.findByAccountIdInOrderByAccountIdAscOccurredAtAsc(accountIds).map {
-            ChangeLogRecord(it.accountId, it.changeType.name, it.subject, it.acr, it.details.orEmpty(), it.occurredAt)
+            ChangeLogRecord(checkNotNull(it.accountId), it.changeType.name, it.subject, it.acr, it.details.orEmpty(), it.occurredAt)
         }
 }

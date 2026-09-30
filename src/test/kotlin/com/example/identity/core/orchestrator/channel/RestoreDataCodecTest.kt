@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.FactorType
@@ -8,12 +9,8 @@ import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodName
-import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.crypto.MACSigner
 import com.nimbusds.jose.util.Base64URL
 import com.nimbusds.jwt.JWTClaimsSet
-import com.nimbusds.jwt.SignedJWT
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -29,7 +26,7 @@ class RestoreDataCodecTest : BehaviorSpec({
 
     val kcSessionId = "kc-session-1"
     val restoreData = RestoreData(
-        accountId = 42L,
+        accountId = AccountId(42L),
         evidence = SessionEvidence(
             listOf(
                 MethodEvidence(
@@ -116,7 +113,7 @@ class RestoreDataCodecTest : BehaviorSpec({
 
     given("a token with an account and no evidence") {
         val codec = RestoreDataCodec(clock = TEST_CLOCK)
-        val accountOnly = RestoreData(accountId = 42L)
+        val accountOnly = RestoreData(accountId = AccountId(42L))
         val token = codec.encode(accountOnly, kcSessionId)
 
         `when`("decoding it") {
@@ -131,7 +128,7 @@ class RestoreDataCodecTest : BehaviorSpec({
     given("a correctly signed token whose expiry has passed") {
         // A validity already over when the token is made: expired from the start.
         val codec = RestoreDataCodec(ttl = Duration.ofSeconds(-1), clock = TEST_CLOCK)
-        val expired = codec.encode(RestoreData(accountId = 42L), kcSessionId)
+        val expired = codec.encode(RestoreData(accountId = AccountId(42L)), kcSessionId)
 
         `when`("decoding it") {
             val decoded = codec.decode(expired, kcSessionId)

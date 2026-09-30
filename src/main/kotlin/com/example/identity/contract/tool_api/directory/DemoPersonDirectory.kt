@@ -1,5 +1,7 @@
 package com.example.identity.contract.tool_api.directory
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
+
 
 /**
  * Demo disclosure only: what the persona picker pre-fills the forms with. A port of its own, so
@@ -14,7 +16,7 @@ interface DemoPersonDirectory {
      * place a Freischaltcode leaves the register in plain text, and only because the demo mailbox
      * shows it anyway.
      */
-    fun latestValidActivationCode(personId: String): String?
+    fun latestValidActivationCode(personId: PartnerNumber): String?
 
     /**
      * Every open invitation with the plaintext of its one-time password (ADR-48), for the picker on
@@ -25,7 +27,7 @@ interface DemoPersonDirectory {
 
 /** One open invitation for the picker: whose it is, which process, and the password from the letter. */
 data class DemoInvitationRecord(
-    val personId: String,
+    val personId: PartnerNumber,
     val process: String,
     val processName: String,
     val code: String,

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.admin.ActiveSessions
 import com.example.identity.core.orchestrator.domain.ChannelState
@@ -48,7 +49,7 @@ class ActiveSessionsIntegrationTest : IntegrationTestSupport() {
         state: ChannelState = ChannelState.ANONYMOUS,
         age: Duration = Duration.ZERO,
         expiresIn: Duration = Duration.ofMinutes(30),
-        accountId: Long? = null,
+        accountId: AccountId? = null,
     ): ChannelSession {
         val created = Instant.now().minus(age)
         return channelSessionRepository.save(

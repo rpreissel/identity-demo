@@ -34,7 +34,7 @@ class ClaimsTest : BehaviorSpec({
             ClaimSource.SELF_REPORTED.value shouldBe "self-reported"
         }
         then("of() names the proving tool by its toolId") {
-            ClaimSource.of(ToolId("ident-eid")).value shouldBe "ident-eid"
+            ClaimSource("ident-eid").value shouldBe "ident-eid"
         }
     }
 
@@ -46,7 +46,7 @@ class ClaimsTest : BehaviorSpec({
         then("ClaimSource.claimTrust maps every source kind to its level") {
             ClaimSource.PERSON_DIRECTORY.claimTrust shouldBe ClaimTrust.AUTHORITATIVE
             ClaimSource.SELF_REPORTED.claimTrust shouldBe ClaimTrust.SELF_REPORTED
-            ClaimSource.of(ToolId("ident-eid")).claimTrust shouldBe ClaimTrust.PROVEN
+            ClaimSource("ident-eid").claimTrust shouldBe ClaimTrust.PROVEN
         }
     }
 
@@ -64,7 +64,7 @@ class ClaimsTest : BehaviorSpec({
             claim.establishedAcr shouldBe AcrLevel.LOA2
         }
         then("establishedAcr defaults to null") {
-            Claim(AttributeType.EMAIL, "a@b.de", ClaimSource.of(ToolId("confirm-email"))).establishedAcr shouldBe null
+            Claim(AttributeType.EMAIL, "a@b.de", ClaimSource("confirm-email")).establishedAcr shouldBe null
         }
         then("rejects malformed shared identity values") {
             shouldThrow<IllegalStateException> {
@@ -104,7 +104,7 @@ class ClaimsTest : BehaviorSpec({
             override val maxAcr = AcrLevel.LOA2
             override val claims = setOf(
                 ClaimDeclaration(AttributeType.KVNR, ClaimSource.PERSON_DIRECTORY),
-                ClaimDeclaration(AttributeType.EMAIL, ClaimSource.of(toolId))
+                ClaimDeclaration(AttributeType.EMAIL, ClaimSource(toolId.value))
             )
         }
         then("accepts reported claims that match the declaration") {
@@ -112,7 +112,7 @@ class ClaimsTest : BehaviorSpec({
                 descriptor,
                 listOf(
                     Claim(AttributeType.KVNR, "A123456789", ClaimSource.PERSON_DIRECTORY, AcrLevel.LOA2),
-                    Claim(AttributeType.EMAIL, "a@b.de", ClaimSource.of(descriptor.toolId))
+                    Claim(AttributeType.EMAIL, "a@b.de", ClaimSource(descriptor.toolId.value))
                 )
             )
         }
@@ -126,7 +126,7 @@ class ClaimsTest : BehaviorSpec({
         }
         then("rejects a claim source that differs from the declaration") {
             shouldThrow<IllegalStateException> {
-                assertClaimsCovered(descriptor, listOf(Claim(AttributeType.KVNR, "A123456789", ClaimSource.of(descriptor.toolId))))
+                assertClaimsCovered(descriptor, listOf(Claim(AttributeType.KVNR, "A123456789", ClaimSource(descriptor.toolId.value))))
             }.message shouldContain "but declares"
         }
         then("rejects more than one claim for the same attribute type") {

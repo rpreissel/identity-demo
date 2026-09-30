@@ -1,12 +1,13 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.InvitationId
+import com.example.identity.core.orchestrator.domain.SessionEvidenceId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 @Service
 @Transactional
@@ -17,15 +18,15 @@ class SessionEvidenceService(
     private val clock: Clock
 ) {
 
-    fun createForAccount(accountId: Long): SessionEvidenceRecord =
+    fun createForAccount(accountId: AccountId): SessionEvidenceRecord =
         sessionEvidenceRepository.save(SessionEvidenceRecord(Subject.Account(accountId), clock.instant()))
 
     /** The evidence of a channel signed in with a one-time password: it belongs to the invitation. */
-    fun createForInvitation(invitation: String): SessionEvidenceRecord =
+    fun createForInvitation(invitation: InvitationId): SessionEvidenceRecord =
         sessionEvidenceRepository.save(SessionEvidenceRecord(Subject.Invitation(invitation), clock.instant()))
 
-    fun getSessionEvidence(sessionEvidenceId: UUID): SessionEvidenceRecord? =
-        sessionEvidenceRepository.findByIdOrNull(sessionEvidenceId)
+    fun getSessionEvidence(sessionEvidenceId: SessionEvidenceId): SessionEvidenceRecord? =
+        sessionEvidenceRepository.findBySessionEvidenceId(sessionEvidenceId)
 
     /**
      * Re-points an session evidence and its token contexts at another account (ADR-20), when an
@@ -33,8 +34,8 @@ class SessionEvidenceService(
      * reset: what this session proved still counts. The cached tokens were minted for the yielding
      * account and are cleared ([invalidateCachedTokens]).
      */
-    fun rebindToAccount(sessionEvidenceId: UUID, accountId: Long) {
-        val evidence = sessionEvidenceRepository.findByIdOrNull(sessionEvidenceId)
+    fun rebindToAccount(sessionEvidenceId: SessionEvidenceId, accountId: AccountId) {
+        val evidence = sessionEvidenceRepository.findBySessionEvidenceId(sessionEvidenceId)
             ?: error("SessionEvidenceRecord not found: $sessionEvidenceId")
         evidence.subject = Subject.Account(accountId)
         sessionEvidenceRepository.save(evidence)
@@ -46,8 +47,8 @@ class SessionEvidenceService(
     }
 
     /** The proof of one completed orchestrator tool, merged via [SessionEvidenceRecord.addAmr]. */
-    fun applyEvidence(sessionEvidenceId: UUID, updates: List<MethodEvidence>) {
-        val evidence = sessionEvidenceRepository.findByIdOrNull(sessionEvidenceId)
+    fun applyEvidence(sessionEvidenceId: SessionEvidenceId, updates: List<MethodEvidence>) {
+        val evidence = sessionEvidenceRepository.findBySessionEvidenceId(sessionEvidenceId)
             ?: error("SessionEvidenceRecord not found: $sessionEvidenceId")
         evidence.addAmr(updates, clock.instant())
         sessionEvidenceRepository.save(evidence)
@@ -59,8 +60,8 @@ class SessionEvidenceService(
      * [SessionEvidenceRecord.replaceForSource]). [source] scopes which records may be removed, even when
      * [updates] is empty because everything expired.
      */
-    fun applyEvidenceUpdate(sessionEvidenceId: UUID, updates: List<MethodEvidence>, source: String) {
-        val evidence = sessionEvidenceRepository.findByIdOrNull(sessionEvidenceId)
+    fun applyEvidenceUpdate(sessionEvidenceId: SessionEvidenceId, updates: List<MethodEvidence>, source: String) {
+        val evidence = sessionEvidenceRepository.findBySessionEvidenceId(sessionEvidenceId)
             ?: error("SessionEvidenceRecord not found: $sessionEvidenceId")
         evidence.replaceForSource(source, updates, clock.instant())
         sessionEvidenceRepository.save(evidence)
@@ -73,7 +74,7 @@ class SessionEvidenceService(
      * goes too: [KcTokenProvider]'s refresh path (ADR-9) would keep renewing with pre-step-up
      * acr/amr. The session and its window stay: the next token continues it (ADR-43).
      */
-    private fun invalidateCachedTokens(sessionEvidenceId: UUID) {
+    private fun invalidateCachedTokens(sessionEvidenceId: SessionEvidenceId) {
         appTokenSessionRepository.findBySessionEvidenceId(sessionEvidenceId).forEach { appTokenSession ->
             appTokenSession.accessToken = null
             appTokenSession.accessExpiresAt = null

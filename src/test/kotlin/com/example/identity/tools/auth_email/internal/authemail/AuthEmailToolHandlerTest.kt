@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_email.internal.authemail
 
-import com.example.identity.contract.tool_api.Subject
+import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -24,7 +25,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.util.Optional
 import java.util.UUID
 
 /**
@@ -42,8 +42,8 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
 
     given("start()") {
         `when`("the account has no confirmed email address") {
-            every { accountDirectory.anchorValue(1L, AttributeType.EMAIL) } returns null
-            val result = runCatching { handler.start(UUID.randomUUID(), accountId = 1L) }
+            every { accountDirectory.anchorValue(AccountId(1L), AttributeType.EMAIL) } returns null
+            val result = runCatching { handler.start(ToolSessionId(UUID.randomUUID()), accountId = AccountId(1L)) }
 
             then("it throws UnresolvableReferenceException") {
                 shouldThrow<UnresolvableReferenceException> { result.getOrThrow() }
@@ -51,11 +51,11 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
         }
 
         `when`("the account has a confirmed email address") {
-            val toolSessionId = UUID.randomUUID()
-            every { accountDirectory.anchorValue(2L, AttributeType.EMAIL) } returns "max@example.com"
+            val toolSessionId = ToolSessionId(UUID.randomUUID())
+            every { accountDirectory.anchorValue(AccountId(2L), AttributeType.EMAIL) } returns "max@example.com"
             val saved = slot<AuthEmailToolSession>()
             every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
-            val outcome = handler.start(toolSessionId, accountId = 2L)
+            val outcome = handler.start(toolSessionId, accountId = AccountId(2L))
 
             then("it persists a fresh code and asks for it at step auth") {
                 val step = outcome.shouldBeInstanceOf<ToolOutcome.InProgress>()
@@ -75,9 +75,9 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
         `when`("the address has used up its send budget") {
             val gateway = MailServer(clock = TEST_CLOCK)
             val rateLimitedHandler = AuthEmailToolHandler(AuthEmailDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, gateway, sendLimit, clock = TEST_CLOCK)
-            every { accountDirectory.anchorValue(3L, AttributeType.EMAIL) } returns "flooded@example.com"
+            every { accountDirectory.anchorValue(AccountId(3L), AttributeType.EMAIL) } returns "flooded@example.com"
             every { sendLimit.trySend("flooded@example.com") } returns false
-            val result = runCatching { rateLimitedHandler.start(UUID.randomUUID(), accountId = 3L) }
+            val result = runCatching { rateLimitedHandler.start(ToolSessionId(UUID.randomUUID()), accountId = AccountId(3L)) }
 
             then("it refuses with TooManyRequestsException and sends nothing") {
                 shouldThrow<TooManyRequestsException> { result.getOrThrow() }
@@ -87,14 +87,14 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
     }
 
     given("an active auth-email tool session with a pending code") {
-        val toolSessionId = UUID.randomUUID()
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
         val issued = emailCodeGenerator.issue()
-        every { toolDataRepository.findById(toolSessionId) } returns
-            Optional.of(AuthEmailToolSession(toolSessionId = toolSessionId, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW))
-        every { accountDirectory.anchorValue(42L, AttributeType.EMAIL) } returns "max@example.com"
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns
+            AuthEmailToolSession(toolSessionId = toolSessionId, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
+        every { accountDirectory.anchorValue(AccountId(42L), AttributeType.EMAIL) } returns "max@example.com"
 
         `when`("confirming with the correct code") {
-            val outcome = handler.patch(toolSessionId, issued.plainCode, accountId = 42L)
+            val outcome = handler.patch(toolSessionId, issued.plainCode, accountId = AccountId(42L))
 
             then("it authenticates at the descriptor's own maxAcr and factorTypes") {
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
@@ -110,19 +110,19 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
         }
 
         `when`("submitting a wrong code") {
-            val outcome = handler.patch(toolSessionId, "000000", accountId = 43L)
+            val outcome = handler.patch(toolSessionId, "000000", accountId = AccountId(43L))
 
             then("it fails against the account the channel already knows") {
                 outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Code ungueltig oder abgelaufen"))
             }
 
             then("it does not look up the address, so no budget is reset") {
-                verify(exactly = 0) { accountDirectory.anchorValue(43L, AttributeType.EMAIL) }
+                verify(exactly = 0) { accountDirectory.anchorValue(AccountId(43L), AttributeType.EMAIL) }
             }
         }
 
         `when`("submitting no code at all") {
-            val outcome = handler.patch(toolSessionId, null, accountId = 42L)
+            val outcome = handler.patch(toolSessionId, null, accountId = AccountId(42L))
 
             then("it describes the unchanged step instead of failing") {
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "auth", stepData = MissingFields(listOf("code")))

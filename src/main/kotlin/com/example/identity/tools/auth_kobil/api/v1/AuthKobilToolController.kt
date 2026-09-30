@@ -1,5 +1,8 @@
 package com.example.identity.tools.auth_kobil.api.v1
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_kobil.AuthKobilDescriptor
 import com.example.identity.tools.auth_kobil.internal.authkobil.AuthKobilToolHandler
@@ -17,7 +20,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import io.swagger.v3.oas.annotations.media.Schema
-import java.util.UUID
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -69,7 +71,7 @@ class AuthKobilToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String,
         uriBuilder: UriComponentsBuilder,
     ): ResponseEntity<ChannelResponse> {
@@ -114,7 +116,7 @@ class AuthKobilToolController(
         ]
     )
     fun releasePin(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestBody request: KobilPinReleaseRequest,
     ): ResponseEntity<ChannelResponse> {
@@ -148,7 +150,7 @@ class AuthKobilToolController(
         ]
     )
     fun patch(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestBody(required = false) request: AuthKobilPatchRequest?,
     ): ResponseEntity<ChannelResponse> {
@@ -161,15 +163,15 @@ class AuthKobilToolController(
      * The account's active password credential, or null. Resolved here, since the handler cannot
      * see the account's other methods.
      */
-    private fun passwordEnrollmentOf(accountId: Long?) =
+    private fun passwordEnrollmentOf(accountId: AccountId?) =
         accountId?.let { accountDirectory.activeEnrollment(it, PasswordCredentialPort.METHOD) }
 
-    private fun passwordAvailable(accountId: Long?) = passwordEnrollmentOf(accountId) != null
+    private fun passwordAvailable(accountId: AccountId?) = passwordEnrollmentOf(accountId) != null
 
     @GetMapping("$API_V1/tools/{toolSessionId}/auth-kobil")
     @Operation(summary = "Read the current auth-kobil state")
     fun read(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String,
     ): ResponseEntity<ChannelResponse> {
         val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, AUTH_KOBIL_TOOL_ID)

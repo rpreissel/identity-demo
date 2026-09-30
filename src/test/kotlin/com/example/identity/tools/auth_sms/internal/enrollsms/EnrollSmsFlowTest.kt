@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_sms.internal.enrollsms
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 
@@ -123,7 +124,7 @@ class EnrollSmsFlowTest : BehaviorSpec({
     }
 
     given("toState()") {
-        val toolSessionId = UUID.randomUUID()
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
 
         `when`("no phoneNumber was ever persisted") {
             then("it reconstructs AwaitingPhoneNumber") {

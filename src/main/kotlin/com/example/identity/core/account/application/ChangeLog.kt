@@ -1,5 +1,7 @@
 package com.example.identity.core.account.application
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.infrastructure.ChangeLogEntry
 import com.example.identity.core.account.infrastructure.ChangeLogRepository
 import com.example.identity.core.account.infrastructure.ChangeType
@@ -38,8 +40,8 @@ class ChangeLog(private val repository: ChangeLogRepository, private val clock: 
      */
     @Transactional(propagation = Propagation.MANDATORY)
     fun identified(
-        accountId: Long, method: String, acr: String?, role: String?, report: Map<String, Any?>,
-        lookupKey: LookupKey?, personId: String?,
+        accountId: AccountId, method: String, acr: String?, role: String?, report: Map<String, Any?>,
+        lookupKey: LookupKey?, personId: PartnerNumber?,
     ) =
         record(
             accountId, ChangeType.IDENTIFIED, subject = method, acr = acr,
@@ -49,30 +51,30 @@ class ChangeLog(private val repository: ChangeLogRepository, private val clock: 
 
     /** A method was added: under which proofs of the session (amr) and on which channel. */
     @Transactional(propagation = Propagation.MANDATORY)
-    fun methodAdded(accountId: Long, method: String, acr: String?, amr: List<String>, channel: String?, at: Instant) =
+    fun methodAdded(accountId: AccountId, method: String, acr: String?, amr: List<String>, channel: String?, at: Instant) =
         record(accountId, ChangeType.METHOD_ADDED, subject = method, acr = acr, at = at, details = mapOf("amr" to amr, "channel" to channel))
 
     @Transactional(propagation = Propagation.MANDATORY)
-    fun methodDeactivated(accountId: Long, method: String?, reason: MethodDeactivationReason, at: Instant) =
+    fun methodDeactivated(accountId: AccountId, method: String?, reason: MethodDeactivationReason, at: Instant) =
         record(accountId, ChangeType.METHOD_DEACTIVATED, subject = method, at = at, details = mapOf("reason" to reason.name))
 
     /** An attribute was withdrawn - by whom (trust anchor) and why, never its value. */
     @Transactional(propagation = Propagation.MANDATORY)
-    fun attributeRetracted(accountId: Long, attributeType: String?, retractionSource: String?, reason: String?, at: Instant) =
+    fun attributeRetracted(accountId: AccountId, attributeType: String?, retractionSource: String?, reason: String?, at: Instant) =
         record(
             accountId, ChangeType.ATTRIBUTE_RETRACTED, subject = attributeType, at = at,
             details = mapOf("retractionSource" to retractionSource, "reason" to reason),
         )
 
     @Transactional(propagation = Propagation.MANDATORY)
-    fun accountDeleted(accountId: Long) = record(accountId, ChangeType.ACCOUNT_DELETED)
+    fun accountDeleted(accountId: AccountId) = record(accountId, ChangeType.ACCOUNT_DELETED)
 
     /**
      * [into] took over the disposable account [from] (ADR-20), including its identifications.
      * Copied, not moved: the trail stays append-only, and each copy names where it came from.
      */
     @Transactional(propagation = Propagation.MANDATORY)
-    fun accountAbsorbed(into: Long, from: Long) {
+    fun accountAbsorbed(into: AccountId, from: AccountId) {
         repository.findByAccountIdAndChangeTypeOrderByOccurredAt(from, ChangeType.IDENTIFIED).forEach { e ->
             // Keeps the version the original was written with - its keys are that version's.
             repository.save(
@@ -87,9 +89,9 @@ class ChangeLog(private val repository: ChangeLogRepository, private val clock: 
     }
 
     private fun record(
-        accountId: Long, type: ChangeType, subject: String? = null, acr: String? = null,
+        accountId: AccountId, type: ChangeType, subject: String? = null, acr: String? = null,
         at: Instant? = null, details: Map<String, Any?> = emptyMap(),
-        lookupKey: String? = null, lookupKeyId: String? = null, personId: String? = null,
+        lookupKey: String? = null, lookupKeyId: String? = null, personId: PartnerNumber? = null,
     ) {
         repository.save(
             ChangeLogEntry(

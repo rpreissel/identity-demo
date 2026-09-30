@@ -1,5 +1,6 @@
 package com.example.identity.tools.ident_nect.internal
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
@@ -16,7 +17,7 @@ import java.util.UUID
 class IdNectToolSession(
     @Id
     @Column(name = "tool_session_id", nullable = false)
-    var toolSessionId: UUID? = null,
+    var toolSessionId: ToolSessionId? = null,
 
     @Column(name = "case_id")
     var caseId: UUID? = null,

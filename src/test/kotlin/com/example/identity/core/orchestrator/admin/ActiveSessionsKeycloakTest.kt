@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.admin
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.core.account.AccountProfile
@@ -30,9 +32,9 @@ class ActiveSessionsKeycloakTest {
     private val appTokenSessions = mockk<AppTokenSessionRepository>(relaxed = true)
     private val accountService = mockk<AccountService> {
         every { findAccount(any()) } returns null
-        every { findAccount(7) } returns AccountProfile(7, "p-7", emptyList())
+        every { findAccount(AccountId(7)) } returns AccountProfile(AccountId(7), PartnerNumber("P000000007"), emptyList())
     }
-    private val personDirectory = mockk<PersonDirectory> { every { displayName("p-7") } returns "Mara Muster" }
+    private val personDirectory = mockk<PersonDirectory> { every { displayName(PartnerNumber("P000000007")) } returns "Mara Muster" }
 
     private fun service(source: KeycloakUserSessions?) = ActiveSessions(
         repository, appTokenSessions, accountService, personDirectory,
@@ -44,7 +46,7 @@ class ActiveSessionsKeycloakTest {
 
     private fun session(id: String, userId: String?) = KeycloakUserSession(id, "user-$id", userId, start, start.plusSeconds(60))
 
-    private val appContext = AppTokenSession(accountId = 7, keycloakSessionId = "kc-app", now = TEST_NOW).apply { appTokenSessionId = java.util.UUID.randomUUID() }
+    private val appContext = AppTokenSession(accountId = AccountId(7), keycloakSessionId = "kc-app", now = TEST_NOW).apply { appTokenSessionId = java.util.UUID.randomUUID() }
 
     @Test
     fun `groups by client, names the account and finds the channel of each session`() {
@@ -79,12 +81,12 @@ class ActiveSessionsKeycloakTest {
         assertThat(keycloak.clients.map { it.client }).containsExactly(KeycloakSessionClient.WEBSITE, KeycloakSessionClient.APP)
         val (website, app) = keycloak.clients
         assertThat(website.count).isEqualTo(14)
-        assertThat(website.newest.map { it.accountId }).containsExactly(8L, null)
+        assertThat(website.newest.map { it.accountId }).containsExactly(AccountId(8L), null)
         // Two flow runs of one Keycloak session: the later one stands for it.
         assertThat(website.newest[0].channelSessionId).isEqualTo(newer.channelSessionId)
         assertThat(website.newest[1].channelSessionId).isNull()
         with(app.newest.single()) {
-            assertThat(accountId).isEqualTo(7L)
+            assertThat(accountId).isEqualTo(AccountId(7))
             assertThat(displayName).isEqualTo("Mara Muster")
             assertThat(channelSessionId).isEqualTo(appChannel.channelSessionId)
             assertThat(channelState).isEqualTo(ChannelState.AUTHENTICATED)

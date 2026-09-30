@@ -1,7 +1,8 @@
 package com.example.identity.core.account.infrastructure
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.application.ChangeLog
-import com.example.identity.core.account.application.ChangeLogRetention
 import com.example.identity.core.account.application.PersonLookupKey
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -42,7 +43,8 @@ enum class ChangeType(val detailsVersion: Int) {
 @Table(schema = "account", name = "change_log")
 class ChangeLogEntry(
     @Column(name = "account_id", nullable = false, updatable = false)
-    val accountId: Long = 0,
+    // Nullable only for JPA: a non-null AccountId is a bare long on the JVM, which the converter cannot take.
+    val accountId: AccountId? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "change_type", nullable = false, updatable = false, length = 32)
@@ -69,7 +71,7 @@ class ChangeLogEntry(
 
     /** The register's person id, when the account had one - set on `IDENTIFIED` only. */
     @Column(name = "person_id", updatable = false, length = 64)
-    val personId: String? = null,
+    val personId: PartnerNumber? = null,
 
     @Column(name = "occurred_at", nullable = false, updatable = false)
     val occurredAt: Instant,
@@ -81,26 +83,26 @@ class ChangeLogEntry(
 }
 
 interface ChangeLogRepository : JpaRepository<ChangeLogEntry, Long> {
-    fun findByAccountIdOrderByOccurredAt(accountId: Long): List<ChangeLogEntry>
+    fun findByAccountIdOrderByOccurredAt(accountId: AccountId?): List<ChangeLogEntry>
 
-    fun findByAccountIdAndChangeTypeOrderByOccurredAt(accountId: Long, changeType: ChangeType): List<ChangeLogEntry>
+    fun findByAccountIdAndChangeTypeOrderByOccurredAt(accountId: AccountId?, changeType: ChangeType): List<ChangeLogEntry>
 
     @Query("select distinct e.accountId from ChangeLogEntry e where e.lookupKey in :lookupKeys")
-    fun accountsWithLookupKeyIn(lookupKeys: Collection<String>): List<Long>
+    fun accountsWithLookupKeyIn(lookupKeys: Collection<String>): List<AccountId>
 
     /** Every key id some entry was written with - which secrets are still needed. */
     @Query("select distinct e.lookupKeyId from ChangeLogEntry e where e.lookupKeyId is not null")
     fun lookupKeyIds(): Set<String>
 
     @Query("select distinct e.accountId from ChangeLogEntry e where e.personId = :personId")
-    fun accountsWithPersonId(personId: String): List<Long>
+    fun accountsWithPersonId(personId: PartnerNumber): List<AccountId>
 
-    fun findByAccountIdInOrderByAccountIdAscOccurredAtAsc(accountIds: Collection<Long>): List<ChangeLogEntry>
+    fun findByAccountIdInOrderByAccountIdAscOccurredAtAsc(accountIds: Collection<AccountId>): List<ChangeLogEntry>
 
     @Query("select e.accountId from ChangeLogEntry e where e.changeType = com.example.identity.core.account.infrastructure.ChangeType.ACCOUNT_DELETED and e.occurredAt < :cutoff")
-    fun accountsDeletedBefore(cutoff: Instant, pageable: Pageable): List<Long>
+    fun accountsDeletedBefore(cutoff: Instant, pageable: Pageable): List<AccountId>
 
     @Modifying
     @Query("delete from ChangeLogEntry e where e.accountId in :accountIds")
-    fun deleteByAccountIdIn(accountIds: Collection<Long>): Int
+    fun deleteByAccountIdIn(accountIds: Collection<AccountId>): Int
 }

@@ -1,7 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.policy.fromNow
-import com.example.identity.core.orchestrator.domain.journey.strategy.AuthEnrollCore
 import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterStrategy
 import com.example.identity.core.orchestrator.domain.ChannelType
@@ -203,7 +203,7 @@ class RegisterStrategyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1))
         // linkedAccountId (999L) differs from the newly identified account's own id - the
         // "Zweitaccount" conflict (docs/04-orchestrierung.md #2).
-        val theCtx = ctx(account = acc, acrFloor = AcrLevel.LOA1, linkedAccountId = 999L)
+        val theCtx = ctx(account = acc, acrFloor = AcrLevel.LOA1, linkedAccountId = AccountId(999L))
         val state = RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc"))))
 
         `when`("a fresh identity was just established (Completed)") {
@@ -228,7 +228,7 @@ class RegisterStrategyTest : BehaviorSpec({
     given("ConfirmDeviceRebind") {
         val acc = account(method("sms", AcrLevel.LOA1))
         val state = RegisterState.ConfirmDeviceRebind
-        val conflicting = ctx(account = acc, acrFloor = AcrLevel.LOA1, linkedAccountId = 999L)
+        val conflicting = ctx(account = acc, acrFloor = AcrLevel.LOA1, linkedAccountId = AccountId(999L))
         val resolved = ctx(account = acc, acrFloor = AcrLevel.LOA1, linkedAccountId = acc.accountId)
 
         `when`("accepted") {
@@ -293,7 +293,7 @@ class RegisterStrategyTest : BehaviorSpec({
 
         `when`("the email is confirmed (Completed)") {
             val outcome = ToolOutcome.Completed.Attested(
-                claims = listOf(Claim(AttributeType.EMAIL, "max@example.com", ClaimSource.of(ToolId("confirm-email"))))
+                claims = listOf(Claim(AttributeType.EMAIL, "max@example.com", ClaimSource("confirm-email")))
             )
             val event = JourneyEvent.Completed(com.example.identity.tools.auth_email.ConfirmEmailDescriptor, outcome)
             // No credential and no device binding - the account keeps the address, nothing

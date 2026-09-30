@@ -1,10 +1,11 @@
 package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.core.orchestrator.domain.JourneyId
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.core.orchestrator.domain.journey.JourneyLifecycle
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import java.time.Instant
-import java.util.UUID
 
 /**
  * A journey that was running when it was looked up: the only form in which anyone outside the
@@ -13,8 +14,8 @@ import java.util.UUID
  * with. It witnesses the lookup, not a live view; callers use it once per request.
  */
 class RunningJourney private constructor(internal val entity: AuthJourney) {
-    val journeyId: UUID get() = entity.id
-    val channelSessionId: UUID get() = checkNotNull(entity.channelSessionId)
+    val journeyId: JourneyId get() = entity.id
+    val channelSessionId: ChannelSessionId get() = checkNotNull(entity.channelSessionId)
     val intent: AuthIntent get() = entity.requireIntent()
 
     companion object {

@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.api.v1.kc
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.core.orchestrator.channel.KcChannelService
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
@@ -34,7 +36,7 @@ class KcSignOutController(
     @PostMapping("$API_V1/kc/accounts/{accountId}/sign-outs")
     @Operation(summary = "Keycloak ended one session of this account")
     fun signedOut(
-        @PathVariable accountId: Long,
+        @PathVariable accountId: AccountId,
         @RequestParam kcSessionId: String,
         @RequestHeader("Authorization") authorization: String?,
         httpRequest: HttpServletRequest,
@@ -51,13 +53,13 @@ class KcSignOutController(
     @PostMapping("$API_V1/kc/invitations/{invitation}/sign-outs")
     @Operation(summary = "Keycloak ended one session of this invitation")
     fun invitationSignedOut(
-        @PathVariable invitation: String,
+        @PathVariable invitation: InvitationId,
         @RequestParam kcSessionId: String,
         @RequestHeader("Authorization") authorization: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<Void> {
         val assertion = validate(authorization, httpRequest)
-        if (assertion.channelBinding != invitation) {
+        if (assertion.channelBinding != invitation.value) {
             throw PeerAuthValidationException("Peer-auth channel_binding does not match this invitation")
         }
         kcChannelService.signedOutAtKeycloak(Subject.Invitation(invitation), kcSessionId)

@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_kobil.internal.enrollkobil
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -25,7 +26,6 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.util.Optional
 import java.util.UUID
 
 /**
@@ -43,8 +43,8 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
     val handler = EnrollKobilToolHandler(EnrollKobilDescriptor, toolDataRepository, enrollmentRepository, secrets, ssms, tenantId, clock = TEST_CLOCK)
 
     /** A session mid-setup for KOBIL user [kobilUserId], still holding its minted secrets. */
-    fun activating(kobilUserId: String): Pair<UUID, EnrollKobilToolSession> {
-        val toolSessionId = UUID.randomUUID()
+    fun activating(kobilUserId: String): Pair<ToolSessionId, EnrollKobilToolSession> {
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
         val data = EnrollKobilToolSession(
             toolSessionId = toolSessionId,
             kobilTenantId = tenantId,
@@ -54,13 +54,13 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
             unlockSecret = "unlock-secret-$kobilUserId",
             createdAt = TEST_NOW,
         )
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
         return toolSessionId to data
     }
 
     given("start()") {
         `when`("an enroll-kobil run begins") {
-            val toolSessionId = UUID.randomUUID()
+            val toolSessionId = ToolSessionId(UUID.randomUUID())
             val kobilUser = KobilUserRef(tenantId, "kob-new")
             every { ssms.provisionUser(tenantId, toolSessionId.toString()) } returns kobilUser
             every { ssms.issueActivationCode(kobilUser) } returns "ACT23456"

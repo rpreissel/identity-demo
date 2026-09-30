@@ -1,9 +1,9 @@
 package com.example.identity.tools.auth_email.internal.confirmemail
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import com.example.identity.contract.tool_api.values.Email
 import java.time.Instant
-import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.StepData
 
@@ -38,7 +38,7 @@ internal sealed interface ConfirmEmailState {
 
     companion object {
         /** Turns [ConfirmEmailToolSession]'s persisted, nullable columns back into a [ConfirmEmailState]. */
-        fun of(toolSessionId: UUID, email: String?, issuedCodeHash: String?, codeExpiresAt: Instant?): ConfirmEmailState {
+        fun of(toolSessionId: ToolSessionId, email: String?, issuedCodeHash: String?, codeExpiresAt: Instant?): ConfirmEmailState {
             val value = email ?: return AwaitingEmail
             return AwaitingCode(
                 value,
@@ -70,7 +70,7 @@ internal object ConfirmEmailFlow {
 
     fun decide(state: ConfirmEmailState, input: ConfirmEmailInput, emailCodeGenerator: EmailCodeGenerator): ConfirmEmailDecision {
         input.email?.let { raw ->
-            val email = Email.ofOrNull(raw) ?: return ConfirmEmailDecision.InvalidEmail(raw)
+            val email = Email.parse(raw) ?: return ConfirmEmailDecision.InvalidEmail(raw)
             return ConfirmEmailDecision.RequestCode(email.value)
         }
         return when (state) {

@@ -99,15 +99,15 @@ val AttributeType.isLocalAnchor: Boolean
  * instead of falling back to a weaker match. A non-anchor type is a contract error.
  */
 fun AttributeType.normalizeAnchorValue(value: String): String = when (this) {
-    AttributeType.PERSON_ID -> PartnerNumber.of(value).value
+    AttributeType.PERSON_ID -> requireNotNull(PartnerNumber.parse(value)) { "Invalid partner number" }.value
     AttributeType.EID_RESTRICTED_ID,
     AttributeType.NECT_RESTRICTED_ID -> value.trim()
-    AttributeType.MEMBER_NUMBER -> MemberNumber.of(value).value
-    AttributeType.EMAIL -> Email.of(value).value
+    AttributeType.MEMBER_NUMBER -> requireNotNull(MemberNumber.parse(value)) { "Invalid member number" }.value
+    AttributeType.EMAIL -> requireNotNull(Email.parse(value)) { "Invalid email address" }.value
     AttributeType.KVNR -> {
         // Validate the format first, so a malformed value fails like any other bad input.
         // Then refuse: KVNR resolves live through PersonDirectory, never as a local anchor.
-        Kvnr.of(value)
+        requireNotNull(Kvnr.parse(value)) { "Invalid Kvnr" }
         error("$this is not a local account anchor - authority is $authority, resolved live via PersonDirectory")
     }
     AttributeType.FAMILY_NAME,

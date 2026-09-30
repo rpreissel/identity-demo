@@ -52,7 +52,7 @@ class KcAccountLookupIntegrationTest : IntegrationTestSupport() {
 
                 binding(accountId.toString())
                 val byId = lookup("accounts/$accountId")
-                byId["accountId"] shouldBe accountId.toInt()
+                byId["accountId"] shouldBe accountId.value.toInt()
                 byId["email"] shouldBe AccountFixtures.EMAIL
                 byId["username"] shouldBe AccountFixtures.EMAIL
                 byId["emailVerified"] shouldBe true
@@ -61,9 +61,9 @@ class KcAccountLookupIntegrationTest : IntegrationTestSupport() {
                 (byId["attributes"] as Map<String, Any?>)["orchestratorAccountId"] shouldBe accountId.toString()
 
                 binding("account-lookup")
-                lookup("accounts?email=${AccountFixtures.EMAIL}")["accountId"] shouldBe accountId.toInt()
-                lookup("accounts?username=${AccountFixtures.EMAIL}")["accountId"] shouldBe accountId.toInt()
-                lookup("accounts?username=account-$accountId")["accountId"] shouldBe accountId.toInt()
+                lookup("accounts?email=${AccountFixtures.EMAIL}")["accountId"] shouldBe accountId.value.toInt()
+                lookup("accounts?username=${AccountFixtures.EMAIL}")["accountId"] shouldBe accountId.value.toInt()
+                lookup("accounts?username=account-$accountId")["accountId"] shouldBe accountId.value.toInt()
             }
         }
 
@@ -74,7 +74,7 @@ class KcAccountLookupIntegrationTest : IntegrationTestSupport() {
                 binding("account-lookup")
                 status("accounts?email=${AccountFixtures.EMAIL}") shouldBe HttpStatus.NOT_FOUND
                 binding(accountId.toString())
-                lookup("accounts/$accountId")["accountId"] shouldBe accountId.toInt()
+                lookup("accounts/$accountId")["accountId"] shouldBe accountId.value.toInt()
             }
         }
 

@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.admin
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.demo.demo_mode.DemoSurface
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.session.AccountDeletionService
@@ -15,8 +17,8 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 data class AdminAccountView(
-    val accountId: Long,
-    val personId: String?,
+    val accountId: AccountId,
+    val personId: PartnerNumber?,
     val displayName: String?,
     val email: String?,
     /** Active method names, one per instance (several devices show up several times). */
@@ -54,7 +56,7 @@ class AdminAccountsController(
 
     @DeleteMapping("accounts/{accountId}")
     @Operation(summary = "Delete one account", description = "Same cleanup as the account's own deletion journey; its channels end up logged out.")
-    fun delete(@PathVariable accountId: Long): ResponseEntity<Void> {
+    fun delete(@PathVariable accountId: AccountId): ResponseEntity<Void> {
         if (accountService.findAccount(accountId) == null) return ResponseEntity.notFound().build()
         accountDeletionService.deleteAccount(accountId)
         return ResponseEntity.noContent().build()

@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
@@ -28,7 +30,7 @@ data class JourneyContext(
     /** The calling device's DPoP-proven key thumbprint; null on a Keycloak channel. */
     val bindingKeyRef: String?,
     /** The account this device is durably linked to, if any, independent of this channel. */
-    val linkedAccountId: Long?,
+    val linkedAccountId: AccountId?,
     /** True while this journey runs as another one's precondition (docs/04-orchestrierung.md #6). */
     val isSubJourney: Boolean,
     /** Answers ACR and candidate questions. */
@@ -49,7 +51,7 @@ data class JourneyContext(
      * The invitation this channel signed in with instead of an account
      * (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). Never set together with [account].
      */
-    val invitation: String? = null
+    val invitation: InvitationId? = null
 ) {
     /**
      * The resolved account, for states that cannot be reached without one (step-up, method change,

@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_email.internal.authemaillookup
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
@@ -22,7 +24,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.util.Optional
 import java.util.UUID
 
 /**
@@ -43,10 +44,10 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
     val neutralAnswer = ToolOutcome.InProgress(nextStep = "codeInput", stepData = MissingFields(listOf("code")), demo = emptyMap())
 
     /** A fresh session awaiting the email; each submission gets its own, so they cannot see each other's writes. */
-    fun awaitingEmail(): Pair<UUID, AuthEmailLookupToolSession> {
-        val toolSessionId = UUID.randomUUID()
+    fun awaitingEmail(): Pair<ToolSessionId, AuthEmailLookupToolSession> {
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
         val data = AuthEmailLookupToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
         every { toolDataRepository.save(any()) } answers { firstArg() }
         return toolSessionId to data
     }
@@ -55,7 +56,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
         `when`("a lookup login begins") {
             val saved = slot<AuthEmailLookupToolSession>()
             every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
-            val outcome = handler.start(UUID.randomUUID())
+            val outcome = handler.start(ToolSessionId(UUID.randomUUID()))
 
             then("it asks for the email at step auth and stores no code yet") {
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "auth", stepData = MissingFields(listOf("email")), demo = emptyMap())
@@ -68,14 +69,14 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
     given("an auth-email-lookup tool session awaiting the email") {
         `when`("the email resolves to an account with a confirmed address") {
             val (toolSessionId, data) = awaitingEmail()
-            every { accountDirectory.resolveByAnchor(AttributeType.EMAIL, "max@example.com") } returns 42L
-            every { accountDirectory.anchorValue(42L, AttributeType.EMAIL) } returns "max@example.com"
+            every { accountDirectory.resolveByAnchor(AttributeType.EMAIL, "max@example.com") } returns AccountId(42L)
+            every { accountDirectory.anchorValue(AccountId(42L), AttributeType.EMAIL) } returns "max@example.com"
             val outcome = handler.submitEmail(toolSessionId, "max@example.com", locked = false)
 
             then("it stores the account and a fresh code, and mails the code it reveals as the demo value") {
                 val step = outcome.shouldBeInstanceOf<ToolOutcome.InProgress>()
                 step.nextStep shouldBe "codeInput"
-                data.accountId shouldBe 42L
+                data.accountId shouldBe AccountId(42)
                 data.issuedCodeHash.shouldNotBeNull()
                 step.demo?.get("tan") shouldBe mailServer.outbox().first { it.address == "max@example.com" }.code
             }
@@ -96,8 +97,8 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
 
         `when`("the email resolves to a locked account") {
             val (toolSessionId, data) = awaitingEmail()
-            every { accountDirectory.resolveByAnchor(AttributeType.EMAIL, "locked@example.com") } returns 43L
-            every { accountDirectory.anchorValue(43L, AttributeType.EMAIL) } returns "locked@example.com"
+            every { accountDirectory.resolveByAnchor(AttributeType.EMAIL, "locked@example.com") } returns AccountId(43L)
+            every { accountDirectory.anchorValue(AccountId(43L), AttributeType.EMAIL) } returns "locked@example.com"
             val outcome = handler.submitEmail(toolSessionId, "locked@example.com", locked = true)
 
             then("it answers exactly like for an unknown address and stores no account") {
@@ -113,8 +114,8 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
 
         `when`("the account's address has used up its send budget") {
             val (toolSessionId, data) = awaitingEmail()
-            every { accountDirectory.resolveByAnchor(AttributeType.EMAIL, "flooded@example.com") } returns 44L
-            every { accountDirectory.anchorValue(44L, AttributeType.EMAIL) } returns "flooded@example.com"
+            every { accountDirectory.resolveByAnchor(AttributeType.EMAIL, "flooded@example.com") } returns AccountId(44L)
+            every { accountDirectory.anchorValue(AccountId(44L), AttributeType.EMAIL) } returns "flooded@example.com"
             every { sendLimit.trySend("flooded@example.com") } returns false
             val outcome = handler.submitEmail(toolSessionId, "flooded@example.com", locked = false)
 
@@ -127,19 +128,19 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
     }
 
     given("a resolved account with a pending code") {
-        val toolSessionId = UUID.randomUUID()
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
         val issued = emailCodeGenerator.issue()
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(
-            AuthEmailLookupToolSession(toolSessionId = toolSessionId, accountId = 42L, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
-        )
-        every { accountDirectory.anchorValue(42L, AttributeType.EMAIL) } returns "max@example.com"
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns 
+            AuthEmailLookupToolSession(toolSessionId = toolSessionId, accountId = AccountId(42L), issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
+        
+        every { accountDirectory.anchorValue(AccountId(42L), AttributeType.EMAIL) } returns "max@example.com"
 
         `when`("confirming with the correct code") {
             val outcome = handler.patch(toolSessionId, issued.plainCode)
 
             then("it authenticates for that account at the descriptor's own maxAcr and factorTypes") {
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
-                authenticated.subject shouldBe Subject.Account(42L)
+                authenticated.subject shouldBe Subject.Account(AccountId(42L))
                 authenticated.amr shouldBe listOf("email")
                 authenticated.achievedAcr shouldBe AuthEmailLookupDescriptor.maxAcr
                 authenticated.factorTypes shouldBe AuthEmailLookupDescriptor.factorTypes
@@ -154,17 +155,17 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, "000000")
 
             then("it fails against the resolved account, so the orchestrator charges that account") {
-                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder Code ungueltig"), attempted = Attempted.Account(42L))
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder Code ungueltig"), attempted = Attempted.Account(AccountId(42L)))
             }
         }
     }
 
     given("an unresolved address with a pending code") {
-        val toolSessionId = UUID.randomUUID()
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
         val issued = emailCodeGenerator.issue()
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns 
             AuthEmailLookupToolSession(toolSessionId = toolSessionId, accountId = null, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
-        )
+        
 
         `when`("submitting even the issued code") {
             val outcome = handler.patch(toolSessionId, issued.plainCode)

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
@@ -236,9 +237,9 @@ class RegisterEnrollFirstFlowIntegrationTest : IntegrationTestSupport() {
     }
 
     /** Which account this test's physical device key currently resolves to, if any. */
-    private fun linkedAccountId(): Long? =
+    private fun linkedAccountId(): AccountId? =
         jdbcTemplate.queryForList(
             "SELECT account_id FROM orchestrator.device_account_link WHERE binding_key_ref = ?",
             Long::class.java, currentBindingKeyRef
-        ).firstOrNull()
+        ).firstOrNull()?.let(::AccountId)
 }

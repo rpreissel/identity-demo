@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodName
@@ -35,7 +36,7 @@ class RestoreDataCodec(private val clock: Clock, private val ttl: Duration = TTL
             .subject(kcSessionId)
             .issueTime(Date.from(now))
             .expirationTime(Date.from(now.plus(ttl)))
-            .claim("accountId", restoreData.accountId)
+            .claim("accountId", restoreData.accountId?.value)
             .claim("methods", restoreData.evidence?.methods?.map { it.toClaim() })
             .build()
         val jwt = SignedJWT(JWSHeader(JWSAlgorithm.HS256), claims)
@@ -59,7 +60,7 @@ class RestoreDataCodec(private val clock: Clock, private val ttl: Duration = TTL
             val methodsClaim = claims.getClaim("methods") as? List<Map<String, Any?>>
             val methods = methodsClaim?.map { it.toMethodEvidence() }
             RestoreData(
-                accountId = (claims.getClaim("accountId") as? Number)?.toLong(),
+                accountId = (claims.getClaim("accountId") as? Number)?.toLong()?.let(::AccountId),
                 evidence = methods?.takeIf { it.isNotEmpty() }?.let { SessionEvidence(it) }
             )
         } catch (e: Exception) {
@@ -83,8 +84,8 @@ class RestoreDataCodec(private val clock: Clock, private val ttl: Duration = TTL
     @Suppress("UNCHECKED_CAST")
     private fun Map<String, Any?>.toMethodEvidence(): MethodEvidence = MethodEvidence(
         method = MethodName(this["method"] as String),
-            loa = AcrLevel.of(this["loa"] as String),
-            enrolledUnderAcr = (this["enrolledUnderAcr"] as? String)?.let(AcrLevel::of),
+            loa = AcrLevel.parse(this["loa"] as String) ?: AcrLevel.NONE,
+            enrolledUnderAcr = (this["enrolledUnderAcr"] as? String)?.let(AcrLevel::parse),
         factorTypes = (this["factorTypes"] as? List<String>)?.mapNotNull { name ->
             runCatching { FactorType.valueOf(name) }.getOrNull()
         }?.toSet() ?: emptySet(),

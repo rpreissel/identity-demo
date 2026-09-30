@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import org.springframework.web.client.HttpClientErrorException
 import org.junit.jupiter.api.assertThrows
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
@@ -48,7 +49,7 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
         set("Content-Type", "application/json")
     }
 
-    private fun kcPatch(channelSessionId: UUID, body: String = "{}"): Map<String, Any?> =
+    private fun kcPatch(channelSessionId: ChannelSessionId, body: String = "{}"): Map<String, Any?> =
         restTemplate.exchange(
             "http://localhost:$port/orchestrator/api/v1/kc/channels/$channelSessionId",
             HttpMethod.PATCH,
@@ -95,7 +96,7 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
 
     /** Activates auth-qr-lookup on a fresh WEB channel, returns (toolSessionId, pairingCode). */
     private fun startWebLookup(): Pair<String, String> {
-        val webChannelSessionId = UUID.randomUUID()
+        val webChannelSessionId = ChannelSessionId(UUID.randomUUID())
         stubAssertion(channelBinding = webChannelSessionId.toString())
         kcPatch(webChannelSessionId)
         val webToolSessionId = kcPost("/orchestrator/api/v1/channels/$webChannelSessionId/tools/auth-qr-lookup")

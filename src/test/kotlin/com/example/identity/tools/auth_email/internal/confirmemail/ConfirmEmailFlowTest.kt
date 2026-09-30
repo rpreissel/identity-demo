@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_email.internal.confirmemail
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 
@@ -97,7 +98,7 @@ class ConfirmEmailFlowTest : BehaviorSpec({
     }
 
     given("toState()") {
-        val toolSessionId = UUID.randomUUID()
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
 
         `when`("no email was ever persisted") {
             then("it reconstructs AwaitingEmail") {

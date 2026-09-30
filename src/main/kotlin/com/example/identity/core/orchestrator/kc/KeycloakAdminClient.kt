@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.kcmigrate.federatedInvitationUserId
 import com.example.identity.kcmigrate.federatedUserId
 import java.net.URLEncoder
@@ -9,12 +11,10 @@ import java.time.Instant
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
-import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
-import org.springframework.web.util.UriComponentsBuilder
 
 /**
  * The orchestrator's calls into Keycloak: ending a session, clearing up after a deleted account, and
@@ -59,14 +59,14 @@ class KeycloakAdminClient(
      * Ends every Keycloak session of an invitation's user (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
      * Keycloak finds the user through the invitation federation even after the invitation has ended.
      */
-    fun logoutInvitation(invitation: String) {
+    fun logoutInvitation(invitation: InvitationId) {
         asAdmin {
-            it.post().uri("/admin/realms/{realm}/users/{userId}/logout", realm, federatedInvitationUserId(invitation))
+            it.post().uri("/admin/realms/{realm}/users/{userId}/logout", realm, federatedInvitationUserId(invitation.value))
                 .retrieve().toBodilessEntity()
         }
     }
 
-    fun removeAccount(accountId: Long) {
+    fun removeAccount(accountId: AccountId) {
         asAdmin { it.delete().uri("/admin/realms/{realm}/orchestrator-accounts/{accountId}", realm, accountId).retrieve().toBodilessEntity() }
         log.info("Keycloak: removed local state of federated user for accountId={}", accountId)
     }
@@ -78,7 +78,7 @@ class KeycloakAdminClient(
      * Without [sessionId] the grant opens a new Keycloak session; with it, it continues exactly
      * that session or fails (ADR-43).
      */
-    fun requestAccountToken(accountId: Long, acr: String?, amr: List<String>, sessionId: String?): AccountTokenResponse {
+    fun requestAccountToken(accountId: AccountId, acr: String?, amr: List<String>, sessionId: String?): AccountTokenResponse {
         val form = "grant_type=$ACCOUNT_TOKEN_GRANT_TYPE" +
             "&${clientAuth(appClientId)}" +
             "&account_id=$accountId" +

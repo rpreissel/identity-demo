@@ -1,5 +1,6 @@
 package com.example.identity.tools.ident_fsc.internal
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import java.security.MessageDigest
 import com.example.identity.contract.tool_api.StepData
 import com.example.identity.contract.tool_api.MissingFields
@@ -17,7 +18,7 @@ internal data class IdentFscState(
     val givenNames: String? = null,
     val birthDate: LocalDate? = null,
     val fscHash: String? = null,
-    val personId: String? = null
+    val personId: PartnerNumber? = null
 )
 
 /** What one PATCH submitted - all optional, exactly the API's "only the changed part" rule. */
@@ -28,7 +29,7 @@ internal data class IdentFscInput(
     val givenNames: String? = null,
     val birthDate: LocalDate? = null,
     val fsc: String? = null,
-    val personId: String? = null
+    val personId: PartnerNumber? = null
 ) {
     /** Whether this PATCH touched the personal data - which is then checked again, right away. */
     val touchesPersonalDetails: Boolean get() = kvnr != null || partnerNumber != null || familyName != null || givenNames != null || birthDate != null
@@ -47,14 +48,14 @@ internal sealed interface IdentFscDecision {
 
     /** The personal data was just (re-)supplied: check it against the register first. */
     data class VerifyPersonalDetails(
-        val personId: String,
+        val personId: PartnerNumber,
         val familyName: String,
         val givenNames: String,
         val birthDate: LocalDate
     ) : IdentFscDecision
 
     /** The personal data stands verified and a code is present: check the code. */
-    data class VerifyCode(val personId: String, val fscHash: String) : IdentFscDecision
+    data class VerifyCode(val personId: PartnerNumber, val fscHash: String) : IdentFscDecision
 }
 
 internal object IdentFscFlow {

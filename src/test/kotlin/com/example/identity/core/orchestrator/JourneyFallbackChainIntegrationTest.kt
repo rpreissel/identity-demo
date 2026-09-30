@@ -66,7 +66,7 @@ class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
             // second account behind.
             identified.next()["type"].shouldNotBeNull()
             jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.account", Int::class.java) shouldBe 1
-            jdbcTemplate.queryForObject("SELECT MIN(id) FROM account.account", Long::class.java) shouldBe accountId
+            jdbcTemplate.queryForObject("SELECT MIN(id) FROM account.account", Long::class.java) shouldBe accountId.value
         }
 
         // LOGIN_LOOKUP -------------------------------------------------------------

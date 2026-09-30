@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.account.AccountProfile
@@ -118,7 +119,7 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
     private fun offerEnrollment(ctx: JourneyContext): Transition {
         // No account exists yet. The candidate query reads only methods and emailConfirmed, so an
         // unpersisted blank placeholder is enough.
-        val blankAccount = AccountProfile(accountId = -1, personId = null, authenticationMethods = emptyList())
+        val blankAccount = AccountProfile(accountId = AccountId(-1), personId = null, authenticationMethods = emptyList())
         val candidates = CandidateTools.forEnrollment(blankAccount, ctx.acrFloor, ctx)
         return if (candidates.isNotEmpty()) {
             Transition.To(RegisterEnrollFirstState.EnrollFirstEnrolling(Offer(candidates)))

@@ -6,7 +6,11 @@ package com.example.identity.contract.tool_api.values
  * or one number could count as three for the rate limit.
  */
 @JvmInline
-value class PhoneNumber private constructor(val value: String) {
+value class PhoneNumber(val value: String) {
+    init {
+        require(isAllowed(value)) { "Not a mobile number we send to" }
+    }
+
     override fun toString(): String = value
 
     companion object {
@@ -28,15 +32,14 @@ value class PhoneNumber private constructor(val value: String) {
         fun normalize(raw: String): String =
             raw.replace(SEPARATORS, "").let { if (it.startsWith("00")) "+" + it.removePrefix("00") else it }
 
-        /** Normalizes, then checks E.164 and the EU/EEA country code - `null` if it is no number we send to. */
-        fun ofOrNull(raw: String): PhoneNumber? {
-            val number = normalize(raw)
-            if (!E164.matches(number)) return null
-            val digits = number.removePrefix("+")
-            return if (ALLOWED_COUNTRY_CODES.any { digits.startsWith(it) && digits.length > it.length + 5 }) PhoneNumber(number) else null
-        }
+        /** Input from outside: normalizes, `null` if it is no number we send to. */
+        fun parse(raw: String): PhoneNumber? = normalize(raw).takeIf(::isAllowed)?.let(::PhoneNumber)
 
-        /** Same as [ofOrNull], but throws for a number we do not send to. */
-        fun of(raw: String): PhoneNumber = requireNotNull(ofOrNull(raw)) { "Not a mobile number we send to" }
+        /** E.164 with an EU/EEA country code. */
+        private fun isAllowed(number: String): Boolean {
+            if (!E164.matches(number)) return false
+            val digits = number.removePrefix("+")
+            return ALLOWED_COUNTRY_CODES.any { digits.startsWith(it) && digits.length > it.length + 5 }
+        }
     }
 }

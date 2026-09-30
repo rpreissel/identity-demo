@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_qr.internal
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.tools.auth_qr.QR_LOGIN_TTL
 import com.example.identity.contract.texts.Text
 import org.springframework.data.repository.findByIdOrNull
@@ -24,13 +25,13 @@ class QrLoginBrowserSide(
         data object WaitingForApp : State
         data object EnterCode : State
         /** [expectedAccountId] as opened - `auth-qr` must see exactly that account confirm. */
-        data class Confirmed(val accountId: Long, val expectedAccountId: Long?) : State
+        data class Confirmed(val accountId: AccountId, val expectedAccountId: AccountId?) : State
         data class Failed(val reason: Text) : State
     }
 
     /** Opens a new request; returns its pairing code. [expectedAccountId] only for `auth-qr`. */
     @Transactional
-    fun open(expectedAccountId: Long?): String {
+    fun open(expectedAccountId: AccountId?): String {
         val pairingCode = PairingCodeGenerator.pairingCode()
         val now = clock.instant()
         requests.save(

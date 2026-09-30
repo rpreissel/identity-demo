@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.enrollsms
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.query.Param
 import org.springframework.data.jpa.repository.Query
@@ -10,6 +11,8 @@ import java.util.UUID
 
 @Repository
 interface EnrollSmsToolSessionRepository : JpaRepository<EnrollSmsToolSession, UUID> {
+    fun findByToolSessionId(toolSessionId: ToolSessionId): EnrollSmsToolSession?
+
     @Modifying
     @Query("delete from EnrollSmsToolSession e where e.createdAt < :cutoff")
     fun deleteByCreatedAtBefore(@Param("cutoff") cutoff: Instant): Int

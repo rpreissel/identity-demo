@@ -1,5 +1,6 @@
 package com.example.identity.contract.tool_api.directory
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import java.time.LocalDate
 
 /**
@@ -10,46 +11,46 @@ interface PersonDirectory {
     /**
      * @return the person id (Partnernummer) for this KVNR, or `null` if no matching person is found.
      */
-    fun findPersonIdByKvnr(kvnr: String): String?
+    fun findPersonIdByKvnr(kvnr: String): PartnerNumber?
 
     /**
      * @return the person id for this Partnernummer (its canonical form, ADR-34), or `null` if it is
      *   malformed or unknown. What a Partner without KVNR identifies by.
      */
-    fun findPersonIdByPartnerNumber(partnerNumber: String): String?
+    fun findPersonIdByPartnerNumber(partnerNumber: String): PartnerNumber?
 
     /**
      * Whether the master data for [personId] match every attribute in [claimed]. The answer crosses
      * the port, the master data never does. Names compare in passport (MRZ) form, because each
      * document writes them its own way (`MUELLER` on a chip, `MÜLLER` on an eID card).
      */
-    fun matchesMasterData(personId: String, claimed: ClaimedIdentity): Boolean
+    fun matchesMasterData(personId: PartnerNumber, claimed: ClaimedIdentity): Boolean
 
     /**
      * Whether name and birth date for [personId] match; the narrow sibling of [matchesMasterData]
      * for a procedure that only learns what a person types in (`ident-fsc`).
      */
-    fun matchesPersonalDetails(personId: String, familyName: String, givenNames: String, birthDate: LocalDate): Boolean
+    fun matchesPersonalDetails(personId: PartnerNumber, familyName: String, givenNames: String, birthDate: LocalDate): Boolean
 
     /**
      * Whether the register holds another person with the same names and birth date as [personId].
      * Then assigning an attested identity to [personId] needs the address too (ADR-18). The
      * namesake never crosses the port.
      */
-    fun hasNamesake(personId: String): Boolean
+    fun hasNamesake(personId: PartnerNumber): Boolean
 
     /**
      * "Vorname Name" for [personId], or `null` if unknown. A narrow exception to the rule above,
      * only so the demo UI can show who is logged in (`name` ID-token claim), never for a journey
      * decision. It hands out the name only.
      */
-    fun displayName(personId: String): String?
+    fun displayName(personId: PartnerNumber): String?
 
     /**
      * The Versicherungsnummer of [personId], or `null`. An identifier, not master data: it becomes
      * the account's `MEMBER_NUMBER` anchor (ADR-34), which is why it may cross the port.
      */
-    fun memberNumberOf(personId: String): String?
+    fun memberNumberOf(personId: PartnerNumber): String?
 }
 
 /**

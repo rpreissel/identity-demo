@@ -1,8 +1,8 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.ToolId
-import java.util.UUID
 
 /**
  * The position on the path, together with the attributes that hold at this position
@@ -47,7 +47,7 @@ sealed interface JourneyState {
  * from a duplicate activation) would otherwise pass a toolId-only check and fail deep inside the
  * module instead of with a clean 409 at the boundary.
  */
-data class ToolRef(val toolId: ToolId, val toolSessionId: UUID, val step: String)
+data class ToolRef(val toolId: ToolId, val toolSessionId: ToolSessionId, val step: String)
 
 /**
  * What a state currently offers: the candidates, what was already declined, and which tool is

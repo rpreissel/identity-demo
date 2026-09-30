@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_qr.internal.authqrlookup
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -37,9 +39,9 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
     fun sessionOn(
         pairingCode: String,
         status: QrLoginStatus,
-        resolvingAccountId: Long? = null,
+        resolvingAccountId: AccountId? = null,
         confirmationAttempts: Int = 0,
-    ): UUID {
+    ): ToolSessionId {
         val request = QrLoginRequest(pairingCode = pairingCode, expectedAccountId = null, createdAt = TEST_NOW).apply {
             this.status = status
             this.resolvingAccountId = resolvingAccountId
@@ -47,9 +49,9 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
             expiresAt = TEST_NOW.plusSeconds(60)
         }
         every { requests.findById(pairingCode) } returns Optional.of(request)
-        val toolSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(toolSessionId) } returns
-            Optional.of(AuthQrLookupToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode, createdAt = TEST_NOW))
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns
+            AuthQrLookupToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode, createdAt = TEST_NOW)
         return toolSessionId
     }
 
@@ -59,7 +61,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
             every { requests.save(capture(savedRequest)) } answers { savedRequest.captured }
             val savedSession = slot<AuthQrLookupToolSession>()
             every { toolDataRepository.save(capture(savedSession)) } answers { savedSession.captured }
-            val outcome = handler.start(UUID.randomUUID())
+            val outcome = handler.start(ToolSessionId(UUID.randomUUID()))
 
             then("it opens a pairing that expects no particular account and shows its code") {
                 val pairingCode = savedRequest.captured.pairingCode
@@ -71,7 +73,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
     }
 
     given("patch() after account 99 approved in the app") {
-        val toolSessionId = sessionOn("APPROVE1", QrLoginStatus.APPROVED, resolvingAccountId = 99L)
+        val toolSessionId = sessionOn("APPROVE1", QrLoginStatus.APPROVED, resolvingAccountId = AccountId(99L))
         every { requests.completeIfConfirmed("APPROVE1", digest.of("123456"), any()) } returns 1
         every { requests.completeIfConfirmed("APPROVE1", digest.of("000000"), any()) } returns 0
         every { requests.countWrongConfirmation("APPROVE1", any()) } returns 1
@@ -100,14 +102,14 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
                     amr = listOf("qr"),
                     achievedAcr = AuthQrLookupDescriptor.maxAcr,
                     factorTypes = AuthQrLookupDescriptor.factorTypes,
-                    subject = Subject.Account(99L),
+                    subject = Subject.Account(AccountId(99L)),
                 )
             }
         }
     }
 
     given("patch() on an approved pairing with its last confirmation attempt left") {
-        val toolSessionId = sessionOn("LASTTRY1", QrLoginStatus.APPROVED, resolvingAccountId = 99L, confirmationAttempts = 2)
+        val toolSessionId = sessionOn("LASTTRY1", QrLoginStatus.APPROVED, resolvingAccountId = AccountId(99L), confirmationAttempts = 2)
         every { requests.completeIfConfirmed("LASTTRY1", any(), any()) } returns 0
         every { requests.countWrongConfirmation("LASTTRY1", any()) } returns 1
 
@@ -124,7 +126,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
     }
 
     given("patch() on a pairing another browser already completed") {
-        val toolSessionId = sessionOn("REPLAY01", QrLoginStatus.COMPLETED, resolvingAccountId = 99L)
+        val toolSessionId = sessionOn("REPLAY01", QrLoginStatus.COMPLETED, resolvingAccountId = AccountId(99L))
 
         `when`("the confirmation code is replayed") {
             val outcome = handler.patch(toolSessionId, confirmationCode = "123456")

@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.admin
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountService
 import com.example.identity.kcmigrate.accountIdOfFederatedUser
 import com.example.identity.core.orchestrator.domain.ChannelState
@@ -20,16 +22,15 @@ import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.time.Instant
-import java.util.UUID
 
 data class ChannelTypeCount(val channel: ChannelType, val count: Long)
 
 /** One live orchestrator channel; [displayName] as far as the register names the account's person. */
 data class ActiveChannelView(
-    val channelSessionId: UUID,
+    val channelSessionId: ChannelSessionId,
     val channel: ChannelType,
     val state: ChannelState,
-    val accountId: Long?,
+    val accountId: AccountId?,
     val displayName: String?,
     val createdAt: Instant,
     val lastAccessedAt: Instant,
@@ -47,11 +48,11 @@ data class ActiveChannelsView(
 data class KeycloakSessionView(
     val sessionId: String,
     val username: String?,
-    val accountId: Long?,
+    val accountId: AccountId?,
     val displayName: String?,
     val start: Instant,
     val lastAccess: Instant,
-    val channelSessionId: UUID?,
+    val channelSessionId: ChannelSessionId?,
     val channelState: ChannelState?,
 )
 
@@ -139,8 +140,8 @@ class ActiveSessions(
                 KeycloakSessionView(
                     sessionId = session.sessionId,
                     username = session.username,
-                    accountId = accountId,
-                    displayName = accountId?.let { displayName(it) },
+                    accountId = accountId?.let(::AccountId),
+                    displayName = accountId?.let { displayName(AccountId(it)) },
                     start = session.start,
                     lastAccess = session.lastAccess,
                     channelSessionId = channel?.id,
@@ -165,7 +166,7 @@ class ActiveSessions(
     private fun shownState(channel: ChannelSession): ChannelState =
         checkNotNull(channel.state).shownWith(channel.accountId?.let { accountService.isBeingSetUp(it) } == true)
 
-    private fun displayName(accountId: Long): String? =
+    private fun displayName(accountId: AccountId): String? =
         accountService.findAccount(accountId)?.personId?.let { personDirectory.displayName(it) }
 
     companion object {

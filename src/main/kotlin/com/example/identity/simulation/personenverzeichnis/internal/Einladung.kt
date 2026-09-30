@@ -1,5 +1,6 @@
 package com.example.identity.simulation.personenverzeichnis.internal
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
@@ -18,7 +19,7 @@ class Einladung(
     @Column(name = "id", nullable = false, length = 64)
     var id: String? = null,
     @Column(name = "person_id", nullable = false, length = 10)
-    var personId: String? = null,
+    var personId: PartnerNumber? = null,
     @Column(name = "vorgang", nullable = false, length = 64)
     var vorgang: String? = null,
     @Column(name = "niveau", nullable = false, length = 16)
@@ -40,6 +41,6 @@ class Einladung(
 }
 
 interface EinladungRepository : JpaRepository<Einladung, String> {
-    fun findByPersonIdOrderByAusgestelltAmDesc(personId: String): List<Einladung>
+    fun findByPersonIdOrderByAusgestelltAmDesc(personId: PartnerNumber): List<Einladung>
     fun findAllByOrderByAusgestelltAmDesc(): List<Einladung>
 }

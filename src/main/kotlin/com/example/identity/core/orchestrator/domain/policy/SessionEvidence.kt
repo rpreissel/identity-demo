@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.domain.policy
 
-import com.example.identity.core.orchestrator.domain.policy.DefaultAuthPolicy
 import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
@@ -119,8 +118,8 @@ data class SessionEvidence(
             amr.distinct().map { m ->
                 MethodEvidence(
                     MethodName(m),
-                    methodAcr[m]?.let(AcrLevel::of) ?: AcrLevel.NONE,
-                    enrolledUnderAcr[m]?.let(AcrLevel::of),
+                    methodAcr[m]?.let(AcrLevel::parse) ?: AcrLevel.NONE,
+                    enrolledUnderAcr[m]?.let(AcrLevel::parse),
                     factorTypes,
                     // Default for callers without an opinion; AuthPolicy does not read it.
                     source[m] ?: AmrSource.ORCHESTRATOR,

@@ -1,16 +1,16 @@
 package com.example.identity.tools.auth_invite.internal
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.directory.Invitations
 import com.example.identity.tools.auth_invite.AuthInviteDescriptor
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 /**
  * toolId=auth-invite (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). The controller resolves the
@@ -27,7 +27,7 @@ class AuthInviteToolHandler(
 ) {
 
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId): ToolOutcome {
         sessions.save(AuthInviteToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor()
     }
@@ -37,8 +37,8 @@ class AuthInviteToolHandler(
      * code look the same to the client, so none of them tells which numbers exist.
      */
     @Transactional
-    fun patch(toolSessionId: UUID, kvnr: String?, partnerNumber: String?, code: String?, personId: String?, rateLimited: Boolean): ToolOutcome {
-        checkNotNull(sessions.findByIdOrNull(toolSessionId)) { "Unknown auth-invite tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, kvnr: String?, partnerNumber: String?, code: String?, personId: PartnerNumber?, rateLimited: Boolean): ToolOutcome {
+        checkNotNull(sessions.findByToolSessionId(toolSessionId)) { "Unknown auth-invite tool session: $toolSessionId" }
 
         return when (val decision = AuthInviteFlow.decide(AuthInviteInput(kvnr, partnerNumber, code))) {
             is AuthInviteDecision.Incomplete -> outcomeFor(decision.missingFields)
@@ -59,8 +59,8 @@ class AuthInviteToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        checkNotNull(sessions.findByIdOrNull(toolSessionId)) { "Unknown auth-invite tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        checkNotNull(sessions.findByToolSessionId(toolSessionId)) { "Unknown auth-invite tool session: $toolSessionId" }
         return outcomeFor()
     }
 

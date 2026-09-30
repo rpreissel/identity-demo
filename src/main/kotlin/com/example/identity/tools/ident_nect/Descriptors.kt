@@ -29,15 +29,15 @@ object IdentNectDescriptor : ToolDescriptor {
     // Nothing is typed here: the run opens on "go to Nect".
     override val startStep = "redirect"
     override val claims = setOf(
-        ClaimDeclaration(AttributeType.FAMILY_NAME, ClaimSource.of(toolId)),
-        ClaimDeclaration(AttributeType.GIVEN_NAMES, ClaimSource.of(toolId)),
-        ClaimDeclaration(AttributeType.BIRTH_DATE, ClaimSource.of(toolId)),
-        ClaimDeclaration(AttributeType.STREET_ADDRESS, ClaimSource.of(toolId)),
-        ClaimDeclaration(AttributeType.POSTAL_CODE, ClaimSource.of(toolId)),
-        ClaimDeclaration(AttributeType.LOCALITY, ClaimSource.of(toolId)),
+        ClaimDeclaration(AttributeType.FAMILY_NAME, ClaimSource(toolId.value)),
+        ClaimDeclaration(AttributeType.GIVEN_NAMES, ClaimSource(toolId.value)),
+        ClaimDeclaration(AttributeType.BIRTH_DATE, ClaimSource(toolId.value)),
+        ClaimDeclaration(AttributeType.STREET_ADDRESS, ClaimSource(toolId.value)),
+        ClaimDeclaration(AttributeType.POSTAL_CODE, ClaimSource(toolId.value)),
+        ClaimDeclaration(AttributeType.LOCALITY, ClaimSource(toolId.value)),
         // eID via Nect yields Nect's own card pseudonym, never the one ident-eid reads - the
         // pseudonym is specific to the service provider (§18 PAuswG). Hence its own anchor (ADR-19).
-        ClaimDeclaration(AttributeType.NECT_RESTRICTED_ID, ClaimSource.of(toolId))
+        ClaimDeclaration(AttributeType.NECT_RESTRICTED_ID, ClaimSource(toolId.value))
     )
 }
 

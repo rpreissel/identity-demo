@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.support
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountService
 import com.example.identity.tools.auth_device.internal.DeviceEnrollment
 import com.example.identity.tools.auth_device.internal.DeviceEnrollmentRepository
@@ -14,7 +15,6 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.EnrollmentRef
-import com.example.identity.contract.tool_api.ToolId
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -74,14 +74,14 @@ class AccountFixtures(
         bindDeviceKeyRef: String? = null,
         /** The eID card anchor (ADR-19) as `ident-eid` writes it, or `null` without a card. */
         restrictedId: String? = null
-    ): Long {
+    ): AccountId {
         val accountId = accountService.createAccountInSetup().accountId
         identify(accountId, kvnr, name, vorname)
         if (email != null) confirmEmail(accountId, email)
         if (restrictedId != null) {
             accountService.recordClaims(
                 accountId,
-                listOf(Claim(AttributeType.EID_RESTRICTED_ID, restrictedId, ClaimSource.of(ToolId("ident-eid")), IDENT_ACR)),
+                listOf(Claim(AttributeType.EID_RESTRICTED_ID, restrictedId, ClaimSource("ident-eid"), IDENT_ACR)),
                 provenAcr = IDENT_ACR
             )
         }
@@ -91,14 +91,14 @@ class AccountFixtures(
     }
 
     /** What a completed ident-fsc run leaves behind: the four stammdaten claims plus the audit row. */
-    private fun identify(accountId: Long, kvnr: String, name: String, vorname: String) {
+    private fun identify(accountId: AccountId, kvnr: String, name: String, vorname: String) {
         val personId = requireNotNull(personDirectory.findPersonIdByKvnr(kvnr)) {
             "No test person for kvnr $kvnr - see demo_seed/V16__testdata.sql"
         }
         accountService.recordClaims(
             accountId,
             listOf(
-                Claim(AttributeType.PERSON_ID, personId, ClaimSource.PERSON_DIRECTORY, IDENT_ACR),
+                Claim(AttributeType.PERSON_ID, personId.value, ClaimSource.PERSON_DIRECTORY, IDENT_ACR),
                 Claim(AttributeType.KVNR, kvnr, ClaimSource.PERSON_DIRECTORY, IDENT_ACR),
                 Claim(AttributeType.FAMILY_NAME, name, ClaimSource.PERSON_DIRECTORY, IDENT_ACR),
                 Claim(AttributeType.GIVEN_NAMES, vorname, ClaimSource.PERSON_DIRECTORY, IDENT_ACR)
@@ -109,7 +109,7 @@ class AccountFixtures(
     }
 
     /** What confirm-email leaves behind: an EMAIL anchor and no login method (ADR-17). */
-    private fun confirmEmail(accountId: Long, email: String) {
+    private fun confirmEmail(accountId: AccountId, email: String) {
         accountService.recordClaims(
             accountId,
             listOf(Claim(AttributeType.EMAIL, email, CONFIRM_EMAIL_SOURCE, AcrLevel.LOA1)),
@@ -117,7 +117,7 @@ class AccountFixtures(
         )
     }
 
-    private fun addMethod(accountId: Long, method: Method) {
+    private fun addMethod(accountId: AccountId, method: Method) {
         val instanceId = UUID.randomUUID()
         when (method) {
             is Method.Sms -> {

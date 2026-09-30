@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_password.api.v1
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -53,7 +54,7 @@ class MgmtPasswordController(
     @Operation(summary = "Verify a candidate password against the account's stored credential")
     @Parameter(name = "Authorization", `in` = ParameterIn.HEADER, required = false, schema = Schema(type = "string"))
     fun verify(
-        @PathVariable accountId: Long,
+        @PathVariable accountId: AccountId,
         @BindingKey(keycloakOnly = true) bindingKeyRef: String,
         @RequestBody(required = false) request: MgmtPasswordVerifyRequest?,
     ): ResponseEntity<MgmtPasswordVerifyResponse> {
@@ -77,7 +78,7 @@ class MgmtPasswordController(
     @Operation(summary = "Replace the account's password credential with a new one")
     @Parameter(name = "Authorization", `in` = ParameterIn.HEADER, required = false, schema = Schema(type = "string"))
     fun set(
-        @PathVariable accountId: Long,
+        @PathVariable accountId: AccountId,
         @BindingKey(keycloakOnly = true) bindingKeyRef: String,
         @RequestBody request: MgmtPasswordSetRequest,
     ): ResponseEntity<Void> {
@@ -93,7 +94,7 @@ class MgmtPasswordController(
             accountId, EnrollPasswordDescriptor,
             ToolOutcome.Completed.Enrolled(
                 enrollmentRef = enrollmentRef,
-                claims = listOf(Claim(AttributeType.PASSWORD_EXISTS, PASSWORD_EXISTS_MARKER, ClaimSource.of(EnrollPasswordDescriptor.toolId))),
+                claims = listOf(Claim(AttributeType.PASSWORD_EXISTS, PASSWORD_EXISTS_MARKER, ClaimSource(EnrollPasswordDescriptor.toolId.value))),
                 instanceDetails = mapOf("source" to "kc-native"),
             )
         )

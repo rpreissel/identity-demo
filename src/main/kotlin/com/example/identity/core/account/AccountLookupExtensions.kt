@@ -1,5 +1,6 @@
 package com.example.identity.core.account
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.directory.normalizeKvnr
@@ -12,8 +13,8 @@ import com.example.identity.contract.tool_api.directory.normalizeKvnr
 fun AccountService.findAccountByEmail(email: String): AccountProfile? =
     anchorHolder(AttributeType.EMAIL, email)?.let { findAccount(it) }
 
-fun AccountService.findAccountByPersonId(personId: String): AccountProfile? =
-    anchorHolder(AttributeType.PERSON_ID, personId)?.let { findAccount(it) }
+fun AccountService.findAccountByPersonId(personId: PartnerNumber): AccountProfile? =
+    anchorHolder(AttributeType.PERSON_ID, personId.value)?.let { findAccount(it) }
 
 /** KVNR ownership is current master data, not a historical claim or a local account anchor. */
 fun AccountService.findAccountByKvnr(kvnr: String, personDirectory: PersonDirectory): AccountProfile? =

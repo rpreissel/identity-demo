@@ -84,7 +84,7 @@ class AttributeRulesTest : BehaviorSpec({
             then("it folds to trimmed lowercase") {
                 folded shouldBe "max@example.com"
             }
-            then("a malformed value fails explicitly (Email.of)") {
+            then("a malformed value fails explicitly (Email.parse)") {
                 shouldThrow<IllegalArgumentException> { malformed.getOrThrow() }
             }
         }
@@ -95,7 +95,7 @@ class AttributeRulesTest : BehaviorSpec({
             then("it refuses because KVNR belongs to the live master data") {
                 shouldThrow<IllegalStateException> { wellFormed.getOrThrow() }
             }
-            then("a malformed value fails explicitly (Kvnr.of)") {
+            then("a malformed value fails explicitly (Kvnr.parse)") {
                 shouldThrow<IllegalArgumentException> { malformed.getOrThrow() }
             }
         }

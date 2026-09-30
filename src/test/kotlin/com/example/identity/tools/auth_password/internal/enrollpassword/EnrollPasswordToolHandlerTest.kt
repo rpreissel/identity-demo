@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_password.internal.enrollpassword
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
@@ -11,7 +12,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
-import java.util.Optional
 import java.util.UUID
 
 /**
@@ -24,10 +24,10 @@ class EnrollPasswordToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<EnrollPasswordToolSessionRepository>()
     val enrollmentRepository = mockk<AuthPasswordEnrollmentRepository>()
     val handler = EnrollPasswordToolHandler(EnrollPasswordDescriptor, toolDataRepository, enrollmentRepository, clock = TEST_CLOCK)
-    val toolSessionId = UUID.randomUUID()
+    val toolSessionId = ToolSessionId(UUID.randomUUID())
 
     given("an active enroll-password tool session") {
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(EnrollPasswordToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW))
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns EnrollPasswordToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
 
         `when`("submitting a password meeting the minimum length") {
             every { enrollmentRepository.save(any()) } answers { firstArg<AuthPasswordEnrollment>().apply { id = 7L } }

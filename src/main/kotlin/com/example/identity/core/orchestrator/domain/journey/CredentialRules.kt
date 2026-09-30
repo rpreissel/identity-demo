@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AuthMethodView
 import com.example.identity.core.orchestrator.domain.AcrLevels
@@ -34,7 +35,7 @@ fun levelToWriteUnder(sessionAcr: AcrLevel): AcrLevel =
 fun proofLevel(active: List<AuthMethodView>, keyBinding: CallerKeyBinding?, bindingKeyRef: String?, achieved: AcrLevel?): AcrLevel {
     check(active.isNotEmpty()) { "No active instance to count the proof against" }
     val used = active.filter { keyBinding?.livesOn(it.details, bindingKeyRef) ?: true }.ifEmpty { active }
-    val cap = used.map { it.enrolledUnderAcr?.let(AcrLevel::of) }.reduce { a, b -> AcrLevel.min(a, b) }
+    val cap = used.map { it.enrolledUnderAcr?.let(AcrLevel::parse) }.reduce { a, b -> AcrLevel.min(a, b) }
     return AcrLevel.min(achieved, cap)
 }
 
@@ -44,7 +45,7 @@ fun proofLevel(active: List<AuthMethodView>, keyBinding: CallerKeyBinding?, bind
  * account (which also revokes that account's device credentials). A rebind needs an explicit
  * answer (`ConfirmDeviceRebind`).
  */
-fun linksDeviceImplicitly(intent: AuthIntent, linkedTo: Long?, accountId: Long): Boolean =
+fun linksDeviceImplicitly(intent: AuthIntent, linkedTo: AccountId?, accountId: AccountId): Boolean =
     intent.bindsDeviceImplicitly && (linkedTo == null || linkedTo == accountId)
 
 /**

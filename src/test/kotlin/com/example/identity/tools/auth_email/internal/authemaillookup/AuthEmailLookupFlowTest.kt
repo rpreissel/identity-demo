@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_email.internal.authemaillookup
+import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 
@@ -24,7 +26,7 @@ class AuthEmailLookupFlowTest : BehaviorSpec({
 
     given("AwaitingCode for a resolved account") {
         val issued = emailCodeGenerator.issue()
-        val state = AuthEmailLookupState.AwaitingCode(accountId = 42L, issued.hash, issued.expiresAt)
+        val state = AuthEmailLookupState.AwaitingCode(accountId = AccountId(42L), issued.hash, issued.expiresAt)
 
         `when`("nothing was submitted") {
             then("the state is unchanged") {
@@ -34,13 +36,13 @@ class AuthEmailLookupFlowTest : BehaviorSpec({
 
         `when`("the wrong code was submitted") {
             then("it is rejected, naming the account for the throttle") {
-                AuthEmailLookupFlow.decideCode(state, "000000", emailCodeGenerator) shouldBe AuthEmailLookupDecision.WrongCode(42L)
+                AuthEmailLookupFlow.decideCode(state, "000000", emailCodeGenerator) shouldBe AuthEmailLookupDecision.WrongCode(AccountId(42L))
             }
         }
 
         `when`("the correct code was submitted") {
             then("it completes for that account") {
-                AuthEmailLookupFlow.decideCode(state, issued.plainCode, emailCodeGenerator) shouldBe AuthEmailLookupDecision.Complete(42L)
+                AuthEmailLookupFlow.decideCode(state, issued.plainCode, emailCodeGenerator) shouldBe AuthEmailLookupDecision.Complete(AccountId(42L))
             }
         }
     }
@@ -68,14 +70,14 @@ class AuthEmailLookupFlowTest : BehaviorSpec({
         `when`("AwaitingCode") {
             then("it asks for code at step codeInput") {
                 val issued = emailCodeGenerator.issue()
-                val state = AuthEmailLookupState.AwaitingCode(42L, issued.hash, issued.expiresAt)
+                val state = AuthEmailLookupState.AwaitingCode(AccountId(42L), issued.hash, issued.expiresAt)
                 state.describe() shouldBe ("codeInput" to MissingFields(listOf("code")))
             }
         }
     }
 
     given("toState()") {
-        val toolSessionId = UUID.randomUUID()
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
 
         `when`("no code was ever issued") {
             then("it reconstructs AwaitingEmail") {
@@ -86,8 +88,8 @@ class AuthEmailLookupFlowTest : BehaviorSpec({
         `when`("a code was issued for a resolved account") {
             then("it reconstructs AwaitingCode") {
                 val issued = emailCodeGenerator.issue()
-                AuthEmailLookupState.of(toolSessionId, 42L, issued.hash, issued.expiresAt) shouldBe
-                    AuthEmailLookupState.AwaitingCode(42L, issued.hash, issued.expiresAt)
+                AuthEmailLookupState.of(toolSessionId, AccountId(42L), issued.hash, issued.expiresAt) shouldBe
+                    AuthEmailLookupState.AwaitingCode(AccountId(42L), issued.hash, issued.expiresAt)
             }
         }
     }

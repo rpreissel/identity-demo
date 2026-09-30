@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_sms.internal.enrollsms
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.InvalidInputException
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.contract.texts.Text
@@ -15,11 +16,9 @@ import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.TooManyRequestsException
 import com.example.identity.contract.tool_api.ToolOutcome
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 /**
  * toolId=enroll-sms (docs/06-ablaeufe.md #4): registers a new phone number as a 2nd factor. This
@@ -38,7 +37,7 @@ class EnrollSmsToolHandler(
 
     /** Called directly by EnrollSmsToolController; nothing needs resolving before this can start. */
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId): ToolOutcome {
         toolDataRepository.save(EnrollSmsToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor(EnrollSmsState.AwaitingPhoneNumber)
     }
@@ -50,8 +49,8 @@ class EnrollSmsToolHandler(
      * journey, since nothing was guessed.
      */
     @Transactional
-    fun patch(toolSessionId: UUID, phoneNumber: String?, tan: String?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown enroll-sms tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, phoneNumber: String?, tan: String?): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-sms tool session: $toolSessionId" }
 
         return when (val decision = EnrollSmsFlow.decide(data.toState(), EnrollSmsInput(phoneNumber, tan), tanGenerator)) {
             is EnrollSmsDecision.InvalidPhoneNumber -> throw InvalidInputException(Text("Bitte eine Mobilnummer mit Ländervorwahl aus der EU oder dem EWR angeben, z. B. +49 170 1234567"))
@@ -89,7 +88,7 @@ class EnrollSmsToolHandler(
                         Claim(
                             attributeType = AttributeType.PHONE_NUMBER,
                             value = decision.phoneNumber,
-                            source = ClaimSource.of(descriptor.toolId),
+                            source = ClaimSource(descriptor.toolId.value),
                             establishedAcr = descriptor.maxAcr
                         )
                     )
@@ -99,8 +98,8 @@ class EnrollSmsToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown enroll-sms tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-sms tool session: $toolSessionId" }
         return outcomeFor(data.toState())
     }
 

@@ -1,5 +1,6 @@
 package com.example.identity.simulation.personenverzeichnis
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.simulation.personenverzeichnis.internal.Person
 import com.example.identity.simulation.personenverzeichnis.internal.PersonRepository
 import com.example.identity.contract.tool_api.directory.PersonChanged
@@ -66,37 +67,37 @@ class PersonenverzeichnisAendernTest : BehaviorSpec({
             val published = slot<Any>()
             every { events.publishEvent(capture(published)) } returns Unit
 
-            verzeichnis.aendern("P000000001", data(person).copy(kvnr = "a111111111", versnr = "20000002", hausnummer = "2"))
+            verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(kvnr = "a111111111", versnr = "20000002", hausnummer = "2"))
 
-            published.captured shouldBe PersonChanged("P000000001", setOf(AttributeType.KVNR, AttributeType.MEMBER_NUMBER, AttributeType.STREET_ADDRESS), "A111111111", "20000002")
+            published.captured shouldBe PersonChanged(PartnerNumber("P000000001"), setOf(AttributeType.KVNR, AttributeType.MEMBER_NUMBER, AttributeType.STREET_ADDRESS), "A111111111", "20000002")
             person.kvnr shouldBe "A111111111"
         }
 
         then("no longer insured with us: both numbers go, the person stays as a Partner") {
             val person = max()
             val (verzeichnis, events) = fixture(person)
-            verzeichnis.aendern("P000000001", data(person).copy(kvnr = "", versnr = ""))
-            verify { events.publishEvent(PersonChanged("P000000001", setOf(AttributeType.KVNR, AttributeType.MEMBER_NUMBER), null, null)) }
+            verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(kvnr = "", versnr = ""))
+            verify { events.publishEvent(PersonChanged(PartnerNumber("P000000001"), setOf(AttributeType.KVNR, AttributeType.MEMBER_NUMBER), null, null)) }
         }
 
         then("a KVNR may be missing for a while - the person stays insured") {
             val person = max()
             val (verzeichnis, events) = fixture(person)
-            verzeichnis.aendern("P000000001", data(person).copy(kvnr = null))
-            verify { events.publishEvent(PersonChanged("P000000001", setOf(AttributeType.KVNR), null, "10000001")) }
+            verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(kvnr = null))
+            verify { events.publishEvent(PersonChanged(PartnerNumber("P000000001"), setOf(AttributeType.KVNR), null, "10000001")) }
         }
 
         then("a KVNR without a Versicherungsnummer is refused - only an insured person has one") {
             val person = max()
             val (verzeichnis, events) = fixture(person)
-            shouldThrow<PersonRejectedException> { verzeichnis.aendern("P000000001", data(person).copy(versnr = "")) }
+            shouldThrow<PersonRejectedException> { verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(versnr = "")) }
             verify(exactly = 0) { events.publishEvent(any<Any>()) }
         }
 
         then("a new e-mail address and mobile number are kept, trimmed, but announce nothing - no account keeps them") {
             val person = max()
             val (verzeichnis, events) = fixture(person)
-            val saved = verzeichnis.aendern("P000000001", data(person).copy(email = " max@example.org ", mobilnummer = "+49 170 0000009"))
+            val saved = verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(email = " max@example.org ", mobilnummer = "+49 170 0000009"))
             saved?.email shouldBe "max@example.org"
             saved?.mobilnummer shouldBe "+49 170 0000009"
             verify(exactly = 0) { events.publishEvent(any<Any>()) }
@@ -105,14 +106,14 @@ class PersonenverzeichnisAendernTest : BehaviorSpec({
         then("an empty mobile number means none") {
             val person = max().also { it.mobilnummer = "+49 170 0000001" }
             val (verzeichnis, _) = fixture(person)
-            verzeichnis.aendern("P000000001", data(person).copy(mobilnummer = " "))
+            verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(mobilnummer = " "))
             person.mobilnummer shouldBe null
         }
 
         then("saving it unchanged announces nothing") {
             val person = max()
             val (verzeichnis, events) = fixture(person)
-            verzeichnis.aendern("P000000001", data(person))
+            verzeichnis.aendern(PartnerNumber("P000000001"), data(person))
             verify(exactly = 0) { events.publishEvent(any<Any>()) }
         }
 
@@ -120,9 +121,9 @@ class PersonenverzeichnisAendernTest : BehaviorSpec({
             val person = max()
             val other = Person(kvnr = "B987654321", versnr = "30000003").also { it.id = "P000000002" }
             val (verzeichnis, _) = fixture(person, taken = other)
-            shouldThrow<PersonRejectedException> { verzeichnis.aendern("P000000001", data(person).copy(versnr = "1234")) }
-            shouldThrow<PersonRejectedException> { verzeichnis.aendern("P000000001", data(person).copy(versnr = "30000003")) }
-            shouldThrow<PersonRejectedException> { verzeichnis.aendern("P000000001", data(person).copy(kvnr = "B987654321")) }
+            shouldThrow<PersonRejectedException> { verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(versnr = "1234")) }
+            shouldThrow<PersonRejectedException> { verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(versnr = "30000003")) }
+            shouldThrow<PersonRejectedException> { verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(kvnr = "B987654321")) }
         }
     }
 })

@@ -1,5 +1,7 @@
 package com.example.identity.core.account
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.claims.ClaimTrust
@@ -17,9 +19,9 @@ data class AuthMethodView(
 )
 
 data class AccountProfile(
-    val accountId: Long,
+    val accountId: AccountId,
     /** Null for an account that was never identified, which may be a permanent state. */
-    val personId: String?,
+    val personId: PartnerNumber?,
     val authenticationMethods: List<AuthMethodView>,
     /** The account's EMAIL anchor, i.e. its normalized form. */
     val email: String? = null,

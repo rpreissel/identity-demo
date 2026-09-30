@@ -1,12 +1,10 @@
 package com.example.identity.contract.tool_api.claims
 
-import com.example.identity.contract.tool_api.InvalidInputException
-
 /**
  * One of the known acr levels ("none", "loa1".."loa3"), used on both sides of the tool contract
  * ([ToolDescriptor.maxAcr], [ToolOutcome.Completed.achievedAcr]). Not an enum, because raw values
- * arrive from untyped borders (tokens, columns, wire DTOs): [of] maps an unknown one to [NONE],
- * while the constructor still rejects in-process typos.
+ * arrive from untyped borders (tokens, columns, wire DTOs): [parse] answers `null` for an unknown
+ * one, while the constructor rejects in-process typos.
  */
 @JvmInline
 value class AcrLevel(val value: String) : Comparable<AcrLevel> {
@@ -22,7 +20,7 @@ value class AcrLevel(val value: String) : Comparable<AcrLevel> {
         /** All known levels, lowest first; the ordering everything below derives from. */
         val KNOWN = listOf("none", "loa1", "loa2", "loa3")
 
-        /** Nothing established: an anonymous channel, and what [of] maps anything unknown to. */
+        /** Nothing established: an anonymous channel, and what a border reads an unknown level as. */
         val NONE = AcrLevel("none")
 
         /** One factor proven, e.g. an SMS code or a password on its own. */
@@ -37,13 +35,8 @@ value class AcrLevel(val value: String) : Comparable<AcrLevel> {
         /** The highest level; no tool in this demo reaches it, so it only ever appears as a target. */
         val LOA3 = AcrLevel("loa3")
 
-        /** Constructor for untyped borders: an unknown or missing value becomes [NONE] instead of throwing. */
-        fun of(raw: String?): AcrLevel = if (raw != null && raw in KNOWN) AcrLevel(raw) else NONE
-
-        /** A level a client asked for (`requiredAcr`); an unknown one is a 400, not an internal error. */
-        fun requested(raw: String): AcrLevel =
-            if (raw in KNOWN) AcrLevel(raw)
-            else throw InvalidInputException(com.example.identity.contract.texts.Text("Unbekanntes Sicherheitsniveau '{acr}' - bekannt sind {known}", "acr" to raw, "known" to KNOWN.joinToString()))
+        /** Input from outside: `null` for a missing or unknown level. */
+        fun parse(raw: String?): AcrLevel? = raw?.takeIf { it in KNOWN }?.let(::AcrLevel)
 
         /** Position in [KNOWN]; `null` counts as "nothing established" (rank 0, like [NONE]). */
         fun rank(acr: AcrLevel?): Int = acr?.let { KNOWN.indexOf(it.value) }?.takeIf { it >= 0 } ?: 0

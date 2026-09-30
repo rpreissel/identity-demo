@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
@@ -58,7 +59,7 @@ class JourneyStateCodecTest : BehaviorSpec({
             )
             JourneyStateCodec.STATE_ROOTS.forEach { root ->
                 JourneyStateCodec.concreteStates(root).mapNotNull { it.objectInstance }.forEach { state ->
-                    val journey = AuthJourney(channelSessionId = UUID.randomUUID(), intent = intentOf.getValue(root), createdAt = Instant.now())
+                    val journey = AuthJourney(channelSessionId = ChannelSessionId(UUID.randomUUID()), intent = intentOf.getValue(root), createdAt = Instant.now())
                     codec.write(journey, state)
                     journey.stateType shouldBe state.javaClass.simpleName
                     codec.read(journey) shouldBe state

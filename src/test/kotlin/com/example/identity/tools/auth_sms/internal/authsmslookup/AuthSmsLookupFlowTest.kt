@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.authsmslookup
+import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 
@@ -27,7 +29,7 @@ class AuthSmsLookupFlowTest : BehaviorSpec({
 
     given("AwaitingTan for a resolved account") {
         val issued = tanGenerator.issue()
-        val state = AuthSmsLookupState.AwaitingTan(accountId = 42L, issued.hash, issued.expiresAt)
+        val state = AuthSmsLookupState.AwaitingTan(accountId = AccountId(42L), issued.hash, issued.expiresAt)
 
         `when`("nothing was submitted") {
             then("the state is unchanged") {
@@ -37,13 +39,13 @@ class AuthSmsLookupFlowTest : BehaviorSpec({
 
         `when`("the wrong tan was submitted") {
             then("it is rejected, naming the account for the throttle") {
-                AuthSmsLookupFlow.decideTan(state, "000000", tanGenerator) shouldBe AuthSmsLookupDecision.WrongTan(42L)
+                AuthSmsLookupFlow.decideTan(state, "000000", tanGenerator) shouldBe AuthSmsLookupDecision.WrongTan(AccountId(42L))
             }
         }
 
         `when`("the correct tan was submitted") {
             then("it completes for that account") {
-                AuthSmsLookupFlow.decideTan(state, issued.plainTan, tanGenerator) shouldBe AuthSmsLookupDecision.Complete(42L)
+                AuthSmsLookupFlow.decideTan(state, issued.plainTan, tanGenerator) shouldBe AuthSmsLookupDecision.Complete(AccountId(42L))
             }
         }
     }
@@ -71,14 +73,14 @@ class AuthSmsLookupFlowTest : BehaviorSpec({
         `when`("AwaitingTan") {
             then("it asks for tan at step tanInput") {
                 val issued = tanGenerator.issue()
-                val state = AuthSmsLookupState.AwaitingTan(42L, issued.hash, issued.expiresAt)
+                val state = AuthSmsLookupState.AwaitingTan(AccountId(42L), issued.hash, issued.expiresAt)
                 state.describe() shouldBe ("tanInput" to MissingFields(listOf("tan")))
             }
         }
     }
 
     given("toState()") {
-        val toolSessionId = UUID.randomUUID()
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
 
         `when`("no tan was ever issued") {
             then("it reconstructs AwaitingEmail") {
@@ -89,8 +91,8 @@ class AuthSmsLookupFlowTest : BehaviorSpec({
         `when`("a tan was issued for a resolved account") {
             then("it reconstructs AwaitingTan") {
                 val issued = tanGenerator.issue()
-                AuthSmsLookupState.of(toolSessionId, 42L, issued.hash, issued.expiresAt) shouldBe
-                    AuthSmsLookupState.AwaitingTan(42L, issued.hash, issued.expiresAt)
+                AuthSmsLookupState.of(toolSessionId, AccountId(42L), issued.hash, issued.expiresAt) shouldBe
+                    AuthSmsLookupState.AwaitingTan(AccountId(42L), issued.hash, issued.expiresAt)
             }
         }
     }

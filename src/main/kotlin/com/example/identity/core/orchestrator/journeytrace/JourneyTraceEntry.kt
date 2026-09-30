@@ -1,5 +1,8 @@
 package com.example.identity.core.orchestrator.journeytrace
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.core.orchestrator.domain.JourneyId
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -32,18 +35,18 @@ class JourneyTraceEntry(
 
     /** Null until the channel resolves an account. Unlike [bindingKeyRef], shared by both channels. */
     @Column(name = "account_id")
-    var accountId: Long? = null,
+    var accountId: AccountId? = null,
 
     @Column(name = "channel_session_id", nullable = false)
-    var channelSessionId: UUID? = null,
+    var channelSessionId: ChannelSessionId? = null,
 
     /** Null for a channel-level event, see [JourneyTraceService.recordForChannel]. */
     @Column(name = "journey_id")
-    var journeyId: UUID? = null,
+    var journeyId: JourneyId? = null,
 
     /** Set when this journey ran as another's precondition (docs/04-orchestrierung.md #6); the log nests it. */
     @Column(name = "parent_journey_id")
-    var parentJourneyId: UUID? = null,
+    var parentJourneyId: JourneyId? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "intent", length = 32)

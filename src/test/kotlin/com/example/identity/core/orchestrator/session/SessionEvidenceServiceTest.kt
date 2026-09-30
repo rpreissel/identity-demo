@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.core.orchestrator.domain.SessionEvidenceId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
@@ -8,7 +10,6 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import java.util.Optional
 import java.util.UUID
 
 /**
@@ -25,14 +26,14 @@ class SessionEvidenceServiceTest : BehaviorSpec({
 
     given("a step-up that adds a single tool's evidence (applyEvidence)") {
         then("clears the cached AccessToken of every AppTokenSession minted from that evidence") {
-            val sessionEvidenceId = UUID.randomUUID()
-            val evidence = SessionEvidenceRecord(Subject.Account(1L), TEST_NOW)
+            val sessionEvidenceId = SessionEvidenceId(UUID.randomUUID())
+            val evidence = SessionEvidenceRecord(Subject.Account(AccountId(1L)), TEST_NOW)
             val sessionEvidenceRepository = mockk<SessionEvidenceRecordRepository>()
-            every { sessionEvidenceRepository.findById(sessionEvidenceId) } returns Optional.of(evidence)
+            every { sessionEvidenceRepository.findBySessionEvidenceId(sessionEvidenceId) } returns evidence
             every { sessionEvidenceRepository.save(any()) } answers { firstArg() }
 
             val window = TEST_NOW.plusSeconds(1800)
-            val staleContext = AppTokenSession(accountId = 1L, now = TEST_NOW).apply {
+            val staleContext = AppTokenSession(accountId = AccountId(1L), now = TEST_NOW).apply {
                 accessToken = "stale-token"
                 accessExpiresAt = TEST_NOW.plusSeconds(300)
                 refreshToken = "stale-refresh"
@@ -55,10 +56,10 @@ class SessionEvidenceServiceTest : BehaviorSpec({
 
     given("no AppTokenSession was ever minted from this evidence") {
         then("is a no-op - nothing to invalidate, no pointless save") {
-            val sessionEvidenceId = UUID.randomUUID()
-            val evidence = SessionEvidenceRecord(Subject.Account(1L), TEST_NOW)
+            val sessionEvidenceId = SessionEvidenceId(UUID.randomUUID())
+            val evidence = SessionEvidenceRecord(Subject.Account(AccountId(1L)), TEST_NOW)
             val sessionEvidenceRepository = mockk<SessionEvidenceRecordRepository>()
-            every { sessionEvidenceRepository.findById(sessionEvidenceId) } returns Optional.of(evidence)
+            every { sessionEvidenceRepository.findBySessionEvidenceId(sessionEvidenceId) } returns evidence
             every { sessionEvidenceRepository.save(any()) } answers { firstArg() }
 
             val appTokenSessionRepository = mockk<AppTokenSessionRepository>()

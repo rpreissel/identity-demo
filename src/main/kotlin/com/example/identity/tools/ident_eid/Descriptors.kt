@@ -31,13 +31,13 @@ object IdentEidDescriptor : ToolDescriptor {
     // a real eID card holds neither (ADR-18). restricted_id is the card's pseudonym, a replaceable
     // local anchor, so a later eid run recognizes the prospect it created (ADR-19).
     override val claims = setOf(
-        ClaimDeclaration(AttributeType.FAMILY_NAME, ClaimSource.of(toolId)),
-        ClaimDeclaration(AttributeType.GIVEN_NAMES, ClaimSource.of(toolId)),
-        ClaimDeclaration(AttributeType.BIRTH_DATE, ClaimSource.of(toolId)),
-        ClaimDeclaration(AttributeType.STREET_ADDRESS, ClaimSource.of(toolId)),
-        ClaimDeclaration(AttributeType.POSTAL_CODE, ClaimSource.of(toolId)),
-        ClaimDeclaration(AttributeType.LOCALITY, ClaimSource.of(toolId)),
-        ClaimDeclaration(AttributeType.EID_RESTRICTED_ID, ClaimSource.of(toolId))
+        ClaimDeclaration(AttributeType.FAMILY_NAME, ClaimSource(toolId.value)),
+        ClaimDeclaration(AttributeType.GIVEN_NAMES, ClaimSource(toolId.value)),
+        ClaimDeclaration(AttributeType.BIRTH_DATE, ClaimSource(toolId.value)),
+        ClaimDeclaration(AttributeType.STREET_ADDRESS, ClaimSource(toolId.value)),
+        ClaimDeclaration(AttributeType.POSTAL_CODE, ClaimSource(toolId.value)),
+        ClaimDeclaration(AttributeType.LOCALITY, ClaimSource(toolId.value)),
+        ClaimDeclaration(AttributeType.EID_RESTRICTED_ID, ClaimSource(toolId.value))
     )
 }
 

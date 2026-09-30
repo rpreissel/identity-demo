@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
 import com.example.identity.core.orchestrator.session.ChannelSession
@@ -7,7 +8,6 @@ import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.SessionManagementService
 import org.springframework.stereotype.Component
 import java.security.MessageDigest
-import java.util.UUID
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 
 /**
@@ -18,10 +18,10 @@ import com.example.identity.core.orchestrator.domain.OrchestratorException
  */
 interface ChannelAccessGuard {
     /** Any channel the caller may see, an ended one included, for reading. */
-    fun requireChannel(channelSessionId: UUID, bindingKeyRef: String): ChannelSession
+    fun requireChannel(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelSession
 
     /** For anything that moves the channel: an ended one is refused (409), see [LiveChannel]. */
-    fun requireLiveChannel(channelSessionId: UUID, bindingKeyRef: String): LiveChannel =
+    fun requireLiveChannel(channelSessionId: ChannelSessionId, bindingKeyRef: String): LiveChannel =
         LiveChannel.require(requireChannel(channelSessionId, bindingKeyRef))
 }
 
@@ -36,7 +36,7 @@ class DeviceChannelAccessGuard(
     private val sessionManagementService: SessionManagementService
 ) : ChannelAccessGuard {
 
-    override fun requireChannel(channelSessionId: UUID, bindingKeyRef: String): ChannelSession {
+    override fun requireChannel(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelSession {
         val channel = sessionManagementService.findChannelSessionById(channelSessionId)
             ?: throw OrchestratorException.notFound(Text("Channel session not found"), "channelSessionId=${channelSessionId}")
         val matches = if (bindingKeyRef.startsWith(KC_BINDING_PREFIX)) {
@@ -73,7 +73,7 @@ class KcChannelAccessGuard(
     private val sessionManagementService: SessionManagementService
 ) {
 
-    fun requireChannel(channelSessionId: UUID, assertion: PeerAuthAssertion): ChannelSession {
+    fun requireChannel(channelSessionId: ChannelSessionId, assertion: PeerAuthAssertion): ChannelSession {
         val channel = sessionManagementService.findChannelSessionById(channelSessionId)
             ?: throw OrchestratorException.notFound(Text("Channel session not found"), "channelSessionId=${channelSessionId}")
         val matches = constantTimeEquals(channel.channelBinding, assertion.channelBinding)

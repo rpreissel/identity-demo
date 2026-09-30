@@ -1,5 +1,6 @@
 package com.example.identity.core.account.infrastructure
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.claims.AttributeType
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
@@ -20,7 +21,7 @@ import java.time.Instant
 @Table(schema = "account", name = "anchor")
 class AccountAnchor(
     @Column(name = "account_id", nullable = false)
-    var accountId: Long? = null,
+    var accountId: AccountId? = null,
 
     // Same converter as account.claim.attribute_type: both columns hold AttributeType.wireName.
     @Convert(converter = AttributeTypeConverter::class)

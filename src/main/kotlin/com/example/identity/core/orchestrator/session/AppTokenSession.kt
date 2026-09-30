@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.core.orchestrator.domain.SessionEvidenceId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -21,7 +23,7 @@ import java.util.UUID
 @Table(schema = "orchestrator", name = "app_token_session")
 class AppTokenSession(
     @Column(name = "account_id", nullable = false)
-    var accountId: Long? = null,
+    var accountId: AccountId? = null,
 
     @Column(name = "keycloak_session_id", length = 64)
     var keycloakSessionId: String? = null,
@@ -34,7 +36,7 @@ class AppTokenSession(
 
     /** The evidence this token session was minted from. [TokenService] resolves claims through it. */
     @Column(name = "session_evidence_id")
-    var sessionEvidenceId: UUID? = null
+    var sessionEvidenceId: SessionEvidenceId? = null
 
     /**
      * The AccessToken: a mock JWT by default, the real Keycloak `access_token` under `keycloak`,

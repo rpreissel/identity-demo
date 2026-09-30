@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_password.internal.authpasswordlookup
+import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
@@ -28,10 +30,10 @@ class AuthPasswordLookupToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<AuthPasswordLookupToolSessionRepository>()
     val enrollmentRepository = mockk<AuthPasswordEnrollmentRepository>()
     val handler = AuthPasswordLookupToolHandler(AuthPasswordLookupDescriptor, toolDataRepository, enrollmentRepository, clock = TEST_CLOCK)
-    val toolSessionId = UUID.randomUUID()
+    val toolSessionId = ToolSessionId(UUID.randomUUID())
 
     given("an active auth-password-lookup tool session") {
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(AuthPasswordLookupToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW))
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns AuthPasswordLookupToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
 
         `when`("email and password resolve to an active, matching enrollment") {
             val enrollment = AuthPasswordEnrollment(passwordHash = PasswordHasher.hash("hunter2"), createdAt = TEST_NOW).apply { id = 1L }
@@ -40,11 +42,11 @@ class AuthPasswordLookupToolHandlerTest : BehaviorSpec({
             then("it authenticates for that account") {
                 val outcome = handler.patch(
                     toolSessionId, email = "max@example.com", password = "hunter2",
-                    accountId = 42L, enrollmentRef = EnrollmentRef(PASSWORD_ENROLLMENT_TYPE, "1")
+                    accountId = AccountId(42L), enrollmentRef = EnrollmentRef(PASSWORD_ENROLLMENT_TYPE, "1")
                 )
 
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
-                authenticated.subject shouldBe Subject.Account(42L)
+                authenticated.subject shouldBe Subject.Account(AccountId(42L))
                 authenticated.amr shouldBe listOf("password")
             }
         }

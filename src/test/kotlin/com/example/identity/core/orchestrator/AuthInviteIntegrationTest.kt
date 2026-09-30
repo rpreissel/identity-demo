@@ -1,5 +1,8 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.ids.InvitationId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
 import com.example.identity.core.orchestrator.kc.PeerAuthValidator
@@ -65,8 +68,8 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
         restTemplate.exchange("http://localhost:$port$url", method, HttpEntity(body, kcHeaders()), mapType)
 
     /** Opens a Web channel asking for [targetAcr] and activates auth-invite on it. */
-    private fun openInviteTool(targetAcr: String): Pair<UUID, String> {
-        val channelSessionId = UUID.randomUUID()
+    private fun openInviteTool(targetAcr: String): Pair<ChannelSessionId, String> {
+        val channelSessionId = ChannelSessionId(UUID.randomUUID())
         stubAssertion(channelSessionId.toString())
         val initial = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/kc/channels/$channelSessionId",
             withDefaultAvailableTools("""{"targetAcr":"$targetAcr"}""")).body!!
@@ -78,7 +81,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
     }
 
     /** Issued by the register, as its page does; the answer is the letter with the plaintext. */
-    private fun issue(personId: String, niveau: String): Letter {
+    private fun issue(personId: PartnerNumber, niveau: String): Letter {
         val validUntil = clock.instant().plus(Duration.ofDays(30))
         val letter = restTemplate.exchange(
             "http://localhost:$port/mock-personenverzeichnis/personen/$personId/einladungen", HttpMethod.POST,
@@ -86,34 +89,34 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 HttpHeaders().apply { set("Content-Type", "application/json") }),
             mapType
         ).body!!
-        return Letter(letter["einladungId"] as String, letter["code"] as String)
+        return Letter(InvitationId(letter["einladungId"] as String), letter["code"] as String)
     }
 
-    private data class Letter(val invitation: String, val code: String)
+    private data class Letter(val invitation: InvitationId, val code: String)
 
-    private fun complete(invitation: String) {
+    private fun complete(invitation: InvitationId) {
         restTemplate.exchange("http://localhost:$port/mock-personenverzeichnis/einladungen/$invitation/abschluss",
             HttpMethod.POST, HttpEntity<Void>(HttpHeaders()), mapType)
     }
 
     init {
         given("a Web channel signed in as an invitation (I-5)") {
-            fun signedInAsInvitation(): Pair<UUID, String> {
-                val issued = issue("P000000001", "loa1")
+            fun signedInAsInvitation(): Pair<ChannelSessionId, InvitationId> {
+                val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val (channelSessionId, toolSessionId) = openInviteTool("loa1")
                 kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
                     """{"kvnr":"A123456789","code":"${issued.code}"}""")
                 return channelSessionId to issued.invitation
             }
-            fun upsert(channelSessionId: UUID, body: String) = runCatching {
+            fun upsert(channelSessionId: ChannelSessionId, body: String) = runCatching {
                 stubAssertion(channelSessionId.toString())
                 kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/kc/channels/$channelSessionId", body)
             }
-            fun invitationOf(channelSessionId: UUID) = jdbcTemplate.queryForObject(
-                "SELECT invitation FROM orchestrator.channel_session WHERE id = ?", String::class.java, channelSessionId
-            )
-            fun accountOf(channelSessionId: UUID) = jdbcTemplate.queryForObject(
-                "SELECT account_id FROM orchestrator.channel_session WHERE id = ?", Long::class.javaObjectType, channelSessionId
+            fun invitationOf(channelSessionId: ChannelSessionId) = jdbcTemplate.queryForObject(
+                "SELECT invitation FROM orchestrator.channel_session WHERE id = ?", String::class.java, channelSessionId.value
+            )?.let(::InvitationId)
+            fun accountOf(channelSessionId: ChannelSessionId) = jdbcTemplate.queryForObject(
+                "SELECT account_id FROM orchestrator.channel_session WHERE id = ?", Long::class.javaObjectType, channelSessionId.value
             )
 
             `when`("Keycloak names an account for it") {
@@ -140,10 +143,10 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
             `when`("a later flow run of that session asks the orchestrator for a step-up (K-5)") {
                 val (_, invitation) = signedInAsInvitation()
-                val freshChannel = UUID.randomUUID()
+                val freshChannel = ChannelSessionId(UUID.randomUUID())
                 val result = upsert(freshChannel, """{"subject":{"type":"invitation","id":"$invitation"},"targetAcr":"loa2"}""")
                 val created = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM orchestrator.channel_session WHERE id = ?", Int::class.java, freshChannel)
+                    "SELECT COUNT(*) FROM orchestrator.channel_session WHERE id = ?", Int::class.java, freshChannel.value)
 
                 then("it is refused with the reason, and no channel is opened: a process access is not raised") {
                     val refused = result.exceptionOrNull() as HttpClientErrorException
@@ -155,7 +158,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
             `when`("Keycloak names the invitation for a channel nobody signed in on yet") {
                 val (_, invitation) = signedInAsInvitation()
-                val anonymous = UUID.randomUUID()
+                val anonymous = ChannelSessionId(UUID.randomUUID())
                 upsert(anonymous, "{}").getOrThrow()
                 val result = upsert(anonymous, """{"subject":{"type":"invitation","id":"$invitation"}}""")
 
@@ -178,17 +181,17 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
         given("a Web channel signed in as an invitation, whose Keycloak session ends (A-1, ADR-48)") {
             `when`("Keycloak reports the logout of that session") {
-                val issued = issue("P000000001", "loa1")
+                val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val (channelSessionId, toolSessionId) = openInviteTool("loa1")
                 kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
                     """{"kvnr":"A123456789","code":"${issued.code}"}""")
                 // The end of the flow run tells the channel its durable Keycloak session.
                 kcCall(HttpMethod.GET, "/orchestrator/api/v1/kc/channels/$channelSessionId/restore-data?kcSessionId=kc-invite-session")
-                stubAssertion(issued.invitation)
+                stubAssertion(issued.invitation.value)
                 val reported = kcCall(HttpMethod.POST,
                     "/orchestrator/api/v1/kc/invitations/${issued.invitation}/sign-outs?kcSessionId=kc-invite-session")
                 val state = jdbcTemplate.queryForObject(
-                    "SELECT state FROM orchestrator.channel_session WHERE id = ?", String::class.java, channelSessionId)
+                    "SELECT state FROM orchestrator.channel_session WHERE id = ?", String::class.java, channelSessionId.value)
                 val log = signInLog.ofInvitation(issued.invitation)
 
                 then("the channel ends with it") {
@@ -203,7 +206,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
             }
 
             `when`("the report names another invitation than the assertion") {
-                val issued = issue("P000000001", "loa1")
+                val issued = issue(PartnerNumber("P000000001"), "loa1")
                 stubAssertion("another-invitation")
                 val result = runCatching {
                     kcCall(HttpMethod.POST, "/orchestrator/api/v1/kc/invitations/${issued.invitation}/sign-outs?kcSessionId=kc-invite-session")
@@ -217,7 +220,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
         given("an open loa1 invitation for Max") {
             `when`("he enters his KVNR and the one-time password on a loa1 login") {
-                val issued = issue("P000000001", "loa1")
+                val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val (channelSessionId, toolSessionId) = openInviteTool("loa1")
 
                 // Separators and case do not count.
@@ -228,17 +231,17 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 then("the channel is signed in as the invitation, with no account") {
                     completed.channel()["state"] shouldBe "AUTHENTICATED"
                     val authData = completed["authData"] as Map<*, *>
-                    authData["subject"] shouldBe mapOf("type" to "invitation", "id" to issued.invitation)
+                    authData["subject"] shouldBe mapOf("type" to "invitation", "id" to issued.invitation.value)
                     authData["acr"] shouldBe "loa1"
                     authData["amr"] shouldBe mapOf("invite" to "orchestrator")
                     jdbcTemplate.queryForObject(
-                        "SELECT invitation FROM orchestrator.channel_session WHERE id = ?", String::class.java, channelSessionId
-                    ) shouldBe issued.invitation
+                        "SELECT invitation FROM orchestrator.channel_session WHERE id = ?", String::class.java, channelSessionId.value
+                    ) shouldBe issued.invitation.value
                 }
             }
 
             `when`("Keycloak ends the flow run and asks for restore data") {
-                val issued = issue("P000000001", "loa1")
+                val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val (channelSessionId, toolSessionId) = openInviteTool("loa1")
                 kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
                     """{"kvnr":"A123456789","code":"${issued.code}"}""")
@@ -252,7 +255,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
             }
 
             `when`("the login asks for loa2") {
-                val issued = issue("P000000001", "loa1")
+                val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val (channelSessionId, toolSessionId) = openInviteTool("loa2")
 
                 val result = runCatching {
@@ -263,13 +266,13 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 then("the invitation is refused before anything is bound") {
                     shouldThrow<HttpClientErrorException> { result.getOrThrow() }
                     jdbcTemplate.queryForObject(
-                        "SELECT invitation FROM orchestrator.channel_session WHERE id = ?", String::class.java, channelSessionId
+                        "SELECT invitation FROM orchestrator.channel_session WHERE id = ?", String::class.java, channelSessionId.value
                     ) shouldBe null
                 }
             }
 
             `when`("someone else's number is entered with Max's password") {
-                val issued = issue("P000000001", "loa1")
+                val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val (_, toolSessionId) = openInviteTool("loa1")
 
                 val failed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
@@ -287,7 +290,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
         given("a completed invitation") {
             `when`("Max enters its password again") {
-                val issued = issue("P000000001", "loa1")
+                val issued = issue(PartnerNumber("P000000001"), "loa1")
                 complete(issued.invitation)
                 val (_, toolSessionId) = openInviteTool("loa1")
 
@@ -302,7 +305,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
         given("an open loa2 invitation for Paula, known by her Partnernummer only") {
             `when`("Keycloak reads the tool") {
-                issue("P000000004", "loa2")
+                issue(PartnerNumber("P000000004"), "loa2")
                 val (_, toolSessionId) = openInviteTool("loa2")
 
                 val read = kcCall(HttpMethod.GET, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite").body!!
@@ -313,7 +316,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
             }
 
             `when`("she enters the Partnernummer and the password") {
-                val issued = issue("P000000004", "loa2")
+                val issued = issue(PartnerNumber("P000000004"), "loa2")
                 val (channelSessionId, toolSessionId) = openInviteTool("loa2")
 
                 val completed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
@@ -337,7 +340,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
         given("a one-time password without any number") {
             `when`("only the password is entered") {
-                val issued = issue("P000000001", "loa1")
+                val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val (_, toolSessionId) = openInviteTool("loa1")
 
                 val failed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
@@ -351,7 +354,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
         given("an invitation the register revoked") {
             `when`("Max enters its password") {
-                val issued = issue("P000000001", "loa1")
+                val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val revoked = restTemplate.exchange("http://localhost:$port/mock-personenverzeichnis/einladungen/${issued.invitation}",
                     HttpMethod.DELETE, HttpEntity<Void>(HttpHeaders()), Void::class.java).statusCode
                 val (_, toolSessionId) = openInviteTool("loa1")
@@ -368,7 +371,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
         given("an App that announces auth-invite anyway") {
             `when`("a right one-time password is entered there") {
-                val issued = issue("P000000001", "loa1")
+                val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val start = post("/orchestrator/api/v1/app/channels", """{"intent":"lookup_login"}""")
                 val appChannel = start.channel()["channelSessionId"] as String
                 val toolSessionId = post("/orchestrator/api/v1/channels/$appChannel/tools/auth-invite").nextRaw()["toolSessionId"] as String

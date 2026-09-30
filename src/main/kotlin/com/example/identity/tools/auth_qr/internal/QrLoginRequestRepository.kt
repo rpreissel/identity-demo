@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_qr.internal
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -22,7 +23,7 @@ interface QrLoginRequestRepository : JpaRepository<QrLoginRequest, String> {
     )
     fun approveIfPending(
         @Param("pairingCode") pairingCode: String,
-        @Param("accountId") accountId: Long,
+        @Param("accountId") accountId: AccountId?,
         @Param("codeHash") codeHash: String,
         @Param("now") now: Instant,
         @Param("newExpiresAt") newExpiresAt: Instant

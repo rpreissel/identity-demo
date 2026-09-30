@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.api.v1.tool
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolJourney
@@ -17,7 +18,6 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import java.util.UUID
 import com.example.identity.contract.tool_api.envelope.API_V1
 
 /**
@@ -53,7 +53,7 @@ class LeaveToolController(private val toolJourney: ToolJourney) {
         ]
     )
     fun abandon(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @PathVariable toolId: String,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
@@ -82,7 +82,7 @@ class LeaveToolController(private val toolJourney: ToolJourney) {
         ]
     )
     fun back(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @PathVariable toolId: String,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {

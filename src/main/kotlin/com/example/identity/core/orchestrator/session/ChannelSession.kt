@@ -1,6 +1,10 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.core.orchestrator.domain.SessionEvidenceId
 import com.example.identity.contract.tool_api.Subject
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.InvitationId
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.AuthIntent
@@ -54,16 +58,16 @@ class ChannelSession(
      */
     @Id
     @Column(name = "id", nullable = false)
-    var channelSessionId: UUID? = null
+    var channelSessionId: ChannelSessionId? = null
 
     /** The account of [subject], if the subject is one. Written only through [subject]. */
     @Column(name = "account_id")
-    var accountId: Long? = null
+    var accountId: AccountId? = null
         protected set
 
     /** The invitation of [subject], if the subject is one. Written only through [subject]. */
     @Column(name = "invitation", length = 64)
-    var invitation: String? = null
+    var invitation: InvitationId? = null
         protected set
 
     /**
@@ -88,7 +92,7 @@ class ChannelSession(
 
     /** Both channel types (docs/05-api.md Abschnitt 3): the evidence itself. */
     @Column(name = "session_evidence_id")
-    var sessionEvidenceId: UUID? = null
+    var sessionEvidenceId: SessionEvidenceId? = null
 
     /**
      * Whether at least one factor was proven on this channel. Weaker than `state == AUTHENTICATED`,
@@ -133,7 +137,7 @@ class ChannelSession(
     var version: Long? = null
 
     init {
-        channelSessionId = UUID.randomUUID()
+        channelSessionId = ChannelSessionId(UUID.randomUUID())
         state = ChannelState.ANONYMOUS
     }
 
@@ -145,5 +149,5 @@ class ChannelSession(
 }
 
 /* Set on the first save, never null afterwards. The assumption stands once, next to the column. */
-val ChannelSession.id: UUID get() = checkNotNull(channelSessionId) { "ChannelSession not saved yet" }
+val ChannelSession.id: ChannelSessionId get() = checkNotNull(channelSessionId) { "ChannelSession not saved yet" }
 val ChannelSession.channelType: ChannelType get() = checkNotNull(channel) { "ChannelSession $channelSessionId without a channel type" }

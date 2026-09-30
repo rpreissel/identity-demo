@@ -1,23 +1,25 @@
 package com.example.identity.core.orchestrator.journeytrace
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.core.orchestrator.domain.JourneyId
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.time.Instant
-import java.util.UUID
 import io.swagger.v3.oas.annotations.media.Schema
 
 data class JourneyTraceEntryView(
-    val channelSessionId: UUID,
+    val channelSessionId: ChannelSessionId,
     /** APP or WEB - makes the originating facade visible in the log UI. */
     val channelType: String?,
     /** Null until the channel resolves an account - see [JourneyTraceEntry.accountId]. */
-    val accountId: Long?,
+    val accountId: AccountId?,
     /** Null for a channel-level event with no journey of its own (see [JourneyTraceService.recordForChannel]). */
-    val journeyId: UUID?,
+    val journeyId: JourneyId?,
     /** Set when [journeyId] ran as another journey's precondition; the UI nests it under that parent. */
-    val parentJourneyId: UUID?,
+    val parentJourneyId: JourneyId?,
     val intent: String?,
     val eventType: String,
     /** The JourneyState subtype the journey was in when this event happened (e.g. "AwaitingTan") - null for a channel-level event. */
@@ -38,16 +40,16 @@ data class JourneyTraceResponse(val entries: List<JourneyTraceEntryView>)
  * entity, so `journeytrace` does not depend on `session`, which depends on it.
  */
 data class LoggedChannel(
-    val channelSessionId: UUID,
+    val channelSessionId: ChannelSessionId,
     val bindingKeyRef: String?,
     val channelType: String?,
-    val accountId: Long?
+    val accountId: AccountId?
 )
 
 /** The journey side of the same split - see [LoggedChannel]. */
 data class LoggedJourney(
-    val journeyId: UUID,
-    val parentJourneyId: UUID?,
+    val journeyId: JourneyId,
+    val parentJourneyId: JourneyId?,
     val intent: AuthIntent
 )
 

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.core.account.SignInLog
@@ -20,7 +21,7 @@ import java.time.Duration
  */
 class AccountLockoutServiceTest : BehaviorSpec({
 
-    val accountId = 7L
+    val accountId = AccountId(7L)
     val key = "7"
 
     given("an account the counter reports as locked") {

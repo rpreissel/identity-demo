@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.journeytrace
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
@@ -25,8 +27,12 @@ interface JourneyTraceRepository : JpaRepository<JourneyTraceEntry, UUID> {
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from JourneyTraceEntry e where e.accountId = :accountId or e.channelSessionId in :channelSessionIds")
-    fun deleteByAccountIdOrChannelSessionIdIn(
-        @Param("accountId") accountId: Long,
+    fun deleteByAccountIdOrChannelSessionIdValueIn(
+        @Param("accountId") accountId: AccountId?,
         @Param("channelSessionIds") channelSessionIds: Collection<UUID>
     ): Int
+
+    /** The channel ids travel as bare UUIDs: Hibernate sees the boxed id in a collection otherwise. */
+    fun deleteByAccountIdOrChannelSessionIdIn(accountId: AccountId, channelSessionIds: Collection<ChannelSessionId>): Int =
+        deleteByAccountIdOrChannelSessionIdValueIn(accountId, channelSessionIds.map { it.value })
 }

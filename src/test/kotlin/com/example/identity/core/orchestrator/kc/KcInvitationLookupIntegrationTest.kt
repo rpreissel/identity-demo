@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.orchestrator.IntegrationTestSupport
 import com.example.identity.simulation.personenverzeichnis.Einladungen
 import com.ninjasquad.springmockk.MockkBean
@@ -55,7 +56,7 @@ class KcInvitationLookupIntegrationTest : IntegrationTestSupport() {
         }
 
     private fun issueForMax(): String =
-        checkNotNull(einladungen.ausstellen("P000000001", "beitragsrueckerstattung", "loa1", clock.instant().plus(Duration.ofDays(7)))?.einladungId)
+        checkNotNull(einladungen.ausstellen(PartnerNumber("P000000001"), "beitragsrueckerstattung", "loa1", clock.instant().plus(Duration.ofDays(7)))?.einladungId)
 
     init {
         given("an open invitation") {

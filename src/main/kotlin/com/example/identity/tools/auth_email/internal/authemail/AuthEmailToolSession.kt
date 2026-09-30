@@ -1,11 +1,11 @@
 package com.example.identity.tools.auth_email.internal.authemail
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
-import java.util.UUID
 
 /**
  * Tool-session-scoped working data for toolId=auth-email. No enrollment reference: the confirmed
@@ -16,7 +16,7 @@ import java.util.UUID
 class AuthEmailToolSession(
     @Id
     @Column(name = "tool_session_id", nullable = false)
-    var toolSessionId: UUID? = null,
+    var toolSessionId: ToolSessionId? = null,
 
     @Column(name = "issued_code_hash")
     var issuedCodeHash: String? = null,

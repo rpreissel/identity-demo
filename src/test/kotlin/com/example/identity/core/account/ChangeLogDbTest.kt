@@ -1,5 +1,7 @@
 package com.example.identity.core.account
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.infrastructure.ChangeLogEntry
 import com.example.identity.core.account.infrastructure.ChangeLogRepository
 import com.example.identity.core.account.application.ChangeLogRetention
@@ -37,9 +39,9 @@ class ChangeLogDbTest(
         jdbcTemplate.update("DELETE FROM account.change_log")
     }
 
-    fun events(accountId: Long): List<ChangeLogEntry> = changeLogRepository.findByAccountIdOrderByOccurredAt(accountId)
+    fun events(accountId: AccountId): List<ChangeLogEntry> = changeLogRepository.findByAccountIdOrderByOccurredAt(accountId)
 
-    fun livedThrough(accountId: Long) {
+    fun livedThrough(accountId: AccountId) {
         accountService.addIdentification(accountId, "ident-fsc", "loa2", role = "IDENTIFICATION",
             report = mapOf("provider" to "fsc-service", "providerTxId" to "FSC-1", "documentNumber" to "C01X00T47"))
         val method = accountService.addAuthenticationMethod(
@@ -70,7 +72,7 @@ class ChangeLogDbTest(
             trail[2].details!!["reason"] shouldBe "REMOVED_BY_HOLDER"
             // No value of the account made it into the trail.
             trail.none { it.details.toString().contains("+49") } shouldBe true
-            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.auth_method WHERE account_id = ?", Int::class.java, accountId) shouldBe 0
+            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.auth_method WHERE account_id = ?", Int::class.java, accountId.value) shouldBe 0
         }
     }
 
@@ -96,7 +98,7 @@ class ChangeLogDbTest(
     }
 
     given("a person identified once, whose account was deleted since") {
-        fun identifiedAndDeleted(source: ClaimSource, personId: String?): Long {
+        fun identifiedAndDeleted(source: ClaimSource, personId: PartnerNumber?): AccountId {
             val accountId = accountService.createAccountInSetup().accountId
             accountService.recordClaims(
                 accountId,
@@ -104,7 +106,7 @@ class ChangeLogDbTest(
                     Claim(AttributeType.FAMILY_NAME, "Müller", source, AcrLevel.LOA2),
                     Claim(AttributeType.GIVEN_NAMES, "Max", source, AcrLevel.LOA2),
                     Claim(AttributeType.BIRTH_DATE, "1985-06-15", source, AcrLevel.LOA2),
-                    personId?.let { Claim(AttributeType.PERSON_ID, it, ClaimSource.PERSON_DIRECTORY, AcrLevel.LOA2) },
+                    personId?.let { Claim(AttributeType.PERSON_ID, it.value, ClaimSource.PERSON_DIRECTORY, AcrLevel.LOA2) },
                 ),
                 provenAcr = AcrLevel.LOA2
             )
@@ -114,7 +116,7 @@ class ChangeLogDbTest(
         }
 
         then("name, first name and date of birth alone find it - in any spelling a passport would agree with, without a person id") {
-            val accountId = identifiedAndDeleted(ClaimSource.of(com.example.identity.contract.tool_api.ToolId("ident-eid")), personId = null)
+            val accountId = identifiedAndDeleted(ClaimSource("ident-eid"), personId = null)
 
             val found = changeLogSearch.byPerson(" mueller ", "MAX", LocalDate.parse("1985-06-15"))
             found.map { it.accountId }.distinct() shouldBe listOf(accountId)
@@ -122,15 +124,15 @@ class ChangeLogDbTest(
             changeLogSearch.byPerson("Müller", "Max", LocalDate.parse("1985-06-16")).shouldBeEmpty()
             // The key is a keyed hash - no name or date is readable in the row itself.
             jdbcTemplate.queryForObject("SELECT lookup_key FROM account.change_log WHERE account_id = ? AND change_type = 'IDENTIFIED'",
-                String::class.java, accountId)!!.length shouldBe 64
+                String::class.java, accountId.value)!!.length shouldBe 64
             // ...and names the secret it was computed with, the rotation path.
             jdbcTemplate.queryForObject("SELECT lookup_key_id FROM account.change_log WHERE account_id = ? AND change_type = 'IDENTIFIED'",
-                String::class.java, accountId) shouldBe "1"
+                String::class.java, accountId.value) shouldBe "1"
         }
 
         then("the register's person id finds it too, when there was one") {
-            val accountId = identifiedAndDeleted(ClaimSource.PERSON_DIRECTORY, personId = "P000000042")
-            changeLogSearch.byPersonId("P000000042").map { it.accountId }.distinct() shouldBe listOf(accountId)
+            val accountId = identifiedAndDeleted(ClaimSource.PERSON_DIRECTORY, personId = PartnerNumber("P000000042"))
+            changeLogSearch.byPersonId(PartnerNumber("P000000042")).map { it.accountId }.distinct() shouldBe listOf(accountId)
         }
 
         then("self-reported names never make a key - otherwise anyone could plant hits under someone else's name") {

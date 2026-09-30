@@ -1,12 +1,12 @@
 package com.example.identity.tools.auth_kobil.internal.authkobil
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.device.UserVerification
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
-import java.util.UUID
 
 /** Tool-session-scoped working data for toolId=auth-kobil. */
 @Entity
@@ -14,7 +14,7 @@ import java.util.UUID
 class AuthKobilToolSession(
     @Id
     @Column(name = "tool_session_id", nullable = false)
-    var toolSessionId: UUID? = null,
+    var toolSessionId: ToolSessionId? = null,
 
     @Column(name = "enrollment_ref_id")
     var enrollmentRefId: String? = null,

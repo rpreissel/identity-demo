@@ -1,5 +1,6 @@
 package com.example.identity.simulation.personenverzeichnis
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.directory.DemoPersonDirectory
 import com.example.identity.contract.tool_api.directory.DemoPersonRecord
 import com.example.identity.contract.tool_api.directory.DemoInvitationRecord
@@ -18,7 +19,7 @@ class DemoPersonDirectoryAdapter(
             allePersonen().mapNotNull { data -> data.toPersonRecord()?.let { DemoPersonRecord(it, data.email, data.mobilnummer) } }
         }
 
-    override fun latestValidActivationCode(personId: String): String? =
+    override fun latestValidActivationCode(personId: PartnerNumber): String? =
         freischaltcodes.juengsterGueltigerCode(personId)
 
     override fun openInvitations(): List<DemoInvitationRecord> = einladungen.offeneMitKennwort()

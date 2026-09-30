@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_qr.api.v1
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_qr.AuthQrDescriptor
 import com.example.identity.tools.auth_qr.internal.authqr.AuthQrToolHandler
@@ -12,7 +14,6 @@ import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
-import java.util.UUID
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -43,7 +44,7 @@ class AuthQrToolController(
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/auth-qr")
     @Operation(summary = "Activate auth-qr", description = "No request body: toolId already carries kind and method.")
     fun activate(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
@@ -66,7 +67,7 @@ class AuthQrToolController(
             "Peer-Login bestätigen; docs/07-betrieb.md #5)."
     )
     fun patch(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestBody(required = false) request: QrConfirmationCodeRequest?
     ): ResponseEntity<ChannelResponse> {
@@ -78,7 +79,7 @@ class AuthQrToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/auth-qr")
     @Operation(summary = "Read the current auth-qr state")
     fun read(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, AUTH_QR_TOOL_ID)

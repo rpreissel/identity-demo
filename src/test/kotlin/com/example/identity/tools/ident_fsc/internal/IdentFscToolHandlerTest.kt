@@ -1,5 +1,7 @@
 package com.example.identity.tools.ident_fsc.internal
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -18,7 +20,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import java.time.LocalDate
-import java.util.Optional
 import java.util.UUID
 
 /**
@@ -28,7 +29,7 @@ import java.util.UUID
  */
 class IdentFscToolHandlerTest : BehaviorSpec({
 
-    val toolSessionId = UUID.randomUUID()
+    val toolSessionId = ToolSessionId(UUID.randomUUID())
     val repository = mockk<IdentFscToolSessionRepository>()
     val activationCodes = mockk<ActivationCodes> { every { digest(any()) } answers { "digest:" + firstArg<String>() } }
     val personDirectory = mockk<PersonDirectory>()
@@ -39,20 +40,20 @@ class IdentFscToolHandlerTest : BehaviorSpec({
     fun sessionWithVerifiedPersonalien() = IdentFscToolSession(
         toolSessionId = toolSessionId,
         kvnr = "A123456789",
-        personId = "P000000007",
+        personId = PartnerNumber("P000000007"),
         familyName = "Muster",
         givenNames = "Max",
         birthDate = birthdate,
         createdAt = TEST_NOW
     ).also { data ->
-        every { repository.findById(toolSessionId) } returns Optional.of(data)
+        every { repository.findByToolSessionId(toolSessionId) } returns data
         every { repository.save(any()) } returns data
         every { personDirectory.memberNumberOf(any()) } returns null
     }
 
     given("verified personal data and a valid code") {
         sessionWithVerifiedPersonalien()
-        every { activationCodes.isValid("P000000007", any()) } returns true
+        every { activationCodes.isValid(PartnerNumber("P000000007"), any()) } returns true
 
         `when`("the code is submitted") {
             then("it identifies, asserting the master-data attributes as claims under PERSON_DIRECTORY") {
@@ -75,11 +76,11 @@ class IdentFscToolHandlerTest : BehaviorSpec({
             then("it fails right away - no code asked for, none checked - and the data is dropped") {
                 clearMocks(activationCodes, answers = false)
                 val data = sessionWithVerifiedPersonalien()
-                every { personDirectory.matchesPersonalDetails("P000000007", "Muster", "Max", birthdate.plusDays(1)) } returns false
+                every { personDirectory.matchesPersonalDetails(PartnerNumber("P000000007"), "Muster", "Max", birthdate.plusDays(1)) } returns false
 
                 val outcome = handler.patch(toolSessionId, kvnr = null, partnerNumber = null, familyName = null, givenNames = null, birthDate = birthdate.plusDays(1), fsc = null, personId = null, rateLimited = false)
 
-                outcome shouldBe ToolOutcome.Failed.Identification(Text("Die Angaben passen zu keiner Person, die wir kennen"), attemptedPersonId = "P000000007")
+                outcome shouldBe ToolOutcome.Failed.Identification(Text("Die Angaben passen zu keiner Person, die wir kennen"), attemptedPersonId = PartnerNumber("P000000007"))
                 verify(exactly = 0) { activationCodes.isValid(any(), any()) }
                 data.kvnr shouldBe null
                 data.birthDate shouldBe null
@@ -90,14 +91,14 @@ class IdentFscToolHandlerTest : BehaviorSpec({
     given("a Partner - verified by Partnernummer, no KVNR (ADR-34)") {
         then("the code identifies, and no KVNR claim is asserted") {
             val data = IdentFscToolSession(
-                toolSessionId = toolSessionId, partnerNumber = "P000000004", personId = "P000000004",
+                toolSessionId = toolSessionId, partnerNumber = "P000000004", personId = PartnerNumber("P000000004"),
                 familyName = "Schulz", givenNames = "Paula", birthDate = birthdate,
                 createdAt = TEST_NOW
             )
-            every { repository.findById(toolSessionId) } returns Optional.of(data)
+            every { repository.findByToolSessionId(toolSessionId) } returns data
             every { repository.save(any()) } returns data
             every { personDirectory.memberNumberOf(any()) } returns null
-            every { activationCodes.isValid("P000000004", any()) } returns true
+            every { activationCodes.isValid(PartnerNumber("P000000004"), any()) } returns true
 
             val outcome = handler.patch(toolSessionId, kvnr = null, partnerNumber = null, familyName = null, givenNames = null, birthDate = null, fsc = "PAULA2026", personId = null, rateLimited = false)
 

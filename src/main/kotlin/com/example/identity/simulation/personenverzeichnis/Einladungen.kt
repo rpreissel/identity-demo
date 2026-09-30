@@ -1,5 +1,7 @@
 package com.example.identity.simulation.personenverzeichnis
 
+import com.example.identity.contract.tool_api.ids.InvitationId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.directory.DemoInvitationRecord
@@ -26,7 +28,7 @@ data class Vorgang(val id: String, val name: String)
 /** An invitation as the register's page shows it - never its plaintext, which only the letter carries. */
 data class EinladungView(
     val id: String,
-    val personId: String,
+    val personId: PartnerNumber,
     val vorgang: String,
     val niveau: String,
     val gueltigBis: Instant,
@@ -61,7 +63,7 @@ class Einladungen(
     fun vorgaenge(): List<Vorgang> = VORGAENGE
 
     /** Stellt eine Einladung aus und verschickt den Brief; `null` für eine unbekannte Person. */
-    fun ausstellen(personId: String, vorgang: String, niveau: String, gueltigBis: Instant): BriefView? {
+    fun ausstellen(personId: PartnerNumber, vorgang: String, niveau: String, gueltigBis: Instant): BriefView? {
         if (register.findPersonById(personId) == null) return null
         if (VORGAENGE.none { it.id == vorgang }) throw PersonRejectedException(Text("Zu diesem Vorgang laedt das Verzeichnis nicht ein"))
         if (niveau !in NIVEAUS) throw PersonRejectedException(Text("Niveau muss loa1 oder loa2 sein"))
@@ -76,7 +78,7 @@ class Einladungen(
     }
 
     @Transactional(readOnly = true)
-    fun fuerPerson(personId: String): List<EinladungView> {
+    fun fuerPerson(personId: PartnerNumber): List<EinladungView> {
         val now = clock.instant()
         return einladungen.findByPersonIdOrderByAusgestelltAmDesc(personId).map { it.toView(now) }
     }
@@ -104,19 +106,19 @@ class Einladungen(
         briefe.findAllByOrderByIdDesc().map { brief -> brief.toBriefView(brief.einladungId?.let { einladungen.findByIdOrNull(it)?.vorgang }) }
 
     @Transactional(readOnly = true)
-    override fun redeem(personId: String, code: String): InvitationGrant? {
+    override fun redeem(personId: PartnerNumber, code: String): InvitationGrant? {
         val now = clock.instant()
         val einladung = einladungen.findByPersonIdOrderByAusgestelltAmDesc(personId)
             .filter { it.istOffenAm(now) }
             .firstOrNull { gleich(checkNotNull(it.id), identitaet(personId, code, checkNotNull(it.vorgang))) }
             ?: return null
-        return InvitationGrant(checkNotNull(einladung.id), checkNotNull(einladung.vorgang), AcrLevel.of(einladung.niveau))
+        return InvitationGrant(InvitationId(checkNotNull(einladung.id)), checkNotNull(einladung.vorgang), AcrLevel.parse(einladung.niveau) ?: AcrLevel.NONE)
     }
 
     @Transactional(readOnly = true)
-    override fun find(invitation: String): InvitationView? =
-        einladungen.findByIdOrNull(invitation)?.let {
-            InvitationView(checkNotNull(it.id), checkNotNull(it.vorgang), checkNotNull(it.personId), it.istOffenAm(clock.instant()))
+    override fun find(invitation: InvitationId): InvitationView? =
+        einladungen.findByIdOrNull(invitation.value)?.let {
+            InvitationView(InvitationId(checkNotNull(it.id)), checkNotNull(it.vorgang), checkNotNull(it.personId), it.istOffenAm(clock.instant()))
         }
 
     /** Beendet eine Einladung einmal; ein wiederholter Aufruf ändert nichts und meldet nichts. */
@@ -125,7 +127,7 @@ class Einladungen(
         val warBeendet = einladung.abgeschlossenAm != null || einladung.widerrufenAm != null
         markieren(einladung)
         einladungen.save(einladung)
-        if (!warBeendet) events.publishEvent(InvitationEnded(id))
+        if (!warBeendet) events.publishEvent(InvitationEnded(InvitationId(id)))
         return einladung.toView(clock.instant())
     }
 
@@ -157,7 +159,7 @@ class Einladungen(
          * Die eine Definition der Einladungs-Id, die das Fachsystem genauso bildet: SHA-256 in
          * Kleinbuchstaben-Hex über `personId:KENNWORT:vorgang`, das Kennwort ohne Trennzeichen und groß.
          */
-        fun identitaet(personId: String, code: String, vorgang: String): String =
+        fun identitaet(personId: PartnerNumber, code: String, vorgang: String): String =
             MessageDigest.getInstance("SHA-256")
                 .digest("$personId:${normalisieren(code)}:$vorgang".toByteArray())
                 .joinToString("") { "%02x".format(it) }

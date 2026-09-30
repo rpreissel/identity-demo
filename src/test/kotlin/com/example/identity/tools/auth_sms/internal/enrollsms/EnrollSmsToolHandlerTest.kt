@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_sms.internal.enrollsms
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.simulation.sms.SmsGateway
@@ -26,7 +27,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import java.util.Optional
 import java.util.UUID
 
 /**
@@ -42,11 +42,11 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
     val tanGenerator = TanGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val handler = EnrollSmsToolHandler(EnrollSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = TEST_CLOCK), sendLimit, clock = TEST_CLOCK)
-    val toolSessionId = UUID.randomUUID()
+    val toolSessionId = ToolSessionId(UUID.randomUUID())
 
     given("an active enroll-sms tool session with no phone number yet") {
         val data = EnrollSmsToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
 
         `when`("submitting a valid phone number") {
             val saved = slot<EnrollSmsToolSession>()
@@ -65,7 +65,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
 
     given("an active enroll-sms tool session whose number has used up its send budget") {
         val data = EnrollSmsToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
         every { sendLimit.trySend("+491709999999") } returns false
 
         `when`("submitting that number") {
@@ -87,7 +87,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
             tanExpiresAt = issued.expiresAt,
             createdAt = TEST_NOW
         )
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
 
         `when`("confirming with the correct TAN") {
             every { enrollmentRepository.save(any()) } answers { firstArg<AuthSmsEnrollment>().apply { id = 42L } }
@@ -119,7 +119,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
                     Claim(
                         AttributeType.PHONE_NUMBER,
                         "+491701234567",
-                        ClaimSource.of(EnrollSmsDescriptor.toolId),
+                        ClaimSource(EnrollSmsDescriptor.toolId.value),
                         EnrollSmsDescriptor.maxAcr
                     )
                 )

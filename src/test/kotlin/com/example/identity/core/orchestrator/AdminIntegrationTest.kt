@@ -93,7 +93,7 @@ class AdminIntegrationTest : IntegrationTestSupport() {
 
                 @Suppress("UNCHECKED_CAST")
                 val accounts = adminGet("/orchestrator/admin/journey-trace")["accounts"] as List<Map<String, Any?>>
-                accounts.map { (it["accountId"] as Number).toLong() } shouldContain accountId
+                accounts.map { (it["accountId"] as Number).toLong() } shouldContain accountId.value
             }
         }
 

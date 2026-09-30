@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -32,7 +33,7 @@ import java.util.UUID
  */
 class KeycloakToolCallsServiceTest : BehaviorSpec({
 
-    val accountId = 7L
+    val accountId = AccountId(7)
 
     given("requireKeycloakFor()") {
         val service = KeycloakToolCallsService(mockk(), mockk())
@@ -104,7 +105,7 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
             )
         } returns mockk()
         val service = KeycloakToolCallsService(mockk(), accountService)
-        val claims = listOf(Claim(AttributeType.PASSWORD_EXISTS, PASSWORD_EXISTS_MARKER, ClaimSource.of(EnrollPasswordDescriptor.toolId)))
+        val claims = listOf(Claim(AttributeType.PASSWORD_EXISTS, PASSWORD_EXISTS_MARKER, ClaimSource(EnrollPasswordDescriptor.toolId.value)))
         val enrollmentRef = EnrollmentRef("auth_password.enrollment", "11")
         val instanceDetails = mapOf<String, Any?>("hint" to "x")
         val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = enrollmentRef, claims = claims, instanceDetails = instanceDetails)
@@ -151,7 +152,7 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
 
         `when`("an ACCOUNT_LOOKUP_AUTH tool reports its failure") {
             val result = runCatching {
-                service.apply(accountId, AuthPasswordLookupDescriptor, ToolOutcome.Failed.AccountLookupAuth(Text("Passwort falsch"), attempted = accountId?.let(Attempted::Account)))
+                service.apply(accountId, AuthPasswordLookupDescriptor, ToolOutcome.Failed.AccountLookupAuth(Text("Passwort falsch"), attempted = Attempted.Account(accountId)))
             }
 
             then("it refuses with IllegalStateException") {

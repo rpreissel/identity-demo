@@ -1,6 +1,8 @@
 package com.example.identity.contract.tool_api.directory
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.claims.AcrLevel
+import com.example.identity.contract.tool_api.ids.InvitationId
 
 /**
  * The invitations of the person register (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md): the
@@ -13,19 +15,19 @@ interface Invitations {
      * The open invitation of [personId] whose one-time password is [code], else `null`. The person
      * does not type the process, so every open invitation of that person is tried.
      */
-    fun redeem(personId: String, code: String): InvitationGrant?
+    fun redeem(personId: PartnerNumber, code: String): InvitationGrant?
 
     /** What Keycloak shows as the invitation's user; `null` for an unknown invitation. */
-    fun find(invitation: String): InvitationView?
+    fun find(invitation: InvitationId): InvitationView?
 }
 
 /** What an accepted one-time password opens: one process, at one level. */
-data class InvitationGrant(val invitation: String, val process: String, val acr: AcrLevel)
+data class InvitationGrant(val invitation: InvitationId, val process: String, val acr: AcrLevel)
 
 data class InvitationView(
-    val invitation: String,
+    val invitation: InvitationId,
     val process: String,
-    val personId: String,
+    val personId: PartnerNumber,
     /** Neither completed nor revoked nor expired: a login with it is possible right now. */
     val open: Boolean,
 )
@@ -35,4 +37,4 @@ data class InvitationView(
  * [PersonChanged] for a person (ADR-34). Listeners end the sessions it opened; an expiry needs no
  * event, the tokens simply run out.
  */
-data class InvitationEnded(val invitation: String)
+data class InvitationEnded(val invitation: InvitationId)

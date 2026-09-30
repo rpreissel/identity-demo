@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.api.v1
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.channel.KcChannelAccessGuard
 import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
@@ -30,7 +31,7 @@ class KcChannelAccessGuardTest : BehaviorSpec({
             subject = null
         )
 
-    fun guardFor(channel: ChannelSession, id: UUID): KcChannelAccessGuard {
+    fun guardFor(channel: ChannelSession, id: ChannelSessionId): KcChannelAccessGuard {
         val sessionManagementService = mockk<SessionManagementService> {
             every { findChannelSessionById(id) } returns channel
         }
@@ -38,7 +39,7 @@ class KcChannelAccessGuardTest : BehaviorSpec({
     }
 
     given("a channel bound on channelBinding") {
-        val id = UUID.randomUUID()
+        val id = ChannelSessionId(UUID.randomUUID())
         val channel = channel(channelBinding = "binding-1")
 
         `when`("the assertion claims the matching channelBinding") {
@@ -57,7 +58,7 @@ class KcChannelAccessGuardTest : BehaviorSpec({
 
     given("no channel with this id exists") {
         then("it is rejected as not found") {
-            val id = UUID.randomUUID()
+            val id = ChannelSessionId(UUID.randomUUID())
             val sessionManagementService = mockk<SessionManagementService> {
                 every { findChannelSessionById(id) } returns null
             }

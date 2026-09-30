@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_email.internal.enrollemail
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -11,7 +12,6 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
-import java.util.Optional
 import java.util.UUID
 
 /**
@@ -33,7 +33,7 @@ class EnrollEmailToolHandlerTest : BehaviorSpec({
 
     given("start()") {
         `when`("an enroll-email run begins") {
-            val toolSessionId = UUID.randomUUID()
+            val toolSessionId = ToolSessionId(UUID.randomUUID())
             val saved = slot<EnrollEmailToolSession>()
             every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
             val outcome = handler.start(toolSessionId)
@@ -46,8 +46,8 @@ class EnrollEmailToolHandlerTest : BehaviorSpec({
     }
 
     given("a completed enroll-email tool session") {
-        val toolSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(EnrollEmailToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW))
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns EnrollEmailToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
 
         `when`("it is read again") {
             val outcome = handler.read(toolSessionId)
@@ -59,8 +59,8 @@ class EnrollEmailToolHandlerTest : BehaviorSpec({
     }
 
     given("no enroll-email tool session") {
-        val unknownId = UUID.randomUUID()
-        every { toolDataRepository.findById(unknownId) } returns Optional.empty()
+        val unknownId = ToolSessionId(UUID.randomUUID())
+        every { toolDataRepository.findByToolSessionId(unknownId) } returns null
 
         `when`("it is read") {
             val result = runCatching { handler.read(unknownId) }

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.admin
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceEntryView
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 /** An account the log can be filtered by, named as far as the demo may say: the register's display name (`PersonDirectory.displayName`). */
-data class AdminAccountLabel(val accountId: Long, val displayName: String?)
+data class AdminAccountLabel(val accountId: AccountId, val displayName: String?)
 
 data class AdminJourneyTraceResponse(val entries: List<JourneyTraceEntryView>, val accounts: List<AdminAccountLabel>)
 

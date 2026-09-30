@@ -1,11 +1,11 @@
 package com.example.identity.tools.auth_email.internal.enrollemail
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
-import java.util.UUID
 
 /**
  * Tool session for toolId=enroll-email. Holds nothing beyond the row itself; it exists so every
@@ -16,7 +16,7 @@ import java.util.UUID
 class EnrollEmailToolSession(
     @Id
     @Column(name = "tool_session_id", nullable = false)
-    var toolSessionId: UUID? = null,
+    var toolSessionId: ToolSessionId? = null,
     createdAt: Instant
 ) {
     @Column(name = "created_at", nullable = false)

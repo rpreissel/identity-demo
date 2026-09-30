@@ -1,6 +1,6 @@
 [versions]
 java = "21"
-kotlin = "2.4.0"
+kotlin = "2.4.20"
 spring-boot = "4.1.0"
 spring-modulith = "2.1.1"
 dependency-management = "1.1.7"
@@ -57,6 +57,9 @@ httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
 # Jackson 3 Kotlin module: JourneyState is persisted as JSON (data classes + sealed hierarchies).
 jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin" }
+# Jackson 2 Kotlin module for swagger-core (springdoc), which still runs on Jackson 2: without it the
+# spec shows mangled property names for value classes. Version from the Spring Boot BOM.
+jackson2-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
 springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc-openapi" }
 openapi-diff-cli = { module = "org.openapitools.openapidiff:openapi-diff-cli", version.ref = "openapi-diff" }
 asm-tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }

@@ -35,7 +35,7 @@ object EnrollPasswordDescriptor : ToolDescriptor {
      * States that this account has a password, so another method can depend on it via `requires`
      * (ADR-24). Revoking the password retracts this claim, and whatever required it falls with it.
      */
-    override val claims = setOf(ClaimDeclaration(AttributeType.PASSWORD_EXISTS, ClaimSource.of(toolId)))
+    override val claims = setOf(ClaimDeclaration(AttributeType.PASSWORD_EXISTS, ClaimSource(toolId.value)))
 }
 
 @Component

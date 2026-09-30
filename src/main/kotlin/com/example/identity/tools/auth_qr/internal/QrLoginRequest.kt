@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_qr.internal
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -29,7 +30,7 @@ class QrLoginRequest(
     var pairingCode: String? = null,
 
     @Column(name = "expected_account_id")
-    var expectedAccountId: Long? = null,
+    var expectedAccountId: AccountId? = null,
     createdAt: Instant
 ) {
     @Enumerated(EnumType.STRING)
@@ -37,7 +38,7 @@ class QrLoginRequest(
     var status: QrLoginStatus = QrLoginStatus.PENDING
 
     @Column(name = "resolving_account_id")
-    var resolvingAccountId: Long? = null
+    var resolvingAccountId: AccountId? = null
 
     @Column(name = "confirmation_code_hash")
     var confirmationCodeHash: String? = null

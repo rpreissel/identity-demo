@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.SignInLog
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
@@ -38,12 +39,12 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
         beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
     }
 
-    private fun accountOf(channelSessionId: String): Long =
-        jdbcTemplate.queryForObject(
+    private fun accountOf(channelSessionId: String): AccountId =
+        AccountId(jdbcTemplate.queryForObject(
             "SELECT account_id FROM orchestrator.channel_session WHERE id = CAST(? AS UUID)", Long::class.java, channelSessionId
-        )!!
+        )!!)
 
-    private fun typesOf(accountId: Long) = signInLog.of(accountId).map { it.signInType }
+    private fun typesOf(accountId: AccountId) = signInLog.of(accountId).map { it.signInType }
 
     private fun failPassword() {
         val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String

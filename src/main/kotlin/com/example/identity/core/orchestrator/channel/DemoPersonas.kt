@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.directory.DemoPersonDirectory
 import org.springframework.stereotype.Component
 
@@ -10,7 +11,7 @@ import org.springframework.stereotype.Component
  */
 data class DemoPerson(
     /** The Partnernummer; every person has one (ADR-34). */
-    val personId: String,
+    val personId: PartnerNumber,
     /** Only for a person insured with us, and even then possibly missing for a while. */
     val kvnr: String?,
     val familyName: String?,
@@ -33,10 +34,10 @@ data class DemoPerson(
  * `demo_seed/V16__testdata.sql` seeds. A register knows no card, so it stays here.
  */
 private val DEMO_RESTRICTED_IDS = mapOf(
-    "P000000001" to "T0103005K1D5S0V8T9W6UM2RTX",
-    "P000000002" to "T0208011X7Y2Q4M6B3LT0T28WJ",
-    "P000000003" to "T0304223A9B1N7K5D2PN1S44QE",
-    "P000000004" to "T0405337C2D8R5H9F1QW3V61MZ",
+    PartnerNumber("P000000001") to "T0103005K1D5S0V8T9W6UM2RTX",
+    PartnerNumber("P000000002") to "T0208011X7Y2Q4M6B3LT0T28WJ",
+    PartnerNumber("P000000003") to "T0304223A9B1N7K5D2PN1S44QE",
+    PartnerNumber("P000000004") to "T0405337C2D8R5H9F1QW3V61MZ",
 )
 
 /**
@@ -48,7 +49,7 @@ data class DemoInvitation(
     val label: String,
     val kvnr: String?,
     /** The Partnernummer, for a person without a KVNR. */
-    val partnerNumber: String,
+    val partnerNumber: PartnerNumber,
     val code: String,
 )
 

@@ -1,5 +1,8 @@
 package com.example.identity.contract.tool_api
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
+
 /**
  * The orchestrator's locks after failed guesses, asked by tools that resolve their subject
  * themselves. The caller must treat `true` like an unknown address or number, never as its own
@@ -12,8 +15,8 @@ interface Lockouts {
      * Whether [accountId] is locked after failed AUTH attempts. For ACCOUNT_LOOKUP_AUTH tools; for
      * KNOWN_ACCOUNT_AUTH [ToolJourney.beginActivation] checks it. `null` answers `false`.
      */
-    fun isLockedOut(accountId: Long?): Boolean
+    fun isLockedOut(accountId: AccountId?): Boolean
 
     /** Whether [personId] is locked after failed IDENT attempts. `null` answers `false`. */
-    fun isIdentLockedOut(personId: String?): Boolean
+    fun isIdentLockedOut(personId: PartnerNumber?): Boolean
 }

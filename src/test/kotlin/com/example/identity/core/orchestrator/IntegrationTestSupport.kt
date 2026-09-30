@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.core.orchestrator.admin.ADMIN_API
@@ -373,7 +374,7 @@ abstract class IntegrationTestSupport : BehaviorSpec() {
      * returns its id. Seeded via [AccountFixtures]: these tests need the account, not its
      * registration path.
      */
-    protected fun registerWithSmsOnly(): Long =
+    protected fun registerWithSmsOnly(): AccountId =
         accountFixtures.seedAccount(
             methods = listOf(AccountFixtures.Method.Sms()),
             bindDeviceKeyRef = currentBindingKeyRef
@@ -403,7 +404,7 @@ abstract class IntegrationTestSupport : BehaviorSpec() {
      * address, bound to this device) without opening a channel. Independent of the registration
      * journey's step order.
      */
-    protected fun seedRegisteredAccount(): Long =
+    protected fun seedRegisteredAccount(): AccountId =
         accountFixtures.seedAccount(
             methods = listOf(AccountFixtures.Method.Sms(), AccountFixtures.Method.Password()),
             bindDeviceKeyRef = currentBindingKeyRef

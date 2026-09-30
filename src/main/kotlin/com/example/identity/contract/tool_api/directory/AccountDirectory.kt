@@ -1,5 +1,6 @@
 package com.example.identity.contract.tool_api.directory
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.EnrollmentRef
 
@@ -16,14 +17,14 @@ interface AccountDirectory {
      *
      * @return the account id, or `null` if no account has established this anchor.
      */
-    fun resolveByAnchor(type: AttributeType, value: String): Long?
+    fun resolveByAnchor(type: AttributeType, value: String): AccountId?
 
     /**
      * The account's value for anchor [type] in normalized form; the reverse of [resolveByAnchor].
      * `null` if never established. A rejected change keeps the previous value. Non-anchor types
      * are contract errors.
      */
-    fun anchorValue(accountId: Long, type: AttributeType): String?
+    fun anchorValue(accountId: AccountId, type: AttributeType): String?
 
     /**
      * The account's currently active credential for [method] (e.g. `"sms"`, `"password"`).
@@ -31,7 +32,7 @@ interface AccountDirectory {
      * @return the enrollment reference, or `null` if the account has no active credential for
      * this method.
      */
-    fun activeEnrollment(accountId: Long, method: String): EnrollmentRef?
+    fun activeEnrollment(accountId: AccountId, method: String): EnrollmentRef?
 
     /**
      * The account's active credential for [method] whose instance details satisfy
@@ -41,7 +42,7 @@ interface AccountDirectory {
      *
      * @return the first active instance [livesOnCallerKey] accepts, or `null`.
      */
-    fun activeInstanceEnrollment(accountId: Long, method: String, livesOnCallerKey: (instanceDetails: Map<String, Any?>?) -> Boolean): EnrollmentRef?
+    fun activeInstanceEnrollment(accountId: AccountId, method: String, livesOnCallerKey: (instanceDetails: Map<String, Any?>?) -> Boolean): EnrollmentRef?
 }
 
 /**

@@ -1,11 +1,11 @@
 package com.example.identity.tools.auth_qr.internal.authqrlookup
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
-import java.util.UUID
 
 /** Tool-session-scoped working data for toolId=auth-qr-lookup: which QrLoginRequest it waits on. */
 @Entity
@@ -13,7 +13,7 @@ import java.util.UUID
 class AuthQrLookupToolSession(
     @Id
     @Column(name = "tool_session_id", nullable = false)
-    var toolSessionId: UUID? = null,
+    var toolSessionId: ToolSessionId? = null,
 
     @Column(name = "pairing_code", nullable = false)
     var pairingCode: String? = null,

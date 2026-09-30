@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.contract.texts.Text
@@ -99,7 +100,7 @@ class KcChannelService(
     }
 
     fun upsertChannel(
-        channelSessionId: UUID,
+        channelSessionId: ChannelSessionId,
         assertion: PeerAuthAssertion,
         subject: Subject?,
         targetAcr: String?,
@@ -135,7 +136,7 @@ class KcChannelService(
                 ?: throw OrchestratorException.notFound(Text("Unknown tool"), "nativeToolId=${entry.nativeToolId}")
             MethodEvidence(
                 MethodName(descriptor.method),
-                AcrLevel.of(descriptor.maxAcr),
+                AcrLevel.parse(descriptor.maxAcr) ?: AcrLevel.NONE,
                 // Uncapped (docs/05-api.md Abschnitt 3). The enrolledUnderAcr cap stops an
                 // orchestrator combination from escalating past the enrollment history. Keycloak's
                 // native report is trusted as a whole already, so a cap would only break the rule
@@ -233,7 +234,7 @@ class KcChannelService(
      * [RestoreData]. The token is bound to [kcSessionId], the fresh UserSessionModel id only the
      * caller knows ([RestoreDataCodec]). `null` for a channel with nothing worth restoring.
      */
-    fun restoreData(channelSessionId: UUID, assertion: PeerAuthAssertion, kcSessionId: String, sessionExpiresAt: Instant? = null): String? {
+    fun restoreData(channelSessionId: ChannelSessionId, assertion: PeerAuthAssertion, kcSessionId: String, sessionExpiresAt: Instant? = null): String? {
         val channel = kcChannelAccessGuard.requireChannel(channelSessionId, assertion)
         // Every completed kc flow run makes this call, so it records the durable session id
         // without a separate write path. [sessionExpiresAt] is the latest end of that session

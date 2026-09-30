@@ -1,5 +1,7 @@
 package com.example.identity.core.account.infrastructure
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.InvitationId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -43,10 +45,10 @@ enum class SignInType(val detailsVersion: Int) {
 @Table(schema = "account", name = "sign_in_log")
 class SignInLogEntry(
     @Column(name = "account_id", updatable = false)
-    val accountId: Long? = null,
+    val accountId: AccountId? = null,
 
     @Column(name = "invitation", updatable = false, length = 64)
-    val invitation: String? = null,
+    val invitation: InvitationId? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "sign_in_type", nullable = false, updatable = false, length = 32)
@@ -73,9 +75,9 @@ class SignInLogEntry(
 }
 
 interface SignInLogRepository : JpaRepository<SignInLogEntry, Long> {
-    fun findByAccountIdOrderByOccurredAt(accountId: Long): List<SignInLogEntry>
+    fun findByAccountIdOrderByOccurredAt(accountId: AccountId?): List<SignInLogEntry>
 
-    fun findByInvitationOrderByOccurredAt(invitation: String): List<SignInLogEntry>
+    fun findByInvitationOrderByOccurredAt(invitation: InvitationId): List<SignInLogEntry>
 
     /** One retention batch, oldest first (`SignInLogRetention`). */
     @Query("select e.id from SignInLogEntry e where e.occurredAt < :cutoff order by e.occurredAt")

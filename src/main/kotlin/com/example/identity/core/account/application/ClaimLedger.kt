@@ -1,5 +1,6 @@
 package com.example.identity.core.account.application
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.infrastructure.strongestEstablishedValues
 import com.example.identity.core.account.infrastructure.AccountClaim
 import com.example.identity.core.account.infrastructure.AccountClaimRepository
@@ -41,7 +42,7 @@ class ClaimLedger(
      *
      * @return each claim with its establishing instant, which the following anchor write reuses.
      */
-    fun append(accountId: Long, claims: List<Claim>, provenAcr: AcrLevel, authMethodId: UUID?): List<Pair<Claim, Instant>> {
+    fun append(accountId: AccountId, claims: List<Claim>, provenAcr: AcrLevel, authMethodId: UUID?): List<Pair<Claim, Instant>> {
         val seen = mutableSetOf<AttributeType>()
         claims.forEach { claim ->
             claim.validateValue()
@@ -88,20 +89,20 @@ class ClaimLedger(
     }
 
     /** Assertions minus retractions - the one view every reader uses. */
-    fun established(accountId: Long): List<AccountClaim> = accountClaimRepository.findEstablished(accountId)
+    fun established(accountId: AccountId): List<AccountClaim> = accountClaimRepository.findEstablished(accountId)
 
     /** The established VALUES for [types], strongest assertion per attribute. */
-    fun establishedValues(accountId: Long, types: Set<AttributeType>): Map<AttributeType, String> =
+    fun establishedValues(accountId: AccountId, types: Set<AttributeType>): Map<AttributeType, String> =
         established(accountId).strongestEstablishedValues(types)
 
     /** The same, counting only sources that PROVE the value - self-reported ones never do. */
-    fun provenValues(accountId: Long, types: Set<AttributeType>): Map<AttributeType, String> =
+    fun provenValues(accountId: AccountId, types: Set<AttributeType>): Map<AttributeType, String> =
         established(accountId)
             .filter { ClaimSource(it.claimSource.orEmpty()).claimTrust.rank >= ClaimTrust.PROVEN.rank }
             .strongestEstablishedValues(types)
 
     /** Highest [ClaimTrust] per established attribute. */
-    fun establishedTrust(accountId: Long): Map<AttributeType, ClaimTrust> =
+    fun establishedTrust(accountId: AccountId): Map<AttributeType, ClaimTrust> =
         established(accountId)
             .mapNotNull { claim ->
                 val type = claim.attributeType ?: return@mapNotNull null
@@ -112,7 +113,7 @@ class ClaimLedger(
             .mapValues { (_, levels) -> levels.maxBy { it.rank } }
 
     /** What method instance [instanceId] asserted that belongs to its method module, as (type, value). */
-    fun ownedBy(accountId: Long, instanceId: UUID): Set<Pair<AttributeType, String?>> =
+    fun ownedBy(accountId: AccountId, instanceId: UUID): Set<Pair<AttributeType, String?>> =
         accountClaimRepository.findByAuthMethodId(instanceId)
             .filter { it.accountId == accountId && it.attributeType?.authority == AttributeAuthority.MethodModule }
             .mapNotNull { claim -> claim.attributeType?.let { it to claim.normalizedValue } }
@@ -122,7 +123,7 @@ class ClaimLedger(
      * Withdraws every established value of [attributeType] - one retraction row per distinct value.
      * @return true if something was established and is now withdrawn.
      */
-    fun retractEstablished(accountId: Long, attributeType: AttributeType, retractionSource: RetractionSource, reason: String?, at: Instant): Boolean {
+    fun retractEstablished(accountId: AccountId, attributeType: AttributeType, retractionSource: RetractionSource, reason: String?, at: Instant): Boolean {
         val established = established(accountId)
             .filter { it.attributeType == attributeType }
             .map { it.normalizedValue }
@@ -132,7 +133,7 @@ class ClaimLedger(
     }
 
     /** One withdrawal, logged in the change log; the value stays in the retraction row, which goes with the account. */
-    fun retract(accountId: Long, type: AttributeType, normalizedValue: String?, retractionSource: RetractionSource, reason: String?, at: Instant) {
+    fun retract(accountId: AccountId, type: AttributeType, normalizedValue: String?, retractionSource: RetractionSource, reason: String?, at: Instant) {
         changeLog.attributeRetracted(accountId, type.name, retractionSource = retractionSource.name, reason = reason, at = at)
         accountRetractionRepository.save(
             AccountRetraction(

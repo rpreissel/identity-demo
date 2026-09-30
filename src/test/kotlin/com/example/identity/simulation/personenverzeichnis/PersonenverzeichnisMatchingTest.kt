@@ -1,5 +1,6 @@
 package com.example.identity.simulation.personenverzeichnis
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.simulation.personenverzeichnis.internal.MrzName
 import com.example.identity.simulation.personenverzeichnis.internal.Person
 import com.example.identity.simulation.personenverzeichnis.internal.PersonRepository
@@ -40,23 +41,23 @@ class PersonenverzeichnisMatchingTest : BehaviorSpec({
         )
 
         then("a passport chip's reading matches") {
-            register.matchesMasterData("P000000001", ClaimedIdentity(familyName = "MUELLER LUEDENSCHEIDT", givenNames = "JUERGEN", birthDate = geburtsdatum)) shouldBe true
+            register.matchesMasterData(PartnerNumber("P000000001"), ClaimedIdentity(familyName = "MUELLER LUEDENSCHEIDT", givenNames = "JUERGEN", birthDate = geburtsdatum)) shouldBe true
         }
 
         then("an eID card's upper-case reading matches, street line included") {
             register.matchesMasterData(
-                "P000000001",
+                PartnerNumber("P000000001"),
                 ClaimedIdentity(familyName = "MÜLLER-LÜDENSCHEIDT", givenNames = "JÜRGEN", birthDate = geburtsdatum, streetAddress = "HEIDESTRASSE 17")
             ) shouldBe true
         }
 
         then("a different person does not") {
-            register.matchesMasterData("P000000001", ClaimedIdentity(familyName = "MUELLER", givenNames = "JUERGEN", birthDate = geburtsdatum)) shouldBe false
-            register.matchesMasterData("P000000001", ClaimedIdentity(familyName = "Müller-Lüdenscheidt", givenNames = "Jürgen", streetAddress = "Heidestraße 18")) shouldBe false
+            register.matchesMasterData(PartnerNumber("P000000001"), ClaimedIdentity(familyName = "MUELLER", givenNames = "JUERGEN", birthDate = geburtsdatum)) shouldBe false
+            register.matchesMasterData(PartnerNumber("P000000001"), ClaimedIdentity(familyName = "Müller-Lüdenscheidt", givenNames = "Jürgen", streetAddress = "Heidestraße 18")) shouldBe false
         }
 
         then("typed Personalien compare the same way") {
-            register.matchesPersonalDetails("P000000001", "mueller-luedenscheidt", "juergen", geburtsdatum) shouldBe true
+            register.matchesPersonalDetails(PartnerNumber("P000000001"), "mueller-luedenscheidt", "juergen", geburtsdatum) shouldBe true
         }
     }
 
@@ -67,7 +68,7 @@ class PersonenverzeichnisMatchingTest : BehaviorSpec({
 
         then("the chip's truncated reading still matches - the register asks no more than the chip holds") {
             // SCHMIDT<WOLKENSTEIN<<MAXIMILIAN<FRIEDRI = 39 characters
-            register.matchesMasterData("P000000001", ClaimedIdentity(familyName = "SCHMIDT WOLKENSTEIN", givenNames = "MAXIMILIAN FRIEDRI", birthDate = geburtsdatum)) shouldBe true
+            register.matchesMasterData(PartnerNumber("P000000001"), ClaimedIdentity(familyName = "SCHMIDT WOLKENSTEIN", givenNames = "MAXIMILIAN FRIEDRI", birthDate = geburtsdatum)) shouldBe true
         }
     }
 
@@ -82,13 +83,13 @@ class PersonenverzeichnisMatchingTest : BehaviorSpec({
 
         then("another person with the same names - in any spelling a passport agrees with - is a namesake") {
             registerAlso(Person(name = "MUELLER", vorname = "MAX", geburtsdatum = geburtsdatum).apply { id = "P000000002" })
-                .hasNamesake("P000000001") shouldBe true
+                .hasNamesake(PartnerNumber("P000000001")) shouldBe true
         }
 
         then("the person alone, or someone else born that day, is none") {
-            registerAlso().hasNamesake("P000000001") shouldBe false
+            registerAlso().hasNamesake(PartnerNumber("P000000001")) shouldBe false
             registerAlso(Person(name = "Schulz", vorname = "Max", geburtsdatum = geburtsdatum).apply { id = "P000000003" })
-                .hasNamesake("P000000001") shouldBe false
+                .hasNamesake(PartnerNumber("P000000001")) shouldBe false
         }
     }
 })

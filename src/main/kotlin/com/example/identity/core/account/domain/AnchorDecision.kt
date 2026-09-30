@@ -1,5 +1,6 @@
 package com.example.identity.core.account.domain
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.claims.AnchorRule
 import com.example.identity.contract.tool_api.directory.IdentityConflictException
@@ -36,10 +37,10 @@ sealed interface AnchorDecision {
          * @param currentValue this account's current [type] anchor value, if any.
          */
         fun decide(
-            accountId: Long,
+            accountId: AccountId,
             type: AttributeType,
             value: String,
-            heldBy: Long?,
+            heldBy: AccountId?,
             currentValue: String?,
             rule: AnchorRule,
             provenAcr: AcrLevel,

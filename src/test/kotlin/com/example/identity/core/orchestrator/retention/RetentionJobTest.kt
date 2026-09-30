@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.retention
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.core.orchestrator.session.AccountDeletionService
@@ -147,18 +148,18 @@ class RetentionJobTest : BehaviorSpec({
     given("two accounts still being set up, one of them still used by a live channel (ADR-46)") {
         val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
         every { channelSessionRepository.findByExpiresAtBefore(any(), any()) } returns emptyList()
-        every { channelSessionRepository.existsByAccountIdAndStateNotInAndExpiresAtAfter(1L, any(), any()) } returns true
-        every { channelSessionRepository.existsByAccountIdAndStateNotInAndExpiresAtAfter(2L, any(), any()) } returns false
+        every { channelSessionRepository.existsByAccountIdAndStateNotInAndExpiresAtAfter(AccountId(1L), any(), any()) } returns true
+        every { channelSessionRepository.existsByAccountIdAndStateNotInAndExpiresAtAfter(AccountId(2L), any(), any()) } returns false
         val accountService = mockk<AccountService>(relaxed = true)
-        every { accountService.accountsBeingSetUpCreatedBefore(any(), any()) } returns listOf(1L, 2L)
+        every { accountService.accountsBeingSetUpCreatedBefore(any(), any()) } returns listOf(AccountId(1), AccountId(2))
         val accountDeletionService = mockk<AccountDeletionService>(relaxed = true)
 
         `when`("the job runs") {
             job(channelSessionRepository, accountService = accountService, accountDeletionService = accountDeletionService).cleanup()
 
             then("only the abandoned one is discarded, as a whole") {
-                verify(exactly = 1) { accountDeletionService.deleteAccount(2L) }
-                verify(exactly = 0) { accountDeletionService.deleteAccount(1L) }
+                verify(exactly = 1) { accountDeletionService.deleteAccount(AccountId(2L)) }
+                verify(exactly = 0) { accountDeletionService.deleteAccount(AccountId(1L)) }
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountService
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
@@ -11,7 +12,7 @@ import org.springframework.boot.DefaultApplicationArguments
 
 class KeycloakOrphanSessionsAtStartTest : BehaviorSpec({
 
-    fun startWith(accountIds: List<Long>): KeycloakRealmSessions {
+    fun startWith(accountIds: List<AccountId>): KeycloakRealmSessions {
         val accounts = mockk<AccountService> { every { allAccountIds() } returns accountIds }
         val sessions = mockk<KeycloakRealmSessions> { every { logoutAll() } just runs }
         KeycloakOrphanSessionsAtStart(accounts, sessions).run(DefaultApplicationArguments())
@@ -27,7 +28,7 @@ class KeycloakOrphanSessionsAtStartTest : BehaviorSpec({
 
     given("a start with accounts") {
         then("their sessions stay") {
-            val sessions = startWith(listOf(1L))
+            val sessions = startWith(listOf(AccountId(1)))
             verify(exactly = 0) { sessions.logoutAll() }
         }
     }

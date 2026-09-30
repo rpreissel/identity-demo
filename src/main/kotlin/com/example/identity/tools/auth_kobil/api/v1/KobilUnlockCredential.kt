@@ -3,6 +3,7 @@ package com.example.identity.tools.auth_kobil.api.v1
 import com.example.identity.contract.tool_api.device.UserVerification
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import io.swagger.v3.oas.annotations.media.Schema
 
 /**
  * What the app presents to get the PIN released: the locally stored secret behind its biometric
@@ -18,8 +19,10 @@ sealed interface KobilUnlockCredential {
     /**
      * The access means this unlock amounts to, in `auth_device`'s vocabulary. The password maps to
      * `PIN`, not to an amr entry of its own: it unlocks this credential and is not a second login.
-     * A `password` amr would attach the real password enrollment and count it twice.
+     * A `password` amr would attach the real password enrollment and count it twice. Derived, so a
+     * client never sends it.
      */
+    @get:Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     val userVerification: UserVerification
 
     data class BiometricUnlock(val unlockSecret: String) : KobilUnlockCredential {

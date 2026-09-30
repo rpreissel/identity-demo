@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.core.orchestrator.domain.JourneyId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import jakarta.persistence.Enumerated
 import jakarta.persistence.EnumType
 import jakarta.persistence.Column
@@ -30,7 +32,7 @@ enum class ToolSessionStatus {
 @Table(schema = "orchestrator", name = "tool_session")
 class ToolSession(
     @Column(name = "journey_id", nullable = false)
-    var journeyId: UUID? = null,
+    var journeyId: JourneyId? = null,
 
     @Column(name = "expires_at", nullable = false)
     var expiresAt: Instant? = null,
@@ -39,7 +41,7 @@ class ToolSession(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", nullable = false)
-    var toolSessionId: UUID? = null
+    var toolSessionId: ToolSessionId? = null
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant? = createdAt
@@ -59,4 +61,4 @@ class ToolSession(
 }
 
 /** Set on the first save, never null afterwards (see `ChannelSession.id`). */
-val ToolSession.id: UUID get() = checkNotNull(toolSessionId) { "ToolSession not saved yet" }
+val ToolSession.id: ToolSessionId get() = checkNotNull(toolSessionId) { "ToolSession not saved yet" }

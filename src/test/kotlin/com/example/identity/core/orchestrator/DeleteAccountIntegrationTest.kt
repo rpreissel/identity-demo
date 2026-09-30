@@ -94,7 +94,7 @@ class DeleteAccountIntegrationTest : IntegrationTestSupport() {
                 jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM account.account WHERE id = ?",
                     Int::class.java,
-                    accountId
+                    accountId.value
                 ) shouldBe 1
             }
         }

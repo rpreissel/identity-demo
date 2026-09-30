@@ -1,5 +1,8 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.core.orchestrator.domain.SessionEvidenceId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
@@ -31,12 +34,12 @@ import com.example.identity.core.orchestrator.domain.AmrSource
 class TokenServiceTest : BehaviorSpec({
 
     fun appTokenSession(
-        accountId: Long? = 42L,
+        accountId: AccountId? = AccountId(42L),
         accessToken: String? = null,
         accessExpiresAt: Instant? = null,
         refreshToken: String? = null,
         refreshExpiresAt: Instant? = null,
-        sessionEvidenceId: UUID? = UUID.randomUUID(),
+        sessionEvidenceId: SessionEvidenceId? = SessionEvidenceId(UUID.randomUUID()),
         // A context with tokens belongs to a login whose session is open.
         keycloakSessionId: String? = if (refreshExpiresAt != null) "${TokenService.MOCK_SESSION_PREFIX}test" else null
     ) = AppTokenSession(accountId = accountId, keycloakSessionId = keycloakSessionId, now = TEST_NOW).apply {
@@ -47,7 +50,7 @@ class TokenServiceTest : BehaviorSpec({
         this.sessionEvidenceId = sessionEvidenceId
     }
 
-    fun evidence(accountId: Long = 42L) = SessionEvidenceRecord(Subject.Account(accountId), TEST_NOW).apply {
+    fun evidence(accountId: AccountId = AccountId(42L)) = SessionEvidenceRecord(Subject.Account(accountId), TEST_NOW).apply {
         addAmr(
             listOf(
                 MethodEvidence(MethodName("sms"), AcrLevel.LOA1, amrSourceId = "auth-sms", source = AmrSource.ORCHESTRATOR),
@@ -57,7 +60,7 @@ class TokenServiceTest : BehaviorSpec({
         )
     }
 
-    fun evidenceService(sessionEvidenceId: UUID?, forAccount: SessionEvidenceRecord?): SessionEvidenceService {
+    fun evidenceService(sessionEvidenceId: SessionEvidenceId?, forAccount: SessionEvidenceRecord?): SessionEvidenceService {
         val service = mockk<SessionEvidenceService>()
         every { service.getSessionEvidence(any()) } returns null
         if (sessionEvidenceId != null) every { service.getSessionEvidence(sessionEvidenceId) } returns forAccount
@@ -196,13 +199,13 @@ class TokenServiceTest : BehaviorSpec({
 
     given("minting a fresh AccessToken") {
         val appTokenSessionId = UUID.randomUUID()
-        val ctx = appTokenSession(accountId = 99L)
+        val ctx = appTokenSession(accountId = AccountId(99L))
         val repository = mockk<AppTokenSessionRepository>()
         every { repository.findById(appTokenSessionId) } returns Optional.of(ctx)
         every { repository.save(any()) } answers { firstArg() }
 
         then("it is a spec-shaped unsecured JWT carrying the session's own acr/amr, parseable without a key") {
-            val result = service(repository, evidenceService(ctx.sessionEvidenceId, evidence(accountId = 99L))).tokenFor(appTokenSessionId)
+            val result = service(repository, evidenceService(ctx.sessionEvidenceId, evidence(accountId = AccountId(99L)))).tokenFor(appTokenSessionId)
 
             val claims = PlainJWT.parse(result.accessToken).jwtClaimsSet
             claims.subject shouldBe "99"
@@ -218,17 +221,17 @@ class TokenServiceTest : BehaviorSpec({
     given("resolving the ID-token claims for a known account") {
         then("the fachliche claim set carries account and person identifiers, not just the raw session state") {
             val appTokenSessionId = UUID.randomUUID()
-            val ctx = appTokenSession(accountId = 7L)
+            val ctx = appTokenSession(accountId = AccountId(7L))
             ctx.authTime = TEST_NOW
             val repository = mockk<AppTokenSessionRepository>()
             every { repository.findById(appTokenSessionId) } returns Optional.of(ctx)
             val accountService = mockk<AccountService>()
-            every { accountService.findAccount(7L) } returns com.example.identity.core.account.AccountProfile(
-                accountId = 7L, personId = "P000000055", authenticationMethods = emptyList(),
+            every { accountService.findAccount(AccountId(7L)) } returns com.example.identity.core.account.AccountProfile(
+                accountId = AccountId(7L), personId = PartnerNumber("P000000055"), authenticationMethods = emptyList(),
                 email = "max@example.test", emailConfirmedAt = TEST_NOW
             )
 
-            val claims = service(repository, evidenceService(ctx.sessionEvidenceId, evidence(accountId = 7L)), accountService = accountService).idClaims(appTokenSessionId)
+            val claims = service(repository, evidenceService(ctx.sessionEvidenceId, evidence(accountId = AccountId(7L))), accountService = accountService).idClaims(appTokenSessionId)
 
             claims["sub"] shouldBe "7"
             claims["personId"] shouldBe "P000000055"
@@ -239,18 +242,18 @@ class TokenServiceTest : BehaviorSpec({
 
     given("resolving the ID-token claims for a full-attested Interessent (ADR-18: no register person)") {
         val appTokenSessionId = UUID.randomUUID()
-        val ctx = appTokenSession(accountId = 8L)
+        val ctx = appTokenSession(accountId = AccountId(8L))
         ctx.authTime = TEST_NOW
         val repository = mockk<AppTokenSessionRepository>()
         every { repository.findById(appTokenSessionId) } returns Optional.of(ctx)
 
         fun accountService(attested: Map<AttributeType, String>): AccountService {
             val accountService = mockk<AccountService>()
-            every { accountService.findAccount(8L) } returns com.example.identity.core.account.AccountProfile(
-                accountId = 8L, personId = null, authenticationMethods = emptyList(),
+            every { accountService.findAccount(AccountId(8L)) } returns com.example.identity.core.account.AccountProfile(
+                accountId = AccountId(8L), personId = null, authenticationMethods = emptyList(),
                 email = "erika@example.test", emailConfirmedAt = TEST_NOW
             )
-            every { accountService.establishedClaimValues(8L, any()) } returns attested
+            every { accountService.establishedClaimValues(AccountId(8L), any()) } returns attested
             return accountService
         }
 
@@ -259,7 +262,7 @@ class TokenServiceTest : BehaviorSpec({
 
             val claims = service(
                 repository,
-                evidenceService(ctx.sessionEvidenceId, evidence(accountId = 8L)),
+                evidenceService(ctx.sessionEvidenceId, evidence(accountId = AccountId(8L))),
                 accountService = accountService(mapOf(AttributeType.GIVEN_NAMES to "Erika", AttributeType.FAMILY_NAME to "Musterfrau")),
                 personDirectory = personDirectory
             ).idClaims(appTokenSessionId)
@@ -272,7 +275,7 @@ class TokenServiceTest : BehaviorSpec({
         then("without any attested name claims either, the name is null - not a placeholder") {
             val claims = service(
                 repository,
-                evidenceService(ctx.sessionEvidenceId, evidence(accountId = 8L)),
+                evidenceService(ctx.sessionEvidenceId, evidence(accountId = AccountId(8L))),
                 accountService = accountService(emptyMap())
             ).idClaims(appTokenSessionId)
 

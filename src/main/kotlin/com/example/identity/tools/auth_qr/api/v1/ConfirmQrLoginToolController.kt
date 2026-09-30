@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_qr.api.v1
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor
 import com.example.identity.tools.auth_qr.internal.confirmqrlogin.ConfirmQrLoginToolHandler
 import com.example.identity.contract.tool_api.directory.AccountDirectory
@@ -11,7 +13,6 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
-import java.util.UUID
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -54,7 +55,7 @@ class ConfirmQrLoginToolController(
         description = "Optional body: {pairingCode}, when already known (e.g. from a demo-link deep link) - skips the input step."
     )
     fun activate(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestBody(required = false) request: ConfirmQrLoginActivateRequest?,
         uriBuilder: UriComponentsBuilder
@@ -72,7 +73,7 @@ class ConfirmQrLoginToolController(
         description = "First call: {pairingCode}. Once resolved: {decision: accept|reject}."
     )
     fun patch(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestBody(required = false) request: ConfirmQrLoginPatchRequest?
     ): ResponseEntity<ChannelResponse> {
@@ -91,7 +92,7 @@ class ConfirmQrLoginToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/confirm-qr-login")
     @Operation(summary = "Read the current confirm-qr-login state")
     fun read(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, CONFIRM_QR_LOGIN_TOOL_ID)

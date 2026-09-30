@@ -1,11 +1,12 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.demo.demo_mode.OutsideDemoMode
 import com.example.identity.demo.demo_mode.OnlyInDemoMode
 import com.example.identity.contract.tool_api.envelope.DemoInfo
 import com.example.identity.contract.tool_api.envelope.DemoSession
 import com.example.identity.contract.tool_api.envelope.JourneyDebugStep
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 
 /**
@@ -22,8 +23,8 @@ interface DemoDisclosure {
      * @return the block for the response, or `null` when there is nothing that may be said.
      */
     fun assemble(
-        accountId: Long?,
-        personId: String?,
+        accountId: AccountId?,
+        personId: PartnerNumber?,
         journeys: List<JourneyDebugStep>,
         values: Map<String, Any?>? = null,
         includeWhenEmpty: Boolean = false,
@@ -40,8 +41,8 @@ interface DemoDisclosure {
 class DisclosingDemoDisclosure(private val personas: DemoPersonas) : DemoDisclosure {
 
     override fun assemble(
-        accountId: Long?,
-        personId: String?,
+        accountId: AccountId?,
+        personId: PartnerNumber?,
         journeys: List<JourneyDebugStep>,
         values: Map<String, Any?>?,
         includeWhenEmpty: Boolean,
@@ -64,8 +65,8 @@ class DisclosingDemoDisclosure(private val personas: DemoPersonas) : DemoDisclos
 class WithheldDemoDisclosure : DemoDisclosure {
 
     override fun assemble(
-        accountId: Long?,
-        personId: String?,
+        accountId: AccountId?,
+        personId: PartnerNumber?,
         journeys: List<JourneyDebugStep>,
         values: Map<String, Any?>?,
         includeWhenEmpty: Boolean,

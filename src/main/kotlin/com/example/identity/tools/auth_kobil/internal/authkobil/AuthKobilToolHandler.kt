@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_kobil.internal.authkobil
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_kobil.AuthKobilDescriptor
@@ -20,7 +21,6 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 import com.example.identity.tools.auth_kobil.api.v1.KobilOtpStep
 
 /**
@@ -52,7 +52,7 @@ class AuthKobilToolHandler(
      * methods. It decides whether the password unlock is offered at all.
      */
     @Transactional
-    fun start(toolSessionId: UUID, enrollmentRef: EnrollmentRef, passwordAvailable: Boolean): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId, enrollmentRef: EnrollmentRef, passwordAvailable: Boolean): ToolOutcome {
         val session = toolDataRepository.save(
             AuthKobilToolSession(
                 toolSessionId = toolSessionId,
@@ -72,7 +72,7 @@ class AuthKobilToolHandler(
      */
     @Transactional
     fun releasePin(
-        toolSessionId: UUID,
+        toolSessionId: ToolSessionId,
         unlock: KobilUnlockCredential,
         passwordEnrollment: EnrollmentRef?,
     ): ToolOutcome {
@@ -129,7 +129,7 @@ class AuthKobilToolHandler(
 
     /** Redeems the one-time password at KOBIL and decides on the assertion behind it. */
     @Transactional
-    fun patch(toolSessionId: UUID, otp: String?): ToolOutcome {
+    fun patch(toolSessionId: ToolSessionId, otp: String?): ToolOutcome {
         val session = loadSession(toolSessionId)
         val enrollment = loadEnrollment(session)
         val release = session.liveRelease(clock.instant())
@@ -167,11 +167,11 @@ class AuthKobilToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID, passwordAvailable: Boolean): ToolOutcome =
+    fun read(toolSessionId: ToolSessionId, passwordAvailable: Boolean): ToolOutcome =
         inProgress(stateOf(loadSession(toolSessionId), passwordAvailable))
 
-    private fun loadSession(toolSessionId: UUID): AuthKobilToolSession =
-        checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) {
+    private fun loadSession(toolSessionId: ToolSessionId): AuthKobilToolSession =
+        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) {
             "Unknown auth-kobil tool session: $toolSessionId"
         }
 

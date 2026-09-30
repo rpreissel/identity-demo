@@ -1,5 +1,6 @@
 package com.example.identity.simulation.personenverzeichnis.internal
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -12,7 +13,7 @@ import java.time.Instant
 @Table(schema = "personenverzeichnis", name = "freischaltcode")
 class Freischaltcode(
     @Column(name = "person_id", nullable = false, length = 10)
-    var personId: String? = null,
+    var personId: PartnerNumber? = null,
 
     /**
      * SHA-256 of the code, never the code itself. Unlike the six-digit TANs elsewhere this needs

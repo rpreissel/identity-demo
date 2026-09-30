@@ -1,5 +1,6 @@
 package com.example.identity.simulation.personenverzeichnis
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.simulation.personenverzeichnis.internal.Brief
@@ -18,7 +19,7 @@ class FreischaltcodesTest : BehaviorSpec({
 
     fun code(id: Long, expiresIn: Long, revoked: Boolean = false) =
         Freischaltcode(
-            personId = "P000000007",
+            personId = PartnerNumber("P000000007"),
             codeHash = "h",
             expiresAt = TEST_NOW.plusSeconds(expiresIn),
             revokedAt = if (revoked) TEST_NOW else null
@@ -29,20 +30,20 @@ class FreischaltcodesTest : BehaviorSpec({
         val service = Freischaltcodes(codes, mockk(), clock = TEST_CLOCK)
 
         then("a current code is valid") {
-            every { codes.findByPersonIdAndCodeHash("P000000007", "h") } returns listOf(code(1, 600))
-            service.pruefe("P000000007", "h") shouldBe true
+            every { codes.findByPersonIdAndCodeHash(PartnerNumber("P000000007"), "h") } returns listOf(code(1, 600))
+            service.pruefe(PartnerNumber("P000000007"), "h") shouldBe true
         }
         then("an expired code is not") {
-            every { codes.findByPersonIdAndCodeHash("P000000007", "h") } returns listOf(code(1, -1))
-            service.pruefe("P000000007", "h") shouldBe false
+            every { codes.findByPersonIdAndCodeHash(PartnerNumber("P000000007"), "h") } returns listOf(code(1, -1))
+            service.pruefe(PartnerNumber("P000000007"), "h") shouldBe false
         }
         then("a revoked code is not") {
-            every { codes.findByPersonIdAndCodeHash("P000000007", "h") } returns listOf(code(1, 600, revoked = true))
-            service.pruefe("P000000007", "h") shouldBe false
+            every { codes.findByPersonIdAndCodeHash(PartnerNumber("P000000007"), "h") } returns listOf(code(1, 600, revoked = true))
+            service.pruefe(PartnerNumber("P000000007"), "h") shouldBe false
         }
         then("an unknown hash is not") {
-            every { codes.findByPersonIdAndCodeHash("P000000007", "h") } returns emptyList()
-            service.pruefe("P000000007", "h") shouldBe false
+            every { codes.findByPersonIdAndCodeHash(PartnerNumber("P000000007"), "h") } returns emptyList()
+            service.pruefe(PartnerNumber("P000000007"), "h") shouldBe false
         }
     }
 
@@ -56,7 +57,7 @@ class FreischaltcodesTest : BehaviorSpec({
         every { briefe.save(capture(storedBrief)) } answers { storedBrief.captured.also { it.id = 21L } }
 
         then("the letter carries the plaintext whose digest is what the register stores") {
-            val brief = service.ausstellen("P000000007", TEST_NOW.plusSeconds(3600))
+            val brief = service.ausstellen(PartnerNumber("P000000007"), TEST_NOW.plusSeconds(3600))
 
             brief.freischaltcodeId shouldBe 11L
             storedCode.captured.codeHash shouldBe Freischaltcodes.hash(brief.code)
@@ -68,14 +69,14 @@ class FreischaltcodesTest : BehaviorSpec({
         val codes = mockk<FreischaltcodeRepository>()
         val briefe = mockk<BriefRepository>()
         val service = Freischaltcodes(codes, briefe, clock = TEST_CLOCK)
-        every { codes.findByPersonIdOrderByIdDesc("P000000007") } returns listOf(code(2, 600, revoked = true), code(1, 600))
-        every { briefe.findByPersonIdOrderByIdDesc("P000000007") } returns listOf(
-            Brief(personId = "P000000007", freischaltcodeId = 2L, code = "NEU", versandtAm = TEST_NOW),
-            Brief(personId = "P000000007", freischaltcodeId = 1L, code = "ALT", versandtAm = TEST_NOW)
+        every { codes.findByPersonIdOrderByIdDesc(PartnerNumber("P000000007")) } returns listOf(code(2, 600, revoked = true), code(1, 600))
+        every { briefe.findByPersonIdOrderByIdDesc(PartnerNumber("P000000007")) } returns listOf(
+            Brief(personId = PartnerNumber("P000000007"), freischaltcodeId = 2L, code = "NEU", versandtAm = TEST_NOW),
+            Brief(personId = PartnerNumber("P000000007"), freischaltcodeId = 1L, code = "ALT", versandtAm = TEST_NOW)
         )
 
         then("it skips the letter of a revoked code") {
-            service.juengsterGueltigerCode("P000000007") shouldBe "ALT"
+            service.juengsterGueltigerCode(PartnerNumber("P000000007")) shouldBe "ALT"
         }
     }
 

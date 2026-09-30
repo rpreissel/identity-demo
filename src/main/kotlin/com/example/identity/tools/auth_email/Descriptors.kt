@@ -35,7 +35,7 @@ object ConfirmEmailDescriptor : ToolDescriptor {
     override val factorTypes = emptySet<FactorType>()
     override val maxAcr = AcrLevel.LOA1
     // The code exchange itself is the proof, so this tool is the claim's source.
-    override val claims = setOf(ClaimDeclaration(AttributeType.EMAIL, ClaimSource.of(toolId)))
+    override val claims = setOf(ClaimDeclaration(AttributeType.EMAIL, ClaimSource(toolId.value)))
 }
 
 /**

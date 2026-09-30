@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.core.orchestrator.domain.journey.strategy.AuthEnrollCore
 import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterEnrollFirstStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterStrategy
 import com.example.identity.core.orchestrator.domain.ChannelType
@@ -222,7 +221,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
 
         `when`("the email is confirmed (Attested)") {
             val outcome = ToolOutcome.Completed.Attested(
-                claims = listOf(Claim(AttributeType.EMAIL, "max@example.com", ClaimSource.of(ToolId("confirm-email"))))
+                claims = listOf(Claim(AttributeType.EMAIL, "max@example.com", ClaimSource("confirm-email")))
             )
             val event = JourneyEvent.Completed(ConfirmEmailDescriptor, outcome)
             val transition = strategy.transition(state, event, theCtx)

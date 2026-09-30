@@ -7,24 +7,27 @@ import io.kotest.matchers.shouldBe
 
 class KvnrTest : BehaviorSpec({
 
-    given("ofOrNull") {
+    given("parse") {
         then("normalizes to trimmed uppercase") {
-            Kvnr.ofOrNull(" a123456789 ")?.value shouldBe "A123456789"
+            Kvnr.parse(" a123456789 ")?.value shouldBe "A123456789"
         }
         then("rejects a value that isn't one letter followed by nine digits") {
-            Kvnr.ofOrNull("A12345678").shouldBeNull()
-            Kvnr.ofOrNull("A1234567890").shouldBeNull()
-            Kvnr.ofOrNull("AB123456789").shouldBeNull()
-            Kvnr.ofOrNull("1234567890").shouldBeNull()
+            Kvnr.parse("A12345678").shouldBeNull()
+            Kvnr.parse("A1234567890").shouldBeNull()
+            Kvnr.parse("AB123456789").shouldBeNull()
+            Kvnr.parse("1234567890").shouldBeNull()
         }
     }
 
-    given("of") {
+    given("the constructor") {
         then("throws for a malformed value") {
-            shouldThrow<IllegalArgumentException> { Kvnr.of("not-a-kvnr") }
+            shouldThrow<IllegalArgumentException> { Kvnr("not-a-kvnr") }
         }
-        then("returns the normalized value for a well-formed one") {
-            Kvnr.of("a123456789").value shouldBe "A123456789"
+        then("throws for a value not in normal form - normalizing is parse's job") {
+            shouldThrow<IllegalArgumentException> { Kvnr("a123456789") }
+        }
+        then("takes a value in normal form") {
+            Kvnr("A123456789").value shouldBe "A123456789"
         }
     }
 })

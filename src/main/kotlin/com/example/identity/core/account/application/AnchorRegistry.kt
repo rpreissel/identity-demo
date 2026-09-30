@@ -1,5 +1,6 @@
 package com.example.identity.core.account.application
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.infrastructure.AccountAnchor
 import com.example.identity.core.account.infrastructure.AccountAnchorRepository
 import com.example.identity.core.account.domain.AnchorDecision
@@ -24,7 +25,7 @@ class AnchorRegistry(
      * Materializes an anchor row as [AnchorDecision] decides (ADR-11, ADR-19, ADR-5 floors). The
      * caller holds the account lock (`AccountService.recordClaims`).
      */
-    fun bind(accountId: Long, type: AttributeType, value: String, establishedAt: Instant, provenAcr: AcrLevel) {
+    fun bind(accountId: AccountId, type: AttributeType, value: String, establishedAt: Instant, provenAcr: AcrLevel) {
         val rule = checkNotNull(type.anchorRule) { "$type is not a local anchor attribute" }
         val normalized = type.normalizeAnchorValue(value)
         val existing = accountAnchorRepository.findByAccountIdAndAttributeType(accountId, type)
@@ -56,17 +57,17 @@ class AnchorRegistry(
     }
 
     /** The account holding [value] as its [type] anchor, or `null`. */
-    fun holderOf(type: AttributeType, value: String): Long? =
+    fun holderOf(type: AttributeType, value: String): AccountId? =
         accountAnchorRepository.findByAttributeTypeAndValue(type, type.normalizeAnchorValue(value))?.accountId
 
     /** This account's [type] anchor value, or `null`. */
-    fun valueOf(accountId: Long, type: AttributeType): String? =
+    fun valueOf(accountId: AccountId, type: AttributeType): String? =
         accountAnchorRepository.findByAccountIdAndAttributeType(accountId, type)?.value
 
-    fun anchorsOf(accountId: Long): List<AccountAnchor> = accountAnchorRepository.findByAccountId(accountId)
+    fun anchorsOf(accountId: AccountId): List<AccountAnchor> = accountAnchorRepository.findByAccountId(accountId)
 
     /** Deletes this account's [type] anchor, if any (ADR-12: nothing resolves the account by it afterwards). */
-    fun remove(accountId: Long, type: AttributeType) {
+    fun remove(accountId: AccountId, type: AttributeType) {
         accountAnchorRepository.findByAccountIdAndAttributeType(accountId, type)?.let { accountAnchorRepository.delete(it) }
     }
 

@@ -1,5 +1,6 @@
 package com.example.identity.contract.tool_api.directory
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.claims.AttributeType
 
 
@@ -10,7 +11,7 @@ import com.example.identity.contract.tool_api.claims.AttributeType
  * not know each other.
  */
 data class PersonChanged(
-    val personId: String,
+    val personId: PartnerNumber,
     val changed: Set<AttributeType>,
     val kvnr: String?,
     val memberNumber: String?

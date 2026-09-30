@@ -1,6 +1,9 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.core.orchestrator.domain.SessionEvidenceId
 import com.example.identity.contract.tool_api.Subject
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
@@ -34,12 +37,12 @@ class SessionEvidenceRecord(
 ) {
     /** The account of [subject], if the subject is one. Written only through [subject]. */
     @Column(name = "account_id")
-    var accountId: Long? = null
+    var accountId: AccountId? = null
         protected set
 
     /** The invitation of [subject], if the subject is one. Written only through [subject]. */
     @Column(name = "invitation", length = 64)
-    var invitation: String? = null
+    var invitation: InvitationId? = null
         protected set
 
     /**
@@ -61,7 +64,7 @@ class SessionEvidenceRecord(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", nullable = false)
-    var sessionEvidenceId: UUID? = null
+    var sessionEvidenceId: SessionEvidenceId? = null
 
     /**
      * One record per method proven in this channel (docs/04-orchestrierung.md #1). One JSON column
@@ -171,7 +174,7 @@ data class MethodEvidenceRecord(
  * through here.
  */
 fun MethodEvidenceRecord.toMethodEvidence(): MethodEvidence =
-    MethodEvidence(MethodName(method), AcrLevel.of(loa), enrolledUnderAcr?.let(AcrLevel::of), factorTypes, source, amrSourceId, axis, provenAt)
+    MethodEvidence(MethodName(method), AcrLevel.parse(loa) ?: AcrLevel.NONE, enrolledUnderAcr?.let(AcrLevel::parse), factorTypes, source, amrSourceId, axis, provenAt)
 
 /** The core [SessionEvidence] this channel's evidence currently is. */
 fun SessionEvidenceRecord.toCoreEvidence(): SessionEvidence = SessionEvidence(methods.map { it.toMethodEvidence() })

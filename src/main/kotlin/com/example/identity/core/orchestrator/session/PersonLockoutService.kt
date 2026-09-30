@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
@@ -14,14 +15,14 @@ import java.time.Duration
 @Transactional
 class PersonLockoutService(private val counter: RateLimitCounter) {
 
-    fun isLocked(personId: String): Boolean = counter.isLocked(RateLimitScope.PERSON, key(personId))
+    fun isLocked(personId: PartnerNumber): Boolean = counter.isLocked(RateLimitScope.PERSON, key(personId))
 
-    fun recordFailure(personId: String) =
+    fun recordFailure(personId: PartnerNumber) =
         counter.recordFailure(RateLimitScope.PERSON, key(personId), MAX_FAILURES, LOCKOUT_DURATION)
 
-    fun recordSuccess(personId: String) = counter.reset(RateLimitScope.PERSON, key(personId))
+    fun recordSuccess(personId: PartnerNumber) = counter.reset(RateLimitScope.PERSON, key(personId))
 
-    private fun key(personId: String) = personId
+    private fun key(personId: PartnerNumber) = personId.value
 
     companion object {
         private const val MAX_FAILURES = 5

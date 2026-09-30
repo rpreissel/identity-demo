@@ -1,5 +1,8 @@
 package com.example.identity.contract.tool_api.envelope
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.StepData
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.texts.Text
@@ -7,7 +10,6 @@ import com.fasterxml.jackson.annotation.JsonAnyGetter
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.swagger.v3.oas.annotations.media.Schema
-import java.util.UUID
 
 @Schema(
     description = "One active authentication method instance. `id` addresses it for " +
@@ -42,7 +44,7 @@ data class ActiveMethodView(
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ChannelBlock(
-    val channelSessionId: UUID,
+    val channelSessionId: ChannelSessionId,
     @field:Schema(
         description = "Which facade this channel was opened through - APP (DPoP) or WEB " +
             "(docs/02-domaenenmodell.md Abschnitt 1). Fixed for the channel's whole lifetime.",
@@ -180,9 +182,9 @@ data class DemoSession(
 @Schema(additionalProperties = Schema.AdditionalPropertiesValue.TRUE)
 data class DemoInfo(
     @field:Schema(example = "42")
-    val accountId: Long? = null,
+    val accountId: AccountId? = null,
     @field:Schema(example = "P000000001")
-    val personId: String? = null,
+    val personId: PartnerNumber? = null,
     @field:Schema(
         description = "The running journey chain for this channel, outermost first - see " +
             "[JourneyDebugStep]. Empty once nothing is running."

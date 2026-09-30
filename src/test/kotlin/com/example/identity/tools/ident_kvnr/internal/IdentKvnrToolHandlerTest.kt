@@ -1,5 +1,7 @@
 package com.example.identity.tools.ident_kvnr.internal
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.directory.PersonDirectory
@@ -14,7 +16,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
-import java.util.Optional
 import java.util.UUID
 
 /**
@@ -25,21 +26,21 @@ import java.util.UUID
  */
 class IdentKvnrToolHandlerTest : BehaviorSpec({
 
-    val toolSessionId = UUID.randomUUID()
+    val toolSessionId = ToolSessionId(UUID.randomUUID())
     val repository = mockk<IdentKvnrToolSessionRepository>()
     val personDirectory = mockk<PersonDirectory>()
     val handler = IdentKvnrToolHandler(IdentKvnrDescriptor, repository, personDirectory, clock = TEST_CLOCK)
     val data = IdentKvnrToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
 
     beforeTest {
-        every { repository.findById(toolSessionId) } returns Optional.of(data)
+        every { repository.findByToolSessionId(toolSessionId) } returns data
         every { repository.save(any()) } returns data
         every { personDirectory.memberNumberOf(any()) } returns null
     }
 
     given("a KVNR the register resolves") {
         then("it asserts the person reference and the number, both vouched for by the register") {
-            val outcome = handler.patch(toolSessionId, "A123456789", partnerNumber = null, personId = "P000000042", matchesAttestedIdentity = true)
+            val outcome = handler.patch(toolSessionId, "A123456789", partnerNumber = null, personId = PartnerNumber("P000000042"), matchesAttestedIdentity = true)
 
             outcome.shouldBeInstanceOf<ToolOutcome.Completed.Identified>()
             outcome.claims shouldBe listOf(
@@ -51,9 +52,9 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
 
     given("a person insured with us") {
         then("the Versicherungsnummer comes along as an anchor claim (ADR-34)") {
-            every { personDirectory.memberNumberOf("P000000042") } returns "10000001"
+            every { personDirectory.memberNumberOf(PartnerNumber("P000000042")) } returns "10000001"
 
-            val outcome = handler.patch(toolSessionId, "A123456789", partnerNumber = null, personId = "P000000042", matchesAttestedIdentity = true)
+            val outcome = handler.patch(toolSessionId, "A123456789", partnerNumber = null, personId = PartnerNumber("P000000042"), matchesAttestedIdentity = true)
 
             outcome.shouldBeInstanceOf<ToolOutcome.Completed.Identified>()
             outcome.claims.last() shouldBe Claim(AttributeType.MEMBER_NUMBER, "10000001", ClaimSource.PERSON_DIRECTORY, IdentKvnrDescriptor.maxAcr)
@@ -62,7 +63,7 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
 
     given("a Partner without a KVNR, identified by Partnernummer (ADR-34)") {
         then("it asserts the person reference only - no KVNR claim") {
-            val outcome = handler.patch(toolSessionId, kvnr = null, partnerNumber = "P000000004", personId = "P000000004", matchesAttestedIdentity = true)
+            val outcome = handler.patch(toolSessionId, kvnr = null, partnerNumber = "P000000004", personId = PartnerNumber("P000000004"), matchesAttestedIdentity = true)
 
             outcome.shouldBeInstanceOf<ToolOutcome.Completed.Identified>()
             outcome.claims shouldBe listOf(
@@ -89,11 +90,11 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
 
     given("a KVNR that belongs to a person other than the one this account had attested") {
         then("it fails exactly like an unknown one, but counts the guess against that person") {
-            val outcome = handler.patch(toolSessionId, "A123456789", partnerNumber = null, personId = "P000000042", matchesAttestedIdentity = false)
+            val outcome = handler.patch(toolSessionId, "A123456789", partnerNumber = null, personId = PartnerNumber("P000000042"), matchesAttestedIdentity = false)
 
             outcome.shouldBeInstanceOf<ToolOutcome.Failed.Identification>()
             outcome.reason.template shouldBe "Versichertennummer konnte nicht zugeordnet werden"
-            outcome.attemptedPersonId shouldBe "P000000042"
+            outcome.attemptedPersonId shouldBe PartnerNumber("P000000042")
         }
     }
 

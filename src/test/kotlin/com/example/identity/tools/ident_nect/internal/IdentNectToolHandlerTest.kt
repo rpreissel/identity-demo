@@ -1,5 +1,6 @@
 package com.example.identity.tools.ident_nect.internal
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -27,7 +28,6 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import java.time.LocalDate
-import java.util.Optional
 import java.util.UUID
 
 /**
@@ -39,13 +39,13 @@ class IdentNectToolHandlerTest : BehaviorSpec({
     val repository = mockk<IdNectToolSessionRepository>()
     val nect = mockk<NectIdent>()
     val handler = IdentNectToolHandler(IdentNectDescriptor, repository, nect, clock = TEST_CLOCK)
-    val source = ClaimSource.of(IdentNectDescriptor.toolId)
+    val source = ClaimSource(IdentNectDescriptor.toolId.value)
 
     /** A tool session waiting for a fresh case; returns both ids. */
-    fun waitingForCase(): Pair<UUID, UUID> {
-        val toolSessionId = UUID.randomUUID()
+    fun waitingForCase(): Pair<ToolSessionId, UUID> {
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
         val caseId = UUID.randomUUID()
-        every { repository.findById(toolSessionId) } returns Optional.of(IdNectToolSession(toolSessionId = toolSessionId, caseId = caseId, createdAt = TEST_NOW))
+        every { repository.findByToolSessionId(toolSessionId) } returns IdNectToolSession(toolSessionId = toolSessionId, caseId = caseId, createdAt = TEST_NOW)
         return toolSessionId to caseId
     }
 
@@ -61,7 +61,7 @@ class IdentNectToolHandlerTest : BehaviorSpec({
 
     given("start()") {
         `when`("an ident-nect run begins") {
-            val toolSessionId = UUID.randomUUID()
+            val toolSessionId = ToolSessionId(UUID.randomUUID())
             val caseId = UUID.randomUUID()
             every { nect.createCase(NECT_CALLBACK_URI, NECT_REQUESTED) } returns NectCaseRef(caseId, "/nect/?case=$caseId")
             val saved = slot<IdNectToolSession>()
@@ -81,7 +81,7 @@ class IdentNectToolHandlerTest : BehaviorSpec({
         val actionUrl = "https://kc.test/realms/Demo/login-actions/authenticate?session_code=c1&execution=e1&client_id=web&tab_id=t1"
 
         `when`("the address lies under a configured prefix") {
-            val toolSessionId = UUID.randomUUID()
+            val toolSessionId = ToolSessionId(UUID.randomUUID())
             val caseId = UUID.randomUUID()
             every { nect.createCase(actionUrl, NECT_REQUESTED) } returns NectCaseRef(caseId, "/nect/?case=$caseId")
             val saved = slot<IdNectToolSession>()
@@ -95,12 +95,12 @@ class IdentNectToolHandlerTest : BehaviorSpec({
         }
 
         `when`("a retry follows on such a session") {
-            val toolSessionId = UUID.randomUUID()
+            val toolSessionId = ToolSessionId(UUID.randomUUID())
             val oldCase = UUID.randomUUID()
             val newCase = UUID.randomUUID()
-            every { repository.findById(toolSessionId) } returns Optional.of(
+            every { repository.findByToolSessionId(toolSessionId) } returns 
                 IdNectToolSession(toolSessionId = toolSessionId, caseId = oldCase, returnUri = actionUrl, createdAt = TEST_NOW)
-            )
+            
             every { nect.createCase(actionUrl, NECT_REQUESTED) } returns NectCaseRef(newCase, "/nect/?case=$newCase")
             every { repository.save(any()) } answers { firstArg() }
             val outcome = webHandler.patch(toolSessionId, caseId = oldCase, retry = true)
@@ -112,12 +112,12 @@ class IdentNectToolHandlerTest : BehaviorSpec({
         }
 
         `when`("a retry names a fresh address of its own") {
-            val toolSessionId = UUID.randomUUID()
+            val toolSessionId = ToolSessionId(UUID.randomUUID())
             val oldCase = UUID.randomUUID()
             val newCase = UUID.randomUUID()
             val freshUrl = "https://kc.test/realms/Demo/login-actions/authenticate?session_code=c2&execution=e1&client_id=web&tab_id=t1"
             val session = IdNectToolSession(toolSessionId = toolSessionId, caseId = oldCase, returnUri = actionUrl, createdAt = TEST_NOW)
-            every { repository.findById(toolSessionId) } returns Optional.of(session)
+            every { repository.findByToolSessionId(toolSessionId) } returns session
             every { nect.createCase(freshUrl, NECT_REQUESTED) } returns NectCaseRef(newCase, "/nect/?case=$newCase")
             every { repository.save(any()) } answers { firstArg() }
             val outcome = webHandler.patch(toolSessionId, caseId = oldCase, retry = true, returnUri = freshUrl)
@@ -129,10 +129,10 @@ class IdentNectToolHandlerTest : BehaviorSpec({
         }
 
         `when`("a retry names an address outside the prefixes") {
-            val toolSessionId = UUID.randomUUID()
-            every { repository.findById(toolSessionId) } returns Optional.of(
+            val toolSessionId = ToolSessionId(UUID.randomUUID())
+            every { repository.findByToolSessionId(toolSessionId) } returns 
                 IdNectToolSession(toolSessionId = toolSessionId, caseId = UUID.randomUUID(), returnUri = actionUrl, createdAt = TEST_NOW)
-            )
+            
             val result = runCatching { webHandler.patch(toolSessionId, caseId = null, retry = true, returnUri = "https://attacker.example/return") }
 
             then("it is rejected as bad input, and no case is opened") {
@@ -145,14 +145,14 @@ class IdentNectToolHandlerTest : BehaviorSpec({
             val elsewhere = "https://attacker.example/return"
 
             then("the start is rejected as bad input, and no case is opened") {
-                shouldThrow<IllegalArgumentException> { webHandler.start(UUID.randomUUID(), returnUri = elsewhere) }
+                shouldThrow<IllegalArgumentException> { webHandler.start(ToolSessionId(UUID.randomUUID()), returnUri = elsewhere) }
                 verify(exactly = 0) { nect.createCase(elsewhere, any()) }
             }
         }
 
         `when`("no prefix is configured at all") {
             then("only the app channel's own address is left") {
-                shouldThrow<IllegalArgumentException> { handler.start(UUID.randomUUID(), returnUri = actionUrl) }
+                shouldThrow<IllegalArgumentException> { handler.start(ToolSessionId(UUID.randomUUID()), returnUri = actionUrl) }
             }
         }
     }

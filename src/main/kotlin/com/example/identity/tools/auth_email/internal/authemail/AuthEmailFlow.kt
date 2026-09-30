@@ -1,8 +1,8 @@
 package com.example.identity.tools.auth_email.internal.authemail
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import java.time.Instant
-import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.StepData
 
@@ -22,7 +22,7 @@ internal data class AuthEmailState(val issuedCodeHash: String, val codeExpiresAt
 
     companion object {
         /** Turns [AuthEmailToolSession]'s persisted columns back into a [AuthEmailState]. */
-        fun of(toolSessionId: UUID, issuedCodeHash: String?, codeExpiresAt: Instant?): AuthEmailState = AuthEmailState(
+        fun of(toolSessionId: ToolSessionId, issuedCodeHash: String?, codeExpiresAt: Instant?): AuthEmailState = AuthEmailState(
             checkNotNull(issuedCodeHash) { "auth-email tool data $toolSessionId without issuedCodeHash" },
             checkNotNull(codeExpiresAt) { "auth-email tool data $toolSessionId without codeExpiresAt" }
         )

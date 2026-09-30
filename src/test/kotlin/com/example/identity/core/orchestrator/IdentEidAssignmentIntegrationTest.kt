@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.texts.templateOf
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.support.AccountFixtures
@@ -77,17 +78,17 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
         )!!
 
         /** The account the channel currently points at - null once it points at none. */
-        fun accountIdOf(channelSessionId: String): Long? = jdbcTemplate.queryForObject(
+        fun accountIdOf(channelSessionId: String): AccountId? = jdbcTemplate.queryForObject(
             "SELECT account_id FROM orchestrator.channel_session WHERE id = CAST(? AS UUID)",
             Long::class.java,
             channelSessionId
-        )
+        )?.let(::AccountId)
 
         /** How many restricted_id anchors this account holds - the eid attestation's own anchor (ADR-19). */
-        fun restrictedIdAnchorsOf(accountId: Long): Int = jdbcTemplate.queryForObject(
+        fun restrictedIdAnchorsOf(accountId: AccountId): Int = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM account.anchor WHERE account_id = ? AND attribute_type = 'restricted_id'",
             Int::class.java,
-            accountId
+            accountId.value
         )!!
 
         given("a fresh channel starting a registration") {
@@ -185,7 +186,7 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
 
                 accountIdOf(channelSessionId) shouldBe existing
                 jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.account WHERE id = ?", Int::class.java, disposable
+                    "SELECT COUNT(*) FROM account.account WHERE id = ?", Int::class.java, disposable.value
                 ) shouldBe 0
                 // The attestation came along - her card now recognizes this account (ADR-19).
                 restrictedIdAnchorsOf(existing) shouldBe 1
@@ -231,13 +232,13 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 // The run moved over, and the placeholder is gone rather than left as a stray.
                 accountIdOf(channelSessionId) shouldBe existing
                 jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.account WHERE id = ?", Int::class.java, disposable
+                    "SELECT COUNT(*) FROM account.account WHERE id = ?", Int::class.java, disposable.value
                 ) shouldBe 0
                 // The attestation came along - the card's own anchor now recognizes this account.
                 restrictedIdAnchorsOf(existing) shouldBe 1
                 jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM account.change_log WHERE account_id = ? AND change_type = 'IDENTIFIED' AND subject = 'eid'",
-                    Int::class.java, existing
+                    Int::class.java, existing.value
                 ) shouldBe 1
 
                 // Like every route to an existing account: prove one of its methods, not enroll a new one.

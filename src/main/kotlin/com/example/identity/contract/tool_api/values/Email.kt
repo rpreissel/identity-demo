@@ -5,7 +5,11 @@ package com.example.identity.contract.tool_api.values
  * lowercase). Backs [normalizeAnchorValue], so anchor writes and lookups agree.
  */
 @JvmInline
-value class Email private constructor(val value: String) {
+value class Email(val value: String) {
+    init {
+        require(value.length <= MAX_LENGTH && value == value.trim().lowercase() && PATTERN.matches(value)) { "Invalid email address" }
+    }
+
     override fun toString(): String = value
 
     companion object {
@@ -17,13 +21,8 @@ value class Email private constructor(val value: String) {
          */
         private const val MAX_LENGTH = 254
 
-        /** Normalizes (trim + lowercase) then validates [raw] - `null` if it is not well-formed. */
-        fun ofOrNull(raw: String): Email? {
-            val normalized = raw.trim().lowercase()
-            return if (normalized.length <= MAX_LENGTH && PATTERN.matches(normalized)) Email(normalized) else null
-        }
-
-        /** Same as [ofOrNull], but throws for a malformed address. */
-        fun of(raw: String): Email = requireNotNull(ofOrNull(raw)) { "Invalid email address" }
+        /** Input from outside: normalizes (trim + lowercase), `null` if it is not well-formed. */
+        fun parse(raw: String): Email? =
+            raw.trim().lowercase().takeIf { it.length <= MAX_LENGTH && PATTERN.matches(it) }?.let(::Email)
     }
 }

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.contract.tool_api.envelope.ActiveMethodView
 import io.swagger.v3.oas.annotations.media.Schema
@@ -46,7 +47,7 @@ data class BoundCredentialView(
 data class DeviceLinkResponse(
     val linked: Boolean,
     @field:Schema(example = "42")
-    val accountId: Long? = null,
+    val accountId: AccountId? = null,
     @field:Schema(
         description = "Demo-only: what else this device is known by - one entry per key-bound " +
             "credential of the linked account living on THIS key, with the reference its own " +
@@ -76,6 +77,6 @@ data class AmrEntry(
  * bound to its UserSession, so a leaked note cannot hand evidence to another session.
  */
 data class RestoreData(
-    val accountId: Long? = null,
+    val accountId: AccountId? = null,
     val evidence: SessionEvidence? = null
 )

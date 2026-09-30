@@ -1,5 +1,6 @@
 package com.example.identity.core.account.infrastructure
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.claims.claimTrust
@@ -35,7 +36,7 @@ interface AccountClaimRepository : JpaRepository<AccountClaim, Long> {
           )
         """
     )
-    fun findEstablished(@Param("accountId") accountId: Long): List<AccountClaim>
+    fun findEstablished(@Param("accountId") accountId: AccountId?): List<AccountClaim>
 }
 
 /**

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
@@ -19,7 +20,7 @@ class DeviceAccountLink(
     var bindingKeyRef: String? = null,
 
     @Column(name = "account_id", nullable = false)
-    var accountId: Long? = null,
+    var accountId: AccountId? = null,
     now: Instant
 ) {
     @Column(name = "created_at", nullable = false)

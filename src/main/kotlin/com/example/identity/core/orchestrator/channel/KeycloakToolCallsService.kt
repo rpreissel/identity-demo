@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.KeycloakToolCalls
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -25,13 +26,13 @@ class KeycloakToolCallsService(
     private val accountService: AccountService,
 ) : KeycloakToolCalls {
 
-    override fun requireKeycloakFor(accountId: Long, bindingKeyRef: String) {
+    override fun requireKeycloakFor(accountId: AccountId, bindingKeyRef: String) {
         if (bindingKeyRef != DeviceChannelAccessGuard.KC_BINDING_PREFIX + accountId) {
             throw PeerAuthValidationException("Peer-auth channel_binding does not match accountId")
         }
     }
 
-    override fun apply(accountId: Long, descriptor: ToolDescriptor, outcome: ToolOutcome) {
+    override fun apply(accountId: AccountId, descriptor: ToolDescriptor, outcome: ToolOutcome) {
         when (outcome) {
             is ToolOutcome.Failed.KnownAccountAuth -> {
                 checkFits(outcome.fits(descriptor.role), descriptor, outcome)

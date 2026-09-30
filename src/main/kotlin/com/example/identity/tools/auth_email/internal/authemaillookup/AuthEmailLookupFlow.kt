@@ -1,8 +1,9 @@
 package com.example.identity.tools.auth_email.internal.authemaillookup
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import java.time.Instant
-import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.StepData
 
@@ -31,14 +32,14 @@ internal sealed interface AuthEmailLookupState {
     }
 
     /** [accountId] is null for an unconfirmed address; the state looks the same, the code check fails. */
-    data class AwaitingCode(val accountId: Long?, val issuedCodeHash: String, val codeExpiresAt: Instant) : AuthEmailLookupState {
+    data class AwaitingCode(val accountId: AccountId?, val issuedCodeHash: String, val codeExpiresAt: Instant) : AuthEmailLookupState {
         override val step = STEP_CODE_INPUT
         override val missingFields = listOf(FIELD_CODE)
     }
 
     companion object {
         /** Turns [AuthEmailLookupToolSession]'s persisted, nullable columns back into a [AuthEmailLookupState]. */
-        fun of(toolSessionId: UUID, accountId: Long?, issuedCodeHash: String?, codeExpiresAt: Instant?): AuthEmailLookupState {
+        fun of(toolSessionId: ToolSessionId, accountId: AccountId?, issuedCodeHash: String?, codeExpiresAt: Instant?): AuthEmailLookupState {
             val hash = issuedCodeHash ?: return AwaitingEmail
             return AwaitingCode(
                 accountId,
@@ -50,8 +51,8 @@ internal sealed interface AuthEmailLookupState {
 }
 
 internal sealed interface AuthEmailLookupDecision {
-    data class Complete(val accountId: Long) : AuthEmailLookupDecision
-    data class WrongCode(val accountId: Long?) : AuthEmailLookupDecision
+    data class Complete(val accountId: AccountId) : AuthEmailLookupDecision
+    data class WrongCode(val accountId: AccountId?) : AuthEmailLookupDecision
     /** Nothing usable for the current state, e.g. an empty PATCH or a code before any email. */
     data class Unchanged(val state: AuthEmailLookupState) : AuthEmailLookupDecision
 }

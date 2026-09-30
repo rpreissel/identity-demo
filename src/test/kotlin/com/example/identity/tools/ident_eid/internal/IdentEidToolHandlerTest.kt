@@ -1,5 +1,6 @@
 package com.example.identity.tools.ident_eid.internal
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -17,7 +18,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import java.time.LocalDate
-import java.util.Optional
 import java.util.UUID
 
 /**
@@ -28,7 +28,7 @@ import java.util.UUID
  */
 class IdentEidToolHandlerTest : BehaviorSpec({
 
-    val toolSessionId = UUID.randomUUID()
+    val toolSessionId = ToolSessionId(UUID.randomUUID())
     val repository = mockk<IdentEidToolSessionRepository>()
     val handler = IdentEidToolHandler(IdentEidDescriptor, repository, clock = TEST_CLOCK)
 
@@ -44,7 +44,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
             restrictedId = "T0103005K1D5S0V8T9W6UM2RTX",
             createdAt = TEST_NOW
         )
-        every { repository.findById(toolSessionId) } returns Optional.of(data)
+        every { repository.findByToolSessionId(toolSessionId) } returns data
         every { repository.save(any()) } returns data
 
         `when`("the correct mock PIN arrives") {
@@ -53,13 +53,13 @@ class IdentEidToolHandlerTest : BehaviorSpec({
             then("it attests every card attribute as a claim under its own tool anchor") {
                 outcome.shouldBeInstanceOf<ToolOutcome.Completed.Identified>()
                 outcome.claims shouldBe listOf(
-                    Claim(AttributeType.FAMILY_NAME, "Muster", ClaimSource.of(IdentEidDescriptor.toolId), IdentEidDescriptor.maxAcr),
-                    Claim(AttributeType.GIVEN_NAMES, "Max", ClaimSource.of(IdentEidDescriptor.toolId), IdentEidDescriptor.maxAcr),
-                    Claim(AttributeType.BIRTH_DATE, "1970-01-01", ClaimSource.of(IdentEidDescriptor.toolId), IdentEidDescriptor.maxAcr),
-                    Claim(AttributeType.STREET_ADDRESS, "Musterweg 1", ClaimSource.of(IdentEidDescriptor.toolId), IdentEidDescriptor.maxAcr),
-                    Claim(AttributeType.POSTAL_CODE, "12345", ClaimSource.of(IdentEidDescriptor.toolId), IdentEidDescriptor.maxAcr),
-                    Claim(AttributeType.LOCALITY, "Musterstadt", ClaimSource.of(IdentEidDescriptor.toolId), IdentEidDescriptor.maxAcr),
-                    Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource.of(IdentEidDescriptor.toolId), IdentEidDescriptor.maxAcr)
+                    Claim(AttributeType.FAMILY_NAME, "Muster", ClaimSource(IdentEidDescriptor.toolId.value), IdentEidDescriptor.maxAcr),
+                    Claim(AttributeType.GIVEN_NAMES, "Max", ClaimSource(IdentEidDescriptor.toolId.value), IdentEidDescriptor.maxAcr),
+                    Claim(AttributeType.BIRTH_DATE, "1970-01-01", ClaimSource(IdentEidDescriptor.toolId.value), IdentEidDescriptor.maxAcr),
+                    Claim(AttributeType.STREET_ADDRESS, "Musterweg 1", ClaimSource(IdentEidDescriptor.toolId.value), IdentEidDescriptor.maxAcr),
+                    Claim(AttributeType.POSTAL_CODE, "12345", ClaimSource(IdentEidDescriptor.toolId.value), IdentEidDescriptor.maxAcr),
+                    Claim(AttributeType.LOCALITY, "Musterstadt", ClaimSource(IdentEidDescriptor.toolId.value), IdentEidDescriptor.maxAcr),
+                    Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource(IdentEidDescriptor.toolId.value), IdentEidDescriptor.maxAcr)
                 )
             }
 
@@ -95,7 +95,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
 
     given("a fresh ident-eid session") {
         val data = IdentEidToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-        every { repository.findById(toolSessionId) } returns Optional.of(data)
+        every { repository.findByToolSessionId(toolSessionId) } returns data
         every { repository.save(any()) } returns data
 
         `when`("complete card data with a malformed postal code arrives") {
@@ -116,7 +116,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
 
     given("another fresh ident-eid session") {
         val data = IdentEidToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-        every { repository.findById(toolSessionId) } returns Optional.of(data)
+        every { repository.findByToolSessionId(toolSessionId) } returns data
         every { repository.save(any()) } returns data
 
         `when`("well-formed card data arrives") {

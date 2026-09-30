@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_device.internal.authdevice
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_device.internal.DeviceEnrollmentRepository
 
@@ -14,7 +15,6 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 /**
  * toolId=auth-device (docs/03-tool-architektur.md). [start]'s [enrollmentRef] is resolved by the
@@ -30,7 +30,7 @@ class AuthDeviceToolHandler(
 ) {
 
     @Transactional
-    fun start(toolSessionId: UUID, enrollmentRef: EnrollmentRef): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId, enrollmentRef: EnrollmentRef): ToolOutcome {
         if (enrollmentRef.type != DEVICE_ENROLLMENT_TYPE) {
             throw UnresolvableReferenceException(Text("Unerwarteter Enrollment-Typ"), "type=${enrollmentRef.type}")
         }
@@ -51,8 +51,8 @@ class AuthDeviceToolHandler(
 
     /** [devicePublicKey]/[userVerification] arrive already verified by DeviceProofValidator. */
     @Transactional
-    fun patch(toolSessionId: UUID, devicePublicKey: DevicePublicKey, userVerification: UserVerification): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-device tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, devicePublicKey: DevicePublicKey, userVerification: UserVerification): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-device tool session: $toolSessionId" }
         // Gone during the tool session (removed on another channel): no wrong guess, nothing to count.
         val enrollment = data.enrollmentRefId?.toLongOrNull()?.let { enrollmentRepository.findByIdOrNull(it) }
             ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "toolSession=$toolSessionId")
@@ -68,8 +68,8 @@ class AuthDeviceToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-device tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-device tool session: $toolSessionId" }
         return outcomeFor()
     }
 

@@ -90,8 +90,8 @@ class TokenService(
             "acr" to evidence?.let { authPolicy.resolveAcr(it, account) }?.value,
             "amr" to (evidence?.amr?.map { m -> m.value } ?: emptyList()),
             "auth_time" to appTokenSession.authTime?.epochSecond,
-            "accountId" to appTokenSession.accountId,
-            "personId" to account?.personId,
+            "accountId" to appTokenSession.accountId?.value,
+            "personId" to account?.personId?.value,
             // With personId this gives the account's role (ADR-34). Read live: the
             // Personenverzeichnis is its authority.
             "versnr" to account?.personId?.let(personDirectory::memberNumberOf),

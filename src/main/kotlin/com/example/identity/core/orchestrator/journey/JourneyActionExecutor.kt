@@ -1,5 +1,8 @@
 package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.InvitationId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.proofLevel
@@ -12,8 +15,6 @@ import com.example.identity.core.orchestrator.domain.journey.accountOfProof
 import com.example.identity.core.orchestrator.domain.journey.MethodDependencies
 import com.example.identity.core.orchestrator.domain.journey.IdentificationTarget
 import com.example.identity.core.orchestrator.domain.journey.AccountMerge
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
-import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.ChannelType
@@ -69,7 +70,7 @@ class JourneyActionExecutor(
      * tool asks this before it reports; [performRecordIdentification] enforces the same rule
      * afterwards. It lives here because only this class may consult [IdentityResolver].
      */
-    fun matchesAttestedIdentity(journey: AuthJourney, channel: ChannelSession, personId: String): Boolean {
+    fun matchesAttestedIdentity(journey: AuthJourney, channel: ChannelSession, personId: PartnerNumber): Boolean {
         val inHand = channel.accountId ?: return false
         return identityResolver.attestedIdentityMatches(inHand, personId)
     }
@@ -141,7 +142,7 @@ class JourneyActionExecutor(
     }
 
     /** Which account a confirmed identification writes to, see [AccountMerge] (ADR-20). */
-    private fun accountOf(journey: AuthJourney, channel: ChannelSession, inHand: Long, resolved: Long?): Long {
+    private fun accountOf(journey: AuthJourney, channel: ChannelSession, inHand: AccountId, resolved: AccountId?): AccountId {
         if (resolved == null || resolved == inHand) return inHand
         return when (val merge = AccountMerge.decide(loadAccount(inHand)) { loadAccount(resolved) }) {
             is AccountMerge.MoveInto -> {
@@ -156,7 +157,7 @@ class JourneyActionExecutor(
         }
     }
 
-    private fun loadAccount(accountId: Long): AccountProfile =
+    private fun loadAccount(accountId: AccountId): AccountProfile =
         accountService.findAccount(accountId) ?: throw OrchestratorException.processGone(Text("Account not found"), "accountId=$accountId")
 
     /**
@@ -165,7 +166,7 @@ class JourneyActionExecutor(
      * session proved still counts. The device link moves too, since it outlives the journey and
      * would otherwise hand a deleted account id to the next FAST_ACCESS run.
      */
-    private fun rebindAccount(journey: AuthJourney, channel: ChannelSession, from: Long, to: Long) {
+    private fun rebindAccount(journey: AuthJourney, channel: ChannelSession, from: AccountId, to: AccountId) {
         journey.accountId = to
         channel.subject = Subject.Account(to)
         channel.sessionEvidenceId?.let { sessionEvidenceService.rebindToAccount(it, to) }
@@ -209,10 +210,10 @@ class JourneyActionExecutor(
     private fun accountOfAttestation(
         journey: AuthJourney,
         channel: ChannelSession,
-        inHand: Long,
+        inHand: AccountId,
         action: Action.AdoptAttestation,
         evidence: SessionEvidence
-    ): Long {
+    ): AccountId {
         val resolved = (identityResolver.resolve(action.outcome.claims.toSet()) as? Resolution.ExistingAccount)?.accountId
         if (resolved == null || resolved == inHand) return inHand
         checkAttestationMove(evidence, accountService.findAccount(resolved)?.personId) { personId ->
@@ -302,7 +303,7 @@ class JourneyActionExecutor(
      * account in hand and an invitation never share a session, and a second invitation does not
      * replace the first.
      */
-    private fun acceptInvitation(journey: AuthJourney, channel: ChannelSession, action: Action.AcceptProof, invitation: String) {
+    private fun acceptInvitation(journey: AuthJourney, channel: ChannelSession, action: Action.AcceptProof, invitation: InvitationId) {
         // Web only for now: the App's journeys and tokens know no subject other than an account.
         check(channel.channel == ChannelType.WEB) { "A one-time password signs in on the Web channel only" }
         check(action.tool.role == ToolRole.ACCOUNT_LOOKUP_AUTH) { "Only a lookup tool may name an invitation" }
@@ -319,7 +320,7 @@ class JourneyActionExecutor(
      * The device link that follows from success, unlike the one the user asks for
      * ([performLinkDevice]). It is a property of the intent ([AuthIntent.bindsDeviceImplicitly]).
      */
-    private fun linkDeviceIfIntentImplies(journey: AuthJourney, channel: ChannelSession, accountId: Long) {
+    private fun linkDeviceIfIntentImplies(journey: AuthJourney, channel: ChannelSession, accountId: AccountId) {
         val intent = journey.requireIntent()
         val linkedTo = channel.bindingKeyRef?.let { sessionManagementService.findLinkedAccountId(it) }
         if (linksDeviceImplicitly(intent, linkedTo, accountId)) linkDeviceTo(channel, accountId)
@@ -336,7 +337,7 @@ class JourneyActionExecutor(
      * skipped. A device linked elsewhere means a user-confirmed rebind; the implicit route refuses
      * that case. WEB has no device (docs/02-domaenenmodell.md Abschnitt 1) and gets no link.
      */
-    private fun linkDeviceTo(channel: ChannelSession, accountId: Long) {
+    private fun linkDeviceTo(channel: ChannelSession, accountId: AccountId) {
         if (channel.channel != ChannelType.APP) return
         val bindingKeyRef = checkNotNull(channel.bindingKeyRef) { "APP channel without a bindingKeyRef" }
         val previousAccountId = sessionManagementService.findLinkedAccountId(bindingKeyRef)
@@ -433,7 +434,7 @@ class JourneyActionExecutor(
      * gets an [com.example.identity.core.orchestrator.session.AppTokenSession], because only App channels are
      * issued tokens (docs/05-api.md).
      */
-    private fun bindAccount(journey: AuthJourney, channel: ChannelSession, accountId: Long) {
+    private fun bindAccount(journey: AuthJourney, channel: ChannelSession, accountId: AccountId) {
         journey.accountId = accountId
         channel.subject = Subject.Account(accountId)
         if (channel.sessionEvidenceId == null) {

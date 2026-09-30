@@ -1,5 +1,6 @@
 package com.example.identity.core.account.infrastructure
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.EnrollmentRef
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -20,7 +21,7 @@ import java.util.UUID
 @Table(schema = "account", name = "auth_method")
 class AccountAuthMethod(
     @Column(name = "account_id", nullable = false)
-    var accountId: Long? = null,
+    var accountId: AccountId? = null,
 
     @Column(name = "method", nullable = false)
     var method: String? = null,

@@ -1,5 +1,7 @@
 package com.example.identity.tools.ident_fsc.internal
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.ident_fsc.IdentFscDescriptor
 import com.example.identity.contract.tool_api.directory.ActivationCodes
@@ -8,12 +10,10 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.ClaimSource
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDate
-import java.util.UUID
 
 /**
  * toolId=ident-fsc (docs/06-ablaeufe.md #2). Resolves KVNR (or Partnernummer, ADR-34), name, date of
@@ -33,7 +33,7 @@ class IdentFscToolHandler(
 
     /** Called directly by IdentFscToolController; nothing needs resolving before this can start. */
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId): ToolOutcome {
         repository.save(IdentFscToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor(IdentFscState())
     }
@@ -45,17 +45,17 @@ class IdentFscToolHandler(
      */
     @Transactional
     fun patch(
-        toolSessionId: UUID,
+        toolSessionId: ToolSessionId,
         kvnr: String?,
         partnerNumber: String?,
         familyName: String?,
         givenNames: String?,
         birthDate: LocalDate?,
         fsc: String?,
-        personId: String?,
+        personId: PartnerNumber?,
         rateLimited: Boolean
     ): ToolOutcome {
-        val data = checkNotNull(repository.findByIdOrNull(toolSessionId)) { "Unknown ident-fsc tool session: $toolSessionId" }
+        val data = checkNotNull(repository.findByToolSessionId(toolSessionId)) { "Unknown ident-fsc tool session: $toolSessionId" }
 
         val input = IdentFscInput(kvnr, partnerNumber, familyName, givenNames, birthDate, fsc, personId)
         val merged = IdentFscFlow.merge(data.toState(), input, activationCodes::digest)
@@ -92,9 +92,9 @@ class IdentFscToolHandler(
     }
 
     private fun verifyCode(
-        toolSessionId: UUID,
+        toolSessionId: ToolSessionId,
         state: IdentFscState,
-        personId: String,
+        personId: PartnerNumber,
         fscHash: String,
         rateLimited: Boolean
     ): Pair<IdentFscState, ToolOutcome> {
@@ -110,7 +110,7 @@ class IdentFscToolHandler(
                 // FSC is a master-data channel: every attribute this run asserts
                 // was checked against personenverzeichnis, hence PERSON_DIRECTORY as the
                 // trust anchor, not this tool's own id.
-                Claim(AttributeType.PERSON_ID, personId, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr),
+                Claim(AttributeType.PERSON_ID, personId.value, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr),
                 // A Partner identifies by Partnernummer and has no KVNR (ADR-34).
                 state.kvnr?.let { Claim(AttributeType.KVNR, it, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr) },
                 Claim(AttributeType.FAMILY_NAME, checkNotNull(state.familyName), ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr),
@@ -131,8 +131,8 @@ class IdentFscToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        val data = checkNotNull(repository.findByIdOrNull(toolSessionId)) { "Unknown ident-fsc tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        val data = checkNotNull(repository.findByToolSessionId(toolSessionId)) { "Unknown ident-fsc tool session: $toolSessionId" }
         return outcomeFor(data.toState())
     }
 

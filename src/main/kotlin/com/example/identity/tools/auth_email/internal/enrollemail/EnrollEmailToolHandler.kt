@@ -1,10 +1,10 @@
 package com.example.identity.tools.auth_email.internal.enrollemail
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_email.EnrollEmailDescriptor
 import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
 import com.example.identity.contract.tool_api.ToolOutcome
 import java.time.Clock
-import java.util.UUID
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -22,7 +22,7 @@ class EnrollEmailToolHandler(
 ) {
 
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId): ToolOutcome {
         toolDataRepository.save(EnrollEmailToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return completed()
     }
@@ -32,8 +32,8 @@ class EnrollEmailToolHandler(
      * there is no step to describe and nothing a client could still submit.
      */
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        checkNotNull(toolDataRepository.findById(toolSessionId).orElse(null)) {
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) {
             "Unknown enroll-email tool session: $toolSessionId"
         }
         return completed()

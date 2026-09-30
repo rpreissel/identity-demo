@@ -1,5 +1,7 @@
 package com.example.identity.core.account
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.infrastructure.AccountAnchorRepository
 import com.example.identity.core.account.infrastructure.ChangeLogRepository
 import com.example.identity.core.account.infrastructure.ChangeType
@@ -20,7 +22,6 @@ import org.hibernate.exception.ConstraintViolationException
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.aop.framework.Advised
 import com.example.identity.contract.tool_api.EnrollmentRef
-import com.example.identity.contract.tool_api.ToolId
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.ActiveProfiles
@@ -111,7 +112,7 @@ class AccountServiceDbTest(
                 val executor = Executors.newFixedThreadPool(2)
                 val results = try {
                     val attempts = (1..2).map {
-                        executor.submit<Result<Long>> {
+                        executor.submit<Result<AccountId>> {
                             runCatching {
                                 checkNotNull(TransactionTemplate(transactionManager).execute {
                                     accountService.anchorHolder(type, value).shouldBeNull()
@@ -142,7 +143,7 @@ class AccountServiceDbTest(
                     jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.anchor", Int::class.java) shouldBe 1
                     val winner = checkNotNull(accountService.findAccount(winnerId))
                     when (type) {
-                        AttributeType.PERSON_ID -> winner.personId shouldBe value
+                        AttributeType.PERSON_ID -> winner.personId shouldBe PartnerNumber(value)
                         AttributeType.EMAIL -> winner.email shouldBe value
                         else -> error("Unexpected test attribute")
                     }
@@ -174,10 +175,10 @@ class AccountServiceDbTest(
                 // recordClaims is one @Transactional method: the EMAIL claim's failure must also undo the
                 // PERSON_ID claim processed earlier in the same call.
                 jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.claim WHERE account_id = ?", Int::class.java, subject.accountId
+                    "SELECT COUNT(*) FROM account.claim WHERE account_id = ?", Int::class.java, subject.accountId.value
                 ) shouldBe 0
                 jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.anchor WHERE account_id = ?", Int::class.java, subject.accountId
+                    "SELECT COUNT(*) FROM account.anchor WHERE account_id = ?", Int::class.java, subject.accountId.value
                 ) shouldBe 0
                 accountService.findAccount(subject.accountId)?.personId.shouldBeNull()
             }
@@ -196,7 +197,7 @@ class AccountServiceDbTest(
             val executor = Executors.newFixedThreadPool(2)
             val results = try {
                 ids.map { accountId ->
-                    executor.submit<Result<Long>> {
+                    executor.submit<Result<AccountId>> {
                         runCatching {
                             checkNotNull(TransactionTemplate(transactionManager).execute {
                                 accountService.recordClaim(accountId, Claim(AttributeType.EMAIL, "shared@example.com", ClaimSource.SELF_REPORTED), provenAcr = AcrLevel.LOA2)
@@ -263,7 +264,7 @@ class AccountServiceDbTest(
                 accountService.findAccountByEmail("new@example.com")?.accountId shouldBe account.accountId
                 jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM account.anchor WHERE account_id = ? AND attribute_type = 'email'",
-                    Int::class.java, account.accountId
+                    Int::class.java, account.accountId.value
                 ) shouldBe 1
             }
         }
@@ -289,7 +290,7 @@ class AccountServiceDbTest(
             jdbcTemplate.update(
                 """INSERT INTO account.retraction (account_id, attribute_type, normalized_value, claim_source, retracted_at)
                    VALUES (?, 'family_name', 'muster', 'OPERATOR', CURRENT_TIMESTAMP)""",
-                account.accountId
+                account.accountId.value
             )
 
             then("it stops counting although its log row stays") {
@@ -304,21 +305,21 @@ class AccountServiceDbTest(
                 )
                 jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM account.claim WHERE account_id = ? AND attribute_type = 'family_name'",
-                    Int::class.java, account.accountId
+                    Int::class.java, account.accountId.value
                 ) shouldBe 1
             }
         }
     }
 
     given("a singleton method replaced by a new instance") {
-        fun enroll(accountId: Long, method: String, claim: Claim, ref: String) {
+        fun enroll(accountId: AccountId, method: String, claim: Claim, ref: String) {
             val instance = java.util.UUID.randomUUID()
             // Same order as the enrollment path: the new instance's claims first, then the instance.
             accountService.recordClaims(accountId, listOf(claim), provenAcr = AcrLevel.LOA1, authMethodId = instance)
             accountService.addAuthenticationMethod(accountId, method, EnrollmentRef("t", ref), "loa1", emptyMap(), instanceId = instance)
         }
-        val smsTool = ClaimSource.of(ToolId("enroll-sms"))
-        val passwordTool = ClaimSource.of(ToolId("enroll-password"))
+        val smsTool = ClaimSource("enroll-sms")
+        val passwordTool = ClaimSource("enroll-password")
 
         `when`("a second sms method with a new phone number is enrolled") {
             clearAccounts()
@@ -331,7 +332,7 @@ class AccountServiceDbTest(
                     mapOf(AttributeType.PHONE_NUMBER to "+491700000002")
                 jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM account.retraction WHERE account_id = ? AND attribute_type = 'phone_number'",
-                    Int::class.java, account.accountId
+                    Int::class.java, account.accountId.value
                 ) shouldBe 1
             }
         }
@@ -352,27 +353,27 @@ class AccountServiceDbTest(
     given("the Personenverzeichnis moves a Versicherungsnummer to another person before the old holder's own change arrived") {
         `when`("the receiver's directory change is applied") {
             clearAccounts()
-            fun bound(personId: String, versnr: String): Long {
+            fun bound(personId: PartnerNumber, versnr: String): AccountId {
                 val account = accountService.createAccountInSetup()
                 accountService.recordClaims(
                     account.accountId,
                     listOf(
-                        Claim(AttributeType.PERSON_ID, personId, ClaimSource.PERSON_DIRECTORY),
+                        Claim(AttributeType.PERSON_ID, personId.value, ClaimSource.PERSON_DIRECTORY),
                         Claim(AttributeType.MEMBER_NUMBER, versnr, ClaimSource.PERSON_DIRECTORY)
                     ),
                     provenAcr = AcrLevel.LOA2
                 )
                 return account.accountId
             }
-            fun memberNumberOf(accountId: Long): String? = jdbcTemplate.queryForList(
+            fun memberNumberOf(accountId: AccountId): String? = jdbcTemplate.queryForList(
                 "SELECT normalized_value FROM account.anchor WHERE account_id = ? AND attribute_type = 'member_number'",
-                String::class.java, accountId
+                String::class.java, accountId.value
             ).firstOrNull()
-            val stale = bound("P000000001", "10000001")
-            val receiver = bound("P000000002", "10000002")
+            val stale = bound(PartnerNumber("P000000001"), "10000001")
+            val receiver = bound(PartnerNumber("P000000002"), "10000002")
 
             accountService.applyDirectoryChange(
-                com.example.identity.contract.tool_api.directory.PersonChanged("P000000002", setOf(AttributeType.MEMBER_NUMBER), kvnr = null, memberNumber = "10000001")
+                com.example.identity.contract.tool_api.directory.PersonChanged(PartnerNumber("P000000002"), setOf(AttributeType.MEMBER_NUMBER), kvnr = null, memberNumber = "10000001")
             )
 
             then("it is released from the stale holder instead of failing on the anchor conflict forever") {
@@ -380,7 +381,7 @@ class AccountServiceDbTest(
                 memberNumberOf(stale).shouldBeNull()
                 jdbcTemplate.queryForObject(
                     "SELECT claim_source FROM account.retraction WHERE account_id = ? AND attribute_type = 'member_number'",
-                    String::class.java, stale
+                    String::class.java, stale.value
                 ) shouldBe "PERSON_DIRECTORY"
             }
         }
@@ -402,7 +403,7 @@ class AccountServiceDbTest(
 
             then("the account module itself refuses it, whatever the caller checked") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
-                accountService.findAccount(account.accountId)!!.personId shouldBe "P000000042"
+                accountService.findAccount(account.accountId)!!.personId shouldBe PartnerNumber("P000000042")
             }
         }
     }
@@ -413,23 +414,23 @@ class AccountServiceDbTest(
             val account = accountService.createAccountInSetup()
             accountService.recordClaim(
                 account.accountId,
-                Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource.of(ToolId("ident-eid"))),
+                Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource("ident-eid")),
                 provenAcr = AcrLevel.LOA2
             )
             accountService.recordClaim(
                 account.accountId,
-                Claim(AttributeType.EID_RESTRICTED_ID, "T0909090Z9X8Y7W6V5U4T3S2R1", ClaimSource.of(ToolId("ident-eid"))),
+                Claim(AttributeType.EID_RESTRICTED_ID, "T0909090Z9X8Y7W6V5U4T3S2R1", ClaimSource("ident-eid")),
                 provenAcr = AcrLevel.LOA2
             )
 
             then("the replace commits in place, like EMAIL - the account keeps exactly one") {
                 jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM account.anchor WHERE account_id = ? AND attribute_type = 'restricted_id'",
-                    Int::class.java, account.accountId
+                    Int::class.java, account.accountId.value
                 ) shouldBe 1
                 jdbcTemplate.queryForObject(
                     "SELECT normalized_value FROM account.anchor WHERE account_id = ? AND attribute_type = 'restricted_id'",
-                    String::class.java, account.accountId
+                    String::class.java, account.accountId.value
                 ) shouldBe "T0909090Z9X8Y7W6V5U4T3S2R1"
             }
         }
@@ -442,14 +443,14 @@ class AccountServiceDbTest(
             val second = accountService.createAccountInSetup()
             accountService.recordClaim(
                 first.accountId,
-                Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource.of(ToolId("ident-eid"))),
+                Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource("ident-eid")),
                 provenAcr = AcrLevel.LOA2
             )
 
             val result = runCatching {
                 accountService.recordClaim(
                     second.accountId,
-                    Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource.of(ToolId("ident-eid"))),
+                    Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource("ident-eid")),
                     provenAcr = AcrLevel.LOA2
                 )
             }
@@ -468,8 +469,8 @@ class AccountServiceDbTest(
             accountService.recordClaims(
                 account.accountId,
                 listOf(
-                    Claim(AttributeType.PHONE_NUMBER, "+491701234567", ClaimSource.of(ToolId("enroll-sms"))),
-                    Claim(AttributeType.EMAIL, "max@example.com", ClaimSource.of(ToolId("enroll-sms")))
+                    Claim(AttributeType.PHONE_NUMBER, "+491701234567", ClaimSource("enroll-sms")),
+                    Claim(AttributeType.EMAIL, "max@example.com", ClaimSource("enroll-sms"))
                 ),
                 authMethodId = instanceId,
                 provenAcr = AcrLevel.LOA2
@@ -486,7 +487,7 @@ class AccountServiceDbTest(
                 // survives - otherwise removing the sms method would take password login with it.
                 jdbcTemplate.queryForObject(
                     "SELECT attribute_type FROM account.retraction WHERE account_id = ?",
-                    String::class.java, account.accountId
+                    String::class.java, account.accountId.value
                 ) shouldBe "phone_number"
                 accountService.findAccount(account.accountId)?.email shouldBe "max@example.com"
             }
@@ -552,7 +553,7 @@ class AccountServiceDbTest(
             then("it remembers the level the session actually proved, not the claim's own") {
                 jdbcTemplate.queryForObject(
                     "SELECT established_acr FROM account.anchor WHERE account_id = ? AND attribute_type = 'email'",
-                    String::class.java, account.accountId
+                    String::class.java, account.accountId.value
                 ) shouldBe "loa1"
             }
         }
@@ -564,7 +565,7 @@ class AccountServiceDbTest(
         `when`("the same card is attested again") {
             clearAccounts()
             val account = accountService.createAccountInSetup()
-            val eid = ClaimSource.of(ToolId("ident-eid"))
+            val eid = ClaimSource("ident-eid")
             val card = listOf(
                 Claim(AttributeType.FAMILY_NAME, "Mustermann", eid, AcrLevel.LOA3),
                 Claim(AttributeType.GIVEN_NAMES, "Max", eid, AcrLevel.LOA3),
@@ -575,10 +576,10 @@ class AccountServiceDbTest(
 
             then("re-attesting the same card logs nothing new (change log, not run log)") {
                 jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.claim WHERE account_id = ?", Int::class.java, account.accountId
+                    "SELECT COUNT(*) FROM account.claim WHERE account_id = ?", Int::class.java, account.accountId.value
                 ) shouldBe 3
                 jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.anchor WHERE account_id = ?", Int::class.java, account.accountId
+                    "SELECT COUNT(*) FROM account.anchor WHERE account_id = ?", Int::class.java, account.accountId.value
                 ) shouldBe 1
             }
         }
@@ -590,7 +591,7 @@ class AccountServiceDbTest(
     given("a disposable account whose attestation resolves to another account") {
         `when`("it is absorbed into an identified account") {
             clearAccounts()
-            val eid = ClaimSource.of(ToolId("ident-eid"))
+            val eid = ClaimSource("ident-eid")
             val disposable = accountService.createAccountInSetup()
             accountService.recordClaims(disposable.accountId, listOf(
                 Claim(AttributeType.FAMILY_NAME, "Muster", eid, AcrLevel.LOA3),
@@ -607,7 +608,7 @@ class AccountServiceDbTest(
 
             then("it yields: anchors and claims move, the identification proof is carried over, the account is gone") {
                 accountService.findAccount(disposable.accountId).shouldBeNull()
-                accountService.findAccount(target.accountId)!!.personId shouldBe "P000000001"
+                accountService.findAccount(target.accountId)!!.personId shouldBe PartnerNumber("P000000001")
                 anchorRepository.findByAccountIdAndAttributeType(target.accountId, AttributeType.EID_RESTRICTED_ID)!!.value shouldBe
                     "T0103005K1D5S0V8T9W6UM2RTX"
                 accountService.establishedClaimValues(target.accountId, setOf(AttributeType.FAMILY_NAME, AttributeType.GIVEN_NAMES)) shouldBe
@@ -623,7 +624,7 @@ class AccountServiceDbTest(
 
         `when`("it is absorbed into an account without that anchor") {
             clearAccounts()
-            val eid = ClaimSource.of(ToolId("ident-eid"))
+            val eid = ClaimSource("ident-eid")
             val disposable = accountService.createAccountInSetup()
             accountService.recordClaim(
                 disposable.accountId, Claim(AttributeType.EMAIL, "max@example.com", eid), provenAcr = AcrLevel.LOA2
@@ -648,7 +649,7 @@ class AccountServiceDbTest(
     given("a disposable leftover that an already-enrolled account identifies into") {
         `when`("the leftover is absorbed into the enrolled account") {
             clearAccounts()
-            val eid = ClaimSource.of(ToolId("ident-eid"))
+            val eid = ClaimSource("ident-eid")
             val leftover = accountService.createAccountInSetup()
             accountService.recordClaim(
                 leftover.accountId,
@@ -726,7 +727,7 @@ class AccountServiceDbTest(
                 accountService.establishedClaimValues(account.accountId, setOf(AttributeType.EMAIL)) shouldBe
                     mapOf(AttributeType.EMAIL to "new@example.com")
                 jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.retraction WHERE account_id = ?", Int::class.java, account.accountId
+                    "SELECT COUNT(*) FROM account.retraction WHERE account_id = ?", Int::class.java, account.accountId.value
                 ) shouldBe 1
             }
         }
@@ -746,7 +747,7 @@ class AccountServiceDbTest(
                 accountService.findAccountByEmail("a@example.com")?.accountId shouldBe account.accountId
                 jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM account.claim WHERE account_id = ? AND attribute_type = 'email'",
-                    Int::class.java, account.accountId
+                    Int::class.java, account.accountId.value
                 ) shouldBe 3
             }
         }
@@ -756,7 +757,7 @@ class AccountServiceDbTest(
         `when`("the upper-case value is recorded") {
             clearAccounts()
             val account = accountService.createAccountInSetup()
-            val source = ClaimSource.of(com.example.identity.contract.tool_api.ToolId("ident-eid"))
+            val source = ClaimSource("ident-eid")
             accountService.recordClaim(account.accountId, Claim(AttributeType.EID_RESTRICTED_ID, "AbC123", source), provenAcr = AcrLevel.LOA3)
             accountService.recordClaim(account.accountId, Claim(AttributeType.EID_RESTRICTED_ID, "ABC123", source), provenAcr = AcrLevel.LOA3)
 
@@ -772,13 +773,13 @@ class AccountServiceDbTest(
             val account = accountService.createAccountInSetup()
             accountService.recordClaims(
                 account.accountId,
-                listOf(Claim(AttributeType.PHONE_NUMBER, "+491701234567", ClaimSource.of(com.example.identity.contract.tool_api.ToolId("enroll-sms")), AcrLevel.LOA2)),
+                listOf(Claim(AttributeType.PHONE_NUMBER, "+491701234567", ClaimSource("enroll-sms"), AcrLevel.LOA2)),
                 provenAcr = AcrLevel.LOA1
             )
 
             then("the claim log records loa1 - what was proven, not the tool's ceiling") {
                 jdbcTemplate.queryForObject(
-                    "SELECT established_acr FROM account.claim WHERE account_id = ?", String::class.java, account.accountId
+                    "SELECT established_acr FROM account.claim WHERE account_id = ?", String::class.java, account.accountId.value
                 ) shouldBe "loa1"
             }
         }

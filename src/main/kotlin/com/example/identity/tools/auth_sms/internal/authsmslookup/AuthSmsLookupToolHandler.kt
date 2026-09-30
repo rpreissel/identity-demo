@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.authsmslookup
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.contract.texts.Text
@@ -16,7 +18,6 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 /**
  * toolId=auth-sms-lookup: login without a known account (docs/04-orchestrierung.md). Proves
@@ -36,7 +37,7 @@ class AuthSmsLookupToolHandler(
 ) {
 
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId): ToolOutcome {
         toolDataRepository.save(AuthSmsLookupToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor(AuthSmsLookupState.AwaitingEmail)
     }
@@ -48,8 +49,8 @@ class AuthSmsLookupToolHandler(
      * exhausted [SmsSendLimit] joins that branch, for the same reason (ADR-44).
      */
     @Transactional
-    fun submitEmail(toolSessionId: UUID, accountId: Long?, enrollmentRef: EnrollmentRef?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-sms-lookup tool session: $toolSessionId" }
+    fun submitEmail(toolSessionId: ToolSessionId, accountId: AccountId?, enrollmentRef: EnrollmentRef?): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-sms-lookup tool session: $toolSessionId" }
 
         val enrollment = enrollmentRef
             ?.takeIf { it.type == SMS_ENROLLMENT_TYPE }
@@ -78,8 +79,8 @@ class AuthSmsLookupToolHandler(
 
     /** Called directly by AuthSmsLookupToolController (docs/08-projektrahmen.md A11). */
     @Transactional
-    fun patch(toolSessionId: UUID, tan: String?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-sms-lookup tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, tan: String?): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-sms-lookup tool session: $toolSessionId" }
 
         return when (val decision = AuthSmsLookupFlow.decideTan(data.toState(), tan, tanGenerator)) {
             is AuthSmsLookupDecision.Unchanged -> outcomeFor(decision.state)
@@ -105,8 +106,8 @@ class AuthSmsLookupToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown auth-sms-lookup tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-sms-lookup tool session: $toolSessionId" }
         return outcomeFor(data.toState())
     }
 

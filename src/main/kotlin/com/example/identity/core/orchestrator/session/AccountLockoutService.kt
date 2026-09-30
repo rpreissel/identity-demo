@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.SignInLog
 
 import com.example.identity.contract.texts.Text
@@ -24,9 +25,9 @@ class AccountLockoutService(
     private val clock: Clock
 ) {
 
-    fun isLocked(accountId: Long): Boolean = counter.isLocked(RateLimitScope.ACCOUNT, key(accountId))
+    fun isLocked(accountId: AccountId): Boolean = counter.isLocked(RateLimitScope.ACCOUNT, key(accountId))
 
-    fun assertNotLocked(accountId: Long) {
+    fun assertNotLocked(accountId: AccountId) {
         if (isLocked(accountId)) {
             throw OrchestratorException.accountLocked(
                 Text("Zu viele fehlgeschlagene Anmeldeversuche fuer diesen Account - bitte spaeter erneut versuchen")
@@ -38,7 +39,7 @@ class AccountLockoutService(
      * One failed proof: counted and written to the sign-in log, with the lockout if this failure
      * tripped it (ADR-39). Every such failure passes here, whatever the channel.
      */
-    fun recordFailure(accountId: Long, channel: String?, method: String) {
+    fun recordFailure(accountId: AccountId, channel: String?, method: String) {
         val lockedBefore = counter.lockedUntil(RateLimitScope.ACCOUNT, key(accountId))
         counter.recordFailure(RateLimitScope.ACCOUNT, key(accountId), MAX_FAILURES, LOCKOUT_DURATION)
         signInLog.signInFailed(accountId, channel, method)
@@ -49,9 +50,9 @@ class AccountLockoutService(
     }
 
     /** Resets the rate limit on every successful AUTH completion. */
-    fun recordSuccess(accountId: Long) = counter.reset(RateLimitScope.ACCOUNT, key(accountId))
+    fun recordSuccess(accountId: AccountId) = counter.reset(RateLimitScope.ACCOUNT, key(accountId))
 
-    private fun key(accountId: Long) = accountId.toString()
+    private fun key(accountId: AccountId) = accountId.toString()
 
     companion object {
         private const val MAX_FAILURES = 5

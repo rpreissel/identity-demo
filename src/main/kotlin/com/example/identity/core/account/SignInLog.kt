@@ -1,5 +1,7 @@
 package com.example.identity.core.account
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.InvitationId
 import io.micrometer.core.instrument.MeterRegistry
 import com.example.identity.core.account.infrastructure.AccountRepository
 import com.example.identity.core.account.infrastructure.SignInType
@@ -41,47 +43,47 @@ class SignInLog(
 
     /** An entry journey (logging in, registering, a peer login) left the channel authenticated. */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun signedIn(accountId: Long, channel: String?, acr: String?, amr: List<String>, intent: String) =
+    fun signedIn(accountId: AccountId, channel: String?, acr: String?, amr: List<String>, intent: String) =
         record(accountId, SignInType.SIGNED_IN, channel, acr, mapOf("amr" to amr, "intent" to intent))
 
     /** A STEP_UP journey raised the level of an authenticated channel. */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun steppedUp(accountId: Long, channel: String?, acr: String?, amr: List<String>) =
+    fun steppedUp(accountId: AccountId, channel: String?, acr: String?, amr: List<String>) =
         record(accountId, SignInType.STEPPED_UP, channel, acr, mapOf("amr" to amr))
 
     /** One proof of [accountId] failed with [method] - the account was known, the proof was wrong. */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun signInFailed(accountId: Long, channel: String?, method: String) =
+    fun signInFailed(accountId: AccountId, channel: String?, method: String) =
         record(accountId, SignInType.SIGN_IN_FAILED, channel, details = mapOf("method" to method))
 
     /** That failure locked the account until [lockedUntil]. */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun lockedOut(accountId: Long, channel: String?, lockedUntil: Instant) =
+    fun lockedOut(accountId: AccountId, channel: String?, lockedUntil: Instant) =
         record(accountId, SignInType.LOCKED_OUT, channel, details = mapOf("lockedUntil" to lockedUntil.toString()))
 
     /** A session ended on purpose. [endedBy]: `HOLDER` or `IDENTITY_PROVIDER` (Keycloak ended it). */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun signedOut(accountId: Long, channel: String?, endedBy: String) =
+    fun signedOut(accountId: AccountId, channel: String?, endedBy: String) =
         record(accountId, SignInType.SIGNED_OUT, channel, details = mapOf("endedBy" to endedBy))
 
     /** A process access (ADR-48) left a Web channel signed in as [invitation]. */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun invitationSignedIn(invitation: String, channel: String?, acr: String?, amr: List<String>) =
+    fun invitationSignedIn(invitation: InvitationId, channel: String?, acr: String?, amr: List<String>) =
         save(SignInLogEntry(invitation = invitation, signInType = SignInType.SIGNED_IN, channel = channel, acr = acr,
             details = details(SignInType.SIGNED_IN, mapOf("amr" to amr)), occurredAt = clock.instant()))
 
     /** A session of [invitation] ended on purpose; [endedBy] as in [signedOut]. */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun invitationSignedOut(invitation: String, channel: String?, endedBy: String) =
+    fun invitationSignedOut(invitation: InvitationId, channel: String?, endedBy: String) =
         save(SignInLogEntry(invitation = invitation, signInType = SignInType.SIGNED_OUT, channel = channel,
             details = details(SignInType.SIGNED_OUT, mapOf("endedBy" to endedBy)), occurredAt = clock.instant()))
 
     @Transactional(readOnly = true)
-    fun of(accountId: Long): List<SignInRecord> =
+    fun of(accountId: AccountId): List<SignInRecord> =
         repository.findByAccountIdOrderByOccurredAt(accountId).map { it.toRecord() }
 
     @Transactional(readOnly = true)
-    fun ofInvitation(invitation: String): List<SignInRecord> =
+    fun ofInvitation(invitation: InvitationId): List<SignInRecord> =
         repository.findByInvitationOrderByOccurredAt(invitation).map { it.toRecord() }
 
     private fun SignInLogEntry.toRecord() = SignInRecord(signInType.name, channel, acr, details.orEmpty(), occurredAt)
@@ -94,11 +96,11 @@ class SignInLog(
     }
 
     private fun record(
-        accountId: Long, type: SignInType, channel: String?, acr: String? = null, details: Map<String, Any?> = emptyMap(),
+        accountId: AccountId, type: SignInType, channel: String?, acr: String? = null, details: Map<String, Any?> = emptyMap(),
     ) {
         // The log goes with the account - a session ending right after its account was deleted
         // (DELETE_ACCOUNT logs the channel out last) has nothing left to log against.
-        if (!accounts.existsById(accountId)) return
+        if (!accounts.existsAccount(accountId)) return
         save(
             SignInLogEntry(
                 accountId = accountId, signInType = type, channel = channel, acr = acr,

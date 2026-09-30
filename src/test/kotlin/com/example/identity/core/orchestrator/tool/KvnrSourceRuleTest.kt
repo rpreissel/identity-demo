@@ -25,7 +25,7 @@ class KvnrSourceRuleTest : BehaviorSpec({
 
     given("a tool that reads a KVNR itself") {
         val cardReader = object : ToolDescriptor by IdentEidDescriptor {
-            override val claims = IdentEidDescriptor.claims + ClaimDeclaration(AttributeType.KVNR, ClaimSource.of(IdentEidDescriptor.toolId))
+            override val claims = IdentEidDescriptor.claims + ClaimDeclaration(AttributeType.KVNR, ClaimSource(IdentEidDescriptor.toolId.value))
         }
         then("the registry refuses to start") {
             shouldThrow<IllegalStateException> { ToolHandlerRegistry(listOf(cardReader)) }.message shouldContain "Personenverzeichnis"

@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_invite.internal
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
@@ -17,7 +18,7 @@ import java.util.UUID
 class AuthInviteToolSession(
     @Id
     @Column(name = "tool_session_id", nullable = false)
-    var toolSessionId: UUID? = null,
+    var toolSessionId: ToolSessionId? = null,
     createdAt: Instant
 ) {
     @Column(name = "created_at", nullable = false)
@@ -25,6 +26,8 @@ class AuthInviteToolSession(
 }
 
 interface AuthInviteToolSessionRepository : JpaRepository<AuthInviteToolSession, UUID> {
+    fun findByToolSessionId(toolSessionId: ToolSessionId): AuthInviteToolSession?
+
     @Modifying
     @Query("delete from AuthInviteToolSession e where e.createdAt < :cutoff")
     fun deleteByCreatedAtBefore(@Param("cutoff") cutoff: Instant): Int

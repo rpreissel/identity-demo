@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_qr.api.v1
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_qr.internal.authqrlookup.AuthQrLookupToolHandler
 import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
@@ -8,7 +10,6 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
-import java.util.UUID
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -37,7 +38,7 @@ class AuthQrLookupToolController(
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/auth-qr-lookup")
     @Operation(summary = "Activate auth-qr-lookup", description = "No request body: toolId already carries kind and method.")
     fun activate(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
@@ -56,7 +57,7 @@ class AuthQrLookupToolController(
             "Peer-Login bestätigen; docs/07-betrieb.md #5)."
     )
     fun patch(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestBody(required = false) request: QrConfirmationCodeRequest?
     ): ResponseEntity<ChannelResponse> {
@@ -68,7 +69,7 @@ class AuthQrLookupToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/auth-qr-lookup")
     @Operation(summary = "Read the current auth-qr-lookup state")
     fun read(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, AUTH_QR_LOOKUP_TOOL_ID)

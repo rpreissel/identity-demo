@@ -1,5 +1,7 @@
 package com.example.identity.tools.ident_kvnr.internal
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.ident_kvnr.IdentKvnrDescriptor
@@ -7,11 +9,9 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.ToolOutcome
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 
 /**
@@ -28,7 +28,7 @@ class IdentKvnrToolHandler(
 ) {
 
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId): ToolOutcome {
         repository.save(IdentKvnrToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return inProgress()
     }
@@ -40,8 +40,8 @@ class IdentKvnrToolHandler(
      * the ident rate limit.
      */
     @Transactional
-    fun patch(toolSessionId: UUID, kvnr: String?, partnerNumber: String?, personId: String?, matchesAttestedIdentity: Boolean): ToolOutcome {
-        val data = checkNotNull(repository.findByIdOrNull(toolSessionId)) { "Unknown ident-kvnr tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, kvnr: String?, partnerNumber: String?, personId: PartnerNumber?, matchesAttestedIdentity: Boolean): ToolOutcome {
+        val data = checkNotNull(repository.findByToolSessionId(toolSessionId)) { "Unknown ident-kvnr tool session: $toolSessionId" }
         val byKvnr = !kvnr.isNullOrBlank()
         if (!byKvnr && partnerNumber.isNullOrBlank()) return inProgress()
         if (byKvnr) data.kvnr = kvnr else data.partnerNumber = partnerNumber
@@ -56,7 +56,7 @@ class IdentKvnrToolHandler(
             achievedAcr = descriptor.maxAcr,
             factorTypes = descriptor.factorTypes,
             claims = listOfNotNull(
-                Claim(AttributeType.PERSON_ID, personId, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr),
+                Claim(AttributeType.PERSON_ID, personId.value, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr),
                 kvnr?.takeIf { it.isNotBlank() }?.let { Claim(AttributeType.KVNR, it, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr) },
                 // Insured with us: the Versicherungsnummer becomes an anchor too (ADR-34).
                 personDirectory.memberNumberOf(personId)?.let { Claim(AttributeType.MEMBER_NUMBER, it, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr) }
@@ -66,8 +66,8 @@ class IdentKvnrToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        checkNotNull(repository.findByIdOrNull(toolSessionId)) { "Unknown ident-kvnr tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        checkNotNull(repository.findByToolSessionId(toolSessionId)) { "Unknown ident-kvnr tool session: $toolSessionId" }
         return inProgress()
     }
 

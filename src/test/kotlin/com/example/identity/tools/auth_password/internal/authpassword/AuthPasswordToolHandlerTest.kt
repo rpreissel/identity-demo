@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_password.internal.authpassword
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -29,7 +30,7 @@ class AuthPasswordToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<AuthPasswordToolSessionRepository>()
     val enrollmentRepository = mockk<AuthPasswordEnrollmentRepository>()
     val handler = AuthPasswordToolHandler(AuthPasswordDescriptor, toolDataRepository, enrollmentRepository, clock = TEST_CLOCK)
-    val toolSessionId = UUID.randomUUID()
+    val toolSessionId = ToolSessionId(UUID.randomUUID())
 
     given("start()") {
         `when`("the enrollment reference has the wrong type") {
@@ -55,7 +56,7 @@ class AuthPasswordToolHandlerTest : BehaviorSpec({
     given("an active auth-password tool session bound to an enrollment") {
         val enrollment = AuthPasswordEnrollment(passwordHash = PasswordHasher.hash("hunter2"), createdAt = TEST_NOW).apply { id = 1L }
         val data = AuthPasswordToolSession(toolSessionId = toolSessionId, enrollmentRefId = "1", createdAt = TEST_NOW)
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
         every { enrollmentRepository.findById(1L) } returns Optional.of(enrollment)
 
         `when`("submitting the correct password") {
@@ -78,8 +79,8 @@ class AuthPasswordToolHandlerTest : BehaviorSpec({
     }
 
     given("an auth-password tool session whose enrollment was removed meanwhile, on another channel") {
-        val goneSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(goneSessionId) } returns Optional.of(AuthPasswordToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7", createdAt = TEST_NOW))
+        val goneSessionId = ToolSessionId(UUID.randomUUID())
+        every { toolDataRepository.findByToolSessionId(goneSessionId) } returns AuthPasswordToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7", createdAt = TEST_NOW)
         every { enrollmentRepository.findById(7L) } returns Optional.empty()
 
         `when`("a password arrives") {

@@ -11,16 +11,16 @@ import io.kotest.matchers.string.shouldContain
  */
 class AcrLevelTest : BehaviorSpec({
 
-    given("of, the defensive edge reader") {
+    given("parse, the defensive edge reader") {
         then("maps known strings to their level") {
-            AcrLevel.of("loa2") shouldBe AcrLevel.LOA2
-            AcrLevel.of("none") shouldBe AcrLevel.NONE
+            AcrLevel.parse("loa2") shouldBe AcrLevel.LOA2
+            AcrLevel.parse("none") shouldBe AcrLevel.NONE
         }
 
-        then("damps unknown and null to NONE - an edge reader must never invent a level nor crash on one") {
-            AcrLevel.of("loa4") shouldBe AcrLevel.NONE
-            AcrLevel.of("bogus") shouldBe AcrLevel.NONE
-            AcrLevel.of(null) shouldBe AcrLevel.NONE
+        then("answers null for unknown and null - an edge reader must never invent a level nor crash on one") {
+            AcrLevel.parse("loa4") shouldBe null
+            AcrLevel.parse("bogus") shouldBe null
+            AcrLevel.parse(null) shouldBe null
         }
     }
 

@@ -1,8 +1,9 @@
 package com.example.identity.tools.auth_sms.internal.authsmslookup
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import java.time.Instant
-import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.StepData
 
@@ -31,14 +32,14 @@ internal sealed interface AuthSmsLookupState {
     }
 
     /** [accountId] is null without an active sms method; the state looks the same, the TAN check fails. */
-    data class AwaitingTan(val accountId: Long?, val issuedTanHash: String, val tanExpiresAt: Instant) : AuthSmsLookupState {
+    data class AwaitingTan(val accountId: AccountId?, val issuedTanHash: String, val tanExpiresAt: Instant) : AuthSmsLookupState {
         override val step = STEP_TAN_INPUT
         override val missingFields = listOf(FIELD_TAN)
     }
 
     companion object {
         /** Turns [AuthSmsLookupToolSession]'s persisted, nullable columns back into a [AuthSmsLookupState]. */
-        fun of(toolSessionId: UUID, accountId: Long?, issuedTanHash: String?, tanExpiresAt: Instant?): AuthSmsLookupState {
+        fun of(toolSessionId: ToolSessionId, accountId: AccountId?, issuedTanHash: String?, tanExpiresAt: Instant?): AuthSmsLookupState {
             val hash = issuedTanHash ?: return AwaitingEmail
             return AwaitingTan(
                 accountId,
@@ -50,8 +51,8 @@ internal sealed interface AuthSmsLookupState {
 }
 
 internal sealed interface AuthSmsLookupDecision {
-    data class Complete(val accountId: Long) : AuthSmsLookupDecision
-    data class WrongTan(val accountId: Long?) : AuthSmsLookupDecision
+    data class Complete(val accountId: AccountId) : AuthSmsLookupDecision
+    data class WrongTan(val accountId: AccountId?) : AuthSmsLookupDecision
     /** Nothing usable for the current state, e.g. an empty PATCH or a tan before any email. */
     data class Unchanged(val state: AuthSmsLookupState) : AuthSmsLookupDecision
 }

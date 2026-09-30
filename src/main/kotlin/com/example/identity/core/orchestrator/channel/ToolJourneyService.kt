@@ -1,5 +1,10 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.core.orchestrator.domain.JourneyId
+import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.core.orchestrator.session.ToolSessionStatus
 import com.example.identity.core.account.AccountService
@@ -34,7 +39,6 @@ import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolOutcome
 import java.net.URI
 import java.time.Duration
-import java.util.UUID
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.util.UriComponentsBuilder
@@ -62,11 +66,11 @@ class ToolJourneyService(
 ) : ToolJourney {
     data class Context(
         override val toolId: String,
-        override val toolSessionId: UUID,
-        val journeyId: UUID,
-        val channelSessionId: UUID,
+        override val toolSessionId: ToolSessionId,
+        val journeyId: JourneyId,
+        val channelSessionId: ChannelSessionId,
         val bindingKeyRef: String,
-        override val accountId: Long?
+        override val accountId: AccountId?
     ) : AuthorizedToolContext
 
     override fun activationLocation(context: ToolContext, baseUri: URI): URI =
@@ -79,7 +83,7 @@ class ToolJourneyService(
      * Mints the ToolSession and lets the journey decide whether [toolId] may run. The check is
      * membership in the current offer, so a tool never offered cannot be activated by naming it.
      */
-    override fun beginActivation(channelSessionId: UUID, bindingKeyRef: String, toolId: String): Context {
+    override fun beginActivation(channelSessionId: ChannelSessionId, bindingKeyRef: String, toolId: String): Context {
         val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
         val channel = live.session
         val journey = journeyService.findActive(channelSessionId)
@@ -133,13 +137,13 @@ class ToolJourneyService(
      * The write path: [loadContext] plus the authorization [applyOutcome]'s parameter type demands.
      * There is no other way to an [AuthorizedToolContext], so the check is structural.
      */
-    override fun loadCurrent(toolSessionId: UUID, bindingKeyRef: String, toolId: String): Context {
+    override fun loadCurrent(toolSessionId: ToolSessionId, bindingKeyRef: String, toolId: String): Context {
         val context = loadContext(toolSessionId, bindingKeyRef, toolId)
         requireCurrentTool(context)
         return context
     }
 
-    override fun loadContext(toolSessionId: UUID, bindingKeyRef: String, toolId: String): Context {
+    override fun loadContext(toolSessionId: ToolSessionId, bindingKeyRef: String, toolId: String): Context {
         val toolSession = sessionManagementService.findToolSessionById(toolSessionId)
             ?: throw OrchestratorException.notFound(Text("Tool session not found"), "toolSessionId=${toolSessionId}")
         val journey = journeyService.findRunning(toolSession.journeyId!!)
@@ -219,7 +223,7 @@ class ToolJourneyService(
         )
     }
 
-    override fun matchesAttestedIdentity(context: AuthorizedToolContext, personId: String): Boolean {
+    override fun matchesAttestedIdentity(context: AuthorizedToolContext, personId: PartnerNumber): Boolean {
         val ctx = context as Context
         val journey = resolveJourney(ctx)
         return journeyService.matchesAttestedIdentity(journey, resolveChannel(ctx, journey).session, personId)
@@ -230,7 +234,7 @@ class ToolJourneyService(
      * subject by its variant ([ToolOutcome.Failed]); a success resets the same counter. A lookup
      * login's subject comes from the outcome, since the channel's account is bound only later.
      */
-    private fun chargeRateLimits(channelAccountId: Long?, channelType: String?, descriptor: ToolDescriptor, outcome: ToolOutcome) {
+    private fun chargeRateLimits(channelAccountId: AccountId?, channelType: String?, descriptor: ToolDescriptor, outcome: ToolOutcome) {
         when (outcome) {
             is ToolOutcome.InProgress -> Unit
 

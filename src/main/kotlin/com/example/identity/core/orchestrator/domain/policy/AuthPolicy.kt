@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.domain.policy
 
-import com.example.identity.core.orchestrator.domain.policy.DefaultAuthPolicy
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
@@ -50,7 +50,7 @@ data class CandidateContext(
     val requiredAcr: AcrLevel,
     val account: AccountProfile? = null,
     val bindingKeyRef: String? = null,
-    val linkedAccountId: Long? = null,
+    val linkedAccountId: AccountId? = null,
     val availableTools: Set<ToolId>? = null
 )
 

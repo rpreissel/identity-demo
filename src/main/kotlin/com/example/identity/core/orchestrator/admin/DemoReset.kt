@@ -56,7 +56,7 @@ class DemoReset(
         // afterwards must see that same managed instance, not the stale one from the query.
         liveIds.forEach { id ->
             transactionTemplate.executeWithoutResult {
-                val channel = channelSessionRepository.findById(id).orElse(null)?.let(LiveChannel::of)
+                val channel = channelSessionRepository.findByChannelSessionId(id)?.let(LiveChannel::of)
                     ?: return@executeWithoutResult
                 journeyService.findActive(id)?.let { journeyService.cancel(it, channel) }
                 journeyService.endSession(channel, ChannelState.LOGGED_OUT)

@@ -1,9 +1,9 @@
 package com.example.identity.tools.auth_sms.internal.enrollsms
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.values.PhoneNumber
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import java.time.Instant
-import java.util.UUID
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.StepData
 
@@ -36,7 +36,7 @@ internal sealed interface EnrollSmsState {
 
     companion object {
         /** Turns [EnrollSmsToolSession]'s persisted, nullable columns back into a [EnrollSmsState]. */
-        fun of(toolSessionId: UUID, phoneNumber: String?, issuedTanHash: String?, tanExpiresAt: Instant?): EnrollSmsState {
+        fun of(toolSessionId: ToolSessionId, phoneNumber: String?, issuedTanHash: String?, tanExpiresAt: Instant?): EnrollSmsState {
             val number = phoneNumber ?: return AwaitingPhoneNumber
             return AwaitingTan(
                 number,
@@ -72,7 +72,7 @@ internal object EnrollSmsFlow {
 
     fun decide(state: EnrollSmsState, input: EnrollSmsInput, tanGenerator: TanGenerator): EnrollSmsDecision {
         input.phoneNumber?.let { raw ->
-            val number = PhoneNumber.ofOrNull(raw)
+            val number = PhoneNumber.parse(raw)
             return if (number != null) {
                 EnrollSmsDecision.SendTan(number.value)
             } else {

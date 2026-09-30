@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_invite.api.v1
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolJourney
@@ -25,7 +27,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import java.util.UUID
 
 private const val AUTH_INVITE_TOOL_ID = "auth-invite"
 
@@ -68,7 +69,7 @@ class AuthInviteToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
@@ -97,7 +98,7 @@ class AuthInviteToolController(
         ]
     )
     fun patch(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestBody(required = false) request: AuthInvitePatchRequest?
     ): ResponseEntity<ChannelResponse> {
@@ -118,7 +119,7 @@ class AuthInviteToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/auth-invite")
     @Operation(summary = "Read the current auth-invite state")
     fun read(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, AUTH_INVITE_TOOL_ID)

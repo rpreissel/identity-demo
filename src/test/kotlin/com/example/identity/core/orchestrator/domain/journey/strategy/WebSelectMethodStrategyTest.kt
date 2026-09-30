@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
@@ -88,7 +89,7 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
         }
 
         `when`("a lookup tool authenticates") {
-            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("password"), subject = Subject.Account(1L))
+            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("password"), subject = Subject.Account(AccountId(1L)))
             val transition = strategy.transition(state, JourneyEvent.Completed(AuthPasswordLookupDescriptor, outcome), webCtx())
 
             then("it performs AcceptProof and resumes in the same state") {

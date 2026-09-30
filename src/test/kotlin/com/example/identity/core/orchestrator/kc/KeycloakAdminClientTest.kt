@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.contract.tool_api.directory.InvitationEnded
 import com.example.identity.kcmigrate.federatedInvitationUserId
@@ -59,7 +61,7 @@ class KeycloakAdminClientTest : BehaviorSpec({
         val client = client(keycloak)
 
         `when`("ein Konto entfernt wird") {
-            client.removeAccount(7)
+            client.removeAccount(AccountId(7))
 
             then("holt der Client ein neues Token und wiederholt den Aufruf einmal") {
                 keycloak.tokensIssued.get() shouldBe 2
@@ -74,7 +76,7 @@ class KeycloakAdminClientTest : BehaviorSpec({
         val client = client(keycloak)
 
         `when`("ein Konto entfernt wird") {
-            val result = runCatching { client.removeAccount(7) }
+            val result = runCatching { client.removeAccount(AccountId(7)) }
 
             then("scheitert der Aufruf nach genau einer Wiederholung, statt endlos Tokens zu holen") {
                 result.isFailure shouldBe true
@@ -88,13 +90,13 @@ class KeycloakAdminClientTest : BehaviorSpec({
     given("eine beendete Einladung (ADR-48)") {
         val keycloak = FakeKeycloak(accepted = setOf("t1"))
         val listener = KeycloakInvitationLogoutListener(client(keycloak))
-        val invitation = "a".repeat(64)
+        val invitation = InvitationId("a".repeat(64))
 
         `when`("das Personenverzeichnis InvitationEnded meldet") {
             listener.onInvitationEnded(InvitationEnded(invitation))
 
             then("meldet Keycloak den Einladungs-Nutzer sofort ab, nicht erst beim naechsten Refresh") {
-                keycloak.logouts shouldBe listOf("/admin/realms/demo/users/${federatedInvitationUserId(invitation)}/logout")
+                keycloak.logouts shouldBe listOf("/admin/realms/demo/users/${federatedInvitationUserId(invitation.value)}/logout")
             }
         }
         keycloak.server.stop(0)

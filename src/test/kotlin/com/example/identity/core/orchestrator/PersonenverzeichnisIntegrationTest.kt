@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.contract.tool_api.values.PhoneNumber
 import com.ninjasquad.springmockk.MockkBean
@@ -40,17 +41,17 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
      * A person of its own per scenario, so no other suite's seed code or rate limit interferes -
      * insured with us, since only an insured person has a KVNR (ADR-34).
      */
-    private fun newPerson(): Triple<String, String, String> {
+    private fun newPerson(): Triple<PartnerNumber, String, String> {
         val kvnr = "Z" + (1..9).joinToString("") { Random.nextInt(10).toString() }
         val versnr = randomVersnr()
         val created = registerCall(
             HttpMethod.POST, "/personen",
             """{"kvnr":"$kvnr","versnr":"$versnr","name":"Register","vorname":"Rita","geburtsdatum":"1970-01-01"}"""
         )
-        return Triple(created["id"] as String, kvnr, versnr)
+        return Triple(PartnerNumber(created["id"] as String), kvnr, versnr)
     }
 
-    private fun issue(personId: String): Map<String, Any?> =
+    private fun issue(personId: PartnerNumber): Map<String, Any?> =
         registerCall(HttpMethod.POST, "/personen/$personId/freischaltcodes", """{"gueltigBis":"2099-01-01T00:00:00Z"}""")
 
     private fun identifyWith(kvnr: String, name: String, code: String): Map<String, Any?> {
@@ -116,7 +117,7 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                 )["mobilnummer"] shouldBe "+49 170 0000042"
 
                 val persons = (post("/orchestrator/api/v1/app/channels")["demo"] as Map<*, *>)["persons"] as List<*>
-                val persona = persons.map { it as Map<*, *> }.single { it["personId"] == personId }
+                val persona = persons.map { it as Map<*, *> }.single { it["personId"] == personId.value }
                 persona["email"] shouldBe "rita@example.org"
                 persona["phoneNumber"] shouldBe "+49 170 0000042"
             }
@@ -125,7 +126,7 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                 val persons = (post("/orchestrator/api/v1/app/channels")["demo"] as Map<*, *>)["persons"] as List<*>
                 val max = persons.map { it as Map<*, *> }.single { it["personId"] == "P000000001" }
                 max["email"] shouldBe "max.mustermann@example.com"
-                PhoneNumber.ofOrNull(max["phoneNumber"] as String).shouldNotBeNull()
+                PhoneNumber.parse(max["phoneNumber"] as String).shouldNotBeNull()
                 max["restrictedId"].shouldNotBeNull()
             }
 
@@ -145,7 +146,7 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                 stepError(identifyWith(kvnr, "Register", code)).shouldBeNull()
                 val accountId = jdbcTemplate.queryForObject(
                     "SELECT account_id FROM account.anchor WHERE attribute_type = 'person_id' AND normalized_value = ?",
-                    Long::class.java, personId
+                    Long::class.java, personId.value
                 )!!
 
                 fun anchor(type: String): String? = jdbcTemplate.queryForList(
@@ -185,7 +186,7 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                 // Not insured with us any more: both numbers go, the person stays as a Partner.
                 registerCall(HttpMethod.PUT, "/personen/$personId", """{"kvnr":"","versnr":"","name":"Register","vorname":"Rita","geburtsdatum":"1970-01-01"}""")
                 eventually { anchor("member_number") == null }
-                anchor("person_id") shouldBe personId
+                anchor("person_id") shouldBe personId.value
             }
         }
 
@@ -195,7 +196,7 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                 val personId = created["id"] as String
                 personId shouldMatch Regex("^P\\d{9}$")
                 created["kvnr"].shouldBeNull()
-                val code = issue(personId)["code"] as String
+                val code = issue(PartnerNumber(personId))["code"] as String
 
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String

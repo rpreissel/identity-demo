@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginStrategy
 import com.example.identity.tools.auth_sms.AuthSmsLookupDescriptor
@@ -51,7 +53,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
         val state = LookupLoginState.Credential(Offer(listOf(ToolId("auth-sms-lookup"))))
 
         `when`("the tool completes Authenticated with its own account (the first, account-resolving proof)") {
-            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("sms"), subject = Subject.Account(42L))
+            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("sms"), subject = Subject.Account(AccountId(42L)))
             val event = JourneyEvent.Completed(AuthSmsLookupDescriptor, outcome)
             val transition = strategy.transition(state, event, ctx())
             then("trusts the tool's own account") {
@@ -87,7 +89,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
         val state = LookupLoginState.Credential(Offer(listOf(ToolId("auth-invite"))))
 
         `when`("a one-time password proves an invitation, not an account") {
-            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("invite"), subject = Subject.Invitation("a".repeat(64)))
+            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("invite"), subject = Subject.Invitation(InvitationId("a".repeat(64))))
             val transition = strategy.transition(state, JourneyEvent.Completed(AuthSmsLookupDescriptor, outcome), ctx())
             then("aborts before anything is bound: process access is for the website only (ADR-48)") {
                 transition shouldBe Transition.Abort(Text("Ein Einmalkennwort gilt nur auf der Website"))

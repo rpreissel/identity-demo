@@ -1,5 +1,6 @@
 package com.example.identity.core.account.infrastructure
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.domain.normalizeClaimValue
 import com.example.identity.contract.tool_api.claims.AttributeType
 import jakarta.persistence.Column
@@ -21,7 +22,7 @@ import java.time.Instant
 @Table(schema = "account", name = "claim")
 class AccountClaim(
     @Column(name = "account_id", nullable = false)
-    var accountId: Long? = null,
+    var accountId: AccountId? = null,
 
     @Convert(converter = AttributeTypeConverter::class)
     @Column(name = "attribute_type", nullable = false)

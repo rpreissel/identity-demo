@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_sms.internal.authsms
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.simulation.sms.SmsGateway
@@ -37,7 +38,7 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
     val tanGenerator = TanGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val handler = AuthSmsToolHandler(AuthSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = TEST_CLOCK), sendLimit, clock = TEST_CLOCK)
-    val toolSessionId = UUID.randomUUID()
+    val toolSessionId = ToolSessionId(UUID.randomUUID())
 
     given("start()") {
         `when`("the enrollment reference has the wrong type") {
@@ -90,7 +91,7 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
         val issued = tanGenerator.issue()
         val data = AuthSmsToolSession(toolSessionId = toolSessionId, enrollmentRefId = "1", issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
         every { enrollmentRepository.findById(1L) } returns Optional.of(AuthSmsEnrollment(phoneNumber = "+491701234567", createdAt = TEST_NOW).apply { id = 1L })
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
 
         `when`("confirming with the correct TAN") {
             val outcome = handler.patch(toolSessionId, issued.plainTan)
@@ -109,10 +110,10 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
     }
 
     given("an auth-sms tool session whose enrollment was removed meanwhile, on another channel") {
-        val goneSessionId = UUID.randomUUID()
+        val goneSessionId = ToolSessionId(UUID.randomUUID())
         val issued = tanGenerator.issue()
-        every { toolDataRepository.findById(goneSessionId) } returns
-            Optional.of(AuthSmsToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7", issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = TEST_NOW))
+        every { toolDataRepository.findByToolSessionId(goneSessionId) } returns
+            AuthSmsToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7", issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
         every { enrollmentRepository.findById(7L) } returns Optional.empty()
 
         `when`("the right TAN arrives") {

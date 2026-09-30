@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_qr.internal.confirmqrlogin
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor
 import com.example.identity.tools.auth_qr.internal.ConfirmationCodeDigest
@@ -12,7 +14,6 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Duration
-import java.util.UUID
 import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
 import com.example.identity.contract.tool_api.MissingFields
 
@@ -35,7 +36,7 @@ class ConfirmQrLoginToolHandler(
      * manual entry, so an unknown or expired code falls back to `input` instead of failing activation.
      */
     @Transactional
-    fun start(toolSessionId: UUID, pairingCode: String? = null): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId, pairingCode: String? = null): ToolOutcome {
         val data = ConfirmQrLoginToolSession(toolSessionId = toolSessionId, createdAt = clock.instant())
         toolDataRepository.save(data)
         if (pairingCode.isNullOrBlank()) {
@@ -49,8 +50,8 @@ class ConfirmQrLoginToolHandler(
      * pairing may be approved for the account (docs/03-tool-architektur.md).
      */
     @Transactional
-    fun patch(toolSessionId: UUID, pairingCode: String?, decision: String?, accountId: Long, hasQrEnrollment: Boolean): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown confirm-qr-login tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, pairingCode: String?, decision: String?, accountId: AccountId, hasQrEnrollment: Boolean): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown confirm-qr-login tool session: $toolSessionId" }
 
         if (data.pairingCode == null) {
             return resolvePairingCode(data, pairingCode)
@@ -114,8 +115,8 @@ class ConfirmQrLoginToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown confirm-qr-login tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown confirm-qr-login tool session: $toolSessionId" }
         val pairingCode = data.pairingCode
             ?: return ToolOutcome.InProgress(nextStep = "input", stepData = MissingFields(listOf("pairingCode")))
         // This tool session only ever approves for its own channel's account - an approved request
@@ -132,7 +133,7 @@ class ConfirmQrLoginToolHandler(
     private fun codeShownStep(): ToolOutcome.InProgress =
         ToolOutcome.InProgress(nextStep = SHOW_CODE, stepData = MissingFields(listOf("decision")))
 
-    private fun approvedBy(pairingCode: String, accountId: Long): Boolean =
+    private fun approvedBy(pairingCode: String, accountId: AccountId): Boolean =
         qrLoginRequestRepository.findByIdOrNull(pairingCode)?.let {
             it.resolvingAccountId == accountId && (it.status == QrLoginStatus.APPROVED || it.status == QrLoginStatus.COMPLETED)
         } ?: false

@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_qr.internal.authqr
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -38,18 +40,18 @@ class AuthQrToolHandlerTest : BehaviorSpec({
     fun sessionOn(
         pairingCode: String,
         status: QrLoginStatus,
-        expectedAccountId: Long = 42L,
-        resolvingAccountId: Long? = null,
+        expectedAccountId: AccountId = AccountId(42L),
+        resolvingAccountId: AccountId? = null,
         expiresAt: Instant = TEST_NOW.plusSeconds(60),
-    ): UUID {
+    ): ToolSessionId {
         val request = QrLoginRequest(pairingCode = pairingCode, expectedAccountId = expectedAccountId, createdAt = TEST_NOW).apply {
             this.status = status
             this.resolvingAccountId = resolvingAccountId
             this.expiresAt = expiresAt
         }
         every { requests.findById(pairingCode) } returns Optional.of(request)
-        val toolSessionId = UUID.randomUUID()
-        every { toolDataRepository.findById(toolSessionId) } returns Optional.of(AuthQrToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode, createdAt = TEST_NOW))
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns AuthQrToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode, createdAt = TEST_NOW)
         return toolSessionId
     }
 
@@ -59,11 +61,11 @@ class AuthQrToolHandlerTest : BehaviorSpec({
             every { requests.save(capture(savedRequest)) } answers { savedRequest.captured }
             val savedSession = slot<AuthQrToolSession>()
             every { toolDataRepository.save(capture(savedSession)) } answers { savedSession.captured }
-            val outcome = handler.start(UUID.randomUUID(), accountId = 42L)
+            val outcome = handler.start(ToolSessionId(UUID.randomUUID()), accountId = AccountId(42L))
 
             then("it opens a pairing that expects account 42 and shows its code at step waitForApp") {
                 val pairingCode = savedRequest.captured.pairingCode
-                savedRequest.captured.expectedAccountId shouldBe 42L
+                savedRequest.captured.expectedAccountId shouldBe AccountId(42)
                 savedSession.captured.pairingCode shouldBe pairingCode
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "waitForApp", stepData = QrPairingStep(pairingCode))
             }
@@ -95,7 +97,7 @@ class AuthQrToolHandlerTest : BehaviorSpec({
     }
 
     given("patch() after account 42 approved in the app") {
-        val toolSessionId = sessionOn("APPROVE1", QrLoginStatus.APPROVED, resolvingAccountId = 42L)
+        val toolSessionId = sessionOn("APPROVE1", QrLoginStatus.APPROVED, resolvingAccountId = AccountId(42L))
         every { requests.completeIfConfirmed("APPROVE1", digest.of("123456"), any()) } returns 1
         every { requests.completeIfConfirmed("APPROVE1", digest.of("000000"), any()) } returns 0
         every { requests.countWrongConfirmation("APPROVE1", any()) } returns 1
@@ -131,7 +133,7 @@ class AuthQrToolHandlerTest : BehaviorSpec({
     }
 
     given("patch() after a different account than the expected one approved") {
-        val toolSessionId = sessionOn("FOREIGN1", QrLoginStatus.APPROVED, expectedAccountId = 42L, resolvingAccountId = 99L)
+        val toolSessionId = sessionOn("FOREIGN1", QrLoginStatus.APPROVED, expectedAccountId = AccountId(42L), resolvingAccountId = AccountId(99L))
         every { requests.completeIfConfirmed("FOREIGN1", digest.of("123456"), any()) } returns 1
 
         `when`("the browser sends the right confirmation code") {

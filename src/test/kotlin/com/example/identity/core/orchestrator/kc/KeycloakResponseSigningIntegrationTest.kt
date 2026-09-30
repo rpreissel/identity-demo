@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.IntegrationTestSupport
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.ninjasquad.springmockk.MockkBean
@@ -42,7 +43,7 @@ class KeycloakResponseSigningIntegrationTest : IntegrationTestSupport() {
 
         given("a peer-auth request from Keycloak") {
             then("the answer is signed for exactly this request, status and body") {
-                val channelSessionId = UUID.randomUUID()
+                val channelSessionId = ChannelSessionId(UUID.randomUUID())
                 val jti = UUID.randomUUID().toString()
                 every { peerAuthValidator.validate(any(), any(), any()) } returns PeerAuthAssertion(
                     jti = jti, issuedAt = Instant.now(), channelBinding = channelSessionId.toString(), subject = null

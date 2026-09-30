@@ -1,5 +1,6 @@
 package com.example.identity.simulation.personenverzeichnis
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.simulation.personenverzeichnis.internal.Brief
 import com.example.identity.simulation.personenverzeichnis.internal.BriefRepository
 import com.example.identity.simulation.personenverzeichnis.internal.Freischaltcode
@@ -16,7 +17,7 @@ import java.time.Instant
 /** A Freischaltcode as the register shows it - never its plaintext, which only the [BriefView] carries. */
 data class FreischaltcodeView(
     val id: Long,
-    val personId: String,
+    val personId: PartnerNumber,
     val expiresAt: Instant,
     val revokedAt: Instant?,
     val valid: Boolean
@@ -28,7 +29,7 @@ enum class BriefArt { FREISCHALTCODE, EINMALKENNWORT }
 /** A simulated letter from the register's mailbox, plaintext code included. */
 data class BriefView(
     val id: Long,
-    val personId: String,
+    val personId: PartnerNumber,
     val code: String,
     val versandtAm: Instant,
     val art: BriefArt,
@@ -58,11 +59,11 @@ class Freischaltcodes(
     /** The port's side ([ActivationCodes]) - the register's own words stay inside. */
     override fun digest(code: String): String = hash(code)
 
-    override fun isValid(personId: String, codeDigest: String): Boolean = pruefe(personId, codeDigest)
+    override fun isValid(personId: PartnerNumber, codeDigest: String): Boolean = pruefe(personId, codeDigest)
 
     /** Whether [codeHash] (see [digest]) is a currently valid Freischaltcode of [personId]. */
     @Transactional(readOnly = true)
-    fun pruefe(personId: String, codeHash: String): Boolean {
+    fun pruefe(personId: PartnerNumber, codeHash: String): Boolean {
         val now = clock.instant()
         return codes.findByPersonIdAndCodeHash(personId, codeHash).any { it.isValidAt(now) }
     }
@@ -71,7 +72,7 @@ class Freischaltcodes(
 
     /** Issues a new code for [personId] and "sends" it: the returned letter is the only plaintext. */
     @Transactional
-    fun ausstellen(personId: String, gueltigBis: Instant): BriefView {
+    fun ausstellen(personId: PartnerNumber, gueltigBis: Instant): BriefView {
         val code = (1..8).map { ALPHABET[random.nextInt(ALPHABET.length)] }.joinToString("")
         val stored = codes.save(Freischaltcode(personId = personId, codeHash = hash(code), expiresAt = gueltigBis))
         return briefe.save(
@@ -88,7 +89,7 @@ class Freischaltcodes(
     }
 
     @Transactional(readOnly = true)
-    fun fuerPerson(personId: String): List<FreischaltcodeView> {
+    fun fuerPerson(personId: PartnerNumber): List<FreischaltcodeView> {
         val now = clock.instant()
         return codes.findByPersonIdOrderByIdDesc(personId).map { it.toView(now) }
     }
@@ -101,7 +102,7 @@ class Freischaltcodes(
      * from the mailbox instead of a second hard-coded list.
      */
     @Transactional(readOnly = true)
-    fun juengsterGueltigerCode(personId: String): String? {
+    fun juengsterGueltigerCode(personId: PartnerNumber): String? {
         val now = clock.instant()
         val valid = codes.findByPersonIdOrderByIdDesc(personId).filter { it.isValidAt(now) }.mapNotNull { it.id }.toSet()
         return briefe.findByPersonIdOrderByIdDesc(personId).firstOrNull { it.freischaltcodeId in valid }?.code

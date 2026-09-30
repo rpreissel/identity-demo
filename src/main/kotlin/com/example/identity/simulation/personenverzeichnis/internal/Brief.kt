@@ -1,5 +1,6 @@
 package com.example.identity.simulation.personenverzeichnis.internal
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -16,7 +17,7 @@ import java.time.Instant
 @Table(schema = "personenverzeichnis", name = "brief")
 class Brief(
     @Column(name = "person_id", nullable = false, length = 10)
-    var personId: String? = null,
+    var personId: PartnerNumber? = null,
 
     /** Only for a Freischaltcode letter. */
     @Column(name = "freischaltcode_id")

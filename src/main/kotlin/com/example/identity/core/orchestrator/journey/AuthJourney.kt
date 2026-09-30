@@ -1,5 +1,8 @@
 package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.core.orchestrator.domain.JourneyId
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.journey.JourneyLifecycle
 import jakarta.persistence.Column
@@ -27,7 +30,7 @@ import com.example.identity.core.orchestrator.domain.AuthIntent
 @Table(schema = "orchestrator", name = "auth_journey")
 class AuthJourney(
     @Column(name = "channel_session_id", nullable = false)
-    var channelSessionId: UUID? = null,
+    var channelSessionId: ChannelSessionId? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "intent", nullable = false, length = 32)
@@ -40,7 +43,7 @@ class AuthJourney(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", nullable = false)
-    var journeyId: UUID? = null
+    var journeyId: JourneyId? = null
 
     @Enumerated(EnumType.STRING)
     @Column(name = "lifecycle", nullable = false, length = 32)
@@ -51,7 +54,7 @@ class AuthJourney(
      * channel's `accountId`, the one source. `OrchestratorArchitectureTest` keeps this write-only.
      */
     @Column(name = "account_id")
-    var accountId: Long? = null
+    var accountId: AccountId? = null
 
     /** Discriminator of [state], kept as its own column so journeys stay queryable by position. */
     @Column(name = "state_type", nullable = false, length = 100)
@@ -70,7 +73,7 @@ class AuthJourney(
 
     /** Set on a journey started as another one's precondition; that parent is SUSPENDED meanwhile. */
     @Column(name = "parent_journey_id")
-    var parentJourneyId: UUID? = null
+    var parentJourneyId: JourneyId? = null
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant? = createdAt
@@ -104,5 +107,5 @@ class AuthJourney(
 }
 
 /* Set on the first save / at creation, never null afterwards - see `ChannelSession.id`. */
-val AuthJourney.id: UUID get() = checkNotNull(journeyId) { "AuthJourney not saved yet" }
+val AuthJourney.id: JourneyId get() = checkNotNull(journeyId) { "AuthJourney not saved yet" }
 fun AuthJourney.requireIntent(): AuthIntent = checkNotNull(intent) { "Journey $journeyId without an intent" }

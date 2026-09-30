@@ -1,5 +1,6 @@
 package com.example.identity.contract.tool_api.directory
 
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import java.time.LocalDate
 
 /**
@@ -9,13 +10,13 @@ import java.time.LocalDate
  */
 interface PersonMasterData {
     /** The record of [personId], or `null` if the directory does not know it. */
-    fun masterDataOf(personId: String): PersonRecord?
+    fun masterDataOf(personId: PartnerNumber): PersonRecord?
 }
 
 /** What the directory holds about a person, as the account mirror needs it. */
 data class PersonRecord(
     /** The Partnernummer - the person id (ADR-34). */
-    val personId: String,
+    val personId: PartnerNumber,
     val kvnr: String?,
     val familyName: String?,
     val givenNames: String?,

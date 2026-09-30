@@ -65,7 +65,7 @@ class DatabaseInvariantConstraintTest : IntegrationTestSupport() {
                 fun insertMethod(method: String) = jdbcTemplate.update(
                     """INSERT INTO account.auth_method (id, account_id, method, enrollment_type, enrollment_id, active, created_at)
                        VALUES (?, ?, ?, 't', ?, TRUE, CURRENT_TIMESTAMP)""",
-                    UUID.randomUUID(), accountId, method, UUID.randomUUID().toString()
+                    UUID.randomUUID(), accountId.value, method, UUID.randomUUID().toString()
                 )
                 insertMethod("device")
                 insertMethod("device")

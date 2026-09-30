@@ -7,7 +7,7 @@
 Eine Identifizierung mit einem Ausweisdokument besteht aus zwei Schritten mit zwei Tools.
 
 **Bestätigen.** `ident-eid` (und ebenso `ident-nect`) bestätigt nur, was auf dem Dokument steht,
-aus eigener Autorität (`ClaimSource.of(toolId)`). Bei `ident-eid` sind das sieben Claims: `FAMILY_NAME`,
+aus eigener Autorität (`ClaimSource(toolId.value)`). Bei `ident-eid` sind das sieben Claims: `FAMILY_NAME`,
 `GIVEN_NAMES`, `BIRTH_DATE`, `STREET_ADDRESS` (die ganze Straßenzeile mit Hausnummer), `POSTAL_CODE`, `LOCALITY` und das
 Kartenpseudonym `EID_RESTRICTED_ID`. Eine Person im Personenverzeichnis findet dieser Schritt nicht,
 denn ein Ausweis trägt weder KVNR noch Partnernummer.
@@ -55,7 +55,7 @@ Interessenten (kein Konflikt), eine bekannte Nummer mit widersprechenden Daten e
 ## Begründung
 
 Vorher erledigte `ident-eid` beides und behauptete dabei etwas Falsches:
-`ClaimDeclaration(PERSON_ID, ClaimSource.of(toolId))`. Das Verfahren stand für eine PersonId ein, die
+`ClaimDeclaration(PERSON_ID, ClaimSource(toolId.value))`. Das Verfahren stand für eine PersonId ein, die
 es nie von der Karte gelesen hatte; der Controller hatte sie vorher über eine eingetippte KVNR
 nachgeschlagen. Außerdem ließ sich „gültige eID, aber kein Eintrag im Personenverzeichnis“ nicht
 abbilden: Der Fall scheiterte hart, obwohl ADR-10 genau diesen Zustand eines Kontos vorsieht.

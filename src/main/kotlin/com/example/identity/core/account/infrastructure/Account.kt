@@ -1,5 +1,6 @@
 package com.example.identity.core.account.infrastructure
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -25,3 +26,6 @@ class Account(
     @Version
     var version: Long? = null
 }
+
+/** The typed id. The key itself stays a `Long`: JPA applies no converter to a generated `@Id`. */
+val Account.accountId: AccountId get() = AccountId(checkNotNull(id) { "Account not saved yet" })

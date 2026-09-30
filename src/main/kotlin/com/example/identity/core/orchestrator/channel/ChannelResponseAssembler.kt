@@ -2,55 +2,29 @@ package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.core.orchestrator.session.channelType
 import com.example.identity.core.orchestrator.session.id
-import com.example.identity.core.orchestrator.session.SessionExpiredException
-import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.account.AuthMethodView
-import com.example.identity.core.orchestrator.domain.OrchestratorException
-import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.journey.JourneyService
-import com.example.identity.core.orchestrator.journeytrace.JourneyTraceResponse
-import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
-import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
-import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
-import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
-import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
 import com.example.identity.core.orchestrator.domain.AmrSource
-import com.example.identity.core.orchestrator.session.AppTokenSessionService
 import com.example.identity.core.orchestrator.session.SessionEvidenceService
-import com.example.identity.core.orchestrator.session.ChannelCreationRateLimitService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.domain.ChannelState
-import com.example.identity.core.orchestrator.session.LiveChannel
-import com.example.identity.core.orchestrator.session.SessionManagementService
-import com.example.identity.core.orchestrator.session.TokenProvider
-import com.example.identity.core.orchestrator.session.TokenService
 import com.example.identity.core.orchestrator.session.toCoreEvidence
 import com.example.identity.contract.tool_api.envelope.ActiveMethodView
 import com.example.identity.contract.tool_api.envelope.AuthData
 import com.example.identity.contract.tool_api.envelope.AuthSubject
 import com.example.identity.contract.tool_api.envelope.AuthSubjectType
 import com.example.identity.contract.tool_api.envelope.ChannelBlock
-import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.ToolRole
-import com.example.identity.contract.tool_api.claims.authority
-import com.example.identity.contract.tool_api.claims.anchorRule
-import com.example.identity.contract.tool_api.claims.isLocalAnchor
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.envelope.DemoInfo
 import com.example.identity.contract.tool_api.envelope.DemoSession
 import com.example.identity.contract.tool_api.envelope.Next
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import java.time.Duration
-import java.util.UUID
-import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import com.example.identity.core.orchestrator.session.forLog
 import com.example.identity.contract.tool_api.StepData
 import org.springframework.stereotype.Component
 
@@ -102,7 +76,7 @@ class ChannelResponseAssembler(
             authPolicy.resolveAcr(it.toCoreEvidence(), account)
         }
         val subject = channel.accountId?.let { AuthSubject(AuthSubjectType.ACCOUNT, it.toString()) }
-            ?: channel.invitation?.let { AuthSubject(AuthSubjectType.INVITATION, it) }
+            ?: channel.invitation?.let { AuthSubject(AuthSubjectType.INVITATION, it.value) }
         return AuthData(acr = acr?.value, amr = amr, subject = subject)
     }
 
@@ -182,7 +156,7 @@ class ChannelResponseAssembler(
                 factorTypes = descriptor?.factorTypes?.toList(),
                         maxAcr = descriptor?.maxAcr?.value,
                 enrolledUnderAcr = m.enrolledUnderAcr,
-                effectiveAcr = descriptor?.let { AcrLevel.min(AcrLevel.of(m.enrolledUnderAcr), it.maxAcr) }?.value
+                effectiveAcr = descriptor?.let { AcrLevel.min(AcrLevel.parse(m.enrolledUnderAcr), it.maxAcr) }?.value
             )
         }
 }

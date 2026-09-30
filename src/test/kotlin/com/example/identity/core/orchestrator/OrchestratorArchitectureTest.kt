@@ -5,6 +5,7 @@ import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.channel.DisclosingDemoDisclosure
 import com.example.identity.core.orchestrator.channel.WithheldDemoDisclosure
 import com.tngtech.archunit.base.DescribedPredicate
+import com.tngtech.archunit.core.domain.AccessTarget.CodeUnitAccessTarget
 import com.tngtech.archunit.core.domain.JavaCall
 import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.importer.ClassFileImporter
@@ -104,7 +105,12 @@ class OrchestratorArchitectureTest : BehaviorSpec({
             // A second readable copy of the same fact invites `journey.accountId ?: channel.accountId`
             // with a dead branch.
             noClasses()
-                .should().callMethod("com.example.identity.core.orchestrator.journey.AuthJourney", "getAccountId")
+                .should().callMethodWhere(
+                    DescribedPredicate.describe<JavaCall<*>>("read AuthJourney.accountId") { call ->
+                        call.target.owner.fullName == "com.example.identity.core.orchestrator.journey.AuthJourney" &&
+                            call.target.kotlinName == "getAccountId"
+                    }
+                )
                 .because("AuthJourney.accountId is an audit record; decisions read ChannelSession.accountId")
                 .check(classes)
         }
@@ -188,6 +194,8 @@ class OrchestratorArchitectureTest : BehaviorSpec({
     // identity resolution, account absorption and device linking reachable from one class only, so no
     // strategy or tool order can reach a takeover path that skips the gate.
     val gate = "com.example.identity.core.orchestrator.journey.JourneyActionExecutor"
+    // A lambda taking a value class compiles to a class of its own (`JourneyActionExecutor$accountOf$1`).
+    val gateAndItsLambdas = "${Regex.escape(gate)}(\\$.*)?"
 
     // Scanned across the whole application, not just `orchestrator`: a tool module injecting
     // IdentityResolver for itself is exactly the case a narrower scope would miss.
@@ -231,7 +239,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
     given("identity resolution (IdentityResolver - \"does this attested identity belong to an existing account?\")") {
         then("only the acting phase can ask, so the answer can never be acted on without its gate") {
             noClasses()
-                .that().doNotHaveFullyQualifiedName(gate)
+                .that().haveNameNotMatching(gateAndItsLambdas)
                 // The port and its single implementation, named individually so a second class in
                 // either package cannot inherit the exemption.
                 .and().doNotHaveFullyQualifiedName("com.example.identity.contract.tool_api.directory.IdentityResolver")
@@ -258,12 +266,12 @@ class OrchestratorArchitectureTest : BehaviorSpec({
             ) { call ->
                 val target = call.target
                 (target.owner.fullName == "com.example.identity.core.account.AccountService" &&
-                    target.name == "absorbDisposableAccount") ||
+                    target.kotlinName == "absorbDisposableAccount") ||
                     (target.owner.fullName == "com.example.identity.core.orchestrator.session.SessionManagementService" &&
-                        target.name == "linkDeviceToAccount")
+                        target.kotlinName == "linkDeviceToAccount")
             }
             noClasses()
-                .that().doNotHaveFullyQualifiedName(gate)
+                .that().haveNameNotMatching(gateAndItsLambdas)
                 .should().callMethodWhere(crossesAccounts)
                 .because(
                     "these two are the only writes that move a session/device onto an account it did not " +
@@ -352,3 +360,10 @@ class OrchestratorArchitectureTest : BehaviorSpec({
         }
     }
 })
+
+/**
+ * The name in the Kotlin source. A function taking or returning a value class carries a hash
+ * suffix on the JVM (`linkDeviceToAccount-U3iWffw`); a rule that matches the plain name would
+ * silently match nothing.
+ */
+private val CodeUnitAccessTarget.kotlinName: String get() = name.substringBefore('-')

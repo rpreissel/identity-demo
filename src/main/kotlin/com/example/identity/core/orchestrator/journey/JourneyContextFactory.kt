@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.journey
 
 import com.example.identity.core.orchestrator.session.channelType
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
-import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
@@ -51,7 +50,7 @@ class JourneyContextFactory(
     }
 
     fun acrFloorOf(channel: ChannelSession): AcrLevel =
-        channel.acrFloor?.let(AcrLevel::of) ?: AcrLevels.DEFAULT_REQUIRED_ACR
+        channel.acrFloor?.let(AcrLevel::parse) ?: AcrLevels.DEFAULT_REQUIRED_ACR
 
     /** Recomputed from the evidence every time, never stored. */
     fun currentAcrOf(channel: ChannelSession): AcrLevel {

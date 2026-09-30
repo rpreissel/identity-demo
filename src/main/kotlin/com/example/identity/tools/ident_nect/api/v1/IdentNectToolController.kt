@@ -1,5 +1,7 @@
 package com.example.identity.tools.ident_nect.api.v1
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.ident_nect.internal.IdentNectToolHandler
 import com.example.identity.contract.tool_api.envelope.API_V1
 import com.example.identity.contract.tool_api.BindingKey
@@ -81,7 +83,7 @@ class IdentNectToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestBody(required = false) request: IdentNectActivateRequest?,
         uriBuilder: UriComponentsBuilder
@@ -111,7 +113,7 @@ class IdentNectToolController(
         ]
     )
     fun patch(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestBody(required = false) request: IdentNectPatchRequest?
     ): ResponseEntity<ChannelResponse> {
@@ -124,7 +126,7 @@ class IdentNectToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/ident-nect")
     @Operation(summary = "Read the current ident-nect state")
     fun read(
-        @PathVariable toolSessionId: UUID,
+        @PathVariable toolSessionId: ToolSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, IDENT_NECT_TOOL_ID)

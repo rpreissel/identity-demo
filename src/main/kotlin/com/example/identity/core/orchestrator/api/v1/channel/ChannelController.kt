@@ -1,10 +1,10 @@
 package com.example.identity.core.orchestrator.api.v1.channel
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.channel.ChannelService
 import com.example.identity.core.orchestrator.channel.MethodsResponse
 import com.example.identity.core.orchestrator.channel.TokenResponse
 import com.example.identity.core.orchestrator.channel.DeviceLinkResponse
-import com.example.identity.core.orchestrator.journeytrace.JourneyTraceResponse
 import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import io.swagger.v3.oas.annotations.Operation
@@ -15,7 +15,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
-import java.util.UUID
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -116,7 +115,7 @@ class ChannelController(
         ]
     )
     fun getChannel(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         return ResponseEntity.ok(channelService.getChannel(channelSessionId, bindingKeyRef))
@@ -141,7 +140,7 @@ class ChannelController(
         ]
     )
     fun raiseRequiredAcr(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestBody request: ChannelPatchRequest
     ): ResponseEntity<ChannelResponse> {
@@ -166,7 +165,7 @@ class ChannelController(
         ]
     )
     fun cancel(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         return ResponseEntity.ok(channelService.cancelActiveJourney(channelSessionId, bindingKeyRef))
@@ -185,7 +184,7 @@ class ChannelController(
         )]
     )
     fun startLogout(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         return ResponseEntity.ok(channelService.startLogout(channelSessionId, bindingKeyRef))
@@ -202,7 +201,7 @@ class ChannelController(
         responses = [ApiResponse(responseCode = "204", description = "Logged out - no body.")]
     )
     fun logout(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<Void> {
         channelService.logout(channelSessionId, bindingKeyRef)
@@ -232,7 +231,7 @@ class ChannelController(
         ]
     )
     fun answer(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestBody request: AnswerRequest
     ): ResponseEntity<ChannelResponse> {
@@ -261,7 +260,7 @@ class ChannelController(
         ]
     )
     fun getMethods(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<MethodsResponse> {
         return ResponseEntity.ok(channelService.getMethods(channelSessionId, bindingKeyRef))
@@ -288,7 +287,7 @@ class ChannelController(
         ]
     )
     fun manageMethods(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         return ResponseEntity.ok(channelService.startManageMethods(channelSessionId, bindingKeyRef))
@@ -314,7 +313,7 @@ class ChannelController(
         ]
     )
     fun confirmPeerLogin(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         return ResponseEntity.ok(channelService.startPeerLogin(channelSessionId, bindingKeyRef))
@@ -347,7 +346,7 @@ class ChannelController(
         ]
     )
     fun deleteAccount(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
         return ResponseEntity.ok(channelService.startDeleteAccount(channelSessionId, bindingKeyRef))
@@ -378,7 +377,7 @@ class ChannelController(
         ]
     )
     fun deactivateMethod(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @PathVariable methodInstanceId: String,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
@@ -411,7 +410,7 @@ class ChannelController(
         ]
     )
     fun retractAttribute(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @PathVariable attribute: String,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
@@ -441,7 +440,7 @@ class ChannelController(
         ]
     )
     fun getToken(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String,
         @RequestParam(defaultValue = "15") minValiditySeconds: Long
     ): ResponseEntity<TokenResponse> {
@@ -474,7 +473,7 @@ class ChannelController(
         ]
     )
     fun getIdClaims(
-        @PathVariable channelSessionId: UUID,
+        @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<Map<String, Any?>> {
         return ResponseEntity.ok(channelService.getIdClaims(channelSessionId, bindingKeyRef))

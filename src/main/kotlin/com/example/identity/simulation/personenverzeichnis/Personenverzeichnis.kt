@@ -32,16 +32,16 @@ class Personenverzeichnis(
 
     private val random = SecureRandom()
 
-    override fun findPersonIdByKvnr(kvnr: String): String? =
-        personRepository.findByKvnr(normalizeKvnr(kvnr))?.id
+    override fun findPersonIdByKvnr(kvnr: String): PartnerNumber? =
+        personRepository.findByKvnr(normalizeKvnr(kvnr))?.id?.let(::PartnerNumber)
 
-    override fun findPersonIdByPartnerNumber(partnerNumber: String): String? =
-        PartnerNumber.ofOrNull(partnerNumber)?.let { personRepository.findByIdOrNull(it.value) }?.id
+    override fun findPersonIdByPartnerNumber(partnerNumber: String): PartnerNumber? =
+        PartnerNumber.parse(partnerNumber)?.takeIf { personRepository.existsById(it.value) }
 
-    override fun memberNumberOf(personId: String): String? = personRepository.findByIdOrNull(personId)?.versnr
+    override fun memberNumberOf(personId: PartnerNumber): String? = personRepository.findByIdOrNull(personId.value)?.versnr
 
-    override fun matchesMasterData(personId: String, claimed: ClaimedIdentity): Boolean {
-        val person = personRepository.findByIdOrNull(personId) ?: return false
+    override fun matchesMasterData(personId: PartnerNumber, claimed: ClaimedIdentity): Boolean {
+        val person = personRepository.findByIdOrNull(personId.value) ?: return false
         // null = the attestation didn't include the attribute; it is not compared. Names compare
         // in MRZ form (MrzName): a document reads them differently than the register writes them.
         // The street line compares against the register's own two fields, joined.
@@ -52,13 +52,13 @@ class Personenverzeichnis(
             (claimed.locality == null || MrzName.of(person.ort.orEmpty()) == MrzName.of(claimed.locality))
     }
 
-    override fun matchesPersonalDetails(personId: String, familyName: String, givenNames: String, birthDate: LocalDate): Boolean {
-        val person = personRepository.findByIdOrNull(personId) ?: return false
+    override fun matchesPersonalDetails(personId: PartnerNumber, familyName: String, givenNames: String, birthDate: LocalDate): Boolean {
+        val person = personRepository.findByIdOrNull(personId.value) ?: return false
         return namesMatch(person, familyName, givenNames) && person.geburtsdatum == birthDate
     }
 
-    override fun hasNamesake(personId: String): Boolean {
-        val person = personRepository.findByIdOrNull(personId) ?: return false
+    override fun hasNamesake(personId: PartnerNumber): Boolean {
+        val person = personRepository.findByIdOrNull(personId.value) ?: return false
         val born = person.geburtsdatum ?: return false
         return personRepository.findByGeburtsdatum(born).any { other ->
             other.id != person.id && MrzName.sameName(person.name.orEmpty(), person.vorname.orEmpty(), other.name.orEmpty(), other.vorname.orEmpty())
@@ -74,25 +74,25 @@ class Personenverzeichnis(
                 (vorname == null || MrzName.of(vorname) == MrzName.of(person.vorname.orEmpty()))
     }
 
-    override fun displayName(personId: String): String? {
-        val person = personRepository.findByIdOrNull(personId) ?: return null
+    override fun displayName(personId: PartnerNumber): String? {
+        val person = personRepository.findByIdOrNull(personId.value) ?: return null
         return listOfNotNull(person.vorname, person.name).joinToString(" ").ifBlank { null }
     }
 
     fun findPersonByKvnr(kvnr: String): PersonData? =
         personRepository.findByKvnr(normalizeKvnr(kvnr))?.toPersonData()
 
-    fun findPersonById(personId: String): PersonData? =
-        personRepository.findByIdOrNull(personId)?.toPersonData()
+    fun findPersonById(personId: PartnerNumber): PersonData? =
+        personRepository.findByIdOrNull(personId.value)?.toPersonData()
 
-    override fun masterDataOf(personId: String): PersonRecord? =
+    override fun masterDataOf(personId: PartnerNumber): PersonRecord? =
         findPersonById(personId)?.toPersonRecord()
 
     /** Where the register's own shape ([PersonData]) becomes the port's ([PersonRecord]). */
     internal fun PersonData.toPersonRecord(): PersonRecord? =
         id?.let {
             PersonRecord(
-                personId = it,
+                personId = PartnerNumber(it),
                 kvnr = kvnr, familyName = name, givenNames = vorname, birthDate = geburtsdatum,
                 streetAddress = strassenzeile, postalCode = plz, locality = ort, memberNumber = versnr
             )
@@ -128,8 +128,8 @@ class Personenverzeichnis(
      *   or a KVNR without a Versicherungsnummer.
      */
     @Transactional
-    fun aendern(personId: String, input: PersonData): PersonData? {
-        val person = personRepository.findByIdOrNull(personId) ?: return null
+    fun aendern(personId: PartnerNumber, input: PersonData): PersonData? {
+        val person = personRepository.findByIdOrNull(personId.value) ?: return null
         val (kvnr, versnr) = validNumbers(input)
         if (kvnr != person.kvnr) requireKvnrFree(kvnr)
         if (versnr != person.versnr) requireVersnrFree(versnr)
@@ -151,10 +151,10 @@ class Personenverzeichnis(
      */
     private fun validNumbers(input: PersonData): Pair<String?, String?> {
         val kvnr = input.kvnr?.takeIf { it.isNotBlank() }?.let {
-            Kvnr.ofOrNull(it)?.value ?: throw PersonRejectedException(Text("KVNR muss ein Buchstabe und neun Ziffern sein"))
+            Kvnr.parse(it)?.value ?: throw PersonRejectedException(Text("KVNR muss ein Buchstabe und neun Ziffern sein"))
         }
         val versnr = input.versnr?.takeIf { it.isNotBlank() }?.let {
-            MemberNumber.ofOrNull(it)?.value ?: throw PersonRejectedException(Text("Die Versicherungsnummer muss aus acht Ziffern bestehen"))
+            MemberNumber.parse(it)?.value ?: throw PersonRejectedException(Text("Die Versicherungsnummer muss aus acht Ziffern bestehen"))
         }
         if (kvnr != null && versnr == null) {
             throw PersonRejectedException(Text("Eine KVNR gibt es nur zusammen mit einer Versicherungsnummer"))
@@ -164,7 +164,7 @@ class Personenverzeichnis(
 
     /** A fresh Partnernummer - random, so it gives away neither order nor count of the persons. */
     private fun neuePartnerNumber(): String =
-        generateSequence { PartnerNumber.ofDigits(random.nextInt(1_000_000_000)).value }
+        generateSequence { PartnerNumber("P%09d".format(random.nextInt(1_000_000_000))).value }
             .first { !personRepository.existsById(it) }
 
     private fun requireKvnrFree(kvnr: String?) {

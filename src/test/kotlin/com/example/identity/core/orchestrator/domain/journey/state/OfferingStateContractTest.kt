@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.state.ToolRef
@@ -32,7 +33,7 @@ class OfferingStateContractTest : BehaviorSpec({
      */
     val sampleOffer = Offer(
         offered = listOf(ToolId("probe-a"), ToolId("probe-b")),
-        active = ToolRef(ToolId("probe-a"), UUID.randomUUID(), "input")
+        active = ToolRef(ToolId("probe-a"), ToolSessionId(UUID.randomUUID()), "input")
     )
 
     /** A value for a constructor parameter the state needs but this contract does not care about. */

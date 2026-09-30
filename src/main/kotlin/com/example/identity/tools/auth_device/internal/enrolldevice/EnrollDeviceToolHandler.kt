@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_device.internal.enrolldevice
+import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_device.internal.DeviceEnrollmentRepository
 import com.example.identity.tools.auth_device.internal.DeviceEnrollment
 
@@ -11,11 +12,9 @@ import com.example.identity.contract.tool_api.device.UserVerification
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolOutcome
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
-import java.util.UUID
 
 /**
  * toolId=enroll-device (docs/03-tool-architektur.md): registers a device-bound key pair as a new
@@ -31,7 +30,7 @@ class EnrollDeviceToolHandler(
 
     /** Called directly by EnrollDeviceToolController; nothing needs resolving before this can start. */
     @Transactional
-    fun start(toolSessionId: UUID): ToolOutcome {
+    fun start(toolSessionId: ToolSessionId): ToolOutcome {
         toolDataRepository.save(EnrollDeviceToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
         return outcomeFor()
     }
@@ -42,8 +41,8 @@ class EnrollDeviceToolHandler(
      * the device that holds it.
      */
     @Transactional
-    fun patch(toolSessionId: UUID, devicePublicKey: DevicePublicKey, userVerification: UserVerification, deviceBindingKeyRef: String, label: String?): ToolOutcome {
-        checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown enroll-device tool session: $toolSessionId" }
+    fun patch(toolSessionId: ToolSessionId, devicePublicKey: DevicePublicKey, userVerification: UserVerification, deviceBindingKeyRef: String, label: String?): ToolOutcome {
+        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-device tool session: $toolSessionId" }
 
         val decision = when (val decided = EnrollDeviceFlow.decide(EnrollDeviceInput(devicePublicKey, userVerification, deviceBindingKeyRef, label))) {
             EnrollDeviceDecision.SameKeyAsChannel ->
@@ -76,8 +75,8 @@ class EnrollDeviceToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: UUID): ToolOutcome {
-        checkNotNull(toolDataRepository.findByIdOrNull(toolSessionId)) { "Unknown enroll-device tool session: $toolSessionId" }
+    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-device tool session: $toolSessionId" }
         return outcomeFor()
     }
 

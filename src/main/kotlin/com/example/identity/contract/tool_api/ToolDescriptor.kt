@@ -1,5 +1,6 @@
 package com.example.identity.contract.tool_api
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.claims.ClaimRequirement
 import com.example.identity.contract.tool_api.claims.ClaimDeclaration
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -113,7 +114,7 @@ interface ToolDescriptor {
      * one account at a time ([com.example.identity.core.orchestrator.session.DeviceAccountLink],
      * docs/09-dpop.md). The second half is the same for every method, so it lives here.
      */
-    fun usableByCaller(instanceDetails: Map<String, Any?>?, callerBindingKeyRef: String?, linkedAccountId: Long?, accountId: Long): Boolean {
+    fun usableByCaller(instanceDetails: Map<String, Any?>?, callerBindingKeyRef: String?, linkedAccountId: AccountId?, accountId: AccountId): Boolean {
         val binding = keyBinding ?: return true
         return binding.livesOn(instanceDetails, callerBindingKeyRef) && linkedAccountId == accountId
     }

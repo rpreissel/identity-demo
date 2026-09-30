@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.account.RetractionSource
@@ -30,12 +32,12 @@ class AccountDeletionService(
     private val cleanupsByType: Map<String, EnrollmentCleanup> = cleanups.associateBy { it.enrollmentType }
 
     /** The module's credential row goes - unless another account's method still points at it. */
-    private fun deleteCredential(accountId: Long, ref: com.example.identity.contract.tool_api.EnrollmentRef) {
+    private fun deleteCredential(accountId: AccountId, ref: com.example.identity.contract.tool_api.EnrollmentRef) {
         if (accountService.isEnrollmentSharedWithOtherAccount(accountId, ref)) return
         cleanupsByType[ref.type]?.delete(ref)
     }
 
-    fun deleteAccount(accountId: Long) {
+    fun deleteAccount(accountId: AccountId) {
         accountService.allEnrollmentRefs(accountId).forEach { ref -> deleteCredential(accountId, ref) }
 
         deviceAccountLinkRepository.deleteByAccountId(accountId)
@@ -80,7 +82,7 @@ class AccountDeletionService(
      * Device rebinding uses it too: the previous account's credential on that key must stop
      * matching (docs/09-dpop.md).
      */
-    fun revokeMethod(accountId: Long, methodInstanceId: String) {
+    fun revokeMethod(accountId: AccountId, methodInstanceId: String) {
         accountService.enrollmentRefFor(accountId, methodInstanceId)?.let { ref -> deleteCredential(accountId, ref) }
         // Whatever only this credential backed stops being a valid claim (ADR-12). The rule lives
         // in retractClaimsOf.
@@ -95,6 +97,6 @@ class AccountDeletionService(
 
     private companion object {
         /** Placeholder for "no channel session": a JPQL `in` clause rejects an empty collection. */
-        private val NO_CHANNEL_SESSION: java.util.UUID = java.util.UUID(0L, 0L)
+        private val NO_CHANNEL_SESSION = ChannelSessionId(java.util.UUID(0L, 0L))
     }
 }

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AuthMethodView
 import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.core.orchestrator.domain.AuthIntent
@@ -47,14 +48,14 @@ class CredentialRulesTest : BehaviorSpec({
         val implicit = AuthIntent.entries.first { it.bindsDeviceImplicitly }
         val explicitOnly = AuthIntent.entries.first { !it.bindsDeviceImplicitly }
         then("a free device, or one already linked here, is linked") {
-            linksDeviceImplicitly(implicit, linkedTo = null, accountId = 1) shouldBe true
-            linksDeviceImplicitly(implicit, linkedTo = 1, accountId = 1) shouldBe true
+            linksDeviceImplicitly(implicit, linkedTo = null, accountId = AccountId(1)) shouldBe true
+            linksDeviceImplicitly(implicit, linkedTo = AccountId(1), accountId = AccountId(1)) shouldBe true
         }
         then("a device linked to ANOTHER account is never rebound implicitly") {
-            linksDeviceImplicitly(implicit, linkedTo = 2, accountId = 1) shouldBe false
+            linksDeviceImplicitly(implicit, linkedTo = AccountId(2), accountId = AccountId(1)) shouldBe false
         }
         then("an intent that does not bind devices never does") {
-            linksDeviceImplicitly(explicitOnly, linkedTo = null, accountId = 1) shouldBe false
+            linksDeviceImplicitly(explicitOnly, linkedTo = null, accountId = AccountId(1)) shouldBe false
         }
     }
 })
