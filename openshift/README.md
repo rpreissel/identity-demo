@@ -33,7 +33,7 @@ Schluss wendet es das Deployment an und wartet auf den Rollout.
 - **Erneut ausrollen:** einfach das Skript noch einmal laufen lassen, mit `SKIP_GRADLE=1`, wenn die
   Artefakte schon gebaut sind.
 - **Andere Basis-Images:** `KEYCLOAK_BASE_IMAGE` und `ORCHESTRATOR_RUNTIME_BASE_IMAGE`, wie bei
-  Compose. Beide Skripte lesen dafür auch `.env`, dieselbe Datei wie Compose (Vorlage
+  Compose. `deploy.sh` und `local-up.sh` lesen dafür auch `.env`, dieselbe Datei wie Compose (Vorlage
   `.env.work.example`); eine in der Shell gesetzte Variable hat Vorrang. Die Basis-Images zieht der
   Build im Cluster; `deploy.sh` überträgt die Werte vor dem Start in die BuildConfigs. Private
   Basis-Images müssen deshalb für den `builder`-Service-Account erreichbar sein.

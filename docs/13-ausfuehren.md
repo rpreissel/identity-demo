@@ -10,8 +10,8 @@ in [07-betrieb.md](07-betrieb.md). Die Modulstruktur und die Prüfungen im Build
 
 ## 1) Voraussetzungen
 
-- **JDK 21** und **Node.js mit npm** auf dem Rechner. Gradle ruft npm selbst auf, um das Frontend und
-  das Keycloak-Theme zu bauen.
+- **JDK 21** und **Node.js 22 mit npm** auf dem Rechner (dieselben Versionen wie in der CI). Gradle
+  ruft npm selbst auf, um das Frontend und das Keycloak-Theme zu bauen.
 - **Podman** mit `podman compose`, nur für die Varianten mit Keycloak. Auf macOS läuft Podman in
   einer VM (Podman Machine). Diese VM bindet nur `/Users` ein: Bind-Mounts aus `/tmp` funktionieren
   dort nicht. `compose.yml` nutzt deshalb benannte Volumes (`keycloak-data`, `orchestrator-data`),
@@ -72,8 +72,8 @@ podman compose up keycloak
 
 `bootRunKc` ist `bootRun` mit dem Profil `keycloak` (`application-keycloak.yml`). Es spricht Keycloak
 unter `https://localhost:8543` an. Ein einfaches `bootRun` bliebe im Standardprofil und würde das
-Keycloak aus Compose gar nicht nutzen. Nur in dieser Variante funktioniert auch die H2-Konsole
-(Begründung in [08-projektrahmen.md](08-projektrahmen.md), Abschnitt „H2-Konsole: nur beim
+Keycloak aus Compose gar nicht nutzen. Anders als im Container funktioniert hier, wie bei `bootRun`,
+auch die H2-Konsole (Begründung in [08-projektrahmen.md](08-projektrahmen.md), Abschnitt „H2-Konsole: nur beim
 Host-Start“).
 
 ### Frontend mit Neuladen beim Speichern
@@ -84,8 +84,9 @@ npm install
 npm run dev
 ```
 
-Startet Vite auf Port 5173. Anfragen an `/orchestrator`, `/mock-personenverzeichnis`, `/mock-nect`
-und `/mock-kobil` leitet Vite an den Orchestrator auf Port 8080 weiter; der muss also nebenher laufen.
+Startet Vite auf Port 5173. Anfragen an `/orchestrator`, `/mock-personenverzeichnis`, `/mock-nect`,
+`/mock-kobil`, `/mock-sms` und `/mock-mail` leitet Vite an den Orchestrator auf Port 8080 weiter; der
+muss also nebenher laufen.
 
 ---
 
@@ -131,8 +132,8 @@ ihn nur, wenn man ausschließlich die Artefakte erzeugen will:
 Fehlen die Artefakte, bricht der `COPY`-Schritt im Image-Build mit „not found“ ab, statt still ein
 altes Artefakt zu verwenden.
 
-Die Images legen kurz als `USER root` einen eigenen Nutzer an (`dpop` im Orchestrator-Image; das
-Keycloak-Image bringt `keycloak` schon mit). Dafür nehmen sie `groupadd`/`useradd` (UBI) oder
+Das Orchestrator-Image legt kurz als `USER root` einen eigenen Nutzer `identity` an; das
+Keycloak-Image bringt `keycloak` schon mit. Dafür nimmt es `groupadd`/`useradd` (UBI) oder
 `addgroup`/`adduser` (Alpine), je nachdem, was das Basis-Image mitbringt.
 
 ---
@@ -161,7 +162,8 @@ Die Variablen:
 - **`ORCHESTRATOR_RUNTIME_BASE_IMAGE`**: Laufzeit-Image in `Dockerfile`. Standard
   `registry.access.redhat.com/ubi9/openjdk-21-runtime:latest`.
 - **`KEYCLOAK_SETUP_VARIANT`**: welche Keycloak-Umgebung aufgebaut und angesprochen wird (Abschnitt
-  6). Standard `host`; `compose.yml` setzt `compose`.
+  6). Standard `host`. `compose.yml` setzt fest `compose`; ein Wert in `.env` wirkt dort nicht, nur
+  als Umgebungsvariable beim Start auf dem Rechner.
 - **`KEYCLOAK_ADMIN`** / **`KEYCLOAK_ADMIN_PASSWORD`**: erster Admin von Keycloak, nur für die
   Admin-Konsole. Standard `admin` / `admin`.
 - **`ORCHESTRATOR_CLIENT_JWKS_URL`**: wo Keycloak den öffentlichen Schlüssel des Orchestrators für
@@ -279,9 +281,11 @@ leeren Volumes neu auf und nimmt auf (`playwright.video.config.ts`, 1600×1100, 
 `frontend/cut-demo-video.mjs` schneidet danach mit ffmpeg: Der Spec markiert jeden Seitenwechsel
 als verborgen, und diese Stellen fallen heraus, sodass nie eine halb geladene Seite zu sehen ist.
 Der App-Tab erscheint als Bild im Bild über der Website-Anmeldung. Es braucht Podman, den
-Playwright-Browser und ffmpeg und dauert etwa 15 Minuten.
+Playwright-Browser und ffmpeg und dauert etwa 15 Minuten. Das Skript baut die Images nicht neu
+(`podman compose up -d` ohne `--build`); nach einer Codeänderung vorher bauen:
 
 ```bash
+./gradlew build && podman compose build
 cd frontend && ./record-demo-video.sh
 ```
 

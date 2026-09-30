@@ -288,8 +288,8 @@ in Abschnitt 7), Aufbewahrung und Löschung [07-betrieb.md](07-betrieb.md).
 ### H2-Konsole: nur beim Host-Start
 
 Die H2-Konsole unter `/h2-console` ist bewusst eingeschaltet, aber `web-allow-others` bleibt
-`false` (Begründung im Kommentar in `application.yml`). Spring Security ist nicht eingebunden. Diesen
-Pfad schützt deshalb allein die Prüfung von H2, ob die Anfrage vom eigenen Rechner kommt, und
+`false` (Begründung im Kommentar in `application.yml`). Spring Security schützt nur
+`/orchestrator/admin/**` (`AdminSecurityConfig`), dieser Pfad bleibt offen. Ihn schützt deshalb allein die Prüfung von H2, ob die Anfrage vom eigenen Rechner kommt, und
 dahinter liegen Passwort-Hashes, Geräteschlüssel und alle Sitzungen.
 
 Diese Prüfung vergleicht die Absenderadresse. Bei `./gradlew bootRun` ist das `127.0.0.1`, und die

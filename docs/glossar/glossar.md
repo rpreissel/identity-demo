@@ -155,6 +155,8 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   *Mehr dazu:* [ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
 - **Einstiegs-Intent**: siehe Intent.
 
+## F
+
 - **Faktortyp**: Die Art eines Beweises: etwas, das man weiß (Passwort), etwas, das man hat
   (Smartphone), oder etwas, das man ist (Fingerabdruck). Für das Niveau `loa2` braucht es zwei
   verschiedene Arten; zwei Verfahren derselben Art reichen nicht.
@@ -385,8 +387,9 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   *Im Code:* `maxAcr`, `enrolledUnderAcr`.
   *Mehr dazu:* [ADR-5](../adr/ADR-005-drei-obergrenzen-fuer-das-sicherheitsniveau.md).
 - **Online-Ausweis** (eID): Die Ausweisfunktion des Personalausweises. Die Karte liefert die
-  Kartendaten, der Nutzer bestätigt mit seiner PIN. Das ist die stärkste Identifizierung im Projekt und
-  der einzige Weg zu `loa3`. In diesem Projekt ist sie simuliert.
+  Kartendaten, der Nutzer bestätigt mit seiner PIN. Das ist die stärkste Identifizierung im Projekt
+  und führt zu `loa3`; sonst erreicht das nur Nect mit Personalausweis oder EUDI-Wallet. In diesem
+  Projekt ist sie simuliert.
   *Im Code:* Tool `ident-eid`.
   *Mehr dazu:* [06-ablaeufe](../06-ablaeufe.md) Abschnitt 6.
 - **Orchestrator**: Der Server dieses Projekts. Er entscheidet, welche Schritte ein Nutzer bei

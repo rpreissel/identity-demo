@@ -178,7 +178,7 @@ Eintrags führt zum Buchstaben dort.
 ## P
 
 - **`PartnerNumber`**, **`partnerNumber`** → **Partnernummer**: die Kennung einer Person im
-  Personenverzeichnis, im Konto der Anker `PERSON_ID`. [Glossar](glossar.md#i)
+  Personenverzeichnis, im Konto der Anker `PERSON_ID`. [Glossar](glossar.md#p)
 - **`peer-auth`** → **Peer-Auth**: wie Keycloak und Orchestrator einander ausweisen.
   [Glossar](glossar.md#p)
 - **`PEER_APPROVAL`** → **Tool-Rolle** einer Freigabe für einen anderen Kanal, etwa die
