@@ -43,11 +43,11 @@ stateDiagram-v2
 Je nach Zustand des Kanals beginnt die Journey an einer von drei Stellen. Danach laufen immer
 dieselben Schritte:
 
-1. **Der Kanal ist noch nicht angemeldet.** Angeboten wird nur die Anmeldung über das gekoppelte
-   Gerät, also nur der gerätegebundene Teil der Ausweichwege von `FAST_ACCESS`: Ist ein
-   `DeviceAccountLink` bekannt, werden dessen `KNOWN_ACCOUNT_AUTH`-Kandidaten bis `loa1` angeboten,
-   über den `STEP_UP`-Zweig im Diagramm. Identifizierung und Registrierung werden **nicht**
-   angeboten. Ohne `DeviceAccountLink` endet die Journey sofort, ohne etwas anzubieten.
+1. **Der Kanal ist noch nicht angemeldet.** Angeboten wird nur die Anmeldung am Konto des
+   gekoppelten Geräts: Ist ein `DeviceAccountLink` bekannt, läuft derselbe Step-up auf `loa2` wie
+   in Punkt 2, mit den Anmelde-Tools dieses Kontos (der `STEP_UP`-Zweig im Diagramm).
+   Identifizierung und Registrierung werden **nicht** angeboten. Ohne `DeviceAccountLink` endet die
+   Journey sofort mit `Abort`, ohne etwas anzubieten.
 2. **Der Kanal ist angemeldet, aber unter `loa2`.** Dann läuft ein Step-up mit dem festen Ziel
    `loa2`. Anders als bei `MANAGE_AUTH_METHODS` gibt es keinen Ausweg über eine erneute
    Identifizierung (`allowReIdentification = false`), und für nie identifizierte Konten wird die

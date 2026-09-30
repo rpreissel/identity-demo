@@ -88,7 +88,7 @@ Implementierung; die Ressource dahinter (`ChannelSession`) ist in beiden Fällen
   abfragen lässt) plus `state` (die Attribute als JSON).
 - Bewusst **nicht** auf der `AuthJourney` liegt die laufende Challenge. Das gewählte Tool steht als
   `ToolRef` im `JourneyState`; die Challenge selbst kennt ausschließlich das jeweilige
-  Methodenmodul (strikte Regel in [Tool-Architektur](03-tool-architektur.md)).
+  Tool-Modul (strikte Regel in [Tool-Architektur](03-tool-architektur.md)).
 - Ebenfalls **nicht** vorhanden sind gespeicherte `next*`-Felder. `next` ergibt sich allein aus dem
   Zustand.
 
@@ -108,6 +108,7 @@ stateDiagram-v2
   AUTHENTICATED --> STEP_UP_REQUIRED: Ressource verlangt höheres acr
   STEP_UP_REQUIRED --> STEP_UP_IN_PROGRESS: Step-up gestartet
   STEP_UP_IN_PROGRESS --> AUTHENTICATED: erreichtes acr >= gefordertes acr, in derselben Sitzung
+  STEP_UP_IN_PROGRESS --> AUTHENTICATED: Abbruch
   STEP_UP_IN_PROGRESS --> EXPIRED: Keycloak-Sitzung inzwischen abgelaufen
   AUTHENTICATED --> LOGGED_OUT: Abmelden, in der App oder in Keycloak
   AUTHENTICATED --> EXPIRED: Keycloak-Sitzung abgelaufen
@@ -171,11 +172,11 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
 - `ChannelState`: `ANONYMOUS`, `REGISTERING`, `AUTHENTICATED`, `STEP_UP_REQUIRED`,
   `STEP_UP_IN_PROGRESS`, `LOGGED_OUT`, `EXPIRED`
 - `AuthIntent`: `FAST_ACCESS`, `REGISTER`, `LOOKUP_LOGIN`, `WEB_SELECT_METHOD`, `STEP_UP`,
-  `MANAGE_AUTH_METHODS`, `CONFIRM_PEER_LOGIN`, `DELETE_ACCOUNT`, `LOGOUT`, `RE_IDENTIFY` – das Ziel
-  *und* der Weg dorthin ([Orchestrierung](04-orchestrierung.md) Abschnitt 1). `DELETE_ACCOUNT` und
-  `MANAGE_AUTH_METHODS` setzen einen Kanal voraus, der schon `AUTHENTICATED` ist. `DELETE_ACCOUNT`
-  verlangt zuerst in jedem Fall die Ja/Nein-Bestätigung (`Prompt`, [API](05-api.md) Abschnitt
-  "Das `Prompt`-Objekt"). Danach muss die Sitzung die Schwelle `selfServiceAcrFloor` erreichen
+  `MANAGE_AUTH_METHODS`, `CONFIRM_PEER_LOGIN`, `DELETE_ACCOUNT`, `LOGOUT`, `RE_IDENTIFY` – was
+  der Nutzer erreichen will, *und* der Weg dorthin ([Orchestrierung](04-orchestrierung.md)
+  Abschnitt 1). `DELETE_ACCOUNT` und `MANAGE_AUTH_METHODS` setzen einen Kanal voraus, der schon
+  `AUTHENTICATED` ist. `DELETE_ACCOUNT` verlangt zuerst in jedem Fall die Ja/Nein-Bestätigung
+  (`Prompt`, [API](05-api.md) Abschnitt "Das `Prompt`-Objekt"). Danach muss die Sitzung die Schwelle `selfServiceAcrFloor` erreichen
   (loa2, für ein nie identifiziertes Konto nur loa1), und ein aktiver Faktor muss frisch
   nachgewiesen sein.
 - `JourneyLifecycle`: `STARTED`, `SUSPENDED`, `SUCCEEDED`, `FAILED`, `CANCELLED`, `EXPIRED`,
@@ -208,8 +209,9 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
   den passenden Weg zur Anmeldung.
 - Der Nachweis einer Sitzung liegt in `SessionEvidence`, nicht in der `AppTokenSession`; die verwaltet nur die
   Tokens des App-Kanals und die Id seiner einen Keycloak-Sitzung (`keycloakSessionId`, einmal
-  gesetzt, nie ersetzt, [ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)). Je Verfahren hält ein Eintrag in `methods` den Namen (`method`), das Niveau und die
-  Faktortypen fest. `currentAmr` und `currentFactorTypes` sind Sichten darauf. Die Faktortypen
+  gesetzt, nie ersetzt, [ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)).
+  Je Verfahren hält ein Eintrag in `methods` den Namen (`method`), das Niveau und die Faktortypen
+  fest. `currentAmr` und `currentFactorTypes` sind Sichten darauf. Die Faktortypen
   stehen im Eintrag selbst, statt aus dem `amr`-Namen abgeleitet zu werden, denn `amr`-Werte
   benennen Verfahren, nicht Faktortypen. Das aktuelle Niveau wird nie gespeichert, sondern bei
   Bedarf aus dem Nachweis berechnet.
@@ -271,7 +273,7 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
 - `AccountAuthMethod` ist ein eingerichtetes Verfahren eines Kontos (`method`,
   `active`/`deactivatedAt`, `enrolledUnderAcr`, `label`, `details`). Die `EnrollmentRef` steht darin
   als echte Spalten (`enrollment_type`, `enrollment_id`); das ist die einzige Stelle, an der Konto
-  und Credential verknüpft sind. Die Zeile mit dem Credential gehört dem Methodenmodul;
+  und Credential verknüpft sind. Die Zeile mit dem Credential gehört dem Tool-Modul;
   deaktivierte Einträge bleiben stehen. Das Verfahren `email` hat kein eigenes Credential im Modul:
   Ihre Referenz ist der EMAIL-Anker (`EMAIL_ANCHOR_ENROLLMENT`).
 - Das Änderungsprotokoll (`account.change_log`, [ADR-39](adr/ADR-039-was-eine-kontoloeschung-ueberlebt.md))
@@ -320,7 +322,7 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
     Hausnummer), `POSTAL_CODE`, `LOCALITY`): Der Wert wird live über `PersonDirectory` gelesen; im Konto steht
     nur die Historie der Claims.
   - `MethodModule` (`PHONE_NUMBER`, `PASSWORD_EXISTS`): Der Wert steht in der Enrollment-Zeile des
-    Methodenmoduls.
+    Tool-Moduls.
 
   `AnchorRule.bindingStrength` sagt zusätzlich, wie stark ein Treffer auf einem Anker eine
   Identität bindet.
@@ -333,7 +335,7 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
   Diensteanbieter verschieden (§ 18 PAuswG): Liest `ident-eid` die Karte, entsteht unseres
   (`EID_RESTRICTED_ID`); liest Nect sie, entsteht Nects (`NECT_RESTRICTED_ID`). Deshalb sind es zwei
   Anker, und keiner überschreibt den anderen. Geprüft wird an der einzigen Stelle,
-  die Anker schreibt (`AccountService.recordAnchor`); liegt die Sitzung darunter, wird der
+  die Anker schreibt (`AnchorRegistry.bind`, Regel in `AnchorDecision`); liegt die Sitzung darunter, wird der
   Schreibversuch abgewiesen (`409`).
 - `account.anchor.established_acr` ist das Gegenstück zu `account.auth_method.enrolled_under_acr`:
   das **tatsächlich nachgewiesene** Niveau, begrenzt nach ADR-5.
@@ -368,7 +370,7 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
 
 ## 7) Tabellenmodell
 
-Das Schema steht in `src/main/resources/db/migration/<modul>/`, eine Datei je Modul; die
+Das Schema steht in `src/main/resources/db/migration/<modul>/`, ein Verzeichnis je Modul; die
 Konventionen dazu in [07-betrieb.md](07-betrieb.md) Abschnitt 6 und
 [12-entscheidungen.md](12-entscheidungen.md) ADR-14/ADR-16. Die Diagramme zeigen die tragenden
 Tabellen mit ihren identifizierenden Spalten, nicht jede Spalte. Jedes Modul hat ein eigenes
@@ -442,6 +444,7 @@ erDiagram
   }
   account.sign_in_log {
     bigint account_id FK "geht mit dem Konto"
+    varchar invitation "ck: genau eins von account_id und invitation"
     varchar sign_in_type "SIGNED_IN, SIGN_IN_FAILED, LOCKED_OUT, ..."
     varchar channel
     varchar acr
@@ -483,9 +486,10 @@ erDiagram
   }
 ```
 
-Die Tabelle `account.account` selbst trägt keine Fakten: `personId`, `versnr`, `restricted_id` und
-`email` stehen als Anker in `account.anchor`, die Liste der Verfahren in `account.auth_method`
-(Abschnitt 6). Die Credential-Tabellen der Methodenmodule (hier beispielhaft
+Die Tabelle `account.account` selbst trägt keine Fakten: Partnernummer (`PERSON_ID`),
+Mitgliedsnummer (`MEMBER_NUMBER`), die Kartenpseudonyme und die E-Mail-Adresse stehen als Anker in
+`account.anchor`, die Liste der Verfahren in `account.auth_method`
+(Abschnitt 6). Die Credential-Tabellen der Tool-Module (hier beispielhaft
 `auth_sms.enrollment` und `auth_device.enrollment`) haben bewusst **keine** `account_id`: Sie
 entstehen im Tool-Handler, bevor die Orchestrierung das Konto kennt. Die einzige Verknüpfung ist
 `account.auth_method.enrollment_type/enrollment_id`. Aus demselben Grund hat `auth_email` keine
@@ -566,7 +570,7 @@ Die `*_tool_session`-Tabellen liegen im Schema ihres Moduls, obwohl ihr Lebenszy
 `orchestrator.tool_session` hängt. Ihr Primärschlüssel *ist* die `tool_session_id`; ein
 Fremdschlüssel darauf würde also über eine Schemagrenze gehen. `auth_sms.enroll_tool_session` ist
 der Teil derselben `orchestrator.tool_session`, der im Modul liegt, keine vierte Sitzungsebene.
-Jedes Methodenmodul ist gleich aufgebaut: ein langlebiges `<modul>.enrollment` und für jedes Tool
+Jedes Tool-Modul ist gleich aufgebaut: ein langlebiges `<modul>.enrollment` und für jedes Tool
 eine kurzlebige `<modul>.<tool-rolle>_tool_session`. Die Tabellen eines Moduls stehen in seiner
 eigenen Migration unter `db/migration/<modul>/`.
 

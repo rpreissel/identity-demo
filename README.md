@@ -28,7 +28,7 @@ Sie brauchen JDK 21 und Node.js mit npm. Ohne Keycloak genügt ein Befehl:
 ```
 
 Öffnen Sie danach die Willkommensseite unter <http://localhost:8080/>. Von dort führen Kacheln zur
-App, zum Personenverzeichnis und zur Admin-Seite (Anmeldung `admin` / `admin`).
+App, zum Personenverzeichnis, zum Briefkasten und zur Admin-Seite (Anmeldung `admin` / `admin`).
 
 Mit Keycloak, also auch mit der Anmeldung auf der Website, brauchen Sie zusätzlich Podman:
 

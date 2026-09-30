@@ -1,13 +1,16 @@
 # ADR-25: Die Keycloak-Konfiguration steht im Realm, nicht in der Container-Umgebung
 
-**Entscheidung** (umgesetzt): Die Keycloak-Erweiterung liest ihre Einstellungen zur Laufzeit aus den
+**Status:** umgesetzt.
+
+**Entscheidung**: Die Keycloak-Erweiterung liest ihre Einstellungen zur Laufzeit aus den
 Konfigurationswerten der Komponente `orchestrator` im Realm (`OrchestratorSettings`), nicht mehr aus
 Umgebungsvariablen des Keycloak-Containers. Fehlt die Komponente oder ein Wert, scheitert der Aufruf
 sofort und sichtbar; einen Ersatzwert gibt es nicht.
 
 Dahinter beschreibt **ein** Wertobjekt die ganze Umgebung (`KeycloakSetup`, ausgewählt über
 `keycloak-setup.variant`). Aus ihm stammen die Werte für den Aufbau des Realms durch die Migration
-ebenso wie für den laufenden Betrieb des Orchestrators (Abgleich der Konten, JWKS für die Assertion
+ebenso wie für den laufenden Betrieb des Orchestrators (bis [ADR-38](ADR-038-keycloak-liest-konten.md)
+der Abgleich der Konten, JWKS für die Assertion
 zwischen den Servern, Prüfung der OIDC-Tokens).
 
 **Warum**: Aufbau und Betrieb meinen dasselbe Realm und dieselben Clients. Solange Migration und
@@ -76,7 +79,9 @@ Keycloak nicht.
   einer Anmeldung auffiel.
 - Ein geänderter Wert verwirft alles auf der Seite von Keycloak und baut es neu auf. Das ist
   verkraftbar, weil die Datenbank des Orchestrators keine IDs von Keycloak speichert: Die Nutzer
-  entstehen über `orchestratorAccountId` beim nächsten Abgleich neu.
+  entstanden damals über `orchestratorAccountId` beim nächsten Abgleich neu. Seit
+  [ADR-38](ADR-038-keycloak-liest-konten.md) liest Keycloak die Konten über eine feste Komponenten-Id;
+  ein Neuaufbau ändert kein `sub`.
 - Keycloak muss den Orchestrator erreichen können, um dessen JWKS zu holen. Diese Verbindung braucht
   die Erweiterung ohnehin für jeden Aufruf (`orchestratorBaseUrl`); neu ist nur, dass sie an einer
   zweiten Stelle sichtbar wird.

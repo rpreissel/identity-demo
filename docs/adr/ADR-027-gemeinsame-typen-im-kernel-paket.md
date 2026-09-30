@@ -1,5 +1,8 @@
 # ADR-27: Gemeinsame Typen liegen im Paket `orchestrator.kernel`
 
+**Status:** umgesetzt; das Paket heißt heute `orchestrator.domain` und ist mit
+[ADR-40](ADR-040-fachkern-im-paket-domain.md) zum fachlichen Kern geworden.
+
 **Entscheidung.** Typen, die mehrere Pakete des Orchestrators brauchen, liegen in
 `orchestrator.kernel`. Dieses Paket hat keine Abhängigkeiten innerhalb des Orchestrators. Ein
 ArchUnit-Test prüft, dass die Pakete des Orchestrators zyklenfrei bleiben.

@@ -1,5 +1,7 @@
 # ADR-2: Zustand statt Vererbung bei `AuthJourney`
 
+**Status:** umgesetzt.
+
 **Entscheidung**: `AuthJourney` ist eine flache Entität ohne Unterklassen und ohne eigene Tabelle je
 Intent. Was sich je Intent unterscheidet, steckt in `stateType` (Typkennung) und `state` (JSON) ([Domänenmodell](../02-domaenenmodell.md) Abschnitt 2).
 

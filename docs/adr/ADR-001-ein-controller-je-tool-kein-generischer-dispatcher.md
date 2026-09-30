@@ -1,5 +1,7 @@
 # ADR-1: Ein Controller je Tool, kein generischer Dispatcher
 
+**Status:** umgesetzt.
+
 **Entscheidung**: Jedes Tool bekommt einen eigenen, typisierten `@RestController` mit eigenem
 Request-DTO. `POST/PATCH/GET` liegen je Tool in einem eigenen Controller ([Tool-Architektur](../03-tool-architektur.md)
 Abschnitt 4, [Projektrahmen](../08-projektrahmen.md) A11).

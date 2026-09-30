@@ -1,6 +1,6 @@
 # ADR-9: Profilabhängiger Token-Abruf — eigener OAuth2-Grant, den nur der Orchestrator aufrufen darf
 
-**Status**: umgesetzt (DPoP-demo-xso); 2026-09-26 neu gefasst.
+**Status:** umgesetzt (DPoP-demo-xso); 2026-09-26 neu gefasst.
 
 **Entscheidung**: Braucht der App-Kanal ein echtes AccessToken von Keycloak, stellt Keycloak es über
 einen **eigenen OAuth2-Grant** aus (`urn:identity-demo:account-token`, `AccountTokenGrantType` in

@@ -17,7 +17,7 @@ JPA, Jackson, Logging) und hängt von nichts anderem im eigenen Modul ab. Beides
     implizites Geräte-Binden; abhängige Verfahren);
   - `domain.policy`: `AuthPolicy`, `DefaultAuthPolicy`, `SessionEvidence`.
 - **`account.domain`**: `AnchorDecision` (wann ein Anker gebunden, ersetzt oder abgelehnt wird,
-  ADR-11/19), `normalizeClaimValue` und `ClaimKey`, `PassportForm`.
+  ADR-11/19), `normalizeClaimValue` und `ClaimKey`, `passportForm` (`PassportForm.kt`).
 - **Außen herum** bleibt die Technik: `JourneyActionExecutor` und `JourneyService` lesen, fragen die
   Regel und schreiben; `account.application` (Protokolle, Register) und `account.infrastructure`
   (Entities, Repositories). `DomainBeans` im Wurzelpaket des Orchestrators legt Strategien und

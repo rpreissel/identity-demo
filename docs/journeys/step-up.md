@@ -10,6 +10,7 @@ stateDiagram-v2
   Start --> RE_IDENTIFY: kein kombinierbares Verfahren, erneute Identifizierung möglich
   Start --> [*]: weder noch - Abort
   AuthChoice --> AuthChoice: ein Tool abgelehnt, weitere übrig
+  AuthChoice --> AuthChoice: Nachweis erbracht, targetAcr noch nicht erreicht, weiterer Faktor nötig
   AuthChoice --> RE_IDENTIFY: kein kombinierbares Verfahren übrig oder alle abgelehnt, erneute Identifizierung möglich
   AuthChoice --> [*]: alle abgelehnt, keine erneute Identifizierung möglich - Cancel
   AuthChoice --> Finished: targetAcr erreicht
@@ -24,9 +25,12 @@ stateDiagram-v2
   end note
 ```
 
-Jeder Zustand enthält `targetAcr` und `startingAcr`. `targetAcr` ist das Ziel dieses einen Laufs,
-nicht die dauerhafte Untergrenze des Kanals (Orchestrierung, Abschnitt 8). `AuthChoice` enthält
-außerdem das Angebot und die bisherigen Ablehnungen.
+Jeder Zustand enthält `targetAcr`, `startingAcr`, `allowReIdentification` und `reason`.
+`targetAcr` ist das Ziel dieses einen Laufs, nicht die dauerhafte Untergrenze des Kanals
+(Orchestrierung, Abschnitt 8). `reason` sagt, warum ein Aufrufer den Step-up braucht (heute nur
+`PEER_LOGIN`); ohne ihn gilt der allgemeine Text. `AuthChoice` enthält außerdem das Angebot, die
+bisherigen Ablehnungen und `additionalFactorRound`. Liegt auf dem Kanal schon der Nachweis eines
+Anmeldeverfahrens vor, sagt der Text, dass jetzt ein Verfahren anderer Art nötig ist.
 
 `CONFIRM_PEER_LOGIN` fordert seinen Step-up mit `allowReIdentification = false` an. Dann entfällt
 der Weg über `RE_IDENTIFY` ganz, und die Journey endet mit `Abort` oder `Cancel`.

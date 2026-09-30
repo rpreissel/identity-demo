@@ -1,6 +1,8 @@
 # ADR-33: Texte als deutsche Vorlage im Code, ausgeliefert als Referenz, formuliert per Prompt
 
-**Entscheidung** (**umgesetzt**): Alle Texte des Backends, die Nutzer sehen, bleiben im Code, als
+**Status:** umgesetzt.
+
+**Entscheidung**: Alle Texte des Backends, die Nutzer sehen, bleiben im Code, als
 deutsche **Formulierung für Entwickler** in `Text("…")` mit Platzhaltern der Form `{name}`. Das Backend
 liefert nie den Wortlaut aus, sondern eine Referenz `{ key, args, texts }` (`key` = die Anfangswörter der
 Vorlage als lesbarer Kurzname plus die ersten 6 Hex-Zeichen ihres SHA-256, siehe Nachtrag). Jede Sprache – **auch Deutsch** – ist eine redigierte Fassung in

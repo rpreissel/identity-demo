@@ -1,6 +1,6 @@
 # ADR-39: Was eine Kontolöschung überlebt – das Änderungsprotokoll ohne Werte
 
-**Status**: entschieden und umgesetzt (2026-09-26).
+**Status:** entschieden und umgesetzt (2026-09-26).
 
 **Entscheidung**: Jedes Konto hat ein append-only Änderungsprotokoll (`account.change_log`): dass und
 wie etwas geschah, nie was. Feste Spalten halten, was jedes Ereignis hat: Konto-Id, Ereignis,

@@ -1,6 +1,6 @@
 # ADR-36: Niveaus und ihre Nachweise – was nur behauptet ist, läuft nur im Demomodus
 
-**Status**: entschieden (2026-09-25).
+**Status:** entschieden und umgesetzt (2026-09-25).
 
 **Entscheidung**: Ein Verfahren vergibt nur das Niveau, das der Server selbst nachprüfen kann oder
 das ein Fremdsystem über seinen Port zusagt ([ADR-35](ADR-035-betriebsanspruch-backend-kern-produktionsreif.md)).

@@ -1,6 +1,6 @@
 # ADR-12: Ein Widerruf ist eine eigene Zeile mit eigener Quelle
 
-**Status**: umgesetzt.
+**Status:** umgesetzt.
 
 **Entscheidung**: Ein zurückgenommener Wert wird in einer eigenen Zeile festgehalten:
 `account.retraction(account_id, attribute_type, normalized_value, claim_source, reason, retracted_at)`.

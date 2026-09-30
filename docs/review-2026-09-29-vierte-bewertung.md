@@ -489,15 +489,16 @@ Bewertung), `DPoP-demo-oe06` (I-23), `DPoP-demo-36xz` (Lookup-Orakel), `DPoP-dem
 Alle Befunde der Stufe „mittel“ sind bearbeitet; einen hohen gab es nicht. Entscheidungen des
 Inhabers vorab: S-1 im Policy-Modell (gilt für beide Kanäle), A-1 mit eigenem Endpunkt und Eintrag im
 Anmeldeprotokoll, A-2 mit Wächter und `subject` in der Anfrage, K-2 mit `returnUri` im Retry-PATCH.
-Issues unter dem Epic `DPoP-demo-updm`.
+Issues unter dem Epic `DPoP-demo-updm`. Die niedrigen Befunde und die Hinweise (etwa A-5) sind
+noch offen; für sie gibt es noch keine Issues.
 
 **Sicherheit und Keycloak**
 
 - ~~S-1 `loa-max-age` über den Resume-Pfad unterlaufen~~ – erledigt: Jeder Nachweis trägt
   `provenAt`; `DefaultAuthPolicy` zählt über `loa1` nur Nachweise der letzten
-  `identity.policy.elevated-level-max-age` (30 min), ältere tragen `loa1`, und das schon benutzte
-  Verfahren wird wieder angeboten. RestoreData trägt den Zeitpunkt mit, ein Nachweis ohne ihn gilt
-  als beliebig alt. Tests: `DefaultAuthPolicyTest` (29/31 min, unbekanntes Alter),
+  `identity.policy.elevated-level-max-age` (30 min; heute `identity.policy.loa2-max-age`), ältere
+  tragen `loa1`, und das schon benutzte Verfahren wird wieder angeboten. RestoreData trägt den
+  Zeitpunkt mit, ein Nachweis ohne ihn gilt als beliebig alt. Tests: `DefaultAuthPolicyTest` (29/31 min, unbekanntes Alter),
   `RestoreDataCodecTest`, `KcChannelIntegrationTest` (echter Resume-Pfad mit gealtertem Nachweis).
   Doku: 04 §8 „Ein Nachweis über loa1 altert“, 07 §3, neue Invariante I-32.
 - ~~K-1 Orchestrator-Fehler als Fehlversuch~~ – erledigt: `OrchestratorAuthenticator.action` ruft

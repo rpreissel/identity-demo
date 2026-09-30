@@ -1,6 +1,6 @@
 # ADR-38: Keycloak liest die Konten, statt sie zu spiegeln
 
-**Status**: entschieden und umgesetzt (2026-09-25).
+**Status:** entschieden und umgesetzt (2026-09-25).
 Löst die Spiegelung ab, die [ADR-9](ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md)
 (Public Key als Credential am Nutzer) und [ADR-34](ADR-034-personenverzeichnis-meldet-aenderungen.md)
 (Änderungen per Event „bis Keycloak“) voraussetzten.

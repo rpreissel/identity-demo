@@ -1,6 +1,6 @@
 # ADR-19: Konten werden nur über Anker gefunden — auch die `restricted_id` der eID ist einer
 
-**Status**: umgesetzt.
+**Status:** umgesetzt.
 
 **Entscheidung**: `IdentityMatchingService.resolve` sucht zu einer bestätigten Identität das Konto
 **nur über lokale Anker** (`resolveByAnchor`, in der Rangfolge von `AnchorRule.bindingStrength`). Lokale
@@ -47,7 +47,8 @@ Vergleich der KVNR wirken lassen und gegen `personenverzeichnis` statt gegen die
 **Folgen und Kosten**: Bestätigungen aus der Zeit vor diesem ADR, also ohne `restricted_id`, erkennt
 das System nicht wieder; sie enden bei `Unresolved` und damit bei einem neuen Konto. Die `restricted_id`
 wird bewusst **nicht** nach Keycloak gespiegelt: Sie ist kein Stammdatum, nur ein Anker zum
-Wiedererkennen.
+Wiedererkennen. Seit [ADR-38](ADR-038-keycloak-liest-konten.md) spiegelt nichts mehr; Keycloak liest
+das Konto, und die `restricted_id` gehört nicht zu den gelesenen Werten.
 
 **Geschichte**: Entfernt wurden mit diesem ADR `Resolution.Ambiguous`, `MatchedVia.Attributes`,
 `BindingStrength.ATTRIBUTE_COMBINATION`, `findAccountIdsMatchingAllThree` und der Index

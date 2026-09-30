@@ -1,6 +1,6 @@
 # ADR-11: Ein Anker, der schon einem anderen Konto gehört, wird abgewiesen; Konten werden nie automatisch zusammengeführt
 
-**Status**: umgesetzt.
+**Status:** umgesetzt.
 
 **Entscheidung**: Will ein Konto einen Anker schreiben (`person_id`, `email`, `versnr`,
 `restricted_id`), dessen Wert schon einem anderen Konto gehört, wird das abgewiesen (`409`, „Dieser
@@ -9,8 +9,9 @@ kein Anker. Konten werden nie automatisch zusammengeführt; das wäre eine Aufga
 
 Die Regel sichert die Datenbank für alle Wege ab, auf denen geschrieben wird:
 `ux_anchor_value UNIQUE (attribute_type, normalized_value)` auf `account.anchor`
-(`account/V2__account.sql`). Die einzige Schreibstelle ist `AccountService.recordAnchor`; binden zwei
-Vorgänge gleichzeitig, wird der unterlegene vollständig zurückgerollt und erhält ebenfalls `409`.
+(`account/V2__account.sql`). Die einzige Schreibstelle ist `AnchorRegistry.bind` (früher
+`AccountService.recordAnchor`); binden zwei Vorgänge gleichzeitig, wird der unterlegene vollständig
+zurückgerollt und erhält ebenfalls `409`.
 
 Innerhalb **eines** Kontos gilt zusätzlich: Die `person_id` ist nach der ersten Bindung unveränderlich
 (`AnchorRule.allowsReplacement = false`). Ein zweiter, abweichender `person_id`-Claim wird deshalb

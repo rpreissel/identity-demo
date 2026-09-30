@@ -1,5 +1,7 @@
 # ADR-28: Demo-Werte lassen sich abschalten
 
+**Status:** umgesetzt.
+
 **Entscheidung.** Nur `DemoDisclosure` erzeugt ein `DemoInfo`. Ob es diese Bean gibt, entscheidet
 `demo.mode` beim Start. Eine ArchUnit-Regel stellt sicher, dass es die einzige Stelle bleibt.
 

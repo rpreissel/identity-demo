@@ -68,7 +68,7 @@ Zwei Ergänzungen aus der Praxis:
   sie bei Bedarf beim Orchestrator nach, statt eine Kopie zu halten. Auch das bleibt vollständig
   hinter dem Orchestrator verborgen.
 
-Daraus folgt für dich als Frontend-Entwickler:
+Daraus folgt für Sie als Frontend-Entwickler:
 
 - **Abläufe ändern sich, ohne dass die App angepasst werden muss.** Welche Schritte eine Journey
   verlangt und in welcher Reihenfolge, steht nur im Backend.
@@ -83,9 +83,9 @@ Daraus folgt für dich als Frontend-Entwickler:
 
 ---
 
-## 0) Sechs eigenständige Apps
+## 0) Sieben eigenständige Apps
 
-Das Frontend ist **keine** einzelne Single-Page-App, sondern besteht aus sechs eigenen React-Apps, jede
+Das Frontend ist **keine** einzelne Single-Page-App, sondern besteht aus sieben eigenen React-Apps, jede
 mit eigener HTML-Einstiegsseite und eigener URL. Gemeinsam nutzen sie nur Code wie eine Bibliothek
 (Komponenten, Tools, `api.ts`, …). Jede App hat ein eigenes Farbschema (`index.css`), damit man ohne
 zu lesen sieht, wo man ist:
@@ -177,9 +177,9 @@ getestet) einen neuen Tab. Das ist beim Testen am Desktop etwas unbequem, schrä
 - **FE-3** — Das Frontend kann über Spring Boot ausgeliefert werden.
   - *Kriterium:* Ein Vite-Build mit sieben HTML-Einstiegsseiten landet in `src/main/resources/static`; `./gradlew bootRun` liefert es aus. `/app/`, `/web/`, `/admin/`, `/personenverzeichnis/`, `/nect/` und `/briefkasten/` werden über ausdrückliche Weiterleitungen in einem `WebMvcConfigurer` ([WebConfig.kt](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/WebConfig.kt)) auf ihre `index.html` aufgelöst; die Standardauslieferung von Spring löst nur die Startseite auf
 - **FE-4** — Im Entwicklungsmodus werden Anfragen an die API weitergeleitet.
-  - *Kriterium:* Der Entwicklungsserver von Vite leitet `/orchestrator`, `/mock-personenverzeichnis`, `/mock-nect` und `/mock-kobil` an `http://localhost:8080` weiter, für alle Apps gleich
+  - *Kriterium:* Der Entwicklungsserver von Vite leitet `/orchestrator`, `/mock-personenverzeichnis`, `/mock-nect`, `/mock-kobil`, `/mock-sms` und `/mock-mail` an `http://localhost:8080` weiter, für alle Apps gleich
 - **FE-5** — Das Frontend spricht ausschließlich mit dem `orchestrator`.
-  - *Kriterium:* Keine direkten Aufrufe an fachliche Module. **Eine benannte Ausnahme:** `src/kobilSdk.ts` ruft den Fremddienst KOBIL (`/mock-kobil/*`) direkt auf. Auf einem echten Telefon wäre das Code des nativen SDK. Liefe der Aufruf über unser Backend, würde aus dem Fremddienst unbemerkt ein interner Aufruf, und genau diese Trennung macht das Verfahren aus ([Abläufe](06-ablaeufe.md) Abschnitt 7). Dasselbe gilt für die Seiten `/personenverzeichnis/` und `/nect/`, die die simulierten Fremdsysteme (`/mock-personenverzeichnis/*`, `/mock-nect/*`) direkt ansprechen (ADR-31)
+  - *Kriterium:* Keine direkten Aufrufe an fachliche Module. **Eine benannte Ausnahme:** `src/kobilSdk.ts` ruft den Fremddienst KOBIL (`/mock-kobil/*`) direkt auf. Auf einem echten Telefon wäre das Code des nativen SDK. Liefe der Aufruf über unser Backend, würde aus dem Fremddienst unbemerkt ein interner Aufruf, und genau diese Trennung macht das Verfahren aus ([Abläufe](06-ablaeufe.md) Abschnitt 7). Dasselbe gilt für die Seiten `/personenverzeichnis/`, `/nect/` und `/briefkasten/`, die die simulierten Fremdsysteme (`/mock-personenverzeichnis/*`, `/mock-nect/*`, `/mock-sms/*`, `/mock-mail/*`) direkt ansprechen (ADR-31)
 
 ---
 
@@ -194,17 +194,17 @@ getestet) einen neuen Tab. Das ist beim Testen am Desktop etwas unbequem, schrä
 - **FE-9** — Telefonnummern werden schon im Client geprüft.
   - *Kriterium:* Formatprüfung vor dem Absenden; das Backend lehnt ungültige Nummern mit `400` ab
 - **FE-10** — Die Identität des Geräts und der Kanal lassen sich unabhängig voneinander zurücksetzen.
-  - *Kriterium:* „Gerätekennung neu erzeugen“ (Demo-Spalte, „Aktionen der Demo“) tauscht den DPoP-Schlüssel und vergisst dabei die gemerkte `channelSessionId`, startet aber keinen Kanal. „Sitzung vergessen“ (ebenda) vergisst nur die lokal gemerkte `channelSessionId`, ohne das Backend aufzurufen. „Abmelden“ beendet den Kanal auf dem Server ([API](05-api.md), Abmelden) und legt **keinen** neuen Kanal automatisch an; der Knopf ist nur sichtbar, wenn der Kanal `AUTHENTICATED` ist
+  - *Kriterium:* „Geräte-Kennung neu erzeugen“ (Demo-Spalte, „Aktionen der Demo“, ohne aktiven Kanal) tauscht den DPoP-Schlüssel und vergisst dabei die gemerkte `channelSessionId`, startet aber keinen Kanal. „Sitzung vergessen“ (ebenda) vergisst nur die lokal gemerkte `channelSessionId`, ohne das Backend aufzurufen. „Abmelden“ beendet den Kanal auf dem Server ([API](05-api.md), Abmelden) und legt **keinen** neuen Kanal automatisch an; der Knopf ist nur sichtbar, wenn der Kanal `AUTHENTICATED` ist
 - **FE-11** — Nach erfolgreicher Anmeldung werden `accountId` und `personId` angezeigt.
   - *Kriterium:* Die Werte stammen aus dem Objekt `demo` der Antwort
 - **FE-12** — Das Frontend merkt sich die `channelSessionId` dauerhaft und getrennt vom DPoP-Schlüssel, tut damit aber nichts von selbst.
-  - *Kriterium:* Beim Start lädt oder erzeugt die App **nur** den DPoP-Schlüssel. Ohne aktiven Kanal wählt der Nutzer ausdrücklich: Sitzung fortsetzen (`GET`), Automatisch anmelden, Neues Konto registrieren, Neu anmelden (`lookup_login`) oder „Anmeldung im Browser per QR-Code bestätigen“ (je ein `POST` mit passendem `intent`)
+  - *Kriterium:* Beim Start lädt oder erzeugt die App **nur** den DPoP-Schlüssel. Ohne aktiven Kanal wählt der Nutzer ausdrücklich: „Mit diesem Gerät anmelden“ (nur auf einem verknüpften Gerät, `fast_access`), „Mit E-Mail-Adresse anmelden“ (`lookup_login`), „Neues Konto anlegen“ bzw. „Anderes Konto benutzen“ (`register`) oder, mit einem übernommenen Pairing-Code, „Anmeldung bestätigen“ (`confirm_peer_login`); je ein `POST` mit passendem `intent`. „Sitzung fortsetzen“ (`GET`) steht in der Demo-Spalte
 - **FE-13** — Beim Anlegen eines Kanals lässt sich `requiredAcr` wählen.
   - *Kriterium:* Sonst wäre `enroll-password` in der Demo kaum erreichbar: Die Registrierung endet von selbst, sobald ein einzelnes `loa1`-Verfahren die voreingestellte Untergrenze erfüllt
 - **FE-14** — Die Identität des Geräts (JWK-Thumbprint) ist sichtbar und lässt sich unabhängig vom Kanal neu erzeugen.
   - *Kriterium:* Ein eigener Abschnitt „Diese App auf diesem Gerät“ im Hintergrund der Demo-Spalte, immer vorhanden, auch ohne aktiven Kanal. Darunter steht eine Zeile je weiterer Bindung dieses Geräts, allgemein aus `deviceLink.boundCredentials` erzeugt: Jedes Verfahren entscheidet selbst, was es zeigt, und die Karte gibt es nur aus. Ein neues an den Schlüssel gebundenes Verfahren braucht hier keine Änderung
 - **FE-15** — Ein angemeldeter Kanal lässt sich gezielt auf ein höheres Sicherheitsniveau bringen (Step-up).
-  - *Kriterium:* Der Knopf „Sicherheitsniveau jetzt erhöhen“ ruft `POST /channels/{channelSessionId}/step-ups` auf ([API](05-api.md)) und erscheint nur, solange `loa2` fehlt. Die API kann auch ein höheres Ziel anfordern; `ident-eid` ist das vorhandene Tool, das `loa3` erreicht
+  - *Kriterium:* Der Knopf „Sicherheitsniveau 2 anfordern“ im Profil ruft `POST /channels/{channelSessionId}/step-ups` auf ([API](05-api.md)) und erscheint nur, solange `loa2` fehlt. Die API kann auch ein höheres Ziel anfordern; `ident-eid` ist das vorhandene Tool, das `loa3` erreicht
 - **FE-16** — Solange ein Tool Eingaben erwartet oder der Nutzer zwischen mehreren Tools wählt, bleibt nur eine naheliegende Aktion übrig.
   - *Kriterium:* Nur „Abbrechen“ bleibt sichtbar. „Abmelden“ und die Links zum Umsteigen stehen gesammelt auf der Karte mit dem Sitzungsstatus; „Abmelden“ zusätzlich nur bei `AUTHENTICATED`
   - *Kriterium:* Ist der Kanal nicht angemeldet, zeigt das Telefon auf jedem Bildschirm, auch bei einer Rückfrage, einen Weg zur Startseite: „Zurück“, solange weder ein Tool läuft noch etwas nachgewiesen ist (`hasProvenFactor`), sonst „Abbrechen“; nach einem Nachweis in der Registrierung „Registrierung verwerfen“ mit Rückfrage. Ein Abbruch allein würde nur denselben Einstieg neu beginnen ([Orchestrierung](04-orchestrierung.md)); neu beginnen bietet die Demo-Spalte. Angemeldet führt „Abbrechen“ zur Übersicht, von dort „Abmelden“ zur Startseite
@@ -298,15 +298,18 @@ dieser Sitzung, Verfahren mit Sicherheitsniveau und Art), stehen in der Demo-Spa
 
 Nach erfolgreicher Anmeldung gibt es zwei getrennte Wege: „Sicherheitsniveau erhöhen“ im Profil
 (FE-15) und „Weiteres Verfahren hinzufügen“ unter „Sicherheit“ → „Anmeldeverfahren“ (FE-17,
-`AuthIntent.MANAGE_AUTH_METHODS`, [`MANAGE_AUTH_METHODS`](journeys/manage-auth-methods.md)). Beide
-landen im selben Ablauf `STEP_UP_IN_PROGRESS` und in derselben Tool-Navigation. Sie unterscheiden
-sich nur darin, was sie auslöst: `POST .../step-ups` oder eine Antwort `409` auf `POST .../methods`.
+`AuthIntent.MANAGE_AUTH_METHODS`, [`MANAGE_AUTH_METHODS`](journeys/manage-auth-methods.md)). Muss
+dafür das Niveau steigen, landen beide im selben Step-up und in derselben Tool-Navigation. Sie
+unterscheiden sich nur darin, was ihn auslöst: `POST .../step-ups` direkt oder `POST .../enrollments`,
+dessen Antwort einen Step-up-Schritt enthält, solange die Sitzung `selfServiceAcrFloor` nicht
+erreicht ([API](05-api.md), „Verfahren verwalten“).
 
 ### Anmelden ohne gekoppeltes Gerät
 
-Solange der Kanal weder `AUTHENTICATED` noch `LOGGED_OUT` ist, bietet `EntryChoiceLinks` den Wechsel
-auf `intent="lookup_login"` oder `"register"` an, bewusst auch mitten in einem Ablauf mit mehreren
-Schritten. Für die Anmeldung über die E-Mail-Adresse gibt es je Verfahren ein eigenes Formular (SMS,
+Ohne aktiven Kanal bietet der Startbildschirm „Mit E-Mail-Adresse anmelden“ (`intent="lookup_login"`)
+und „Neues Konto anlegen“ bzw. auf einem verknüpften Gerät „Anderes Konto benutzen“
+(`intent="register"`). Mitten in einem Ablauf führt „Zurück“ bzw. „Abbrechen“ zur Startseite
+(FE-16). Für die Anmeldung über die E-Mail-Adresse gibt es je Verfahren ein eigenes Formular (SMS,
 Passwort, E-Mail). Die Eingabe der TAN bzw. des Codes teilt sich das Formular mit dem Gegenstück für
 ein bekanntes Konto, weil beide denselben `next.step` verwenden.
 
@@ -315,12 +318,13 @@ ein bekanntes Konto, weil beide denselben `next.step` verwenden.
 Es gibt zwei gleichwertige Einstiege, weil man `CONFIRM_PEER_LOGIN` auf zwei Wegen erreicht
 ([Orchestrierung](04-orchestrierung.md) Abschnitt 2):
 
-- **Startbildschirm** („Wie möchten Sie beginnen?“): ein Eintrag „Anmeldung im Browser per
-  QR-Code bestätigen“ neben Automatisch anmelden, Registrieren und Neu anmelden. Er setzt ein Konto voraus,
-  das auf diesem Gerät schon bekannt ist; ohne `DeviceAccountLink` bricht die Journey sofort ab.
-- **Ansicht nach der Anmeldung** (`AuthenticationCompletedView`): ein Abschnitt „Anmeldung im Browser
-  per QR-Code bestätigen“ mit einem Knopf, der `POST /channels/{id}/peer-logins` auslöst. Er ist für den
-  Fall gedacht, dass die App schon offen und angemeldet ist, wenn der QR-Code gescannt wird.
+- **Startbildschirm** mit einem übernommenen Pairing-Code („Web-Login bestätigen“): der Knopf
+  „Anmeldung bestätigen“. Er setzt ein Konto voraus, das auf diesem Gerät schon bekannt ist; ist das
+  Gerät mit keinem Konto verknüpft, zeigt die App nur einen Hinweis und den Weg zurück. Ohne
+  `DeviceAccountLink` bräche die Journey sonst sofort ab.
+- **Ansicht nach der Anmeldung** (`AuthenticationCompletedView`): die Zeile „Anmeldung im Browser
+  bestätigen“, die `POST /channels/{id}/peer-logins` auslöst. Sie ist für den Fall gedacht, dass die
+  App schon offen und angemeldet ist, wenn der QR-Code gescannt wird.
 
 Beide Wege führen zum selben `next` ([`CONFIRM_PEER_LOGIN`](journeys/confirm-peer-login.md)):
 
@@ -333,7 +337,7 @@ Der Demo-Link der Web-Seite zeigt auf `/app/?intent=confirm_peer_login&pairingCo
 auf den App-Kanal. `intent` hat dieselben Werte wie das Feld `intent` von `createChannel`
 (`AuthIntent.fromRequest`, Groß- und Kleinschreibung egal). Beide Parameter werden beim Laden aus der
 URL gelesen und sofort entfernt. `intent=confirm_peer_login` startet denselben Ablauf wie der Knopf
-„Anmeldung im Browser per QR-Code bestätigen“. Ein bekannter Kanal wird dabei zuerst geladen; ist er
+„Anmeldung bestätigen“. Ein bekannter Kanal wird dabei zuerst geladen; ist er
 `AUTHENTICATED`, läuft die Bestätigung über ihn. Den `pairingCode` merkt sich die App lokal
 (`pendingPairingCode`), damit der Schritt `input` von `confirm-qr-login` ihn vorausfüllt.
 

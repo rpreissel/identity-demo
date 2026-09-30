@@ -1,5 +1,7 @@
 # ADR-6: `next` als reine Adresse, feste Routing-Tabelle statt HATEOAS
 
+**Status:** umgesetzt.
+
 **Entscheidung**: Jede Antwort der API enthält ein Objekt `next`. Es nennt nur die Adresse des
 nächsten Schritts (Typ, `toolId` oder `context`, Schritt) und liefert nie Inhalte oder Links mit.
 Der Client findet den nächsten Schritt über eine **eigene, feste Routing-Tabelle im Client**

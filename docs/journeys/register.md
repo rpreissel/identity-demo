@@ -48,6 +48,7 @@ stateDiagram-v2
   Identifying --> AuthChoice: Identität festgestellt, Konto bereits ausreichend eingerichtet
   Identifying --> Assigning: Identität bestätigt, aber keine Person aus dem Personenverzeichnis zugeordnet (ident-eid, ident-nect)
   Assigning --> AuthChoice: zugeordnet, gefundenes Konto bereits ausreichend eingerichtet
+  Assigning --> ConfirmDeviceRebind: zugeordnet, gefundenes Konto ist nicht das des Geräts
   Assigning --> ConfirmingEmail: Zuordnung erledigt oder übersprungen, E-Mail-Pflicht offen
   Assigning --> Enrolling: Zuordnung erledigt oder übersprungen, E-Mail bereits bestätigt
   Identifying --> ConfirmingEmail: Identität festgestellt, Konto muss etwas einrichten, E-Mail-Pflicht offen
@@ -56,11 +57,13 @@ stateDiagram-v2
   AuthChoice --> Identifying: alle abgelehnt
   AuthChoice --> Finished: Nachweis reicht
   AuthChoice --> Enrolling: Konto erreicht das Niveau nicht
+  AuthChoice --> RE_IDENTIFY: Sitzung unter loa2 - Einrichten erst nach erneuter Identifizierung
   ConfirmingEmail --> Enrolling: E-Mail bestätigt, Konto erreicht das Niveau noch nicht
   Enrolling --> Enrolling: Verfahren eingerichtet, Niveau reicht noch nicht
   Enrolling --> ConfirmingEmail: E-Mail-Pflicht noch offen (nur falls anfangs kein Bestätigungs-Tool verfügbar war)
   Enrolling --> RE_IDENTIFY: Sitzung unter loa2 - neues Verfahren erst nach erneuter Identifizierung
   RE_IDENTIFY --> Start: Sub-Journey beendet - Stand neu prüfen
+  RE_IDENTIFY --> [*]: abgelehnt oder nicht möglich (Cancel/Abort)
   Enrolling --> SecondFactorKindObligation: Niveau erreicht, loa2 sonst nicht erreichbar, nur eine Faktorart aktiv
   Enrolling --> Finished: Niveau erreicht, keine Pflicht offen
   ConfirmingEmail --> SecondFactorKindObligation: E-Mail bestätigt, loa2 sonst nicht erreichbar, nur eine Faktorart aktiv
@@ -159,7 +162,7 @@ im Speicher existiert und nie gespeichert wird (`AccountProfile(accountId = -1, 
 
 **Feste Reihenfolge: erst E-Mail, dann SMS.** In der normalen Variante (`RegisterState`,
 `AuthEnrollCore`) wählt der Nutzer frei. Diese Variante verlangt dagegen zuerst die Bestätigung der
-E-Mail-Adresse (`EnrollFirstAttestingEmail`, ein `ATTEST`-Schritt, kein Einrichten) und danach das
+E-Mail-Adresse (`EnrollFirstAttestingEmail`, ein `ATTESTATION`-Schritt, kein Einrichten) und danach das
 Einrichten von SMS (`EnrollFirstEnrollingSms`). Beide Schritte lassen sich nicht überspringen: Wer
 ablehnt (`Abandoned`), bekommt denselben Schritt erneut angeboten. Hat der Betreiber eines der
 beiden Tools gesperrt, entfällt nur dieser Schritt; die Journey wird dadurch nicht blockiert.
@@ -183,10 +186,12 @@ Person dagegen nur ein verwerfbares Konto (etwa aus einem früher abgebrochenen 
 stateDiagram-v2
   [*] --> EnrollFirstStart
   EnrollFirstStart --> EnrollFirstAttestingEmail: Start - die Adresse kommt zuerst
+  EnrollFirstStart --> EnrollFirstEnrollingSms: Start, kein Bestätigungs-Tool verfügbar
+  EnrollFirstStart --> EnrollFirstEnrolling: Start, weder E-Mail- noch SMS-Tool verfügbar
   EnrollFirstAttestingEmail --> EnrollFirstAttestingEmail: abgelehnt - derselbe Schritt wird erneut angeboten
-  EnrollFirstAttestingEmail --> EnrollFirstEnrollingSms: E-Mail bestätigt, oder Bestätigungs-Tool nicht verfügbar
+  EnrollFirstAttestingEmail --> EnrollFirstEnrollingSms: E-Mail bestätigt
   EnrollFirstEnrollingSms --> EnrollFirstEnrollingSms: abgelehnt - derselbe Schritt wird erneut angeboten
-  EnrollFirstEnrollingSms --> EnrollFirstEnrolling: SMS eingerichtet (oder Tool nicht verfügbar), aber Niveau reicht noch nicht
+  EnrollFirstEnrollingSms --> EnrollFirstEnrolling: SMS eingerichtet, aber Niveau reicht noch nicht
   EnrollFirstEnrollingSms --> EnrollFirstConfirmingEmail: SMS eingerichtet, Niveau erreicht, E-Mail-Pflicht noch offen
   EnrollFirstEnrollingSms --> EnrollFirstSecondFactorKindObligation: SMS eingerichtet, Niveau erreicht, E-Mail bereits bestätigt, loa2 sonst nicht erreichbar, nur eine Faktorart aktiv
   EnrollFirstEnrollingSms --> RE_IDENTIFY: SMS eingerichtet, Niveau erreicht, keine Pflicht offen - Identifizierung wird angeboten

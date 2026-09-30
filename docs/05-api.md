@@ -93,13 +93,13 @@ geändert wird.
 Beide YAML-Dateien entstehen im selben Testlauf aus derselben laufenden Anwendung
 (`OpenApiSnapshotTest`) und können deshalb nicht auseinanderlaufen. Die Moduldateien sind keine
 zweite Quelle, sondern ein Ausschnitt: Eine Änderung an einem SMS-Endpunkt steht in
-`api/modules/auth_sms.yaml` (knapp 500 Zeilen) statt irgendwo in 4700 Zeilen. Die Gruppen leitet
-`ModuleApiGroups` aus den vorhandenen `@RestController` ab, nicht aus einer gepflegten Liste.
+`api/modules/auth_sms.yaml` (knapp 500 Zeilen) statt irgendwo in über 5000 Zeilen. Die Gruppen
+leitet `ModuleApiGroups` aus den vorhandenen `@RestController` ab, nicht aus einer gepflegten Liste.
 
 Ein Schema, das mehr als ein Modul nutzt und das im App-Vertrag steht (das Antwortformat
 `ChannelResponse` mit allem, was dazugehört, und `ErrorResponse`), steht nur in `api/openapi.yaml`.
 Die Moduldateien verweisen mit `../openapi.yaml#/components/schemas/…` darauf. Sonst enthielte jede
-Moduldatei dieselben rund 360 Zeilen, und eine Änderung am Antwortformat erschiene als zehn Diffs.
+Moduldatei dieselben rund 360 Zeilen, und eine Änderung am Antwortformat erschiene als zwölf Diffs.
 Auch das ergibt sich von selbst, nicht aus einer Liste: Was nur ein Modul nutzt, bleibt in dessen
 Datei. Der Preis: `StepData` zeigt in der Moduldatei alle möglichen Formen, nicht nur die dieses
 Moduls.
@@ -174,9 +174,9 @@ Alle Anfragen enthalten den Header `DPoP: <proof>`.
   ist gesetzt, sobald es für diesen Schritt eine `ToolSession` gibt – auch beim Fortsetzen
   (`GET /channels/{channelSessionId}`) mitten in einem laufenden Tool.
 - **Ein Antwortformat für alle Endpunkte** (`ChannelResponse`):
-  `{ "channel": {channelSessionId, channelType, state, currentAcr, currentAmr, activeMethods}, "next": {...}, "stepData": {...}, "demo": {...} }`.
-  `channelSessionId`, `channelType` und `state` stehen in jeder Antwort. `currentAcr`, `currentAmr`
-  und `activeMethods` stehen dagegen NIE in Antworten eines Tools (`POST .../tools/{toolId}` sowie
+  `{ "channel": {channelSessionId, channelType, state, hasProvenFactor, currentAcr, currentAmr, activeMethods}, "next": {...}, "stepData": {...}, "demo": {...} }`.
+  `channelSessionId`, `channelType`, `state` und `hasProvenFactor` stehen in jeder Antwort.
+  `currentAcr`, `currentAmr` und `activeMethods` stehen dagegen NIE in Antworten eines Tools (`POST .../tools/{toolId}` sowie
   `PATCH`/`GET`/`DELETE` auf `/tools/...`), sondern nur bei den Endpunkten des Kanals
   (`GET`/`POST /channels`, `step-ups`, `enrollments`, `DELETE .../methods/{methodInstanceId}`).
 - **Werte von `channel.state`** – alles, was der Client aus `state` ablesen kann, ohne einen
@@ -381,7 +381,7 @@ sucht Nutzer über dieselbe Adresse. Die Kontaktdaten des Personenverzeichnisses
 unter `email` oder `phone_number`, auch nicht in Keycloak: Braucht eine Anwendung sie, bekäme sie
 einen eigenen Claim unter eigenem Scope, live gelesen wie `versnr`. Für eine Mobilnummer gälte
 dieselbe Regel; heute steht keine im Token, weil sie dem SMS-Verfahren gehört und nicht dem Konto
-([Tool-Architektur](03-tool-architektur.md) Abschnitt 2, „ATTEST").
+([Tool-Architektur](03-tool-architektur.md) Abschnitt 2, „ATTESTATION").
 
 `name` ist die einzige Stelle, an der das Frontend erfährt, WER angemeldet ist. Es entscheidet der
 `PERSON_ID`-Anker:
@@ -477,7 +477,7 @@ identifiziertes Konto nur loa1, [Orchestrierung](04-orchestrierung.md) Abschnitt
    `next={"context":"auth","step":"selectMethod"}`. **Ausnahme**: Musste in Schritt 2 erst ein
    Step-up stattfinden, zählt dessen Nachweis bereits als der hier geforderte.
 4. Nach erfolgreichem Nachweis wird das Konto mit allem, was nur ihm gehört, unwiderruflich
-   gelöscht: alle Credential-Datensätze der Methodenmodule, auf die seine Verfahren verweisen
+   gelöscht: alle Credential-Datensätze der Tool-Module, auf die seine Verfahren verweisen
    (aktive **und** abgelöste), der `DeviceAccountLink`, jede `AppTokenSession` und die Zeile in
    `account` selbst. Die `person` im Personenverzeichnis (`personenverzeichnis`) bleibt
    unberührt ([Tool-Architektur](03-tool-architektur.md), `EnrollmentCleanup`).
@@ -518,8 +518,8 @@ Registrierung mit `ident-fsc` -> `enroll-sms`:
 1. `POST /app/channels` (`{"requiredAcr": "loa2", "availableTools": ["ident-fsc", "enroll-sms", ...]}`;
    ohne `intent` gilt `fast_access`; `availableTools` ist Pflicht, siehe unten) liefert eine neue
    `channelSessionId` und gleich den ersten Schritt:
-   `next={"type":"tool","toolId":"ident-fsc","step":"input"}`. Es gibt nur ein `IDENT`-Verfahren,
-   also keine Auswahl, und noch keine `ToolSession`, also keine `toolSessionId`. Enthält
+   `next={"type":"tool","toolId":"ident-fsc","step":"input"}`. Es gibt nur ein
+   Identifizierungsverfahren, also keine Auswahl, und noch keine `ToolSession`, also keine `toolSessionId`. Enthält
    `availableTools` auch `ident-eid`, liefert derselbe `POST` eine Auswahl:
    `next={"type":"orchestrator","context":"registration","step":"selectIdentificationMethod"}`,
    `stepData={"kind":"select-method","options":["ident-fsc","ident-eid"]}`.
@@ -616,10 +616,10 @@ auch bei abgeschlossener Journey
 
 ### Journey-Trace
 
-Eine Ansicht zur Fehlersuche und für die Demo, kein Revisionsprotokoll (das ist `account.change_log`,
-[Betrieb](07-betrieb.md) Abschnitt 2; Frist 14 Tage). Es gehört nicht zum App-Vertrag: Es gibt den Journey-Trace nur
-als Betriebsendpunkt `GET /orchestrator/admin/journey-trace` (hinter der Admin-Anmeldung, über alle
-Konten und Kanäle).
+Eine Ansicht zur Fehlersuche und für die Demo, aufbewahrt 14 Tage ([Betrieb](07-betrieb.md)
+Abschnitt 3), kein Revisionsprotokoll (das ist `account.change_log`). Es gehört nicht zum
+App-Vertrag: Es gibt den Journey-Trace nur als Betriebsendpunkt
+`GET /orchestrator/admin/journey-trace` (hinter der Admin-Anmeldung, über alle Konten und Kanäle).
 
 ### `GET /app/channels/device-link`
 
@@ -677,7 +677,7 @@ Sie folgen demselben Muster wie `ident-fsc`/`enroll-sms`/`auth-sms` oben, mit di
 ### Anmeldung über die E-Mail-Adresse (`auth-sms-lookup` / `auth-password-lookup` / `auth-email-lookup`, „Login ohne DPoP")
 
 Nur erreichbar über `POST /channels` mit `intent: "lookup_login"`, nie über die normale Auswahl der
-Kandidaten (`ToolRole.ACCOUNT_LOOKUP_AUTH`; `AuthPolicy.candidateTools` wählt ausschließlich
+Kandidaten (`ToolRole.ACCOUNT_LOOKUP_AUTH`; `AuthPolicy.authCandidates` wählt ausschließlich
 `KNOWN_ACCOUNT_AUTH`). Diese Tools finden das Konto selbst über die eingegebene E-Mail-Adresse:
 
 - `auth-sms-lookup` und `auth-email-lookup` arbeiten mit zwei `PATCH`-Aufrufen: erst

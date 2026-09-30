@@ -6,8 +6,9 @@
 > [07-betrieb.md](../07-betrieb.md). Im Projekt werden gespeicherte Daten derzeit **nicht**
 > verschlüsselt; alle Spalten mit personenbezogenen Daten stehen im Klartext
 > (`db/migration/<modul>/`). Der vorhandene kryptografische Code beschränkt sich auf das Hashen von
-> Passwörtern (seit 2026-09 Argon2id, vorher PBKDF2), auf HMAC (TAN, E-Mail-Code, Zähler) und auf das Erzeugen von EC-Schlüsseln
-> für die Assertions von Keycloak. Eine Regel „eID-Daten höchstens ein Jahr“ steht nirgends in der
+> Passwörtern (seit 2026-09 Argon2id, vorher PBKDF2), auf HMAC (TAN, E-Mail-Code,
+> QR-Bestätigungscode, Zähler, Suchschlüssel im Änderungsprotokoll) und auf das Erzeugen von
+> EC-Schlüsseln für die Assertions von Keycloak. Eine Regel „eID-Daten höchstens ein Jahr“ steht nirgends in der
 > Doku; sie dient hier nur als Beispiel.
 
 ## Kontext
@@ -24,8 +25,10 @@ ausdrücklich **nicht** zur Frage.
   Daten (`account.claim.claim_value`, `account.anchor.normalized_value`,
   `personenverzeichnis.person.*`, `ident_eid.ident_tool_session.*`) sind `VARCHAR` bzw. `DATE` im
   Klartext (`db/migration/<modul>/`). Dazu kommt das simulierte Nect: `nect.ident_case.result`
-  hält die ausgelesenen Ausweisdaten eines Vorgangs als JSON im Klartext. Kryptografisch gibt es nur Argon2id (Hash des Passworts), HMAC
-  (TAN, E-Mail-Code, Zähler) und das Erzeugen von EC-Schlüsseln für die Assertions an Keycloak.
+  hält die ausgelesenen Ausweisdaten eines Vorgangs als JSON im Klartext. Kryptografisch gibt es
+  nur Argon2id (Hash des Passworts), HMAC (TAN, E-Mail-Code, QR-Bestätigungscode, Zähler,
+  Suchschlüssel im Änderungsprotokoll) und das Erzeugen von EC-Schlüsseln für die Assertions an
+  Keycloak.
   `NodeSigningKey.privateKeyJwk` liegt ausdrücklich im Klartext (Demo-Rahmen, ADR-22,
   `orchestrator/kc/NodeSigningKey.kt`).
 - Eine Regel „eID-Daten höchstens ein Jahr“ steht nirgends in der Doku; sie ist ein angenommenes
@@ -147,7 +150,7 @@ Der Hauptschlüssel hat nur eine Aufgabe: jeden Datenschlüssel einzupacken. Fal
 Es gibt also genau ein Geheimnis, das einem Konto gehört (den Hauptschlüssel). Die Schicht der
 Datenschlüssel ist ein internes Detail des Verschlüsselungsdienstes. Das Einpacken und Auspacken
 sowie das Ver- und Entschlüsseln erledigt reines `javax.crypto` (AES-256-GCM). Das ist dieselbe
-Paketfamilie, die das Projekt für PBKDF2 und HMAC schon nutzt; es braucht also keine neue
+Paketfamilie, die das Projekt für HMAC schon nutzt; es braucht also keine neue
 Abhängigkeit.
 
 ---
@@ -300,7 +303,7 @@ großen gesetzlichen Krankenkasse (etwa 11 Millionen Versicherte).
 - `src/main/kotlin/com/example/identity/core/account/infrastructure/AccountAnchor.kt` (unverändert; Bezugspunkt für
   die Abgrenzung in Abschnitt 3a)
 - `src/main/kotlin/com/example/identity/core/account/infrastructure/AccountRetraction.kt`
-- `docs/12-entscheidungen.md` (neues ADR für diese Entscheidung)
+- `docs/adr/` (neues ADR für diese Entscheidung, eingetragen in `docs/12-entscheidungen.md`)
 - `docs/07-betrieb.md` (bestehendes Muster der `*RetentionJob`s erweitern)
 
 ## Nächster Schritt

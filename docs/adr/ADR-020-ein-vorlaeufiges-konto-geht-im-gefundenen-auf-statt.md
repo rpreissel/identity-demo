@@ -24,8 +24,10 @@ Rolle:
 = `isUnidentified` (keine PersonId) **und** nie ein Anmeldeverfahren eingerichtet. Deaktivierte
 Verfahren zählen mit, denn an einer widerrufenen Instanz hängt weiterhin die Herkunft von Claims
 (`account.claim.auth_method_id`,
-[ADR-12](ADR-012-ein-widerruf-ist-eine-eigene-zeile-mit-eigenem.md)). Dieselbe Regel entscheidet, ob
-eine abgebrochene Journey ihr Konto löschen darf (`JourneyService.deleteIfAbandonedUnidentified`).
+[ADR-12](ADR-012-ein-widerruf-ist-eine-eigene-zeile-mit-eigenem.md)). Dieselbe Regel entschied, ob
+eine abgebrochene Journey ihr Konto löschen darf (`JourneyService.deleteIfAbandonedUnidentified`);
+seit [ADR-46](ADR-046-konto-im-aufbau.md) entscheidet das, ob das Konto im Aufbau ist
+(`JourneyService.discardIfBeingSetUp`), siehe Nachtrag unten.
 
 ### Bestätigte Adresse: zwei Bedingungen mehr
 

@@ -1,18 +1,20 @@
 # Konkrete Abläufe
 
-Wie `ident-fsc`, `ident-eid`, `auth-sms` und `enroll-sms` die Bausteine aus
-[03-tool-architektur.md](03-tool-architektur.md) und [04-orchestrierung.md](04-orchestrierung.md)
-konkret nutzen – mit dem Schwerpunkt auf dem Datenmodell und den Entscheidungen dahinter. Ein
-durchgehendes Beispiel mit allen Aufrufen steht in [05-api.md](05-api.md).
+Wie die einzelnen Tools, von `ident-fsc` und `auth-sms` bis `auth-kobil`, `auth-qr` und
+`auth-invite`, die Bausteine aus [03-tool-architektur.md](03-tool-architektur.md) und
+[04-orchestrierung.md](04-orchestrierung.md) konkret nutzen – mit dem Schwerpunkt auf dem
+Datenmodell und den Entscheidungen dahinter. Ein durchgehendes Beispiel mit allen Aufrufen steht in
+[05-api.md](05-api.md).
 
 Ein drittes Identifizierungsverfahren, `ident-nect`, hat hier keinen eigenen Abschnitt. App oder
 Keycloak-Seite schicken den Nutzer auf die Sprungseite des simulierten Dienstes Nect (`/nect/`); dort
 wählt er Online-Ausweis, Reisepass oder EUDI-Wallet. Zurück kommt er dorthin, wo der Kanal den Fall
 hinbestellt hat: in die App oder auf die Action-URL des laufenden Keycloak-Schritts (ADR-47). Das
-Ergebnis holt der Server danach einmalig selbst bei Nect ab (`NectIdent.redeem`), nie über den Client. Die gelieferten Angaben
-bestätigt er wie bei `ident-eid` auf eigene Verantwortung (`ClaimSource.of("ident-nect")`, bis
-`loa3`, `amr` `nect-<verfahren>`). Die Zuordnung zu einer Person folgt wie bei `ident-eid` über
-`ident-kvnr`. Details und was noch offen ist stehen in [03-tool-architektur.md](03-tool-architektur.md), Abschnitt 1.
+Ergebnis holt der Server danach einmalig selbst bei Nect ab (`NectIdent.redeem`), nie über den
+Client. Die gelieferten Angaben bestätigt er wie bei `ident-eid` auf eigene Verantwortung
+(`ClaimSource.of("ident-nect")`, bis `loa3`, `amr` `nect-<verfahren>`). Die Zuordnung zu einer
+Person folgt wie bei `ident-eid` über `ident-kvnr`. Details und was noch offen ist stehen in
+[03-tool-architektur.md](03-tool-architektur.md), Abschnitt 1.
 
 ---
 
@@ -37,7 +39,7 @@ classDiagram
     string establishedAcr
   }
   class ChangeLogEntry {
-    string eventType "IDENTIFIED, ..."
+    string changeType "IDENTIFIED, ..."
     string subject "Verfahren"
     string acr
     Map details "type, version, Rolle, Anbieter, Vorgang, Version, Hash"
@@ -68,7 +70,7 @@ Entscheidungen, die an diesem Modell hängen:
 
 - **`enrolledUnderAcr` ist ein eigenes Feld, nicht nur ein Eintrag fürs Protokoll.** Das
   tatsächlich erreichte `achievedAcr` eines `auth-*`-Tools wird durch das `enrolledUnderAcr` des
-  verwendeten Verfahrens begrenzt ([Orchestrierung](04-orchestrierung.md) Abschnitt 1). Ohne diese
+  verwendeten Verfahrens begrenzt ([Orchestrierung](04-orchestrierung.md) Abschnitt 5). Ohne diese
   Regel käme man schleichend nach oben: Ein in einer schwach gesicherten Sitzung eingerichtetes
   Verfahren würde dauerhaft ein höheres Niveau erzeugen, als je nachgewiesen wurde. Den Wert kennt
   nur der Orchestrator, nie das Modul.
@@ -101,7 +103,7 @@ Entscheidungen, die an diesem Modell hängen:
   gleichzeitige Versuche gegenseitig überschreiben. Die eingegebene TAN wird nie gespeichert, nur
   mit dem Hash verglichen.
 - **Der Orchestrator speichert nur Lebenszyklus und Routing**, nie Fach- oder Moduldaten. Die
-  liegen ausschließlich im jeweiligen Methodenmodul (bei SMS in
+  liegen ausschließlich im jeweiligen Tool-Modul (bei SMS in
   `auth_sms.auth_tool_session`/`auth_sms.enroll_tool_session`).
 
 Regel für das Identifizierungs-Ereignis im Änderungsprotokoll (`account.change_log`, `IDENTIFIED`,
@@ -175,7 +177,7 @@ Zusätzlicher Fehlerfall zum allgemeinen Vertrag ([Betrieb](07-betrieb.md)): unb
 Wie `auth-sms`, nur entsteht der Datensatz `AuthSmsEnrollment` hier neu – und zwar erst **nach**
 erfolgreicher Prüfung der TAN, nie schon beim ersten `PATCH` mit der Telefonnummer (die ist zu
 diesem Zeitpunkt ja noch nicht bestätigt). Nach dem Abschluss legt der Orchestrator, wie in
-[Orchestrierung](04-orchestrierung.md) Abschnitt 1 beschrieben, den Eintrag in `account.auth_method`
+[Orchestrierung](04-orchestrierung.md) Abschnitt 5 beschrieben, den Eintrag in `account.auth_method`
 an, einschließlich `enrolledUnderAcr` aus dem aktuellen Nachweis der Sitzung (`SessionEvidence`).
 
 Zusätzlicher Fehlerfall zum allgemeinen Vertrag: ungültige Telefonnummer (Formatfehler) -> `400`.
@@ -226,9 +228,10 @@ einmaligen `toolSessionId`.
   `Failed("Geraet nicht erkannt")`, ohne zu verraten, welches Gerät erwartet wurde.
 - **loa2 in einem Schritt**: `maxAcr=loa2`, `factorTypes={possession,knowledge,inherence}` – Besitz
   des Schlüssels plus Wissen (PIN) oder Inhärenz (Biometrie) aus einem einzigen Durchlauf
-  ([03-tool-architektur.md](03-tool-architektur.md) Abschnitt 1). Dass zum Einrichten schon loa2
-  nötig ist, sichern die allgemeinen Prüfungen ab, kein eigener Code: `ident-fsc` liefert bei der
-  Identifizierung immer zuerst `loa2`. Und vor jedem späteren Einrichten verlangt
+  ([03-tool-architektur.md](03-tool-architektur.md) Abschnitt 1). Dass das Gerät nie mehr liefert,
+  als die Sitzung beim Einrichten nachgewiesen hatte, sichern die allgemeinen Prüfungen ab, kein
+  eigener Code: `enrolledUnderAcr` begrenzt es (ADR-5). Nach einer Identifizierung steht die Sitzung
+  schon auf `loa2`, und vor jedem späteren Einrichten verlangt
   `AuthIntent.MANAGE_AUTH_METHODS` über die Schwelle `selfServiceAcrFloor` denselben Nachweis (für
   ein nie identifiziertes Konto nur loa1).
 
@@ -292,8 +295,8 @@ Wert an derselben Stelle, ein fremdes Konto hält ihn nie). Eine PersonId behaup
 beide, zählt die KVNR. Das geschieht im Controller, nicht im Handler, denn `ident_kvnr` darf
 `personenverzeichnis` nicht direkt kennen ([Projektrahmen](08-projektrahmen.md) Abschnitt 3).
 Danach behauptet das Tool unter `PERSON_DIRECTORY` die `PERSON_ID`, bei angegebener KVNR auch die
-`KVNR` und bei Versicherten die `MEMBER_NUMBER` (ADR-34). Es hat die Rolle `CORRELATION` (Kategorie
-`IDENT`, ADR-18). Das sagt ausdrücklich, dass eine eingetippte Nummer für sich nichts beweist;
+`KVNR` und bei Versicherten die `MEMBER_NUMBER` (ADR-34). Es hat die Rolle `CORRELATION`
+(ADR-18). Das sagt ausdrücklich, dass eine eingetippte Nummer für sich nichts beweist;
 `factorTypes={}` folgt daraus, definiert es aber nicht. Sicher wird der Schritt durch zwei Dinge:
 `requires` (die bestätigten Identitätsattribute müssen im Konto vorliegen, sonst lässt sich das
 Tool gar nicht starten) und `IdentityResolver.attestedIdentityMatches`. Das prüft, bevor der Anker
@@ -367,7 +370,7 @@ Rolle.
 3. `PATCH {activated, biometricConsent, label}`: Das Backend fragt die Kennung bei KOBIL ab – nie
    beim Client, denn mit ihr wird jede spätere Anmeldung verglichen. Dann schreibt es das
    Credential: Kennung, PIN, DPoP-`bindingKeyRef` und **nur bei Zustimmung** den Hash des
-   `unlockSecret`. Das Ergebnis ist `Completed.Enrolled` mit `amr = [kobil, pin|biometric]`. Das
+   `unlockSecret`. Das Ergebnis ist `Completed.Enrolled` mit `amr = [kobil, pin|biometric]`. Der
    Weg zum Entsperren ergibt sich dabei aus der Zustimmung; es ist keine zweite Eingabe.
 
 `biometricConsent` hat keinen Standardwert: Eine Zustimmung, die man nicht gegeben hat, gibt es
@@ -458,7 +461,7 @@ Biometrie auf einem Konto, das sein Passwort verloren hat, ist nicht mehr nutzba
 das, statt eine Schaltfläche anzubieten, die nicht funktionieren kann.
 
 Nicht gebaut sind eine `-lookup`-Variante (das Credential ist an einen Schlüssel gebunden) und ein
-`WebToolRenderer` für den Keycloak-Kanal (ein SDK für Telefone lässt sich aus einer Anmeldeseite
+`WebToolRenderer` für den Web-Kanal (ein SDK für Telefone lässt sich aus einer Anmeldeseite
 im Browser nicht ansprechen) – siehe [API](05-api.md) Abschnitt 3.
 
 ---
@@ -495,15 +498,15 @@ Web-Kanal.
    liegt im Briefkasten. Auf der Anmeldeseite bietet die Demo eine Auswahl der offenen Einladungen an,
    die Nummer und Kennwort einträgt (`invitations` im Demo-Block, ADR-28).
 2. **Anmelden.** Die Website startet eine gewöhnliche Anmeldung über den Browser-Client. Ohne Konto
-   bietet die Auswahl `auth-invite` an. Die Person gibt Mitglieds- oder Partnernummer und das
+   bietet die Auswahl `auth-invite` an. Die Person gibt KVNR oder Partnernummer und das
    Kennwort ein. Der Controller löst die Nummer zur Person auf; das Tool fragt das Verzeichnis, ob das
    Kennwort eine offene Einladung genau dieser Person öffnet (`Invitations.redeem`). Ein Fehlversuch
-   zählt gegen die Person (Personen-Mengenbegrenzung wie beim Freischaltcode) und sieht für jede Ursache gleich
-   aus.
+   zählt gegen die Person (Personen-Mengenbegrenzung wie beim Freischaltcode) und sieht für jede
+   Ursache gleich aus.
 3. **Binden.** Bei Erfolg wird die Einladung Subjekt des Kanals, kein Konto wird gesucht oder
-   angelegt. Liegt das Niveau der Einladung unter dem verlangten, bricht die Journey vorher ab. Keycloak
-   setzt den Nutzer aus der Einladungs-Federation (`f:<UUID>:<Id>`); seine Tokens tragen die Stammdaten der Person und die
-   Claims `process` und `invitation`, aber kein `orchestrator_account_id`.
+   angelegt. Liegt das Niveau der Einladung unter dem verlangten, bricht die Journey vorher ab.
+   Keycloak setzt den Nutzer aus der Einladungs-Federation (`f:<UUID>:<Id>`); seine Tokens tragen
+   die Stammdaten der Person und die Claims `process` und `invitation`, aber kein `orchestrator_account_id`.
 4. **Wiederkommen.** Bis zur Frist oder zum Abschluss kann sich die Person beliebig oft wieder
    anmelden, wie beim Freischaltcode.
 5. **Beenden.** Das Fachsystem meldet den Vorgang beim Personenverzeichnis ab, mit der Id der

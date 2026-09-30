@@ -154,9 +154,16 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   Vorgang“. Gespeichert wird nie das Kennwort, nur ein daraus berechneter Wert.
   *Mehr dazu:* [ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
 - **Einstiegs-Intent**: siehe Intent.
+- **Erneute Identifizierung**: Erreicht kein aktives Verfahren das geforderte Niveau, bietet die
+  Journey an, sich noch einmal zu identifizieren. Sie fragt immer erst nach. Die Identifizierung
+  bestätigt nur das Konto, das schon bekannt ist, und übernimmt nie ein anderes. Ein Konto, das nie
+  identifiziert wurde, bekommt so zum ersten Mal eine Identität.
+  *Im Code:* Intent `RE_IDENTIFY`, nur als Sub-Journey.
+  *Mehr dazu:* [journeys/re-identify](../journeys/re-identify.md).
 
 ## F
 
+- **Faktorart**: siehe Faktortyp.
 - **Faktortyp**: Die Art eines Beweises: etwas, das man weiß (Passwort), etwas, das man hat
   (Smartphone), oder etwas, das man ist (Fingerabdruck). Für das Niveau `loa2` braucht es zwei
   verschiedene Arten; zwei Verfahren derselben Art reichen nicht.
@@ -345,7 +352,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   `versnr`, im Vokabular des Personenverzeichnisses.
   *Mehr dazu:* [02-domaenenmodell](../02-domaenenmodell.md) Abschnitt 6,
   [ADR-34](../adr/ADR-034-personenverzeichnis-meldet-aenderungen.md).
-- **Modul** und **Tool-Modul**: Der Orchestrator ist in Module geteilt, die nur über festgelegte
+- **Modul** und **Tool-Modul**: Die Anwendung ist in Module geteilt, die nur über festgelegte
   Schnittstellen miteinander reden; ein Test hält diese Grenzen ein. Ein Tool-Modul enthält die Tools
   eines Verfahrens, etwa alles zu SMS, und kennt den Orchestrator nur über `tool_api`.
   *Im Code:* Pakete unter `tools/` (etwa `tools/auth_sms`), `ModuleMetadata`.
@@ -372,10 +379,12 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
 - **Niveau**, ausführlich **Sicherheitsniveau**: Wie sehr einer Anmeldung vertraut wird. `loa1`
   heißt: ein Verfahren, etwa ein Passwort. `loa2` heißt: zwei Verfahren verschiedener Art oder eine
   Identifizierung. `loa3` erreicht nur eine starke Identifizierung, etwa mit dem Online-Ausweis.
-  Manche Funktionen, etwa das Löschen des Kontos, verlangen ein bestimmtes Niveau. Die Skala folgt
+  Manche Funktionen verlangen ein bestimmtes Niveau: Verfahren verwalten und das Konto löschen etwa
+  `loa2`, bei einem nie identifizierten Konto `loa1`. Die Skala folgt
   NIST 800-63; sie liegt nah an den eIDAS-Niveaus niedrig, substanziell und hoch, ist ihnen aber
   nicht gleich.
-  *Im Code:* `acr`, Werte `loa1`, `loa2`, `loa3`.
+  *Im Code:* `acr`, Werte `loa1`, `loa2`, `loa3`; die Schwelle für Verwalten und Löschen heißt
+  `selfServiceAcrFloor`.
   *Mehr dazu:* [01-ueberblick](../01-ueberblick.md) Abschnitt 9.
 
 ## O
@@ -466,8 +475,8 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
 - **Registrierung**: Ein neuer Nutzer legt ein Konto an. Normalerweise identifiziert er sich zuerst,
   bestätigt dann seine E-Mail-Adresse und richtet so lange Verfahren ein, bis das verlangte Niveau
   erreicht ist. Ein Schalter lässt die Registrierung auch mit dem Einrichten eines Verfahrens
-  beginnen.
-  *Im Code:* Intent `REGISTER`.
+  beginnen (Experiment „Enrollment zuerst“); die Identifizierung wird dann nur noch angeboten.
+  *Im Code:* Intent `REGISTER`, Varianten `RegisterStrategy` und `RegisterEnrollFirstStrategy`.
   *Mehr dazu:* [journeys/register](../journeys/register.md).
 - **RestoreData**: Ein von Keycloak aufbewahrter, signierter Zettel mit dem, was ein Nutzer in einem
   früheren Anmeldevorgang derselben Sitzung schon bewiesen hat. Beim nächsten Vorgang gibt Keycloak

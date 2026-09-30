@@ -74,7 +74,7 @@ und `texts`:
   `demoTan`, `demoPersonsJson`; Letzteres jede Seite, die Angaben einer Testperson abfragt, auch
   `tool-sms-enroll`), den Schritt (`step`, `personalienPage`), `addressAgain` (E-Mail bestätigen:
   „Zurück“ im Code zeigt die Adressmaske wieder, ohne Serveraufruf) und für
-  `tool-qr-wait` `pairingCode`, `verificationCode`, `deepLink`, `qrDataUri`, `statusUrl`
+  `tool-qr-wait` `pairingCode`, `deepLink`, `qrDataUri`, `statusUrl`
   ([ADR-45](ADR-045-qr-warteseite-fragt-im-hintergrund.md))
 
 Die Überschrift heißt `pageTitle`, nicht `title`: Keycloak setzt `title` auf jeder Seite selbst und

@@ -30,12 +30,13 @@ danach ein vollständig bestätigter **Interessent**
 ([ADR-10](ADR-010-interessent-ist-konto-zustand-kein-eigener-authintent.md)) und bekommt keinen
 Fehler.
 
-**Rolle.** `ident-kvnr` hat die eigene Rolle `ToolRole.CORRELATION` in der Kategorie `IDENT`. Die
+**Rolle.** `ident-kvnr` hat die eigene Rolle `ToolRole.CORRELATION` (damals in der Kategorie
+`IDENT`; Kategorien gibt es seit 2026-09-30 nicht mehr, Entscheidungen fragen die Rolle). Die
 Rolle sagt ausdrücklich, dass das Tool für sich nichts beweist: Es gehört zu keiner Nachweisart
 (`evidenceAxis()` liefert `null`), hebt also weder IAL noch AAL, und `factorTypes` ist leer. Das IAL
 eines bestätigten Interessenten stammt allein aus dem Bestätigen. Die Auswahl der Kandidaten
 (`CandidateTools.forIdentification`, `forAssignment`, `AuthPolicy.reIdentCandidates`) prüft die
-Rolle, nicht die Kategorie. So wird `ident-kvnr` nie als Weg zur (erneuten) Identifizierung
+Rolle. So wird `ident-kvnr` nie als Weg zur (erneuten) Identifizierung
 angeboten.
 
 ## Worauf die Sicherheit beruht
@@ -59,9 +60,9 @@ es nie von der Karte gelesen hatte; der Controller hatte sie vorher über eine e
 nachgeschlagen. Außerdem ließ sich „gültige eID, aber kein Eintrag im Personenverzeichnis“ nicht
 abbilden: Der Fall scheiterte hart, obwohl ADR-10 genau diesen Zustand eines Kontos vorsieht.
 
-`ATTEST` wäre für das Bestätigen durch die Karte falsch, weil diese Kategorie per Definition nichts
-zu ACR und AMR beiträgt. Eine eID trägt aber zum IAL bei; sonst stünde der stark bestätigte
-Interessent auf `loa1` statt auf `loa3`.
+`ATTEST` (damals Kategorie, heute Rolle `ATTESTATION`) wäre für das Bestätigen durch die Karte
+falsch, weil es per Definition nichts zu ACR und AMR beiträgt. Eine eID trägt aber zum IAL bei;
+sonst stünde der stark bestätigte Interessent auf `loa1` statt auf `loa3`.
 
 **Erwogene Alternative:** alles in einem Tool lassen und nur die Fehlermeldung verbessern.
 

@@ -1,5 +1,7 @@
 # ADR-15: Nachweise und ausgestellte Tokens in getrennten Tabellen
 
+**Status:** umgesetzt.
+
 **Entscheidung**: `orchestrator.session_evidence` (was auf einem Kanal bewiesen wurde) und `orchestrator.app_token_session` (was
 daraus an Tokens ausgestellt wurde) sind zwei Tabellen, und die Abhängigkeit geht nur in eine Richtung:
 `orchestrator.app_token_session.session_evidence_id` zeigt auf die Nachweise, nie umgekehrt. Mehrere

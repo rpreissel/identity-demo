@@ -1,5 +1,8 @@
 # ADR-31: Der Freischaltcode liegt im Personenverzeichnis, `ident_fsc` fragt es über einen Port
 
+**Status:** umgesetzt; der direkte Aufruf ist durch den Nachtrag 2026-09-26 abgelöst (Port
+`ActivationCodes`).
+
 > **Nachtrag 2026-09-26: `ident_fsc` fragt das Register jetzt über einen Port** (`tool_api.ActivationCodes`
 > mit `digest` und `isValid`, implementiert von `Freischaltcodes`). Der Grund für „direkt“ trug nicht:
 > `ident_fsc` erreichte dasselbe Fremdsystem damit auf zwei Wegen, die Person über den Port
@@ -71,6 +74,6 @@ Fremdsystems; das echte System muss ihn so ablegen, dass ein gelesener Hash den 
 - Die Migrationen `personenverzeichnis/V1`, `ident_fsc/V4` und `demo_seed/V16` wurden direkt
   geändert, statt neue hinzuzufügen. Nach [ADR-16](ADR-016-ein-datenbankschema-je-modul-statt-namenspraefix.md) wird eine bestehende H2-Datei
   dadurch ungültig; `FlywayResetConfig` baut sie lokal neu auf.
-- Methodenmodule hängen damit nicht mehr nur an `tool_api`. Welche benannten Ausnahmen es
+- Tool-Module hängen damit nicht mehr nur an `tool_api`. Welche benannten Ausnahmen es
   zu simulierten Fremdsystemen gibt, führt der [Projektrahmen](../08-projektrahmen.md) (M-3) an einer
   Stelle.

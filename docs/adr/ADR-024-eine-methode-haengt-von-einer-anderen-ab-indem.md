@@ -1,12 +1,13 @@
 # ADR-24: Ein Verfahren hängt von einem anderen ab, indem es dessen Angabe verlangt
 
-**Status**: umgesetzt.
+**Status:** umgesetzt.
 
 **Entscheidung**: Abhängigkeiten zwischen Verfahren brauchen keine eigenen Begriffe. Ein Modul
 schreibt beim Einrichten eine Angabe, ein anderes verlangt sie per `ClaimRequirement`. `requires`
 entscheidet damit nicht nur darüber, ob ein Tool **angeboten** wird, sondern gilt **dauerhaft**: Fällt
 die Angabe weg, fällt das Credential, das sie verlangte, mit. Das setzt sich über alles fort, was
-seinerseits daran hängt, bis sich nichts mehr ändert (`JourneyActionExecutor.dependentsOfLostClaims`).
+seinerseits daran hängt, bis sich nichts mehr ändert (`CredentialRules.dependentsOfLostClaims`,
+früher im `JourneyActionExecutor`).
 
 Heute genutzt wird das über die bestätigte Adresse: `enroll-password` und `enroll-email` verlangen
 `ClaimRequirement(EMAIL, PROVEN)`. Eine zurückgenommene Adresse nimmt also Passwort und E-Mail-Login

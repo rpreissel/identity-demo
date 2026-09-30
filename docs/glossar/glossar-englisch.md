@@ -11,8 +11,6 @@ Eintrags führt zum Buchstaben dort.
 
 - **`AAL`** → AAL und IAL: die Frage „dieselbe Person wie beim letzten Mal?“, beantwortet durch
   Anmeldeverfahren. [Glossar](glossar.md#a)
-- **`ACCOUNT_LOOKUP_AUTH`** → **Tool-Rolle** einer Anmeldung mit Kontosuche: das Tool findet das
-  Konto erst. [Glossar](glossar.md#t)
 - **`AccountAnchor`** (Tabelle `account.anchor`) → **Anker**: ein Attribut, über das ein Konto
   eindeutig wiedergefunden wird. [Glossar](glossar.md#a)
 - **`AccountAuthMethod`** → **Anmeldeverfahren**: was im Konto eingerichtet ist und eine Anmeldung
@@ -21,6 +19,8 @@ Eintrags führt zum Buchstaben dort.
   und dem Niveau, unter dem sie entstand. [Glossar](glossar.md#a)
 - **`AccountLockoutService`**, **`PersonLockoutService`** → **Sperre** nach fünf Fehlversuchen für ein
   Konto bzw. eine Person. [Glossar](glossar.md#s)
+- **`ACCOUNT_LOOKUP_AUTH`** → **Tool-Rolle** einer Anmeldung mit Kontosuche: das Tool findet das
+  Konto erst. [Glossar](glossar.md#t)
 - **`AccountProfile.isSetUp`** → **Eingerichtet** / **im Aufbau**: ob ein Konto schon ein
   Anmeldeverfahren hat. [Glossar](glossar.md#e)
 - **`AccountRetraction`** (Tabelle `account.retraction`) → **Widerruf**: nimmt eine Angabe zurück. [Glossar](glossar.md#w)
@@ -50,8 +50,6 @@ Eintrags führt zum Buchstaben dort.
 - **`AuthJourney`** → **Journey**: ein laufender Durchlauf zu einem Intent. [Glossar](glossar.md#j)
 - **`AuthPolicy`**, **`DefaultAuthPolicy`** → **AuthPolicy**: die Regeln, nach denen das
   Sicherheitsniveau berechnet wird. [Glossar](glossar.md#a)
-- **`RateLimitRecord`** → **Sperre** und **Mengenbegrenzung**: zählt Fehlversuche und Mengen, sperrt nach fünf
-  Fehlversuchen für 15 Minuten. [Glossar](glossar.md#s)
 
 ## B
 
@@ -143,7 +141,7 @@ Eintrags führt zum Buchstaben dort.
 - **`loa1`**, **`loa2`**, **`loa3`** → die Werte des **Niveaus**. [Glossar](glossar.md#n)
 - **`loa2-max-age`** (`identity.policy.…`) → wie lange ein **Nachweis** über `loa1` trägt,
   30 Minuten. [Glossar](glossar.md#n)
-- **`LOGOUT`** → der Intent zum Abmelden mit Bestätigung. [Glossar](glossar.md#k)
+- **`LOGOUT`** → der **Intent** zum Abmelden mit Bestätigung. [Glossar](glossar.md#i)
 - **`LOOKUP_LOGIN`** → **Anmeldung** eines Kontos ohne verknüpftes Gerät, über die
   E-Mail-Adresse. [Glossar](glossar.md#a)
 
@@ -203,8 +201,10 @@ Eintrags führt zum Buchstaben dort.
   [Glossar](glossar.md#m)
 - **`RateLimitScope`** → der Bereich eines Zählers (`ACCOUNT`, `PERSON`, `BINDING_KEY`, `ADMIN`).
   [Glossar](glossar.md#m)
-- **`RE_IDENTIFY`** → erneute **Identifizierung** als Sub-Journey. [Glossar](glossar.md#i)
+- **`RE_IDENTIFY`** → **Erneute Identifizierung**, nur als Sub-Journey. [Glossar](glossar.md#e)
 - **`REGISTER`** → **Registrierung**. [Glossar](glossar.md#r)
+- **`RegisterEnrollFirstStrategy`** → die Variante „Enrollment zuerst“ der **Registrierung**.
+  [Glossar](glossar.md#r)
 - **`RestoreData`** → **RestoreData**: gibt die Nachweise eines früheren Durchlaufs derselben
   Keycloak-Sitzung weiter. [Glossar](glossar.md#r)
 - **`RetractionSource`** (Spalte `claim_source` des Widerrufs) → die **Quelle** eines **Widerrufs**.
@@ -213,6 +213,8 @@ Eintrags führt zum Buchstaben dort.
 ## S
 
 - **`selectMethod`** → der Schritt der **Auswahlseite**. [Glossar](glossar.md#a)
+- **`selfServiceAcrFloor`** → das **Niveau**, das Verfahren verwalten und Konto löschen verlangen:
+  `loa2`, für ein nie identifiziertes Konto `loa1`. [Glossar](glossar.md#n)
 - **`SessionEvidence`** → **Nachweis**: was in der laufenden Sitzung bewiesen wurde.
   [Glossar](glossar.md#n)
 - **`SessionEvidenceRecord`** (Tabelle `orchestrator.session_evidence`) → gespeicherter **Nachweis**

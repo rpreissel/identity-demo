@@ -1,6 +1,8 @@
 # ADR-10: Interessent ist Konto-Zustand, kein eigener AuthIntent
 
-**Entscheidung** (**umgesetzt**): Es gibt keinen eigenen `AuthIntent.INTERESSENT`. Ein Interessent ist ein Konto, das nur über bestätigte Claims identifiziert ist, ohne zugeordnete `person_id`. Das beschreibt, wie eine Identifizierung ausgegangen ist; ein Ziel, das man wählen könnte, ist es nicht. Die Journey `REGISTER` (und jeder andere Intent, der eine Identifizierung durchläuft) verzweigt nach dem Ergebnis der Suche nach dem Konto (`Resolution`: `ExistingAccount` oder `Unresolved`): Passt ein Anker, wird das Konto gebunden wie bisher; passt keiner, geht es mit dem Konto ohne `person_id` weiter. Seit ADR-19 gibt es keinen dritten Ausgang mehr.
+**Status:** umgesetzt.
+
+**Entscheidung**: Es gibt keinen eigenen `AuthIntent.INTERESSENT`. Ein Interessent ist ein Konto, das nur über bestätigte Claims identifiziert ist, ohne zugeordnete `person_id`. Das beschreibt, wie eine Identifizierung ausgegangen ist; ein Ziel, das man wählen könnte, ist es nicht. Die Journey `REGISTER` (und jeder andere Intent, der eine Identifizierung durchläuft) verzweigt nach dem Ergebnis der Suche nach dem Konto (`Resolution`: `ExistingAccount` oder `Unresolved`): Passt ein Anker, wird das Konto gebunden wie bisher; passt keiner, geht es mit dem Konto ohne `person_id` weiter. Seit ADR-19 gibt es keinen dritten Ausgang mehr.
 
 **Erwogene Alternative**: Ein eigener `AuthIntent` mit eigener Journey, eigenen Zuständen und eigener Strategie. Das wäre begründet, wenn für Interessenten andere Regeln gälten.
 

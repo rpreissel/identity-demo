@@ -1,5 +1,8 @@
 # ADR-29: Die Event Publication Registry von Spring Modulith statt einer eigenen Outbox-Tabelle
 
+**Status:** umgesetzt; der Anlass, die Keycloak-Spiegelung, ist seit
+[ADR-38](ADR-038-keycloak-liest-konten.md) entfallen (siehe Nachtrag).
+
 > **Nachtrag 2026-09-26:** Die Keycloak-Spiegelung, für die dieser ADR
 > entstand, gibt es seit [ADR-38](ADR-038-keycloak-liest-konten.md) nicht mehr: Keycloak liest die
 > Konten selbst beim Orchestrator nach. Die Registry trägt heute zwei Listener:

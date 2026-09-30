@@ -1,13 +1,16 @@
 # ADR-16: Ein Schema und ein Migrationsordner je Modul
 
-**Entscheidung** (umgesetzt): Die Modulgrenze gilt auch in der Datenbank, und zwar zweifach.
+**Status:** umgesetzt.
+
+**Entscheidung**: Die Modulgrenze gilt auch in der Datenbank, und zwar zweifach.
 
 - **Ein Datenbankschema je Modul.** Jede Tabelle liegt im Schema ihres Moduls: `account.anchor`,
   `auth_sms.enrollment`, `orchestrator.channel_session`. Tabellen, Indizes und Constraints tragen kein
   Modulpräfix (`ux_anchor_value`). Fremdschlüssel gibt es nur innerhalb eines Schemas; ein Verweis in
   ein anderes Modul ist eine Spalte mit Index.
 - **Ein Migrationsordner je Modul.** Jedes Modul bringt sein Schema selbst mit, in
-  `db/migration/<modul>/`, meist als eine Datei (der Orchestrator hat drei). Im obersten Verzeichnis
+  `db/migration/<modul>/`, anfangs meist als eine Datei; spätere Änderungen kommen als weitere Dateien
+  dazu. Im obersten Verzeichnis
   der Migrationen liegt keine SQL-Datei. `ModuleMigrationLocations` findet die Ordner beim Start
   selbst, eine gepflegte Liste gibt es nicht.
 
@@ -29,7 +32,7 @@ Struktur, die sich nicht umgehen lässt. Eine Tabelle kann nicht versehentlich i
 entstehen, und die wichtigste Regel dieses Aufbaus, Fremdschlüssel nur innerhalb eines Moduls, steht
 in den Tabellendefinitionen selbst. Dasselbe gilt für die Migrationen: Jedes Modul hat seine eigenen
 Controller und seine eigene Logik zum Aufräumen, also gehören auch seine Tabellen in seinen eigenen
-Ordner. Mit einer gemeinsamen Datei musste jedes neue Methodenmodul eine Datei anfassen, die allen
+Ordner. Mit einer gemeinsamen Datei musste jedes neue Tool-Modul eine Datei anfassen, die allen
 gehörte. Soll ein Modul später ein eigener Dienst werden, ist klar, wo die Grenze verläuft.
 
 **Kosten**:

@@ -11,10 +11,10 @@ Anmeldeverfahren mit niedrigerem `enrolledUnderAcr` nach Zustimmung aufgewertet 
 ## 1) Ausgangslage
 
 `authenticationMethods[].enrolledUnderAcr` ist in diesem Projekt bewusst **für immer festgeschrieben**.
-Das ist die Begrenzung durch `enrolledUnderAcr` aus ADR-5 (heute tatsächlich an zwei Stellen wirksam,
-siehe dort Nachtrag 2; [12-entscheidungen.md](../12-entscheidungen.md),
-[06-ablaeufe.md](../06-ablaeufe.md) Abschnitt 1): Ein Verfahren darf bei der Anmeldung nie mehr
-Vertrauen erzeugen, als bei seiner Einrichtung vorhanden war. Ohne diese Regel könnte jemand, der eine
+Das ist die Begrenzung durch `enrolledUnderAcr` aus
+[ADR-5](../adr/ADR-005-drei-obergrenzen-fuer-das-sicherheitsniveau.md) (wirksam beim Einrichten und
+beim Anmelden; [06-ablaeufe.md](../06-ablaeufe.md) Abschnitt 1): Ein Verfahren darf bei der
+Anmeldung nie mehr Vertrauen erzeugen, als bei seiner Einrichtung vorhanden war. Ohne diese Regel könnte jemand, der eine
 schwache Sitzung übernimmt, dort ein eigenes Verfahren einrichten und damit dauerhaft ein höheres
 Niveau erreichen, als er je nachgewiesen hat.
 
@@ -68,8 +68,8 @@ müsste als sechster Aufrufer nur der Zustand `IdentifyRequested` in
 Bei Zustimmung bräuchte es:
 
 - eine neue `Action` (`Action.UpgradeMethods(accountId, methodInstanceIds, newAcr)`), die der
-  `JourneyService` ausführt. Dort wird jedes Verfahren auf das `maxAcr` seines Tools begrenzt, weil
-  `AccountService` bewusst nichts von `ToolDescriptor` weiß.
+  `JourneyActionExecutor` ausführt. Dort wird jedes Verfahren auf das `maxAcr` seines Tools
+  begrenzt, weil `AccountService` bewusst nichts von `ToolDescriptor` weiß.
 - eine neue Methode zum Speichern, `AccountService.upgradeMethods(...)`, nach dem Muster des
   bestehenden `deactivateAuthenticationMethod`. Sie findet die Verfahren über ihre `id` und nicht
   über den Namen des Verfahrens, damit mehrere aktive Instanzen desselben Verfahrens (etwa mehrere
@@ -77,9 +77,9 @@ Bei Zustimmung bräuchte es:
 
 `ToolOutcome.Completed.Identified.achievedAcr` setzen alle drei Handler zuverlässig:
 `ident-fsc` und `ident-eid` mit `descriptor.maxAcr`, also `loa2` bzw. `loa3`
-(`IdentFscToolHandler.kt:116`, `IdentEidToolHandler.kt:65`); `ident-nect` mit dem Niveau des
+(`IdentFscToolHandler.kt:107`, `IdentEidToolHandler.kt:70`); `ident-nect` mit dem Niveau des
 gewählten Verfahrens, also `loa3` beim Online-Ausweis und der EUDI-Wallet, aber nur `loa2` beim
-Reisepass (`IdentNectToolHandler.kt:120`). Das ist also kein Hindernis – und zeigt, dass das erreichte
+Reisepass (`IdentNectToolHandler.kt:141`). Das ist also kein Hindernis – und zeigt, dass das erreichte
 Niveau nicht aus dem Descriptor abgelesen werden darf. Als „gerade erreichtes Niveau“ sollte die neue
 Prüfung trotzdem nicht `state.targetAcr` verwenden. Das ist nur die *Mindestanforderung*, mit der die
 Sub-Journey gestartet wurde. Beim neuen Knopf ohne Schwelle wäre sie zum Beispiel bewusst `loa1`,
@@ -96,20 +96,22 @@ dann genau das erreichte Niveau.
 - **App-Kanal:** `AuthenticationCompletedView.tsx` zeigt „Anmeldeverfahren verwalten“ schon mit
   Knöpfen zum Hinzufügen und Entfernen und mit der Obergrenze `enrolledUnderAcr` je Verfahren an. Ein
   Knopf „Identifizieren“ ließe sich dort ohne Weiteres einreihen. Die allgemeine Bestätigungsseite
-  (`Prompt.Confirm`), die die App für jeden `AnswerableState` ohnehin anzeigt, würde auch
+  (`Question.Confirm`), die die App für jeden `AnswerableState` ohnehin anzeigt, würde auch
   `OfferMethodUpgrade` richtig darstellen, ohne dass sich im Frontend etwas ändern muss (reiner Text
   aus `stepData.prompt`).
 - **Web-Kanal:** Dort läuft die Verwaltung der Verfahren inzwischen als Required Action von Keycloak
-  mit eigener Journey (ADR-8, Nachtrag). Der neue HTTP-Endpunkt wäre nicht an einen Kanal gebunden.
+  mit eigener Journey
+  ([ADR-8](../adr/ADR-008-keycloak-fuehrt-seine-eigenen-nativen-schritte-selbst-statt.md)). Der
+  neue HTTP-Endpunkt wäre nicht an einen Kanal gebunden.
   Einen Knopf zum Identifizieren gibt es dort aber noch nicht; er müsste in der Seite der Required
   Action ergänzt werden. Für eine erste Umsetzung könnte man das als bekannte Lücke hinnehmen.
 
 ## 5) Was sich an bestehendem Verhalten und an der Doku ändern würde
 
-Die Aussage in [04-orchestrierung.md](../04-orchestrierung.md) („IAL und AAL“): *„Wurde nur mit loa2
-identifiziert, bleiben auch alle danach eingerichteten Verfahren auf loa2 begrenzt“* bekäme eine
-Ausnahme. Sie gälte dann nicht mehr uneingeschränkt, sondern „es sei denn, der Inhaber des Kontos
-weist sich später auf einem höheren Niveau erneut aus und stimmt der nachträglichen Aufwertung
+Die Kette von Obergrenzen in [04-orchestrierung.md](../04-orchestrierung.md) („IAL und AAL“) bekäme
+eine Ausnahme. Dass die Identifizierung beim Einrichten begrenzt, was ein Verfahren später liefern
+darf, gälte dann nicht mehr uneingeschränkt, sondern „es sei denn, der Inhaber des Kontos weist
+sich später auf einem höheren Niveau erneut aus und stimmt der nachträglichen Aufwertung
 ausdrücklich zu“. ADR-5 bräuchte einen Nachtrag, der diese eine, eng umrissene Ausnahme von der sonst
 geltenden Regel „nie nachträglich“ abgrenzt: freiwillig, vom Inhaber des Kontos ausgelöst,
 ausdrücklich abgefragt und weiterhin durch das eigene `maxAcr` jedes Verfahrens begrenzt.
@@ -139,12 +141,12 @@ ausdrücklich abgefragt und weiterhin durch das eigene `maxAcr` jedes Verfahrens
 1. Entscheiden lassen, ob die Ausnahme von ADR-5 (Punkt 6.1) so gewollt ist.
 2. Neuer Zustand `ReIdentifyState.OfferMethodUpgrade` und Anpassung von `ReIdentifyStrategy`
    (zentrale Prüfung nach `Action.RecordIdentification`).
-3. Neue `Action.UpgradeMethods` (`IntentStrategy.kt`), ihre Ausführung in `JourneyService` (Begrenzung
+3. Neue `Action.UpgradeMethods` (`Action.kt`), ihre Ausführung im `JourneyActionExecutor` (Begrenzung
    je Verfahren auf dessen `maxAcr`) und `AccountService.upgradeMethods(...)`.
 4. Neuer `ManageAuthMethodsState.IdentifyRequested`, angebunden in `ManageAuthMethodsStrategy` (ohne
    Schwelle `loa2`), dazu ein HTTP-Endpunkt und ein Knopf im Frontend (App-Kanal).
 5. Unit-Tests (`ReIdentifyStrategyTest`, `ManageAuthMethodsStrategyTest`, Test für `AccountService`)
    und ein Integrationstest von Anfang bis Ende, der die tatsächliche Anhebung des Niveaus in einer
    folgenden Sitzung nachweist und nicht nur den Wert in der Datenbank prüft.
-6. Die Doku anpassen: `04-orchestrierung.md` (Diagramm von `RE_IDENTIFY`, `MANAGE_AUTH_METHODS`, „IAL
-   und AAL“) und `12-entscheidungen.md` (Nachtrag zu ADR-5).
+6. Die Doku anpassen: die Diagramme in `journeys/re-identify.md` und
+   `journeys/manage-auth-methods.md`, „IAL und AAL“ in `04-orchestrierung.md` und ADR-5 (Nachtrag).

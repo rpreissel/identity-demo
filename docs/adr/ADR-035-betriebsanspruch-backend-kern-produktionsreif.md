@@ -1,6 +1,6 @@
 # ADR-35: Betriebsanspruch – der Backend-Kern ist produktionsreif, Rand und Umgebung folgen später
 
-**Status**: entschieden (2026-09-25).
+**Status:** entschieden (2026-09-25).
 
 **Entscheidung**: Das Projekt soll zeigen, dass der Ansatz trägt. Den Beleg liefert ein
 **produktionsreifer Backend-Kern**, nicht eine Oberfläche. Frontends und Ausführungsumgebungen
@@ -10,8 +10,8 @@ Das Projekt zerfällt dafür in drei Bereiche mit verschiedenem Anspruch:
 
 1. **Kern – produktionsreif.**
    - Module: die Gruppen `core/` (`orchestrator` samt `kc`-Anbindung, `account`), `contract/`
-     (`tool_api`, `texts`) und `tools/` (alle Verfahrensmodule `auth_*` und alle
-     Identifikationsmodule `ident_*`).
+     (`tool_api`, `texts`) und `tools/` (alle Tool-Module, `auth_*` wie
+     `ident_*`).
    - Die Keycloak-Extension (`keycloak-extension`) und die Realm-Migrationen (`keycloak-migrations`):
      Sie sind Backend-Code, der über Konten und Niveaus entscheidet.
    - Anspruch: Jede Sicherheitszusage gilt ohne Voraussetzung an die Umgebung, die nicht ausdrücklich

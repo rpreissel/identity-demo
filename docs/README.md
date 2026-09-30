@@ -32,7 +32,7 @@ Namensänderung, Journey-Trace und das Löschen des Kontos.
 - **[Orchestrierung und Policy](04-orchestrierung.md)**: Wer entscheidet, wie es weitergeht?
   Intents, Journeys, `AuthPolicy`, Sicherheitsniveaus.
 - **[Konkrete Abläufe](06-ablaeufe.md)**: Wie laufen die einzelnen Verfahren Schritt für Schritt ab
-  (Freischaltcode, SMS, Passwort, E-Mail, Gerät, eID/KVNR, KOBIL)?
+  (Freischaltcode, SMS, Passwort, E-Mail, Gerät, eID/KVNR, KOBIL, QR-Code, Einmalkennwort)?
 
 ## Technik
 

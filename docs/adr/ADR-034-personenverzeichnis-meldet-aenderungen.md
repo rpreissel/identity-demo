@@ -1,5 +1,7 @@
 # ADR-34: Personenverzeichnis – Partnernummer, drei Rollen, Änderungen per Event ans Konto
 
+**Status:** umgesetzt.
+
 > **Nachtrag 2026-09-26:** Der Weg „per Event bis Keycloak“ endet seit
 > [ADR-38](ADR-038-keycloak-liest-konten.md) am Konto. Keycloak hält keine Kopie der Konten mehr und
 > liest die Werte bei Bedarf selbst beim Orchestrator nach; eine Änderung im Verzeichnis ist dort
@@ -12,8 +14,6 @@
 > bestätigt. Beide Angaben haben verschiedene Herkunft und können voneinander abweichen; eine
 > Änderung im Verzeichnis wird deshalb nicht gemeldet. In der Demo füllen die Werte aus dem Verzeichnis
 > nur die Formulare vor ([02-domaenenmodell.md](../02-domaenenmodell.md) Abschnitt 6).
-
-**Status**: umgesetzt.
 
 **Entscheidung**: Das simulierte Fremdsystem heißt **Personenverzeichnis** (Modul
 `personenverzeichnis`). Es kennt drei Kennungen je Person und meldet Änderungen per Event an das

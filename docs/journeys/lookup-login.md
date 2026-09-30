@@ -8,7 +8,7 @@ Verfahren nach. Angeboten werden alle Tools mit der Rolle `ToolRole.ACCOUNT_LOOK
 meldet. `auth-invite` gehört auch zu dieser Rolle, gibt es aber nur im Web-Kanal: Die App meldet es
 nicht, und die Voreinstellung sperrt es im App-Kanal
 ([ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Die
-Kandidatenliste von `AuthPolicy.candidateTools` passt hier nicht, denn sie setzt ein bereits
+Kandidatenliste von `AuthPolicy.authCandidates` passt hier nicht, denn sie setzt ein bereits
 gefundenes Konto voraus.
 
 ```mermaid
@@ -21,7 +21,7 @@ stateDiagram-v2
   Credential --> AdditionalFactor: Nachweis erbracht, acrFloor noch nicht erreicht
   Credential --> OfferBinding: Nachweis erbracht, acrFloor erreicht, Gerät mit keinem Konto verknüpft
   Credential --> Finished: Nachweis erbracht, acrFloor erreicht, Gerät schon mit diesem Konto verknüpft
-  Credential --> ConfirmDeviceRebind: Nachweis erbracht, Gerät war mit einem anderen Konto verknüpft
+  Credential --> ConfirmDeviceRebind: Nachweis erbracht, acrFloor erreicht, Gerät war mit einem anderen Konto verknüpft
   AdditionalFactor --> AdditionalFactor: ein Tool abgelehnt, weitere übrig
   AdditionalFactor --> [*]: alle abgelehnt - Cancel
   Credential --> RE_IDENTIFY: Nachweis erbracht, kein kombinierbares Verfahren übrig, erneute Identifizierung möglich

@@ -1,6 +1,8 @@
 # ADR-32: Tool-Sperre und Reihenfolge je Kanaltyp
 
-**Entscheidung** (**umgesetzt**): Der Betreiber sperrt Tools nicht mehr für alle Kanäle zugleich,
+**Status:** umgesetzt.
+
+**Entscheidung**: Der Betreiber sperrt Tools nicht mehr für alle Kanäle zugleich,
 sondern je Kanaltyp (App, Web), und legt je Kanaltyp eine Rangfolge der Tools fest. Beides liegt in
 `orchestrator.tool_availability` mit dem Schlüssel `(tool_id, channel)`; eine Sperre für alle
 Kanäle bedeutet „in beiden Kanälen gesperrt“.

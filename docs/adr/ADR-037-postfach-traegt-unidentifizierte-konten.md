@@ -1,6 +1,6 @@
 # ADR-37: Bei einem nie identifizierten Konto genügt das Postfach auch für destruktive Aktionen
 
-**Status**: entschieden (2026-09-25).
+**Status:** entschieden und umgesetzt (2026-09-25).
 
 **Entscheidung**: Für ein Konto ohne Personenbindung (`personId == null`, etwa aus der Registrierung
 „Enrollment zuerst“) genügt loa1 für Selbstbedienung: Konto löschen, Verfahren einrichten oder

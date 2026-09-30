@@ -83,7 +83,7 @@ Versuche erlaubt sind. Sie liefern `200` und ein `next` (Regel für Wiederholung
 - **Eine Transaktion für alles:** Verarbeitet der Orchestrator ein `ToolOutcome.Completed`
   ([Orchestrierung](04-orchestrierung.md)), speichert er in einer einzigen Transaktion den neuen
   Journey-Zustand, den Konto-Eintrag, das Claim-Log und den Nachweis der Sitzung (`SessionEvidence`).
-  Entweder gelingt alles oder nichts. Das Methodenmodul speichert seine Tool- und
+  Entweder gelingt alles oder nichts. Das Tool-Modul speichert seine Tool- und
   Einrichtungsdaten schon beim `PATCH` in einer eigenen Transaktion. Scheitert danach der Schritt
   in der Journey, bleibt die Zeile des Moduls zwar stehen, wird aber nicht als Credential des
   Kontos aktiviert.
@@ -110,7 +110,7 @@ Richtwerte (als Voreinstellung gedacht, nicht als Vorgabe für Compliance):
 - **`<modul>.*_tool_session` (Moduldaten)**
   - *Frist beginnt mit:* `createdAt`
   - *Richtwert:* 24 h (`tool-session.retention`)
-  - *Grund:* Personenbezug und TAN-Hash. Jedes Methodenmodul löscht seine eigenen Tabellen selbst (`*RetentionJob` implementiert `ToolSessionSweeper`); Frist und Intervall stehen dagegen nur einmal, in `orchestrator/retention/ToolSessionRetention.kt`. Bei `auth_kobil.enroll_tool_session` ist die Frist besonders wichtig: Dort liegen während einer laufenden Einrichtung KOBIL-PIN und Entsperrgeheimnis im Klartext ([ADR-22](adr/ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md))
+  - *Grund:* Personenbezug und TAN-Hash. Jedes Tool-Modul löscht seine eigenen Tabellen selbst (`*RetentionJob` implementiert `ToolSessionSweeper`); Frist und Intervall stehen dagegen nur einmal, in `orchestrator/retention/ToolSessionRetention.kt`. Bei `auth_kobil.enroll_tool_session` ist die Frist besonders wichtig: Dort liegen während einer laufenden Einrichtung KOBIL-PIN und Entsperrgeheimnis im Klartext ([ADR-22](adr/ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md))
 - **`kobil.*` (Fremdsystem)**
   - *Frist beginnt mit:* —
   - *Richtwert:* **kein** Aufräumen durch uns
@@ -142,7 +142,7 @@ Richtwerte (als Voreinstellung gedacht, nicht als Vorgabe für Compliance):
 - **`ChannelSession`**
   - *Frist beginnt mit:* `expiresAt` / `LOGGED_OUT`
   - *Richtwert:* 14 Tage
-  - *Grund:* `JourneyTraceEntry` fragt das Log über die Menge der Kanäle ab ([Domänenmodell](02-domaenenmodell.md) Abschnitt 5); länger als das Protokoll selbst (14 Tage) bringt das nichts. Bei einer Sitzung je App-Start ist es eine große Tabelle; gelöscht wird je Stapel mit einer Anweisung je Tabelle
+  - *Grund:* `JourneyTraceEntry` fragt das Log über die Menge der Kanäle ab (so auch beim Löschen eines Kontos, unten); länger als das Protokoll selbst (14 Tage) bringt das nichts. Bei einer Sitzung je App-Start ist es eine große Tabelle; gelöscht wird je Stapel mit einer Anweisung je Tabelle
 - **`JourneyTraceEntry`**
   - *Frist beginnt mit:* `createdAt`
   - *Richtwert:* 14 Tage
@@ -371,10 +371,10 @@ alle auf einmal:
 
 Außerdem gibt es außerhalb des Demomodus die Demo-Oberflächen nicht (`@DemoSurface`: Mocks der
 Fremdsysteme, Kontenverwaltung mit Demo-Reset), keinen Flyway-Reset und keine Demo-Personen.
-Admin-Anmeldungen sind gedrosselt: fünf falsche Passwörter für einen Benutzernamen sperren ihn für
+Auch Admin-Anmeldungen haben eine Sperre: Fünf falsche Passwörter für einen Benutzernamen sperren ihn für
 15 Minuten (429), auch für das richtige Passwort.
 
-Hinter einem Reverse-Proxy braucht die Prüfung von `htu` (DPoP, Geräte-Beweise, Peer-Auth)
+Hinter einem Reverse-Proxy braucht die Prüfung von `htu` (DPoP, Geräte-Proofs, Peer-Auth)
 `server.forward-headers-strategy`, damit Schema, Host und Port die des Clients sind. Das ist nur
 sicher, wenn ein vertrauenswürdiger Proxy `X-Forwarded-*` jedes Mal überschreibt; sonst setzt ein
 Client sie selbst. Verglichen wird nach RFC 9449: Schema und Host ohne Groß-/Kleinschreibung, der
@@ -528,8 +528,8 @@ Tabellen zeigt [02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 7.
   Abschnitt 6).
 - **Aufbewahrung:** Jede Aufräumabfrage ist eine einzige SQL-Anweisung über viele Zeilen und hat
   einen Index auf ihrer Stichtagsspalte.
-- **Migrationen:** grundsätzlich eine Datei je Modul unter `db/migration/<modul>/`; `orchestrator`
-  hat zusätzlich `V14__node_signing_key.sql` und `V15__event_publication.sql`
+- **Migrationen:** ein Ordner je Modul unter `db/migration/<modul>/`, darin eine oder mehrere
+  Dateien; die Versionsnummern laufen über alle Ordner fort
   ([ADR-16](adr/ADR-016-ein-datenbankschema-je-modul-statt-namenspraefix.md)). Die Migrationen sind eine Ausgangsbasis
   ohne Produktivdaten. **Nur im Demomodus** gilt: Passt eine lokale H2-Datei nicht mehr zu den
   Migrationen, löscht `orchestrator.schema.FlywayResetConfig` sie beim Start und baut sie neu auf;

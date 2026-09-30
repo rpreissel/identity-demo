@@ -25,7 +25,7 @@ Vorgang“, nicht „einmal nutzbar“, wie beim Freischaltcode
    Kennwörter verschiedener Einladungen harmlos und zwingen einen Angreifer, jede Einladung einzeln
    zu raten. Das Kennwort hat zwölf Zeichen aus 31 (rund 59 Bit).
 3. **Anmelden über das Tool `auth-invite`**, eine Anmeldung ohne bekanntes Konto
-   (`ToolRole.ACCOUNT_LOOKUP_AUTH`, Faktor Besitz, höchstens `loa2`). Eingabe: Mitglieds- oder
+   (`ToolRole.ACCOUNT_LOOKUP_AUTH`, Faktor Besitz, höchstens `loa2`). Eingabe: KVNR oder
    Partnernummer und das Kennwort. Das Ergebnis nennt, wen es bewiesen hat, als `Subject`: ein Konto
    oder eine Einladung. Ein Fehlversuch nennt als `Attempted` die Person, sodass die Personen-Mengenbegrenzung
    zählt wie beim Freischaltcode. Das Niveau ist das der Einladung (`loa1` oder `loa2`); verlangt die
@@ -87,7 +87,7 @@ Vorgang“, nicht „einmal nutzbar“, wie beim Freischaltcode
 ## Folgen und offene Punkte
 
 - Zunächst nur der Web-Kanal. `auth-invite` ist im App-Kanal gesperrt, und die Bindung einer
-  Einladung verlangt einen Keycloak-Kanal. Für die App müsste der Grant aus
+  Einladung verlangt einen Web-Kanal (`ChannelType.WEB`). Für die App müsste der Grant aus
   [ADR-9](ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md) ein
   Subjekt statt `account_id` nehmen.
 - Restrisiko wie beim Freischaltcode: Wer den Brief nach der legitimen Nutzung findet, kommt bis zur

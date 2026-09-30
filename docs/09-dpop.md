@@ -105,7 +105,7 @@ Stelle eine native App mit hardwaregestütztem Schlüsselspeicher.
   Anmeldung statt um eine Registrierung.
 - **Wann die Verknüpfung entsteht, ist bewusst gewählt** – weder beim Erreichen von `AUTHENTICATED`
   noch bei `Identified`. Sie entsteht oder ändert sich, sobald `Completed.Enrolled` das erste
-  Anmeldeverfahren anlegt ([Orchestrierung](04-orchestrierung.md) Abschnitt 1), und nicht erst, wenn
+  Anmeldeverfahren anlegt ([Orchestrierung](04-orchestrierung.md) Abschnitt 5), und nicht erst, wenn
   der Kanal sein eigenes `requiredAcr` erreicht. Ein Kanal, der zum Beispiel `loa2` verlangt, ist
   nach einem einzigen `loa1`-Verfahren noch nicht fertig. Bricht die Sitzung danach ab, soll eine
   neue Anmeldung auf dem Gerät trotzdem gleich das vorhandene Verfahren anbieten. Sie soll nicht
@@ -160,7 +160,7 @@ Stelle eine native App mit hardwaregestütztem Schlüsselspeicher.
   „Zweitaccount“, siehe [`REGISTER`](journeys/register.md)), wird die Verknüpfung nicht unbemerkt
   überschrieben. Sie wird erst nach einer Rückfrage übertragen (`RegisterState.ConfirmDeviceRebind`).
   Stimmt der Nutzer zu, wird zusätzlich **jedes** an diesen Schlüssel gebundene Credential des
-  bisherigen Kontos deaktiviert, und sein Datensatz im Methodenmodul wird gelöscht
+  bisherigen Kontos deaktiviert, und sein Datensatz im Tool-Modul wird gelöscht
   (`AccountDeletionService.revokeMethod`). Heute sind das `device` und `kobil`; `JourneyActionExecutor`
   findet sie über `keyBinding != null` und nie über eine Liste von `toolId`s. Lehnt der Nutzer ab,
   bricht die Journey ab, und die alte Verknüpfung bleibt bestehen. Unabhängig davon gilt ohnehin bei der

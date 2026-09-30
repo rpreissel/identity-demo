@@ -1,6 +1,6 @@
 # ADR-5: Zwei Obergrenzen für das Sicherheitsniveau
 
-**Status**: umgesetzt.
+**Status:** umgesetzt.
 
 **Entscheidung**: Das Sicherheitsniveau, das ein Verfahren in einer Sitzung liefert, ist an zwei
 Stellen nach oben begrenzt:

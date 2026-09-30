@@ -8,16 +8,18 @@ angegeben ist ([05-api.md](../05-api.md) Abschnitt 3, ADR-8 in
 [12-entscheidungen.md](../12-entscheidungen.md)). Der zweite mögliche Einstieg im Web-Kanal ist
 [`REGISTER`](register.md).
 
-Die Journey hat nur einen einzigen Zustand. Er bietet ohne jede Bedingung alle Tools, die im
-Keycloak-Kanal nutzbar sind, in einem gemeinsamen `selectMethod`-Schritt an. Es gibt keine Kette von
-Ausweichwegen und kein Angebot, ein Verfahren einzurichten. Es wird vor dem Angebot auch nicht
-geprüft, ob das Vorhandene schon reicht. Das entscheidet bereits Keycloak selbst: Seine
-Ablaufkonfiguration (Conditional-LoA-Subflows) legt fest, ob und welches Niveau angefragt wird.
+Die Journey hat nur einen einzigen Zustand. Er bietet alle im Web-Kanal nutzbaren Tools, die
+hier etwas nachweisen können, in einem gemeinsamen `selectMethod`-Schritt an. Es gibt keine Kette
+von Ausweichwegen, keine Identifizierung und kein Angebot, ein Verfahren einzurichten. Ob überhaupt
+ein Niveau angefragt wird und welches, entscheidet Keycloak selbst: Seine Ablaufkonfiguration
+(Conditional-LoA-Subflows) legt es fest. Die Journey prüft nur, ob die Nachweise dieses Niveau schon
+erreichen (siehe unten).
 
 ```mermaid
 stateDiagram-v2
   [*] --> SelectMethod
   SelectMethod --> SelectMethod: ein Tool abgelehnt, weitere übrig
+  SelectMethod --> SelectMethod: Nachweis erbracht, Niveau noch nicht erreicht - Angebot neu aufgebaut
   SelectMethod --> [*]: alle abgelehnt -> Cancel
   SelectMethod --> [*]: Einmalkennwort unter dem verlangten Niveau -> Abort
   SelectMethod --> Finished: Nachweis erbracht, Niveau erreicht (Konto oder Einladung)
@@ -29,7 +31,7 @@ Derselbe Zustand bedient zwei Fälle im Web-Kanal. Sie unterscheiden sich nur im
 - **Erste Anmeldung** (`ctx.account` ist `null`): Angeboten werden alle Tools, die ihr Subjekt aus der
   Eingabe selbst finden (`CandidateTools.forLookupLogin`), nie eine Identifizierung. Das sind die
   Anmeldungen über die E-Mail-Adresse, die ein Konto finden, und `auth-invite`, das mit
-  Mitglieds- oder Partnernummer und Einmalkennwort eine Einladung findet
+  KVNR oder Partnernummer und Einmalkennwort eine Einladung findet
   ([ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Nach einem Einmalkennwort ist
   das Subjekt des Kanals die Einladung, kein Konto; die Journey ist dann sofort fertig, denn weitere
   Nachweise kann eine Einladung nicht sammeln. Verlangt die Anmeldung ein höheres Niveau, als die

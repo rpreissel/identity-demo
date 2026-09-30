@@ -20,6 +20,7 @@ stateDiagram-v2
   [*] --> OfferReIdent
   OfferReIdent --> Identifying: zugestimmt (Answered "accept")
   OfferReIdent --> [*]: abgelehnt (Answered "decline") -> Cancel
+  OfferReIdent --> [*]: zugestimmt, aber kein Identifizierungs-Tool mehr verfügbar -> Cancel
   Identifying --> Identifying: ein Tool abgelehnt, weitere übrig
   Identifying --> [*]: alle abgelehnt -> Cancel
   Identifying --> Finished: Identität bestätigt
@@ -34,9 +35,10 @@ Niveau `loa2`, `ident-eid` und `ident-nect` erreichen `loa3`.
 **Eigener Text für das Experiment.** Der Standardtext („Sicherheitsniveau mit den vorhandenen
 Anmeldeverfahren nicht erreichbar“) passt nur für `FAST_ACCESS`, `LOOKUP_LOGIN` und `STEP_UP`. Für
 das abschließende Angebot von `RegisterEnrollFirstStrategy` ist er falsch. Deshalb hat
-`ReIdentifyState` ein optionales Feld `Wording` mit Titel, Beschreibung und Knopftext für
-`OfferReIdent` und `Identifying`. Gesetzt wird es über `forSubJourney(targetAcr, startingAcr,
-wording)`, und nur dieser eine Aufrufer belegt es. Bleibt es `null`, gilt der Standardtext. Das
+`ReIdentifyState` ein optionales Feld `wording` vom Typ `Wording` (heute nur
+`OPTIONAL_IDENTIFICATION`). Es wählt Titel, Beschreibung und Knopftexte von `OfferReIdent` und
+`Identifying`. Gesetzt wird es über `forSubJourney(targetAcr, startingAcr, wording)`, und nur
+dieser eine Aufrufer belegt es. Bleibt es `null`, gilt der Standardtext. Das
 folgt demselben Muster wie `reason` in `StepUpState.forSubJourney`.
 
 **Wohin eine Ablehnung führt.** Wie bei jeder Journey zurück zum Anmeldestand vor dem Start

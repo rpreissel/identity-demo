@@ -13,8 +13,8 @@ stateDiagram-v2
   Start --> AuthChoice: Konto bekannt, andere Verfahren vorhanden
   Start --> REGISTER: nichts Vorhandenes passt
 
-  PreferredAuth --> AuthChoice: abgelehnt
-  AuthChoice --> AuthChoice: ein Tool abgelehnt, weitere übrig
+  PreferredAuth --> AuthChoice: abgelehnt, oder Nachweis reicht noch nicht und ein weiteres Verfahren passt
+  AuthChoice --> AuthChoice: ein Tool abgelehnt, weitere übrig, oder weiterer Faktor nötig
   AuthChoice --> REGISTER: alle abgelehnt
 
   PreferredAuth --> Finished: Nachweis reicht für das geforderte Niveau

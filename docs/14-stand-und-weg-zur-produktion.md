@@ -63,13 +63,13 @@ Invarianten sind per Typ, Constraint oder Test erzwungen, nicht per Kommentar. B
 - **Niveaus nur mit Nachweis:** Ein Verfahren, das mehr vergibt, als es beweisen kann, ist als
   `demoOnly` gekennzeichnet und außerhalb des Demomodus aus; ein Test beweist das für jedes dieser
   Verfahren ([ADR-36](adr/ADR-036-niveaus-und-ihre-nachweise.md)).
-- **DPoP-Bindung:** feste Header, nur EC-Schlüssel, Replay-Schutz per Datenbank, exakter Abgleich
-  der Adresse ([09-dpop.md](09-dpop.md)).
+- **DPoP-Bindung:** feste Header, nur EC-Schlüssel, Replay-Schutz per Datenbank, Abgleich
+  der Adresse nach RFC 9449 ([09-dpop.md](09-dpop.md); [07-betrieb.md](07-betrieb.md), Abschnitt 3c).
 - **Fehlervertrag, Transaktionen, Aufbewahrung und Löschung:** [07-betrieb.md](07-betrieb.md),
   Abschnitte 1 bis 3. Die Aufbewahrungsfristen sind Richtwerte, keine Compliance-Vorgabe.
 - **Keycloak-Anbindung:** Föderation ohne Spiegelung; Aufräumen nach einer Löschung über die Event
   Publication Registry ([ADR-29](adr/ADR-029-event-publication-registry-statt-eigener-outbox.md)).
-- **Drosselung, Zustand und Kennzahlen:** eigener Management-Port mit Health und Readiness,
+- **Sperren, Mengenbegrenzung, Zustand und Kennzahlen:** eigener Management-Port mit Health und Readiness,
   Prometheus-Kennzahlen, strukturierte Logs ([07-betrieb.md](07-betrieb.md), Abschnitte 4 und 7).
 - **Start verweigert unsichere Konfiguration:** Außerhalb des Demomodus bricht der Start ab, wenn
   Admin-Passwort, Pepper, Geheimnisse oder TLS zu Keycloak nicht stimmen
@@ -156,9 +156,11 @@ Die Liste ist nach Bereichen geordnet. Die Kennungen `DPoP-demo-…` sind Issues
 (`DPoP-demo-v033`, `DPoP-demo-z90h`); das Personenverzeichnis ist der wichtigste Vertrag, weil es
 außerhalb des Demomodus der einzige Weg zu einer Identifizierung ist.
 
-**Offene Befunde im Kern:** die niedrigen Befunde der Bewertungen (Epic `DPoP-demo-9ppv`), die Lücke
-im Web-Kanal zu I-23 (`DPoP-demo-oe06`), das Lookup-Orakel (`DPoP-demo-36xz`) und der eigene Zähler
-für fehlgeschlagene QR-Suchen ([07-betrieb.md](07-betrieb.md), Abschnitt 5).
+**Offene Befunde im Kern:** die niedrigen Befunde der dritten Bewertung (Epic `DPoP-demo-9ppv`), die
+übrigen der vierten (dort Abschnitt 4, Phasen R bis T; noch ohne Issue), die Lücke im Web-Kanal zu
+I-23 (`DPoP-demo-oe06`), der fehlende Fremdschlüssel zu I-14 (`DPoP-demo-hwc6`), das Lookup-Orakel
+(`DPoP-demo-36xz`) und der eigene Zähler für fehlgeschlagene QR-Suchen
+([07-betrieb.md](07-betrieb.md), Abschnitt 5).
 
 ---
 

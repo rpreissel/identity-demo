@@ -1,6 +1,8 @@
 # ADR-14: Das Konto als gemeinsame Sperre, jeder Fakt an genau einer Stelle
 
-**Entscheidung** (umgesetzt): Das Kontomodell folgt zwei Regeln.
+**Status:** umgesetzt.
+
+**Entscheidung**: Das Kontomodell folgt zwei Regeln.
 
 - **Die Kontozeile ist nur Identität und Sperre.** `account.account` hat nur `id`, `created_at` und
   `version`. Wer den aktuellen Zustand eines Kontos ändert, lädt diese Zeile mit

@@ -11,21 +11,24 @@ leitet nichts aus Client-Angaben ab, die das System hätte prüfen müssen.
 
 ---
 
-## Personenverzeichnis (`PersonDirectory`, `Freischaltcodes`, `Invitations`)
+## Personenverzeichnis (`PersonDirectory`, `PersonMasterData`, `ActivationCodes`, `Invitations`)
 
-Genutzt von `ident-fsc`, `ident-kvnr`, `auth-invite` und dem Abgleich jeder Identifizierung. **Nicht** `demoOnly`:
+Genutzt von `ident-fsc`, `ident-kvnr`, `auth-invite`, dem Abgleich jeder Identifizierung und den
+Token-Claims in Keycloak. **Nicht** `demoOnly`:
 Mit `demo.mode=false` ist es der einzige Weg zu einer Identifizierung, also ist dieser Vertrag der
 wichtigste.
 
 - **Suche nur über Kennungen.** KVNR und Partnernummer führen zur Partnernummer; Stammdaten gehen nie
   über den Port, nur die Antwort auf „passen diese Angaben“ (`matchesMasterData`,
   `matchesPersonalDetails`). Ausnahmen, ausdrücklich: der Anzeigename und die Mitgliedsnummer (ADR-34).
+  Die Stammdaten selbst liefert nur der eigene Port `PersonMasterData`, und nur für die Claims, die
+  Keycloak ins Token schreibt ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
 - **Namensvergleich in Ausweisform** (MRZ): Groß-/Kleinschreibung, Umlautschreibung und Diakritika
   zählen nicht. Ein echtes System muss denselben Vergleich liefern, sonst scheitern echte Personen.
-- **Freischaltcode** (ADR-31): nur vom Verzeichnis ausgegeben, per Post an die hinterlegte Anschrift;
+- **Freischaltcode** (ADR-31, Port `ActivationCodes`): nur vom Verzeichnis ausgegeben, per Post an die hinterlegte Anschrift;
   gespeichert nie im Klartext (Hash mit Pepper), mit Ablauf; widerrufbar. Bis zum Ablauf bewusst
   wiederverwendbar (Re-Identifizierung, ADR-31). Die Länge und damit die Ratesicherheit ist Sache des
-  Systems; der Kern drosselt Fehlversuche je Person (`PersonLockoutService`).
+  Systems; der Kern sperrt nach zu vielen Fehlversuchen die Person (`PersonLockoutService`).
 - **Einladungen mit Einmalkennwort**
   ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)): nur vom Verzeichnis ausgestellt, für
   eine Person, einen Vorgang, ein Niveau (`loa1`/`loa2`) und eine Frist; das Kennwort per Post. Die Id
@@ -67,7 +70,8 @@ Genutzt von `ident-nect` (loa3).
 - **Bindung an den Vorgang:** Der Fall gehört zu genau diesem Ablauf (Callback-URI); ein fremder
   Fall wird abgelehnt. Die Callback-URI nennt der Kanal beim Start (Web: Keycloaks Action-URL des
   laufenden Schritts), und `ident-nect` nimmt nur Adressen unter einem konfigurierten Präfix an; ein
-  `retry` behält sie, außer der Kanal nennt eine frische (Web: Keycloaks Code gilt nur einmal, ADR-47). Nect hängt `nectCaseId` an eine Adresse an, die schon Parameter trägt.
+  `retry` behält sie, außer der Kanal nennt eine frische (Web: Keycloaks Code gilt nur einmal,
+  ADR-47). Nect hängt `nectCaseId` an eine Adresse an, die schon Parameter trägt.
 - **Nur angefragte Attribute** werden geliefert; die Echtheit von Dokument und Person (Selfie gegen
   Passbild, Ablauf des Passes) prüft Nect und meldet das Ergebnis.
 
@@ -90,6 +94,6 @@ Genutzt von `enroll-sms`, `auth-sms`, `confirm-email`, `auth-email` und den `-lo
   schreibt TAN und Code nie auf die Konsole, [Invarianten](invarianten.md) I-19).
 - **Mengenbegrenzung** je Empfänger liegt beim versendenden Modul (`SmsSendLimit`, `EmailSendLimit`,
   [ADR-44](adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)); ein echter Dienst darf zusätzlich
-  drosseln, muss aber einen abgelehnten Versand melden.
+  begrenzen, muss aber einen abgelehnten Versand melden.
 - Diese Verfahren sind nicht `demoOnly`: Was sie beweisen (Besitz der Nummer bzw. des Postfachs),
   prüft der Kern selbst über den zugestellten Code.

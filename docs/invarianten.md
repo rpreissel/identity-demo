@@ -40,7 +40,7 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
 
 - **I-1 Ein beendeter Kanal (`LOGGED_OUT`, `EXPIRED`) bleibt in diesem Zustand – er wird weder wieder `AUTHENTICATED` noch bekommt er eine neue Journey.**
   - Worum es geht: Ein abgemeldeter oder abgelaufener Kanal lässt sich nicht wiederbeleben; wer weitermachen will, braucht einen neuen Kanal. So wird ein alter, womöglich gestohlener Kanal nach der Abmeldung nicht wieder brauchbar.
-  - Mechanismus: `type:LiveChannel` (`JourneyService` startet, bewegt und beendet Journeys nur auf diesem Typ, seine Fabrik lehnt einen beendeten Kanal ab), `sql:ck_channel_session_ended_without_login` (ein beendeter Kanal trägt weder Anmeldedurchlauf noch Evidenz), `test:DatabaseInvariantConstraintTest`, `test:CancelLogoutIntegrationTest`, `test:ModelBasedJourneyTest`
+  - Mechanismus: `type:LiveChannel` (`JourneyService` startet, bewegt und beendet Journeys nur auf diesem Typ, seine Fabrik lehnt einen beendeten Kanal ab), `sql:ck_channel_session_ended_without_login` (ein beendeter Kanal trägt weder Tokens der App noch Evidenz), `test:DatabaseInvariantConstraintTest`, `test:CancelLogoutIntegrationTest`, `test:ModelBasedJourneyTest`
 - **I-2 Eine verbrauchte, abgebrochene oder fehlgeschlagene Journey nimmt keine Tool-Ergebnisse mehr an.**
   - Worum es geht: Späte oder wiederholte Tool-Ergebnisse laufen ins Leere. Ein nachgereichter SMS-Code macht einen abgebrochenen Login nicht nachträglich doch noch erfolgreich.
   - Mechanismus: `type:RunningJourney` (`JourneyService` nimmt nur diesen Typ an, seine einzige Fabrik lehnt eine beendete Journey ab), `archunit:OrchestratorArchitectureTest` (außerhalb des Journey-Pakets kommt niemand sonst an `AuthJourney`), `sql:ck_tool_session_status` (eine abgeschlossene ToolSession ist `DONE`), `test:CancelLogoutIntegrationTest`, `test:DeviceBindingIntegrationTest`, `test:ModelBasedJourneyTest`
@@ -102,7 +102,7 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
   - Mechanismus: `type:AnchorRule`, `test:AttributeRulesTest`, `test:AccountServiceDbTest`, `test:ManageMethodsIntegrationTest`
 - **I-12 Ein Korrelationsschritt (`ident-kvnr`) verrät nicht, ob eine fremde Nummer existiert.**
   - Worum es geht: Wer eine Krankenversichertennummer eintippt, die nicht zu ihm passt, erfährt nicht, ob sie überhaupt vergeben ist – sonst ließen sich Nummern durchprobieren. Der Fehlversuch zählt bei der Person, die getroffen werden sollte, sodass deren Mengenbegrenzung greift.
-  - Mechanismus: `type:ToolOutcome` (`Failed.Identification` verlangt `attemptedPersonId`; die Drosselbuchung ist ein erschöpfendes `when` über die Varianten), `test:IdentKvnrToolHandlerTest`, `test:IdentEidAssignmentIntegrationTest`
+  - Mechanismus: `type:ToolOutcome` (`Failed.Identification` verlangt `attemptedPersonId`; die Buchung des Fehlversuchs ist ein erschöpfendes `when` über die Varianten), `test:IdentKvnrToolHandlerTest`, `test:IdentEidAssignmentIntegrationTest`
 - **I-13 Je Konto höchstens ein aktiver Eintrag eines Singleton-Verfahrens (z. B. Passwort).**
   - Worum es geht: Zwei gleichzeitig gültige Passwörter wären verwirrend und eine unnötige Angriffsfläche. Geräte darf man dagegen mehrere haben.
   - Mechanismus: `sql:ux_auth_method_active_singleton`, `test:DatabaseInvariantConstraintTest` (prüft auch, dass die Liste der Verfahren im SQL zu den Deskriptoren passt), `test:ModelBasedJourneyTest`
@@ -122,8 +122,8 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
 - **I-7 Ein DPoP-Proof gilt nur einmal.**
   - Worum es geht: Jede Anfrage trägt einen eigenen signierten DPoP-Proof. Wer eine Anfrage abfängt und nochmal abschickt, wird abgewiesen (Schutz vor Replay).
   - Mechanismus: `type:DpopReplayProtectionService`, `test:DpopValidatorTest`
-- **I-8 Ein Kanal ist an genau einen Schlüssel gebunden, APP- und Keycloak-Kanal schließen sich aus.**
-  - Worum es geht: Ein App-Kanal hat genau einen Geräteschlüssel. Ein Keycloak-Kanal hat beim Orchestrator keinen, denn dort spricht Keycloak. Beides zugleich gibt es nicht.
+- **I-8 Ein Kanal ist an genau einen Schlüssel gebunden, App- und Web-Kanal schließen sich aus.**
+  - Worum es geht: Ein App-Kanal hat genau einen Geräteschlüssel. Ein Web-Kanal hat beim Orchestrator keinen, denn dort spricht Keycloak. Beides zugleich gibt es nicht.
   - Mechanismus: `sql:ck_channel_session_binding_key` (genau der APP-Kanal trägt einen Schlüssel), `type:ChannelAccessGuard`
 
 ## Keycloak-Anbindung

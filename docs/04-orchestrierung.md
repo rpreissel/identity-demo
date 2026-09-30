@@ -611,8 +611,8 @@ Zwei Bedingungen müssen zusammen erfüllt sein:
    ergibt, ist fachlich und regulatorisch offen. RFC 8176 legt zwar ein IANA-Verzeichnis für
    `amr`-Werte fest (`pwd`, `otp`, `hwk`/`swk`, `user`, `face`, `fpt`, `mfa`, …), aber nicht, welche
    Kombination welches Niveau ergibt. Die `amr`-Werte dieses Projekts (`sms`, `password`,
-   `email`, `fsc`, `eid`, `kvnr`, `nect-<verfahren>`, `device`, `kobil`, `qr`, dazu `pin`/`biometric`
-   aus der Prüfung am Gerät) folgen einer eigenen Konvention.
+   `email`, `fsc`, `eid`, `kvnr`, `nect-<verfahren>`, `device`, `kobil`, `qr`, `invite`, dazu
+   `pin`/`biometric` aus der Prüfung am Gerät) folgen einer eigenen Konvention.
 2. **Verschiedene Faktortypen**: Für die Niveaus ab `loa2` braucht es mindestens zwei
    **verschiedene** Faktortypen. Gezählt werden alle `factorTypes` aller abgeschlossenen Tools
    zusammen, nie die Anzahl der Tools. Ein Tool, das selbst zwei Faktortypen meldet (z. B. ein
@@ -687,7 +687,7 @@ AAL3 ist bewusst nicht ausgearbeitet.
 In einem Zustand zum Anmelden lautet die Frage „Reicht das *jetzt*?" (`isSatisfied`), in einem
 Zustand zum Einrichten „Kommt der Nutzer damit *künftig wieder herein*?" (`reachability`). Eine
 Identifizierung ist kein dauerhaftes Verfahren: `ident-fsc` zählt zwar für die
-`SessionEvidence.currentFactorTypes` dieser Sitzung, landet aber im Protokoll
+`SessionEvidence.factorTypes` dieser Sitzung, landet aber im Protokoll
 `account.change_log` (IDENTIFIED), nicht in `account.auth_method`.
 
 Daraus folgt eine Kette von Obergrenzen:

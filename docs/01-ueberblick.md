@@ -117,7 +117,7 @@ Die Doku ist deutsch, der Code englisch. Hinter jedem Begriff steht in Klammern 
   eindeutig wiedergefunden wird, etwa die Partnernummer oder die bestätigte E-Mail-Adresse.
 - **Rolle** (nicht gespeichert, abgeleitet aus den Ankern): ein Konto ohne zugeordnete Person ist
   ein **Interessent**, mit Partnernummer ein **Partner**, mit Mitgliedsnummer (auch
-  Mitgliedsnummer genannt) ein **Versicherter** ([ADR-34](adr/ADR-034-personenverzeichnis-meldet-aenderungen.md)).
+  Versicherungsnummer genannt) ein **Versicherter** ([ADR-34](adr/ADR-034-personenverzeichnis-meldet-aenderungen.md)).
 - **Mindestniveau für einen Anker** (`AnchorRule.acrFloor`): welches Niveau nötig ist, um einen
   Anker zu schreiben.
 - **Obergrenze eines Verfahrens** (`maxAcr`, `enrolledUnderAcr`): das höchste Niveau, das ein
@@ -162,7 +162,7 @@ Details: [02-domaenenmodell.md](02-domaenenmodell.md)
 
 ## 5) Tools beschreiben sich selbst
 
-Jedes Modul bringt die Beschreibung seiner Tools selbst mit: Kategorie, Verfahren, Faktortyp und
+Jedes Modul bringt die Beschreibung seiner Tools selbst mit: Tool-Rolle, Verfahren, Faktortyp und
 das höchste erreichbare Niveau. Es gibt keine zentral gepflegte Liste, die man beim Hinzufügen
 eines Verfahrens vergessen könnte.
 
@@ -236,7 +236,8 @@ Details: [05-api.md](05-api.md) Abschnitte 2 und 3
   Verfahren mit zwei Faktoren (Geräteschlüssel mit PIN oder Biometrie) oder eine Identifizierung
   in derselben Sitzung. Verfahren verwalten und das Konto löschen verlangen `loa2`; bei einem nie
   identifizierten Konto reicht `loa1`.
-- **`loa3`**: nur über eine starke Identifizierung (Online-Ausweis, Nect).
+- **`loa3`**: nur über eine starke Identifizierung (Online-Ausweis, Nect); beide sind simuliert
+  und laufen daher nur im Demomodus ([ADR-36](adr/ADR-036-niveaus-und-ihre-nachweise.md)).
 
 Das Niveau ist zweifach nach oben begrenzt
 ([ADR-5](adr/ADR-005-drei-obergrenzen-fuer-das-sicherheitsniveau.md)): Ein Verfahren liefert nie
