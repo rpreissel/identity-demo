@@ -167,19 +167,33 @@ für fehlgeschlagene QR-Suchen ([07-betrieb.md](07-betrieb.md), Abschnitt 5).
 Ein Vorschlag für die Reihenfolge, abgeleitet aus ADR-35 und der
 [vierten Bewertung](review-2026-09-29-vierte-bewertung.md), Abschnitt 4. Er ist nicht entschieden.
 
-1. **Den Kern abschließen.** Die offenen Befunde der vierten Bewertung nach deren Reihenfolge
+Am wichtigsten sind die ersten beiden Schritte. Die Doku beschreibt ein Zielbild, das bisher im
+Projekt entstanden ist; bevor weiter gehärtet und angebunden wird, müssen die, die es fachlich und
+technisch tragen sollen, es mit abgestimmt haben.
+
+1. **Mit Fachexperten Domäne, Regeln und Journeys abstimmen.** Stimmen Begriffe, Konten und
+   Zustände ([Domänenmodell](02-domaenenmodell.md), [Glossar](glossar/glossar.md)), die Regeln für
+   Sicherheitsniveaus und Verfahren ([Orchestrierung und Policy](04-orchestrierung.md)) und die
+   Abläufe je Intent ([Journeys](journeys/))? Was hier abweicht, ändert das Modell; das ist jetzt
+   noch billig.
+2. **Mit Entwicklern Architektur, Konzepte und fehlende Anforderungen abstimmen.** Tragen
+   Modulschnitt, Tool-Architektur, API und DPoP-Bindung ([Projektrahmen](08-projektrahmen.md),
+   [Tool-Architektur](03-tool-architektur.md), [Architekturentscheidungen](12-entscheidungen.md))?
+   Welche Anforderungen fehlen noch, etwa an Schnittstellen zu Fachdiensten, Mandanten, Last oder
+   Barrierefreiheit? Offene Konzepte stehen unter [Ideen](ideen/).
+3. **Den Kern abschließen.** Die offenen Befunde der vierten Bewertung nach deren Reihenfolge
    (Phasen R bis T), die niedrigen Befunde der dritten und die offenen Invarianten. Der Kern bleibt
    das Argument; er muss jeder genauen Prüfung standhalten.
-2. **Grundsatzentscheidungen treffen.** Schlüsselverwaltung (`DPoP-demo-61kp`),
+4. **Grundsatzentscheidungen treffen.** Schlüsselverwaltung (`DPoP-demo-61kp`),
    Verschlüsselung gespeicherter Daten (`DPoP-demo-bo1w`), Zieldatenbank (`DPoP-demo-pi55`) und ob
    mehr als eine Instanz laufen soll. Sie berühren Modell und Migrationen und werden teurer, je später
    sie fallen.
-3. **Umgebung härten** (ADR-35, Bereich 3): TLS, Keycloak-Startmodus, Proxy, Admin-Zugänge,
+5. **Umgebung härten** (ADR-35, Bereich 3): TLS, Keycloak-Startmodus, Proxy, Admin-Zugänge,
    Sicherung. Ziel ist eine Umgebung, in der `demo.mode=false` startet und bleibt.
-4. **Echte Fremdsysteme anbinden**, eines nach dem anderen, jeweils gegen seinen Port-Vertrag:
+6. **Echte Fremdsysteme anbinden**, eines nach dem anderen, jeweils gegen seinen Port-Vertrag:
    zuerst das Personenverzeichnis, dann die Identifizierung (Nect, eID), dann KOBIL. Ein Verfahren
    verliert `demoOnly` erst, wenn sein echtes System den Nachweis liefert.
-5. **Die App als native App.** Das Browser-Frontend zeigt die Abläufe; ein produktives Gerät braucht
+7. **Die App als native App.** Das Browser-Frontend zeigt die Abläufe; ein produktives Gerät braucht
    einen hardwaregestützten Schlüsselspeicher.
-6. **Freigabe für echte Personendaten.** Die Einschränkung aus ADR-35 fällt erst, wenn 1 bis 5
+8. **Freigabe für echte Personendaten.** Die Einschränkung aus ADR-35 fällt erst, wenn 1 bis 7
    erledigt sind und Datenschutz, Sicherheit und Betrieb zugestimmt haben.

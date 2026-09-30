@@ -20,8 +20,6 @@ Namensänderung, Journey-Trace und das Löschen des Kontos.
 
 - **[Überblick](01-ueberblick.md)**: Worum geht es, wer ist beteiligt, was bedeuten die Begriffe,
   und was lese ich als Nächstes?
-- **[Stand und Weg zur Produktion](14-stand-und-weg-zur-produktion.md)**: Was soll das Projekt
-  leisten, was ist produktionsreif, was nur Demo, und was fehlt vor echten Personendaten?
 - **[Beispiel-Story](11-beispiel-story.md)**: Wie sieht das für eine einzelne Person aus, von der
   Registrierung über Login, Step-up und QR-Login bis zur Löschung?
 - **[Schnelleinstieg für Agents](00-agent-quickstart.md)**: Was muss ein KI-Agent wissen, bevor er
@@ -80,6 +78,12 @@ Namensänderung, Journey-Trace und das Löschen des Kontos.
 - **[Abgleich mit dem externen Glossar](glossar/abgleich-externes-glossar.md)**: Wie heißen die
   Begriffe des externen Glossars in diesem Projekt, und wo weicht es bewusst ab?
 - Die wichtigsten Begriffe zum Einstieg stehen im [Überblick](01-ueberblick.md), Abschnitt 3.
+
+## Stand und Ausblick
+
+- **[Stand und Weg zur Produktion](14-stand-und-weg-zur-produktion.md)**: Was soll das Projekt
+  leisten, was ist produktionsreif, was nur Demo, was fehlt vor echten Personendaten, und wie geht
+  es weiter?
 
 ## Ideen
 
