@@ -41,7 +41,7 @@ export function IdentFscForm({ onSubmit, missingFields, error, demoPersons }: Id
     familyName: first?.familyName ?? '',
     birthDate: first?.birthDate ?? '',
     kvnr: first?.kvnr ?? '',
-    partnernr: first?.kvnr ? '' : (first?.personId ?? ''),
+    partnerNumber: first?.kvnr ? '' : (first?.personId ?? ''),
   })
   // The KVNR is asked for first; the Partnernummer only when there is none (a Partner, ADR-34).
   const [withoutKvnr, setWithoutKvnr] = useState(first != null && !first.kvnr)
@@ -60,7 +60,7 @@ export function IdentFscForm({ onSubmit, missingFields, error, demoPersons }: Id
       familyName: person.familyName ?? '',
       birthDate: person.birthDate ?? '',
       kvnr: person.kvnr ?? '',
-      partnernr: person.kvnr ? '' : person.personId,
+      partnerNumber: person.kvnr ? '' : person.personId,
     })
     setWithoutKvnr(!person.kvnr)
     setFsc(person.fscCode ?? '')
@@ -74,13 +74,13 @@ export function IdentFscForm({ onSubmit, missingFields, error, demoPersons }: Id
     event.preventDefault()
     setSubmittedFrom('personalDetails')
     setEditing(false)
-    const { kvnr, partnernr, ...rest } = personalDetails
-    onSubmit(withoutKvnr ? { ...rest, partnernr } : { ...rest, kvnr })
+    const { kvnr, partnerNumber, ...rest } = personalDetails
+    onSubmit(withoutKvnr ? { ...rest, partnerNumber } : { ...rest, kvnr })
   }
 
-  const identifier = withoutKvnr ? personalDetails.partnernr : personalDetails.kvnr
+  const identifier = withoutKvnr ? personalDetails.partnerNumber : personalDetails.kvnr
   const selectedPersonId =
-    demoPersons?.find((p) => (withoutKvnr ? p.personId === personalDetails.partnernr : p.kvnr === personalDetails.kvnr))?.personId ?? ''
+    demoPersons?.find((p) => (withoutKvnr ? p.personId === personalDetails.partnerNumber : p.kvnr === personalDetails.kvnr))?.personId ?? ''
 
   function submitCode(event: React.FormEvent) {
     event.preventDefault()
@@ -109,8 +109,8 @@ export function IdentFscForm({ onSubmit, missingFields, error, demoPersons }: Id
           </div>
           {withoutKvnr ? (
             <div className="form-group">
-              <label htmlFor="partnernr">{t('Partnernummer')}</label>
-              <input id="partnernr" value={personalDetails.partnernr} placeholder="P000000000" onChange={update('partnernr')} required />
+              <label htmlFor="partnerNumber">{t('Partnernummer')}</label>
+              <input id="partnerNumber" value={personalDetails.partnerNumber} placeholder="P000000000" onChange={update('partnerNumber')} required />
               <button type="button" className="text-button" onClick={() => setWithoutKvnr(false)}>
                 {t('Ich habe doch eine Versichertennummer')}
               </button>

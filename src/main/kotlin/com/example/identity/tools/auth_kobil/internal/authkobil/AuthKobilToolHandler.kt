@@ -91,7 +91,7 @@ class AuthKobilToolHandler(
         // caller has not proven a right to ask. A repeated release is not a failure: an app whose
         // window closed simply unlocks again, and the new release replaces the old one.
         if (!unlocked) {
-            return ToolOutcome.Failed.IdentifiedAuth(Text("Entsperren fehlgeschlagen"))
+            return ToolOutcome.Failed.KnownAccountAuth(Text("Entsperren fehlgeschlagen"))
         }
 
         session.release(unlock.userVerification, clock.instant().plusSeconds(pinReleaseTtlSeconds))
@@ -142,19 +142,19 @@ class AuthKobilToolHandler(
 
         return when (val decision = AuthKobilFlow.decide(verification, enrollment.kobilDeviceId, release, blockingRisks)) {
             is AuthKobilDecision.NotReleased ->
-                ToolOutcome.Failed.IdentifiedAuth(Text("Entsperren erforderlich"))
+                ToolOutcome.Failed.KnownAccountAuth(Text("Entsperren erforderlich"))
 
             is AuthKobilDecision.OtpInvalid ->
-                ToolOutcome.Failed.IdentifiedAuth(Text("Bestaetigung nicht erkannt"))
+                ToolOutcome.Failed.KnownAccountAuth(Text("Bestaetigung nicht erkannt"))
 
             // Same wording auth-device uses: it must not reveal which device was expected.
             is AuthKobilDecision.WrongDevice ->
-                ToolOutcome.Failed.IdentifiedAuth(Text("Geraet nicht erkannt"))
+                ToolOutcome.Failed.KnownAccountAuth(Text("Geraet nicht erkannt"))
 
             // Deliberately its own reason. This is not a user's slip but a statement about the
             // device; folding it into "not recognized" would swallow a real finding.
             is AuthKobilDecision.RiskRejected ->
-                ToolOutcome.Failed.IdentifiedAuth(Text("Geraet als unsicher gemeldet"))
+                ToolOutcome.Failed.KnownAccountAuth(Text("Geraet als unsicher gemeldet"))
 
             // Authenticated carries no evidence blob, so non-blocking signals (e.g. OS_OUTDATED)
             // go unrecorded.

@@ -5,7 +5,7 @@ import com.example.identity.core.orchestrator.session.AccountLockoutService
 import com.example.identity.contract.tool_api.Lockouts
 import org.springframework.stereotype.Service
 
-/** Implements the [Lockouts] port on the orchestrator's throttles. */
+/** Implements the [Lockouts] port on the orchestrator's rate limits. */
 @Service
 class LockoutsService(
     private val accountLockoutService: AccountLockoutService,

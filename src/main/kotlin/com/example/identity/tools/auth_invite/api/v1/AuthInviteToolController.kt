@@ -32,7 +32,7 @@ private const val AUTH_INVITE_TOOL_ID = "auth-invite"
 data class AuthInvitePatchRequest(
     @field:Schema(example = "A123456789") val kvnr: String? = null,
     /** Only without a KVNR (a Partner, ADR-34). */
-    @field:Schema(example = "P000000004") val partnernr: String? = null,
+    @field:Schema(example = "P000000004") val partnerNumber: String? = null,
     /** The one-time password from the letter; separators and case do not count. */
     @field:Schema(example = "ABCD-EFGH-JKMN") val code: String? = null
 )
@@ -106,12 +106,12 @@ class AuthInviteToolController(
         // The KVNR comes first (ADR-34): given, it alone decides; the Partnernummer only counts without one.
         val personId = when {
             !body.kvnr.isNullOrBlank() -> personDirectory.findPersonIdByKvnr(normalizeKvnr(body.kvnr))
-            !body.partnernr.isNullOrBlank() -> personDirectory.findPersonIdByPartnernr(body.partnernr)
+            !body.partnerNumber.isNullOrBlank() -> personDirectory.findPersonIdByPartnerNumber(body.partnerNumber)
             else -> null
         }
         // Folded into the ordinary failure, see Lockouts.isIdentLockedOut.
-        val throttled = lockouts.isIdentLockedOut(personId)
-        val outcome = handler.patch(toolSessionId, body.kvnr, body.partnernr, body.code, personId, throttled)
+        val rateLimited = lockouts.isIdentLockedOut(personId)
+        val outcome = handler.patch(toolSessionId, body.kvnr, body.partnerNumber, body.code, personId, rateLimited)
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 

@@ -3,7 +3,7 @@ import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
-import com.example.identity.tools.auth_email.internal.EmailSendBudget
+import com.example.identity.tools.auth_email.internal.EmailSendLimit
 
 import com.example.identity.tools.auth_email.AuthEmailLookupDescriptor
 import com.example.identity.contract.tool_api.directory.AccountDirectory
@@ -29,7 +29,7 @@ class AuthEmailLookupToolHandler(
     private val accountDirectory: AccountDirectory,
     private val emailCodeGenerator: EmailCodeGenerator,
     private val mailServer: MailServer,
-    private val sendBudget: EmailSendBudget,
+    private val sendLimit: EmailSendLimit,
     private val clock: Clock
 ) {
 
@@ -43,7 +43,7 @@ class AuthEmailLookupToolHandler(
      * Enumeration protection (docs/04-orchestrierung.md): an unknown or unconfirmed address looks
      * like a known one. Both branches issue a code and return the same step; only the send is
      * skipped, and the null accountId makes the code check fail. [locked] and an exhausted
-     * [EmailSendBudget] join that branch, so neither reveals an account (ADR-44).
+     * [EmailSendLimit] join that branch, so neither reveals an account (ADR-44).
      */
     @Transactional
     fun submitEmail(toolSessionId: UUID, email: String, locked: Boolean): ToolOutcome {
@@ -52,7 +52,7 @@ class AuthEmailLookupToolHandler(
         val candidateAccountId = accountDirectory.resolveAccountByEmail(email).takeUnless { locked }
         val confirmedEmail = candidateAccountId
             ?.let { accountDirectory.anchorValue(it, AttributeType.EMAIL) }
-            ?.takeIf { sendBudget.trySend(it) }
+            ?.takeIf { sendLimit.trySend(it) }
         val resolvedAccountId = candidateAccountId.takeIf { confirmedEmail != null }
 
         val issued = emailCodeGenerator.issue()
@@ -82,7 +82,7 @@ class AuthEmailLookupToolHandler(
             is AuthEmailLookupDecision.Unchanged -> outcomeFor(decision.state)
 
             is AuthEmailLookupDecision.Complete -> {
-                accountDirectory.anchorValue(decision.accountId, AttributeType.EMAIL)?.let { sendBudget.received(it) }
+                accountDirectory.anchorValue(decision.accountId, AttributeType.EMAIL)?.let { sendLimit.received(it) }
                 ToolOutcome.Completed.Authenticated(
                     amr = listOf(descriptor.method),
                     achievedAcr = descriptor.maxAcr,
@@ -92,9 +92,9 @@ class AuthEmailLookupToolHandler(
             }
 
             is AuthEmailLookupDecision.WrongCode ->
-                // accountId names the throttle subject for the orchestrator; it is null exactly
+                // accountId names the rate limit subject for the orchestrator; it is null exactly
                 // when nothing resolved, so there is nothing to count either.
-                ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Code ungueltig"), attempted = decision.accountId?.let(Attempted::Account))
+                ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder Code ungueltig"), attempted = decision.accountId?.let(Attempted::Account))
         }
     }
 

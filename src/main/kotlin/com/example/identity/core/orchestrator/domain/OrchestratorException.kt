@@ -30,14 +30,14 @@ class OrchestratorException(
             OrchestratorException(ErrorCode.PROCESS_ABORTED, text, detail)
 
         /**
-         * Account-level brute-force throttle tripped (AccountLockoutService). Only raised where the
+         * Account-level brute-force rate limit tripped (AccountLockoutService). Only raised where the
          * caller already knows the account. A lookup-based tool folds its lock into its ordinary
          * failure instead; otherwise this response reveals whether an account exists.
          */
         fun accountLocked(text: Text, detail: String? = null) =
             OrchestratorException(ErrorCode.ACCOUNT_LOCKED, text, detail)
 
-        /** Rate limit on an unauthenticated, cheap-to-repeat operation (ChannelCreationThrottleService). */
+        /** Rate limit on an unauthenticated, cheap-to-repeat operation (ChannelCreationRateLimitService). */
         fun tooManyRequests(text: Text, detail: String? = null) =
             OrchestratorException(ErrorCode.TOO_MANY_REQUESTS, text, detail)
     }

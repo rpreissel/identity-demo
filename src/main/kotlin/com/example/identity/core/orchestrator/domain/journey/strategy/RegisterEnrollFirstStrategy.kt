@@ -18,7 +18,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifySta
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrollFirstState
 import com.example.identity.core.orchestrator.domain.journey.toEnrollAbortMessage
 import com.example.identity.core.orchestrator.domain.policy.Reachability
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
 
@@ -192,7 +192,7 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
     /** Enrollment tools for one method name, found through the catalog, never a fixed toolId. */
     private fun enrollmentCandidatesFor(method: String, ctx: JourneyContext): List<ToolId> =
         ctx.catalog.descriptors()
-            .filter { it.role == MethodRole.ENROLLMENT && it.method == method }
+            .filter { it.role == ToolRole.ENROLLMENT && it.method == method }
             .map { it.toolId }
             .filter { it in ctx.availableTools }
 

@@ -6,5 +6,5 @@ package com.example.identity.core.orchestrator.domain
  * and order) can speak about it without depending on the session package.
  */
 enum class ChannelType {
-    APP, KEYCLOAK
+    APP, WEB
 }

@@ -9,8 +9,8 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 
 /**
- * Unit test for the anchor-role vocabulary (docs/ideen/account-attribute-und-trust-
- * vereinheitlichen.md): one rule per attribute type, applied identically on write and lookup.
+ * Unit test for the anchor-role vocabulary (docs/02-domaenenmodell.md Abschnitt 6): one rule per
+ * attribute type, applied identically on write and lookup.
  * PERSON_ID, EID_RESTRICTED_ID (ADR-19) and EMAIL are anchors; `phone_number` stays unmapped.
  */
 class AttributeRulesTest : BehaviorSpec({
@@ -37,7 +37,7 @@ class AttributeRulesTest : BehaviorSpec({
         then("the locally anchored attributes are exactly PERSON_ID, VERSNR, the two card pseudonyms and EMAIL") {
             AttributeType.entries.filter { it.isLocalAnchor } shouldBe
                 listOf(
-                    AttributeType.PERSON_ID, AttributeType.INSURANCE_NUMBER, AttributeType.EID_RESTRICTED_ID,
+                    AttributeType.PERSON_ID, AttributeType.MEMBER_NUMBER, AttributeType.EID_RESTRICTED_ID,
                     AttributeType.NECT_RESTRICTED_ID, AttributeType.EMAIL
                 )
         }

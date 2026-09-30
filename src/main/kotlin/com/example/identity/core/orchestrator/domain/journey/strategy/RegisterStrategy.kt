@@ -67,7 +67,7 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
             }
 
             is RegisterState.Assigning -> when (event) {
-                // Backing out is the "not now": the run carries on as Interessent (ADR-10).
+                // Backing out is the "not now": the run carries on as prospect (ADR-10).
                 is JourneyEvent.Abandoned -> continueAfterAssignment(ctx)
                 // The executor reads the account in hand at execution time.
                 is JourneyEvent.Completed -> when (val outcome = event.outcome) {

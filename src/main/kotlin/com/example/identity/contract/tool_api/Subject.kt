@@ -8,6 +8,6 @@ package com.example.identity.contract.tool_api
 sealed interface Subject {
     data class Account(val id: Long) : Subject
 
-    /** [hash] is the invitation's identity, the digest of its one-time password. */
-    data class Invitation(val hash: String) : Subject
+    /** [id] is the invitation's identity, the digest of its one-time password. */
+    data class Invitation(val id: String) : Subject
 }

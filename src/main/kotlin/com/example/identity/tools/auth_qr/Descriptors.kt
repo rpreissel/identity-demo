@@ -2,7 +2,7 @@ package com.example.identity.tools.auth_qr
 
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import org.springframework.stereotype.Component
@@ -24,7 +24,7 @@ internal val QR_LOGIN_TTL: Duration = Duration.ofMinutes(5)
 @Component
 object EnrollQrDescriptor : ToolDescriptor {
     override val toolId = ToolId("enroll-qr")
-    override val role = MethodRole.ENROLLMENT
+    override val role = ToolRole.ENROLLMENT
     override val method = QR_METHOD
     override val factorTypes = emptySet<FactorType>()
     override val maxAcr = AcrLevel.LOA1
@@ -38,7 +38,7 @@ object EnrollQrDescriptor : ToolDescriptor {
 @Component
 object AuthQrDescriptor : ToolDescriptor {
     override val toolId = ToolId("auth-qr")
-    override val role = MethodRole.IDENTIFIED_AUTH
+    override val role = ToolRole.KNOWN_ACCOUNT_AUTH
     override val method = QR_METHOD
     override val factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE)
     override val maxAcr = AcrLevel.LOA2
@@ -50,7 +50,7 @@ object AuthQrDescriptor : ToolDescriptor {
 @Component
 object AuthQrLookupDescriptor : ToolDescriptor {
     override val toolId = ToolId("auth-qr-lookup")
-    override val role = MethodRole.LOOKUP_AUTH
+    override val role = ToolRole.ACCOUNT_LOOKUP_AUTH
     override val method = QR_METHOD
     override val factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE)
     override val maxAcr = AcrLevel.LOA2
@@ -61,7 +61,7 @@ object AuthQrLookupDescriptor : ToolDescriptor {
 @Component
 object ConfirmQrLoginDescriptor : ToolDescriptor {
     override val toolId = ToolId("confirm-qr-login")
-    override val role = MethodRole.PEER_APPROVAL
+    override val role = ToolRole.PEER_APPROVAL
     override val method = QR_METHOD
     override val factorTypes = emptySet<FactorType>()
     override val maxAcr = AcrLevel.LOA2

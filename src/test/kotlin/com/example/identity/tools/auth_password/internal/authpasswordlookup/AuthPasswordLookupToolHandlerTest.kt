@@ -62,7 +62,7 @@ class AuthPasswordLookupToolHandlerTest : BehaviorSpec({
             then("it fails with the same constant-shape message, naming no account") {
                 val outcome = handler.patch(toolSessionId, email = "unknown@example.com", password = "hunter2", accountId = null, enrollmentRef = null)
 
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Passwort ungueltig"), attempted = null)
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder Passwort ungueltig"), attempted = null)
             }
         }
     }

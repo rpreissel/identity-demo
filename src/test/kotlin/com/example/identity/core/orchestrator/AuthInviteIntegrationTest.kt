@@ -50,9 +50,9 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
         beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
     }
 
-    private fun stubAssertion(channelAnchor: String) {
+    private fun stubAssertion(channelBinding: String) {
         every { peerAuthValidator.validate(any(), any(), any()) } returns PeerAuthAssertion(
-            jti = UUID.randomUUID().toString(), issuedAt = Instant.now(), channelAnchor = channelAnchor, subject = null
+            jti = UUID.randomUUID().toString(), issuedAt = Instant.now(), channelBinding = channelBinding, subject = null
         )
     }
 
@@ -118,7 +118,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
             `when`("Keycloak names an account for it") {
                 val (channelSessionId, invitation) = signedInAsInvitation()
-                val accountId = accountService.createUnidentifiedAccount().accountId
+                val accountId = accountService.createAccountInSetup().accountId
                 val result = upsert(channelSessionId, """{"subject":{"type":"account","id":"$accountId"}}""")
 
                 then("it is refused as a mismatch, and the channel stays the invitation's") {
@@ -279,7 +279,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                     failed.statusCode shouldBe HttpStatus.OK
                     failed.body!!.channel()["state"] shouldBe "ANONYMOUS"
                     jdbcTemplate.queryForObject(
-                        "SELECT failed_count FROM orchestrator.attempt_throttle WHERE scope = 'PERSON' AND subject = ?", Int::class.java, "P000000002"
+                        "SELECT failed_count FROM orchestrator.rate_limit WHERE scope = 'PERSON' AND subject = ?", Int::class.java, "P000000002"
                     )!! shouldBeGreaterThanOrEqual 1
                 }
             }
@@ -317,7 +317,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 val (channelSessionId, toolSessionId) = openInviteTool("loa2")
 
                 val completed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
-                    """{"partnernr":"P000000004","code":"${issued.code}"}""").body!!
+                    """{"partnerNumber":"P000000004","code":"${issued.code}"}""").body!!
                 // A process access serves its process and nothing else.
                 val enrollment = runCatching {
                     kcCall(HttpMethod.POST, "/orchestrator/api/v1/channels/$channelSessionId/enrollments")

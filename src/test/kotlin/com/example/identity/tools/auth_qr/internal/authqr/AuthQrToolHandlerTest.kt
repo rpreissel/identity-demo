@@ -89,7 +89,7 @@ class AuthQrToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, confirmationCode = null)
 
             then("it fails as expired") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("QR-Code abgelaufen"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("QR-Code abgelaufen"))
             }
         }
     }
@@ -112,7 +112,7 @@ class AuthQrToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, confirmationCode = "000000")
 
             then("it fails and counts the wrong code on the pairing") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Bestätigungscode falsch"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Bestätigungscode falsch"))
                 verify { requests.countWrongConfirmation("APPROVE1", any()) }
             }
         }
@@ -138,7 +138,7 @@ class AuthQrToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, confirmationCode = "123456")
 
             then("it fails instead of silently switching the account") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Bestätigung passt nicht zu diesem Konto"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Bestätigung passt nicht zu diesem Konto"))
             }
         }
     }
@@ -150,7 +150,7 @@ class AuthQrToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, confirmationCode = null)
 
             then("it fails as declined") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Vom Nutzer abgelehnt"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Vom Nutzer abgelehnt"))
             }
         }
     }

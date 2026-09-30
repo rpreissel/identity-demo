@@ -52,7 +52,7 @@ class ChangeLogDbTest(
 
     given("an account that was identified, got a method, lost it and was deleted") {
         then("the trail survives the deletion - names and levels only, no value, while the value tables are gone") {
-            val accountId = accountService.createUnidentifiedAccount().accountId
+            val accountId = accountService.createAccountInSetup().accountId
             livedThrough(accountId)
 
             val trail = events(accountId)
@@ -76,7 +76,7 @@ class ChangeLogDbTest(
 
     given("the retention period (10 years by default)") {
         then("keeps the trail within it and deletes it once it has passed since the deletion") {
-            val accountId = accountService.createUnidentifiedAccount().accountId
+            val accountId = accountService.createAccountInSetup().accountId
             livedThrough(accountId)
             val nineYears = Instant.now().atZone(ZoneOffset.UTC).plusYears(9).toInstant()
             val elevenYears = Instant.now().atZone(ZoneOffset.UTC).plusYears(11).toInstant()
@@ -88,7 +88,7 @@ class ChangeLogDbTest(
         }
 
         then("never touches the trail of an account that still exists") {
-            val accountId = accountService.createUnidentifiedAccount().accountId
+            val accountId = accountService.createAccountInSetup().accountId
             accountService.addIdentification(accountId, "ident-fsc", "loa2", null)
             changeLogRetention.purge(Instant.now().atZone(ZoneOffset.UTC).plusYears(50).toInstant()) shouldBe 0
             events(accountId).size shouldBe 1
@@ -97,7 +97,7 @@ class ChangeLogDbTest(
 
     given("a person identified once, whose account was deleted since") {
         fun identifiedAndDeleted(source: ClaimSource, personId: String?): Long {
-            val accountId = accountService.createUnidentifiedAccount().accountId
+            val accountId = accountService.createAccountInSetup().accountId
             accountService.recordClaims(
                 accountId,
                 listOfNotNull(

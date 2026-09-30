@@ -1,7 +1,7 @@
 package com.example.identity.tools.auth_invite
 
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -19,7 +19,7 @@ internal const val INVITE_METHOD = "invite"
 object AuthInviteDescriptor : ToolDescriptor {
     override val toolId = ToolId("auth-invite")
     override val method = INVITE_METHOD
-    override val role = MethodRole.LOOKUP_AUTH
+    override val role = ToolRole.ACCOUNT_LOOKUP_AUTH
     override val factorTypes = setOf(FactorType.POSSESSION)
     override val maxAcr = AcrLevel.LOA2
 }

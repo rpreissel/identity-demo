@@ -4,7 +4,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 
-/** One normalization for throttle, sending and storage. */
+/** One normalization for rate limit, sending and storage. */
 class PhoneNumberTest : BehaviorSpec({
     given("one number in the ways people write it") {
         then("every spelling is the same number") {

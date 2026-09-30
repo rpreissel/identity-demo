@@ -5,7 +5,7 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimDeclaration
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import org.springframework.stereotype.Component
@@ -20,7 +20,7 @@ internal const val SMS_ENROLLMENT_TYPE = "auth_sms.enrollment"
 @Component
 object EnrollSmsDescriptor : ToolDescriptor {
     override val toolId = ToolId("enroll-sms")
-    override val role = MethodRole.ENROLLMENT
+    override val role = ToolRole.ENROLLMENT
     override val method = SMS_METHOD
     override val factorTypes = setOf(FactorType.POSSESSION)
     override val maxAcr = AcrLevel.LOA1
@@ -34,7 +34,7 @@ object EnrollSmsDescriptor : ToolDescriptor {
 @Component
 object AuthSmsDescriptor : ToolDescriptor {
     override val toolId = ToolId("auth-sms")
-    override val role = MethodRole.IDENTIFIED_AUTH
+    override val role = ToolRole.KNOWN_ACCOUNT_AUTH
     override val method = SMS_METHOD
     override val factorTypes = setOf(FactorType.POSSESSION)
     override val maxAcr = AcrLevel.LOA1
@@ -43,7 +43,7 @@ object AuthSmsDescriptor : ToolDescriptor {
 @Component
 object AuthSmsLookupDescriptor : ToolDescriptor {
     override val toolId = ToolId("auth-sms-lookup")
-    override val role = MethodRole.LOOKUP_AUTH
+    override val role = ToolRole.ACCOUNT_LOOKUP_AUTH
     override val method = SMS_METHOD
     override val factorTypes = setOf(FactorType.POSSESSION)
     override val maxAcr = AcrLevel.LOA1

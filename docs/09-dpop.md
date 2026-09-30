@@ -119,14 +119,14 @@ Stelle eine native App mit hardwaregestütztem Schlüsselspeicher.
   1. Der **DPoP-Schlüssel des Kanals** bindet die Anfragen an diesen Kanal. An dem daraus berechneten
      Wert (`bindingKeyRef`) hängen `DeviceAccountLink` und jedes `keyBinding`.
   2. Das **Credential von `auth_device`** ist ein eigenes, nicht exportierbares Schlüsselpaar. Damit
-     signiert der Client den Nachweis, dass er das Gerät besitzt.
+     signiert der Client den Geräte-Proof, der zeigt, dass er das Gerät besitzt.
   3. Das **Entsperrgeheimnis von KOBIL** ist kein Schlüssel im kryptografischen Sinn, sondern ein
      Geheimnis. Die App verwahrt es (auf einem echten Gerät hinter Biometrie, in dieser Demo im
      `localStorage`, siehe Abschnitt 2) und legt es vor, damit das Backend den KOBIL-PIN freigibt
      ([Abläufe](06-ablaeufe.md) Abschnitt 7).
 
-  Nur der erste bindet den Kanal. Die beiden anderen sind Credentials. Beim dritten liegt der
-  eigentliche Nachweis über das Gerät nicht bei uns, sondern beim Anbieter. Dessen eigene
+  Nur der erste bindet den Kanal. Die beiden anderen sind Credentials. Beim dritten liegt die
+  eigentliche Bestätigung des Geräts nicht bei uns, sondern beim Anbieter. Dessen eigene
   Gerätekennung liefert `GET .../app/channels/device-link` in `boundCredentials` mit, neben dem
   Schlüssel des `device`-Credentials.
 - **Wird das Gerät neu verknüpft, muss auch der Client aufräumen.** Auf dem Server widerruft

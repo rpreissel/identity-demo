@@ -12,7 +12,7 @@ konfiguriert (Conditional-LoA-Subflows, eigenes Passwortformular). Den Orchestra
 Schritte auf, die er selbst nicht kann. Dafür gibt es drei Wege:
 
 - **Innerhalb einer Anmeldung** mit einer gespeicherten `AuthJourney`: Der Einstieg ist
-  [`KC_SELECT_METHOD`](../journeys/kc-select-method.md), bei einer Registrierung `REGISTER`
+  [`WEB_SELECT_METHOD`](../journeys/web-select-method.md), bei einer Registrierung `REGISTER`
   (`KcChannelService.entryIntentFor`). Solange eine solche Journey läuft, bestimmt allein der
   Orchestrator ACR und AMR und fasst die Nachweise mehrerer Tools zusammen
   ([05-api.md](../05-api.md) Abschnitt 3).
@@ -43,9 +43,9 @@ Zusammenfassen mehrerer Nachweise zu einem Niveau.
 
 **Folgen und Kosten**: Zwei Systeme führen Zustand, und ihre Sicht kann auseinanderlaufen. Das Risiko
 ist begrenzt, weil sich die Zuständigkeiten nicht überschneiden: Keycloak entscheidet, ob und welches
-Niveau angefragt wird. Der Orchestrator entscheidet, was innerhalb dieser Stufe geschieht und wie
+Niveau angefragt wird. Der Orchestrator entscheidet, was innerhalb dieses Niveaus geschieht und wie
 mehrere Nachweise zu einem gemeinsamen ACR werden.
 
-**Geschichte**: Anfangs rief Keycloak den Orchestrator nur über `KC_SELECT_METHOD` auf und prüfte das
+**Geschichte**: Anfangs rief Keycloak den Orchestrator nur über `WEB_SELECT_METHOD` auf und prüfte das
 Passwort selbst. Der Einstieg `REGISTER`, die Required Action für das Verwalten der Verfahren und die
 Passwortprüfung über den Orchestrator kamen später dazu (Stand 2026-09-23).

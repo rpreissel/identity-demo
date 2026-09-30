@@ -52,7 +52,7 @@ Keycloak aus dem Konto liest, steht in [07-betrieb.md](../07-betrieb.md) Abschni
   hat, hat alle. Der Preis waren ein Datensatz je Konto, ein Credential je Keycloak-Nutzer und eine
   Reihenfolge zwischen Schlüsselerzeugung und erstem Grant-Aufruf. Vor F-1 war diese Assertion das
   einzige Tor, weil der Grant den aufrufenden Client nicht prüfte; seitdem ist der angemeldete Client
-  der Vertrauensanker.
+  das, worauf sich das Vertrauen stützt.
 - **Nur die umgekehrte Richtung** (Keycloak ruft den Orchestrator auf, nie umgekehrt): verworfen, weil
   `GET .../token` sofort antworten muss.
 

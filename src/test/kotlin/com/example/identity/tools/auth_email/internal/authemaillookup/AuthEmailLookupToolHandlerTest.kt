@@ -12,7 +12,7 @@ import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.tools.auth_email.AuthEmailLookupDescriptor
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
-import com.example.identity.tools.auth_email.internal.EmailSendBudget
+import com.example.identity.tools.auth_email.internal.EmailSendLimit
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -35,9 +35,9 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<AuthEmailLookupToolSessionRepository>()
     val accountDirectory = mockk<AccountDirectory>()
     val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
-    val sendBudget = mockk<EmailSendBudget>(relaxed = true).also { every { it.trySend(any()) } returns true }
+    val sendLimit = mockk<EmailSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val mailServer = MailServer(clock = TEST_CLOCK)
-    val handler = AuthEmailLookupToolHandler(AuthEmailLookupDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, mailServer, sendBudget, clock = TEST_CLOCK)
+    val handler = AuthEmailLookupToolHandler(AuthEmailLookupDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, mailServer, sendLimit, clock = TEST_CLOCK)
 
     // What every unresolved submission answers: the code step, no demo code, nothing naming an account.
     val neutralAnswer = ToolOutcome.InProgress(nextStep = "codeInput", stepData = MissingFields(listOf("code")), demo = emptyMap())
@@ -107,7 +107,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
             }
 
             then("it spends nothing from the address's send budget") {
-                verify(exactly = 0) { sendBudget.trySend("locked@example.com") }
+                verify(exactly = 0) { sendLimit.trySend("locked@example.com") }
             }
         }
 
@@ -115,7 +115,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
             val (toolSessionId, data) = awaitingEmail()
             every { accountDirectory.resolveByAnchor(AttributeType.EMAIL, "flooded@example.com") } returns 44L
             every { accountDirectory.anchorValue(44L, AttributeType.EMAIL) } returns "flooded@example.com"
-            every { sendBudget.trySend("flooded@example.com") } returns false
+            every { sendLimit.trySend("flooded@example.com") } returns false
             val outcome = handler.submitEmail(toolSessionId, "flooded@example.com", locked = false)
 
             then("it answers exactly like for an unknown address and stores no account") {
@@ -146,7 +146,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
             }
 
             then("the address's send budget starts over") {
-                verify { sendBudget.received("max@example.com") }
+                verify { sendLimit.received("max@example.com") }
             }
         }
 
@@ -154,7 +154,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, "000000")
 
             then("it fails against the resolved account, so the orchestrator charges that account") {
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Code ungueltig"), attempted = Attempted.Account(42L))
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder Code ungueltig"), attempted = Attempted.Account(42L))
             }
         }
     }
@@ -170,7 +170,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, issued.plainCode)
 
             then("it fails with the same wording and names no account to charge") {
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Code ungueltig"), attempted = null)
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder Code ungueltig"), attempted = null)
             }
         }
     }

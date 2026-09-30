@@ -119,7 +119,7 @@ test('the demo picker lists open invitations and fills the Partnernummer of a pa
   const option = picker.locator('option', { hasText: 'Paula Schulz – Bonusprogramm' }).first()
   await picker.selectOption({ label: (await option.textContent()) ?? '' })
   await expect(page.getByLabel(kc('Versichertennummer'))).toHaveValue('')
-  await expect(page.locator('#partnernr')).toHaveValue(PAULA.personId)
+  await expect(page.locator('#partnerNumber')).toHaveValue(PAULA.personId)
   await expect(page.getByLabel(kc('Einmalkennwort'), { exact: true })).toHaveValue(letter.code)
   await page.getByRole('button', { name: kc('Anmelden') }).click()
 
@@ -135,6 +135,6 @@ test('an invitation below the level the login asks for opens nothing', async ({ 
   // "Sicher anmelden" asks for loa2; the invitation carries loa1.
   await openInvitePage(page, 'secure')
   await submitInvite(page, ERIKA, letter.code)
-  await expect(page.getByText(ui('Dieses Einmalkennwort genuegt der verlangten Sicherheitsstufe nicht'))).toBeVisible()
+  await expect(page.getByText(ui('Dieses Einmalkennwort genuegt dem verlangten Sicherheitsniveau nicht'))).toBeVisible()
   expect(page.url()).not.toContain(`${ORCHESTRATOR}/web/`)
 })

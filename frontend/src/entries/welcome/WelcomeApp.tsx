@@ -561,7 +561,7 @@ function healthComponentLabel(name: string): string {
 
 function metricLabel(name: string, tags: Record<string, string>): string {
   switch (name) {
-    case 'identity.throttle.blocked': return t('Drossel hat abgewiesen ({scope})', { scope: tags.scope ?? '' })
+    case 'identity.ratelimit.blocked': return t('Mengenbegrenzung hat abgewiesen ({scope})', { scope: tags.scope ?? '' })
     case 'identity.retention.deleted': return t('Aufgeräumte Zeilen ({table})', { table: tags.table ?? '' })
     case 'identity.events.incomplete': return t('Offene Ereignisse')
     case 'http.client.requests': return t('Aufrufe an {host}', { host: tags['client.name'] ?? '' })

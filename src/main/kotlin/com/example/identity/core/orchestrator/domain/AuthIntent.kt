@@ -30,7 +30,7 @@ enum class AuthIntent {
      * natively. Serves initial login (resolves an account like [LOOKUP_LOGIN]) and step-up (account
      * pre-set on the channel).
      */
-    KC_SELECT_METHOD,
+    WEB_SELECT_METHOD,
 
     /** Raise the level. Only on an AUTHENTICATED channel. */
     STEP_UP,
@@ -66,7 +66,7 @@ enum class AuthIntent {
      * authenticated channel only; [CONFIRM_PEER_LOGIN] is both.
      */
     val isEntryIntent: Boolean
-        get() = this == FAST_ACCESS || this == REGISTER || this == LOOKUP_LOGIN || this == KC_SELECT_METHOD || this == CONFIRM_PEER_LOGIN
+        get() = this == FAST_ACCESS || this == REGISTER || this == LOOKUP_LOGIN || this == WEB_SELECT_METHOD || this == CONFIRM_PEER_LOGIN
 
     /**
      * An APP channel entered with this intent starts from the account this device is linked to

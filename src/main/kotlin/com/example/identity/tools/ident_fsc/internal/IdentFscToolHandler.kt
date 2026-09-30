@@ -39,7 +39,7 @@ class IdentFscToolHandler(
     }
 
     /**
-     * [throttled] guards the guessable code and answers like "code invalid"; a distinct lock
+     * [rate-limited] guards the guessable code and answers like "code invalid"; a distinct lock
      * response would reveal which KVNRs exist. A rejected personal-data check also charges the
      * person's counter, so probing runs into the same lock.
      */
@@ -47,17 +47,17 @@ class IdentFscToolHandler(
     fun patch(
         toolSessionId: UUID,
         kvnr: String?,
-        partnernr: String?,
+        partnerNumber: String?,
         familyName: String?,
         givenNames: String?,
         birthDate: LocalDate?,
         fsc: String?,
         personId: String?,
-        throttled: Boolean
+        rateLimited: Boolean
     ): ToolOutcome {
         val data = checkNotNull(repository.findByIdOrNull(toolSessionId)) { "Unknown ident-fsc tool session: $toolSessionId" }
 
-        val input = IdentFscInput(kvnr, partnernr, familyName, givenNames, birthDate, fsc, personId)
+        val input = IdentFscInput(kvnr, partnerNumber, familyName, givenNames, birthDate, fsc, personId)
         val merged = IdentFscFlow.merge(data.toState(), input, activationCodes::digest)
 
         // Every personal-data rejection answers alike, whether the KVNR is unknown or a
@@ -78,12 +78,12 @@ class IdentFscToolHandler(
                     !matches -> IdentFscFlow.rejectPersonalDetails() to
                         ToolOutcome.Failed.Identification(PERSONAL_DETAILS_REJECTED, attemptedPersonId = decision.personId)
                     // All five in one PATCH: the personal data holds, so the code is next.
-                    merged.fscHash != null -> verifyCode(toolSessionId, merged, decision.personId, merged.fscHash, throttled)
+                    merged.fscHash != null -> verifyCode(toolSessionId, merged, decision.personId, merged.fscHash, rateLimited)
                     else -> merged to outcomeFor(merged)
                 }
             }
 
-            is IdentFscDecision.VerifyCode -> verifyCode(toolSessionId, merged, decision.personId, decision.fscHash, throttled)
+            is IdentFscDecision.VerifyCode -> verifyCode(toolSessionId, merged, decision.personId, decision.fscHash, rateLimited)
         }
 
         data.applyState(outcome.first)
@@ -96,9 +96,9 @@ class IdentFscToolHandler(
         state: IdentFscState,
         personId: String,
         fscHash: String,
-        throttled: Boolean
+        rateLimited: Boolean
     ): Pair<IdentFscState, ToolOutcome> {
-        if (throttled || !activationCodes.isValid(personId, fscHash)) {
+        if (rateLimited || !activationCodes.isValid(personId, fscHash)) {
             return IdentFscFlow.rejectCode(state) to
                 ToolOutcome.Failed.Identification(Text("Freischaltcode ungueltig oder abgelaufen"), attemptedPersonId = personId)
         }
@@ -119,13 +119,13 @@ class IdentFscToolHandler(
                 // three things that find this identification in the change log (ADR-39).
                 Claim(AttributeType.BIRTH_DATE, checkNotNull(state.birthDate).toString(), ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr),
                 // Insured with us: the Versicherungsnummer becomes an anchor too (ADR-34).
-                personDirectory.insuranceNumberOf(personId)?.let { Claim(AttributeType.INSURANCE_NUMBER, it, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr) }
+                personDirectory.memberNumberOf(personId)?.let { Claim(AttributeType.MEMBER_NUMBER, it, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr) }
             ),
             auditDetails = mapOf(
                 "provider" to "fsc-service",
                 "providerTxId" to "FSC-$toolSessionId",
                 "methodVersion" to "1.0",
-                "evidenceHash" to IdentFscFlow.evidenceHash(state.kvnr ?: state.partnernr.orEmpty(), fscHash)
+                "evidenceHash" to IdentFscFlow.evidenceHash(state.kvnr ?: state.partnerNumber.orEmpty(), fscHash)
             )
         )
     }
@@ -141,11 +141,11 @@ class IdentFscToolHandler(
         return ToolOutcome.InProgress(nextStep = step, stepData = fields)
     }
 
-    private fun IdentFscToolSession.toState(): IdentFscState = IdentFscState(kvnr, partnernr, familyName, givenNames, birthDate, fscHash, personId)
+    private fun IdentFscToolSession.toState(): IdentFscState = IdentFscState(kvnr, partnerNumber, familyName, givenNames, birthDate, fscHash, personId)
 
     private fun IdentFscToolSession.applyState(state: IdentFscState) {
         kvnr = state.kvnr
-        partnernr = state.partnernr
+        partnerNumber = state.partnerNumber
         familyName = state.familyName
         givenNames = state.givenNames
         birthDate = state.birthDate

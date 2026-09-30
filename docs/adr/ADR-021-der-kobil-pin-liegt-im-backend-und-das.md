@@ -5,7 +5,7 @@
 Das Verfahren `kobil` zeigt, wie man einen Dienstleister für die Bindung an ein Gerät einbindet, ohne
 dem Nutzer ein weiteres Geheimnis abzuverlangen. Dafür gelten zwei Entscheidungen.
 
-## 1. Der PIN liegt im Backend, und das Zugangsmittel zählt trotzdem
+## 1. Der PIN liegt im Backend, und das Entsperren zählt trotzdem
 
 **Entscheidung.** Der KOBIL-PIN wird nicht vom Nutzer vergeben und nicht eingetippt. Das Backend des
 Tools erzeugt ihn, verwahrt ihn und gibt ihn für jede Anmeldung frei, nachdem sich der Client auf dem
@@ -53,7 +53,7 @@ anderen Verfahren: Er beruht auf einer Assertion, die unser Backend einlöst, ni
 des Clients.
 
 **Erwogene Alternative.** Die signierte Assertion durch den Client weiterreichen und im Server prüfen,
-nach dem Muster von `device-proof+jwt` bei `auth-device`. Das verlangt aber einen Vertrauensanker und
+nach dem Muster von `device-proof+jwt` bei `auth-device`. Das verlangt aber einen vertrauenswürdigen Prüfschlüssel und
 ein Signaturformat, die die öffentliche Dokumentation von KOBIL nicht nennt. Ein selbst erfundenes
 Format würde sich als das echte ausgeben.
 

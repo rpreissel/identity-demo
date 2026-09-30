@@ -1,7 +1,7 @@
 package com.example.identity.core.orchestrator.domain.policy
 
 import com.example.identity.core.orchestrator.domain.policy.requiresSatisfied
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
 import com.example.identity.core.orchestrator.domain.policy.CandidateContext
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
@@ -14,12 +14,11 @@ import com.example.identity.core.account.AuthMethodView
 import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.core.orchestrator.domain.ToolCatalog
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.claims.TrustLevel
+import com.example.identity.contract.tool_api.claims.ClaimTrust
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimRequirement
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.MethodRole
-import com.example.identity.contract.tool_api.ToolCategory
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import java.time.Clock
@@ -32,54 +31,54 @@ import java.time.Duration
  * and escalate past anything ever proven. `resolveAcr` is `max(IAL, AAL)`, computed separately so
  * that an identification never combines with an unrelated auth factor into a false MFA bump.
  *
- * A level above loa1 ages: only proofs younger than [elevatedMaxAge] count toward it, older ones
+ * A level above loa1 ages: only proofs younger than [loa2MaxAge] count toward it, older ones
  * still carry loa1 (docs/04-orchestrierung.md #8, like Keycloak's `loa-max-age`).
  */
 class DefaultAuthPolicy(
     private val toolRegistry: ToolCatalog,
     private val clock: Clock,
-    private val elevatedMaxAge: Duration = DEFAULT_ELEVATED_MAX_AGE,
+    private val loa2MaxAge: Duration = DEFAULT_LOA2_MAX_AGE,
 ) : AuthPolicy {
 
-    override fun resolveAcr(evidence: AuthEvidence, account: AccountProfile?): AcrLevel =
+    override fun resolveAcr(evidence: SessionEvidence, account: AccountProfile?): AcrLevel =
         AcrLevel.max(AcrLevel.min(levelOf(evidence), AGELESS_CEILING), levelOf(recent(evidence)))
 
-    private fun levelOf(evidence: AuthEvidence): AcrLevel =
+    private fun levelOf(evidence: SessionEvidence): AcrLevel =
         AcrLevel.max(identityAssuranceLevel(evidence), authenticatorAssuranceLevel(evidence))
 
     /** The proofs that still count above loa1. */
-    private fun recent(evidence: AuthEvidence): AuthEvidence {
-        val since = clock.instant().minus(elevatedMaxAge)
-        return AuthEvidence(evidence.factors.filter { it.provenAt?.isBefore(since) == false })
+    private fun recent(evidence: SessionEvidence): SessionEvidence {
+        val since = clock.instant().minus(loa2MaxAge)
+        return SessionEvidence(evidence.methods.filter { it.provenAt?.isBefore(since) == false })
     }
 
     /** The proofs that count toward [requiredAcr]: all of them up to loa1, only recent ones above. */
-    private fun countingToward(evidence: AuthEvidence, requiredAcr: AcrLevel): AuthEvidence =
+    private fun countingToward(evidence: SessionEvidence, requiredAcr: AcrLevel): SessionEvidence =
         if (AcrLevel.rank(requiredAcr) > AcrLevel.rank(AGELESS_CEILING)) recent(evidence) else evidence
 
     /**
      * IAL: the highest loa any identification has established in this session. An identification
      * from a past session does not count; it acts only through `enrolledUnderAcr` (ADR-5).
      */
-    private fun identityAssuranceLevel(evidence: AuthEvidence): AcrLevel {
-        val reachable = evidence.factors.filter { it.axis == EvidenceAxis.IDENTITY }
+    private fun identityAssuranceLevel(evidence: SessionEvidence): AcrLevel {
+        val reachable = evidence.methods.filter { it.axis == EvidenceAxis.IDENTITY }
             .maxOfOrNull { AcrLevel.rank(it.loa) } ?: return AcrLevel.NONE
         return AcrLevel.levelAt(reachable)
     }
 
     /** AAL: [baseAcr] plus [applyMfaBump], over [EvidenceAxis.AUTHENTICATOR] entries only. */
-    private fun authenticatorAssuranceLevel(evidence: AuthEvidence): AcrLevel {
-        val authenticatorFactors = evidence.factors.filter { it.axis == EvidenceAxis.AUTHENTICATOR }
-        return applyMfaBump(baseAcr(authenticatorFactors), AuthEvidence(authenticatorFactors))
+    private fun authenticatorAssuranceLevel(evidence: SessionEvidence): AcrLevel {
+        val authenticatorFactors = evidence.methods.filter { it.axis == EvidenceAxis.AUTHENTICATOR }
+        return applyMfaBump(baseAcr(authenticatorFactors), SessionEvidence(authenticatorFactors))
     }
 
-    override fun isSatisfied(evidence: AuthEvidence, requiredAcr: AcrLevel, account: AccountProfile?): Boolean {
+    override fun isSatisfied(evidence: SessionEvidence, requiredAcr: AcrLevel, account: AccountProfile?): Boolean {
         val counting = countingToward(evidence, requiredAcr)
         val levelOk = AcrLevel.rank(levelOf(counting)) >= AcrLevel.rank(requiredAcr)
         // Checked per axis, not as one union: a tool covering two factor types on its own axis is
         // MFA (e.g. ident-eid: card + PIN), but identity and auth factors never combine.
-        val identityFactorTypes = counting.factors.filter { it.axis == EvidenceAxis.IDENTITY }.flatMap { it.factorTypes }.toSet()
-        val authenticatorFactorTypes = counting.factors.filter { it.axis == EvidenceAxis.AUTHENTICATOR }.flatMap { it.factorTypes }.toSet()
+        val identityFactorTypes = counting.methods.filter { it.axis == EvidenceAxis.IDENTITY }.flatMap { it.factorTypes }.toSet()
+        val authenticatorFactorTypes = counting.methods.filter { it.axis == EvidenceAxis.AUTHENTICATOR }.flatMap { it.factorTypes }.toSet()
         val mfaOk = !requiresMfa(requiredAcr) || identityFactorTypes.size >= 2 || authenticatorFactorTypes.size >= 2
         return levelOk && mfaOk
     }
@@ -121,7 +120,7 @@ class DefaultAuthPolicy(
         val account = checkNotNull(ctx.account) { "enrollmentCandidates requires an account in CandidateContext" }
         val activeMethods = account.authenticationMethods.filter { it.active }.map { it.method }.toSet()
         return toolRegistry.descriptors()
-            .filter { it.role.category == ToolCategory.ENROLL }
+            .filter { it.role == ToolRole.ENROLLMENT }
             // Singleton methods disappear once active; multi-instance methods (device) stay, so a
             // new device can add its own instance.
             .filter { it.method !in activeMethods || it.allowsMultipleInstances }
@@ -137,10 +136,10 @@ class DefaultAuthPolicy(
         val bindingKeyRef = ctx.bindingKeyRef
         val linkedAccountId = ctx.linkedAccountId
         val availableTools = ctx.availableTools
-        val usedMethods = evidence.factors.map { it.method.value }.toSet()
+        val usedMethods = evidence.methods.map { it.method.value }.toSet()
         val active = account.authenticationMethods.filter { it.active }
 
-        // With a known account, only IDENTIFIED_AUTH tools, never a LOOKUP_AUTH sibling that
+        // With a known account, only KNOWN_ACCOUNT_AUTH tools, never an ACCOUNT_LOOKUP_AUTH sibling that
         // resolves the account itself (docs/03-tool-architektur.md).
         //
         // Filtered to what is offerable here before computing singleMethodSuffices. A method that
@@ -148,7 +147,7 @@ class DefaultAuthPolicy(
         // method alone suffices", or it would suppress the two-factor fallback for the others.
         val eligible = active.mapNotNull { m ->
             val descriptor = toolRegistry.descriptors()
-                .firstOrNull { it.role == MethodRole.IDENTIFIED_AUTH && it.method == m.method }
+                .firstOrNull { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.method == m.method }
                 ?: return@mapNotNull null
             if (availableTools != null && descriptor.toolId !in availableTools) return@mapNotNull null
             // A key-bound method only on the device holding its credential, and only while that
@@ -168,13 +167,13 @@ class DefaultAuthPolicy(
         return eligible.filter { (m, _) -> m.method !in usedMethods }.mapNotNull { (m, descriptor) ->
             val cappedAcr = AcrLevel.min(AcrLevel.of(m.enrolledUnderAcr), descriptor.maxAcr)
             // The evidence as it would be if this candidate were also proven.
-            val projected = AuthEvidence(
-                evidence.factors + MethodEvidence(
+            val projected = SessionEvidence(
+                evidence.methods + MethodEvidence(
                     MethodName(m.method), cappedAcr, m.enrolledUnderAcr?.let(AcrLevel::of), descriptor.factorTypes,
                     source = "simulation", amrSourceId = "simulation", provenAt = clock.instant()
                 ),
             )
-            val projectedAcr = applyMfaBump(baseAcr(projected.factors), projected)
+            val projectedAcr = applyMfaBump(baseAcr(projected.methods), projected)
             val helpsLevel = AcrLevel.rank(projectedAcr) >= AcrLevel.rank(requiredAcr)
             val helpsMfa = !singleMethodSuffices && (descriptor.factorTypes - evidence.factorTypes).isNotEmpty()
 
@@ -185,13 +184,13 @@ class DefaultAuthPolicy(
     override fun reIdentCandidates(ctx: CandidateContext): List<ToolId> {
         val requiredAcr = ctx.requiredAcr
         val evidence = countingToward(ctx.evidence, requiredAcr)
-        val usedMethods = evidence.factors.map { it.method.value }.toSet()
+        val usedMethods = evidence.methods.map { it.method.value }.toSet()
         // An identification's amr need not be its method name (ident-nect reports
         // `nect-<procedure>`), so "already used" also checks which tool produced the evidence.
-        val usedTools = evidence.factors.map { it.amrSourceId }.toSet()
+        val usedTools = evidence.methods.map { it.amrSourceId }.toSet()
         return toolRegistry.descriptors()
             // Role, not category: a CORRELATION step is no fresh proof of identity (ADR-18).
-            .filter { it.role == MethodRole.IDENTIFICATION }
+            .filter { it.role == ToolRole.IDENTIFICATION }
             .filter { it.method !in usedMethods && it.toolId.value !in usedTools }
             .filter { AcrLevel.rank(it.maxAcr) >= AcrLevel.rank(requiredAcr) }
             // Same precondition gate as every other candidate path.
@@ -211,9 +210,9 @@ class DefaultAuthPolicy(
      * identification could buy MFA credit it already priced into its own loa. A method without
      * `enrolledUnderAcr` adds nothing to the cap (docs/05-api.md Abschnitt 3).
      */
-    private fun applyMfaBump(base: AcrLevel, evidence: AuthEvidence): AcrLevel {
-        val distinctMethods = evidence.factors.map { it.method }.distinct().size
-        val maxEnrolledUnderAcr = evidence.factors.mapNotNull { it.enrolledUnderAcr }
+    private fun applyMfaBump(base: AcrLevel, evidence: SessionEvidence): AcrLevel {
+        val distinctMethods = evidence.methods.map { it.method }.distinct().size
+        val maxEnrolledUnderAcr = evidence.methods.mapNotNull { it.enrolledUnderAcr }
             .maxOfOrNull { AcrLevel.rank(it) }
             ?.let { AcrLevel.levelAt(it) }
             ?: AcrLevel.NONE
@@ -233,14 +232,14 @@ class DefaultAuthPolicy(
         return AcrLevel.max(base, AcrLevel.min(bumped, NIST_COMBINATION_CEILING))
     }
 
-    /** What an enrolled method gives when proven: its IDENTIFIED_AUTH procedure, not whichever comes first. */
-    private fun descriptorFor(method: String): ToolDescriptor? = toolRegistry.descriptorOf(method, MethodRole.IDENTIFIED_AUTH)
+    /** What an enrolled method gives when proven: its KNOWN_ACCOUNT_AUTH procedure, not whichever comes first. */
+    private fun descriptorFor(method: String): ToolDescriptor? = toolRegistry.descriptorOf(method, ToolRole.KNOWN_ACCOUNT_AUTH)
 
     private fun requiresMfa(requiredAcr: AcrLevel) = AcrLevel.rank(requiredAcr) >= AcrLevel.rank(MFA_FROM_ACR)
 
     companion object {
         /** Keycloak's `loa-max-age` for LoA 2 (keycloak-migrations V5). */
-        val DEFAULT_ELEVATED_MAX_AGE: Duration = Duration.ofMinutes(30)
+        val DEFAULT_LOA2_MAX_AGE: Duration = Duration.ofMinutes(30)
 
         /** The highest level an aged proof still carries. */
         private val AGELESS_CEILING = AcrLevel.LOA1

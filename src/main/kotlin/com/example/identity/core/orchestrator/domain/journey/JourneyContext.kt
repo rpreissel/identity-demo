@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator.domain.journey
 
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.account.AccountProfile
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
 import com.example.identity.core.orchestrator.domain.ToolCatalog
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -22,7 +22,7 @@ data class JourneyContext(
     /** The account this journey concerns, `null` before any identification or lookup. */
     val account: AccountProfile?,
     /** What this channel's session has already proven. */
-    val evidence: AuthEvidence,
+    val evidence: SessionEvidence,
     /** The channel's durable lower bound, not a single run's target (that lives in the state). */
     val acrFloor: AcrLevel,
     /** The calling device's DPoP-proven key thumbprint; null on a Keycloak channel. */

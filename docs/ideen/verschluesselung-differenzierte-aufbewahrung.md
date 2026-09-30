@@ -77,7 +77,7 @@ Abschnitt 6):
 
 - **(a) Ein Datenschlüssel je `AttributeType`** (z. B. ein Schlüssel für alle EMAIL-Claims eines Kontos) — Zu grob. `account.claim` wird nur ergänzt, und ein Konto hat oft mehrere historische Zeilen desselben Typs (alte, korrigierte, zurückgenommene, neu bestätigte E-Mail-Adresse). Ein Widerruf entkräftet nur Claims, die *vor* ihm liegen; ein danach neu bestätigter Wert gilt wieder (ADR-12). Ein gemeinsamer Datenschlüssel würde beim Löschen auch gültige Claims desselben Typs mit zerstören. **Als Hauptweg verworfen.**
 - **(b) Ein Datenschlüssel je Zeile in `AccountClaim`** — Passt zur Einheit von `AccountRetraction`, ist aber unnötig fein: Ein Lauf von `ident-eid` schreibt sieben Zeilen (`EID_RESTRICTED_ID`, `FAMILY_NAME`, `GIVEN_NAMES`, `BIRTH_DATE`, `STREET_ADDRESS`, `POSTAL_CODE`, `LOCALITY`) in einem Aufruf von `recordClaims`. Das wären sieben Datenschlüssel für einen einzigen fachlichen Vorgang. **Zugunsten von (b') verworfen.**
-- **(b') Ein Datenschlüssel je Gruppe von Claims** (= eine Transaktion von `recordClaims`) — Ein neues, schmales Feld `claim_batch_id` (UUID), einmal je Aufruf von `recordClaims` erzeugt und an alle Zeilen gehängt, die in diesem Aufruf gespeichert werden. `AccountClaim.authMethodId` eignet sich dafür NICHT: Bei Claims aus einer Identifizierung (`ident-eid`) ist es laut Kommentar im Code immer `null` (`AccountClaim.kt:46-49`, „claims from identification tools produce no credential“). Auch `claimSource` allein reicht nicht: `ClaimSource.of(toolId)` ist für jeden Lauf von `ident-eid` gleich (`"ident-eid"`) und würde eine erneute Identifizierung Jahre später fälschlich mit dem ersten Lauf zusammenwerfen. Ein Datenschlüssel je Gruppe fasst genau zusammen, was fachlich ein Vorgang ist (bei der eID etwa siebenmal weniger Schlüssel), und lässt trotzdem jedem Lesen der Karte seine eigene Frist von einem Jahr. Der Preis: Muss ein einzelnes Attribut einer Gruppe vorzeitig und für sich allein ungültig werden, müssen die übrigen Zeilen der Gruppe neu verschlüsselt werden. Im bestehenden Modell der Widerrufe ist das aber ein Randfall: Das Ersetzen eines Ankers (ADR-12) betrifft nur die lokal verankerten Attribute (`PERSON_ID`, `INSURANCE_NUMBER`, `EID_RESTRICTED_ID`, `EMAIL`). Die übrigen eID-Felder gehören dem Personenverzeichnis und stehen nur als Historie im Log; sie werden nicht einzeln widerrufen. **Als Hauptweg für `account.claim` empfohlen.**
+- **(b') Ein Datenschlüssel je Gruppe von Claims** (= eine Transaktion von `recordClaims`) — Ein neues, schmales Feld `claim_batch_id` (UUID), einmal je Aufruf von `recordClaims` erzeugt und an alle Zeilen gehängt, die in diesem Aufruf gespeichert werden. `AccountClaim.authMethodId` eignet sich dafür NICHT: Bei Claims aus einer Identifizierung (`ident-eid`) ist es laut Kommentar im Code immer `null` (`AccountClaim.kt:46-49`, „claims from identification tools produce no credential“). Auch `claimSource` allein reicht nicht: `ClaimSource.of(toolId)` ist für jeden Lauf von `ident-eid` gleich (`"ident-eid"`) und würde eine erneute Identifizierung Jahre später fälschlich mit dem ersten Lauf zusammenwerfen. Ein Datenschlüssel je Gruppe fasst genau zusammen, was fachlich ein Vorgang ist (bei der eID etwa siebenmal weniger Schlüssel), und lässt trotzdem jedem Lesen der Karte seine eigene Frist von einem Jahr. Der Preis: Muss ein einzelnes Attribut einer Gruppe vorzeitig und für sich allein ungültig werden, müssen die übrigen Zeilen der Gruppe neu verschlüsselt werden. Im bestehenden Modell der Widerrufe ist das aber ein Randfall: Das Ersetzen eines Ankers (ADR-12) betrifft nur die lokal verankerten Attribute (`PERSON_ID`, `MEMBER_NUMBER`, `EID_RESTRICTED_ID`, `EMAIL`). Die übrigen eID-Felder gehören dem Personenverzeichnis und stehen nur als Historie im Log; sie werden nicht einzeln widerrufen. **Als Hauptweg für `account.claim` empfohlen.**
 - **(c) Ein Datenschlüssel je Aufbewahrungsklasse** (kleines Enum, z. B. `EID_RESTRICTED`, `STANDARD_CLAIM`) — Gröber und billiger zu verwalten. Sobald aber eine Zeile der Klasse vorzeitig gelöscht werden muss, braucht es regelmäßig eine Neuverschlüsselung. **Als pragmatischer Weg für die kurzlebigen Arbeitsdaten der Tools mit personenbezogenen Daten empfohlen** (`ident_eid.ident_tool_session` und ähnliche): Dort fällt ohnehin alles innerhalb von etwa 24 Stunden weg, und selbst ein Schlüssel je Gruppe wäre zu viel des Guten.
 
 **Warum an die bestehende Einteilung anknüpfen, statt eine neue zu erfinden:**
@@ -100,7 +100,7 @@ Aufgaben im Code tatsächlich verteilt sind:
   **ausschließlich** über `AccountAnchorRepository`, nie das Claim-Log. `AccountAnchor` ist laut Doku
   schon die abgeleitete Tabelle zum Finden von Konten und zur Sicherung der Eindeutigkeit
   ([02-domaenenmodell.md](../02-domaenenmodell.md) Abschnitt 6), im Aufbau getrennt vom historischen
-  Log in `AccountClaim`. Sie enthält nur vier Attributtypen (`PERSON_ID`, `INSURANCE_NUMBER`, `EID_RESTRICTED_ID`,
+  Log in `AccountClaim`. Sie enthält nur vier Attributtypen (`PERSON_ID`, `MEMBER_NUMBER`, `EID_RESTRICTED_ID`,
   `EMAIL`): Kennungen und Pseudonyme sowie eine E-Mail-Adresse, aber nicht die eigentlich sensiblen
   Inhalte der eID (Name, Geburtsdatum, Adresse). Diese liegen ausschließlich im Claim-Log.
 - **Für `AccountAnchor` ist der Widerruf schon gelöst, ganz ohne Kryptografie:** Nach ADR-12 wird die
@@ -178,7 +178,7 @@ von „vorhanden“ ausgehen, könnte das Entschlüsseln fehlschlagen.
 
 Der `RetentionJob` muss deshalb **in einer Transaktion** zwei Dinge tun: (a) für jeden betroffenen
 Attributtyp der Gruppe eine Zeile in `AccountRetraction` schreiben und (b) die Zeile in
-`claim_batch_key` löschen. Für (a) fehlt derzeit ein passender Wert in `RetractionAnchor`. Die
+`claim_batch_key` löschen. Für (a) fehlt derzeit ein passender Wert in `RetractionSource`. Die
 bestehenden drei (`ACCOUNT_MANAGEMENT`, `PERSON_DIRECTORY`, `OPERATOR`, Letzterer laut Kommentar im
 Code ausdrücklich „a human operator, with a reason“) decken einen automatischen Widerruf nach Ablauf
 einer Frist nicht ab. Ein vierter Wert (`RETENTION_POLICY`) wäre nötig, damit ein geplanter Job bei
@@ -205,7 +205,7 @@ selbst liefert.
   Vorbild von `PasswordHasher.kt`.
 - Für die Arbeitsdaten der Tools: eine Tabelle `account.retention_class_key` und das Nachschlagen
   darin in den betroffenen Modulen.
-- Ein neuer Wert `RetractionAnchor.RETENTION_POLICY`, damit ein automatischer Widerruf nach Ablauf
+- Ein neuer Wert `RetractionSource.RETENTION_POLICY`, damit ein automatischer Widerruf nach Ablauf
   einer Frist nicht fälschlich als Eingriff eines Menschen (`OPERATOR`) erscheint (Abschnitt 4).
 
 **Unverändert übernommen:**
@@ -310,4 +310,4 @@ Hauptschlüssels (Abschnitt 6), (2) ob es Datenschlüssel je Gruppe für *alle* 
 nur für die sensiblen (`EID_*`, `EMAIL`), (3) wie bestehende Claims im Klartext umgestellt werden,
 (4) ob die Frist von einem Jahr für eID-Daten auch die Zeile des Ankers `EID_RESTRICTED_ID` treffen
 soll, mit den Folgen für das Wiedererkennen (Abschnitt 3a), und (5) die Einführung von
-`RetractionAnchor.RETENTION_POLICY` für automatische Widerrufe nach Ablauf einer Frist (Abschnitt 4).
+`RetractionSource.RETENTION_POLICY` für automatische Widerrufe nach Ablauf einer Frist (Abschnitt 4).

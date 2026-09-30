@@ -13,7 +13,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -78,7 +78,7 @@ class StepUpStrategyTest : BehaviorSpec({
         // sms alone caps at loa1, but it's unused this run - offering it "helps MFA" even before
         // it alone reaches loa2 (DefaultAuthPolicy.authCandidates' helpsMfa branch).
         val acc = account(method("sms", AcrLevel.LOA2))
-        val theCtx = ctx(account = acc, evidence = AuthEvidence(emptyList()))
+        val theCtx = ctx(account = acc, evidence = SessionEvidence(emptyList()))
         val state = StepUpState.Start(AcrLevel.LOA2, AcrLevel.LOA1)
 
         `when`("freshly entered (Started)") {
@@ -157,7 +157,7 @@ class StepUpStrategyTest : BehaviorSpec({
 
     given("Start, the evidence does not yet satisfy the target") {
         val acc = account(method("sms", AcrLevel.LOA2))
-        val theCtx = ctx(account = acc, evidence = AuthEvidence(emptyList()))
+        val theCtx = ctx(account = acc, evidence = SessionEvidence(emptyList()))
         val state = StepUpState.Start(AcrLevel.LOA2, AcrLevel.LOA1)
 
         `when`("resumed after a RE_IDENTIFY sub-journey (SubJourneyFinished)") {

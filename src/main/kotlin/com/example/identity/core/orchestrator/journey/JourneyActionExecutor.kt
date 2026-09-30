@@ -19,14 +19,14 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AccountService
-import com.example.identity.core.account.RetractionAnchor
+import com.example.identity.core.account.RetractionSource
 import com.example.identity.core.orchestrator.domain.OrchestratorException
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
 import com.example.identity.core.orchestrator.domain.policy.Reachability
 import com.example.identity.core.orchestrator.session.AccountDeletionService
-import com.example.identity.core.orchestrator.session.AuthContextService
-import com.example.identity.core.orchestrator.session.AuthEvidenceService
+import com.example.identity.core.orchestrator.session.AppTokenSessionService
+import com.example.identity.core.orchestrator.session.SessionEvidenceService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.SessionManagementService
 import com.example.identity.core.orchestrator.session.toCoreEvidence
@@ -35,7 +35,7 @@ import com.example.identity.contract.tool_api.directory.IdentityResolver
 import com.example.identity.contract.tool_api.directory.Resolution
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.claims.assertClaimsCovered
 import org.springframework.stereotype.Component
@@ -55,8 +55,8 @@ class JourneyActionExecutor(
     private val journeyRepository: AuthJourneyRepository,
     private val accountService: AccountService,
     private val identityResolver: IdentityResolver,
-    private val authContextService: AuthContextService,
-    private val authEvidenceService: AuthEvidenceService,
+    private val appTokenSessionService: AppTokenSessionService,
+    private val sessionEvidenceService: SessionEvidenceService,
     private val sessionManagementService: SessionManagementService,
     private val accountDeletionService: AccountDeletionService,
     private val toolRegistry: ToolHandlerRegistry,
@@ -108,7 +108,7 @@ class JourneyActionExecutor(
         assertClaimsCovered(action.tool, action.outcome.claims)
         val inHand = channel.accountId
         // A correlation step proves nothing about the subject on its own (ADR-18): see checkCorrelation.
-        if (action.tool.role == MethodRole.CORRELATION) {
+        if (action.tool.role == ToolRole.CORRELATION) {
             val correlatingAccount = checkNotNull(inHand) { "Correlation without a known account under ${journey.intent}" }
             checkCorrelation(loadAccount(correlatingAccount), action.tool.toolId, action.outcome.personId) { personId ->
                 identityResolver.attestedIdentityMatches(correlatingAccount, personId)
@@ -127,7 +127,7 @@ class JourneyActionExecutor(
                     identityResolver.attestationFits(checkNotNull(inHandAccount).accountId, action.outcome.claims.toSet())
                 }
                 when (target) {
-                    IdentificationTarget.NewAccount -> accountService.createUnidentifiedAccount().accountId
+                    IdentificationTarget.NewAccount -> accountService.createAccountInSetup().accountId
                     is IdentificationTarget.AccountInHand -> target.accountId
                 }
             }
@@ -146,11 +146,11 @@ class JourneyActionExecutor(
         return when (val merge = AccountMerge.decide(loadAccount(inHand)) { loadAccount(resolved) }) {
             is AccountMerge.MoveInto -> {
                 rebindAccount(journey, channel, from = merge.from, to = merge.into)
-                accountService.absorbProvisionalAccount(merge.from, merge.into)
+                accountService.absorbDisposableAccount(merge.from, merge.into)
                 merge.into
             }
             is AccountMerge.AbsorbResolved -> {
-                accountService.absorbProvisionalAccount(merge.resolved, merge.into)
+                accountService.absorbDisposableAccount(merge.resolved, merge.into)
                 merge.into
             }
         }
@@ -160,15 +160,15 @@ class JourneyActionExecutor(
         accountService.findAccount(accountId) ?: throw OrchestratorException.processGone(Text("Account not found"), "accountId=$accountId")
 
     /**
-     * Moves a running channel from its provisional account to the resolved one (ADR-20), before
-     * the old account is absorbed and deleted. The evidence trail moves but is not reset: what this
+     * Moves a running channel from its disposable account to the resolved one (ADR-20), before
+     * the old account is absorbed and deleted. The session evidence moves but is not reset: what this
      * session proved still counts. The device link moves too, since it outlives the journey and
      * would otherwise hand a deleted account id to the next FAST_ACCESS run.
      */
     private fun rebindAccount(journey: AuthJourney, channel: ChannelSession, from: Long, to: Long) {
         journey.accountId = to
         channel.subject = Subject.Account(to)
-        channel.authEvidenceId?.let { authEvidenceService.rebindToAccount(it, to) }
+        channel.sessionEvidenceId?.let { sessionEvidenceService.rebindToAccount(it, to) }
         if (channel.channel == ChannelType.APP) {
             channel.bindingKeyRef?.let { bindingKeyRef ->
                 if (sessionManagementService.findLinkedAccountId(bindingKeyRef) == from) {
@@ -191,10 +191,10 @@ class JourneyActionExecutor(
         // Created lazily, as in performAdoptCredential: under REGISTER the address may be the
         // first step. An abandoned channel leaves no orphan (deleteIfAbandonedUnidentified).
         val inHand = channel.accountId
-            ?: accountService.createUnidentifiedAccount().accountId.also { bindAccount(journey, channel, it) }
-        val authEvidenceId = checkNotNull(channel.authEvidenceId) { "Attested without an AuthEvidence" }
-        val evidence = checkNotNull(authEvidenceService.getAuthEvidence(authEvidenceId)) {
-            "AuthEvidence not found: $authEvidenceId"
+            ?: accountService.createAccountInSetup().accountId.also { bindAccount(journey, channel, it) }
+        val sessionEvidenceId = checkNotNull(channel.sessionEvidenceId) { "Attested without an SessionEvidence" }
+        val evidence = checkNotNull(sessionEvidenceService.getSessionEvidence(sessionEvidenceId)) {
+            "SessionEvidence not found: $sessionEvidenceId"
         }
         val coreEvidence = evidence.toCoreEvidence()
         val accountId = accountOfAttestation(journey, channel, inHand, action, coreEvidence)
@@ -211,7 +211,7 @@ class JourneyActionExecutor(
         channel: ChannelSession,
         inHand: Long,
         action: Action.AdoptAttestation,
-        evidence: AuthEvidence
+        evidence: SessionEvidence
     ): Long {
         val resolved = (identityResolver.resolve(action.outcome.claims.toSet()) as? Resolution.ExistingAccount)?.accountId
         if (resolved == null || resolved == inHand) return inHand
@@ -228,10 +228,10 @@ class JourneyActionExecutor(
         // With no account yet (REGISTER), the first completed enrollment creates one. An abandoned
         // channel leaves no orphan (deleteIfAbandonedUnidentified).
         val accountId = channel.accountId
-            ?: accountService.createUnidentifiedAccount().accountId.also { bindAccount(journey, channel, it) }
-        val authEvidenceId = checkNotNull(channel.authEvidenceId) { "Enrolled without an AuthEvidence" }
-        val evidence = checkNotNull(authEvidenceService.getAuthEvidence(authEvidenceId)) {
-            "AuthEvidence not found: $authEvidenceId"
+            ?: accountService.createAccountInSetup().accountId.also { bindAccount(journey, channel, it) }
+        val sessionEvidenceId = checkNotNull(channel.sessionEvidenceId) { "Enrolled without an SessionEvidence" }
+        val evidence = checkNotNull(sessionEvidenceService.getSessionEvidence(sessionEvidenceId)) {
+            "SessionEvidence not found: $sessionEvidenceId"
         }
         val coreEvidence = evidence.toCoreEvidence()
         val label = enrolled.label
@@ -281,7 +281,7 @@ class JourneyActionExecutor(
     private fun performAcceptProof(journey: AuthJourney, channel: ChannelSession, action: Action.AcceptProof) {
         val authenticated = action.outcome
         val named = when (val subject = authenticated.subject) {
-            is Subject.Invitation -> return acceptInvitation(journey, channel, action, subject.hash)
+            is Subject.Invitation -> return acceptInvitation(journey, channel, action, subject.id)
             is Subject.Account -> subject.id
             null -> null
         }
@@ -304,13 +304,13 @@ class JourneyActionExecutor(
      */
     private fun acceptInvitation(journey: AuthJourney, channel: ChannelSession, action: Action.AcceptProof, invitation: String) {
         // Web only for now: the App's journeys and tokens know no subject other than an account.
-        check(channel.channel == ChannelType.KEYCLOAK) { "A one-time password signs in on the Web channel only" }
-        check(action.tool.role == MethodRole.LOOKUP_AUTH) { "Only a lookup tool may name an invitation" }
-        check(channel.accountId == null && channel.invitation == null && channel.authEvidenceId == null) {
+        check(channel.channel == ChannelType.WEB) { "A one-time password signs in on the Web channel only" }
+        check(action.tool.role == ToolRole.ACCOUNT_LOOKUP_AUTH) { "Only a lookup tool may name an invitation" }
+        check(channel.accountId == null && channel.invitation == null && channel.sessionEvidenceId == null) {
             "A process access needs a channel without a subject"
         }
         channel.subject = Subject.Invitation(invitation)
-        channel.authEvidenceId = authEvidenceService.createForInvitation(invitation).authEvidenceId
+        channel.sessionEvidenceId = sessionEvidenceService.createForInvitation(invitation).sessionEvidenceId
         sessionManagementService.updateChannelSession(channel)
         journeyRecorder.recordToolCompletion(journey, channel, action.tool, action.outcome, action.outcome.achievedAcr)
     }
@@ -334,7 +334,7 @@ class JourneyActionExecutor(
     /**
      * The one way a device becomes linked, implicit or explicit, so the revocation below cannot be
      * skipped. A device linked elsewhere means a user-confirmed rebind; the implicit route refuses
-     * that case. KEYCLOAK has no device (docs/02-domaenenmodell.md Abschnitt 1) and gets no link.
+     * that case. WEB has no device (docs/02-domaenenmodell.md Abschnitt 1) and gets no link.
      */
     private fun linkDeviceTo(channel: ChannelSession, accountId: Long) {
         if (channel.channel != ChannelType.APP) return
@@ -421,7 +421,7 @@ class JourneyActionExecutor(
         }
 
         falling.forEach { accountDeletionService.revokeMethod(accountId, it.id) }
-        accountService.retractAttribute(accountId, attributeType, RetractionAnchor.ACCOUNT_HOLDER, reason = "attribute withdrawn")
+        accountService.retractAttribute(accountId, attributeType, RetractionSource.ACCOUNT_HOLDER, reason = "attribute withdrawn")
     }
 
     /** What falls with a credential or an attribute ([MethodDependencies]). */
@@ -429,19 +429,19 @@ class JourneyActionExecutor(
         MethodDependencies(account, toolRegistry) { accountService.claimedTypesOf(account.accountId, it.id) }
 
     /**
-     * Both channel types get an [com.example.identity.core.orchestrator.session.EvidenceTrail]. Only APP also
-     * gets an [com.example.identity.core.orchestrator.session.AuthContext], because only App channels are
+     * Both channel types get an [com.example.identity.core.orchestrator.session.SessionEvidenceRecord]. Only APP also
+     * gets an [com.example.identity.core.orchestrator.session.AppTokenSession], because only App channels are
      * issued tokens (docs/05-api.md).
      */
     private fun bindAccount(journey: AuthJourney, channel: ChannelSession, accountId: Long) {
         journey.accountId = accountId
         channel.subject = Subject.Account(accountId)
-        if (channel.authEvidenceId == null) {
-            // Fresh login: start a new evidence trail rather than reuse a stale one.
-            val evidenceId = checkNotNull(authEvidenceService.createForAccount(accountId).authEvidenceId)
-            channel.authEvidenceId = evidenceId
+        if (channel.sessionEvidenceId == null) {
+            // Fresh login: start a new session evidence rather than reuse a stale one.
+            val evidenceId = checkNotNull(sessionEvidenceService.createForAccount(accountId).sessionEvidenceId)
+            channel.sessionEvidenceId = evidenceId
             if (channel.channel == ChannelType.APP) {
-                channel.authContextId = authContextService.createForAccount(accountId, evidenceId).authContextId
+                channel.appTokenSessionId = appTokenSessionService.createForAccount(accountId, evidenceId).appTokenSessionId
             }
         }
         sessionManagementService.updateChannelSession(channel)

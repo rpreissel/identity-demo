@@ -53,8 +53,8 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
 
         fun evidenceJsonOf(channelSessionId: String): String = jdbcTemplate.queryForObject(
             """
-            SELECT ae.amr_evidence FROM orchestrator.auth_evidence ae
-            JOIN orchestrator.channel_session cs ON cs.auth_evidence_id = ae.id
+            SELECT ae.methods FROM orchestrator.session_evidence ae
+            JOIN orchestrator.channel_session cs ON cs.session_evidence_id = ae.id
             WHERE cs.id = CAST(? AS UUID)
             """,
             String::class.java,

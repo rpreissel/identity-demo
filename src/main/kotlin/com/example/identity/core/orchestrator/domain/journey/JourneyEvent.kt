@@ -13,7 +13,7 @@ sealed interface JourneyEvent {
     /**
      * Evidence was reported directly, outside any tool outcome, e.g. by Keycloak's native
      * authenticators (docs/05-api.md Abschnitt 3). The channel's
-     * [com.example.identity.core.orchestrator.session.EvidenceTrail] is already updated, so a strategy only
+     * [com.example.identity.core.orchestrator.session.SessionEvidenceRecord] is already updated, so a strategy only
      * re-checks `ctx.policy.isSatisfied(...)` as after any other proof.
      */
     data object EvidenceReported : JourneyEvent

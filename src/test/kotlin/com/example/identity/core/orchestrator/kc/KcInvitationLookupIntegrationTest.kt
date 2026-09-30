@@ -20,7 +20,7 @@ import java.util.UUID
 
 /**
  * Keycloak's second federation reads invitations here (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md):
- * by id only, anchored on that id, with the person's master data and the two markers; an ended
+ * by id only, bound on that id, with the person's master data and the two markers; an ended
  * invitation comes back disabled.
  */
 class KcInvitationLookupIntegrationTest : IntegrationTestSupport() {
@@ -36,9 +36,9 @@ class KcInvitationLookupIntegrationTest : IntegrationTestSupport() {
 
     override val resetPerWhen = true
 
-    private fun anchor(value: String) {
+    private fun binding(value: String) {
         every { peerAuthValidator.validate(any(), any(), any()) } returns
-            PeerAuthAssertion(jti = UUID.randomUUID().toString(), issuedAt = Instant.now(), channelAnchor = value, subject = null)
+            PeerAuthAssertion(jti = UUID.randomUUID().toString(), issuedAt = Instant.now(), channelBinding = value, subject = null)
     }
 
     private fun lookup(id: String) =
@@ -61,7 +61,7 @@ class KcInvitationLookupIntegrationTest : IntegrationTestSupport() {
         given("an open invitation") {
             `when`("Keycloak looks it up by its id") {
                 val id = issueForMax()
-                anchor(id)
+                binding(id)
                 val view = lookup(id).body!!
 
                 then("it reads a user of its own: the person's data, both markers, no account, enabled") {
@@ -86,7 +86,7 @@ class KcInvitationLookupIntegrationTest : IntegrationTestSupport() {
             `when`("Keycloak looks it up") {
                 val id = issueForMax()
                 einladungen.abschliessen(id)
-                anchor(id)
+                binding(id)
                 val view = lookup(id).body!!
 
                 then("it comes back disabled, so Keycloak issues no further token") {
@@ -97,7 +97,7 @@ class KcInvitationLookupIntegrationTest : IntegrationTestSupport() {
 
         given("an id the register does not know") {
             `when`("Keycloak looks it up") {
-                anchor("0".repeat(64))
+                binding("0".repeat(64))
                 val status = status("0".repeat(64))
 
                 then("the answer is 404") {
@@ -106,10 +106,10 @@ class KcInvitationLookupIntegrationTest : IntegrationTestSupport() {
             }
         }
 
-        given("an open invitation and an assertion anchored on another one") {
+        given("an open invitation and an assertion bound on another one") {
             `when`("Keycloak looks it up") {
                 val id = issueForMax()
-                anchor("another-invitation")
+                binding("another-invitation")
                 val status = status(id)
 
                 then("the lookup is refused") {

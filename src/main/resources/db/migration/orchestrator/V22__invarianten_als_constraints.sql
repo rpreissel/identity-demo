@@ -15,11 +15,11 @@ ALTER TABLE orchestrator.auth_journey ADD COLUMN running_channel_session_id UUID
 CREATE UNIQUE INDEX ux_journey_running_per_channel ON orchestrator.auth_journey (running_channel_session_id);
 
 -- I-1: ein beendeter Kanal (LOGGED_OUT, EXPIRED) haelt weder Tokens noch Evidenz.
-UPDATE orchestrator.channel_session SET auth_context_id = NULL, auth_evidence_id = NULL
+UPDATE orchestrator.channel_session SET app_token_session_id = NULL, session_evidence_id = NULL
 WHERE state IN ('LOGGED_OUT', 'EXPIRED');
 ALTER TABLE orchestrator.channel_session ADD CONSTRAINT ck_channel_session_ended_without_login
-    CHECK (state NOT IN ('LOGGED_OUT', 'EXPIRED') OR (auth_context_id IS NULL AND auth_evidence_id IS NULL));
+    CHECK (state NOT IN ('LOGGED_OUT', 'EXPIRED') OR (app_token_session_id IS NULL AND session_evidence_id IS NULL));
 
 -- I-4: ein angemeldeter Kanal hat Evidenz.
 ALTER TABLE orchestrator.channel_session ADD CONSTRAINT ck_channel_session_authenticated_with_evidence
-    CHECK (state <> 'AUTHENTICATED' OR auth_evidence_id IS NOT NULL);
+    CHECK (state <> 'AUTHENTICATED' OR session_evidence_id IS NOT NULL);

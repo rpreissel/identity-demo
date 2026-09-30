@@ -12,7 +12,7 @@ import java.time.LocalDate
 internal data class IdentFscState(
     val kvnr: String? = null,
     /** Only without a KVNR (a Partner, ADR-34) - at most one of the two is set, see [IdentFscFlow.merge]. */
-    val partnernr: String? = null,
+    val partnerNumber: String? = null,
     val familyName: String? = null,
     val givenNames: String? = null,
     val birthDate: LocalDate? = null,
@@ -23,7 +23,7 @@ internal data class IdentFscState(
 /** What one PATCH submitted - all optional, exactly the API's "only the changed part" rule. */
 internal data class IdentFscInput(
     val kvnr: String? = null,
-    val partnernr: String? = null,
+    val partnerNumber: String? = null,
     val familyName: String? = null,
     val givenNames: String? = null,
     val birthDate: LocalDate? = null,
@@ -31,7 +31,7 @@ internal data class IdentFscInput(
     val personId: String? = null
 ) {
     /** Whether this PATCH touched the personal data - which is then checked again, right away. */
-    val touchesPersonalDetails: Boolean get() = kvnr != null || partnernr != null || familyName != null || givenNames != null || birthDate != null
+    val touchesPersonalDetails: Boolean get() = kvnr != null || partnerNumber != null || familyName != null || givenNames != null || birthDate != null
 }
 
 /**
@@ -67,20 +67,20 @@ internal object IdentFscFlow {
      */
     fun merge(state: IdentFscState, input: IdentFscInput, digest: (String) -> String): IdentFscState {
         val kvnr = input.kvnr?.ifBlank { null }
-        val partnernr = input.partnernr?.ifBlank { null }
-        val (mergedKvnr, mergedPartnernr) = when {
+        val partnerNumber = input.partnerNumber?.ifBlank { null }
+        val (mergedKvnr, mergedPartnerNumber) = when {
             kvnr != null -> kvnr to null
-            partnernr != null -> null to partnernr
-            else -> (if (input.kvnr != null) null else state.kvnr) to (if (input.partnernr != null) null else state.partnernr)
+            partnerNumber != null -> null to partnerNumber
+            else -> (if (input.kvnr != null) null else state.kvnr) to (if (input.partnerNumber != null) null else state.partnerNumber)
         }
         return IdentFscState(
             kvnr = mergedKvnr,
-            partnernr = mergedPartnernr,
+            partnerNumber = mergedPartnerNumber,
             familyName = input.familyName ?: state.familyName,
             givenNames = input.givenNames ?: state.givenNames,
             birthDate = input.birthDate ?: state.birthDate,
             fscHash = input.fsc?.let { digest(it.trim()) } ?: state.fscHash,
-            personId = if (input.kvnr != null || input.partnernr != null) input.personId else state.personId
+            personId = if (input.kvnr != null || input.partnerNumber != null) input.personId else state.personId
         )
     }
 
@@ -117,7 +117,7 @@ internal object IdentFscFlow {
 
     private fun personalienMissing(state: IdentFscState): List<String> = listOfNotNull(
         // Either identifier will do; the client asks for the KVNR first (ADR-34).
-        "kvnr".takeIf { state.kvnr.isNullOrBlank() && state.partnernr.isNullOrBlank() },
+        "kvnr".takeIf { state.kvnr.isNullOrBlank() && state.partnerNumber.isNullOrBlank() },
         "familyName".takeIf { state.familyName.isNullOrBlank() },
         "givenNames".takeIf { state.givenNames.isNullOrBlank() },
         "birthDate".takeIf { state.birthDate == null }

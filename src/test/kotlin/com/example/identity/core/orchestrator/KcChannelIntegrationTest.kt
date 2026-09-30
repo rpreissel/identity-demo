@@ -39,11 +39,11 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
         beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
     }
 
-    private fun stubAssertion(channelAnchor: String) {
+    private fun stubAssertion(channelBinding: String) {
         every { peerAuthValidator.validate(any(), any(), any()) } returns PeerAuthAssertion(
             jti = UUID.randomUUID().toString(),
             issuedAt = Instant.now(),
-            channelAnchor = channelAnchor,
+            channelBinding = channelBinding,
             subject = null
         )
     }
@@ -81,23 +81,23 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
 
     init {
         given("a fresh Keycloak-chosen channelSessionId, no channel yet") {
-            `when`("PATCH is called with the channel id as its anchor (initial login)") {
+            `when`("PATCH is called with the channel id as its binding (initial login)") {
                 val channelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = channelSessionId.toString())
+                stubAssertion(channelBinding = channelSessionId.toString())
                 val response = kcPatch(channelSessionId)
 
                 then("it creates the channel and offers the initial-login candidates") {
                     response.channel()["channelSessionId"] shouldBe channelSessionId.toString()
-                    response.channel()["channelType"] shouldBe "KEYCLOAK"
+                    response.channel()["channelType"] shouldBe "WEB"
                     response.next()["context"] shouldBe "auth"
                     response.next()["step"] shouldBe "selectMethod"
                     response["authData"] shouldBe mapOf<String, Any?>()
                 }
             }
 
-            `when`("PATCH is called twice with the same id and anchor") {
+            `when`("PATCH is called twice with the same id and binding") {
                 val channelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = channelSessionId.toString())
+                stubAssertion(channelBinding = channelSessionId.toString())
                 val first = kcPatch(channelSessionId)
                 val second = kcPatch(channelSessionId)
 
@@ -106,11 +106,11 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
                 }
             }
 
-            `when`("a later PATCH on the same id presents a different kc-anchor") {
+            `when`("a later PATCH on the same id presents a different kc binding") {
                 val channelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = channelSessionId.toString())
+                stubAssertion(channelBinding = channelSessionId.toString())
                 kcPatch(channelSessionId)
-                stubAssertion(channelAnchor = "a-completely-different-anchor")
+                stubAssertion(channelBinding = "a-completely-different-binding")
                 val result = runCatching { kcPatchRaw(channelSessionId) }
 
                 then("it is rejected as a binding mismatch") {
@@ -135,7 +135,7 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
 
             `when`("accountId names an account that doesn't exist") {
                 val channelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = channelSessionId.toString())
+                stubAssertion(channelBinding = channelSessionId.toString())
                 val result = runCatching {
                     kcPatchRaw(channelSessionId, """{"subject":{"type":"account","id":"999999"},"amr":[{"nativeToolId":"kc-sms-form","amrSourceId":"kc-sms-form-exec-1"}]}""")
                 }
@@ -156,7 +156,7 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
                 )
 
                 val kcChannelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = kcChannelSessionId.toString())
+                stubAssertion(channelBinding = kcChannelSessionId.toString())
                 val response = kcPatch(kcChannelSessionId, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2"}""")
 
                 then("it binds the channel to that account and offers its auth candidates") {
@@ -182,10 +182,10 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
                     Long::class.java,
                     UUID.fromString(authenticatedChannelSessionId)
                 )
-                val otherAccountId = accountService.createUnidentifiedAccount().accountId
+                val otherAccountId = accountService.createAccountInSetup().accountId
 
                 val kcChannelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = kcChannelSessionId.toString())
+                stubAssertion(channelBinding = kcChannelSessionId.toString())
                 kcPatch(kcChannelSessionId, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2"}""")
 
                 val result = runCatching { kcPatchRaw(kcChannelSessionId, """{"subject":{"type":"account","id":"$otherAccountId"}}""") }
@@ -207,7 +207,7 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
                 val email = registerWithEmailAndPassword()
 
                 val channelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = channelSessionId.toString())
+                stubAssertion(channelBinding = channelSessionId.toString())
                 val initial = kcPatch(channelSessionId)
 
                 val toolSessionId = kcPost("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password-lookup")
@@ -232,8 +232,8 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
             `when`("a later PATCH re-reports the same method via amr (a naive full-list resend)") {
                 val email = registerWithEmailAndPassword()
                 val channelSessionId = UUID.randomUUID()
-                val anchor = channelSessionId.toString()
-                stubAssertion(channelAnchor = anchor)
+                val binding = channelSessionId.toString()
+                stubAssertion(channelBinding = binding)
                 kcPatch(channelSessionId)
                 val toolSessionId = kcPost("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password-lookup")
                     .nextRaw()["toolSessionId"] as String
@@ -242,8 +242,8 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
                     """{"email":"$email","password":"correct-horse-battery"}"""
                 )
 
-                // Same channel and anchor: Keycloak resends "password" as if it were native evidence.
-                stubAssertion(channelAnchor = anchor)
+                // Same channel and binding: Keycloak resends "password" as if it were native evidence.
+                stubAssertion(channelBinding = binding)
                 val resumed = kcPatch(channelSessionId, """{"amr":[{"nativeToolId":"kc-password-form","amrSourceId":"kc-password-form-exec-1"}]}""")
 
                 then("its source stays orchestrator - the stronger, verified claim is never downgraded to kc") {
@@ -264,7 +264,7 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
                 )
 
                 val kcChannelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = kcChannelSessionId.toString())
+                stubAssertion(channelBinding = kcChannelSessionId.toString())
                 // sms alone (loa1) does not reach the loa2 floor, but authData already shows the
                 // native evidence.
                 val partial = kcPatch(
@@ -298,7 +298,7 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
         given("a fresh kc channel opened with intent=register") {
             `when`("PATCH is called with intent=register") {
                 val channelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = channelSessionId.toString())
+                stubAssertion(channelBinding = channelSessionId.toString())
                 val response = kcPatch(channelSessionId, """{"intent":"register"}""")
 
                 then("it offers identification, never the login-only lookup candidates") {
@@ -313,19 +313,19 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
 
             `when`("an unknown intent is named") {
                 val channelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = channelSessionId.toString())
+                stubAssertion(channelBinding = channelSessionId.toString())
                 val result = runCatching {
                     kcPatchRaw(channelSessionId, withDefaultAvailableTools("""{"intent":"lookup_login"}"""))
                 }
 
-                then("it is rejected up front, never silently mapped to kc_select_method") {
+                then("it is rejected up front, never silently mapped to web_select_method") {
                     shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
                 }
             }
 
             `when`("identification, sms enrollment, the email obligation and the factor-kind obligation are all driven through") {
                 val channelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = channelSessionId.toString())
+                stubAssertion(channelBinding = channelSessionId.toString())
                 kcPatch(channelSessionId, """{"intent":"register"}""")
 
                 val identToolSessionId = kcPost("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc")
@@ -389,7 +389,7 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = loginAsSeededAccount()
                 val resumed = get("/orchestrator/api/v1/channels/$channelSessionId")
 
-                then("its response never carries authData - authData is KEYCLOAK-only") {
+                then("its response never carries authData - authData is WEB-only") {
                     resumed.containsKey("authData") shouldBe false
                 }
             }
@@ -401,7 +401,7 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
             /** A login at loa2 on a fresh kc channel, and the RestoreData its flow run ends with. */
             fun loginAtLoa2(accountId: Long): Pair<UUID, String> {
                 val channelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = channelSessionId.toString())
+                stubAssertion(channelBinding = channelSessionId.toString())
                 kcPatch(channelSessionId, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2","amr":$natives}""")
                     .channel()["state"] shouldBe "AUTHENTICATED"
                 val token = restTemplate.exchange(
@@ -414,10 +414,10 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
             /** Moves every proof of [channelSessionId] back by [minutes], as if made that long ago. */
             fun ageProofs(channelSessionId: UUID, minutes: Long) {
                 val evidenceId = jdbcTemplate.queryForObject(
-                    "SELECT auth_evidence_id FROM orchestrator.channel_session WHERE id = ?", UUID::class.java, channelSessionId
+                    "SELECT session_evidence_id FROM orchestrator.channel_session WHERE id = ?", UUID::class.java, channelSessionId
                 )
                 val json = jdbcTemplate.queryForObject(
-                    "SELECT CAST(amr_evidence AS VARCHAR) FROM orchestrator.auth_evidence WHERE id = ?", String::class.java, evidenceId
+                    "SELECT CAST(methods AS VARCHAR) FROM orchestrator.session_evidence WHERE id = ?", String::class.java, evidenceId
                 )!!
                 val then = Instant.now().minusSeconds(minutes * 60)
                 val aged = Regex("\"provenAt\":(\"[^\"]*\"|[0-9.eE+-]+)").replace(json) { match ->
@@ -425,17 +425,17 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
                     "\"provenAt\":$stamp"
                 }
                 aged shouldNotBe json
-                jdbcTemplate.update("UPDATE orchestrator.auth_evidence SET amr_evidence = ? FORMAT JSON WHERE id = ?", aged, evidenceId)
+                jdbcTemplate.update("UPDATE orchestrator.session_evidence SET methods = ? FORMAT JSON WHERE id = ?", aged, evidenceId)
             }
 
             fun resume(accountId: Long, token: String): Map<String, Any?> {
                 val channelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = channelSessionId.toString())
+                stubAssertion(channelBinding = channelSessionId.toString())
                 return kcPatch(channelSessionId, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2","restoreData":"$token","kcSessionId":"kc-aged"}""")
             }
 
             `when`("the next flow run asks for loa2 while the proofs are recent") {
-                val accountId = accountService.createUnidentifiedAccount().accountId
+                val accountId = accountService.createAccountInSetup().accountId
                 val (_, token) = loginAtLoa2(accountId)
                 val resumed = resume(accountId, token)
 
@@ -446,12 +446,12 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
             }
 
             `when`("the next flow run asks for loa2 after the proofs are older than 30 minutes") {
-                val accountId = accountService.createUnidentifiedAccount().accountId
+                val accountId = accountService.createAccountInSetup().accountId
                 val (first, _) = loginAtLoa2(accountId)
                 ageProofs(first, minutes = 31)
                 val token = restTemplate.exchange(
                     "http://localhost:$port/orchestrator/api/v1/kc/channels/$first/restore-data?kcSessionId=kc-aged",
-                    HttpMethod.GET, HttpEntity<Void>(kcHeaders().also { stubAssertion(channelAnchor = first.toString()) }), mapType
+                    HttpMethod.GET, HttpEntity<Void>(kcHeaders().also { stubAssertion(channelBinding = first.toString()) }), mapType
                 ).body!!["restoreData"] as String
                 val resumed = resume(accountId, token)
 
@@ -475,7 +475,7 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
 
             `when`("Keycloak's session ends before the channel's flow-run lifetime") {
                 val channelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = channelSessionId.toString())
+                stubAssertion(channelBinding = channelSessionId.toString())
                 kcPatch(channelSessionId)
                 val sessionEnd = Instant.now().plusSeconds(120)
 
@@ -489,7 +489,7 @@ class KcChannelIntegrationTest : IntegrationTestSupport() {
 
             `when`("Keycloak's session outlasts the flow-run lifetime") {
                 val channelSessionId = UUID.randomUUID()
-                stubAssertion(channelAnchor = channelSessionId.toString())
+                stubAssertion(channelBinding = channelSessionId.toString())
                 kcPatch(channelSessionId)
                 val before = expiresAt(channelSessionId)
 

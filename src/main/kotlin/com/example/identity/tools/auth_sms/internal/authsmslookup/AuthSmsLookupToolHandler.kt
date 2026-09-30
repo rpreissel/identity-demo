@@ -4,7 +4,7 @@ import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
-import com.example.identity.tools.auth_sms.internal.SmsSendBudget
+import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 
 import com.example.identity.tools.auth_sms.AuthSmsLookupDescriptor
@@ -30,7 +30,7 @@ class AuthSmsLookupToolHandler(
     private val enrollmentRepository: AuthSmsEnrollmentRepository,
     private val tanGenerator: TanGenerator,
     private val smsGateway: SmsGateway,
-    private val sendBudget: SmsSendBudget,
+    private val sendLimit: SmsSendLimit,
     private val accountDirectory: AccountDirectory,
     private val clock: Clock
 ) {
@@ -45,7 +45,7 @@ class AuthSmsLookupToolHandler(
      * [accountId]/[enrollmentRef] are null for an unknown email, no active sms method, or a
      * locked account. That is handled like a wrong TAN, so the response never reveals whether
      * the email exists (docs/04-orchestrierung.md). Without a resolution nothing is sent. An
-     * exhausted [SmsSendBudget] joins that branch, for the same reason (ADR-44).
+     * exhausted [SmsSendLimit] joins that branch, for the same reason (ADR-44).
      */
     @Transactional
     fun submitEmail(toolSessionId: UUID, accountId: Long?, enrollmentRef: EnrollmentRef?): ToolOutcome {
@@ -55,7 +55,7 @@ class AuthSmsLookupToolHandler(
             ?.takeIf { it.type == SMS_ENROLLMENT_TYPE }
             ?.id?.toLongOrNull()
             ?.let { enrollmentRepository.findByIdOrNull(it) }
-            ?.takeIf { sendBudget.trySend(it.phoneNumber.orEmpty()) }
+            ?.takeIf { sendLimit.trySend(it.phoneNumber.orEmpty()) }
         val resolvedAccountId = accountId.takeIf { enrollment != null }
 
         val issued = tanGenerator.issue()
@@ -88,7 +88,7 @@ class AuthSmsLookupToolHandler(
                 accountDirectory.activeEnrollment(decision.accountId, descriptor.method)
                     ?.id?.toLongOrNull()
                     ?.let { enrollmentRepository.findByIdOrNull(it) }
-                    ?.let { sendBudget.received(it.phoneNumber.orEmpty()) }
+                    ?.let { sendLimit.received(it.phoneNumber.orEmpty()) }
                 ToolOutcome.Completed.Authenticated(
                     amr = listOf(descriptor.method),
                     achievedAcr = descriptor.maxAcr,
@@ -98,9 +98,9 @@ class AuthSmsLookupToolHandler(
             }
 
             is AuthSmsLookupDecision.WrongTan ->
-                // accountId names the throttle subject for the orchestrator; it is null exactly
+                // accountId names the rate limit subject for the orchestrator; it is null exactly
                 // when nothing resolved, so there is nothing to count either.
-                ToolOutcome.Failed.LookupAuth(Text("E-Mail oder TAN ungueltig"), attempted = decision.accountId?.let(Attempted::Account))
+                ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder TAN ungueltig"), attempted = decision.accountId?.let(Attempted::Account))
         }
     }
 

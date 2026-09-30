@@ -45,12 +45,12 @@ class KeycloakResponseSigningIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = UUID.randomUUID()
                 val jti = UUID.randomUUID().toString()
                 every { peerAuthValidator.validate(any(), any(), any()) } returns PeerAuthAssertion(
-                    jti = jti, issuedAt = Instant.now(), channelAnchor = channelSessionId.toString(), subject = null
+                    jti = jti, issuedAt = Instant.now(), channelBinding = channelSessionId.toString(), subject = null
                 )
                 val assertion = SignedJWT(
                     JWSHeader(JWSAlgorithm.ES256),
                     JWTClaimsSet.Builder().issuer("kc-test").audience("orch-test").jwtID(jti)
-                        .issueTime(Date()).claim("channel_anchor", channelSessionId.toString()).build()
+                        .issueTime(Date()).claim("channel_binding", channelSessionId.toString()).build()
                 ).apply { sign(ECDSASigner(ECKeyGenerator(Curve.P_256).generate())) }.serialize()
 
                 val response = restTemplate.exchange(
@@ -86,7 +86,7 @@ class KeycloakResponseSigningIntegrationTest : IntegrationTestSupport() {
                 val assertion = SignedJWT(
                     JWSHeader(JWSAlgorithm.ES256),
                     JWTClaimsSet.Builder().issuer("kc-test").audience("orch-test").jwtID(jti)
-                        .issueTime(Date()).claim("channel_anchor", "texts").build()
+                        .issueTime(Date()).claim("channel_binding", "texts").build()
                 ).apply { sign(ECDSASigner(ECKeyGenerator(Curve.P_256).generate())) }.serialize()
 
                 val response = restTemplate.exchange(

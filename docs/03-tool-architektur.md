@@ -113,14 +113,15 @@ Für dich als Backend-Entwickler heißt das:
 `ToolSession` ist die dritte und kurzlebigste Ebene (`ChannelSession` → `AuthJourney` →
 `ToolSession`). Sie steht für genau einen Durchlauf eines Tools und hält nur technische Daten zu
 dessen Lebenszyklus. `toolId` (z. B. `ident-fsc`, `enroll-sms`, `auth-sms`) bezeichnet Art und
-Methode in einem einzigen Namen. Die `toolId` wird nicht gespeichert, sondern aus der Route
+Verfahren in einem einzigen Namen. Die `toolId` wird nicht gespeichert, sondern aus der Route
 abgeleitet; über sie werden Handler und Datenklasse des Moduls ausgewählt.
 
 Der Tool-Katalog ist **keine zentral gepflegte Tabelle**. Er entsteht aus den Angaben, die die Module
 über sich selbst machen (`ToolDescriptor`, Abschnitt 2). In den Begriffen des
 [externen Glossars](glossar/externes-glossar.md): Tools der Rolle `IDENTIFICATION` sind Identifizierungsmittel, die
-Methoden der Rollen `ENROLLMENT` und `IDENTIFIED_AUTH`/`LOOKUP_AUTH` Authentisierungsmittel
-([Orchestrierung](04-orchestrierung.md), Abschnitt „Begriffe“).
+Tools der Rollen `ENROLLMENT` und `KNOWN_ACCOUNT_AUTH`/`ACCOUNT_LOOKUP_AUTH` gehören zu
+Anmeldeverfahren ([Orchestrierung](04-orchestrierung.md), Abschnitt „Begriffe“, und der
+[Abgleich](glossar/abgleich-externes-glossar.md)).
 
 | toolId | role | method | factorTypes | maxAcr | allowsMultipleInstances |
 |---|---|---|---|---|---|
@@ -129,19 +130,19 @@ Methoden der Rollen `ENROLLMENT` und `IDENTIFIED_AUTH`/`LOOKUP_AUTH` Authentisie
 | `ident-nect` | `IDENTIFICATION` | `nect` | `{possession,knowledge,inherence}` | `loa3` | — |
 | `ident-kvnr` | `CORRELATION` | `kvnr` | `{}` | `loa2` | — |
 | `confirm-email` | `ATTESTATION` | `email` | `{}` | `loa1` | — |
-| `enroll-sms` / `auth-sms` | `ENROLLMENT` / `IDENTIFIED_AUTH` | `sms` | `{possession}` | `loa1` | `false` |
-| `enroll-password` / `auth-password` | `ENROLLMENT` / `IDENTIFIED_AUTH` | `password` | `{knowledge}` | `loa1` | `false` |
-| `enroll-email` / `auth-email` | `ENROLLMENT` / `IDENTIFIED_AUTH` | `email` | `{knowledge}` | `loa1` | `false` |
-| `auth-sms-lookup` / `auth-password-lookup` / `auth-email-lookup` | `LOOKUP_AUTH` | `sms`/`password`/`email` | wie das Gegenstück ohne `-lookup` | `loa1` | `false` |
-| `enroll-device` / `auth-device` | `ENROLLMENT` / `IDENTIFIED_AUTH` | `device` | `{possession,knowledge,inherence}` | `loa2` | `true` |
-| `enroll-kobil` / `auth-kobil` | `ENROLLMENT` / `IDENTIFIED_AUTH` | `kobil` | `{possession,knowledge,inherence}` | `loa2` | `true` |
-| `enroll-qr` / `auth-qr` / `auth-qr-lookup` | `ENROLLMENT` / `IDENTIFIED_AUTH` / `LOOKUP_AUTH` | `qr` | `{}` / `{possession,knowledge}` / `{possession,knowledge}` | `loa1` / `loa2` / `loa2` | `false` |
+| `enroll-sms` / `auth-sms` | `ENROLLMENT` / `KNOWN_ACCOUNT_AUTH` | `sms` | `{possession}` | `loa1` | `false` |
+| `enroll-password` / `auth-password` | `ENROLLMENT` / `KNOWN_ACCOUNT_AUTH` | `password` | `{knowledge}` | `loa1` | `false` |
+| `enroll-email` / `auth-email` | `ENROLLMENT` / `KNOWN_ACCOUNT_AUTH` | `email` | `{knowledge}` | `loa1` | `false` |
+| `auth-sms-lookup` / `auth-password-lookup` / `auth-email-lookup` | `ACCOUNT_LOOKUP_AUTH` | `sms`/`password`/`email` | wie das Gegenstück ohne `-lookup` | `loa1` | `false` |
+| `enroll-device` / `auth-device` | `ENROLLMENT` / `KNOWN_ACCOUNT_AUTH` | `device` | `{possession,knowledge,inherence}` | `loa2` | `true` |
+| `enroll-kobil` / `auth-kobil` | `ENROLLMENT` / `KNOWN_ACCOUNT_AUTH` | `kobil` | `{possession,knowledge,inherence}` | `loa2` | `true` |
+| `enroll-qr` / `auth-qr` / `auth-qr-lookup` | `ENROLLMENT` / `KNOWN_ACCOUNT_AUTH` / `ACCOUNT_LOOKUP_AUTH` | `qr` | `{}` / `{possession,knowledge}` / `{possession,knowledge}` | `loa1` / `loa2` / `loa2` | `false` |
 | `confirm-qr-login` | `PEER_APPROVAL` | `qr` | `{}` | `loa2` | — |
-| `auth-invite` | `LOOKUP_AUTH` | `invite` | `{possession}` | `loa2` (je Einladung `loa1` oder `loa2`) | — |
+| `auth-invite` | `ACCOUNT_LOOKUP_AUTH` | `invite` | `{possession}` | `loa2` (je Einladung `loa1` oder `loa2`) | — |
 
 Die Entscheidungen dahinter:
 
-- Jedes Modul liefert Kategorie, Methode, Faktortyp und Niveau selbst; es gibt keinen zentral zu
+- Jedes Modul liefert Kategorie, Verfahren, Faktortyp und Niveau selbst; es gibt keinen zentral zu
   pflegenden Katalog.
 - `method` wird **nicht** aus der `toolId` herausgelesen. `enroll-sms` und `auth-sms` melden
   dieselbe `method`; darüber findet ein Tool zum Anmelden die passende Zeile in
@@ -173,7 +174,7 @@ Die Entscheidungen dahinter:
   drei Stellen geprüft. Bleibt nichts übrig, bricht die Journey genauso ab
   (`exhausted`/Cancel), als hätte der Nutzer alle Kandidaten abgelehnt.
 - Auch die **Reihenfolge** legt der Betreiber je Kanaltyp fest: eine Rangfolge der Tools, die jede
-  Auswahl in diesem Kanal übernimmt. Sie wirkt nur innerhalb einer Rolle (`MethodRole`), denn
+  Auswahl in diesem Kanal übernimmt. Sie wirkt nur innerhalb einer Rolle (`ToolRole`), denn
   jede Auswahl zeigt nur Tools einer Rolle; die Admin-Seite gruppiert entsprechend. Tools ohne
   Rang stehen dahinter, sortiert nach Rolle und Verfahren. Sortiert wird erst beim Ausliefern der
   Auswahl (`JourneyRouting.stepFor`), nicht im gespeicherten Angebot der Journey. Eine geänderte
@@ -181,9 +182,9 @@ Die Entscheidungen dahinter:
 - `role=ATTESTATION` (`confirm-email`) kennzeichnet den Nachweis, ein Attribut des Kontos zu
   kontrollieren: kein Credential, keine Identität. Wann ein Tool diese Rolle hat, steht in
   Abschnitt 2 („`ATTEST`").
-- `role=LOOKUP_AUTH` kennzeichnet Anmeldungen, die ihr Subjekt aus der Eingabe selbst finden statt
+- `role=ACCOUNT_LOOKUP_AUTH` kennzeichnet Anmeldungen, die ihr Subjekt aus der Eingabe selbst finden statt
   über den Kanal. Die `-lookup`-Varianten haben dieselbe `method` wie ihr Gegenstück mit
-  `IDENTIFIED_AUTH` und finden das Konto über eine eingegebene E-Mail-Adresse; ohne diese
+  `KNOWN_ACCOUNT_AUTH` und finden das Konto über eine eingegebene E-Mail-Adresse; ohne diese
   Unterscheidung wäre die Auswahl der Kandidaten mehrdeutig. `auth-invite` hat kein Gegenstück und
   findet über Nummer und Einmalkennwort eine Einladung statt eines Kontos (Abschnitt 1, „Was
   `auth-invite` vom Personenverzeichnis bekommt“).
@@ -192,7 +193,7 @@ Die Entscheidungen dahinter:
   (erneuten) Identifizierung, denn `forIdentification` und `reIdentCandidates` prüfen die Rolle,
   nicht die Kategorie. Starten lässt er sich erst, wenn die Identität bereits bestätigt ist
   (`requires`, ADR-18). `factorTypes = {}` folgt aus dieser Rolle, definiert sie aber nicht.
-- `allowsMultipleInstances=true` (`device`, `kobil`): Mehrere aktive Einträge derselben Methode
+- `allowsMultipleInstances=true` (`device`, `kobil`): Mehrere aktive Einträge desselben Verfahrens
   dürfen gleichzeitig bestehen, einer je physischem Gerät. Sonst gilt die Regel, dass ein neues
   Einrichten den alten Eintrag ersetzt. Das ist eine reine **Regel fürs Speichern**: Sie sagt nur,
   ob ein neues Einrichten das alte ersetzt.
@@ -218,23 +219,23 @@ Die Entscheidungen dahinter:
   Schalter (sie würde nie abgefragt) lassen sich so gar nicht ausdrücken. Es braucht also keine
   Prüfung, die beides zusammenhält.
 - `keyBinding` ist **getrennt** von `allowsMultipleInstances`, obwohl `device` und `kobil` heute
-  beides bejahen. Das eine aus dem anderen abzuleiten, ginge nur gut, solange jede Methode mit
-  mehreren Einträgen auch an einen Schlüssel gebunden ist. Eine künftige Methode, die lediglich
+  beides bejahen. Das eine aus dem anderen abzuleiten, ginge nur gut, solange jedes Verfahren mit
+  mehreren Einträgen auch an einen Schlüssel gebunden ist. Ein künftiges Verfahren, das lediglich
   mehrere Einträge nebeneinander erlaubt, bekäme sonst unbemerkt die Bedeutung eines
-  Geräteschlüssels, die sie nie beansprucht hat.
+  Geräteschlüssels, die es nie beansprucht hat.
 - `enroll-kobil`/`auth-kobil` binden das Gerät nicht selbst, sondern über den externen
   Dienstleister KOBIL. Es ist das erste Verfahren, dessen Nachweis **nicht über den Client läuft**:
   Der Client überbringt nur eine Einmalkennung (OTP); die Bestätigung holt sich das Backend selbst
   beim Anbieter ab (Abschnitt 7 in [Abläufe](06-ablaeufe.md)). Der Besitz des Geräts ist damit
-  stärker belegt als bei jedem anderen Tool; das Zugangsmittel ist es nicht (nächster Punkt).
+  stärker belegt als bei jedem anderen Tool; das Entsperren ist es nicht (nächster Punkt).
 - Beim KOBIL-Verfahren liegt der PIN **im Backend des Tools**, nicht beim Nutzer. Er wird beim
   Einrichten dort erzeugt und bei jeder Anmeldung an den Client herausgegeben, nachdem dieser
   sich lokal entsperrt hat: per Gerätegeheimnis mit Biometrie-Schutz oder per Passwort des Kontos
   (ADR-21). Dieses Entsperren ist die `userVerification` des Verfahrens, kein zweiter Nachweis. Es
   nutzt die im Projekt üblichen Namen: `pin` für Wissen, `biometric` für Inhärenz – dieselben
   Werte wie bei `auth-device`. (Ein amr-Eintrag `password` wäre nicht nur ein neuer Name, sondern
-  falsch: amr-Werte und Methodennamen teilen sich einen Namensraum, und `JourneyRecorder` würde
-  dem Durchlauf die echte Passwort-Methode des Kontos anhängen.)
+  falsch: amr-Werte und Namen der Verfahren teilen sich einen Namensraum, und `JourneyRecorder` würde
+  dem Durchlauf das echte Passwort-Verfahren des Kontos anhängen.)
 - Beide Wege zum Entsperren sind optional. Welche es für ein bestimmtes Credential gibt,
   **berechnet der Server**: Biometrie nur, wenn der Nutzer ihr beim Einrichten zugestimmt hat
   (dann gibt es `unlock_secret_hash`, sonst ist die Spalte NULL), das Passwort nur, solange das
@@ -243,7 +244,7 @@ Die Entscheidungen dahinter:
 - `kobil` deklariert dieselben `factorTypes` und dasselbe `maxAcr` wie `device` und hat damit
   **dieselbe Ausnahme** von der Regel „nur nachweisbare Faktoren melden"
   ([Orchestrierung](04-orchestrierung.md) Abschnitt 8): Wie entsperrt wurde, gibt in beiden Fällen
-  der Client selbst an. Beides wird bewusst gleich behandelt, statt für dasselbe Zugangsmittel eine
+  der Client selbst an. Beides wird bewusst gleich behandelt, statt für dasselbe Entsperren eine
   zweite, strengere Regel einzuführen.
 - `keyBinding` liest beim KOBIL-Verfahren den **DPoP-Schlüssel** des Kanals
   (`kobilBindingKeyRef`), nicht die Gerätekennung von KOBIL. Wenn das Verfahren angeboten wird,
@@ -258,7 +259,7 @@ Die Entscheidungen dahinter:
   die Anmeldung bestätigt, muss laut `ConfirmPeerLoginStrategy.gate()` vorher selbst frisch loa2
   nachgewiesen haben. Das ist MFA aus einem einzigen Verfahren wie bei `ident-eid` und passt zu
   `maxAcr=loa2`.
-- `confirm-qr-login` hat die Rolle `MethodRole.PEER_APPROVAL` (Kategorie `SIDE_ACTION`), denn
+- `confirm-qr-login` hat die Rolle `ToolRole.PEER_APPROVAL`, denn
   keine der übrigen Rollen passt auf „bestätigt, was jemand anderes tut".
 
 Zentral bleibt nur, was ein Modul nicht wissen *kann*: welches Niveau sich aus einer
@@ -311,8 +312,8 @@ Personenverzeichnis findet `ident-nect` nicht; die Zuordnung folgt wie nach `ide
 `auth-invite` meldet eine Person ohne Konto für genau einen Vorgang an
 ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Die Einladungen gehören dem
 Personenverzeichnis; das Tool fragt es über den Port `Invitations` (`redeem(personId, code)`), wie
-`ident-fsc` den Freischaltcode über `ActivationCodes`. Der Controller löst Versicherungs- oder
-Partnernummer über `PersonDirectory` zur Person auf und fragt die Personen-Drossel; das Tool prüft das
+`ident-fsc` den Freischaltcode über `ActivationCodes`. Der Controller löst Mitglieds- oder
+Partnernummer über `PersonDirectory` zur Person auf und fragt die Personen-Mengenbegrenzung; das Tool prüft das
 Kennwort gegen die offenen Einladungen dieser Person. Das Ergebnis ist `Completed.Authenticated` mit
 `Subject.Invitation` und dem Niveau der Einladung. Die Journey bindet dann kein Konto, sondern die
 Einladung als Subjekt des Kanals (`ChannelSession.invitation`). Angeboten wird das Tool nur im
@@ -330,18 +331,18 @@ aus Abschnitt 1:
 |---|---|
 | `toolId` | z. B. `"auth-sms"` – frei vergeben, nie aus `role` und `method` abgeleitet (öffentlicher API-Vertrag) |
 | `method` | z. B. `"sms"` – verbindet `enroll-sms`, `auth-sms` und `auth-sms-lookup` |
-| `role` | `IDENTIFICATION` \| `CORRELATION` \| `ATTESTATION` \| `ENROLLMENT` \| `IDENTIFIED_AUTH` \| `LOOKUP_AUTH` \| `PEER_APPROVAL`; die Kategorie (`role.category`: `IDENT`/`ATTEST`/`ENROLL`/`AUTH`/`SIDE_ACTION`) wird direkt daraus gelesen und nicht auf dem Descriptor wiederholt |
+| `role` | `IDENTIFICATION` \| `CORRELATION` \| `ATTESTATION` \| `ENROLLMENT` \| `KNOWN_ACCOUNT_AUTH` \| `ACCOUNT_LOOKUP_AUTH` \| `PEER_APPROVAL`; jede Entscheidung fragt die Rolle selbst, keine gröbere Einteilung |
 | `factorTypes`, `maxAcr` | feste Obergrenzen dieses Tools |
 | `claims` | welche Attribute das Tool mit welcher `ClaimSource` bezeugen darf; ein Durchlauf meldet nie mehr |
 | `startStep` | erster Schritt eines neuen Durchlaufs, standardmäßig aus der Rolle abgeleitet (`role.defaultStartStep`) |
 | `requires`, `allowsMultipleInstances`, `keyBinding`, `instanceDisclosure` | standardmäßig leere Menge, `false`, `null` bzw. `null` |
 
 `(method, role)` ist der eindeutige Schlüssel für „das konkrete Verfahren dieser Art für dieses
-Credential". `(method, role.category)` allein reicht nicht, weil sich `IDENTIFIED_AUTH` und
-`LOOKUP_AUTH` die Kategorie `AUTH` teilen. `ToolHandlerRegistry` lehnt beim Einsammeln der
+Credential": `auth-sms` und `auth-sms-lookup` gehören zum selben Verfahren, haben aber verschiedene
+Rollen. `ToolHandlerRegistry` lehnt beim Einsammeln der
 Descriptors ein doppeltes Paar `(method, role)` ab, statt unbemerkt einen der beiden zu nehmen.
 
-`tool_api` kennt **keine** konkreten Methoden. Jedes Modul deklariert seine eigene Konstante (z. B.
+`tool_api` kennt **keine** konkreten Verfahren. Jedes Modul deklariert seine eigene Konstante (z. B.
 in `auth_sms/Descriptors.kt`: `internal const val SMS_METHOD = "sms"`), damit der Katalog ohne
 zentrale Liste auskommt. Die `toolId` wird bewusst *nicht* aus `(method, role)` abgeleitet: Sie ist
 öffentlicher API-Vertrag (URL-Pfade, Frontend-Routing), auch wenn die heutigen Werte dem Muster
@@ -361,17 +362,17 @@ abgeschlossen oder ist fehlgeschlagen.
 | `Completed.Identified(claims, ...)` | Identität festgestellt; höchstens ein `PERSON_ID`-Claim (eine Partnernummer). Verfahren, die nur bezeugen, was sie lesen (`ident-eid`, `ident-nect`), liefern keinen |
 | `Completed.Attested(claims)` | Attribut bestätigt; kein `enrollmentRef`, `amr` leer, kein eigenes Niveau (Abschnitt „ATTEST" unten) |
 | `Completed.Enrolled(enrollmentRef, ...)` | Verfahren eingerichtet |
-| `Completed.Authenticated(subject?, ...)` | Nachweis erbracht; `subject` setzen nur die `LOOKUP_AUTH`-Tools: das Konto (`Subject.Account`) oder, bei `auth-invite`, die Einladung (`Subject.Invitation`) |
+| `Completed.Authenticated(subject?, ...)` | Nachweis erbracht; `subject` setzen nur die `ACCOUNT_LOOKUP_AUTH`-Tools: das Konto (`Subject.Account`) oder, bei `auth-invite`, die Einladung (`Subject.Invitation`) |
 | `Completed.Approved(...)` | Ein `PEER_APPROVAL`-Tool (`confirm-qr-login`) hat eine fremde Anfrage bestätigt |
 
 Ein Fehlschlag nennt über seine Variante, gegen wen der Versuch lief – davon hängt ab, welche
 Sperre nach zu vielen Versuchen greift. Das Subjekt ist ein Pflichtfeld; „niemand“ ist ein
 ausdrückliches `null`, kein vergessener Standardwert:
 
-- **`IdentifiedAuth(reason)`** (`IDENTIFIED_AUTH`): gegen das Konto, das der Kanal schon kennt.
-- **`LookupAuth(reason, attempted)`** (`LOOKUP_AUTH`): gegen das Konto (`Attempted.Account`), das
+- **`KnownAccountAuth(reason)`** (`KNOWN_ACCOUNT_AUTH`): gegen das Konto, das der Kanal schon kennt.
+- **`AccountLookupAuth(reason, attempted)`** (`ACCOUNT_LOOKUP_AUTH`): gegen das Konto (`Attempted.Account`), das
   die Eingabe ergab, oder `null`. Ein Einmalkennwort gehört einer Person: `auth-invite` nennt
-  `Attempted.Person`, und es zählt die Personen-Drossel wie beim Freischaltcode.
+  `Attempted.Person`, und es zählt die Personen-Mengenbegrenzung wie beim Freischaltcode.
 - **`Identification(reason, attemptedPersonId)`** (`IDENTIFICATION`, `CORRELATION`): gegen die
   Person, die die Eingabe ergab, oder `null`.
 - **`NothingGuessed(reason)`** (`ENROLLMENT`, `ATTESTATION`, `PEER_APPROVAL`): Kein Geheimnis eines
@@ -381,11 +382,11 @@ Eine Variante, die nicht zur Rolle des Tools passt, weist der Orchestrator als V
 des Moduls ab, bevor er etwas bucht; das gilt für `Failed` wie für `Completed`.
 
 Jeder gemeldete Claim wird vor der Verarbeitung geprüft (`Claim.validateValue`): Er darf nicht leer
-sein, ein `PERSON_ID` muss eine Partnernummer sein (`tool_api.values.Partnernr`, `P` und neun Ziffern) und
+sein, ein `PERSON_ID` muss eine Partnernummer sein (`tool_api.values.PartnerNumber`, `P` und neun Ziffern) und
 ein Geburtsdatum ein ISO-Datum.
 
-Jede `Completed`-Variante trägt außerdem `amr` (die nachgewiesenen Methoden, für
-`AuthEvidence.currentAmr`), `achievedAcr` und `factorTypes` (eine Teilmenge der
+Jede `Completed`-Variante trägt außerdem `amr` (die nachgewiesenen Verfahren, für
+`SessionEvidence.currentAmr`), `achievedAcr` und `factorTypes` (eine Teilmenge der
 `ToolDescriptor.factorTypes`). Die Variante *ist* die Kategorie und legt fest, was der
 Orchestrator tut.
 
@@ -393,7 +394,7 @@ Orchestrator tut.
 
 `confirm-email` weist nach, dass jemand eine Adresse **kontrolliert**: Dort kommt ein Code an. Das
 ist weder „wer bist du" (`IDENT`) noch „weise ein Mittel nach" (`AUTH`) noch „richte ein Mittel ein"
-(`ENROLL`). Deshalb gibt es die Rolle `MethodRole.ATTESTATION` mit dem Ergebnis
+(`ENROLL`). Deshalb gibt es die Rolle `ToolRole.ATTESTATION` mit dem Ergebnis
 `ToolOutcome.Completed.Attested`: Claims ja, `enrollmentRef` nein, `amr` leer und kein eigenes
 Niveau. Der Anker wird unter dem Niveau geschrieben, das die Sitzung schon nachgewiesen hat; eine
 bestätigte Adresse hebt das Niveau des Kanals nie an.
@@ -433,12 +434,11 @@ im Änderungsprotokoll wiedergefunden, auch nach der Löschung ihres Kontos (ADR
 `ToolHandlerRegistry` verweigert den Start, wenn ein Verfahren der Rolle `IDENTIFICATION` eines der
 drei nicht deklariert.
 
-`ToolCategory.SIDE_ACTION` benennt, was `PEER_APPROVAL`-Tools gemeinsam haben: Sie tragen nichts
-zu ACR und AMR des *eigenen* Kanals bei, werden nie vorausgewählt, um eine Lücke zu schließen, und
-nur ausdrücklich per `intent` gestartet. Bewusst heißt die Kategorie **nicht** `MISC` oder `OTHER`:
-Das würde die Vollständigkeit aushebeln, die `ToolCategory` als abgeschlossenes `enum` sichert.
-`AuthPolicy.candidateTools` und `enrollmentCandidates` haben einen eigenen Zweig für
-`SIDE_ACTION`, der nichts anbietet. Lehnt jemand eine fremde Anfrage ab, braucht das **kein**
+Tools der Rolle `PEER_APPROVAL` tragen nichts zu ACR und AMR des *eigenen* Kanals bei
+(`evidenceAxis` ist für sie `null`), werden nie als Kandidat angeboten, um eine Lücke zu schließen,
+und nur ausdrücklich per `intent` gestartet. Weil `ToolRole` ein abgeschlossenes `enum` ist und
+`evidenceAxis` jede Rolle ausdrücklich behandelt, muss eine neue Rolle angeben, was sie zum Niveau
+beiträgt. Lehnt jemand eine fremde Anfrage ab, braucht das **kein**
 eigenes `ToolOutcome`; `Failed(reason = "Vom Nutzer abgelehnt")` genügt.
 
 - `InProgress.stepData` ist **für den Client bestimmt** (z. B. `missingFields`); `Completed` und
@@ -464,7 +464,7 @@ eigenes `ToolOutcome`; `Failed(reason = "Vom Nutzer abgelehnt")` genügt.
   Profil. `confirm-email` prüft selbst **nicht**, ob die Adresse schon zu einem Konto gehört: Vor
   der Eingabe des Codes ist sie nur eingetippt, nicht bewiesen. Wem die bestätigte Adresse gehört,
   entscheidet danach die zentrale Auflösung. Gehört sie zu einem anderen Konto, geht das
-  vorläufige Konto darin auf, sofern die bestätigte Identität dazu passt
+  verwerfbare Konto darin auf, sofern die bestätigte Identität dazu passt
   ([12-entscheidungen.md](12-entscheidungen.md) ADR-20).
 
 ---
@@ -500,7 +500,7 @@ Ports liegen in Unterpaketen nach Thema ([Projektrahmen](08-projektrahmen.md) M8
   IDENT-Tools). Geschrieben werden sie nur vom Orchestrator, aus dem `Failed`-Ergebnis des Tools.
   Implementiert von `LockoutsService`.
 - **`AccountDirectory`** / **`PersonDirectory`** / **`DeviceProofs`** – schmale Schnittstellen zum
-  Lesen und Prüfen von Daten zu Konto, Person und Gerätenachweis (z. B. findet `auth-sms-lookup`
+  Lesen und Prüfen von Daten zu Konto, Person und Geräte-Proof (z. B. findet `auth-sms-lookup`
   darüber ein Konto anhand der E-Mail-Adresse). Implementiert von `AccountService` (`account`),
   `Personenverzeichnis` (`personenverzeichnis`) bzw. `DeviceProofValidator` (`orchestrator`),
   jeweils direkt im Domänenservice, ohne eigene Adapterklasse. Den Freischaltcode prüft `ident_fsc`
@@ -508,8 +508,8 @@ Ports liegen in Unterpaketen nach Thema ([Projektrahmen](08-projektrahmen.md) M8
   implementiert (ADR-31, Nachtrag). Das Personenverzeichnis ist damit nur über Ports erreichbar; an
   ihnen wechselt die Sprache vom Deutsch des Registers ins Englische unseres Codes.
   `PersonDirectory` löst eine KVNR (`findPersonIdByKvnr`) oder eine Partnernummer
-  (`findPersonIdByPartnernr`) zur PersonId auf, gleicht Personalien ab (`matchesMasterData`,
-  `matchesPersonalDetails`) und gibt die Versicherungsnummer (`insuranceNumberOf`) und den
+  (`findPersonIdByPartnerNumber`) zur PersonId auf, gleicht Personalien ab (`matchesMasterData`,
+  `matchesPersonalDetails`) und gibt die Mitgliedsnummer (`memberNumberOf`) und den
   Anzeigenamen (`displayName`) heraus – nie die übrigen Stammdaten.
 - **`IdentityResolver`** – beantwortet, ob bestätigte Claims zu einem bestehenden Konto gehören
   (`resolve`, `attestedIdentityMatches`). Implementiert von `IdentityMatchingService` (`account`).
@@ -522,20 +522,20 @@ Ports liegen in Unterpaketen nach Thema ([Projektrahmen](08-projektrahmen.md) M8
 - **`SmsCredentialPort`** / **`PasswordCredentialPort`** / **`QrCredentialPort`** – richten ein
   Credential für Aufrufer ein, die das Konto schon kennen und keine Tool-Sitzung haben (etwa die
   Demo-Startdaten); implementiert in `auth_sms`, `auth_password` bzw. `auth_qr`.
-- **`AttemptBudget`** / **`AttemptBudgets`** – das Zählwerk des Orchestrators, geliehen an die
+- **`RateLimit`** / **`RateLimits`** – das Zählwerk des Orchestrators, geliehen an die
   Module ([ADR-44](adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)). Ein Modul
-  leitet je Budget eine Klasse von `AttemptBudget` ab und legt dort Grenze und Zeitfenster fest;
+  leitet je Mengenbegrenzung eine Klasse von `RateLimit` ab und legt dort Grenze und Zeitfenster fest;
   welchen Schlüssel es zählt und wann es zurücksetzt, entscheidet sein Handler. So begrenzen
-  `auth_sms` (`SmsSendBudget`) und `auth_email` (`EmailSendBudget`) selbst, wie viele Codes sie an
-  eine Nummer oder Adresse schicken. Der Namensraum eines Budgets folgt aus Modul und Klasse, ein
-  Modul kann also nur in seinem eigenen zählen. Ein Budget ist keine Sperre: Es begrenzt den
-  Versand, nicht das Raten ([Betrieb](07-betrieb.md) Abschnitt 4). `AttemptBudgets` implementiert
-  `ModuleAttemptBudgets` (`orchestrator`); es speichert den Schlüssel nur als HMAC. Ein Modul, das
+  `auth_sms` (`SmsSendLimit`) und `auth_email` (`EmailSendLimit`) selbst, wie viele Codes sie an
+  eine Nummer oder Adresse schicken. Der Namensraum einer Mengenbegrenzung folgt aus Modul und Klasse, ein
+  Modul kann also nur in seinem eigenen zählen. Eine Mengenbegrenzung ist keine Sperre: Sie begrenzt den
+  Versand, nicht das Raten ([Betrieb](07-betrieb.md) Abschnitt 4). `RateLimits` implementiert
+  `ModuleRateLimits` (`orchestrator`); es speichert den Schlüssel nur als HMAC. Ein Modul, das
   selbst etwas ablehnt, wirft dafür `TooManyRequestsException` (`tool_api`, `429`), aber nur, wo
   die Ablehnung nichts verrät.
 - **`PersonChanged`** – kein Port, sondern ein Event: die Änderungsmeldung des
   Personenverzeichnisses (Partnernummer, geänderte Attributarten, neue KVNR und
-  Versicherungsnummer). Es liegt hier, damit `personenverzeichnis` es veröffentlichen und
+  Mitgliedsnummer). Es liegt hier, damit `personenverzeichnis` es veröffentlichen und
   `account` darauf reagieren kann (`PersonChangeListener`), ohne dass die beiden Module einander
   kennen (ADR-34).
 - **`EnrollmentCleanup`** – die umgekehrte Richtung: eine Schnittstelle, über die in einem

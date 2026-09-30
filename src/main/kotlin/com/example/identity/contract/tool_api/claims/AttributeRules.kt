@@ -1,8 +1,8 @@
 package com.example.identity.contract.tool_api.claims
 
-import com.example.identity.contract.tool_api.values.Partnernr
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.values.Kvnr
-import com.example.identity.contract.tool_api.values.InsuranceNumber
+import com.example.identity.contract.tool_api.values.MemberNumber
 import com.example.identity.contract.tool_api.values.Email
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.directory.BindingStrength
@@ -63,7 +63,7 @@ val AttributeType.authority: AttributeAuthority
             AnchorRule(AnchorAcrFloor(AcrLevel.LOA2, AcrLevel.LOA2), allowsReplacement = false, retractableByHolder = false)
         )
         // Replaced or released when the Personenverzeichnis reports a change (ADR-34).
-        AttributeType.INSURANCE_NUMBER -> AttributeAuthority.Local(
+        AttributeType.MEMBER_NUMBER -> AttributeAuthority.Local(
             AnchorRule(AnchorAcrFloor(AcrLevel.LOA2, AcrLevel.LOA2), allowsReplacement = true, retractableByHolder = false)
         )
         AttributeType.EID_RESTRICTED_ID,
@@ -99,10 +99,10 @@ val AttributeType.isLocalAnchor: Boolean
  * instead of falling back to a weaker match. A non-anchor type is a contract error.
  */
 fun AttributeType.normalizeAnchorValue(value: String): String = when (this) {
-    AttributeType.PERSON_ID -> Partnernr.of(value).value
+    AttributeType.PERSON_ID -> PartnerNumber.of(value).value
     AttributeType.EID_RESTRICTED_ID,
     AttributeType.NECT_RESTRICTED_ID -> value.trim()
-    AttributeType.INSURANCE_NUMBER -> InsuranceNumber.of(value).value
+    AttributeType.MEMBER_NUMBER -> MemberNumber.of(value).value
     AttributeType.EMAIL -> Email.of(value).value
     AttributeType.KVNR -> {
         // Validate the format first, so a malformed value fails like any other bad input.

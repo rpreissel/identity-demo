@@ -1,4 +1,4 @@
-# ADR-24: Eine Methode hängt von einer anderen ab, indem sie deren Angabe verlangt
+# ADR-24: Ein Verfahren hängt von einem anderen ab, indem es dessen Angabe verlangt
 
 **Status**: umgesetzt.
 
@@ -25,7 +25,7 @@ eine widerrufene Instanz mitnimmt, ermittelt `AccountService.claimedTypesOf` mit
 demselben `MethodModule`-Filter wie der Widerruf selbst.
 
 **Erwogene Alternative**: Eine eigene Descriptor-Eigenschaft `dependsOnMethods: Set<String>`, die
-Methodennamen nennt. Zuerst so gebaut und wieder zurückgenommen: Sie hätte neben dem Claim-Modell eine
+Namen von Verfahren nennt. Zuerst so gebaut und wieder zurückgenommen: Sie hätte neben dem Claim-Modell eine
 zweite Art eingeführt, Abhängigkeiten auszudrücken, und die Kette über die Adresse gar nicht erfasst,
 weil dort kein Verfahren beteiligt ist.
 

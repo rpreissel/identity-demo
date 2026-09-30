@@ -4,7 +4,7 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimDeclaration
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.ClaimSource
@@ -17,7 +17,7 @@ internal const val FSC_METHOD = "fsc"
 @Component
 object IdentFscDescriptor : ToolDescriptor {
     override val toolId = ToolId("ident-fsc")
-    override val role = MethodRole.IDENTIFICATION
+    override val role = ToolRole.IDENTIFICATION
     override val method = FSC_METHOD
     override val factorTypes = setOf(FactorType.POSSESSION)
     override val maxAcr = AcrLevel.LOA2
@@ -26,7 +26,7 @@ object IdentFscDescriptor : ToolDescriptor {
     override val claims = setOf(
         ClaimDeclaration(AttributeType.PERSON_ID, ClaimSource.PERSON_DIRECTORY),
         ClaimDeclaration(AttributeType.KVNR, ClaimSource.PERSON_DIRECTORY),
-        ClaimDeclaration(AttributeType.INSURANCE_NUMBER, ClaimSource.PERSON_DIRECTORY),
+        ClaimDeclaration(AttributeType.MEMBER_NUMBER, ClaimSource.PERSON_DIRECTORY),
         ClaimDeclaration(AttributeType.FAMILY_NAME, ClaimSource.PERSON_DIRECTORY),
         ClaimDeclaration(AttributeType.GIVEN_NAMES, ClaimSource.PERSON_DIRECTORY),
         ClaimDeclaration(AttributeType.BIRTH_DATE, ClaimSource.PERSON_DIRECTORY)

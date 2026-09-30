@@ -7,8 +7,7 @@ import com.example.identity.tools.ident_kvnr.IdentKvnrDescriptor
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
-import com.example.identity.contract.tool_api.MethodRole
-import com.example.identity.contract.tool_api.ToolCategory
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolOutcome
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -35,12 +34,12 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
     beforeTest {
         every { repository.findById(toolSessionId) } returns Optional.of(data)
         every { repository.save(any()) } returns data
-        every { personDirectory.insuranceNumberOf(any()) } returns null
+        every { personDirectory.memberNumberOf(any()) } returns null
     }
 
     given("a KVNR the register resolves") {
         then("it asserts the person reference and the number, both vouched for by the register") {
-            val outcome = handler.patch(toolSessionId, "A123456789", partnernr = null, personId = "P000000042", matchesAttestedIdentity = true)
+            val outcome = handler.patch(toolSessionId, "A123456789", partnerNumber = null, personId = "P000000042", matchesAttestedIdentity = true)
 
             outcome.shouldBeInstanceOf<ToolOutcome.Completed.Identified>()
             outcome.claims shouldBe listOf(
@@ -52,18 +51,18 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
 
     given("a person insured with us") {
         then("the Versicherungsnummer comes along as an anchor claim (ADR-34)") {
-            every { personDirectory.insuranceNumberOf("P000000042") } returns "10000001"
+            every { personDirectory.memberNumberOf("P000000042") } returns "10000001"
 
-            val outcome = handler.patch(toolSessionId, "A123456789", partnernr = null, personId = "P000000042", matchesAttestedIdentity = true)
+            val outcome = handler.patch(toolSessionId, "A123456789", partnerNumber = null, personId = "P000000042", matchesAttestedIdentity = true)
 
             outcome.shouldBeInstanceOf<ToolOutcome.Completed.Identified>()
-            outcome.claims.last() shouldBe Claim(AttributeType.INSURANCE_NUMBER, "10000001", ClaimSource.PERSON_DIRECTORY, IdentKvnrDescriptor.maxAcr)
+            outcome.claims.last() shouldBe Claim(AttributeType.MEMBER_NUMBER, "10000001", ClaimSource.PERSON_DIRECTORY, IdentKvnrDescriptor.maxAcr)
         }
     }
 
     given("a Partner without a KVNR, identified by Partnernummer (ADR-34)") {
         then("it asserts the person reference only - no KVNR claim") {
-            val outcome = handler.patch(toolSessionId, kvnr = null, partnernr = "P000000004", personId = "P000000004", matchesAttestedIdentity = true)
+            val outcome = handler.patch(toolSessionId, kvnr = null, partnerNumber = "P000000004", personId = "P000000004", matchesAttestedIdentity = true)
 
             outcome.shouldBeInstanceOf<ToolOutcome.Completed.Identified>()
             outcome.claims shouldBe listOf(
@@ -72,7 +71,7 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
         }
 
         then("an unknown Partnernummer fails without saying whether it exists") {
-            val outcome = handler.patch(toolSessionId, kvnr = null, partnernr = "P999999999", personId = null, matchesAttestedIdentity = false)
+            val outcome = handler.patch(toolSessionId, kvnr = null, partnerNumber = "P999999999", personId = null, matchesAttestedIdentity = false)
 
             outcome.shouldBeInstanceOf<ToolOutcome.Failed.Identification>()
             outcome.reason.template shouldBe "Partnernummer konnte nicht zugeordnet werden"
@@ -81,7 +80,7 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
 
     given("a KVNR the register does not know") {
         then("it fails with a message that does not reveal whether the number exists") {
-            val outcome = handler.patch(toolSessionId, "X999999999", partnernr = null, personId = null, matchesAttestedIdentity = false)
+            val outcome = handler.patch(toolSessionId, "X999999999", partnerNumber = null, personId = null, matchesAttestedIdentity = false)
 
             outcome.shouldBeInstanceOf<ToolOutcome.Failed.Identification>()
             outcome.reason.template shouldBe "Versichertennummer konnte nicht zugeordnet werden"
@@ -90,7 +89,7 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
 
     given("a KVNR that belongs to a person other than the one this account had attested") {
         then("it fails exactly like an unknown one, but counts the guess against that person") {
-            val outcome = handler.patch(toolSessionId, "A123456789", partnernr = null, personId = "P000000042", matchesAttestedIdentity = false)
+            val outcome = handler.patch(toolSessionId, "A123456789", partnerNumber = null, personId = "P000000042", matchesAttestedIdentity = false)
 
             outcome.shouldBeInstanceOf<ToolOutcome.Failed.Identification>()
             outcome.reason.template shouldBe "Versichertennummer konnte nicht zugeordnet werden"
@@ -100,7 +99,7 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
 
     given("no KVNR submitted yet") {
         then("it keeps asking for one") {
-            val outcome = handler.patch(toolSessionId, kvnr = null, partnernr = null, personId = null, matchesAttestedIdentity = false)
+            val outcome = handler.patch(toolSessionId, kvnr = null, partnerNumber = null, personId = null, matchesAttestedIdentity = false)
 
             outcome.shouldBeInstanceOf<ToolOutcome.InProgress>()
             outcome.nextStep shouldBe "input"
@@ -109,8 +108,7 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
 
     given("the descriptor") {
         then("it declares itself a correlation step - stated, not inferred from an empty factor set") {
-            IdentKvnrDescriptor.role shouldBe MethodRole.CORRELATION
-            IdentKvnrDescriptor.role.category shouldBe ToolCategory.IDENT
+            IdentKvnrDescriptor.role shouldBe ToolRole.CORRELATION
         }
 
         then("it is only offerable once an attestation established the identity to match against") {

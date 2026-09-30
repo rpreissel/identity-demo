@@ -15,10 +15,10 @@ import com.example.identity.contract.tool_api.claims.normalizeAnchorValue
 import com.example.identity.contract.tool_api.directory.normalizeKvnr
 import com.example.identity.contract.tool_api.claims.anchorRule
 import com.example.identity.contract.tool_api.claims.isLocalAnchor
-import com.example.identity.contract.tool_api.claims.TrustLevel
+import com.example.identity.contract.tool_api.claims.ClaimTrust
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
-import com.example.identity.contract.tool_api.claims.trustLevel
+import com.example.identity.contract.tool_api.claims.claimTrust
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 
@@ -98,7 +98,7 @@ class IdentityMatchingService(
 
     /**
      * Unique lookups via `account.anchor`. KVNR resolves live to the external person ID and then to
-     * that person's anchor. Claims are ranked by [AnchorRule.bindingStrength], not by [TrustLevel] or
+     * that person's anchor. Claims are ranked by [AnchorRule.bindingStrength], not by [ClaimTrust] or
      * set order, so the strongest anchor (PERSON_ID) is always consulted first.
      */
     private fun resolveByAnchor(claims: Set<Claim>, externalPersonId: String?): Resolution.ExistingAccount? {

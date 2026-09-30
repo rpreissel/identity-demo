@@ -11,15 +11,15 @@
         <p class="orchestrator-subtitle">${t.of("Geben Sie Ihre Versichertennummer und das Einmalkennwort aus unserem Brief ein.")}</p>
         <form id="kc-orchestrator-tool-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
             <@demoPerson.personPicker personsJson=demoInvitationsJson! pickerId="demoInvitation" labelKey="label"
-                title=t.of("Einladung übernehmen") fieldMapJson='{"kvnr":"kvnr","partnernr":"partnernr","code":"code"}' />
+                title=t.of("Einladung übernehmen") fieldMapJson='{"kvnr":"kvnr","partnerNumber":"partnerNumber","code":"code"}' />
             <div class="${properties.kcFormGroupClass!}">
                 <label for="kvnr" class="${properties.kcLabelClass!}">${t.of("Versichertennummer")}</label>
                 <input type="text" id="kvnr" name="kvnr" class="${properties.kcInputClass!}" autocomplete="off"/>
             </div>
             <details class="${properties.kcFormGroupClass!}">
                 <summary>${t.of("Ich habe keine Versichertennummer")}</summary>
-                <label for="partnernr" class="${properties.kcLabelClass!}">${t.of("Partnernummer")}</label>
-                <input type="text" id="partnernr" name="partnernr" class="${properties.kcInputClass!}" placeholder="P000000000"/>
+                <label for="partnerNumber" class="${properties.kcLabelClass!}">${t.of("Partnernummer")}</label>
+                <input type="text" id="partnerNumber" name="partnerNumber" class="${properties.kcInputClass!}" placeholder="P000000000"/>
             </details>
             <div class="${properties.kcFormGroupClass!}">
                 <label for="code" class="${properties.kcLabelClass!}">${t.of("Einmalkennwort")}</label>

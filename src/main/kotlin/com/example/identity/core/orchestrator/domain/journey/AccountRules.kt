@@ -1,11 +1,11 @@
 package com.example.identity.core.orchestrator.domain.journey
 
 import com.example.identity.core.account.AccountProfile
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.directory.IdentityConflictException
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolId
 
 /*
@@ -31,7 +31,7 @@ sealed interface IdentificationTarget {
          * - **Nothing in hand:** a new account.
          * - **An account without a person binding** takes the attestation (ADR-10). A second account
          *   beside it would silently split one run across two. It must be the same person, though:
-         *   an Interessent that already attested an identity must not take a second one
+         *   a prospect that already attested an identity must not take a second one
          *   ([attestationFits]).
          * - **An identified account** plus an attestation that resolves to nobody means a different
          *   person. Mixing a stranger's identity into it must never happen quietly. Registering on
@@ -49,20 +49,20 @@ sealed interface IdentificationTarget {
 
 /**
  * Two accounts meet in one run: the one in hand and the one an identification or attestation
- * resolved to (ADR-20). The provisional account is absorbed into the other one, whichever of the two
- * it is. If neither is provisional, nothing moves.
+ * resolved to (ADR-20). The disposable account is absorbed into the other one, whichever of the two
+ * it is. If neither is disposable, nothing moves.
  */
 sealed interface AccountMerge {
     /**
-     * The account in hand is provisional (ident first): a placeholder was opened for an attestation
+     * The account in hand is disposable (ident first): a placeholder was opened for an attestation
      * that resolved nobody, and the correlation step then found the real account. The session moves
-     * over and takes the attestation along. Also the answer when both are provisional, so the anchor
+     * over and takes the attestation along. Also the answer when both are disposable, so the anchor
      * that did the resolving stays where the rest of the stock expects it.
      */
     data class MoveInto(val from: Long, val into: Long) : AccountMerge
 
     /**
-     * The resolved account is provisional ("Enrollment zuerst"): the account in hand holds this
+     * The resolved account is disposable ("Enrollment zuerst"): the account in hand holds this
      * run's new credentials, the resolved one is a placeholder left by an abandoned eID run and found
      * again through its `restricted_id` anchor (ADR-19). The session absorbs it; otherwise that
      * leftover would block its own card forever.
@@ -71,21 +71,21 @@ sealed interface AccountMerge {
 
     companion object {
         /**
-         * Neither provisional is refused: two real accounts would merge, which is a decision for an
+         * Neither disposable is refused: two real accounts would merge, which is a decision for an
          * explicit account merge, not a side effect of identification. [resolved] is only looked up
-         * when the account in hand is not provisional.
+         * when the account in hand is not disposable.
          */
         fun decide(inHand: AccountProfile, resolved: () -> AccountProfile): AccountMerge {
-            if (inHand.isProvisional) return MoveInto(from = inHand.accountId, into = resolved().accountId)
+            if (inHand.isDisposable) return MoveInto(from = inHand.accountId, into = resolved().accountId)
             val other = resolved()
-            if (other.isProvisional) return AbsorbResolved(resolved = other.accountId, into = inHand.accountId)
+            if (other.isDisposable) return AbsorbResolved(resolved = other.accountId, into = inHand.accountId)
             throw IdentityConflictException(Text("Identification claims resolve to a different account"))
         }
     }
 }
 
 /**
- * A correlation step (`MethodRole.CORRELATION`, ident-kvnr, ADR-18) proves nothing about the subject.
+ * A correlation step (`ToolRole.CORRELATION`, ident-kvnr, ADR-18) proves nothing about the subject.
  * It only turns a typed number into a register-vouched person. Without the [matches] check, attesting
  * yourself and then typing a stranger's number would bind their anchor here.
  *
@@ -113,8 +113,8 @@ fun checkCorrelation(account: AccountProfile, toolId: ToolId, claimedPersonId: S
  * The attested identity must also fit a target with a register person ([matches], as in ADR-18):
  * owning a mailbox says "this mailbox is mine", not "I am that person".
  */
-fun checkAttestationMove(evidence: AuthEvidence, targetPersonId: String?, matches: (String) -> Boolean) {
-    if (evidence.factors.none { it.axis == EvidenceAxis.IDENTITY }) {
+fun checkAttestationMove(evidence: SessionEvidence, targetPersonId: String?, matches: (String) -> Boolean) {
+    if (evidence.methods.none { it.axis == EvidenceAxis.IDENTITY }) {
         throw IdentityConflictException(Text("Diese Adresse gehoert bereits zu einem Konto. Melden Sie sich damit an, statt sich neu zu registrieren."))
     }
     if (targetPersonId != null && !matches(targetPersonId)) {
@@ -123,13 +123,13 @@ fun checkAttestationMove(evidence: AuthEvidence, targetPersonId: String?, matche
 }
 
 /**
- * Which account a proven credential belongs to. Only [MethodRole.LOOKUP_AUTH] may name one, because
+ * Which account a proven credential belongs to. Only [ToolRole.ACCOUNT_LOOKUP_AUTH] may name one, because
  * it resolves the account from a submitted identifier. Every other role proves a credential of the
  * account the channel already knows. A named account must still agree with one in hand: nothing
  * legitimately switches accounts mid-journey.
  */
-fun accountOfProof(role: MethodRole, namedByTool: Long?, inHand: Long?): Long {
-    val named = namedByTool?.takeIf { role == MethodRole.LOOKUP_AUTH }
+fun accountOfProof(role: ToolRole, namedByTool: Long?, inHand: Long?): Long {
+    val named = namedByTool?.takeIf { role == ToolRole.ACCOUNT_LOOKUP_AUTH }
     if (named != null && inHand != null && named != inHand) {
         throw IdentityConflictException(Text("Der Nachweis gehoert zu einem anderen Konto als dieser Sitzung"))
     }

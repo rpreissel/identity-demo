@@ -11,7 +11,7 @@ Was die Antworten fachlich bedeuten – insbesondere `next` –, ergibt sich aus
 ## 1) API-Grundsätze
 
 - Die öffentliche API ist unter `/orchestrator/api/v1` versioniert.
-- Verschiedene Methoden und Modi haben jeweils eigene, konkrete Endpunkte. Die URL bestimmt die
+- Verschiedene Verfahren und Modi haben jeweils eigene, konkrete Endpunkte. Die URL bestimmt die
   Operation, nicht der Inhalt der Anfrage.
 - Vorbereitende Schritte arbeiten mit Tool-Ressourcen: Ein `POST` auf den Kanal legt das Tool an;
   danach gestaltet das Tool seinen eigenen URL-Bereich selbst (Abschnitt 2).
@@ -62,12 +62,12 @@ Arten von Endpunkten liegen bewusst woanders:
 denselben Bericht (`ActiveSessions`):
 
 - **Orchestrator:** die lebenden `ChannelSession`s, also weder `LOGGED_OUT` noch `EXPIRED` und
-  `expiresAt` in der Zukunft. Gezählt je Kanaltyp (`APP`, `KEYCLOAK` = Website), dazu die zehn
+  `expiresAt` in der Zukunft. Gezählt je Kanaltyp (`APP`, `WEB` = Website), dazu die zehn
   neuesten mit Zustand, Konto und Anzeigename aus dem Personenverzeichnis.
 - **Keycloak** (nur mit Profil `keycloak`): die offenen Sitzungen des Browser-Clients und des
   App-Token-Clients, gelesen über die Admin-API als `orchestrator-migration`. Je Client die Anzahl und die
   zehn neuesten, jeweils mit dem Kanal, der dazugehört: im App-Kanal über
-  `AuthContext.keycloakSessionId`, auf der Website über `ChannelSession.durableKcSessionId`. Ist
+  `AppTokenSession.keycloakSessionId`, auf der Website über `ChannelSession.durableKcSessionId`. Ist
   Keycloak nicht erreichbar, sagt `keycloak.error` das; der Rest des Berichts kommt trotzdem.
 
 `POST …/admin/demo-reset` und `POST …/demo/reset` setzen die Demo auf dieselbe Weise zurück
@@ -228,13 +228,13 @@ Pfade:
 - Verfahren hinzufügen (startet das Einrichten): `POST .../{channelSessionId}/enrollments` (ohne
   Inhalt)
 - Verfahren deaktivieren: `DELETE .../{channelSessionId}/methods/{methodInstanceId}` (ohne Inhalt)
-  – adressiert über die ID des Eintrags, nicht über den Namen der Methode (siehe unten)
+  – adressiert über die ID des Eintrags, nicht über den Namen des Verfahrens (siehe unten)
 - Konto löschen (startet eine Journey): `POST .../{channelSessionId}/account-deletions` (ohne
   Inhalt)
 - Rückfrage beantworten: `POST .../{channelSessionId}/answer` mit `{"answer": "accept"|"decline"}` –
   der gemeinsame Endpunkt für jeden `Prompt` (siehe unten)
 - Tool über den Kanal anlegen: `POST .../{channelSessionId}/tools/{toolId}` – `201` mit
-  `Location: .../tools/{toolSessionId}/{toolId}` (ohne Inhalt; die `toolId` trägt Art und Methode
+  `Location: .../tools/{toolSessionId}/{toolId}` (ohne Inhalt; die `toolId` trägt Art und Verfahren
   zusammen)
 - Tool fortschreiben und lesen: im Regelfall `PATCH`/`GET /orchestrator/api/v1/tools/{toolSessionId}/{toolId}`
 - Zurück zur Auswahl: `POST /orchestrator/api/v1/tools/{toolSessionId}/{toolId}/back`
@@ -274,7 +274,7 @@ URL-Bereich der Tools:
 `DELETE .../journey` bricht die laufende `AuthJourney` ab und setzt `ChannelSession.state` zurück
 ([Domänenmodell](02-domaenenmodell.md) Abschnitt 3). Danach startet der Kanal **denselben Intent**
 erneut, mit dem er eröffnet wurde. Bricht man `STEP_UP` oder `MANAGE_AUTH_METHODS` ab, lautet die
-Antwort direkt `authenticated`. Die Zuordnung zum Konto und der `AuthContext` werden über die
+Antwort direkt `authenticated`. Die Zuordnung zum Konto und die `AppTokenSession` werden über die
 Geräteverknüpfung (`DeviceAccountLink`) neu abgeleitet; ein zuvor per `ident-fsc` angelegtes Konto bleibt bestehen.
 
 Im Web-Kanal ruft „Abbrechen“ auf der Verfahrensauswahl der Keycloak-Anmeldeseite dieses `DELETE`
@@ -282,7 +282,7 @@ Im Web-Kanal ruft „Abbrechen“ auf der Verfahrensauswahl der Keycloak-Anmelde
 `OrchestratorAuthenticator`). Keycloak kehrt dann mit `error=access_denied` zur Website zurück, die
 „Anmeldung abgebrochen“ anzeigt. Würde derselbe Intent neu starten, landete der Nutzer sonst
 wieder auf derselben Seite, und eine Registrierung würde endlos neu beginnen. Der verlassene
-KEYCLOAK-Kanal läuft nach seiner Lebensdauer von selbst ab.
+Web-Kanal läuft nach seiner Lebensdauer von selbst ab.
 
 ### Logout
 
@@ -293,15 +293,15 @@ Zwei Varianten:
   Zustimmung über `POST .../answer` wird der Kanal `LOGGED_OUT`.
 - **Sofort abmelden** (für Clients ohne Rückfrage): `DELETE /channels/{channelSessionId}` beendet
   den Kanal direkt (`AUTHENTICATED → LOGGED_OUT`, Endzustand, `204`), bricht einen laufenden Ablauf
-  ab und verwirft den `AuthContext`.
+  ab und verwirft die `AppTokenSession`.
 
 Die Geräteverknüpfung bleibt nutzbar (`DeviceAccountLink`, [DPoP-Bindung](09-dpop.md) Abschnitt 3).
 
 ### AccessToken (`GET .../{channelSessionId}/token`)
 
-**Nur im `APP`-Kanal** (ADR-9): Ein `KEYCLOAK`-Kanal hat nie einen `AuthContext`
+**Nur im `APP`-Kanal** (ADR-9): Ein `WEB`-Kanal hat nie eine `AppTokenSession`
 und braucht auch keinen. `ChannelService.getToken` prüft deshalb zuerst den Kanaltyp und weist einen
-`KEYCLOAK`-Kanal mit `409 INVALID_STATE_TRANSITION` ab. Für `APP` entscheidet `TokenProvider` je
+`WEB`-Kanal mit `409 INVALID_STATE_TRANSITION` ab. Für `APP` entscheidet `TokenProvider` je
 nach Profil:
 
 - **Standardprofil** (`MockTokenProvider`): liefert das Mock-JWT aus `TokenService`
@@ -316,7 +316,7 @@ nach Profil:
      `AUTHENTICATED`): Der Orchestrator ruft den eigenen OAuth2-Grant auf
      (`urn:identity-demo:account-token`, `AccountTokenGrantType` in `keycloak-extension`, ADR-9), mit
      `account_id`, `acr` und `amr` als Parameter. Der Grant öffnet die Sitzung; ihre Id (`sid`)
-     merkt sich der `AuthContext` als `keycloakSessionId`.
+     merkt sich die `AppTokenSession` als `keycloakSessionId`.
   4. Ein Step-up hat die zwischengespeicherten Tokens verworfen: derselbe Grant, zusätzlich mit
      `session_id`. Er setzt genau diese Sitzung fort und schreibt das neue `acr`/`amr` hinein; gilt
      sie nicht mehr, lehnt er ab, statt eine neue zu öffnen.
@@ -331,7 +331,7 @@ nach Profil:
   desselben Kontos ([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)).
 
 **Die Sitzung entsteht mit der Anmeldung.** Das erste Token holt nicht der Client, sondern der
-Übergang nach `AUTHENTICATED` selbst (`JourneyService.finish` → `AppLoginSession`). Lehnt Keycloak
+Übergang nach `AUTHENTICATED` selbst (`JourneyService.finish` → `AppTokenIssuer`). Lehnt Keycloak
 die Sitzung ab, wird der Kanal nicht `AUTHENTICATED`: Die Antwort des letzten Schritts ist
 `409 INVALID_STATE_TRANSITION`, der Schritt ist zurückgerollt, und der Nutzer wählt das Verfahren
 noch einmal. Ist die Sitzung beim Abschluss eines Step-ups schon abgelaufen, endet der Kanal als
@@ -346,8 +346,8 @@ Verfahren, Antwort) das Token per Refresh, sobald ein Viertel des Fensters verbr
 verlängert Keycloaks Leerlauf-Fenster und die Frist des Kanals. Lehnt Keycloak ab, endet der Kanal
 als `EXPIRED`, und die Interaktion bekommt `410 PROCESS_GONE`.
 
-`minValiditySeconds` wirkt in beiden Profilen gleich. Ausnahme: Ein Step-up, der die `AuthEvidence`
-verändert (`AuthEvidenceService.applyEvidence`/`applyEvidenceUpdate`), verwirft das
+`minValiditySeconds` wirkt in beiden Profilen gleich. Ausnahme: Ein Step-up, der die `SessionEvidence`
+verändert (`SessionEvidenceService.applyEvidence`/`applyEvidenceUpdate`), verwirft das
 zwischengespeicherte Token ausdrücklich; die Sitzung und ihr Fenster bleiben.
 
 **Ablauf der Anmeldung**: Ein abgelaufenes Sitzungsfenster, oder eine Erneuerung oder Fortsetzung,
@@ -368,12 +368,12 @@ Kanals beenden.
 ### ID-Token-Claims (`GET .../{channelSessionId}/idclaims`)
 
 **Nur im `APP`-Kanal**, wie das AccessToken oben; es gilt dieselbe Vorbedingung, und ein
-`KEYCLOAK`-Kanal bekommt ebenso `409 INVALID_STATE_TRANSITION`.
+`WEB`-Kanal bekommt ebenso `409 INVALID_STATE_TRANSITION`.
 
 Die fachlichen Claims (nicht in die Signatur des AccessTokens eingebaut) sind:
 `sub`/`accountId`/`personId`/`versnr`, `acr`/`amr`, `auth_time`, `email`/`email_verified` und
 `name`. `personId` ist die Partnernummer (`P` und neun Ziffern, ADR-34), `versnr` die
-Versicherungsnummer; beide kommen live aus dem Personenverzeichnis.
+Mitgliedsnummer; beide kommen live aus dem Personenverzeichnis.
 
 `email` und `email_verified` beschreiben das angemeldete Konto: Es ist die Adresse, deren Kontrolle
 der Inhaber mit `confirm-email` bewiesen hat, und nur für sie ist `email_verified` wahr. Keycloak
@@ -398,7 +398,7 @@ Claim für die Rolle würde dieselben Werte nur doppelt ausdrücken. Es gilt der
 im Begrüßungstext – „Angemeldet als *Name* (Versicherter/Partner/Interessent)" – und die
 vollständigen Claims zum Aufklappen, wie die Details des AccessTokens.
 
-### Methoden verwalten (AuthIntent.MANAGE_AUTH_METHODS)
+### Verfahren verwalten (AuthIntent.MANAGE_AUTH_METHODS)
 
 Freiwillige Verwaltung des eigenen Kontos auf einem Kanal, der bereits `AUTHENTICATED` ist,
 unabhängig von `REGISTER` und `STEP_UP` ([Orchestrierung](04-orchestrierung.md) Abschnitt 3).
@@ -414,17 +414,17 @@ unabhängig von `REGISTER` und `STEP_UP` ([Orchestrierung](04-orchestrierung.md)
 - `DELETE .../methods/{methodInstanceId}` widerruft einen aktiven *Eintrag* eines Verfahrens: Die
   Credential-Zeile des Moduls, dem sie gehört, wird gelöscht (`EnrollmentCleanup`); der Eintrag
   selbst bleibt deaktiviert stehen. Adressiert wird er über die `id` aus `GET .../methods`, nie über
-  den Namen der Methode, denn eine Methode kann mehrere aktive Einträge haben
+  den Namen des Verfahrens, denn ein Verfahren kann mehrere aktive Einträge haben
   (`docs/03-tool-architektur.md`, `allowsMultipleInstances`). Die Antwort ist `409`, wenn das Konto
   danach das `requiredAcr` des Kanals nicht mehr erreichen könnte – sonst könnte sich jemand selbst
   aussperren. Das Widerrufen ist nicht auf Einträge des aufrufenden Geräts beschränkt.
 - `DELETE .../attributes/{attribute}` nimmt ein **Attribut des Kontos** zurück statt eines
   Credentials; das ist nur die bestätigte E-Mail-Adresse (`email`). Welches Attribut der Inhaber
   selbst zurücknehmen darf, sagt `AnchorRule.retractableByHolder`; Identitätsanker (`person_id`,
-  `insurance_number`, die Karten-Pseudonyme) sind es nicht und werden mit 409 abgelehnt. Es ist das Gegenstück zu
+  `member_number`, die Karten-Pseudonyme) sind es nicht und werden mit 409 abgelehnt. Es ist das Gegenstück zu
   `DELETE .../methods/{id}` und durchläuft dieselbe Prüfung. Der Unterschied liegt in den Folgen:
   Jedes Credential, das dieses Attribut per `requires` verlangt hat, wird mit entzogen, und zwar
-  über alle Stufen hinweg. Eine zurückgenommene Adresse nimmt also ein darauf eingerichtetes
+  über alle Ebenen hinweg. Eine zurückgenommene Adresse nimmt also ein darauf eingerichtetes
   Passwort mit (`enroll-password` verlangt `ClaimRequirement(EMAIL, PROVEN)`) und alles, was
   seinerseits daran hängt (ADR-24). Die Antwort ist `409`, wenn genau diese Folgen das Konto unter
   das `requiredAcr` des Kanals drücken würden; die Meldung nennt, was dabei mitfallen würde.
@@ -478,7 +478,7 @@ identifiziertes Konto nur loa1, [Orchestrierung](04-orchestrierung.md) Abschnitt
    Step-up stattfinden, zählt dessen Nachweis bereits als der hier geforderte.
 4. Nach erfolgreichem Nachweis wird das Konto mit allem, was nur ihm gehört, unwiderruflich
    gelöscht: alle Credential-Datensätze der Methodenmodule, auf die seine Verfahren verweisen
-   (aktive **und** abgelöste), der `DeviceAccountLink`, jeder `AuthContext` und die Zeile in
+   (aktive **und** abgelöste), der `DeviceAccountLink`, jede `AppTokenSession` und die Zeile in
    `account` selbst. Die `person` im Personenverzeichnis (`personenverzeichnis`) bleibt
    unberührt ([Tool-Architektur](03-tool-architektur.md), `EnrollmentCleanup`).
 5. Jede `ChannelSession`, die je an dieses Konto gebunden war, wird auf dem Server auf
@@ -592,19 +592,19 @@ die Lebensdauer des Kanals fest. Ein Tool außerhalb dieser Menge wird nie angeb
 direktem Aufruf abgelehnt (`docs/03-tool-architektur.md`, Verfügbarkeit). Zusätzlich kann der
 Betreiber jedes Tool je Kanaltyp zur Laufzeit sperren und die Reihenfolge der Angebote je Kanaltyp
 festlegen (`GET /orchestrator/admin/tools/availability`,
-`PUT .../tools/{toolId}/availability/{APP|KEYCLOAK}`, `PUT .../tools/order/{APP|KEYCLOAK}`). Das
+`PUT .../tools/{toolId}/availability/{APP|WEB}`, `PUT .../tools/order/{APP|WEB}`). Das
 sind Betriebsendpunkte, nicht Teil des App-Vertrags (ADR-32).
 
 ### `GET /channels/{channelSessionId}`
 
 Liest den stabilen Kanalzustand. Neben `state` stehen im `channel`-Block zwei weitere Felder:
 
-- `currentAmr`: was **diese Sitzung** schon nachgewiesen hat (aus der `AuthEvidence` der Sitzung).
+- `currentAmr`: was **diese Sitzung** schon nachgewiesen hat (aus der `SessionEvidence` der Sitzung).
 - `activeMethods`: alle eingerichteten Verfahren des Kontos als Objekte
   `{id, method, label, factorTypes, maxAcr, enrolledUnderAcr, effectiveAcr}`, unabhängig davon, was
   diese Sitzung geprüft hat. `fsc` ist nie dabei, denn eine Identifizierung steht im Protokoll
   `account.change_log` (IDENTIFIED), nicht in `account.auth_method`. `id` adressiert den Eintrag für
-  `DELETE`. `label` ist nur bei Methoden gesetzt, die mehrere Einträge haben können (derzeit
+  `DELETE`. `label` ist nur bei Verfahren gesetzt, die mehrere Einträge haben können (derzeit
   `device` und `kobil`). `auth-device` wird zum Anmelden nur auf dem Gerät mit dem passenden
   Schlüssel angeboten (`docs/04-orchestrierung.md`); deaktivieren lässt es sich von überall.
 
@@ -631,14 +631,14 @@ gestohlenes Gerät soll nicht verraten, wem es gehört. Den Namen liefern nach d
 ID-Token-Claims.
 
 Dazu kommt ein Demo-Feld `boundCredentials`: je ein Eintrag `{method, reference}` für jedes an einen
-Schlüssel gebundene Credential des verknüpften Kontos, das auf **diesem** Schlüssel liegt. Die
-Methode `device` nennt ihren Credential-Schlüssel, `kobil` die Kennung, die der Anbieter diesem
+Schlüssel gebundene Credential des verknüpften Kontos, das auf **diesem** Schlüssel liegt. Das
+Verfahren `device` nennt seinen Credential-Schlüssel, `kobil` die Kennung, die der Anbieter diesem
 Telefon gegeben hat. Was angezeigt wird, entscheidet jedes Modul selbst
 (`ToolDescriptor.instanceDisclosure`, [03-tool-architektur.md](03-tool-architektur.md)); der
-Orchestrator kennt dafür keinen einzigen Methodennamen.
+Orchestrator kennt dafür keinen einzigen Verfahrensnamen.
 
 Ein fehlender Eintrag sagt dabei genauso viel wie ein vorhandener: Hat ein Client lokale Daten zu
-einer Methode, die hier nicht mehr steht, sind diese Daten veraltet. Genau daran erkennt das
+einem Verfahren, das hier nicht mehr steht, sind diese Daten veraltet. Genau daran erkennt das
 KOBIL-Frontend, dass es sein Gerätegeheimnis löschen muss ([09-dpop.md](09-dpop.md) Abschnitt 3).
 
 ### `POST /channels/{channelSessionId}/step-ups`: Step-up-Auslöser
@@ -677,8 +677,8 @@ Sie folgen demselben Muster wie `ident-fsc`/`enroll-sms`/`auth-sms` oben, mit di
 ### Anmeldung über die E-Mail-Adresse (`auth-sms-lookup` / `auth-password-lookup` / `auth-email-lookup`, „Login ohne DPoP")
 
 Nur erreichbar über `POST /channels` mit `intent: "lookup_login"`, nie über die normale Auswahl der
-Kandidaten (`MethodRole.LOOKUP_AUTH`; `AuthPolicy.candidateTools` wählt ausschließlich
-`IDENTIFIED_AUTH`). Diese Tools finden das Konto selbst über die eingegebene E-Mail-Adresse:
+Kandidaten (`ToolRole.ACCOUNT_LOOKUP_AUTH`; `AuthPolicy.candidateTools` wählt ausschließlich
+`KNOWN_ACCOUNT_AUTH`). Diese Tools finden das Konto selbst über die eingegebene E-Mail-Adresse:
 
 - `auth-sms-lookup` und `auth-email-lookup` arbeiten mit zwei `PATCH`-Aufrufen: erst
   `{"email": "..."}` (findet das Konto und verschickt bei Erfolg TAN bzw. Code), dann
@@ -765,11 +765,11 @@ aktualisiert:
 Inhalt der Anfrage (alle Felder optional, `KcChannelUpsertRequest`):
 
 - **`subject`** — Wem dieser Durchlauf in Keycloak gehört: `{"type":"account","id":"42"}` oder `{"type":"invitation","id":"…"}` ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)), dieselbe Form wie `authData.subject` der Antwort. Ein Konto ordnet einen Kanal ohne Subjekt sofort diesem Konto zu; eine Einladung bindet nur ihr eigener Nachweis, und ein Kanal, der ihr nicht schon gehört, wird mit `409` abgelehnt: Ein Vorgangszugang wird nicht aufgewertet (ADR-48, Nachtrag K-5). Ist der Kanal schon einem anderen Subjekt zugeordnet – einem anderen Konto, einer Einladung statt eines Kontos oder umgekehrt –, antwortet der Orchestrator `409` und ändert nichts.
-- **`targetAcr`** — Das von Keycloak angefragte LoA, bereits in einen ACR-Wert des Orchestrators übersetzt. Es hebt die Untergrenze des Kanals nur an, nie ab, und filtert die Kandidaten von `KC_SELECT_METHOD` ([Orchestrierung](04-orchestrierung.md) Abschnitt 3).
-- **`amr`** — Liste `{nativeToolId, amrSourceId}`: was ein eigenes Keycloak-Verfahren (nie ein Tool des Orchestrators) in DIESEM Anmeldedurchlauf nachgewiesen hat. Methode, LoA und Faktortypen ermittelt der Orchestrator auf dem Server über `nativeToolId` (`NativeAuthenticatorDescriptor`). Es ist immer die VOLLSTÄNDIGE, derzeit gültige Menge, keine Änderungsliste.
+- **`targetAcr`** — Das von Keycloak angefragte LoA, bereits in einen ACR-Wert des Orchestrators übersetzt. Es hebt die Untergrenze des Kanals nur an, nie ab, und filtert die Kandidaten von `WEB_SELECT_METHOD` ([Orchestrierung](04-orchestrierung.md) Abschnitt 3).
+- **`amr`** — Liste `{nativeToolId, amrSourceId}`: was ein eigenes Keycloak-Verfahren (nie ein Tool des Orchestrators) in DIESEM Anmeldedurchlauf nachgewiesen hat. Verfahren, LoA und Faktortypen ermittelt der Orchestrator auf dem Server über `nativeToolId` (`NativeAuthenticatorDescriptor`). Es ist immer die VOLLSTÄNDIGE, derzeit gültige Menge, keine Änderungsliste.
 - **`restoreData` / `kcSessionId`** — Ein signiertes Token aus `GET .../restore-data` einer FRÜHEREN, unabhängigen `ChannelSession` derselben Keycloak-Nutzersitzung. Es gibt die dort erbrachten Nachweise samt ihrem Zeitpunkt an einen frisch angelegten Kanal weiter; über `loa1` zählen sie nur 30 Minuten ([Orchestrierung](04-orchestrierung.md) Abschnitt 8). `kcSessionId` bindet das Token an Keycloaks dauerhaftes `UserSessionModel`. Ein falsches, abgelaufenes oder manipuliertes Token wird als `null` behandelt, nie als Fehler.
 - **`availableTools`** — Welche `toolId`s das Keycloak-Theme darstellen kann (ein `WebToolRenderer` je Tool). Nur beim ersten Aufruf gelesen; das Gegenstück zu `availableTools` bei `POST /app/channels`.
-- **`intent`** — Nur beim ersten Aufruf gelesen. Fehlt er, gilt `kc_select_method`; sonst ist nur `register` erlaubt. Ein unbekannter oder unzulässiger Wert wird abgelehnt (`409`).
+- **`intent`** — Nur beim ersten Aufruf gelesen. Fehlt er, gilt `web_select_method`; sonst ist nur `register` erlaubt. Ein unbekannter oder unzulässiger Wert wird abgelehnt (`409`).
 
 `GET .../{channelSessionId}/restore-data?kcSessionId=...` gibt es nur für den Aufruf, den Keycloak am
 Ende des Anmeldeablaufs macht: Es liefert die gesammelten Nachweise dieses Kanals als Token, gebunden
@@ -798,7 +798,7 @@ Statt mit einem DPoP-Proof weist sich Keycloak mit einer signierten Peer-Auth-As
   ([09-dpop.md](09-dpop.md)), aber unter einem eigenen Namensraum `kc:` und mit einem eigenen
   Zeitfenster (`kc.peer-auth.max-clock-skew-seconds`/`max-age-seconds`, im Profil `keycloak` je
   300 Sekunden),
-- dem Kanal-Anker dieses Anmeldedurchlaufs (Claim `channel_anchor`), den `KcChannelAccessGuard`
+- der Kanalbindung dieses Anmeldedurchlaufs (Claim `channel_binding`), die `KcChannelAccessGuard`
   gegen den Kanal prüft.
 
 Geprüft wird die Signatur gegen Keycloaks JWKS; es gibt ein Schlüsselpaar je Client, nicht je
@@ -811,20 +811,20 @@ holt die Keycloak-Erweiterung das Antwort-JWKS des Orchestrators einmal je Orche
 es ebenfalls zwischengespeichert (`OrchestratorResponseVerifier`, Nimbus `JWKSourceBuilder` mit
 Wiederholung), nicht bei jedem Aufruf.
 
-Jede Antwort an einen `KEYCLOAK`-Kanal enthält zusätzlich `authData` (`subject`/`acr`/`amr`, nie
+Jede Antwort an einen `WEB`-Kanal enthält zusätzlich `authData` (`subject`/`acr`/`amr`, nie
 bei `APP`). Keycloaks `OrchestratorAuthenticator` schreibt es sofort in seine Session-Notes. `subject`
 nennt, wer angemeldet ist: `{"type": "account", "id": "42"}` für ein Konto oder
 `{"type": "invitation", "id": "<Hash>"}` für eine Einladung nach einem Einmalkennwort
 ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Keycloak setzt danach den Nutzer aus
 der passenden Federation (Konten oder Einladungen, je mit eigener fester UUID als Komponenten-Id) und lässt nie ein Subjekt
-die Sitzung eines anderen fortsetzen (`LoginCompletion`). `amr` ordnet jeder Methode ihre Quelle zu
+die Sitzung eines anderen fortsetzen (`LoginCompletion`). `amr` ordnet jedem Verfahren seine Quelle zu
 (`"kc"` für eine eigene Angabe Keycloaks, `"orchestrator"` für ein abgeschlossenes Tool des
 Orchestrators). Das ist nur eine Information; den kombinierten `acr` bestimmt ausschließlich der
 Orchestrator.
 
 Der Web-Kanal kennt kein Gerät; `DeviceAccountLink` gibt es nur im App-Kanal
 ([02-domaenenmodell.md](02-domaenenmodell.md)). Angemeldet wird über den Login per E-Mail-Adresse
-bzw. über den eigenen Einstiegs-Intent `KC_SELECT_METHOD` ([04-orchestrierung.md](04-orchestrierung.md)
+bzw. über den eigenen Einstiegs-Intent `WEB_SELECT_METHOD` ([04-orchestrierung.md](04-orchestrierung.md)
 Abschnitt 3), registriert über `REGISTER` (`intent=register`, siehe oben). `ident-fsc`, `ident-eid`,
 `confirm-email` und die `enroll-*`-Tools werden über dieselben `WebToolRenderer` angezeigt.
 
@@ -832,7 +832,7 @@ Abschnitt 3), registriert über `REGISTER` (`intent=register`, siehe oben). `ide
 Einmalkennwort an. Es endet mit einer Einladung als Subjekt statt eines Kontos; das Niveau ist das der
 Einladung, und eine Anmeldung, die mehr verlangt, bricht ab, bevor etwas gebunden wird. Keycloak liest
 den Einladungs-Nutzer über `GET /orchestrator/api/v1/kc/invitations/{invitation}`, gesichert wie die
-Kontosuche (Peer-Auth-Assertion, `channel_anchor` = Id der Einladung); die Antwort trägt
+Kontosuche (Peer-Auth-Assertion, `channel_binding` = Id der Einladung); die Antwort trägt
 `enabled = false`, sobald die Einladung abgeschlossen, widerrufen oder abgelaufen ist. Ein
 Einladungs-Kanal gibt bei `restore-data` nichts zurück: Seine Evidenz gehört der Einladung und darf in
 keinen späteren Durchlauf für ein Konto wandern.
@@ -876,13 +876,13 @@ auch sie liegt in Keycloak, nicht im Orchestrator
 - **Nur lesen:** Der Endpunkt ändert weder den Anmeldeablauf noch die Journey.
 
 **Offen:** Wie Logout im Web-Kanal funktionieren soll, ist noch nicht entschieden: ob
-`DELETE /channels/{id}` für `KEYCLOAK`-Kanäle vom Client aus aufrufbar sein soll oder nur von
+`DELETE /channels/{id}` für `WEB`-Kanäle vom Client aus aufrufbar sein soll oder nur von
 Keycloak ausgelöst wird.
 
 ### Anmeldeverfahren verwalten im Web-Kanal (Keycloak Required Action)
 
 `AuthIntent.MANAGE_AUTH_METHODS` funktioniert für beide Zugänge gleich (Abschnitt 2,
-„Methoden verwalten"; `POST .../enrollments` nutzt denselben `DpopBindingKeyResolver`). Der
+„Verfahren verwalten"; `POST .../enrollments` nutzt denselben `DpopBindingKeyResolver`). Der
 Web-Kanal braucht deshalb **keinen eigenen Endpunkt im Orchestrator**, nur einen eigenen Einstieg:
 eine Keycloak-`RequiredAction` (`getId()="orchestrator-manage-methods"`, `defaultAction=false`,
 also nie erzwungen, nur über `kc_action` auslösbar). Sie ist im Ablauf
@@ -913,7 +913,7 @@ Ohne Zustand, ohne Kanal und ohne ToolSession: Keycloaks eigene UserStorage-SPI
 Nutzerattribut `orchestratorAccountId` kennt. Keycloak weist sich dabei mit derselben
 `kc-peer-auth`-Signatur aus wie bei den anderen Aufrufen von Server zu Server
 ([DPoP-Bindung](09-dpop.md)/[12-entscheidungen.md](12-entscheidungen.md) ADR-7). Allerdings wird
-`channel_anchor` hier für einen anderen Zweck genutzt: Der Claim trägt die `accountId` und wird
+`channel_binding` hier für einen anderen Zweck genutzt: Der Claim trägt die `accountId` und wird
 gegen den Pfadparameter geprüft.
 
 Die Endpunkte gehören dem Modul `auth_password`, wie jedes andere Tool. Sie nehmen nur Keycloaks
@@ -930,16 +930,16 @@ Instanz kein `enrolledUnderAcr` ([Tool-Architektur](03-tool-architektur.md) Absc
 - `POST /orchestrator/api/v1/tools/enroll-password/mgmt/{accountId}` – `{"newPassword": "..."}`
   **ersetzt** das Passwort: Es setzt ein neues Credential und deaktiviert das bisherige
   `password`-Verfahren des Kontos, `204`. Hat das Konto noch kein Passwort, antwortet es `409` – ein
-  erstes Passwort richtet nur `enroll-password` hinter der Prüfung der Methodenverwaltung ein, nicht
+  erstes Passwort richtet nur `enroll-password` hinter der Prüfung der Verwaltung der Verfahren ein, nicht
   Keycloaks Admin-Funktion „Passwort zurücksetzen“.
 - `POST /orchestrator/api/v1/kc/accounts/{accountId}/sign-outs?kcSessionId=…` – Keycloak meldet einen
   Logout für das Anmeldeprotokoll (ADR-39, Nachtrag), `204`. Den Logout im Web-Kanal macht Keycloak
   allein; sein Event-Listener `orchestrator-sign-in-log` ruft das nach dem Commit auf und wartet auf
   nichts. Kanäle, die diese Keycloak-Sitzung trugen, enden damit, Web- wie App-Kanal (ADR-43);
-  `channel_anchor` ist wie oben die `accountId`.
+  `channel_binding` ist wie oben die `accountId`.
 - `POST /orchestrator/api/v1/kc/invitations/{invitation}/sign-outs?kcSessionId=…` – dasselbe für
   einen Vorgangszugang (ADR-48): Die Web-Kanäle dieser Keycloak-Sitzung enden, das
-  Anmeldeprotokoll bekommt eine Zeile der Einladung, `204`. `channel_anchor` ist die Id der
+  Anmeldeprotokoll bekommt eine Zeile der Einladung, `204`. `channel_binding` ist die Id der
   Einladung.
 
 ## 4) Zusammenspiel von Prozess-API und Tool-Ressourcen

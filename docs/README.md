@@ -31,8 +31,8 @@ Namensänderung, Journey-Trace und das Löschen des Kontos.
 
 - **[Domänenmodell](02-domaenenmodell.md)**: Welche Entitäten, Zustände und Tabellen gibt es, und
   nach welchen Regeln wird gespeichert?
-- **[Orchestrierung und Policy](04-orchestrierung.md)**: Wer entscheidet, wie es weitergeht? Ziele
-  (Intents), Journeys, `AuthPolicy`, Sicherheitsniveaus.
+- **[Orchestrierung und Policy](04-orchestrierung.md)**: Wer entscheidet, wie es weitergeht?
+  Intents, Journeys, `AuthPolicy`, Sicherheitsniveaus.
 - **[Konkrete Abläufe](06-ablaeufe.md)**: Wie laufen die einzelnen Verfahren Schritt für Schritt ab
   (Freischaltcode, SMS, Passwort, E-Mail, Gerät, eID/KVNR, KOBIL)?
 
@@ -64,7 +64,7 @@ Namensänderung, Journey-Trace und das Löschen des Kontos.
 
 ## Nachschlagen
 
-- **[Journeys](journeys/)**: Wie läuft genau ein Ziel ab? Ein Zustandsdiagramm je Intent, gegen den
+- **[Journeys](journeys/)**: Wie läuft genau ein Intent ab? Ein Zustandsdiagramm je Intent, gegen den
   Code geprüft.
 - **[Invarianten](invarianten.md)**: Auf welche Regeln verlässt sich der Kern, und womit ist jede
   gesichert?

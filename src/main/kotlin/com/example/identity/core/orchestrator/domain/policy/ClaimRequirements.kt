@@ -5,7 +5,7 @@ import com.example.identity.contract.tool_api.claims.ClaimRequirement
 
 /**
  * Whether [account] already carries what a tool declares it needs: the attribute established at
- * no less than the required trust level, counted over assertions minus retractions
+ * no less than the required claim trust, counted over assertions minus retractions
  * (`AccountProfile.establishedClaims`, ADR-12).
  *
  * Generic on purpose: a tool can require an attested attribute without knowing which procedure
@@ -14,5 +14,5 @@ import com.example.identity.contract.tool_api.claims.ClaimRequirement
  */
 internal fun requiresSatisfied(requirement: ClaimRequirement, account: AccountProfile?): Boolean {
     val established = account?.establishedClaims?.get(requirement.attributeType) ?: return false
-    return established.rank >= requirement.minTrustLevel.rank
+    return established.rank >= requirement.minClaimTrust.rank
 }

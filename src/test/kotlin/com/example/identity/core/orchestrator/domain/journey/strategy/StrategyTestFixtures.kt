@@ -29,7 +29,7 @@ import com.example.identity.tools.ident_nect.IdentNectDescriptor
 import com.example.identity.tools.ident_fsc.IdentFscDescriptor
 import com.example.identity.tools.ident_kvnr.IdentKvnrDescriptor
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.DefaultAuthPolicy
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -37,7 +37,7 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.claims.TrustLevel
+import com.example.identity.contract.tool_api.claims.ClaimTrust
 import java.time.Instant
 
 /**
@@ -67,7 +67,7 @@ object StrategyTestFixtures {
 
     /**
      * The Web channel with the shipped defaults: what the Keycloak theme renders (no Nect), minus
-     * `tool-defaults.channels.KEYCLOAK.disabled`.
+     * `tool-defaults.channels.WEB.disabled`.
      */
     val webTools: Set<ToolId> = allToolIds - listOf(
         "ident-nect", "enroll-device", "auth-device", "enroll-kobil", "auth-kobil", "auth-email", "auth-email-lookup"
@@ -92,11 +92,11 @@ object StrategyTestFixtures {
         emailConfirmedAt = if (emailConfirmed) Instant.now() else null,
         establishedClaims = buildMap {
             // A confirmed address is an EMAIL claim at PROVEN; the anchor is only its projection.
-            if (emailConfirmed) put(AttributeType.EMAIL, TrustLevel.PROVEN)
+            if (emailConfirmed) put(AttributeType.EMAIL, ClaimTrust.PROVEN)
             if (attestedIdentity) {
-                put(AttributeType.FAMILY_NAME, TrustLevel.PROVEN)
-                put(AttributeType.GIVEN_NAMES, TrustLevel.PROVEN)
-                put(AttributeType.BIRTH_DATE, TrustLevel.PROVEN)
+                put(AttributeType.FAMILY_NAME, ClaimTrust.PROVEN)
+                put(AttributeType.GIVEN_NAMES, ClaimTrust.PROVEN)
+                put(AttributeType.BIRTH_DATE, ClaimTrust.PROVEN)
             }
         }
     )
@@ -126,7 +126,7 @@ object StrategyTestFixtures {
         factorTypes: Set<FactorType>,
         account: AccountProfile? = null,
         amrSourceId: Map<String, String> = emptyMap()
-    ): AuthEvidence {
+    ): SessionEvidence {
         val methodAcr = amr.associateWith { m ->
             catalog.descriptors().filter { it.method == m }.maxByOrNull { AcrLevel.rank(it.maxAcr) }?.maxAcr?.value ?: AcrLevel.NONE.value
         }
@@ -135,12 +135,12 @@ object StrategyTestFixtures {
             ?.mapNotNull { m -> m.enrolledUnderAcr?.let { m.method to it } }
             ?.toMap()
             ?: emptyMap()
-        return AuthEvidence.fromNow(amr, factorTypes, methodAcr, enrolledUnderAcr, amrSourceId = amrSourceId)
+        return SessionEvidence.fromNow(amr, factorTypes, methodAcr, enrolledUnderAcr, amrSourceId = amrSourceId)
     }
 
     fun ctx(
         account: AccountProfile? = null,
-        evidence: AuthEvidence = AuthEvidence(emptyList()),
+        evidence: SessionEvidence = SessionEvidence(emptyList()),
         acrFloor: AcrLevel = AcrLevel.LOA1,
         bindingKeyRef: String = BINDING_KEY,
         // Defaults to a device linked to the context's own account; a device-rebind conflict test

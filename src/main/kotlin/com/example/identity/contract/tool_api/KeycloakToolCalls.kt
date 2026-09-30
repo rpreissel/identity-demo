@@ -9,7 +9,7 @@ package com.example.identity.contract.tool_api
 interface KeycloakToolCalls {
     /**
      * Throws unless [bindingKeyRef] is Keycloak's peer-auth assertion for [accountId]. The id sits in
-     * the path, which the assertion's `htu` binds; its `channel_anchor` must name the same account.
+     * the path, which the assertion's `htu` binds; its `channel_binding` must name the same account.
      */
     fun requireKeycloakFor(accountId: Long, bindingKeyRef: String)
 

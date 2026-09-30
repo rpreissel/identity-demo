@@ -26,11 +26,11 @@ import com.example.identity.contract.tool_api.envelope.Next
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ToolCategory
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.tool_api.Subject
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolOutcome
 import java.net.URI
 import java.time.Duration
@@ -87,10 +87,10 @@ class ToolJourneyService(
         val descriptor = toolRegistry.descriptorOf(ToolId(toolId))
 
         validatePreconditions(toolId, channel)
-        // Only for a tool whose account the channel knows (IDENTIFIED_AUTH). LOOKUP_AUTH and IDENT
-        // tools are throttled where they resolve their subject ([Lockouts]) and
+        // Only for a tool whose account the channel knows (KNOWN_ACCOUNT_AUTH). ACCOUNT_LOOKUP_AUTH and IDENT
+        // tools are rate-limited where they resolve their subject ([Lockouts]) and
         // answer with their ordinary failure instead of this explicit 423.
-        if (descriptor.role.category == ToolCategory.AUTH) {
+        if (descriptor.role == ToolRole.KNOWN_ACCOUNT_AUTH) {
             channel.accountId?.let { accountLockoutService.assertNotLocked(it) }
         }
 
@@ -123,7 +123,7 @@ class ToolJourneyService(
         descriptor.requires.forEach { requirement ->
             if (!requiresSatisfied(requirement, account)) {
                 throw OrchestratorException.invalidState(
-                    Text("This tool requires a prior proof first"), "toolId=${toolId}, requirement=${requirement.attributeType.wireName}, minTrustLevel=${requirement.minTrustLevel}"
+                    Text("This tool requires a prior proof first"), "toolId=${toolId}, requirement=${requirement.attributeType.wireName}, minClaimTrust=${requirement.minClaimTrust}"
                 )
             }
         }
@@ -203,7 +203,7 @@ class ToolJourneyService(
         val live = resolveChannel(ctx, journey)
         val channel = live.session
         val descriptor = toolRegistry.descriptorOf(ToolId(ctx.toolId))
-        chargeThrottles(channel.accountId, channel.channel?.name, descriptor, outcome)
+        chargeRateLimits(channel.accountId, channel.channel?.name, descriptor, outcome)
         // A completed tool is done for good, even while the journey still names it as active.
         if (outcome is ToolOutcome.Completed) sessionManagementService.endToolSession(ctx.toolSessionId, ToolSessionStatus.DONE)
 
@@ -230,7 +230,7 @@ class ToolJourneyService(
      * subject by its variant ([ToolOutcome.Failed]); a success resets the same counter. A lookup
      * login's subject comes from the outcome, since the channel's account is bound only later.
      */
-    private fun chargeThrottles(channelAccountId: Long?, channelType: String?, descriptor: ToolDescriptor, outcome: ToolOutcome) {
+    private fun chargeRateLimits(channelAccountId: Long?, channelType: String?, descriptor: ToolDescriptor, outcome: ToolOutcome) {
         when (outcome) {
             is ToolOutcome.InProgress -> Unit
 
@@ -241,8 +241,8 @@ class ToolJourneyService(
                     "${descriptor.toolId} (${descriptor.role}) answered with ${outcome::class.simpleName}"
                 }
                 when (outcome) {
-                    is ToolOutcome.Failed.IdentifiedAuth -> channelAccountId?.let { accountLockoutService.recordFailure(it, channelType, descriptor.method) }
-                    is ToolOutcome.Failed.LookupAuth -> when (val attempted = outcome.attempted) {
+                    is ToolOutcome.Failed.KnownAccountAuth -> channelAccountId?.let { accountLockoutService.recordFailure(it, channelType, descriptor.method) }
+                    is ToolOutcome.Failed.AccountLookupAuth -> when (val attempted = outcome.attempted) {
                         is Attempted.Account -> accountLockoutService.recordFailure(attempted.id, channelType, descriptor.method)
                         // A one-time password belongs to a person, like a Freischaltcode.
                         is Attempted.Person -> personLockoutService.recordFailure(attempted.id)

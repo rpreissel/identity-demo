@@ -18,7 +18,7 @@ class IdentFscToolSession(
 
     var kvnr: String? = null,
 
-    var partnernr: String? = null,
+    var partnerNumber: String? = null,
 
     @Column(name = "person_id")
     var personId: String? = null,

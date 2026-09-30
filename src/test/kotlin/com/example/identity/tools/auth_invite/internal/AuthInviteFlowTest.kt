@@ -18,7 +18,7 @@ class AuthInviteFlowTest : BehaviorSpec({
 
     given("a Partnernummer instead of a KVNR, and a one-time password") {
         `when`("the flow decides") {
-            val decision = AuthInviteFlow.decide(AuthInviteInput(kvnr = " ", partnernr = "P000000004", code = "ABCD-EFGH-JKMN"))
+            val decision = AuthInviteFlow.decide(AuthInviteInput(kvnr = " ", partnerNumber = "P000000004", code = "ABCD-EFGH-JKMN"))
 
             then("the number counts as given") {
                 decision shouldBe AuthInviteDecision.Check("ABCD-EFGH-JKMN")

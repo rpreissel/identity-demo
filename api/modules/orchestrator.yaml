@@ -8,7 +8,7 @@ components:
         channel:
           enum:
           - APP
-          - KEYCLOAK
+          - WEB
           type: string
         channelSessionId:
           format: uuid
@@ -195,7 +195,7 @@ components:
         channel:
           enum:
           - APP
-          - KEYCLOAK
+          - WEB
           example: APP
           type: string
         tools:
@@ -211,7 +211,7 @@ components:
         channel:
           enum:
           - APP
-          - KEYCLOAK
+          - WEB
           type: string
         count:
           format: int64
@@ -363,14 +363,14 @@ components:
         intent:
           description: 'Only read on this channel''s first call, same restriction as availableTools - the kc facade''s own,
             deliberately narrow counterpart to the App facade''s `intent` request parameter (docs/05-api.md #"POST /app/channels:
-            intent-Parameter"). Omitted (or null) means kc_select_method, the existing login/step-up behaviour. Only kc_select_method
+            intent-Parameter"). Omitted (or null) means web_select_method, the existing login/step-up behaviour. Only web_select_method
             and register are accepted here - unlike the App facade, not every AuthIntent.isEntryIntent value: fast_access/lookup_login
             assume an APP-shaped channel this facade never has.'
           example: register
           type: string
         kcSessionId:
           description: Required whenever restoreData is present, ignored otherwise. Keycloak's own, durable UserSessionModel
-            id - deliberately NOT read off the peer-auth assertion (the assertion's kc-anchor is always THIS flow run's own
+            id - deliberately NOT read off the peer-auth assertion (the assertion's kc binding is always THIS flow run's own
             channelSessionId, docs/02-domaenenmodell.md Abschnitt 1, so it can't verify a token minted for a DIFFERENT, earlier
             flow run's channel). Must match what GET .../restore-data was called with to produce this exact restoreData token.
           type: string
@@ -625,11 +625,11 @@ components:
           - IDENTIFICATION
           - CORRELATION
           - ENROLLMENT
-          - IDENTIFIED_AUTH
-          - LOOKUP_AUTH
+          - KNOWN_ACCOUNT_AUTH
+          - ACCOUNT_LOOKUP_AUTH
           - PEER_APPROVAL
           - ATTESTATION
-          example: IDENTIFIED_AUTH
+          example: KNOWN_ACCOUNT_AUTH
           type: string
         toolId:
           example: auth-sms
@@ -657,7 +657,7 @@ components:
           example: sms
           type: string
         role:
-          example: IDENTIFIED_AUTH
+          example: KNOWN_ACCOUNT_AUTH
           type: string
         toolId:
           example: auth-sms
@@ -689,7 +689,7 @@ components:
     kc-peer-auth:
       bearerFormat: JWT
       description: 'Signed peer-auth assertion (docs/05-api.md Abschnitt 3, ADR-7). The Web channel''s proof: Keycloak calls
-        server-to-server, and the channel anchor comes out of the assertion.'
+        server-to-server, and the channel binding comes out of the assertion.'
       scheme: bearer
       type: http
 info:
@@ -890,7 +890,7 @@ paths:
         schema:
           enum:
           - APP
-          - KEYCLOAK
+          - WEB
           type: string
       requestBody:
         content:
@@ -926,7 +926,7 @@ paths:
         schema:
           enum:
           - APP
-          - KEYCLOAK
+          - WEB
           type: string
       requestBody:
         content:
@@ -1023,9 +1023,9 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}:
     delete:
       description: 'Ends this channel for good (docs/02-domaenenmodell.md #3: AUTHENTICATED -> LOGGED_OUT, terminal) - cancels
-        any active process and discards the AuthContext. For interactive clients prefer POST .../logouts which shows a confirmation
-        prompt first. Never resumes on this channelSessionId afterwards; call POST .../channels again for a new session (a
-        known device still skips straight to LOGIN there).'
+        any active process and discards the AppTokenSession. For interactive clients prefer POST .../logouts which shows a
+        confirmation prompt first. Never resumes on this channelSessionId afterwards; call POST .../channels again for a new
+        session (a known device still skips straight to LOGIN there).'
       operationId: logout
       parameters:
       - in: path
@@ -1828,7 +1828,7 @@ paths:
     get:
       description: For the Authenticator's end-of-flow lifecycle hook only (docs/ideen/docs/05-api.md Abschnitt 3) - reads
         back what this channel accumulated, to stash in a Keycloak UserSessionModel note and resubmit at a later flow's start.
-        kcSessionId is passed explicitly (not read off the channel's own anchor) because the returned token must remain valid
+        kcSessionId is passed explicitly (not read off the channel's own binding) because the returned token must remain valid
         across the flow-run boundary the channel itself does not survive - a fresh channel next flow run, but the very same
         UserSessionModel id. sessionExpiresAt (epoch seconds) is the latest end of that Keycloak session without further activity;
         the channel's expiry is capped at it (docs/adr/ADR-043).
@@ -2013,10 +2013,10 @@ paths:
                 role: ENROLLMENT
                 toolId: enroll-sms
               - method: sms
-                role: IDENTIFIED_AUTH
+                role: KNOWN_ACCOUNT_AUTH
                 toolId: auth-sms
               - method: sms
-                role: LOOKUP_AUTH
+                role: ACCOUNT_LOOKUP_AUTH
                 toolId: auth-sms-lookup
               schema:
                 items:

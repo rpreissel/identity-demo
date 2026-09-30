@@ -5,7 +5,7 @@ import com.example.identity.contract.tool_api.CallerKeyBinding
 import com.example.identity.contract.tool_api.DemoOnly
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.InstanceDisclosure
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import org.springframework.stereotype.Component
@@ -23,7 +23,7 @@ internal const val DEVICE_ENROLLMENT_TYPE = "auth_device.enrollment"
 @Component
 object AuthDeviceDescriptor : ToolDescriptor {
     override val toolId = ToolId("auth-device")
-    override val role = MethodRole.IDENTIFIED_AUTH
+    override val role = ToolRole.KNOWN_ACCOUNT_AUTH
     override val method = DEVICE_METHOD
     override val factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE)
     override val maxAcr = AcrLevel.LOA2
@@ -66,7 +66,7 @@ private val UNATTESTED_USER_VERIFICATION = DemoOnly(
 @Component
 object EnrollDeviceDescriptor : ToolDescriptor {
     override val toolId = ToolId("enroll-device")
-    override val role = MethodRole.ENROLLMENT
+    override val role = ToolRole.ENROLLMENT
     override val method = DEVICE_METHOD
     override val factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE)
     override val maxAcr = AcrLevel.LOA2

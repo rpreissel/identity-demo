@@ -4,10 +4,10 @@ import com.example.identity.core.orchestrator.session.channelType
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.account.AccountService
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
 import com.example.identity.core.orchestrator.domain.AcrLevels
-import com.example.identity.core.orchestrator.session.AuthEvidenceService
+import com.example.identity.core.orchestrator.session.SessionEvidenceService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.SessionManagementService
 import com.example.identity.core.orchestrator.session.toCoreEvidence
@@ -24,7 +24,7 @@ import com.example.identity.core.orchestrator.domain.FeatureFlagProvider
 @Component
 class JourneyContextFactory(
     private val accountService: AccountService,
-    private val authEvidenceService: AuthEvidenceService,
+    private val sessionEvidenceService: SessionEvidenceService,
     private val sessionManagementService: SessionManagementService,
     private val authPolicy: AuthPolicy,
     private val toolRegistry: ToolHandlerRegistry,
@@ -33,12 +33,12 @@ class JourneyContextFactory(
 ) {
     fun contextFor(journey: AuthJourney, channel: ChannelSession): JourneyContext {
         val accountId = channel.accountId
-        val evidence = channel.authEvidenceId?.let { authEvidenceService.getAuthEvidence(it) }
+        val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
         return JourneyContext(
             channel = channel.channelType,
             account = accountId?.let { accountService.findAccount(it) },
             invitation = channel.invitation,
-            evidence = evidence?.toCoreEvidence() ?: AuthEvidence(emptyList()),
+            evidence = evidence?.toCoreEvidence() ?: SessionEvidence(emptyList()),
             acrFloor = acrFloorOf(channel),
             bindingKeyRef = channel.bindingKeyRef,
             linkedAccountId = channel.bindingKeyRef?.let { sessionManagementService.findLinkedAccountId(it) },
@@ -55,7 +55,7 @@ class JourneyContextFactory(
 
     /** Recomputed from the evidence every time, never stored. */
     fun currentAcrOf(channel: ChannelSession): AcrLevel {
-        val evidence = channel.authEvidenceId?.let { authEvidenceService.getAuthEvidence(it) } ?: return AcrLevel.NONE
+        val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) } ?: return AcrLevel.NONE
         val account = channel.accountId?.let { accountService.findAccount(it) }
         return authPolicy.resolveAcr(evidence.toCoreEvidence(), account)
     }

@@ -27,7 +27,7 @@ import java.util.UUID
 
 /**
  * Unit test of [KeycloakToolCallsService] with the lockout and account services mocked. Checks the
- * peer-auth anchor check and how each outcome of a channel-less tool call is booked, including
+ * peer-auth binding check and how each outcome of a channel-less tool call is booked, including
  * that an enrollment carries no `enrolledUnderAcr` and its claims point at the new instance.
  */
 class KeycloakToolCallsServiceTest : BehaviorSpec({
@@ -37,7 +37,7 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
     given("requireKeycloakFor()") {
         val service = KeycloakToolCallsService(mockk(), mockk())
 
-        `when`("the anchor is Keycloak's for this account") {
+        `when`("the binding is Keycloak's for this account") {
             val result = runCatching { service.requireKeycloakFor(accountId, "kc:7") }
 
             then("it passes") {
@@ -45,7 +45,7 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
             }
         }
 
-        `when`("the anchor is Keycloak's for another account") {
+        `when`("the binding is Keycloak's for another account") {
             val result = runCatching { service.requireKeycloakFor(accountId, "kc:8") }
 
             then("it refuses with PeerAuthValidationException") {
@@ -53,7 +53,7 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
             }
         }
 
-        `when`("the anchor is a DPoP thumbprint") {
+        `when`("the binding is a DPoP thumbprint") {
             val result = runCatching { service.requireKeycloakFor(accountId, "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs") }
 
             then("it refuses with PeerAuthValidationException") {
@@ -64,14 +64,14 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
 
     given("a failed auth-password call") {
         val lockout = mockk<AccountLockoutService>()
-        justRun { lockout.recordFailure(accountId, "KEYCLOAK", AuthPasswordDescriptor.method) }
+        justRun { lockout.recordFailure(accountId, "WEB", AuthPasswordDescriptor.method) }
         val service = KeycloakToolCallsService(lockout, mockk())
 
         `when`("it is applied") {
-            service.apply(accountId, AuthPasswordDescriptor, ToolOutcome.Failed.IdentifiedAuth(Text("Passwort falsch")))
+            service.apply(accountId, AuthPasswordDescriptor, ToolOutcome.Failed.KnownAccountAuth(Text("Passwort falsch")))
 
-            then("it charges the account's counter on the KEYCLOAK channel") {
-                verify(exactly = 1) { lockout.recordFailure(accountId, "KEYCLOAK", "password") }
+            then("it charges the account's counter on the WEB channel") {
+                verify(exactly = 1) { lockout.recordFailure(accountId, "WEB", "password") }
             }
         }
     }
@@ -137,7 +137,7 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
         val service = KeycloakToolCallsService(mockk(), mockk())
         val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("auth_password.enrollment", "11"))
 
-        `when`("an IDENTIFIED_AUTH tool reports an enrollment") {
+        `when`("a KNOWN_ACCOUNT_AUTH tool reports an enrollment") {
             val result = runCatching { service.apply(accountId, AuthPasswordDescriptor, outcome) }
 
             then("it refuses with IllegalStateException") {
@@ -149,9 +149,9 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
     given("outcomes that cannot be booked without a journey") {
         val service = KeycloakToolCallsService(mockk(), mockk())
 
-        `when`("a LOOKUP_AUTH tool reports its failure") {
+        `when`("an ACCOUNT_LOOKUP_AUTH tool reports its failure") {
             val result = runCatching {
-                service.apply(accountId, AuthPasswordLookupDescriptor, ToolOutcome.Failed.LookupAuth(Text("Passwort falsch"), attempted = accountId?.let(Attempted::Account)))
+                service.apply(accountId, AuthPasswordLookupDescriptor, ToolOutcome.Failed.AccountLookupAuth(Text("Passwort falsch"), attempted = accountId?.let(Attempted::Account)))
             }
 
             then("it refuses with IllegalStateException") {

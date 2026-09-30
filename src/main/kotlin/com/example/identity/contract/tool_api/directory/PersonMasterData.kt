@@ -25,5 +25,5 @@ data class PersonRecord(
     val postalCode: String?,
     val locality: String?,
     /** The Versicherungsnummer, only for a person insured with us. */
-    val insuranceNumber: String?
+    val memberNumber: String?
 )

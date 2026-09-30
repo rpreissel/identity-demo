@@ -26,7 +26,7 @@ class JourneyTraceEntry(
     @Column(name = "binding_key_ref", length = 64)
     var bindingKeyRef: String? = null,
 
-    /** APP or KEYCLOAK, kept so the channel stays visible after the session is gone. */
+    /** APP or WEB, kept so the channel stays visible after the session is gone. */
     @Column(name = "channel_type", length = 32)
     var channelType: String? = null,
 

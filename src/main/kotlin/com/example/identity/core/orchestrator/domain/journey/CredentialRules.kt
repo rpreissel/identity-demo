@@ -8,8 +8,7 @@ import com.example.identity.core.orchestrator.domain.ToolCatalog
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.CallerKeyBinding
-import com.example.identity.contract.tool_api.MethodRole
-import com.example.identity.contract.tool_api.ToolCategory
+import com.example.identity.contract.tool_api.ToolRole
 
 /*
  * At which level a credential counts, which device link follows from succeeding, and what else falls
@@ -50,13 +49,13 @@ fun linksDeviceImplicitly(intent: AuthIntent, linkedTo: Long?, accountId: Long):
 
 /**
  * The active methods of [account] whose credential lives on [bindingKeyRef], i.e. those that stop
- * working when that key moves to another account. Resolved by `(method, IDENTIFIED_AUTH)`: by method
+ * working when that key moves to another account. Resolved by `(method, KNOWN_ACCOUNT_AUTH)`: by method
  * name alone the enrollment tool would answer too, from the wrong declaration.
  */
 fun credentialsLivingOn(account: AccountProfile?, bindingKeyRef: String, catalog: ToolCatalog): List<AuthMethodView> =
     account?.activeAuthenticationMethods.orEmpty().filter { method ->
         val binding = catalog.descriptors()
-            .firstOrNull { it.role == MethodRole.IDENTIFIED_AUTH && it.method == method.method }
+            .firstOrNull { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.method == method.method }
             ?.keyBinding
         binding != null && binding.livesOn(method.details, bindingKeyRef)
     }
@@ -91,7 +90,7 @@ class MethodDependencies(
             val standing = account.activeAuthenticationMethods.filter { it.id !in fallingIds }
             val next = standing.filter { instance ->
                 catalog.descriptors()
-                    .filter { it.method == instance.method && it.role.category == ToolCategory.ENROLL }
+                    .filter { it.method == instance.method && it.role == ToolRole.ENROLLMENT }
                     .any { descriptor -> descriptor.requires.any { it.attributeType in lostSoFar } }
             }
             if (next.isEmpty()) return casualties.drop(falling.size)

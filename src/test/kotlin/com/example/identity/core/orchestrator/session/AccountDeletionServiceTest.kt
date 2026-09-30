@@ -17,7 +17,7 @@ import java.time.Instant
 
 /**
  * Unit test of [AccountDeletionService]: the id fields of [ChannelSession] are cleared before the
- * [AuthContext]/[EvidenceTrail] rows they point to are deleted.
+ * [AppTokenSession]/[SessionEvidenceRecord] rows they point to are deleted.
  */
 class AccountDeletionServiceTest : BehaviorSpec({
 
@@ -26,29 +26,29 @@ class AccountDeletionServiceTest : BehaviorSpec({
         cleanups: List<EnrollmentCleanup> = emptyList(),
         deviceAccountLinkRepository: DeviceAccountLinkRepository = mockk(relaxed = true),
         channelSessionRepository: ChannelSessionRepository = mockk(relaxed = true),
-        authContextRepository: AuthContextRepository = mockk(relaxed = true),
-        authEvidenceRepository: EvidenceTrailRepository = mockk(relaxed = true),
+        appTokenSessionRepository: AppTokenSessionRepository = mockk(relaxed = true),
+        sessionEvidenceRepository: SessionEvidenceRecordRepository = mockk(relaxed = true),
         journeyTraceRepository: JourneyTraceRepository = mockk(relaxed = true),
-        attemptThrottleRepository: AttemptThrottleRepository = mockk(relaxed = true)
+        rateLimitRecordRepository: RateLimitRecordRepository = mockk(relaxed = true)
     ) = AccountDeletionService(
         accountService,
         cleanups,
         deviceAccountLinkRepository,
         channelSessionRepository,
-        authContextRepository,
-        authEvidenceRepository,
+        appTokenSessionRepository,
+        sessionEvidenceRepository,
         journeyTraceRepository,
-        attemptThrottleRepository
+        rateLimitRecordRepository
     )
 
     given("an account with channel sessions still bound to it") {
-        then("every one of them is logged out with BOTH authContextId and authEvidenceId cleared, not just one") {
+        then("every one of them is logged out with BOTH appTokenSessionId and sessionEvidenceId cleared, not just one") {
             val accountService = mockk<AccountService>(relaxed = true)
             every { accountService.allEnrollmentRefs(1L) } returns emptyList()
             val session = ChannelSession(now = Instant.now()).apply {
                 state = ChannelState.AUTHENTICATED
-                authContextId = java.util.UUID.randomUUID()
-                authEvidenceId = java.util.UUID.randomUUID()
+                appTokenSessionId = java.util.UUID.randomUUID()
+                sessionEvidenceId = java.util.UUID.randomUUID()
             }
             val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
             every { channelSessionRepository.findByAccountId(1L) } returns listOf(session)
@@ -57,8 +57,8 @@ class AccountDeletionServiceTest : BehaviorSpec({
             service(accountService, channelSessionRepository = channelSessionRepository).deleteAccount(1L)
 
             session.state shouldBe ChannelState.LOGGED_OUT
-            session.authContextId shouldBe null
-            session.authEvidenceId shouldBe null
+            session.appTokenSessionId shouldBe null
+            session.sessionEvidenceId shouldBe null
             verify { channelSessionRepository.save(session) }
         }
     }
@@ -136,20 +136,20 @@ class AccountDeletionServiceTest : BehaviorSpec({
             every { channelSessionRepository.findByAccountId(1L) } returns listOf(session)
             every { channelSessionRepository.save(any()) } returns session
             val journeyTraceRepository = mockk<JourneyTraceRepository>(relaxed = true)
-            val attemptThrottleRepository = mockk<AttemptThrottleRepository>(relaxed = true)
+            val rateLimitRecordRepository = mockk<RateLimitRecordRepository>(relaxed = true)
 
             service(
                 accountService,
                 channelSessionRepository = channelSessionRepository,
                 journeyTraceRepository = journeyTraceRepository,
-                attemptThrottleRepository = attemptThrottleRepository
+                rateLimitRecordRepository = rateLimitRecordRepository
             ).deleteAccount(1L)
 
             verify { journeyTraceRepository.deleteByAccountIdOrChannelSessionIdIn(1L, listOf(channelSessionId)) }
             verify {
-                attemptThrottleRepository.deleteBySubjectAndScopeIn(
+                rateLimitRecordRepository.deleteBySubjectAndScopeIn(
                     "1",
-                    listOf(ThrottleScope.ACCOUNT.name)
+                    listOf(RateLimitScope.ACCOUNT.name)
                 )
             }
         }
@@ -157,14 +157,14 @@ class AccountDeletionServiceTest : BehaviorSpec({
         then("leaves the throttle scopes that are not account-keyed alone - deletion must not become a way to reset someone else's budget") {
             val accountService = mockk<AccountService>(relaxed = true)
             every { accountService.allEnrollmentRefs(1L) } returns emptyList()
-            val attemptThrottleRepository = mockk<AttemptThrottleRepository>(relaxed = true)
+            val rateLimitRecordRepository = mockk<RateLimitRecordRepository>(relaxed = true)
             val scopes = slot<Collection<String>>()
-            every { attemptThrottleRepository.deleteBySubjectAndScopeIn(any(), capture(scopes)) } returns 0
+            every { rateLimitRecordRepository.deleteBySubjectAndScopeIn(any(), capture(scopes)) } returns 0
 
-            service(accountService, attemptThrottleRepository = attemptThrottleRepository).deleteAccount(1L)
+            service(accountService, rateLimitRecordRepository = rateLimitRecordRepository).deleteAccount(1L)
 
-            scopes.captured shouldNotContain ThrottleScope.PERSON.name
-            scopes.captured shouldNotContain ThrottleScope.BINDING_KEY.name
+            scopes.captured shouldNotContain RateLimitScope.PERSON.name
+            scopes.captured shouldNotContain RateLimitScope.BINDING_KEY.name
         }
     }
 })

@@ -173,7 +173,7 @@ export interface AuthInvitePatchRequest {
      * @type {string}
      * @memberof AuthInvitePatchRequest
      */
-    partnernr?: string;
+    partnerNumber?: string;
 }
 /**
  * 
@@ -335,7 +335,7 @@ export interface ChannelBlock {
      */
     channelSessionId: string;
     /**
-     * Which facade this channel was opened through - APP (DPoP) or KEYCLOAK (docs/02-domaenenmodell.md Abschnitt 1). Fixed for the channel's whole lifetime.
+     * Which facade this channel was opened through - APP (DPoP) or WEB (docs/02-domaenenmodell.md Abschnitt 1). Fixed for the channel's whole lifetime.
      * @type {string}
      * @memberof ChannelBlock
      */
@@ -422,7 +422,7 @@ export interface ChannelPatchRequest {
  */
 export interface ChannelResponse {
     /**
-     * KEYCLOAK channels only (docs/05-api.md Abschnitt 3) - never present for APP.
+     * WEB channels only (docs/05-api.md Abschnitt 3) - never present for APP.
      * @type {AuthData}
      * @memberof ChannelResponse
      */
@@ -901,7 +901,7 @@ export interface IdentFscPatchRequest {
      * @type {string}
      * @memberof IdentFscPatchRequest
      */
-    partnernr?: string;
+    partnerNumber?: string;
 }
 /**
  * 
@@ -920,7 +920,7 @@ export interface IdentKvnrPatchRequest {
      * @type {string}
      * @memberof IdentKvnrPatchRequest
      */
-    partnernr?: string;
+    partnerNumber?: string;
 }
 /**
  * 
@@ -1071,13 +1071,13 @@ export interface KcChannelUpsertRequest {
      */
     availableTools?: Array<string>;
     /**
-     * Only read on this channel's first call, same restriction as availableTools - the kc facade's own, deliberately narrow counterpart to the App facade's `intent` request parameter (docs/05-api.md #"POST /app/channels: intent-Parameter"). Omitted (or null) means kc_select_method, the existing login/step-up behaviour. Only kc_select_method and register are accepted here - unlike the App facade, not every AuthIntent.isEntryIntent value: fast_access/lookup_login assume an APP-shaped channel this facade never has.
+     * Only read on this channel's first call, same restriction as availableTools - the kc facade's own, deliberately narrow counterpart to the App facade's `intent` request parameter (docs/05-api.md #"POST /app/channels: intent-Parameter"). Omitted (or null) means web_select_method, the existing login/step-up behaviour. Only web_select_method and register are accepted here - unlike the App facade, not every AuthIntent.isEntryIntent value: fast_access/lookup_login assume an APP-shaped channel this facade never has.
      * @type {string}
      * @memberof KcChannelUpsertRequest
      */
     intent?: string;
     /**
-     * Required whenever restoreData is present, ignored otherwise. Keycloak's own, durable UserSessionModel id - deliberately NOT read off the peer-auth assertion (the assertion's kc-anchor is always THIS flow run's own channelSessionId, docs/02-domaenenmodell.md Abschnitt 1, so it can't verify a token minted for a DIFFERENT, earlier flow run's channel). Must match what GET .../restore-data was called with to produce this exact restoreData token.
+     * Required whenever restoreData is present, ignored otherwise. Keycloak's own, durable UserSessionModel id - deliberately NOT read off the peer-auth assertion (the assertion's kc binding is always THIS flow run's own channelSessionId, docs/02-domaenenmodell.md Abschnitt 1, so it can't verify a token minted for a DIFFERENT, earlier flow run's channel). Must match what GET .../restore-data was called with to produce this exact restoreData token.
      * @type {string}
      * @memberof KcChannelUpsertRequest
      */

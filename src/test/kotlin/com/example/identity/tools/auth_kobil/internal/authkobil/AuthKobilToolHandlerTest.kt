@@ -141,7 +141,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             val outcome = handler.releasePin(toolSessionId, KobilUnlockCredential.BiometricUnlock("guessed"), passwordEnrollment = null)
 
             then("it fails without releasing anything") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Entsperren fehlgeschlagen"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Entsperren fehlgeschlagen"))
                 data.userVerification shouldBe null
                 data.pinReleaseExpiresAt shouldBe null
             }
@@ -166,7 +166,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
 
             then("it still runs the password check, then fails with the one wording") {
                 verify { passwordCredentials.verify(null, "hunter2") }
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Entsperren fehlgeschlagen"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Entsperren fehlgeschlagen"))
                 data.userVerification shouldBe null
             }
         }
@@ -180,7 +180,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             val outcome = handler.releasePin(toolSessionId, KobilUnlockCredential.BiometricUnlock("unlock-secret-11"), passwordEnrollment = null)
 
             then("it fails with the same wording as a wrong secret") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Entsperren fehlgeschlagen"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Entsperren fehlgeschlagen"))
                 data.userVerification shouldBe null
             }
         }
@@ -199,7 +199,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, "otp-never-redeemed")
 
             then("it fails as not unlocked and does not redeem the OTP at KOBIL") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Entsperren erforderlich"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Entsperren erforderlich"))
                 verify(exactly = 0) { ssms.verifyOtp(any(), "otp-never-redeemed") }
             }
         }
@@ -209,7 +209,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, "otp-after-expiry")
 
             then("it fails as not unlocked and does not redeem the OTP at KOBIL") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Entsperren erforderlich"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Entsperren erforderlich"))
                 verify(exactly = 0) { ssms.verifyOtp(any(), "otp-after-expiry") }
             }
         }
@@ -245,7 +245,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, "otp-unknown")
 
             then("it fails as not recognized") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Bestaetigung nicht erkannt"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Bestaetigung nicht erkannt"))
             }
         }
 
@@ -254,7 +254,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, "otp-other-device")
 
             then("it fails without naming the expected device") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Geraet nicht erkannt"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Geraet nicht erkannt"))
             }
         }
 
@@ -263,7 +263,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, "otp-rooted")
 
             then("it fails with its own reason, not folded into not recognized") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Geraet als unsicher gemeldet"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Geraet als unsicher gemeldet"))
             }
         }
     }

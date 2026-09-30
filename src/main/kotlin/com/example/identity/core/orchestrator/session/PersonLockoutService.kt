@@ -12,14 +12,14 @@ import java.time.Duration
  */
 @Service
 @Transactional
-class PersonLockoutService(private val counter: AttemptCounter) {
+class PersonLockoutService(private val counter: RateLimitCounter) {
 
-    fun isLocked(personId: String): Boolean = counter.isLocked(ThrottleScope.PERSON, key(personId))
+    fun isLocked(personId: String): Boolean = counter.isLocked(RateLimitScope.PERSON, key(personId))
 
     fun recordFailure(personId: String) =
-        counter.recordFailure(ThrottleScope.PERSON, key(personId), MAX_FAILURES, LOCKOUT_DURATION)
+        counter.recordFailure(RateLimitScope.PERSON, key(personId), MAX_FAILURES, LOCKOUT_DURATION)
 
-    fun recordSuccess(personId: String) = counter.reset(ThrottleScope.PERSON, key(personId))
+    fun recordSuccess(personId: String) = counter.reset(RateLimitScope.PERSON, key(personId))
 
     private fun key(personId: String) = personId
 

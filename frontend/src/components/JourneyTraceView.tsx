@@ -119,7 +119,7 @@ const timeFormat = new Intl.DateTimeFormat('de-DE', { timeStyle: 'medium' })
 
 function channelTypeLabel(channelType?: string): string {
   if (channelType === 'APP') return 'App'
-  if (channelType === 'KEYCLOAK') return 'Kc/Web'
+  if (channelType === 'WEB') return 'Web'
   return 'Unbekannt'
 }
 

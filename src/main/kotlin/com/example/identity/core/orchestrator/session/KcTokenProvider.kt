@@ -13,74 +13,74 @@ import java.time.Clock
 
 /**
  * `keycloak`-profile [TokenProvider]: fetches a real Keycloak-signed access token via the
- * `urn:identity-demo:account-token` grant (ADR-9). The App never talks to Keycloak itself; KEYCLOAK
+ * `urn:identity-demo:account-token` grant (ADR-9). The App never talks to Keycloak itself; WEB
  * channels hold their own tokens. A still valid token is returned; a RefreshToken is used while it
  * lives; otherwise the current acr/amr go through the grant, into the login's one session. Any
- * evidence change clears the cached tokens ([AuthEvidenceService]), so a surviving RefreshToken
+ * evidence change clears the cached tokens ([SessionEvidenceService]), so a surviving RefreshToken
  * always matches the current acr/amr.
  */
 @Service
 @Profile("keycloak")
 class KcTokenProvider(
-    private val authContextRepository: AuthContextRepository,
+    private val appTokenSessionRepository: AppTokenSessionRepository,
     private val keycloakAdminClient: KeycloakAdminClient,
-    private val authEvidenceService: AuthEvidenceService,
+    private val sessionEvidenceService: SessionEvidenceService,
     private val authPolicy: AuthPolicy,
     private val accountService: AccountService,
     private val clock: Clock
 ) : TokenProvider {
 
     override fun tokenFor(channel: ChannelSession, minValiditySeconds: Long): TokenPair {
-        val authContextId = channel.authContextId!!
-        val authContext = checkNotNull(authContextRepository.findByIdOrNull(authContextId)) {
-            "AuthContext not found: $authContextId"
+        val appTokenSessionId = channel.appTokenSessionId!!
+        val appTokenSession = checkNotNull(appTokenSessionRepository.findByIdOrNull(appTokenSessionId)) {
+            "AppTokenSession not found: $appTokenSessionId"
         }
-        val accountId = checkNotNull(authContext.accountId) { "AuthContext $authContextId has no accountId" }
+        val accountId = checkNotNull(appTokenSession.accountId) { "AppTokenSession $appTokenSessionId has no accountId" }
         val now = clock.instant()
 
-        val currentExpiry = authContext.accessExpiresAt
-        if (authContext.accessToken != null && currentExpiry != null &&
+        val currentExpiry = appTokenSession.accessExpiresAt
+        if (appTokenSession.accessToken != null && currentExpiry != null &&
             currentExpiry.isAfter(now.plusSeconds(minValiditySeconds))
         ) {
-            return TokenPair(authContext.accessToken!!, currentExpiry, authContext.refreshExpiresAt ?: currentExpiry)
+            return TokenPair(appTokenSession.accessToken!!, currentExpiry, appTokenSession.refreshExpiresAt ?: currentExpiry)
         }
 
         // Only the first token of this login opens a Keycloak session (ADR-43). After that, Keycloak's
         // own session decides (SSO idle and max): a lapsed window or a refused refresh or
         // continuation ends the login instead of opening a second session behind its back.
-        val sessionId = authContext.keycloakSessionId
-        val refreshToken = authContext.refreshToken
-        if (sessionId != null && authContext.refreshExpiresAt?.isAfter(now) != true) {
-            throw SessionExpiredException("Keycloak session window of AuthContext $authContextId has lapsed")
+        val sessionId = appTokenSession.keycloakSessionId
+        val refreshToken = appTokenSession.refreshToken
+        if (sessionId != null && appTokenSession.refreshExpiresAt?.isAfter(now) != true) {
+            throw SessionExpiredException("Keycloak session window of AppTokenSession $appTokenSessionId has lapsed")
         }
         val response = try {
             when {
-                sessionId == null -> requestAccountToken(authContext, sessionId = null)
+                sessionId == null -> requestAccountToken(appTokenSession, sessionId = null)
                 // Evidence changed (a step-up): the new acr/amr go into the same session.
-                refreshToken == null -> requestAccountToken(authContext, sessionId)
+                refreshToken == null -> requestAccountToken(appTokenSession, sessionId)
                 else -> keycloakAdminClient.refreshAccountToken(refreshToken)
             }
         } catch (e: HttpClientErrorException) {
             if (sessionId == null) {
-                throw SessionRefusedException("Keycloak refused to open a session for AuthContext $authContextId: ${e.statusCode}")
+                throw SessionRefusedException("Keycloak refused to open a session for AppTokenSession $appTokenSessionId: ${e.statusCode}")
             }
-            throw SessionExpiredException("Keycloak refused to continue session $sessionId of AuthContext $authContextId: ${e.statusCode}")
+            throw SessionExpiredException("Keycloak refused to continue session $sessionId of AppTokenSession $appTokenSessionId: ${e.statusCode}")
         }
 
         val accessExpiresAt = now.plusSeconds(response.expiresInSeconds)
-        authContext.accessToken = response.accessToken
-        authContext.accessExpiresAt = accessExpiresAt
+        appTokenSession.accessToken = response.accessToken
+        appTokenSession.accessExpiresAt = accessExpiresAt
         // The Keycloak session of this login (`sid`): every later grant continues exactly this one,
         // and an App logout ends it.
-        authContext.keycloakSessionId = sessionId
-            ?: checkNotNull(sidClaimOf(response.accessToken)) { "Keycloak token for AuthContext $authContextId carries no sid" }
+        appTokenSession.keycloakSessionId = sessionId
+            ?: checkNotNull(sidClaimOf(response.accessToken)) { "Keycloak token for AppTokenSession $appTokenSessionId carries no sid" }
         if (response.refreshToken != null) {
-            authContext.refreshToken = response.refreshToken
-            authContext.refreshExpiresAt = response.refreshExpiresInSeconds?.let { now.plusSeconds(it) }
+            appTokenSession.refreshToken = response.refreshToken
+            appTokenSession.refreshExpiresAt = response.refreshExpiresInSeconds?.let { now.plusSeconds(it) }
         }
-        authContextRepository.save(authContext)
+        appTokenSessionRepository.save(appTokenSession)
 
-        return TokenPair(response.accessToken, accessExpiresAt, authContext.refreshExpiresAt ?: accessExpiresAt)
+        return TokenPair(response.accessToken, accessExpiresAt, appTokenSession.refreshExpiresAt ?: accessExpiresAt)
     }
 
     /**
@@ -88,10 +88,10 @@ class KcTokenProvider(
      * onto the Keycloak session. Plain parameters: only the orchestrator's client may call it (ADR-9).
      * Without [sessionId] the grant opens the login's session, with it the grant continues it (ADR-43).
      */
-    private fun requestAccountToken(authContext: AuthContext, sessionId: String?): AccountTokenResponse {
-        val accountId = checkNotNull(authContext.accountId)
+    private fun requestAccountToken(appTokenSession: AppTokenSession, sessionId: String?): AccountTokenResponse {
+        val accountId = checkNotNull(appTokenSession.accountId)
         val account = accountService.findAccount(accountId)
-        val evidence = authContext.authEvidenceId?.let { authEvidenceService.getAuthEvidence(it) }?.toCoreEvidence()
+        val evidence = appTokenSession.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }?.toCoreEvidence()
         return keycloakAdminClient.requestAccountToken(
             accountId,
             acr = evidence?.let { authPolicy.resolveAcr(it, account) }?.value,

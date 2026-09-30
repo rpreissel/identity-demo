@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController
 
 /**
  * Keycloak's second user federation reads invitations here (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md),
- * by their identity only: there is no search. The assertion's `channel_anchor` names the invitation
+ * by their identity only: there is no search. The assertion's `channel_binding` names the invitation
  * looked up, and the answer is signed like every answer to Keycloak.
  */
 @RestController
@@ -39,8 +39,8 @@ class KcInvitationLookupController(
         val token = authorization?.trim()?.let { if (it.startsWith("Bearer ", ignoreCase = true)) it.substring(7).trim() else it }
             ?: throw PeerAuthValidationException("Missing Authorization header")
         val assertion = peerAuthValidator.validate(token, httpRequest.method, buildRequestUrl(httpRequest))
-        if (assertion.channelAnchor != invitation) {
-            throw PeerAuthValidationException("Peer-auth channel_anchor does not match this lookup")
+        if (assertion.channelBinding != invitation) {
+            throw PeerAuthValidationException("Peer-auth channel_binding does not match this lookup")
         }
         return views.byInvitation(invitation)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
     }

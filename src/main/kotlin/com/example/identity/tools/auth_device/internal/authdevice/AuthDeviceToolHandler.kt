@@ -58,7 +58,7 @@ class AuthDeviceToolHandler(
             ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "toolSession=$toolSessionId")
 
         return when (val decision = AuthDeviceFlow.decide(devicePublicKey.thumbprint, enrollment.thumbprint, userVerification)) {
-            AuthDeviceDecision.WrongDevice -> ToolOutcome.Failed.IdentifiedAuth(Text("Geraet nicht erkannt"))
+            AuthDeviceDecision.WrongDevice -> ToolOutcome.Failed.KnownAccountAuth(Text("Geraet nicht erkannt"))
             is AuthDeviceDecision.Complete -> ToolOutcome.Completed.Authenticated(
                 amr = listOf(descriptor.method, decision.userVerification.wireValue),
                 achievedAcr = descriptor.maxAcr,

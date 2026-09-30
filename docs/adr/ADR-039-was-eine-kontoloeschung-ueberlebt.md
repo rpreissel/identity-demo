@@ -40,7 +40,7 @@ bestätigen** und deshalb einstellbar.
   die Referenz beim Anbieter (`provider`, `providerTxId`, `procedure`, `methodVersion`) und einen
   Hash des Gesehenen (`evidenceHash`). Damit lassen sich nachträglich alle Konten ermitteln, die ein
   bestimmtes Verfahren in einer bestimmten Version identifiziert hat, und ein einzelner Fall beim
-  Anbieter nachprüfen. Übernimmt ein Konto ein vorläufiges (ADR-20), wandern dessen
+  Anbieter nachprüfen. Übernimmt ein Konto ein verwerfbares (ADR-20), wandern dessen
   Identifizierungen mit, mit Herkunftsvermerk (`carriedFromAccountId`).
 - **Eine Person ist über Name, Vorname und Geburtsdatum wiederzufinden**, auch nach der Löschung:
   Mehr kann jemand, dessen Konto übernommen und gelöscht wurde, oft nicht angeben. Jedes

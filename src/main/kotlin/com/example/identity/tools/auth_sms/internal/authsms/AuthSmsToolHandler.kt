@@ -3,7 +3,7 @@ import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
-import com.example.identity.tools.auth_sms.internal.SmsSendBudget
+import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 import com.example.identity.contract.tool_api.TooManyRequestsException
 
 import com.example.identity.tools.auth_sms.AuthSmsDescriptor
@@ -28,7 +28,7 @@ class AuthSmsToolHandler(
     private val enrollmentRepository: AuthSmsEnrollmentRepository,
     private val tanGenerator: TanGenerator,
     private val smsGateway: SmsGateway,
-    private val sendBudget: SmsSendBudget,
+    private val sendLimit: SmsSendLimit,
     private val clock: Clock
 ) {
 
@@ -43,7 +43,7 @@ class AuthSmsToolHandler(
             ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "id=${enrollmentRef.id}")
 
         // The channel already knows the account, so saying "too many" reveals nothing.
-        if (!sendBudget.trySend(enrollment.phoneNumber.orEmpty())) {
+        if (!sendLimit.trySend(enrollment.phoneNumber.orEmpty())) {
             throw TooManyRequestsException(Text("Zu viele Codes angefordert. Bitte versuchen Sie es in einigen Minuten erneut."))
         }
         val issued = tanGenerator.issue()
@@ -72,13 +72,13 @@ class AuthSmsToolHandler(
 
         return when (AuthSmsFlow.decide(state, AuthSmsInput(tan), tanGenerator)) {
             AuthSmsDecision.Unchanged -> outcomeFor(state)
-            AuthSmsDecision.WrongTan -> ToolOutcome.Failed.IdentifiedAuth(Text("TAN ungueltig oder abgelaufen"))
+            AuthSmsDecision.WrongTan -> ToolOutcome.Failed.KnownAccountAuth(Text("TAN ungueltig oder abgelaufen"))
             AuthSmsDecision.Complete -> {
                 // Gone during the tool session (removed on another channel): a right TAN for a
                 // method that no longer exists proves nothing.
                 val enrollment = data.enrollmentRefId?.toLongOrNull()?.let { enrollmentRepository.findByIdOrNull(it) }
                     ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "toolSession=$toolSessionId")
-                sendBudget.received(enrollment.phoneNumber.orEmpty())
+                sendLimit.received(enrollment.phoneNumber.orEmpty())
                 ToolOutcome.Completed.Authenticated(
                     amr = listOf(descriptor.method),
                     achievedAcr = descriptor.maxAcr,

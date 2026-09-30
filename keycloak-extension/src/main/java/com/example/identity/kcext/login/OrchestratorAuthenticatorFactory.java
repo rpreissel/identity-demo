@@ -62,7 +62,7 @@ public class OrchestratorAuthenticatorFactory implements AuthenticatorFactory {
         toolId.setLabel("Static tool id");
         toolId.setType(ProviderConfigProperty.STRING_TYPE);
         toolId.setHelpText("Only valid for account-independent tools (e.g. ident-fsc). Leave empty for "
-                + "step-up executions - their candidates are account-specific (docs/04-orchestrierung.md Abschnitt 3, KC_SELECT_METHOD).");
+                + "step-up executions - their candidates are account-specific (docs/04-orchestrierung.md Abschnitt 3, WEB_SELECT_METHOD).");
 
         ProviderConfigProperty targetAcr = new ProviderConfigProperty();
         targetAcr.setName("targetAcr");
@@ -77,7 +77,7 @@ public class OrchestratorAuthenticatorFactory implements AuthenticatorFactory {
         intent.setLabel("Entry intent");
         intent.setType(ProviderConfigProperty.STRING_TYPE);
         intent.setHelpText("Only meaningful on the channel's very first call (a fresh login/registration "
-                + "flow run, never a step-up). Leave empty for kc_select_method (today's login/step-up "
+                + "flow run, never a step-up). Leave empty for web_select_method (today's login/step-up "
                 + "behaviour). Set to 'register' on the registration flow's entry execution to run "
                 + "identification + enrollment instead (docs/04-orchestrierung.md #2/#3). Any other value "
                 + "is rejected by the orchestrator.");

@@ -2,7 +2,7 @@ package com.example.identity.core.account
 
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.EnrollmentRef
-import com.example.identity.contract.tool_api.claims.TrustLevel
+import com.example.identity.contract.tool_api.claims.ClaimTrust
 import java.time.Instant
 
 data class AuthMethodView(
@@ -25,16 +25,16 @@ data class AccountProfile(
     val email: String? = null,
     val emailConfirmedAt: Instant? = null,
     /**
-     * Each established attribute at the highest [TrustLevel] a non-retracted claim carries (ADR-12).
+     * Each established attribute at the highest [ClaimTrust] a non-retracted claim carries (ADR-12).
      * `ToolDescriptor.requires` is checked against this.
      */
-    val establishedClaims: Map<AttributeType, TrustLevel> = emptyMap()
+    val establishedClaims: Map<AttributeType, ClaimTrust> = emptyMap()
 ) {
     /**
      * Set up: at least one login method was ever enrolled (ADR-46), so the account can be logged
      * into. Until then it is being set up: not findable for a login, recognized by no device, and
      * discarded as a whole when its registration is abandoned. Deactivated instances count, so a
-     * revoked device does not turn an account back. Independent of the role (Interessent).
+     * revoked device does not turn an account back. Independent of the role (prospect).
      */
     val isSetUp: Boolean
         get() = authenticationMethods.isNotEmpty()
@@ -62,6 +62,6 @@ data class AccountProfile(
      * itself. The one rule behind every operation that may treat an account as disposable (ADR-20).
      * Deactivated instances count, because a revoked instance still owns claim provenance (ADR-12).
      */
-    val isProvisional: Boolean
+    val isDisposable: Boolean
         get() = isUnidentified && !isSetUp
 }

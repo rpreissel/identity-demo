@@ -107,7 +107,7 @@ dann genau das erreichte Niveau.
 ## 5) Was sich an bestehendem Verhalten und an der Doku ändern würde
 
 Die Aussage in [04-orchestrierung.md](../04-orchestrierung.md) („IAL und AAL“): *„Wurde nur mit loa2
-identifiziert, bleiben auch alle danach eingerichteten Methoden auf loa2 begrenzt“* bekäme eine
+identifiziert, bleiben auch alle danach eingerichteten Verfahren auf loa2 begrenzt“* bekäme eine
 Ausnahme. Sie gälte dann nicht mehr uneingeschränkt, sondern „es sei denn, der Inhaber des Kontos
 weist sich später auf einem höheren Niveau erneut aus und stimmt der nachträglichen Aufwertung
 ausdrücklich zu“. ADR-5 bräuchte einen Nachtrag, der diese eine, eng umrissene Ausnahme von der sonst

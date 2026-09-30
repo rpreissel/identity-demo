@@ -34,11 +34,11 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
         beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
     }
 
-    private fun stubAssertion(channelAnchor: String) {
+    private fun stubAssertion(channelBinding: String) {
         every { peerAuthValidator.validate(any(), any(), any()) } returns PeerAuthAssertion(
             jti = UUID.randomUUID().toString(),
             issuedAt = Instant.now(),
-            channelAnchor = channelAnchor,
+            channelBinding = channelBinding,
             subject = null
         )
     }
@@ -96,7 +96,7 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
     /** Activates auth-qr-lookup on a fresh WEB channel, returns (toolSessionId, pairingCode). */
     private fun startWebLookup(): Pair<String, String> {
         val webChannelSessionId = UUID.randomUUID()
-        stubAssertion(channelAnchor = webChannelSessionId.toString())
+        stubAssertion(channelBinding = webChannelSessionId.toString())
         kcPatch(webChannelSessionId)
         val webToolSessionId = kcPost("/orchestrator/api/v1/channels/$webChannelSessionId/tools/auth-qr-lookup")
             .nextRaw()["toolSessionId"] as String

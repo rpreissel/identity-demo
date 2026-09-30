@@ -34,17 +34,17 @@ class IdentKvnrToolHandler(
     }
 
     /**
-     * [personId] is resolved by the controller; a given KVNR wins over [partnernr]. An unknown
+     * [personId] is resolved by the controller; a given KVNR wins over [partnerNumber]. An unknown
      * number and one of somebody else's person answer alike, so nobody can probe which numbers
      * exist. The foreign person is still named as `attemptedPersonId`, so the guess counts against
-     * the ident throttle.
+     * the ident rate limit.
      */
     @Transactional
-    fun patch(toolSessionId: UUID, kvnr: String?, partnernr: String?, personId: String?, matchesAttestedIdentity: Boolean): ToolOutcome {
+    fun patch(toolSessionId: UUID, kvnr: String?, partnerNumber: String?, personId: String?, matchesAttestedIdentity: Boolean): ToolOutcome {
         val data = checkNotNull(repository.findByIdOrNull(toolSessionId)) { "Unknown ident-kvnr tool session: $toolSessionId" }
         val byKvnr = !kvnr.isNullOrBlank()
-        if (!byKvnr && partnernr.isNullOrBlank()) return inProgress()
-        if (byKvnr) data.kvnr = kvnr else data.partnernr = partnernr
+        if (!byKvnr && partnerNumber.isNullOrBlank()) return inProgress()
+        if (byKvnr) data.kvnr = kvnr else data.partnerNumber = partnerNumber
         repository.save(data)
 
         val notAssignable = if (byKvnr) Text("Versichertennummer konnte nicht zugeordnet werden") else Text("Partnernummer konnte nicht zugeordnet werden")
@@ -59,7 +59,7 @@ class IdentKvnrToolHandler(
                 Claim(AttributeType.PERSON_ID, personId, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr),
                 kvnr?.takeIf { it.isNotBlank() }?.let { Claim(AttributeType.KVNR, it, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr) },
                 // Insured with us: the Versicherungsnummer becomes an anchor too (ADR-34).
-                personDirectory.insuranceNumberOf(personId)?.let { Claim(AttributeType.INSURANCE_NUMBER, it, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr) }
+                personDirectory.memberNumberOf(personId)?.let { Claim(AttributeType.MEMBER_NUMBER, it, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr) }
             ),
             auditDetails = mapOf("methodVersion" to "1.0")
         )

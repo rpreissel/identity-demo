@@ -105,7 +105,7 @@ class KcChannelController(
         description = "For the Authenticator's end-of-flow lifecycle hook only (docs/ideen/" +
             "docs/05-api.md Abschnitt 3) - reads back what this channel accumulated, to stash in a " +
             "Keycloak UserSessionModel note and resubmit at a later flow's start. kcSessionId is " +
-            "passed explicitly (not read off the channel's own anchor) because the returned token " +
+            "passed explicitly (not read off the channel's own binding) because the returned token " +
             "must remain valid across the flow-run boundary the channel itself does not survive - " +
             "a fresh channel next flow run, but the very same UserSessionModel id. " +
             "sessionExpiresAt (epoch seconds) is the latest end of that Keycloak session without " +

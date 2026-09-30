@@ -19,7 +19,7 @@ Person und behauptet erst dann:
 
 - `PERSON_ID` (die Partnernummer),
 - `KVNR`, wenn eine KVNR angegeben wurde,
-- `INSURANCE_NUMBER`, wenn die Person bei uns versichert ist.
+- `MEMBER_NUMBER`, wenn die Person bei uns versichert ist.
 
 Alle drei tragen `ClaimSource.PERSON_DIRECTORY`, denn für diese Werte steht das Personenverzeichnis
 ein.
@@ -30,7 +30,7 @@ danach ein vollständig bestätigter **Interessent**
 ([ADR-10](ADR-010-interessent-ist-konto-zustand-kein-eigener-authintent.md)) und bekommt keinen
 Fehler.
 
-**Rolle.** `ident-kvnr` hat die eigene Rolle `MethodRole.CORRELATION` in der Kategorie `IDENT`. Die
+**Rolle.** `ident-kvnr` hat die eigene Rolle `ToolRole.CORRELATION` in der Kategorie `IDENT`. Die
 Rolle sagt ausdrücklich, dass das Tool für sich nichts beweist: Es gehört zu keiner Nachweisart
 (`evidenceAxis()` liefert `null`), hebt also weder IAL noch AAL, und `factorTypes` ist leer. Das IAL
 eines bestätigten Interessenten stammt allein aus dem Bestätigen. Die Auswahl der Kandidaten

@@ -1,6 +1,6 @@
 package com.example.identity.contract.tool_api.claims
 
-import com.example.identity.contract.tool_api.values.Partnernr
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolDescriptor
 import java.time.LocalDate
@@ -20,11 +20,11 @@ enum class AttributeType(val wireName: String) {
      * Personenverzeichnis (changeable there); when it exists it is also a local account anchor,
      * replaced whenever the Personenverzeichnis reports a new one (ADR-34).
      */
-    INSURANCE_NUMBER("insurance_number"),
+    MEMBER_NUMBER("member_number"),
     /**
      * Card-bound pseudonym from the eID read (stand-in for the real "Restricted Identifier"). It
      * changes with a new card but never moves to another person, so it recognizes an
-     * eid-identified Interessent: a replaceable local account anchor (ADR-19). The register never
+     * eid-identified prospect: a replaceable local account anchor (ADR-19). The register never
      * stores it.
      */
     EID_RESTRICTED_ID("restricted_id"),
@@ -83,7 +83,7 @@ value class ClaimSource(val value: String) {
     override fun toString(): String = value
 
     companion object {
-        /** The master-data backend (personenverzeichnis) - strongest trust level. */
+        /** The master-data backend (personenverzeichnis) - strongest claim trust. */
         val PERSON_DIRECTORY = ClaimSource("person_directory")
 
         /** A value the user entered with nothing backing it. */
@@ -98,7 +98,7 @@ value class ClaimSource(val value: String) {
  * The trust classes of a [ClaimSource]. Higher [rank] wins; recency only breaks ties within one
  * level (docs/02-domaenenmodell.md #6).
  */
-enum class TrustLevel(val rank: Int) {
+enum class ClaimTrust(val rank: Int) {
     /** Backed by the master-data backend, e.g. personenverzeichnis. */
     AUTHORITATIVE(3),
     /** Proven by a tool run, e.g. an eID procedure or a confirmed email-code exchange. */
@@ -107,12 +107,12 @@ enum class TrustLevel(val rank: Int) {
     SELF_REPORTED(1)
 }
 
-/** The [TrustLevel] this [ClaimSource] belongs to. */
-val ClaimSource.trustLevel: TrustLevel
+/** The [ClaimTrust] this [ClaimSource] belongs to. */
+val ClaimSource.claimTrust: ClaimTrust
     get() = when (this) {
-        ClaimSource.PERSON_DIRECTORY -> TrustLevel.AUTHORITATIVE
-        ClaimSource.SELF_REPORTED -> TrustLevel.SELF_REPORTED
-        else -> TrustLevel.PROVEN
+        ClaimSource.PERSON_DIRECTORY -> ClaimTrust.AUTHORITATIVE
+        ClaimSource.SELF_REPORTED -> ClaimTrust.SELF_REPORTED
+        else -> ClaimTrust.PROVEN
     }
 
 /** The only value of an [AttributeType.PASSWORD_EXISTS] claim; the claim itself is the statement. */
@@ -128,7 +128,7 @@ data class Claim(
     val attributeType: AttributeType,
     /** The asserted value, unnormalized - normalization for anchor lookups happens in `account`. */
     val value: String,
-    /** Who vouches for [value] - decides the [TrustLevel] via [ClaimSource.trustLevel]. */
+    /** Who vouches for [value] - decides the [ClaimTrust] via [ClaimSource.claimTrust]. */
     val source: ClaimSource,
     /**
      * The level the session had proven when this claim was established (ADR-5). `null` if unknown;
@@ -146,7 +146,7 @@ fun Claim.validateValue() {
         "${attributeType.wireName} claim must not be blank"
     }
     when (attributeType) {
-        AttributeType.PERSON_ID -> check(Partnernr.ofOrNull(value) != null) {
+        AttributeType.PERSON_ID -> check(PartnerNumber.ofOrNull(value) != null) {
             "person_id claim must be a Partnernummer (P and nine digits)"
         }
         AttributeType.BIRTH_DATE -> check(runCatching { LocalDate.parse(value.trim()) }.isSuccess) {
@@ -156,15 +156,15 @@ fun Claim.validateValue() {
     }
 }
 
-/** One entry of [ToolDescriptor.requires]: [attributeType] at no less than [minTrustLevel]. */
+/** One entry of [ToolDescriptor.requires]: [attributeType] at no less than [minClaimTrust]. */
 data class ClaimRequirement(
     val attributeType: AttributeType,
-    val minTrustLevel: TrustLevel
+    val minClaimTrust: ClaimTrust
 )
 
 /**
  * One entry of [ToolDescriptor.claims]: an [AttributeType] and the [ClaimSource] a run asserts it
- * with. No [TrustLevel] here: it follows from the source via [ClaimSource.trustLevel], which is
+ * with. No [ClaimTrust] here: it follows from the source via [ClaimSource.claimTrust], which is
  * global policy, not per-tool knowledge.
  */
 data class ClaimDeclaration(

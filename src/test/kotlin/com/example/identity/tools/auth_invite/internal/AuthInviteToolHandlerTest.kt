@@ -42,7 +42,7 @@ private class Fixture {
 }
 
 /**
- * Pure unit test without Spring. The rule under test: a code alone opens nothing, and a throttled
+ * Pure unit test without Spring. The rule under test: a code alone opens nothing, and a rate-limited
  * person, an unknown number and a wrong code look the same.
  */
 class AuthInviteToolHandlerTest : BehaviorSpec({
@@ -51,7 +51,7 @@ class AuthInviteToolHandlerTest : BehaviorSpec({
         val f = Fixture()
 
         `when`("the person's KVNR and the code arrive") {
-            val outcome = f.handler.patch(f.toolSessionId, KVNR, null, CODE, PERSON, throttled = false)
+            val outcome = f.handler.patch(f.toolSessionId, KVNR, null, CODE, PERSON, rateLimited = false)
 
             then("the channel is authenticated for the invitation at its level") {
                 outcome shouldBe ToolOutcome.Completed.Authenticated(
@@ -68,24 +68,24 @@ class AuthInviteToolHandlerTest : BehaviorSpec({
         val f = Fixture()
 
         `when`("the number and the code arrive") {
-            val outcome = f.handler.patch(f.toolSessionId, KVNR, null, WRONG_CODE, PERSON, throttled = false)
+            val outcome = f.handler.patch(f.toolSessionId, KVNR, null, WRONG_CODE, PERSON, rateLimited = false)
 
             then("it fails and names the person tried") {
-                val failed = outcome.shouldBeInstanceOf<ToolOutcome.Failed.LookupAuth>()
+                val failed = outcome.shouldBeInstanceOf<ToolOutcome.Failed.AccountLookupAuth>()
                 failed.reason.template shouldBe "Nummer oder Einmalkennwort ungueltig"
                 failed.attempted shouldBe Attempted.Person(PERSON)
             }
         }
     }
 
-    given("an active session and a throttled person with a valid code") {
+    given("an active session and a rateLimited person with a valid code") {
         val f = Fixture()
 
         `when`("the number and the code arrive") {
-            val outcome = f.handler.patch(f.toolSessionId, KVNR, null, CODE, PERSON, throttled = true)
+            val outcome = f.handler.patch(f.toolSessionId, KVNR, null, CODE, PERSON, rateLimited = true)
 
             then("the answer is the one for a wrong code") {
-                val failed = outcome.shouldBeInstanceOf<ToolOutcome.Failed.LookupAuth>()
+                val failed = outcome.shouldBeInstanceOf<ToolOutcome.Failed.AccountLookupAuth>()
                 failed.reason.template shouldBe "Nummer oder Einmalkennwort ungueltig"
                 failed.attempted shouldBe Attempted.Person(PERSON)
             }
@@ -100,10 +100,10 @@ class AuthInviteToolHandlerTest : BehaviorSpec({
         val f = Fixture()
 
         `when`("the number and the code arrive") {
-            val outcome = f.handler.patch(f.toolSessionId, "Z999999999", null, CODE, personId = null, throttled = false)
+            val outcome = f.handler.patch(f.toolSessionId, "Z999999999", null, CODE, personId = null, rateLimited = false)
 
             then("the answer is the one for a wrong code, without a person") {
-                val failed = outcome.shouldBeInstanceOf<ToolOutcome.Failed.LookupAuth>()
+                val failed = outcome.shouldBeInstanceOf<ToolOutcome.Failed.AccountLookupAuth>()
                 failed.reason.template shouldBe "Nummer oder Einmalkennwort ungueltig"
                 failed.attempted shouldBe null
             }
@@ -118,7 +118,7 @@ class AuthInviteToolHandlerTest : BehaviorSpec({
         val f = Fixture()
 
         `when`("the input arrives") {
-            val outcome = f.handler.patch(f.toolSessionId, KVNR, null, null, PERSON, throttled = false)
+            val outcome = f.handler.patch(f.toolSessionId, KVNR, null, null, PERSON, rateLimited = false)
 
             then("the step asks for the code again") {
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "auth", stepData = MissingFields(listOf("code")))
@@ -134,7 +134,7 @@ class AuthInviteToolHandlerTest : BehaviorSpec({
         val f = Fixture()
 
         `when`("the input arrives") {
-            val outcome = f.handler.patch(f.toolSessionId, null, null, null, null, throttled = false)
+            val outcome = f.handler.patch(f.toolSessionId, null, null, null, null, rateLimited = false)
 
             then("the step asks for the number and the code") {
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "auth", stepData = MissingFields(listOf("kvnr", "code")))
@@ -146,7 +146,7 @@ class AuthInviteToolHandlerTest : BehaviorSpec({
         val f = Fixture()
 
         `when`("input arrives for it") {
-            val result = runCatching { f.handler.patch(UUID.randomUUID(), KVNR, null, CODE, PERSON, throttled = false) }
+            val result = runCatching { f.handler.patch(UUID.randomUUID(), KVNR, null, CODE, PERSON, rateLimited = false) }
 
             then("it is refused") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }

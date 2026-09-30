@@ -13,7 +13,7 @@ import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.tools.auth_email.AuthEmailDescriptor
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
-import com.example.identity.tools.auth_email.internal.EmailSendBudget
+import com.example.identity.tools.auth_email.internal.EmailSendLimit
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -36,9 +36,9 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<AuthEmailToolSessionRepository>()
     val accountDirectory = mockk<AccountDirectory>()
     val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
-    val sendBudget = mockk<EmailSendBudget>(relaxed = true).also { every { it.trySend(any()) } returns true }
+    val sendLimit = mockk<EmailSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val mailServer = MailServer(clock = TEST_CLOCK)
-    val handler = AuthEmailToolHandler(AuthEmailDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, mailServer, sendBudget, clock = TEST_CLOCK)
+    val handler = AuthEmailToolHandler(AuthEmailDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, mailServer, sendLimit, clock = TEST_CLOCK)
 
     given("start()") {
         `when`("the account has no confirmed email address") {
@@ -74,10 +74,10 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
 
         `when`("the address has used up its send budget") {
             val gateway = MailServer(clock = TEST_CLOCK)
-            val throttledHandler = AuthEmailToolHandler(AuthEmailDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, gateway, sendBudget, clock = TEST_CLOCK)
+            val rateLimitedHandler = AuthEmailToolHandler(AuthEmailDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, gateway, sendLimit, clock = TEST_CLOCK)
             every { accountDirectory.anchorValue(3L, AttributeType.EMAIL) } returns "flooded@example.com"
-            every { sendBudget.trySend("flooded@example.com") } returns false
-            val result = runCatching { throttledHandler.start(UUID.randomUUID(), accountId = 3L) }
+            every { sendLimit.trySend("flooded@example.com") } returns false
+            val result = runCatching { rateLimitedHandler.start(UUID.randomUUID(), accountId = 3L) }
 
             then("it refuses with TooManyRequestsException and sends nothing") {
                 shouldThrow<TooManyRequestsException> { result.getOrThrow() }
@@ -105,7 +105,7 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
             }
 
             then("the address's send budget starts over: whoever asked received the code") {
-                verify { sendBudget.received("max@example.com") }
+                verify { sendLimit.received("max@example.com") }
             }
         }
 
@@ -113,7 +113,7 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, "000000", accountId = 43L)
 
             then("it fails against the account the channel already knows") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Code ungueltig oder abgelaufen"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Code ungueltig oder abgelaufen"))
             }
 
             then("it does not look up the address, so no budget is reset") {

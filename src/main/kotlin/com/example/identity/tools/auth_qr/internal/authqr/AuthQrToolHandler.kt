@@ -52,9 +52,9 @@ class AuthQrToolHandler(
                 } else {
                     // A different account confirmed than the one this WEB session already knows -
                     // never silently take over (same reasoning as Action.RecordIdentification's account check).
-                    ToolOutcome.Failed.IdentifiedAuth(Text("Bestätigung passt nicht zu diesem Konto"))
+                    ToolOutcome.Failed.KnownAccountAuth(Text("Bestätigung passt nicht zu diesem Konto"))
                 }
-            is QrLoginBrowserSide.State.Failed -> ToolOutcome.Failed.IdentifiedAuth(state.reason)
+            is QrLoginBrowserSide.State.Failed -> ToolOutcome.Failed.KnownAccountAuth(state.reason)
         }
     }
 

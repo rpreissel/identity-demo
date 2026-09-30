@@ -39,8 +39,8 @@ class SharedCredentialRowIntegrationTest : IntegrationTestSupport() {
             then("deleting the first keeps the row; deleting the last one removes it") {
                 val row = deviceRow()
                 val ref = EnrollmentRef("auth_device.enrollment", row.toString())
-                val first = accountService.createUnidentifiedAccount().accountId
-                val second = accountService.createUnidentifiedAccount().accountId
+                val first = accountService.createAccountInSetup().accountId
+                val second = accountService.createAccountInSetup().accountId
                 accountService.addAuthenticationMethod(first, "device", ref, enrolledUnderAcr = null, details = emptyMap(), allowsMultipleInstances = true)
                 accountService.addAuthenticationMethod(second, "device", ref, enrolledUnderAcr = null, details = emptyMap(), allowsMultipleInstances = true)
 

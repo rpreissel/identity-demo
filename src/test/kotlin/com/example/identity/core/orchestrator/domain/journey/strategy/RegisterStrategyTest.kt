@@ -20,7 +20,7 @@ import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTe
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -149,7 +149,7 @@ class RegisterStrategyTest : BehaviorSpec({
         // evidence at loa2, which offerEnrollment needs before it offers Enrolling.
         val postIdentityCtx = ctx(
             account = acc,
-            evidence = AuthEvidence.fromNow(
+            evidence = SessionEvidence.fromNow(
                 listOf("fsc"), setOf(FactorType.POSSESSION), mapOf("fsc" to "loa2"),
                 axis = mapOf("fsc" to EvidenceAxis.IDENTITY)
             ),
@@ -157,7 +157,7 @@ class RegisterStrategyTest : BehaviorSpec({
         )
         val confirmedCtx = ctx(
             account = account(emailConfirmed = true),
-            evidence = AuthEvidence.fromNow(
+            evidence = SessionEvidence.fromNow(
                 listOf("fsc"), setOf(FactorType.POSSESSION), mapOf("fsc" to "loa2"),
                 axis = mapOf("fsc" to EvidenceAxis.IDENTITY)
             ),
@@ -263,7 +263,7 @@ class RegisterStrategyTest : BehaviorSpec({
             val transition = strategy.transition(
                 state,
                 JourneyEvent.Abandoned(AuthSmsDescriptor),
-                ctx(account = acc, channel = ChannelType.KEYCLOAK)
+                ctx(account = acc, channel = ChannelType.WEB)
             )
             then("falls back to identification again, not to enrollment - never wrapped with the factor-kind obligation") {
                 transition shouldBe Transition.To(RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"), ToolId("ident-nect")))))
@@ -351,13 +351,13 @@ class RegisterStrategyTest : BehaviorSpec({
 
     // The third obligation (docs/04-orchestrierung.md #8): a registration must leave the account
     // able to reach loa2, so a single factor kind gets a method of another kind added.
-    given("Enrolling on the KEYCLOAK channel, sufficient, email already confirmed, sms only") {
+    given("Enrolling on the WEB channel, sufficient, email already confirmed, sms only") {
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = true)
         val theCtx = ctx(
             account = acc,
             evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.KEYCLOAK,
+            channel = ChannelType.WEB,
             availableTools = StrategyTestFixtures.webTools
         )
         val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), emailObligation = false)
@@ -381,13 +381,13 @@ class RegisterStrategyTest : BehaviorSpec({
         }
     }
 
-    given("Enrolling on the KEYCLOAK channel, sufficient, but the email obligation is still open") {
+    given("Enrolling on the WEB channel, sufficient, but the email obligation is still open") {
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = false)
         val theCtx = ctx(
             account = acc,
             evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.KEYCLOAK,
+            channel = ChannelType.WEB,
             availableTools = StrategyTestFixtures.webTools
         )
         // enroll-password is no candidate without a confirmed email (docs/03-tool-architektur.md #1).
@@ -412,13 +412,13 @@ class RegisterStrategyTest : BehaviorSpec({
         }
     }
 
-    given("Enrolling on the KEYCLOAK channel, email already confirmed, password only") {
+    given("Enrolling on the WEB channel, email already confirmed, password only") {
         val acc = account(method("password", AcrLevel.LOA1), emailConfirmed = true)
         val theCtx = ctx(
             account = acc,
             evidence = evidence(listOf("password"), setOf(FactorType.KNOWLEDGE), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.KEYCLOAK,
+            channel = ChannelType.WEB,
             availableTools = StrategyTestFixtures.webTools
         )
         val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), emailObligation = false)
@@ -542,13 +542,13 @@ class RegisterStrategyTest : BehaviorSpec({
         }
     }
 
-    given("Enrolling on KEYCLOAK, but the Web theme never declared enroll-password renderable") {
+    given("Enrolling on WEB, but the Web theme never declared enroll-password renderable") {
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = true)
         val theCtx = ctx(
             account = acc,
             evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.KEYCLOAK,
+            channel = ChannelType.WEB,
             availableTools = StrategyTestFixtures.webTools - ToolId("enroll-password")
         )
         val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = false)
@@ -571,13 +571,13 @@ class RegisterStrategyTest : BehaviorSpec({
         }
     }
 
-    given("ConfirmingEmail on the KEYCLOAK channel, sms only") {
+    given("ConfirmingEmail on the WEB channel, sms only") {
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = true)
         val theCtx = ctx(
             account = acc,
             evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.KEYCLOAK,
+            channel = ChannelType.WEB,
             availableTools = StrategyTestFixtures.webTools
         )
         val state = RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email"))))

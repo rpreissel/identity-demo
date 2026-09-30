@@ -25,7 +25,7 @@ class ContractModelTest {
         String json = """
             {
               "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                          "channelType": "KEYCLOAK", "state": "STEP_UP_IN_PROGRESS"},
+                          "channelType": "WEB", "state": "STEP_UP_IN_PROGRESS"},
               "next": {"type": "tool", "toolId": "auth-sms", "step": "auth"},
               "authData": {"subject": {"type": "account", "id": "42"}, "acr": "loa2", "amr": {"sms": "orchestrator"}}
             }
@@ -47,7 +47,7 @@ class ContractModelTest {
     void unbekannteStepDataFormBrichtDieUnion() {
         String vonMorgen = """
             {"channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                         "channelType": "KEYCLOAK", "state": "STEP_UP_IN_PROGRESS"},
+                         "channelType": "WEB", "state": "STEP_UP_IN_PROGRESS"},
              "stepData": {"kind": "eine-form-von-morgen", "irgendwas": 1}}
             """;
         assertThrows(Exception.class, () -> mapper.readValue(vonMorgen, ChannelResponse.class));
@@ -65,7 +65,7 @@ class ContractModelTest {
         String vonMorgen = """
             {
               "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                          "channelType": "KEYCLOAK", "state": "STEP_UP_IN_PROGRESS",
+                          "channelType": "WEB", "state": "STEP_UP_IN_PROGRESS",
                           "einNeuesFeld": "spaeter dazugekommen"},
               "next": {"type": "tool", "toolId": "auth-sms", "step": "auth",
                        "toolSessionId": "7d2b1d7e-0000-4000-8000-000000000001"},

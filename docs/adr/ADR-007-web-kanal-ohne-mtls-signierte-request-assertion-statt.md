@@ -14,9 +14,9 @@ Antwort auf eine Peer-Auth-Anfrage (`KeycloakResponseSigner`, Header `Orchestrat
 `/orchestrator/api/v1/kc/response-jwks/.well-known/jwks.json`, bevor sie der Antwort glaubt
 (`OrchestratorResponseVerifier`).
 
-Es gibt genau ein JWT je Anfrage, nicht ein Access-Token mit einem getrennten Nachweis dazu. Bei der
+Es gibt genau ein JWT je Anfrage, nicht ein Access-Token mit einem getrennten Proof dazu. Bei der
 ersten Anmeldung gibt es nämlich noch kein `sub`. Die Assertion sagt deshalb nur: „Ich handle für
-diesen Kanal-Anker; der Nutzer ist vielleicht noch unbekannt.“
+diese Kanalbindung; der Nutzer ist vielleicht noch unbekannt.“
 
 Signiert wird mit einem **eigenen Schlüsselpaar** der Keycloak-Erweiterung, nicht mit den Schlüsseln,
 mit denen der Realm Tokens signiert. Die Erweiterung veröffentlicht den öffentlichen Schlüssel unter

@@ -33,7 +33,7 @@ private const val IDENT_FSC_TOOL_ID = "ident-fsc"
 data class IdentFscPatchRequest(
     @field:Schema(example = "A123456789") val kvnr: String? = null,
     /** Only without a KVNR (a Partner, ADR-34) - the client asks for the KVNR first, then for this. */
-    @field:Schema(example = "P000000004") val partnernr: String? = null,
+    @field:Schema(example = "P000000004") val partnerNumber: String? = null,
     @field:Schema(example = "Muster") val familyName: String? = null,
     @field:Schema(example = "Max") val givenNames: String? = null,
     @field:Schema(example = "1985-06-15") val birthDate: LocalDate? = null,
@@ -111,13 +111,13 @@ class IdentFscToolController(
         // The KVNR comes first (ADR-34): given, it alone decides; the Partnernummer only counts without one.
         val personId = when {
             !body.kvnr.isNullOrBlank() -> personDirectory.findPersonIdByKvnr(normalizeKvnr(body.kvnr))
-            !body.partnernr.isNullOrBlank() -> personDirectory.findPersonIdByPartnernr(body.partnernr)
+            !body.partnerNumber.isNullOrBlank() -> personDirectory.findPersonIdByPartnerNumber(body.partnerNumber)
             else -> null
         }
         // Folded into the handler's ordinary failure rather than raised - see
         // Lockouts.isIdentLockedOut: a distinguishable lock would leak which KVNRs exist.
-        val throttled = lockouts.isIdentLockedOut(personId)
-        val outcome = handler.patch(toolSessionId, body.kvnr, body.partnernr, body.familyName, body.givenNames, body.birthDate, body.fsc, personId, throttled)
+        val rateLimited = lockouts.isIdentLockedOut(personId)
+        val outcome = handler.patch(toolSessionId, body.kvnr, body.partnerNumber, body.familyName, body.givenNames, body.birthDate, body.fsc, personId, rateLimited)
 
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }

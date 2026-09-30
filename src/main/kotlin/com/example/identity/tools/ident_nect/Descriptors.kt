@@ -6,7 +6,7 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimDeclaration
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import org.springframework.stereotype.Component
@@ -21,7 +21,7 @@ internal const val NECT_METHOD = "nect"
 @Component
 object IdentNectDescriptor : ToolDescriptor {
     override val toolId = ToolId("ident-nect")
-    override val role = MethodRole.IDENTIFICATION
+    override val role = ToolRole.IDENTIFICATION
     override val method = NECT_METHOD
     override val factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE)
     override val maxAcr = AcrLevel.LOA3

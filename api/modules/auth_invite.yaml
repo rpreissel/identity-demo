@@ -8,7 +8,7 @@ components:
         kvnr:
           example: A123456789
           type: string
-        partnernr:
+        partnerNumber:
           example: P000000004
           type: string
       type: object
@@ -22,7 +22,7 @@ components:
     kc-peer-auth:
       bearerFormat: JWT
       description: 'Signed peer-auth assertion (docs/05-api.md Abschnitt 3, ADR-7). The Web channel''s proof: Keycloak calls
-        server-to-server, and the channel anchor comes out of the assertion.'
+        server-to-server, and the channel binding comes out of the assertion.'
       scheme: bearer
       type: http
 info:

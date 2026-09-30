@@ -59,7 +59,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         jti: String? = UUID.randomUUID().toString(),
         iss: String? = issuer,
         aud: String? = audience,
-        channelAnchor: String? = "channel-anchor-1",
+        channelBinding: String? = "channel-binding-1",
         subject: String? = null,
         algorithm: JWSAlgorithm = JWSAlgorithm.ES256,
         keyId: String = kid
@@ -72,7 +72,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         jti?.let { claimsBuilder.jwtID(it) }
         iss?.let { claimsBuilder.issuer(it) }
         aud?.let { claimsBuilder.audience(it) }
-        channelAnchor?.let { claimsBuilder.claim("channel_anchor", it) }
+        channelBinding?.let { claimsBuilder.claim("channel_binding", it) }
         subject?.let { claimsBuilder.subject(it) }
         val signedJWT = SignedJWT(header, claimsBuilder.build())
         signedJWT.sign(ECDSASigner(key.toECPrivateKey()))
@@ -84,24 +84,24 @@ class PeerAuthValidatorTest : BehaviorSpec({
             then("it succeeds and reports the assertion's context") {
                 val key = ECKeyGenerator(Curve.P_256).generate()
                 val jti = UUID.randomUUID().toString()
-                val assertion = signAssertion(key, jti = jti, channelAnchor = "channel-anchor-42")
+                val assertion = signAssertion(key, jti = jti, channelBinding = "channel-binding-42")
 
                 val result = validator(jwkSourceReturning(key)).validate(assertion, method, url)
 
                 result.jti shouldBe jti
-                result.channelAnchor shouldBe "channel-anchor-42"
+                result.channelBinding shouldBe "channel-binding-42"
             }
         }
     }
 
     given("a validly signed assertion with a subject") {
-        then("channelAnchor and the subject both come through") {
+        then("channelBinding and the subject both come through") {
             val key = ECKeyGenerator(Curve.P_256).generate()
-            val assertion = signAssertion(key, channelAnchor = "channel-anchor-7", subject = "kc-sub-7")
+            val assertion = signAssertion(key, channelBinding = "channel-binding-7", subject = "kc-sub-7")
 
             val result = validator(jwkSourceReturning(key)).validate(assertion, method, url)
 
-            result.channelAnchor shouldBe "channel-anchor-7"
+            result.channelBinding shouldBe "channel-binding-7"
             result.subject shouldBe "kc-sub-7"
         }
     }
@@ -206,8 +206,8 @@ class PeerAuthValidatorTest : BehaviorSpec({
             val assertion = signAssertion(key, htu = "https://example.test/somewhere-else")
             shouldThrow<PeerAuthValidationException> { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
         }
-        then("carrying no channel_anchor is rejected") {
-            val assertion = signAssertion(key, channelAnchor = null)
+        then("carrying no channel_binding is rejected") {
+            val assertion = signAssertion(key, channelBinding = null)
             shouldThrow<PeerAuthValidationException> { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
         }
         then("a missing jti is rejected") {

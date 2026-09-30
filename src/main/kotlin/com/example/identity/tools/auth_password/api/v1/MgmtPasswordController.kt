@@ -67,7 +67,7 @@ class MgmtPasswordController(
             keycloakToolCalls.apply(
                 accountId, AuthPasswordDescriptor,
                 if (matches) ToolOutcome.Completed.Authenticated(amr = listOf(AuthPasswordDescriptor.method))
-                else ToolOutcome.Failed.IdentifiedAuth(Text("Passwort ungueltig"))
+                else ToolOutcome.Failed.KnownAccountAuth(Text("Passwort ungueltig"))
             )
         }
         return ResponseEntity.ok(MgmtPasswordVerifyResponse(matches && !locked))

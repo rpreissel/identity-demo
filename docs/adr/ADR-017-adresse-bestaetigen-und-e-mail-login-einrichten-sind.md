@@ -4,10 +4,10 @@
 
 ## Entscheidung
 
-Eine E-Mail-Adresse zu bestätigen ist ein eigenes Tool, `confirm-email`. Es hat die Kategorie
-`ToolCategory.ATTEST` (Rolle `ATTESTATION`) und ein eigenes Ergebnis,
+Eine E-Mail-Adresse zu bestätigen ist ein eigenes Tool, `confirm-email`. Es hat die Rolle
+`ATTESTATION` und ein eigenes Ergebnis,
 `ToolOutcome.Completed.Attested`: mit Claims, aber ohne `enrollmentRef`, ohne `amr`, ohne eigenes
-Niveau und ohne Methodeninstanz. Die bestätigte Adresse wird damit Teil des Kontos und kein Verfahren.
+Niveau und ohne eingerichtetes Verfahren. Die bestätigte Adresse wird damit Teil des Kontos und kein Verfahren.
 
 `enroll-email` richtet danach nur noch die Anmeldung per E-Mail-Code ein. Es setzt eine bestätigte
 Adresse voraus (`ClaimRequirement(EMAIL, PROVEN)`) und braucht deshalb keinen eigenen Code-Austausch
@@ -37,7 +37,7 @@ die Adresse nicht mehr mit.
 Früher entstand der Wissensfaktor nebenbei, wenn man die Adresse bestätigte. Seit das nicht mehr so
 ist, braucht die Registrierung eine eigene Regel für `loa2`: ein Verfahren anderer Art, aber nur
 dann, wenn das Konto `loa2` sonst nicht erreicht. Welche Tools das sind, entscheiden die Faktorarten
-im Katalog, nicht ein fest genannter Methodenname. Ein Geräteschlüssel deckt Besitz, Wissen und
+im Katalog, nicht ein fest genannter Verfahrensname. Ein Geräteschlüssel deckt Besitz, Wissen und
 Biometrie zugleich ab und genügt dafür allein.
 
 **Erwogene Alternative:** alles beim Alten lassen und die Verbindung nur dokumentieren, also

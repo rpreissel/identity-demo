@@ -30,7 +30,7 @@ Verfahren spricht das Personenverzeichnis direkt an, nicht eine Abstraktionsschi
 Port in `tool_api` wäre ein zweiter Weg für dieselbe Art von Abhängigkeit zu einem Fremdsystem gewesen.
 
 `PersonDirectory` bleibt der Port, über den die Person per KVNR oder Partnernummer gefunden, die
-Personalien abgeglichen und die Versicherungsnummer gelesen werden (ADR-34). Diese Fragen stellen alle
+Personalien abgeglichen und die Mitgliedsnummer gelesen werden (ADR-34). Diese Fragen stellen alle
 Verfahren zur Identifizierung, nicht nur `ident_fsc`.
 
 ## Der Brief
@@ -61,7 +61,7 @@ Erwogen und verworfen:
 **Restrisiko, bewusst getragen**: Wer den Brief nach der legitimen Nutzung findet (Altpapier,
 Mitbewohner), kann sich bis zum Ablauf erneut als diese Person identifizieren – loa2 und damit das
 Konto der Person. Begrenzt wird das nur durch die Gültigkeitsdauer, den Widerruf im
-Personenverzeichnis und die Ident-Drossel (5 Fehlversuche je Person in 15 Minuten, die gegen Raten
+Personenverzeichnis und die Ident-Mengenbegrenzung (5 Fehlversuche je Person in 15 Minuten, die gegen Raten
 schützt, nicht gegen einen bekannten Code). Wie das Verzeichnis den Code speichert (heute SHA-256
 ohne Pepper) ist nach [ADR-35](ADR-035-betriebsanspruch-backend-kern-produktionsreif.md) Sache des
 Fremdsystems; das echte System muss ihn so ablegen, dass ein gelesener Hash den Code nicht verrät.

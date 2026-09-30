@@ -6,7 +6,7 @@ erklärt [../04-orchestrierung.md](../04-orchestrierung.md), Abschnitt 3.
 - [`FAST_ACCESS`](fast-access.md)
 - [`REGISTER`](register.md)
 - [`LOOKUP_LOGIN`](lookup-login.md)
-- [`KC_SELECT_METHOD`](kc-select-method.md)
+- [`WEB_SELECT_METHOD`](web-select-method.md)
 - [`STEP_UP`](step-up.md)
 - [`RE_IDENTIFY`](re-identify.md)
 - [`MANAGE_AUTH_METHODS`](manage-auth-methods.md)

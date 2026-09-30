@@ -116,7 +116,7 @@ class AuthSmsLookupToolController(
         val outcome = if (body.email != null) {
             // Resolved here, since auth_sms may not depend on `account`. Unknown, without sms
             // method or locked all become null and look like a wrong TAN, so account existence
-            // does not leak. The handler bounds the sends itself (SmsSendBudget).
+            // does not leak. The handler bounds the sends itself (SmsSendLimit).
             val resolved = accountDirectory.resolveAccountByEmail(body.email)
             val accountId = resolved?.takeUnless { lockouts.isLockedOut(it) }
             val enrollmentRef = accountId?.let { accountDirectory.activeEnrollment(it, descriptor.method) }

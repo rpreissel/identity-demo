@@ -5,7 +5,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLo
 import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
-import com.example.identity.core.orchestrator.domain.journey.state.KcSelectMethodState
+import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
 import com.example.identity.core.orchestrator.domain.journey.state.LogoutState
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
@@ -73,7 +73,7 @@ class JourneyDiagramsTest : BehaviorSpec({
             Diagram(RegisterState::class, "register"),
             Diagram(RegisterEnrollFirstState::class, "register"),
             Diagram(LookupLoginState::class, "lookup-login"),
-            Diagram(KcSelectMethodState::class, "kc-select-method"),
+            Diagram(WebSelectMethodState::class, "web-select-method"),
             Diagram(StepUpState::class, "step-up"),
             Diagram(ManageAuthMethodsState::class, "manage-auth-methods"),
             Diagram(ConfirmPeerLoginState::class, "confirm-peer-login"),

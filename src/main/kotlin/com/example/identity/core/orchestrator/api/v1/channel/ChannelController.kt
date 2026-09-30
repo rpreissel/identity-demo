@@ -195,7 +195,7 @@ class ChannelController(
     @Operation(
         summary = "Log out (direct, no confirmation)",
         description = "Ends this channel for good (docs/02-domaenenmodell.md #3: AUTHENTICATED -> LOGGED_OUT, " +
-            "terminal) - cancels any active process and discards the AuthContext. For interactive clients " +
+            "terminal) - cancels any active process and discards the AppTokenSession. For interactive clients " +
             "prefer POST .../logouts which shows a confirmation prompt first. Never resumes on this " +
             "channelSessionId afterwards; call POST .../channels again for a new session (a known device still " +
             "skips straight to LOGIN there).",

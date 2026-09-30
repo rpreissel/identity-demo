@@ -126,7 +126,7 @@ Verfahren, das dieses Niveau allein erreicht hat. Zeilen desselben Durchlaufs ha
 
 `ident_fsc` prüft `kvnr`, `familyName`, `givenNames`, `birthDate` und `fsc` gegen das Personenverzeichnis:
 Name und Geburtsdatum gegen die dort geführte Person, den Code gegen die dort ausgestellten
-Freischaltcodes. Ein Partner ohne KVNR gibt statt `kvnr` seine Partnernummer `partnernr` an
+Freischaltcodes. Ein Partner ohne KVNR gibt statt `kvnr` seine Partnernummer `partnerNumber` an
 (ADR-34). Der Client fragt zuerst nach der KVNR; kommen beide Nummern, zählt die KVNR, und das Tool
 merkt sich immer nur eine von beiden. `kvnr` in `missingFields` steht deshalb für „KVNR oder
 Partnernummer“. Dabei stellt das Tool fest, um welche Person es sich handelt – genau das ist die
@@ -176,7 +176,7 @@ Wie `auth-sms`, nur entsteht der Datensatz `AuthSmsEnrollment` hier neu – und 
 erfolgreicher Prüfung der TAN, nie schon beim ersten `PATCH` mit der Telefonnummer (die ist zu
 diesem Zeitpunkt ja noch nicht bestätigt). Nach dem Abschluss legt der Orchestrator, wie in
 [Orchestrierung](04-orchestrierung.md) Abschnitt 1 beschrieben, den Eintrag in `account.auth_method`
-an, einschließlich `enrolledUnderAcr` aus dem aktuellen Nachweis der Sitzung (`AuthEvidence`).
+an, einschließlich `enrolledUnderAcr` aus dem aktuellen Nachweis der Sitzung (`SessionEvidence`).
 
 Zusätzlicher Fehlerfall zum allgemeinen Vertrag: ungültige Telefonnummer (Formatfehler) -> `400`.
 
@@ -208,7 +208,7 @@ DPoP-Schlüssel ist. Der Client weist den Besitz mit einem selbst signierten
 (`pin` oder `biometric`). Welcher Wert darin steht, bestimmt bei jedem Versuch die
 Sicherheitsabfrage des Systems (in der Demo simuliert). Weil der Server diesen Wert nur als Behauptung
 der App sieht, sind beide Tools nur im Demomodus verfügbar
-([ADR-36](adr/ADR-036-niveaus-und-ihre-nachweise.md)). `DeviceProofValidator` prüft den Nachweis
+([ADR-36](adr/ADR-036-niveaus-und-ihre-nachweise.md)). `DeviceProofValidator` prüft den Geräte-Proof
 eigenständig; `DpopValidator` ist dafür bewusst nicht erweitert
 ([Projektrahmen](08-projektrahmen.md) A11). Er nutzt aber dieselben Bausteine
 (`JwkThumbprintService`, Schutz gegen Wiederholung per Thumbprint und `jti`).
@@ -287,12 +287,12 @@ Wert an derselben Stelle, ein fremdes Konto hält ihn nie). Eine PersonId behaup
 (ADR-18).
 
 **`ident-kvnr`** ist der zweite Schritt: ein eigenes Tool mit nur einem Schritt (`input`, Feld
-`kvnr` – oder ohne KVNR `partnernr`, ADR-34). Es löst die Versichertennummer über
-`PersonDirectory.findPersonIdByKvnr` auf, die Partnernummer über `findPersonIdByPartnernr`; kommen
+`kvnr` – oder ohne KVNR `partnerNumber`, ADR-34). Es löst die Versichertennummer über
+`PersonDirectory.findPersonIdByKvnr` auf, die Partnernummer über `findPersonIdByPartnerNumber`; kommen
 beide, zählt die KVNR. Das geschieht im Controller, nicht im Handler, denn `ident_kvnr` darf
 `personenverzeichnis` nicht direkt kennen ([Projektrahmen](08-projektrahmen.md) Abschnitt 3).
 Danach behauptet das Tool unter `PERSON_DIRECTORY` die `PERSON_ID`, bei angegebener KVNR auch die
-`KVNR` und bei Versicherten die `INSURANCE_NUMBER` (ADR-34). Es hat die Rolle `CORRELATION` (Kategorie
+`KVNR` und bei Versicherten die `MEMBER_NUMBER` (ADR-34). Es hat die Rolle `CORRELATION` (Kategorie
 `IDENT`, ADR-18). Das sagt ausdrücklich, dass eine eingetippte Nummer für sich nichts beweist;
 `factorTypes={}` folgt daraus, definiert es aber nicht. Sicher wird der Schritt durch zwei Dinge:
 `requires` (die bestätigten Identitätsattribute müssen im Konto vorliegen, sonst lässt sich das
@@ -301,7 +301,7 @@ geschrieben wird, ob die Stammdaten hinter der Nummer zur bestätigten Identitä
 
 Gehört die Nummer zu einem Konto, das es schon gibt, ist das kein Fehler des Nutzers, sondern eine
 Folge der Reihenfolge: Die Bestätigung brauchte ein Konto, bevor die Zuordnung laufen konnte. Das
-vorläufige Konto geht dann im gefundenen auf, samt Bestätigung, Ankern und Protokoll der
+verwerfbare Konto geht dann im gefundenen auf, samt Bestätigung, Ankern und Protokoll der
 Identifizierung ([12-entscheidungen.md](12-entscheidungen.md) ADR-20). Danach steht die
 Registrierung da, wo jeder andere Weg zu einem bestehenden Konto auch stünde: bei der Frage, ob
 dieses Gerät mit einem anderen Konto verknüpft ist, und beim Angebot, ein vorhandenes Verfahren
@@ -352,8 +352,8 @@ Rolle.
 | Was | Wo es liegt | Was es dem Server beweist |
 |---|---|---|
 | KOBIL-PIN | im Backend des Tools, je Durchlauf herausgegeben | **Nichts über den Nutzer** – er kennt ihn nicht |
-| Lokales Gerätegeheimnis mit Biometrie-Schutz | nur im Client | Das Zugangsmittel zum Credential |
-| Passwort des Kontos | `auth_password.enrollment` | Dasselbe Zugangsmittel in anderer Form |
+| Lokales Gerätegeheimnis mit Biometrie-Schutz | nur im Client | Den Weg zum Entsperren des Credentials |
+| Passwort des Kontos | `auth_password.enrollment` | Einen zweiten Weg zum Entsperren |
 | Bestätigung + Gerätekennung | bei KOBIL, vom Server per OTP eingelöst | **Echten Besitz** – der Server prüft selbst, statt zu glauben |
 
 ### Einrichtung (`enroll-kobil`, Schritt `activate`)
@@ -368,7 +368,7 @@ Rolle.
    beim Client, denn mit ihr wird jede spätere Anmeldung verglichen. Dann schreibt es das
    Credential: Kennung, PIN, DPoP-`bindingKeyRef` und **nur bei Zustimmung** den Hash des
    `unlockSecret`. Das Ergebnis ist `Completed.Enrolled` mit `amr = [kobil, pin|biometric]`. Das
-   Zugangsmittel ergibt sich dabei aus der Zustimmung; es ist keine zweite Eingabe.
+   Weg zum Entsperren ergibt sich dabei aus der Zustimmung; es ist keine zweite Eingabe.
 
 `biometricConsent` hat keinen Standardwert: Eine Zustimmung, die man nicht gegeben hat, gibt es
 nicht. Ohne sie bleibt `unlock_secret_hash` NULL. „Biometrie erlaubt" ist damit kein Schalter neben
@@ -410,9 +410,9 @@ Der Anfrageinhalt ist ein echtes Entweder-oder (`sealed interface KobilUnlockCre
 zugleich oder keines von beiden lässt sich gar nicht bilden. Damit folgt der gemeldete Faktortyp
 aus dem Typ statt aus einem Schalter.
 
-Das Passwort des Kontos ist auf diesem Weg das Zugangsmittel zum KOBIL-Credential, kein eigener
+Das Passwort des Kontos ist auf diesem Weg der Schlüssel zum KOBIL-Credential, kein eigener
 Anmeldeschritt. Geprüft wird es über `PasswordCredentialPort`, gemeldet wird `pin` – nie
-`password`, denn das würde dem Durchlauf die echte Passwort-Methode anhängen und sie doppelt
+`password`, denn das würde dem Durchlauf das echte Passwort-Verfahren anhängen und es doppelt
 zählen. Eine wiederholte Herausgabe ist erlaubt: Wessen Zeitfenster abgelaufen ist, entsperrt
 einfach erneut.
 
@@ -436,7 +436,7 @@ einfach erneut.
   ein Passwort hat.
 
 Alle Fehlschläge sind gewöhnliche Fehlversuche (`200` mit `stepData.error`, Versuchsbudget der
-Journey), kein Fehlerstatus. Über `chargeThrottles` belasten sie den
+Journey), kein Fehlerstatus. Über `chargeRateLimits` belasten sie den
 `AccountLockoutService`, auch die Ablehnung wegen eines Risikos. Ein gerootetes Telefon kann seinen
 Besitzer also aussperren. Das wird bewusst in Kauf genommen, statt eine Sonderbehandlung
 einzuführen.
@@ -495,10 +495,10 @@ Web-Kanal.
    liegt im Briefkasten. Auf der Anmeldeseite bietet die Demo eine Auswahl der offenen Einladungen an,
    die Nummer und Kennwort einträgt (`invitations` im Demo-Block, ADR-28).
 2. **Anmelden.** Die Website startet eine gewöhnliche Anmeldung über den Browser-Client. Ohne Konto
-   bietet die Auswahl `auth-invite` an. Die Person gibt Versicherungs- oder Partnernummer und das
+   bietet die Auswahl `auth-invite` an. Die Person gibt Mitglieds- oder Partnernummer und das
    Kennwort ein. Der Controller löst die Nummer zur Person auf; das Tool fragt das Verzeichnis, ob das
    Kennwort eine offene Einladung genau dieser Person öffnet (`Invitations.redeem`). Ein Fehlversuch
-   zählt gegen die Person (Personen-Drossel wie beim Freischaltcode) und sieht für jede Ursache gleich
+   zählt gegen die Person (Personen-Mengenbegrenzung wie beim Freischaltcode) und sieht für jede Ursache gleich
    aus.
 3. **Binden.** Bei Erfolg wird die Einladung Subjekt des Kanals, kein Konto wird gesucht oder
    angelegt. Liegt das Niveau der Einladung unter dem verlangten, bricht die Journey vorher ab. Keycloak

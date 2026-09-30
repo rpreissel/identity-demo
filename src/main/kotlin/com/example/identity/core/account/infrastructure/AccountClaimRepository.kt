@@ -2,7 +2,7 @@ package com.example.identity.core.account.infrastructure
 
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimSource
-import com.example.identity.contract.tool_api.claims.trustLevel
+import com.example.identity.contract.tool_api.claims.claimTrust
 import java.util.UUID
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
@@ -47,6 +47,6 @@ internal fun List<AccountClaim>.strongestEstablishedValues(types: Set<AttributeT
         .groupBy { it.attributeType!! }
         .mapValues { (_, claims) ->
             claims.maxWith(
-                compareBy<AccountClaim>({ ClaimSource(it.claimSource.orEmpty()).trustLevel.rank }, { it.establishedAt })
+                compareBy<AccountClaim>({ ClaimSource(it.claimSource.orEmpty()).claimTrust.rank }, { it.establishedAt })
             ).value!!
         }

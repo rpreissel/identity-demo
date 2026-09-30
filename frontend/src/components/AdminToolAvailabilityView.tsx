@@ -7,15 +7,15 @@ import {
   type ChannelToolAvailability,
   type ChannelType,
   type ToolAvailabilityEntry,
-  type MethodRole,
+  type ToolRole,
 } from '../api.ts'
 
-const CHANNEL_LABELS: Record<ChannelType, string> = { APP: t('App-Kanal'), KEYCLOAK: t('Web-Kanal') }
+const CHANNEL_LABELS: Record<ChannelType, string> = { APP: t('App-Kanal'), WEB: t('Web-Kanal') }
 
 /** One heading per role - each role is one kind of selection list the user sees. */
-const ROLE_LABELS: Record<MethodRole, string> = {
-  IDENTIFIED_AUTH: t('Anmelden - Konto bekannt'),
-  LOOKUP_AUTH: t('Anmelden - über E-Mail-Adresse'),
+const ROLE_LABELS: Record<ToolRole, string> = {
+  KNOWN_ACCOUNT_AUTH: t('Anmelden - Konto bekannt'),
+  ACCOUNT_LOOKUP_AUTH: t('Anmelden - über E-Mail-Adresse'),
   IDENTIFICATION: t('Identifizieren'),
   CORRELATION: t('Person im Personenverzeichnis zuordnen'),
   ENROLLMENT: t('Einrichten'),
@@ -83,7 +83,7 @@ function ChannelToolList({ channel, run }: { channel: ChannelToolAvailability; r
 
   // Groups in the order the server lists them (it already sorts by role) - a selection only ever
   // shows tools of one role, so that is where an order means something.
-  const groups: [MethodRole, ToolAvailabilityEntry[]][] = []
+  const groups: [ToolRole, ToolAvailabilityEntry[]][] = []
   for (const tool of channel.tools) {
     const last = groups.at(-1)
     if (last && last[0] === tool.role) last[1].push(tool)

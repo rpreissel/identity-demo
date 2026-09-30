@@ -28,7 +28,7 @@ interface ChannelAccessGuard {
 /**
  * Implementation for the facade-neutral tool endpoints (docs/09-dpop.md #3, docs/05-api.md
  * Abschnitt 3). It accepts what [DpopBindingKeyResolver] resolved: a DPoP thumbprint (App) or a
- * `"kc:"`-prefixed channel anchor (Web). `KcChannelService` uses [KcChannelAccessGuard] with the
+ * `"kc:"`-prefixed channel binding (Web). `KcChannelService` uses [KcChannelAccessGuard] with the
  * typed [PeerAuthAssertion] instead.
  */
 @Component
@@ -39,9 +39,9 @@ class DeviceChannelAccessGuard(
     override fun requireChannel(channelSessionId: UUID, bindingKeyRef: String): ChannelSession {
         val channel = sessionManagementService.findChannelSessionById(channelSessionId)
             ?: throw OrchestratorException.notFound(Text("Channel session not found"), "channelSessionId=${channelSessionId}")
-        val matches = if (bindingKeyRef.startsWith(KC_ANCHOR_PREFIX)) {
-            val presented = bindingKeyRef.removePrefix(KC_ANCHOR_PREFIX)
-            constantTimeEquals(channel.channelAnchor, presented)
+        val matches = if (bindingKeyRef.startsWith(KC_BINDING_PREFIX)) {
+            val presented = bindingKeyRef.removePrefix(KC_BINDING_PREFIX)
+            constantTimeEquals(channel.channelBinding, presented)
         } else {
             // Constant-time, though both sides are public thumbprints: cheap insurance should the
             // binding ever carry more.
@@ -59,13 +59,13 @@ class DeviceChannelAccessGuard(
     }
 
     companion object {
-        const val KC_ANCHOR_PREFIX = "kc:"
+        const val KC_BINDING_PREFIX = "kc:"
     }
 }
 
 /**
  * WEB implementation (docs/02-domaenenmodell.md Abschnitt 1): the peer-auth assertion must carry
- * this channel's anchor. Otherwise a leaked `channelSessionId` plus any validly signed Keycloak
+ * this channel's binding. Otherwise a leaked `channelSessionId` plus any validly signed Keycloak
  * assertion would hijack the channel.
  */
 @Component
@@ -76,9 +76,9 @@ class KcChannelAccessGuard(
     fun requireChannel(channelSessionId: UUID, assertion: PeerAuthAssertion): ChannelSession {
         val channel = sessionManagementService.findChannelSessionById(channelSessionId)
             ?: throw OrchestratorException.notFound(Text("Channel session not found"), "channelSessionId=${channelSessionId}")
-        val matches = constantTimeEquals(channel.channelAnchor, assertion.channelAnchor)
+        val matches = constantTimeEquals(channel.channelBinding, assertion.channelBinding)
         if (!matches) {
-            throw OrchestratorException.bindingMismatch(Text("Keycloak assertion does not match this channel's kc-anchor"))
+            throw OrchestratorException.bindingMismatch(Text("Keycloak assertion does not match this channel's kc binding"))
         }
         return channel
     }

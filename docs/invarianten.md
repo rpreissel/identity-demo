@@ -22,7 +22,7 @@ Einige Wörter haben hier eine feste Bedeutung:
 
 - **Kanal:** eine Verbindung eines Clients zum Orchestrator; der App-Kanal spricht direkt mit ihm,
   der Web-Kanal über Keycloak.
-- **Journey:** ein Durchlauf zu einem Ziel („anmelden“, „SMS einrichten“), zusammengesetzt aus Tools.
+- **Journey:** ein Durchlauf zu einem Intent („anmelden“, „SMS einrichten“), zusammengesetzt aus Tools.
 - **Evidenz:** die gesammelten Nachweise einer Anmeldung – welche Verfahren mit welchen Faktoren
   bestanden wurden; daraus folgt das Niveau `loa1` bis `loa3`.
 - **Anker:** ein Wert, über den ein Konto eindeutig wiedergefunden wird (Partnernummer,
@@ -58,11 +58,11 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
   - Mechanismus: `type:SessionExpiredException`, `test:TokenServiceTest`, `test:KcTokenProviderTest`, `test:CancelLogoutIntegrationTest`
 - **I-23 `AUTHENTICATED` erzeugt eine Keycloak-Sitzung, und der Kanal überlebt sie nie; die Sitzungsdauer bestimmt Keycloak ([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)).**
   - Worum es geht: Keycloak führt die Uhr der Anmeldung. Der Kanal darf nicht angemeldet bleiben, wenn die Keycloak-Sitzung schon abgelaufen oder abgemeldet ist – sonst liefen zwei Uhren auseinander.
-  - Mechanismus: `type:AppLoginSession` (der App-Kanal holt beim Übergang nach `AUTHENTICATED` sein erstes Token; jedes Token, auch die Erneuerung bei einer Journey-Interaktion, setzt `expiresAt` auf das gemeldete Sitzungsfenster), `type:SessionRefusedException` (lehnt Keycloak ab, rollt der Übergang zurück), `type:ChannelSessionEndedException` (eine Sitzung, die sich nicht mehr erneuern lässt, beendet den Kanal, und das bleibt), `type:SessionEnd` (Web-Kanal: Keycloak meldet am Ende des Durchlaufs das späteste Sitzungsende), `test:ModelBasedJourneyTest` (Sitzung altert, läuft ab, Abmeldung in Keycloak; nach jedem Schritt geprüft), `test:AppLoginSessionIntegrationTest`, `test:SessionRefusedIntegrationTest`, `test:KcChannelIntegrationTest`, `test:SessionEndTest`
+  - Mechanismus: `type:AppTokenIssuer` (der App-Kanal holt beim Übergang nach `AUTHENTICATED` sein erstes Token; jedes Token, auch die Erneuerung bei einer Journey-Interaktion, setzt `expiresAt` auf das gemeldete Sitzungsfenster), `type:SessionRefusedException` (lehnt Keycloak ab, rollt der Übergang zurück), `type:ChannelSessionEndedException` (eine Sitzung, die sich nicht mehr erneuern lässt, beendet den Kanal, und das bleibt), `type:SessionEnd` (Web-Kanal: Keycloak meldet am Ende des Durchlaufs das späteste Sitzungsende), `test:ModelBasedJourneyTest` (Sitzung altert, läuft ab, Abmeldung in Keycloak; nach jedem Schritt geprüft), `test:AppTokenIssuerIntegrationTest`, `test:SessionRefusedIntegrationTest`, `test:KcChannelIntegrationTest`, `test:SessionEndTest`
   - Lücke: Web-Kanal zwischen letztem Journey-Schritt und Ende des Keycloak-Durchlaufs; verlorene Meldungen (`restore-data`, Abmeldung) sind nur best effort; Issue `DPoP-demo-oe06`.
 - **I-24 Zu einem Kanal gehört genau eine Keycloak-Sitzung: Sie wird einmal geöffnet und nie ersetzt; ein Step-up läuft in derselben Sitzung.**
   - Worum es geht: Die Sitzung wird einmal geöffnet und danach nur fortgesetzt, auch beim Hochstufen auf ein höheres Niveau. So ist eine Abmeldung in Keycloak eindeutig, und keine vergessene Nebensitzung bleibt übrig.
-  - Mechanismus: `type:KcTokenProvider` (nur ohne bekannte `keycloakSessionId` wird eine Sitzung geöffnet, danach setzt der Grant per `session_id` genau diese fort), `type:AccountTokenGrantType` (setzt nur eine gültige, eigene Sitzung desselben Nutzers fort, sonst Ablehnung), `test:ModelBasedJourneyTest`, `test:KcTokenProviderTest`, `test:TokenServiceTest`, `test:AppLoginSessionIntegrationTest`
+  - Mechanismus: `type:KcTokenProvider` (nur ohne bekannte `keycloakSessionId` wird eine Sitzung geöffnet, danach setzt der Grant per `session_id` genau diese fort), `type:AccountTokenGrantType` (setzt nur eine gültige, eigene Sitzung desselben Nutzers fort, sonst Ablehnung), `test:ModelBasedJourneyTest`, `test:KcTokenProviderTest`, `test:TokenServiceTest`, `test:AppTokenIssuerIntegrationTest`
 - **I-32 Ein Niveau über loa1 beruht nur auf Nachweisen der letzten 30 Minuten; ein wiederhergestellter Nachweis wird dadurch nicht jünger ([04-orchestrierung](04-orchestrierung.md) Abschnitt 8).**
   - Worum es geht: Ein zweiter Faktor von heute Morgen reicht am Nachmittag nicht mehr für `loa2`; wer mehr will, muss ihn frisch bestätigen. Wird ein Nachweis in einen neuen Anmeldedurchlauf übernommen, behält er seinen alten Zeitstempel – sonst ließe er sich durch bloßes Weiterreichen beliebig verjüngen.
   - Mechanismus: `test:DefaultAuthPolicyTest`, `test:RestoreDataCodecTest`, `test:KcChannelIntegrationTest`
@@ -71,7 +71,7 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
 
 - **I-5 Ein Kanal gehört höchstens einem Subjekt – einem Konto oder einer Einladung, nie beiden – und wechselt es nie still: ein anderes Subjekt ist ein Fehler, kein Umbinden. Seine Evidenz gehört demselben Subjekt ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
   - Worum es geht: Ein Kanal hängt an genau einem „Wer“. Meldet sich darauf plötzlich ein anderes Konto an, wird nicht still umgehängt, sondern abgelehnt. Sonst könnten Nachweise von Person A beim Konto von Person B landen.
-  - Mechanismus: `sql:ck_channel_session_one_subject`, `sql:ck_auth_evidence_one_subject`, `sql:ck_sign_in_log_one_subject`, `test:KcChannelIntegrationTest`, `test:AuthInviteIntegrationTest` (auch: Keycloak nennt ein anderes Subjekt → `409`)
+  - Mechanismus: `sql:ck_channel_session_one_subject`, `sql:ck_session_evidence_one_subject`, `sql:ck_sign_in_log_one_subject`, `test:KcChannelIntegrationTest`, `test:AuthInviteIntegrationTest` (auch: Keycloak nennt ein anderes Subjekt → `409`)
 - **I-30 Die Evidenz einer Einladung wandert in keinen späteren Anmeldedurchlauf ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
   - Worum es geht: Das Einladungs-Kennwort taugt nur für den einen Vorgang. Sein Nachweis wird nicht in eine spätere Konto-Anmeldung übernommen.
   - Mechanismus: `test:AuthInviteIntegrationTest` (`restore-data` bleibt für einen Einladungs-Kanal leer)
@@ -81,7 +81,7 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
 - **I-26 Ein angemeldeter Kanal arbeitet nie mit einem Konto im Aufbau (ohne Anmeldeverfahren); `REGISTERING` wird nur abgeleitet, nie gespeichert.**
   - Worum es geht: Ein Konto ist „im Aufbau“, solange noch kein Anmeldeverfahren eingerichtet ist, also mitten in der Registrierung. Ein angemeldeter Kanal hängt nie an so einem Konto. „Registriert gerade“ wird berechnet statt gespeichert und kann deshalb nicht veralten.
   - Mechanismus: `type:ChannelState` (`shownWith` leitet den Zustand ab), `test:ModelBasedJourneyTest` (keine Registrierung endet ohne dauerhaftes Verfahren)
-- **I-27 Anmeldung und Keycloak-Suche finden kein Konto im Aufbau – aber jedes eingerichtete, auch mit offenen Pflichten (Identität, zweiter Faktor, Stufe).**
+- **I-27 Anmeldung und Keycloak-Suche finden kein Konto im Aufbau – aber jedes eingerichtete, auch mit offenen Pflichten (Identität, zweiter Faktor, Niveau).**
   - Worum es geht: Halbfertige Konten tauchen bei Anmeldung und Nutzersuche nicht auf. Ein eingerichtetes Konto ist dagegen immer anmeldefähig, auch wenn noch Identifizierung oder zweiter Faktor fehlen.
   - Mechanismus: `type:AccountService` (`resolveByAnchor` liefert nur Konten mit Verfahren), `test:AccountServiceTest`, `test:KcAccountLookupIntegrationTest`, `test:RegisterEnrollFirstFlowIntegrationTest` (Anmeldung ohne Person hinter dem Konto)
 - **I-28 Ein eingerichtetes Konto fällt nie in den Aufbau zurück: Eine Verfahrensinstanz wird deaktiviert, nie gelöscht; gelöscht wird nur das ganze Konto.**
@@ -101,11 +101,11 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
   - Worum es geht: Eine bestätigte E-Mail-Adresse kann der Inhaber selbst entfernen. Für Identitätsanker wie Partnernummer oder Ausweiskennung stehen Dritte ein (Personenverzeichnis, Ausweis); die nimmt der Nutzer nicht zurück.
   - Mechanismus: `type:AnchorRule`, `test:AttributeRulesTest`, `test:AccountServiceDbTest`, `test:ManageMethodsIntegrationTest`
 - **I-12 Ein Korrelationsschritt (`ident-kvnr`) verrät nicht, ob eine fremde Nummer existiert.**
-  - Worum es geht: Wer eine Krankenversichertennummer eintippt, die nicht zu ihm passt, erfährt nicht, ob sie überhaupt vergeben ist – sonst ließen sich Nummern durchprobieren. Der Fehlversuch zählt bei der Person, die getroffen werden sollte, sodass deren Drossel greift.
+  - Worum es geht: Wer eine Krankenversichertennummer eintippt, die nicht zu ihm passt, erfährt nicht, ob sie überhaupt vergeben ist – sonst ließen sich Nummern durchprobieren. Der Fehlversuch zählt bei der Person, die getroffen werden sollte, sodass deren Mengenbegrenzung greift.
   - Mechanismus: `type:ToolOutcome` (`Failed.Identification` verlangt `attemptedPersonId`; die Drosselbuchung ist ein erschöpfendes `when` über die Varianten), `test:IdentKvnrToolHandlerTest`, `test:IdentEidAssignmentIntegrationTest`
-- **I-13 Je Konto höchstens eine aktive Instanz einer Singleton-Methode (z. B. Passwort).**
+- **I-13 Je Konto höchstens ein aktiver Eintrag eines Singleton-Verfahrens (z. B. Passwort).**
   - Worum es geht: Zwei gleichzeitig gültige Passwörter wären verwirrend und eine unnötige Angriffsfläche. Geräte darf man dagegen mehrere haben.
-  - Mechanismus: `sql:ux_auth_method_active_singleton`, `test:DatabaseInvariantConstraintTest` (prüft auch, dass die Methodenliste im SQL zu den Deskriptoren passt), `test:ModelBasedJourneyTest`
+  - Mechanismus: `sql:ux_auth_method_active_singleton`, `test:DatabaseInvariantConstraintTest` (prüft auch, dass die Liste der Verfahren im SQL zu den Deskriptoren passt), `test:ModelBasedJourneyTest`
 - **I-21 Was eine ersetzte Instanz nachwies und die neue nicht, gilt nicht mehr; jede Passwort-Instanz trägt ihren eigenen Nachweis.**
   - Worum es geht: Wer seine SMS-Nummer wechselt, hat danach nur noch die neue als bestätigt; die alte zählt nicht mehr. Ein neues Passwort erbt nichts vom alten.
   - Mechanismus: `test:AccountServiceDbTest`, `test:MgmtPasswordIntegrationTest`
@@ -120,7 +120,7 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
   - Worum es geht: Jeder Endpunkt ist entweder an den DPoP-Schlüssel eines Kanals gebunden oder nennt ausdrücklich seinen anderen Schutz, etwa den Admin-Login. Ein vergessener, ungeschützter Endpunkt fällt so im Test auf.
   - Mechanismus: `type:BindingKey`, `archunit:ApiBoundaryArchitectureTest`
 - **I-7 Ein DPoP-Proof gilt nur einmal.**
-  - Worum es geht: Jede Anfrage trägt einen eigenen signierten Nachweis. Wer eine Anfrage abfängt und nochmal abschickt, wird abgewiesen (Schutz vor Replay).
+  - Worum es geht: Jede Anfrage trägt einen eigenen signierten DPoP-Proof. Wer eine Anfrage abfängt und nochmal abschickt, wird abgewiesen (Schutz vor Replay).
   - Mechanismus: `type:DpopReplayProtectionService`, `test:DpopValidatorTest`
 - **I-8 Ein Kanal ist an genau einen Schlüssel gebunden, APP- und Keycloak-Kanal schließen sich aus.**
   - Worum es geht: Ein App-Kanal hat genau einen Geräteschlüssel. Ein Keycloak-Kanal hat beim Orchestrator keinen, denn dort spricht Keycloak. Beides zugleich gibt es nicht.
@@ -146,9 +146,9 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
 - **I-18 Ein QR-Login meldet einen Browser erst mit dem Bestätigungscode aus der App an, und nur einmal.**
   - Worum es geht: Der Browser zeigt einen QR-Code, die App bestätigt, und erst der in der App angezeigte Code, im Browser eingetippt, meldet den Browser an. So kann ein Angreifer einem Opfer nicht seinen eigenen QR-Code unterschieben.
   - Mechanismus: `type:QrLoginBrowserSide`, `test:AuthQrFlowIntegrationTest`
-- **I-25 Ein Tool-Modul zählt Versuche nur in seinem eigenen Namensraum, und kein Code wird ohne das Versandbudget seines Moduls verschickt ([ADR-44](adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)).**
-  - Worum es geht: Ein Modul wie SMS führt seine Fehlversuchs- und Versandzähler in einem eigenen Bereich und kommt an fremde nicht heran. Ohne Zustimmung des Versandbudgets geht kein Code raus – das begrenzt Kosten und Missbrauch wie SMS-Bombing.
-  - Mechanismus: `type:AttemptBudget` (der Namensraum folgt aus der Klasse, nicht aus einem Argument), `archunit:AttemptBudgetArchitectureTest`, `test:AccountThrottleIntegrationTest`
+- **I-25 Ein Tool-Modul zählt Versuche nur in seinem eigenen Namensraum, und kein Code wird ohne das Versandlimit seines Moduls verschickt ([ADR-44](adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)).**
+  - Worum es geht: Ein Modul wie SMS führt seine Fehlversuchs- und Versandzähler in einem eigenen Bereich und kommt an fremde nicht heran. Ohne Zustimmung des Versandlimits geht kein Code raus – das begrenzt Kosten und Missbrauch wie SMS-Bombing.
+  - Mechanismus: `type:RateLimit` (der Namensraum folgt aus der Klasse, nicht aus einem Argument), `archunit:RateLimitArchitectureTest`, `test:AccountRateLimitIntegrationTest`
 - **I-20 Der Kern erreicht simulierte Fremdsysteme nur über benannte Kanten oder Ports.**
   - Worum es geht: Personenverzeichnis, Nect, KOBIL und Co. sind hinter Ports versteckt. So lassen sich die Simulationen später durch die echten Systeme ersetzen, ohne dass der Kern es merkt.
   - Mechanismus: `type:PersonMasterData`, `archunit:SimulationBoundaryArchitectureTest`

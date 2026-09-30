@@ -33,7 +33,7 @@ interface IdentityResolver {
     /**
      * May account [accountId] take these attested [claims] without becoming somebody else? `true`
      * if it has attested no identity yet, or the claims name the same person (compared in passport
-     * form, ignoring case, umlaut spelling and diacritics). Applies to an Interessent too (ADR-18).
+     * form, ignoring case, umlaut spelling and diacritics). Applies to a prospect too (ADR-18).
      */
     fun attestationFits(accountId: Long, claims: Set<Claim>): Boolean
 }

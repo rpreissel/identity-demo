@@ -4,14 +4,14 @@ import java.time.Instant
 
 /**
  * A verified peer-auth assertion (ADR-7, docs/02-domaenenmodell.md Abschnitt 1): "this is Keycloak,
- * acting for this channel", never who the end user is. [channelAnchor] is the flow run's own
- * `channelSessionId`, so two tabs on the same SSO session never share an anchor. Keycloak's durable
+ * acting for this channel", never who the end user is. [channelBinding] is the flow run's own
+ * `channelSessionId`, so two tabs on the same SSO session never share a binding. Keycloak's durable
  * user session id travels separately, only where RestoreData needs it.
  */
 data class PeerAuthAssertion(
     val jti: String,
     val issuedAt: Instant,
-    val channelAnchor: String,
+    val channelBinding: String,
     val subject: String?
 )
 

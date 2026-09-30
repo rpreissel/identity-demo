@@ -14,7 +14,7 @@ ist zwei Klicks.
 ## Eine Rangfolge je Kanal, nicht je Auswahlart
 
 Jede Auswahl in einem Kanal übernimmt dieselbe Rangfolge. Sie zeigt ohnehin nur die Tools einer
-**Rolle** (`MethodRole`): Identifizieren, Person im Personenverzeichnis zuordnen, Einrichten, Anmelden
+**Rolle** (`ToolRole`): Identifizieren, Person im Personenverzeichnis zuordnen, Einrichten, Anmelden
 bei bekanntem Konto, Anmelden über eine E-Mail-Adresse (`*-lookup`), E-Mail bestätigen,
 Anmeldung auf der Website bestätigen. In dieser Reihenfolge zeigt die Admin-Seite die Gruppen, so wie
 ein Nutzer ihnen begegnet. Eine Rangfolge zwischen den Rollen hätte keine Wirkung. Die Admin-Seite

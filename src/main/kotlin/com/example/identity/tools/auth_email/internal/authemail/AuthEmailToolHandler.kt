@@ -2,7 +2,7 @@ package com.example.identity.tools.auth_email.internal.authemail
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
-import com.example.identity.tools.auth_email.internal.EmailSendBudget
+import com.example.identity.tools.auth_email.internal.EmailSendLimit
 import com.example.identity.contract.tool_api.TooManyRequestsException
 
 import com.example.identity.tools.auth_email.AuthEmailDescriptor
@@ -28,7 +28,7 @@ class AuthEmailToolHandler(
     private val accountDirectory: AccountDirectory,
     private val emailCodeGenerator: EmailCodeGenerator,
     private val mailServer: MailServer,
-    private val sendBudget: EmailSendBudget,
+    private val sendLimit: EmailSendLimit,
     private val clock: Clock
 ) {
 
@@ -44,7 +44,7 @@ class AuthEmailToolHandler(
             ?: throw UnresolvableReferenceException(Text("Keine bestaetigte E-Mail-Adresse fuer diesen Account"))
 
         // The channel already knows the account, so saying "too many" reveals nothing.
-        if (!sendBudget.trySend(email)) {
+        if (!sendLimit.trySend(email)) {
             throw TooManyRequestsException(Text("Zu viele Codes angefordert. Bitte versuchen Sie es in einigen Minuten erneut."))
         }
         val issued = emailCodeGenerator.issue()
@@ -59,7 +59,7 @@ class AuthEmailToolHandler(
 
     /**
      * Called directly by AuthEmailToolController (docs/08-projektrahmen.md A11). [accountId] is
-     * the channel's account, whose address a correct code resets in [EmailSendBudget].
+     * the channel's account, whose address a correct code resets in [EmailSendLimit].
      */
     @Transactional
     fun patch(toolSessionId: UUID, code: String?, accountId: Long?): ToolOutcome {
@@ -68,9 +68,9 @@ class AuthEmailToolHandler(
 
         return when (AuthEmailFlow.decide(state, AuthEmailInput(code), emailCodeGenerator)) {
             AuthEmailDecision.Unchanged -> outcomeFor(state)
-            AuthEmailDecision.WrongCode -> ToolOutcome.Failed.IdentifiedAuth(Text("Code ungueltig oder abgelaufen"))
+            AuthEmailDecision.WrongCode -> ToolOutcome.Failed.KnownAccountAuth(Text("Code ungueltig oder abgelaufen"))
             AuthEmailDecision.Complete -> {
-                accountId?.let { accountDirectory.anchorValue(it, AttributeType.EMAIL) }?.let { sendBudget.received(it) }
+                accountId?.let { accountDirectory.anchorValue(it, AttributeType.EMAIL) }?.let { sendLimit.received(it) }
                 ToolOutcome.Completed.Authenticated(
                     amr = listOf(descriptor.method),
                     achievedAcr = descriptor.maxAcr,

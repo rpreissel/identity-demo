@@ -5,7 +5,7 @@ import com.example.identity.TEST_NOW
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
-import com.example.identity.tools.auth_email.internal.EmailSendBudget
+import com.example.identity.tools.auth_email.internal.EmailSendLimit
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
@@ -33,8 +33,8 @@ class ConfirmEmailToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<ConfirmEmailToolSessionRepository>()
     val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
-    val sendBudget = mockk<EmailSendBudget>(relaxed = true).also { every { it.trySend(any()) } returns true }
-    val handler = ConfirmEmailToolHandler(ConfirmEmailDescriptor, toolDataRepository, emailCodeGenerator, MailServer(clock = TEST_CLOCK), sendBudget, clock = TEST_CLOCK)
+    val sendLimit = mockk<EmailSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
+    val handler = ConfirmEmailToolHandler(ConfirmEmailDescriptor, toolDataRepository, emailCodeGenerator, MailServer(clock = TEST_CLOCK), sendLimit, clock = TEST_CLOCK)
     val toolSessionId = UUID.randomUUID()
 
     given("an active enroll-email tool session with no email yet") {
@@ -56,7 +56,7 @@ class ConfirmEmailToolHandlerTest : BehaviorSpec({
         }
 
         `when`("the address has used up its send budget") {
-            every { sendBudget.trySend("flooded@example.com") } returns false
+            every { sendLimit.trySend("flooded@example.com") } returns false
             val result = runCatching { handler.patch(toolSessionId, email = "flooded@example.com", code = null) }
 
             then("it refuses with 429 and sends no code - nothing was guessed, the caller chose the address") {
@@ -87,7 +87,7 @@ class ConfirmEmailToolHandlerTest : BehaviorSpec({
                 then("the address's send budget starts over: whoever asked received the code") {
                     handler.patch(toolSessionId, email = null, code = issued.plainCode)
 
-                    verify { sendBudget.received("max@example.com") }
+                    verify { sendLimit.received("max@example.com") }
                 }
             }
     }

@@ -118,14 +118,14 @@ Ergebnis.
   Die PersonId wird nur einmal gebunden und danach nie geändert, und jeder Anker gehört genau einem
   Konto.
 - Findet der Schritt ein **anderes** Konto als das, mit dem die Journey arbeitet, geht das
-  vorläufige der beiden im anderen auf ([12-entscheidungen.md](../12-entscheidungen.md) ADR-20).
-  Vorläufig ist ein Konto ohne PersonId, auf dem nie ein Zugangsmittel eingerichtet wurde. Ist das
-  Konto der Journey das vorläufige, wechselt die Journey zum gefundenen Konto und durchläuft
-  `afterIdentification` noch einmal. Ist das gefundene Konto das vorläufige, bleibt die Journey bei
+  verwerfbare der beiden im anderen auf ([12-entscheidungen.md](../12-entscheidungen.md) ADR-20).
+  Verwerfbar ist ein Konto ohne PersonId, auf dem nie ein Anmeldeverfahren eingerichtet wurde. Ist das
+  Konto der Journey das verwerfbare, wechselt die Journey zum gefundenen Konto und durchläuft
+  `afterIdentification` noch einmal. Ist das gefundene Konto das verwerfbare, bleibt die Journey bei
   ihrem Konto und übernimmt dessen Daten. Sind beide echte Konten, bleibt es bei der Antwort `409`.
 
 **Web-Kanal:** Auch im Web-Kanal kann man die Registrierung direkt starten, neben
-`KC_SELECT_METHOD`: `PATCH /kc/channels/{channelSessionId}` mit `intent=register`
+`WEB_SELECT_METHOD`: `PATCH /kc/channels/{channelSessionId}` mit `intent=register`
 ([05-api.md](../05-api.md) Abschnitt 3). Ein eigenes Registrierungsformular von Keycloak gibt es
 dafür nicht. `ident-fsc`, `ident-eid`, `ident-nect` und die `enroll-*`-Tools laufen über dieselben
 Web-Tool-Renderer wie jeder andere Schritt; `ident-nect` kehrt von Nect auf die Action-URL des
@@ -176,7 +176,7 @@ Lehnt der Nutzer ab oder gibt es nichts anzubieten, endet die Journey trotzdem e
 (`Transition.Authenticated`). Das Konto ist dann angemeldet, aber nicht identifiziert. Gehört die
 identifizierte Person bereits zu einem anderen, echten Konto, lehnt der Executor die
 Identifizierung mit `409` ab, denn zwei echte Konten werden nie zusammengeführt. Gibt es für diese
-Person dagegen nur ein vorläufiges Konto (etwa aus einem früher abgebrochenen eID-Lauf), wird es
+Person dagegen nur ein verwerfbares Konto (etwa aus einem früher abgebrochenen eID-Lauf), wird es
 übernommen (ADR-20).
 
 ```mermaid

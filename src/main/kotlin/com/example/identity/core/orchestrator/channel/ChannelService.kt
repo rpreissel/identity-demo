@@ -14,19 +14,19 @@ import com.example.identity.core.orchestrator.journeytrace.JourneyTraceResponse
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
 import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
 import com.example.identity.core.orchestrator.domain.AmrSource
-import com.example.identity.core.orchestrator.session.AuthContextService
-import com.example.identity.core.orchestrator.session.AuthEvidenceService
-import com.example.identity.core.orchestrator.session.ChannelCreationThrottleService
+import com.example.identity.core.orchestrator.session.AppTokenSessionService
+import com.example.identity.core.orchestrator.session.SessionEvidenceService
+import com.example.identity.core.orchestrator.session.ChannelCreationRateLimitService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.SessionManagementService
-import com.example.identity.core.orchestrator.session.AppLoginSession
+import com.example.identity.core.orchestrator.session.AppTokenIssuer
 import com.example.identity.core.orchestrator.session.ChannelSessionEndedException
 import com.example.identity.core.orchestrator.session.SessionRefusedException
 import com.example.identity.core.orchestrator.session.TokenService
@@ -35,7 +35,7 @@ import com.example.identity.contract.tool_api.envelope.ActiveMethodView
 import com.example.identity.contract.tool_api.envelope.AuthData
 import com.example.identity.contract.tool_api.envelope.ChannelBlock
 import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.claims.authority
 import com.example.identity.contract.tool_api.claims.anchorRule
 import com.example.identity.contract.tool_api.claims.isLocalAnchor
@@ -60,14 +60,14 @@ import com.example.identity.contract.tool_api.StepData
 class ChannelService(
     private val sessionManagementService: SessionManagementService,
     private val accountService: AccountService,
-    private val authContextService: AuthContextService,
-    private val authEvidenceService: AuthEvidenceService,
+    private val appTokenSessionService: AppTokenSessionService,
+    private val sessionEvidenceService: SessionEvidenceService,
     private val authPolicy: AuthPolicy,
     private val channelAccessGuard: ChannelAccessGuard,
     private val journeyService: JourneyService,
     private val tokenService: TokenService,
-    private val appLoginSession: AppLoginSession,
-    private val channelCreationThrottleService: ChannelCreationThrottleService,
+    private val appTokenIssuer: AppTokenIssuer,
+    private val channelCreationRateLimitService: ChannelCreationRateLimitService,
     private val journeyTraceService: JourneyTraceService,
     private val toolRegistry: ToolHandlerRegistry,
     private val responseAssembler: ChannelResponseAssembler,
@@ -87,7 +87,7 @@ class ChannelService(
     ): ChannelResponse {
         // Before anything is created: this endpoint is unauthenticated, and every fresh channel
         // resets the attempt budget.
-        channelCreationThrottleService.recordAndAssertWithinBudget(bindingKeyRef)
+        channelCreationRateLimitService.recordAndAssertWithinBudget(bindingKeyRef)
 
         val entryIntent = AuthIntent.fromRequest(intent)
             ?: throw OrchestratorException.invalidState(Text("Unbekannter Vorgang"), "intent=${intent}")
@@ -145,8 +145,8 @@ class ChannelService(
     }
 
     /**
-     * The AccessToken of the channel's session ([AppLoginSession], ADR-43), cached, refreshed or
-     * re-minted after a step-up. APP only: a KEYCLOAK client holds its own Keycloak tokens.
+     * The AccessToken of the channel's session ([AppTokenIssuer], ADR-43), cached, refreshed or
+     * re-minted after a step-up. APP only: a WEB client holds its own Keycloak tokens.
      * [minValiditySeconds] is the caller's tolerance; the backend decides whether to mint anew.
      */
     // noRollbackFor: an expired login ends the channel and answers 410; the ending must commit.
@@ -154,7 +154,7 @@ class ChannelService(
     fun getToken(channelSessionId: UUID, bindingKeyRef: String, minValiditySeconds: Long): TokenResponse {
         val channel = requireAuthenticatedApp(channelAccessGuard.requireChannel(channelSessionId, bindingKeyRef))
         val pair = try {
-            appLoginSession.tokenFor(channel.session, minValiditySeconds)
+            appTokenIssuer.tokenFor(channel.session, minValiditySeconds)
         } catch (e: SessionExpiredException) {
             throw loginEnded(channel, e)
         } catch (e: SessionRefusedException) {
@@ -172,12 +172,12 @@ class ChannelService(
     /** The business ID-token claims, a resource separate from the AccessToken's claims. */
     fun getIdClaims(channelSessionId: UUID, bindingKeyRef: String): Map<String, Any?> {
         val channel = requireAuthenticatedApp(channelAccessGuard.requireChannel(channelSessionId, bindingKeyRef)).session
-        return tokenService.idClaims(channel.authContextId!!)
+        return tokenService.idClaims(channel.appTokenSessionId!!)
     }
 
     /**
      * Token and ID claims exist only for an authenticated APP channel. The type is checked first,
-     * so a KEYCLOAK channel gets 409, not a 500 from the missing context.
+     * so a WEB channel gets 409, not a 500 from the missing context.
      */
     private fun requireAuthenticatedApp(channel: ChannelSession): LiveChannel {
         if (channel.channel != ChannelType.APP) {
@@ -186,7 +186,7 @@ class ChannelService(
         if (channel.state != ChannelState.AUTHENTICATED) {
             throw OrchestratorException.invalidState(Text("Channel must be AUTHENTICATED for token/claims access"))
         }
-        checkNotNull(channel.authContextId) { "AUTHENTICATED channel without authContextId" }
+        checkNotNull(channel.appTokenSessionId) { "AUTHENTICATED channel without appTokenSessionId" }
         return LiveChannel.require(channel)
     }
 
@@ -378,19 +378,19 @@ class ChannelService(
         return responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)
     }
 
-    private fun currentEvidence(channel: ChannelSession): AuthEvidence =
-        channel.authEvidenceId?.let { authEvidenceService.getAuthEvidence(it) }?.toCoreEvidence() ?: AuthEvidence(emptyList())
+    private fun currentEvidence(channel: ChannelSession): SessionEvidence =
+        channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }?.toCoreEvidence() ?: SessionEvidence(emptyList())
 
     /**
      * What else this device is known by: for every key-bound credential of [accountId] on
      * [bindingKeyRef], the reference its method discloses ([ToolDescriptor.instanceDisclosure]).
-     * Generic: no method name appears here. Resolved by `(method, IDENTIFIED_AUTH)`, as in
+     * Generic: no method name appears here. Resolved by `(method, KNOWN_ACCOUNT_AUTH)`, as in
      * `credentialsLivingOn`, since the method name alone would also match an enrollment tool.
      */
     private fun boundCredentials(accountId: Long, bindingKeyRef: String): List<BoundCredentialView> =
         accountService.findAccount(accountId)?.activeAuthenticationMethods.orEmpty().mapNotNull { instance ->
             val descriptor = toolRegistry.descriptors()
-                .firstOrNull { it.role == MethodRole.IDENTIFIED_AUTH && it.method == instance.method }
+                .firstOrNull { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.method == instance.method }
                 ?: return@mapNotNull null
             if (descriptor.keyBinding?.livesOn(instance.details, bindingKeyRef) != true) return@mapNotNull null
             descriptor.instanceDisclosure?.referenceOf(instance.details)

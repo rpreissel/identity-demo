@@ -6,7 +6,7 @@ import com.example.identity.core.orchestrator.domain.policy.requiresSatisfied
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolId
 
 /**
@@ -35,16 +35,16 @@ internal object CandidateTools {
         )
 
     /**
-     * [MethodRole.IDENTIFICATION] only, never a [MethodRole.CORRELATION] step, which proves nothing
+     * [ToolRole.IDENTIFICATION] only, never a [ToolRole.CORRELATION] step, which proves nothing
      * on its own (ADR-18). Hence matching on the role: `category == IDENT` matches both. A tool whose
      * `requires` the account does not meet is not offered.
      */
-    fun forIdentification(ctx: JourneyContext): List<ToolId> = identCandidates(ctx, MethodRole.IDENTIFICATION)
+    fun forIdentification(ctx: JourneyContext): List<ToolId> = identCandidates(ctx, ToolRole.IDENTIFICATION)
 
     /** The mirror image: the correlation steps [forIdentification] deliberately leaves out. */
-    fun forAssignment(ctx: JourneyContext): List<ToolId> = identCandidates(ctx, MethodRole.CORRELATION)
+    fun forAssignment(ctx: JourneyContext): List<ToolId> = identCandidates(ctx, ToolRole.CORRELATION)
 
-    private fun identCandidates(ctx: JourneyContext, role: MethodRole): List<ToolId> =
+    private fun identCandidates(ctx: JourneyContext, role: ToolRole): List<ToolId> =
         ctx.filterAvailable(
             ctx.catalog.descriptors()
                 .filter { it.role == role }
@@ -54,17 +54,17 @@ internal object CandidateTools {
 
     /** Every tool that resolves the account itself from a submitted identifier. */
     fun forLookupLogin(ctx: JourneyContext): List<ToolId> =
-        ctx.filterAvailable(ctx.catalog.descriptors().filter { it.role == MethodRole.LOOKUP_AUTH }.map { it.toolId })
+        ctx.filterAvailable(ctx.catalog.descriptors().filter { it.role == ToolRole.ACCOUNT_LOOKUP_AUTH }.map { it.toolId })
 
-    /** The tools that approve another channel's request (role [MethodRole.PEER_APPROVAL]). */
+    /** The tools that approve another channel's request (role [ToolRole.PEER_APPROVAL]). */
     fun forPeerApproval(ctx: JourneyContext): List<ToolId> =
-        ctx.filterAvailable(ctx.catalog.descriptors().filter { it.role == MethodRole.PEER_APPROVAL }.map { it.toolId })
+        ctx.filterAvailable(ctx.catalog.descriptors().filter { it.role == ToolRole.PEER_APPROVAL }.map { it.toolId })
 
     /** The attestation tools that prove control of [attributeType] (e.g. `confirm-email` for EMAIL). */
     fun forAttestation(attributeType: AttributeType, ctx: JourneyContext): List<ToolId> =
         ctx.filterAvailable(
             ctx.catalog.descriptors()
-                .filter { it.role == MethodRole.ATTESTATION && it.claims.any { c -> c.attributeType == attributeType } }
+                .filter { it.role == ToolRole.ATTESTATION && it.claims.any { c -> c.attributeType == attributeType } }
                 .map { it.toolId }
         )
 
@@ -75,7 +75,7 @@ internal object CandidateTools {
      */
     fun preferredDeviceAuth(account: AccountProfile, ctx: JourneyContext): ToolId? {
         val deviceAuthTools = ctx.catalog.descriptors()
-            .filter { it.role == MethodRole.IDENTIFIED_AUTH && it.keyBinding != null }
+            .filter { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.keyBinding != null }
         val preferred = deviceAuthTools.firstOrNull { descriptor ->
             account.activeAuthenticationMethods.any {
                 it.method == descriptor.method && descriptor.usableByCaller(it.details, ctx.bindingKeyRef, ctx.linkedAccountId, account.accountId)
@@ -88,14 +88,14 @@ internal object CandidateTools {
         ctx.filterAvailable(ctx.policy.authCandidates(ctx.candidateContext(targetAcr, account)))
 
     /**
-     * Every active IDENTIFIED_AUTH method, for a fresh "are you still there?" re-confirmation (e.g.
+     * Every active KNOWN_ACCOUNT_AUTH method, for a fresh "are you still there?" re-confirmation (e.g.
      * before deleting the account). Unlike [forAuth] it keeps methods already proven this session,
      * since re-presenting the same factor is a valid answer. No acr target: any active factor counts.
      */
     fun forReconfirmation(account: AccountProfile, ctx: JourneyContext): List<ToolId> =
         ctx.filterAvailable(
             ctx.catalog.descriptors()
-                .filter { it.role == MethodRole.IDENTIFIED_AUTH }
+                .filter { it.role == ToolRole.KNOWN_ACCOUNT_AUTH }
                 .mapNotNull { descriptor ->
                     val method = account.activeAuthenticationMethods.firstOrNull { it.method == descriptor.method }
                         ?: return@mapNotNull null
@@ -115,7 +115,7 @@ internal object CandidateTools {
     fun factorKindsOf(account: AccountProfile, ctx: JourneyContext): Set<FactorType> {
         val activeMethods = account.activeAuthenticationMethods.map { it.method }.toSet()
         return ctx.catalog.descriptors()
-            .filter { it.role == MethodRole.ENROLLMENT && it.method in activeMethods }
+            .filter { it.role == ToolRole.ENROLLMENT && it.method in activeMethods }
             .flatMap { it.factorTypes }
             .toSet()
     }
@@ -127,12 +127,12 @@ internal object CandidateTools {
      */
     fun forMissingFactorKind(account: AccountProfile, covered: Set<FactorType>, ctx: JourneyContext): List<ToolId> {
         val provableMethods = ctx.catalog.descriptors()
-            .filter { it.role == MethodRole.IDENTIFIED_AUTH && it.toolId in ctx.availableTools }
+            .filter { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.toolId in ctx.availableTools }
             .map { it.method }
             .toSet()
         return forEnrollment(account, ctx.acrFloor, ctx)
             .map { ctx.catalog.descriptorOf(it) }
-            .filter { it.role == MethodRole.ENROLLMENT && it.method in provableMethods }
+            .filter { it.role == ToolRole.ENROLLMENT && it.method in provableMethods }
             .filter { (it.factorTypes - covered).isNotEmpty() }
             .map { it.toolId }
     }

@@ -44,11 +44,11 @@ class DatabaseInvariantConstraintTest : IntegrationTestSupport() {
                 val channel = channelId()
                 val evidence = UUID.randomUUID()
                 jdbcTemplate.update(
-                    "INSERT INTO orchestrator.auth_evidence (id, account_id, amr_evidence, updated_at) VALUES (?, 1, '[]', CURRENT_TIMESTAMP)", evidence
+                    "INSERT INTO orchestrator.session_evidence (id, account_id, methods, updated_at) VALUES (?, 1, '[]', CURRENT_TIMESTAMP)", evidence
                 )
                 shouldThrow<DataIntegrityViolationException> {
                     jdbcTemplate.update(
-                        "UPDATE orchestrator.channel_session SET state = 'LOGGED_OUT', auth_evidence_id = ? WHERE id = ?", evidence, channel
+                        "UPDATE orchestrator.channel_session SET state = 'LOGGED_OUT', session_evidence_id = ? WHERE id = ?", evidence, channel
                     )
                 }
             }
@@ -56,7 +56,7 @@ class DatabaseInvariantConstraintTest : IntegrationTestSupport() {
             then("I-4: an authenticated channel without evidence is refused") {
                 val channel = channelId()
                 shouldThrow<DataIntegrityViolationException> {
-                    jdbcTemplate.update("UPDATE orchestrator.channel_session SET state = 'AUTHENTICATED', auth_evidence_id = NULL WHERE id = ?", channel)
+                    jdbcTemplate.update("UPDATE orchestrator.channel_session SET state = 'AUTHENTICATED', session_evidence_id = NULL WHERE id = ?", channel)
                 }
             }
 

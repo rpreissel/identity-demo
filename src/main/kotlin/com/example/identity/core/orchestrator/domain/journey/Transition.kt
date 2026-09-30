@@ -49,7 +49,7 @@ sealed interface Transition {
     data class Perform(val action: Action, val resumeState: JourneyState) : Transition
 
     /**
-     * Confirmed logout: ends the channel for good. The journey is consumed, authContext discarded,
+     * Confirmed logout: ends the channel for good. The journey is consumed, appTokenSession discarded,
      * the channel becomes LOGGED_OUT. Also the resume target after [Action.DeleteAccount].
      */
     data object Logout : Transition

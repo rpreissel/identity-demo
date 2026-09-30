@@ -42,33 +42,33 @@ sealed interface ToolOutcome {
     sealed interface Failed : ToolOutcome {
         val reason: Text
 
-        /** An [IDENTIFIED_AUTH][MethodRole.IDENTIFIED_AUTH] attempt - against the account the channel already knows. */
-        data class IdentifiedAuth(override val reason: Text) : Failed
+        /** A [KNOWN_ACCOUNT_AUTH][ToolRole.KNOWN_ACCOUNT_AUTH] attempt - against the account the channel already knows. */
+        data class KnownAccountAuth(override val reason: Text) : Failed
 
         /**
-         * A [LOOKUP_AUTH][MethodRole.LOOKUP_AUTH] attempt - against whom the input resolved ([Attempted]),
+         * A [ACCOUNT_LOOKUP_AUTH][ToolRole.ACCOUNT_LOOKUP_AUTH] attempt - against whom the input resolved ([Attempted]),
          * `null` if it resolved nobody.
          */
-        data class LookupAuth(override val reason: Text, val attempted: Attempted?) : Failed
+        data class AccountLookupAuth(override val reason: Text, val attempted: Attempted?) : Failed
 
         /**
-         * An [IDENTIFICATION][MethodRole.IDENTIFICATION] or [CORRELATION][MethodRole.CORRELATION]
+         * An [IDENTIFICATION][ToolRole.IDENTIFICATION] or [CORRELATION][ToolRole.CORRELATION]
          * attempt - against the person the input resolved, `null` if it resolved none.
          */
         data class Identification(override val reason: Text, val attemptedPersonId: String?) : Failed
 
         /**
-         * An [ENROLLMENT][MethodRole.ENROLLMENT], [ATTESTATION][MethodRole.ATTESTATION] or
-         * [PEER_APPROVAL][MethodRole.PEER_APPROVAL] attempt. No secret of an existing account was
+         * An [ENROLLMENT][ToolRole.ENROLLMENT], [ATTESTATION][ToolRole.ATTESTATION] or
+         * [PEER_APPROVAL][ToolRole.PEER_APPROVAL] attempt. No secret of an existing account was
          * guessed, so no counter applies; the ToolSession's own limits bound it.
          */
         data class NothingGuessed(override val reason: Text) : Failed
 
-        fun fits(role: MethodRole): Boolean = when (this) {
-            is IdentifiedAuth -> role == MethodRole.IDENTIFIED_AUTH
-            is LookupAuth -> role == MethodRole.LOOKUP_AUTH
-            is Identification -> role == MethodRole.IDENTIFICATION || role == MethodRole.CORRELATION
-            is NothingGuessed -> role == MethodRole.ENROLLMENT || role == MethodRole.ATTESTATION || role == MethodRole.PEER_APPROVAL
+        fun fits(role: ToolRole): Boolean = when (this) {
+            is KnownAccountAuth -> role == ToolRole.KNOWN_ACCOUNT_AUTH
+            is AccountLookupAuth -> role == ToolRole.ACCOUNT_LOOKUP_AUTH
+            is Identification -> role == ToolRole.IDENTIFICATION || role == ToolRole.CORRELATION
+            is NothingGuessed -> role == ToolRole.ENROLLMENT || role == ToolRole.ATTESTATION || role == ToolRole.PEER_APPROVAL
         }
     }
 
@@ -84,19 +84,19 @@ sealed interface ToolOutcome {
         /** The factor kinds actually proven this run; a subset of [ToolDescriptor.factorTypes]. */
         val factorTypes: Set<FactorType>
 
-        fun fits(role: MethodRole): Boolean = when (this) {
-            is Identified -> role == MethodRole.IDENTIFICATION || role == MethodRole.CORRELATION
-            is Enrolled -> role == MethodRole.ENROLLMENT
-            is Attested -> role == MethodRole.ATTESTATION
-            is Authenticated -> role == MethodRole.IDENTIFIED_AUTH || role == MethodRole.LOOKUP_AUTH
-            is Approved -> role == MethodRole.PEER_APPROVAL
+        fun fits(role: ToolRole): Boolean = when (this) {
+            is Identified -> role == ToolRole.IDENTIFICATION || role == ToolRole.CORRELATION
+            is Enrolled -> role == ToolRole.ENROLLMENT
+            is Attested -> role == ToolRole.ATTESTATION
+            is Authenticated -> role == ToolRole.KNOWN_ACCOUNT_AUTH || role == ToolRole.ACCOUNT_LOOKUP_AUTH
+            is Approved -> role == ToolRole.PEER_APPROVAL
         }
 
         /**
          * An identifying tool established who the subject is. The person reference is a
          * `PERSON_ID` claim, at most one. It may be missing: `ident-eid` reads no person
          * reference, and the central resolution decides between an existing account and an
-         * Interessent (ADR-10).
+         * prospect (ADR-10).
          */
         data class Identified(
             override val amr: List<String> = emptyList(),
@@ -120,7 +120,7 @@ sealed interface ToolOutcome {
             }
         }
 
-        /** An [ENROLLMENT][MethodRole.ENROLLMENT] tool created a durable credential. */
+        /** An [ENROLLMENT][ToolRole.ENROLLMENT] tool created a durable credential. */
         data class Enrolled(
             /**
              * The credential row the tool's module just wrote. The only handle outside that module,
@@ -143,7 +143,7 @@ sealed interface ToolOutcome {
         ) : Completed
 
         /**
-         * An [ATTESTATION][MethodRole.ATTESTATION] tool proved the subject controls an attribute:
+         * An [ATTESTATION][ToolRole.ATTESTATION] tool proved the subject controls an attribute:
          * claims, but no credential and no identity resolution. [amr] is always empty, because a
          * confirmed address is no authentication proof and must not raise the channel's ACR. It
          * reports no level of its own: the anchor is written under the session's level.
@@ -162,20 +162,20 @@ sealed interface ToolOutcome {
             }
         }
 
-        /** A [IDENTIFIED_AUTH][MethodRole.IDENTIFIED_AUTH] or [LOOKUP_AUTH][MethodRole.LOOKUP_AUTH] tool succeeded. */
+        /** A [KNOWN_ACCOUNT_AUTH][ToolRole.KNOWN_ACCOUNT_AUTH] or [ACCOUNT_LOOKUP_AUTH][ToolRole.ACCOUNT_LOOKUP_AUTH] tool succeeded. */
         data class Authenticated(
             override val amr: List<String>,
             override val achievedAcr: AcrLevel? = null,
             override val factorTypes: Set<FactorType> = emptySet(),
             /**
-             * Set only by a [LOOKUP_AUTH][MethodRole.LOOKUP_AUTH] tool, which resolves whom it proved
+             * Set only by a [ACCOUNT_LOOKUP_AUTH][ToolRole.ACCOUNT_LOOKUP_AUTH] tool, which resolves whom it proved
              * itself: an account, or the invitation of a one-time password ([Subject]).
              */
             val subject: Subject? = null,
         ) : Completed
 
         /**
-         * A [PEER_APPROVAL][MethodRole.PEER_APPROVAL] tool approved a pending request from another
+         * A [PEER_APPROVAL][ToolRole.PEER_APPROVAL] tool approved a pending request from another
          * channel. Declining is an ordinary [Failed].
          */
         data class Approved(

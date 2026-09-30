@@ -3,7 +3,7 @@ package com.example.identity.core.orchestrator.admin
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.tool.ToolAvailabilityService
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -18,7 +18,7 @@ data class ToolAvailabilityEntry(
     @field:Schema(example = "auth-sms") val toolId: String,
     @field:Schema(example = "sms") val method: String,
     /** Which kind of selection list the tool appears in - the order only matters among tools of one role. */
-    @field:Schema(example = "IDENTIFIED_AUTH") val role: MethodRole,
+    @field:Schema(example = "KNOWN_ACCOUNT_AUTH") val role: ToolRole,
     @field:Schema(example = "true") val enabled: Boolean,
     @field:Schema(example = "Wartungsfenster bis 18 Uhr") val reason: String?
 )

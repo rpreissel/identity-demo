@@ -11,7 +11,7 @@ import java.time.LocalDate
  * Pure unit test of the account -> Keycloak-user mapping the user federation reads (ADR-38,
  * `KcAccountViews`) - the precedence is the point:
  * register person first (authoritative stammdaten), then the account's own attested claims
- * (full-attested Interessent, ADR-18), placeholders only for an account that has neither.
+ * (full-attested prospect, ADR-18), placeholders only for an account that has neither.
  */
 class KeycloakAccountMirrorTest : BehaviorSpec({
 
@@ -25,7 +25,7 @@ class KeycloakAccountMirrorTest : BehaviorSpec({
         val person = PersonRecord(
             personId = "P000000007",
             kvnr = "A123456789", familyName = "Mustermann", givenNames = "Max", birthDate = LocalDate.of(1990, 1, 1),
-            streetAddress = "Musterweg 1", postalCode = "12345", locality = "Musterstadt", insuranceNumber = "10000001"
+            streetAddress = "Musterweg 1", postalCode = "12345", locality = "Musterstadt", memberNumber = "10000001"
         )
 
         then("names, attributes and address come from the register, claims never override it") {
@@ -79,7 +79,7 @@ class KeycloakAccountMirrorTest : BehaviorSpec({
     }
 
     given("a register person with partial stammdaten (no kvnr, no address on record)") {
-        val person = PersonRecord(personId = "P000000009", kvnr = null, familyName = "Knapp", givenNames = "Karl", birthDate = null, streetAddress = null, postalCode = null, locality = null, insuranceNumber = null)
+        val person = PersonRecord(personId = "P000000009", kvnr = null, familyName = "Knapp", givenNames = "Karl", birthDate = null, streetAddress = null, postalCode = null, locality = null, memberNumber = null)
 
         then("a gap in the Personenverzeichnis stays a gap - an old attested claim never resurfaces for a bound account (ADR-34)") {
             val mirror = kcUserMirror(

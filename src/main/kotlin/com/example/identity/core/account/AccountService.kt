@@ -26,8 +26,8 @@ import com.example.identity.contract.tool_api.claims.authority
 import com.example.identity.contract.tool_api.claims.isLocalAnchor
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.claims.TrustLevel
-import com.example.identity.contract.tool_api.claims.trustLevel
+import com.example.identity.contract.tool_api.claims.ClaimTrust
+import com.example.identity.contract.tool_api.claims.claimTrust
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -88,18 +88,18 @@ class AccountService(
     fun retractAttribute(
         accountId: Long,
         attributeType: AttributeType,
-        trustAnchor: RetractionAnchor,
+        retractionSource: RetractionSource,
         reason: String? = null
     ): Boolean {
         // Checked here as well as by the caller, so no path to this method can widen what the
         // holder may give up (AnchorRule.retractableByHolder).
-        check(trustAnchor != RetractionAnchor.ACCOUNT_HOLDER || attributeType.anchorRule?.retractableByHolder == true) {
+        check(retractionSource != RetractionSource.ACCOUNT_HOLDER || attributeType.anchorRule?.retractableByHolder == true) {
             "$attributeType cannot be withdrawn by the account holder"
         }
         // ADR-14: lock the account row so a concurrent confirm-email cannot interleave.
         lockForUpdate(accountId)
         // A value already withdrawn needs no second retraction row.
-        if (!claimLedger.retractEstablished(accountId, attributeType, trustAnchor, reason, clock.instant())) return false
+        if (!claimLedger.retractEstablished(accountId, attributeType, retractionSource, reason, clock.instant())) return false
         if (attributeType.isLocalAnchor) anchorRegistry.remove(accountId, attributeType)
         return true
     }
@@ -113,7 +113,7 @@ class AccountService(
         if (replaced.isEmpty()) return
         val kept = claimLedger.ownedBy(accountId, replacement)
         replaced.flatMap { claimLedger.ownedBy(accountId, it) }.distinct().filterNot { it in kept }.forEach { (type, value) ->
-            claimLedger.retract(accountId, type, value, RetractionAnchor.ACCOUNT_MANAGEMENT, "replaced", now)
+            claimLedger.retract(accountId, type, value, RetractionSource.ACCOUNT_MANAGEMENT, "replaced", now)
         }
     }
 
@@ -129,13 +129,13 @@ class AccountService(
     fun retractClaimsOf(
         accountId: Long,
         methodInstanceId: String,
-        trustAnchor: RetractionAnchor,
+        retractionSource: RetractionSource,
         reason: String? = null
     ): Int {
         val instanceId = runCatching { UUID.fromString(methodInstanceId) }.getOrNull() ?: return 0
         val now = clock.instant()
         val retractable = claimLedger.ownedBy(accountId, instanceId)
-        retractable.forEach { (type, value) -> claimLedger.retract(accountId, type, value, trustAnchor, reason, now) }
+        retractable.forEach { (type, value) -> claimLedger.retract(accountId, type, value, retractionSource, reason, now) }
         return retractable.size
     }
 
@@ -166,27 +166,27 @@ class AccountService(
      * same caller transaction, so a failed claim also rolls back the new account.
      */
     @Transactional
-    fun createUnidentifiedAccount(): AccountProfile {
+    fun createAccountInSetup(): AccountProfile {
         val account = accountRepository.save(Account(createdAt = clock.instant()))
         val accountId = checkNotNull(account.id) { "Account has no id" }
         return AccountProfile(accountId = accountId, personId = null, authenticationMethods = emptyList())
     }
 
     /**
-     * Moves everything the provisional account [from] established onto [into] and deletes it (ADR-20).
-     * [from] must be provisional, re-checked here. The order is read, release, write: `ux_anchor_value`
+     * Moves everything the disposable account [from] established onto [into] and deletes it (ADR-20).
+     * [from] must be disposable, re-checked here. The order is read, release, write: `ux_anchor_value`
      * makes anchors unique across accounts, so [from]'s anchors must be gone before the same values are
      * written on [into]. Claims are replayed one by one via [recordClaim], because the log may hold
      * several values of one attribute and a batch allows only one per attribute.
      */
     @Transactional
-    fun absorbProvisionalAccount(from: Long, into: Long) {
-        check(from != into) { "absorbProvisionalAccount($from): an account cannot absorb itself" }
+    fun absorbDisposableAccount(from: Long, into: Long) {
+        check(from != into) { "absorbDisposableAccount($from): an account cannot absorb itself" }
         val source = findAccount(from) ?: error("Account not found: $from")
-        if (!source.isProvisional) {
+        if (!source.isDisposable) {
             throw IdentityConflictException(
                 Text("Dieses Konto ist bereits vollstaendig angelegt und kann nicht in ein anderes Konto uebernommen werden"),
-                "account $from is not provisional, cannot be absorbed into $into"
+                "account $from is not disposable, cannot be absorbed into $into"
             )
         }
         checkNotNull(findAccount(into)) { "Account not found: $into" }
@@ -217,7 +217,7 @@ class AccountService(
                 provenAcr = anchorAcr[type] ?: claim.establishedAcr?.let(AcrLevel::of) ?: AcrLevel.NONE
             )
         }
-        log.info("Account {} absorbed provisional account {} ({} claims)", into, from, claims.size)
+        log.info("Account {} absorbed disposable account {} ({} claims)", into, from, claims.size)
     }
 
     /**
@@ -389,7 +389,7 @@ class AccountService(
 
     /**
      * The established claim values for [types], strongest assertion per attribute. The value-reading
-     * counterpart of [AccountProfile.establishedClaims], e.g. for the ID-token name of an Interessent
+     * counterpart of [AccountProfile.establishedClaims], e.g. for the ID-token name of a prospect
      * without a register person (ADR-18).
      */
     fun establishedClaimValues(accountId: Long, types: Set<AttributeType>): Map<AttributeType, String> =
@@ -414,16 +414,16 @@ class AccountService(
         // An account still being set up follows the register too (ADR-46).
         val accountId = anchorHolder(AttributeType.PERSON_ID, change.personId) ?: return null
         if (AttributeType.KVNR in change.changed) {
-            retractAttribute(accountId, AttributeType.KVNR, RetractionAnchor.PERSON_DIRECTORY, "KVNR im Personenverzeichnis geändert")
+            retractAttribute(accountId, AttributeType.KVNR, RetractionSource.PERSON_DIRECTORY, "KVNR im Personenverzeichnis geändert")
             change.kvnr?.let {
                 recordClaims(accountId, listOf(Claim(AttributeType.KVNR, it, ClaimSource.PERSON_DIRECTORY, DIRECTORY_ACR)), DIRECTORY_ACR)
             }
         }
-        if (AttributeType.INSURANCE_NUMBER in change.changed) {
-            retractAttribute(accountId, AttributeType.INSURANCE_NUMBER, RetractionAnchor.PERSON_DIRECTORY, "Versicherungsnummer im Personenverzeichnis geändert")
-            change.insuranceNumber?.let {
-                releaseFromOtherAccount(AttributeType.INSURANCE_NUMBER, it, keeper = accountId)
-                recordClaims(accountId, listOf(Claim(AttributeType.INSURANCE_NUMBER, it, ClaimSource.PERSON_DIRECTORY, DIRECTORY_ACR)), DIRECTORY_ACR)
+        if (AttributeType.MEMBER_NUMBER in change.changed) {
+            retractAttribute(accountId, AttributeType.MEMBER_NUMBER, RetractionSource.PERSON_DIRECTORY, "Versicherungsnummer im Personenverzeichnis geändert")
+            change.memberNumber?.let {
+                releaseFromOtherAccount(AttributeType.MEMBER_NUMBER, it, keeper = accountId)
+                recordClaims(accountId, listOf(Claim(AttributeType.MEMBER_NUMBER, it, ClaimSource.PERSON_DIRECTORY, DIRECTORY_ACR)), DIRECTORY_ACR)
             }
         }
         return accountId
@@ -438,7 +438,7 @@ class AccountService(
         val previousHolder = anchorRegistry.holderOf(type, value) ?: return
         if (previousHolder == keeper) return
         log.info("{} anchor moved by the Personenverzeichnis: released from account {} for account {}", type.wireName, previousHolder, keeper)
-        retractAttribute(previousHolder, type, RetractionAnchor.PERSON_DIRECTORY, "Im Personenverzeichnis einer anderen Person zugeordnet")
+        retractAttribute(previousHolder, type, RetractionSource.PERSON_DIRECTORY, "Im Personenverzeichnis einer anderen Person zugeordnet")
     }
 
     private fun lockForUpdate(accountId: Long): Account =

@@ -5,9 +5,9 @@ import com.example.identity.TEST_NOW
 import com.example.identity.core.orchestrator.session.AccountDeletionService
 import com.example.identity.core.account.AccountService
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import com.example.identity.core.orchestrator.session.AttemptThrottleRepository
-import com.example.identity.core.orchestrator.session.AuthContextRepository
-import com.example.identity.core.orchestrator.session.EvidenceTrailRepository
+import com.example.identity.core.orchestrator.session.RateLimitRecordRepository
+import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
+import com.example.identity.core.orchestrator.session.SessionEvidenceRecordRepository
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
 
@@ -26,7 +26,7 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * Unit test of [RetentionJob]: expired [ChannelSession]s' `authContextId`s are collected before
+ * Unit test of [RetentionJob]: expired [ChannelSession]s' `appTokenSessionId`s are collected before
  * those channels are deleted, and passed on only when there are any. Otherwise retention would
  * orphan rows or crash. Repositories are mocked; every assertion is about what gets deleted.
  */
@@ -34,69 +34,69 @@ class RetentionJobTest : BehaviorSpec({
 
     fun job(
         channelSessionRepository: ChannelSessionRepository,
-        authContextRepository: AuthContextRepository = mockk(relaxed = true),
-        authEvidenceRepository: EvidenceTrailRepository = mockk(relaxed = true),
+        appTokenSessionRepository: AppTokenSessionRepository = mockk(relaxed = true),
+        sessionEvidenceRepository: SessionEvidenceRecordRepository = mockk(relaxed = true),
         journeyTraceRepository: JourneyTraceRepository = mockk(relaxed = true),
-        attemptThrottleRepository: AttemptThrottleRepository = mockk(relaxed = true),
+        rateLimitRecordRepository: RateLimitRecordRepository = mockk(relaxed = true),
         accountService: AccountService = mockk(relaxed = true),
         accountDeletionService: AccountDeletionService = mockk(relaxed = true),
     ) = RetentionJob(
         toolSessionRepository = mockk(relaxed = true),
         journeyRepository = mockk<AuthJourneyRepository>(relaxed = true),
         channelSessionRepository = channelSessionRepository,
-        authContextRepository = authContextRepository,
-        authEvidenceRepository = authEvidenceRepository,
+        appTokenSessionRepository = appTokenSessionRepository,
+        sessionEvidenceRepository = sessionEvidenceRepository,
         journeyTraceRepository = journeyTraceRepository,
-        attemptThrottleRepository = attemptThrottleRepository,
+        rateLimitRecordRepository = rateLimitRecordRepository,
         accountService = accountService,
         accountDeletionService = accountDeletionService,
         meterRegistry = SimpleMeterRegistry(),
         clock = TEST_CLOCK,
     )
 
-    given("expired channels that each carry an AuthContext") {
-        then("their authContextIds are deleted too - collected before the channels themselves are gone") {
-            val authContextId1 = UUID.randomUUID()
-            val authContextId2 = UUID.randomUUID()
+    given("expired channels that each carry an AppTokenSession") {
+        then("their appTokenSessionIds are deleted too - collected before the channels themselves are gone") {
+            val appTokenSessionId1 = UUID.randomUUID()
+            val appTokenSessionId2 = UUID.randomUUID()
             val expired = listOf(
-                ChannelSession(now = TEST_NOW).apply { authContextId = authContextId1 },
-                ChannelSession(now = TEST_NOW).apply { authContextId = authContextId2 }
+                ChannelSession(now = TEST_NOW).apply { appTokenSessionId = appTokenSessionId1 },
+                ChannelSession(now = TEST_NOW).apply { appTokenSessionId = appTokenSessionId2 }
             )
             val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
             every { channelSessionRepository.findByExpiresAtBefore(any(), any()) } returnsMany listOf(expired, emptyList())
-            val authContextRepository = mockk<AuthContextRepository>(relaxed = true)
+            val appTokenSessionRepository = mockk<AppTokenSessionRepository>(relaxed = true)
 
-            job(channelSessionRepository, authContextRepository).cleanup()
+            job(channelSessionRepository, appTokenSessionRepository).cleanup()
 
             val idsSlot = slot<List<UUID>>()
-            verify { authContextRepository.deleteAllByIdInBatch(capture(idsSlot)) }
-            idsSlot.captured shouldContainExactlyInAnyOrder listOf(authContextId1, authContextId2)
+            verify { appTokenSessionRepository.deleteAllByIdInBatch(capture(idsSlot)) }
+            idsSlot.captured shouldContainExactlyInAnyOrder listOf(appTokenSessionId1, appTokenSessionId2)
             verify { channelSessionRepository.deleteAllInBatch(expired) }
         }
     }
 
-    given("expired channels with no AuthContext at all") {
+    given("expired channels with no AppTokenSession at all") {
         then("deleteAllById is never called - nothing to orphan, no pointless empty-list call") {
             val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
             every { channelSessionRepository.findByExpiresAtBefore(any(), any()) } returnsMany
-                listOf(listOf(ChannelSession(now = TEST_NOW).apply { authContextId = null }), emptyList())
-            val authContextRepository = mockk<AuthContextRepository>(relaxed = true)
+                listOf(listOf(ChannelSession(now = TEST_NOW).apply { appTokenSessionId = null }), emptyList())
+            val appTokenSessionRepository = mockk<AppTokenSessionRepository>(relaxed = true)
 
-            job(channelSessionRepository, authContextRepository).cleanup()
+            job(channelSessionRepository, appTokenSessionRepository).cleanup()
 
-            verify(exactly = 0) { authContextRepository.deleteAllByIdInBatch(any()) }
+            verify(exactly = 0) { appTokenSessionRepository.deleteAllByIdInBatch(any()) }
         }
     }
 
     given("no expired channels at all") {
-        then("deleteAllById is never called - no orphaned AuthContext to name") {
+        then("deleteAllById is never called - no orphaned AppTokenSession to name") {
             val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
             every { channelSessionRepository.findByExpiresAtBefore(any(), any()) } returns emptyList()
-            val authContextRepository = mockk<AuthContextRepository>(relaxed = true)
+            val appTokenSessionRepository = mockk<AppTokenSessionRepository>(relaxed = true)
 
-            job(channelSessionRepository, authContextRepository).cleanup()
+            job(channelSessionRepository, appTokenSessionRepository).cleanup()
 
-            verify(exactly = 0) { authContextRepository.deleteAllByIdInBatch(any()) }
+            verify(exactly = 0) { appTokenSessionRepository.deleteAllByIdInBatch(any()) }
         }
     }
 
@@ -120,27 +120,27 @@ class RetentionJobTest : BehaviorSpec({
             val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
             every { channelSessionRepository.findByExpiresAtBefore(any(), any()) } returns emptyList()
             val journeyTraceRepository = mockk<JourneyTraceRepository>(relaxed = true)
-            val attemptThrottleRepository = mockk<AttemptThrottleRepository>(relaxed = true)
+            val rateLimitRecordRepository = mockk<RateLimitRecordRepository>(relaxed = true)
             val logCutoff = slot<Instant>()
-            val throttleCutoff = slot<Instant>()
-            val throttleNow = slot<Instant>()
+            val rateLimitCutoff = slot<Instant>()
+            val rateLimitNow = slot<Instant>()
             every { journeyTraceRepository.deleteByCreatedAtBefore(capture(logCutoff)) } returns 0
-            every { attemptThrottleRepository.deleteStaleCounters(capture(throttleCutoff), capture(throttleNow)) } returns 0
+            every { rateLimitRecordRepository.deleteStaleCounters(capture(rateLimitCutoff), capture(rateLimitNow)) } returns 0
 
             val before = TEST_NOW
             job(
                 channelSessionRepository,
                 journeyTraceRepository = journeyTraceRepository,
-                attemptThrottleRepository = attemptThrottleRepository
+                rateLimitRecordRepository = rateLimitRecordRepository
             ).cleanup()
 
             // Both cutoffs are ages, not "now". A sweep with the current instant would also delete
             // counters whose lock still runs.
             logCutoff.captured shouldBeLessThan before.minus(Duration.ofDays(13))
-            throttleCutoff.captured shouldBeLessThan before.minus(Duration.ofDays(6))
-            // The longest lockout any throttle service uses is 15 minutes; the retention window
+            rateLimitCutoff.captured shouldBeLessThan before.minus(Duration.ofDays(6))
+            // The longest lockout any rate limit service uses is 15 minutes; the retention window
             // must stay far beyond it so a sweep can never shorten an active budget.
-            throttleCutoff.captured shouldBeLessThan throttleNow.captured.minus(Duration.ofHours(1))
+            rateLimitCutoff.captured shouldBeLessThan rateLimitNow.captured.minus(Duration.ofHours(1))
         }
     }
 

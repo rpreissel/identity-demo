@@ -37,7 +37,7 @@ class IdentEidToolHandler(
 
     /**
      * A wrong PIN is bounded by the journey's attempt budget, like a real card bounds PIN
-     * attempts. This run resolves no account or person to throttle against. A rejection never
+     * attempts. This run resolves no account or person to rate limit against. A rejection never
      * says which field failed.
      */
     @Transactional
@@ -71,7 +71,7 @@ class IdentEidToolHandler(
             factorTypes = descriptor.factorTypes,
             claims = listOf(
                 // Exactly what the card showed, on this procedure's own authority (ADR-18).
-                // restricted_id becomes the anchor that recognizes the Interessent on the
+                // restricted_id becomes the anchor that recognizes the prospect on the
                 // next eid run (ADR-19).
                 Claim(AttributeType.FAMILY_NAME, checkNotNull(decision.claimed.familyName), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),
                 Claim(AttributeType.GIVEN_NAMES, checkNotNull(decision.claimed.givenNames), ClaimSource.of(descriptor.toolId), descriptor.maxAcr),

@@ -4,7 +4,7 @@ import { JourneyTraceView } from './JourneyTraceView'
 
 const entry = {
   channelSessionId: 'chan-1',
-  channelType: 'KEYCLOAK',
+  channelType: 'WEB',
   accountId: 4,
   journeyId: 'journey-1',
   intent: 'LOGIN',
@@ -14,13 +14,13 @@ const entry = {
 }
 
 describe('JourneyTraceView', () => {
-  it('shows whether a channel log entry came from App or Kc/Web', async () => {
+  it('shows whether a channel log entry came from App or Web', async () => {
     const fetchLog = vi.fn().mockResolvedValue({ entries: [entry], accounts: [{ accountId: 4, displayName: 'Tina Tester' }] })
 
     render(<JourneyTraceView fetchLog={fetchLog} />)
 
-    expect(await screen.findByText('Kc/Web')).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /Kc\/Web ·/ })).toBeInTheDocument()
+    expect(await screen.findByText('Web')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Web ·/ })).toBeInTheDocument()
   })
 
   it('names the person of a channel and offers every account in the filter, even without entries', async () => {

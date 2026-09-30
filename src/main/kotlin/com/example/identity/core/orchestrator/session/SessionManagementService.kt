@@ -40,23 +40,23 @@ class SessionManagementService(
     }
 
     /**
-     * KEYCLOAK channel creation for an upsert (docs/05-api.md Abschnitt 3). The id is chosen by
-     * Keycloak; the caller has checked it is unused. `entryIntent` is [AuthIntent.KC_SELECT_METHOD]
+     * WEB channel creation for an upsert (docs/05-api.md Abschnitt 3). The id is chosen by
+     * Keycloak; the caller has checked it is unused. `entryIntent` is [AuthIntent.WEB_SELECT_METHOD]
      * or [AuthIntent.REGISTER]; the other entry intents assume an App channel. [availableTools] is
      * the extension's declaration of what it can render, as on the App channel.
      */
     fun createKcChannelSession(
         channelSessionId: UUID,
-        channelAnchor: String,
+        channelBinding: String,
         accountId: Long?,
         ttl: Duration,
         availableTools: Set<String>,
-        entryIntent: AuthIntent = AuthIntent.KC_SELECT_METHOD
+        entryIntent: AuthIntent = AuthIntent.WEB_SELECT_METHOD
     ): ChannelSession {
         val now = clock.instant()
-        val session = ChannelSession(ChannelType.KEYCLOAK, null, now.plus(ttl), now)
+        val session = ChannelSession(ChannelType.WEB, null, now.plus(ttl), now)
         session.channelSessionId = channelSessionId
-        session.channelAnchor = channelAnchor
+        session.channelBinding = channelBinding
         session.subject = accountId?.let(Subject::Account)
         session.entryIntent = entryIntent
         session.availableClientTools = availableTools.toMutableSet()
@@ -97,10 +97,10 @@ class SessionManagementService(
         }
     }
 
-    fun bindAccountAndAuthContext(channelSessionId: UUID, accountId: Long, authContextId: UUID) {
+    fun bindAccountAndAppTokenSession(channelSessionId: UUID, accountId: Long, appTokenSessionId: UUID) {
         channelSessionRepository.findByIdOrNull(channelSessionId)?.let { session ->
             session.subject = accountId?.let(Subject::Account)
-            session.authContextId = authContextId
+            session.appTokenSessionId = appTokenSessionId
             session.touch(clock.instant())
             channelSessionRepository.save(session)
         }

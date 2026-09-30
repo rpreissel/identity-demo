@@ -8,7 +8,7 @@
 <#macro personalForm formId pickerId backToCode>
     <p class="orchestrator-subtitle">${t.of("Damit Sie Ihren Freischaltcode gleich eingeben können, brauchen wir noch diese Daten:")}</p>
     <form id="${formId}" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
-        <@demoPerson.personPicker personsJson=demoPersonsJson! pickerId=pickerId fieldMapJson='{"givenNames":"givenNames","familyName":"familyName","birthDate":"birthDate","kvnr":"kvnr","partnernr":"personId"}' />
+        <@demoPerson.personPicker personsJson=demoPersonsJson! pickerId=pickerId fieldMapJson='{"givenNames":"givenNames","familyName":"familyName","birthDate":"birthDate","kvnr":"kvnr","partnerNumber":"personId"}' />
         <div class="${properties.kcFormGroupClass!}">
             <label for="givenNames" class="${properties.kcLabelClass!}">${t.of("Vorname")}</label>
             <input type="text" id="givenNames" name="givenNames" class="${properties.kcInputClass!}" autocomplete="given-name" required/>
@@ -28,8 +28,8 @@
         <#-- The KVNR comes first; the Partnernummer only counts without one (ADR-34). -->
         <details class="${properties.kcFormGroupClass!}">
             <summary>${t.of("Ich habe keine Versichertennummer")}</summary>
-            <label for="partnernr" class="${properties.kcLabelClass!}">${t.of("Partnernummer")}</label>
-            <input type="text" id="partnernr" name="partnernr" class="${properties.kcInputClass!}" placeholder="P000000000"/>
+            <label for="partnerNumber" class="${properties.kcLabelClass!}">${t.of("Partnernummer")}</label>
+            <input type="text" id="partnerNumber" name="partnerNumber" class="${properties.kcInputClass!}" placeholder="P000000000"/>
         </details>
         <div class="orchestrator-actions">
             <button class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!}" type="submit">${t.of("Weiter zur Freischaltcode-Eingabe")}</button>

@@ -5,7 +5,7 @@ import com.example.identity.contract.tool_api.DemoOnly
 import com.example.identity.contract.tool_api.CallerKeyBinding
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.InstanceDisclosure
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import org.springframework.stereotype.Component
@@ -51,7 +51,7 @@ private val KOBIL_INSTANCE_DISCLOSURE = InstanceDisclosure { it?.get(KOBIL_DEVIC
 @Component
 object EnrollKobilDescriptor : ToolDescriptor {
     override val toolId = ToolId("enroll-kobil")
-    override val role = MethodRole.ENROLLMENT
+    override val role = ToolRole.ENROLLMENT
     override val method = KOBIL_METHOD
     /** Not the role default `enroll`: the one thing the client does here is run the SDK's activation. */
     override val startStep = "activate"
@@ -72,7 +72,7 @@ object EnrollKobilDescriptor : ToolDescriptor {
 @Component
 object AuthKobilDescriptor : ToolDescriptor {
     override val toolId = ToolId("auth-kobil")
-    override val role = MethodRole.IDENTIFIED_AUTH
+    override val role = ToolRole.KNOWN_ACCOUNT_AUTH
     override val method = KOBIL_METHOD
     override val startStep = "unlock"
     override val factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE)

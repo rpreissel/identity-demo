@@ -8,7 +8,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccount
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
-import com.example.identity.core.orchestrator.domain.journey.state.KcSelectMethodState
+import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
 import com.example.identity.core.orchestrator.domain.journey.state.LogoutState
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
@@ -97,7 +97,7 @@ internal object DemoStepReason {
         is ConfirmPeerLoginState.Confirming -> Text("Diese Sitzung ist sicher genug - jetzt geben Sie die wartende Anmeldung im Browser frei.")
         ConfirmPeerLoginState.OfferLogout -> Text("Der Browser ist freigegeben. Diese Sitzung wurde nur dafür eröffnet - deshalb die Frage, ob sie offen bleiben soll.")
 
-        is KcSelectMethodState.SelectMethod -> Text("Die Anmeldeseite verlangt einen Nachweis - angeboten wird jedes Verfahren, das im Browser geht.")
+        is WebSelectMethodState.SelectMethod -> Text("Die Anmeldeseite verlangt einen Nachweis - angeboten wird jedes Verfahren, das im Browser geht.")
 
         // AnswerableState is not sealed, so the compiler asks for this case; it only catches a
         // yes/no state added without a purpose of its own.

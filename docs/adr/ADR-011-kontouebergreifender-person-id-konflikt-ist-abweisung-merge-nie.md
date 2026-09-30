@@ -16,11 +16,11 @@ Innerhalb **eines** Kontos gilt zusätzlich: Die `person_id` ist nach der ersten
 (`AnchorRule.allowsReplacement = false`). Ein zweiter, abweichender `person_id`-Claim wird deshalb
 ebenfalls abgewiesen.
 
-**Ausnahme**: Ein vorläufiges Konto geht im gefundenen auf; wann ein Konto vorläufig ist und welche
+**Ausnahme**: Ein verwerfbares Konto geht im gefundenen auf; wann ein Konto verwerfbar ist und welche
 Bedingungen dafür gelten, regelt [ADR-20](ADR-020-ein-vorlaeufiges-konto-geht-im-gefundenen-auf-statt.md).
 Zwischen zwei echten Konten bleibt es bei der Abweisung.
 
-Wie ein Konto über KVNR, Partnernummer oder Versicherungsnummer gefunden wird, regeln
+Wie ein Konto über KVNR, Partnernummer oder Mitgliedsnummer gefunden wird, regeln
 [ADR-19](ADR-019-aufloesung-nur-ueber-anker-die-eid-restricted-id.md) und
 [ADR-34](ADR-034-personenverzeichnis-meldet-aenderungen.md).
 
@@ -41,4 +41,4 @@ zum Zusammenführen gibt, bleibt der Fall eine Aufgabe für den Support.
 ist sie ein gewöhnlicher Anker wie `email`, nur mit dem höchsten Rang; die Abweisung läuft über
 denselben Weg wie für alle Anker. Dabei wurden auch Lücken geschlossen: Der Anker wird geschrieben,
 bevor irgendetwas anderes entsteht, und `resolveByAnchor` prüft die Anker in fester Reihenfolge ihrer
-Bindungsstärke. Die Ausnahme für vorläufige Konten kam mit ADR-20 hinzu.
+Bindungsstärke. Die Ausnahme für verwerfbare Konten kam mit ADR-20 hinzu.

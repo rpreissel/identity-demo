@@ -105,7 +105,7 @@ class AuthPasswordLookupToolController(
         // Resolved here, since auth_password may not depend on `account`. Null for an unknown
         // email or no active password method; the handler treats that like a wrong password.
         val resolved = body.email?.let { accountDirectory.resolveAccountByEmail(it) }
-        // A throttled account becomes null like an unknown address. A 423 here would tell an
+        // A rate-limited account becomes null like an unknown address. A 423 here would tell an
         // attacker which addresses have accounts.
         val accountId = resolved.takeUnless { lockouts.isLockedOut(it) }
         val enrollmentRef = accountId?.let { accountDirectory.activeEnrollment(it, descriptor.method) }

@@ -5,8 +5,8 @@ import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.kc.KeycloakSessionEnded
-import com.example.identity.core.orchestrator.session.AppLoginSession
-import com.example.identity.core.orchestrator.session.AuthContextService
+import com.example.identity.core.orchestrator.session.AppTokenIssuer
+import com.example.identity.core.orchestrator.session.AppTokenSessionService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.SessionExpiredException
 import com.example.identity.core.orchestrator.session.SessionManagementService
@@ -21,8 +21,8 @@ import org.springframework.stereotype.Component
  */
 @Component
 class ChannelSessionLifecycle(
-    private val appLoginSession: AppLoginSession,
-    private val authContextService: AuthContextService,
+    private val appTokenIssuer: AppTokenIssuer,
+    private val appTokenSessionService: AppTokenSessionService,
     private val sessionManagementService: SessionManagementService,
     private val journeyRecorder: JourneyRecorder,
     // Logout publishes KeycloakSessionEnded instead of calling Keycloak. Outside the `keycloak`
@@ -35,12 +35,12 @@ class ChannelSessionLifecycle(
     /**
      * AUTHENTICATED and the Keycloak session come together: an APP channel fetches its token here,
      * which opens the login's one session or carries a step-up's acr into it. A refusal rolls the
-     * whole transition back. A KEYCLOAK channel's session is opened by Keycloak itself.
+     * whole transition back. A WEB channel's session is opened by Keycloak itself.
      */
     fun open(channel: ChannelSession): SessionGone? {
         if (channel.channel != ChannelType.APP) return null
         return try {
-            appLoginSession.tokenFor(channel)
+            appTokenIssuer.tokenFor(channel)
             null
         } catch (e: SessionRefusedException) {
             throw OrchestratorException.invalidState(Text("Die Anmeldung konnte nicht abgeschlossen werden. Bitte versuchen Sie es noch einmal."), e.message)
@@ -57,7 +57,7 @@ class ChannelSessionLifecycle(
     fun keepAlive(channel: ChannelSession): SessionGone? {
         if (channel.channel != ChannelType.APP || channel.state?.isLoggedIn != true) return null
         return try {
-            appLoginSession.keepAlive(channel)
+            appTokenIssuer.keepAlive(channel)
             null
         } catch (e: SessionExpiredException) {
             SessionGone(e)
@@ -75,20 +75,20 @@ class ChannelSessionLifecycle(
         check(finalState.isTerminal) { "endSession needs a terminal state, got $finalState" }
         // Only a sign-out someone asked for is one - an expiry is not an event (ADR-39, addendum).
         if (finalState == ChannelState.LOGGED_OUT) journeyRecorder.recordSignOut(channel, endedBy = "HOLDER")
-        channel.authContextId?.let { authContextService.getAuthContext(it) }?.let { context ->
+        channel.appTokenSessionId?.let { appTokenSessionService.getAppTokenSession(it) }?.let { tokenSession ->
             if (channel.channel == ChannelType.APP) {
                 // Published, not called: the Admin API call would hold the transaction open across
                 // a network round trip. KeycloakSessionLogoutListener runs after commit.
-                context.keycloakSessionId?.let { eventPublisher.publishEvent(KeycloakSessionEnded(it)) }
+                tokenSession.keycloakSessionId?.let { eventPublisher.publishEvent(KeycloakSessionEnded(it)) }
             }
-            context.refreshToken = null
-            context.accessToken = null
-            context.refreshExpiresAt = null
-            context.accessExpiresAt = null
-            authContextService.save(context)
+            tokenSession.refreshToken = null
+            tokenSession.accessToken = null
+            tokenSession.refreshExpiresAt = null
+            tokenSession.accessExpiresAt = null
+            appTokenSessionService.save(tokenSession)
         }
-        channel.authContextId = null
-        channel.authEvidenceId = null
+        channel.appTokenSessionId = null
+        channel.sessionEvidenceId = null
         channel.state = finalState
         sessionManagementService.updateChannelSession(channel)
     }

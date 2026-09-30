@@ -241,11 +241,11 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         }
     }
 
-    given("ConfirmingEmail, on the KEYCLOAK channel, sms only") {
+    given("ConfirmingEmail, on the WEB channel, sms only") {
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = true)
         val theCtx = ctx(
             account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
-            acrFloor = AcrLevel.LOA1, channel = ChannelType.KEYCLOAK, availableTools = StrategyTestFixtures.webTools
+            acrFloor = AcrLevel.LOA1, channel = ChannelType.WEB, availableTools = StrategyTestFixtures.webTools
         )
         val state = RegisterEnrollFirstState.EnrollFirstConfirmingEmail(Offer(listOf(ToolId("confirm-email"))))
 

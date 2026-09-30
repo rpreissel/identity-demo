@@ -41,7 +41,7 @@ zweimal. Generieren schließt die Abweichung aus.
   laufen lassen.
 - `servers` wird aus der Spec entfernt: Der Eintrag enthielte den zufälligen Testport und sagt nichts
   über den Vertrag.
-- In der Keycloak-Erweiterung sind noch `restoreData`, die Methodenliste und die Passwortprüfung von
+- In der Keycloak-Erweiterung sind noch `restoreData`, die Liste der Verfahren und die Passwortprüfung von
   Hand geparst.
 
 ## Geschichte

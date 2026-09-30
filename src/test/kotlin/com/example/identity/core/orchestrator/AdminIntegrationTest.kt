@@ -119,7 +119,7 @@ class AdminIntegrationTest : IntegrationTestSupport() {
                 // The ad-hoc lock is gone, the preset ones (demo.tool-defaults) are back.
                 locks shouldNotContain ("auth-sms" to "APP")
                 locks shouldContain ("auth-email" to "APP")
-                locks shouldContain ("auth-device" to "KEYCLOAK")
+                locks shouldContain ("auth-device" to "WEB")
             }
         }
     }

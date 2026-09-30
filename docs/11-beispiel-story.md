@@ -23,8 +23,8 @@ und das ist ein anderer Vorgang.
 
 ## 2) Mara registriert sich
 
-Die App startet eine Journey mit dem Ziel `REGISTER`. Das Ziel drückt Maras Wunsch aus, sich neu
-auszuweisen; es beschreibt nicht nur den technischen Ablauf dahinter. Der Orchestrator bietet zuerst
+Die App startet eine Journey mit dem Intent `REGISTER`. Der Intent drückt Maras Wunsch aus, sich neu
+auszuweisen; er beschreibt nicht nur den technischen Ablauf dahinter. Der Orchestrator bietet zuerst
 die Identifizierungsverfahren zur Auswahl an (`ident-fsc`, `ident-eid`, `ident-nect`). Mara wählt
 `ident-fsc`, also den Freischaltcode, den ihr das Personenverzeichnis per Brief geschickt hat. Die
 App weiß nicht von selbst, was jetzt an der Reihe ist. Sie folgt nur `next`, einer reinen Adresse in
@@ -37,7 +37,7 @@ Personenverzeichnis und den Code gegen die dort ausgestellten Freischaltcodes. D
 meldet es ein `ToolOutcome.Completed.Identified` mit einem `PERSON_ID`-Claim (ihrer Partnernummer)
 und den geprüften Angaben. Für diese Angaben steht das Personenverzeichnis ein, nicht das Tool. Der
 Orchestrator legt daraufhin ein neues Konto an. Er bindet Maras `person_id` und, weil sie bei uns
-versichert ist, auch ihre Versicherungsnummer als Anker. Die Sitzung steht damit auf `loa2`, denn
+versichert ist, auch ihre Mitgliedsnummer als Anker. Die Sitzung steht damit auf `loa2`, denn
 dieses Niveau erreicht das Verfahren allein.
 
 Fertig ist die Registrierung damit nicht. Eine Identifizierung ist kein Anmeldeverfahren: Sie sagt,
@@ -86,7 +86,7 @@ Konto mit diesem Gerät verknüpft (`DeviceAccountLink`). Das ist nur eine **Wie
 Orchestrator weiß dadurch, um welches Konto es geht, bevor Mara irgendetwas bewiesen hat. Einen
 Nachweis stellt die Verknüpfung nicht dar.
 
-Das Ziel heißt jetzt `FAST_ACCESS`: möglichst bequem anmelden, mit Ausweichwegen, statt sich wieder
+Der Intent heißt jetzt `FAST_ACCESS`: möglichst bequem anmelden, mit Ausweichwegen, statt sich wieder
 ganz neu auszuweisen. Hat das Konto ein an das Gerät gebundenes Verfahren, bietet der Orchestrator
 dieses zuerst an. Mara hat noch keines, also bekommt sie die Wahl zwischen SMS und Passwort. Sie
 nimmt die SMS und ist angemeldet, auf `loa1`: ein Verfahren, ein Niveau. Lehnt sie ein angebotenes
@@ -106,7 +106,7 @@ Der Orchestrator verlangt deshalb einen `STEP_UP`. Zwei Wege führen nach oben, 
 offen:
 
 - **Ein zweites Verfahren.** Mara gibt zusätzlich ihr Passwort ein. Zwei verschiedene Verfahren mit
-  zwei verschiedenen Faktortypen (Besitz und Wissen) heben das Niveau um eine Stufe. Begrenzt ist das
+  zwei verschiedenen Faktortypen (Besitz und Wissen) heben das Niveau um eins. Begrenzt ist das
   durch das Niveau, auf dem die Verfahren selbst eingerichtet wurden. Beide sind in ihrer Sitzung mit
   `loa2` entstanden, deshalb reicht es.
 - **Erneut identifizieren.** `ident-fsc` erreicht `loa2` allein, ohne Kombination. Dieser Weg ist der
