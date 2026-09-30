@@ -119,7 +119,13 @@ public class OrchestratorAuthenticator implements Authenticator {
             handleResponse(context, response, form);
         } catch (OrchestratorClient.OrchestratorApiException e) {
             LOG.infof("Orchestrator tool call failed: %s", e.getMessage());
-            context.failureChallenge(AuthenticationFlowError.INVALID_CREDENTIALS, currentChallenge(context, e.message(context.getSession())));
+            // Never failureChallenge: Keycloak's brute-force protection would book it against the
+            // user. The orchestrator counts real attempts itself (docs/adr/ADR-044).
+            if (ApiFailure.of(e.status()) == ApiFailure.REJECTED) {
+                context.challenge(currentChallenge(context, e.message(context.getSession())));
+            } else {
+                context.challenge(errorForm(context, KcTexts.of(context.getSession(), "Anmeldung derzeit nicht möglich.")));
+            }
         } catch (Exception e) {
             LOG.error("OrchestratorAuthenticator.action failed", e);
             context.failure(AuthenticationFlowError.INTERNAL_ERROR);

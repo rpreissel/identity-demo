@@ -391,6 +391,10 @@ public final class OrchestratorClient {
             this.text = parsedText;
         }
 
+        public int status() {
+            return status;
+        }
+
         /** The error in the login's language, or null when the orchestrator sent no text. */
         public String message(org.keycloak.models.KeycloakSession session) {
             return OrchestratorTexts.resolve(session, text);
