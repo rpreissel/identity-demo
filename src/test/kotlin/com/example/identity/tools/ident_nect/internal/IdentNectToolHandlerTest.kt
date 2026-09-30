@@ -111,6 +111,36 @@ class IdentNectToolHandlerTest : BehaviorSpec({
             }
         }
 
+        `when`("a retry names a fresh address of its own") {
+            val toolSessionId = UUID.randomUUID()
+            val oldCase = UUID.randomUUID()
+            val newCase = UUID.randomUUID()
+            val freshUrl = "https://kc.test/realms/Demo/login-actions/authenticate?session_code=c2&execution=e1&client_id=web&tab_id=t1"
+            val session = IdNectToolSession(toolSessionId = toolSessionId, caseId = oldCase, returnUri = actionUrl, createdAt = TEST_NOW)
+            every { repository.findById(toolSessionId) } returns Optional.of(session)
+            every { nect.createCase(freshUrl, NECT_REQUESTED) } returns NectCaseRef(newCase, "/nect/?case=$newCase")
+            every { repository.save(any()) } answers { firstArg() }
+            val outcome = webHandler.patch(toolSessionId, caseId = oldCase, retry = true, returnUri = freshUrl)
+
+            then("the fresh case goes back there, and the session remembers it for the next retry") {
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "redirect", stepData = NectRedirectStep("/nect/?case=$newCase", newCase))
+                session.returnUri shouldBe freshUrl
+            }
+        }
+
+        `when`("a retry names an address outside the prefixes") {
+            val toolSessionId = UUID.randomUUID()
+            every { repository.findById(toolSessionId) } returns Optional.of(
+                IdNectToolSession(toolSessionId = toolSessionId, caseId = UUID.randomUUID(), returnUri = actionUrl, createdAt = TEST_NOW)
+            )
+            val result = runCatching { webHandler.patch(toolSessionId, caseId = null, retry = true, returnUri = "https://attacker.example/return") }
+
+            then("it is rejected as bad input, and no case is opened") {
+                shouldThrow<IllegalArgumentException> { result.getOrThrow() }
+                verify(exactly = 0) { nect.createCase("https://attacker.example/return", any()) }
+            }
+        }
+
         `when`("the address lies elsewhere") {
             val elsewhere = "https://attacker.example/return"
 

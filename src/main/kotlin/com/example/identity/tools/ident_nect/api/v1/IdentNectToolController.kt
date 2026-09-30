@@ -41,7 +41,13 @@ data class IdentNectPatchRequest(
     @field:Schema(description = "The case id Nect sent the user back with (?nectCaseId=...); also accepted as nectCaseId.")
     val caseId: UUID? = null,
     @field:Schema(description = "true opens a fresh Nect case instead of reporting one.")
-    val retry: Boolean? = null
+    val retry: Boolean? = null,
+    @field:Schema(
+        description = "With retry: where Nect sends the user back to this time, checked like on activation. " +
+            "The web channel names a fresh action URL, because Keycloak's action code is single-use; without it " +
+            "the address from the activation stays."
+    )
+    val returnUri: String? = null
 )
 
 /**
@@ -111,7 +117,7 @@ class IdentNectToolController(
     ): ResponseEntity<ChannelResponse> {
         val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, IDENT_NECT_TOOL_ID)
         val body = request ?: IdentNectPatchRequest()
-        val outcome = handler.patch(toolSessionId, body.caseId, body.retry == true)
+        val outcome = handler.patch(toolSessionId, body.caseId, body.retry == true, body.returnUri?.takeIf { it.isNotBlank() })
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 

@@ -18,6 +18,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import java.time.Duration
+import java.time.Instant
 import java.util.Date
 
 /**
@@ -37,14 +38,16 @@ class RestoreDataCodecTest : BehaviorSpec({
                     enrolledUnderAcr = AcrLevel.LOA1,
                     factorTypes = setOf(FactorType.POSSESSION),
                     source = AmrSource.ORCHESTRATOR,
-                    amrSourceId = "auth-sms"
+                    amrSourceId = "auth-sms",
+                    provenAt = TEST_NOW.minus(Duration.ofMinutes(20))
                 ),
                 MethodEvidence(
                     method = MethodName("password"),
                     loa = AcrLevel.LOA1,
                     factorTypes = setOf(FactorType.KNOWLEDGE),
                     source = AmrSource.KEYCLOAK,
-                    amrSourceId = "auth-username-password-form"
+                    amrSourceId = "auth-username-password-form",
+                    provenAt = TEST_NOW.minus(Duration.ofMinutes(5))
                 )
             )
         )
@@ -57,8 +60,17 @@ class RestoreDataCodecTest : BehaviorSpec({
         `when`("decoding it for the same session") {
             val decoded = codec.decode(token, kcSessionId)
 
-            then("it returns the encoded data, evidence included") {
+            then("it returns the encoded data, evidence and its age included") {
                 decoded shouldBe restoreData
+            }
+        }
+
+        `when`("decoding a proof encoded without its time") {
+            val ageless = restoreData.copy(evidence = AuthEvidence(restoreData.evidence!!.factors.map { it.copy(provenAt = null) }))
+            val decoded = codec.decode(codec.encode(ageless, kcSessionId), kcSessionId)
+
+            then("it comes back as old as can be, never as just proven") {
+                decoded?.evidence?.factors?.map { it.provenAt } shouldBe listOf(Instant.EPOCH, Instant.EPOCH)
             }
         }
 

@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.Response;
 import org.keycloak.forms.login.LoginFormsProvider;
 
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -47,6 +48,12 @@ public class IdentNectRendererFactory extends AbstractWebToolRendererFactory {
     @Override
     public Map<String, String> activationFields(Supplier<String> actionUrl) {
         return Map.of(RETURN_URI, actionUrl.get());
+    }
+
+    /** A retry opens a new Nect case, which needs an address of its own to come back to. */
+    @Override
+    public Map<String, String> actionFields(Function<String, String> field, Supplier<String> actionUrl) {
+        return "true".equals(field.apply("retry")) ? Map.of(RETURN_URI, actionUrl.get()) : Map.of();
     }
 
     @Override

@@ -67,11 +67,16 @@ class IdentNectToolHandler(
         return redirect(case.caseId, case.jumpUrl)
     }
 
-    /** [retry] opens a fresh case - the old one may be spent or abandoned - with the same return address. */
+    /**
+     * [retry] opens a fresh case - the old one may be spent or abandoned. It goes back to [returnUri]
+     * if given (the web channel's action code is single-use, docs/adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md),
+     * else to the address from the activation.
+     */
     @Transactional
-    fun patch(toolSessionId: UUID, caseId: UUID?, retry: Boolean): ToolOutcome {
+    fun patch(toolSessionId: UUID, caseId: UUID?, retry: Boolean, returnUri: String? = null): ToolOutcome {
         val data = checkNotNull(repository.findByIdOrNull(toolSessionId)) { "Unknown ident-nect tool session: $toolSessionId" }
         if (retry) {
+            if (returnUri != null) data.returnUri = acceptedReturnUri(returnUri)
             val case = nect.createCase(data.returnUri ?: NECT_CALLBACK_URI, NECT_REQUESTED)
             data.caseId = case.caseId
             repository.save(data)

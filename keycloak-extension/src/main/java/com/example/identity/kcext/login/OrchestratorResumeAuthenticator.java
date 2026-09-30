@@ -1,6 +1,7 @@
 package com.example.identity.kcext.login;
 
 import com.example.identity.kcext.client.OrchestratorClient;
+import com.example.identity.kcext.federation.KcSubject;
 import com.example.identity.kcext.webtool.WebToolAvailability;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowCallback;
@@ -40,13 +41,20 @@ public class OrchestratorResumeAuthenticator implements AuthenticationFlowCallba
         try {
             AuthenticationSessionModel authSession = context.getAuthenticationSession();
             var existingUserSession = OrchestratorNotes.resolveExistingUserSession(context.getSession(), context.getRealm());
+            // A process access has nothing to resume: its evidence never travels (ADR-48), and the
+            // orchestrator does not raise it.
+            if (existingUserSession != null && KcSubject.of(existingUserSession.getUser()) instanceof KcSubject s
+                    && s.kind() == KcSubject.Kind.INVITATION) {
+                context.success();
+                return;
+            }
             if (existingUserSession != null) {
                 // A fresh channel for this flow run. The link to the existing session travels only
                 // in restoreData, never in the anchor (see OrchestratorNotes.channelSessionId).
                 String newChannelSessionId = OrchestratorNotes.channelSessionId(context);
 
                 // context.getUser() is not set yet this early; the UserSessionModel carries the user.
-                Long accountId = OrchestratorNotes.accountId(existingUserSession.getUser());
+                KcSubject subject = KcSubject.of(existingUserSession.getUser());
                 String restoreData = null;
                 if (!"true".equals(authSession.getAuthNote(OrchestratorNotes.RESTORE_SUBMITTED))) {
                     restoreData = existingUserSession.getNote(OrchestratorNotes.USER_SESSION_NOTE_RESTORE_DATA);
@@ -56,7 +64,7 @@ public class OrchestratorResumeAuthenticator implements AuthenticationFlowCallba
                 // Raise the floor to Keycloak's requested level, so a resumed proof cannot finish
                 // the journey below it. No native amr yet: this runs before any native authenticator.
                 OrchestratorClient.ChannelResponse response = client.upsertChannel(
-                        newChannelSessionId, accountId, OrchestratorNotes.requestedAcr(context), List.of(), restoreData, existingUserSession.getId(),
+                        newChannelSessionId, subject, OrchestratorNotes.requestedAcr(context), List.of(), restoreData, existingUserSession.getId(),
                         WebToolAvailability.renderableToolIds(context.getSession()), null
                 );
                 OrchestratorNotes.applyAuthData(authSession, response);

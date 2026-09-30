@@ -55,6 +55,11 @@ Ein Kommentar hilft, den Code zu verstehen, er ersetzt nicht die Doku. Deshalb:
   Ein anderer Kontext ist ein eigenes `given`.
 - **Erwartete Ausnahme.** Das `when` fängt sie mit `runCatching { … }` auf, das `then` prüft sie
   mit `shouldThrow { result.getOrThrow() }`. Sonst bräche schon der Aufbau des Containers ab.
+- **Specs mit Spring-Kontext.** `IntegrationTestSupport` leert die Datenbank per Voreinstellung vor
+  jedem `then`; eine Handlung im `when` wäre dann schon gelöscht. Neue Specs setzen
+  `override val resetPerWhen = true` (geleert wird vor jedem `when`) und stellen Stubs, die das
+  `when` braucht, mit `beforeScenario { … }` statt `beforeEach` bereit. Ältere Specs handeln noch
+  im `then`; sie werden nach und nach umgestellt.
 
 ## Arbeitsregeln (kurz)
 

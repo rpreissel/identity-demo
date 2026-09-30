@@ -97,3 +97,18 @@ Vorgang“, nicht „einmal nutzbar“, wie beim Freischaltcode
   Stelle, etwa ein Gateway.
 - Offen: ob `loa2` aus dem Brief allein genügt oder ein `loa2`-Vorgang zusätzlich eine SMS verlangt,
   und ob die Einladung nach dem Vorgang eine Registrierung als Identifizierung tragen soll.
+
+**Nachtrag 2026-09-30 (vierte Bewertung, A-1/A-2).** Die Anfrage von Keycloak nennt das Subjekt wie
+die Antwort (`KcChannelUpsertRequest.subject`); ein Kanal, dem schon ein anderes Subjekt gehört,
+lehnt es mit `409` ab, eine Einladung wird so nie still zum Konto. Keycloak meldet auch die
+Abmeldung eines Einladungs-Nutzers (`POST …/kc/invitations/{id}/sign-outs`); sie beendet die
+Web-Kanäle der Sitzung. Das Anmeldeprotokoll (`account.sign_in_log`) führt Vorgangszugänge als
+Zeilen der Einladung statt eines Kontos (`ck_sign_in_log_one_subject`); sie leben nur die
+Aufbewahrungsfrist des Protokolls, weil es kein Konto gibt, mit dem sie gehen könnten.
+
+**Nachtrag 2026-09-30 (K-5): Ein Vorgangszugang wird nicht aufgewertet.** Verlangt ein späterer
+Durchlauf einer Einladungssitzung ein höheres Niveau, lehnt der Orchestrator den Kanal mit `409` ab
+(„Dieses Einmalkennwort genügt der verlangten Sicherheitsstufe nicht“), ohne ihn anzulegen; die
+Anmeldeseite zeigt diesen Grund. Eine Einladung bindet einen Kanal nur durch ihren eigenen Nachweis,
+nie durch das Subjekt, das Keycloak nennt. Der Resume-Schritt überspringt Einladungssitzungen: Es
+gibt nichts wiederherzustellen. Wer ein höheres Niveau braucht, braucht eine Einladung dieses Niveaus.

@@ -633,6 +633,17 @@ würde dieselbe Handlung je Tool unterschiedlich viel zählen, ohne dass der Nut
 einer Bestätigung, die das Backend selbst beim Anbieter einlöst, nicht auf einer Signatur des
 Clients.
 
+### Ein Nachweis über loa1 altert
+
+Jeder Nachweis trägt den Zeitpunkt, zu dem er erbracht wurde (`MethodEvidence.provenAt`). Für ein
+Niveau über `loa1` zählen nur Nachweise, die jünger sind als `identity.policy.elevated-level-max-age`
+(30 Minuten, gleich dem `loa-max-age` des LoA-2-Subflows in Keycloak); ältere tragen weiter `loa1`.
+Die Regel steht in der `AuthPolicy`, gilt also für beide Kanäle: Nach 30 Minuten meldet ein
+App-Kanal `loa1`, und ein Ziel ab `loa2` verlangt einen neuen Nachweis, bei dem auch das schon
+benutzte Verfahren wieder angeboten wird. Wiederhergestellte Nachweise (`RestoreData`) behalten
+ihren Zeitpunkt; ein Nachweis ohne Zeitpunkt gilt als beliebig alt. Ohne diese Regel hielte der
+Resume-Pfad ein einmal erreichtes `loa2` über jeden neuen Durchlauf bis zum Sitzungsende.
+
 ### IAL und AAL: zwei Fragen, ein `acr`-Wert
 
 `resolveAcr` beantwortet zwei unabhängige Fragen (NIST 800-63: IAL und AAL) und fasst sie erst am

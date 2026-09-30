@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.core.orchestrator.domain.policy.fromNow
+import com.example.identity.TEST_CLOCK
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AuthMethodView
@@ -57,7 +59,7 @@ object StrategyTestFixtures {
             AuthInviteDescriptor
         )
     )
-    val policy = DefaultAuthPolicy(catalog)
+    val policy = DefaultAuthPolicy(catalog, TEST_CLOCK)
     val allToolIds: Set<ToolId> = catalog.descriptors().map { it.toolId }.toSet()
 
     /** The App channel with the shipped defaults: everything declared, minus `tool-defaults.channels.APP.disabled`. */
@@ -133,7 +135,7 @@ object StrategyTestFixtures {
             ?.mapNotNull { m -> m.enrolledUnderAcr?.let { m.method to it } }
             ?.toMap()
             ?: emptyMap()
-        return AuthEvidence.from(amr, factorTypes, methodAcr, enrolledUnderAcr, amrSourceId = amrSourceId)
+        return AuthEvidence.fromNow(amr, factorTypes, methodAcr, enrolledUnderAcr, amrSourceId = amrSourceId)
     }
 
     fun ctx(

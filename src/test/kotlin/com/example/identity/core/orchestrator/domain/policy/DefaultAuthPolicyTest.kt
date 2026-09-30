@@ -1,5 +1,8 @@
 package com.example.identity.core.orchestrator.domain.policy
 
+import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
+import java.time.Duration
 import com.example.identity.core.orchestrator.domain.policy.DefaultAuthPolicy
 import com.example.identity.core.orchestrator.domain.policy.requiresSatisfied
 import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
@@ -57,7 +60,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
     val enrollPasskey = descriptor("enroll-passkey", MethodRole.ENROLLMENT, "passkey", setOf(FactorType.POSSESSION, FactorType.INHERENCE), AcrLevel.LOA3)
 
     val registry = ToolHandlerRegistry(listOf(identFsc, enrollSms, authSms, authPasskey, enrollPasskey))
-    val policy = DefaultAuthPolicy(registry)
+    val policy = DefaultAuthPolicy(registry, TEST_CLOCK)
 
     fun candidates(
         evidence: AuthEvidence,
@@ -76,10 +79,53 @@ class DefaultAuthPolicyTest : BehaviorSpec({
     fun method(method: String, enrolledUnderAcr: AcrLevel, active: Boolean = true) =
         AuthMethodView(id = "$method-instance", method = method, active = active, createdAt = null, enrolledUnderAcr = enrolledUnderAcr.value, details = null, enrollmentRef = EnrollmentRef("${method}_enrollment", "1"))
 
+    given("an sms proof worth loa2, of a certain age") {
+        val sms = AuthEvidence.fromNow(amr = listOf("sms"), factorTypes = setOf(FactorType.POSSESSION), methodAcr = mapOf("sms" to AcrLevel.LOA2.value))
+        val acc = account(method("sms", enrolledUnderAcr = AcrLevel.LOA2))
+
+        `when`("it was proven 29 minutes ago") {
+            val evidence = sms.provenAt(TEST_NOW.minus(Duration.ofMinutes(29)))
+            val acr = policy.resolveAcr(evidence, acc)
+            val satisfied = policy.isSatisfied(evidence, AcrLevel.LOA2, acc)
+
+            then("it still carries loa2") {
+                acr shouldBe AcrLevel.LOA2
+                satisfied shouldBe true
+            }
+        }
+
+        `when`("it was proven 31 minutes ago") {
+            val evidence = sms.provenAt(TEST_NOW.minus(Duration.ofMinutes(31)))
+            val acr = policy.resolveAcr(evidence, acc)
+            val loa2 = policy.isSatisfied(evidence, AcrLevel.LOA2, acc)
+            val loa1 = policy.isSatisfied(evidence, AcrLevel.LOA1, acc)
+            val offered = policy.authCandidates(candidates(evidence, AcrLevel.LOA2, acc))
+
+            then("it carries only loa1") {
+                acr shouldBe AcrLevel.LOA1
+                loa2 shouldBe false
+                loa1 shouldBe true
+            }
+
+            then("the same method is offered again to prove it anew") {
+                offered shouldContainExactly listOf(ToolId("auth-sms"))
+            }
+        }
+
+        `when`("its age is unknown") {
+            val evidence = AuthEvidence(sms.factors.map { it.copy(provenAt = null) })
+            val acr = policy.resolveAcr(evidence, acc)
+
+            then("it carries only loa1") {
+                acr shouldBe AcrLevel.LOA1
+            }
+        }
+    }
+
     given("a synthetic catalog of ident-fsc/enroll-sms/auth-sms plus a hypothetical passkey pair") {
 
         `when`("evidence proves only sms - a single possession factor, below loa3") {
-            val evidence = AuthEvidence.from(amr = listOf("sms"), factorTypes = setOf(FactorType.POSSESSION), methodAcr = mapOf("sms" to AcrLevel.LOA2.value))
+            val evidence = AuthEvidence.fromNow(amr = listOf("sms"), factorTypes = setOf(FactorType.POSSESSION), methodAcr = mapOf("sms" to AcrLevel.LOA2.value))
 
             then("isSatisfied only requires the level, not MFA") {
                 policy.isSatisfied(evidence, AcrLevel.LOA2, account = null) shouldBe true
@@ -89,19 +135,19 @@ class DefaultAuthPolicyTest : BehaviorSpec({
 
         `when`("checking isSatisfied at loa3") {
             then("a single factor type is not enough") {
-                val singleFactor = AuthEvidence.from(amr = listOf("sms"), factorTypes = setOf(FactorType.POSSESSION), methodAcr = mapOf("sms" to AcrLevel.LOA2.value))
+                val singleFactor = AuthEvidence.fromNow(amr = listOf("sms"), factorTypes = setOf(FactorType.POSSESSION), methodAcr = mapOf("sms" to AcrLevel.LOA2.value))
                 policy.isSatisfied(singleFactor, AcrLevel.LOA3, account = null) shouldBe false
             }
 
             then("two distinct factor types proven by one tool are enough") {
-                val twoFactors = AuthEvidence.from(amr = listOf("passkey"), factorTypes = setOf(FactorType.POSSESSION, FactorType.INHERENCE), methodAcr = mapOf("passkey" to AcrLevel.LOA3.value))
+                val twoFactors = AuthEvidence.fromNow(amr = listOf("passkey"), factorTypes = setOf(FactorType.POSSESSION, FactorType.INHERENCE), methodAcr = mapOf("passkey" to AcrLevel.LOA3.value))
                 policy.isSatisfied(twoFactors, AcrLevel.LOA3, account = null) shouldBe true
             }
         }
 
         `when`("evidence carries two proofs of the same factor type") {
             then("MFA at loa3 is never satisfied") {
-                val evidence = AuthEvidence.from(
+                val evidence = AuthEvidence.fromNow(
                     amr = listOf("sms", "someOtherPossessionMethod"),
                     factorTypes = setOf(FactorType.POSSESSION),
                     methodAcr = mapOf("sms" to AcrLevel.LOA2.value, "someOtherPossessionMethod" to AcrLevel.LOA2.value)
@@ -158,7 +204,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
                 val fresh = AuthEvidence(emptyList())
                 policy.authCandidates(candidates(fresh, AcrLevel.LOA2, acc, "test-binding-key", linkedAccountId = acc.accountId, availableTools = null)) shouldContainExactly listOf(ToolId("auth-sms"))
 
-                val alreadyUsedSms = AuthEvidence.from(listOf("sms"), setOf(FactorType.POSSESSION), mapOf("sms" to AcrLevel.LOA2.value))
+                val alreadyUsedSms = AuthEvidence.fromNow(listOf("sms"), setOf(FactorType.POSSESSION), mapOf("sms" to AcrLevel.LOA2.value))
                 policy.authCandidates(candidates(alreadyUsedSms, AcrLevel.LOA2, acc, "test-binding-key", linkedAccountId = acc.accountId, availableTools = null)).shouldBeEmpty()
             }
 
@@ -175,7 +221,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
                 val tokenSms = descriptor("auth-sms", MethodRole.IDENTIFIED_AUTH, "sms", setOf(FactorType.POSSESSION), AcrLevel.LOA1)
                 val tokenEmail = descriptor("auth-email", MethodRole.IDENTIFIED_AUTH, "email", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
                 val tokenQr = descriptor("auth-qr", MethodRole.IDENTIFIED_AUTH, "qr", setOf(FactorType.POSSESSION), AcrLevel.LOA2)
-                val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenSms, tokenEmail, tokenQr)))
+                val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenSms, tokenEmail, tokenQr)), TEST_CLOCK)
                 val acc = account(method("sms", AcrLevel.LOA2), method("email", AcrLevel.LOA2), method("qr", AcrLevel.LOA2))
                 val fresh = AuthEvidence(emptyList())
 
@@ -203,7 +249,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
                 }
             }
             val deviceRegistry = ToolHandlerRegistry(listOf(deviceAuth))
-            val devicePolicy = DefaultAuthPolicy(deviceRegistry)
+            val devicePolicy = DefaultAuthPolicy(deviceRegistry, TEST_CLOCK)
             val deviceMethod = AuthMethodView(
                 id = "device-instance", method = "device", active = true, createdAt = null,
                 enrolledUnderAcr = AcrLevel.LOA2.value, details = mapOf("deviceBindingKeyRef" to "key-1"),
@@ -226,7 +272,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
                 val fresh = AuthEvidence(emptyList())
                 policy.reIdentCandidates(candidates(fresh, AcrLevel.LOA2)) shouldContainExactly listOf(ToolId("ident-fsc"))
 
-                val alreadyIdentified = AuthEvidence.from(listOf("fsc"), setOf(FactorType.POSSESSION))
+                val alreadyIdentified = AuthEvidence.fromNow(listOf("fsc"), setOf(FactorType.POSSESSION))
                 policy.reIdentCandidates(candidates(alreadyIdentified, AcrLevel.LOA2)).shouldBeEmpty()
             }
 
@@ -257,7 +303,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
             then("two combinable methods enrolled only under a lower level name the enrolledUnderAcr cap as the blocker") {
                 val tokenA = descriptor("auth-a", MethodRole.IDENTIFIED_AUTH, "a", setOf(FactorType.POSSESSION), AcrLevel.LOA1)
                 val tokenB = descriptor("auth-b", MethodRole.IDENTIFIED_AUTH, "b", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
-                val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenA, tokenB)))
+                val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenA, tokenB)), TEST_CLOCK)
                 val bothWeak = account(method("a", enrolledUnderAcr = AcrLevel.LOA1), method("b", enrolledUnderAcr = AcrLevel.LOA1))
 
                 localPolicy.reachability(bothWeak, AcrLevel.LOA2) shouldBe
@@ -277,14 +323,14 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         `when`("resolving the achieved ACR from proven amr methods") {
             then("it reflects the highest maxAcr among them") {
                 policy.resolveAcr(AuthEvidence(emptyList()), account = null) shouldBe AcrLevel.NONE
-                policy.resolveAcr(AuthEvidence.from(listOf("sms"), setOf(FactorType.POSSESSION), mapOf("sms" to AcrLevel.LOA2.value)), account = null) shouldBe AcrLevel.LOA2
-                policy.resolveAcr(AuthEvidence.from(listOf("passkey"), setOf(FactorType.POSSESSION, FactorType.INHERENCE), mapOf("passkey" to AcrLevel.LOA3.value)), account = null) shouldBe AcrLevel.LOA3
+                policy.resolveAcr(AuthEvidence.fromNow(listOf("sms"), setOf(FactorType.POSSESSION), mapOf("sms" to AcrLevel.LOA2.value)), account = null) shouldBe AcrLevel.LOA2
+                policy.resolveAcr(AuthEvidence.fromNow(listOf("passkey"), setOf(FactorType.POSSESSION, FactorType.INHERENCE), mapOf("passkey" to AcrLevel.LOA3.value)), account = null) shouldBe AcrLevel.LOA3
             }
 
             then("a single IDENTITY tool covering two factor types on its own (e.g. ident-eid: card+PIN) satisfies MFA on the IDENTITY axis alone") {
                 val identEid = descriptor("ident-eid", MethodRole.IDENTIFICATION, "eid", setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), AcrLevel.LOA3)
-                val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(identEid)))
-                val evidence = AuthEvidence.from(
+                val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(identEid)), TEST_CLOCK)
+                val evidence = AuthEvidence.fromNow(
                     listOf("eid"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), mapOf("eid" to AcrLevel.LOA3.value),
                     axis = mapOf("eid" to EvidenceAxis.IDENTITY)
                 )
@@ -293,7 +339,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
             }
 
             then("a single ident-fsc reaches loa2 on its own IAL, not via an MFA bump") {
-                val identOnly = AuthEvidence.from(
+                val identOnly = AuthEvidence.fromNow(
                     listOf("fsc"), setOf(FactorType.POSSESSION), mapOf("fsc" to AcrLevel.LOA2.value),
                     axis = mapOf("fsc" to EvidenceAxis.IDENTITY)
                 )
@@ -305,8 +351,8 @@ class DefaultAuthPolicyTest : BehaviorSpec({
                 // only has to defeat the password, so fsc + password is one authenticator, not two,
                 // and gets no MFA bump even with a claimed loa3 enrolledUnderAcr.
                 val tokenPassword = descriptor("auth-password", MethodRole.IDENTIFIED_AUTH, "password", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
-                val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(identFsc, tokenPassword)))
-                val evidence = AuthEvidence.from(
+                val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(identFsc, tokenPassword)), TEST_CLOCK)
+                val evidence = AuthEvidence.fromNow(
                     amr = listOf("fsc", "password"),
                     factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE),
                     methodAcr = mapOf("fsc" to AcrLevel.LOA2.value, "password" to AcrLevel.LOA1.value),
@@ -325,8 +371,8 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         val account = account(method("x", enrolledUnderAcr = AcrLevel.LOA2))
 
         `when`("the catalog lists them in either order") {
-            val enrollFirst = DefaultAuthPolicy(ToolHandlerRegistry(listOf(enrollX, authX))).reachability(account, AcrLevel.LOA2)
-            val authFirst = DefaultAuthPolicy(ToolHandlerRegistry(listOf(authX, enrollX))).reachability(account, AcrLevel.LOA2)
+            val enrollFirst = DefaultAuthPolicy(ToolHandlerRegistry(listOf(enrollX, authX)), TEST_CLOCK).reachability(account, AcrLevel.LOA2)
+            val authFirst = DefaultAuthPolicy(ToolHandlerRegistry(listOf(authX, enrollX)), TEST_CLOCK).reachability(account, AcrLevel.LOA2)
 
             then("reachability counts what proving the method gives, whatever the bean order") {
                 enrollFirst shouldBe Reachability.Reachable
@@ -338,11 +384,11 @@ class DefaultAuthPolicyTest : BehaviorSpec({
     given("two loa1-only tools of different factor types (a=possession, b=knowledge), distinct from the shared catalog") {
         val tokenA = descriptor("auth-a", MethodRole.IDENTIFIED_AUTH, "a", setOf(FactorType.POSSESSION), AcrLevel.LOA1)
         val tokenB = descriptor("auth-b", MethodRole.IDENTIFIED_AUTH, "b", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
-        val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenA, tokenB)))
+        val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenA, tokenB)), TEST_CLOCK)
         // enrolledUnderAcr is the caller's claim in AuthEvidence; AuthPolicy does not re-derive it
         // from the account. Each scenario builds the evidence a real caller would resolve.
         fun evidence(enrolledUnderAcr: Map<String, String>) =
-            AuthEvidence.from(amr = listOf("a", "b"), factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), methodAcr = mapOf("a" to AcrLevel.LOA1.value, "b" to AcrLevel.LOA1.value), enrolledUnderAcr = enrolledUnderAcr)
+            AuthEvidence.fromNow(amr = listOf("a", "b"), factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), methodAcr = mapOf("a" to AcrLevel.LOA1.value, "b" to AcrLevel.LOA1.value), enrolledUnderAcr = enrolledUnderAcr)
 
         `when`("both were enrolled in a loa1-only session") {
             val bothWeak = account(method("a", enrolledUnderAcr = AcrLevel.LOA1), method("b", enrolledUnderAcr = AcrLevel.LOA1))
@@ -384,8 +430,8 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         `when`("two single-factor AUTH tools of different kinds combine, with no identification at all") {
             val tokenSms = descriptor("auth-sms", MethodRole.IDENTIFIED_AUTH, "sms", setOf(FactorType.POSSESSION), AcrLevel.LOA1)
             val tokenPassword = descriptor("auth-password", MethodRole.IDENTIFIED_AUTH, "password", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
-            val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenSms, tokenPassword)))
-            val evidence = AuthEvidence.from(
+            val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenSms, tokenPassword)), TEST_CLOCK)
+            val evidence = AuthEvidence.fromNow(
                 amr = listOf("sms", "password"),
                 factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE),
                 methodAcr = mapOf("sms" to AcrLevel.LOA1.value, "password" to AcrLevel.LOA1.value),
@@ -400,8 +446,8 @@ class DefaultAuthPolicyTest : BehaviorSpec({
 
         `when`("a single AUTH tool declares two factor types itself (device-like: possession+knowledge)") {
             val tokenDevice = descriptor("auth-device", MethodRole.IDENTIFIED_AUTH, "device", setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), AcrLevel.LOA2)
-            val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenDevice)))
-            val evidence = AuthEvidence.from(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), mapOf("device" to AcrLevel.LOA2.value))
+            val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenDevice)), TEST_CLOCK)
+            val evidence = AuthEvidence.fromNow(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), mapOf("device" to AcrLevel.LOA2.value))
 
             then("NIST's 'multi-factor authenticator' path reaches loa2 (AAL2) alone, no combination needed") {
                 localPolicy.resolveAcr(evidence, account = null) shouldBe AcrLevel.LOA2
@@ -410,7 +456,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
 
         `when`("only an identification tool ran this session, no AUTH factor at all") {
-            val evidence = AuthEvidence.from(
+            val evidence = AuthEvidence.fromNow(
                 listOf("fsc"), setOf(FactorType.POSSESSION), mapOf("fsc" to AcrLevel.LOA2.value),
                 axis = mapOf("fsc" to EvidenceAxis.IDENTITY)
             )
@@ -427,8 +473,8 @@ class DefaultAuthPolicyTest : BehaviorSpec({
             // stops at loa2.
             val tokenA = descriptor("auth-a", MethodRole.IDENTIFIED_AUTH, "a", setOf(FactorType.POSSESSION), AcrLevel.LOA2)
             val tokenB = descriptor("auth-b", MethodRole.IDENTIFIED_AUTH, "b", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA2)
-            val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenA, tokenB)))
-            val evidence = AuthEvidence.from(
+            val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenA, tokenB)), TEST_CLOCK)
+            val evidence = AuthEvidence.fromNow(
                 amr = listOf("a", "b"),
                 factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE),
                 methodAcr = mapOf("a" to AcrLevel.LOA2.value, "b" to AcrLevel.LOA2.value),

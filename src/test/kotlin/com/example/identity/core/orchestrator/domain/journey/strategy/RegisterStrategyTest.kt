@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.core.orchestrator.domain.policy.fromNow
 import com.example.identity.core.orchestrator.domain.journey.strategy.AuthEnrollCore
 import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterStrategy
@@ -148,7 +149,7 @@ class RegisterStrategyTest : BehaviorSpec({
         // evidence at loa2, which offerEnrollment needs before it offers Enrolling.
         val postIdentityCtx = ctx(
             account = acc,
-            evidence = AuthEvidence.from(
+            evidence = AuthEvidence.fromNow(
                 listOf("fsc"), setOf(FactorType.POSSESSION), mapOf("fsc" to "loa2"),
                 axis = mapOf("fsc" to EvidenceAxis.IDENTITY)
             ),
@@ -156,7 +157,7 @@ class RegisterStrategyTest : BehaviorSpec({
         )
         val confirmedCtx = ctx(
             account = account(emailConfirmed = true),
-            evidence = AuthEvidence.from(
+            evidence = AuthEvidence.fromNow(
                 listOf("fsc"), setOf(FactorType.POSSESSION), mapOf("fsc" to "loa2"),
                 axis = mapOf("fsc" to EvidenceAxis.IDENTITY)
             ),

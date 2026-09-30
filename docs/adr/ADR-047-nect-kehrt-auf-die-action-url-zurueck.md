@@ -8,7 +8,11 @@ schicken würde, mit `session_code`, `execution`, `client_id` und `tab_id`. Die 
 beim Aktivieren als `returnUri`, Nect hängt `nectCaseId` an, und Keycloak behandelt den GET mit
 gültigem Code wie den Formularversand des Schritts. Die Parameter der Anfrage sind die Eingabe des
 Tools. Der Orchestrator nimmt eine Rücksprungadresse nur unter einem konfigurierten Präfix an und
-merkt sie sich am Fall, damit ein `retry` sie behält.
+merkt sie sich am Fall. Keycloaks Aktionscode gilt nur einmal: Ein `retry` im Web-Kanal nennt deshalb
+eine frische Action-URL (`returnUri` im PATCH, von der Erweiterung über
+`WebToolRendererFactory.actionFields`), die dieselbe Prüfung durchläuft und die gemerkte ersetzt; ohne
+sie bleibt die gemerkte (App-Kanal). Berichtigt 2026-09-30 (vierte Bewertung, K-2): Zuvor stand
+hier, ein `retry` behalte die Adresse der Aktivierung; deren Code war da aber schon verbraucht.
 
 **Warum.** Ein Identifizierungsschritt bei der Registrierung hat noch keinen Nutzer; das Konto
 entsteht erst in der Journey, und Keycloak legt keine Nutzer an (ADR-38). Der Weg zurück muss also

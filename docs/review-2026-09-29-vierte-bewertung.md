@@ -483,3 +483,56 @@ Bewertung), `DPoP-demo-oe06` (I-23), `DPoP-demo-36xz` (Lookup-Orakel), `DPoP-dem
 - K-6: Nimbus-Voreinstellungen aus der Bibliotheksdokumentation. Zeitverhalten von S-7 nicht
   gemessen. Abhängigkeiten nicht gegen einen CVE-Feed geprüft. Kein Gradle-Lauf: die genannten
   Tests wurden gelesen, nicht ausgeführt.
+
+## 8. Stand der Umsetzung (2026-09-30)
+
+Alle Befunde der Stufe „mittel“ sind bearbeitet; einen hohen gab es nicht. Entscheidungen des
+Inhabers vorab: S-1 im Policy-Modell (gilt für beide Kanäle), A-1 mit eigenem Endpunkt und Eintrag im
+Anmeldeprotokoll, A-2 mit Wächter und `subject` in der Anfrage, K-2 mit `returnUri` im Retry-PATCH.
+Issues unter dem Epic `DPoP-demo-updm`.
+
+**Sicherheit und Keycloak**
+
+- ~~S-1 `loa-max-age` über den Resume-Pfad unterlaufen~~ – erledigt: Jeder Nachweis trägt
+  `provenAt`; `DefaultAuthPolicy` zählt über `loa1` nur Nachweise der letzten
+  `identity.policy.elevated-level-max-age` (30 min), ältere tragen `loa1`, und das schon benutzte
+  Verfahren wird wieder angeboten. RestoreData trägt den Zeitpunkt mit, ein Nachweis ohne ihn gilt
+  als beliebig alt. Tests: `DefaultAuthPolicyTest` (29/31 min, unbekanntes Alter),
+  `RestoreDataCodecTest`, `KcChannelIntegrationTest` (echter Resume-Pfad mit gealtertem Nachweis).
+  Doku: 04 §8 „Ein Nachweis über loa1 altert“, 07 §3, neue Invariante I-32.
+- ~~K-1 Orchestrator-Fehler als Fehlversuch~~ – erledigt: `OrchestratorAuthenticator.action` ruft
+  nie mehr `failureChallenge`; 4xx zeigt die Meldung, sonst „Anmeldung derzeit nicht möglich.“
+  (`ApiFailure`, `ApiFailureTest`).
+- ~~K-2 Nect-Retry auf verbrauchter Adresse~~ – erledigt: `WebToolRendererFactory.actionFields`
+  gibt beim Retry eine frische Action-URL mit, `IdentNectPatchRequest.returnUri` durchläuft dieselbe
+  Präfix-Prüfung und ersetzt die gemerkte. ADR-47 und Port-Vertrag berichtigt. Tests:
+  `IdentNectRendererFactoryTest`, `IdentNectToolHandlerTest`. Gegen ein laufendes Keycloak nicht
+  gespielt (`DPoP-demo-z90h`).
+
+**Architektur**
+
+- ~~A-2 Einladungskanal im Upsert~~ – erledigt: `KcChannelUpsertRequest.subject` wie
+  `authData.subject`; `accountId` ist aus Anfrage und `authData` entfernt (vor dem ersten Release
+  keine Kompatibilitätsfelder, `api/published/v1.yaml` neu eingefroren); ein Kanal eines anderen Subjekts
+  antwortet `409` und bleibt, wie er ist; eine Einladung bindet nur ihr eigener Nachweis. Die
+  Erweiterung schickt `KcSubject`. Test: `AuthInviteIntegrationTest` (Konto, fremde Einladung,
+  dieselbe Einladung).
+- ~~K-5 anonymer Step-up auf einer Einladungssitzung~~ – erledigt nach Entscheidung des Inhabers
+  („nicht aufwertbar“): Der Orchestrator lehnt einen Kanal mit Einladungs-Subjekt, der ihr nicht schon
+  gehört, mit `409` und Begründung ab; die Anmeldeseite zeigt sie, der Resume-Schritt überspringt
+  Einladungssitzungen. Test: `AuthInviteIntegrationTest`. ADR-48 Nachtrag.
+- ~~A-1 Abmeldung eines Einladungs-Nutzers~~ – erledigt: `SignInLogEventListener` meldet
+  Abmeldungen beider Federationen, `POST …/kc/invitations/{id}/sign-outs` beendet die Web-Kanäle der
+  Sitzung; das Anmeldeprotokoll führt Zeilen einer Einladung (V34, `ck_sign_in_log_one_subject`).
+  Tests: `AuthInviteIntegrationTest`, `SignInLogEventListenerTest`. ADR-48 Nachtrag, 05-api, 07.
+
+**Codequalität und Tests**
+
+- ~~Q-2 `auth_invite` ohne Unit-Test~~ – erledigt: `AuthInviteToolHandlerTest` (10 Fälle, auch
+  gedrosselt und unbekannte Nummer mit gültigem Code), `AuthInviteFlowTest`.
+- ~~Q-1 Handlung im `Then`~~ – erledigt für die fünf genannten Specs. Die Ursache war nicht
+  Nachlässigkeit: `IntegrationTestSupport` leerte die Datenbank vor jedem `then`, eine Handlung im
+  `when` war dort schon gelöscht. Die Aussage oben, die übrigen 49 Spring-Specs hielten die Regel,
+  stimmt nicht; sie handeln aus demselben Grund im `then`. Neu: `resetPerWhen = true` leert vor
+  jedem `when`, Stubs über `beforeScenario`; AGENTS.md beschreibt es. Die übrigen Specs stellt
+  `DPoP-demo-ooql` um.

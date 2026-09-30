@@ -63,12 +63,15 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
 - **I-24 Zu einem Kanal gehört genau eine Keycloak-Sitzung: Sie wird einmal geöffnet und nie ersetzt; ein Step-up läuft in derselben Sitzung.**
   - Worum es geht: Die Sitzung wird einmal geöffnet und danach nur fortgesetzt, auch beim Hochstufen auf ein höheres Niveau. So ist eine Abmeldung in Keycloak eindeutig, und keine vergessene Nebensitzung bleibt übrig.
   - Mechanismus: `type:KcTokenProvider` (nur ohne bekannte `keycloakSessionId` wird eine Sitzung geöffnet, danach setzt der Grant per `session_id` genau diese fort), `type:AccountTokenGrantType` (setzt nur eine gültige, eigene Sitzung desselben Nutzers fort, sonst Ablehnung), `test:ModelBasedJourneyTest`, `test:KcTokenProviderTest`, `test:TokenServiceTest`, `test:AppLoginSessionIntegrationTest`
+- **I-32 Ein Niveau über loa1 beruht nur auf Nachweisen der letzten 30 Minuten; ein wiederhergestellter Nachweis wird dadurch nicht jünger ([04-orchestrierung](04-orchestrierung.md) Abschnitt 8).**
+  - Worum es geht: Ein zweiter Faktor von heute Morgen reicht am Nachmittag nicht mehr für `loa2`; wer mehr will, muss ihn frisch bestätigen. Wird ein Nachweis in einen neuen Anmeldedurchlauf übernommen, behält er seinen alten Zeitstempel – sonst ließe er sich durch bloßes Weiterreichen beliebig verjüngen.
+  - Mechanismus: `test:DefaultAuthPolicyTest`, `test:RestoreDataCodecTest`, `test:KcChannelIntegrationTest`
 
 ## Subjekt eines Kanals: Konto oder Einladung
 
 - **I-5 Ein Kanal gehört höchstens einem Subjekt – einem Konto oder einer Einladung, nie beiden – und wechselt es nie still: ein anderes Subjekt ist ein Fehler, kein Umbinden. Seine Evidenz gehört demselben Subjekt ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
   - Worum es geht: Ein Kanal hängt an genau einem „Wer“. Meldet sich darauf plötzlich ein anderes Konto an, wird nicht still umgehängt, sondern abgelehnt. Sonst könnten Nachweise von Person A beim Konto von Person B landen.
-  - Mechanismus: `sql:ck_channel_session_one_subject`, `sql:ck_auth_evidence_one_subject`, `test:KcChannelIntegrationTest`, `test:AuthInviteIntegrationTest`
+  - Mechanismus: `sql:ck_channel_session_one_subject`, `sql:ck_auth_evidence_one_subject`, `sql:ck_sign_in_log_one_subject`, `test:KcChannelIntegrationTest`, `test:AuthInviteIntegrationTest` (auch: Keycloak nennt ein anderes Subjekt → `409`)
 - **I-30 Die Evidenz einer Einladung wandert in keinen späteren Anmeldedurchlauf ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
   - Worum es geht: Das Einladungs-Kennwort taugt nur für den einen Vorgang. Sein Nachweis wird nicht in eine spätere Konto-Anmeldung übernommen.
   - Mechanismus: `test:AuthInviteIntegrationTest` (`restore-data` bleibt für einen Einladungs-Kanal leer)

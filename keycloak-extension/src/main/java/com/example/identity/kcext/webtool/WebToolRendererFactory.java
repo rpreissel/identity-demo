@@ -4,6 +4,7 @@ import com.example.identity.kcext.client.KcText;
 import org.keycloak.provider.ProviderFactory;
 
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -31,6 +32,15 @@ public interface WebToolRendererFactory extends ProviderFactory<WebToolRenderer>
      * away names it as the address to come back to (docs/adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md).
      */
     default Map<String, String> activationFields(Supplier<String> actionUrl) {
+        return Map.of();
+    }
+
+    /**
+     * What this tool needs to hear with a posted step besides the form's own {@code field}s;
+     * nothing for most tools. Keycloak's action code is single-use, so a tool that sends the user
+     * away again names a fresh action URL here, not the one from its activation.
+     */
+    default Map<String, String> actionFields(Function<String, String> field, Supplier<String> actionUrl) {
         return Map.of();
     }
 }

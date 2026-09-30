@@ -27,6 +27,9 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.web.client.RestTemplate
+import io.kotest.core.names.TestName
+import io.kotest.core.test.TestCase
+import io.kotest.core.test.TestType
 import java.time.Instant
 import java.util.UUID
 
@@ -71,9 +74,44 @@ abstract class IntegrationTestSupport : BehaviorSpec() {
 
     protected var currentBindingKeyRef: String = ""
 
-    init {
-        beforeEach { resetDatabase() }
+    /**
+     * When the database is wiped. `false`, the older style: before every `then`, so a `then` may act
+     * itself. `true`: before every `when` (and before a `then` straight under `given`), so the
+     * `when` acts once and its `then`s only check (AGENTS.md, Testregeln). [beforeScenario] runs at
+     * the same points.
+     */
+    protected open val resetPerWhen: Boolean = false
+
+    private val scenarioSetups = mutableListOf<() -> Unit>()
+
+    /** Runs [setup] wherever the database is wiped, e.g. to stub a mock the `when` already needs. */
+    protected fun beforeScenario(setup: () -> Unit) {
+        scenarioSetups += setup
     }
+
+    init {
+        // Registered first, so a subclass's own beforeEach still runs after the wipe.
+        beforeEach {
+            if (!resetPerWhen) {
+                resetDatabase()
+                scenarioSetups.forEach { it() }
+            }
+        }
+        beforeAny { testCase ->
+            if (resetPerWhen && startsScenario(testCase)) {
+                resetDatabase()
+                scenarioSetups.forEach { it() }
+            }
+        }
+    }
+
+    private fun startsScenario(testCase: TestCase): Boolean {
+        val isWhen = testCase.name.isWhen()
+        val underWhen = testCase.parent?.name?.isWhen() == true
+        return isWhen || (testCase.type == TestType.Test && !underWhen)
+    }
+
+    private fun TestName.isWhen() = prefix?.trim()?.startsWith("When", ignoreCase = true) == true
 
     /**
      * Wipes every table a suite may touch. Runs before each test; the model-based test also calls

@@ -15,6 +15,7 @@ import com.nimbusds.jwt.SignedJWT
 import org.springframework.stereotype.Component
 import java.security.SecureRandom
 import java.time.Clock
+import java.time.Instant
 import java.time.Duration
 import java.util.Date
 
@@ -75,6 +76,8 @@ class RestoreDataCodec(private val clock: Clock, private val ttl: Duration = TTL
         // of degrading it to a Keycloak self-report.
         put("source", source)
         put("amrSourceId", amrSourceId)
+        // Restoring a proof must not make it young again (docs/04-orchestrierung.md #8).
+        provenAt?.let { put("provenAt", it.epochSecond) }
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -87,6 +90,8 @@ class RestoreDataCodec(private val clock: Clock, private val ttl: Duration = TTL
         }?.toSet() ?: emptySet(),
         source = this["source"] as? String ?: AmrSource.KEYCLOAK,
         amrSourceId = this["amrSourceId"] as? String ?: this["method"] as String,
+        // Without a time the proof is of unknown age, never a fresh one.
+        provenAt = (this["provenAt"] as? Number)?.let { Instant.ofEpochSecond(it.toLong()) } ?: Instant.EPOCH,
     )
 
     companion object {

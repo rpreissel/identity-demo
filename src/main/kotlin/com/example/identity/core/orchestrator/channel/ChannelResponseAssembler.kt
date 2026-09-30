@@ -103,7 +103,7 @@ class ChannelResponseAssembler(
         }
         val subject = channel.accountId?.let { AuthSubject(AuthSubjectType.ACCOUNT, it.toString()) }
             ?: channel.invitation?.let { AuthSubject(AuthSubjectType.INVITATION, it) }
-        return AuthData(accountId = channel.accountId, acr = acr?.value, amr = amr, subject = subject)
+        return AuthData(acr = acr?.value, amr = amr, subject = subject)
     }
 
     /**

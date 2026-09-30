@@ -186,6 +186,10 @@ dpop:
 
 # Einstellungen dieses Systems (Geheimnisse, KOBIL-Mandant); dpop.* oben ist nur der Nachweis nach RFC 9449.
 identity:
+  policy:
+    # Wie lange ein Nachweis ueber loa1 traegt; danach zaehlt er nur noch fuer loa1
+    # (docs/04-orchestrierung.md #8). Gleich dem loa-max-age des LoA-2-Subflows (Keycloak V5).
+    elevated-level-max-age: PT30M
   secrets:
     # Pepper for the short-lived SMS/e-mail OTP hashes and the hashed keys of the modules' send
     # budgets (ADR-44). A six-digit code has only 10^6 possible preimages, and phone numbers/

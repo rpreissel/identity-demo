@@ -54,16 +54,26 @@ class KcChannelService(
 ) {
 
     /**
-     * Keycloak ended session [kcSessionId] of [accountId]; the logout is Keycloak's
+     * Keycloak ended session [kcSessionId] of [subject]; the logout is Keycloak's
      * (docs/07-betrieb.md Abschnitt 3). Every live channel of that session ends with it (ADR-43):
-     * the KEYCLOAK channels of its flow runs and the APP channel whose login holds it. Ending
-     * writes the sign-out. Without a live channel a Web sign-out is written directly. An unknown
-     * account is nothing to log.
+     * the KEYCLOAK channels of its flow runs and, for an account, the APP channel whose login holds
+     * it. Ending writes the sign-out. Without a live channel a Web sign-out is written directly. An
+     * unknown account is nothing to log; an invitation always is (ADR-48).
      */
-    fun signedOutAtKeycloak(accountId: Long, kcSessionId: String) {
-        if (accountService.findAccount(accountId) == null) return
-        val appLogins = authContextService.findByKeycloakSessionId(kcSessionId).mapNotNull { it.authContextId }.toSet()
-        val live = channelSessionRepository.findByAccountId(accountId)
+    fun signedOutAtKeycloak(subject: Subject, kcSessionId: String) {
+        val appLogins = when (subject) {
+            is Subject.Account -> {
+                if (accountService.findAccount(subject.id) == null) return
+                authContextService.findByKeycloakSessionId(kcSessionId).mapNotNull { it.authContextId }.toSet()
+            }
+            // A process access exists only in the Web channel.
+            is Subject.Invitation -> emptySet()
+        }
+        val channels = when (subject) {
+            is Subject.Account -> channelSessionRepository.findByAccountId(subject.id)
+            is Subject.Invitation -> channelSessionRepository.findByInvitation(subject.hash)
+        }
+        val live = channels
             .filter {
                 when (it.channel) {
                     ChannelType.KEYCLOAK -> it.durableKcSessionId == kcSessionId
@@ -74,7 +84,12 @@ class KcChannelService(
             .mapNotNull { LiveChannel.of(it) }
         if (live.isEmpty()) {
             // An App login's session ends only after its channel did, and that end was written.
-            if (appLogins.isEmpty()) signInLog.signedOut(accountId, ChannelType.KEYCLOAK.name, endedBy = "HOLDER")
+            if (appLogins.isEmpty()) {
+                when (subject) {
+                    is Subject.Account -> signInLog.signedOut(subject.id, ChannelType.KEYCLOAK.name, endedBy = "HOLDER")
+                    is Subject.Invitation -> signInLog.invitationSignedOut(subject.hash, ChannelType.KEYCLOAK.name, endedBy = "HOLDER")
+                }
+            }
         } else {
             live.forEach { channel ->
                 journeyService.findActive(channel.session.id)?.let { journeyService.cancel(it, channel) }
@@ -86,7 +101,7 @@ class KcChannelService(
     fun upsertChannel(
         channelSessionId: UUID,
         assertion: PeerAuthAssertion,
-        accountId: Long?,
+        subject: Subject?,
         targetAcr: String?,
         amr: List<AmrEntry>? = null,
         restoreDataToken: String? = null,
@@ -100,15 +115,18 @@ class KcChannelService(
         // like "nothing to restore". Restored methods keep their original `source`. It never comes
         // with a non-empty [amr], so restored and live factors are applied separately below.
         val restoreData = restoreDataToken?.let { restoreDataCodec.decode(it, restoreDataKcSessionId) }
-        // Keycloak's user attribute and the restore token must name the same account. Preferring
-        // one would let a mis-attributed Keycloak user carry this session's evidence elsewhere.
-        if (accountId != null && restoreData?.accountId != null && accountId != restoreData.accountId) {
+        // Keycloak's user and the restore token must name the same subject. Preferring one would let
+        // a mis-attributed Keycloak user carry this session's evidence elsewhere. An invitation's
+        // evidence is never restored (ADR-48), so a token naming an account never belongs to one.
+        val restoredSubject = restoreData?.accountId?.let(Subject::Account)
+        if (subject != null && restoredSubject != null && subject != restoredSubject) {
             throw OrchestratorException.invalidState(
                 Text("Die Sitzung gehört zu einem anderen Konto"),
-                "accountId=$accountId restoreData.accountId=${restoreData.accountId}"
+                "subject=${subject::class.simpleName} restoreData.accountId=${restoreData.accountId}"
             )
         }
-        val effectiveAccountId = accountId ?: restoreData?.accountId
+        val effectiveSubject = subject ?: restoredSubject
+        val effectiveAccountId = (effectiveSubject as? Subject.Account)?.id
         val restoredFactors = restoreData?.evidence?.factors.orEmpty()
         // method/maxAcr/factorTypes are fixed per authenticator type ([NativeAuthenticatorDescriptor]).
         // An unknown nativeToolId fails fast instead of pricing the proof as nothing.
@@ -142,6 +160,9 @@ class KcChannelService(
             if (assertion.channelAnchor != channelSessionId.toString()) {
                 throw PeerAuthValidationException("Peer-auth channel_anchor does not name this channel")
             }
+            // A process access is not raised (ADR-48): its session asks for a level only a new
+            // flow run of its own could give, and an invitation binds only through its own proof.
+            if (effectiveSubject is Subject.Invitation) throw invitationNotRaised()
             sessionManagementService.createKcChannelSession(
                 channelSessionId,
                 assertion.channelAnchor,
@@ -157,14 +178,18 @@ class KcChannelService(
             // anchor (docs/02-domaenenmodell.md Abschnitt 1).
             val channel = kcChannelAccessGuard.requireChannel(channelSessionId, assertion)
             // Step-up (docs/05-api.md Abschnitt 3): binds the channel to the account Keycloak knows,
-            // once. A later request naming another account is a mismatch, not a rebind.
-            if (effectiveAccountId != null && channel.accountId != null && channel.accountId != effectiveAccountId) {
+            // once. A request naming another subject - another account, or an account where an
+            // invitation signed in, or the reverse - is a mismatch, not a rebind (I-5).
+            val bound = channel.subject
+            if (effectiveSubject is Subject.Invitation && bound != effectiveSubject) throw invitationNotRaised()
+            if (effectiveSubject != null && bound != null && bound != effectiveSubject) {
                 throw OrchestratorException.invalidState(
                     Text("Die Sitzung gehört zu einem anderen Konto"),
-                    "channel.accountId=${channel.accountId} requested=$effectiveAccountId"
+                    "channel=${bound::class.simpleName} requested=${effectiveSubject::class.simpleName}"
                 )
             }
-            if (effectiveAccountId != null && channel.accountId == null) {
+            // Only an account binds here; an invitation binds only through its own proof.
+            if (effectiveAccountId != null && bound == null) {
                 channel.subject = Subject.Account(effectiveAccountId)
                 sessionManagementService.updateChannelSession(channel)
             }
@@ -197,6 +222,11 @@ class KcChannelService(
 
         return response
     }
+
+    private fun invitationNotRaised() = OrchestratorException.invalidState(
+        Text("Dieses Einmalkennwort genuegt der verlangten Sicherheitsstufe nicht"),
+        "invitation session asked for a flow run of its own"
+    )
 
     /**
      * Called once by the authenticator's end-of-flow hook (docs/05-api.md Abschnitt 3), see

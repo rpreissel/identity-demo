@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.core.orchestrator.domain.policy.fromNow
 import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyStrategy
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.tools.ident_fsc.IdentFscDescriptor
@@ -76,7 +77,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA2))
         val theCtx = ctx(
             account = acc,
-            evidence = AuthEvidence.from(
+            evidence = AuthEvidence.fromNow(
                 listOf("sms", "eid", "nect-epass"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE),
                 amrSourceId = mapOf("nect-epass" to "ident-nect")
             ),
@@ -124,7 +125,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
             account = acc,
             // Nect's amr is the procedure (`nect-eid`), not its method name. It counts as used
             // because ident-nect produced it.
-            evidence = AuthEvidence.from(
+            evidence = AuthEvidence.fromNow(
                 listOf("sms", "fsc", "eid", "nect-eid"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE),
                 amrSourceId = mapOf("nect-eid" to "ident-nect")
             ),

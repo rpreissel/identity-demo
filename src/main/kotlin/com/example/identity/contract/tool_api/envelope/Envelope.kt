@@ -76,16 +76,10 @@ data class ChannelBlock(
 /**
  * What the kc-facade's `OrchestratorAuthenticator` writes into Keycloak's session notes on every
  * response (docs/05-api.md Abschnitt 3), for `KEYCLOAK` channels only. Not gated on a proven
- * factor: Keycloak sets its user context from `accountId` as soon as it is known.
+ * factor: Keycloak sets its user context from `subject` as soon as it is known.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class AuthData(
-    @field:Schema(
-        example = "42",
-        deprecated = true,
-        description = "Kept for compatibility; read [subject]. Set only when the subject is an account."
-    )
-    val accountId: Long? = null,
     @field:Schema(example = "loa2")
     val acr: String? = null,
     @field:Schema(
