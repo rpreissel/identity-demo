@@ -12,7 +12,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifySta
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
@@ -77,7 +77,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA2))
         val theCtx = ctx(
             account = acc,
-            evidence = AuthEvidence.fromNow(
+            evidence = SessionEvidence.fromNow(
                 listOf("sms", "eid", "nect-epass"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE),
                 amrSourceId = mapOf("nect-epass" to "ident-nect")
             ),
@@ -125,7 +125,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
             account = acc,
             // Nect's amr is the procedure (`nect-eid`), not its method name. It counts as used
             // because ident-nect produced it.
-            evidence = AuthEvidence.fromNow(
+            evidence = SessionEvidence.fromNow(
                 listOf("sms", "fsc", "eid", "nect-eid"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE),
                 amrSourceId = mapOf("nect-eid" to "ident-nect")
             ),

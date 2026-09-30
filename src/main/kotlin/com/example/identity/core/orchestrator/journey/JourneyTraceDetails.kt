@@ -55,7 +55,7 @@ class JourneyTraceDetails(
             is ToolOutcome.Completed.Enrolled -> mapOf("enrollmentRef" to outcome.enrollmentRef.toString())
             is ToolOutcome.Completed.Authenticated -> when (val subject = outcome.subject) {
                 is Subject.Account -> mapOf("accountId" to subject.id)
-                is Subject.Invitation -> mapOf("invitation" to subject.hash)
+                is Subject.Invitation -> mapOf("invitation" to subject.id)
                 null -> mapOf("accountId" to null)
             }
             is ToolOutcome.Completed.Approved -> emptyMap()

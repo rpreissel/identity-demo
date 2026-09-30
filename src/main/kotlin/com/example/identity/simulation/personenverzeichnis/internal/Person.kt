@@ -9,7 +9,7 @@ import java.time.LocalDate
 @Entity
 @Table(schema = "personenverzeichnis", name = "person")
 class Person(
-    /** The Partnernummer (`tool_api.Partnernr`) - handed out by the register itself, never a counter. */
+    /** The Partnernummer (`tool_api.PartnerNumber`) - handed out by the register itself, never a counter. */
     @Id
     @Column(name = "id", length = 10)
     var id: String? = null,

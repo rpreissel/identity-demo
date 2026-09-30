@@ -43,7 +43,7 @@ data class KcChannelUpsertRequest(
     @field:Schema(
         description = "Required whenever restoreData is present, ignored otherwise. Keycloak's " +
             "own, durable UserSessionModel id - deliberately NOT read off the peer-auth assertion " +
-            "(the assertion's kc-anchor is always THIS flow run's own channelSessionId, " +
+            "(the assertion's kc binding is always THIS flow run's own channelSessionId, " +
             "docs/02-domaenenmodell.md Abschnitt 1, so it can't verify a token minted for a DIFFERENT, " +
             "earlier flow run's channel). Must match what GET .../restore-data was called with to " +
             "produce this exact restoreData token."
@@ -62,8 +62,8 @@ data class KcChannelUpsertRequest(
         description = "Only read on this channel's first call, same restriction as availableTools " +
             "- the kc facade's own, deliberately narrow counterpart to the App facade's `intent` " +
             "request parameter (docs/05-api.md #\"POST /app/channels: intent-Parameter\"). Omitted " +
-            "(or null) means kc_select_method, the existing login/step-up behaviour. Only " +
-            "kc_select_method and register are accepted here - unlike the App facade, not every " +
+            "(or null) means web_select_method, the existing login/step-up behaviour. Only " +
+            "web_select_method and register are accepted here - unlike the App facade, not every " +
             "AuthIntent.isEntryIntent value: fast_access/lookup_login assume an APP-shaped channel " +
             "this facade never has.",
         example = "register"

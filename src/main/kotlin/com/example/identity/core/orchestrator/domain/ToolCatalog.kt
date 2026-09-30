@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.domain
 
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 
@@ -20,6 +20,6 @@ interface ToolCatalog {
      * The [role] procedure of [method], or `null`. A method alone names several procedures with
      * different factor types (`enroll-qr`, `auth-qr`); `(method, role)` names one.
      */
-    fun descriptorOf(method: String, role: MethodRole): ToolDescriptor? =
+    fun descriptorOf(method: String, role: ToolRole): ToolDescriptor? =
         descriptors().firstOrNull { it.method == method && it.role == role }
 }

@@ -37,7 +37,7 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
     private fun randomVersnr(): String = (10_000_000 + Random.nextInt(89_999_999)).toString()
 
     /**
-     * A person of its own per scenario, so no other suite's seed code or throttle interferes -
+     * A person of its own per scenario, so no other suite's seed code or rate limit interferes -
      * insured with us, since only an insured person has a KVNR (ADR-34).
      */
     private fun newPerson(): Triple<String, String, String> {
@@ -167,7 +167,7 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                     HttpMethod.PUT, "/personen/$personId",
                     """{"kvnr":"$newKvnr","versnr":"$versnr","name":"Register","vorname":"Rita","geburtsdatum":"1970-01-01"}"""
                 )
-                eventually { anchor("insurance_number") == versnr }
+                eventually { anchor("member_number") == versnr }
                 jdbcTemplate.queryForList(
                     """
                     SELECT c.normalized_value FROM account.claim c
@@ -180,11 +180,11 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
 
                 val replaced = randomVersnr()
                 registerCall(HttpMethod.PUT, "/personen/$personId", """{"kvnr":"$newKvnr","versnr":"$replaced","name":"Register","vorname":"Rita","geburtsdatum":"1970-01-01"}""")
-                eventually { anchor("insurance_number") == replaced }
+                eventually { anchor("member_number") == replaced }
 
                 // Not insured with us any more: both numbers go, the person stays as a Partner.
                 registerCall(HttpMethod.PUT, "/personen/$personId", """{"kvnr":"","versnr":"","name":"Register","vorname":"Rita","geburtsdatum":"1970-01-01"}""")
-                eventually { anchor("insurance_number") == null }
+                eventually { anchor("member_number") == null }
                 anchor("person_id") shouldBe personId
             }
         }
@@ -201,7 +201,7 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                 val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
                 val response = patch(
                     "/orchestrator/api/v1/tools/$toolSessionId/ident-fsc",
-                    """{"partnernr":"${personId.lowercase()}","familyName":"Partner","givenNames":"Paul","birthDate":"1960-06-06","fsc":"$code"}"""
+                    """{"partnerNumber":"${personId.lowercase()}","familyName":"Partner","givenNames":"Paul","birthDate":"1960-06-06","fsc":"$code"}"""
                 )
 
                 stepError(response).shouldBeNull()

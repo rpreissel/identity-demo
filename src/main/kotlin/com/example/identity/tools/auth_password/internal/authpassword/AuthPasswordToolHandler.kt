@@ -68,7 +68,7 @@ class AuthPasswordToolHandler(
                         factorTypes = descriptor.factorTypes
                     )
                 } else {
-                    ToolOutcome.Failed.IdentifiedAuth(Text("Passwort ungueltig"))
+                    ToolOutcome.Failed.KnownAccountAuth(Text("Passwort ungueltig"))
                 }
             }
         }

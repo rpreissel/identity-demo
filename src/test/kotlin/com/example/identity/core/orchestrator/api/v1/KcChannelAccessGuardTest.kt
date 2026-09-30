@@ -14,19 +14,19 @@ import java.time.Instant
 import java.util.UUID
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 
-/** Pure unit test of [KcChannelAccessGuard] - the kc-anchor mismatch is the whole point of this class. */
+/** Pure unit test of [KcChannelAccessGuard] - the kc binding mismatch is the whole point of this class. */
 class KcChannelAccessGuardTest : BehaviorSpec({
 
-    fun channel(channelAnchor: String? = null) =
-        ChannelSession(ChannelType.KEYCLOAK, null, Instant.now().plusSeconds(3600), now = Instant.now()).apply {
-            this.channelAnchor = channelAnchor
+    fun channel(channelBinding: String? = null) =
+        ChannelSession(ChannelType.WEB, null, Instant.now().plusSeconds(3600), now = Instant.now()).apply {
+            this.channelBinding = channelBinding
         }
 
-    fun assertion(channelAnchor: String) =
+    fun assertion(channelBinding: String) =
         PeerAuthAssertion(
             jti = UUID.randomUUID().toString(),
             issuedAt = Instant.now(),
-            channelAnchor = channelAnchor,
+            channelBinding = channelBinding,
             subject = null
         )
 
@@ -37,19 +37,19 @@ class KcChannelAccessGuardTest : BehaviorSpec({
         return KcChannelAccessGuard(sessionManagementService)
     }
 
-    given("a channel anchored on channelAnchor") {
+    given("a channel bound on channelBinding") {
         val id = UUID.randomUUID()
-        val channel = channel(channelAnchor = "anchor-1")
+        val channel = channel(channelBinding = "binding-1")
 
-        `when`("the assertion claims the matching channelAnchor") {
+        `when`("the assertion claims the matching channelBinding") {
             then("the channel is returned") {
-                guardFor(channel, id).requireChannel(id, assertion(channelAnchor = "anchor-1")) shouldBe channel
+                guardFor(channel, id).requireChannel(id, assertion(channelBinding = "binding-1")) shouldBe channel
             }
         }
-        `when`("the assertion claims a different channelAnchor") {
+        `when`("the assertion claims a different channelBinding") {
             then("it is rejected as a binding mismatch") {
                 shouldThrow<OrchestratorException> {
-                    guardFor(channel, id).requireChannel(id, assertion(channelAnchor = "someone-elses-anchor"))
+                    guardFor(channel, id).requireChannel(id, assertion(channelBinding = "someone-elses-binding"))
                 }
             }
         }
@@ -62,7 +62,7 @@ class KcChannelAccessGuardTest : BehaviorSpec({
                 every { findChannelSessionById(id) } returns null
             }
             shouldThrow<OrchestratorException> {
-                KcChannelAccessGuard(sessionManagementService).requireChannel(id, assertion(channelAnchor = "x"))
+                KcChannelAccessGuard(sessionManagementService).requireChannel(id, assertion(channelBinding = "x"))
             }
         }
     }

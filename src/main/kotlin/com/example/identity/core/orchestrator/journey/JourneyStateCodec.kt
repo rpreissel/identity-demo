@@ -4,7 +4,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLo
 import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
-import com.example.identity.core.orchestrator.domain.journey.state.KcSelectMethodState
+import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.LogoutState
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
@@ -61,7 +61,7 @@ class JourneyStateCodec {
     /** Every sealed root a journey's state is read back as: one per intent, two for REGISTER. */
         val STATE_ROOTS: List<KClass<out JourneyState>> = listOf(
             FastAccessState::class, RegisterState::class, RegisterEnrollFirstState::class, LookupLoginState::class,
-            KcSelectMethodState::class, StepUpState::class, ManageAuthMethodsState::class,
+            WebSelectMethodState::class, StepUpState::class, ManageAuthMethodsState::class,
             ConfirmPeerLoginState::class, DeleteAccountState::class, LogoutState::class, ReIdentifyState::class,
         )
 
@@ -74,7 +74,7 @@ class JourneyStateCodec {
         AuthIntent.FAST_ACCESS -> FastAccessState::class.java
         AuthIntent.REGISTER -> error("REGISTER is handled separately in read() - see its own doc")
         AuthIntent.LOOKUP_LOGIN -> LookupLoginState::class.java
-        AuthIntent.KC_SELECT_METHOD -> KcSelectMethodState::class.java
+        AuthIntent.WEB_SELECT_METHOD -> WebSelectMethodState::class.java
         AuthIntent.STEP_UP -> StepUpState::class.java
         AuthIntent.MANAGE_AUTH_METHODS -> ManageAuthMethodsState::class.java
         AuthIntent.CONFIRM_PEER_LOGIN -> ConfirmPeerLoginState::class.java

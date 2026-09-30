@@ -23,7 +23,7 @@ export function ToolAuthInvite({ kcContext }: { kcContext: PageContext<'tool-aut
         personsJson={demoInvitationsJson}
         labelKey="label"
         title={t('Einladung übernehmen')}
-        fields={{ kvnr: 'kvnr', partnernr: 'partnernr', code: 'code' }}
+        fields={{ kvnr: 'kvnr', partnerNumber: 'partnerNumber', code: 'code' }}
       />
       <Field id="kvnr" label={t('Versichertennummer')} />
       <PartnerNumber />

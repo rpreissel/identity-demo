@@ -63,7 +63,7 @@ sealed interface RegisterState : JourneyState {
      * The correlation step (ADR-18): the attestation established who the subject is, but brought no
      * person reference (an eID card carries no KVNR). Offered before any enrollment, because the
      * outcome decides what kind of account the run builds. Optional: abandoning the tool is the
-     * "no", and the run finishes on an Interessent account (ADR-10).
+     * "no", and the run finishes on a prospect account (ADR-10).
      */
     data class Assigning(
         override val offer: Offer

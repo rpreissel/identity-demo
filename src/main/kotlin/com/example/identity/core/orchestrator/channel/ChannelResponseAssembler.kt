@@ -15,14 +15,14 @@ import com.example.identity.core.orchestrator.journeytrace.JourneyTraceResponse
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
 import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
 import com.example.identity.core.orchestrator.domain.AmrSource
-import com.example.identity.core.orchestrator.session.AuthContextService
-import com.example.identity.core.orchestrator.session.AuthEvidenceService
-import com.example.identity.core.orchestrator.session.ChannelCreationThrottleService
+import com.example.identity.core.orchestrator.session.AppTokenSessionService
+import com.example.identity.core.orchestrator.session.SessionEvidenceService
+import com.example.identity.core.orchestrator.session.ChannelCreationRateLimitService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.session.LiveChannel
@@ -36,7 +36,7 @@ import com.example.identity.contract.tool_api.envelope.AuthSubject
 import com.example.identity.contract.tool_api.envelope.AuthSubjectType
 import com.example.identity.contract.tool_api.envelope.ChannelBlock
 import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.claims.authority
 import com.example.identity.contract.tool_api.claims.anchorRule
 import com.example.identity.contract.tool_api.claims.isLocalAnchor
@@ -56,14 +56,14 @@ import org.springframework.stereotype.Component
 
 /**
  * Builds the response envelope (docs/05-api.md #2) from a channel's current state: channel block,
- * next step, demo block and KEYCLOAK auth data. It decides nothing, for [ChannelService] and
+ * next step, demo block and WEB auth data. It decides nothing, for [ChannelService] and
  * `ToolJourneyService` alike.
  */
 @Component
 @Transactional
 class ChannelResponseAssembler(
     private val accountService: AccountService,
-    private val authEvidenceService: AuthEvidenceService,
+    private val sessionEvidenceService: SessionEvidenceService,
     private val authPolicy: AuthPolicy,
     private val journeyService: JourneyService,
     private val personDirectory: PersonDirectory,
@@ -90,12 +90,12 @@ class ChannelResponseAssembler(
     }
 
     /**
-     * KEYCLOAK only (docs/05-api.md Abschnitt 3), `null` for APP. Every KEYCLOAK response carries
+     * WEB only (docs/05-api.md Abschnitt 3), `null` for APP. Every WEB response carries
      * it, including tool responses from `ToolJourneyService`.
      */
     fun authDataFor(channel: ChannelSession): AuthData? {
-        if (channel.channel != ChannelType.KEYCLOAK) return null
-        val evidence = channel.authEvidenceId?.let { authEvidenceService.getAuthEvidence(it) }
+        if (channel.channel != ChannelType.WEB) return null
+        val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
         val amr = evidence?.currentAmr?.associateWith { evidence.currentAmrSource[it] ?: AmrSource.ORCHESTRATOR }
         val acr = evidence?.let {
             val account = channel.accountId?.let { id -> accountService.findAccount(id) }
@@ -123,7 +123,7 @@ class ChannelResponseAssembler(
      */
     fun demoSession(channel: ChannelSession): DemoSession? {
         if (!channel.hasProvenFactor) return null
-        val evidence = channel.authEvidenceId?.let { authEvidenceService.getAuthEvidence(it) }
+        val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
         val account = channel.accountId?.let { accountService.findAccount(it) }
         return DemoSession(
             authenticated = channel.state == ChannelState.AUTHENTICATED,
@@ -153,7 +153,7 @@ class ChannelResponseAssembler(
                 hasProvenFactor = channel.hasProvenFactor
             )
         }
-        val evidence = channel.authEvidenceId?.let { authEvidenceService.getAuthEvidence(it) }
+        val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
         val account = channel.accountId?.let { accountService.findAccount(it) }
         val currentAcr = evidence?.let { authPolicy.resolveAcr(it.toCoreEvidence(), account) }
         return ChannelBlock(

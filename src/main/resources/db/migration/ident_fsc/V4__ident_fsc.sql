@@ -12,7 +12,7 @@ CREATE TABLE ident_fsc.ident_tool_session (
     tool_session_id UUID PRIMARY KEY,
     kvnr            VARCHAR(20),
     -- Only without a KVNR (a Partner, ADR-34); the latest of the two identifiers wins.
-    partnernr       VARCHAR(10),
+    partner_number       VARCHAR(10),
     person_id       VARCHAR(10),
     family_name     VARCHAR(255),
     given_names     VARCHAR(255),

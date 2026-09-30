@@ -5,7 +5,7 @@ import com.example.identity.contract.tool_api.DemoOnly
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimDeclaration
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.ClaimSource
@@ -22,14 +22,14 @@ internal const val EID_METHOD = "eid"
 @Component
 object IdentEidDescriptor : ToolDescriptor {
     override val toolId = ToolId("ident-eid")
-    override val role = MethodRole.IDENTIFICATION
+    override val role = ToolRole.IDENTIFICATION
     override val method = EID_METHOD
     override val factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE)
     override val maxAcr = AcrLevel.LOA3
     override val demoOnly = SIMULATED_EID
     // Exactly what the card carries, on this procedure's own authority. No PERSON_ID and no KVNR:
     // a real eID card holds neither (ADR-18). restricted_id is the card's pseudonym, a replaceable
-    // local anchor, so a later eid run recognizes the Interessent it created (ADR-19).
+    // local anchor, so a later eid run recognizes the prospect it created (ADR-19).
     override val claims = setOf(
         ClaimDeclaration(AttributeType.FAMILY_NAME, ClaimSource.of(toolId)),
         ClaimDeclaration(AttributeType.GIVEN_NAMES, ClaimSource.of(toolId)),

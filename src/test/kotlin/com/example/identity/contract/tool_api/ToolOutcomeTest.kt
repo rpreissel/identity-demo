@@ -26,37 +26,37 @@ class ToolOutcomeTest : BehaviorSpec({
         ToolOutcome.Completed.Approved(),
     )
     val failed: List<ToolOutcome.Failed> = listOf(
-        ToolOutcome.Failed.IdentifiedAuth(Text("x")),
-        ToolOutcome.Failed.LookupAuth(Text("x"), attempted = null),
+        ToolOutcome.Failed.KnownAccountAuth(Text("x")),
+        ToolOutcome.Failed.AccountLookupAuth(Text("x"), attempted = null),
         ToolOutcome.Failed.Identification(Text("x"), attemptedPersonId = null),
         ToolOutcome.Failed.NothingGuessed(Text("x")),
     )
 
-    fun completedFitting(role: MethodRole) = completed.filter { it.fits(role) }.map { it::class }
-    fun failedFitting(role: MethodRole) = failed.filter { it.fits(role) }.map { it::class }
+    fun completedFitting(role: ToolRole) = completed.filter { it.fits(role) }.map { it::class }
+    fun failedFitting(role: ToolRole) = failed.filter { it.fits(role) }.map { it::class }
 
     given("the success variants") {
         then("identification and correlation both answer with Identified") {
-            completedFitting(MethodRole.IDENTIFICATION) shouldBe listOf(ToolOutcome.Completed.Identified::class)
-            completedFitting(MethodRole.CORRELATION) shouldBe listOf(ToolOutcome.Completed.Identified::class)
+            completedFitting(ToolRole.IDENTIFICATION) shouldBe listOf(ToolOutcome.Completed.Identified::class)
+            completedFitting(ToolRole.CORRELATION) shouldBe listOf(ToolOutcome.Completed.Identified::class)
         }
         then("an attestation answers with Attested only, never with Identified") {
-            completedFitting(MethodRole.ATTESTATION) shouldBe listOf(ToolOutcome.Completed.Attested::class)
+            completedFitting(ToolRole.ATTESTATION) shouldBe listOf(ToolOutcome.Completed.Attested::class)
         }
         then("each remaining role has exactly its own variant") {
-            completedFitting(MethodRole.ENROLLMENT) shouldBe listOf(ToolOutcome.Completed.Enrolled::class)
-            completedFitting(MethodRole.IDENTIFIED_AUTH) shouldBe listOf(ToolOutcome.Completed.Authenticated::class)
-            completedFitting(MethodRole.LOOKUP_AUTH) shouldBe listOf(ToolOutcome.Completed.Authenticated::class)
-            completedFitting(MethodRole.PEER_APPROVAL) shouldBe listOf(ToolOutcome.Completed.Approved::class)
+            completedFitting(ToolRole.ENROLLMENT) shouldBe listOf(ToolOutcome.Completed.Enrolled::class)
+            completedFitting(ToolRole.KNOWN_ACCOUNT_AUTH) shouldBe listOf(ToolOutcome.Completed.Authenticated::class)
+            completedFitting(ToolRole.ACCOUNT_LOOKUP_AUTH) shouldBe listOf(ToolOutcome.Completed.Authenticated::class)
+            completedFitting(ToolRole.PEER_APPROVAL) shouldBe listOf(ToolOutcome.Completed.Approved::class)
         }
     }
 
     given("the failure variants") {
         then("each role has exactly one") {
-            MethodRole.entries.forEach { role -> failedFitting(role).size shouldBe 1 }
+            ToolRole.entries.forEach { role -> failedFitting(role).size shouldBe 1 }
         }
         then("nothing is guessed by enrollment, attestation and peer approval") {
-            listOf(MethodRole.ENROLLMENT, MethodRole.ATTESTATION, MethodRole.PEER_APPROVAL).forEach { role ->
+            listOf(ToolRole.ENROLLMENT, ToolRole.ATTESTATION, ToolRole.PEER_APPROVAL).forEach { role ->
                 failedFitting(role) shouldBe listOf(ToolOutcome.Failed.NothingGuessed::class)
             }
         }

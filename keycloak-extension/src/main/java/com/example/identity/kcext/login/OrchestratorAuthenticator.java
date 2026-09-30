@@ -27,7 +27,7 @@ import java.util.Set;
  * step-up alike and renders whatever the orchestrator names as {@code next}. Config properties:
  * {@code toolId} (static pre-selection of an account-independent tool), {@code targetAcr} (this
  * execution's LoA as orchestrator ACR) and {@code intent} (entry intent of a fresh channel, empty
- * means {@code kc_select_method}; docs/04-orchestrierung.md #2).
+ * means {@code web_select_method}; docs/04-orchestrierung.md #2).
  */
 public class OrchestratorAuthenticator implements Authenticator {
 

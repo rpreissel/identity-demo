@@ -11,8 +11,8 @@ import com.example.identity.core.orchestrator.kc.KeycloakClientSessions
 import com.example.identity.core.orchestrator.kc.KeycloakSessionClient
 import com.example.identity.core.orchestrator.kc.KeycloakUserSession
 import com.example.identity.core.orchestrator.kc.KeycloakUserSessions
-import com.example.identity.core.orchestrator.session.AuthContext
-import com.example.identity.core.orchestrator.session.AuthContextRepository
+import com.example.identity.core.orchestrator.session.AppTokenSession
+import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
 import com.example.identity.contract.tool_api.directory.PersonDirectory
@@ -27,7 +27,7 @@ import java.time.Instant
 class ActiveSessionsKeycloakTest {
 
     private val repository = mockk<ChannelSessionRepository>(relaxed = true)
-    private val authContexts = mockk<AuthContextRepository>(relaxed = true)
+    private val appTokenSessions = mockk<AppTokenSessionRepository>(relaxed = true)
     private val accountService = mockk<AccountService> {
         every { findAccount(any()) } returns null
         every { findAccount(7) } returns AccountProfile(7, "p-7", emptyList())
@@ -35,7 +35,7 @@ class ActiveSessionsKeycloakTest {
     private val personDirectory = mockk<PersonDirectory> { every { displayName("p-7") } returns "Mara Muster" }
 
     private fun service(source: KeycloakUserSessions?) = ActiveSessions(
-        repository, authContexts, accountService, personDirectory,
+        repository, appTokenSessions, accountService, personDirectory,
         mockk<ObjectProvider<KeycloakUserSessions>> { every { ifAvailable } returns source },
         clock = TEST_CLOCK,
     )
@@ -44,25 +44,25 @@ class ActiveSessionsKeycloakTest {
 
     private fun session(id: String, userId: String?) = KeycloakUserSession(id, "user-$id", userId, start, start.plusSeconds(60))
 
-    private val appContext = AuthContext(accountId = 7, keycloakSessionId = "kc-app", now = TEST_NOW).apply { authContextId = java.util.UUID.randomUUID() }
+    private val appContext = AppTokenSession(accountId = 7, keycloakSessionId = "kc-app", now = TEST_NOW).apply { appTokenSessionId = java.util.UUID.randomUUID() }
 
     @Test
     fun `groups by client, names the account and finds the channel of each session`() {
         val appChannel = ChannelSession(ChannelType.APP, "key", start.plusSeconds(600), now = TEST_NOW).apply {
             state = ChannelState.AUTHENTICATED
-            authContextId = appContext.authContextId
+            appTokenSessionId = appContext.appTokenSessionId
         }
-        val older = ChannelSession(ChannelType.KEYCLOAK, null, start.plusSeconds(600), now = TEST_NOW).apply {
+        val older = ChannelSession(ChannelType.WEB, null, start.plusSeconds(600), now = TEST_NOW).apply {
             durableKcSessionId = "kc-web"
             createdAt = start
         }
-        val newer = ChannelSession(ChannelType.KEYCLOAK, null, start.plusSeconds(600), now = TEST_NOW).apply {
+        val newer = ChannelSession(ChannelType.WEB, null, start.plusSeconds(600), now = TEST_NOW).apply {
             durableKcSessionId = "kc-web"
             state = ChannelState.AUTHENTICATED
             createdAt = start.plusSeconds(5)
         }
-        every { authContexts.findByKeycloakSessionIdIn(listOf("kc-app")) } returns listOf(appContext)
-        every { repository.findByAuthContextIdIn(listOf(appContext.authContextId!!)) } returns listOf(appChannel)
+        every { appTokenSessions.findByKeycloakSessionIdIn(listOf("kc-app")) } returns listOf(appContext)
+        every { repository.findByAppTokenSessionIdIn(listOf(appContext.appTokenSessionId!!)) } returns listOf(appChannel)
         every { repository.findByDurableKcSessionIdIn(listOf("kc-web", "kc-other")) } returns listOf(older, newer)
         val fake = KeycloakUserSessions {
             mapOf(

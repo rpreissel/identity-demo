@@ -3,7 +3,7 @@ package com.example.identity.core.account.application
 import com.example.identity.core.account.infrastructure.AccountAnchor
 import com.example.identity.core.account.infrastructure.AccountAnchorRepository
 import com.example.identity.core.account.domain.AnchorDecision
-import com.example.identity.core.account.RetractionAnchor
+import com.example.identity.core.account.RetractionSource
 import com.example.identity.contract.tool_api.claims.anchorRule
 import com.example.identity.contract.tool_api.claims.normalizeAnchorValue
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -44,7 +44,7 @@ class AnchorRegistry(
             // before deletions, so the pair would briefly hold two rows and trip ux_anchor_account_type.
             is AnchorDecision.Replace -> {
                 decision.retractFromLog?.let {
-                    claimLedger.retract(accountId, type, it, RetractionAnchor.ACCOUNT_MANAGEMENT, "anker-ersetzt", establishedAt)
+                    claimLedger.retract(accountId, type, it, RetractionSource.ACCOUNT_MANAGEMENT, "anker-ersetzt", establishedAt)
                 }
                 val row = checkNotNull(existing)
                 row.value = normalized

@@ -24,13 +24,13 @@ interface ToolDescriptor {
     val toolId: ToolId
 
     /**
-     * The credential family, e.g. `"sms"`. Shared by all tools that play different [MethodRole]s
+     * The credential family, e.g. `"sms"`. Shared by all tools that play different [ToolRole]s
      * for the same credential: `enroll-sms`, `auth-sms` and `auth-sms-lookup` all use `"sms"`.
      */
     val method: String
 
-    /** The role this tool plays for [method]. See [MethodRole]. Its [MethodRole.category] is the tool's coarse grouping. */
-    val role: MethodRole
+    /** The role this tool plays for [method]. See [ToolRole]. Its [ToolRole.category] is the tool's coarse grouping. */
+    val role: ToolRole
 
     /**
      * The step a freshly activated tool session starts on. Must match the `nextStep` of the tool's
@@ -63,7 +63,7 @@ interface ToolDescriptor {
 
     /**
      * What the account must already have for this tool to be offered: each [AttributeType] at no
-     * less than its [TrustLevel], checked against the consolidated value including retractions
+     * less than its [ClaimTrust], checked against the consolidated value including retractions
      * (ADR-12). E.g. "confirmed email" is `ClaimRequirement(EMAIL, PROVEN)`.
      * It is a standing precondition: when a requirement stops being established, the credential is
      * revoked as well. That is how one method depends on another (ADR-24).
@@ -148,7 +148,7 @@ fun interface CallerKeyBinding {
     fun livesOn(instanceDetails: Map<String, Any?>?, callerBindingKeyRef: String?): Boolean
 }
 
-/** Coarse grouping of a tool. See [MethodRole.category]. */
+/** Coarse grouping of a tool. See [ToolRole.category]. */
 enum class ToolCategory {
     /** Establishes who the subject is, raising the identity axis (IAL). Never a credential. */
     IDENT,
@@ -178,7 +178,7 @@ enum class ToolCategory {
  * The role a tool plays for its [ToolDescriptor.method]. `(method, role)` identifies a concrete
  * procedure; `(method, category)` does not, since several roles share a category.
  */
-enum class MethodRole(val category: ToolCategory, val defaultStartStep: String) {
+enum class ToolRole(val category: ToolCategory, val defaultStartStep: String) {
     /** Resolves identity (e.g. `ident-fsc`). Never establishes a durable credential. */
     IDENTIFICATION(ToolCategory.IDENT, "input"),
 
@@ -195,13 +195,13 @@ enum class MethodRole(val category: ToolCategory, val defaultStartStep: String) 
     ENROLLMENT(ToolCategory.ENROLL, "enroll"),
 
     /** Proves a credential for an account the channel already knows (e.g. `auth-sms`). */
-    IDENTIFIED_AUTH(ToolCategory.AUTH, "auth"),
+    KNOWN_ACCOUNT_AUTH(ToolCategory.AUTH, "auth"),
 
     /**
-     * Proves the same credential as its [IDENTIFIED_AUTH] sibling, but resolves the account from a
+     * Proves the same credential as its [KNOWN_ACCOUNT_AUTH] sibling, but resolves the account from a
      * submitted identifier (e.g. `auth-sms-lookup`).
      */
-    LOOKUP_AUTH(ToolCategory.AUTH, "auth"),
+    ACCOUNT_LOOKUP_AUTH(ToolCategory.AUTH, "auth"),
 
     /**
      * Approves or declines a pending request from another channel (e.g. `confirm-qr-login` deciding

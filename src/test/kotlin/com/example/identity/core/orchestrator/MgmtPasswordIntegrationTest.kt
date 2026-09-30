@@ -33,11 +33,11 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
         beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
     }
 
-    private fun stubAssertion(accountAnchor: String) {
+    private fun stubAssertion(accountBinding: String) {
         every { peerAuthValidator.validate(any(), any(), any()) } returns PeerAuthAssertion(
             jti = UUID.randomUUID().toString(),
             issuedAt = Instant.now(),
-            channelAnchor = accountAnchor,
+            channelBinding = accountBinding,
             subject = null
         )
     }
@@ -81,10 +81,10 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
         }
 
         given("an account with an enrolled password") {
-            `when`("mgmt-verify is called with the correct password, anchored to that accountId") {
+            `when`("mgmt-verify is called with the correct password, bound to that accountId") {
                 val email = registerWithEmailAndPassword(password = "correct-horse-battery")
                 val accountId = accountIdFor(email)
-                stubAssertion(accountAnchor = accountId.toString())
+                stubAssertion(accountBinding = accountId.toString())
 
                 val response = mgmtPost(
                     "/orchestrator/api/v1/tools/auth-password/mgmt/$accountId",
@@ -100,7 +100,7 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
             `when`("mgmt-verify is called with the wrong password") {
                 val email = registerWithEmailAndPassword(password = "correct-horse-battery")
                 val accountId = accountIdFor(email)
-                stubAssertion(accountAnchor = accountId.toString())
+                stubAssertion(accountBinding = accountId.toString())
 
                 val response = mgmtPost(
                     "/orchestrator/api/v1/tools/auth-password/mgmt/$accountId",
@@ -115,17 +115,17 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
             `when`("mgmt-set is called with a new password") {
                 val email = registerWithEmailAndPassword(password = "correct-horse-battery")
                 val accountId = accountIdFor(email)
-                stubAssertion(accountAnchor = accountId.toString())
+                stubAssertion(accountBinding = accountId.toString())
 
                 mgmtPost("/orchestrator/api/v1/tools/enroll-password/mgmt/$accountId", """{"newPassword":"brand-new-secret"}""")
 
-                stubAssertion(accountAnchor = accountId.toString())
+                stubAssertion(accountBinding = accountId.toString())
                 val acceptsNew = mgmtPost(
                     "/orchestrator/api/v1/tools/auth-password/mgmt/$accountId",
                     """{"password":"brand-new-secret"}"""
                 )
 
-                stubAssertion(accountAnchor = accountId.toString())
+                stubAssertion(accountBinding = accountId.toString())
                 val rejectsOld = mgmtPost(
                     "/orchestrator/api/v1/tools/auth-password/mgmt/$accountId",
                     """{"password":"correct-horse-battery"}"""
@@ -150,7 +150,7 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
 
             `when`("mgmt-verify is called against it") {
                 val accountId = unenrolledAccountId()
-                stubAssertion(accountAnchor = accountId.toString())
+                stubAssertion(accountBinding = accountId.toString())
 
                 val response = mgmtPost(
                     "/orchestrator/api/v1/tools/auth-password/mgmt/$accountId",
@@ -164,7 +164,7 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
 
             `when`("mgmt-set tries to give it a password it never had") {
                 val accountId = unenrolledAccountId()
-                stubAssertion(accountAnchor = accountId.toString())
+                stubAssertion(accountBinding = accountId.toString())
 
                 val result = runCatching {
                     mgmtPost("/orchestrator/api/v1/tools/enroll-password/mgmt/$accountId", """{"newPassword":"brand-new-secret"}""")
@@ -184,7 +184,7 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
             `when`("the new instance is stored") {
                 val email = registerWithEmailAndPassword(password = "correct-horse-battery")
                 val accountId = accountIdFor(email)
-                stubAssertion(accountAnchor = accountId.toString())
+                stubAssertion(accountBinding = accountId.toString())
 
                 mgmtPost("/orchestrator/api/v1/tools/enroll-password/mgmt/$accountId", """{"newPassword":"brand-new-secret"}""")
 
@@ -202,7 +202,7 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
             `when`("the account lockout is reached") {
                 val email = registerWithEmailAndPassword(password = "correct-horse-battery")
                 val accountId = accountIdFor(email)
-                stubAssertion(accountAnchor = accountId.toString())
+                stubAssertion(accountBinding = accountId.toString())
 
                 val wrongAttempts = List(5) {
                     mgmtPost("/orchestrator/api/v1/tools/auth-password/mgmt/$accountId", """{"password":"wrong"}""")
@@ -218,11 +218,11 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
             }
         }
 
-        given("a mismatched peer-auth anchor") {
-            `when`("mgmt-verify's channel_anchor claim doesn't match the accountId in the path") {
+        given("a mismatched peer-auth binding") {
+            `when`("mgmt-verify's channel_binding claim doesn't match the accountId in the path") {
                 val email = registerWithEmailAndPassword(password = "correct-horse-battery")
                 val accountId = accountIdFor(email)
-                stubAssertion(accountAnchor = "some-other-anchor")
+                stubAssertion(accountBinding = "some-other-binding")
 
                 val result = runCatching {
                     restTemplate.exchange(

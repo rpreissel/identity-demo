@@ -17,7 +17,7 @@ class IdentKvnrToolSession(
 
     var kvnr: String? = null,
 
-    var partnernr: String? = null,
+    var partnerNumber: String? = null,
     createdAt: Instant
 ) {
     @Column(name = "created_at", nullable = false)

@@ -7,7 +7,7 @@ import com.example.identity.core.orchestrator.domain.policy.DefaultAuthPolicy
 import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.DeleteAccountStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.KcSelectMethodStrategy
+import com.example.identity.core.orchestrator.domain.journey.strategy.WebSelectMethodStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.LogoutStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsStrategy
@@ -35,8 +35,8 @@ class DomainBeans {
     fun authPolicy(
         catalog: ToolCatalog,
         clock: Clock,
-        @Value("\${identity.policy.elevated-level-max-age:PT30M}") elevatedLevelMaxAge: Duration,
-    ): AuthPolicy = DefaultAuthPolicy(catalog, clock, elevatedLevelMaxAge)
+        @Value("\${identity.policy.loa2-max-age:PT30M}") loa2MaxAge: Duration,
+    ): AuthPolicy = DefaultAuthPolicy(catalog, clock, loa2MaxAge)
 
     @Bean
     fun confirmPeerLoginStrategy(): IntentStrategy<*> = ConfirmPeerLoginStrategy()
@@ -48,7 +48,7 @@ class DomainBeans {
     fun fastAccessStrategy(): IntentStrategy<*> = FastAccessStrategy()
 
     @Bean
-    fun kcSelectMethodStrategy(): IntentStrategy<*> = KcSelectMethodStrategy()
+    fun kcSelectMethodStrategy(): IntentStrategy<*> = WebSelectMethodStrategy()
 
     @Bean
     fun logoutStrategy(): IntentStrategy<*> = LogoutStrategy()

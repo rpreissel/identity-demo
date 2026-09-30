@@ -3,7 +3,7 @@ package com.example.identity.core.orchestrator.tool
 import com.example.identity.demo.demo_mode.DemoMode
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.session.ChannelSession
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolId
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.repository.findByIdOrNull
@@ -97,8 +97,8 @@ class ToolAvailabilityService(
          * the order a user meets them.
          */
         val ROLE_ORDER = listOf(
-            MethodRole.IDENTIFICATION, MethodRole.CORRELATION, MethodRole.ENROLLMENT,
-            MethodRole.IDENTIFIED_AUTH, MethodRole.LOOKUP_AUTH, MethodRole.ATTESTATION, MethodRole.PEER_APPROVAL
+            ToolRole.IDENTIFICATION, ToolRole.CORRELATION, ToolRole.ENROLLMENT,
+            ToolRole.KNOWN_ACCOUNT_AUTH, ToolRole.ACCOUNT_LOOKUP_AUTH, ToolRole.ATTESTATION, ToolRole.PEER_APPROVAL
         )
     }
 

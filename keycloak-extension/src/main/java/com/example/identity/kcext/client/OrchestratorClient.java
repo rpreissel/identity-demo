@@ -57,8 +57,8 @@ public final class OrchestratorClient {
 
     /**
      * PATCH .../kc/channels/{channelSessionId}, upsert semantics. Signed with {@code channelSessionId}
-     * as the peer-auth anchor (docs/02-domaenenmodell.md Abschnitt 1): unique per flow run, so two
-     * tabs stepping up the same SSO session never share an anchor. {@code durableKcSessionId} is
+     * as the peer-auth binding (docs/02-domaenenmodell.md Abschnitt 1): unique per flow run, so two
+     * tabs stepping up the same SSO session never share a binding. {@code durableKcSessionId} is
      * Keycloak's UserSessionModel id; it travels only with {@code restoreData}, so the server can
      * check that token was minted for this browser's durable identity. {@code subject} is whom
      * Keycloak knows this run belongs to.
@@ -81,7 +81,7 @@ public final class OrchestratorClient {
             subjectNode.put("id", subject.id());
         }
         if (targetAcr != null) body.put("targetAcr", targetAcr);
-        // Only counts on the channel's first call; omitted means kc_select_method.
+        // Only counts on the channel's first call; omitted means web_select_method.
         if (intent != null && !intent.isBlank()) body.put("intent", intent);
         // Only counts on the channel's first call, but is sent every time: this client cannot
         // cheaply know whether the channel already exists.
@@ -107,7 +107,7 @@ public final class OrchestratorClient {
 
     /**
      * GET .../kc/channels/{channelSessionId}/restore-data, the end-of-flow hook. Signed with the
-     * {@code channelSessionId} anchor; {@code durableKcSessionId} only names what the returned
+     * {@code channelSessionId} binding; {@code durableKcSessionId} only names what the returned
      * token is bound to. {@code sessionExpiresAt} (epoch seconds) caps the channel's expiry (ADR-43).
      */
     public String restoreData(String channelSessionId, String durableKcSessionId, long sessionExpiresAt) throws IOException, InterruptedException {
@@ -165,7 +165,7 @@ public final class OrchestratorClient {
     /**
      * {@code channelSessionId} is only used for signing. The URL carries no channelSessionId for
      * {@code htu} to bind, and toolSessionId is not self-authorizing (docs/02-domaenenmodell.md
-     * Abschnitt 1), so the anchor claim alone ties this call to the right channel.
+     * Abschnitt 1), so the binding claim alone ties this call to the right channel.
      */
     public ChannelResponse patchTool(String channelSessionId, String toolSessionId, String toolId, Map<String, String> fields) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/tools/" + toolSessionId + "/" + toolId;
@@ -175,7 +175,7 @@ public final class OrchestratorClient {
     }
 
     /**
-     * GET .../tools/{toolSessionId}/{toolId}: the tool's current step, read only. Same anchor
+     * GET .../tools/{toolSessionId}/{toolId}: the tool's current step, read only. Same binding
      * convention as {@link #patchTool}.
      */
     public ChannelResponse readTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
@@ -219,7 +219,7 @@ public final class OrchestratorClient {
     /**
      * Stateless password verify/set for Keycloak's native password credential. There is no channel
      * here: the account id goes into the URL path, which {@code htu} binds, and the assertion's
-     * {@code channel_anchor} claim carries the same account id. The orchestrator's
+     * {@code channel_binding} claim carries the same account id. The orchestrator's
      * {@code MgmtPasswordController} checks both match.
      */
     public boolean verifyPassword(long accountId, String password) throws IOException, InterruptedException {
@@ -233,7 +233,7 @@ public final class OrchestratorClient {
     /**
      * Reports that Keycloak ended session {@code kcSessionId} of {@code subject}, for the sign-in
      * log (ADR-39, ADR-48). The Web channel's logout is Keycloak's own; the orchestrator would not
-     * learn of it otherwise. The anchor names the account or invitation, as with the lookups.
+     * learn of it otherwise. The binding names the account or invitation, as with the lookups.
      */
     public void reportSignOut(KcSubject subject, String kcSessionId) throws IOException, InterruptedException {
         String collection = subject.kind() == KcSubject.Kind.ACCOUNT ? "accounts" : "invitations";
@@ -241,7 +241,7 @@ public final class OrchestratorClient {
         send("POST", path, subject.id(), null);
     }
 
-    /** See {@link #verifyPassword(long, String)} - same anchor convention. */
+    /** See {@link #verifyPassword(long, String)} - same binding convention. */
     public void setPassword(long accountId, String newPassword) throws IOException, InterruptedException {
         String path = "/orchestrator/api/v1/tools/enroll-password/mgmt/" + accountId;
         ObjectNode body = MAPPER.createObjectNode();
@@ -250,7 +250,7 @@ public final class OrchestratorClient {
     }
 
     /**
-     * The account behind a federated user, read by id; the anchor names the account like the
+     * The account behind a federated user, read by id; the binding names the account like the
      * password endpoints do. {@code null} when there is no such account.
      */
     public KcAccount accountById(long accountId) throws IOException, InterruptedException {
@@ -259,17 +259,17 @@ public final class OrchestratorClient {
 
     /** By exact email - never a list; {@code null} when no account holds this address. */
     public KcAccount accountByEmail(String email) throws IOException, InterruptedException {
-        return lookup("/orchestrator/api/v1/kc/accounts?email=" + urlEncode(email), ACCOUNT_LOOKUP_ANCHOR);
+        return lookup("/orchestrator/api/v1/kc/accounts?email=" + urlEncode(email), ACCOUNT_LOOKUP_BINDING);
     }
 
     /** By username ({@code account-<id>} or the email); {@code null} when there is none. */
     public KcAccount accountByUsername(String username) throws IOException, InterruptedException {
-        return lookup("/orchestrator/api/v1/kc/accounts?username=" + urlEncode(username), ACCOUNT_LOOKUP_ANCHOR);
+        return lookup("/orchestrator/api/v1/kc/accounts?username=" + urlEncode(username), ACCOUNT_LOOKUP_BINDING);
     }
 
     /**
      * An invitation by its identity (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md); {@code null} when
-     * there is none. The anchor names the invitation looked up.
+     * there is none. The binding names the invitation looked up.
      */
     public KcInvitation invitationById(String invitation) throws IOException, InterruptedException {
         try {
@@ -280,12 +280,12 @@ public final class OrchestratorClient {
         }
     }
 
-    /** The peer-auth anchor of a search by address - {@code KcAccountLookupController.LOOKUP_ANCHOR}. */
-    private static final String ACCOUNT_LOOKUP_ANCHOR = "account-lookup";
+    /** The peer-auth binding of a search by address - {@code KcAccountLookupController.LOOKUP_BINDING}. */
+    private static final String ACCOUNT_LOOKUP_BINDING = "account-lookup";
 
-    private KcAccount lookup(String path, String anchor) throws IOException, InterruptedException {
+    private KcAccount lookup(String path, String binding) throws IOException, InterruptedException {
         try {
-            return KcAccount.from(send("GET", path, anchor, null));
+            return KcAccount.from(send("GET", path, binding, null));
         } catch (OrchestratorApiException e) {
             if (e.status == 404) return null;
             throw e;
@@ -302,7 +302,7 @@ public final class OrchestratorClient {
      */
     TextsAnswer texts(String language, String etag) throws IOException, InterruptedException {
         String url = baseUrl + "/orchestrator/api/v1/texts/" + urlEncode(language);
-        String assertion = signer.sign("GET", url, TEXTS_ANCHOR);
+        String assertion = signer.sign("GET", url, TEXTS_BINDING);
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
                 .timeout(TIMEOUT)
                 .header("Authorization", "Bearer " + assertion)
@@ -318,7 +318,7 @@ public final class OrchestratorClient {
                 new String(response.body(), java.nio.charset.StandardCharsets.UTF_8));
     }
 
-    private static final String TEXTS_ANCHOR = "texts";
+    private static final String TEXTS_BINDING = "texts";
 
     private JsonNode send(String method, String path, String channelSessionId, JsonNode body) throws IOException, InterruptedException {
         String url = baseUrl + path;

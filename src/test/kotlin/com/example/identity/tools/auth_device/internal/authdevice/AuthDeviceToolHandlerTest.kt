@@ -91,7 +91,7 @@ class AuthDeviceToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, devicePublicKey, UserVerification.PIN)
 
             then("it fails") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Geraet nicht erkannt"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Geraet nicht erkannt"))
             }
         }
     }

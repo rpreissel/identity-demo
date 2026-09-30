@@ -8,8 +8,8 @@
   zweite `409 CONCURRENT_MODIFICATION`.
 - **Jeder Fakt steht an genau einer Stelle.**
   - Aktueller Zustand, der die Version erhöht: `account.anchor` (einziger Speicherort der lokal
-    geführten Kennungen wie PersonId, Versicherungsnummer und bestätigte E-Mail-Adresse) und
-    `account.auth_method` (eine Zeile je Methodeninstanz, `EnrollmentRef` als eigene Spalten).
+    geführten Kennungen wie PersonId, Mitgliedsnummer und bestätigte E-Mail-Adresse) und
+    `account.auth_method` (eine Zeile je eingerichtetem Verfahren, `EnrollmentRef` als eigene Spalten).
   - Historie, die nur angefügt wird und die Version nie erhöht: `account.claim` (wer was wann
     bestätigt hat), `account.change_log` (IDENTIFIED) (jede Identifizierung) und `account.retraction`
     (Widerrufe, [ADR-12](ADR-012-ein-widerruf-ist-eine-eigene-zeile-mit-eigenem.md)).

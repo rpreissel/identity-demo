@@ -2,14 +2,14 @@ package com.example.identity.core.orchestrator.domain.journey
 
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AuthMethodView
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodName
 import com.example.identity.contract.tool_api.directory.IdentityConflictException
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.EnrollmentRef
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolId
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -25,7 +25,7 @@ class AccountRulesTest : BehaviorSpec({
     fun account(id: Long, personId: String? = null, methods: List<AuthMethodView> = emptyList()) =
         AccountProfile(accountId = id, personId = personId, authenticationMethods = methods)
 
-    val provisional = account(1)
+    val disposable = account(1)
     val interessent = account(2, methods = listOf(method("m2")))
     val identified = account(3, personId = "P3", methods = listOf(method("m3")))
 
@@ -43,11 +43,11 @@ class AccountRulesTest : BehaviorSpec({
     }
 
     given("two accounts meeting in one run (ADR-20)") {
-        then("the provisional one in hand moves into the resolved one - also when both are provisional") {
-            AccountMerge.decide(provisional) { identified } shouldBe AccountMerge.MoveInto(from = 1, into = 3)
-            AccountMerge.decide(provisional) { account(4) } shouldBe AccountMerge.MoveInto(from = 1, into = 4)
+        then("the disposable one in hand moves into the resolved one - also when both are disposable") {
+            AccountMerge.decide(disposable) { identified } shouldBe AccountMerge.MoveInto(from = 1, into = 3)
+            AccountMerge.decide(disposable) { account(4) } shouldBe AccountMerge.MoveInto(from = 1, into = 4)
         }
-        then("a provisional resolved one is absorbed into the one in hand") {
+        then("a disposable resolved one is absorbed into the one in hand") {
             AccountMerge.decide(interessent) { account(5) } shouldBe AccountMerge.AbsorbResolved(resolved = 5, into = 2)
         }
         then("two real accounts are never merged by an identification") {
@@ -69,7 +69,7 @@ class AccountRulesTest : BehaviorSpec({
     }
 
     given("an attested address that belongs to another account") {
-        fun evidence(vararg axes: EvidenceAxis) = AuthEvidence(axes.map {
+        fun evidence(vararg axes: EvidenceAxis) = SessionEvidence(axes.map {
             MethodEvidence(MethodName("m"), AcrLevel.LOA2, source = "ORCHESTRATOR", amrSourceId = "t", axis = it)
         })
         then("without an identification in this session it never moves the session") {
@@ -84,12 +84,12 @@ class AccountRulesTest : BehaviorSpec({
 
     given("a proven credential") {
         then("only a lookup tool may name the account, and only one agreeing with the account in hand") {
-            accountOfProof(MethodRole.LOOKUP_AUTH, namedByTool = 7, inHand = null) shouldBe 7
-            accountOfProof(MethodRole.LOOKUP_AUTH, namedByTool = 7, inHand = 7) shouldBe 7
-            shouldThrow<IdentityConflictException> { accountOfProof(MethodRole.LOOKUP_AUTH, namedByTool = 7, inHand = 8) }
+            accountOfProof(ToolRole.ACCOUNT_LOOKUP_AUTH, namedByTool = 7, inHand = null) shouldBe 7
+            accountOfProof(ToolRole.ACCOUNT_LOOKUP_AUTH, namedByTool = 7, inHand = 7) shouldBe 7
+            shouldThrow<IdentityConflictException> { accountOfProof(ToolRole.ACCOUNT_LOOKUP_AUTH, namedByTool = 7, inHand = 8) }
         }
         then("any other role proves the account in hand, whatever it names") {
-            accountOfProof(MethodRole.IDENTIFIED_AUTH, namedByTool = 7, inHand = 8) shouldBe 8
+            accountOfProof(ToolRole.KNOWN_ACCOUNT_AUTH, namedByTool = 7, inHand = 8) shouldBe 8
         }
     }
 })

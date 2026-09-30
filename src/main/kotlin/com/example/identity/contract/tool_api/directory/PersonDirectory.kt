@@ -16,7 +16,7 @@ interface PersonDirectory {
      * @return the person id for this Partnernummer (its canonical form, ADR-34), or `null` if it is
      *   malformed or unknown. What a Partner without KVNR identifies by.
      */
-    fun findPersonIdByPartnernr(partnernr: String): String?
+    fun findPersonIdByPartnerNumber(partnerNumber: String): String?
 
     /**
      * Whether the master data for [personId] match every attribute in [claimed]. The answer crosses
@@ -47,9 +47,9 @@ interface PersonDirectory {
 
     /**
      * The Versicherungsnummer of [personId], or `null`. An identifier, not master data: it becomes
-     * the account's `INSURANCE_NUMBER` anchor (ADR-34), which is why it may cross the port.
+     * the account's `MEMBER_NUMBER` anchor (ADR-34), which is why it may cross the port.
      */
-    fun insuranceNumberOf(personId: String): String?
+    fun memberNumberOf(personId: String): String?
 }
 
 /**

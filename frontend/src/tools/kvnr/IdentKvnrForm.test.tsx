@@ -21,7 +21,7 @@ describe('IdentKvnrForm', () => {
     render(<IdentKvnrForm onSubmit={onSubmit} skipLabel="Überspringen" demoPersons={[paula, max]} />)
     fireEvent.click(screen.getByRole('button', { name: 'Zuordnen' }))
 
-    expect(onSubmit).toHaveBeenCalledWith({ partnernr: 'P000000004' })
+    expect(onSubmit).toHaveBeenCalledWith({ partnerNumber: 'P000000004' })
   })
 
   it('starts empty without demo values (ADR-28)', () => {

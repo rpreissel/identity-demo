@@ -3,7 +3,7 @@ import com.example.identity.contract.tool_api.InvalidInputException
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
-import com.example.identity.tools.auth_email.internal.EmailSendBudget
+import com.example.identity.tools.auth_email.internal.EmailSendLimit
 
 import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
 import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
@@ -31,7 +31,7 @@ class ConfirmEmailToolHandler(
     private val toolDataRepository: ConfirmEmailToolSessionRepository,
     private val emailCodeGenerator: EmailCodeGenerator,
     private val mailServer: MailServer,
-    private val sendBudget: EmailSendBudget,
+    private val sendLimit: EmailSendLimit,
     private val clock: Clock
 ) {
 
@@ -43,7 +43,7 @@ class ConfirmEmailToolHandler(
     }
 
     /**
-     * Every [ConfirmEmailDecision.RequestCode] passes [EmailSendBudget]: resubmitting an address is
+     * Every [ConfirmEmailDecision.RequestCode] passes [EmailSendLimit]: resubmitting an address is
      * never a wrong guess, so without it anyone knowing an address could use this tool as a mail
      * bomb. The caller chose the address, so an exhausted budget may say so:
      * a 429, not a failed attempt of the journey, since nothing was guessed.
@@ -62,7 +62,7 @@ class ConfirmEmailToolHandler(
             is ConfirmEmailDecision.RequestCode -> {
                 // No "address already taken?" check: nothing is proven yet, only typed. Who the
                 // address belongs to is resolved once the code comes back (ADR-20).
-                if (!sendBudget.trySend(decision.email)) {
+                if (!sendLimit.trySend(decision.email)) {
                     throw TooManyRequestsException(Text("Zu viele Codes angefordert. Bitte versuchen Sie es in einigen Minuten erneut."))
                 } else {
                     val issued = emailCodeGenerator.issue()
@@ -82,7 +82,7 @@ class ConfirmEmailToolHandler(
             }
 
             is ConfirmEmailDecision.Complete -> {
-                sendBudget.received(decision.email)
+                sendLimit.received(decision.email)
                 ToolOutcome.Completed.Attested(
                     claims = listOf(
                         // The code exchange itself is the proof. No enrollmentRef and no amr: this run

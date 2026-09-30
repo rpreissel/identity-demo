@@ -88,7 +88,7 @@ class KeycloakResponseSigningFilter(private val signer: KeycloakResponseSigner) 
     private fun peerAuthClaims(request: HttpServletRequest): JWTClaimsSet? {
         val token = request.getHeader("Authorization")?.removePrefix("Bearer ")?.trim() ?: return null
         val claims = runCatching { SignedJWT.parse(token).jwtClaimsSet }.getOrNull() ?: return null
-        return claims.takeIf { it.getClaim("channel_anchor") != null && it.jwtid != null }
+        return claims.takeIf { it.getClaim("channel_binding") != null && it.jwtid != null }
     }
 }
 

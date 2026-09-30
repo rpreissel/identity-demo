@@ -28,7 +28,7 @@ export function ToolIdentFsc({ kcContext }: { kcContext: PageContext<'tool-ident
       >
         <DemoPersonPicker
           personsJson={demoPersonsJson}
-          fields={{ givenNames: 'givenNames', familyName: 'familyName', birthDate: 'birthDate', kvnr: 'kvnr', partnernr: 'personId' }}
+          fields={{ givenNames: 'givenNames', familyName: 'familyName', birthDate: 'birthDate', kvnr: 'kvnr', partnerNumber: 'personId' }}
         />
         <Field id="givenNames" label={t('Vorname')} autoComplete="given-name" required />
         <Field id="familyName" label={t('Nachname')} autoComplete="family-name" required />

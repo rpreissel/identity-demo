@@ -41,7 +41,7 @@ anmelden.
 ## 1) App-Kanal: Die Sitzung entsteht mit der Anmeldung
 
 - **Eine Stelle.** Ein Kanal wird nur in `JourneyService.finish` `AUTHENTICATED`. Dort holt der
-  App-Kanal sein erstes Token (`AppLoginSession.tokenFor`), und das legt die Keycloak-Sitzung an
+  App-Kanal sein erstes Token (`AppTokenIssuer.tokenFor`), und das legt die Keycloak-Sitzung an
   (Grant aus [ADR-9](ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md)).
 - **Lehnt Keycloak ab,** wird der Kanal nicht `AUTHENTICATED`: `SessionRefusedException` wird zu
   `409` („Die Anmeldung konnte nicht abgeschlossen werden“), und die Transaktion rollt den ganzen
@@ -49,7 +49,7 @@ anmelden.
   Verfahren noch einmal. Ist Keycloak gar nicht erreichbar, ist die Antwort `500`, mit derselben
   Wirkung.
 - **Eine Sitzung je Kanal, geöffnet genau einmal.** Nur der erste Grant-Aufruf einer Anmeldung
-  öffnet eine Sitzung; ihre Id (`sid` des Tokens) steht danach in `AuthContext.keycloakSessionId`.
+  öffnet eine Sitzung; ihre Id (`sid` des Tokens) steht danach in `AppTokenSession.keycloakSessionId`.
   Jeder spätere Aufruf nennt sie als `session_id`, und der Grant setzt genau diese Sitzung fort:
   Er lehnt ab, wenn sie nicht mehr gilt, einem anderen Nutzer gehört oder nicht von ihm stammt
   (etwa eine Sitzung des Web-Kanals). Ein Step-up verwirft die zwischengespeicherten Tokens, nicht
@@ -66,7 +66,7 @@ anmelden.
 
 - **Ab `AUTHENTICATED`** ist `ChannelSession.expiresAt` das Ende des Fensters, das der Token-Dienst
   meldet: Keycloaks `refresh_expires_in`, also das Minimum aus SSO idle und dem Rest von SSO max.
-  `AppLoginSession` setzt es bei jedem Token neu, beim ersten wie bei jeder Erneuerung.
+  `AppTokenIssuer` setzt es bei jedem Token neu, beim ersten wie bei jeder Erneuerung.
 - **Nach dieser Frist** wird der Kanal abgewiesen wie jeder abgelaufene (`404`), ohne Aufruf bei
   Keycloak. Die Regel, dass eine abgelaufene Anmeldung nie neu ausgestellt wird (I-22), bleibt.
 - **Jede Journey-Interaktion kann erneuern.** Solange der Kanal angemeldet ist
@@ -77,7 +77,7 @@ anmelden.
   nicht die einzelnen Controller. Der Abbruch zählt nicht: Er läuft auch, wenn Keycloak eine
   Abmeldung meldet.
 - **Nicht bei jeder Interaktion.** Erneuert wird erst, wenn ein Viertel des Fensters seit dem letzten
-  Token verbraucht ist (`AppLoginSession.RENEWAL_WINDOW_SHARE`). Ein aktiver Nutzer hat so nie weniger
+  Token verbraucht ist (`AppTokenIssuer.RENEWAL_WINDOW_SHARE`). Ein aktiver Nutzer hat so nie weniger
   als drei Viertel des Leerlauf-Fensters vor sich, und es kostet wenige Keycloak-Aufrufe je Fenster
   statt einen je Anfrage; bei den 30 Minuten SSO idle des Realms ist das eine Erneuerung alle
   7,5 Minuten. Davor bleibt das bestehende Fenster.
@@ -90,7 +90,7 @@ anmelden.
 
 Meldet Keycloak eine Abmeldung (`SignInLogEventListener` → `KcChannelService.signedOutAtKeycloak`),
 enden alle noch laufenden Kanäle dieser Sitzung: die Web-Kanäle mit dieser `durableKcSessionId` und
-der App-Kanal, dessen `AuthContext.keycloakSessionId` sie nennt.
+der App-Kanal, dessen `AppTokenSession.keycloakSessionId` sie nennt.
 
 ## 4) Web-Kanal: Keycloak meldet das Sitzungsende
 

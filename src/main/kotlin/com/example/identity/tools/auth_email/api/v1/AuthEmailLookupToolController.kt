@@ -114,7 +114,7 @@ class AuthEmailLookupToolController(
         val outcome = if (body.email != null) {
             // Resolved only to ask the login lock. A locked account is passed as `locked`, not
             // raised, so the response looks like one for an unknown address. The handler bounds
-            // the sends itself (EmailSendBudget).
+            // the sends itself (EmailSendLimit).
             val resolvedAccountId = accountDirectory.resolveAccountByEmail(body.email)
             val locked = resolvedAccountId?.let { lockouts.isLockedOut(it) } ?: false
             handler.submitEmail(toolSessionId, body.email, locked)

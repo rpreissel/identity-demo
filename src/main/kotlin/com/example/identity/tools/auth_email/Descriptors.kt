@@ -5,9 +5,9 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimDeclaration
 import com.example.identity.contract.tool_api.claims.ClaimRequirement
-import com.example.identity.contract.tool_api.claims.TrustLevel
+import com.example.identity.contract.tool_api.claims.ClaimTrust
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.ClaimSource
@@ -24,13 +24,13 @@ internal const val EMAIL_METHOD = "email"
 
 /**
  * Proves the subject controls an address, and nothing else: the account keeps it as its EMAIL
- * anchor, no method appears. Hence [MethodRole.ATTESTATION] and no [factorTypes]: a confirmed
+ * anchor, no method appears. Hence [ToolRole.ATTESTATION] and no [factorTypes]: a confirmed
  * address is not a factor, and reporting no `amr` keeps it from raising the channel's assurance.
  */
 @Component
 object ConfirmEmailDescriptor : ToolDescriptor {
     override val toolId = ToolId("confirm-email")
-    override val role = MethodRole.ATTESTATION
+    override val role = ToolRole.ATTESTATION
     override val method = EMAIL_METHOD
     override val factorTypes = emptySet<FactorType>()
     override val maxAcr = AcrLevel.LOA1
@@ -46,18 +46,18 @@ object ConfirmEmailDescriptor : ToolDescriptor {
 @Component
 object EnrollEmailDescriptor : ToolDescriptor {
     override val toolId = ToolId("enroll-email")
-    override val role = MethodRole.ENROLLMENT
+    override val role = ToolRole.ENROLLMENT
     override val method = EMAIL_METHOD
     override val factorTypes = setOf(FactorType.KNOWLEDGE)
     override val maxAcr = AcrLevel.LOA1
-    override val requires = setOf(ClaimRequirement(AttributeType.EMAIL, TrustLevel.PROVEN))
+    override val requires = setOf(ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN))
     override val completesOnActivation = Text("Ihre bereits bestätigte E-Mail-Adresse wird sofort zum Anmeldeverfahren. Einen Code brauchen Sie dafür nicht.")
 }
 
 @Component
 object AuthEmailDescriptor : ToolDescriptor {
     override val toolId = ToolId("auth-email")
-    override val role = MethodRole.IDENTIFIED_AUTH
+    override val role = ToolRole.KNOWN_ACCOUNT_AUTH
     override val method = EMAIL_METHOD
     override val factorTypes = setOf(FactorType.KNOWLEDGE)
     override val maxAcr = AcrLevel.LOA1
@@ -66,7 +66,7 @@ object AuthEmailDescriptor : ToolDescriptor {
 @Component
 object AuthEmailLookupDescriptor : ToolDescriptor {
     override val toolId = ToolId("auth-email-lookup")
-    override val role = MethodRole.LOOKUP_AUTH
+    override val role = ToolRole.ACCOUNT_LOOKUP_AUTH
     override val method = EMAIL_METHOD
     override val factorTypes = setOf(FactorType.KNOWLEDGE)
     override val maxAcr = AcrLevel.LOA1

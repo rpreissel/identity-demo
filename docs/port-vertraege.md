@@ -19,7 +19,7 @@ wichtigste.
 
 - **Suche nur über Kennungen.** KVNR und Partnernummer führen zur Partnernummer; Stammdaten gehen nie
   über den Port, nur die Antwort auf „passen diese Angaben“ (`matchesMasterData`,
-  `matchesPersonalDetails`). Ausnahmen, ausdrücklich: der Anzeigename und die Versicherungsnummer (ADR-34).
+  `matchesPersonalDetails`). Ausnahmen, ausdrücklich: der Anzeigename und die Mitgliedsnummer (ADR-34).
 - **Namensvergleich in Ausweisform** (MRZ): Groß-/Kleinschreibung, Umlautschreibung und Diakritika
   zählen nicht. Ein echtes System muss denselben Vergleich liefern, sonst scheitern echte Personen.
 - **Freischaltcode** (ADR-31): nur vom Verzeichnis ausgegeben, per Post an die hinterlegte Anschrift;
@@ -88,7 +88,7 @@ Genutzt von `enroll-sms`, `auth-sms`, `confirm-email`, `auth-email` und den `-lo
 
 - **Zustellung nur an die hinterlegte Adresse**, ohne Rückkanal des Inhalts in Logs (der Kern
   schreibt TAN und Code nie auf die Konsole, [Invarianten](invarianten.md) I-19).
-- **Drosselung** je Empfänger liegt beim versendenden Modul (`SmsSendBudget`, `EmailSendBudget`,
+- **Mengenbegrenzung** je Empfänger liegt beim versendenden Modul (`SmsSendLimit`, `EmailSendLimit`,
   [ADR-44](adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)); ein echter Dienst darf zusätzlich
   drosseln, muss aber einen abgelehnten Versand melden.
 - Diese Verfahren sind nicht `demoOnly`: Was sie beweisen (Besitz der Nummer bzw. des Postfachs),

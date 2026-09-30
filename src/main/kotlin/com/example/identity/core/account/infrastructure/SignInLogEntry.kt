@@ -52,7 +52,7 @@ class SignInLogEntry(
     @Column(name = "sign_in_type", nullable = false, updatable = false, length = 32)
     val signInType: SignInType = SignInType.SIGNED_IN,
 
-    /** The channel it happened on (`APP`, `KEYCLOAK`). */
+    /** The channel it happened on (`APP`, `WEB`). */
     @Column(name = "channel", updatable = false, length = 16)
     val channel: String? = null,
 

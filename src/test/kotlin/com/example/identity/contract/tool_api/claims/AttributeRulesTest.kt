@@ -37,7 +37,7 @@ class AttributeRulesTest : BehaviorSpec({
         then("the locally anchored attributes are exactly PERSON_ID, VERSNR, the two card pseudonyms and EMAIL") {
             AttributeType.entries.filter { it.isLocalAnchor } shouldBe
                 listOf(
-                    AttributeType.PERSON_ID, AttributeType.INSURANCE_NUMBER, AttributeType.EID_RESTRICTED_ID,
+                    AttributeType.PERSON_ID, AttributeType.MEMBER_NUMBER, AttributeType.EID_RESTRICTED_ID,
                     AttributeType.NECT_RESTRICTED_ID, AttributeType.EMAIL
                 )
         }

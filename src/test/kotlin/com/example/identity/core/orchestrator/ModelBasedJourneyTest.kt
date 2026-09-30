@@ -91,14 +91,14 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
          */
         private fun ageSession(channel: String, issuedAgo: Duration, windowLeft: Duration): Boolean {
             val context = jdbcTemplate.queryForList(
-                "SELECT a.id FROM orchestrator.channel_session c JOIN orchestrator.auth_context a ON a.id = c.auth_context_id " +
+                "SELECT a.id FROM orchestrator.channel_session c JOIN orchestrator.app_token_session a ON a.id = c.app_token_session_id " +
                     "WHERE c.id = ? AND c.state IN ('AUTHENTICATED', 'STEP_UP_IN_PROGRESS') AND a.keycloak_session_id IS NOT NULL " +
                     "AND c.expires_at > CURRENT_TIMESTAMP",
                 UUID.fromString(channel)
             ).firstOrNull()?.get("ID") ?: return false
             val token = PlainJWT(JWTClaimsSet.Builder().issueTime(Date.from(Instant.now().minus(issuedAgo))).build()).serialize()
             val windowEnd = Timestamp.from(Instant.now().plus(windowLeft))
-            jdbcTemplate.update("UPDATE orchestrator.auth_context SET access_token = ?, refresh_expires_at = ? WHERE id = ?", token, windowEnd, context)
+            jdbcTemplate.update("UPDATE orchestrator.app_token_session SET access_token = ?, refresh_expires_at = ? WHERE id = ?", token, windowEnd, context)
             jdbcTemplate.update("UPDATE orchestrator.channel_session SET expires_at = ? WHERE id = ?", windowEnd, UUID.fromString(channel))
             return true
         }
@@ -106,7 +106,7 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
         private fun signOutAtKeycloak(channel: String): String? {
             val login = jdbcTemplate.queryForList(
                 "SELECT a.account_id, a.keycloak_session_id FROM orchestrator.channel_session c " +
-                    "JOIN orchestrator.auth_context a ON a.id = c.auth_context_id WHERE c.id = ? AND a.keycloak_session_id IS NOT NULL",
+                    "JOIN orchestrator.app_token_session a ON a.id = c.app_token_session_id WHERE c.id = ? AND a.keycloak_session_id IS NOT NULL",
                 UUID.fromString(channel)
             ).firstOrNull() ?: return null
             return runCatching {
@@ -152,8 +152,8 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
             ).forEach { add("I-3: channel ${it["CHANNEL_SESSION_ID"]} has ${it["N"]} running journeys") }
             // I-4: an authenticated channel carries evidence.
             jdbcTemplate.queryForList(
-                "SELECT c.id FROM orchestrator.channel_session c LEFT JOIN orchestrator.auth_evidence e ON e.id = c.auth_evidence_id " +
-                    "WHERE c.state = 'AUTHENTICATED' AND (e.id IS NULL OR LENGTH(CAST(e.amr_evidence AS VARCHAR)) <= 2)"
+                "SELECT c.id FROM orchestrator.channel_session c LEFT JOIN orchestrator.session_evidence e ON e.id = c.session_evidence_id " +
+                    "WHERE c.state = 'AUTHENTICATED' AND (e.id IS NULL OR LENGTH(CAST(e.methods AS VARCHAR)) <= 2)"
             ).forEach { add("I-4: channel ${it["ID"]} authenticated without evidence") }
             // I-13: at most one active password per account.
             jdbcTemplate.queryForList(
@@ -174,7 +174,7 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
             jdbcTemplate.queryForList(
                 "SELECT c.id, a.keycloak_session_id, CASE WHEN a.refresh_expires_at IS NULL OR c.expires_at > a.refresh_expires_at " +
                     "THEN 1 ELSE 0 END AS outlives FROM orchestrator.channel_session c " +
-                    "LEFT JOIN orchestrator.auth_context a ON a.id = c.auth_context_id " +
+                    "LEFT JOIN orchestrator.app_token_session a ON a.id = c.app_token_session_id " +
                     "WHERE c.channel = 'APP' AND c.state IN ('AUTHENTICATED', 'STEP_UP_IN_PROGRESS')"
             ).forEach { row ->
                 if (row["KEYCLOAK_SESSION_ID"] == null) add("I-23: channel ${row["ID"]} is logged in without a session")
@@ -195,7 +195,7 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
             everSetUp.filter { it in existing && it !in setUpNow }.forEach { add("I-28: account $it fell back into setup") }
             everSetUp.addAll(setUpNow)
             // I-24: a login's session is opened once and never replaced.
-            jdbcTemplate.queryForList("SELECT id, keycloak_session_id FROM orchestrator.auth_context WHERE keycloak_session_id IS NOT NULL").forEach { row ->
+            jdbcTemplate.queryForList("SELECT id, keycloak_session_id FROM orchestrator.app_token_session WHERE keycloak_session_id IS NOT NULL").forEach { row ->
                 val id = row["ID"].toString()
                 val session = row["KEYCLOAK_SESSION_ID"].toString()
                 sessionOfLogin[id]?.let { before -> if (before != session) add("I-24: login $id switched from session $before to $session") }

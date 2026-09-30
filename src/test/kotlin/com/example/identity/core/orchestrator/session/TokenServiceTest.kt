@@ -30,24 +30,24 @@ import com.example.identity.core.orchestrator.domain.AmrSource
  */
 class TokenServiceTest : BehaviorSpec({
 
-    fun authContext(
+    fun appTokenSession(
         accountId: Long? = 42L,
         accessToken: String? = null,
         accessExpiresAt: Instant? = null,
         refreshToken: String? = null,
         refreshExpiresAt: Instant? = null,
-        authEvidenceId: UUID? = UUID.randomUUID(),
+        sessionEvidenceId: UUID? = UUID.randomUUID(),
         // A context with tokens belongs to a login whose session is open.
         keycloakSessionId: String? = if (refreshExpiresAt != null) "${TokenService.MOCK_SESSION_PREFIX}test" else null
-    ) = AuthContext(accountId = accountId, keycloakSessionId = keycloakSessionId, now = TEST_NOW).apply {
+    ) = AppTokenSession(accountId = accountId, keycloakSessionId = keycloakSessionId, now = TEST_NOW).apply {
         this.accessToken = accessToken
         this.accessExpiresAt = accessExpiresAt
         this.refreshToken = refreshToken
         this.refreshExpiresAt = refreshExpiresAt
-        this.authEvidenceId = authEvidenceId
+        this.sessionEvidenceId = sessionEvidenceId
     }
 
-    fun evidence(accountId: Long = 42L) = EvidenceTrail(Subject.Account(accountId), TEST_NOW).apply {
+    fun evidence(accountId: Long = 42L) = SessionEvidenceRecord(Subject.Account(accountId), TEST_NOW).apply {
         addAmr(
             listOf(
                 MethodEvidence(MethodName("sms"), AcrLevel.LOA1, amrSourceId = "auth-sms", source = AmrSource.ORCHESTRATOR),
@@ -57,10 +57,10 @@ class TokenServiceTest : BehaviorSpec({
         )
     }
 
-    fun evidenceService(authEvidenceId: UUID?, forAccount: EvidenceTrail?): AuthEvidenceService {
-        val service = mockk<AuthEvidenceService>()
-        every { service.getAuthEvidence(any()) } returns null
-        if (authEvidenceId != null) every { service.getAuthEvidence(authEvidenceId) } returns forAccount
+    fun evidenceService(sessionEvidenceId: UUID?, forAccount: SessionEvidenceRecord?): SessionEvidenceService {
+        val service = mockk<SessionEvidenceService>()
+        every { service.getSessionEvidence(any()) } returns null
+        if (sessionEvidenceId != null) every { service.getSessionEvidence(sessionEvidenceId) } returns forAccount
         return service
     }
 
@@ -71,21 +71,21 @@ class TokenServiceTest : BehaviorSpec({
     }
 
     fun service(
-        repository: AuthContextRepository,
-        authEvidenceService: AuthEvidenceService = mockk(relaxed = true),
+        repository: AppTokenSessionRepository,
+        sessionEvidenceService: SessionEvidenceService = mockk(relaxed = true),
         authPolicy: AuthPolicy = policy(),
         accountService: AccountService = mockk(relaxed = true),
         personDirectory: PersonDirectory = mockk(relaxed = true)
-    ) = TokenService(repository, authEvidenceService, authPolicy, accountService, personDirectory, clock = TEST_CLOCK)
+    ) = TokenService(repository, sessionEvidenceService, authPolicy, accountService, personDirectory, clock = TEST_CLOCK)
 
     given("an AccessToken that still has well over minValiditySeconds left") {
-        val authContextId = UUID.randomUUID()
-        val ctx = authContext(accessToken = "existing-token", accessExpiresAt = TEST_NOW.plusSeconds(300), refreshExpiresAt = TEST_NOW.plusSeconds(1800))
-        val repository = mockk<AuthContextRepository>()
-        every { repository.findById(authContextId) } returns Optional.of(ctx)
+        val appTokenSessionId = UUID.randomUUID()
+        val ctx = appTokenSession(accessToken = "existing-token", accessExpiresAt = TEST_NOW.plusSeconds(300), refreshExpiresAt = TEST_NOW.plusSeconds(1800))
+        val repository = mockk<AppTokenSessionRepository>()
+        every { repository.findById(appTokenSessionId) } returns Optional.of(ctx)
 
         then("it is returned unchanged - repeatable reads stay idempotent, nothing is minted or saved") {
-            val result = service(repository).tokenFor(authContextId, minValiditySeconds = 15)
+            val result = service(repository).tokenFor(appTokenSessionId, minValiditySeconds = 15)
 
             result.accessToken shouldBe "existing-token"
             result.accessExpiresAt shouldBe ctx.accessExpiresAt
@@ -94,19 +94,19 @@ class TokenServiceTest : BehaviorSpec({
     }
 
     given("an AccessToken about to expire within minValiditySeconds, but the RefreshToken is still valid") {
-        val authContextId = UUID.randomUUID()
+        val appTokenSessionId = UUID.randomUUID()
         val originalRefreshHandle = "mockrt_original"
         val originalRefreshExpiry = TEST_NOW.plusSeconds(1000)
-        val ctx = authContext(
+        val ctx = appTokenSession(
             accessToken = "stale-token", accessExpiresAt = TEST_NOW.plusSeconds(5),
             refreshToken = originalRefreshHandle, refreshExpiresAt = originalRefreshExpiry
         )
-        val repository = mockk<AuthContextRepository>()
-        every { repository.findById(authContextId) } returns Optional.of(ctx)
+        val repository = mockk<AppTokenSessionRepository>()
+        every { repository.findById(appTokenSessionId) } returns Optional.of(ctx)
         every { repository.save(any()) } answers { firstArg() }
 
         then("a new AccessToken is minted with the same RefreshToken, whose window moves on (idle timeout)") {
-            val result = service(repository, evidenceService(ctx.authEvidenceId, evidence())).tokenFor(authContextId, minValiditySeconds = 15)
+            val result = service(repository, evidenceService(ctx.sessionEvidenceId, evidence())).tokenFor(appTokenSessionId, minValiditySeconds = 15)
 
             result.accessToken shouldNotBe "stale-token"
             ctx.refreshToken shouldBe originalRefreshHandle
@@ -116,19 +116,19 @@ class TokenServiceTest : BehaviorSpec({
     }
 
     given("both the AccessToken and RefreshToken have expired") {
-        val authContextId = UUID.randomUUID()
+        val appTokenSessionId = UUID.randomUUID()
         val oldRefreshHandle = "mockrt_expired"
-        val ctx = authContext(
+        val ctx = appTokenSession(
             accessToken = "stale-token", accessExpiresAt = TEST_NOW.minusSeconds(5),
             refreshToken = oldRefreshHandle, refreshExpiresAt = TEST_NOW.minusSeconds(5)
         )
-        val repository = mockk<AuthContextRepository>()
-        every { repository.findById(authContextId) } returns Optional.of(ctx)
+        val repository = mockk<AppTokenSessionRepository>()
+        every { repository.findById(appTokenSessionId) } returns Optional.of(ctx)
         every { repository.save(any()) } answers { firstArg() }
 
         then("the login is over - nothing is re-issued, not even a fresh pair") {
             shouldThrow<SessionExpiredException> {
-                service(repository, evidenceService(ctx.authEvidenceId, evidence())).tokenFor(authContextId)
+                service(repository, evidenceService(ctx.sessionEvidenceId, evidence())).tokenFor(appTokenSessionId)
             }
             ctx.refreshToken shouldBe oldRefreshHandle
             verify(exactly = 0) { repository.save(any()) }
@@ -136,14 +136,14 @@ class TokenServiceTest : BehaviorSpec({
     }
 
     given("the first token of a login - no RefreshToken yet") {
-        val authContextId = UUID.randomUUID()
-        val ctx = authContext(accessToken = null, accessExpiresAt = null, refreshToken = null, refreshExpiresAt = null)
-        val repository = mockk<AuthContextRepository>()
-        every { repository.findById(authContextId) } returns Optional.of(ctx)
+        val appTokenSessionId = UUID.randomUUID()
+        val ctx = appTokenSession(accessToken = null, accessExpiresAt = null, refreshToken = null, refreshExpiresAt = null)
+        val repository = mockk<AppTokenSessionRepository>()
+        every { repository.findById(appTokenSessionId) } returns Optional.of(ctx)
         every { repository.save(any()) } answers { firstArg() }
 
         then("both are issued, and the login's one session is opened") {
-            val result = service(repository, evidenceService(ctx.authEvidenceId, evidence())).tokenFor(authContextId)
+            val result = service(repository, evidenceService(ctx.sessionEvidenceId, evidence())).tokenFor(appTokenSessionId)
 
             ctx.refreshToken shouldNotBe null
             ctx.keycloakSessionId!!.startsWith(TokenService.MOCK_SESSION_PREFIX) shouldBe true
@@ -152,57 +152,57 @@ class TokenServiceTest : BehaviorSpec({
     }
 
     given("a step-up cleared the cached tokens of an open session (ADR-43)") {
-        fun afterStepUp(window: Instant) = authContext(refreshToken = null, refreshExpiresAt = window)
+        fun afterStepUp(window: Instant) = appTokenSession(refreshToken = null, refreshExpiresAt = window)
 
         then("the next token continues the same session instead of opening another") {
-            val authContextId = UUID.randomUUID()
+            val appTokenSessionId = UUID.randomUUID()
             val ctx = afterStepUp(TEST_NOW.plusSeconds(600))
             val session = ctx.keycloakSessionId
-            val repository = mockk<AuthContextRepository>()
-            every { repository.findById(authContextId) } returns Optional.of(ctx)
+            val repository = mockk<AppTokenSessionRepository>()
+            every { repository.findById(appTokenSessionId) } returns Optional.of(ctx)
             every { repository.save(any()) } answers { firstArg() }
 
-            service(repository, evidenceService(ctx.authEvidenceId, evidence())).tokenFor(authContextId)
+            service(repository, evidenceService(ctx.sessionEvidenceId, evidence())).tokenFor(appTokenSessionId)
 
             ctx.keycloakSessionId shouldBe session
             ctx.accessToken shouldNotBe null
         }
 
         then("a lapsed window ends the login: no new session, no token") {
-            val authContextId = UUID.randomUUID()
+            val appTokenSessionId = UUID.randomUUID()
             val ctx = afterStepUp(TEST_NOW.minusSeconds(1))
-            val repository = mockk<AuthContextRepository>()
-            every { repository.findById(authContextId) } returns Optional.of(ctx)
+            val repository = mockk<AppTokenSessionRepository>()
+            every { repository.findById(appTokenSessionId) } returns Optional.of(ctx)
 
             shouldThrow<SessionExpiredException> {
-                service(repository, evidenceService(ctx.authEvidenceId, evidence())).tokenFor(authContextId)
+                service(repository, evidenceService(ctx.sessionEvidenceId, evidence())).tokenFor(appTokenSessionId)
             }
             ctx.accessToken shouldBe null
             verify(exactly = 0) { repository.save(any()) }
         }
     }
 
-    given("no AuthContext under the given id") {
+    given("no AppTokenSession under the given id") {
         then("it fails loudly rather than minting a token for nothing") {
-            val authContextId = UUID.randomUUID()
-            val repository = mockk<AuthContextRepository>()
-            every { repository.findById(authContextId) } returns Optional.empty()
+            val appTokenSessionId = UUID.randomUUID()
+            val repository = mockk<AppTokenSessionRepository>()
+            every { repository.findById(appTokenSessionId) } returns Optional.empty()
 
             io.kotest.assertions.throwables.shouldThrow<IllegalStateException> {
-                service(repository).tokenFor(authContextId)
+                service(repository).tokenFor(appTokenSessionId)
             }
         }
     }
 
     given("minting a fresh AccessToken") {
-        val authContextId = UUID.randomUUID()
-        val ctx = authContext(accountId = 99L)
-        val repository = mockk<AuthContextRepository>()
-        every { repository.findById(authContextId) } returns Optional.of(ctx)
+        val appTokenSessionId = UUID.randomUUID()
+        val ctx = appTokenSession(accountId = 99L)
+        val repository = mockk<AppTokenSessionRepository>()
+        every { repository.findById(appTokenSessionId) } returns Optional.of(ctx)
         every { repository.save(any()) } answers { firstArg() }
 
         then("it is a spec-shaped unsecured JWT carrying the session's own acr/amr, parseable without a key") {
-            val result = service(repository, evidenceService(ctx.authEvidenceId, evidence(accountId = 99L))).tokenFor(authContextId)
+            val result = service(repository, evidenceService(ctx.sessionEvidenceId, evidence(accountId = 99L))).tokenFor(appTokenSessionId)
 
             val claims = PlainJWT.parse(result.accessToken).jwtClaimsSet
             claims.subject shouldBe "99"
@@ -217,18 +217,18 @@ class TokenServiceTest : BehaviorSpec({
 
     given("resolving the ID-token claims for a known account") {
         then("the fachliche claim set carries account and person identifiers, not just the raw session state") {
-            val authContextId = UUID.randomUUID()
-            val ctx = authContext(accountId = 7L)
+            val appTokenSessionId = UUID.randomUUID()
+            val ctx = appTokenSession(accountId = 7L)
             ctx.authTime = TEST_NOW
-            val repository = mockk<AuthContextRepository>()
-            every { repository.findById(authContextId) } returns Optional.of(ctx)
+            val repository = mockk<AppTokenSessionRepository>()
+            every { repository.findById(appTokenSessionId) } returns Optional.of(ctx)
             val accountService = mockk<AccountService>()
             every { accountService.findAccount(7L) } returns com.example.identity.core.account.AccountProfile(
                 accountId = 7L, personId = "P000000055", authenticationMethods = emptyList(),
                 email = "max@example.test", emailConfirmedAt = TEST_NOW
             )
 
-            val claims = service(repository, evidenceService(ctx.authEvidenceId, evidence(accountId = 7L)), accountService = accountService).idClaims(authContextId)
+            val claims = service(repository, evidenceService(ctx.sessionEvidenceId, evidence(accountId = 7L)), accountService = accountService).idClaims(appTokenSessionId)
 
             claims["sub"] shouldBe "7"
             claims["personId"] shouldBe "P000000055"
@@ -238,11 +238,11 @@ class TokenServiceTest : BehaviorSpec({
     }
 
     given("resolving the ID-token claims for a full-attested Interessent (ADR-18: no register person)") {
-        val authContextId = UUID.randomUUID()
-        val ctx = authContext(accountId = 8L)
+        val appTokenSessionId = UUID.randomUUID()
+        val ctx = appTokenSession(accountId = 8L)
         ctx.authTime = TEST_NOW
-        val repository = mockk<AuthContextRepository>()
-        every { repository.findById(authContextId) } returns Optional.of(ctx)
+        val repository = mockk<AppTokenSessionRepository>()
+        every { repository.findById(appTokenSessionId) } returns Optional.of(ctx)
 
         fun accountService(attested: Map<AttributeType, String>): AccountService {
             val accountService = mockk<AccountService>()
@@ -259,10 +259,10 @@ class TokenServiceTest : BehaviorSpec({
 
             val claims = service(
                 repository,
-                evidenceService(ctx.authEvidenceId, evidence(accountId = 8L)),
+                evidenceService(ctx.sessionEvidenceId, evidence(accountId = 8L)),
                 accountService = accountService(mapOf(AttributeType.GIVEN_NAMES to "Erika", AttributeType.FAMILY_NAME to "Musterfrau")),
                 personDirectory = personDirectory
-            ).idClaims(authContextId)
+            ).idClaims(appTokenSessionId)
 
             claims["personId"] shouldBe null
             claims["name"] shouldBe "Erika Musterfrau"
@@ -272,9 +272,9 @@ class TokenServiceTest : BehaviorSpec({
         then("without any attested name claims either, the name is null - not a placeholder") {
             val claims = service(
                 repository,
-                evidenceService(ctx.authEvidenceId, evidence(accountId = 8L)),
+                evidenceService(ctx.sessionEvidenceId, evidence(accountId = 8L)),
                 accountService = accountService(emptyMap())
-            ).idClaims(authContextId)
+            ).idClaims(appTokenSessionId)
 
             claims["name"] shouldBe null
         }

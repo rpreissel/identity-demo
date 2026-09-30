@@ -53,11 +53,11 @@ class AccountServiceDbTest(
     given("account creation and claim adoption sharing the caller transaction") {
         `when`("a new account adopts a claim batch whose email another account holds") {
             clearAccounts()
-            val holder = accountService.createUnidentifiedAccount()
+            val holder = accountService.createAccountInSetup()
             accountService.recordClaim(holder.accountId, Claim(AttributeType.EMAIL, "taken@example.com", ClaimSource.SELF_REPORTED), provenAcr = AcrLevel.LOA2)
             val result = runCatching {
                 TransactionTemplate(transactionManager).executeWithoutResult {
-                    val subject = accountService.createUnidentifiedAccount()
+                    val subject = accountService.createAccountInSetup()
                     accountService.recordClaims(subject.accountId, listOf(
                         Claim(AttributeType.PERSON_ID, "P000000555", ClaimSource.PERSON_DIRECTORY),
                         Claim(AttributeType.EMAIL, "taken@example.com", ClaimSource.SELF_REPORTED)
@@ -78,7 +78,7 @@ class AccountServiceDbTest(
             clearAccounts()
             val result = runCatching {
                 TransactionTemplate(transactionManager).executeWithoutResult {
-                    val subject = accountService.createUnidentifiedAccount()
+                    val subject = accountService.createAccountInSetup()
                     accountService.recordClaims(subject.accountId, listOf(
                         Claim(AttributeType.PERSON_ID, "P000000555", ClaimSource.PERSON_DIRECTORY),
                         Claim(AttributeType.EMAIL, "new@example.com", ClaimSource.SELF_REPORTED)
@@ -115,7 +115,7 @@ class AccountServiceDbTest(
                             runCatching {
                                 checkNotNull(TransactionTemplate(transactionManager).execute {
                                     accountService.anchorHolder(type, value).shouldBeNull()
-                                    val subject = accountService.createUnidentifiedAccount()
+                                    val subject = accountService.createAccountInSetup()
                                     accountService.recordClaim(subject.accountId, Claim(type, value, ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
                                     subject.accountId
                                 })
@@ -154,10 +154,10 @@ class AccountServiceDbTest(
     given("a claim batch whose second claim conflicts with another account's anchor") {
         `when`("the batch is recorded") {
             clearAccounts()
-            val holder = accountService.createUnidentifiedAccount()
+            val holder = accountService.createAccountInSetup()
             accountService.recordClaim(holder.accountId, Claim(AttributeType.EMAIL, "taken@example.com", ClaimSource.SELF_REPORTED), provenAcr = AcrLevel.LOA2)
 
-            val subject = accountService.createUnidentifiedAccount()
+            val subject = accountService.createAccountInSetup()
 
             val result = runCatching {
                 accountService.recordClaims(
@@ -188,7 +188,7 @@ class AccountServiceDbTest(
         `when`("both claim the same new email and commit at the same time") {
             clearAccounts()
             val ids = (1..2).map { index ->
-                val account = accountService.createUnidentifiedAccount()
+                val account = accountService.createAccountInSetup()
                 accountService.recordClaim(account.accountId, Claim(AttributeType.EMAIL, "old$index@example.com", ClaimSource.SELF_REPORTED), provenAcr = AcrLevel.LOA2)
                 account.accountId
             }
@@ -231,10 +231,10 @@ class AccountServiceDbTest(
     given("two accounts, the second trying to claim a person_id the first already holds") {
         `when`("the second account records the person_id") {
             clearAccounts()
-            val first = accountService.createUnidentifiedAccount()
+            val first = accountService.createAccountInSetup()
             accountService.recordClaim(first.accountId, Claim(AttributeType.PERSON_ID, "P000000777", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
 
-            val second = accountService.createUnidentifiedAccount()
+            val second = accountService.createAccountInSetup()
             val result = runCatching {
                 accountService.recordClaim(second.accountId, Claim(AttributeType.PERSON_ID, "P000000777", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
             }
@@ -254,7 +254,7 @@ class AccountServiceDbTest(
     given("an account's email anchor being rebound to a new value") {
         `when`("the new email is recorded") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             accountService.recordClaim(account.accountId, Claim(AttributeType.EMAIL, "old@example.com", ClaimSource.SELF_REPORTED), provenAcr = AcrLevel.LOA2)
             accountService.recordClaim(account.accountId, Claim(AttributeType.EMAIL, "new@example.com", ClaimSource.SELF_REPORTED), provenAcr = AcrLevel.LOA2)
 
@@ -275,7 +275,7 @@ class AccountServiceDbTest(
     given("a claim that was retracted") {
         `when`("the retraction is written") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             accountService.recordClaims(account.accountId, listOf(
                 Claim(AttributeType.FAMILY_NAME, "Muster", ClaimSource.PERSON_DIRECTORY),
                 Claim(AttributeType.GIVEN_NAMES, "Max", ClaimSource.PERSON_DIRECTORY),
@@ -287,7 +287,7 @@ class AccountServiceDbTest(
             val beforeRetraction = establishedValues()
 
             jdbcTemplate.update(
-                """INSERT INTO account.retraction (account_id, attribute_type, normalized_value, trust_anchor, retracted_at)
+                """INSERT INTO account.retraction (account_id, attribute_type, normalized_value, claim_source, retracted_at)
                    VALUES (?, 'family_name', 'muster', 'OPERATOR', CURRENT_TIMESTAMP)""",
                 account.accountId
             )
@@ -322,7 +322,7 @@ class AccountServiceDbTest(
 
         `when`("a second sms method with a new phone number is enrolled") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             enroll(account.accountId, "sms", Claim(AttributeType.PHONE_NUMBER, "+491700000001", smsTool), "s-1")
             enroll(account.accountId, "sms", Claim(AttributeType.PHONE_NUMBER, "+491700000002", smsTool), "s-2")
 
@@ -338,7 +338,7 @@ class AccountServiceDbTest(
 
         `when`("a second password method asserting the same value is enrolled") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             val exists = Claim(AttributeType.PASSWORD_EXISTS, com.example.identity.contract.tool_api.claims.PASSWORD_EXISTS_MARKER, passwordTool)
             enroll(account.accountId, "password", exists, "p-1")
             enroll(account.accountId, "password", exists, "p-2")
@@ -353,33 +353,33 @@ class AccountServiceDbTest(
         `when`("the receiver's directory change is applied") {
             clearAccounts()
             fun bound(personId: String, versnr: String): Long {
-                val account = accountService.createUnidentifiedAccount()
+                val account = accountService.createAccountInSetup()
                 accountService.recordClaims(
                     account.accountId,
                     listOf(
                         Claim(AttributeType.PERSON_ID, personId, ClaimSource.PERSON_DIRECTORY),
-                        Claim(AttributeType.INSURANCE_NUMBER, versnr, ClaimSource.PERSON_DIRECTORY)
+                        Claim(AttributeType.MEMBER_NUMBER, versnr, ClaimSource.PERSON_DIRECTORY)
                     ),
                     provenAcr = AcrLevel.LOA2
                 )
                 return account.accountId
             }
-            fun insuranceNumberOf(accountId: Long): String? = jdbcTemplate.queryForList(
-                "SELECT normalized_value FROM account.anchor WHERE account_id = ? AND attribute_type = 'insurance_number'",
+            fun memberNumberOf(accountId: Long): String? = jdbcTemplate.queryForList(
+                "SELECT normalized_value FROM account.anchor WHERE account_id = ? AND attribute_type = 'member_number'",
                 String::class.java, accountId
             ).firstOrNull()
             val stale = bound("P000000001", "10000001")
             val receiver = bound("P000000002", "10000002")
 
             accountService.applyDirectoryChange(
-                com.example.identity.contract.tool_api.directory.PersonChanged("P000000002", setOf(AttributeType.INSURANCE_NUMBER), kvnr = null, insuranceNumber = "10000001")
+                com.example.identity.contract.tool_api.directory.PersonChanged("P000000002", setOf(AttributeType.MEMBER_NUMBER), kvnr = null, memberNumber = "10000001")
             )
 
             then("it is released from the stale holder instead of failing on the anchor conflict forever") {
-                insuranceNumberOf(receiver) shouldBe "10000001"
-                insuranceNumberOf(stale).shouldBeNull()
+                memberNumberOf(receiver) shouldBe "10000001"
+                memberNumberOf(stale).shouldBeNull()
                 jdbcTemplate.queryForObject(
-                    "SELECT trust_anchor FROM account.retraction WHERE account_id = ? AND attribute_type = 'insurance_number'",
+                    "SELECT claim_source FROM account.retraction WHERE account_id = ? AND attribute_type = 'member_number'",
                     String::class.java, stale
                 ) shouldBe "PERSON_DIRECTORY"
             }
@@ -389,7 +389,7 @@ class AccountServiceDbTest(
     given("an identity anchor and a withdrawal in the holder's name") {
         `when`("the holder retracts the person_id") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             accountService.recordClaims(
                 account.accountId,
                 listOf(Claim(AttributeType.PERSON_ID, "P000000042", ClaimSource.PERSON_DIRECTORY)),
@@ -397,7 +397,7 @@ class AccountServiceDbTest(
             )
 
             val result = runCatching {
-                accountService.retractAttribute(account.accountId, AttributeType.PERSON_ID, RetractionAnchor.ACCOUNT_HOLDER)
+                accountService.retractAttribute(account.accountId, AttributeType.PERSON_ID, RetractionSource.ACCOUNT_HOLDER)
             }
 
             then("the account module itself refuses it, whatever the caller checked") {
@@ -410,7 +410,7 @@ class AccountServiceDbTest(
     given("an eid restricted_id anchor being replaced by a new card (ADR-19)") {
         `when`("the new card's restricted_id is recorded") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             accountService.recordClaim(
                 account.accountId,
                 Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource.of(ToolId("ident-eid"))),
@@ -438,8 +438,8 @@ class AccountServiceDbTest(
     given("an eid restricted_id another account already holds") {
         `when`("a second account records the same restricted_id") {
             clearAccounts()
-            val first = accountService.createUnidentifiedAccount()
-            val second = accountService.createUnidentifiedAccount()
+            val first = accountService.createAccountInSetup()
+            val second = accountService.createAccountInSetup()
             accountService.recordClaim(
                 first.accountId,
                 Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource.of(ToolId("ident-eid"))),
@@ -463,7 +463,7 @@ class AccountServiceDbTest(
     given("a method instance that asserted a module-owned value and an account-owned one") {
         `when`("the instance's claims are retracted") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             val instanceId = java.util.UUID.randomUUID()
             accountService.recordClaims(
                 account.accountId,
@@ -476,7 +476,7 @@ class AccountServiceDbTest(
             )
 
             val retracted = accountService.retractClaimsOf(
-                account.accountId, instanceId.toString(), RetractionAnchor.ACCOUNT_MANAGEMENT
+                account.accountId, instanceId.toString(), RetractionSource.ACCOUNT_MANAGEMENT
             )
 
             then("revoking it retracts only what the module owned") {
@@ -498,7 +498,7 @@ class AccountServiceDbTest(
     given("an anchor write below its declared floor") {
         `when`("a person_id is established from a loa1 session") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
 
             val result = runCatching {
                 accountService.recordClaim(
@@ -516,7 +516,7 @@ class AccountServiceDbTest(
 
         `when`("an email established at loa1 is replaced from a loa1 session") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             accountService.recordClaim(
                 account.accountId,
                 Claim(AttributeType.EMAIL, "first@example.com", ClaimSource.SELF_REPORTED),
@@ -541,7 +541,7 @@ class AccountServiceDbTest(
     given("an anchor that was written") {
         `when`("a loa2 email claim is recorded from a loa1 session") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             accountService.recordClaim(
                 account.accountId,
                 // The claim declares loa2; the session only ever proved loa1, and that is what counts.
@@ -563,7 +563,7 @@ class AccountServiceDbTest(
     given("a claim log that already established a tool's values") {
         `when`("the same card is attested again") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             val eid = ClaimSource.of(ToolId("ident-eid"))
             val card = listOf(
                 Claim(AttributeType.FAMILY_NAME, "Mustermann", eid, AcrLevel.LOA3),
@@ -584,29 +584,29 @@ class AccountServiceDbTest(
         }
     }
 
-    // ADR-20: the provisional account yields to the account the correlation step resolves. Needs the
+    // ADR-20: the disposable account yields to the account the correlation step resolves. Needs the
     // real schema: `ux_anchor_value` is global, so the yielding account's anchors must be gone before
     // the same values are written on the absorbing one.
-    given("a provisional account whose attestation resolves to another account") {
+    given("a disposable account whose attestation resolves to another account") {
         `when`("it is absorbed into an identified account") {
             clearAccounts()
             val eid = ClaimSource.of(ToolId("ident-eid"))
-            val provisional = accountService.createUnidentifiedAccount()
-            accountService.recordClaims(provisional.accountId, listOf(
+            val disposable = accountService.createAccountInSetup()
+            accountService.recordClaims(disposable.accountId, listOf(
                 Claim(AttributeType.FAMILY_NAME, "Muster", eid, AcrLevel.LOA3),
                 Claim(AttributeType.GIVEN_NAMES, "Max", eid, AcrLevel.LOA3),
                 Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", eid, AcrLevel.LOA3)
             ), provenAcr = AcrLevel.LOA2)
-            accountService.addIdentification(provisional.accountId, "eid", "loa3", role = "IDENTIFICATION", report = mapOf("provider" to "eid-mock-service"))
-            val target = accountService.createUnidentifiedAccount()
+            accountService.addIdentification(disposable.accountId, "eid", "loa3", role = "IDENTIFICATION", report = mapOf("provider" to "eid-mock-service"))
+            val target = accountService.createAccountInSetup()
             accountService.recordClaim(
                 target.accountId, Claim(AttributeType.PERSON_ID, "P000000001", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2
             )
 
-            accountService.absorbProvisionalAccount(provisional.accountId, target.accountId)
+            accountService.absorbDisposableAccount(disposable.accountId, target.accountId)
 
             then("it yields: anchors and claims move, the identification proof is carried over, the account is gone") {
-                accountService.findAccount(provisional.accountId).shouldBeNull()
+                accountService.findAccount(disposable.accountId).shouldBeNull()
                 accountService.findAccount(target.accountId)!!.personId shouldBe "P000000001"
                 anchorRepository.findByAccountIdAndAttributeType(target.accountId, AttributeType.EID_RESTRICTED_ID)!!.value shouldBe
                     "T0103005K1D5S0V8T9W6UM2RTX"
@@ -615,7 +615,7 @@ class AccountServiceDbTest(
                 // The proof of identity is the absorbing account's now (ADR-39): carried over, naming its origin.
                 val carried = changeLogRepository.findByAccountIdAndChangeTypeOrderByOccurredAt(target.accountId, ChangeType.IDENTIFIED)
                     .single { it.subject == "eid" }.details!!
-                carried["carriedFromAccountId"].toString() shouldBe provisional.accountId.toString()
+                carried["carriedFromAccountId"].toString() shouldBe disposable.accountId.toString()
                 carried["provider"] shouldBe "eid-mock-service"
                 carried["role"] shouldBe "IDENTIFICATION"
             }
@@ -624,13 +624,13 @@ class AccountServiceDbTest(
         `when`("it is absorbed into an account without that anchor") {
             clearAccounts()
             val eid = ClaimSource.of(ToolId("ident-eid"))
-            val provisional = accountService.createUnidentifiedAccount()
+            val disposable = accountService.createAccountInSetup()
             accountService.recordClaim(
-                provisional.accountId, Claim(AttributeType.EMAIL, "max@example.com", eid), provenAcr = AcrLevel.LOA2
+                disposable.accountId, Claim(AttributeType.EMAIL, "max@example.com", eid), provenAcr = AcrLevel.LOA2
             )
-            val target = accountService.createUnidentifiedAccount()
+            val target = accountService.createAccountInSetup()
 
-            accountService.absorbProvisionalAccount(provisional.accountId, target.accountId)
+            accountService.absorbDisposableAccount(disposable.accountId, target.accountId)
 
             then("an anchor the absorbing account already holds with the same value is a no-op, not a conflict") {
                 accountService.findAccount(target.accountId)!!.email shouldBe "max@example.com"
@@ -643,25 +643,25 @@ class AccountServiceDbTest(
     }
 
     // The mirror image ("Enrollment zuerst"): the durable account is in hand, and resolution finds the
-    // placeholder an abandoned eID run left behind. Same port, arguments swapped; the provisional
+    // placeholder an abandoned eID run left behind. Same port, arguments swapped; the disposable
     // account yields either way.
-    given("a provisional leftover that an already-enrolled account identifies into") {
+    given("a disposable leftover that an already-enrolled account identifies into") {
         `when`("the leftover is absorbed into the enrolled account") {
             clearAccounts()
             val eid = ClaimSource.of(ToolId("ident-eid"))
-            val leftover = accountService.createUnidentifiedAccount()
+            val leftover = accountService.createAccountInSetup()
             accountService.recordClaim(
                 leftover.accountId,
                 Claim(AttributeType.EID_RESTRICTED_ID, "T0304223A9B1N7K5D2PN1S44QE", eid, AcrLevel.LOA3),
                 provenAcr = AcrLevel.LOA2
             )
-            val enrolled = accountService.createUnidentifiedAccount()
+            val enrolled = accountService.createAccountInSetup()
             accountService.addAuthenticationMethod(
                 enrolled.accountId, "password", EnrollmentRef("auth_password", "e-3"),
                 enrolledUnderAcr = "loa1", details = emptyMap()
             )
 
-            accountService.absorbProvisionalAccount(leftover.accountId, enrolled.accountId)
+            accountService.absorbDisposableAccount(leftover.accountId, enrolled.accountId)
 
             then("the leftover is absorbed into the account that holds the credentials") {
                 accountService.findAccount(leftover.accountId).shouldBeNull()
@@ -672,31 +672,31 @@ class AccountServiceDbTest(
         }
     }
 
-    given("an account that is not provisional") {
+    given("an account that is not disposable") {
         `when`("it is to be absorbed into another account") {
             clearAccounts()
-            val notProvisional = accountService.createUnidentifiedAccount()
+            val notDisposable = accountService.createAccountInSetup()
             accountService.addAuthenticationMethod(
-                notProvisional.accountId, "password", EnrollmentRef("auth_password", "e-1"),
+                notDisposable.accountId, "password", EnrollmentRef("auth_password", "e-1"),
                 enrolledUnderAcr = "loa1", details = emptyMap()
             )
-            val target = accountService.createUnidentifiedAccount()
-            val isProvisional = accountService.findAccount(notProvisional.accountId)!!.isProvisional
+            val target = accountService.createAccountInSetup()
+            val isDisposable = accountService.findAccount(notDisposable.accountId)!!.isDisposable
 
             val result = runCatching {
-                accountService.absorbProvisionalAccount(notProvisional.accountId, target.accountId)
+                accountService.absorbDisposableAccount(notDisposable.accountId, target.accountId)
             }
 
             then("it never yields - a credential was enrolled on it, so this would be an account merge") {
-                isProvisional shouldBe false
+                isDisposable shouldBe false
                 shouldThrow<IdentityConflictException> { result.getOrThrow() }
-                accountService.findAccount(notProvisional.accountId) shouldNotBe null
+                accountService.findAccount(notDisposable.accountId) shouldNotBe null
             }
         }
 
         `when`("its only credential is deactivated") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             val profile = accountService.addAuthenticationMethod(
                 account.accountId, "password", EnrollmentRef("auth_password", "e-2"),
                 enrolledUnderAcr = "loa1", details = emptyMap()
@@ -706,7 +706,7 @@ class AccountServiceDbTest(
             then("a deactivated credential still counts - its claims\' provenance points at this account") {
                 val reread = accountService.findAccount(account.accountId)!!
                 reread.activeAuthenticationMethods.shouldBeEmpty()
-                reread.isProvisional shouldBe false
+                reread.isDisposable shouldBe false
             }
         }
     }
@@ -714,7 +714,7 @@ class AccountServiceDbTest(
     given("an anchor that a replacement claim re-points") {
         `when`("a new email replaces the old one") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             accountService.recordClaim(
                 account.accountId, Claim(AttributeType.EMAIL, "old@example.com", ClaimSource.SELF_REPORTED), provenAcr = AcrLevel.LOA1
             )
@@ -733,7 +733,7 @@ class AccountServiceDbTest(
 
         `when`("the email goes from a to b and back to a") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             for (value in listOf("a@example.com", "b@example.com", "a@example.com")) {
                 accountService.recordClaim(
                     account.accountId, Claim(AttributeType.EMAIL, value, ClaimSource.SELF_REPORTED), provenAcr = AcrLevel.LOA2
@@ -755,7 +755,7 @@ class AccountServiceDbTest(
     given("a card anchor replaced by a value that differs only in case") {
         `when`("the upper-case value is recorded") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             val source = ClaimSource.of(com.example.identity.contract.tool_api.ToolId("ident-eid"))
             accountService.recordClaim(account.accountId, Claim(AttributeType.EID_RESTRICTED_ID, "AbC123", source), provenAcr = AcrLevel.LOA3)
             accountService.recordClaim(account.accountId, Claim(AttributeType.EID_RESTRICTED_ID, "ABC123", source), provenAcr = AcrLevel.LOA3)
@@ -769,7 +769,7 @@ class AccountServiceDbTest(
     given("a claim a tool reports at loa2, established from a session that only proved loa1 (ADR-5)") {
         `when`("the claim is recorded") {
             clearAccounts()
-            val account = accountService.createUnidentifiedAccount()
+            val account = accountService.createAccountInSetup()
             accountService.recordClaims(
                 account.accountId,
                 listOf(Claim(AttributeType.PHONE_NUMBER, "+491701234567", ClaimSource.of(com.example.identity.contract.tool_api.ToolId("enroll-sms")), AcrLevel.LOA2)),

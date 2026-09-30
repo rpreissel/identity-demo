@@ -12,7 +12,7 @@ interface AuthPolicy {
      * Does what this session has proven so far satisfy [requiredAcr]? Pass [account] null only when
      * none is resolvable yet.
      */
-    fun isSatisfied(evidence: AuthEvidence, requiredAcr: AcrLevel, account: AccountProfile?): Boolean
+    fun isSatisfied(evidence: SessionEvidence, requiredAcr: AcrLevel, account: AccountProfile?): Boolean
 
     /**
      * Which of the account's AUTH tools could close the remaining gap right now? A key-bound method
@@ -41,12 +41,12 @@ interface AuthPolicy {
     fun enrollmentCandidates(ctx: CandidateContext): List<ToolId>
 
     /** Level implied by the given evidence (IAL and AAL, docs/04-orchestrierung.md #8). */
-    fun resolveAcr(evidence: AuthEvidence, account: AccountProfile?): AcrLevel
+    fun resolveAcr(evidence: SessionEvidence, account: AccountProfile?): AcrLevel
 }
 
 /** Shared context for candidate resolution methods. */
 data class CandidateContext(
-    val evidence: AuthEvidence,
+    val evidence: SessionEvidence,
     val requiredAcr: AcrLevel,
     val account: AccountProfile? = null,
     val bindingKeyRef: String? = null,

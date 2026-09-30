@@ -23,7 +23,7 @@ class ChannelSession(
     @Column(name = "channel", nullable = false, length = 32)
     var channel: ChannelType? = null,
 
-    /** APP only (docs/02-domaenenmodell.md Abschnitt 1). KEYCLOAK channels anchor via [channelAnchor]. */
+    /** APP only (docs/02-domaenenmodell.md Abschnitt 1). WEB channels binding via [channelBinding]. */
     @Column(name = "binding_key_ref", length = 64)
     var bindingKeyRef: String? = null,
 
@@ -32,16 +32,16 @@ class ChannelSession(
     now: Instant
 ) {
     /**
-     * KEYCLOAK-only channel anchor (docs/02-domaenenmodell.md Abschnitt 1): this flow run's own
+     * WEB-only channel binding (docs/02-domaenenmodell.md Abschnitt 1): this flow run's own
      * `channelSessionId`, carried in the peer-auth assertion. [ChannelAccessGuard] checks it, so a
      * leaked `channelSessionId` plus any valid Keycloak signature cannot hijack the channel. Not the
      * durable `UserSessionModel` id, which concurrent flow runs of one SSO session would share.
      */
-    @Column(name = "channel_anchor", length = 64)
-    var channelAnchor: String? = null
+    @Column(name = "channel_binding", length = 64)
+    var channelBinding: String? = null
 
     /**
-     * KEYCLOAK only: Keycloak's durable `UserSessionModel` id, known once a flow has completed
+     * WEB only: Keycloak's durable `UserSessionModel` id, known once a flow has completed
      * (set by `KcChannelService.restoreData`). Only [com.example.identity.core.orchestrator.retention.RetentionJob]
      * reads it, to ask whether the session is still alive. Never used for authorization.
      */
@@ -75,20 +75,20 @@ class ChannelSession(
         get() = accountId?.let(Subject::Account) ?: invitation?.let(Subject::Invitation)
         set(value) {
             accountId = (value as? Subject.Account)?.id
-            invitation = (value as? Subject.Invitation)?.hash
+            invitation = (value as? Subject.Invitation)?.id
         }
 
     @Enumerated(EnumType.STRING)
     @Column(name = "state", nullable = false, length = 32)
     var state: ChannelState? = null
 
-    /** APP only (docs/05-api.md Abschnitt 3): the KEYCLOAK channel has no App-style tokens to bind. */
-    @Column(name = "auth_context_id")
-    var authContextId: UUID? = null
+    /** APP only (docs/05-api.md Abschnitt 3): the WEB channel has no App-style tokens to bind. */
+    @Column(name = "app_token_session_id")
+    var appTokenSessionId: UUID? = null
 
     /** Both channel types (docs/05-api.md Abschnitt 3): the evidence itself. */
-    @Column(name = "auth_evidence_id")
-    var authEvidenceId: UUID? = null
+    @Column(name = "session_evidence_id")
+    var sessionEvidenceId: UUID? = null
 
     /**
      * Whether at least one factor was proven on this channel. Weaker than `state == AUTHENTICATED`,
@@ -96,7 +96,7 @@ class ChannelSession(
      * an accountId before any proof. Account details may be revealed only after a proof.
      */
     val hasProvenFactor: Boolean
-        get() = authEvidenceId != null
+        get() = sessionEvidenceId != null
 
     /**
      * The channel's durable lower bound; survives individual journeys. A step-up run's target lives

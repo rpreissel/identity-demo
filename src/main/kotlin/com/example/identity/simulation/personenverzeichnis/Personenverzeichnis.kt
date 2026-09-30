@@ -6,9 +6,9 @@ import com.example.identity.simulation.personenverzeichnis.internal.PersonReposi
 import com.example.identity.simulation.personenverzeichnis.internal.Person
 import com.example.identity.contract.tool_api.directory.ClaimedIdentity
 import com.example.identity.contract.tool_api.values.Kvnr
-import com.example.identity.contract.tool_api.values.Partnernr
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.directory.PersonChanged
-import com.example.identity.contract.tool_api.values.InsuranceNumber
+import com.example.identity.contract.tool_api.values.MemberNumber
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.directory.PersonMasterData
@@ -35,10 +35,10 @@ class Personenverzeichnis(
     override fun findPersonIdByKvnr(kvnr: String): String? =
         personRepository.findByKvnr(normalizeKvnr(kvnr))?.id
 
-    override fun findPersonIdByPartnernr(partnernr: String): String? =
-        Partnernr.ofOrNull(partnernr)?.let { personRepository.findByIdOrNull(it.value) }?.id
+    override fun findPersonIdByPartnerNumber(partnerNumber: String): String? =
+        PartnerNumber.ofOrNull(partnerNumber)?.let { personRepository.findByIdOrNull(it.value) }?.id
 
-    override fun insuranceNumberOf(personId: String): String? = personRepository.findByIdOrNull(personId)?.versnr
+    override fun memberNumberOf(personId: String): String? = personRepository.findByIdOrNull(personId)?.versnr
 
     override fun matchesMasterData(personId: String, claimed: ClaimedIdentity): Boolean {
         val person = personRepository.findByIdOrNull(personId) ?: return false
@@ -94,7 +94,7 @@ class Personenverzeichnis(
             PersonRecord(
                 personId = it,
                 kvnr = kvnr, familyName = name, givenNames = vorname, birthDate = geburtsdatum,
-                streetAddress = strassenzeile, postalCode = plz, locality = ort, insuranceNumber = versnr
+                streetAddress = strassenzeile, postalCode = plz, locality = ort, memberNumber = versnr
             )
         }
 
@@ -115,7 +115,7 @@ class Personenverzeichnis(
         val (kvnr, versnr) = validNumbers(input)
         requireKvnrFree(kvnr)
         requireVersnrFree(versnr)
-        return personRepository.save(Person(id = neuePartnernr(), kvnr = kvnr, versnr = versnr).apply { applyFrom(input) }).toPersonData()
+        return personRepository.save(Person(id = neuePartnerNumber(), kvnr = kvnr, versnr = versnr).apply { applyFrom(input) }).toPersonData()
     }
 
     /**
@@ -154,7 +154,7 @@ class Personenverzeichnis(
             Kvnr.ofOrNull(it)?.value ?: throw PersonRejectedException(Text("KVNR muss ein Buchstabe und neun Ziffern sein"))
         }
         val versnr = input.versnr?.takeIf { it.isNotBlank() }?.let {
-            InsuranceNumber.ofOrNull(it)?.value ?: throw PersonRejectedException(Text("Die Versicherungsnummer muss aus acht Ziffern bestehen"))
+            MemberNumber.ofOrNull(it)?.value ?: throw PersonRejectedException(Text("Die Versicherungsnummer muss aus acht Ziffern bestehen"))
         }
         if (kvnr != null && versnr == null) {
             throw PersonRejectedException(Text("Eine KVNR gibt es nur zusammen mit einer Versicherungsnummer"))
@@ -163,8 +163,8 @@ class Personenverzeichnis(
     }
 
     /** A fresh Partnernummer - random, so it gives away neither order nor count of the persons. */
-    private fun neuePartnernr(): String =
-        generateSequence { Partnernr.ofDigits(random.nextInt(1_000_000_000)).value }
+    private fun neuePartnerNumber(): String =
+        generateSequence { PartnerNumber.ofDigits(random.nextInt(1_000_000_000)).value }
             .first { !personRepository.existsById(it) }
 
     private fun requireKvnrFree(kvnr: String?) {
@@ -185,7 +185,7 @@ class Personenverzeichnis(
      */
     private fun changedAttributes(before: PersonData, after: PersonData): Set<AttributeType> = buildSet {
         if (before.kvnr != after.kvnr) add(AttributeType.KVNR)
-        if (before.versnr != after.versnr) add(AttributeType.INSURANCE_NUMBER)
+        if (before.versnr != after.versnr) add(AttributeType.MEMBER_NUMBER)
         if (before.name != after.name) add(AttributeType.FAMILY_NAME)
         if (before.vorname != after.vorname) add(AttributeType.GIVEN_NAMES)
         if (before.geburtsdatum != after.geburtsdatum) add(AttributeType.BIRTH_DATE)

@@ -10,5 +10,5 @@ class MockTokenProvider(
     private val tokenService: TokenService
 ) : TokenProvider {
     override fun tokenFor(channel: ChannelSession, minValiditySeconds: Long): TokenPair =
-        tokenService.tokenFor(channel.authContextId!!, minValiditySeconds)
+        tokenService.tokenFor(channel.appTokenSessionId!!, minValiditySeconds)
 }

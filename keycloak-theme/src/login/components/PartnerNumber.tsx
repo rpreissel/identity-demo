@@ -5,8 +5,8 @@ export function PartnerNumber() {
   return (
     <details className="orc-field orc-details">
       <summary>{t('Ich habe keine Versichertennummer')}</summary>
-      <label htmlFor="partnernr">{t('Partnernummer')}</label>
-      <input type="text" id="partnernr" name="partnernr" placeholder="P000000000" autoComplete="off" />
+      <label htmlFor="partnerNumber">{t('Partnernummer')}</label>
+      <input type="text" id="partnerNumber" name="partnerNumber" placeholder="P000000000" autoComplete="off" />
     </details>
   )
 }

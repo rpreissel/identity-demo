@@ -75,7 +75,7 @@ class AccountFixtures(
         /** The eID card anchor (ADR-19) as `ident-eid` writes it, or `null` without a card. */
         restrictedId: String? = null
     ): Long {
-        val accountId = accountService.createUnidentifiedAccount().accountId
+        val accountId = accountService.createAccountInSetup().accountId
         identify(accountId, kvnr, name, vorname)
         if (email != null) confirmEmail(accountId, email)
         if (restrictedId != null) {

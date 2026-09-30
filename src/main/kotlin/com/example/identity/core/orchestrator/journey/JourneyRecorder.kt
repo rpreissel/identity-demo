@@ -10,10 +10,10 @@ import com.example.identity.core.orchestrator.domain.policy.MethodName
 import com.example.identity.core.orchestrator.domain.policy.evidenceAxis
 import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.core.orchestrator.domain.AuthIntent
-import com.example.identity.core.orchestrator.session.AuthEvidenceService
+import com.example.identity.core.orchestrator.session.SessionEvidenceService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Component
@@ -25,7 +25,7 @@ import com.example.identity.core.orchestrator.session.forLog
  */
 @Component
 class JourneyRecorder(
-    private val authEvidenceService: AuthEvidenceService,
+    private val sessionEvidenceService: SessionEvidenceService,
     private val accountService: AccountService,
     private val signInLog: SignInLog,
     private val journeyTraceService: JourneyTraceService,
@@ -37,14 +37,14 @@ class JourneyRecorder(
     fun mergeEvidence(journey: AuthJourney, channel: ChannelSession, source: String, updates: List<MethodEvidence>) {
         // [source]'s set before the update. Callers resend their complete set on every call
         // (docs/05-api.md Abschnitt 3), so only a real change is logged.
-        val before = channel.authEvidenceId
-            ?.let { authEvidenceService.getAuthEvidence(it) }?.amrEvidence.orEmpty()
+        val before = channel.sessionEvidenceId
+            ?.let { sessionEvidenceService.getSessionEvidence(it) }?.methods.orEmpty()
             .filter { it.source == source }
             .map { Triple(it.method, it.loa, it.amrSourceId) }
             .toSet()
         val after = updates.map { Triple(it.method.value, it.loa.value, it.amrSourceId) }.toSet()
 
-        authEvidenceService.attachToChannel(channel, source, updates)
+        sessionEvidenceService.attachToChannel(channel, source, updates)
         if (before != after) {
             // advance() logs the EvidenceReported transition, but not what changed. Without this
             // entry the trace would stay silent on Keycloak-native factors. snake_case marks an
@@ -67,7 +67,7 @@ class JourneyRecorder(
         outcome: ToolOutcome.Completed,
         effectiveAcr: AcrLevel?
     ) {
-        val authEvidenceId = checkNotNull(channel.authEvidenceId) { "AuthEvidence missing after ${tool.toolId}" }
+        val sessionEvidenceId = checkNotNull(channel.sessionEvidenceId) { "SessionEvidence missing after ${tool.toolId}" }
         val accountId = channel.accountId
         // A role on neither axis proves nothing about this session and leaves no evidence,
         // whatever it reported. Decided centrally, so a tool cannot mint assurance its role denies.
@@ -85,13 +85,13 @@ class JourneyRecorder(
                 axis = axis,
             )
         }
-        if (updates.isNotEmpty()) authEvidenceService.applyEvidence(authEvidenceId, updates)
+        if (updates.isNotEmpty()) sessionEvidenceService.applyEvidence(sessionEvidenceId, updates)
     }
 
     /**
      * The audit row for both acts of ADR-18: `ident-eid` proving who somebody is, and `ident-kvnr`
      * binding that person to the register, the moment the PERSON_ID anchor is created. The act is
-     * written as [MethodRole] in `details`: a correlation row carries the level of the
+     * written as [ToolRole] in `details`: a correlation row carries the level of the
      * identification it rests on and would otherwise read as its own. Rows of one run share a `journeyId`.
      */
     fun recordIdentification(
@@ -116,14 +116,14 @@ class JourneyRecorder(
      */
     fun recordSignIn(journey: AuthJourney, channel: ChannelSession, acr: AcrLevel) {
         val intent = journey.intent ?: return
-        val amr = channel.authEvidenceId?.let { authEvidenceService.getAuthEvidence(it) }?.currentAmr.orEmpty()
+        val amr = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }?.currentAmr.orEmpty()
         when (val subject = channel.subject ?: return) {
             is Subject.Account -> when {
                 intent == AuthIntent.STEP_UP -> signInLog.steppedUp(subject.id, channel.channel?.name, acr.value, amr)
                 intent.isEntryIntent -> signInLog.signedIn(subject.id, channel.channel?.name, acr.value, amr, intent.name)
             }
             // A process access has one proof and no step-up (ADR-48).
-            is Subject.Invitation -> signInLog.invitationSignedIn(subject.hash, channel.channel?.name, acr.value, amr)
+            is Subject.Invitation -> signInLog.invitationSignedIn(subject.id, channel.channel?.name, acr.value, amr)
         }
     }
 
@@ -131,7 +131,7 @@ class JourneyRecorder(
     fun recordSignOut(channel: ChannelSession, endedBy: String) {
         when (val subject = channel.subject ?: return) {
             is Subject.Account -> signInLog.signedOut(subject.id, channel.channel?.name, endedBy)
-            is Subject.Invitation -> signInLog.invitationSignedOut(subject.hash, channel.channel?.name, endedBy)
+            is Subject.Invitation -> signInLog.invitationSignedOut(subject.id, channel.channel?.name, endedBy)
         }
     }
 }

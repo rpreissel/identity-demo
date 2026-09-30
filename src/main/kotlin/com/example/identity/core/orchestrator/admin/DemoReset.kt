@@ -8,7 +8,7 @@ import com.example.identity.core.orchestrator.kc.KeycloakRealmSessions
 import com.example.identity.core.orchestrator.kc.Loa1Login
 import com.example.identity.core.orchestrator.kc.LoginTheme
 import com.example.identity.core.orchestrator.session.AccountDeletionService
-import com.example.identity.core.orchestrator.session.AttemptThrottleRepository
+import com.example.identity.core.orchestrator.session.RateLimitRecordRepository
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
 import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.id
@@ -37,7 +37,7 @@ class DemoReset(
     private val channelSessionRepository: ChannelSessionRepository,
     private val journeyService: JourneyService,
     private val transactionTemplate: TransactionTemplate,
-    private val attemptThrottleRepository: AttemptThrottleRepository,
+    private val rateLimitRecordRepository: RateLimitRecordRepository,
     private val loginThemeSwitch: ObjectProvider<LoginThemeSwitch>,
     private val loa1LoginSwitch: ObjectProvider<Loa1LoginSwitch>,
     private val keycloakRealmSessions: ObjectProvider<KeycloakRealmSessions>,
@@ -62,9 +62,9 @@ class DemoReset(
                 journeyService.endSession(channel, ChannelState.LOGGED_OUT)
             }
         }
-        // Throttles count per address, account and device; a tester starting over must not hit
+        // Rate limits count per address, account and device; a tester starting over must not hit
         // the limits of the run before.
-        attemptThrottleRepository.deleteAllInBatch()
+        rateLimitRecordRepository.deleteAllInBatch()
         // Also sessions of accounts an earlier run left behind: every realm user is an account.
         keycloakRealmSessions.ifAvailable?.logoutAll()
         toolAvailabilityService.applyDefaults()

@@ -3,7 +3,7 @@ package com.example.identity.contract.tool_api.values
 /**
  * A normalized mobile number we may send an SMS to: the one place for normalization and the
  * allowed numbers. The send budget, `enroll-sms` and the stored enrollment must agree on it,
- * or one number could count as three for the throttle.
+ * or one number could count as three for the rate limit.
  */
 @JvmInline
 value class PhoneNumber private constructor(val value: String) {

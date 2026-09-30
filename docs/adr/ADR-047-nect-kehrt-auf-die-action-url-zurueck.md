@@ -19,7 +19,7 @@ entsteht erst in der Journey, und Keycloak legt keine Nutzer an (ADR-38). Der We
 ohne Nutzer auskommen, und er soll nur benutzen, was Keycloak selbst vorsieht. Die Action-URL erfüllt
 beides: Sie ist an die Auth-Session gebunden, ohne das Session-Cookie des Browsers wertlos, und ihr
 Code ist genau das, was Keycloak selbst im `state`-Parameter an fremde Identity Provider gibt. Die
-Auth-Session bleibt dieselbe, damit auch Tab-ID, Kanal-ID und `channel_anchor`; nichts ist zu retten.
+Auth-Session bleibt dieselbe, damit auch Tab-ID, Kanal-ID und `channel_binding`; nichts ist zu retten.
 
 **Erwogene Alternativen** (Befunde aus den Quellen von Keycloak 26.6.4):
 

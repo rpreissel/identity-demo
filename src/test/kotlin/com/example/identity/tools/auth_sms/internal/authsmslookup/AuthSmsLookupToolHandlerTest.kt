@@ -4,7 +4,7 @@ import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.tools.auth_sms.internal.TanGenerator
-import com.example.identity.tools.auth_sms.internal.SmsSendBudget
+import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollment
 
@@ -31,8 +31,8 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<AuthSmsLookupToolSessionRepository>()
     val enrollmentRepository = mockk<AuthSmsEnrollmentRepository>()
     val tanGenerator = TanGenerator("test-pepper", clock = TEST_CLOCK)
-    val sendBudget = mockk<SmsSendBudget>(relaxed = true).also { every { it.trySend(any()) } returns true }
-    val handler = AuthSmsLookupToolHandler(AuthSmsLookupDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = TEST_CLOCK), sendBudget, mockk(relaxed = true), clock = TEST_CLOCK)
+    val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
+    val handler = AuthSmsLookupToolHandler(AuthSmsLookupDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = TEST_CLOCK), sendLimit, mockk(relaxed = true), clock = TEST_CLOCK)
     val toolSessionId = UUID.randomUUID()
 
     given("an active auth-sms-lookup tool session") {
@@ -60,7 +60,7 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
         `when`("the account's number has used up its send budget") {
             val enrollment = AuthSmsEnrollment(phoneNumber = "+491709999999", createdAt = TEST_NOW).apply { id = 3L }
             every { enrollmentRepository.findById(3L) } returns Optional.of(enrollment)
-            every { sendBudget.trySend("+491709999999") } returns false
+            every { sendLimit.trySend("+491709999999") } returns false
             val saved = slot<AuthSmsLookupToolSession>()
             every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
 

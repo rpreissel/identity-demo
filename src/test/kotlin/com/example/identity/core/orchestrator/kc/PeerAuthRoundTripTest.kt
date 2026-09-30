@@ -60,13 +60,13 @@ class PeerAuthRoundTripTest : BehaviorSpec() {
     @Autowired
     private lateinit var replayProtectionService: DpopReplayProtectionService
 
-    private fun sign(key: ECKey, htm: String, htu: String, channelAnchor: String): String {
+    private fun sign(key: ECKey, htm: String, htu: String, channelBinding: String): String {
         val claims = JWTClaimsSet.Builder()
             .issuer("test-issuer")
             .audience("identity-demo-orchestrator")
             .claim("htm", htm)
             .claim("htu", htu)
-            .claim("channel_anchor", channelAnchor)
+            .claim("channel_binding", channelBinding)
             .jwtID(UUID.randomUUID().toString())
             .issueTime(Date.from(TEST_NOW))
             .build()
@@ -94,13 +94,13 @@ class PeerAuthRoundTripTest : BehaviorSpec() {
                     clock = TEST_CLOCK
                 )
                 val htu = "http://localhost:$port/orchestrator/api/v1/kc/channels/${UUID.randomUUID()}"
-                val token = sign(TEST_PEER_AUTH_KEY, "PATCH", htu, "channel-anchor-${UUID.randomUUID()}")
+                val token = sign(TEST_PEER_AUTH_KEY, "PATCH", htu, "channel-binding-${UUID.randomUUID()}")
 
                 val assertion = validator.validate(token, "PATCH", htu)
 
                 then("it verifies successfully via the real sign -> fetch -> verify round trip") {
                     assertion.shouldNotBeNull()
-                    assertion.channelAnchor.shouldNotBeNull()
+                    assertion.channelBinding.shouldNotBeNull()
                 }
             }
         }

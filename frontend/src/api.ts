@@ -260,9 +260,9 @@ export function postToolSubResource(
   return call(dpop, 'POST', `/orchestrator/api/v1/tools/${toolSessionId}/${toolId}/${subPath}`, body)
 }
 
-export type MethodRole =
-  | 'IDENTIFIED_AUTH'
-  | 'LOOKUP_AUTH'
+export type ToolRole =
+  | 'KNOWN_ACCOUNT_AUTH'
+  | 'ACCOUNT_LOOKUP_AUTH'
   | 'IDENTIFICATION'
   | 'CORRELATION'
   | 'ENROLLMENT'
@@ -273,13 +273,13 @@ export interface ToolAvailabilityEntry {
   toolId: string
   method: string
   /** Which kind of selection list the tool appears in - the order only matters within one role. */
-  role: MethodRole
+  role: ToolRole
   enabled: boolean
   reason?: string
 }
 
-/** APP = App-Kanal, KEYCLOAK = Web-Kanal. */
-export type ChannelType = 'APP' | 'KEYCLOAK'
+/** APP = App-Kanal, WEB = Web-Kanal. */
+export type ChannelType = 'APP' | 'WEB'
 
 /** One channel type's tools, in the order that channel offers them. */
 export interface ChannelToolAvailability {

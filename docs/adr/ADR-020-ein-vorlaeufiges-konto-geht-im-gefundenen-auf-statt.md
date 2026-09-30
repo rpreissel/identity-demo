@@ -14,15 +14,16 @@ Rolle:
   `ident-kvnr` danach findet das echte Konto.
 - Ist das **gefundene** Konto vorläufig, bleibt die Journey bei ihrem Konto und übernimmt dessen
   Daten. Das ist der Fall im Experiment „Erst Anmeldeverfahren einrichten“: Die Journey arbeitet mit
-  dem echten Konto, in dem gerade die Zugangsmittel entstanden sind, und die Identifizierung findet
+  dem echten Konto, in dem gerade die Anmeldeverfahren entstanden sind, und die Identifizierung findet
   über den Anker `restricted_id` ein übrig gebliebenes Konto aus einem früheren, abgebrochenen
   Versuch.
 - Ist **keines** von beiden vorläufig, bleibt es beim `409`. Zwei echte Konten werden nicht nebenbei
   zusammengelegt ([ADR-11](ADR-011-kontouebergreifender-person-id-konflikt-ist-abweisung-merge-nie.md)).
 
-**Vorläufig** ist eine benannte Regel an `AccountProfile`: `isProvisional` = `isUnidentified` (keine
-PersonId) **und** nie ein Zugangsmittel eingerichtet. Deaktivierte Zugangsmittel zählen mit, denn an
-einer widerrufenen Instanz hängt weiterhin die Herkunft von Claims (`account.claim.auth_method_id`,
+**Vorläufig** ist eine benannte Regel an `AccountProfile`: `isDisposable` (im Glossar „verwerfbar“)
+= `isUnidentified` (keine PersonId) **und** nie ein Anmeldeverfahren eingerichtet. Deaktivierte
+Verfahren zählen mit, denn an einer widerrufenen Instanz hängt weiterhin die Herkunft von Claims
+(`account.claim.auth_method_id`,
 [ADR-12](ADR-012-ein-widerruf-ist-eine-eigene-zeile-mit-eigenem.md)). Dieselbe Regel entscheidet, ob
 eine abgebrochene Journey ihr Konto löschen darf (`JourneyService.deleteIfAbandonedUnidentified`).
 
@@ -36,7 +37,7 @@ Bedingungen hinzu:
 1. **Diese Sitzung muss die Identität schon nachgewiesen haben**
    (`JourneyActionExecutor.accountOfAttestation`; ohne Nachweis der Art `IDENTITY` antwortet sie mit
    `409` „Diese Adresse gehört bereits zu einem Konto. Melden Sie sich damit an, statt sich neu zu registrieren.“). Sonst könnte eine neue Sitzung die
-   hinterlegte Adresse eines anderen erneut bestätigen und dessen Konto samt Zugangsmitteln
+   hinterlegte Adresse eines anderen erneut bestätigen und dessen Konto samt Anmeldeverfahren
    übernehmen.
 2. **Die bestätigte Identität muss zum gefundenen Konto passen.** Ist das Konto einer Person im
    Personenverzeichnis zugeordnet, prüft `IdentityResolver.attestedIdentityMatches` die in dieser
@@ -50,7 +51,7 @@ bereits vergebene Adresse deshalb immer ab.
 
 ### Wie übernommen wird
 
-Die Übernahme (`AccountService.absorbProvisionalAccount`) verschiebt **nicht** allgemein
+Die Übernahme (`AccountService.absorbDisposableAccount`) verschiebt **nicht** allgemein
 Identitätsdaten zwischen Konten. Sie verlangt ein vorläufiges Quellkonto, und genau das macht sie
 harmlos. Ihre Reihenfolge gehört zur Entscheidung: `account.anchor` ist je Typ und Wert über alle
 Konten eindeutig (`ux_anchor_value`). Die Anker der Quelle werden deshalb gelesen, freigegeben und
@@ -59,7 +60,7 @@ Weg über `recordClaim`, Claim für Claim in der ursprünglichen Reihenfolge; Ko
 Mindestniveaus der Anker und Widerrufsregeln gelten also unverändert.
 
 Für den Kanal gilt dasselbe umgekehrt: Nachweis und Geräteverknüpfung werden auf das neue Konto
-umgestellt (`AuthEvidenceService.rebindToAccount`, `linkDeviceToAccount`), **bevor** das alte Konto
+umgestellt (`SessionEvidenceService.rebindToAccount`, `linkDeviceToAccount`), **bevor** das alte Konto
 gelöscht wird. Was die Sitzung bewiesen hat, bleibt bewiesen; nur die zwischengespeicherten Tokens
 entfallen. Danach läuft die Registrierung noch einmal durch `RegisterStrategy.afterIdentification`:
 Ist das Gerät schon mit einem anderen Konto verknüpft? Kann das Konto ein vorhandenes Verfahren

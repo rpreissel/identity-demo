@@ -31,7 +31,7 @@ private const val IDENT_KVNR_TOOL_ID = "ident-kvnr"
 data class IdentKvnrPatchRequest(
     @field:Schema(example = "A123456789") val kvnr: String? = null,
     /** Only without a KVNR (a Partner, ADR-34) - the client asks for the KVNR first, then for this. */
-    @field:Schema(example = "P000000004") val partnernr: String? = null
+    @field:Schema(example = "P000000004") val partnerNumber: String? = null
 )
 
 /**
@@ -101,11 +101,11 @@ class IdentKvnrToolController(
         // The KVNR comes first (ADR-34): given, it alone decides; the Partnernummer only counts without one.
         val personId = when {
             !body.kvnr.isNullOrBlank() -> personDirectory.findPersonIdByKvnr(normalizeKvnr(body.kvnr))
-            !body.partnernr.isNullOrBlank() -> personDirectory.findPersonIdByPartnernr(body.partnernr)
+            !body.partnerNumber.isNullOrBlank() -> personDirectory.findPersonIdByPartnerNumber(body.partnerNumber)
             else -> null
         }
         val matches = personId != null && toolJourney.matchesAttestedIdentity(context, personId)
-        val outcome = handler.patch(toolSessionId, body.kvnr, body.partnernr, personId, matches)
+        val outcome = handler.patch(toolSessionId, body.kvnr, body.partnerNumber, personId, matches)
 
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }

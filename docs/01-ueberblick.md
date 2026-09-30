@@ -63,7 +63,7 @@ flowchart LR
   Orchestrator nach. Echt, läuft als Container.
 - **Orchestrator**: der Kern dieses Projekts. Er entscheidet, welche Schritte ein Nutzer
   durchläuft, führt die Konten und bewertet die Nachweise.
-- **Personenverzeichnis**: die Stammdaten der Versicherung (Personen, Versicherungsnummer, KVNR);
+- **Personenverzeichnis**: die Stammdaten der Versicherung (Personen, Mitgliedsnummer, KVNR);
   stellt die Freischaltcodes und die Einladungen mit Einmalkennwort aus. Simuliert.
 - **Externe Dienste**: Nect (Identifizierung per Ausweis, Reisepass, EUDI-Wallet), KOBIL
   (Gerätebindung), der Online-Ausweis (eID) sowie der Versand von SMS und E-Mail. Alle simuliert.
@@ -82,12 +82,12 @@ Die Doku ist deutsch, der Code englisch. Hinter jedem Begriff steht in Klammern 
 
 - **Kanal** (`ChannelSession`): die Verbindung eines Clients, App oder Website, zum Orchestrator.
   Bewusst kurzlebig ([ADR-3](adr/ADR-003-channelsession-bewusst-kurzlebig-geraete-identitaet-in-deviceaccountlink.md)).
-- **Ziel** (`AuthIntent`): was der Nutzer erreichen will, samt dem Weg dorthin, etwa `FAST_ACCESS`,
+- **Intent** (`AuthIntent`): was der Nutzer erreichen will, samt dem Weg dorthin, etwa `FAST_ACCESS`,
   `REGISTER` oder `STEP_UP`. Die Liste steht in [04-orchestrierung.md](04-orchestrierung.md)
   Abschnitt 2.
-- **Journey** (`AuthJourney`): ein laufender Durchlauf zu einem Ziel; er nutzt ein oder mehrere
+- **Journey** (`AuthJourney`): ein laufender Durchlauf zu einem Intent; er nutzt ein oder mehrere
   Tools.
-- **Zustand** (`JourneyState`): wo die Journey gerade steht, samt der Angaben dazu. Jedes Ziel hat
+- **Zustand** (`JourneyState`): wo die Journey gerade steht, samt der Angaben dazu. Jeder Intent hat
   seine eigene, abgeschlossene Menge von Zuständen.
 - **Tool** (`toolId`, z. B. `enroll-sms`): ein einzelner Schritt zum Identifizieren, Einrichten
   oder Anmelden.
@@ -101,27 +101,29 @@ Die Doku ist deutsch, der Code englisch. Hinter jedem Begriff steht in Klammern 
   eines zum Einrichten (`enroll-…`), eines zum Anmelden (`auth-…`).
 - **Identifizierung**: ein Tool, das bestätigt, wer jemand ist (`ident-fsc`, `ident-eid`,
   `ident-nect`).
-- **Niveau** (`acr`, Werte `loa1`, `loa2`, `loa3`): wie sehr einer Anmeldung vertraut wird.
-- **Nachweis** (`AuthEvidence`, daraus `acr` und `amr`): was in der laufenden Sitzung bewiesen
+- **Niveau**, ausführlich **Sicherheitsniveau** (`acr`, Werte `loa1`, `loa2`, `loa3`): wie sehr einer
+  Anmeldung vertraut wird.
+- **Nachweis** (`SessionEvidence`, daraus `acr` und `amr`): was in der laufenden Sitzung bewiesen
   wurde.
-- **Tokens der App** (`AuthContext`): die Tokens des App-Kanals, gekoppelt an dessen Nachweis.
-- **Bestätigte Angabe** (`AccountClaim`, Tabelle `account.claim`): ein Eintrag im Konto, dass ein
-  Attribut einen bestimmten Wert hat, mit der Quelle, die dafür einsteht.
+- **Tokens der App** (`AppTokenSession`): die Tokens des App-Kanals, gekoppelt an dessen Nachweis.
+- **Angabe** (`AccountClaim`, Tabelle `account.claim`): ein Eintrag im Konto, dass ein Attribut einen
+  bestimmten Wert hat, mit der Quelle, die dafür einsteht, und einer Stufe: *belegt*, *nachgewiesen*
+  oder *behauptet* (`ClaimTrust`).
 - **Bestätigen** (`attest`, `ToolOutcome.Completed.Attested`): ein Attribut als geprüft melden,
   etwa die E-Mail-Adresse.
-- **Widerruf** (`AccountRetraction`, Tabelle `account.retraction`): eine bestätigte Angabe
+- **Widerruf** (`AccountRetraction`, Tabelle `account.retraction`): eine Angabe
   zurücknehmen.
 - **Anker** (`AccountAnchor`, Tabelle `account.anchor`): ein Attribut, über das ein Konto
   eindeutig wiedergefunden wird, etwa die Partnernummer oder die bestätigte E-Mail-Adresse.
 - **Rolle** (nicht gespeichert, abgeleitet aus den Ankern): ein Konto ohne zugeordnete Person ist
-  ein **Interessent**, mit Partnernummer ein **Partner**, mit Versicherungsnummer ein
-  **Versicherter** ([ADR-34](adr/ADR-034-personenverzeichnis-meldet-aenderungen.md)).
+  ein **Interessent**, mit Partnernummer ein **Partner**, mit Mitgliedsnummer (auch
+  Mitgliedsnummer genannt) ein **Versicherter** ([ADR-34](adr/ADR-034-personenverzeichnis-meldet-aenderungen.md)).
 - **Mindestniveau für einen Anker** (`AnchorRule.acrFloor`): welches Niveau nötig ist, um einen
   Anker zu schreiben.
 - **Obergrenze eines Verfahrens** (`maxAcr`, `enrolledUnderAcr`): das höchste Niveau, das ein
   Verfahren technisch hergibt bzw. unter dem es eingerichtet wurde.
 - **Einladung** und **Einmalkennwort** (`auth-invite`, [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)):
-  Das Personenverzeichnis lädt eine Person per Brief zu einem **Vorgang** ein. Mit Versicherungs-
+  Das Personenverzeichnis lädt eine Person per Brief zu einem **Vorgang** ein. Mit Mitglieds-
   oder Partnernummer und dem Einmalkennwort meldet sie sich auf der Website an, auch ohne Konto; die
   Tokens tragen den Vorgang (`process`) und gelten nur für ihn. Das Kennwort gilt bis zur Frist oder
   bis der Vorgang abgeschlossen ist.
@@ -144,7 +146,7 @@ Die Sitzungen sind ineinander geschachtelt, von lang- zu kurzlebig:
   bleibt nur die Geräteverknüpfung. Mit der Anmeldung öffnet er genau eine Keycloak-Sitzung und
   lebt von da an nicht länger als sie; wie lange, bestimmt Keycloak
   ([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)).
-- **`AuthJourney`**: ein Durchlauf zu einem Ziel, solange er läuft.
+- **`AuthJourney`**: ein Durchlauf zu einem Intent, solange er läuft.
 - **`ToolSession`**: ein einzelnes Tool, oft nur Minuten. Sie hält nur den Lebenszyklus; die
   Fachdaten (TAN, Freischaltcode) bleiben im Modul des Tools.
 
@@ -165,7 +167,7 @@ das höchste erreichbare Niveau. Es gibt keine zentral gepflegte Liste, die man 
 eines Verfahrens vergessen könnte.
 
 Über die Grenze eines Moduls geht nur ein `ToolOutcome`: Das Tool läuft noch, ist abgeschlossen
-oder ist fehlgeschlagen. Was ein Tool geprüft hat, meldet es als bestätigte Angabe (`Claim`).
+oder ist fehlgeschlagen. Was ein Tool geprüft hat, meldet es als Angabe (`Claim`).
 
 Details: [03-tool-architektur.md](03-tool-architektur.md)
 
@@ -190,7 +192,7 @@ das Ergebnis (Konto anlegen, Verfahren einrichten, Nachweis übernehmen) und fra
 `AuthPolicy`, ob die Nachweise für das verlangte Niveau reichen. Nur die Policy weiß, was eine
 *Kombination* von Nachweisen bedeutet; ein Modul kennt nur sich selbst.
 
-Für jedes Ziel gibt es ein Zustandsdiagramm in [journeys/](journeys/); ein Test prüft, dass es zum
+Für jeden Intent gibt es ein Zustandsdiagramm in [journeys/](journeys/); ein Test prüft, dass es zum
 Code passt.
 
 Details: [04-orchestrierung.md](04-orchestrierung.md)
@@ -202,7 +204,7 @@ Details: [04-orchestrierung.md](04-orchestrierung.md)
 **App – der Orchestrator führt.**
 
 1. Die App legt per `POST /app/channels` einen Kanal an; jede Anfrage trägt einen DPoP-Beweis.
-2. Der Orchestrator startet eine Journey zum Ziel des Kanals (meist `FAST_ACCESS`) und bietet die
+2. Der Orchestrator startet eine Journey zum Intent des Kanals (meist `FAST_ACCESS`) und bietet die
    Verfahren an, die ihr Zustand zulässt.
 3. Ist die Anmeldung erfolgreich, holt der Orchestrator die Tokens bei Keycloak; der Kanal ist
    `AUTHENTICATED`.
@@ -214,7 +216,7 @@ Details: [04-orchestrierung.md](04-orchestrierung.md)
 
 1. Keycloaks Anmeldung ruft bei Bedarf über eine eigene Erweiterung den Orchestrator auf, von
    Server zu Server. Sie weist sich mit einer signierten Assertion aus statt mit DPoP.
-2. Der Orchestrator startet die Journey `KC_SELECT_METHOD` und bietet alle im Web nutzbaren Tools
+2. Der Orchestrator startet die Journey `WEB_SELECT_METHOD` und bietet alle im Web nutzbaren Tools
    in einem Auswahlschritt an.
 3. Keycloak zeigt das passende Formular und reicht die Eingaben an dieselben Tool-Endpunkte weiter,
    die auch die App nutzt.
@@ -253,7 +255,7 @@ liegen in fünf Gruppen, der Ordner sagt also schon, was ein Modul ist
 ([Projektrahmen](08-projektrahmen.md) Abschnitt 3):
 
 - **`core/`**: `orchestrator` (Kanäle, Journeys, Policy, die REST-API der Kanäle und die
-  Schnittstelle für Keycloak) und `account` (Konten, bestätigte Angaben, Anker, Anmeldeverfahren).
+  Schnittstelle für Keycloak) und `account` (Konten, Angaben, Anker, Anmeldeverfahren).
 - **`contract/`**: `tool_api`, der Vertrag zwischen Orchestrator und Verfahren, und `texts`.
 - **`tools/`**: die Verfahren, je ein Modul mit eigenen Tool-Endpunkten (`ident_*`, `auth_*`). Sie
   erreichen den Orchestrator nur über `tool_api`.
@@ -273,9 +275,9 @@ dort:
 
 - `orchestrator/domain/`: das Vokabular (`AuthIntent`, `AcrLevels`, `ToolCatalog`, Fehlercodes).
 - `orchestrator/domain/journey/`: `IntentStrategy` mit `Transition` und `Action`, darunter die
-  Zustände (`state/`) und die Strategie je Ziel (`strategy/`), dazu `AccountRules.kt` und
+  Zustände (`state/`) und die Strategie je Intent (`strategy/`), dazu `AccountRules.kt` und
   `CredentialRules.kt`.
-- `orchestrator/domain/policy/`: `AuthPolicy`, `DefaultAuthPolicy`, `AuthEvidence`.
+- `orchestrator/domain/policy/`: `AuthPolicy`, `DefaultAuthPolicy`, `SessionEvidence`.
 - `account/domain/`: `AnchorDecision`, `ClaimValues`, `PassportForm`.
 
 Außen herum liegt die Technik: `JourneyService` und `JourneyActionExecutor` lesen, fragen die

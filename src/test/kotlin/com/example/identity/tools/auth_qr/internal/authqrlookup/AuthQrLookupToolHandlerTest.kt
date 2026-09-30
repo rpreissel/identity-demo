@@ -88,7 +88,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, confirmationCode = "000000")
 
             then("it fails without charging the approving account: the guess was the pairing's code, not its secret") {
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("Bestätigungscode falsch"), attempted = null)
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(Text("Bestätigungscode falsch"), attempted = null)
             }
         }
 
@@ -115,7 +115,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, confirmationCode = "000000")
 
             then("it says the pairing is burned, still naming no account") {
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(
                     Text("Zu viele falsche Bestätigungscodes. Bitte starten Sie die Anmeldung per QR-Code neu."),
                     attempted = null,
                 )
@@ -130,7 +130,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, confirmationCode = "123456")
 
             then("it does not log in a second browser") {
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("Anfrage wurde bereits bearbeitet oder ist abgelaufen"), attempted = null)
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(Text("Anfrage wurde bereits bearbeitet oder ist abgelaufen"), attempted = null)
             }
         }
     }
@@ -142,7 +142,7 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, confirmationCode = null)
 
             then("it fails as declined, naming no account") {
-                outcome shouldBe ToolOutcome.Failed.LookupAuth(Text("Vom Nutzer abgelehnt"), attempted = null)
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(Text("Vom Nutzer abgelehnt"), attempted = null)
             }
         }
     }

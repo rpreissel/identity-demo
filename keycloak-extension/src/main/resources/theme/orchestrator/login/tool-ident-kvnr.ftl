@@ -13,7 +13,7 @@
             <p class="orchestrator-hint">
                 ${t.of("Ihre Identität ist bereits nachgewiesen. Die Versichertennummer - oder ohne sie die Partnernummer - muss zu dieser Person gehören.")}
             </p>
-            <@demoPerson.personPicker personsJson=demoPersonsJson! fieldMapJson='{"kvnr":"kvnr","partnernr":"personId"}' />
+            <@demoPerson.personPicker personsJson=demoPersonsJson! fieldMapJson='{"kvnr":"kvnr","partnerNumber":"personId"}' />
             <div class="${properties.kcFormGroupClass!}">
                 <label for="kvnr" class="${properties.kcLabelClass!}">${t.of("Versichertennummer")}</label>
                 <input type="text" id="kvnr" name="kvnr" class="${properties.kcInputClass!}"/>
@@ -21,8 +21,8 @@
             <#-- The KVNR comes first; the Partnernummer only counts without one (ADR-34). -->
             <details class="${properties.kcFormGroupClass!}">
                 <summary>${t.of("Ich habe keine Versichertennummer")}</summary>
-                <label for="partnernr" class="${properties.kcLabelClass!}">${t.of("Partnernummer")}</label>
-                <input type="text" id="partnernr" name="partnernr" class="${properties.kcInputClass!}" placeholder="P000000000"/>
+                <label for="partnerNumber" class="${properties.kcLabelClass!}">${t.of("Partnernummer")}</label>
+                <input type="text" id="partnerNumber" name="partnerNumber" class="${properties.kcInputClass!}" placeholder="P000000000"/>
             </details>
             <div class="orchestrator-actions">
                 <button class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!}" type="submit">${t.of("Zuordnen")}</button>

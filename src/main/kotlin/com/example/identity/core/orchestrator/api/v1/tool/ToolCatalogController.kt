@@ -16,7 +16,7 @@ import com.example.identity.contract.tool_api.envelope.API_V1
 data class ToolCatalogEntry(
     @field:Schema(example = "auth-sms") val toolId: String,
     @field:Schema(example = "sms") val method: String,
-    @field:Schema(example = "IDENTIFIED_AUTH") val role: String
+    @field:Schema(example = "KNOWN_ACCOUNT_AUTH") val role: String
 )
 
 /**
@@ -39,8 +39,8 @@ class ToolCatalogController(private val toolRegistry: ToolHandlerRegistry) {
                     [
                       {"toolId": "ident-fsc", "method": "fsc", "role": "IDENTIFICATION"},
                       {"toolId": "enroll-sms", "method": "sms", "role": "ENROLLMENT"},
-                      {"toolId": "auth-sms", "method": "sms", "role": "IDENTIFIED_AUTH"},
-                      {"toolId": "auth-sms-lookup", "method": "sms", "role": "LOOKUP_AUTH"}
+                      {"toolId": "auth-sms", "method": "sms", "role": "KNOWN_ACCOUNT_AUTH"},
+                      {"toolId": "auth-sms-lookup", "method": "sms", "role": "ACCOUNT_LOOKUP_AUTH"}
                     ]
                 """)])]
             )

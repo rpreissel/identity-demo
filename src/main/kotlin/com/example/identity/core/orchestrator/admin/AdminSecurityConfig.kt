@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.admin
 
-import com.example.identity.core.orchestrator.session.AttemptCounter
+import com.example.identity.core.orchestrator.session.RateLimitCounter
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -29,10 +29,10 @@ class AdminSecurityConfig {
 
     @Bean
     @Order(1)
-    fun adminChain(http: HttpSecurity, attemptCounter: AttemptCounter): SecurityFilterChain =
+    fun adminChain(http: HttpSecurity, rateLimitCounter: RateLimitCounter): SecurityFilterChain =
         http
             .securityMatcher("$ADMIN_API/**")
-            .addFilterBefore(AdminLoginThrottleFilter(attemptCounter), BasicAuthenticationFilter::class.java)
+            .addFilterBefore(AdminLoginRateLimitFilter(rateLimitCounter), BasicAuthenticationFilter::class.java)
             .authorizeHttpRequests { it.anyRequest().hasRole(ADMIN_ROLE) }
             .httpBasic { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }
             .csrf { it.disable() }

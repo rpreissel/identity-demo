@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodName
 import com.example.identity.core.orchestrator.domain.AmrSource
@@ -36,7 +36,7 @@ class RestoreDataCodec(private val clock: Clock, private val ttl: Duration = TTL
             .issueTime(Date.from(now))
             .expirationTime(Date.from(now.plus(ttl)))
             .claim("accountId", restoreData.accountId)
-            .claim("factors", restoreData.evidence?.factors?.map { it.toClaim() })
+            .claim("methods", restoreData.evidence?.methods?.map { it.toClaim() })
             .build()
         val jwt = SignedJWT(JWSHeader(JWSAlgorithm.HS256), claims)
         jwt.sign(MACSigner(secret))
@@ -56,11 +56,11 @@ class RestoreDataCodec(private val clock: Clock, private val ttl: Duration = TTL
             if (claims.subject != kcSessionId) return null
             if (claims.expirationTime?.before(Date.from(clock.instant())) != false) return null
             @Suppress("UNCHECKED_CAST")
-            val factorsClaim = claims.getClaim("factors") as? List<Map<String, Any?>>
-            val factors = factorsClaim?.map { it.toMethodEvidence() }
+            val methodsClaim = claims.getClaim("methods") as? List<Map<String, Any?>>
+            val methods = methodsClaim?.map { it.toMethodEvidence() }
             RestoreData(
                 accountId = (claims.getClaim("accountId") as? Number)?.toLong(),
-                evidence = factors?.takeIf { it.isNotEmpty() }?.let { AuthEvidence(it) }
+                evidence = methods?.takeIf { it.isNotEmpty() }?.let { SessionEvidence(it) }
             )
         } catch (e: Exception) {
             null

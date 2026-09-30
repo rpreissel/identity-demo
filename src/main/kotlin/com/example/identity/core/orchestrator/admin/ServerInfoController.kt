@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.util.concurrent.TimeUnit
 
-/** [channel]: APP or KEYCLOAK - a lock applies to one channel type. */
+/** [channel]: APP or WEB - a lock applies to one channel type. */
 data class DisabledToolView(val toolId: String, val channel: String, val reason: String?)
 
 /**

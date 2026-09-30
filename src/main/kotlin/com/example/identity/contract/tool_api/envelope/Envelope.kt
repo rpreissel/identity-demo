@@ -44,7 +44,7 @@ data class ActiveMethodView(
 data class ChannelBlock(
     val channelSessionId: UUID,
     @field:Schema(
-        description = "Which facade this channel was opened through - APP (DPoP) or KEYCLOAK " +
+        description = "Which facade this channel was opened through - APP (DPoP) or WEB " +
             "(docs/02-domaenenmodell.md Abschnitt 1). Fixed for the channel's whole lifetime.",
         example = "APP"
     )
@@ -75,7 +75,7 @@ data class ChannelBlock(
 
 /**
  * What the kc-facade's `OrchestratorAuthenticator` writes into Keycloak's session notes on every
- * response (docs/05-api.md Abschnitt 3), for `KEYCLOAK` channels only. Not gated on a proven
+ * response (docs/05-api.md Abschnitt 3), for `WEB` channels only. Not gated on a proven
  * factor: Keycloak sets its user context from `subject` as soon as it is known.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -125,7 +125,7 @@ data class ChannelResponse(
     val stepData: StepData? = null,
     @field:Schema(description = "Demo-only correlation IDs, never part of the production contract.")
     val demo: DemoInfo? = null,
-    @field:Schema(description = "KEYCLOAK channels only (docs/05-api.md Abschnitt 3) - never present for APP.")
+    @field:Schema(description = "WEB channels only (docs/05-api.md Abschnitt 3) - never present for APP.")
     val authData: AuthData? = null
 )
 

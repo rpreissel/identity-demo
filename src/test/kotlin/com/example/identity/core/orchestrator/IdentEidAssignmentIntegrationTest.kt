@@ -18,7 +18,7 @@ import org.springframework.web.client.HttpClientErrorException
 /**
  * The two acts of an eID run (docs/12-entscheidungen.md ADR-18): `ident-eid` attests the card, then
  * `ident-kvnr` is offered directly to bind the register's person. Abandoning that step is a valid
- * outcome: the account stays an Interessent (ADR-10) with an attested identity.
+ * outcome: the account stays a prospect (ADR-10) with an attested identity.
  */
 class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
 
@@ -54,7 +54,7 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
         fun activateAssignment(channelSessionId: String): String =
             post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-kvnr").nextRaw()["toolSessionId"] as String
 
-        /** How many PERSON_ID anchors the channel's account has - 0 for an Interessent, 1 once bound. */
+        /** How many PERSON_ID anchors the channel's account has - 0 for a prospect, 1 once bound. */
         fun personAnchorsOf(channelSessionId: String): Int = jdbcTemplate.queryForObject(
             """
             SELECT COUNT(*) FROM account.anchor an
@@ -65,11 +65,11 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
             channelSessionId
         )!!
 
-        /** The raw `amr_evidence` JSON of this channel, read from the row so no endpoint shape matters. */
+        /** The raw `methods` JSON of this channel, read from the row so no endpoint shape matters. */
         fun evidenceJsonOf(channelSessionId: String): String = jdbcTemplate.queryForObject(
             """
-            SELECT ae.amr_evidence FROM orchestrator.auth_evidence ae
-            JOIN orchestrator.channel_session cs ON cs.auth_evidence_id = ae.id
+            SELECT ae.methods FROM orchestrator.session_evidence ae
+            JOIN orchestrator.channel_session cs ON cs.session_evidence_id = ae.id
             WHERE cs.id = CAST(? AS UUID)
             """,
             String::class.java,
@@ -168,9 +168,9 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
         }
 
         // ADR-20 through the email anchor: a confirmed address resolves accounts, so the
-        // provisional account goes into the one that holds it. Skipping the KVNR step is no dead end.
+        // disposable account goes into the one that holds it. Skipping the KVNR step is no dead end.
         given("an Interessent confirming an address that belongs to their own account") {
-            then("the provisional account goes into it, and the run continues there") {
+            then("the disposable account goes into it, and the run continues there") {
                 val existing = accountFixtures.seedAccount(
                     kvnr = "B987654321", name = "Beispiel", vorname = "Erika",
                     email = "erika.beispiel@example.com",
@@ -178,14 +178,14 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 )
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 attestAsErika(channelSessionId)
-                val provisional = checkNotNull(accountIdOf(channelSessionId)) { "the attestation created no account" }
+                val disposable = checkNotNull(accountIdOf(channelSessionId)) { "the attestation created no account" }
                 delete("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr")
 
                 confirmAddress(channelSessionId, "erika.beispiel@example.com")
 
                 accountIdOf(channelSessionId) shouldBe existing
                 jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.account WHERE id = ?", Int::class.java, provisional
+                    "SELECT COUNT(*) FROM account.account WHERE id = ?", Int::class.java, disposable
                 ) shouldBe 0
                 // The attestation came along - her card now recognizes this account (ADR-19).
                 restrictedIdAnchorsOf(existing) shouldBe 1
@@ -202,7 +202,7 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 // Max's card, Erika's address.
                 attestViaEid(channelSessionId)
-                val provisional = checkNotNull(accountIdOf(channelSessionId)) { "the attestation created no account" }
+                val disposable = checkNotNull(accountIdOf(channelSessionId)) { "the attestation created no account" }
                 delete("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr")
 
                 val conflict = assertThrows<HttpClientErrorException> {
@@ -210,20 +210,20 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 }
 
                 conflict.statusCode shouldBe HttpStatus.CONFLICT
-                accountIdOf(channelSessionId) shouldBe provisional
+                accountIdOf(channelSessionId) shouldBe disposable
             }
         }
 
         given("an eID attestation whose KVNR belongs to an account that already exists") {
-            then("the provisional account yields, the run continues on the existing one") {
+            then("the disposable account yields, the run continues on the existing one") {
                 val existing = accountFixtures.seedAccount(
                     kvnr = "A123456789", name = "Muster", vorname = "Max",
                     methods = listOf(AccountFixtures.Method.Sms(), AccountFixtures.Method.Password())
                 )
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 attestViaEid(channelSessionId)
-                val provisional = checkNotNull(accountIdOf(channelSessionId)) { "the attestation created no account" }
-                provisional shouldNotBe existing
+                val disposable = checkNotNull(accountIdOf(channelSessionId)) { "the attestation created no account" }
+                disposable shouldNotBe existing
 
                 val toolSessionId = activateAssignment(channelSessionId)
                 val assigned = patch("/orchestrator/api/v1/tools/$toolSessionId/ident-kvnr", """{"kvnr":"A123456789"}""")
@@ -231,7 +231,7 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 // The run moved over, and the placeholder is gone rather than left as a stray.
                 accountIdOf(channelSessionId) shouldBe existing
                 jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.account WHERE id = ?", Int::class.java, provisional
+                    "SELECT COUNT(*) FROM account.account WHERE id = ?", Int::class.java, disposable
                 ) shouldBe 0
                 // The attestation came along - the card's own anchor now recognizes this account.
                 restrictedIdAnchorsOf(existing) shouldBe 1

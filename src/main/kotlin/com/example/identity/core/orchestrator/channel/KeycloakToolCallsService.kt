@@ -26,16 +26,16 @@ class KeycloakToolCallsService(
 ) : KeycloakToolCalls {
 
     override fun requireKeycloakFor(accountId: Long, bindingKeyRef: String) {
-        if (bindingKeyRef != DeviceChannelAccessGuard.KC_ANCHOR_PREFIX + accountId) {
-            throw PeerAuthValidationException("Peer-auth channel_anchor does not match accountId")
+        if (bindingKeyRef != DeviceChannelAccessGuard.KC_BINDING_PREFIX + accountId) {
+            throw PeerAuthValidationException("Peer-auth channel_binding does not match accountId")
         }
     }
 
     override fun apply(accountId: Long, descriptor: ToolDescriptor, outcome: ToolOutcome) {
         when (outcome) {
-            is ToolOutcome.Failed.IdentifiedAuth -> {
+            is ToolOutcome.Failed.KnownAccountAuth -> {
                 checkFits(outcome.fits(descriptor.role), descriptor, outcome)
-                accountLockoutService.recordFailure(accountId, ChannelType.KEYCLOAK.name, descriptor.method)
+                accountLockoutService.recordFailure(accountId, ChannelType.WEB.name, descriptor.method)
             }
             is ToolOutcome.Completed.Authenticated -> {
                 checkFits(outcome.fits(descriptor.role), descriptor, outcome)

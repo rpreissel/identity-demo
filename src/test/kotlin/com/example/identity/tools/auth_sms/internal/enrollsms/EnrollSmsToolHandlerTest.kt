@@ -5,7 +5,7 @@ import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollment
-import com.example.identity.tools.auth_sms.internal.SmsSendBudget
+import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 
 import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -40,8 +40,8 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
     val enrollmentRepository = mockk<AuthSmsEnrollmentRepository>()
     // Explicit pepper so issue()/matches() stay reproducible within the test run.
     val tanGenerator = TanGenerator("test-pepper", clock = TEST_CLOCK)
-    val sendBudget = mockk<SmsSendBudget>(relaxed = true).also { every { it.trySend(any()) } returns true }
-    val handler = EnrollSmsToolHandler(EnrollSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = TEST_CLOCK), sendBudget, clock = TEST_CLOCK)
+    val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
+    val handler = EnrollSmsToolHandler(EnrollSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = TEST_CLOCK), sendLimit, clock = TEST_CLOCK)
     val toolSessionId = UUID.randomUUID()
 
     given("an active enroll-sms tool session with no phone number yet") {
@@ -66,7 +66,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
     given("an active enroll-sms tool session whose number has used up its send budget") {
         val data = EnrollSmsToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
         every { toolDataRepository.findById(toolSessionId) } returns Optional.of(data)
-        every { sendBudget.trySend("+491709999999") } returns false
+        every { sendLimit.trySend("+491709999999") } returns false
 
         `when`("submitting that number") {
             val result = runCatching { handler.patch(toolSessionId, phoneNumber = "+49 170 9999999", tan = null) }
@@ -106,7 +106,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
             then("the number's send budget starts over: whoever asked received the TAN") {
                 handler.patch(toolSessionId, phoneNumber = null, tan = issued.plainTan)
 
-                verify { sendBudget.received("+491701234567") }
+                verify { sendLimit.received("+491701234567") }
             }
 
             // The confirmed number is an assertion about the subject, so it reaches the account's

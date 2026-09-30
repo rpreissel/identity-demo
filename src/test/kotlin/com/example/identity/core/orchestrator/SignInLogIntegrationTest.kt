@@ -51,9 +51,9 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
         patch("/orchestrator/api/v1/tools/$toolSessionId/auth-password", """{"password":"wrong-password-123"}""")
     }
 
-    private fun stubAssertion(anchor: String) {
+    private fun stubAssertion(binding: String) {
         every { peerAuthValidator.validate(any(), any(), any()) } returns
-            PeerAuthAssertion(jti = UUID.randomUUID().toString(), issuedAt = Instant.now(), channelAnchor = anchor, subject = null)
+            PeerAuthAssertion(jti = UUID.randomUUID().toString(), issuedAt = Instant.now(), channelBinding = binding, subject = null)
     }
 
     private fun kcPost(path: String, body: String? = null) =
@@ -126,7 +126,7 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
 
                 val failed = signInLog.of(accountId).single()
                 failed.signInType shouldBe "SIGN_IN_FAILED"
-                failed.channel shouldBe "KEYCLOAK"
+                failed.channel shouldBe "WEB"
             }
         }
 
@@ -139,10 +139,10 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
 
                 val signedOut = signInLog.of(accountId).single()
                 signedOut.signInType shouldBe "SIGNED_OUT"
-                signedOut.channel shouldBe "KEYCLOAK"
+                signedOut.channel shouldBe "WEB"
             }
 
-            then("a report anchored to another account is refused and logs nothing") {
+            then("a report bound to another account is refused and logs nothing") {
                 val accountId = seedRegisteredAccount()
                 stubAssertion("someone-else")
 

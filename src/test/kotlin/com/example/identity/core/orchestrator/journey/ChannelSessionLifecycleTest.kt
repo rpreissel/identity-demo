@@ -5,9 +5,9 @@ import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.ErrorCode
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.kc.KeycloakSessionEnded
-import com.example.identity.core.orchestrator.session.AppLoginSession
-import com.example.identity.core.orchestrator.session.AuthContext
-import com.example.identity.core.orchestrator.session.AuthContextService
+import com.example.identity.core.orchestrator.session.AppTokenIssuer
+import com.example.identity.core.orchestrator.session.AppTokenSession
+import com.example.identity.core.orchestrator.session.AppTokenSessionService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.SessionExpiredException
 import com.example.identity.core.orchestrator.session.SessionManagementService
@@ -35,16 +35,16 @@ import java.util.UUID
 class ChannelSessionLifecycleTest : BehaviorSpec({
 
     class Fixture {
-        val appLoginSession = mockk<AppLoginSession>()
-        val authContextService = mockk<AuthContextService>()
+        val appTokenIssuer = mockk<AppTokenIssuer>()
+        val appTokenSessionService = mockk<AppTokenSessionService>()
         val sessionManagementService = mockk<SessionManagementService>()
         val journeyRecorder = mockk<JourneyRecorder>(relaxed = true)
         val eventPublisher = mockk<ApplicationEventPublisher>(relaxed = true)
-        val lifecycle = ChannelSessionLifecycle(appLoginSession, authContextService, sessionManagementService, journeyRecorder, eventPublisher)
+        val lifecycle = ChannelSessionLifecycle(appTokenIssuer, appTokenSessionService, sessionManagementService, journeyRecorder, eventPublisher)
 
         init {
             every { sessionManagementService.updateChannelSession(any()) } answers { firstArg() }
-            every { authContextService.save(any()) } answers { firstArg() }
+            every { appTokenSessionService.save(any()) } answers { firstArg() }
         }
     }
 
@@ -54,24 +54,24 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
     fun tokenPair() = TokenPair("access", Instant.now().plusSeconds(60), Instant.now().plusSeconds(600))
 
     /** A logged-in context with tokens, as the channel carries it before [ChannelSessionLifecycle.end]. */
-    fun loggedInContext(keycloakSessionId: String?) = AuthContext(accountId = 1L, keycloakSessionId = keycloakSessionId, now = Instant.now()).apply {
-        authContextId = UUID.randomUUID()
+    fun loggedInContext(keycloakSessionId: String?) = AppTokenSession(accountId = 1L, keycloakSessionId = keycloakSessionId, now = Instant.now()).apply {
+        appTokenSessionId = UUID.randomUUID()
         accessToken = "access"
         refreshToken = "refresh"
         accessExpiresAt = Instant.now().plusSeconds(60)
         refreshExpiresAt = Instant.now().plusSeconds(600)
     }
 
-    given("open() on a KEYCLOAK channel") {
+    given("open() on a WEB channel") {
         val f = Fixture()
-        val channel = channel(ChannelType.KEYCLOAK)
+        val channel = channel(ChannelType.WEB)
 
         `when`("the channel logs in") {
             val gone = f.lifecycle.open(channel)
 
             then("it fetches no token, since Keycloak opened the session itself") {
                 gone.shouldBeNull()
-                verify(exactly = 0) { f.appLoginSession.tokenFor(any(), any()) }
+                verify(exactly = 0) { f.appTokenIssuer.tokenFor(any(), any()) }
             }
         }
     }
@@ -79,14 +79,14 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
     given("open() on an APP channel whose token request succeeds") {
         val f = Fixture()
         val channel = channel(ChannelType.APP)
-        every { f.appLoginSession.tokenFor(channel, any()) } returns tokenPair()
+        every { f.appTokenIssuer.tokenFor(channel, any()) } returns tokenPair()
 
         `when`("the channel logs in") {
             val gone = f.lifecycle.open(channel)
 
             then("it fetches the token and reports no loss") {
                 gone.shouldBeNull()
-                verify(exactly = 1) { f.appLoginSession.tokenFor(channel, any()) }
+                verify(exactly = 1) { f.appTokenIssuer.tokenFor(channel, any()) }
             }
         }
     }
@@ -95,7 +95,7 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
         val f = Fixture()
         val channel = channel(ChannelType.APP)
         val expired = SessionExpiredException("expired")
-        every { f.appLoginSession.tokenFor(channel, any()) } throws expired
+        every { f.appTokenIssuer.tokenFor(channel, any()) } throws expired
 
         `when`("the channel logs in") {
             val gone = f.lifecycle.open(channel)
@@ -109,7 +109,7 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
     given("open() on an APP channel whose session Keycloak refuses") {
         val f = Fixture()
         val channel = channel(ChannelType.APP)
-        every { f.appLoginSession.tokenFor(channel, any()) } throws SessionRefusedException("refused")
+        every { f.appTokenIssuer.tokenFor(channel, any()) } throws SessionRefusedException("refused")
 
         `when`("the channel logs in") {
             val result = runCatching { f.lifecycle.open(channel) }
@@ -121,16 +121,16 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
         }
     }
 
-    given("keepAlive() on a logged-in KEYCLOAK channel") {
+    given("keepAlive() on a logged-in WEB channel") {
         val f = Fixture()
-        val channel = channel(ChannelType.KEYCLOAK)
+        val channel = channel(ChannelType.WEB)
 
         `when`("the channel is used") {
             val gone = f.lifecycle.keepAlive(channel)
 
             then("it renews nothing") {
                 gone.shouldBeNull()
-                verify(exactly = 0) { f.appLoginSession.keepAlive(any()) }
+                verify(exactly = 0) { f.appTokenIssuer.keepAlive(any()) }
             }
         }
     }
@@ -144,7 +144,7 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
 
             then("it renews nothing, since there is no session yet") {
                 gone.shouldBeNull()
-                verify(exactly = 0) { f.appLoginSession.keepAlive(any()) }
+                verify(exactly = 0) { f.appTokenIssuer.keepAlive(any()) }
             }
         }
     }
@@ -152,14 +152,14 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
     given("keepAlive() on a logged-in APP channel") {
         val f = Fixture()
         val channel = channel(ChannelType.APP)
-        justRun { f.appLoginSession.keepAlive(channel) }
+        justRun { f.appTokenIssuer.keepAlive(channel) }
 
         `when`("the channel is used") {
             val gone = f.lifecycle.keepAlive(channel)
 
             then("it renews the session and reports no loss") {
                 gone.shouldBeNull()
-                verify(exactly = 1) { f.appLoginSession.keepAlive(channel) }
+                verify(exactly = 1) { f.appTokenIssuer.keepAlive(channel) }
             }
         }
     }
@@ -168,7 +168,7 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
         val f = Fixture()
         val channel = channel(ChannelType.APP)
         val expired = SessionExpiredException("expired")
-        every { f.appLoginSession.keepAlive(channel) } throws expired
+        every { f.appTokenIssuer.keepAlive(channel) } throws expired
 
         `when`("the channel is used") {
             val gone = f.lifecycle.keepAlive(channel)
@@ -183,7 +183,7 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
         val f = Fixture()
         val channel = channel(ChannelType.APP)
         val refused = SessionRefusedException("refused")
-        every { f.appLoginSession.keepAlive(channel) } throws refused
+        every { f.appTokenIssuer.keepAlive(channel) } throws refused
 
         `when`("the channel is used") {
             val gone = f.lifecycle.keepAlive(channel)
@@ -211,10 +211,10 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
         val f = Fixture()
         val context = loggedInContext(keycloakSessionId = "kc-session-1")
         val channel = channel(ChannelType.APP).apply {
-            authContextId = context.authContextId
-            authEvidenceId = UUID.randomUUID()
+            appTokenSessionId = context.appTokenSessionId
+            sessionEvidenceId = UUID.randomUUID()
         }
-        every { f.authContextService.getAuthContext(context.authContextId!!) } returns context
+        every { f.appTokenSessionService.getAppTokenSession(context.appTokenSessionId!!) } returns context
 
         `when`("the holder logs out") {
             f.lifecycle.end(channel, ChannelState.LOGGED_OUT)
@@ -232,13 +232,13 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
                 context.refreshToken.shouldBeNull()
                 context.accessExpiresAt.shouldBeNull()
                 context.refreshExpiresAt.shouldBeNull()
-                verify(exactly = 1) { f.authContextService.save(context) }
+                verify(exactly = 1) { f.appTokenSessionService.save(context) }
             }
 
             then("the channel ends in the final state, detached from context and evidence") {
                 channel.state shouldBe ChannelState.LOGGED_OUT
-                channel.authContextId.shouldBeNull()
-                channel.authEvidenceId.shouldBeNull()
+                channel.appTokenSessionId.shouldBeNull()
+                channel.sessionEvidenceId.shouldBeNull()
                 verify(exactly = 1) { f.sessionManagementService.updateChannelSession(channel) }
             }
         }
@@ -247,8 +247,8 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
     given("end() on an APP channel whose session expired") {
         val f = Fixture()
         val context = loggedInContext(keycloakSessionId = "kc-session-2")
-        val channel = channel(ChannelType.APP).apply { authContextId = context.authContextId }
-        every { f.authContextService.getAuthContext(context.authContextId!!) } returns context
+        val channel = channel(ChannelType.APP).apply { appTokenSessionId = context.appTokenSessionId }
+        every { f.appTokenSessionService.getAppTokenSession(context.appTokenSessionId!!) } returns context
 
         `when`("the channel expires") {
             f.lifecycle.end(channel, ChannelState.EXPIRED)
@@ -265,11 +265,11 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
         }
     }
 
-    given("end() on a logged-in KEYCLOAK channel") {
+    given("end() on a logged-in WEB channel") {
         val f = Fixture()
         val context = loggedInContext(keycloakSessionId = "kc-session-3")
-        val channel = channel(ChannelType.KEYCLOAK).apply { authContextId = context.authContextId }
-        every { f.authContextService.getAuthContext(context.authContextId!!) } returns context
+        val channel = channel(ChannelType.WEB).apply { appTokenSessionId = context.appTokenSessionId }
+        every { f.appTokenSessionService.getAppTokenSession(context.appTokenSessionId!!) } returns context
 
         `when`("the holder logs out") {
             f.lifecycle.end(channel, ChannelState.LOGGED_OUT)
@@ -282,7 +282,7 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
                 context.accessToken.shouldBeNull()
                 context.refreshToken.shouldBeNull()
                 channel.state shouldBe ChannelState.LOGGED_OUT
-                channel.authContextId.shouldBeNull()
+                channel.appTokenSessionId.shouldBeNull()
             }
         }
     }

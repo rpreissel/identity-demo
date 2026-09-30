@@ -36,7 +36,7 @@ class AuthPasswordLookupToolHandler(
 
     /**
      * [accountId]/[enrollmentRef] are null for an unknown email, no active password method, or a
-     * throttled account. The failure looks the same in every case (enumeration protection,
+     * rate-limited account. The failure looks the same in every case (enumeration protection,
      * docs/04-orchestrierung.md), and costs the same: `PasswordHasher.matches` runs unconditionally.
      */
     @Transactional
@@ -68,7 +68,7 @@ class AuthPasswordLookupToolHandler(
                     // Naming the account here is what lets the orchestrator count this attempt;
                     // the client-facing part of the outcome stays identical for known and unknown
                     // addresses.
-                    ToolOutcome.Failed.LookupAuth(Text("E-Mail oder Passwort ungueltig"), attempted = accountId?.let(Attempted::Account))
+                    ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder Passwort ungueltig"), attempted = accountId?.let(Attempted::Account))
                 }
             }
         }

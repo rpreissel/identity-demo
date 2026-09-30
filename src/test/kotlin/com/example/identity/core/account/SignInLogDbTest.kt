@@ -31,7 +31,7 @@ class SignInLogDbTest(
     given("an account that signed in") {
         `when`("the account is deleted") {
             clearAccounts()
-            val accountId = accountService.createUnidentifiedAccount().accountId
+            val accountId = accountService.createAccountInSetup().accountId
             signInLog.signedIn(accountId, "APP", "loa2", listOf("sms", "password"), "FAST_ACCESS")
             val loggedBefore = signInLog.of(accountId).size
 
@@ -45,7 +45,7 @@ class SignInLogDbTest(
 
         `when`("the retention purge runs five and then seven months later") {
             clearAccounts()
-            val accountId = accountService.createUnidentifiedAccount().accountId
+            val accountId = accountService.createAccountInSetup().accountId
             signInLog.signedIn(accountId, "APP", "loa2", listOf("sms"), "FAST_ACCESS")
 
             val purgedWithin = retention.purge(Instant.now().atZone(ZoneOffset.UTC).plusMonths(5).toInstant())

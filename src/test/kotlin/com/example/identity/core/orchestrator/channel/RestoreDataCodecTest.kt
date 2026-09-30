@@ -5,7 +5,7 @@ import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.orchestrator.domain.AmrSource
-import com.example.identity.core.orchestrator.domain.policy.AuthEvidence
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodName
 import com.nimbusds.jose.JWSAlgorithm
@@ -30,7 +30,7 @@ class RestoreDataCodecTest : BehaviorSpec({
     val kcSessionId = "kc-session-1"
     val restoreData = RestoreData(
         accountId = 42L,
-        evidence = AuthEvidence(
+        evidence = SessionEvidence(
             listOf(
                 MethodEvidence(
                     method = MethodName("sms"),
@@ -66,11 +66,11 @@ class RestoreDataCodecTest : BehaviorSpec({
         }
 
         `when`("decoding a proof encoded without its time") {
-            val ageless = restoreData.copy(evidence = AuthEvidence(restoreData.evidence!!.factors.map { it.copy(provenAt = null) }))
+            val ageless = restoreData.copy(evidence = SessionEvidence(restoreData.evidence!!.methods.map { it.copy(provenAt = null) }))
             val decoded = codec.decode(codec.encode(ageless, kcSessionId), kcSessionId)
 
             then("it comes back as old as can be, never as just proven") {
-                decoded?.evidence?.factors?.map { it.provenAt } shouldBe listOf(Instant.EPOCH, Instant.EPOCH)
+                decoded?.evidence?.methods?.map { it.provenAt } shouldBe listOf(Instant.EPOCH, Instant.EPOCH)
             }
         }
 

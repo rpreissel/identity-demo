@@ -95,7 +95,7 @@ class BruteForceAndAcrFloorIntegrationTest : IntegrationTestSupport() {
 
                     val withRightCode = submitFsc("VALIDCODE")
 
-                    // ident-fsc is throttled: the FSC is a guessable credential, and a hit adopts the
+                    // ident-fsc is rate-limited: the FSC is a guessable credential, and a hit adopts the
                     // person's account.
                     withRightCode.next()["step"] shouldBe "input"
                     templateOf(withRightCode.stepData()["error"]) shouldContain "Freischaltcode"

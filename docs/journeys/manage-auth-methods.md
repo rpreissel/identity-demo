@@ -35,7 +35,7 @@ Prüfung gegen `selfServiceAcrFloor` und während eines Step-ups, auf den er war
 den Step-up ab, endet die Journey (`Cancel`); derselbe Step-up wird nicht erneut angeboten.
 `Enrolling` enthält das Angebot und die bisherigen Ablehnungen.
 
-`MANAGE_AUTH_METHODS` ist der einzige Intent ohne Ziel in der Richtlinie: Die Journey endet, sobald
+`MANAGE_AUTH_METHODS` ist der einzige Intent ohne Zielniveau in der Richtlinie: Die Journey endet, sobald
 **ein** Verfahren erfolgreich eingerichtet ist, unabhängig vom erreichten Niveau. Für ein zweites
 Verfahren beginnt eine neue Journey.
 

@@ -23,7 +23,7 @@ import org.springframework.web.method.support.ModelAndViewContainer
  * Resolves any `@BindingKey` controller parameter before the method body runs, so proof
  * validation lives in one place (docs/04-orchestrierung.md #5). The tool endpoints serve both
  * channels (docs/05-api.md Abschnitt 3): a DPoP proof yields the key thumbprint, a Keycloak
- * peer-auth assertion a `"kc:"`-prefixed anchor. The comparison with the channel happens later.
+ * peer-auth assertion a `"kc:"`-prefixed binding. The comparison with the channel happens later.
  */
 @Component
 class DpopBindingKeyResolver(
@@ -60,6 +60,6 @@ class DpopBindingKeyResolver(
             authorization.trim()
         }
         val assertion = peerAuthValidator.validate(token, request.method, buildRequestUrl(request))
-        return "${DeviceChannelAccessGuard.KC_ANCHOR_PREFIX}${assertion.channelAnchor}"
+        return "${DeviceChannelAccessGuard.KC_BINDING_PREFIX}${assertion.channelBinding}"
     }
 }

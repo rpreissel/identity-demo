@@ -30,8 +30,8 @@ interface ChannelSessionRepository : JpaRepository<ChannelSession, UUID> {
     /** The same selection across both channel types, ordered and bounded by [pageable]. */
     fun findByStateNotInAndExpiresAtAfter(states: Collection<ChannelState>, now: Instant, pageable: Pageable): List<ChannelSession>
 
-    /** App channels bound to one of these [AuthContext]s. */
-    fun findByAuthContextIdIn(authContextIds: Collection<UUID>): List<ChannelSession>
+    /** App channels bound to one of these [AppTokenSession]s. */
+    fun findByAppTokenSessionIdIn(appTokenSessionIds: Collection<UUID>): List<ChannelSession>
 
     /** Website channels whose flow ended in one of these Keycloak sessions. */
     fun findByDurableKcSessionIdIn(keycloakSessionIds: Collection<String>): List<ChannelSession>

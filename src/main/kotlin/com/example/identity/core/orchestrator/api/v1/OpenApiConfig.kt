@@ -66,7 +66,7 @@ class OpenApiConfig {
                         .description(
                             "Signed peer-auth assertion (docs/05-api.md Abschnitt 3, ADR-7). The " +
                                 "Web channel's proof: Keycloak calls server-to-server, and the " +
-                                "channel anchor comes out of the assertion."
+                                "channel binding comes out of the assertion."
                         )
                 )
         )

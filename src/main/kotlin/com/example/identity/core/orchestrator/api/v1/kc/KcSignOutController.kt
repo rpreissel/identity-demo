@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController
 /**
  * Keycloak reports a logout here (ADR-39), because the Web channel's logout is Keycloak's own
  * (docs/07-betrieb.md Abschnitt 3). Called fire-and-forget after the logout. The assertion's
- * `channel_anchor` is the account id or invitation from the path, as with the lookups.
+ * `channel_binding` is the account id or invitation from the path, as with the lookups.
  */
 @RestController
 @Tag(name = "KC sign-out", description = "Keycloak reports a logout for the sign-in log")
@@ -40,14 +40,14 @@ class KcSignOutController(
         httpRequest: HttpServletRequest,
     ): ResponseEntity<Void> {
         val assertion = validate(authorization, httpRequest)
-        if (assertion.channelAnchor != accountId.toString()) {
-            throw PeerAuthValidationException("Peer-auth channel_anchor does not match this account")
+        if (assertion.channelBinding != accountId.toString()) {
+            throw PeerAuthValidationException("Peer-auth channel_binding does not match this account")
         }
         kcChannelService.signedOutAtKeycloak(Subject.Account(accountId), kcSessionId)
         return ResponseEntity.noContent().build()
     }
 
-    /** The same for a process access (ADR-48); the anchor names the invitation. */
+    /** The same for a process access (ADR-48); the binding names the invitation. */
     @PostMapping("$API_V1/kc/invitations/{invitation}/sign-outs")
     @Operation(summary = "Keycloak ended one session of this invitation")
     fun invitationSignedOut(
@@ -57,8 +57,8 @@ class KcSignOutController(
         httpRequest: HttpServletRequest,
     ): ResponseEntity<Void> {
         val assertion = validate(authorization, httpRequest)
-        if (assertion.channelAnchor != invitation) {
-            throw PeerAuthValidationException("Peer-auth channel_anchor does not match this invitation")
+        if (assertion.channelBinding != invitation) {
+            throw PeerAuthValidationException("Peer-auth channel_binding does not match this invitation")
         }
         kcChannelService.signedOutAtKeycloak(Subject.Invitation(invitation), kcSessionId)
         return ResponseEntity.noContent().build()

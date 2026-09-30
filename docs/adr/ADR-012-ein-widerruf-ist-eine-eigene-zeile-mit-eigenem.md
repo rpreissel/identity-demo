@@ -1,10 +1,10 @@
-# ADR-12: Ein Widerruf ist eine eigene Zeile mit eigenem Vertrauensanker
+# ADR-12: Ein Widerruf ist eine eigene Zeile mit eigener Quelle
 
 **Status**: umgesetzt.
 
 **Entscheidung**: Ein zurückgenommener Wert wird in einer eigenen Zeile festgehalten:
-`account.retraction(account_id, attribute_type, normalized_value, trust_anchor, reason, retracted_at)`.
-Diese Zeile ist selbst eine Angabe mit eigenem Vertrauensanker: **wer** den Wert zurücknimmt, dazu
+`account.retraction(account_id, attribute_type, normalized_value, claim_source, reason, retracted_at)`.
+Diese Zeile ist selbst eine Angabe mit eigener Quelle: **wer** den Wert zurücknimmt, dazu
 Grund und Zeitpunkt. Das Log der Angaben (`account.claim`) wird nur ergänzt, nie geändert. Welcher
 Wert gilt, ergibt sich aus „Angaben minus Widerrufe“. Ist der Wert ein Anker, wird zusätzlich seine
 Zeile in `account.anchor` gelöscht; diese Tabelle hält den aktuellen Stand und ist kein Log.
@@ -16,26 +16,26 @@ brauchen, rufen sie auf.
 
 **Die Auslöser eines Widerrufs** (die vollständige Liste, andere ADRs verweisen hierher):
 
-| Auslöser | Was zurückgenommen wird | Vertrauensanker |
+| Auslöser | Was zurückgenommen wird | Quelle |
 |---|---|---|
-| Ein Verfahren wird entfernt (`AccountDeletionService.revokeMethod` → `retractClaimsOf`) | die Angaben dieser Methodeninstanz, aber nur die mit `AttributeAuthority.MethodModule` (etwa `PHONE_NUMBER`, `PASSWORD_EXISTS`) | `ACCOUNT_MANAGEMENT` |
-| Ein Anker wird an derselben Stelle ersetzt (`EMAIL`, `EID_RESTRICTED_ID`, `INSURANCE_NUMBER`) | der alte Wert, Grund „anker-ersetzt“ ([ADR-19](ADR-019-aufloesung-nur-ueber-anker-die-eid-restricted-id.md)) | `ACCOUNT_MANAGEMENT` |
+| Ein Verfahren wird entfernt (`AccountDeletionService.revokeMethod` → `retractClaimsOf`) | die Angaben dieses eingerichteten Verfahrens, aber nur die mit `AttributeAuthority.MethodModule` (etwa `PHONE_NUMBER`, `PASSWORD_EXISTS`) | `ACCOUNT_MANAGEMENT` |
+| Ein Anker wird an derselben Stelle ersetzt (`EMAIL`, `EID_RESTRICTED_ID`, `MEMBER_NUMBER`) | der alte Wert, Grund „anker-ersetzt“ ([ADR-19](ADR-019-aufloesung-nur-ueber-anker-die-eid-restricted-id.md)) | `ACCOUNT_MANAGEMENT` |
 | Ein Attribut wird direkt zurückgenommen (`AccountService.retractAttribute`, `DELETE /channels/{id}/attributes/{attribute}`) | das Attribut samt Anker-Zeile ([ADR-24](ADR-024-eine-methode-haengt-von-einer-anderen-ab-indem.md)) | `ACCOUNT_MANAGEMENT` |
-| Das Personenverzeichnis meldet eine neue oder entfernte KVNR bzw. Versicherungsnummer (`AccountService.applyDirectoryChange`) | der alte Wert ([ADR-34](ADR-034-personenverzeichnis-meldet-aenderungen.md)) | `PERSON_DIRECTORY` |
+| Das Personenverzeichnis meldet eine neue oder entfernte KVNR bzw. Mitgliedsnummer (`AccountService.applyDirectoryChange`) | der alte Wert ([ADR-34](ADR-034-personenverzeichnis-meldet-aenderungen.md)) | `PERSON_DIRECTORY` |
 
-Der dritte Anker, `OPERATOR`, ist für Eingriffe eines Menschen vorgesehen; heute gibt es keinen
+Die dritte Quelle, `OPERATOR`, ist für Eingriffe eines Menschen vorgesehen; heute gibt es keinen
 Aufrufer. Widerrufe kommen **nie** über den Vertrag der Tools: `ToolOutcome` kennt nur positive
-Ergebnisse, und der Vertrauensanker eines Widerrufs ist deshalb bewusst ein eigener Typ
-(`RetractionAnchor`) und keine `ClaimSource`.
+Ergebnisse, und die Quelle eines Widerrufs ist deshalb bewusst ein eigener Typ
+(`RetractionSource`) und keine `ClaimSource`.
 
 Damit ein Verfahren weiß, was es beim Entfernen mitnimmt, trägt jede Zeile im Log die
-`auth_method_id` der Methodeninstanz, bei deren Einrichtung sie entstand (`null` bei Tools zur
+`auth_method_id` des eingerichteten Verfahrens, bei dessen Einrichtung sie entstand (`null` bei Tools zur
 Identifizierung). Anker und Stammdaten bleiben über das Credential hinaus bestehen; sonst hätte das
 Entfernen des E-Mail-Verfahrens die bestätigte Adresse und damit die Anmeldung mit Passwort gekostet.
 
 Das Log protokolliert **Änderungen, nicht Durchläufe**: `recordClaims` überspringt eine Angabe, die in
-gleicher Form schon gilt (gleicher Typ, normalisierter Wert, Quelle und Methodeninstanz). Die
-Methodeninstanz gehört zu diesem Vergleich; ein bekannter Wert, den ein neues Verfahren einrichtet,
+gleicher Form schon gilt (gleicher Typ, normalisierter Wert, Quelle und eingerichtetes Verfahren). Das
+eingerichtete Verfahren gehört zu diesem Vergleich; ein bekannter Wert, den ein neues Verfahren einrichtet,
 wird deshalb trotzdem protokolliert.
 
 **Erwogene Alternative**: Markierungsspalten (`retracted_at`/`retracted_by`) direkt in der Zeile der

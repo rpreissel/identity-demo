@@ -10,7 +10,7 @@ vi.mock('../api.ts', () => api)
 
 import { AdminToolAvailabilityView } from './AdminToolAvailabilityView'
 
-const tool = (toolId: string, enabled = true) => ({ toolId, method: toolId.split('-')[1], role: 'IDENTIFIED_AUTH', enabled })
+const tool = (toolId: string, enabled = true) => ({ toolId, method: toolId.split('-')[1], role: 'KNOWN_ACCOUNT_AUTH', enabled })
 
 describe('AdminToolAvailabilityView', () => {
   afterEach(cleanup)
@@ -19,7 +19,7 @@ describe('AdminToolAvailabilityView', () => {
     vi.clearAllMocks()
     api.fetchToolAvailability.mockResolvedValue([
       { channel: 'APP', tools: [tool('auth-sms'), tool('auth-password')] },
-      { channel: 'KEYCLOAK', tools: [tool('auth-password'), tool('auth-sms', false)] },
+      { channel: 'WEB', tools: [tool('auth-password'), tool('auth-sms', false)] },
     ])
     api.setToolOrder.mockResolvedValue(undefined)
     api.setToolAvailability.mockResolvedValue(undefined)
@@ -39,7 +39,7 @@ describe('AdminToolAvailabilityView', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Freigeben' }))
 
-    expect(api.setToolAvailability).toHaveBeenCalledWith('auth-sms', 'KEYCLOAK', true)
+    expect(api.setToolAvailability).toHaveBeenCalledWith('auth-sms', 'WEB', true)
   })
 
   it('groups by role and keeps the arrows inside a role', async () => {

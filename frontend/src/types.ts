@@ -115,7 +115,7 @@ export type ChannelResponse = Omit<Wire.ChannelResponse, 'stepData' | 'demo'> & 
  */
 export interface JourneyTraceEntryView {
   channelSessionId: string
-  /** APP or KEYCLOAK. */
+  /** APP or WEB. */
   channelType?: string
   /** Inherited from a later entry of the same channel when logged before the account was bound. */
   accountId?: number

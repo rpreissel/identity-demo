@@ -4,7 +4,7 @@ interface SessionSummaryProps {
   /** Signed in (App: channel AUTHENTICATED; Web: tokens held). */
   signedIn: boolean
   name?: string
-  /** Versicherter / Partner / Interessent, where known. */
+  /** Versicherter / Partner / prospect, where known. */
   role?: string
   acr?: string
   amr?: string[]

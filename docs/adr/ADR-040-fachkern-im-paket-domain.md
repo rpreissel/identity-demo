@@ -10,12 +10,12 @@ JPA, Jackson, Logging) und hängt von nichts anderem im eigenen Modul ab. Beides
 ## Was wo liegt
 
 - **`orchestrator.domain`** (früher `kernel`, [ADR-27](ADR-027-gemeinsame-typen-im-kernel-paket.md)):
-  - das Vokabular: `AuthIntent`, ACR-Stufen, Kanaltyp, Fehlercodes, `ToolCatalog`;
+  - das Vokabular: `AuthIntent`, ACR-Niveaus, Kanaltyp, Fehlercodes, `ToolCatalog`;
   - `domain.journey`: `IntentStrategy` mit `Transition` und `Action`, die Zustände (`state`) und
     Strategien (`strategy`), dazu die Regeln der handelnden Phase: `AccountRules.kt` (welches Konto
-    eine Aktion beschreibt, ADR-18/20) und `CredentialRules.kt` (Stufe eines Nachweises, ADR-5;
+    eine Aktion beschreibt, ADR-18/20) und `CredentialRules.kt` (Niveau eines Nachweises, ADR-5;
     implizites Geräte-Binden; abhängige Verfahren);
-  - `domain.policy`: `AuthPolicy`, `DefaultAuthPolicy`, `AuthEvidence`.
+  - `domain.policy`: `AuthPolicy`, `DefaultAuthPolicy`, `SessionEvidence`.
 - **`account.domain`**: `AnchorDecision` (wann ein Anker gebunden, ersetzt oder abgelehnt wird,
   ADR-11/19), `normalizeClaimValue` und `ClaimKey`, `PassportForm`.
 - **Außen herum** bleibt die Technik: `JourneyActionExecutor` und `JourneyService` lesen, fragen die

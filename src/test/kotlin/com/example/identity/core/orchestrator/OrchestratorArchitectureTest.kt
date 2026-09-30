@@ -258,7 +258,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
             ) { call ->
                 val target = call.target
                 (target.owner.fullName == "com.example.identity.core.account.AccountService" &&
-                    target.name == "absorbProvisionalAccount") ||
+                    target.name == "absorbDisposableAccount") ||
                     (target.owner.fullName == "com.example.identity.core.orchestrator.session.SessionManagementService" &&
                         target.name == "linkDeviceToAccount")
             }
@@ -304,7 +304,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
                 .and().resideOutsideOfPackage("com.example.identity.core.orchestrator.kc..")
                 // The one declared exception: minting an account token is a Keycloak round trip whose
                 // result is the response, and its transaction writes the refresh-token cache back onto
-                // the AuthContext. One call per token request or per transition to AUTHENTICATED
+                // the AppTokenSession. One call per token request or per transition to AUTHENTICATED
                 // (ADR-43), never per row.
                 .and().doNotHaveFullyQualifiedName("com.example.identity.core.orchestrator.session.KcTokenProvider")
                 .should().dependOnClassesThat()

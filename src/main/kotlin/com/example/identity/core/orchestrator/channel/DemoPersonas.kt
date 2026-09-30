@@ -48,7 +48,7 @@ data class DemoInvitation(
     val label: String,
     val kvnr: String?,
     /** The Partnernummer, for a person without a KVNR. */
-    val partnernr: String,
+    val partnerNumber: String,
     val code: String,
 )
 
@@ -81,7 +81,7 @@ class DemoPersonas(private val register: DemoPersonDirectory) {
             DemoInvitation(
                 label = "$name – ${invitation.processName}",
                 kvnr = person?.kvnr,
-                partnernr = invitation.personId,
+                partnerNumber = invitation.personId,
                 code = invitation.code,
             )
         }

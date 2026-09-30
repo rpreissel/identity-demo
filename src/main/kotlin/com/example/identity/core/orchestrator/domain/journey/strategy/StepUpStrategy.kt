@@ -66,7 +66,7 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
         if (candidates.isNotEmpty()) {
             // Authenticator evidence already on the channel means this offer asks for an
             // additional factor (StepUpState.AuthChoice.additionalFactorRound).
-            val additionalFactorRound = ctx.evidence.factors.any { it.axis == EvidenceAxis.AUTHENTICATOR }
+            val additionalFactorRound = ctx.evidence.methods.any { it.axis == EvidenceAxis.AUTHENTICATOR }
             return Transition.To(StepUpState.AuthChoice(targetAcr, startingAcr, Offer(candidates), allowReIdentification, reason = reason, additionalFactorRound = additionalFactorRound))
         }
         return offerReIdentOrGiveUp(

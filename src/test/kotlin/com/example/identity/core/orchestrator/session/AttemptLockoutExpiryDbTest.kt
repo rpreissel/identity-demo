@@ -15,12 +15,12 @@ import java.util.UUID
 @SpringBootTest
 @ActiveProfiles("test")
 class AttemptLockoutExpiryDbTest(
-    private val attemptCounter: AttemptCounter,
-    private val repository: AttemptThrottleRepository,
+    private val rateLimitCounter: RateLimitCounter,
+    private val repository: RateLimitRecordRepository,
 ) : BehaviorSpec({
 
     fun fail(subject: String, lockout: Duration) =
-        attemptCounter.recordFailure(ThrottleScope.ACCOUNT, subject, maxFailures = 2, lockout = lockout)
+        rateLimitCounter.recordFailure(RateLimitScope.ACCOUNT, subject, maxFailures = 2, lockout = lockout)
 
     given("a subject whose lockout has already run out") {
         val subject = "expired-" + UUID.randomUUID()
@@ -31,8 +31,8 @@ class AttemptLockoutExpiryDbTest(
             fail(subject, Duration.ofMinutes(15))
 
             then("the count starts over at one and no lock is set") {
-                repository.findFailedCount(ThrottleScope.ACCOUNT.name, subject) shouldBe 1
-                attemptCounter.isLocked(ThrottleScope.ACCOUNT, subject) shouldBe false
+                repository.findFailedCount(RateLimitScope.ACCOUNT.name, subject) shouldBe 1
+                rateLimitCounter.isLocked(RateLimitScope.ACCOUNT, subject) shouldBe false
             }
         }
     }
@@ -45,8 +45,8 @@ class AttemptLockoutExpiryDbTest(
             fail(subject, Duration.ofMinutes(15))
 
             then("the count goes on and the lock stays") {
-                repository.findFailedCount(ThrottleScope.ACCOUNT.name, subject) shouldBe 3
-                attemptCounter.isLocked(ThrottleScope.ACCOUNT, subject) shouldBe true
+                repository.findFailedCount(RateLimitScope.ACCOUNT.name, subject) shouldBe 3
+                rateLimitCounter.isLocked(RateLimitScope.ACCOUNT, subject) shouldBe true
             }
         }
     }

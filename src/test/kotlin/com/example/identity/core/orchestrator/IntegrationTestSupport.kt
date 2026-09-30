@@ -132,10 +132,10 @@ abstract class IntegrationTestSupport : BehaviorSpec() {
             "auth_qr.enroll_tool_session", "auth_qr.auth_tool_session", "auth_qr.lookup_tool_session", "auth_qr.confirm_tool_session",
             "auth_qr.login_request", "auth_qr.enrollment",
             "orchestrator.tool_session", "orchestrator.auth_journey", "orchestrator.journey_trace",
-            "orchestrator.channel_session", "orchestrator.auth_context", "orchestrator.auth_evidence", "account.account",
+            "orchestrator.channel_session", "orchestrator.app_token_session", "orchestrator.session_evidence", "account.account",
             // No foreign key - the change log outlives accounts on purpose (ADR-39), so it is wiped by name.
             "account.change_log",
-            "orchestrator.device_account_link", "orchestrator.attempt_throttle", "orchestrator.tool_availability", "orchestrator.dpop_proof_replay",
+            "orchestrator.device_account_link", "orchestrator.rate_limit", "orchestrator.tool_availability", "orchestrator.dpop_proof_replay",
             "orchestrator.feature_flag"
         ).forEach { jdbcTemplate.update("DELETE FROM $it") }
     }

@@ -2,7 +2,7 @@ package com.example.identity.contract.tool_api.claims
 
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolDescriptor
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.FactorType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -10,7 +10,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 
 /**
- * Pins the claims vocabulary of tool_api: [AttributeType], [ClaimSource] with its [TrustLevel]s,
+ * Pins the claims vocabulary of tool_api: [AttributeType], [ClaimSource] with its [ClaimTrust]s,
  * [Claim]/[ClaimRequirement] and the [ClaimDeclaration] check [assertClaimsCovered]. The
  * orchestrator's `requiresSatisfied` is tested there.
  */
@@ -38,15 +38,15 @@ class ClaimsTest : BehaviorSpec({
         }
     }
 
-    given("TrustLevel") {
+    given("ClaimTrust") {
         then("rank encodes the precedence order: Stammdaten > Proven > Self-reported") {
-            (TrustLevel.AUTHORITATIVE.rank > TrustLevel.PROVEN.rank) shouldBe true
-            (TrustLevel.PROVEN.rank > TrustLevel.SELF_REPORTED.rank) shouldBe true
+            (ClaimTrust.AUTHORITATIVE.rank > ClaimTrust.PROVEN.rank) shouldBe true
+            (ClaimTrust.PROVEN.rank > ClaimTrust.SELF_REPORTED.rank) shouldBe true
         }
-        then("ClaimSource.trustLevel maps every source kind to its level") {
-            ClaimSource.PERSON_DIRECTORY.trustLevel shouldBe TrustLevel.AUTHORITATIVE
-            ClaimSource.SELF_REPORTED.trustLevel shouldBe TrustLevel.SELF_REPORTED
-            ClaimSource.of(ToolId("ident-eid")).trustLevel shouldBe TrustLevel.PROVEN
+        then("ClaimSource.claimTrust maps every source kind to its level") {
+            ClaimSource.PERSON_DIRECTORY.claimTrust shouldBe ClaimTrust.AUTHORITATIVE
+            ClaimSource.SELF_REPORTED.claimTrust shouldBe ClaimTrust.SELF_REPORTED
+            ClaimSource.of(ToolId("ident-eid")).claimTrust shouldBe ClaimTrust.PROVEN
         }
     }
 
@@ -80,10 +80,10 @@ class ClaimsTest : BehaviorSpec({
     }
 
     given("ClaimRequirement") {
-        then("mirrors a claim's attribute type with a minimum trust level") {
-            val requirement = ClaimRequirement(AttributeType.EMAIL, TrustLevel.PROVEN)
+        then("mirrors a claim's attribute type with a minimum claim trust") {
+            val requirement = ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN)
             requirement.attributeType shouldBe AttributeType.EMAIL
-            requirement.minTrustLevel shouldBe TrustLevel.PROVEN
+            requirement.minClaimTrust shouldBe ClaimTrust.PROVEN
         }
     }
 
@@ -99,7 +99,7 @@ class ClaimsTest : BehaviorSpec({
         val descriptor = object : ToolDescriptor {
             override val toolId = ToolId("test-ident")
             override val method = "test"
-            override val role = MethodRole.IDENTIFICATION
+            override val role = ToolRole.IDENTIFICATION
             override val factorTypes = setOf(FactorType.POSSESSION)
             override val maxAcr = AcrLevel.LOA2
             override val claims = setOf(

@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator.session
 
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.account.AccountService
-import com.example.identity.core.account.RetractionAnchor
+import com.example.identity.core.account.RetractionSource
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceRepository
 import com.example.identity.contract.tool_api.credentials.EnrollmentCleanup
 import org.springframework.stereotype.Service
@@ -22,10 +22,10 @@ class AccountDeletionService(
     cleanups: List<EnrollmentCleanup>,
     private val deviceAccountLinkRepository: DeviceAccountLinkRepository,
     private val channelSessionRepository: ChannelSessionRepository,
-    private val authContextRepository: AuthContextRepository,
-    private val authEvidenceRepository: EvidenceTrailRepository,
+    private val appTokenSessionRepository: AppTokenSessionRepository,
+    private val sessionEvidenceRepository: SessionEvidenceRecordRepository,
     private val journeyTraceRepository: JourneyTraceRepository,
-    private val attemptThrottleRepository: AttemptThrottleRepository
+    private val rateLimitRecordRepository: RateLimitRecordRepository
 ) {
     private val cleanupsByType: Map<String, EnrollmentCleanup> = cleanups.associateBy { it.enrollmentType }
 
@@ -45,12 +45,12 @@ class AccountDeletionService(
         val channelSessions = channelSessionRepository.findByAccountId(accountId)
         channelSessions.forEach { session ->
             session.state = ChannelState.LOGGED_OUT
-            session.authContextId = null
-            session.authEvidenceId = null
+            session.appTokenSessionId = null
+            session.sessionEvidenceId = null
             channelSessionRepository.save(session)
         }
-        authContextRepository.findByAccountId(accountId).forEach { authContextRepository.delete(it) }
-        authEvidenceRepository.findByAccountId(accountId).forEach { authEvidenceRepository.delete(it) }
+        appTokenSessionRepository.findByAccountId(accountId).forEach { appTokenSessionRepository.delete(it) }
+        sessionEvidenceRepository.findByAccountId(accountId).forEach { sessionEvidenceRepository.delete(it) }
 
         accountService.deleteAccount(accountId)
 
@@ -67,11 +67,11 @@ class AccountDeletionService(
             channelSessions.mapNotNull { it.channelSessionId }.ifEmpty { listOf(NO_CHANNEL_SESSION) }
         )
         // Account-keyed counters only: clearing other scopes would make deletion a budget reset
-        // (AttemptThrottleRepository.deleteBySubjectAndScopeIn). The modules' send budgets are
+        // (RateLimitRecordRepository.deleteBySubjectAndScopeIn). The modules' send budgets are
         // keyed by address, not account, and expire with the retention sweep (ADR-44).
-        attemptThrottleRepository.deleteBySubjectAndScopeIn(
+        rateLimitRecordRepository.deleteBySubjectAndScopeIn(
             accountId.toString(),
-            listOf(ThrottleScope.ACCOUNT.name)
+            listOf(RateLimitScope.ACCOUNT.name)
         )
     }
 
@@ -87,7 +87,7 @@ class AccountDeletionService(
         accountService.retractClaimsOf(
             accountId,
             methodInstanceId,
-            RetractionAnchor.ACCOUNT_MANAGEMENT,
+            RetractionSource.ACCOUNT_MANAGEMENT,
             reason = "method instance revoked"
         )
         accountService.deactivateAuthenticationMethod(accountId, methodInstanceId)

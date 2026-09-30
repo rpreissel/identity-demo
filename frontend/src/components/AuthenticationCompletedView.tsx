@@ -196,7 +196,7 @@ export function AuthenticationCompletedView({
 
   const personName = typeof claims?.name === 'string' ? claims.name : undefined
   // The role (ADR-34): versnr = insured with us (Versicherter); personId alone = known to the
-  // Personenverzeichnis but not insured here (Partner); neither = Interessent (ADR-10/18 - full
+  // Personenverzeichnis but not insured here (Partner); neither = prospect (ADR-10/18 - full
   // identity possibly attested, but no person assigned).
   const accountStatus = claims ? accountRole(claims.personId, claims.versnr) : undefined
   const hasQrLogin = activeMethods?.some((m) => m.method === 'qr') ?? true
@@ -236,7 +236,7 @@ export function AuthenticationCompletedView({
       <ul className="status-list">
         <StatusRow label={t('Vor- und Nachname')} value={personName} />
         <StatusRow label={t('Status')} value={accountStatus} />
-        <StatusRow label={t('Versicherungsnummer')} value={claims?.versnr} />
+        <StatusRow label={t('Mitgliedsnummer')} value={claims?.versnr} />
         <StatusRow label={t('Partnernummer')} value={claims?.personId} />
         <StatusRow label={t('E-Mail')} value={claims?.email} />
       </ul>

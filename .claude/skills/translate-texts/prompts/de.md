@@ -31,12 +31,13 @@ Diese Wörter sind eingeführte Begriffe der Demo (Doku, Diagramme, Oberfläche)
   nie „ausweisen“. Ein Freischaltcode ist kein Ausweis, und „Identifizieren“ ist der Begriff aus Glossar
   und Doku. „Online-Ausweis“ als Name des Verfahrens bleibt.
 - **Versicherter**, **Partner** und **Interessent** – die drei Rollen eines Kontos: bei uns versichert
-  (Versicherungsnummer), uns als Person bekannt (nur Partnernummer), keiner Person zugeordnet
+  (Mitgliedsnummer), uns als Person bekannt (nur Partnernummer), keiner Person zugeordnet
 - **Partnernummer** (`P` und neun Ziffern, jede Person im Personenverzeichnis hat eine)
 - **Pairing-Code** (nicht „Kopplungscode“)
 - **Realm** (Keycloak-Begriff, nicht „Bereich“) und **Keycloak** als Produktname
 - **Personenverzeichnis** (das simulierte Fremdsystem mit den Personen, nicht „Versichertenregister“) und
-  **Versicherungsnummer** (8 Ziffern, nur bei uns Versicherte – zusätzlich zur KVNR)
+  **Mitgliedsnummer** (8 Ziffern, nur bei uns Versicherte – zusätzlich zur KVNR). Im Bundle
+  `personenverzeichnis` heißt sie weiter **Versicherungsnummer**: das Wort des Fremdsystems
 
 ## Stil
 

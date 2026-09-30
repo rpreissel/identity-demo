@@ -20,8 +20,8 @@ Die Doku beschreibt das Zielbild. Weichen Code und Doku voneinander ab, gilt die
 
 - **[02-domaenenmodell.md](02-domaenenmodell.md)**: Welche Entitäten, Zustände und Tabellen gibt
   es, und nach welchen Regeln wird gespeichert?
-- **[04-orchestrierung.md](04-orchestrierung.md)**: Wer entscheidet, wie es weitergeht? Ziele
-  (Intents), Journeys, `AuthPolicy`, Sicherheitsniveaus.
+- **[04-orchestrierung.md](04-orchestrierung.md)**: Wer entscheidet, wie es weitergeht? Intents,
+  Journeys, `AuthPolicy`, Sicherheitsniveaus.
 - **[06-ablaeufe.md](06-ablaeufe.md)**: Wie laufen die einzelnen Verfahren Schritt für Schritt ab
   (Freischaltcode, SMS, Passwort, E-Mail, Gerät, eID/KVNR, KOBIL)?
 
@@ -53,7 +53,7 @@ Die Doku beschreibt das Zielbild. Weichen Code und Doku voneinander ab, gilt die
 
 ## Nachschlagen
 
-- **[journeys/](journeys/)**: Wie läuft genau ein Ziel ab? Ein Zustandsdiagramm je Intent, gegen den
+- **[journeys/](journeys/)**: Wie läuft genau ein Intent ab? Ein Zustandsdiagramm je Intent, gegen den
   Code geprüft.
 - **[invarianten.md](invarianten.md)**: Auf welche Regeln verlässt sich der Kern, und womit ist
   jede gesichert?

@@ -6,7 +6,7 @@ import com.example.identity.core.orchestrator.domain.ToolCatalog
 import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolId
 import org.springframework.stereotype.Component
 
@@ -42,7 +42,7 @@ class ToolHandlerRegistry(descriptors: List<ToolDescriptor>) : ToolCatalog {
         // Every identification must be findable again by name, first name and date of birth, even
         // after the account is deleted (the change log's search key, ADR-39).
         val unfindable = descriptorsByToolId.values.filter { descriptor ->
-            descriptor.role == MethodRole.IDENTIFICATION &&
+            descriptor.role == ToolRole.IDENTIFICATION &&
                 !descriptor.claims.map { it.attributeType }.containsAll(FINDABLE_BY)
         }
         check(unfindable.isEmpty()) {

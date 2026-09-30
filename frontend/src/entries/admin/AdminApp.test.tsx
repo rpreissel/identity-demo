@@ -10,7 +10,7 @@ function fakeBackend() {
     const body = path.endsWith('/tools/availability')
       ? []
       : path.endsWith('/sessions')
-        ? { channels: { total: 1, perType: [{ channel: 'KEYCLOAK', count: 1 }], newest: [] }, keycloak: null }
+        ? { channels: { total: 1, perType: [{ channel: 'WEB', count: 1 }], newest: [] }, keycloak: null }
         : { enrollFirst: false }
     return new Response(JSON.stringify(body), { status: 200 })
   })

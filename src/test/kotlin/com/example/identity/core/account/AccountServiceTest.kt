@@ -131,7 +131,7 @@ class AccountServiceTest : BehaviorSpec({
         every { accountRepository.save(any()) } answers { firstArg<Account>().apply { id = 7L } }
 
         `when`("creating an account before accepting its claims") {
-            val profile = service.createUnidentifiedAccount()
+            val profile = service.createAccountInSetup()
 
             then("the new account has no direct person binding") {
                 profile.personId shouldBe null

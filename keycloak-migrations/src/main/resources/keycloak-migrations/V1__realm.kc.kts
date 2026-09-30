@@ -240,7 +240,7 @@ step("loa-1 orchestrator execution anlegen") {
         flows().addExecution("orchestrator-loa-1", mapOf("provider" to "orchestrator-authenticator"))
         val id = childExecution("orchestrator-loa-1") { it.providerId == "orchestrator-authenticator" }
         setRequirement("orchestrator-loa-1", id, "REQUIRED")
-        // Ohne toolId: kc_select_method zeigt alle LOOKUP_AUTH-Kandidaten.
+        // Ohne toolId: web_select_method zeigt alle ACCOUNT_LOOKUP_AUTH-Kandidaten.
         flows().newExecutionConfig(id, AuthenticatorConfigRepresentation().apply {
             alias = "orchestrator-loa-1-orchestrator"
             config = mapOf("targetAcr" to "loa1")

@@ -8,23 +8,23 @@ CREATE SCHEMA IF NOT EXISTS orchestrator;
 -- =============================================================================================
 
 -- Evidence proven on one channel; cleared at logout. current ACR is never stored, always derived.
-CREATE TABLE orchestrator.auth_evidence (
+CREATE TABLE orchestrator.session_evidence (
     id           UUID   PRIMARY KEY,
     account_id   BIGINT NOT NULL,
-    amr_evidence JSON   NOT NULL,
+    methods JSON   NOT NULL,
     updated_at   TIMESTAMP WITH TIME ZONE NOT NULL,
     version      BIGINT NOT NULL DEFAULT 0
 );
-CREATE INDEX ix_auth_evidence_account_id ON orchestrator.auth_evidence (account_id);
+CREATE INDEX ix_session_evidence_account_id ON orchestrator.session_evidence (account_id);
 
 -- APP-channel token bookkeeping.
-CREATE TABLE orchestrator.auth_context (
+CREATE TABLE orchestrator.app_token_session (
     id                   UUID   PRIMARY KEY,
     account_id           BIGINT NOT NULL,
-    auth_evidence_id     UUID,
+    session_evidence_id     UUID,
     keycloak_session_id  VARCHAR(64),
     -- Both hold the token itself (a full JWT under the keycloak profile), not an opaque handle -
-    -- hence the length. Cache only: cleared whenever the evidence changes (AuthEvidenceService),
+    -- hence the length. Cache only: cleared whenever the evidence changes (SessionEvidenceService),
     -- so a step-up can never keep renewing a session on pre-step-up acr/amr.
     access_token         VARCHAR(4096),
     refresh_token        VARCHAR(4096),
@@ -33,21 +33,21 @@ CREATE TABLE orchestrator.auth_context (
     refresh_expires_at   TIMESTAMP WITH TIME ZONE,
     updated_at           TIMESTAMP WITH TIME ZONE NOT NULL,
     version              BIGINT NOT NULL DEFAULT 0,
-    CONSTRAINT fk_auth_context_auth_evidence FOREIGN KEY (auth_evidence_id) REFERENCES orchestrator.auth_evidence (id)
+    CONSTRAINT fk_app_token_session_session_evidence FOREIGN KEY (session_evidence_id) REFERENCES orchestrator.session_evidence (id)
 );
-CREATE INDEX ix_auth_context_account_id ON orchestrator.auth_context (account_id);
-CREATE INDEX ix_auth_context_auth_evidence_id ON orchestrator.auth_context (auth_evidence_id);
+CREATE INDEX ix_app_token_session_account_id ON orchestrator.app_token_session (account_id);
+CREATE INDEX ix_app_token_session_session_evidence_id ON orchestrator.app_token_session (session_evidence_id);
 
 CREATE TABLE orchestrator.channel_session (
     id                    UUID        PRIMARY KEY,
     channel               VARCHAR(32) NOT NULL,
-    -- APP channels anchor on the DPoP key, KEYCLOAK channels have none (docs/02-domaenenmodell.md #1).
+    -- APP channels anchor on the DPoP key, WEB channels have none (docs/02-domaenenmodell.md #1).
     binding_key_ref       VARCHAR(64),
-    channel_anchor        VARCHAR(64),
+    channel_binding        VARCHAR(64),
     kc_durable_session_id VARCHAR(64),
     account_id            BIGINT,
-    auth_context_id       UUID,
-    auth_evidence_id      UUID,
+    app_token_session_id       UUID,
+    session_evidence_id      UUID,
     state                 VARCHAR(32) NOT NULL,
     acr_floor             VARCHAR(16),
     entry_intent          VARCHAR(32) NOT NULL,
@@ -57,13 +57,13 @@ CREATE TABLE orchestrator.channel_session (
     expires_at            TIMESTAMP WITH TIME ZONE NOT NULL,
     version               BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT ck_channel_session_binding_key CHECK ((channel = 'APP') = (binding_key_ref IS NOT NULL)),
-    CONSTRAINT fk_channel_session_auth_context FOREIGN KEY (auth_context_id) REFERENCES orchestrator.auth_context (id),
-    CONSTRAINT fk_channel_session_auth_evidence FOREIGN KEY (auth_evidence_id) REFERENCES orchestrator.auth_evidence (id)
+    CONSTRAINT fk_channel_session_app_token_session FOREIGN KEY (app_token_session_id) REFERENCES orchestrator.app_token_session (id),
+    CONSTRAINT fk_channel_session_session_evidence FOREIGN KEY (session_evidence_id) REFERENCES orchestrator.session_evidence (id)
 );
 CREATE INDEX ix_channel_session_account_id ON orchestrator.channel_session (account_id);
 CREATE INDEX ix_channel_session_expires_at ON orchestrator.channel_session (expires_at);
-CREATE INDEX ix_channel_session_auth_context_id ON orchestrator.channel_session (auth_context_id);
-CREATE INDEX ix_channel_session_auth_evidence_id ON orchestrator.channel_session (auth_evidence_id);
+CREATE INDEX ix_channel_session_app_token_session_id ON orchestrator.channel_session (app_token_session_id);
+CREATE INDEX ix_channel_session_session_evidence_id ON orchestrator.channel_session (session_evidence_id);
 
 -- One run of one AuthIntent. state_type keeps the JourneyState queryable; there is deliberately no
 -- next_* column, next is derived from state. parent_journey_id has no FK: parent and child age out
@@ -141,15 +141,15 @@ CREATE INDEX ix_journey_trace_binding_key_ref ON orchestrator.journey_trace (bin
 CREATE INDEX ix_journey_trace_created_at ON orchestrator.journey_trace (created_at);
 
 -- One counter per (scope, subject); scope is part of the key so the subject spaces never collide.
-CREATE TABLE orchestrator.attempt_throttle (
+CREATE TABLE orchestrator.rate_limit (
     scope        VARCHAR(64)  NOT NULL,
     subject      VARCHAR(128) NOT NULL,
     failed_count INT          NOT NULL DEFAULT 0,
     locked_until TIMESTAMP WITH TIME ZONE,
     updated_at   TIMESTAMP WITH TIME ZONE NOT NULL,
-    CONSTRAINT pk_attempt_throttle PRIMARY KEY (scope, subject)
+    CONSTRAINT pk_rate_limit PRIMARY KEY (scope, subject)
 );
-CREATE INDEX ix_attempt_throttle_updated_at ON orchestrator.attempt_throttle (updated_at);
+CREATE INDEX ix_rate_limit_updated_at ON orchestrator.rate_limit (updated_at);
 
 -- The primary key insert is the replay check. Keyed by SHA-256(thumbprint:jti): fixed width, and a
 -- client-chosen jti can neither overflow the key nor bloat the hottest index in the system.
@@ -159,7 +159,7 @@ CREATE TABLE orchestrator.dpop_proof_replay (
 );
 CREATE INDEX ix_dpop_proof_replay_expires_at ON orchestrator.dpop_proof_replay (expires_at);
 
--- Operator settings per tool and channel type (APP / KEYCLOAK): a runtime kill-switch and the
+-- Operator settings per tool and channel type (APP / WEB): a runtime kill-switch and the
 -- tool's rank in that channel's selection lists. No row = enabled, unranked.
 CREATE TABLE orchestrator.tool_availability (
     tool_id    VARCHAR(50) NOT NULL,

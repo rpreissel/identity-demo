@@ -58,17 +58,17 @@ class ChangeLog(private val repository: ChangeLogRepository, private val clock: 
 
     /** An attribute was withdrawn - by whom (trust anchor) and why, never its value. */
     @Transactional(propagation = Propagation.MANDATORY)
-    fun attributeRetracted(accountId: Long, attributeType: String?, trustAnchor: String?, reason: String?, at: Instant) =
+    fun attributeRetracted(accountId: Long, attributeType: String?, retractionSource: String?, reason: String?, at: Instant) =
         record(
             accountId, ChangeType.ATTRIBUTE_RETRACTED, subject = attributeType, at = at,
-            details = mapOf("trustAnchor" to trustAnchor, "reason" to reason),
+            details = mapOf("retractionSource" to retractionSource, "reason" to reason),
         )
 
     @Transactional(propagation = Propagation.MANDATORY)
     fun accountDeleted(accountId: Long) = record(accountId, ChangeType.ACCOUNT_DELETED)
 
     /**
-     * [into] took over the provisional account [from] (ADR-20), including its identifications.
+     * [into] took over the disposable account [from] (ADR-20), including its identifications.
      * Copied, not moved: the trail stays append-only, and each copy names where it came from.
      */
     @Transactional(propagation = Propagation.MANDATORY)

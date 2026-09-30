@@ -36,7 +36,7 @@ sealed interface JourneyState {
     fun withActive(active: ToolRef?): JourneyState
 
     /**
-     * State-owned flags for the journey trace (e.g. [KcSelectMethodState.accountAlreadyKnown]), so
+     * State-owned flags for the journey trace (e.g. [WebSelectMethodState.accountAlreadyKnown]), so
      * `JourneyService` can log them without downcasting.
      */
     val logDetail: Map<String, Any?> get() = emptyMap()

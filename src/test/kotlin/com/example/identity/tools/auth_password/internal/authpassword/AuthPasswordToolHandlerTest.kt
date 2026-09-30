@@ -72,7 +72,7 @@ class AuthPasswordToolHandlerTest : BehaviorSpec({
             val outcome = handler.patch(toolSessionId, "wrong")
 
             then("it fails") {
-                outcome shouldBe ToolOutcome.Failed.IdentifiedAuth(Text("Passwort ungueltig"))
+                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Passwort ungueltig"))
             }
         }
     }

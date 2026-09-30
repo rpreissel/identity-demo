@@ -112,7 +112,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
     given("Start, with lookup-capable tools available") {
         `when`("started") {
             val transition = strategy.transition(LookupLoginState.Start, JourneyEvent.Started, ctx())
-            then("offers every LOOKUP_AUTH tool in the catalog") {
+            then("offers every ACCOUNT_LOOKUP_AUTH tool in the catalog") {
                 transition.shouldBeInstanceOf<Transition.To>()
                 val to = transition.state
                 to.shouldBeInstanceOf<LookupLoginState.Credential>()

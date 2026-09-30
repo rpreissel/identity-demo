@@ -25,13 +25,13 @@ Vorgang“, nicht „einmal nutzbar“, wie beim Freischaltcode
    Kennwörter verschiedener Einladungen harmlos und zwingen einen Angreifer, jede Einladung einzeln
    zu raten. Das Kennwort hat zwölf Zeichen aus 31 (rund 59 Bit).
 3. **Anmelden über das Tool `auth-invite`**, eine Anmeldung ohne bekanntes Konto
-   (`MethodRole.LOOKUP_AUTH`, Faktor Besitz, höchstens `loa2`). Eingabe: Versicherungs- oder
+   (`ToolRole.ACCOUNT_LOOKUP_AUTH`, Faktor Besitz, höchstens `loa2`). Eingabe: Mitglieds- oder
    Partnernummer und das Kennwort. Das Ergebnis nennt, wen es bewiesen hat, als `Subject`: ein Konto
-   oder eine Einladung. Ein Fehlversuch nennt als `Attempted` die Person, sodass die Personen-Drossel
+   oder eine Einladung. Ein Fehlversuch nennt als `Attempted` die Person, sodass die Personen-Mengenbegrenzung
    zählt wie beim Freischaltcode. Das Niveau ist das der Einladung (`loa1` oder `loa2`); verlangt die
    Anmeldung mehr, bricht die Journey ab, bevor etwas gebunden wird.
 4. **Der Kanal hat ein Subjekt, das kein Konto ist.** Kanal und Evidenz führen ihr Subjekt im Code
-   als Sealed-Typ (`ChannelSession.subject`, `EvidenceTrail.subject`: `Subject.Account` oder
+   als Sealed-Typ (`ChannelSession.subject`, `SessionEvidenceRecord.subject`: `Subject.Account` oder
    `Subject.Invitation`). Die Datenbank hält es in den Spalten `account_id` und `invitation`, von denen
    eine Prüfregel höchstens eine zulässt.
    Die Antwort an Keycloak nennt das Subjekt (`authData.subject`, `accountId` nur noch zur
@@ -108,7 +108,7 @@ Aufbewahrungsfrist des Protokolls, weil es kein Konto gibt, mit dem sie gehen k�
 
 **Nachtrag 2026-09-30 (K-5): Ein Vorgangszugang wird nicht aufgewertet.** Verlangt ein späterer
 Durchlauf einer Einladungssitzung ein höheres Niveau, lehnt der Orchestrator den Kanal mit `409` ab
-(„Dieses Einmalkennwort genügt der verlangten Sicherheitsstufe nicht“), ohne ihn anzulegen; die
+(„Dieses Einmalkennwort genügt dem verlangten Sicherheitsniveau nicht“), ohne ihn anzulegen; die
 Anmeldeseite zeigt diesen Grund. Eine Einladung bindet einen Kanal nur durch ihren eigenen Nachweis,
 nie durch das Subjekt, das Keycloak nennt. Der Resume-Schritt überspringt Einladungssitzungen: Es
 gibt nichts wiederherzustellen. Wer ein höheres Niveau braucht, braucht eine Einladung dieses Niveaus.

@@ -26,18 +26,21 @@ Diese Wörter des Projekts kommen im Folgenden vor:
   anmelden“. Zu einem Anmeldeverfahren gehören meist zwei Tools.
 - **Identifizierungsverfahren:** ein Tool, das bestätigt, wer jemand ist: der Online-Ausweis, der
   Dienstleister Nect (Ausweis, Reisepass, EUDI-Wallet) und ein Freischaltcode per Brief.
-- **Niveau (`loa1`, `loa2`, `loa3`):** wie sehr einer Anmeldung vertraut wird, gestaffelt nach
-  NIST SP 800-63B. `loa1` reicht ein einzelnes Verfahren, `loa2` braucht zwei Faktortypen, `loa3`
+- **Niveau (`loa1`, `loa2`, `loa3`), ausführlich Sicherheitsniveau:** wie sehr einer Anmeldung
+  vertraut wird, gestaffelt nach NIST SP 800-63B, nah an den eIDAS-Niveaus niedrig, substanziell und
+  hoch, aber nicht gleich. `loa1` reicht ein einzelnes Verfahren, `loa2` braucht zwei Faktortypen, `loa3`
   eine Identifizierung mit dem Online-Ausweis.
 - **Personenverzeichnis:** die simulierte Stammdatenhaltung der Versicherung. Sie kennt Personen mit
-  Partnernummer, Namen, Geburtsdatum, Anschrift und gegebenenfalls Versicherungsnummer und
+  Partnernummer, Namen, Geburtsdatum, Anschrift und gegebenenfalls Mitgliedsnummer (auch
+  Versicherungsnummer genannt) und
   Krankenversichertennummer (KVNR).
-- **Claim:** ein Eintrag im Konto, dass ein Attribut einen bestimmten Wert hat, mit der Quelle, die
-  dafür einsteht, und dem Niveau, unter dem er entstand.
+- **Angabe (Claim):** ein Eintrag im Konto, dass ein Attribut einen bestimmten Wert hat, mit der
+  Quelle, die dafür einsteht, ihrer Stufe (*belegt*, *nachgewiesen*, *behauptet*) und dem Niveau,
+  unter dem sie entstand.
 - **Anker:** ein Attribut, über das ein Konto eindeutig wiedergefunden wird, etwa die Partnernummer,
   die Kennung eines Ausweises oder die bestätigte E-Mail-Adresse.
 - **Rolle:** ein Konto ohne zugeordnete Person ist ein **Interessent**, mit Person ein **Partner**,
-  mit Versicherungsnummer ein **Versicherter**.
+  mit Mitgliedsnummer ein **Versicherter**.
 - **Geräteverknüpfung:** dass der DPoP-Schlüssel eines Geräts einem Konto zugeordnet ist. Sie
   erkennt das Gerät wieder und zählt ausdrücklich nicht als Anmeldung.
 
@@ -51,8 +54,9 @@ Abschnitt „Begriffe“, legt diese Entsprechungen fest:
 - **Authentisierung und Authentifizierung** fasst das Projekt unter „Authentifizierung“ zusammen.
   In der Sache ist die Trennung da: Das Tool liefert den Nachweis für den Client, die Policy des
   Servers prüft ihn.
-- **Bescheinigtes Attribut** ist ein Claim, für den ein Identifizierungsverfahren oder das
-  Personenverzeichnis einsteht. Ein nur behaupteter Wert ist unbescheinigt.
+- **Bescheinigtes Attribut** ist eine Angabe der Stufe *belegt* oder *nachgewiesen*: Ein
+  Identifizierungsverfahren oder das Personenverzeichnis steht für sie ein. Eine Angabe der Stufe
+  *behauptet* ist unbescheinigt.
 - **Faktortyp** heißt im Projekt ebenso, im Code `FactorType`.
 - **Gerätebindung** meint nur das Einrichten eines an das Gerät gebundenen Anmeldeverfahrens
   (Geräteschlüssel, KOBIL). Die Zuordnung des DPoP-Schlüssels zu einem Konto heißt
@@ -74,7 +78,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   `auth_sms/Descriptors.kt`.
 - **Nachweis beim Authentisieren.** Jedes Tool liefert einen Nachweis, die Sitzung sammelt die
   Nachweise, und die Policy leitet daraus das Niveau ab.
-  Im Code: `AuthEvidence` in `orchestrator/domain/policy/`.
+  Im Code: `SessionEvidence` in `orchestrator/domain/policy/`.
 - **2-Faktor-Authentisierungsmittel nach Beispiel 2 und Gerätebindung für MFA.** Der Geräteschlüssel
   ist ein eigenes, nicht exportierbares Schlüsselpaar, das der Nutzer auf dem Gerät per PIN oder
   Biometrie freigibt. Die Faktortypen werden bei jedem Nachweis aus der tatsächlichen Freigabe
@@ -95,13 +99,14 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   In der Doku: [Orchestrierung](../04-orchestrierung.md), Abschnitt 8; ADR-21 in den
   [Entscheidungen](../12-entscheidungen.md).
 - **Bescheinigte und unbescheinigte Attribute bleiben unterscheidbar.** Jeder Claim speichert seine
-  Quelle und daraus seinen Rang: Das Personenverzeichnis steht am höchsten, ein Identifizierungs- oder
-  Bestätigungsverfahren in der Mitte, eine bloße Angabe des Nutzers am niedrigsten. Voraussetzungen
-  nennen den nötigen Rang: Ein Passwort lässt sich erst einrichten, wenn die E-Mail-Adresse bestätigt
-  ist. Ein nur behaupteter Wert erfüllt keine Voraussetzung, die einen bestätigten verlangt.
+  Quelle und daraus seine Stufe: *belegt* durch das Personenverzeichnis, *nachgewiesen* durch ein
+  Identifizierungs- oder Bestätigungsverfahren, *behauptet*, wenn nur der Nutzer ihn angibt.
+  Voraussetzungen nennen die nötige Stufe: Ein Passwort lässt sich erst einrichten, wenn die
+  E-Mail-Adresse bestätigt ist. Ein nur behaupteter Wert erfüllt keine Voraussetzung, die einen
+  bestätigten verlangt.
   **Einschränkung:** Kein Tool meldet heute selbst einen nur behaupteten Wert. Die Stufe ist
   vorhanden und wird geprüft, aber noch nicht genutzt.
-  Im Code: `ClaimSource` und `TrustLevel` in `tool_api/claims/Claims.kt`; `requires` in
+  Im Code: `ClaimSource` und `ClaimTrust` in `tool_api/claims/Claims.kt`; `requires` in
   `auth_password/Descriptors.kt`.
 - **Identifizierungsmittel mit einem Bezeichner, der für das Mittel selbst eindeutig ist.** Der
   Online-Ausweis liefert seine Kennung für diesen Diensteanbieter (`restrictedId`). Das Konto hält
@@ -126,7 +131,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   Im Code: `ident_nect/internal/IdentNectToolHandler.kt`.
 - **ID-Server.** Orchestrator und Keycloak zusammen verwalten Konten und ihre Attribute und geben
   sie mit dem Stand der Authentifizierung im Token weiter: Niveau, benutzte Verfahren, Partnernummer
-  und Versicherungsnummer. Die Personen selbst verwaltet das Personenverzeichnis. Ändert es eine
+  und Mitgliedsnummer. Die Personen selbst verwaltet das Personenverzeichnis. Ändert es eine
   Person, ziehen die Konten per Ereignis nach.
   Im Code: `orchestrator/session/TokenService.kt`; `account/application/PersonChangeListener.kt`.
   ADR-34.
@@ -138,7 +143,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
 ## 4) Wo das Projekt dem Glossar nur mit Einschränkung folgt
 
 - **Challenge-Response.** Beim Geräteschlüssel stellt der Server keine eigene Challenge. Der
-  signierte Nachweis ist stattdessen an genau diese Anfrage gebunden (Methode, Adresse, Zeitpunkt,
+  signierte Geräte-Proof ist stattdessen an genau diese Anfrage gebunden (Methode, Adresse, Zeitpunkt,
   einmalige Kennung) und gegen Wiederholung geschützt. Bei KOBIL fragt der Server die Bestätigung
   selbst beim Anbieter ab. Beides erfüllt den Zweck, ist aber kein Challenge-Response im engeren
   Sinn.
@@ -177,8 +182,8 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
 - **Kommunikationspartner, sichere Kommunikation, sicherer Kommunikationskanal.** Das sind Begriffe
   der Transportschicht. Das Projekt setzt HTTPS voraus und beschreibt es nicht als eigenen
   fachlichen Begriff.
-- **Nachricht.** Am nächsten kommt der DPoP-Nachweis: Jede Anfrage trägt einen eigenen signierten
-  Nachweis, der nur für sie gilt und sich nicht wiederholen lässt. Einen eigenen Begriff „Nachricht“
+- **Nachricht.** Am nächsten kommt der DPoP-Proof: Jede Anfrage trägt einen eigenen signierten
+  Proof, der nur für sie gilt und sich nicht wiederholen lässt. Einen eigenen Begriff „Nachricht“
   gibt es nicht.
   In der Doku: [DPoP-Bindung](../09-dpop.md), Abschnitt 1.
 - **Identität als eine Sammlung von Attributen.** Dazu der nächste Abschnitt.
@@ -191,15 +196,15 @@ lange leben. Keiner davon ist allein die Identität des Glossars.
 
 1. **Das Konto trägt keine Attribute.** Es hat nur eine Nummer, einen Zeitpunkt der Anlage und eine
    Versionsnummer. Es ist die Stelle, an der sich alles andere festmacht.
-2. **Claims sind die Geschichte.** Jede bestätigte Angabe wird mit Quelle und Niveau angehängt und
+2. **Claims sind die Geschichte.** Jede Angabe wird mit Quelle, Stufe und Niveau angehängt und
    nie überschrieben. Widerrufe nehmen Werte zurück, etwa wenn das Personenverzeichnis eine
-   Versicherungsnummer ändert.
-3. **Der aktuelle Stand der Anker ergibt sich daraus.** Partnernummer, Versicherungsnummer, Kennung
+   Mitgliedsnummer ändert.
+3. **Der aktuelle Stand der Anker ergibt sich daraus.** Partnernummer, Mitgliedsnummer, Kennung
    des Ausweises und E-Mail-Adresse werden aus den Claims gelesen, nicht aus eigenen Feldern.
 4. **Stammdaten bleiben im Personenverzeichnis.** Name, Geburtsdatum und Anschrift einer zugeordneten
    Person liest das Projekt immer frisch von dort. Im Konto stehen sie nur als Geschichte.
 5. **Die Rolle wird abgeleitet, nicht gespeichert.** Interessent, Partner oder Versicherter folgt aus
-   Partnernummer und Versicherungsnummer. Ein Konto kann schon einen bestätigten Namen haben und
+   Partnernummer und Mitgliedsnummer. Ein Konto kann schon einen bestätigten Namen haben und
    trotzdem Interessent sein, solange ihm keine Person zugeordnet ist.
 6. **Das Protokoll der Identifizierungen ist Beleg, keine Identität.** Es hält fest, dass und wie
    identifiziert wurde, und wird für keine Entscheidung gelesen.

@@ -65,9 +65,9 @@ class PeerAuthValidator(
         validateSignature(signedJWT, jwk)
         validateClaims(claims, httpMethod, httpUrl)
 
-        val channelAnchor = claims.getStringClaim("channel_anchor")
-        if (channelAnchor.isNullOrBlank()) {
-            throw PeerAuthValidationException("Peer-auth assertion is missing channel_anchor")
+        val channelBinding = claims.getStringClaim("channel_binding")
+        if (channelBinding.isNullOrBlank()) {
+            throw PeerAuthValidationException("Peer-auth assertion is missing channel_binding")
         }
 
         val jti = claims.jwtid
@@ -84,7 +84,7 @@ class PeerAuthValidator(
             throw PeerAuthValidationException("Peer-auth assertion replay detected", e)
         }
 
-        return PeerAuthAssertion(jti, issuedAt, channelAnchor, claims.subject)
+        return PeerAuthAssertion(jti, issuedAt, channelBinding, claims.subject)
     }
 
     private fun validateSignature(signedJWT: SignedJWT, jwk: JWK) {

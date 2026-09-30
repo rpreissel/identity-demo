@@ -8,7 +8,7 @@ const busy: ActiveSessionsReport = {
     total: 2,
     perType: [
       { channel: 'APP', count: 1 },
-      { channel: 'KEYCLOAK', count: 1 },
+      { channel: 'WEB', count: 1 },
     ],
     newest: [
       {

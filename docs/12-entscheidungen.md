@@ -22,7 +22,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/).
 | [ADR-9](adr/ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md) | Profilabhängiger Token-Abruf — eigener OAuth2-Grant, den nur der Orchestrator aufrufen darf |
 | [ADR-10](adr/ADR-010-interessent-ist-konto-zustand-kein-eigener-authintent.md) | Interessent ist Konto-Zustand, kein eigener AuthIntent |
 | [ADR-11](adr/ADR-011-kontouebergreifender-person-id-konflikt-ist-abweisung-merge-nie.md) | Ein Anker, der schon einem anderen Konto gehört, wird abgewiesen; Konten werden nie automatisch zusammengeführt |
-| [ADR-12](adr/ADR-012-ein-widerruf-ist-eine-eigene-zeile-mit-eigenem.md) | Ein Widerruf ist eine eigene Zeile mit eigenem Vertrauensanker |
+| [ADR-12](adr/ADR-012-ein-widerruf-ist-eine-eigene-zeile-mit-eigenem.md) | Ein Widerruf ist eine eigene Zeile mit eigener Quelle |
 | [ADR-14](adr/ADR-014-schema-zusammengefuehrt-das-konto-als-sperrpunkt-eine-wahrheit.md) | Das Konto als gemeinsame Sperre, jeder Fakt an genau einer Stelle |
 | [ADR-15](adr/ADR-015-nachweise-und-ausgestellte-tokens-in-getrennten-tabellen.md) | Nachweise und ausgestellte Tokens in getrennten Tabellen |
 | [ADR-16](adr/ADR-016-ein-datenbankschema-je-modul-statt-namenspraefix.md) | Ein Schema und ein Migrationsordner je Modul |
@@ -32,7 +32,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/).
 | [ADR-20](adr/ADR-020-ein-vorlaeufiges-konto-geht-im-gefundenen-auf-statt.md) | Ein vorläufiges Konto geht im gefundenen auf, statt den Lauf abzuweisen |
 | [ADR-21](adr/ADR-021-der-kobil-pin-liegt-im-backend-und-das.md) | KOBIL-Anbindung — PIN im Backend, Nachweis über eine Einmalkennung |
 | [ADR-22](adr/ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md) | Demo-Geheimnisse liegen im Klartext — benannt statt verschwiegen |
-| [ADR-24](adr/ADR-024-eine-methode-haengt-von-einer-anderen-ab-indem.md) | Eine Methode hängt von einer anderen ab, indem sie deren Angabe verlangt |
+| [ADR-24](adr/ADR-024-eine-methode-haengt-von-einer-anderen-ab-indem.md) | Ein Verfahren hängt von einem anderen ab, indem es dessen Angabe verlangt |
 | [ADR-25](adr/ADR-025-die-keycloak-konfiguration-steht-im-realm-nicht-in.md) | Die Keycloak-Konfiguration steht im Realm, nicht in der Container-Umgebung |
 | [ADR-26](adr/ADR-026-api-vertrag-wird-generiert.md) | Der API-Vertrag wird generiert, nicht dreimal von Hand gepflegt |
 | [ADR-27](adr/ADR-027-gemeinsame-typen-im-kernel-paket.md) | Gemeinsame Typen liegen im Paket `orchestrator.kernel` *(heute `orchestrator.domain`)* |

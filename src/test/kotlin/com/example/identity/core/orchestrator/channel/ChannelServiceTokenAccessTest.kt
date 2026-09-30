@@ -14,7 +14,7 @@ import java.util.UUID
 import java.time.Instant
 
 /**
- * Token and ID claims exist only for an authenticated APP channel. A KEYCLOAK channel never has
+ * Token and ID claims exist only for an authenticated APP channel. A WEB channel never has
  * an auth context - it must be refused as the wrong kind of channel (409), not fail on the
  * missing context (500).
  */
@@ -28,9 +28,9 @@ class ChannelServiceTokenAccessTest : BehaviorSpec({
         mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true)
     )
 
-    given("an authenticated KEYCLOAK channel") {
+    given("an authenticated WEB channel") {
         every { guard.requireChannel(channelSessionId, any()) } returns
-            ChannelSession(channel = ChannelType.KEYCLOAK, now = Instant.now()).apply { state = ChannelState.AUTHENTICATED }
+            ChannelSession(channel = ChannelType.WEB, now = Instant.now()).apply { state = ChannelState.AUTHENTICATED }
 
         then("the AccessToken is refused with 409") {
             shouldThrow<OrchestratorException> { service.getToken(channelSessionId, "kc", 30) }

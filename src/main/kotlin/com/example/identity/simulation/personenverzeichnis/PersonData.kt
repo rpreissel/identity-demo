@@ -4,7 +4,7 @@ import java.time.LocalDate
 
 /**
  * The register person's outward projection. The address fields are nullable; the Keycloak mirror
- * prefers them over an attested claim and falls back to the claim for Interessenten.
+ * prefers them over an attested claim and falls back to the claim for prospects.
  */
 data class PersonData(
     /** The Partnernummer - the person id (ADR-34). */

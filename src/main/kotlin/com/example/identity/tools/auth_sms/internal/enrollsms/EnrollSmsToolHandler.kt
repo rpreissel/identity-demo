@@ -5,7 +5,7 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollment
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
-import com.example.identity.tools.auth_sms.internal.SmsSendBudget
+import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 
 import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
 import com.example.identity.tools.auth_sms.SMS_ENROLLMENT_TYPE
@@ -32,7 +32,7 @@ class EnrollSmsToolHandler(
     private val enrollmentRepository: AuthSmsEnrollmentRepository,
     private val tanGenerator: TanGenerator,
     private val smsGateway: SmsGateway,
-    private val sendBudget: SmsSendBudget,
+    private val sendLimit: SmsSendLimit,
     private val clock: Clock
 ) {
 
@@ -44,7 +44,7 @@ class EnrollSmsToolHandler(
     }
 
     /**
-     * Every [EnrollSmsDecision.SendTan] passes [SmsSendBudget]: resubmitting a number is never a
+     * Every [EnrollSmsDecision.SendTan] passes [SmsSendLimit]: resubmitting a number is never a
      * wrong guess, so without it anyone knowing a number could use this tool as an SMS bomb. The
      * caller chose the number, so an exhausted budget may say so: a 429, not a failed attempt of the
      * journey, since nothing was guessed.
@@ -60,7 +60,7 @@ class EnrollSmsToolHandler(
 
             is EnrollSmsDecision.Unchanged -> outcomeFor(decision.state)
 
-            is EnrollSmsDecision.SendTan -> if (!sendBudget.trySend(decision.phoneNumber)) {
+            is EnrollSmsDecision.SendTan -> if (!sendLimit.trySend(decision.phoneNumber)) {
                 throw TooManyRequestsException(Text("Zu viele Codes angefordert. Bitte versuchen Sie es in einigen Minuten erneut."))
             } else {
                 val issued = tanGenerator.issue()
@@ -78,7 +78,7 @@ class EnrollSmsToolHandler(
             }
 
             is EnrollSmsDecision.Complete -> {
-                sendBudget.received(decision.phoneNumber)
+                sendLimit.received(decision.phoneNumber)
                 val enrollment = enrollmentRepository.save(AuthSmsEnrollment(decision.phoneNumber, createdAt = clock.instant()))
                 ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef(type = SMS_ENROLLMENT_TYPE, id = enrollment.id.toString()),

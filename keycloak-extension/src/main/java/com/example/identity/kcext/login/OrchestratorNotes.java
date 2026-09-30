@@ -63,7 +63,7 @@ public final class OrchestratorNotes {
      * The same value for the whole flow run (docs/05-api.md Abschnitt 3: "immer insert, nie find").
      * Keyed on the tab id, not the parent session id: Keycloak reuses the root authentication session
      * across requests of an SSO'd browser, so a step-up right after a login would collide with that
-     * login's kc anchor (BINDING_MISMATCH). The tab id is fresh per authorization request.
+     * login's kc binding (BINDING_MISMATCH). The tab id is fresh per authorization request.
      */
     static String channelSessionId(AuthenticationFlowContext context) {
         return channelSessionId(context.getAuthenticationSession());

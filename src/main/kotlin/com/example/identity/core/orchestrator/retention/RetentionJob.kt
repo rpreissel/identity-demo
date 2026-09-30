@@ -6,9 +6,9 @@ import com.example.identity.core.account.AccountService
 import io.micrometer.core.instrument.MeterRegistry
 import com.example.identity.core.orchestrator.journey.AuthJourneyRepository
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceRepository
-import com.example.identity.core.orchestrator.session.AttemptThrottleRepository
-import com.example.identity.core.orchestrator.session.AuthContextRepository
-import com.example.identity.core.orchestrator.session.EvidenceTrailRepository
+import com.example.identity.core.orchestrator.session.RateLimitRecordRepository
+import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
+import com.example.identity.core.orchestrator.session.SessionEvidenceRecordRepository
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
 import com.example.identity.core.orchestrator.session.ToolSessionRepository
@@ -23,8 +23,8 @@ import java.time.Instant
 
 /**
  * Retention for the orchestrator's session data (docs/07-betrieb.md #3), in one transaction. Cleans
- * from the inside out (ToolSession, AuthJourney, ChannelSession with AuthContext and AuthEvidence),
- * so no row outlives its FK target. Journey trace and attempt throttle are swept by age only; nothing
+ * from the inside out (ToolSession, AuthJourney, ChannelSession with AppTokenSession and SessionEvidence),
+ * so no row outlives its FK target. Journey trace and attempt rate limit are swept by age only; nothing
  * else bounds them. Of the account data only abandoned registrations go (ADR-46). This job makes no
  * network calls.
  */
@@ -33,10 +33,10 @@ class RetentionJob(
     private val toolSessionRepository: ToolSessionRepository,
     private val journeyRepository: AuthJourneyRepository,
     private val channelSessionRepository: ChannelSessionRepository,
-    private val authContextRepository: AuthContextRepository,
-    private val authEvidenceRepository: EvidenceTrailRepository,
+    private val appTokenSessionRepository: AppTokenSessionRepository,
+    private val sessionEvidenceRepository: SessionEvidenceRecordRepository,
     private val journeyTraceRepository: JourneyTraceRepository,
-    private val attemptThrottleRepository: AttemptThrottleRepository,
+    private val rateLimitRecordRepository: RateLimitRecordRepository,
     private val accountService: AccountService,
     private val accountDeletionService: AccountDeletionService,
     private val meterRegistry: MeterRegistry,
@@ -54,9 +54,9 @@ class RetentionJob(
         discardAbandonedRegistrations(now)
 
         val journeyTraceEntries = journeyTraceRepository.deleteByCreatedAtBefore(now.minus(JOURNEY_TRACE_RETENTION))
-        val staleCounters = attemptThrottleRepository.deleteStaleCounters(now.minus(ATTEMPT_THROTTLE_RETENTION), now)
+        val staleCounters = rateLimitRecordRepository.deleteStaleCounters(now.minus(RATE_LIMIT_RETENTION), now)
         countDeleted("journey_trace", journeyTraceEntries)
-        countDeleted("attempt_throttle", staleCounters)
+        countDeleted("rate_limit", staleCounters)
         if (journeyTraceEntries > 0 || staleCounters > 0) {
             log.info(
                 "Retention: deleted {} journey trace entry/entries and {} attempt throttle counter(s)",
@@ -90,8 +90,8 @@ class RetentionJob(
 
     private fun deleteChannels(channels: List<ChannelSession>) {
         if (channels.isEmpty()) return
-        val orphanedAuthContextIds = channels.mapNotNull { it.authContextId }
-        val orphanedAuthEvidenceIds = channels.mapNotNull { it.authEvidenceId }
+        val orphanedAppTokenSessionIds = channels.mapNotNull { it.appTokenSessionId }
+        val orphanedSessionEvidenceIds = channels.mapNotNull { it.sessionEvidenceId }
         val channelSessionIds = channels.mapNotNull { it.channelSessionId }
         if (channelSessionIds.isNotEmpty()) {
             val journeyIds = journeyRepository.findIdsByChannelSessionIdIn(channelSessionIds)
@@ -102,11 +102,11 @@ class RetentionJob(
         }
         // One statement per table and batch; deleteAll would delete row by row.
         channelSessionRepository.deleteAllInBatch(channels)
-        if (orphanedAuthContextIds.isNotEmpty()) {
-            authContextRepository.deleteAllByIdInBatch(orphanedAuthContextIds)
+        if (orphanedAppTokenSessionIds.isNotEmpty()) {
+            appTokenSessionRepository.deleteAllByIdInBatch(orphanedAppTokenSessionIds)
         }
-        if (orphanedAuthEvidenceIds.isNotEmpty()) {
-            authEvidenceRepository.deleteAllByIdInBatch(orphanedAuthEvidenceIds)
+        if (orphanedSessionEvidenceIds.isNotEmpty()) {
+            sessionEvidenceRepository.deleteAllByIdInBatch(orphanedSessionEvidenceIds)
         }
         countDeleted("channel_session", channels.size)
         log.info("Retention: deleted {} channel session(s)", channels.size)
@@ -153,9 +153,9 @@ class RetentionJob(
         private val JOURNEY_TRACE_RETENTION: Duration = Duration.ofDays(14)
 
         /**
-         * Far beyond the longest throttle window or lockout (15 minutes), so a sweep never shortens
-         * an active budget. [AttemptThrottleRepository.deleteStaleCounters] also skips running locks.
+         * Far beyond the longest rate limit window or lockout (15 minutes), so a sweep never shortens
+         * an active budget. [RateLimitRecordRepository.deleteStaleCounters] also skips running locks.
          */
-        private val ATTEMPT_THROTTLE_RETENTION: Duration = Duration.ofDays(7)
+        private val RATE_LIMIT_RETENTION: Duration = Duration.ofDays(7)
     }
 }

@@ -94,8 +94,8 @@ internal data class KcUserMirror(
 /**
  * Names and attributes for the Keycloak user mirror. For a bound account the Personenverzeichnis is
  * the only source, including the fields it leaves empty, so a cleared field stays cleared (ADR-34).
- * An Interessent (ADR-18) is mirrored from its own established claims. `personId`, `kvnr` and
- * `versnr` exist only for a bound account; their absence marks an Interessent.
+ * An prospect (ADR-18) is mirrored from its own established claims. `personId`, `kvnr` and
+ * `versnr` exist only for a bound account; their absence marks a prospect.
  */
 internal fun kcUserMirror(profile: AccountProfile, person: PersonRecord?, attested: Map<AttributeType, String>): KcUserMirror =
     KcUserMirror(
@@ -106,13 +106,13 @@ internal fun kcUserMirror(profile: AccountProfile, person: PersonRecord?, attest
 
 /**
  * The person attributes as custom user attributes: from the Personenverzeichnis for a bound account
- * (never topped up from claims), from the account's attested claims for an Interessent.
+ * (never topped up from claims), from the account's attested claims for a prospect.
  */
 internal fun masterDataAttributes(personId: String?, person: PersonRecord?, attested: Map<AttributeType, String>): Map<String, String> = buildMap {
     personId?.let { put("personId", it) }
     if (person != null) {
         person.kvnr?.let { put("kvnr", it) }
-        person.insuranceNumber?.let { put("versnr", it) }
+        person.memberNumber?.let { put("versnr", it) }
         person.birthDate?.let { put("birthDate", it.toString()) }
         // One street line - the port already joins the Personenverzeichnis' two fields.
         person.streetAddress?.let { put("streetAddress", it) }

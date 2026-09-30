@@ -17,8 +17,8 @@ class PersonLockoutServiceTest : BehaviorSpec({
     val personId = "P000000001"
 
     given("a person the counter reports as locked") {
-        val counter = mockk<AttemptCounter>()
-        every { counter.isLocked(ThrottleScope.PERSON, personId) } returns true
+        val counter = mockk<RateLimitCounter>()
+        every { counter.isLocked(RateLimitScope.PERSON, personId) } returns true
         val service = PersonLockoutService(counter)
 
         `when`("asking whether it is locked") {
@@ -26,35 +26,35 @@ class PersonLockoutServiceTest : BehaviorSpec({
 
             then("it answers from the PERSON scope") {
                 locked shouldBe true
-                verify(exactly = 1) { counter.isLocked(ThrottleScope.PERSON, personId) }
+                verify(exactly = 1) { counter.isLocked(RateLimitScope.PERSON, personId) }
             }
         }
     }
 
     given("a person with no lock") {
-        val counter = mockk<AttemptCounter>()
-        justRun { counter.recordFailure(ThrottleScope.PERSON, personId, any(), any()) }
+        val counter = mockk<RateLimitCounter>()
+        justRun { counter.recordFailure(RateLimitScope.PERSON, personId, any(), any()) }
         val service = PersonLockoutService(counter)
 
         `when`("a failure is recorded") {
             service.recordFailure(personId)
 
             then("it counts it in the PERSON scope with five failures and 15 minutes") {
-                verify(exactly = 1) { counter.recordFailure(ThrottleScope.PERSON, personId, 5, Duration.ofMinutes(15)) }
+                verify(exactly = 1) { counter.recordFailure(RateLimitScope.PERSON, personId, 5, Duration.ofMinutes(15)) }
             }
         }
     }
 
     given("a person with counted failures") {
-        val counter = mockk<AttemptCounter>()
-        justRun { counter.reset(ThrottleScope.PERSON, personId) }
+        val counter = mockk<RateLimitCounter>()
+        justRun { counter.reset(RateLimitScope.PERSON, personId) }
         val service = PersonLockoutService(counter)
 
         `when`("a success is recorded") {
             service.recordSuccess(personId)
 
             then("it resets the PERSON counter") {
-                verify(exactly = 1) { counter.reset(ThrottleScope.PERSON, personId) }
+                verify(exactly = 1) { counter.reset(RateLimitScope.PERSON, personId) }
             }
         }
     }

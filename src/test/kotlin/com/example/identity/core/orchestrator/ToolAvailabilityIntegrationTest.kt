@@ -157,7 +157,7 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
                 enabledIn("APP") shouldBe true
                 put("/orchestrator/admin/tools/auth-sms/availability/APP", """{"enabled":false,"reason":"test"}""") shouldBe HttpStatus.OK
                 enabledIn("APP") shouldBe false
-                enabledIn("KEYCLOAK") shouldBe true
+                enabledIn("WEB") shouldBe true
 
                 }
             }
@@ -187,7 +187,7 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
                 then("the App channel still offers it") {
 
                 seedRegisteredAccount()
-                toolAvailabilityService.disable("auth-sms", ChannelType.KEYCLOAK, "web only")
+                toolAvailabilityService.disable("auth-sms", ChannelType.WEB, "web only")
 
                 @Suppress("UNCHECKED_CAST")
                 post("/orchestrator/api/v1/app/channels").stepData()["options"] as List<String> shouldContain "auth-sms"

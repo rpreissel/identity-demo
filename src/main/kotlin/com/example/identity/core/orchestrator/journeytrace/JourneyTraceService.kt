@@ -10,7 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 
 data class JourneyTraceEntryView(
     val channelSessionId: UUID,
-    /** APP or KEYCLOAK - makes the originating facade visible in the log UI. */
+    /** APP or WEB - makes the originating facade visible in the log UI. */
     val channelType: String?,
     /** Null until the channel resolves an account - see [JourneyTraceEntry.accountId]. */
     val accountId: Long?,

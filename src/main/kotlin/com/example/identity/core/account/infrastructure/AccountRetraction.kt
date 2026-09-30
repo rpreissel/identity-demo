@@ -1,6 +1,6 @@
 package com.example.identity.core.account.infrastructure
 
-import com.example.identity.core.account.RetractionAnchor
+import com.example.identity.core.account.RetractionSource
 import com.example.identity.contract.tool_api.claims.AttributeType
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
@@ -29,9 +29,9 @@ class AccountRetraction(
     @Column(name = "normalized_value", nullable = false)
     var normalizedValue: String? = null,
 
-    @Column(name = "trust_anchor", nullable = false)
+    @Column(name = "claim_source", nullable = false)
     @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
-    var trustAnchor: RetractionAnchor? = null,
+    var retractionSource: RetractionSource? = null,
 
     @Column(name = "reason")
     var reason: String? = null,

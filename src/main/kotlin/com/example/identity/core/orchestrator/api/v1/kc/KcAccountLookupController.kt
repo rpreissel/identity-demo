@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController
 /**
  * Keycloak's user federation reads accounts here instead of holding a copy (ADR-38). Every lookup
  * is a single indexed read, and there is deliberately no "list all". The assertion's
- * `channel_anchor` names what is looked up: the account id for [byId], [LOOKUP_ANCHOR] for a search
+ * `channel_binding` names what is looked up: the account id for [byId], [LOOKUP_BINDING] for a search
  * by address. The answer is signed, because it decides which user Keycloak logs in.
  */
 @RestController
@@ -38,7 +38,7 @@ class KcAccountLookupController(
         @RequestHeader("Authorization") authorization: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<KcAccountView> {
-        validatePeerAuth(authorization, httpRequest, expectedAnchor = accountId.toString())
+        validatePeerAuth(authorization, httpRequest, expectedBinding = accountId.toString())
         return views.byAccountId(accountId).toResponse()
     }
 
@@ -50,7 +50,7 @@ class KcAccountLookupController(
         @RequestHeader("Authorization") authorization: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<KcAccountView> {
-        validatePeerAuth(authorization, httpRequest, expectedAnchor = LOOKUP_ANCHOR)
+        validatePeerAuth(authorization, httpRequest, expectedBinding = LOOKUP_BINDING)
         val view = when {
             email != null && username == null -> views.byEmail(email)
             username != null && email == null -> views.byUsername(username)
@@ -62,17 +62,17 @@ class KcAccountLookupController(
     private fun KcAccountView?.toResponse(): ResponseEntity<KcAccountView> =
         this?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
 
-    private fun validatePeerAuth(authorization: String?, httpRequest: HttpServletRequest, expectedAnchor: String) {
+    private fun validatePeerAuth(authorization: String?, httpRequest: HttpServletRequest, expectedBinding: String) {
         val token = authorization?.trim()?.let { if (it.startsWith("Bearer ", ignoreCase = true)) it.substring(7).trim() else it }
             ?: throw PeerAuthValidationException("Missing Authorization header")
         val assertion = peerAuthValidator.validate(token, httpRequest.method, buildRequestUrl(httpRequest))
-        if (assertion.channelAnchor != expectedAnchor) {
-            throw PeerAuthValidationException("Peer-auth channel_anchor does not match this lookup")
+        if (assertion.channelBinding != expectedBinding) {
+            throw PeerAuthValidationException("Peer-auth channel_binding does not match this lookup")
         }
     }
 
     companion object {
-        /** The `channel_anchor` of a search by address - there is no account id to name yet. */
-        const val LOOKUP_ANCHOR = "account-lookup"
+        /** The `channel_binding` of a search by address - there is no account id to name yet. */
+        const val LOOKUP_BINDING = "account-lookup"
     }
 }

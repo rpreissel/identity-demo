@@ -3,7 +3,7 @@ import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.tools.auth_sms.internal.TanGenerator
-import com.example.identity.tools.auth_sms.internal.SmsSendBudget
+import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollment
 
@@ -35,8 +35,8 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
     val toolDataRepository = mockk<AuthSmsToolSessionRepository>()
     val enrollmentRepository = mockk<AuthSmsEnrollmentRepository>()
     val tanGenerator = TanGenerator("test-pepper", clock = TEST_CLOCK)
-    val sendBudget = mockk<SmsSendBudget>(relaxed = true).also { every { it.trySend(any()) } returns true }
-    val handler = AuthSmsToolHandler(AuthSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = TEST_CLOCK), sendBudget, clock = TEST_CLOCK)
+    val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
+    val handler = AuthSmsToolHandler(AuthSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = TEST_CLOCK), sendLimit, clock = TEST_CLOCK)
     val toolSessionId = UUID.randomUUID()
 
     given("start()") {
@@ -74,10 +74,10 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
         `when`("the number's send budget is used up") {
             val enrollment = AuthSmsEnrollment(phoneNumber = "+491707654321", createdAt = TEST_NOW).apply { id = 2L }
             every { enrollmentRepository.findById(2L) } returns Optional.of(enrollment)
-            every { sendBudget.trySend("+491707654321") } returns false
+            every { sendLimit.trySend("+491707654321") } returns false
             val gateway = SmsGateway(clock = TEST_CLOCK)
-            val throttledHandler = AuthSmsToolHandler(AuthSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, gateway, sendBudget, clock = TEST_CLOCK)
-            val result = runCatching { throttledHandler.start(toolSessionId, EnrollmentRef(SMS_ENROLLMENT_TYPE, "2")) }
+            val rateLimitedHandler = AuthSmsToolHandler(AuthSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, gateway, sendLimit, clock = TEST_CLOCK)
+            val result = runCatching { rateLimitedHandler.start(toolSessionId, EnrollmentRef(SMS_ENROLLMENT_TYPE, "2")) }
 
             then("it refuses with TooManyRequestsException and sends nothing") {
                 shouldThrow<TooManyRequestsException> { result.getOrThrow() }
@@ -103,7 +103,7 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
             }
 
             then("the number's send budget starts over: whoever asked received the TAN") {
-                verify { sendBudget.received("+491701234567") }
+                verify { sendLimit.received("+491701234567") }
             }
         }
     }

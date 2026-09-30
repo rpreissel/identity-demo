@@ -7,15 +7,15 @@ import com.example.identity.core.account.infrastructure.AccountRetraction
 import com.example.identity.core.account.infrastructure.AccountRetractionRepository
 import com.example.identity.core.account.domain.ClaimKey
 import com.example.identity.core.account.domain.normalizeClaimValue
-import com.example.identity.core.account.RetractionAnchor
+import com.example.identity.core.account.RetractionSource
 import com.example.identity.contract.tool_api.claims.AttributeAuthority
 import com.example.identity.contract.tool_api.claims.authority
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
-import com.example.identity.contract.tool_api.claims.TrustLevel
-import com.example.identity.contract.tool_api.claims.trustLevel
+import com.example.identity.contract.tool_api.claims.ClaimTrust
+import com.example.identity.contract.tool_api.claims.claimTrust
 import com.example.identity.contract.tool_api.claims.validateValue
 import org.springframework.stereotype.Component
 import java.time.Clock
@@ -97,16 +97,16 @@ class ClaimLedger(
     /** The same, counting only sources that PROVE the value - self-reported ones never do. */
     fun provenValues(accountId: Long, types: Set<AttributeType>): Map<AttributeType, String> =
         established(accountId)
-            .filter { ClaimSource(it.claimSource.orEmpty()).trustLevel.rank >= TrustLevel.PROVEN.rank }
+            .filter { ClaimSource(it.claimSource.orEmpty()).claimTrust.rank >= ClaimTrust.PROVEN.rank }
             .strongestEstablishedValues(types)
 
-    /** Highest [TrustLevel] per established attribute. */
-    fun establishedTrust(accountId: Long): Map<AttributeType, TrustLevel> =
+    /** Highest [ClaimTrust] per established attribute. */
+    fun establishedTrust(accountId: Long): Map<AttributeType, ClaimTrust> =
         established(accountId)
             .mapNotNull { claim ->
                 val type = claim.attributeType ?: return@mapNotNull null
                 val source = claim.claimSource?.let(::ClaimSource) ?: return@mapNotNull null
-                type to source.trustLevel
+                type to source.claimTrust
             }
             .groupBy({ it.first }, { it.second })
             .mapValues { (_, levels) -> levels.maxBy { it.rank } }
@@ -122,24 +122,24 @@ class ClaimLedger(
      * Withdraws every established value of [attributeType] - one retraction row per distinct value.
      * @return true if something was established and is now withdrawn.
      */
-    fun retractEstablished(accountId: Long, attributeType: AttributeType, trustAnchor: RetractionAnchor, reason: String?, at: Instant): Boolean {
+    fun retractEstablished(accountId: Long, attributeType: AttributeType, retractionSource: RetractionSource, reason: String?, at: Instant): Boolean {
         val established = established(accountId)
             .filter { it.attributeType == attributeType }
             .map { it.normalizedValue }
             .distinct()
-        established.forEach { retract(accountId, attributeType, it, trustAnchor, reason, at) }
+        established.forEach { retract(accountId, attributeType, it, retractionSource, reason, at) }
         return established.isNotEmpty()
     }
 
     /** One withdrawal, logged in the change log; the value stays in the retraction row, which goes with the account. */
-    fun retract(accountId: Long, type: AttributeType, normalizedValue: String?, trustAnchor: RetractionAnchor, reason: String?, at: Instant) {
-        changeLog.attributeRetracted(accountId, type.name, trustAnchor = trustAnchor.name, reason = reason, at = at)
+    fun retract(accountId: Long, type: AttributeType, normalizedValue: String?, retractionSource: RetractionSource, reason: String?, at: Instant) {
+        changeLog.attributeRetracted(accountId, type.name, retractionSource = retractionSource.name, reason = reason, at = at)
         accountRetractionRepository.save(
             AccountRetraction(
                 accountId = accountId,
                 attributeType = type,
                 normalizedValue = normalizedValue,
-                trustAnchor = trustAnchor,
+                retractionSource = retractionSource,
                 reason = reason,
                 retractedAt = at
             )

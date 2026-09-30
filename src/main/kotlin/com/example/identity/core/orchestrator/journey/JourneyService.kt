@@ -529,7 +529,7 @@ class JourneyService(
             detail = mapOf(
                 "toolId" to tool.toolId,
                 "reason" to outcome.reason,
-                "attemptedAccountId" to ((outcome as? ToolOutcome.Failed.LookupAuth)?.attempted as? Attempted.Account)?.id,
+                "attemptedAccountId" to ((outcome as? ToolOutcome.Failed.AccountLookupAuth)?.attempted as? Attempted.Account)?.id,
                 "attemptedPersonId" to (outcome as? ToolOutcome.Failed.Identification)?.attemptedPersonId,
                 "attemptBudgetLeft" to journey.attemptBudget
             )
@@ -549,14 +549,14 @@ class JourneyService(
      * After an abandoned journey the channel returns to its previous login status
      * ([ChannelState.isLoggedIn]), one rule for every intent. Otherwise a cold step-up could claim
      * AUTHENTICATED without proof (docs/invarianten.md I-4). The account is re-derived from the
-     * device link, which survives a journey; an AuthContext does not.
+     * device link, which survives a journey; an AppTokenSession does not.
      */
     private fun fallBack(channel: ChannelSession) {
         val target = if (channel.state?.isLoggedIn == true) ChannelState.AUTHENTICATED else ChannelState.ANONYMOUS
         channel.state = target
         if (target != ChannelState.AUTHENTICATED) {
-            channel.authContextId = null
-            channel.authEvidenceId = null
+            channel.appTokenSessionId = null
+            channel.sessionEvidenceId = null
             val abandonedAccountId = channel.accountId
             channel.subject = if (channel.entryIntent.startsFromDeviceLink && channel.bindingKeyRef != null) {
                 sessionManagementService.findLinkedAccountId(channel.bindingKeyRef!!)?.let(Subject::Account)

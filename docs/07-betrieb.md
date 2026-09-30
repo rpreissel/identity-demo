@@ -15,7 +15,7 @@ Daten aufbewahrt werden.
 Die üblichen Fehlerantworten:
 
 - `400 Bad Request`: ungültiger Inhalt oder formal ungültige Anfrage.
-- `401 Unauthorized`: DPoP-Nachweis fehlt oder ist ungültig, oder dem Kanal wird nicht vertraut.
+- `401 Unauthorized`: DPoP-Proof fehlt oder ist ungültig, oder dem Kanal wird nicht vertraut.
   Bei DPoP- und Geräte-Proofs nennt der Text nur einen festen Grund (`DpopFailure`, etwa
   `IAT_IN_FUTURE` bei vorgehender Uhr), bei der Peer-Auth-Assertion von Keycloak gar keinen.
   Schlüssel-Id, Aussteller, Algorithmus und Claim-Werte stehen nur im Log.
@@ -30,7 +30,7 @@ Die üblichen Fehlerantworten:
 - `423 Locked`: Das Konto ist nach zu vielen fehlgeschlagenen Anmeldeversuchen gesperrt
   (`ACCOUNT_LOCKED`, `OrchestratorException.accountLocked()`, Abschnitt 4).
 - `429 Too Many Requests`: Eine Mengenbegrenzung ist erreicht; das Konto ist dabei nicht gesperrt
-  (`OrchestratorException.tooManyRequests()`, Abschnitt 4: `ChannelCreationThrottleService`,
+  (`OrchestratorException.tooManyRequests()`, Abschnitt 4: `ChannelCreationRateLimitService`,
   gezählt je `bindingKeyRef`).
 - `500 Internal Server Error`: Eine interne Annahme ist verletzt oder etwas ist unerwartet
   fehlgeschlagen, z. B. die Datenbank nicht erreichbar (`INTERNAL_ERROR`). Die Antwort enthält eine
@@ -78,16 +78,16 @@ Versuche erlaubt sind. Sie liefern `200` und ein `next` (Regel für Wiederholung
   ([Orchestrierung](04-orchestrierung.md)).
 - Eine `AuthJourney` darf nur in gültige Folgezustände wechseln, sowohl im Lebenszyklus als auch im
   Zustand ihres Intents (`JourneyState`).
-- `AuthContext` wird nur aktualisiert, wenn eine Journey erfolgreich abgeschlossen ist.
-- Jede Identifizierung, jeder Widerruf und jede eingerichtete oder deaktivierte Methode erzeugt einen Eintrag im Änderungsprotokoll des Kontos (`account.change_log`, [ADR-39](adr/ADR-039-was-eine-kontoloeschung-ueberlebt.md)); jeder Übergang einer Journey einen Eintrag im Journey-Trace.
+- `AppTokenSession` wird nur aktualisiert, wenn eine Journey erfolgreich abgeschlossen ist.
+- Jede Identifizierung, jeder Widerruf und jedes eingerichtete oder deaktivierte Verfahren erzeugt einen Eintrag im Änderungsprotokoll des Kontos (`account.change_log`, [ADR-39](adr/ADR-039-was-eine-kontoloeschung-ueberlebt.md)); jeder Übergang einer Journey einen Eintrag im Journey-Trace.
 - **Eine Transaktion für alles:** Verarbeitet der Orchestrator ein `ToolOutcome.Completed`
   ([Orchestrierung](04-orchestrierung.md)), speichert er in einer einzigen Transaktion den neuen
-  Journey-Zustand, den Konto-Eintrag, das Claim-Log und den Nachweis der Sitzung (`AuthEvidence`).
+  Journey-Zustand, den Konto-Eintrag, das Claim-Log und den Nachweis der Sitzung (`SessionEvidence`).
   Entweder gelingt alles oder nichts. Das Methodenmodul speichert seine Tool- und
   Einrichtungsdaten schon beim `PATCH` in einer eigenen Transaktion. Scheitert danach der Schritt
   in der Journey, bleibt die Zeile des Moduls zwar stehen, wird aber nicht als Credential des
   Kontos aktiviert.
-- Auch neue Konten, Claim-Log, Identifizierungs-Log, Anker und Methodeninstanzen liegen in dieser
+- Auch neue Konten, Claim-Log, Identifizierungs-Log, Anker und eingerichtete Verfahren liegen in dieser
   Transaktion. Ein Konto wird nicht vorab in einer eigenen Transaktion (`REQUIRES_NEW`)
   festgeschrieben. Binden zwei Vorgänge gleichzeitig, wird der unterlegene vollständig
   zurückgerollt und erhält `409 INVALID_STATE_TRANSITION`; einen automatischen neuen Versuch gibt
@@ -135,7 +135,7 @@ Richtwerte (als Voreinstellung gedacht, nicht als Vorgabe für Compliance):
   - *Frist beginnt mit:* `consumedAt` / `expiresAt`
   - *Richtwert:* 7 Tage
   - *Grund:* Zuordnung bei Rückfragen an den Support
-- **`AuthContext`**
+- **`AppTokenSession`**
   - *Frist beginnt mit:* Abmeldung / Ende der `ChannelSession`
   - *Richtwert:* sofort
   - *Grund:* enthält Verweise auf Tokens
@@ -150,7 +150,7 @@ Richtwerte (als Voreinstellung gedacht, nicht als Vorgabe für Compliance):
 - **`account.change_log`**
   - *Frist beginnt mit:* Löschung des Kontos (`ACCOUNT_DELETED`)
   - *Richtwert:* 10 Jahre (`account.change-log.retention-years`, von der Datenschutzbeauftragten zu bestätigen)
-  - *Grund:* Nachweis, dass und wie ein Konto identifiziert wurde und welche Methoden es hatte – ohne Werte, ohne Fremdschlüssel, überlebt die Löschung bewusst ([ADR-39](adr/ADR-039-was-eine-kontoloeschung-ueberlebt.md)); `ChangeLogRetention` räumt ab
+  - *Grund:* Nachweis, dass und wie ein Konto identifiziert wurde und welche Verfahren es hatte – ohne Werte, ohne Fremdschlüssel, überlebt die Löschung bewusst ([ADR-39](adr/ADR-039-was-eine-kontoloeschung-ueberlebt.md)); `ChangeLogRetention` räumt ab
   - *Suche:* über Name, Vorname und Geburtsdatum (`ChangeLogSearch`, Suchschlüssel als HMAC). Das Geheimnis `CHANGE_LOG_LOOKUP_SECRET` ist außerhalb des Demomodus Pflicht und muss so lange aufbewahrt werden wie das Protokoll. *Wechsel:* Jeder Eintrag merkt sich die Id des Geheimnisses (`lookup_key_id`). Zum Wechseln das alte Geheimnis unter `account.change-log.previous-lookup-secrets.<alte Id>` eintragen und das neue mit neuer Id setzen (`CHANGE_LOG_LOOKUP_KEY_ID`); gesucht wird mit allen. Das alte darf erst weg, wenn kein Eintrag mehr seine Id trägt – sonst verweigert `ProductionModeCheck` außerhalb des Demomodus den Start. Ohne `CHANGE_LOG_LOOKUP_SECRET` gilt ein öffentlicher Demo-Wert, den `ProductionModeCheck` außerhalb des Demomodus ebenfalls ablehnt; `account` selbst kennt den Demomodus nicht
 - **`account.sign_in_log`**
   - *Frist beginnt mit:* dem Ereignis
@@ -160,7 +160,7 @@ Richtwerte (als Voreinstellung gedacht, nicht als Vorgabe für Compliance):
   - *Frist beginnt mit:* —
   - *Richtwert:* kein Aufräumen mit der Sitzung
   - *Grund:* lebt bis zur Löschung des Kontos (erreichbar über `account.auth_method`, auch deaktivierte Instanzen)
-- **`account.*` (Anker, Methoden, Claim-, Identifizierungs- und Widerrufs-Log)**
+- **`account.*` (Anker, Anmeldeverfahren, Claim-, Identifizierungs- und Widerrufs-Log)**
   - *Frist beginnt mit:* —
   - *Richtwert:* kein Aufräumen mit der Sitzung
   - *Grund:* gehört dem Konto und wird mit ihm gelöscht – mit allen Werten. Was die Löschung überlebt, ist nur `account.change_log` (ADR-39)
@@ -172,10 +172,10 @@ Richtwerte (als Voreinstellung gedacht, nicht als Vorgabe für Compliance):
   - *Frist beginnt mit:* —
   - *Richtwert:* kein Aufräumen mit der Sitzung
   - *Grund:* Identität des Geräts (`bindingKeyRef -> accountId`), überlebt bewusst jede einzelne `ChannelSession` ([DPoP-Bindung](09-dpop.md) Abschnitt 3)
-- **`AttemptThrottle`**
+- **`RateLimitRecord`**
   - *Frist beginnt mit:* letzte Änderung des Zählers
   - *Richtwert:* 7 Tage
-  - *Grund:* weit länger als das längste Zählfenster und die längste Sperre (15 Min.); ein Aufräumlauf löscht nie eine Zeile, deren Sperre noch läuft. Gilt für die Zähler aller Bereiche (`ACCOUNT`/`PERSON`/`BINDING_KEY`/`ADMIN` und die Versandbudgets der Module, Abschnitt 4)
+  - *Grund:* weit länger als das längste Zählfenster und die längste Sperre (15 Min.); ein Aufräumlauf löscht nie eine Zeile, deren Sperre noch läuft. Gilt für die Zähler aller Bereiche (`ACCOUNT`/`PERSON`/`BINDING_KEY`/`ADMIN` und die Versandlimits der Module, Abschnitt 4)
 
 Wie mit den Verweisen zwischen den Tabellen umgegangen wird:
 
@@ -209,13 +209,13 @@ Wie mit den Verweisen zwischen den Tabellen umgegangen wird:
   - `orchestrator.journey_trace`, und zwar über **zwei** Schlüssel: das Konto **und** seine
     `ChannelSession`s, weil Einträge aus der Zeit, bevor die Sitzung einem Konto zugeordnet war,
     `account_id = NULL` haben;
-  - `orchestrator.attempt_throttle`, aber nur den Bereich `ACCOUNT`. Würden auch `BINDING_KEY` oder
-    die Versandbudgets gelöscht, ließen sich diese Zähler durch eine neue Registrierung
-    zurücksetzen. Die Versandbudgets hängen ohnehin an Nummer oder Adresse, nicht am Konto.
+  - `orchestrator.rate_limit`, aber nur den Bereich `ACCOUNT`. Würden auch `BINDING_KEY` oder
+    die Versandlimits gelöscht, ließen sich diese Zähler durch eine neue Registrierung
+    zurücksetzen. Die Versandlimits hängen ohnehin an Nummer oder Adresse, nicht am Konto.
 
   `AccountDeletionService.deleteAccount` erledigt das ausdrücklich und unabhängig von den Fristen
   oben.
-- **`KEYCLOAK`-Kanäle haben dieselbe Aufbewahrungsfrist wie alle anderen.** Die Abmeldung im
+- **`WEB`-Kanäle haben dieselbe Aufbewahrungsfrist wie alle anderen.** Die Abmeldung im
   Web-Kanal gehört Keycloak ([05-api.md](05-api.md) Abschnitt 3); Keycloak meldet sie dem
   Orchestrator (`SignInLogEventListener` → `KcChannelService.signedOutAtKeycloak`), und das beendet
   die noch laufenden Kanäle dieser Sitzung sofort, Web- wie App-Kanal; für einen Vorgangszugang
@@ -235,7 +235,7 @@ Wie mit den Verweisen zwischen den Tabellen umgegangen wird:
   LoA-2-Subflows); danach übernimmt Keycloak es nicht mehr aus der SSO-Sitzung, und eine Anfrage
   mit `acr_values=2` verlangt einen frischen Nachweis. loa1 trägt die ganze Sitzung. Für Nachweise
   der Orchestrator-Tools gilt dieselbe Frist im Orchestrator selbst
-  (`identity.policy.elevated-level-max-age`, 04 §8 „Ein Nachweis über loa1 altert“); beide Werte
+  (`identity.policy.loa2-max-age`, 04 §8 „Ein Nachweis über loa1 altert“); beide Werte
   werden zusammen geändert.
 
 Im Demomodus gilt beim Start außerdem: Hat der Orchestrator kein einziges Konto, etwa nach einem
@@ -333,7 +333,7 @@ Diese Annahme steckt an drei voneinander unabhängigen Stellen:
   - `SignInLogRetention`: Anmeldeprotokoll (täglich).
 - `identity.secrets.otp-pepper` ist standardmäßig leer; der Pepper wird also bei jedem Start neu
   gewürfelt. Zwei Instanzen könnten die SMS- und E-Mail-Codes der jeweils anderen nicht prüfen, und
-  jede Instanz hätte eigene Zähler für die Versandbudgets.
+  jede Instanz hätte eigene Zähler für die Versandlimits.
 - `RestoreDataCodec` erzeugt sein Signaturgeheimnis je Prozess; ein RestoreData-Token der einen
   Instanz ist für die andere unlesbar.
 
@@ -380,12 +380,12 @@ sicher, wenn ein vertrauenswürdiger Proxy `X-Forwarded-*` jedes Mal überschrei
 Client sie selbst. Verglichen wird nach RFC 9449: Schema und Host ohne Groß-/Kleinschreibung, der
 Pfad exakt (`htuMatches`).
 
-## 4) Kontosperre, Mengenbegrenzung und Versanddrosselung (Schutz vor Ausprobieren und Massenversand)
+## 4) Kontosperre, Mengenbegrenzung und Versandlimit (Schutz vor Ausprobieren und Massenversand)
 
-Gemeinsame Grundlage sind `AttemptThrottle` (Entität, Primärschlüssel `(scope, subject)`) und
-`AttemptCounter` (`src/main/kotlin/com/example/identity/core/orchestrator/session/`). `scope` trennt die
-Zählbereiche: die des Orchestrators (`ThrottleScope`) und die Budgets der Tool-Module (ihr
-Namensraum, etwa `auth_sms.SmsSendBudget`). Alle teilen sich denselben Mechanismus, nie aber
+Gemeinsame Grundlage sind `RateLimitRecord` (Entität, Primärschlüssel `(scope, subject)`) und
+`RateLimitCounter` (`src/main/kotlin/com/example/identity/core/orchestrator/session/`). `scope` trennt die
+Zählbereiche: die des Orchestrators (`RateLimitScope`) und die Mengenbegrenzungen der Tool-Module (ihr
+Namensraum, etwa `auth_sms.SmsSendLimit`). Alle teilen sich denselben Mechanismus, nie aber
 dieselben Schlüssel. Der Orchestrator stellt nur das Zählwerk; Grenzen, Schlüssel und das
 Zurücksetzen legt fest, wem die Sache gehört ([ADR-44](adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)).
 Im Orchestrator bleiben nur Zähler, die absichtlich über mehrere Tools gelten oder zu keinem Tool
@@ -394,16 +394,16 @@ gehören; jeder hat einen eigenen `@Service` mit eigenen Grenzen:
 - **`AccountLockoutService`**
   - *Bereich:* `ACCOUNT`
   - *Zählt:* Fehlgeschlagene Anmeldeversuche an einem Konto
-  - *Antwort, wenn die Grenze überschritten ist:* `423 Locked` (`ACCOUNT_LOCKED`) bei IDENTIFIED_AUTH. Bei LOOKUP_AUTH steckt die Sperre in der gewöhnlichen Antwort „E-Mail oder Code ungültig“; sonst ließe sich daraus ablesen, ob ein Konto existiert
+  - *Antwort, wenn die Grenze überschritten ist:* `423 Locked` (`ACCOUNT_LOCKED`) bei KNOWN_ACCOUNT_AUTH. Bei ACCOUNT_LOOKUP_AUTH steckt die Sperre in der gewöhnlichen Antwort „E-Mail oder Code ungültig“; sonst ließe sich daraus ablesen, ob ein Konto existiert
 - **`PersonLockoutService`**
   - *Bereich:* `PERSON`
   - *Zählt:* Fehlgeschlagene Identifizierungsversuche für eine Person (`ident-fsc` rät ein Geheimnis, und ein Treffer übernimmt das Konto) und falsche Einmalkennwörter (`auth-invite`, das Kennwort gehört einer Person, ADR-48). Zählt nur, wo der Versuch überhaupt eine Person benennt: `ident-eid` bestätigt nur die Karte (ADR-18) und findet niemanden; seine PIN-Versuche begrenzt das Versuchsbudget der Journey
   - *Antwort, wenn die Grenze überschritten ist:* immer in der gewöhnlichen Fehlerantwort, nie als eigener Fehler
-- **`ChannelCreationThrottleService`**
+- **`ChannelCreationRateLimitService`**
   - *Bereich:* `BINDING_KEY`
   - *Zählt:* Eröffnete Kanäle je DPoP-Schlüssel (gleitendes Zeitfenster, jeder Versuch zählt)
   - *Antwort, wenn die Grenze überschritten ist:* `429 Too Many Requests`
-- **`AdminLoginThrottleFilter`**
+- **`AdminLoginRateLimitFilter`**
   - *Bereich:* `ADMIN`
   - *Zählt:* Falsche Passwörter je Admin-Benutzername
   - *Antwort, wenn die Grenze überschritten ist:* `429 Too Many Requests` (Abschnitt 3c)
@@ -414,11 +414,11 @@ werden nur durch einen Erfolg zurückgesetzt. Tools, die ihr Subjekt selbst aufl
 Identifizierung), lesen sie über den Port `Lockouts`; schreiben kann sie nur der Orchestrator, aus
 dem `Failed`-Ergebnis des Tools.
 
-Etwas anderes sind die **Budgets** der Tool-Module: Sie begrenzen keinen Rateversuch, sondern den
-Versand. Die Module zählen über den Port `AttemptBudgets` (`tool_api.budget`) in ihrem eigenen
+Etwas anderes sind die **Mengenbegrenzungen** der Tool-Module: Sie begrenzen keinen Rateversuch, sondern den
+Versand. Die Module zählen über den Port `RateLimits` (`tool_api.ratelimit`) in ihrem eigenen
 Namensraum ([Tool-Architektur](03-tool-architektur.md) Abschnitt 4):
 
-- **`SmsSendBudget`** (`auth_sms`) und **`EmailSendBudget`** (`auth_email`)
+- **`SmsSendLimit`** (`auth_sms`) und **`EmailSendLimit`** (`auth_email`)
   - *Zählt:* **Versendete** TANs und Codes je Mobilnummer bzw. je E-Mail-Adresse, über alle Tools
     des Moduls (`enroll-sms`, `auth-sms`, `auth-sms-lookup` bzw. `confirm-email`, `auth-email`,
     `auth-email-lookup`); gleitendes Zeitfenster, 3 in 10 Min. Normalisiert wie der Versand selbst:
@@ -435,15 +435,15 @@ Namensraum ([Tool-Architektur](03-tool-architektur.md) Abschnitt 4):
 
 - **Warum das zusätzlich zum Versuchsbudget der Journey nötig ist** (`AuthJourney.attemptBudget`,
   [Orchestrierung](04-orchestrierung.md) Abschnitt 7): Es zählt nur innerhalb *einer* Journey. Mit
-  einem neuen Kanal kann ein Client jederzeit neu beginnen. `ACCOUNT` und `PERSON` begrenzen deshalb falsche Rateversuche. Die Versandbudgets
+  einem neuen Kanal kann ein Client jederzeit neu beginnen. `ACCOUNT` und `PERSON` begrenzen deshalb falsche Rateversuche. Die Versandlimits
   begrenzen zusätzlich das bloße *erneute Versenden*. Das ist nie ein falscher Rateversuch und löst
   deshalb nie `recordFailure` aus. Ohne sie könnte man über `auth-sms-lookup`,
   `auth-email-lookup`, `enroll-sms` und `confirm-email` beliebig viele SMS und E-Mails an fremde
   Empfänger auslösen.
 - Fehlschläge beim Einrichten zählen weder bei `AccountLockoutService` noch bei
-  `PersonLockoutService` (`ToolJourneyService.chargeThrottles`, `Failed.NothingGuessed -> Unit`):
+  `PersonLockoutService` (`ToolJourneyService.chargeRateLimits`, `Failed.NothingGuessed -> Unit`):
   Beim Einrichten wird kein vorhandenes Credential erraten. Den Versand *während* des Einrichtens
-  begrenzen die Versandbudgets (oben).
+  begrenzen die Versandlimits (oben).
 - Grenzwerte: bei Fehlversuchen `MAX_FAILURES = 5` und `LOCKOUT_DURATION = 15 Minuten`; beim Eröffnen
   von Kanälen 20 in 5 Minuten; beim Versand 3 in 10 Minuten.
 - Ist eine Sperre abgelaufen, beginnt der nächste Fehlversuch wieder bei eins. Sonst hielte ein
@@ -451,12 +451,12 @@ Namensraum ([Tool-Architektur](03-tool-architektur.md) Abschnitt 4):
   dauerhaft gesperrt.
 - Jeder Zähler wird mit einer einzigen atomaren `UPDATE`-Anweisung erhöht, unter der Zeilensperre,
   die diese Anweisung selbst setzt. Er wird nie erst gelesen und dann geschrieben: Sonst wäre das
-  tatsächliche Budget „Grenze × Zahl gleichzeitiger Anfragen“, und die Sperre ließe sich umgehen.
+  tatsächliche Grenze „Grenze × Zahl gleichzeitiger Anfragen“, und die Sperre ließe sich umgehen.
   Fehlt die Zeile für einen Zähler, gilt: erst `UPDATE`; wurde keine Zeile getroffen, die Zeile
-  anlegen und das `UPDATE` wiederholen (`AttemptThrottleRowInitializer`, in einer eigenen
+  anlegen und das `UPDATE` wiederholen (`RateLimitRecordInitializer`, in einer eigenen
   Transaktion).
 - Eine erfolgreiche Anmeldung oder Identifizierung setzt den jeweiligen Zähler zurück
-  (`recordSuccess`), ein richtig eingegebener Code das Versandbudget seiner Nummer oder Adresse.
+  (`recordSuccess`), ein richtig eingegebener Code das Versandlimit seiner Nummer oder Adresse.
   Der Zähler für die Kanaleröffnung wird nie zurückgesetzt; er ist ein reines gleitendes
   Zeitfenster.
 - Aufbewahrung: siehe die Tabelle in Abschnitt 3.
@@ -491,7 +491,7 @@ eingibt oder den ein Deep-Link vorausfüllt ([`CONFIRM_PEER_LOGIN`](journeys/con
 
 **Noch offen:** Weil die Eingabe von Hand ein regulärer Weg ist, bräuchte der Schritt `input` einen
 eigenen Zähler für fehlgeschlagene Suchen nach einem `pairingCode`, etwa je IP-Adresse oder ohne
-Bezug auf ein Konto. `AttemptThrottle` (Abschnitt 4) hilft hier nicht, weil noch kein Konto bekannt
+Bezug auf ein Konto. `RateLimitRecord` (Abschnitt 4) hilft hier nicht, weil noch kein Konto bekannt
 ist. Das ist derzeit **nicht umgesetzt**.
 
 `QrLoginRequest.expiresAt` (5 Minuten, `QR_LOGIN_TTL`) orientiert sich an den Laufzeiten der
@@ -518,7 +518,7 @@ Tabellen zeigt [02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 7.
   immer `id`, Verweise heißen `<tabelle>_id`. Indizes und Constraints tragen kein Modulpräfix
   (`ux_anchor_value`).
 - **Typen:** Zeitpunkte `TIMESTAMP WITH TIME ZONE`, Enum-Werte `VARCHAR(32)`, ACR-Werte
-  `VARCHAR(16)`, Tool-IDs, Methoden, Attributtypen und Quellen `VARCHAR(50)`, Hashes `VARCHAR(64)`.
+  `VARCHAR(16)`, Tool-IDs, Verfahren, Attributtypen und Quellen `VARCHAR(50)`, Hashes `VARCHAR(64)`.
 - **Anker:** Jeder Schreibvorgang auf `account.anchor` verlangt ein Mindestniveau nach
   `AnchorRule.acrFloor` (für das erste Binden und das Ersetzen getrennt). `established_acr` hält das
   tatsächlich nachgewiesene, nach ADR-5 begrenzte Niveau fest ([Domänenmodell](02-domaenenmodell.md)
@@ -554,7 +554,7 @@ Health und Kennzahlen liegen auf einem **eigenen Management-Port** (`MANAGEMENT_
     Keycloak-Ausfall aus dem Lastverteiler, würde aus einem Teilausfall ein Totalausfall. Die
     Komponente ist für den Alarm da, nicht für die Verteilung.
 - **`/actuator/prometheus`** mit den Kennzahlen:
-  - **`identity.throttle.blocked`** (je `scope`): wie oft Sperre oder Mengenbegrenzung eine Anfrage
+  - **`identity.ratelimit.blocked`** (je `scope`): wie oft Sperre oder Mengenbegrenzung eine Anfrage
     abgewiesen hat (Abschnitt 4). Ein Anstieg ist ein Angriff oder ein Fehler.
   - **`identity.retention.deleted`** (je `table`): gelöschte Zeilen der Aufräumläufe (Abschnitt 3). Eine
     flache Linie über Tage heißt: Ein Lauf löscht nicht mehr.

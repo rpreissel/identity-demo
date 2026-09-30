@@ -13,9 +13,9 @@ import java.util.UUID;
 
 /**
  * Builds and signs the JWT for each kc-facade request (docs/12-entscheidungen.md ADR-7,
- * docs/02-domaenenmodell.md Abschnitt 1). The {@code channel_anchor} claim is this flow run's
- * {@code channelSessionId}, so two tabs stepping up the same SSO session never share an anchor.
- * {@code htu} binds the URL; the anchor also covers endpoints without a channelSessionId in the
+ * docs/02-domaenenmodell.md Abschnitt 1). The {@code channel_binding} claim is this flow run's
+ * {@code channelSessionId}, so two tabs stepping up the same SSO session never share a binding.
+ * {@code htu} binds the URL; the binding also covers endpoints without a channelSessionId in the
  * path ({@code /tools/{toolSessionId}/...}).
  */
 final class PeerAuthAssertionSigner {
@@ -39,7 +39,7 @@ final class PeerAuthAssertionSigner {
                 .issueTime(new Date(nowSeconds * 1000))
                 .claim("htm", httpMethod)
                 .claim("htu", httpUrl)
-                .claim("channel_anchor", channelSessionId);
+                .claim("channel_binding", channelSessionId);
 
         SignedJWT jwt = new SignedJWT(
                 new JWSHeader.Builder(JWSAlgorithm.ES256).type(new JOSEObjectType("peer-auth+jwt")).keyID(signingKey.getKeyID()).build(),

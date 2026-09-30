@@ -35,7 +35,7 @@ class Freischaltcode(
     /**
      * Expiry and revocation are the only limits: a code is reusable until it runs out, because
      * ident-fsc is also the re-identification path (ADR-31). Guessing is bounded by our ident
-     * throttle, not by consumption.
+     * rate limit, not by consumption.
      */
     fun isValidAt(now: Instant): Boolean =
         revokedAt == null && expiresAt?.let { now.isBefore(it) } == true

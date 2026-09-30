@@ -371,7 +371,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
         <ul className="status-list portal-list">
           {row(t('Vor- und Nachname'), personName)}
           {row(t('Status'), role)}
-          {row(t('Versicherungsnummer'), claimText(idClaims?.versnr))}
+          {row(t('Mitgliedsnummer'), claimText(idClaims?.versnr))}
           {row(t('Partnernummer'), claimText(idClaims?.person_id))}
           {row(t('E-Mail'), claimText(idClaims?.email))}
         </ul>
@@ -410,7 +410,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
         <p>{t('Sie sind mit einem Einmalkennwort angemeldet. Diese Anmeldung gilt nur für diesen Vorgang.')}</p>
         <ul className="status-list portal-list">
           {row(t('Vor- und Nachname'), personName)}
-          {row(t('Versicherungsnummer'), claimText(idClaims?.versnr))}
+          {row(t('Mitgliedsnummer'), claimText(idClaims?.versnr))}
           {row(t('Partnernummer'), claimText(idClaims?.person_id))}
           {row(t('Sicherheitsniveau'), currentAcr)}
         </ul>
@@ -562,7 +562,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
                   </label>
                 </div>
                 {loa1Error && <div className="hint">{loa1Error}</div>}
-                <UnavailableTools channel="KEYCLOAK" />
+                <UnavailableTools channel="WEB" />
               </div>
             )}
 

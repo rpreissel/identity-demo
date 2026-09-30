@@ -10,7 +10,7 @@ health insurer reads in its login and registration app. Translate the meaning, n
   "sign-in method".
 - **Fixed demo terms, keep them**: "journey" / "journey trace" (not "process"), "insured member", "partner" and
   "prospect" (the three account roles: insured with us / known to us by partner number only / not
-  assigned to any person), "partner number" (Partnernummer, "P" plus nine digits), "pairing code", "realm" (Keycloak term), "person directory" (the simulated external system, not "member register") and "insurance number" (Versicherungsnummer, next to the KVNR).
+  assigned to any person), "partner number" (Partnernummer, "P" plus nine digits), "pairing code", "realm" (Keycloak term), "person directory" (the simulated external system, not "member register") and "member number" (Mitgliedsnummer, next to the KVNR; in the `personenverzeichnis` bundle it stays "insurance number", the external system's word).
 - **Replace jargon** as the German prompt does: enrollment → sign-in method; linking a device to an account (Geräteverknüpfung) → linked device / link; a sign-in method bound to the device (Gerätebindung) → device-bound, never "linked";
   journey → process; loa/acr → security level (placeholder values stay as they are).
 - **Fixed terms**: health insurance number (KVNR), activation code (Freischaltcode), online ID (eID), passport,

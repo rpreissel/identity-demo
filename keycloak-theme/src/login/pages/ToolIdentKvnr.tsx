@@ -13,7 +13,7 @@ export function ToolIdentKvnr({ kcContext }: { kcContext: PageContext<'tool-iden
       <p className="orc-hint">
         {t('Ihre Identität ist bereits nachgewiesen. Die Versichertennummer - oder ohne sie die Partnernummer - muss zu dieser Person gehören.')}
       </p>
-      <DemoPersonPicker personsJson={demoPersonsJson} fields={{ kvnr: 'kvnr', partnernr: 'personId' }} />
+      <DemoPersonPicker personsJson={demoPersonsJson} fields={{ kvnr: 'kvnr', partnerNumber: 'personId' }} />
       <Field id="kvnr" label={t('Versichertennummer')} />
       <PartnerNumber />
     </ToolForm>

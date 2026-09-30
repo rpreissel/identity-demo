@@ -75,7 +75,7 @@ describe('IdentFscForm', () => {
     expect(screen.queryByLabelText('Versichertennummer')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Weiter zur Freischaltcode-Eingabe' }))
 
-    expect(onSubmit).toHaveBeenCalledWith({ partnernr: 'P000000004', familyName: 'Schulz', givenNames: 'Paula', birthDate: '1982-08-08' })
+    expect(onSubmit).toHaveBeenCalledWith({ partnerNumber: 'P000000004', familyName: 'Schulz', givenNames: 'Paula', birthDate: '1982-08-08' })
   })
 
   it('switches to the Partnernummer only on request - the KVNR comes first', () => {
@@ -86,6 +86,6 @@ describe('IdentFscForm', () => {
     fireEvent.change(screen.getByLabelText('Partnernummer'), { target: { value: 'P000000001' } })
     fireEvent.click(screen.getByRole('button', { name: 'Weiter zur Freischaltcode-Eingabe' }))
 
-    expect(onSubmit).toHaveBeenCalledWith({ partnernr: 'P000000001', familyName: 'Muster', givenNames: 'Max', birthDate: '1985-06-15' })
+    expect(onSubmit).toHaveBeenCalledWith({ partnerNumber: 'P000000001', familyName: 'Muster', givenNames: 'Max', birthDate: '1985-06-15' })
   })
 })

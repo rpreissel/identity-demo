@@ -2,7 +2,7 @@ package com.example.identity.tools.auth_kobil
 
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.MethodRole
+import com.example.identity.contract.tool_api.ToolRole
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 
@@ -26,8 +26,8 @@ class KobilDescriptorsTest : BehaviorSpec({
         }
 
         then("their roles differ - that pair is what tells one tool of a method from the other") {
-            EnrollKobilDescriptor.role shouldBe MethodRole.ENROLLMENT
-            AuthKobilDescriptor.role shouldBe MethodRole.IDENTIFIED_AUTH
+            EnrollKobilDescriptor.role shouldBe ToolRole.ENROLLMENT
+            AuthKobilDescriptor.role shouldBe ToolRole.KNOWN_ACCOUNT_AUTH
         }
 
         then("neither starts on its role's default step") {

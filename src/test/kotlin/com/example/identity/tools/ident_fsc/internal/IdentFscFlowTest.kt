@@ -89,33 +89,33 @@ class IdentFscFlowTest : BehaviorSpec({
         val withKvnr = IdentFscFlow.merge(IdentFscState(), PERSONAL_DETAILS, DIGEST)
 
         then("a Partnernummer replaces the KVNR, and its person with it") {
-            val merged = IdentFscFlow.merge(withKvnr, IdentFscInput(partnernr = "P000000004", personId = "P000000004"), DIGEST)
+            val merged = IdentFscFlow.merge(withKvnr, IdentFscInput(partnerNumber = "P000000004", personId = "P000000004"), DIGEST)
             merged.kvnr shouldBe null
-            merged.partnernr shouldBe "P000000004"
+            merged.partnerNumber shouldBe "P000000004"
             merged.personId shouldBe "P000000004"
         }
 
         then("a KVNR replaces the Partnernummer") {
-            val partner = IdentFscFlow.merge(IdentFscState(), IdentFscInput(partnernr = "P000000004", personId = "P000000004"), DIGEST)
+            val partner = IdentFscFlow.merge(IdentFscState(), IdentFscInput(partnerNumber = "P000000004", personId = "P000000004"), DIGEST)
             val merged = IdentFscFlow.merge(partner, IdentFscInput(kvnr = "A123456789", personId = "P000000005"), DIGEST)
             merged.kvnr shouldBe "A123456789"
-            merged.partnernr shouldBe null
+            merged.partnerNumber shouldBe null
             merged.personId shouldBe "P000000005"
         }
 
         then("brought together, the KVNR wins") {
-            val merged = IdentFscFlow.merge(IdentFscState(), IdentFscInput(kvnr = "A123456789", partnernr = "P000000004", personId = "P000000005"), DIGEST)
+            val merged = IdentFscFlow.merge(IdentFscState(), IdentFscInput(kvnr = "A123456789", partnerNumber = "P000000004", personId = "P000000005"), DIGEST)
             merged.kvnr shouldBe "A123456789"
-            merged.partnernr shouldBe null
+            merged.partnerNumber shouldBe null
         }
 
         then("with a Partnernummer, kvnr is not reported missing") {
             val partner = IdentFscFlow.merge(
                 IdentFscState(),
-                IdentFscInput(partnernr = "P000000004", familyName = "Schulz", givenNames = "Paula", birthDate = BIRTHDATE, personId = "P000000004")
+                IdentFscInput(partnerNumber = "P000000004", familyName = "Schulz", givenNames = "Paula", birthDate = BIRTHDATE, personId = "P000000004")
             , DIGEST)
             IdentFscFlow.missingFields(partner) shouldBe listOf("fsc")
-            IdentFscFlow.missingFields(IdentFscFlow.merge(IdentFscState(), IdentFscInput(partnernr = "P000000004"), DIGEST)) shouldBe
+            IdentFscFlow.missingFields(IdentFscFlow.merge(IdentFscState(), IdentFscInput(partnerNumber = "P000000004"), DIGEST)) shouldBe
                 listOf("familyName", "givenNames", "birthDate")
         }
     }
