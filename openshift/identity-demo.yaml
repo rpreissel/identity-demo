@@ -160,9 +160,12 @@ spec:
           livenessProbe:
             httpGet: {path: /actuator/health/liveness, port: 9080}
             periodSeconds: 20
+          # Rund 600 MB ausserhalb des Heaps plus 40 Prozent des Limits als Heap (JAVA_OPTS im
+          # Dockerfile): 1 Gi reichte nicht, der Container wurde nach Minuten vom OOM-Killer beendet.
+          # Mit Keycloak zusammen 3 Gi, das passt in die 4-Gi-Quota des Namespace.
           resources:
-            requests: {cpu: 250m, memory: 512Mi}
-            limits: {memory: 1Gi}
+            requests: {cpu: 250m, memory: 768Mi}
+            limits: {memory: 1536Mi}
       volumes:
         - name: keycloak-data
           persistentVolumeClaim: {claimName: identity-demo-keycloak-data}

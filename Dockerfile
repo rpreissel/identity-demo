@@ -43,6 +43,9 @@ USER identity
 EXPOSE 8080
 
 # MaxRAMPercentage statt fester Heap-Groesse: die JVM liest das Container-Limit direkt, statt dass
-# es zusaetzlich als separate Zahl gepflegt werden muesste.
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC"
+# es zusaetzlich als separate Zahl gepflegt werden muesste. 40 Prozent, weil der Heap der kleinere
+# Teil ist: gemessen belegt der Prozess ausserhalb des Heaps rund 600 MB (Metaspace, JIT-Code,
+# Threads, native Puffer), der Heap selbst braucht nach einer GC rund 160 MB. Mit 75 Prozent wuchs
+# der Prozess ueber das Limit und wurde vom Kernel beendet.
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=40 -XX:+UseSerialGC"
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -cp 'app.jar:lib/*' com.example.identity.IdentityApplicationKt"]
