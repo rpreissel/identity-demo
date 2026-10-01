@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.ToolId
 
 /**
  * The only intent without a policy goal: one successful enrollment ends it, regardless of the level
@@ -15,17 +14,11 @@ sealed interface ManageAuthMethodsState : JourneyState {
      * runs. So the wish survives the detour: after proving loa2 the user need not act again.
      * [com.example.identity.core.orchestrator.domain.journey.JourneyLifecycle.SUSPENDED] says it is waiting.
      */
-    data object AddRequested : ManageAuthMethodsState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
+    data object AddRequested : ManageAuthMethodsState, ToolFreeState {
         override val selectionContext: String get() = "enrollment"
     }
 
-    data class RemoveRequested(val methodInstanceId: String) : ManageAuthMethodsState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
+    data class RemoveRequested(val methodInstanceId: String) : ManageAuthMethodsState, ToolFreeState {
         override val selectionContext: String get() = "enrollment"
     }
 
@@ -33,10 +26,7 @@ sealed interface ManageAuthMethodsState : JourneyState {
      * The wish to withdraw an account attribute (a confirmed address), gated like [RemoveRequested]:
      * it is destructive self-service too and can take credentials with it.
      */
-    data class RetractAttributeRequested(val attributeType: AttributeType) : ManageAuthMethodsState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
+    data class RetractAttributeRequested(val attributeType: AttributeType) : ManageAuthMethodsState, ToolFreeState {
         override val selectionContext: String get() = "enrollment"
     }
 

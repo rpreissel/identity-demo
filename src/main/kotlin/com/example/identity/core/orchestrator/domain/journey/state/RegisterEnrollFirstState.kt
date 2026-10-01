@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
-import com.example.identity.contract.tool_api.ToolId
 
 /**
  * The "Enrollment zuerst" variant of REGISTER (docs/journeys/register.md), switched by a feature
@@ -16,10 +15,7 @@ sealed interface RegisterEnrollFirstState : JourneyState {
      * The journey's beginning and the resume marker for the closing, optional RE_IDENTIFY
      * sub-journey; the arriving event tells them apart. Never rendered with an offer of its own.
      */
-    data object EnrollFirstStart : RegisterEnrollFirstState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
+    data object EnrollFirstStart : RegisterEnrollFirstState, ToolFreeState {
         override val selectionContext: String get() = "enrollment"
     }
 
@@ -30,9 +26,6 @@ sealed interface RegisterEnrollFirstState : JourneyState {
      * lookup tools.
      */
     data object EnrollFirstConfirmDeviceRebind : RegisterEnrollFirstState, AnswerableState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
         override val question: Question get() = Question.Confirm(
             title = Text("Dieses Gerät ist bereits einem anderen Konto zugeordnet"),
             description = Text("Wenn Sie fortfahren, wird dieses Gerät künftig nur noch Ihrem neuen Konto zugeordnet. Das bisher verbundene Konto muss sich beim nächsten Mal auf diesem Gerät erneut identifizieren. Ohne Zuordnung bleibt Ihr neues Konto nutzbar - Sie melden sich dann künftig über E-Mail und Passwort an."),

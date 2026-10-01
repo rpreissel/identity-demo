@@ -10,10 +10,7 @@ import com.example.identity.contract.tool_api.ToolId
  */
 sealed interface FastAccessState : JourneyState {
 
-    data object Start : FastAccessState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
+    data object Start : FastAccessState, ToolFreeState {
         override val selectionContext: String get() = "auth"
     }
 

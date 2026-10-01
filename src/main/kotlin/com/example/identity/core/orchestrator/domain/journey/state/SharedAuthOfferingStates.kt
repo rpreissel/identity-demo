@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
-import com.example.identity.contract.tool_api.ToolId
 
 /**
  * Shared by [FastAccessState] and [RegisterState], because both journeys ask the same question

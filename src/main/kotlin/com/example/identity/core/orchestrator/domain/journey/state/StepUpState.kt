@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.ToolId
 
 sealed interface StepUpState : JourneyState {
     /** The goal of this run, distinct from the channel's durable `acrFloor`. */
@@ -37,10 +36,7 @@ sealed interface StepUpState : JourneyState {
         val allowReIdentification: Boolean = true,
         /** Carried into [AuthChoice]; see [StepUpState.forSubJourney]. */
         val reason: Reason? = null
-    ) : StepUpState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
+    ) : StepUpState, ToolFreeState {
         override val selectionContext: String get() = "auth"
     }
 

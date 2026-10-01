@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.ToolId
 
 /**
  * The sub-journey that offers a fresh identification once no active method can reach [targetAcr]
@@ -46,9 +45,6 @@ sealed interface ReIdentifyState : JourneyState {
         override val startingAcr: AcrLevel,
         override val wording: Wording? = null
     ) : ReIdentifyState, AnswerableState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
         override val question: Question
             get() = when (wording) {
                 // The account is already set up here (ADR-46): declining skips, it discards nothing.

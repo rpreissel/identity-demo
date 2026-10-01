@@ -4,6 +4,8 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
+import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
@@ -32,20 +34,16 @@ class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
             is DeleteAccountState.ConfirmPending -> when (event) {
                 is JourneyEvent.Answered -> when (event.answer) {
                     // The gate applies only after "yes".
-                    "accept" -> gate(ctx) ?: offerReconfirmation(ctx)
-                    "decline" -> Transition.Cancel
-                    else -> error("ConfirmPending does not understand answer '${event.answer}'")
+                    ANSWER_ACCEPT -> gate(ctx) ?: offerReconfirmation(ctx)
+                    ANSWER_DECLINE -> Transition.Cancel
+                    else -> event.notUnderstood("ConfirmPending")
                 }
                 // Resumed after the gate's step-up. Falling short cancels: offerReconfirmation()
                 // accepts any factor at any level and would bypass the gate.
-                is JourneyEvent.SubJourneyFinished -> {
-                    val account = ctx.requireAccount()
-                    if (event.intent == AuthIntent.STEP_UP && AcrLevel.rank(event.achievedAcr) >= AcrLevel.rank(Action.DeleteAccount.requiredAcr(account))) {
-                        Transition.Perform(Action.DeleteAccount, resumeState = state)
-                    } else {
-                        Transition.Cancel
-                    }
-                }
+                is JourneyEvent.SubJourneyFinished if event.intent == AuthIntent.STEP_UP &&
+                    (event.achievedAcr ?: AcrLevel.NONE) >= Action.DeleteAccount.requiredAcr(ctx.requireAccount()) ->
+                    Transition.Perform(Action.DeleteAccount, resumeState = state)
+                is JourneyEvent.SubJourneyFinished -> Transition.Cancel
                 // The gate's step-up was declined.
                 is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
                 // The delete after the step-up ran; end the channel.
@@ -55,15 +53,13 @@ class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
             }
 
             is DeleteAccountState.ConfirmationRequired -> when (event) {
-                is JourneyEvent.Abandoned -> {
-                    declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
-                }
+                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
                 // Any active factor suffices; straight to the delete, without Action.AcceptProof.
                 is JourneyEvent.Completed -> when (event.outcome) {
                     is ToolOutcome.Completed.Authenticated ->
                         Transition.Perform(Action.DeleteAccount, resumeState = state)
                     is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-                        error("${event.tool.toolId} is not offered by DELETE_ACCOUNT")
+                        event.notOffered("DELETE_ACCOUNT")
                 }
                 // The delete just ran - end the channel.
                 is JourneyEvent.ActionCompleted -> Transition.Logout

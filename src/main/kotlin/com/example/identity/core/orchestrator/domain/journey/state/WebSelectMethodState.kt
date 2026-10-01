@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
-import com.example.identity.contract.tool_api.ToolId
 
 /**
  * The single state of `WEB_SELECT_METHOD` (docs/04-orchestrierung.md Abschnitt 3): offers every

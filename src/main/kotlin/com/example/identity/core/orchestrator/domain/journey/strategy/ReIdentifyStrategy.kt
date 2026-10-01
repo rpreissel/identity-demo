@@ -3,6 +3,8 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
+import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
@@ -29,9 +31,9 @@ class ReIdentifyStrategy : IntentStrategy<ReIdentifyState> {
         when (state) {
             is ReIdentifyState.OfferReIdent -> when (event) {
                 is JourneyEvent.Answered -> when (event.answer) {
-                    "accept" -> offerIdentifying(state.targetAcr, state.startingAcr, state.wording, ctx) ?: Transition.Cancel
-                    "decline" -> Transition.Cancel
-                    else -> error("OfferReIdent does not understand answer '${event.answer}'")
+                    ANSWER_ACCEPT -> offerIdentifying(state, ctx) ?: Transition.Cancel
+                    ANSWER_DECLINE -> Transition.Cancel
+                    else -> event.notUnderstood("OfferReIdent")
                 }
                 // Started: always present the prompt, unconditionally.
                 else -> Transition.To(state)
@@ -48,12 +50,11 @@ class ReIdentifyStrategy : IntentStrategy<ReIdentifyState> {
     private fun proofAction(event: JourneyEvent.Completed): Action = when (val outcome = event.outcome) {
         is ToolOutcome.Completed.Identified -> Action.RecordIdentification(event.tool, outcome)
         is ToolOutcome.Completed.Authenticated, is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-            error("${event.tool.toolId} is not offered by RE_IDENTIFY")
+            event.notOffered("RE_IDENTIFY")
     }
 
-    private fun offerIdentifying(targetAcr: AcrLevel, startingAcr: AcrLevel, wording: ReIdentifyState.Wording?, ctx: JourneyContext): Transition? {
-        val candidates = CandidateTools.forReIdentification(targetAcr, ctx)
-        return candidates.takeIf { it.isNotEmpty() }
-            ?.let { Transition.To(ReIdentifyState.Identifying(targetAcr, startingAcr, Offer(it), wording = wording)) }
-    }
+    /** Null when no identification tool can reach the target (anymore). */
+    private fun offerIdentifying(offer: ReIdentifyState.OfferReIdent, ctx: JourneyContext): Transition? =
+        CandidateTools.forReIdentification(offer.targetAcr, ctx).takeIf { it.isNotEmpty() }
+            ?.let { Transition.To(ReIdentifyState.Identifying(offer.targetAcr, offer.startingAcr, Offer(it), wording = offer.wording)) }
 }

@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
-import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.core.orchestrator.domain.AuthIntent
 
 /**
@@ -18,10 +17,7 @@ sealed interface ConfirmPeerLoginState : JourneyState {
      * strategy aborts instead of falling into registration. No extra "confirm this?" prompt: the
      * step-up screen explains the request ([StepUpState.Reason.PEER_LOGIN]) and offers "Abbrechen".
      */
-    data class Requested(val startedAuthenticated: Boolean) : ConfirmPeerLoginState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
+    data class Requested(val startedAuthenticated: Boolean) : ConfirmPeerLoginState, ToolFreeState {
         override val selectionContext: String get() = "enrollment"
     }
 
@@ -62,9 +58,6 @@ sealed interface ConfirmPeerLoginState : JourneyState {
      * what every user wants.
      */
     data object OfferLogout : ConfirmPeerLoginState, AnswerableState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
         override val question: Question
             get() = Question.Confirm(
                 title = Text("Jetzt abmelden?"),

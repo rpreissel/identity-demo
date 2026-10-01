@@ -14,7 +14,7 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
+import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrollFirstState
 import com.example.identity.core.orchestrator.domain.journey.toEnrollAbortMessage
@@ -44,54 +44,38 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
                 else -> offerEmailConfirmation(ctx)
             }
 
-            is RegisterEnrollFirstState.EnrollFirstAttestingEmail -> when (event) {
-                is JourneyEvent.Abandoned -> reoffer(state)
-                is JourneyEvent.Completed -> Transition.Perform(adoptCredential(event), resumeState = state)
-                else -> offerSmsEnrollment(ctx)
-            }
-
-            is RegisterEnrollFirstState.EnrollFirstEnrollingSms -> when (event) {
-                is JourneyEvent.Abandoned -> reoffer(state)
-                is JourneyEvent.Completed -> Transition.Perform(adoptCredential(event), resumeState = state)
-                else -> afterForcedEnrollment(ctx)
-            }
-
-            is RegisterEnrollFirstState.EnrollFirstEnrolling -> when (event) {
-                is JourneyEvent.Abandoned -> reoffer(state)
-                is JourneyEvent.Completed -> Transition.Perform(adoptCredential(event), resumeState = state)
-                else -> afterEnrollment(ctx, emailObligation = true)
-            }
-
-            is RegisterEnrollFirstState.EnrollFirstConfirmingEmail -> when (event) {
-                is JourneyEvent.Abandoned -> reoffer(state)
-                is JourneyEvent.Completed -> Transition.Perform(adoptCredential(event), resumeState = state)
-                else -> afterEnrollment(ctx, emailObligation = false)
-            }
+            // Every offering state here is mandatory: backing out re-offers, a completed tool is
+            // adopted, and only the next step differs.
+            is RegisterEnrollFirstState.EnrollFirstAttestingEmail -> mandatory(state, event) { offerSmsEnrollment(ctx) }
+            is RegisterEnrollFirstState.EnrollFirstEnrollingSms -> mandatory(state, event) { afterForcedEnrollment(ctx) }
+            is RegisterEnrollFirstState.EnrollFirstEnrolling -> mandatory(state, event) { afterEnrollment(ctx, emailObligation = true) }
+            is RegisterEnrollFirstState.EnrollFirstConfirmingEmail -> mandatory(state, event) { afterEnrollment(ctx, emailObligation = false) }
+            // The email obligation is already discharged here.
+            is RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation -> mandatory(state, event) { afterEnrollment(ctx, emailObligation = false) }
 
             is RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind -> when (event) {
                 is JourneyEvent.Answered -> when (event.answer) {
                     ANSWER_ACCEPT -> Transition.Perform(Action.LinkDevice, resumeState = state)
                     // The account stays usable through the lookup tools, just not recognized here.
                     ANSWER_DECLINE -> Transition.Authenticated
-                    else -> error("EnrollFirstConfirmDeviceRebind does not understand answer '${event.answer}'")
+                    else -> event.notUnderstood("EnrollFirstConfirmDeviceRebind")
                 }
                 is JourneyEvent.ActionCompleted -> Transition.Authenticated
                 else -> error("EnrollFirstConfirmDeviceRebind only accepts JourneyEvent.Answered")
             }
-
-            is RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation -> when (event) {
-                is JourneyEvent.Abandoned -> reoffer(state)
-                is JourneyEvent.Completed -> Transition.Perform(adoptCredential(event), resumeState = state)
-                // The email obligation is already discharged here.
-                else -> afterEnrollment(ctx, emailObligation = false)
-            }
         }
+
+    private inline fun mandatory(state: OfferingState, event: JourneyEvent, next: () -> Transition): Transition = when (event) {
+        is JourneyEvent.Abandoned -> reoffer(state)
+        is JourneyEvent.Completed -> Transition.Perform(adoptCredential(event), resumeState = state)
+        else -> next()
+    }
 
     private fun adoptCredential(event: JourneyEvent.Completed): Action = when (val outcome = event.outcome) {
         is ToolOutcome.Completed.Enrolled -> Action.AdoptCredential(event.tool, outcome)
         // Confirming the address: claims and anchor, no credential, no device binding.
         is ToolOutcome.Completed.Attested -> Action.AdoptAttestation(event.tool, outcome)
-        else -> error("${event.tool.toolId} is not offered by REGISTER (Enrollment zuerst) - only ENROLLMENT and ATTESTATION tools ever are")
+        else -> event.notOffered("REGISTER (Enrollment zuerst) - only ENROLLMENT and ATTESTATION tools ever are")
     }
 
     /**
@@ -197,11 +181,7 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
             .map { it.toolId }
             .filter { it in ctx.availableTools }
 
-    /** Every state here is mandatory, so backing out re-offers the full set (`AuthEnrollCore.reoffer`). */
-    private fun reoffer(state: JourneyState): Transition = Transition.To(state.withActive(null))
-
     private companion object {
-        const val EMAIL_METHOD = "email"
         const val SMS_METHOD = "sms"
     }
 }

@@ -35,34 +35,28 @@ class ConfirmPeerLoginStrategy : IntentStrategy<ConfirmPeerLoginState> {
             is ConfirmPeerLoginState.Requested -> when (event) {
                 // A declined step-up ends the wish instead of re-requesting it forever.
                 is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
-                // The gate's step-up reached loa2: that is the fresh proof. Anything else
-                // re-evaluates from scratch.
-                is JourneyEvent.SubJourneyFinished ->
-                    if (event.intent == AuthIntent.STEP_UP && AcrLevel.rank(event.achievedAcr) >= AcrLevel.rank(REQUIRED_ACR)) {
-                        Transition.To(confirming(ctx, state.startedAuthenticated))
-                    } else {
-                        gate(ctx, state.startedAuthenticated) ?: offerReconfirmation(ctx, state.startedAuthenticated)
-                    }
+                // The gate's step-up reached loa2: that is the fresh proof. Any other finish
+                // re-evaluates from scratch like every other event.
+                is JourneyEvent.SubJourneyFinished if event.intent == AuthIntent.STEP_UP && (event.achievedAcr ?: AcrLevel.NONE) >= REQUIRED_ACR ->
+                    Transition.To(confirming(ctx, state.startedAuthenticated))
                 // gate() is null only when loa2 was already there; that case needs a fresh re-proof.
                 else -> gate(ctx, state.startedAuthenticated) ?: offerReconfirmation(ctx, state.startedAuthenticated)
             }
 
             is ConfirmPeerLoginState.ConfirmationRequired -> when (event) {
-                is JourneyEvent.Abandoned -> {
-                    declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
-                }
+                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
                 // Any active factor suffices; the re-proof is not recorded (class doc).
                 is JourneyEvent.Completed -> when (event.outcome) {
                     is ToolOutcome.Completed.Authenticated -> Transition.To(confirming(ctx, state.startedAuthenticated))
                     is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-                        error("${event.tool.toolId} is not offered by CONFIRM_PEER_LOGIN's ConfirmationRequired")
+                        event.notOffered("CONFIRM_PEER_LOGIN's ConfirmationRequired")
                 }
                 else -> error("ConfirmationRequired does not understand $event")
             }
 
             is ConfirmPeerLoginState.Confirming -> when (event) {
                 // Backing out is not declining the wish; the only candidate comes back.
-                is JourneyEvent.Abandoned -> Transition.To(state.withActive(null))
+                is JourneyEvent.Abandoned -> reoffer(state)
                 is JourneyEvent.Completed -> Transition.Perform(proofAction(event), resumeState = state)
                 // The approval ran. A channel that logged in only for it is asked about logging out.
                 is JourneyEvent.ActionCompleted ->
@@ -74,7 +68,7 @@ class ConfirmPeerLoginStrategy : IntentStrategy<ConfirmPeerLoginState> {
                 is JourneyEvent.Answered -> when (event.answer) {
                     ANSWER_ACCEPT -> Transition.Logout
                     ANSWER_DECLINE -> Transition.Authenticated
-                    else -> error("OfferLogout does not understand answer '${event.answer}'")
+                    else -> event.notUnderstood("OfferLogout")
                 }
                 else -> error("OfferLogout only accepts JourneyEvent.Answered")
             }
@@ -84,16 +78,16 @@ class ConfirmPeerLoginStrategy : IntentStrategy<ConfirmPeerLoginState> {
         is ToolOutcome.Completed.Approved -> Action.RecordApproval(event.tool, outcome)
         is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Enrolled,
         is ToolOutcome.Completed.Authenticated, is ToolOutcome.Completed.Attested ->
-            error("${event.tool.toolId} is not offered by CONFIRM_PEER_LOGIN")
+            event.notOffered("CONFIRM_PEER_LOGIN")
     }
+
+    private fun confirming(ctx: JourneyContext, startedAuthenticated: Boolean) =
+        ConfirmPeerLoginState.Confirming(startedAuthenticated, Offer(CandidateTools.forPeerApproval(ctx)))
 
     /**
      * Null once the session already carries loa2 and the caller may proceed. Without an account (a
      * cold entry on an unlinked device) it aborts; this intent offers no registration.
      */
-    private fun confirming(ctx: JourneyContext, startedAuthenticated: Boolean) =
-        ConfirmPeerLoginState.Confirming(startedAuthenticated, Offer(CandidateTools.forPeerApproval(ctx)))
-
     private fun gate(ctx: JourneyContext, startedAuthenticated: Boolean): Transition? {
         val account = ctx.account
             ?: return Transition.Abort(Text("Dieses Gerät ist noch keinem Konto zugeordnet - bitte zuerst regulär anmelden."))

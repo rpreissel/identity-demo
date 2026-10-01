@@ -105,11 +105,21 @@ sealed interface OfferingState : JourneyState {
 }
 
 /**
+ * A state that runs no tool: a decision point, a parked wish or a yes/no prompt. Nothing to
+ * activate, and nothing to remember about a running tool.
+ */
+sealed interface ToolFreeState : JourneyState {
+    override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
+    override val active: ToolRef? get() = null
+    override fun withActive(active: ToolRef?): JourneyState = this
+}
+
+/**
  * A state that pauses for an explicit accept/decline answer instead of a tool run
  * (`JourneyService.answer`). Not sealed, so JourneyService recognizes a waiting yes/no state
  * without importing any intent's states; a new yes/no action needs no change there.
  */
-interface AnswerableState : JourneyState {
+interface AnswerableState : ToolFreeState {
     /** What the client renders while waiting. */
     val question: Question
 

@@ -1,6 +1,8 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
+import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -21,12 +23,11 @@ class LogoutStrategy : IntentStrategy<LogoutState> {
         when (state) {
             is LogoutState.ConfirmPending -> when (event) {
                 is JourneyEvent.Answered -> when (event.answer) {
-                    "accept" -> Transition.Logout
-                    "decline" -> Transition.Cancel
-                    else -> error("ConfirmPending does not understand answer '${event.answer}'")
+                    ANSWER_ACCEPT -> Transition.Logout
+                    ANSWER_DECLINE -> Transition.Cancel
+                    else -> event.notUnderstood("ConfirmPending")
                 }
                 else -> Transition.To(state)
             }
         }
-
 }

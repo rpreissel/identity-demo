@@ -35,5 +35,4 @@ class RegisterDispatchStrategy : IntentStrategy<JourneyState> {
         is RegisterState -> identFirst.transition(state, event, ctx)
         else -> error("RegisterDispatchStrategy received a foreign state: ${state::class}")
     }
-
 }

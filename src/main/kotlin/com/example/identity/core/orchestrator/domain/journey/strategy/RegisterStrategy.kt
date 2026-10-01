@@ -60,7 +60,7 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
                 is JourneyEvent.Answered -> when (event.answer) {
                     ANSWER_ACCEPT -> Transition.Perform(Action.LinkDevice, resumeState = state)
                     ANSWER_DECLINE -> Transition.Cancel
-                    else -> error("ConfirmDeviceRebind does not understand answer '${event.answer}'")
+                    else -> event.notUnderstood("ConfirmDeviceRebind")
                 }
                 is JourneyEvent.ActionCompleted -> afterIdentification(ctx)
                 else -> error("ConfirmDeviceRebind only accepts JourneyEvent.Answered")
@@ -70,11 +70,9 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
                 // Backing out is the "not now": the run carries on as prospect (ADR-10).
                 is JourneyEvent.Abandoned -> continueAfterAssignment(ctx)
                 // The executor reads the account in hand at execution time.
-                is JourneyEvent.Completed -> when (val outcome = event.outcome) {
-                    is ToolOutcome.Completed.Identified ->
-                        Transition.Perform(Action.RecordIdentification(event.tool, outcome), resumeState = state)
-                    else -> error("${event.tool.toolId} is not offered by the assignment step")
-                }
+                is JourneyEvent.Completed if event.outcome is ToolOutcome.Completed.Identified ->
+                    Transition.Perform(Action.RecordIdentification(event.tool, event.outcome), resumeState = state)
+                is JourneyEvent.Completed -> event.notOffered("the assignment step")
                 // Back through afterIdentification: the assignment may have moved this run to
                 // another account (ADR-20), which must pass the same checks (device link, existing
                 // methods). The assignment offer is not repeated, since the person is bound now.
@@ -82,25 +80,19 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
                 else -> continueAfterAssignment(ctx)
             }
 
-            is RegisterState.ConfirmingEmail -> when (event) {
-                is JourneyEvent.Abandoned -> AuthEnrollCore.reoffer(state)
-                is JourneyEvent.Completed -> Transition.Perform(AuthEnrollCore.proofAction(event), resumeState = state)
-                else -> afterEnrollment(ctx, emailObligation = false)
-            }
-
-            is Enrolling -> when (event) {
-                is JourneyEvent.Abandoned -> AuthEnrollCore.reoffer(state)
-                is JourneyEvent.Completed -> Transition.Perform(AuthEnrollCore.proofAction(event), resumeState = state)
-                else -> afterEnrollment(ctx, state.emailObligation)
-            }
-
-            is RegisterState.SecondFactorKindObligation -> when (event) {
-                is JourneyEvent.Abandoned -> AuthEnrollCore.reoffer(state)
-                is JourneyEvent.Completed -> Transition.Perform(AuthEnrollCore.proofAction(event), resumeState = state)
-                // The email obligation is already discharged here.
-                else -> afterEnrollment(ctx, emailObligation = false)
-            }
+            // Mandatory states: backing out re-offers, a completed tool is adopted, and only the
+            // next step differs.
+            is RegisterState.ConfirmingEmail -> mandatory(state, event) { afterEnrollment(ctx, emailObligation = false) }
+            is Enrolling -> mandatory(state, event) { afterEnrollment(ctx, state.emailObligation) }
+            // The email obligation is already discharged here.
+            is RegisterState.SecondFactorKindObligation -> mandatory(state, event) { afterEnrollment(ctx, emailObligation = false) }
         }
+
+    private inline fun mandatory(state: OfferingState, event: JourneyEvent, next: () -> Transition): Transition = when (event) {
+        is JourneyEvent.Abandoned -> reoffer(state)
+        is JourneyEvent.Completed -> Transition.Perform(AuthEnrollCore.proofAction(event), resumeState = state)
+        else -> next()
+    }
 
     // Offers -------------------------------------------------------------------
 
@@ -139,9 +131,7 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
         }
         // Identified but not bound in the register (ADR-18): offer the correlation step before any
         // enrollment. No yes/no prompt in front; the form says what the number is for.
-        if (account.personId == null) {
-            offerAssignment(ctx)?.let { return it }
-        }
+        if (account.isUnidentified) offerAssignment(ctx)?.let { return it }
         return continueAfterAssignment(ctx)
     }
 
@@ -155,10 +145,10 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
         val account = ctx.requireAccount()
         // After the AuthChoice branch: the email obligation belongs to a genuine registration,
         // not to a rediscovered account logging in (docs/04-orchestrierung.md #8).
-        AuthEnrollCore.confirmEmail(account, ctx)?.let { return it }
-        // emailObligation stays true: without an attesting tool the offer above yields nothing,
-        // and the obligation is retried after enrollment.
-        return AuthEnrollCore.offerEnrollment(account, ctx, emailObligation = true, resumeAtStart = RegisterState.Start)
+        // emailObligation stays true: without an attesting tool confirmEmail yields nothing, and
+        // the obligation is retried after enrollment.
+        return AuthEnrollCore.confirmEmail(account, ctx)
+            ?: AuthEnrollCore.offerEnrollment(account, ctx, emailObligation = true, resumeAtStart = RegisterState.Start)
     }
 
     /**

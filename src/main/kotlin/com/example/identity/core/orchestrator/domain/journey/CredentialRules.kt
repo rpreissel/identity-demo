@@ -75,8 +75,9 @@ class MethodDependencies(
 ) {
     /** The active credentials that cannot outlive [target] - transitively. */
     fun dependentsOf(target: AuthMethodView): List<AuthMethodView> {
-        val lost = claimedBy(listOf(target)) - claimedBy(account.activeAuthenticationMethods.filter { it.id != target.id })
-        return dependentsOfLostClaims(lost, falling = listOf(target))
+        val falling = listOf(target)
+        val lost = claimedBy(falling) - claimedBy(standingBesides(falling))
+        return dependentsOfLostClaims(lost, falling)
     }
 
     /**
@@ -87,19 +88,12 @@ class MethodDependencies(
         val casualties = falling.toMutableList()
         var lostSoFar = lost
         while (true) {
-            val fallingIds = casualties.map { it.id }.toSet()
-            val standing = account.activeAuthenticationMethods.filter { it.id !in fallingIds }
-            val next = standing.filter { instance ->
-                catalog.descriptors()
-                    .filter { it.method == instance.method && it.role == ToolRole.ENROLLMENT }
-                    .any { descriptor -> descriptor.requires.any { it.attributeType in lostSoFar } }
-            }
+            val next = standingBesides(casualties).filter { requiresAnyOf(it, lostSoFar) }
             if (next.isEmpty()) return casualties.drop(falling.size)
             casualties += next
             // A casualty takes its own claims with it - unless something still standing asserts
             // the same type, which is why this is recomputed rather than unioned.
-            val stillStanding = account.activeAuthenticationMethods.filter { it.id !in casualties.map { c -> c.id }.toSet() }
-            lostSoFar = lostSoFar + (claimedBy(casualties) - claimedBy(stillStanding))
+            lostSoFar = lostSoFar + (claimedBy(casualties) - claimedBy(standingBesides(casualties)))
         }
     }
 
@@ -110,4 +104,16 @@ class MethodDependencies(
     }
 
     private fun claimedBy(instances: List<AuthMethodView>): Set<AttributeType> = instances.flatMap(claimedTypes).toSet()
+
+    /** The active credentials that stay when [falling] goes. */
+    private fun standingBesides(falling: Collection<AuthMethodView>): List<AuthMethodView> {
+        val fallingIds = falling.map { it.id }.toSet()
+        return account.activeAuthenticationMethods.filter { it.id !in fallingIds }
+    }
+
+    /** Whether [instance]'s enrollment declares a precondition on one of [attributeTypes]. */
+    private fun requiresAnyOf(instance: AuthMethodView, attributeTypes: Set<AttributeType>): Boolean =
+        catalog.descriptors()
+            .filter { it.method == instance.method && it.role == ToolRole.ENROLLMENT }
+            .any { descriptor -> descriptor.requires.any { it.attributeType in attributeTypes } }
 }

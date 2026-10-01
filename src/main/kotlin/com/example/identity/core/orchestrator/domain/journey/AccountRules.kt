@@ -41,9 +41,7 @@ sealed interface IdentificationTarget {
          */
         fun forUnresolved(inHand: AccountProfile?, attestationFits: () -> Boolean): IdentificationTarget = when {
             inHand == null -> NewAccount
-            inHand.isUnidentified ->
-                if (attestationFits()) AccountInHand(inHand.accountId)
-                else throw IdentityConflictException(Text("Die bezeugte Identitaet gehoert nicht zu dem Konto dieser Sitzung"))
+            inHand.isUnidentified && attestationFits() -> AccountInHand(inHand.accountId)
             else -> throw IdentityConflictException(Text("Die bezeugte Identitaet gehoert nicht zu dem Konto dieser Sitzung"))
         }
     }
@@ -98,7 +96,7 @@ sealed interface AccountMerge {
  *   means a tool skipped it.
  */
 fun checkCorrelation(account: AccountProfile, toolId: ToolId, claimedPersonId: PartnerNumber?, matches: (PartnerNumber) -> Boolean) {
-    if (account.personId != null) {
+    if (!account.isUnidentified) {
         throw IdentityConflictException(Text("Dieses Konto ist bereits einer Person zugeordnet"))
     }
     val personId = checkNotNull(claimedPersonId) { "$toolId completed as a correlation without resolving a person" }

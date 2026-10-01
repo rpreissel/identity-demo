@@ -41,7 +41,7 @@ internal object AuthEnrollCore {
         is ToolOutcome.Completed.Authenticated -> Action.AcceptProof(event.tool, outcome)
         // Claims only: no credential, and the device is not bound, since nothing lives on it.
         is ToolOutcome.Completed.Attested -> Action.AdoptAttestation(event.tool, outcome)
-        is ToolOutcome.Completed.Approved -> error("${event.tool.toolId} is not offered by FAST_ACCESS/REGISTER")
+        is ToolOutcome.Completed.Approved -> event.notOffered("FAST_ACCESS/REGISTER")
     }
 
     /** After a proof: done, another factor via [AuthChoice], or else [offerEnrollment]. */
@@ -139,10 +139,4 @@ internal object AuthEnrollCore {
      * its own methods.
      */
     val ENROLLMENT_FLOOR_ACR = AcrLevel.LOA2
-
-    /**
-     * On a mandatory state, backing out of a tool is not declining it: the obligation stands, so
-     * the full choice comes back. Only fallback states accumulate `declined`.
-     */
-    fun reoffer(state: JourneyState): Transition = Transition.To(state.withActive(null))
 }

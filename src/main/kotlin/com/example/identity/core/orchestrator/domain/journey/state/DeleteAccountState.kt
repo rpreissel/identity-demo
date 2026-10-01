@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
-import com.example.identity.contract.tool_api.ToolId
 
 /**
  * States of DELETE_ACCOUNT (docs/journeys/delete-account.md). [ConfirmPending] always comes first.
@@ -13,9 +12,6 @@ sealed interface DeleteAccountState : JourneyState {
 
     /** "Do you really want to delete your account?", before anything else is checked. */
     data object ConfirmPending : DeleteAccountState, AnswerableState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
         override val question: Question get() = Question.Confirm(
             title = Text("Konto wirklich löschen?"),
             description = Text("Diese Aktion kann nicht rückgängig gemacht werden. Alle Ihre Anmeldemethoden und Kontodaten werden endgültig gelöscht."),

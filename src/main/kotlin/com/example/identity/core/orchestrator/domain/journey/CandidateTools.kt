@@ -6,6 +6,7 @@ import com.example.identity.core.orchestrator.domain.policy.requiresSatisfied
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.FactorType
+import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolId
 
@@ -23,6 +24,10 @@ internal object CandidateTools {
      * left"); `activatable()` can only narrow an offer, not pick a different state.
      */
     private fun JourneyContext.filterAvailable(ids: List<ToolId>): List<ToolId> = ids.filter { it in availableTools }
+
+    /** The available tools of one [role] in catalog order, optionally narrowed by [matches]. */
+    private inline fun JourneyContext.availableToolsOf(role: ToolRole, matches: (ToolDescriptor) -> Boolean = { true }): List<ToolId> =
+        filterAvailable(catalog.descriptors().filter { it.role == role && matches(it) }.map { it.toolId })
 
     private fun JourneyContext.candidateContext(targetAcr: AcrLevel, account: AccountProfile? = null): CandidateContext =
         CandidateContext(
@@ -45,28 +50,17 @@ internal object CandidateTools {
     fun forAssignment(ctx: JourneyContext): List<ToolId> = identCandidates(ctx, ToolRole.CORRELATION)
 
     private fun identCandidates(ctx: JourneyContext, role: ToolRole): List<ToolId> =
-        ctx.filterAvailable(
-            ctx.catalog.descriptors()
-                .filter { it.role == role }
-                .filter { descriptor -> descriptor.requires.all { requiresSatisfied(it, ctx.account) } }
-                .map { it.toolId }
-        )
+        ctx.availableToolsOf(role) { descriptor -> descriptor.requires.all { requiresSatisfied(it, ctx.account) } }
 
     /** Every tool that resolves the account itself from a submitted identifier. */
-    fun forLookupLogin(ctx: JourneyContext): List<ToolId> =
-        ctx.filterAvailable(ctx.catalog.descriptors().filter { it.role == ToolRole.ACCOUNT_LOOKUP_AUTH }.map { it.toolId })
+    fun forLookupLogin(ctx: JourneyContext): List<ToolId> = ctx.availableToolsOf(ToolRole.ACCOUNT_LOOKUP_AUTH)
 
     /** The tools that approve another channel's request (role [ToolRole.PEER_APPROVAL]). */
-    fun forPeerApproval(ctx: JourneyContext): List<ToolId> =
-        ctx.filterAvailable(ctx.catalog.descriptors().filter { it.role == ToolRole.PEER_APPROVAL }.map { it.toolId })
+    fun forPeerApproval(ctx: JourneyContext): List<ToolId> = ctx.availableToolsOf(ToolRole.PEER_APPROVAL)
 
     /** The attestation tools that prove control of [attributeType] (e.g. `confirm-email` for EMAIL). */
     fun forAttestation(attributeType: AttributeType, ctx: JourneyContext): List<ToolId> =
-        ctx.filterAvailable(
-            ctx.catalog.descriptors()
-                .filter { it.role == ToolRole.ATTESTATION && it.claims.any { c -> c.attributeType == attributeType } }
-                .map { it.toolId }
-        )
+        ctx.availableToolsOf(ToolRole.ATTESTATION) { descriptor -> descriptor.claims.any { it.attributeType == attributeType } }
 
     /**
      * The auth tool for a credential that lives on this device, if the account has one
@@ -93,20 +87,12 @@ internal object CandidateTools {
      * since re-presenting the same factor is a valid answer. No acr target: any active factor counts.
      */
     fun forReconfirmation(account: AccountProfile, ctx: JourneyContext): List<ToolId> =
-        ctx.filterAvailable(
-            ctx.catalog.descriptors()
-                .filter { it.role == ToolRole.KNOWN_ACCOUNT_AUTH }
-                .mapNotNull { descriptor ->
-                    val method = account.activeAuthenticationMethods.firstOrNull { it.method == descriptor.method }
-                        ?: return@mapNotNull null
-                    // A device-bound credential only works on the device it was enrolled on
-                    // (docs/03-tool-architektur.md); the descriptor decides.
-                    if (!descriptor.usableByCaller(method.details, ctx.bindingKeyRef, ctx.linkedAccountId, account.accountId)) {
-                        return@mapNotNull null
-                    }
-                    descriptor.toolId
-                }
-        )
+        ctx.availableToolsOf(ToolRole.KNOWN_ACCOUNT_AUTH) { descriptor ->
+            val method = account.activeAuthenticationMethods.firstOrNull { it.method == descriptor.method }
+            // A device-bound credential only works on the device it was enrolled on
+            // (docs/03-tool-architektur.md); the descriptor decides.
+            method != null && descriptor.usableByCaller(method.details, ctx.bindingKeyRef, ctx.linkedAccountId, account.accountId)
+        }
 
     fun forEnrollment(account: AccountProfile, targetAcr: AcrLevel, ctx: JourneyContext): List<ToolId> =
         ctx.filterAvailable(ctx.policy.enrollmentCandidates(ctx.candidateContext(targetAcr, account)))

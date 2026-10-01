@@ -14,6 +14,7 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
+import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -46,42 +47,32 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
             }
 
             // The first proof has no account yet, so a lookup tool resolves it; the executor
-            // decides that from the tool's role (accountOfProof), not this state.
-            is LookupLoginState.Credential -> when (event) {
-                is JourneyEvent.Completed -> completed(event, state)
-                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
-                else -> settleOrRaise(ctx)
-            }
-
-            // A further factor runs against the account bound by the first one.
-            is LookupLoginState.AdditionalFactor -> when (event) {
-                is JourneyEvent.Completed -> completed(event, state)
-                // Giving up cannot finish anyway: the floor is still unmet.
-                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
-                else -> settleOrRaise(ctx)
-            }
+            // decides that from the tool's role (accountOfProof), not this state. A further factor
+            // runs against the account bound by the first one; giving it up cannot finish anyway,
+            // since the floor is still unmet.
+            is LookupLoginState.Credential -> proving(state, event, ctx)
+            is LookupLoginState.AdditionalFactor -> proving(state, event, ctx)
 
             // The journey ends either way; only ANSWER_ACCEPT links the device.
-            is LookupLoginState.OfferBinding -> when (event) {
-                is JourneyEvent.Answered -> when (event.answer) {
-                    ANSWER_ACCEPT -> Transition.Perform(Action.LinkDevice, resumeState = state)
-                    ANSWER_DECLINE -> Transition.Authenticated
-                    else -> error("OfferBinding does not understand answer '${event.answer}'")
-                }
-                is JourneyEvent.ActionCompleted -> Transition.Authenticated
-                else -> error("OfferBinding only accepts JourneyEvent.Answered")
-            }
-
-            is LookupLoginState.ConfirmDeviceRebind -> when (event) {
-                is JourneyEvent.Answered -> when (event.answer) {
-                    ANSWER_ACCEPT -> Transition.Perform(Action.LinkDevice, resumeState = state)
-                    ANSWER_DECLINE -> Transition.Authenticated
-                    else -> error("ConfirmDeviceRebind does not understand answer '${event.answer}'")
-                }
-                is JourneyEvent.ActionCompleted -> Transition.Authenticated
-                else -> error("ConfirmDeviceRebind only accepts JourneyEvent.Answered")
-            }
+            is LookupLoginState.OfferBinding -> deviceLinkAnswered(state, "OfferBinding", event)
+            is LookupLoginState.ConfirmDeviceRebind -> deviceLinkAnswered(state, "ConfirmDeviceRebind", event)
         }
+
+    private fun proving(state: OfferingState, event: JourneyEvent, ctx: JourneyContext): Transition = when (event) {
+        is JourneyEvent.Completed -> completed(event, state)
+        is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
+        else -> settleOrRaise(ctx)
+    }
+
+    private fun deviceLinkAnswered(state: LookupLoginState, name: String, event: JourneyEvent): Transition = when (event) {
+        is JourneyEvent.Answered -> when (event.answer) {
+            ANSWER_ACCEPT -> Transition.Perform(Action.LinkDevice, resumeState = state)
+            ANSWER_DECLINE -> Transition.Authenticated
+            else -> event.notUnderstood(name)
+        }
+        is JourneyEvent.ActionCompleted -> Transition.Authenticated
+        else -> error("$name only accepts JourneyEvent.Answered")
+    }
 
     /**
      * A one-time password opens a process access on the website only (ADR-48): the App channel's
@@ -89,7 +80,7 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
      * App by default; should an App announce it anyway, the journey ends with a clear refusal
      * instead of binding an invitation it cannot serve.
      */
-    private fun completed(event: JourneyEvent.Completed, state: LookupLoginState): Transition {
+    private fun completed(event: JourneyEvent.Completed, state: OfferingState): Transition {
         val outcome = event.outcome
         if (outcome is ToolOutcome.Completed.Authenticated && outcome.subject is Subject.Invitation) {
             return Transition.Abort(Text("Ein Einmalkennwort gilt nur auf der Website"))
@@ -102,7 +93,7 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
         when (val outcome = event.outcome) {
             is ToolOutcome.Completed.Authenticated -> Action.AcceptProof(event.tool, outcome)
             is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-                error("${event.tool.toolId} is not offered by LOGIN_LOOKUP")
+                event.notOffered("LOGIN_LOOKUP")
         }
 
     /**
@@ -134,8 +125,5 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
         } else {
             Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
         }
-    }
-
-    companion object {
     }
 }

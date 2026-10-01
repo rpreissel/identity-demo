@@ -46,7 +46,7 @@ class FastAccessStrategy : IntentStrategy<FastAccessState> {
             }
 
             is Enrolling -> when (event) {
-                is JourneyEvent.Abandoned -> AuthEnrollCore.reoffer(state)
+                is JourneyEvent.Abandoned -> reoffer(state)
                 is JourneyEvent.Completed -> Transition.Perform(AuthEnrollCore.proofAction(event), resumeState = state)
                 // FAST_ACCESS never sets emailObligation, so this never reaches ConfirmingEmail.
                 else -> AuthEnrollCore.afterEnrollment(ctx, state.emailObligation, resumeAtStart = FastAccessState.Start)
@@ -56,13 +56,10 @@ class FastAccessStrategy : IntentStrategy<FastAccessState> {
     // Offers -------------------------------------------------------------------
 
     private fun firstOffer(ctx: JourneyContext): Transition {
-        val account = ctx.account
-        if (account != null) {
-            CandidateTools.preferredDeviceAuth(account, ctx)?.let { return Transition.To(FastAccessState.PreferredAuth(it)) }
-            val candidates = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
-            if (candidates.isNotEmpty()) return Transition.To(AuthChoice(Offer(candidates)))
-        }
-        return requireRegister()
+        val account = ctx.account ?: return requireRegister()
+        CandidateTools.preferredDeviceAuth(account, ctx)?.let { return Transition.To(FastAccessState.PreferredAuth(it)) }
+        val candidates = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
+        return if (candidates.isNotEmpty()) Transition.To(AuthChoice(Offer(candidates))) else requireRegister()
     }
 
     /** Nothing (or nothing else) provable is left on this device: hand off to a fresh identification. */

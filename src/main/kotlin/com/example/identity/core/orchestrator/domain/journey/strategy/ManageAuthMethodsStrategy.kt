@@ -31,28 +31,25 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
             is ManageAuthMethodsState.AddRequested ->
                 if (event is JourneyEvent.SubJourneyCancelled) Transition.Cancel else gate(state, ctx) ?: offerEnrollment(ctx)
 
-            is ManageAuthMethodsState.RemoveRequested -> when (event) {
-                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
-                // The removal just ran.
-                is JourneyEvent.ActionCompleted -> Transition.Authenticated
-                else -> gate(state, ctx) ?: Transition.Perform(Action.RevokeAuthMethod(state.methodInstanceId), resumeState = state)
-            }
-
-            // Same shape as RemoveRequested: gate first, then act, then finish.
-            is ManageAuthMethodsState.RetractAttributeRequested -> when (event) {
-                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
-                is JourneyEvent.ActionCompleted -> Transition.Authenticated
-                else -> gate(state, ctx) ?: Transition.Perform(Action.RetractAttribute(state.attributeType), resumeState = state)
-            }
+            is ManageAuthMethodsState.RemoveRequested -> gateThenAct(state, event, ctx) { Action.RevokeAuthMethod(state.methodInstanceId) }
+            is ManageAuthMethodsState.RetractAttributeRequested -> gateThenAct(state, event, ctx) { Action.RetractAttribute(state.attributeType) }
 
             is ManageAuthMethodsState.Enrolling -> when (event) {
                 // Backing out means picking a different method; the full choice comes back.
                 // Giving up entirely is DELETE .../journey.
-                is JourneyEvent.Abandoned -> Transition.To(state.withActive(null))
+                is JourneyEvent.Abandoned -> reoffer(state)
                 is JourneyEvent.Completed -> Transition.Perform(proofAction(event), resumeState = state)
                 // The enrollment just ran - one successful enrollment ends this intent.
                 else -> Transition.Authenticated
             }
+        }
+
+    /** A parked removal: gate first, then act, then finish once the action ran. */
+    private inline fun gateThenAct(requested: ManageAuthMethodsState, event: JourneyEvent, ctx: JourneyContext, action: () -> Action): Transition =
+        when (event) {
+            is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
+            is JourneyEvent.ActionCompleted -> Transition.Authenticated
+            else -> gate(requested, ctx) ?: Transition.Perform(action(), resumeState = requested)
         }
 
     /**
@@ -62,7 +59,7 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
     private fun proofAction(event: JourneyEvent.Completed): Action = when (val outcome = event.outcome) {
         is ToolOutcome.Completed.Enrolled -> Action.AdoptCredential(event.tool, outcome)
         is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Authenticated, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-            error("${event.tool.toolId} is not offered by MANAGE")
+            event.notOffered("MANAGE")
     }
 
     /** Null once the session already carries [selfServiceAcrFloor] and the caller may proceed. */

@@ -22,6 +22,17 @@ import com.example.identity.contract.tool_api.ToolOutcome
  */
 class StepUpStrategy : IntentStrategy<StepUpState> {
 
+    /** What both states carry through the whole run, so the helpers take it as one value. */
+    private data class Goal(
+        val targetAcr: AcrLevel,
+        val startingAcr: AcrLevel,
+        val allowReIdentification: Boolean,
+        val reason: StepUpState.Reason?
+    )
+
+    private val StepUpState.Start.goal get() = Goal(targetAcr, startingAcr, allowReIdentification, reason)
+    private val StepUpState.AuthChoice.goal get() = Goal(targetAcr, startingAcr, allowReIdentification, reason)
+
     override val intent = AuthIntent.STEP_UP
 
     /** Never entered without a target; only reachable as a sub-journey, which seeds the real one. */
@@ -32,46 +43,49 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
             // Nothing is activatable here, so no Completed event arrives.
             is StepUpState.Start -> when (event) {
                 // Re-check whether the fresh proof already closes the gap before offering again.
-                is JourneyEvent.SubJourneyFinished -> finishOrContinue(state.targetAcr, state.startingAcr, state.allowReIdentification, state.reason, ctx)
+                is JourneyEvent.SubJourneyFinished -> finishOrContinue(state.goal, ctx)
                 // No new evidence - re-deriving would just re-request the same RE_IDENTIFY again.
                 is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
-                else -> offerAuth(state.targetAcr, state.startingAcr, state.allowReIdentification, state.reason, ctx)
+                else -> offerAuth(state.goal, ctx)
             }
 
             is StepUpState.AuthChoice -> when (event) {
                 is JourneyEvent.Completed -> Transition.Perform(proofAction(event), resumeState = state)
                 is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) {
-                    offerReIdentOrGiveUp(state.targetAcr, state.startingAcr, state.allowReIdentification, ctx, whenNone = Transition.Cancel)
+                    offerReIdentOrGiveUp(state.goal, ctx, whenNone = Transition.Cancel)
                 }
                 // ActionCompleted: re-check with the fresh, post-proof context.
-                else -> finishOrContinue(state.targetAcr, state.startingAcr, state.allowReIdentification, state.reason, ctx)
+                else -> finishOrContinue(state.goal, ctx)
             }
         }
 
     private fun proofAction(event: JourneyEvent.Completed): Action = when (val outcome = event.outcome) {
         is ToolOutcome.Completed.Authenticated -> Action.AcceptProof(event.tool, outcome)
         is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-            error("${event.tool.toolId} is not offered by STEP_UP")
+            event.notOffered("STEP_UP")
     }
 
-    private fun finishOrContinue(targetAcr: AcrLevel, startingAcr: AcrLevel, allowReIdentification: Boolean, reason: StepUpState.Reason?, ctx: JourneyContext): Transition {
-        val account = ctx.requireAccount()
-        if (ctx.policy.isSatisfied(ctx.evidence, targetAcr, account)) return Transition.Authenticated
-        return offerAuth(targetAcr, startingAcr, allowReIdentification, reason, ctx)
-    }
+    private fun finishOrContinue(goal: Goal, ctx: JourneyContext): Transition =
+        if (ctx.policy.isSatisfied(ctx.evidence, goal.targetAcr, ctx.requireAccount())) Transition.Authenticated
+        else offerAuth(goal, ctx)
 
-    private fun offerAuth(targetAcr: AcrLevel, startingAcr: AcrLevel, allowReIdentification: Boolean, reason: StepUpState.Reason?, ctx: JourneyContext): Transition {
+    private fun offerAuth(goal: Goal, ctx: JourneyContext): Transition {
         val account = ctx.requireAccount()
-        val candidates = CandidateTools.forAuth(account, targetAcr, ctx)
+        val candidates = CandidateTools.forAuth(account, goal.targetAcr, ctx)
         if (candidates.isNotEmpty()) {
             // Authenticator evidence already on the channel means this offer asks for an
             // additional factor (StepUpState.AuthChoice.additionalFactorRound).
             val additionalFactorRound = ctx.evidence.methods.any { it.axis == EvidenceAxis.AUTHENTICATOR }
-            return Transition.To(StepUpState.AuthChoice(targetAcr, startingAcr, Offer(candidates), allowReIdentification, reason = reason, additionalFactorRound = additionalFactorRound))
+            return Transition.To(
+                StepUpState.AuthChoice(
+                    goal.targetAcr, goal.startingAcr, Offer(candidates), goal.allowReIdentification,
+                    reason = goal.reason, additionalFactorRound = additionalFactorRound
+                )
+            )
         }
         return offerReIdentOrGiveUp(
-            targetAcr, startingAcr, allowReIdentification, ctx,
-            whenNone = Transition.Abort(ctx.policy.reachability(account, targetAcr).toAuthAbortMessage())
+            goal, ctx,
+            whenNone = Transition.Abort(ctx.policy.reachability(account, goal.targetAcr).toAuthAbortMessage())
         )
     }
 
@@ -79,13 +93,13 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
      * Offers re-identification if allowed ([StepUpState.Start.allowReIdentification]) and able to
      * close the gap; [whenNone] otherwise.
      */
-    private fun offerReIdentOrGiveUp(targetAcr: AcrLevel, startingAcr: AcrLevel, allowReIdentification: Boolean, ctx: JourneyContext, whenNone: Transition): Transition =
-        if (allowReIdentification && CandidateTools.forReIdentification(targetAcr, ctx).isNotEmpty()) {
+    private fun offerReIdentOrGiveUp(goal: Goal, ctx: JourneyContext, whenNone: Transition): Transition =
+        if (goal.allowReIdentification && CandidateTools.forReIdentification(goal.targetAcr, ctx).isNotEmpty()) {
             Transition.RequireSubJourney(
                 AuthIntent.RE_IDENTIFY,
                 // ctx.currentAcr, not the possibly stale startingAcr of this run.
-                seedWith = ReIdentifyState.forSubJourney(targetAcr, ctx.currentAcr),
-                resumeWith = StepUpState.Start(targetAcr, startingAcr)
+                seedWith = ReIdentifyState.forSubJourney(goal.targetAcr, ctx.currentAcr),
+                resumeWith = StepUpState.Start(goal.targetAcr, goal.startingAcr)
             )
         } else {
             whenNone

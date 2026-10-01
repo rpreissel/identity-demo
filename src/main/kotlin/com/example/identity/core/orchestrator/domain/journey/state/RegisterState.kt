@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
-import com.example.identity.contract.tool_api.ToolId
 
 /**
  * REGISTER: a fresh identification, even on a linked device (docs/04-orchestrierung.md #2,
@@ -11,10 +10,7 @@ import com.example.identity.contract.tool_api.ToolId
  */
 sealed interface RegisterState : JourneyState {
 
-    data object Start : RegisterState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
+    data object Start : RegisterState, ToolFreeState {
         override val selectionContext: String get() = "auth"
     }
 
@@ -47,9 +43,6 @@ sealed interface RegisterState : JourneyState {
      * Carries no account id: `Action.LinkDevice` reads the account from the live session.
      */
     data object ConfirmDeviceRebind : RegisterState, AnswerableState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
         override val question: Question get() = Question.Confirm(
             title = Text("Dieses Gerät ist bereits einem anderen Konto zugeordnet"),
             description = Text("Wenn Sie fortfahren, wird dieses Gerät künftig nur noch diesem Konto zugeordnet. Das bisher verbundene Konto muss sich beim nächsten Mal auf diesem Gerät erneut identifizieren."),

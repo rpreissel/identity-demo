@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
-import com.example.identity.contract.tool_api.ToolId
 
 /**
  * States of LOOKUP_LOGIN (docs/journeys/lookup-login.md). There is no `Identifying`: without a known
@@ -11,10 +10,7 @@ import com.example.identity.contract.tool_api.ToolId
  */
 sealed interface LookupLoginState : JourneyState {
 
-    data object Start : LookupLoginState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
+    data object Start : LookupLoginState, ToolFreeState {
         override val selectionContext: String get() = "auth"
     }
 
@@ -47,9 +43,6 @@ sealed interface LookupLoginState : JourneyState {
      * Carries no account id: `Action.LinkDevice` reads the account from the live session.
      */
     data object OfferBinding : LookupLoginState, AnswerableState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
         override val question: Question get() = Question.Confirm(
             title = Text("Dieses Gerät merken?"),
             description = Text("Wenn Sie zustimmen, erkennt der Dienst dieses Gerät beim nächsten Mal wieder und Sie müssen Ihre E-Mail-Adresse nicht erneut eingeben. Sie können auch ohne Verknüpfung fortfahren – dann melden Sie sich künftig wieder über E-Mail und Passwort an."),
@@ -64,9 +57,6 @@ sealed interface LookupLoginState : JourneyState {
      * Carries no account id: `Action.LinkDevice` reads the account from the live session.
      */
     data object ConfirmDeviceRebind : LookupLoginState, AnswerableState {
-        override fun withActive(active: ToolRef?): JourneyState = this
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
-        override val active: ToolRef? get() = null
         override val question: Question get() = Question.Confirm(
             title = Text("Dieses Gerät ist bereits einem anderen Konto zugeordnet"),
             description = Text("Wenn Sie fortfahren, wird dieses Gerät künftig nur noch diesem Konto zugeordnet. Das bisher verbundene Konto muss sich beim nächsten Mal auf diesem Gerät erneut identifizieren."),

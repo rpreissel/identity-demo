@@ -27,18 +27,16 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
 
     override val intent = AuthIntent.WEB_SELECT_METHOD
 
-    override fun initialState(ctx: JourneyContext): WebSelectMethodState =
-        WebSelectMethodState.SelectMethod(Offer(candidatesFor(ctx)), accountAlreadyKnown = ctx.account != null)
+    override fun initialState(ctx: JourneyContext): WebSelectMethodState = selectMethod(ctx)
 
     override fun transition(state: WebSelectMethodState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is WebSelectMethodState.SelectMethod -> when (event) {
-                // Restored evidence may already satisfy the floor (docs/04-orchestrierung.md,
-                // "RestoreData als erster Übergang"), so Started re-checks like any other proof.
-                is JourneyEvent.Started -> afterProof(ctx)
                 is JourneyEvent.Completed -> completed(state, event, ctx)
                 is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
-                // EvidenceReported and ActionCompleted re-check the same way.
+                // Started re-checks like any other proof: restored evidence may already satisfy the
+                // floor (docs/04-orchestrierung.md, "RestoreData als erster Übergang"). So do
+                // EvidenceReported and ActionCompleted.
                 else -> afterProof(ctx)
             }
         }
@@ -52,7 +50,7 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
         if (outcome is ToolOutcome.Completed.Authenticated && outcome.subject is Subject.Invitation &&
             (outcome.achievedAcr ?: AcrLevel.NONE) < ctx.acrFloor
         ) return insufficientInvitation()
-        return Transition.Perform(proofAction(state, event), resumeState = state)
+        return Transition.Perform(proofAction(event), resumeState = state)
     }
 
     private fun insufficientInvitation() =
@@ -63,11 +61,11 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
      * ([com.example.identity.core.orchestrator.domain.journey.accountOfProof]). Other outcomes mean a tool ran
      * that was never offered.
      */
-    private fun proofAction(state: WebSelectMethodState.SelectMethod, event: JourneyEvent.Completed): Action =
+    private fun proofAction(event: JourneyEvent.Completed): Action =
         when (val outcome = event.outcome) {
             is ToolOutcome.Completed.Authenticated -> Action.AcceptProof(event.tool, outcome)
             is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-                error("${event.tool.toolId} is not offered by WEB_SELECT_METHOD")
+                event.notOffered("WEB_SELECT_METHOD")
         }
 
     private fun afterProof(ctx: JourneyContext): Transition {
@@ -77,8 +75,11 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
         }
         val account = ctx.account
         if (account != null && ctx.policy.isSatisfied(ctx.evidence, ctx.acrFloor, account)) return Transition.Authenticated
-        return Transition.To(WebSelectMethodState.SelectMethod(Offer(candidatesFor(ctx)), accountAlreadyKnown = account != null))
+        return Transition.To(selectMethod(ctx))
     }
+
+    private fun selectMethod(ctx: JourneyContext) =
+        WebSelectMethodState.SelectMethod(Offer(candidatesFor(ctx)), accountAlreadyKnown = ctx.account != null)
 
     /**
      * Never identification and never enrollment (docs/04-orchestrierung.md Abschnitt 3): the Web
