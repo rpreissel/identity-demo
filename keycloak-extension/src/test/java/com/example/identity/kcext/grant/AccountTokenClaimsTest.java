@@ -12,9 +12,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class AccountTokenClaimsTest {
 
     @Test
-    void theRealmsLevelsAndMethodNamesAreAccepted() {
+    void theOrchestratorsLevelsAndMethodNamesAreAccepted() {
         assertNull(AccountTokenClaims.problem("loa1", "password"));
         assertNull(AccountTokenClaims.problem("loa2", "password,sms,auth_qr-2"));
+        // An identification in the App (ident-eid, ident-nect) reaches loa3.
+        assertNull(AccountTokenClaims.problem("loa3", "eid"));
     }
 
     @Test
@@ -25,7 +27,7 @@ class AccountTokenClaimsTest {
 
     @Test
     void anUnknownLevelIsRejected() {
-        assertEquals("Unknown acr", AccountTokenClaims.problem("loa3", "password"));
+        assertEquals("Unknown acr", AccountTokenClaims.problem("loa4", "password"));
         assertEquals("Unknown acr", AccountTokenClaims.problem("gold", "password"));
     }
 

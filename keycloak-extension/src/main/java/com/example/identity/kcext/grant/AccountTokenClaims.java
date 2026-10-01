@@ -17,7 +17,7 @@ final class AccountTokenClaims {
     }
 
     /**
-     * Grund der Ablehnung oder {@code null}: acr fehlt oder ist ein Niveau des Realms, amr ist leer
+     * Grund der Ablehnung oder {@code null}: acr fehlt oder ist ein Niveau des Orchestrators, amr ist leer
      * oder eine kommagetrennte Liste von Methodennamen.
      */
     static String problem(String acr, String amr) {

@@ -20,6 +20,7 @@ import org.keycloak.sessions.AuthenticationSessionModel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -196,9 +197,14 @@ public final class OrchestratorNotes {
         return LOA_TO_ACR.entrySet().stream().filter(e -> e.getValue().equals(acr)).mapToInt(Map.Entry::getKey).findFirst().orElse(-1);
     }
 
-    /** Ob {@code acr} eines der Niveaus ist, die der Realm kennt. */
+    // Every level the orchestrator can certify. More than the browser flow can ask for
+    // (LOA_TO_ACR): loa3 comes only from an identification in the App (ident-eid, ident-nect),
+    // never from a Condition-LoA subflow here.
+    private static final Set<String> ORCHESTRATOR_ACRS = Set.of("loa1", "loa2", "loa3");
+
+    /** Ob {@code acr} eines der Niveaus ist, die der Orchestrator bescheinigen kann. */
     public static boolean isKnownAcr(String acr) {
-        return acrRank(acr) >= 0;
+        return ORCHESTRATOR_ACRS.contains(acr);
     }
 
     /**
