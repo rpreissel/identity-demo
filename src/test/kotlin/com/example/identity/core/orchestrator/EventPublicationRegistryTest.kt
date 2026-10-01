@@ -12,6 +12,8 @@ import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.support.TransactionTemplate
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Proves the Event Publication Registry works in this application, not merely on the classpath.
@@ -27,6 +29,7 @@ class EventPublicationRegistryTest : BehaviorSpec() {
     @Autowired private lateinit var events: ApplicationEventPublisher
     @Autowired private lateinit var transactions: TransactionTemplate
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
+    @Autowired private lateinit var listener: FailingListenerConfig
 
     init {
         given("a module listener that fails") {
@@ -37,31 +40,18 @@ class EventPublicationRegistryTest : BehaviorSpec() {
                 // outbox rather than a log written afterwards.
                 transactions.executeWithoutResult { events.publishEvent(ProbeEvent(marker)) }
 
-                // The listener is @Async, so the row appears shortly after the commit.
-                val open = eventually {
-                    jdbcTemplate.queryForObject(
-                        """
-                        select count(*) from orchestrator.event_publication
-                        where completion_date is null and serialized_event like ?
-                        """.trimIndent(),
-                        Long::class.java, "%$marker%"
-                    ) ?: 0L
-                }
+                // The listener is @Async: the row is only meaningful once it has run and failed.
+                listener.invoked.await(5, TimeUnit.SECONDS) shouldBe true
+                val open = jdbcTemplate.queryForObject(
+                    """
+                    select count(*) from orchestrator.event_publication
+                    where completion_date is null and serialized_event like ?
+                    """.trimIndent(),
+                    Long::class.java, "%$marker%"
+                )
                 open shouldBe 1L
             }
         }
-    }
-
-    /** Polls rather than sleeping a fixed span: the listener runs on another thread. */
-    private fun eventually(block: () -> Long): Long {
-        val deadline = System.currentTimeMillis() + 5_000
-        var last = 0L
-        while (System.currentTimeMillis() < deadline) {
-            last = block()
-            if (last > 0L) return last
-            Thread.sleep(50)
-        }
-        return last
     }
 
     /** A plain data class so the registry's Jackson serializer can store and restore it. */
@@ -73,9 +63,11 @@ class EventPublicationRegistryTest : BehaviorSpec() {
      */
     @TestConfiguration
     class FailingListenerConfig {
+        val invoked = CountDownLatch(1)
 
         @ApplicationModuleListener
         fun on(event: ProbeEvent) {
+            invoked.countDown()
             // Throwing leaves the publication open for resubmission, as a failing Keycloak call does.
             error("probe failure for ${event.marker}")
         }

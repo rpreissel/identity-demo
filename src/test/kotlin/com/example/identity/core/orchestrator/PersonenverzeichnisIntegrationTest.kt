@@ -8,12 +8,14 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
+import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 /**
@@ -154,13 +156,8 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                     String::class.java, accountId, type
                 ).singleOrNull()
 
-                fun eventually(check: () -> Boolean) {
-                    val until = System.currentTimeMillis() + 10_000
-                    while (!check()) {
-                        check(System.currentTimeMillis() < until) { "account did not follow the Personenverzeichnis in time" }
-                        Thread.sleep(100)
-                    }
-                }
+                fun eventually(check: () -> Boolean) =
+                    await().alias("account follows the Personenverzeichnis").atMost(10, TimeUnit.SECONDS).until(check)
 
                 val versnr = randomVersnr()
                 val newKvnr = "Y" + (1..9).joinToString("") { Random.nextInt(10).toString() }

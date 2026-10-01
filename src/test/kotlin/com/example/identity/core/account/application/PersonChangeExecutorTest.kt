@@ -7,6 +7,8 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
+import org.awaitility.Awaitility.await
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
@@ -15,10 +17,13 @@ import org.springframework.context.annotation.Import
 import org.springframework.core.annotation.AnnotatedElementUtils
 import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.scheduling.annotation.Async
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.support.TransactionTemplate
 import java.util.Collections
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -34,13 +39,20 @@ class PersonChangeExecutorTest : BehaviorSpec() {
     @Autowired private lateinit var events: ApplicationEventPublisher
     @Autowired private lateinit var transactions: TransactionTemplate
     @Autowired private lateinit var probe: ProbeConfig
+    @Autowired @Qualifier(PERSON_CHANGE_EXECUTOR) private lateinit var lane: ThreadPoolTaskExecutor
 
     init {
         given("several changes committed in separate transactions at once") {
             then("they run one after another on the person-change thread") {
                 repeat(3) { i -> transactions.executeWithoutResult { events.publishEvent(ProbeChange(i)) } }
 
-                eventually { probe.threads.size == 3 }
+                // The first change holds the lane until released: the other two must be queued
+                // behind it, not running beside it.
+                await().atMost(5, TimeUnit.SECONDS).until { lane.queueSize == 2 }
+                probe.started.get() shouldBe 1
+                probe.release.countDown()
+
+                probe.done.await(5, TimeUnit.SECONDS) shouldBe true
                 probe.threads shouldHaveSize 3
                 probe.threads.forEach { it shouldStartWith "person-change-" }
                 probe.maxConcurrent.get() shouldBe 1
@@ -63,17 +75,15 @@ class PersonChangeExecutorTest : BehaviorSpec() {
         }
     }
 
-    private fun eventually(condition: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 5_000
-        while (System.currentTimeMillis() < deadline && !condition()) Thread.sleep(20)
-    }
-
     data class ProbeChange(val index: Int)
 
     @TestConfiguration
     class ProbeConfig {
         val threads: MutableList<String> = Collections.synchronizedList(mutableListOf())
         val maxConcurrent = AtomicInteger()
+        val started = AtomicInteger()
+        val release = CountDownLatch(1)
+        val done = CountDownLatch(3)
         private val running = AtomicInteger()
 
         @ApplicationModuleListener
@@ -81,9 +91,11 @@ class PersonChangeExecutorTest : BehaviorSpec() {
         fun on(event: ProbeChange) {
             val now = running.incrementAndGet()
             maxConcurrent.accumulateAndGet(now, ::maxOf)
-            Thread.sleep(100)
+            started.incrementAndGet()
+            release.await(5, TimeUnit.SECONDS)
             threads += Thread.currentThread().name
             running.decrementAndGet()
+            done.countDown()
         }
 
         @Async
