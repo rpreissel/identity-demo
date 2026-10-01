@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.stereotype.Repository
 
@@ -47,8 +48,12 @@ interface NodeSigningKeyRepository : JpaRepository<NodeSigningKey, String> {
     /**
      * A plain INSERT: when two instances start at once, the second fails on the primary key and
      * takes the first one's pair. `save` would merge and overwrite the rival's key.
+     *
+     * In a transaction of its own: the first use may come from a listener after the caller's commit,
+     * where joining finds no transaction left. And a lost race must not mark the caller's
+     * transaction for rollback.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @Modifying
     @Query(
         value = "INSERT INTO orchestrator.node_signing_key (purpose, public_key_jwk, private_key_jwk, created_at) " +
