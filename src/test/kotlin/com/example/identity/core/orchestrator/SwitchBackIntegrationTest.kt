@@ -86,6 +86,12 @@ class SwitchBackIntegrationTest : IntegrationTestSupport() {
                 // don't change this.
                 resultOptions shouldContainAll listOf("enroll-sms", "enroll-device", "enroll-qr", "enroll-password")
 
+                // The demo column keeps saying whose session this is: leaving a tool answers with
+                // the demo block like every other tool response.
+                @Suppress("UNCHECKED_CAST")
+                val session = (result["demo"] as Map<String, Any?>)["session"] as Map<String, Any?>
+                session["amr"] shouldBe listOf("fsc")
+
                 // The abandoned tool session is gone even though we re-activate the same toolId.
                 val exception = assertThrows<HttpClientErrorException> {
                     patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-sms", """{"phoneNumber":"+49 170 1234567"}""")

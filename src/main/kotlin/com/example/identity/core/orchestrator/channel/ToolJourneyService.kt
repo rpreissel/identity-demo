@@ -193,7 +193,10 @@ class ToolJourneyService(
             channel = responseAssembler.buildChannelBlock(channel),
             next = step.next,
             stepData = step.stepData,
-            authData = responseAssembler.authDataFor(channel)
+            authData = responseAssembler.authDataFor(channel),
+            // Like every other tool response: without it the demo column forgets whose session
+            // this is as soon as the user steps back.
+            demo = demoInfo(journey, channel, values = null)
         )
     }
 
