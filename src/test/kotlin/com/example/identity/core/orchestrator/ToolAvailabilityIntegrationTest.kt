@@ -128,6 +128,22 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
             }
         }
 
+        given("an account with sms and password, on a channel whose client declares only auth-sms") {
+            `when`("the client starts auth-password directly") {
+                seedRegisteredAccount()
+                val created = post("/orchestrator/api/v1/app/channels", """{"availableTools":["auth-sms"]}""")
+                val channelSessionId = created.channel()["channelSessionId"] as String
+                val directStart = runCatching { post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password") }
+
+                then("it is never offered") {
+                    offeredToolIds(created) shouldNotContain "auth-password"
+                }
+                then("the direct start is rejected as well (docs/05-api.md, availableTools)") {
+                    shouldThrow<HttpClientErrorException> { directStart.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
+                }
+            }
+        }
+
         given("the public catalog and the admin availability endpoints") {
             `when`("listing the catalog, then toggling one tool off for the App channel only") {
                 // The catalog is a JSON array, so the shared get() helper for objects doesn't fit.
