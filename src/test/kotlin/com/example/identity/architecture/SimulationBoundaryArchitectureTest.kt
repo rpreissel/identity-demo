@@ -1,12 +1,10 @@
 package com.example.identity.architecture
 
-import com.example.identity.IdentityApplication
 import com.example.identity.contract.tool_api.ModuleId
 import com.tngtech.archunit.core.domain.JavaClass
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldNotBeEmpty
-import org.springframework.modulith.core.ApplicationModules
 
 /**
  * The line between the production-ready core and the simulated foreign systems (ADR-35). Which
@@ -16,7 +14,7 @@ import org.springframework.modulith.core.ApplicationModules
  */
 class SimulationBoundaryArchitectureTest : BehaviorSpec({
 
-    val modules = ApplicationModules.of(IdentityApplication::class.java)
+    val modules = APPLICATION_MODULES
     val simulationGroup = "${ModuleId.ROOT_PACKAGE}.simulation."
     val demoSeed = "${ModuleId.ROOT_PACKAGE}.demo.demo_seed"
 

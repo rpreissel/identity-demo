@@ -1,7 +1,5 @@
 package com.example.identity.architecture
 
-import com.tngtech.archunit.core.importer.ClassFileImporter
-import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import io.kotest.core.spec.style.BehaviorSpec
 
@@ -12,9 +10,7 @@ import io.kotest.core.spec.style.BehaviorSpec
  */
 class ToolApiArchitectureTest : BehaviorSpec({
 
-    val toolApi = ClassFileImporter()
-        .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-        .importPackages("com.example.identity.contract.tool_api")
+    val toolApi = mainClassesIn("com.example.identity.contract.tool_api")
 
     given("the tool_api module") {
         then("no class is a Spring bean, configuration or scheduled job") {

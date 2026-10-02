@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.architecture.mainClassesIn
+import com.example.identity.architecture.MAIN_CLASSES
 import com.example.identity.core.account.AuthMethodView
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.channel.DisclosingDemoDisclosure
@@ -8,8 +10,6 @@ import com.tngtech.archunit.base.DescribedPredicate
 import com.tngtech.archunit.core.domain.AccessTarget.CodeUnitAccessTarget
 import com.tngtech.archunit.core.domain.JavaCall
 import com.tngtech.archunit.core.domain.JavaClass
-import com.tngtech.archunit.core.importer.ClassFileImporter
-import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
 import io.kotest.core.spec.style.BehaviorSpec
@@ -26,9 +26,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
 
     // Test code has deliberate exceptions (unit tests construct DefaultAuthPolicy without Spring);
     // these rules are about production layering.
-    val classes = ClassFileImporter()
-        .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-        .importPackages("com.example.identity.core.orchestrator")
+    val classes = mainClassesIn("com.example.identity.core.orchestrator")
 
     given("the journey package's generic machine (JourneyService, IntentStrategy, Decision, JourneyState, ...)") {
         then("it never depends on one concrete IntentStrategy implementation") {
@@ -199,9 +197,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
 
     // Scanned across the whole application, not just `orchestrator`: a tool module injecting
     // IdentityResolver for itself is exactly the case a narrower scope would miss.
-    val everything = ClassFileImporter()
-        .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-        .importPackages("com.example.identity")
+    val everything = MAIN_CLASSES
 
     given("the backend's console") {
         then("nothing prints to STDOUT/STDERR - codes and recipients must not end up in a container log") {

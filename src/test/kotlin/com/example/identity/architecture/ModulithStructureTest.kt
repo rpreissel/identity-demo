@@ -1,10 +1,8 @@
 package com.example.identity.architecture
 
-import com.example.identity.IdentityApplication
 import com.example.identity.contract.tool_api.ModuleId
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
-import org.springframework.modulith.core.ApplicationModules
 
 /** Core, contracts, procedures, simulated foreign systems, demo-only parts. */
 private val GROUPS = setOf("core", "contract", "tools", "simulation", "demo")
@@ -16,7 +14,7 @@ private val GROUPS = setOf("core", "contract", "tools", "simulation", "demo")
 class ModulithStructureTest : BehaviorSpec({
 
     given("the application modules") {
-        val modules = ApplicationModules.of(IdentityApplication::class.java)
+        val modules = APPLICATION_MODULES
 
         `when`("their dependencies are verified") {
             val result = runCatching { modules.verify() }

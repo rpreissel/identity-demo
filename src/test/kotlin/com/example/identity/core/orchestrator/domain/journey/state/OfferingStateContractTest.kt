@@ -1,13 +1,12 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
+import com.example.identity.architecture.mainClassesIn
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.state.ToolRef
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ToolId
-import com.tngtech.archunit.core.importer.ClassFileImporter
-import com.tngtech.archunit.core.importer.ImportOption
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -62,9 +61,7 @@ class OfferingStateContractTest : BehaviorSpec({
         return constructor.callBy(arguments) as? OfferingState
     }
 
-    val implementations = ClassFileImporter()
-        .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-        .importPackages("com.example.identity.core.orchestrator.domain.journey.state")
+    val implementations = mainClassesIn("com.example.identity.core.orchestrator.domain.journey.state")
         .filter { it.isAssignableTo(OfferingState::class.java) && !it.isInterface }
         .map { Class.forName(it.name).kotlin }
 

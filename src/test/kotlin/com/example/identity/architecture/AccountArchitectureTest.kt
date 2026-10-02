@@ -1,8 +1,6 @@
 package com.example.identity.architecture
 
 import com.tngtech.archunit.core.domain.JavaClass
-import com.tngtech.archunit.core.importer.ClassFileImporter
-import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
 import io.kotest.core.spec.style.BehaviorSpec
@@ -14,9 +12,7 @@ import io.kotest.core.spec.style.BehaviorSpec
  */
 class AccountArchitectureTest : BehaviorSpec({
 
-    val classes = ClassFileImporter()
-        .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-        .importPackages("com.example.identity.core.account")
+    val classes = mainClassesIn("com.example.identity.core.account")
 
     given("the account module's domain") {
         then("it uses no framework") {
