@@ -221,6 +221,8 @@ tasks.named<Test>("test") {
     dependsOn(exportFrontendTexts)
     inputs.file(frontendTextCatalog)
     systemProperty("texts.frontendCatalog", frontendTextCatalog.absolutePath)
+    // ModelBasedJourneyTest: Zahl der Zufallsfolgen, z. B. -PmodelSeeds=1000 fuer eine gruendliche Suche.
+    providers.gradleProperty("modelSeeds").orNull?.let { systemProperty("model.seeds", it) }
 }
 
 // `./gradlew quickTest` - die Suite ohne jeden Spec, der einen Spring-Kontext startet

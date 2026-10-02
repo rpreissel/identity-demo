@@ -226,6 +226,7 @@ Backend und Keycloak-Erweiterung:
 ./gradlew quickTest                   # dasselbe ohne die Specs, die einen Spring-Kontext starten
 ./gradlew :keycloak-extension:test    # Keycloak-Erweiterung
 ./gradlew test -PstrictTexts          # zusätzlich: jede Sprache vollständig übersetzt (ADR-33)
+./gradlew :test --tests '*ModelBasedJourneyTest' -PmodelSeeds=1000   # gründliche Zufallssuche
 ./gradlew build                       # alles bauen und alle Tests ausführen
 ```
 
@@ -234,8 +235,12 @@ Backend und Keycloak-Erweiterung:
 abgeleitet, kein Spec trägt eine Markierung (`io.kotest.provided.TestTier`). Vor einem Commit
 zählt der volle Lauf `test`.
 
+`ModelBasedJourneyTest` fährt im vollen Lauf 50 Zufallsfolgen, immer dieselben, und dazu jede Folge,
+die einmal einen Fehler gefunden hat. Wer an Kanal, Journey oder Sitzung baut, sucht mit
+`-PmodelSeeds=1000` gründlicher; eine gefundene Folge kommt danach in die festen Folgen.
+
 **Wo die Zeit hingeht.** Der volle Lauf dauert zwei bis drei Minuten. Die Zeit geht in die wenigen
-großen Specs (`ModelBasedJourneyTest`, `OpenApiSnapshotTest`), in die Kontextstarts und in die
+großen Specs (`OpenApiSnapshotTest`, `ModelBasedJourneyTest`), in die Kontextstarts und in die
 Szenarien der Integrationstests.
 
 - **Kontextstarts.** Spring startet einen Kontext je Konfiguration. Deshalb erben die Specs von

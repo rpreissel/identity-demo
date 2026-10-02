@@ -306,7 +306,8 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
     }
 
     private companion object {
-        const val SEEDS = 200
+        /** 50 seeds keep the regular run short; `-PmodelSeeds=1000` searches deeper (docs/13-ausfuehren.md). */
+        val SEEDS = System.getProperty("model.seeds")?.toInt() ?: 50
         const val STEPS_PER_RUN = 14
     }
 }
