@@ -102,7 +102,7 @@ public class QrWaitStatusResourceProvider implements RealmResourceProvider {
         return new Answer(200, "{\"state\":\"" + state(authSession, reader).wire + "\"}");
     }
 
-    private static Response toResponse(Answer answer) {
+    static Response toResponse(Answer answer) {
         CacheControl noStore = new CacheControl();
         noStore.setNoStore(true);
         Response.ResponseBuilder builder = Response.status(answer.status()).cacheControl(noStore);

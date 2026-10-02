@@ -10,16 +10,20 @@ import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
 import com.example.identity.tools.auth_qr.internal.QrLoginRequest
 import com.example.identity.tools.auth_qr.internal.ConfirmationCodeDigest
 import com.example.identity.tools.auth_qr.internal.QrLoginRequestRepository
+import com.example.identity.tools.auth_qr.internal.QrLoginStatus
+import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
+import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import java.time.Duration
 import java.util.Optional
 import java.util.UUID
 
@@ -47,6 +51,17 @@ private class Fixture(expectedAccountId: AccountId?) {
 
     fun withRequestAlreadyDecided() = apply {
         every { requests.denyIfPending(PAIRING, any()) } returns 0
+    }
+
+    /** The request [account] approved earlier: only the code's hash is left in it. */
+    fun withRequestApprovedBy(account: AccountId) = apply {
+        every { requests.findById(PAIRING) } returns Optional.of(
+            QrLoginRequest(pairingCode = PAIRING, expectedAccountId = null, createdAt = TEST_NOW).apply {
+                status = QrLoginStatus.APPROVED
+                resolvingAccountId = account
+                confirmationCodeHash = digest.of("482913")
+            }
+        )
     }
 }
 
@@ -94,6 +109,17 @@ class ConfirmQrLoginToolHandlerTest : BehaviorSpec({
             then("it approves and shows the six-digit code for the browser - it does not finish yet") {
                 outcome.shouldShowConfirmationCode(f)
             }
+
+            then("it stores only the code's hash, never the code itself") {
+                val code = (outcome as ToolOutcome.InProgress).stepData.shouldBeInstanceOf<QrPairingStep>().confirmationCode.shouldNotBeNull()
+                f.approvedHash.captured shouldNotContain code
+            }
+
+            then("the browser has two minutes from the approval to type the code") {
+                verify(exactly = 1) {
+                    f.requests.approveIfPending(PAIRING, CONFIRMING, any(), TEST_NOW, TEST_NOW.plus(Duration.ofMinutes(2)))
+                }
+            }
         }
     }
 
@@ -114,6 +140,27 @@ class ConfirmQrLoginToolHandlerTest : BehaviorSpec({
             then("the pairing is declined and the app run ends without guessing anything") {
                 outcome shouldBe ToolOutcome.Failed.NothingGuessed(Text("Vom Nutzer abgelehnt"))
                 verify { f.requests.denyIfPending(PAIRING, any()) }
+            }
+        }
+    }
+
+    given("a pairing account 99 approved before the app reloaded") {
+        val f = Fixture(expectedAccountId = null).withRequestApprovedBy(CONFIRMING)
+
+        `when`("the app reads the tool again") {
+            val outcome = f.handler.read(f.toolSessionId)
+
+            then("it is back on showCode, but the code is gone - only its hash was stored") {
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "showCode", stepData = MissingFields(listOf("decision")))
+            }
+        }
+
+        `when`("the app sends a step without a decision") {
+            val outcome = f.handler.patch(f.toolSessionId, pairingCode = null, decision = null, accountId = CONFIRMING, hasQrEnrollment = true)
+
+            then("it shows showCode without the code again, and approves nothing a second time") {
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "showCode", stepData = MissingFields(listOf("decision")))
+                verify(exactly = 0) { f.requests.approveIfPending(any(), any(), any(), any(), any()) }
             }
         }
     }

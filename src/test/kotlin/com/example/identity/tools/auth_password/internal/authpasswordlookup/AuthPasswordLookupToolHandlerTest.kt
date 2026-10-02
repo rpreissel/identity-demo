@@ -20,6 +20,9 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import io.mockk.verify
 import java.util.Optional
 import java.util.UUID
 
@@ -48,6 +51,8 @@ private class Fixture {
  * [AuthPasswordLookupFlowTest].
  */
 class AuthPasswordLookupToolHandlerTest : BehaviorSpec({
+
+    afterSpec { unmockkObject(PasswordHasher) }
 
     given("no auth-password-lookup tool session yet") {
         val f = Fixture()
@@ -122,10 +127,15 @@ class AuthPasswordLookupToolHandlerTest : BehaviorSpec({
         }
 
         `when`("the email never resolved to anything (enumeration protection)") {
+            mockkObject(PasswordHasher)
             val outcome = f.handler.patch(f.toolSessionId, email = "unknown@example.com", password = "hunter2", accountId = null, enrollmentRef = null)
 
             then("it fails with the same constant-shape message, naming no account") {
                 outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(WRONG_ANSWER, attempted = null)
+            }
+
+            then("it still runs the password check, against no hash, which spends the full Argon2id work") {
+                verify(exactly = 1) { PasswordHasher.matches("hunter2", null) }
             }
         }
     }

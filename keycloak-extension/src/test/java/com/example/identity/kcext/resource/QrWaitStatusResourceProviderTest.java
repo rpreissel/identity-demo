@@ -10,6 +10,9 @@ import org.keycloak.models.ClientModel;
 import org.keycloak.models.RealmModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.Response;
+
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -130,6 +133,25 @@ class QrWaitStatusResourceProviderTest {
         QrWaitStatusResourceProvider.answer(waitingOn("auth-qr"), (c, s, t) -> tool("auth-qr", "waitForApp", TOOL_SESSION));
         QrWaitStatusResourceProvider.answer(waitingOn("auth-qr"), (c, s, t) -> tool("auth-qr", "enterCode", TOOL_SESSION));
         assertTrue(writes.isEmpty(), "writes: " + writes);
+    }
+
+    static Stream<QrWaitStatusResourceProvider.Answer> everyAnswer() {
+        return Stream.of(
+                new QrWaitStatusResourceProvider.Answer(200, "{\"state\":\"waiting\"}"),
+                new QrWaitStatusResourceProvider.Answer(200, "{\"state\":\"ready\"}"),
+                new QrWaitStatusResourceProvider.Answer(404, null));
+    }
+
+    @ParameterizedTest
+    @MethodSource("everyAnswer")
+    void everyAnswerIsNoStoreAndOpensNoOtherOrigin(QrWaitStatusResourceProvider.Answer answer) {
+        Response response = QrWaitStatusResourceProvider.toResponse(answer);
+
+        assertEquals(answer.status(), response.getStatus());
+        String cacheControl = response.getHeaderString(HttpHeaders.CACHE_CONTROL);
+        assertTrue(cacheControl != null && cacheControl.contains("no-store"), "Cache-Control: " + cacheControl);
+        assertTrue(response.getHeaders().keySet().stream().noneMatch(name -> name.toLowerCase().startsWith("access-control-")),
+                "headers: " + response.getHeaders().keySet());
     }
 
     private AuthenticationSessionModel authSession(Map<String, String> notes) {
