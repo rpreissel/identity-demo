@@ -17,6 +17,7 @@ import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTe
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
+import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
@@ -97,6 +98,39 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
             then("selfServiceAcrFloor only demands loa1 for this account - removes the method directly, no step-up") {
                 transition shouldBe
                     Transition.Perform(Action.RevokeAuthMethod("sms-instance"), resumeState = state)
+            }
+        }
+    }
+
+    // ADR-37: for an account without a person, the mailbox is the owner - withdrawing its address costs no step-up.
+    given("RetractAttributeRequested for the email, a never-identified account (personId == null) sitting at loa1") {
+        val acc = account(method("sms", AcrLevel.LOA1), personId = null)
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
+        val state = ManageAuthMethodsState.RetractAttributeRequested(AttributeType.EMAIL)
+
+        `when`("started") {
+            val transition = strategy.transition(state, JourneyEvent.Started, theCtx)
+            then("selfServiceAcrFloor only demands loa1 for this account - withdraws the address directly, no step-up") {
+                transition shouldBe
+                    Transition.Perform(Action.RetractAttribute(AttributeType.EMAIL), resumeState = state)
+            }
+        }
+    }
+
+    given("RetractAttributeRequested for the email, an identified account sitting at loa1") {
+        val acc = account(method("sms", AcrLevel.LOA1))
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
+        val state = ManageAuthMethodsState.RetractAttributeRequested(AttributeType.EMAIL)
+
+        `when`("started") {
+            val transition = strategy.transition(state, JourneyEvent.Started, theCtx)
+            then("parks the wish and demands a step-up to loa2 first") {
+                transition shouldBe
+                    Transition.RequireSubJourney(
+                        AuthIntent.STEP_UP,
+                        seedWith = StepUpState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1),
+                        resumeWith = state
+                    )
             }
         }
     }

@@ -27,6 +27,11 @@ class AttributeRulesTest : BehaviorSpec({
                 AnchorRule(AnchorAcrFloor(AcrLevel.LOA2, AcrLevel.LOA2), allowsReplacement = true, retractableByHolder = false)
             )
         }
+        then("MEMBER_NUMBER is locally owned, established and replaced at loa2, replaceable, not the holder's to withdraw") {
+            AttributeType.MEMBER_NUMBER.authority shouldBe AttributeAuthority.Local(
+                AnchorRule(AnchorAcrFloor(AcrLevel.LOA2, AcrLevel.LOA2), allowsReplacement = true, retractableByHolder = false)
+            )
+        }
         then("the holder may withdraw exactly EMAIL - no identity anchor") {
             AttributeType.entries.filter { it.anchorRule?.retractableByHolder == true } shouldBe listOf(AttributeType.EMAIL)
         }

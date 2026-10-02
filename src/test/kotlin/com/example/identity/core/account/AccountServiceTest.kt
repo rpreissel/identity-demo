@@ -133,6 +133,59 @@ class AccountServiceTest : BehaviorSpec({
         }
     }
 
+    // docs/02-domaenenmodell.md Abschnitt 6: a new member number or a new card is a new binding, priced like the first.
+    for ((type, first, second) in listOf(
+        Triple(AttributeType.MEMBER_NUMBER, "10000001", "10000002"),
+        Triple(AttributeType.NECT_RESTRICTED_ID, "N0103005K1D5S0V8T9W6UM2RTX", "N0909090Z9X8Y7W6V5U4T3S2R1")
+    )) {
+        val source = if (type == AttributeType.MEMBER_NUMBER) ClaimSource.PERSON_DIRECTORY else ClaimSource("ident-nect")
+
+        given("an account without a ${type.wireName}") {
+            `when`("a ${type.wireName} is recorded from a loa1 session") {
+                val fixture = AccountServiceFixture(ownAccount)
+                val result = runCatching { fixture.service.recordClaim(ownAccount, Claim(type, first, source), provenAcr = AcrLevel.LOA1) }
+
+                then("binding it below loa2 is refused, and nothing is anchored") {
+                    shouldThrow<IdentityConflictException> { result.getOrThrow() }
+                    fixture.savedAnchors.shouldBeEmpty()
+                }
+            }
+
+            `when`("a ${type.wireName} is recorded from a loa2 session") {
+                val fixture = AccountServiceFixture(ownAccount)
+                fixture.service.recordClaim(ownAccount, Claim(type, first, source), provenAcr = AcrLevel.LOA2)
+
+                then("it is anchored") {
+                    fixture.savedAnchors.single().value shouldBe first
+                }
+            }
+        }
+
+        given("an account bound to a ${type.wireName}") {
+            `when`("a new ${type.wireName} is recorded from a loa1 session") {
+                val fixture = AccountServiceFixture(ownAccount)
+                val anchor = fixture.holds(ownAccount, type, first)
+                val result = runCatching { fixture.service.recordClaim(ownAccount, Claim(type, second, source), provenAcr = AcrLevel.LOA1) }
+
+                then("replacing it below loa2 is refused, and the anchor keeps its value") {
+                    shouldThrow<IdentityConflictException> { result.getOrThrow() }
+                    fixture.savedAnchors.shouldBeEmpty()
+                    anchor.value shouldBe first
+                }
+            }
+
+            `when`("a new ${type.wireName} is recorded from a loa2 session") {
+                val fixture = AccountServiceFixture(ownAccount)
+                val anchor = fixture.holds(ownAccount, type, first)
+                fixture.service.recordClaim(ownAccount, Claim(type, second, source), provenAcr = AcrLevel.LOA2)
+
+                then("the anchor is replaced in place") {
+                    anchor.value shouldBe second
+                }
+            }
+        }
+    }
+
     given("an account already bound to a person_id") {
         fun fixture() = AccountServiceFixture(ownAccount).apply {
             holds(ownAccount, AttributeType.PERSON_ID, "P000000042")

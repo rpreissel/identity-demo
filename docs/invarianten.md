@@ -71,7 +71,7 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
 
 - **I-5 Ein Kanal gehört höchstens einem Subjekt – einem Konto oder einer Einladung, nie beiden – und wechselt es nie still: ein anderes Subjekt ist ein Fehler, kein Umbinden. Seine Evidenz gehört demselben Subjekt ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
   - Worum es geht: Ein Kanal hängt an genau einem „Wer“. Meldet sich darauf plötzlich ein anderes Konto an, wird nicht still umgehängt, sondern abgelehnt. Sonst könnten Nachweise von Person A beim Konto von Person B landen.
-  - Mechanismus: `sql:ck_channel_session_one_subject`, `sql:ck_session_evidence_one_subject`, `sql:ck_sign_in_log_one_subject`, `test:KcChannelIntegrationTest`, `test:AuthInviteIntegrationTest` (auch: Keycloak nennt ein anderes Subjekt → `409`)
+  - Mechanismus: `sql:ck_channel_session_one_subject`, `sql:ck_session_evidence_one_subject`, `sql:ck_sign_in_log_one_subject`, `test:DatabaseInvariantConstraintTest`, `test:KcChannelIntegrationTest`, `test:AuthInviteIntegrationTest` (auch: Keycloak nennt ein anderes Subjekt → `409`)
 - **I-30 Die Evidenz einer Einladung wandert in keinen späteren Anmeldedurchlauf ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
   - Worum es geht: Das Einladungs-Kennwort taugt nur für den einen Vorgang. Sein Nachweis wird nicht in eine spätere Konto-Anmeldung übernommen.
   - Mechanismus: `test:AuthInviteIntegrationTest` (`restore-data` bleibt für einen Einladungs-Kanal leer)
@@ -124,7 +124,7 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
   - Mechanismus: `type:DpopReplayProtectionService`, `test:DpopValidatorTest`
 - **I-8 Ein Kanal ist an genau einen Schlüssel gebunden, App- und Web-Kanal schließen sich aus.**
   - Worum es geht: Ein App-Kanal hat genau einen Geräteschlüssel. Ein Web-Kanal hat beim Orchestrator keinen, denn dort spricht Keycloak. Beides zugleich gibt es nicht.
-  - Mechanismus: `sql:ck_channel_session_binding_key` (genau der APP-Kanal trägt einen Schlüssel), `type:ChannelAccessGuard`
+  - Mechanismus: `sql:ck_channel_session_binding_key` (genau der APP-Kanal trägt einen Schlüssel), `type:ChannelAccessGuard`, `test:DatabaseInvariantConstraintTest`
 
 ## Keycloak-Anbindung
 
