@@ -208,6 +208,19 @@ class LookupLoginStrategyTest : BehaviorSpec({
         }
     }
 
+    given("Credential after a proof, the floor satisfied and this device linked to a different account") {
+        val acc = account(method("sms", AcrLevel.LOA1))
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1, linkedAccountId = AccountId(999L))
+
+        `when`("the proof's action completes (ActionCompleted)") {
+            val transition = strategy.transition(smsLookupCredential, JourneyEvent.ActionCompleted, theCtx)
+
+            then("warns before rebinding the device - never rebinds silently") {
+                transition shouldBe Transition.To(LookupLoginState.ConfirmDeviceRebind)
+            }
+        }
+    }
+
     given("Credential after a proof, the floor not yet satisfied, but another active method can help") {
         val acc = account(method("sms", AcrLevel.LOA2), method("password", AcrLevel.LOA2))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
@@ -291,6 +304,42 @@ class LookupLoginStrategyTest : BehaviorSpec({
         `when`("any non-Answered/ActionCompleted event arrives (Started)") {
             val result = runCatching { strategy.transition(state, JourneyEvent.Started, ctx()) }
             then("rejects it - this state never runs a tool") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
+            }
+        }
+    }
+
+    given("ConfirmDeviceRebind, the device linked to a different account") {
+        val state = LookupLoginState.ConfirmDeviceRebind
+
+        `when`("accepted") {
+            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_ACCEPT), ctx())
+
+            then("moves the device link to this account") {
+                transition shouldBe Transition.Perform(Action.LinkDevice, resumeState = state)
+            }
+        }
+
+        `when`("resumed after linking (ActionCompleted)") {
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, ctx())
+
+            then("signs in") {
+                transition shouldBe Transition.Authenticated
+            }
+        }
+
+        `when`("declined") {
+            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_DECLINE), ctx())
+
+            then("signs in all the same; the device stays with the other account") {
+                transition shouldBe Transition.Authenticated
+            }
+        }
+
+        `when`("answered with something unrecognized") {
+            val result = runCatching { strategy.transition(state, JourneyEvent.Answered("maybe"), ctx()) }
+
+            then("fails loudly") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }

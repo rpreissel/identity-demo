@@ -8,6 +8,7 @@ import com.example.identity.tools.auth_password.EnrollPasswordDescriptor
 import com.example.identity.tools.auth_sms.AuthSmsDescriptor
 import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
 import com.example.identity.tools.ident_fsc.IdentFscDescriptor
+import com.example.identity.tools.ident_kvnr.IdentKvnrDescriptor
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.Action
@@ -32,6 +33,7 @@ import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
@@ -256,6 +258,94 @@ class RegisterStrategyTest : BehaviorSpec({
             then("re-runs afterIdentification - now without a conflict") {
                 transition shouldBe
                     Transition.To(AuthChoice(Offer(listOf(ToolId("auth-sms")))))
+            }
+        }
+    }
+
+    given("Identifying, an attested person not yet bound in the register, no method yet") {
+        val unbound = account(personId = null, attestedIdentity = true)
+        val state = RegisterState.Identifying(Offer(listOf(ToolId("ident-eid"))))
+
+        `when`("resumed after recording the identity (ActionCompleted)") {
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, ctx(account = unbound, evidence = identityEvidence))
+
+            then("offers the assignment to the register before any enrollment (ADR-18)") {
+                transition shouldBe Transition.To(RegisterState.Assigning(Offer(listOf(ToolId("ident-kvnr")))))
+            }
+        }
+    }
+
+    given("Identifying, a person not yet bound in the register but without an attested identity") {
+        val unattested = account(personId = null)
+        val state = RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc"))))
+
+        `when`("resumed after recording the identity (ActionCompleted)") {
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, ctx(account = unattested, evidence = identityEvidence))
+
+            then("skips the assignment, since ident-kvnr has nothing to match against, and offers enrollment") {
+                val enrolling = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<Enrolling>()
+                enrolling.emailObligation shouldBe true
+            }
+        }
+    }
+
+    given("Assigning, an attested person not yet bound in the register") {
+        val unbound = account(personId = null, attestedIdentity = true)
+        val theCtx = ctx(account = unbound, evidence = identityEvidence)
+        val state = RegisterState.Assigning(Offer(listOf(ToolId("ident-kvnr"))))
+
+        `when`("the assignment is backed out of (\"not now\")") {
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(IdentKvnrDescriptor), theCtx)
+
+            then("the registration carries on unbound and offers enrollment (ADR-10)") {
+                val enrolling = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<Enrolling>()
+                enrolling.emailObligation shouldBe true
+            }
+        }
+
+        `when`("ident-kvnr finds the person in the register") {
+            val found = identifiedOutcome()
+            val transition = strategy.transition(state, JourneyEvent.Completed(IdentKvnrDescriptor, found), theCtx)
+
+            then("records the identification and resumes here") {
+                transition shouldBe Transition.Perform(Action.RecordIdentification(IdentKvnrDescriptor, found), resumeState = state)
+            }
+        }
+
+        `when`("a tool completes with anything but an identification") {
+            val enrolled = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("kvnr", "ref"))
+            val result = runCatching { strategy.transition(state, JourneyEvent.Completed(IdentKvnrDescriptor, enrolled), theCtx) }
+
+            then("fails loudly - the assignment step offers nothing else") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
+            }
+        }
+    }
+
+    given("Assigning, the person now bound in the register") {
+        val bound = account(attestedIdentity = true)
+        val state = RegisterState.Assigning(Offer(listOf(ToolId("ident-kvnr"))))
+
+        `when`("resumed after recording the identification (ActionCompleted)") {
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, ctx(account = bound, evidence = identityEvidence))
+
+            then("continues with enrollment and does not offer the assignment again") {
+                val enrolling = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<Enrolling>()
+                enrolling.emailObligation shouldBe true
+            }
+        }
+    }
+
+    given("Assigning, the assignment moved the run to an account this device is not linked to") {
+        val other = account(accountId = AccountId(2L), attestedIdentity = true)
+        val theCtx = ctx(account = other, evidence = identityEvidence, linkedAccountId = AccountId(1L))
+        val state = RegisterState.Assigning(Offer(listOf(ToolId("ident-kvnr"))))
+
+        `when`("resumed after recording the identification (ActionCompleted)") {
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+
+            then("asks before rebinding the device, the same check as after identification (ADR-20)") {
+                transition shouldBe Transition.To(RegisterState.ConfirmDeviceRebind)
             }
         }
     }
