@@ -164,7 +164,44 @@ Anmeldung per QR-Code gibt nur weiter, was in der App schon bewiesen wurde.
 *Konzepte: [`CONFIRM_PEER_LOGIN`](journeys/confirm-peer-login.md),
 [Web-Zugang über Keycloak](05-api.md) Abschnitt 3, [`PEER_APPROVAL` als eigene Rolle](03-tool-architektur.md).*
 
-## 8) Mara löscht ihr Konto
+## 8) Maras Vater beantwortet einen Brief
+
+Ein paar Tage später liegt bei Maras Vater ein Brief der Kasse: Er bekommt Beiträge zurück und soll
+dafür online seine Bankverbindung angeben. Ein Konto hat er nicht, und er will auch keines. Der
+Brief enthält deshalb ein **Einmalkennwort**. Ausgestellt hat es das Personenverzeichnis, nicht der
+Orchestrator, und zwar für genau diesen einen Vorgang
+([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). „Einmal“ heißt dabei „für einen
+Vorgang“: Das Kennwort gilt, bis seine Frist abläuft oder die Kasse den Vorgang abschließt. Wird er
+heute nicht fertig, kann er morgen wiederkommen.
+
+Er setzt sich an Maras Laptop. Dort ist Mara aus Kapitel 7 noch angemeldet, und das ist kein
+Nebendetail: In einem Browser gehört eine Keycloak-Sitzung genau einer Person. Würde er jetzt die
+Vorgangsseite öffnen, bekäme sie still Maras Token, ohne Hinweis auf den Vorgang. Mara meldet sich
+deshalb zuerst ab. Ein Wechsel zwischen Konto und Vorgangszugang geht in beiden Richtungen nur über
+die Abmeldung.
+
+Im Kundenportal wählt er „Mit Einmalkennwort anmelden“ und gibt auf der Anmeldeseite seine
+Versichertennummer und das Kennwort aus dem Brief ein. Das Tool `auth-invite` prüft beides beim
+Personenverzeichnis, so wie `ident-fsc` den Freischaltcode prüft. Sein Ergebnis nennt als Subjekt
+aber **kein Konto, sondern die Einladung** (`Subject.Invitation`). Der Orchestrator legt kein Konto
+an und sucht keines. Der Web-Kanal gehört jetzt der Einladung, und zwar auf dem Niveau, das die Kasse
+für diesen Vorgang festgelegt hat, hier `loa1`. Verlangt eine Seite später mehr, wird der
+Vorgangszugang nicht aufgewertet; dafür bräuchte er eine Einladung höheren Niveaus.
+
+Keycloak meldet ihn als eigenen Nutzer an, getrennt von jedem Konto, auch einem, das er vielleicht
+später anlegt. Seine Tokens sehen aus wie die eines Kontos, tragen aber den Claim `process`. Daran
+erkennt jeder Fachdienst: Dieses Token gilt nur für die Beitragsrückerstattung. Alles, was ein Konto
+betrifft, lehnt der Orchestrator ab: Verfahren verwalten, das Konto löschen, eine Anmeldung per
+QR-Code bestätigen. Hat die Kasse den Vorgang abgeschlossen, meldet das Personenverzeichnis das, und
+seine Sitzungen enden sofort.
+
+Die App kann das noch nicht: Einen Vorgangszugang gibt es vorerst nur im Web-Kanal.
+
+*Konzepte: [Vorgangszugang, ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md),
+[Freischaltcode im Fremdsystem, ADR-31](adr/ADR-031-freischaltcode-liegt-im-fremdsystem.md),
+[Web-Zugang über Keycloak](05-api.md) Abschnitt 3.*
+
+## 9) Mara löscht ihr Konto
 
 Ein Jahr später will Mara ihr Konto endgültig löschen. `DELETE_ACCOUNT` verlangt zuerst eine
 Bestätigung mit Ja oder Nein, dann `loa2` **und** einen neu erbrachten Nachweis. Ein alter Nachweis
@@ -193,6 +230,7 @@ Konto gab und wann es gelöscht wurde
 | `sms` + `password` zusammen | Besitz + Wissen | `loa2` | Kapitel 5 |
 | `device` | Besitz + Wissen/Biometrie | `loa2` | Kapitel 6 |
 | `qr` | Besitz + Wissen (aus der App übernommen) | `loa2` | Kapitel 6/7 |
+| `auth-invite` (Einmalkennwort per Brief, ihr Vater) | Besitz, kein Konto | das Niveau der Einladung (`loa1` oder `loa2`) | Kapitel 8 |
 | DPoP-Schlüssel / `DeviceAccountLink` | keine – nur Wiedererkennung | — | Kapitel 1/4 |
 
 ## Welche Begriffe das Beispiel verbindet
@@ -207,6 +245,7 @@ Konto gab und wann es gelöscht wurde
 | „Besitz, Wissen, Biometrie – wie viele davon?“ | `factorTypes`, Kombination mehrerer Faktoren | [04-orchestrierung.md](04-orchestrierung.md) |
 | „Ist das wirklich Maras Gerät?“ | DPoP-Proof | [09-dpop.md](09-dpop.md) |
 | „Darf dieses Handy für eine Anmeldung anderswo einstehen?“ | `CONFIRM_PEER_LOGIN`, `PEER_APPROVAL` | [04-orchestrierung.md](04-orchestrierung.md) |
+| „Ein Brief für einen Vorgang, ohne Konto“ | Einladung, `auth-invite`, `Subject.Invitation`, Claim `process` | [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md) |
 
 Jeder dieser Schritte funktioniert für Maras App-Kanal genauso wie für eine Anmeldung im Browser über
 Keycloak. Zwischen den beiden Kanälen unterscheidet sich nur, *wer die Oberfläche zeigt* und *wie die
