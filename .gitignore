@@ -79,3 +79,6 @@ playwright-report/
 site/node_modules/
 site/.vitepress/cache/
 site/.vitepress/dist/
+
+# Claude Code: lokale Worktrees
+.claude/worktrees/
