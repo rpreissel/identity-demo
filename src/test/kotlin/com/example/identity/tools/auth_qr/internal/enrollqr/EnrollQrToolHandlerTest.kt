@@ -1,11 +1,11 @@
 package com.example.identity.tools.auth_qr.internal.enrollqr
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.ToolOutcome
-import com.example.identity.tools.auth_qr.EnrollQrDescriptor
 import com.example.identity.tools.auth_qr.internal.QrOptIn
 import com.example.identity.tools.auth_qr.internal.QrOptInRepository
 import io.kotest.assertions.throwables.shouldThrow
@@ -29,7 +29,7 @@ private class Fixture {
     val optIns = mockk<QrOptInRepository>().also {
         every { it.save(any()) } answers { firstArg<QrOptIn>().apply { id = 5L } }
     }
-    val handler = EnrollQrToolHandler(EnrollQrDescriptor, sessions, optIns, clock = TEST_CLOCK)
+    val handler = EnrollQrToolHandler( sessions, optIns, clock = TEST_CLOCK)
 }
 
 /**
@@ -47,7 +47,7 @@ class EnrollQrToolHandlerTest : BehaviorSpec({
 
             then("it records the run and waits at the descriptor's start step") {
                 f.saved.captured.toolSessionId shouldBe toolSessionId
-                outcome shouldBe ToolOutcome.InProgress(nextStep = EnrollQrDescriptor.startStep)
+                outcome shouldBe ToolOutcome.InProgress(nextStep = tool("enroll-qr").startStep)
             }
         }
     }
@@ -61,9 +61,6 @@ class EnrollQrToolHandlerTest : BehaviorSpec({
             then("it writes the opt-in marker and enrolls it, with no amr and no factor") {
                 outcome shouldBe ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef("auth_qr.enrollment", "5"),
-                    amr = emptyList(),
-                    achievedAcr = EnrollQrDescriptor.maxAcr,
-                    factorTypes = emptySet(),
                 )
             }
         }

@@ -2,7 +2,8 @@ package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.KeycloakToolCalls
-import com.example.identity.contract.tool_api.ToolDescriptor
+import com.example.identity.contract.tool_api.ToolModule
+import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.assertClaimsCovered
 import com.example.identity.core.account.AccountService
@@ -32,38 +33,39 @@ class KeycloakToolCallsService(
         }
     }
 
-    override fun apply(accountId: AccountId, descriptor: ToolDescriptor, outcome: ToolOutcome) {
+    override fun apply(accountId: AccountId, module: ToolModule, outcome: ToolOutcome) {
+        val role = when (outcome) {
+            is ToolOutcome.Failed.KnownAccountAuth, is ToolOutcome.Completed.Authenticated -> ToolRole.KNOWN_ACCOUNT_AUTH
+            is ToolOutcome.Completed.Enrolled -> ToolRole.ENROLLMENT
+            else -> error("${module.method}: ${outcome::class.simpleName} is not bookable without a journey")
+        }
+        val tool = checkNotNull(module.tools.firstOrNull { it.role == role }) { "${module.method} has no $role tool for ${outcome::class.simpleName}" }
         when (outcome) {
-            is ToolOutcome.Failed.KnownAccountAuth -> {
-                checkFits(outcome.fits(descriptor.role), descriptor, outcome)
-                accountLockoutService.recordFailure(accountId, ChannelType.WEB.name, descriptor.method)
-            }
+            is ToolOutcome.Failed.KnownAccountAuth -> accountLockoutService.recordFailure(accountId, ChannelType.WEB.name, tool.method)
             is ToolOutcome.Completed.Authenticated -> {
-                checkFits(outcome.fits(descriptor.role), descriptor, outcome)
-                checkStaysWithin(descriptor, outcome)
+                checkStaysWithin(tool, outcome)
                 accountLockoutService.recordSuccess(accountId)
             }
             is ToolOutcome.Completed.Enrolled -> {
-                checkFits(outcome.fits(descriptor.role), descriptor, outcome)
-                checkStaysWithin(descriptor, outcome)
-                assertClaimsCovered(descriptor, outcome.claims)
+                checkStaysWithin(tool, outcome)
+                assertClaimsCovered(tool, outcome.claims)
                 // The claim naming the instance first, then the instance, as in a journey: without
                 // the claim a later revocation would leave "has a password" standing.
                 val instanceId = UUID.randomUUID()
                 accountService.recordClaims(accountId, outcome.claims, provenAcr = AcrLevels.DEFAULT_REQUIRED_ACR, authMethodId = instanceId)
                 accountService.addAuthenticationMethod(
                     accountId = accountId,
-                    method = descriptor.method,
+                    method = tool.method,
                     enrollmentRef = outcome.enrollmentRef,
                     enrolledUnderAcr = null,
-                    details = outcome.instanceDetails,
+                    boundKeyRef = outcome.boundKeyRef,
+                    reference = outcome.reference,
+                    allowsMultipleInstances = tool.allowsMultipleInstances,
                     instanceId = instanceId
                 )
             }
-            else -> error("${descriptor.toolId}: ${outcome::class.simpleName} is not bookable without a journey")
+            else -> Unit
         }
     }
 
-    private fun checkFits(fits: Boolean, descriptor: ToolDescriptor, outcome: ToolOutcome) =
-        check(fits) { "${descriptor.toolId} (${descriptor.role}) answered with ${outcome::class.simpleName}" }
 }

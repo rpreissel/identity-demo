@@ -13,7 +13,7 @@ CREATE TABLE auth_qr.enrollment (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
--- Connects a WEB auth-qr activation to an APP confirm-qr-login decision. pairing_code is the
+-- Connects a WEB auth-qr activation to an APP approve-qr decision. pairing_code is the
 -- lookup capability; verification_code is only compared by eye.
 CREATE TABLE auth_qr.login_request (
     pairing_code         VARCHAR(16) PRIMARY KEY,

@@ -1,6 +1,7 @@
 package com.example.identity.core.account.application
 
 import com.example.identity.TEST_NOW
+import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
@@ -123,15 +124,15 @@ class IdentityMatchingServiceTest : BehaviorSpec({
             Claim(AttributeType.FAMILY_NAME, "Muster", source),
             Claim(AttributeType.GIVEN_NAMES, "Max", source),
             Claim(AttributeType.BIRTH_DATE, "1970-01-01", source),
-            Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", source)
+            Claim(EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", source)
         )
-        fixture.anchor(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", AccountId(7L))
+        fixture.anchor(EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", AccountId(7L))
 
         `when`("resolving the claims") {
             val resolution = fixture.service.resolve(claims)
 
             then("the card pseudonym recognizes the account the earlier eid run created - ADR-19") {
-                resolution shouldBe Resolution.ExistingAccount(AccountId(7L), MatchedVia.Anchor(AttributeType.EID_RESTRICTED_ID))
+                resolution shouldBe Resolution.ExistingAccount(AccountId(7L), MatchedVia.Anchor(EID_RESTRICTED_ID))
                 // No attribute matching, no stammdaten round trip - the anchor alone decides.
                 verify(exactly = 0) { fixture.personDirectory.findPersonIdByKvnr(any()) }
                 verify(exactly = 0) { fixture.personDirectory.matchesMasterData(any(), any()) }
@@ -146,10 +147,10 @@ class IdentityMatchingServiceTest : BehaviorSpec({
             Claim(AttributeType.FAMILY_NAME, "Niemand", source),
             Claim(AttributeType.GIVEN_NAMES, "Niemals", source),
             Claim(AttributeType.BIRTH_DATE, "1970-01-01", source),
-            Claim(AttributeType.EID_RESTRICTED_ID, "T0909090Z9X8Y7W6V5U4T3S2R1", source)
+            Claim(EID_RESTRICTED_ID, "T0909090Z9X8Y7W6V5U4T3S2R1", source)
         )
         every {
-            fixture.anchorRepository.findByAttributeTypeAndValue(AttributeType.EID_RESTRICTED_ID, "T0909090Z9X8Y7W6V5U4T3S2R1")
+            fixture.anchorRepository.findByAttributeTypeAndValue(EID_RESTRICTED_ID, "T0909090Z9X8Y7W6V5U4T3S2R1")
         } returns null
 
         `when`("resolving the claims") {

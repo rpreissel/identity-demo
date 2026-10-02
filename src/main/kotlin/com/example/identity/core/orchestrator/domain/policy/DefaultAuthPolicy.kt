@@ -7,7 +7,7 @@ import com.example.identity.core.orchestrator.domain.ToolCatalog
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolRole
-import com.example.identity.contract.tool_api.ToolDescriptor
+import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolId
 import java.time.Clock
 import java.time.Duration
@@ -97,7 +97,7 @@ class DefaultAuthPolicy(
     override fun enrollmentCandidates(ctx: CandidateContext): List<ToolId> {
         val account = checkNotNull(ctx.account) { "enrollmentCandidates requires an account in CandidateContext" }
         val activeMethods = account.activeAuthenticationMethods.map { it.method }.toSet()
-        return toolRegistry.descriptors()
+        return toolRegistry.tools()
             .filter { it.role == ToolRole.ENROLLMENT }
             // Singleton methods disappear once active; multi-instance methods (device) stay, so a
             // new device can add its own instance.
@@ -124,7 +124,7 @@ class DefaultAuthPolicy(
             .filter { (_, d) -> ctx.availableTools == null || d.toolId in ctx.availableTools }
             // A key-bound method only on the device holding its credential, and only while that
             // device is linked to this account; anything else would fail for sure (docs/09-dpop.md).
-            .filter { (m, d) -> d.usableByCaller(m.details, ctx.bindingKeyRef, ctx.linkedAccountId, account.accountId) }
+            .filter { (m, d) -> d.usableByCaller(m.boundKeyRef, ctx.bindingKeyRef, ctx.linkedAccountId, account.accountId) }
 
         // Below loa3, MFA is needed when no single offerable method's capped level reaches
         // requiredAcr. Then every method adding a factor type not yet proven is worth offering.
@@ -151,7 +151,7 @@ class DefaultAuthPolicy(
         // An identification's amr need not be its method name (ident-nect reports
         // `nect-<procedure>`), so "already used" also checks which tool produced the evidence.
         val usedTools = evidence.methods.map { it.amrSourceId }.toSet()
-        return toolRegistry.descriptors()
+        return toolRegistry.tools()
             // Role, not category: a CORRELATION step is no fresh proof of identity (ADR-18).
             .filter { it.role == ToolRole.IDENTIFICATION }
             .filter { it.method !in usedMethods && it.toolId.value !in usedTools }
@@ -165,7 +165,7 @@ class DefaultAuthPolicy(
     private fun baseAcr(factors: List<MethodEvidence>): AcrLevel = factors.maxOfOrNull { it.loa } ?: AcrLevel.NONE
 
     /** What proving [method] can give at most: the tool's level, capped by the enrollment's (ADR-5). */
-    private fun cappedAcr(method: AuthMethodView, descriptor: ToolDescriptor): AcrLevel =
+    private fun cappedAcr(method: AuthMethodView, descriptor: Tool): AcrLevel =
         AcrLevel.min(AcrLevel.parse(method.enrolledUnderAcr), descriptor.maxAcr)
 
     /**
@@ -194,7 +194,7 @@ class DefaultAuthPolicy(
     }
 
     /** What an enrolled method gives when proven: its KNOWN_ACCOUNT_AUTH procedure, not whichever comes first. */
-    private fun descriptorFor(method: String): ToolDescriptor? = toolRegistry.descriptorOf(method, ToolRole.KNOWN_ACCOUNT_AUTH)
+    private fun descriptorFor(method: String): Tool? = toolRegistry.toolOf(method, ToolRole.KNOWN_ACCOUNT_AUTH)
 
     private fun requiresMfa(requiredAcr: AcrLevel) = requiredAcr >= MFA_FROM_ACR
 

@@ -1,8 +1,12 @@
 package com.example.identity.contract.tool_api
 
+import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
+import org.springframework.core.io.DefaultResourceLoader
+import org.springframework.core.type.filter.AnnotationTypeFilter
 import org.springframework.modulith.ApplicationModule
 
-/** A module as its [ModuleMetadata][ApplicationModule] declares it: the id and the package it starts at. */
+/** A module as its [ApplicationModule] declares it: the id and the package it starts at. */
 data class ModuleRef(val id: String, val basePackage: String)
 
 /**
@@ -14,23 +18,36 @@ object ModuleId {
     /** The package every module lives under. */
     const val ROOT_PACKAGE = "com.example.identity"
 
-    fun of(type: Class<*>): ModuleRef = ofPackage(type.packageName, type.classLoader)
-
     /**
-     * Walks up from [pkg] to the first `ModuleMetadata` that carries `@ApplicationModule`. A class
-     * of that name without the annotation (a package marker inside a module) does not count.
+     * Every module by its package: the classes under [ROOT_PACKAGE] that carry `@ApplicationModule`,
+     * whatever they are called. Read once from the class files, without loading a class.
      */
-    fun ofPackage(pkg: String, loader: ClassLoader = ModuleId::class.java.classLoader): ModuleRef =
-        find(pkg, loader)
-            ?: error("No module above $pkg: every module declares itself in a ModuleMetadata with @ApplicationModule")
+    private val modulesByPackage: Map<String, ModuleRef> by lazy {
+        val scanner = ClassPathScanningCandidateComponentProvider(false).apply {
+            addIncludeFilter(AnnotationTypeFilter(ApplicationModule::class.java, false))
+            setResourceLoader(DefaultResourceLoader(ModuleId::class.java.classLoader))
+        }
+        scanner.findCandidateComponents(ROOT_PACKAGE).map { candidate ->
+            val metadata = (candidate as AnnotatedBeanDefinition).metadata
+            val pkg = metadata.className.substringBeforeLast('.')
+            val id = metadata.getAnnotationAttributes(ApplicationModule::class.java.name)?.get("id") as String?
+            ModuleRef(id.orEmpty().ifEmpty { pkg.substringAfterLast('.') }, pkg)
+        }.groupBy { it.basePackage }.mapValues { (pkg, refs) ->
+            refs.singleOrNull() ?: error("Package $pkg declares more than one @ApplicationModule: ${refs.map { it.id }}")
+        }
+    }
+
+    fun of(type: Class<*>): ModuleRef = ofPackage(type.packageName)
+
+    /** Walks up from [pkg] to the nearest package that declares a module with `@ApplicationModule`. */
+    fun ofPackage(pkg: String): ModuleRef =
+        find(pkg) ?: error("No module above $pkg: every module declares itself in a class with @ApplicationModule")
 
     /** Like [ofPackage], but `null` for a package outside every module (the application class). */
-    fun find(pkg: String, loader: ClassLoader = ModuleId::class.java.classLoader): ModuleRef? {
+    fun find(pkg: String): ModuleRef? {
         var candidate = pkg
         while (candidate.isNotEmpty()) {
-            val module = runCatching { Class.forName("$candidate.ModuleMetadata", false, loader) }.getOrNull()
-                ?.getAnnotation(ApplicationModule::class.java)
-            if (module != null) return ModuleRef(module.id.ifEmpty { candidate.substringAfterLast('.') }, candidate)
+            modulesByPackage[candidate]?.let { return it }
             candidate = candidate.substringBeforeLast('.', "")
         }
         return null

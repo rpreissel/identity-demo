@@ -1,6 +1,8 @@
 package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.tools.auth_password.PASSWORD_EXISTS
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -10,14 +12,11 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
-import com.example.identity.contract.tool_api.claims.PASSWORD_EXISTS_MARKER
+import com.example.identity.tools.auth_password.PASSWORD_EXISTS_MARKER
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.core.orchestrator.keycloak.PeerAuthValidationException
 import com.example.identity.core.orchestrator.session.AccountLockoutService
-import com.example.identity.tools.auth_password.AuthPasswordDescriptor
-import com.example.identity.tools.auth_password.AuthPasswordLookupDescriptor
-import com.example.identity.tools.auth_password.EnrollPasswordDescriptor
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -68,11 +67,11 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
 
     given("a failed auth-password call") {
         val lockout = mockk<AccountLockoutService>()
-        justRun { lockout.recordFailure(accountId, "WEB", AuthPasswordDescriptor.method) }
+        justRun { lockout.recordFailure(accountId, "WEB", tool("auth-password").method) }
         val service = KeycloakToolCallsService(lockout, mockk())
 
         `when`("it is applied") {
-            service.apply(accountId, AuthPasswordDescriptor, ToolOutcome.Failed.KnownAccountAuth(Text("Passwort falsch")))
+            service.apply(accountId, tool("auth-password").module, ToolOutcome.Failed.KnownAccountAuth(Text("Passwort falsch")))
 
             then("it charges the account's counter on the WEB channel") {
                 verify(exactly = 1) { lockout.recordFailure(accountId, "WEB", "password") }
@@ -86,7 +85,7 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
         val service = KeycloakToolCallsService(lockout, mockk())
 
         `when`("it is applied") {
-            service.apply(accountId, AuthPasswordDescriptor, ToolOutcome.Completed.Authenticated(amr = listOf("password")))
+            service.apply(accountId, tool("auth-password").module, ToolOutcome.Completed.Authenticated(amr = listOf("password")))
 
             then("it resets the account's counter") {
                 verify(exactly = 1) { lockout.recordSuccess(accountId) }
@@ -102,29 +101,28 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
         justRun { accountService.recordClaims(accountId, any(), AcrLevels.DEFAULT_REQUIRED_ACR, capture(claimInstance)) }
         every {
             accountService.addAuthenticationMethod(
-                accountId = any(), method = any(), enrollmentRef = any(), enrolledUnderAcr = any(), details = any(),
+                accountId = any(), method = any(), enrollmentRef = any(), enrolledUnderAcr = any(), boundKeyRef = any(), reference = any(),
                 enrolledUnderAmr = any(), channel = any(), allowsMultipleInstances = any(), label = any(),
                 instanceId = capture(methodInstance)
             )
         } returns mockk()
         val service = KeycloakToolCallsService(mockk(), accountService)
-        val claims = listOf(Claim(AttributeType.PASSWORD_EXISTS, PASSWORD_EXISTS_MARKER, ClaimSource(EnrollPasswordDescriptor.toolId.value)))
+        val claims = listOf(Claim(PASSWORD_EXISTS, PASSWORD_EXISTS_MARKER, ClaimSource(tool("enroll-password").toolId.value)))
         val enrollmentRef = EnrollmentRef("auth_password.enrollment", "11")
-        val instanceDetails = mapOf<String, Any?>("hint" to "x")
-        val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = enrollmentRef, claims = claims, instanceDetails = instanceDetails)
+        val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = enrollmentRef, claims = claims, reference = "x")
 
         `when`("it is applied") {
-            service.apply(accountId, EnrollPasswordDescriptor, outcome)
+            service.apply(accountId, tool("enroll-password").module, outcome)
 
             then("it records the claims under the default level") {
                 verify(exactly = 1) { accountService.recordClaims(accountId, claims, AcrLevels.DEFAULT_REQUIRED_ACR, any()) }
             }
 
-            then("it adds the method without enrolledUnderAcr, with the tool's instance details") {
+            then("it adds the method without enrolledUnderAcr, with the tool's instance reference") {
                 verify(exactly = 1) {
                     accountService.addAuthenticationMethod(
                         accountId = accountId, method = "password", enrollmentRef = enrollmentRef,
-                        enrolledUnderAcr = null, details = instanceDetails,
+                        enrolledUnderAcr = null, boundKeyRef = null, reference = "x",
                         enrolledUnderAmr = any(), channel = any(), allowsMultipleInstances = any(), label = any(),
                         instanceId = any()
                     )
@@ -137,12 +135,12 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
         }
     }
 
-    given("an outcome that does not fit the tool's role") {
+    given("an outcome for a role the module does not play") {
         val service = KeycloakToolCallsService(mockk(), mockk())
-        val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("auth_password.enrollment", "11"))
+        val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("auth_invite.enrollment", "11"))
 
-        `when`("a KNOWN_ACCOUNT_AUTH tool reports an enrollment") {
-            val result = runCatching { service.apply(accountId, AuthPasswordDescriptor, outcome) }
+        `when`("the invite module, which has no enrollment, reports one") {
+            val result = runCatching { service.apply(accountId, tool("auth-invite-lookup").module, outcome) }
 
             then("it refuses with IllegalStateException") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
@@ -150,7 +148,7 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
         }
     }
 
-    given("an auth-password call that reports more than its descriptor declares (loa1, knowledge)") {
+    given("an auth-password call that reports more than its tool declares (loa1, knowledge)") {
         val lockout = mockk<AccountLockoutService>()
         justRun { lockout.recordSuccess(accountId) }
         val service = KeycloakToolCallsService(lockout, mockk())
@@ -159,7 +157,7 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
         )
 
         `when`("it is applied") {
-            val result = runCatching { service.apply(accountId, AuthPasswordDescriptor, outcome) }
+            val result = runCatching { service.apply(accountId, tool("auth-password").module, outcome) }
 
             then("it refuses with IllegalStateException - a contract error of the tool module") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
@@ -175,7 +173,7 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
 
         `when`("an ACCOUNT_LOOKUP_AUTH tool reports its failure") {
             val result = runCatching {
-                service.apply(accountId, AuthPasswordLookupDescriptor, ToolOutcome.Failed.AccountLookupAuth(Text("Passwort falsch"), attempted = Attempted.Account(accountId)))
+                service.apply(accountId, tool("auth-password-lookup").module, ToolOutcome.Failed.AccountLookupAuth(Text("Passwort falsch"), attempted = Attempted.Account(accountId)))
             }
 
             then("it refuses with IllegalStateException") {
@@ -184,7 +182,7 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
         }
 
         `when`("a tool is still in progress") {
-            val result = runCatching { service.apply(accountId, AuthPasswordDescriptor, ToolOutcome.InProgress(nextStep = "auth")) }
+            val result = runCatching { service.apply(accountId, tool("auth-password").module, ToolOutcome.InProgress(nextStep = "auth")) }
 
             then("it refuses with IllegalStateException") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }

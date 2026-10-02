@@ -19,9 +19,10 @@ für `src/main/kotlin/com/example/identity/`.
 
 ## 1) Zuerst entscheiden: Rollen, Methoden, Niveaus
 
-Ein Tool hat genau eine Rolle (`ToolRole`). Ein Verfahren, das identifiziert **und** anmeldet,
-besteht deshalb aus mehreren Tools. Eine Identifizierung richtet nie ein dauerhaftes Verfahren ein
-([03-tool-architektur.md](03-tool-architektur.md) Abschnitt 2).
+Ein Verfahren ist ein `ToolModule` mit einem Tool je Rolle (`ToolRole`). Ein Verfahren, das
+identifiziert **und** anmeldet, besteht deshalb aus mehreren Tools. Eine Identifizierung richtet
+nie ein dauerhaftes Verfahren ein ([03-tool-architektur.md](03-tool-architektur.md) Abschnitt 2).
+Hier sind es zwei Module, weil Identifizierung und Anmeldung verschiedene Methoden sind.
 
 | Tool | Rolle | Methode | Faktoren | `maxAcr` | Modul |
 |---|---|---|---|---|---|
@@ -32,10 +33,11 @@ besteht deshalb aus mehreren Tools. Eine Identifizierung richtet nie ein dauerha
 
 Was dabei zu bedenken ist:
 
-- **Ein Paar aus Methode und Rolle gibt es nur einmal.** `ToolHandlerRegistry` bricht den Start
-  sonst ab. Mehrere Rollen derselben Methode sind üblich (`enroll-kobil`/`auth-kobil`).
-- **Alle Tools einer Methode haben dieselben Faktoren und dasselbe `maxAcr`.** Das Niveau eines
-  eingerichteten Verfahrens wird an mehreren Stellen nur über den Namen der Methode nachgeschlagen.
+- **Die IDs liegen fest.** `enroll-totp`, `auth-totp` und `auth-totp-lookup` stehen je einmal als
+  Konstante im Modul, für Deklaration und Controller. Sie müssen zu Methode `totp` und Rolle
+  passen; das Bauen des Moduls prüft es.
+- **Faktoren und Niveau gelten für die ganze Methode.** Sie stehen einmal im Modul; ein Tool kann
+  nichts anderes angeben.
 - **Eigene `amr`-Werte.** `amr` und Methodennamen teilen sich einen Namensraum. `ident-bank` meldet
   deshalb etwa `bank-kyc`, nicht `bank`, so wie `ident-nect` `nect-eid` meldet.
 - **Die Methode heißt `totp`, nicht `otp`.** Keycloak bringt ein eigenes OTP mit, das der
@@ -56,46 +58,66 @@ Was dabei zu bedenken ist:
 Je Verfahren ein Modul unter `K/tools/<modul>/`. Der Name des Moduls ist zugleich Datenbankschema,
 Ordner der Migration und Datei `api/modules/<modul>.yaml`.
 
-| Datei | Inhalt | Abschreiben von |
-|---|---|---|
-| `ModuleMetadata.kt` | `@ApplicationModule(allowedDependencies = ["tool_api", "texts", …])`; `ident_bank` darf zusätzlich auf die Simulation `bank` | `tools/ident_nect/ModuleMetadata.kt` |
-| `Descriptors.kt` | ein `@Component object` je Tool (siehe unten) | `tools/auth_kobil/Descriptors.kt`, `tools/ident_nect/Descriptors.kt` |
-| `internal/…ToolHandler.kt` | `start`, `patch`, `read`; gibt ein `ToolOutcome` zurück | `tools/auth_kobil/internal/enrollkobil/`, `…/authkobil/` |
-| `internal/…Flow.kt` (optional) | die Entscheidung als reine Funktion, ohne Spring | `tools/auth_sms/internal/authsms/AuthSmsFlow.kt` |
-| `api/v1/…ToolController.kt` | ein Controller je Tool (ADR-1) | `tools/auth_kobil/api/v1/`, `tools/ident_nect/api/v1/` |
-| `api/v1/…StepData.kt` | die Formen von `stepData`, registriert über `StepDataTypes` | `tools/auth_kobil/api/v1/KobilStepData.kt` |
-| `internal/…Enrollment.kt` + Repository | das gespeicherte Verfahren in `<modul>.enrollment` | `tools/auth_kobil/internal/KobilEnrollment.kt` |
-| `internal/…EnrollmentCleanup.kt` | löscht das Verfahren mit dem Konto | `tools/auth_sms/internal/AuthSmsEnrollmentCleanup.kt` |
-| `internal/…RetentionJob.kt` | `ToolSessionSweeper` für alte Tool-Sitzungen | `tools/auth_kobil/internal/AuthKobilRetentionJob.kt` |
-
-Der Descriptor ist die Selbstbeschreibung, aus der der Orchestrator alles Weitere ableitet. Für
-`enroll-totp` sieht er etwa so aus:
+Alles, was das Modul über sich sagt, steht in einer Datei `<X>ToolModule.kt`: die Deklaration des
+Verfahrens und die Angaben für Spring Modulith. Für die Einmalcode-App:
 
 ```kotlin
-@Component
-object EnrollTotpDescriptor : ToolDescriptor {
-    override val toolId = ToolId("enroll-totp")
-    override val role = ToolRole.ENROLLMENT
-    override val method = TOTP_METHOD                      // "totp"
-    override val factorTypes = setOf(FactorType.POSSESSION)
-    override val maxAcr = AcrLevel.LOA1
+internal const val ENROLL_TOTP_TOOL_ID = "enroll-totp"
+internal const val AUTH_TOTP_TOOL_ID = "auth-totp"
+internal const val AUTH_TOTP_LOOKUP_TOOL_ID = "auth-totp-lookup"
+
+internal val TotpModule = toolModule(
+    method = "totp",
+    proves = factors(POSSESSION, upTo = AcrLevel.LOA1),
+    stepData = listOf(TotpSetupStep::class),
+    tools = listOf(
+        enroll(ENROLL_TOTP_TOOL_ID),
+        login(AUTH_TOTP_TOOL_ID),
+        lookupLogin(AUTH_TOTP_LOOKUP_TOOL_ID),
+    ),
+)
+
+@ApplicationModule(id = "auth_totp", allowedDependencies = ["tool_api", "texts"])
+@Configuration
+internal class TotpToolModule {
+    @Bean
+    fun totpModule() = TotpModule
 }
 ```
 
-Eine Liste, in die man das Tool einträgt, gibt es nicht. Jeder `ToolDescriptor`-Bean landet von
+Eine Liste, in die man das Verfahren einträgt, gibt es nicht. Jedes `ToolModule`-Bean landet von
 selbst im Katalog (`ToolHandlerRegistry`), in `GET /tools/catalog` und in den Kandidatenlisten der
-Journeys, die nach Rolle auswählen. Zwei Dinge prüft der Start dabei sofort: das Paar aus Methode und
-Rolle und, für eine Identifizierung, dass sie Familienname, Vornamen und Geburtsdatum deklariert.
+Journeys, die nach Rolle auswählen.
+
+| Datei | Inhalt | Abschreiben von |
+|---|---|---|
+| `<X>ToolModule.kt` | Deklaration und Modulith-Angaben (siehe oben) | `tools/auth_kobil/KobilToolModule.kt`, `tools/ident_nect/NectToolModule.kt` |
+| `internal/…ToolHandler.kt` | `start`, `patch`, `read`; gibt ein `ToolOutcome` zurück | `tools/auth_kobil/internal/enrollkobil/`, `…/authkobil/` |
+| `internal/…Flow.kt` (optional) | die Entscheidung als reine Funktion, ohne Spring | `tools/auth_sms/internal/authsms/AuthSmsFlow.kt` |
+| `api/v1/…ToolController.kt` | ein Controller je Tool (ADR-1) | `tools/auth_kobil/api/v1/`, `tools/ident_nect/api/v1/` |
+| `api/v1/…StepData.kt` | die Formen von `stepData`, im Modul unter `stepData` genannt | `tools/auth_kobil/api/v1/KobilStepData.kt` |
+| `internal/…Enrollment.kt` + Repository | das gespeicherte Verfahren in `<modul>.enrollment`, mit der Konstante für den Enrollment-Typ | `tools/auth_kobil/internal/KobilEnrollment.kt` |
+| `internal/…EnrollmentCleanup.kt` | löscht das Verfahren mit dem Konto | `tools/auth_sms/internal/AuthSmsEnrollmentCleanup.kt` |
+| `internal/…RetentionJob.kt` | `ToolSessionSweeper` für alte Tool-Sitzungen | `tools/auth_kobil/internal/AuthKobilRetentionJob.kt` |
+
+Ein Handler meldet in seinem Ergebnis nur, was von der Deklaration abweicht. `auth-totp` meldet bei
+Erfolg einfach `ToolOutcome.Completed.Authenticated()`: `amr`, Niveau und Faktoren ergänzt der
+Orchestrator aus dem Modul.
 
 Die Controller sind dünn. Sie rufen `ToolJourney` und den Handler in fester Reihenfolge:
 
-- `POST .../channels/{id}/tools/<toolId>`: `beginActivation`, `handler.start`, `applyOutcome`,
-  `activationLocation`, Antwort `201` mit `Location`.
-- `PATCH .../tools/{toolSessionId}/<toolId>`: `loadCurrent`, `handler.patch`, `applyOutcome`.
-- `GET`: `loadContext`, `isCurrentTool`, `buildReadResponse`.
+- `POST .../channels/{id}/tools/<toolId>`: Parameter `@ActivateTool(ID) context: AuthorizedToolContext`,
+  dann `handler.start`, `activated` (bucht das Ergebnis und antwortet `201` mit `Location`).
+- `PATCH .../tools/{toolSessionId}/<toolId>`: Parameter `@LoadTool(ID) context: AuthorizedToolContext`,
+  dann `handler.patch`, `applyOutcome`.
+- `GET`: Parameter `@LoadTool(ID) context: ToolContext`, dann `readResponse { handler.read(…) }`.
 - `back` und `DELETE` sind allgemein (`LeaveToolController`); dafür schreibt man nichts.
 
-Jede Methode nimmt `@BindingKey bindingKeyRef: String`; das erzwingt `ApiBoundaryArchitectureTest`.
+Beide Parameter löst der Orchestrator vor dem Aufruf auf, schon gegen den Schlüssel des Aufrufers
+geprüft. `@ActivateTool` aktiviert das Tool auf dem Kanal aus dem Pfad und legt dabei die
+Tool-Sitzung an; `@LoadTool` lädt die Sitzung aus dem Pfad, und der Typ sagt, ob die Methode nur
+liest oder die Journey ändern darf. Einen der beiden (oder `@BindingKey`) muss jede Methode haben;
+das erzwingt `ApiBoundaryArchitectureTest`.
 
 ## 3) Bank-Ident: Weiterleitung und Fremdsystem
 
@@ -116,13 +138,21 @@ den dieses Tool angelegt hat.
 3. Die Bank leitet mit `?bankCaseId=…` zurück. Der `PATCH` mit dieser Kennung lässt den Orchestrator
    das Ergebnis selbst bei der Bank abholen. Dem Browser glaubt er nichts.
 
-**Was die Bank liefert.** Familienname, Vornamen, Geburtsdatum und Anschrift, nie eine KVNR: Die darf
-nur aus dem Personenverzeichnis kommen, das prüft `ToolHandlerRegistry`. Welche Person das ist,
-entscheidet wie bei `ident-nect` der Orchestrator über die Stammdaten (`IdentityResolver`), nicht
-das Tool. Liefert die Bank zusätzlich eine eigene, dauerhafte Kennung der Person, braucht sie einen
-eigenen Anker wie `NECT_RESTRICTED_ID`. Das ist die eine Stelle, an der ein neues Verfahren in
-den Kern greift: neuer Eintrag in `AttributeType` (`Claims.kt`), seine Regel in `AttributeRules.kt`
-und ein Eintrag in `ClaimsTest`.
+**Was die Bank liefert.** Familienname, Vornamen und Geburtsdatum bringt jede Identifizierung von
+selbst mit (`identify(…)`); dazu die Anschrift, nie eine KVNR: Die darf nur aus dem
+Personenverzeichnis kommen, das prüft schon das Bauen des Moduls. Welche Person das ist, entscheidet
+wie bei `ident-nect` der Orchestrator über die Stammdaten (`IdentityResolver`), nicht das Tool.
+Liefert die Bank zusätzlich eine eigene, dauerhafte Kennung der Person, deklariert das Modul dafür
+einen eigenen Anker, wie `ident_nect` sein `NECT_RESTRICTED_ID`:
+
+```kotlin
+internal val BANK_CUSTOMER_ID = AttributeType.anchor(
+    "bank_customer_id", AnchorAcrFloor(AcrLevel.LOA2, AcrLevel.LOA2),
+    allowsReplacement = true, retractableByHolder = false, caseSensitive = true, normalize = { it.trim() },
+)
+```
+
+Der Kern ändert sich dafür nicht: Die Regeln des Ankers reisen mit dem Typ.
 
 **Stolperstelle in der App.** Die Rückkehr von Nect ist in `AppChannelApp.tsx` fest verdrahtet
 (`nectCaseId`). Ein zweites Verfahren mit Weiterleitung braucht dort seinen eigenen Parameter. Wer
@@ -140,16 +170,17 @@ reicht jeden fremden Parameter der Rückkehr als Eingabe an das Tool weiter.
    meldet `ToolOutcome.Completed.Enrolled` mit deren `EnrollmentRef`. Stimmt er nicht, meldet es
    `Failed.NothingGuessed`. Beim Einrichten gibt es nichts zu erraten.
 
-**Anmelden (`auth-totp`).** Der Controller sucht das eingerichtete Verfahren des Kontos
-(`AccountDirectory.activeEnrollment(accountId, method)`) und wirft `UnresolvableReferenceException`,
-wenn es keins gibt. Der Handler prüft den Code gegen das Geheimnis und meldet
+**Anmelden (`auth-totp`).** Der Controller holt das eingerichtete Verfahren mit
+`toolJourney.requireEnrollment(context, TotpModule)`; gibt es keins, antwortet der Orchestrator mit
+`422`. Bei einem Verfahren mit `onePerDevice` wäre es von selbst das auf diesem Gerät. Der Handler prüft den Code gegen das Geheimnis und meldet
 `Completed.Authenticated` oder `Failed.KnownAccountAuth`. Zählen und Sperren nach zu vielen
 Fehlversuchen übernimmt der Orchestrator. Das Tool merkt sich nur den zuletzt angenommenen
 Zeitschritt, damit derselbe Code nicht zweimal gilt.
 
 **Ohne bekanntes Konto (`auth-totp-lookup`, optional).** Wie `auth-password-lookup`: E-Mail-Adresse
-und Code. Der Descriptor verlangt dann eine bestätigte Adresse
-(`requires = setOf(ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN))`). Geht die Adresse
+und Code. Wie beim Passwort steht die Vorbedingung dann am Einrichten: Ohne bestätigte Adresse wird
+das Verfahren gar nicht erst angeboten
+(`enroll(ENROLL_TOTP_TOOL_ID, requires = setOf(ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN)))`). Geht die Adresse
 verloren, fällt das Verfahren mit ([ADR-24](adr/ADR-024-eine-methode-haengt-von-einer-anderen-ab-indem.md)).
 
 **Neu für dieses Projekt: ein Geheimnis, das lesbar bleiben muss.** Passwörter liegen als Hash, die
@@ -165,7 +196,9 @@ Zielbild der Schlüsselverwaltung `DPoP-demo-61kp`).
 Von selbst, ohne Änderung im Kern:
 
 - Kandidatenlisten, Ausweichwege und die Bewertung des Niveaus (`AuthPolicy`) richten sich nach Rolle,
-  Faktoren und `maxAcr` aus dem Descriptor.
+  Faktoren und `maxAcr` aus dem Modul.
+- Ein eigener Anker und mehrere Instanzen je Konto (`onePerDevice`) brauchen keine Änderung im Kern
+  und keine Migration im Konto.
 - Das Löschen des Kontos findet jedes `EnrollmentCleanup`, die Aufbewahrung jeden
   `ToolSessionSweeper`.
 - Neue Migrationsordner und neue `@RestController` werden gefunden; es gibt keine Listen.
@@ -176,11 +209,6 @@ Von Hand:
 
 - **Reihenfolge und Schalter je Kanal** in `application.yml` (`demo.tool-defaults.channels`). Ohne
   Eintrag steht das Tool hinter allen eingeordneten.
-- **Ein eigener Anker**, falls die Bank eine dauerhafte Kennung liefert (Abschnitt 3).
-- **Mehrere Instanzen** (`allowsMultipleInstances = true`, etwa mehrere Authenticator-Apps): Die
-  Prüfregel in der Migration `account/V23__eine_aktive_singleton_methode.sql` zählt die Methoden mit
-  mehreren Instanzen auf. Dafür braucht es eine neue Migration und eine Anpassung in
-  `DatabaseInvariantConstraintTest`.
 - **Die Sprungseite der simulierten Bank**, falls sie eine eigene Oberfläche hat: `PAGE_APPS` in
   `WebConfig.kt` und ein Einstieg im Frontend wie `entries/nect`.
 
@@ -212,19 +240,19 @@ Diese Tests werden rot, wenn etwas fehlt. Man liest sie am besten als Checkliste
 | Test | Meldet |
 |---|---|
 | `ModulithStructureTest` | Modul falsch angelegt oder eine nicht erlaubte Abhängigkeit |
-| `ApiBoundaryArchitectureTest` | Controller ohne `@BindingKey`, Simulation ohne `@DemoSurface` |
+| `ApiBoundaryArchitectureTest` | Controller ohne `@ActivateTool`, `@LoadTool` oder `@BindingKey`, Simulation ohne `@DemoSurface` |
 | `SimulationBoundaryArchitectureTest` | Code außerhalb des Tools greift auf die Simulation zu |
-| `IdentificationFindableRuleTest` | Identifizierung ohne Familienname, Vornamen, Geburtsdatum |
 | `ToolCatalogStartStepTest` | neues Tool fehlt in der Liste der Startschritte |
 | `OpenApiSnapshotTest`, `StepDataExamplesTest` | Vertrag nicht erneuert, Beispiel mit unbekannter Form |
-| `ClaimsTest` | neuer Anker ohne festgelegten Namen im Vertrag |
-| `DatabaseInvariantConstraintTest` | mehrere Instanzen, aber die Prüfregel kennt die Methode nicht |
 | `TextTranslationsTest` (`-PstrictTexts`), `KcTextCatalogTest` | Texte nicht übersetzt, Name in App und Login-Seite verschieden |
 | `frontend/src/tools/registry.test.ts` | doppelte `toolId`, fehlender Name oder fehlende Erklärung |
 
+Vieles, was früher ein Test meldete, lässt der Aufbau gar nicht mehr zu: eine Identifizierung ohne
+Name, Vornamen und Geburtsdatum, eine Rolle zweimal, verschiedene Niveaus innerhalb einer Methode.
+
 Für die Integrationstests gibt es eine Stelle, die man leicht übersieht: Sie laufen gegen einen
-festen Katalog (`StrategyTestFixtures.catalog`). Ohne die neuen Descriptoren dort meldet jeder
-Integrationstest des neuen Tools „Unknown tool“. Sie dort einzutragen, kann Erwartungen an
+festen Katalog (`StrategyTestFixtures.modules`). Ohne das neue Modul dort meldet jeder
+Integrationstest seiner Tools „Unknown tool“. Es dort einzutragen, kann Erwartungen an
 Kandidatenlisten in den Strategietests ändern.
 
 Die eigenen Tests schreibt man ab: `*ToolHandlerTest` und `*FlowTest` ohne Spring

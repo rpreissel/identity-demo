@@ -7,6 +7,9 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
 
+/** The [com.example.identity.contract.tool_api.EnrollmentRef.type] enroll-device writes and auth-device reads back. */
+internal const val DEVICE_ENROLLMENT_TYPE = "auth_device.enrollment"
+
 /**
  * Long-lived, account-bound device credential: the public half of a non-extractable device key pair
  * (docs/03-tool-architektur.md, enroll-device). Each attempt is verified against a proof only the

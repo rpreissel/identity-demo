@@ -83,8 +83,8 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
 - **Faktortypen Wissen, Besitz und Biometrie.** Jedes Anmeldeverfahren nennt seine Faktortypen
   selbst. Das Passwort ist das Verfahren mit nur einem Faktor aus dem Glossar, die SMS ebenso mit dem
   Faktor Besitz.
-  Im Code: `FactorType` in `contract/tool_api/ToolDescriptor.kt`;
-  `tools/auth_password/Descriptors.kt`, `tools/auth_sms/Descriptors.kt`.
+  Im Code: `FactorType` in `contract/tool_api/Tool.kt`;
+  `tools/auth_password/PasswordToolModule.kt`, `tools/auth_sms/SmsToolModule.kt`.
 - **Nachweis beim Authentisieren.** Jedes Tool liefert einen Nachweis, die Sitzung sammelt die
   Nachweise, und die Policy leitet daraus das Niveau ab.
   Im Code: `SessionEvidence` in `core/orchestrator/domain/policy/`.
@@ -108,7 +108,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   Projekt schreibt dieses Vertrauen als benannte Ausnahme fest, statt es stillschweigend
   vorauszusetzen. Weil der Server die Freigabe nicht nachprüfen kann, gibt es den Geräteschlüssel
   nur im Demomodus. Dasselbe gilt für KOBIL, solange der Anbieter simuliert ist.
-  Im Code: `contract/tool_api/device/DeviceProofs.kt`; `ToolDescriptor.demoOnly`.
+  Im Code: `contract/tool_api/device/DeviceProofs.kt`; `ToolModule.demoOnly`.
   In der Doku: [Orchestrierung](../04-orchestrierung.md), Abschnitt 8; ADR-21 und ADR-36 in den
   [Entscheidungen](../12-entscheidungen.md).
 - **Bescheinigte und unbescheinigte Attribute bleiben unterscheidbar.** Jede Angabe speichert ihre
@@ -121,7 +121,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   **Einschränkung:** Kein Tool meldet heute selbst einen nur behaupteten Wert. Die Stufe ist
   vorhanden und wird geprüft, aber noch nicht genutzt.
   Im Code: `ClaimSource` und `ClaimTrust` in `contract/tool_api/claims/Claims.kt`; `requires` in
-  `tools/auth_password/Descriptors.kt`.
+  `tools/auth_password/PasswordToolModule.kt`.
 - **Identifizierungsmittel mit einem Bezeichner, der für das Mittel selbst eindeutig ist.** Der
   Online-Ausweis liefert seine Kennung für diesen Diensteanbieter (`restrictedId`). Das Konto hält
   sie als eigenen Anker, und über ihn wird die Person wiedererkannt, nicht über Name und
@@ -129,7 +129,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   Pseudonym je Diensteanbieter verschieden ist (§ 18 PAuswG), erkennt jeder Weg die Karte nur für
   sich wieder. Eine neue Karte ersetzt den Wert.
   Im Code: Anker `EID_RESTRICTED_ID` und `NECT_RESTRICTED_ID` in
-  `contract/tool_api/claims/AttributeRules.kt`; `tools/ident_eid/Descriptors.kt`;
+  `contract/tool_api/claims/AttributeType.kt`; `tools/ident_eid/EidToolModule.kt`;
   `tools/ident_nect/internal/IdentNectToolHandler.kt`. ADR-19.
 - **E-Mail-Konto mit Einmalcode als Identifizierungsmittel.** Das Tool „E-Mail bestätigen“ prüft einen
   Code und schreibt die Adresse als bestätigten Anker (Stufe *nachgewiesen*). Wie im Glossar vertraut
@@ -137,7 +137,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   Schritt Bestätigen, nicht Identifizierung: Er ordnet keine Person zu und hebt das Niveau nicht.
   Erst ein zweites Tool macht die bestätigte Adresse auf Wunsch zu einem Anmeldeverfahren.
   Im Code: `confirm-email` (Tool-Rolle `ATTESTATION`) und `enroll-email` in
-  `tools/auth_email/Descriptors.kt`; `EMAIL_ANCHOR_ENROLLMENT` in
+  `tools/auth_email/EmailToolModule.kt`; `EMAIL_ANCHOR_ENROLLMENT` in
   `contract/tool_api/directory/AccountDirectory.kt`. ADR-17.
 - **Identifizierung als Anreicherung eines schon wiedererkannten Clients, auch in einem späteren
   Schritt.** Online-Ausweis oder Nect bestätigen zuerst, wer jemand ist. Danach ordnet die Eingabe der
@@ -185,7 +185,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   nicht. Die KVNR wird eingetippt, nicht bescheinigt. Die Eingabe darf deshalb erst laufen, wenn
   Name, Vorname und Geburtsdatum bereits bescheinigt sind. Zugeordnet wird nur, wenn die Person hinter
   der Nummer zu diesen Angaben passt. Für die Partnernummer gilt dasselbe.
-  Im Code: `tools/ident_kvnr/Descriptors.kt` (Tool-Rolle `CORRELATION`, `requires`);
+  Im Code: `tools/ident_kvnr/KvnrToolModule.kt` (Tool-Rolle `CORRELATION`, `requires`);
   `core/account/application/IdentityMatchingService.kt`.
 - **Unbescheinigte Attribute nie für die Zuordnung zu einem Stammdatensatz.** Beim Freischaltcode
   tippt die Person Nummer, Namen und Geburtsdatum ein, also unbescheinigte Angaben. Sie finden aber
@@ -200,8 +200,8 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   mit dem Faktor Besitz. Die Telefonnummer wird festgehalten, dient aber nie dazu, eine Person zu
   erkennen: Sie ist kein Anker, sondern gehört dem Modul des Verfahrens. Das Projekt nutzt die
   SIM-Karte bewusst nicht als Identifizierungsmittel.
-  Im Code: `tools/auth_sms/Descriptors.kt`; `PHONE_NUMBER` in
-  `contract/tool_api/claims/AttributeRules.kt`.
+  Im Code: `tools/auth_sms/SmsToolModule.kt`; `PHONE_NUMBER` in
+  `tools/auth_sms/SmsToolModule.kt`.
 
 ## 5) Was auf einer anderen Ebene liegt
 
@@ -244,7 +244,7 @@ bescheinigt? Was geschieht, wenn zwei Bestätigungen einander widersprechen? Das
 Verfeinerung, kein Widerspruch.
 
 Im Code: `core/account/infrastructure/Account.kt`; `core/account/application/ClaimLedger.kt`;
-`core/account/AccountService.kt`; `contract/tool_api/claims/AttributeRules.kt`. In der Doku:
+`core/account/AccountService.kt`; `contract/tool_api/claims/AttributeType.kt`. In der Doku:
 [Domänenmodell](../02-domaenenmodell.md), Abschnitt 6 „Konto-Identität: Claims, Anker,
 Konsolidierung“; das Änderungsprotokoll in ADR-39.
 

@@ -14,7 +14,7 @@ import io.swagger.v3.oas.annotations.media.Schema
         "lowers it. amr lists which native Keycloak authenticators (never orchestrator tools) " +
         "just proved something THIS flow run, one entry per proof - method/loa/factorTypes are " +
         "resolved server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the Keycloak facade's " +
-        "own mirror of a ToolDescriptor, not resolved from the orchestrator's own catalog (which " +
+        "own mirror of a Tool, not resolved from the orchestrator's own catalog (which " +
         "stays entirely ignorant of native authenticators). Merged into the channel's evidence " +
         "and re-checked against the current floor exactly like any other proof; no separate " +
         "'combined native acr' field exists, since the orchestrator derives that itself."

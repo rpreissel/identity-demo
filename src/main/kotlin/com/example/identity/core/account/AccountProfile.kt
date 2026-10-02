@@ -13,7 +13,10 @@ data class AuthMethodView(
     val active: Boolean,
     val createdAt: Instant?,
     val enrolledUnderAcr: String?,
-    val details: Map<String, Any?>?,
+    /** The caller key this instance lives on, for a one-per-device method; `null` otherwise. */
+    val boundKeyRef: String?,
+    /** What of this instance may be shown on the device it lives on (e.g. the KOBIL phone id). */
+    val reference: String?,
     val enrollmentRef: EnrollmentRef,
     val label: String? = null
 )
@@ -28,7 +31,7 @@ data class AccountProfile(
     val emailConfirmedAt: Instant? = null,
     /**
      * Each established attribute at the highest [ClaimTrust] a non-retracted claim carries (ADR-12).
-     * `ToolDescriptor.requires` is checked against this.
+     * `Tool.requires` is checked against this.
      */
     val establishedClaims: Map<AttributeType, ClaimTrust> = emptyMap()
 ) {

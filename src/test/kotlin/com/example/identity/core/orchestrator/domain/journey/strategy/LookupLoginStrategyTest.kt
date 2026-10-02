@@ -1,12 +1,10 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginStrategy
-import com.example.identity.tools.auth_invite.AuthInviteDescriptor
-import com.example.identity.tools.auth_sms.AuthSmsDescriptor
-import com.example.identity.tools.auth_sms.AuthSmsLookupDescriptor
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.Action
@@ -60,16 +58,16 @@ class LookupLoginStrategyTest : BehaviorSpec({
 
         `when`("the tool completes Authenticated with its own account (the first, account-resolving proof)") {
             val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("sms"), subject = Subject.Account(AccountId(42L)))
-            val event = JourneyEvent.Completed(AuthSmsLookupDescriptor, outcome)
+            val event = JourneyEvent.Completed(tool("auth-sms-lookup"), outcome)
             val transition = strategy.transition(state, event, ctx())
             then("trusts the tool's own account") {
                 transition shouldBe
-                    Transition.Perform(Action.AcceptProof(AuthSmsLookupDescriptor, outcome), resumeState = state)
+                    Transition.Perform(Action.AcceptProof(tool("auth-sms-lookup"), outcome), resumeState = state)
             }
         }
 
         `when`("the tool completes Identified") {
-            val event = JourneyEvent.Completed(AuthSmsLookupDescriptor, identifiedOutcome())
+            val event = JourneyEvent.Completed(tool("auth-sms-lookup"), identifiedOutcome())
             val result = runCatching { strategy.transition(state, event, ctx()) }
             then("Identified is not offered by any state of this intent") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
@@ -80,7 +78,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
             val result = runCatching {
                 strategy.transition(
                     state,
-                    JourneyEvent.Completed(AuthSmsLookupDescriptor, ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))),
+                    JourneyEvent.Completed(tool("auth-sms-lookup"), ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))),
                     ctx()
                 )
             }
@@ -90,12 +88,12 @@ class LookupLoginStrategyTest : BehaviorSpec({
         }
     }
 
-    given("Credential, auth-invite offered in the App") {
-        val state = LookupLoginState.Credential(Offer(listOf(ToolId("auth-invite"))))
+    given("Credential, auth-invite-lookup offered in the App") {
+        val state = LookupLoginState.Credential(Offer(listOf(ToolId("auth-invite-lookup"))))
 
         `when`("a one-time password proves an invitation, not an account") {
             val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("invite"), subject = Subject.Invitation(InvitationId("a".repeat(64))))
-            val transition = strategy.transition(state, JourneyEvent.Completed(AuthInviteDescriptor, outcome), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Completed(tool("auth-invite-lookup"), outcome), ctx())
             then("aborts before anything is bound: process access is for the website only (ADR-48)") {
                 transition shouldBe Transition.Abort(Text("Ein Einmalkennwort gilt nur auf der Website"))
             }
@@ -107,11 +105,11 @@ class LookupLoginStrategyTest : BehaviorSpec({
 
         `when`("a tool completes Authenticated (any further proof)") {
             val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("sms"))
-            val event = JourneyEvent.Completed(AuthSmsDescriptor, outcome)
+            val event = JourneyEvent.Completed(tool("auth-sms"), outcome)
             val transition = strategy.transition(state, event, ctx())
             then("never trusts a submitted account") {
                 transition shouldBe
-                    Transition.Perform(Action.AcceptProof(AuthSmsDescriptor, outcome), resumeState = state)
+                    Transition.Perform(Action.AcceptProof(tool("auth-sms"), outcome), resumeState = state)
             }
         }
     }
@@ -123,7 +121,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
                 transition.shouldBeInstanceOf<Transition.To>()
                 val to = transition.state
                 to.shouldBeInstanceOf<LookupLoginState.Credential>()
-                to.offered shouldContainExactly listOf(ToolId("auth-sms-lookup"), ToolId("auth-email-lookup"), ToolId("auth-password-lookup"), ToolId("auth-qr-lookup"), ToolId("auth-invite"))
+                to.offered shouldContainExactly listOf(ToolId("auth-sms-lookup"), ToolId("auth-email-lookup"), ToolId("auth-password-lookup"), ToolId("auth-qr-lookup"), ToolId("auth-invite-lookup"))
             }
         }
 
@@ -162,7 +160,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
         val state = LookupLoginState.Credential(Offer(listOf(ToolId("auth-sms-lookup"), ToolId("auth-email-lookup"))))
 
         `when`("one is abandoned, another remains") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(AuthSmsLookupDescriptor), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms-lookup")), ctx())
             then("advances, marking only that one declined") {
                 transition shouldBe
                     Transition.To(state.declining(ToolId("auth-sms-lookup")))
@@ -174,7 +172,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
         val state = smsLookupCredential
 
         `when`("the last offered candidate is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(AuthSmsLookupDescriptor), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms-lookup")), ctx())
             then("cancels - giving up on the very first proof is not an error") {
                 transition shouldBe Transition.Cancel
             }

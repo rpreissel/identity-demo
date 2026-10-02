@@ -1,11 +1,14 @@
 package com.example.identity.tools.auth_invite.api.v1
 
-import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.contract.tool_api.ids.ToolSessionId
-import com.example.identity.contract.tool_api.BindingKey
+import com.example.identity.tools.auth_invite.AUTH_INVITE_LOOKUP_TOOL_ID
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.contract.tool_api.ActivateTool
+import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.AuthorizedToolContext
+import com.example.identity.contract.tool_api.ToolContext
+import com.example.identity.contract.tool_api.readResponse
+import com.example.identity.contract.tool_api.activated
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.directory.normalizeKvnr
 import com.example.identity.contract.tool_api.envelope.API_V1
@@ -18,17 +21,13 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-
-private const val AUTH_INVITE_TOOL_ID = "auth-invite"
 
 data class AuthInvitePatchRequest(
     @field:Schema(example = "A123456789") val kvnr: String? = null,
@@ -39,7 +38,7 @@ data class AuthInvitePatchRequest(
 )
 
 /**
- * toolId=auth-invite (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). One controller owns
+ * toolId=auth-invite-lookup (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). One controller owns
  * activation, PATCH and GET for this tool (docs/08-projektrahmen.md A11).
  */
 @RestController
@@ -52,9 +51,9 @@ class AuthInviteToolController(
     private val lockouts: Lockouts
 ) {
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/auth-invite")
+    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_INVITE_LOOKUP_TOOL_ID")
     @Operation(
-        summary = "Activate auth-invite",
+        summary = "Activate auth-invite-lookup",
         description = "No request body: toolId already carries kind and method.",
         responses = [
             ApiResponse(
@@ -62,25 +61,21 @@ class AuthInviteToolController(
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
                       "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                      "next": {"type": "tool", "toolId": "auth-invite", "step": "input", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "next": {"type": "tool", "toolId": "auth-invite-lookup", "step": "input", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
                     }
                 """)])]
             )
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String,
+        @ActivateTool(AUTH_INVITE_LOOKUP_TOOL_ID) context: AuthorizedToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.beginActivation(channelSessionId, bindingKeyRef, AUTH_INVITE_TOOL_ID)
         val outcome = handler.start(context.toolSessionId)
-        val response = toolJourney.applyOutcome(context, outcome)
-        val location = toolJourney.activationLocation(context, uriBuilder.build().toUri())
-        return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)
+        return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/auth-invite")
+    @PatchMapping("$API_V1/tools/{toolSessionId}/$AUTH_INVITE_LOOKUP_TOOL_ID")
     @Operation(
         summary = "Supply the number and the one-time password",
         description = "KVNR, or Partnernummer without a KVNR, together with the one-time password from the letter.",
@@ -98,11 +93,9 @@ class AuthInviteToolController(
         ]
     )
     fun patch(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String,
+        @LoadTool(AUTH_INVITE_LOOKUP_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody(required = false) request: AuthInvitePatchRequest?
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, AUTH_INVITE_TOOL_ID)
         val body = request ?: AuthInvitePatchRequest()
         // The KVNR comes first (ADR-34): given, it alone decides; the Partnernummer only counts without one.
         val personId = when {
@@ -112,24 +105,15 @@ class AuthInviteToolController(
         }
         // Folded into the ordinary failure, see Lockouts.isIdentLockedOut.
         val rateLimited = lockouts.isIdentLockedOut(personId)
-        val outcome = handler.patch(toolSessionId, body.kvnr, body.partnerNumber, body.code, personId, rateLimited)
+        val outcome = handler.patch(context.toolSessionId, body.kvnr, body.partnerNumber, body.code, personId, rateLimited)
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/auth-invite")
-    @Operation(summary = "Read the current auth-invite state")
+    @GetMapping("$API_V1/tools/{toolSessionId}/$AUTH_INVITE_LOOKUP_TOOL_ID")
+    @Operation(summary = "Read the current auth-invite-lookup state")
     fun read(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String
+        @LoadTool(AUTH_INVITE_LOOKUP_TOOL_ID) context: ToolContext
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, AUTH_INVITE_TOOL_ID)
-        val outcome = if (toolJourney.isCurrentTool(context)) {
-            checkNotNull(handler.read(toolSessionId) as? ToolOutcome.InProgress) {
-                "read() must return InProgress while the tool is still current"
-            }
-        } else {
-            null
-        }
-        return ResponseEntity.ok(toolJourney.buildReadResponse(context, outcome))
+        return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }
 }

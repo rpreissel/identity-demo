@@ -45,6 +45,11 @@ class DpopBindingKeyResolver(
             "@BindingKey resolution requires a servlet request"
         }
         val keycloakOnly = parameter.getParameterAnnotation(BindingKey::class.java)?.keycloakOnly == true
+        return bindingKeyOf(request, keycloakOnly)
+    }
+
+    /** The caller's binding key from the request's DPoP proof or peer-auth assertion. */
+    fun bindingKeyOf(request: HttpServletRequest, keycloakOnly: Boolean = false): String {
         val dpopProof = request.getHeader("DPoP")
         if (dpopProof != null) {
             if (keycloakOnly) throw PeerAuthValidationException("Only Keycloak's peer-auth assertion is accepted here")

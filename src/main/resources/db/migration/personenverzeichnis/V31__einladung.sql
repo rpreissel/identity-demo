@@ -1,6 +1,6 @@
 -- Einladungen zu einem Vorgang per Einmalkennwort (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
 -- Sie gehoeren dem Register wie der Freischaltcode (ADR-31): Es stellt sie aus, verschickt das
--- Kennwort per Brief und beendet sie; auth-invite fragt nur nach. Die Id ist SHA-256 ueber Person,
+-- Kennwort per Brief und beendet sie; auth-invite-lookup fragt nur nach. Die Id ist SHA-256 ueber Person,
 -- Kennwort und Vorgang, der Klartext steht allein im Brief.
 CREATE TABLE personenverzeichnis.einladung (
     id               VARCHAR(64)              PRIMARY KEY,

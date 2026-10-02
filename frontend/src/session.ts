@@ -44,7 +44,7 @@ const PENDING_PAIRING_CODE_KEY = 'identity-demo-pending-pairing-code'
 
 /**
  * The QR pairing code from a WEB channel's demo link (docs/07-betrieb.md #5, `?pairingCode=...`).
- * Stored so `confirm-qr-login`'s input step can pre-fill it once the tool activates, however many
+ * Stored so `approve-qr`'s input step can pre-fill it once the tool activates, however many
  * screens or reloads lie between.
  */
 export function loadPendingPairingCode(): string | null {

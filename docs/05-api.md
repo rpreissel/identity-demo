@@ -639,8 +639,8 @@ ID-Token-Claims.
 Dazu kommt ein Demo-Feld `boundCredentials`: je ein Eintrag `{method, reference}` für jedes an einen
 Schlüssel gebundene Credential des verknüpften Kontos, das auf **diesem** Schlüssel liegt. Das
 Verfahren `device` nennt seinen Credential-Schlüssel, `kobil` die Kennung, die der Anbieter diesem
-Telefon gegeben hat. Was angezeigt wird, entscheidet jedes Modul selbst
-(`ToolDescriptor.instanceDisclosure`, [03-tool-architektur.md](03-tool-architektur.md)); der
+Telefon gegeben hat. Was angezeigt wird, entscheidet jedes Modul selbst, indem es beim Einrichten
+eine `reference` meldet ([03-tool-architektur.md](03-tool-architektur.md) Abschnitt 1); der
 Orchestrator kennt dafür keinen einzigen Verfahrensnamen.
 
 Ein fehlender Eintrag sagt dabei genauso viel wie ein vorhandener: Hat ein Client lokale Daten zu
@@ -722,15 +722,15 @@ Beide durchlaufen dieselbe Prüfung:
    `auth-*`-Verfahren, genau wie beim Löschen des Kontos in Schritt 3 oben
    (`next={"context":"auth","step":"selectMethod"}` bei mehreren Kandidaten). **Ausnahme**: Musste
    in Schritt 2 erst ein Step-up stattfinden, zählt dessen Nachweis bereits als der geforderte.
-4. `confirm-qr-login` starten:
-   - `POST .../tools/confirm-qr-login` (ohne Inhalt) →
+4. `approve-qr` starten:
+   - `POST .../tools/approve-qr` (ohne Inhalt) →
      `stepData={"kind":"missing-fields","missingFields":["pairingCode"]}`.
-   - `PATCH .../confirm-qr-login` mit `{"pairingCode":"..."}` (aus dem QR-Code bzw. über den
+   - `PATCH .../approve-qr` mit `{"pairingCode":"..."}` (aus dem QR-Code bzw. über den
      Demo-Link vorbelegt, [Frontend](10-frontend.md)) → bei einer gültigen, noch offenen Anfrage
      `next.step="confirm"`. Bei einem unbekannten, abgelaufenen oder schon entschiedenen Code kommt
      `stepData.error`; der Schritt bleibt auf `input`, und es gelten die üblichen Regeln für weitere
      Versuche.
-   - `PATCH .../confirm-qr-login` mit `{"decision":"accept"}` bzw. `{"decision":"reject"}`. Hat das
+   - `PATCH .../approve-qr` mit `{"decision":"accept"}` bzw. `{"decision":"reject"}`. Hat das
      Konto kein aktives `enroll-qr`, liefert `accept` `stepData.error` („QR-Login ist für dieses
      Konto nicht aktiviert").
 5. Nach erfolgreichem `accept`: `next.step="showCode"` mit
@@ -738,7 +738,7 @@ Beide durchlaufen dieselbe Prüfung:
    der Nutzer in den wartenden Browser; erst damit ist der Browser angemeldet (Code in
    Gegenrichtung, [Betrieb](07-betrieb.md) Abschnitt 5). Der Code steht nur in dieser einen Antwort,
    gespeichert wird sein Hash; nach einem Neuladen zeigt `showCode` ihn nicht mehr.
-   `PATCH .../confirm-qr-login` mit `{"decision":"done"}` beendet den Schritt:
+   `PATCH .../approve-qr` mit `{"decision":"done"}` beendet den Schritt:
    `next={"type":"orchestrator","context":"authentication","step":"authenticated"}`. War der Kanal
    vor diesem Aufruf noch nicht `AUTHENTICATED`, fragt die Antwort vorher per `Prompt` („Jetzt
    abmelden?"), ob der Kanal angemeldet bleiben soll. `reject` liefert stattdessen `stepData.error`
@@ -834,7 +834,7 @@ bzw. über den eigenen Einstiegs-Intent `WEB_SELECT_METHOD` ([04-orchestrierung.
 Abschnitt 3), registriert über `REGISTER` (`intent=register`, siehe oben). `ident-fsc`, `ident-eid`,
 `confirm-email` und die `enroll-*`-Tools werden über dieselben `WebToolRenderer` angezeigt.
 
-**Einmalkennwort (`auth-invite`).** Ohne Konto bietet die Auswahl neben den Lookup-Anmeldungen das
+**Einmalkennwort (`auth-invite-lookup`).** Ohne Konto bietet die Auswahl neben den Lookup-Anmeldungen das
 Einmalkennwort an. Es endet mit einer Einladung als Subjekt statt eines Kontos; das Niveau ist das der
 Einladung, und eine Anmeldung, die mehr verlangt, bricht ab, bevor etwas gebunden wird. Keycloak liest
 den Einladungs-Nutzer über `GET /orchestrator/api/v1/kc/invitations/{invitation}`, gesichert wie die

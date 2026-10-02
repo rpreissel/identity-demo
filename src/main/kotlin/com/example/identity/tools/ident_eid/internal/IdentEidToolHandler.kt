@@ -1,12 +1,13 @@
 package com.example.identity.tools.ident_eid.internal
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
+import com.example.identity.contract.tool_api.ToolRole
+import com.example.identity.tools.ident_eid.EidModule
 import com.example.identity.contract.texts.Text
-import com.example.identity.tools.ident_eid.IdentEidDescriptor
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.ToolOutcome
-import com.example.identity.contract.tool_api.claims.ClaimSource
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -22,7 +23,6 @@ private val PIN_REJECTED = Text("eID-PIN ungueltig")
  */
 @Component
 class IdentEidToolHandler(
-    private val descriptor: IdentEidDescriptor,
     private val repository: IdentEidToolSessionRepository,
     private val clock: Clock
 ) {
@@ -65,20 +65,17 @@ class IdentEidToolHandler(
 
     private fun identified(toolSessionId: ToolSessionId, decision: IdentEidDecision.VerifyPin): ToolOutcome =
         ToolOutcome.Completed.Identified(
-            amr = listOf(descriptor.method),
-            achievedAcr = descriptor.maxAcr,
-            factorTypes = descriptor.factorTypes,
             claims = listOf(
                 // Exactly what the card showed, on this procedure's own authority (ADR-18).
                 // restricted_id becomes the anchor that recognizes the prospect on the
                 // next eid run (ADR-19).
-                Claim(AttributeType.FAMILY_NAME, checkNotNull(decision.claimed.familyName), ClaimSource(descriptor.toolId.value), descriptor.maxAcr),
-                Claim(AttributeType.GIVEN_NAMES, checkNotNull(decision.claimed.givenNames), ClaimSource(descriptor.toolId.value), descriptor.maxAcr),
-                Claim(AttributeType.BIRTH_DATE, checkNotNull(decision.claimed.birthDate).toString(), ClaimSource(descriptor.toolId.value), descriptor.maxAcr),
-                Claim(AttributeType.STREET_ADDRESS, checkNotNull(decision.claimed.streetAddress), ClaimSource(descriptor.toolId.value), descriptor.maxAcr),
-                Claim(AttributeType.POSTAL_CODE, checkNotNull(decision.claimed.postalCode), ClaimSource(descriptor.toolId.value), descriptor.maxAcr),
-                Claim(AttributeType.LOCALITY, checkNotNull(decision.claimed.locality), ClaimSource(descriptor.toolId.value), descriptor.maxAcr),
-                Claim(AttributeType.EID_RESTRICTED_ID, decision.restrictedId, ClaimSource(descriptor.toolId.value), descriptor.maxAcr)
+                Claim(AttributeType.FAMILY_NAME, checkNotNull(decision.claimed.familyName), EidModule.source(ToolRole.IDENTIFICATION), EidModule.maxAcr),
+                Claim(AttributeType.GIVEN_NAMES, checkNotNull(decision.claimed.givenNames), EidModule.source(ToolRole.IDENTIFICATION), EidModule.maxAcr),
+                Claim(AttributeType.BIRTH_DATE, checkNotNull(decision.claimed.birthDate).toString(), EidModule.source(ToolRole.IDENTIFICATION), EidModule.maxAcr),
+                Claim(AttributeType.STREET_ADDRESS, checkNotNull(decision.claimed.streetAddress), EidModule.source(ToolRole.IDENTIFICATION), EidModule.maxAcr),
+                Claim(AttributeType.POSTAL_CODE, checkNotNull(decision.claimed.postalCode), EidModule.source(ToolRole.IDENTIFICATION), EidModule.maxAcr),
+                Claim(AttributeType.LOCALITY, checkNotNull(decision.claimed.locality), EidModule.source(ToolRole.IDENTIFICATION), EidModule.maxAcr),
+                Claim(EID_RESTRICTED_ID, decision.restrictedId, EidModule.source(ToolRole.IDENTIFICATION), EidModule.maxAcr)
             ),
             auditDetails = mapOf(
                 "provider" to "eid-mock-service",

@@ -24,7 +24,7 @@ export const enrollQr: ToolModule = {
 }
 
 export const confirmQrLogin: ToolModule = {
-  toolId: 'confirm-qr-login',
+  toolId: 'approve-qr',
   meta: { icon: '📷', label: t('QR-Login'), hint: t('Web-Login per QR bestätigen') },
   explain: (step) =>
     step === 'confirm'

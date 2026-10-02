@@ -8,7 +8,7 @@ spring:
       # dessen einem Thread (PersonChangeExecutorConfig).
       mode: force
   modulith:
-    # Module sind nur Pakete mit @ApplicationModule in einer ModuleMetadata; die Gruppen
+    # Module sind nur Pakete mit einer Klasse mit @ApplicationModule (AccountModule, SmsToolModule ...); die Gruppen
     # core/contract/tools/simulation/demo dazwischen sind keine Module (docs/08-projektrahmen.md M-1).
     detection-strategy: explicitly-annotated
     events:
@@ -107,10 +107,10 @@ demo:
   tool-defaults:
     channels:
       APP:
-        order: [ident-nect, ident-fsc, ident-eid, ident-kvnr, enroll-device, enroll-kobil, enroll-qr, enroll-password, enroll-sms, enroll-email, auth-device, auth-kobil, auth-password, auth-sms, auth-qr, auth-email, auth-password-lookup, auth-sms-lookup, auth-qr-lookup, auth-email-lookup, auth-invite, confirm-email, confirm-qr-login]
-        disabled: [auth-qr, auth-email, auth-qr-lookup, auth-email-lookup, auth-invite]
+        order: [ident-nect, ident-fsc, ident-eid, ident-kvnr, enroll-device, enroll-kobil, enroll-qr, enroll-password, enroll-sms, enroll-email, auth-device, auth-kobil, auth-password, auth-sms, auth-qr, auth-email, auth-password-lookup, auth-sms-lookup, auth-qr-lookup, auth-email-lookup, auth-invite-lookup, confirm-email, approve-qr]
+        disabled: [auth-qr, auth-email, auth-qr-lookup, auth-email-lookup, auth-invite-lookup]
       WEB:
-        order: [ident-nect, ident-fsc, ident-eid, ident-kvnr, enroll-email, enroll-password, enroll-qr, enroll-sms, enroll-kobil, enroll-device, auth-qr, auth-sms, auth-password, auth-device, auth-email, auth-kobil, auth-qr-lookup, auth-sms-lookup, auth-password-lookup, auth-email-lookup, auth-invite, confirm-email, confirm-qr-login]
+        order: [ident-nect, ident-fsc, ident-eid, ident-kvnr, enroll-email, enroll-password, enroll-qr, enroll-sms, enroll-kobil, enroll-device, auth-qr, auth-sms, auth-password, auth-device, auth-email, auth-kobil, auth-qr-lookup, auth-sms-lookup, auth-password-lookup, auth-email-lookup, auth-invite-lookup, confirm-email, approve-qr]
         disabled: [enroll-kobil, enroll-device, auth-device, auth-email, auth-kobil, auth-email-lookup]
 
 # Wie viele Instanzen dieses Systems laufen. Eine Aussage ueber die Umgebung, kein Schalter:

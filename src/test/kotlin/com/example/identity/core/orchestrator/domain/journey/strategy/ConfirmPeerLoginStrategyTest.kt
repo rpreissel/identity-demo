@@ -1,9 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginStrategy
-import com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor
-import com.example.identity.tools.auth_sms.AuthSmsDescriptor
-import com.example.identity.tools.ident_fsc.IdentFscDescriptor
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -88,7 +86,7 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
 
     given("Requested, the session already carries loa2") {
         // device is the only method that reaches loa2 alone, so it seeds loa2 evidence with one method.
-        val acc = account(method("device", AcrLevel.LOA2, details = StrategyTestFixtures.deviceDetails()))
+        val acc = account(method("device", AcrLevel.LOA2, boundKeyRef = StrategyTestFixtures.BINDING_KEY))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE), account = acc), acrFloor = AcrLevel.LOA1)
         `when`("the journey starts") {
             val transition = strategy.transition(ConfirmPeerLoginState.Requested(true), JourneyEvent.Started, theCtx)
@@ -145,7 +143,7 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
     given("ConfirmationRequired, more than one offered candidate") {
         val state = ConfirmPeerLoginState.ConfirmationRequired(false, Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
         `when`("one candidate is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(AuthSmsDescriptor), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), ctx())
             then("keeps the choice among the rest") {
                 transition shouldBe
                     Transition.To(state.declining(ToolId("auth-sms")))
@@ -156,7 +154,7 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
     given("ConfirmationRequired, a single offered candidate") {
         val state = ConfirmPeerLoginState.ConfirmationRequired(false, Offer(listOf(ToolId("auth-sms"))))
         `when`("the last offered candidate is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(AuthSmsDescriptor), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), ctx())
             then("cancels - the peer login is never confirmed just because every re-proof option was declined") {
                 transition shouldBe Transition.Cancel
             }
@@ -166,7 +164,7 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
     given("ConfirmationRequired, started authenticated") {
         val state = ConfirmPeerLoginState.ConfirmationRequired(true, Offer(listOf(ToolId("auth-sms"))))
         `when`("any active factor is re-proven") {
-            val event = JourneyEvent.Completed(AuthSmsDescriptor, ToolOutcome.Completed.Authenticated(amr = listOf("sms")))
+            val event = JourneyEvent.Completed(tool("auth-sms"), ToolOutcome.Completed.Authenticated(amr = listOf("sms")))
             val transition = strategy.transition(state, event, ctx())
             then("moves on to Confirming - one proof, at any level, is always sufficient here") {
                 transition shouldBe Transition.To(ConfirmPeerLoginState.Confirming(true, CONFIRM_OFFER))
@@ -177,7 +175,7 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
     given("ConfirmationRequired, offering an identification tool") {
         val state = ConfirmPeerLoginState.ConfirmationRequired(false, Offer(listOf(ToolId("ident-fsc"))))
         `when`("an outcome this state never offers arrives (Identified)") {
-            val event = JourneyEvent.Completed(IdentFscDescriptor, identifiedOutcome())
+            val event = JourneyEvent.Completed(tool("ident-fsc"), identifiedOutcome())
             val result = runCatching { strategy.transition(state, event, ctx()) }
             then("fails loudly rather than silently confirming") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
@@ -191,14 +189,14 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
         val state = ConfirmPeerLoginState.Confirming(false, CONFIRM_OFFER)
         `when`("the approval just ran (Completed)") {
             val outcome = ToolOutcome.Completed.Approved()
-            val event = JourneyEvent.Completed(ConfirmQrLoginDescriptor, outcome)
+            val event = JourneyEvent.Completed(tool("approve-qr"), outcome)
             val transition = strategy.transition(state, event, theCtx)
             then("performs RecordApproval") {
-                transition shouldBe Transition.Perform(Action.RecordApproval(ConfirmQrLoginDescriptor, outcome), resumeState = state)
+                transition shouldBe Transition.Perform(Action.RecordApproval(tool("approve-qr"), outcome), resumeState = state)
             }
         }
     }
 })
 
-/** What the catalog offers for peer approval: confirm-qr-login, derived from its role. */
-private val CONFIRM_OFFER = Offer(listOf(ToolId("confirm-qr-login")))
+/** What the catalog offers for peer approval: approve-qr, derived from its role. */
+private val CONFIRM_OFFER = Offer(listOf(ToolId("approve-qr")))

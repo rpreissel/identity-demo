@@ -640,10 +640,10 @@ components:
         never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator
         ACR string, and only raises the channel's floor, never lowers it. amr lists which native Keycloak authenticators (never
         orchestrator tools) just proved something THIS flow run, one entry per proof - method/loa/factorTypes are resolved
-        server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the Keycloak facade's own mirror of a ToolDescriptor,
-        not resolved from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged
-        into the channel's evidence and re-checked against the current floor exactly like any other proof; no separate 'combined
-        native acr' field exists, since the orchestrator derives that itself.
+        server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the Keycloak facade's own mirror of a Tool, not resolved
+        from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged into the channel's
+        evidence and re-checked against the current floor exactly like any other proof; no separate 'combined native acr'
+        field exists, since the orchestrator derives that itself.
       properties:
         amr:
           items:
@@ -1668,7 +1668,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/peer-logins:
     post:
       description: Channel must already be AUTHENTICATED (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN). Same AuthIntent.CONFIRM_PEER_LOGIN
-        as the cold-entry path via POST /app/channels - gates on loa2 (step-up offered first if below it), then offers confirm-qr-login
+        as the cold-entry path via POST /app/channels - gates on loa2 (step-up offered first if below it), then offers approve-qr
         as the one candidate.
       operationId: confirmPeerLogin
       parameters:
@@ -1689,11 +1689,11 @@ paths:
                   state: STEP_UP_IN_PROGRESS
                 next:
                   step: input
-                  toolId: confirm-qr-login
+                  toolId: approve-qr
                   type: tool
               schema:
                 $ref: '#/components/schemas/ChannelResponse'
-          description: Already at loa2 - confirm-qr-login offered directly.
+          description: Already at loa2 - approve-qr offered directly.
         default:
           content:
             application/json:
@@ -1808,10 +1808,47 @@ paths:
       summary: Get the mock Keycloak AccessToken
       tags:
       - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/approve-qr:
+    post:
+      description: 'Optional body: {pairingCode}, when already known (e.g. from a demo-link deep link) - skips the input step.'
+      operationId: activate_22
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmQrLoginActivateRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate approve-qr
+      tags:
+      - 'Tool: QR-Login'
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-device:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_22
+      operationId: activate_21
       parameters:
       - in: path
         name: channelSessionId
@@ -1852,7 +1889,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-email:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_20
+      operationId: activate_19
       parameters:
       - in: path
         name: channelSessionId
@@ -1894,7 +1931,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-email-lookup:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_21
+      operationId: activate_20
       parameters:
       - in: path
         name: channelSessionId
@@ -1932,10 +1969,10 @@ paths:
       summary: Activate auth-email-lookup
       tags:
       - 'Tool: E-Mail'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-invite:
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-invite-lookup:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_19
+      operationId: activate_18
       parameters:
       - in: path
         name: channelSessionId
@@ -1953,7 +1990,7 @@ paths:
                   state: ANONYMOUS
                 next:
                   step: input
-                  toolId: auth-invite
+                  toolId: auth-invite-lookup
                   toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
                   type: tool
               schema:
@@ -1970,12 +2007,12 @@ paths:
           ]
       - kc-peer-auth: [
           ]
-      summary: Activate auth-invite
+      summary: Activate auth-invite-lookup
       tags:
       - 'Tool: Einmalkennwort'
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-kobil:
     post:
-      operationId: activate_18
+      operationId: activate_17
       parameters:
       - in: path
         name: channelSessionId
@@ -2023,7 +2060,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-password:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_16
+      operationId: activate_15
       parameters:
       - in: path
         name: channelSessionId
@@ -2065,7 +2102,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-password-lookup:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_17
+      operationId: activate_16
       parameters:
       - in: path
         name: channelSessionId
@@ -2106,7 +2143,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-qr:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_14
+      operationId: activate_13
       parameters:
       - in: path
         name: channelSessionId
@@ -2138,7 +2175,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-qr-lookup:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_15
+      operationId: activate_14
       parameters:
       - in: path
         name: channelSessionId
@@ -2170,7 +2207,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-sms:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_12
+      operationId: activate_11
       parameters:
       - in: path
         name: channelSessionId
@@ -2212,7 +2249,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-sms-lookup:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_13
+      operationId: activate_12
       parameters:
       - in: path
         name: channelSessionId
@@ -2253,7 +2290,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/tools/confirm-email:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_11
+      operationId: activate_10
       parameters:
       - in: path
         name: channelSessionId
@@ -2291,43 +2328,6 @@ paths:
       summary: Activate confirm-email
       tags:
       - 'Tool: E-Mail'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/confirm-qr-login:
-    post:
-      description: 'Optional body: {pairingCode}, when already known (e.g. from a demo-link deep link) - skips the input step.'
-      operationId: activate_10
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ConfirmQrLoginActivateRequest'
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate confirm-qr-login
-      tags:
-      - 'Tool: QR-Login'
   /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-device:
     post:
       description: 'No request body: toolId already carries kind and method.'
@@ -3208,9 +3208,76 @@ paths:
       summary: Replace the account's password credential with a new one
       tags:
       - Keycloak password management
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-device:
+  /orchestrator/api/v1/tools/{toolSessionId}/approve-qr:
     get:
       operationId: read_21
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current approve-qr state
+      tags:
+      - 'Tool: QR-Login'
+    patch:
+      description: 'First call: {pairingCode}. Once resolved: {decision: accept|reject}.'
+      operationId: patch_21
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmQrLoginPatchRequest'
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Supply the pairing code, then the accept/reject decision
+      tags:
+      - 'Tool: QR-Login'
+  /orchestrator/api/v1/tools/{toolSessionId}/auth-device:
+    get:
+      operationId: read_20
       parameters:
       - in: path
         name: toolSessionId
@@ -3251,7 +3318,7 @@ paths:
     patch:
       description: Body carries a self-signed device-proof JWT (typ=device-proof+jwt) over this exact URL, produced after
         the user confirms the mocked PIN/biometric prompt.
-      operationId: patch_21
+      operationId: patch_20
       parameters:
       - in: path
         name: toolSessionId
@@ -3298,7 +3365,7 @@ paths:
       - 'Tool: Gerät'
   /orchestrator/api/v1/tools/{toolSessionId}/auth-email:
     get:
-      operationId: read_19
+      operationId: read_18
       parameters:
       - in: path
         name: toolSessionId
@@ -3338,7 +3405,7 @@ paths:
       tags:
       - 'Tool: E-Mail'
     patch:
-      operationId: patch_19
+      operationId: patch_18
       parameters:
       - in: path
         name: toolSessionId
@@ -3386,7 +3453,7 @@ paths:
       - 'Tool: E-Mail'
   /orchestrator/api/v1/tools/{toolSessionId}/auth-email-lookup:
     get:
-      operationId: read_20
+      operationId: read_19
       parameters:
       - in: path
         name: toolSessionId
@@ -3427,7 +3494,7 @@ paths:
     patch:
       description: First call with email resolves the account and triggers the confirmation code send; a second call with
         code confirms it.
-      operationId: patch_20
+      operationId: patch_19
       parameters:
       - in: path
         name: toolSessionId
@@ -3488,9 +3555,9 @@ paths:
       summary: Supply email, then code
       tags:
       - 'Tool: E-Mail'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-invite:
+  /orchestrator/api/v1/tools/{toolSessionId}/auth-invite-lookup:
     get:
-      operationId: read_18
+      operationId: read_17
       parameters:
       - in: path
         name: toolSessionId
@@ -3516,12 +3583,12 @@ paths:
           ]
       - kc-peer-auth: [
           ]
-      summary: Read the current auth-invite state
+      summary: Read the current auth-invite-lookup state
       tags:
       - 'Tool: Einmalkennwort'
     patch:
       description: KVNR, or Partnernummer without a KVNR, together with the one-time password from the letter.
-      operationId: patch_18
+      operationId: patch_17
       parameters:
       - in: path
         name: toolSessionId
@@ -3563,7 +3630,7 @@ paths:
       - 'Tool: Einmalkennwort'
   /orchestrator/api/v1/tools/{toolSessionId}/auth-kobil:
     get:
-      operationId: read_17
+      operationId: read_16
       parameters:
       - in: path
         name: toolSessionId
@@ -3595,7 +3662,7 @@ paths:
     patch:
       description: The backend fetches the assertion behind the OTP from KOBIL, compares the device identifier with the enrolled
         one and checks the reported risks.
-      operationId: patch_17
+      operationId: patch_16
       parameters:
       - in: path
         name: toolSessionId
@@ -3704,7 +3771,7 @@ paths:
       - 'Tool: KOBIL'
   /orchestrator/api/v1/tools/{toolSessionId}/auth-password:
     get:
-      operationId: read_15
+      operationId: read_14
       parameters:
       - in: path
         name: toolSessionId
@@ -3744,7 +3811,7 @@ paths:
       tags:
       - 'Tool: Passwort'
     patch:
-      operationId: patch_15
+      operationId: patch_14
       parameters:
       - in: path
         name: toolSessionId
@@ -3792,7 +3859,7 @@ paths:
       - 'Tool: Passwort'
   /orchestrator/api/v1/tools/{toolSessionId}/auth-password-lookup:
     get:
-      operationId: read_16
+      operationId: read_15
       parameters:
       - in: path
         name: toolSessionId
@@ -3831,7 +3898,7 @@ paths:
       tags:
       - 'Tool: Passwort'
     patch:
-      operationId: patch_16
+      operationId: patch_15
       parameters:
       - in: path
         name: toolSessionId
@@ -3878,7 +3945,7 @@ paths:
       - 'Tool: Passwort'
   /orchestrator/api/v1/tools/{toolSessionId}/auth-qr:
     get:
-      operationId: read_13
+      operationId: read_12
       parameters:
       - in: path
         name: toolSessionId
@@ -3905,6 +3972,75 @@ paths:
       - kc-peer-auth: [
           ]
       summary: Read the current auth-qr state
+      tags:
+      - 'Tool: QR-Login'
+    patch:
+      description: 'Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a confirmation
+        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md
+        #5).'
+      operationId: patch_12
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QrConfirmationCodeRequest'
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Poll for the APP side's decision, then submit the confirmation code the app shows
+      tags:
+      - 'Tool: QR-Login'
+  /orchestrator/api/v1/tools/{toolSessionId}/auth-qr-lookup:
+    get:
+      operationId: read_13
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current auth-qr-lookup state
       tags:
       - 'Tool: QR-Login'
     patch:
@@ -3945,78 +4081,9 @@ paths:
       summary: Poll for the APP side's decision, then submit the confirmation code the app shows
       tags:
       - 'Tool: QR-Login'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-qr-lookup:
-    get:
-      operationId: read_14
-      parameters:
-      - in: path
-        name: toolSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: OK
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Read the current auth-qr-lookup state
-      tags:
-      - 'Tool: QR-Login'
-    patch:
-      description: 'Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a confirmation
-        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md
-        #5).'
-      operationId: patch_14
-      parameters:
-      - in: path
-        name: toolSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/QrConfirmationCodeRequest'
-      responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: OK
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Poll for the APP side's decision, then submit the confirmation code the app shows
-      tags:
-      - 'Tool: QR-Login'
   /orchestrator/api/v1/tools/{toolSessionId}/auth-sms:
     get:
-      operationId: read_11
+      operationId: read_10
       parameters:
       - in: path
         name: toolSessionId
@@ -4056,7 +4123,7 @@ paths:
       tags:
       - 'Tool: SMS'
     patch:
-      operationId: patch_11
+      operationId: patch_10
       parameters:
       - in: path
         name: toolSessionId
@@ -4104,7 +4171,7 @@ paths:
       - 'Tool: SMS'
   /orchestrator/api/v1/tools/{toolSessionId}/auth-sms-lookup:
     get:
-      operationId: read_12
+      operationId: read_11
       parameters:
       - in: path
         name: toolSessionId
@@ -4144,7 +4211,7 @@ paths:
       - 'Tool: SMS'
     patch:
       description: First call with email resolves the account and triggers the TAN send; a second call with tan confirms it.
-      operationId: patch_12
+      operationId: patch_11
       parameters:
       - in: path
         name: toolSessionId
@@ -4207,7 +4274,7 @@ paths:
       - 'Tool: SMS'
   /orchestrator/api/v1/tools/{toolSessionId}/confirm-email:
     get:
-      operationId: read_10
+      operationId: read_9
       parameters:
       - in: path
         name: toolSessionId
@@ -4247,7 +4314,7 @@ paths:
       - 'Tool: E-Mail'
     patch:
       description: First call with email triggers the code send; a second call with code confirms it.
-      operationId: patch_10
+      operationId: patch_9
       parameters:
       - in: path
         name: toolSessionId
@@ -4309,73 +4376,6 @@ paths:
       summary: Supply email, then the confirmation code
       tags:
       - 'Tool: E-Mail'
-  /orchestrator/api/v1/tools/{toolSessionId}/confirm-qr-login:
-    get:
-      operationId: read_9
-      parameters:
-      - in: path
-        name: toolSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: OK
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Read the current confirm-qr-login state
-      tags:
-      - 'Tool: QR-Login'
-    patch:
-      description: 'First call: {pairingCode}. Once resolved: {decision: accept|reject}.'
-      operationId: patch_9
-      parameters:
-      - in: path
-        name: toolSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ConfirmQrLoginPatchRequest'
-      responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: OK
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Supply the pairing code, then the accept/reject decision
-      tags:
-      - 'Tool: QR-Login'
   /orchestrator/api/v1/tools/{toolSessionId}/enroll-device:
     get:
       operationId: read_8

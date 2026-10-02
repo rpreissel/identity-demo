@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_kobil.internal.authkobil
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
@@ -14,8 +15,7 @@ import com.example.identity.simulation.kobil.KobilOtpVerification
 import com.example.identity.simulation.kobil.KobilRisk
 import com.example.identity.simulation.kobil.KobilSsms
 import com.example.identity.simulation.kobil.KobilUserRef
-import com.example.identity.tools.auth_kobil.AuthKobilDescriptor
-import com.example.identity.tools.auth_kobil.KOBIL_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_kobil.internal.KOBIL_ENROLLMENT_TYPE
 import com.example.identity.tools.auth_kobil.api.v1.KobilOtpStep
 import com.example.identity.tools.auth_kobil.api.v1.KobilUnlockCredential
 import com.example.identity.tools.auth_kobil.api.v1.KobilUnlockStep
@@ -46,12 +46,10 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
     val secrets = KobilSecrets(pinLength = 8)
     val ssms = mockk<KobilSsms>()
     val passwordCredentials = mockk<PasswordCredentialPort>()
-    val handler = AuthKobilToolHandler(
-        AuthKobilDescriptor, toolDataRepository, enrollmentRepository, secrets, ssms, passwordCredentials,
+    val handler = AuthKobilToolHandler( toolDataRepository, enrollmentRepository, secrets, ssms, passwordCredentials,
         blockingRisks = setOf(KobilRisk.ROOTED, KobilRisk.EMULATOR, KobilRisk.DEBUGGER_ATTACHED, KobilRisk.APP_TAMPERED),
         pinReleaseTtlSeconds = 120,
-        clock = TEST_CLOCK,
-    )
+        clock = TEST_CLOCK,)
     val tenantId = "identity-demo"
 
     /** An enrollment on device `dev-<id>`; [biometricConsent] decides whether an unlock-secret hash is stored. */
@@ -245,7 +243,6 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             then("it authenticates with kobil and biometric, possession plus inherence") {
                 outcome shouldBe ToolOutcome.Completed.Authenticated(
                     amr = listOf("kobil", "biometric"),
-                    achievedAcr = AuthKobilDescriptor.maxAcr,
                     factorTypes = setOf(FactorType.POSSESSION, FactorType.INHERENCE),
                 )
             }
@@ -258,7 +255,6 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             then("it authenticates with kobil and pin, possession plus knowledge") {
                 outcome shouldBe ToolOutcome.Completed.Authenticated(
                     amr = listOf("kobil", "pin"),
-                    achievedAcr = AuthKobilDescriptor.maxAcr,
                     factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE),
                 )
             }

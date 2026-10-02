@@ -73,7 +73,7 @@ Namensänderung, Journey-Trace und das Löschen des Kontos.
 - **[Glossar](glossar/glossar.md)**: Was bedeutet ein Begriff des Projekts, wie heißt er im Code,
   und wo steht er ausführlich? Alphabetisch.
 - **[Glossar nach englischen Begriffen](glossar/glossar-englisch.md)**: Welcher deutsche Begriff
-  steht hinter einem Namen im Code (`AuthJourney`, `acrFloor`, `auth-invite`)? Englisch sortiert,
+  steht hinter einem Namen im Code (`AuthJourney`, `acrFloor`, `auth-invite-lookup`)? Englisch sortiert,
   deutsch beschrieben.
 - **[Externes Glossar](glossar/externes-glossar.md)**: Was bedeuten die Fachbegriffe zu
   Authentifizierung, Identifizierung und Gerätebindung? Externes Glossar, unverändert übernommen.

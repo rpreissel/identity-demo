@@ -6,8 +6,6 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
-import org.hibernate.annotations.JdbcTypeCode
-import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.UUID
 
@@ -38,9 +36,14 @@ class AccountAuthMethod(
     @Column(name = "label")
     var label: String? = null,
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "details")
-    var details: Map<String, Any?>? = null
+    @Column(name = "bound_key_ref")
+    var boundKeyRef: String? = null,
+
+    @Column(name = "reference")
+    var reference: String? = null,
+
+    @Column(name = "allows_multiple_instances", nullable = false)
+    var allowsMultipleInstances: Boolean = false
 ) {
     /** What `DELETE .../methods/{id}` addresses, since a method name may have several active instances. */
     @Id

@@ -1,16 +1,12 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.contract.tool_api.EnrollmentRef
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.emailAttestation
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
-import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
-import com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor
-import com.example.identity.tools.auth_sms.AuthSmsDescriptor
-import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
-import com.example.identity.tools.ident_fsc.IdentFscDescriptor
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -23,58 +19,58 @@ import io.kotest.matchers.shouldBe
 class AuthEnrollCoreTest : BehaviorSpec({
 
     given("an identification tool reported a person") {
-        val event = JourneyEvent.Completed(IdentFscDescriptor, identifiedOutcome())
+        val event = JourneyEvent.Completed(tool("ident-fsc"), identifiedOutcome())
 
         `when`("the action is chosen") {
             val action = AuthEnrollCore.proofAction(event)
 
             then("it records the identification, which finds or creates the account") {
-                action shouldBe Action.RecordIdentification(IdentFscDescriptor, identifiedOutcome())
+                action shouldBe Action.RecordIdentification(tool("ident-fsc"), identifiedOutcome())
             }
         }
     }
 
     given("an enrollment tool created a credential") {
         val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
-        val event = JourneyEvent.Completed(EnrollSmsDescriptor, outcome)
+        val event = JourneyEvent.Completed(tool("enroll-sms"), outcome)
 
         `when`("the action is chosen") {
             val action = AuthEnrollCore.proofAction(event)
 
             then("it adopts the credential") {
-                action shouldBe Action.AdoptCredential(EnrollSmsDescriptor, outcome)
+                action shouldBe Action.AdoptCredential(tool("enroll-sms"), outcome)
             }
         }
     }
 
     given("an auth tool proved an existing credential") {
         val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("sms"))
-        val event = JourneyEvent.Completed(AuthSmsDescriptor, outcome)
+        val event = JourneyEvent.Completed(tool("auth-sms"), outcome)
 
         `when`("the action is chosen") {
             val action = AuthEnrollCore.proofAction(event)
 
             then("it accepts the proof") {
-                action shouldBe Action.AcceptProof(AuthSmsDescriptor, outcome)
+                action shouldBe Action.AcceptProof(tool("auth-sms"), outcome)
             }
         }
     }
 
     given("an attesting tool confirmed an address") {
         val outcome = emailAttestation()
-        val event = JourneyEvent.Completed(ConfirmEmailDescriptor, outcome)
+        val event = JourneyEvent.Completed(tool("confirm-email"), outcome)
 
         `when`("the action is chosen") {
             val action = AuthEnrollCore.proofAction(event)
 
             then("it adopts the attestation, without a credential") {
-                action shouldBe Action.AdoptAttestation(ConfirmEmailDescriptor, outcome)
+                action shouldBe Action.AdoptAttestation(tool("confirm-email"), outcome)
             }
         }
     }
 
     given("a peer-login tool approved another channel's login") {
-        val event = JourneyEvent.Completed(ConfirmQrLoginDescriptor, ToolOutcome.Completed.Approved())
+        val event = JourneyEvent.Completed(tool("approve-qr"), ToolOutcome.Completed.Approved())
 
         `when`("the action is chosen") {
             val result = runCatching { AuthEnrollCore.proofAction(event) }

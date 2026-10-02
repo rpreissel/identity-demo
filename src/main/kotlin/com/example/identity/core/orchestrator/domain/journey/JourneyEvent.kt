@@ -1,7 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey
 
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.ToolDescriptor
+import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.core.orchestrator.domain.AuthIntent
 
@@ -19,10 +19,10 @@ sealed interface JourneyEvent {
     data object EvidenceReported : JourneyEvent
 
     /** A tool finished successfully; [outcome] is what a strategy turns into an [Action]. */
-    data class Completed(val tool: ToolDescriptor, val outcome: ToolOutcome.Completed) : JourneyEvent
+    data class Completed(val tool: Tool, val outcome: ToolOutcome.Completed) : JourneyEvent
 
     /** "Back"/"Switch": the user abandoned an activated tool without finishing it. */
-    data class Abandoned(val tool: ToolDescriptor) : JourneyEvent
+    data class Abandoned(val tool: Tool) : JourneyEvent
 
     /**
      * A [Transition.Perform]'s [Action] finished; the [JourneyContext] is fresh. Every state named

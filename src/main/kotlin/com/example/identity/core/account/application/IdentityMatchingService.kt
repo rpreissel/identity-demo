@@ -13,10 +13,7 @@ import com.example.identity.contract.tool_api.directory.IdentityResolver
 import com.example.identity.contract.tool_api.directory.MatchedVia
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.directory.Resolution
-import com.example.identity.contract.tool_api.claims.normalizeAnchorValue
 import com.example.identity.contract.tool_api.directory.normalizeKvnr
-import com.example.identity.contract.tool_api.claims.anchorRule
-import com.example.identity.contract.tool_api.claims.isLocalAnchor
 import com.example.identity.contract.tool_api.claims.ClaimTrust
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim

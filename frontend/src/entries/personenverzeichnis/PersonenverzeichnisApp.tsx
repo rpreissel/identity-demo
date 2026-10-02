@@ -274,7 +274,7 @@ function einladungStatus(e: Einladung): string {
 /**
  * Invitations to one process by one-time password (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). The
  * register issues them like Freischaltcodes and sends the password by letter; the application only
- * asks it at login (auth-invite). The id is the SHA-256 over person, password and process - the
+ * asks it at login (auth-invite-lookup). The id is the SHA-256 over person, password and process - the
  * business system ends the invitation with it.
  */
 function EinladungenTab({ personen, onError }: { personen: RegisterPerson[]; onError: (m: string | null) => void }) {

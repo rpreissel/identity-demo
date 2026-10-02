@@ -347,10 +347,10 @@ components:
         never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator
         ACR string, and only raises the channel's floor, never lowers it. amr lists which native Keycloak authenticators (never
         orchestrator tools) just proved something THIS flow run, one entry per proof - method/loa/factorTypes are resolved
-        server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the Keycloak facade's own mirror of a ToolDescriptor,
-        not resolved from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged
-        into the channel's evidence and re-checked against the current floor exactly like any other proof; no separate 'combined
-        native acr' field exists, since the orchestrator derives that itself.
+        server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the Keycloak facade's own mirror of a Tool, not resolved
+        from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged into the channel's
+        evidence and re-checked against the current floor exactly like any other proof; no separate 'combined native acr'
+        field exists, since the orchestrator derives that itself.
       properties:
         amr:
           items:
@@ -1527,7 +1527,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/peer-logins:
     post:
       description: Channel must already be AUTHENTICATED (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN). Same AuthIntent.CONFIRM_PEER_LOGIN
-        as the cold-entry path via POST /app/channels - gates on loa2 (step-up offered first if below it), then offers confirm-qr-login
+        as the cold-entry path via POST /app/channels - gates on loa2 (step-up offered first if below it), then offers approve-qr
         as the one candidate.
       operationId: confirmPeerLogin
       parameters:
@@ -1548,11 +1548,11 @@ paths:
                   state: STEP_UP_IN_PROGRESS
                 next:
                   step: input
-                  toolId: confirm-qr-login
+                  toolId: approve-qr
                   type: tool
               schema:
                 $ref: ../openapi.yaml#/components/schemas/ChannelResponse
-          description: Already at loa2 - confirm-qr-login offered directly.
+          description: Already at loa2 - approve-qr offered directly.
         default:
           content:
             application/json:

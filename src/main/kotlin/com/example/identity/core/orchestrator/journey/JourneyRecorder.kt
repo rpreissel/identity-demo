@@ -14,7 +14,7 @@ import com.example.identity.core.orchestrator.session.SessionEvidenceService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ToolRole
-import com.example.identity.contract.tool_api.ToolDescriptor
+import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Component
 import com.example.identity.core.orchestrator.session.forLog
@@ -63,7 +63,7 @@ class JourneyRecorder(
     fun recordToolCompletion(
         journey: AuthJourney,
         channel: ChannelSession,
-        tool: ToolDescriptor,
+        tool: Tool,
         outcome: ToolOutcome.Completed,
         effectiveAcr: AcrLevel?
     ) {
@@ -72,14 +72,14 @@ class JourneyRecorder(
         // A role on neither axis proves nothing about this session and leaves no evidence,
         // whatever it reported. Decided centrally, so a tool cannot mint assurance its role denies.
         val axis = tool.evidenceAxis()
-        val updates = if (axis == null) emptyList() else outcome.amr.map { method ->
+        val updates = if (axis == null) emptyList() else tool.amrOf(outcome).map { method ->
             MethodEvidence(
                 method = MethodName(method),
             // This run's achieved or capped level, else the tool's declared ceiling.
                 loa = effectiveAcr ?: tool.maxAcr,
             // The account's enrollment record for this method (docs/06-ablaeufe.md #1).
                 enrolledUnderAcr = accountId?.let { accountService.findActiveMethod(it, method)?.enrolledUnderAcr }?.let(AcrLevel::parse),
-                factorTypes = outcome.factorTypes,
+                factorTypes = tool.factorsOf(outcome),
                 source = AmrSource.ORCHESTRATOR,
                 amrSourceId = tool.toolId.value,
                 axis = axis,
@@ -97,14 +97,14 @@ class JourneyRecorder(
     fun recordIdentification(
         journey: AuthJourney,
         channel: ChannelSession,
-        tool: ToolDescriptor,
+        tool: Tool,
         outcome: ToolOutcome.Completed.Identified
     ) {
         // Passed on whole: the change log decides what to keep (ChangeLog.identified).
         accountService.addIdentification(
             checkNotNull(channel.accountId),
             tool.method,
-            outcome.achievedAcr?.value,
+            tool.levelOf(outcome).value,
             role = tool.role.name,
             report = outcome.auditDetails.orEmpty(),
         )

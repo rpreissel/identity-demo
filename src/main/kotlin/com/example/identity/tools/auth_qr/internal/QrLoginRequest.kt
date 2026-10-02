@@ -16,7 +16,7 @@ import java.time.Instant
 enum class QrLoginStatus { PENDING, APPROVED, COMPLETED, DENIED, EXPIRED }
 
 /**
- * Connects a WEB `auth-qr`/`auth-qr-lookup` activation to an APP `confirm-qr-login` decision.
+ * Connects a WEB `auth-qr`/`auth-qr-lookup` activation to an APP `approve-qr` decision.
  * [pairingCode] is the primary key and the lookup capability (docs/07-betrieb.md #5).
  * [confirmationCodeHash] is the code in the other direction, typed into the browser;
  * [confirmationAttempts] bounds guessing it. [expectedAccountId] is set only by `auth-qr`, and the

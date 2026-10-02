@@ -3,6 +3,8 @@ package com.example.identity.architecture
 import com.example.identity.demo.demo_mode.DemoSurface
 import com.example.identity.core.orchestrator.keycloak.PeerAuthValidator
 import com.example.identity.contract.tool_api.BindingKey
+import com.example.identity.contract.tool_api.ActivateTool
+import com.example.identity.contract.tool_api.LoadTool
 import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.JavaMethod
 import com.tngtech.archunit.lang.ArchCondition
@@ -60,10 +62,12 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
     val simulatedForeignSystems = setOf("com.example.identity.simulation..")
     val exempt = guardedByAdminLogin + guardedByPeerAuth + publicByDesign.keys
 
-    val haveBindingKey = object : ArchCondition<JavaMethod>("have a @BindingKey parameter") {
+    // A @LoadTool or @ActivateTool context is resolved with the same proof and checked against the channel.
+    val boundToChannel = listOf(BindingKey::class.java, LoadTool::class.java, ActivateTool::class.java)
+    val haveBindingKey = object : ArchCondition<JavaMethod>("have a @BindingKey, @LoadTool or @ActivateTool parameter") {
         override fun check(method: JavaMethod, events: ConditionEvents) {
-            if (method.parameters.none { it.isAnnotatedWith(BindingKey::class.java) }) {
-                events.add(SimpleConditionEvent.violated(method, "${method.fullName} has no @BindingKey parameter"))
+            if (method.parameters.none { parameter -> boundToChannel.any { parameter.isAnnotatedWith(it) } }) {
+                events.add(SimpleConditionEvent.violated(method, "${method.fullName} has no @BindingKey, @LoadTool or @ActivateTool parameter"))
             }
         }
     }

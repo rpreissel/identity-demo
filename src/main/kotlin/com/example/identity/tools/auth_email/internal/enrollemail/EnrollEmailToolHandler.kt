@@ -1,7 +1,6 @@
 package com.example.identity.tools.auth_email.internal.enrollemail
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
-import com.example.identity.tools.auth_email.EnrollEmailDescriptor
 import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
 import com.example.identity.contract.tool_api.ToolOutcome
 import java.time.Clock
@@ -16,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional
  */
 @Component
 class EnrollEmailToolHandler(
-    private val descriptor: EnrollEmailDescriptor,
     private val toolDataRepository: EnrollEmailToolSessionRepository,
     private val clock: Clock
 ) {
@@ -39,9 +37,9 @@ class EnrollEmailToolHandler(
         return completed()
     }
 
+    // No amr: nothing was proven in this run, so it must not raise the channel's assurance.
     private fun completed() = ToolOutcome.Completed.Enrolled(
         enrollmentRef = EMAIL_ANCHOR_ENROLLMENT,
-        achievedAcr = descriptor.maxAcr,
-        factorTypes = descriptor.factorTypes
+        amr = emptyList(),
     )
 }

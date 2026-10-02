@@ -5,7 +5,6 @@ import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolId
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -31,7 +30,7 @@ class ToolAvailabilityService(
      * setting can turn one back on.
      */
     private val demoOnlyToolIds: Set<String> =
-        if (demoMode.on) emptySet() else toolRegistry.descriptors().filter { it.demoOnly != null }.mapTo(mutableSetOf()) { it.toolId.value }
+        if (demoMode.on) emptySet() else toolRegistry.tools().filter { it.demoOnly != null }.mapTo(mutableSetOf()) { it.toolId.value }
 
     fun isEnabled(toolId: String, channel: ChannelType): Boolean =
         toolId !in demoOnlyToolIds && (repository.findByIdOrNull(ToolAvailabilityKey(toolId, channel))?.enabled ?: true)
@@ -84,8 +83,8 @@ class ToolAvailabilityService(
     }
 
     private val defaultOrder: Comparator<ToolId> = compareBy(
-        { ROLE_ORDER.indexOf(toolRegistry.descriptorOf(it).role) },
-        { toolRegistry.descriptorOf(it).method },
+        { ROLE_ORDER.indexOf(toolRegistry.toolOf(it).role) },
+        { toolRegistry.toolOf(it).method },
         { it.value }
     )
 

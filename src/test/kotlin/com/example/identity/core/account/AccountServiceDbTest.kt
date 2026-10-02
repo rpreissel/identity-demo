@@ -1,6 +1,9 @@
 package com.example.identity.core.account
 
 import com.example.identity.core.orchestrator.SharedSpringContext
+import com.example.identity.tools.auth_password.PASSWORD_EXISTS
+import com.example.identity.tools.auth_sms.PHONE_NUMBER
+import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.infrastructure.AccountAnchorRepository
@@ -292,7 +295,7 @@ class AccountServiceDbTest(
             val instance = java.util.UUID.randomUUID()
             // Same order as the enrollment path: the new instance's claims first, then the instance.
             accountService.recordClaims(accountId, listOf(claim), provenAcr = AcrLevel.LOA1, authMethodId = instance)
-            accountService.addAuthenticationMethod(accountId, method, EnrollmentRef("t", ref), "loa1", emptyMap(), instanceId = instance)
+            accountService.addAuthenticationMethod(accountId, method, EnrollmentRef("t", ref), "loa1", instanceId = instance)
         }
         val smsTool = ClaimSource("enroll-sms")
         val passwordTool = ClaimSource("enroll-password")
@@ -300,12 +303,12 @@ class AccountServiceDbTest(
         `when`("a second sms method with a new phone number is enrolled") {
             clearAccounts()
             val account = accountService.createAccountInSetup()
-            enroll(account.accountId, "sms", Claim(AttributeType.PHONE_NUMBER, "+491700000001", smsTool), "s-1")
-            enroll(account.accountId, "sms", Claim(AttributeType.PHONE_NUMBER, "+491700000002", smsTool), "s-2")
+            enroll(account.accountId, "sms", Claim(PHONE_NUMBER, "+491700000001", smsTool), "s-1")
+            enroll(account.accountId, "sms", Claim(PHONE_NUMBER, "+491700000002", smsTool), "s-2")
 
             then("the old phone number stops counting, the new one counts") {
-                accountService.establishedClaimValues(account.accountId, setOf(AttributeType.PHONE_NUMBER)) shouldBe
-                    mapOf(AttributeType.PHONE_NUMBER to "+491700000002")
+                accountService.establishedClaimValues(account.accountId, setOf(PHONE_NUMBER)) shouldBe
+                    mapOf(PHONE_NUMBER to "+491700000002")
                 jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM account.retraction WHERE account_id = ? AND attribute_type = 'phone_number'",
                     Int::class.java, account.accountId.value
@@ -316,12 +319,12 @@ class AccountServiceDbTest(
         `when`("a second password method asserting the same value is enrolled") {
             clearAccounts()
             val account = accountService.createAccountInSetup()
-            val exists = Claim(AttributeType.PASSWORD_EXISTS, com.example.identity.contract.tool_api.claims.PASSWORD_EXISTS_MARKER, passwordTool)
+            val exists = Claim(PASSWORD_EXISTS, com.example.identity.tools.auth_password.PASSWORD_EXISTS_MARKER, passwordTool)
             enroll(account.accountId, "password", exists, "p-1")
             enroll(account.accountId, "password", exists, "p-2")
 
             then("a value the replacement asserts itself stays - a new password still means 'has a password'") {
-                accountService.findAccount(account.accountId)!!.establishedClaims.keys.contains(AttributeType.PASSWORD_EXISTS) shouldBe true
+                accountService.findAccount(account.accountId)!!.establishedClaims.keys.contains(PASSWORD_EXISTS) shouldBe true
             }
         }
     }
@@ -369,12 +372,12 @@ class AccountServiceDbTest(
             val account = accountService.createAccountInSetup()
             accountService.recordClaim(
                 account.accountId,
-                Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource("ident-eid")),
+                Claim(EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource("ident-eid")),
                 provenAcr = AcrLevel.LOA2
             )
             accountService.recordClaim(
                 account.accountId,
-                Claim(AttributeType.EID_RESTRICTED_ID, "T0909090Z9X8Y7W6V5U4T3S2R1", ClaimSource("ident-eid")),
+                Claim(EID_RESTRICTED_ID, "T0909090Z9X8Y7W6V5U4T3S2R1", ClaimSource("ident-eid")),
                 provenAcr = AcrLevel.LOA2
             )
 
@@ -398,14 +401,14 @@ class AccountServiceDbTest(
             val second = accountService.createAccountInSetup()
             accountService.recordClaim(
                 first.accountId,
-                Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource("ident-eid")),
+                Claim(EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource("ident-eid")),
                 provenAcr = AcrLevel.LOA2
             )
 
             val result = runCatching {
                 accountService.recordClaim(
                     second.accountId,
-                    Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource("ident-eid")),
+                    Claim(EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", ClaimSource("ident-eid")),
                     provenAcr = AcrLevel.LOA2
                 )
             }
@@ -428,7 +431,7 @@ class AccountServiceDbTest(
             accountService.recordClaims(
                 account.accountId,
                 listOf(
-                    Claim(AttributeType.PHONE_NUMBER, "+491701234567", ClaimSource("enroll-sms")),
+                    Claim(PHONE_NUMBER, "+491701234567", ClaimSource("enroll-sms")),
                     Claim(AttributeType.EMAIL, "max@example.com", ClaimSource("enroll-sms"))
                 ),
                 authMethodId = instanceId,
@@ -483,7 +486,7 @@ class AccountServiceDbTest(
             val card = listOf(
                 Claim(AttributeType.FAMILY_NAME, "Mustermann", eid, AcrLevel.LOA3),
                 Claim(AttributeType.GIVEN_NAMES, "Max", eid, AcrLevel.LOA3),
-                Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", eid, AcrLevel.LOA3)
+                Claim(EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", eid, AcrLevel.LOA3)
             )
             accountService.recordClaims(account.accountId, card, provenAcr = AcrLevel.LOA2)
             accountService.recordClaims(account.accountId, card, provenAcr = AcrLevel.LOA2)
@@ -510,7 +513,7 @@ class AccountServiceDbTest(
             accountService.recordClaims(disposable.accountId, listOf(
                 Claim(AttributeType.FAMILY_NAME, "Muster", eid, AcrLevel.LOA3),
                 Claim(AttributeType.GIVEN_NAMES, "Max", eid, AcrLevel.LOA3),
-                Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", eid, AcrLevel.LOA3)
+                Claim(EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", eid, AcrLevel.LOA3)
             ), provenAcr = AcrLevel.LOA2)
             accountService.addIdentification(disposable.accountId, "eid", "loa3", role = "IDENTIFICATION", report = mapOf("provider" to "eid-mock-service"))
             val target = accountService.createAccountInSetup()
@@ -523,7 +526,7 @@ class AccountServiceDbTest(
             then("it yields: anchors and claims move, the identification proof is carried over, the account is gone") {
                 accountService.findAccount(disposable.accountId).shouldBeNull()
                 accountService.findAccount(target.accountId)!!.personId shouldBe PartnerNumber("P000000001")
-                anchorRepository.findByAccountIdAndAttributeType(target.accountId, AttributeType.EID_RESTRICTED_ID)!!.value shouldBe
+                anchorRepository.findByAccountIdAndAttributeType(target.accountId, EID_RESTRICTED_ID)!!.value shouldBe
                     "T0103005K1D5S0V8T9W6UM2RTX"
                 accountService.establishedClaimValues(target.accountId, setOf(AttributeType.FAMILY_NAME, AttributeType.GIVEN_NAMES)) shouldBe
                     mapOf(AttributeType.FAMILY_NAME to "Muster", AttributeType.GIVEN_NAMES to "Max")
@@ -567,20 +570,20 @@ class AccountServiceDbTest(
             val leftover = accountService.createAccountInSetup()
             accountService.recordClaim(
                 leftover.accountId,
-                Claim(AttributeType.EID_RESTRICTED_ID, "T0304223A9B1N7K5D2PN1S44QE", eid, AcrLevel.LOA3),
+                Claim(EID_RESTRICTED_ID, "T0304223A9B1N7K5D2PN1S44QE", eid, AcrLevel.LOA3),
                 provenAcr = AcrLevel.LOA2
             )
             val enrolled = accountService.createAccountInSetup()
             accountService.addAuthenticationMethod(
                 enrolled.accountId, "password", EnrollmentRef("auth_password", "e-3"),
-                enrolledUnderAcr = "loa1", details = emptyMap()
+                enrolledUnderAcr = "loa1"
             )
 
             accountService.absorbDisposableAccount(leftover.accountId, enrolled.accountId)
 
             then("the leftover is absorbed into the account that holds the credentials") {
                 accountService.findAccount(leftover.accountId).shouldBeNull()
-                anchorRepository.findByAccountIdAndAttributeType(enrolled.accountId, AttributeType.EID_RESTRICTED_ID)!!.value shouldBe
+                anchorRepository.findByAccountIdAndAttributeType(enrolled.accountId, EID_RESTRICTED_ID)!!.value shouldBe
                     "T0304223A9B1N7K5D2PN1S44QE"
                 accountService.findAccount(enrolled.accountId)!!.activeAuthenticationMethods.size shouldBe 1
             }
@@ -641,11 +644,11 @@ class AccountServiceDbTest(
             clearAccounts()
             val account = accountService.createAccountInSetup()
             val source = ClaimSource("ident-eid")
-            accountService.recordClaim(account.accountId, Claim(AttributeType.EID_RESTRICTED_ID, "AbC123", source), provenAcr = AcrLevel.LOA3)
-            accountService.recordClaim(account.accountId, Claim(AttributeType.EID_RESTRICTED_ID, "ABC123", source), provenAcr = AcrLevel.LOA3)
+            accountService.recordClaim(account.accountId, Claim(EID_RESTRICTED_ID, "AbC123", source), provenAcr = AcrLevel.LOA3)
+            accountService.recordClaim(account.accountId, Claim(EID_RESTRICTED_ID, "ABC123", source), provenAcr = AcrLevel.LOA3)
 
             then("the new claim stands - the replacement does not void what it just set") {
-                accountService.establishedClaimValues(account.accountId, setOf(AttributeType.EID_RESTRICTED_ID))[AttributeType.EID_RESTRICTED_ID] shouldBe "ABC123"
+                accountService.establishedClaimValues(account.accountId, setOf(EID_RESTRICTED_ID))[EID_RESTRICTED_ID] shouldBe "ABC123"
             }
         }
     }
@@ -656,7 +659,7 @@ class AccountServiceDbTest(
             val account = accountService.createAccountInSetup()
             accountService.recordClaims(
                 account.accountId,
-                listOf(Claim(AttributeType.PHONE_NUMBER, "+491701234567", ClaimSource("enroll-sms"), AcrLevel.LOA2)),
+                listOf(Claim(PHONE_NUMBER, "+491701234567", ClaimSource("enroll-sms"), AcrLevel.LOA2)),
                 provenAcr = AcrLevel.LOA1
             )
 

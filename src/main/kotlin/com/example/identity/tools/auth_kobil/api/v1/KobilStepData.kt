@@ -1,12 +1,9 @@
 package com.example.identity.tools.auth_kobil.api.v1
 
 import com.example.identity.contract.tool_api.StepData
-import com.example.identity.contract.tool_api.StepDataTypes
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonTypeName
 import io.swagger.v3.oas.annotations.media.Schema
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 
 /**
  * The step shapes `auth_kobil` produces, declared in the producing module (see [StepDataTypes]).
@@ -54,12 +51,3 @@ data class KobilActivationStep(
     val pin: String,
     val unlockSecret: String? = null
 ) : StepData
-
-@Configuration
-class KobilStepDataTypes {
-
-    @Bean
-    fun kobilStepDataShapes() = StepDataTypes {
-        listOf(KobilUnlockStep::class, KobilOtpStep::class, KobilActivationStep::class)
-    }
-}

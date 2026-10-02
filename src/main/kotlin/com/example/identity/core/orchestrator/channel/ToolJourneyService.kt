@@ -31,7 +31,10 @@ import com.example.identity.contract.tool_api.envelope.Next
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ToolDescriptor
+import com.example.identity.contract.tool_api.UnresolvableReferenceException
+import com.example.identity.contract.tool_api.EnrollmentRef
+import com.example.identity.contract.tool_api.ToolModule
+import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.tool_api.Subject
@@ -69,7 +72,7 @@ class ToolJourneyService(
         override val toolSessionId: ToolSessionId,
         val journeyId: JourneyId,
         val channelSessionId: ChannelSessionId,
-        val bindingKeyRef: String,
+        override val bindingKeyRef: String,
         override val accountId: AccountId?
     ) : AuthorizedToolContext
 
@@ -88,7 +91,7 @@ class ToolJourneyService(
         val channel = live.session
         val journey = journeyService.findActive(channelSessionId)
             ?: throw OrchestratorException.invalidState(Text("No active journey for this channel"))
-        val descriptor = toolRegistry.descriptorOf(ToolId(toolId))
+        val descriptor = toolRegistry.toolOf(ToolId(toolId))
 
         validatePreconditions(toolId, channel)
         // Only for a tool whose account the channel knows (KNOWN_ACCOUNT_AUTH). ACCOUNT_LOOKUP_AUTH and IDENT
@@ -122,7 +125,7 @@ class ToolJourneyService(
             throw OrchestratorException.invalidState(Text("This tool is not available on this channel"), "toolId=${toolId}")
         }
 
-        val descriptor = toolRegistry.descriptorOf(ToolId(toolId))
+        val descriptor = toolRegistry.toolOf(ToolId(toolId))
         val account = channel.accountId?.let { accountService.findAccount(it) }
         descriptor.requires.forEach { requirement ->
             if (!requiresSatisfied(requirement, account)) {
@@ -159,6 +162,18 @@ class ToolJourneyService(
         )
     }
 
+    override fun requireEnrollment(context: ToolContext, module: ToolModule): EnrollmentRef {
+        val enrollmentRef = context.accountId?.let { accountId ->
+            if (module.onePerDevice) accountService.activeInstanceEnrollment(accountId, module.method, context.bindingKeyRef)
+            else accountService.activeEnrollment(accountId, module.method)
+        }
+        return enrollmentRef ?: throw UnresolvableReferenceException(
+            if (module.onePerDevice) Text("Dieses Anmeldeverfahren ist auf diesem Gerät nicht eingerichtet")
+            else Text("Kein aktives Anmeldeverfahren dieser Art fuer dieses Konto"),
+            "no active ${module.method} method",
+        )
+    }
+
     private fun requireCurrentTool(context: ToolContext) {
         if (!isCurrentTool(context)) {
             throw OrchestratorException.invalidState(Text("This tool is not the currently active step of this journey"), "toolId=${context.toolId}")
@@ -182,13 +197,13 @@ class ToolJourneyService(
     override fun back(context: AuthorizedToolContext): ChannelResponse =
         leave(context) { journey, channel, tool -> journeyService.back(journey, channel, tool) }
 
-    private fun leave(context: AuthorizedToolContext, move: (RunningJourney, LiveChannel, ToolDescriptor) -> Step): ChannelResponse {
+    private fun leave(context: AuthorizedToolContext, move: (RunningJourney, LiveChannel, Tool) -> Step): ChannelResponse {
         val ctx = context as Context
         val journey = resolveJourney(ctx)
         val live = resolveChannel(ctx, journey)
         val channel = live.session
         sessionManagementService.endToolSession(ctx.toolSessionId, ToolSessionStatus.ABANDONED)
-        val step = move(journey, live, toolRegistry.descriptorOf(ToolId(ctx.toolId)))
+        val step = move(journey, live, toolRegistry.toolOf(ToolId(ctx.toolId)))
         return ChannelResponse(
             channel = responseAssembler.buildChannelBlock(channel),
             next = step.next,
@@ -209,7 +224,7 @@ class ToolJourneyService(
         val journey = resolveJourney(ctx)
         val live = resolveChannel(ctx, journey)
         val channel = live.session
-        val descriptor = toolRegistry.descriptorOf(ToolId(ctx.toolId))
+        val descriptor = toolRegistry.toolOf(ToolId(ctx.toolId))
         chargeRateLimits(channel.accountId, channel.channel?.name, descriptor, outcome)
         // A completed tool is done for good, even while the journey still names it as active.
         if (outcome is ToolOutcome.Completed) sessionManagementService.endToolSession(ctx.toolSessionId, ToolSessionStatus.DONE)
@@ -237,7 +252,7 @@ class ToolJourneyService(
      * subject by its variant ([ToolOutcome.Failed]); a success resets the same counter. A lookup
      * login's subject comes from the outcome, since the channel's account is bound only later.
      */
-    private fun chargeRateLimits(channelAccountId: AccountId?, channelType: String?, descriptor: ToolDescriptor, outcome: ToolOutcome) {
+    private fun chargeRateLimits(channelAccountId: AccountId?, channelType: String?, descriptor: Tool, outcome: ToolOutcome) {
         when (outcome) {
             is ToolOutcome.InProgress -> Unit
 
@@ -338,8 +353,8 @@ class ToolJourneyService(
  * A run that proves more than its descriptor declares is a contract error of the tool module: the
  * excess would flow unchecked into the session's evidence and the claims (docs/03-tool-architektur.md).
  */
-internal fun checkStaysWithin(descriptor: ToolDescriptor, outcome: ToolOutcome.Completed) =
-    check(outcome.staysWithin(descriptor)) {
-        "${descriptor.toolId} reported ${outcome.achievedAcr}/${outcome.factorTypes}, " +
-            "beyond its descriptor's ${descriptor.maxAcr}/${descriptor.factorTypes}"
+internal fun checkStaysWithin(tool: Tool, outcome: ToolOutcome.Completed) =
+    check(tool.staysWithin(outcome)) {
+        "${tool.toolId} reported ${tool.levelOf(outcome)}/${tool.factorsOf(outcome)}, " +
+            "beyond its declaration's ${tool.maxAcr}/${tool.factorTypes}"
     }

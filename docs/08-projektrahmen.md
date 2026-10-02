@@ -55,8 +55,9 @@ Anmeldung mit DPoP abgesichert werden. Das System besteht aus:
 ## 3) Module
 
 Die Module liegen unter `com.example.identity`, gruppiert nach ihrer Rolle. Eine Gruppe ist nur ein
-Ordner, kein Modul: Spring Modulith erkennt Module an `@ApplicationModule` in ihrer
-`ModuleMetadata.kt` (`spring.modulith.detection-strategy: explicitly-annotated`). Die Modul-ID ist
+Ordner, kein Modul: Spring Modulith erkennt Module an der Klasse mit `@ApplicationModule` in
+ihrem Wurzelpaket, die nach dem Modul heißt (`AccountModule`, `KobilToolModule`,
+`NectSimulationModule`; `spring.modulith.detection-strategy: explicitly-annotated`). Die Modul-ID ist
 das letzte Paketsegment und zugleich Datenbankschema, Flyway-Ordner `db/migration/<id>/`,
 OpenAPI-Datei `api/modules/<id>.yaml` und bei den Simulationen das Text-Bundle. Wer im Code nach
 der ID eines Moduls fragt, fragt `ModuleId` (`tool_api`); `ModulithStructureTest` prüft Gruppe
@@ -81,7 +82,7 @@ com.example.identity
 
 ### Verträge (`contract`)
 
-- **M8** `tool_api` — Der Vertrag zwischen Orchestrator und Tool-Modulen, einzige Abhängigkeit `texts`, als Modulith-Modul `OPEN`. In der Wurzel der Tool-Lebenszyklus: die Selbstbeschreibung (`ToolDescriptor`, `ToolOutcome`, `StepData`) und die Journey aus Sicht des Tools (`ToolJourney`, `Lockouts`). Darunter nach Thema: `claims` (Claims, `AcrLevel`, Ankerregeln), `values` (E-Mail, Mobilnummer, KVNR, Mitgliedsnummer, Partnernummer), `directory` (Ports zu Konto und Person), `credentials` (Ports, die ein Tool-Modul anbietet), `device` (Geräte-Proof), `envelope` (Antwortformen `ChannelResponse`, `Next`), `ratelimit` und `retention` (Zählwerk und Aufbewahrung des Orchestrators). Enthält keine Bean und keinen Controller: ein Vertrag, keine Web-Schicht ([Tool-Architektur](03-tool-architektur.md) Abschnitt 4)
+- **M8** `tool_api` — Der Vertrag zwischen Orchestrator und Tool-Modulen, einzige Abhängigkeit `texts`, als Modulith-Modul `OPEN`. In der Wurzel der Tool-Lebenszyklus: die Selbstbeschreibung (`ToolModule` mit seinen `Tool`s, `ToolOutcome`, `StepData`) und die Journey aus Sicht des Tools (`ToolJourney`, `Lockouts`). Darunter nach Thema: `claims` (Claims, `AcrLevel`, Ankerregeln), `values` (E-Mail, Mobilnummer, KVNR, Mitgliedsnummer, Partnernummer), `directory` (Ports zu Konto und Person), `credentials` (Ports, die ein Tool-Modul anbietet), `device` (Geräte-Proof), `envelope` (Antwortformen `ChannelResponse`, `Next`), `ratelimit` und `retention` (Zählwerk und Aufbewahrung des Orchestrators). Enthält keine Bean und keinen Controller: ein Vertrag, keine Web-Schicht ([Tool-Architektur](03-tool-architektur.md) Abschnitt 4)
 - **M18** `texts` — Bibliothek für mehrsprachige Nutzertexte (ADR-33): `Text` (deutsche Vorlage im Code, ausgeliefert als Referenz) und `TextBundle` (Sprachdateien per ETag). `allowedDependencies = []`; jedes Modul mit Nutzertexten deklariert diese Abhängigkeit, auch die simulierten Fremdsysteme
 
 ### Verfahren (`tools`)
@@ -94,9 +95,9 @@ Je ein Modul mit eigenen Tool-Endpunkten; es erreicht den Orchestrator nur über
 - **M16** `ident_nect` — Identifizierung über Nect (Tool `ident-nect`): Der Nutzer wechselt auf die Seite von Nect und kommt mit einer Vorgangsnummer zurück; das Ergebnis holt das Backend selbst ab. Bestätigt wie `ident_eid` nur die Daten des Dokuments (ADR-18); `amr` je Verfahren `nect-eid`/`nect-epass`/`nect-eudi`. Erlaubte Abhängigkeit zum Fremdsystem: `nect`
 - **M3** `auth_sms` — SMS-Verfahren (Tools `enroll-sms`, `auth-sms`, `auth-sms-lookup`); eigene `@RestController`
 - **M7** `auth_email` — E-Mail-Verfahren (Tools `confirm-email`, `enroll-email`, `auth-email`, `auth-email-lookup`) mit eigenem `EmailCodeGenerator`. Abhängigkeit nur auf `tool_api`: liest Account-IDs und Ankerwerte über `AccountDirectory`, liefert `EMAIL`-Claims; kein direkter Zugriff auf `account`
-- **M6** `auth_password` — Passwort-Verfahren (Tools `enroll-password`, `auth-password`, `auth-password-lookup`); setzt über `ToolDescriptor.requires` eine bestätigte Adresse voraus (`ClaimRequirement(EMAIL, PROVEN)`) ([Tool-Architektur](03-tool-architektur.md)). Dazu die zustandslosen Endpunkte für Keycloaks eigenes Passwortformular (`MgmtPasswordController`, Port `KeycloakToolCalls`)
-- **M11** `auth_qr` — Anmeldung per QR-Code auf der Website, bestätigt in der App (Tools `enroll-qr`, `auth-qr`, `auth-qr-lookup`, `confirm-qr-login`, [`CONFIRM_PEER_LOGIN`](journeys/confirm-peer-login.md)); speichert `QrLoginRequest` selbst, kein Zugriff auf `account`; eigene `@RestController`
-- **M23** `auth_invite` — Anmeldung mit Einmalkennwort für einen Vorgang (Tool `auth-invite`, [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)): KVNR oder Partnernummer und das Kennwort aus dem Brief. Fragt die Einladungen des Personenverzeichnisses über den Port `Invitations`; meldet die Einladung als Subjekt, nie ein Konto. Eigener `@RestController`, Abhängigkeiten nur `tool_api` und `texts`
+- **M6** `auth_password` — Passwort-Verfahren (Tools `enroll-password`, `auth-password`, `auth-password-lookup`); setzt über `requires` am Einrichten eine bestätigte Adresse voraus (`ClaimRequirement(EMAIL, PROVEN)`) ([Tool-Architektur](03-tool-architektur.md)). Dazu die zustandslosen Endpunkte für Keycloaks eigenes Passwortformular (`MgmtPasswordController`, Port `KeycloakToolCalls`)
+- **M11** `auth_qr` — Anmeldung per QR-Code auf der Website, bestätigt in der App (Tools `enroll-qr`, `auth-qr`, `auth-qr-lookup`, `approve-qr`, [`CONFIRM_PEER_LOGIN`](journeys/confirm-peer-login.md)); speichert `QrLoginRequest` selbst, kein Zugriff auf `account`; eigene `@RestController`
+- **M23** `auth_invite` — Anmeldung mit Einmalkennwort für einen Vorgang (Tool `auth-invite-lookup`, [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)): KVNR oder Partnernummer und das Kennwort aus dem Brief. Fragt die Einladungen des Personenverzeichnisses über den Port `Invitations`; meldet die Einladung als Subjekt, nie ein Konto. Eigener `@RestController`, Abhängigkeiten nur `tool_api` und `texts`
 - **M12** `auth_device` — Geräteschlüssel als eigenes Anmeldeverfahren (Tools `enroll-device`, `auth-device`); eigene `@RestController`, keine Abhängigkeit von `account`
 - **M14** `auth_kobil` — Gerätebindung über den externen Dienstleister KOBIL (Tools `enroll-kobil`, `auth-kobil`, [Abläufe](06-ablaeufe.md) Abschnitt 7); im Backend verwahrter PIN (ADR-21/ADR-22), PIN-Freigabe als eigene Unterressource; eigene `@RestController`, keine `account`-Abhängigkeit — aber eine ausdrücklich erlaubte Abhängigkeit zum Fremdsystem `kobil` (wie `ident_nect`)
 
@@ -115,7 +116,7 @@ nur entlang einer benannten Kante, das Personenverzeichnis nur über Ports
 ### Nur für die Demo (`demo`)
 
 - **M21** `demo_mode` — Der eine Schalter `demo.mode` (ADR-36): als Bean `DemoMode`, als Bedingungen `OnlyInDemoMode`/`OutsideDemoMode` und als Markierung `DemoSurface` für die unauthentifizierten Oberflächen der simulierten Fremdsysteme. Nur hier wird die Property gelesen (`DemoModeSwitchTest`), also mit einer Voreinstellung für alle
-- **M13** `demo_seed` — Nur für die Demo, und nur Daten: die Testpersonen mit ihren Freischaltcodes und Briefen (`db/migration/demo_seed/V16__testdata.sql`), außerhalb des Demomodus nicht migriert. Konten legt es nicht an. Eine Testperson registriert sich wie jeder andere, in der App oder auf der Website; erst danach hat sie ein Konto. Ohne Code und ohne Abhängigkeiten; `ModuleMetadata` hält nur die Modulgrenze fest
+- **M13** `demo_seed` — Nur für die Demo, und nur Daten: die Testpersonen mit ihren Freischaltcodes und Briefen (`db/migration/demo_seed/V16__testdata.sql`), außerhalb des Demomodus nicht migriert. Konten legt es nicht an. Eine Testperson registriert sich wie jeder andere, in der App oder auf der Website; erst danach hat sie ein Konto. Ohne Code und ohne Abhängigkeiten; `DemoSeedModule` hält nur die Modulgrenze fest
 
 ### Außerhalb der Anwendung
 
@@ -144,7 +145,7 @@ nur entlang einer benannten Kante, das Personenverzeichnis nur über Ports
                                 ▼
                   ┌───────────────────────────────────┐
                   │         contract/tool_api         │
-                  │ ToolDescriptor, ToolOutcome,      │
+                  │ ToolModule, Tool, ToolOutcome,    │
                   │ ToolJourney, Lockouts, directory/ │
                   │ device/ envelope/ claims/ values/ │
                   └────────────────▲──────────────────┘
@@ -158,11 +159,11 @@ nur entlang einer benannten Kante, das Personenverzeichnis nur über Ports
      └─────────────────┘   └──────────────┘   └──────────────────────────┘
 ```
 
-- Kein Tool-Modul verweist auf den `orchestrator` und umgekehrt (`core/orchestrator/ModuleMetadata.kt`: `allowedDependencies = ["tool_api", "account", "texts", "demo_mode"]`). Die einzige gemeinsame Abhängigkeit ist `tool_api` — ein Tool-Modul kennt nur dessen Interfaces, nie eine konkrete Klasse des Orchestrators.
+- Kein Tool-Modul verweist auf den `orchestrator` und umgekehrt (`core/orchestrator/OrchestratorModule.kt`: `allowedDependencies = ["tool_api", "account", "texts", "demo_mode"]`). Die einzige gemeinsame Abhängigkeit ist `tool_api` — ein Tool-Modul kennt nur dessen Interfaces, nie eine konkrete Klasse des Orchestrators.
 - Die HTTP-Pfade (`/orchestrator/api/v1/tools/...`) sind unabhängig vom Kotlin-Paket des jeweiligen `@RestController` (`ident_fsc.api.v1`, `ident_eid.api.v1`, `ident_kvnr.api.v1`, `auth_sms.api.v1`, `auth_password.api.v1`, `auth_email.api.v1`, `auth_device.api.v1`, `auth_qr.api.v1`, `auth_kobil.api.v1`, `auth_invite.api.v1`, `ident_nect.api.v1`) — Spring leitet nach `@RequestMapping` weiter, nicht nach Paket. Ausnahmen: `kobil.api.v1`, `nect.api.v1`, `personenverzeichnis.api.v1`, `sms.api.v1` und `mail.api.v1` liegen bewusst NICHT unter `/orchestrator/api`, sondern unter `/mock-kobil`, `/mock-nect`, `/mock-personenverzeichnis`, `/mock-sms` bzw. `/mock-mail` — sie sind die Fremdsysteme, nicht diese Anwendung.
 - Die Tool-Module sind voneinander und von `account` entkoppelt, einschließlich `auth_email`. Abhängigkeiten zu simulierten Fremdsystemen sind ausdrücklich erlaubt, nicht nur geduldet: `auth_kobil → kobil`, `ident_nect → nect` (nur `NectIdent`); das Personenverzeichnis nur über Ports (ADR-31, Nachtrag). Konten werden über `tool_api.AccountDirectory` nachgeschlagen. Geschrieben wird nur über Claims im `ToolOutcome`, die die Journey übernimmt. Hilfsfunktionen, die ein Konto über die E-Mail-Adresse suchen, sind Kotlin-Erweiterungsfunktionen des Ports.
 - `auth_sms` versteckt seine internen Datenbank-IDs hinter einer undurchsichtigen `EnrollmentRef` ([06-ablaeufe.md](06-ablaeufe.md)).
-- Die Grenzen zwischen den Paketen sichert `@ApplicationModule(allowedDependencies = ...)` je Modul ab, und `ModulithStructureTest` prüft sie („each module depends only on what it declares“); eine unerlaubte Abhängigkeit lässt den Build scheitern. Da Kotlin keine Annotationen an Paketen kennt, trägt je eine `ModuleMetadata.kt` die Deklaration (`@ApplicationModule` ist `@Target({PACKAGE, TYPE})`); ein `package-info.java` ist nicht nötig.
+- Die Grenzen zwischen den Paketen sichert `@ApplicationModule(allowedDependencies = ...)` je Modul ab, und `ModulithStructureTest` prüft sie („each module depends only on what it declares“); eine unerlaubte Abhängigkeit lässt den Build scheitern. Da Kotlin keine Annotationen an Paketen kennt, trägt je Modul eine nach ihm benannte Klasse die Deklaration (`@ApplicationModule` ist `@Target({PACKAGE, TYPE})`); ein `package-info.java` ist nicht nötig.
 - Das Frontend kommuniziert ausschließlich über HTTP mit der Applikation als Ganzes; welches Modul einen Endpunkt implementiert, ist für es nicht sichtbar.
 
 ### Anforderungen an die Modulstruktur

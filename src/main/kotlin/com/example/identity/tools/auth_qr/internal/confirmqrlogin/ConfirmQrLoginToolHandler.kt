@@ -3,7 +3,6 @@ package com.example.identity.tools.auth_qr.internal.confirmqrlogin
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
-import com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor
 import com.example.identity.tools.auth_qr.internal.ConfirmationCodeDigest
 import com.example.identity.tools.auth_qr.internal.PairingCodeGenerator
 import com.example.identity.tools.auth_qr.internal.QrLoginRequestRepository
@@ -18,13 +17,12 @@ import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
 import com.example.identity.contract.tool_api.MissingFields
 
 /**
- * toolId=confirm-qr-login: approve or decline a pending QR pairing (docs/07-betrieb.md #5). `input`
+ * toolId=approve-qr: approve or decline a pending QR pairing (docs/07-betrieb.md #5). `input`
  * resolves the pairing code, `confirm` takes the decision, `showCode` shows the confirmation code
  * for the browser. Approving alone logs no browser in.
  */
 @Component
 class ConfirmQrLoginToolHandler(
-    private val descriptor: ConfirmQrLoginDescriptor,
     private val toolDataRepository: ConfirmQrLoginToolSessionRepository,
     private val qrLoginRequestRepository: QrLoginRequestRepository,
     private val confirmationCodeDigest: ConfirmationCodeDigest,
@@ -51,7 +49,7 @@ class ConfirmQrLoginToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, pairingCode: String?, decision: String?, accountId: AccountId, hasQrEnrollment: Boolean): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown confirm-qr-login tool session: $toolSessionId" }
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown approve-qr tool session: $toolSessionId" }
 
         if (data.pairingCode == null) {
             return resolvePairingCode(data, pairingCode)
@@ -116,7 +114,7 @@ class ConfirmQrLoginToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown confirm-qr-login tool session: $toolSessionId" }
+        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown approve-qr tool session: $toolSessionId" }
         val pairingCode = data.pairingCode
             ?: return ToolOutcome.InProgress(nextStep = "input", stepData = MissingFields(listOf("pairingCode")))
         // This tool session only ever approves for its own channel's account - an approved request

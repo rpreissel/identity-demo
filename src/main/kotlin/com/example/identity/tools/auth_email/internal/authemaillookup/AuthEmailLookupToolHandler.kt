@@ -6,7 +6,6 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import com.example.identity.tools.auth_email.internal.EmailSendLimit
 
-import com.example.identity.tools.auth_email.AuthEmailLookupDescriptor
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.directory.resolveAccountByEmail
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -23,7 +22,6 @@ import java.time.Clock
  */
 @Component
 class AuthEmailLookupToolHandler(
-    private val descriptor: AuthEmailLookupDescriptor,
     private val toolDataRepository: AuthEmailLookupToolSessionRepository,
     private val accountDirectory: AccountDirectory,
     private val emailCodeGenerator: EmailCodeGenerator,
@@ -83,9 +81,6 @@ class AuthEmailLookupToolHandler(
             is AuthEmailLookupDecision.Complete -> {
                 accountDirectory.anchorValue(decision.accountId, AttributeType.EMAIL)?.let { sendLimit.received(it) }
                 ToolOutcome.Completed.Authenticated(
-                    amr = listOf(descriptor.method),
-                    achievedAcr = descriptor.maxAcr,
-                    factorTypes = descriptor.factorTypes,
                     subject = Subject.Account(decision.accountId)
                 )
             }

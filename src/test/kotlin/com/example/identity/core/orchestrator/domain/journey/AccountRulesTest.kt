@@ -24,7 +24,7 @@ import io.kotest.matchers.shouldBe
  */
 class AccountRulesTest : BehaviorSpec({
 
-    fun method(id: String) = AuthMethodView(id, "sms", true, null, "loa1", null, EnrollmentRef("sms", id))
+    fun method(id: String) = AuthMethodView(id, "sms", true, null, "loa1", null, null, EnrollmentRef("sms", id))
     fun account(id: Long, personId: PartnerNumber? = null, methods: List<AuthMethodView> = emptyList()) =
         AccountProfile(accountId = AccountId(id), personId = personId, authenticationMethods = methods)
 

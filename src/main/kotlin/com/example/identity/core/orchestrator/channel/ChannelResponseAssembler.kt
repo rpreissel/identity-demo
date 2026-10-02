@@ -142,13 +142,13 @@ class ChannelResponseAssembler(
     }
 
     /**
-     * `maxAcr`/`factorTypes` come from the tool catalog; `enrolledUnderAcr`/`effectiveAcr` from the
+     * `maxAcr`/`factorTypes` come from the method's module; `enrolledUnderAcr`/`effectiveAcr` from the
      * account's enrollment record (the ADR-5 cap). So the UI can show why a method reaches less
      * than its catalog entry promises.
      */
     fun toActiveMethodViews(methods: List<AuthMethodView>?): List<ActiveMethodView> =
         methods.orEmpty().map { m ->
-            val descriptor = toolRegistry.descriptors().firstOrNull { it.method == m.method }
+            val descriptor = toolRegistry.moduleOf(m.method)
             ActiveMethodView(
                 id = m.id,
                 method = m.method,

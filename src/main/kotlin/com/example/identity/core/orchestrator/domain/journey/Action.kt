@@ -4,7 +4,7 @@ import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.ToolDescriptor
+import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.core.orchestrator.domain.AuthIntent
 
@@ -24,7 +24,7 @@ sealed interface Action {
      * extended an identity. Whether an account is already in hand is read at execution time, not
      * decided by the caller, so no strategy can skip the merge check.
      */
-    data class RecordIdentification(val tool: ToolDescriptor, val outcome: ToolOutcome.Completed.Identified) : Action
+    data class RecordIdentification(val tool: Tool, val outcome: ToolOutcome.Completed.Identified) : Action
 
     /**
      * An attribute the account owns was attested (e.g. a confirmed email address): record the claims
@@ -32,7 +32,7 @@ sealed interface Action {
      * `AttributeType.authority`). It may only land on a different existing account after an
      * identification ([checkAttestationMove]): owning a mailbox does not prove who owns the account.
      */
-    data class AdoptAttestation(val tool: ToolDescriptor, val outcome: ToolOutcome.Completed.Attested) : Action
+    data class AdoptAttestation(val tool: Tool, val outcome: ToolOutcome.Completed.Attested) : Action
 
     /**
      * A new credential was enrolled. Whether this also links the device is not a field here; it
@@ -40,7 +40,7 @@ sealed interface Action {
      * no device.
      */
     data class AdoptCredential(
-        val tool: ToolDescriptor,
+        val tool: Tool,
         val outcome: ToolOutcome.Completed.Enrolled
     ) : Action
 
@@ -50,7 +50,7 @@ sealed interface Action {
      * That safety rule must not rest on every caller passing the right flag.
      */
     data class AcceptProof(
-        val tool: ToolDescriptor,
+        val tool: Tool,
         val outcome: ToolOutcome.Completed.Authenticated
     ) : Action
 
@@ -77,7 +77,7 @@ sealed interface Action {
      * (e.g. `QrLoginRequest`); this action only records the outcome like any other tool outcome, for
      * auditing. This channel's own evidence does not change.
      */
-    data class RecordApproval(val tool: ToolDescriptor, val outcome: ToolOutcome.Completed.Approved) : Action
+    data class RecordApproval(val tool: Tool, val outcome: ToolOutcome.Completed.Approved) : Action
 
     /**
      * Revoke one authentication method of the account this session holds. The credential itself

@@ -1,78 +1,7 @@
 package com.example.identity.contract.tool_api.claims
 
-import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.ToolDescriptor
-import java.time.LocalDate
-
-/**
- * A kind of identifying attribute a tool can assert about its subject. A closed enum on purpose:
- * it appears on both sides of the tool contract ([ToolDescriptor.claims] and the [Claim]s of a
- * run), and a plain String would let `"emial"` compile.
- */
-enum class AttributeType(val wireName: String) {
-    /** The person row this account belongs to, as the master-data backend's (personenverzeichnis) PK. */
-    PERSON_ID("person_id"),
-    /** Krankenversichertennummer - the anchor a person is resolved by in the master data. */
-    KVNR("kvnr"),
-    /**
-     * Versicherungsnummer - eight digits, only for a person insured with us. Kept by the
-     * Personenverzeichnis (changeable there); when it exists it is also a local account anchor,
-     * replaced whenever the Personenverzeichnis reports a new one (ADR-34).
-     */
-    MEMBER_NUMBER("member_number"),
-    /**
-     * Card-bound pseudonym from the eID read (stand-in for the real "Restricted Identifier"). It
-     * changes with a new card but never moves to another person, so it recognizes an
-     * eid-identified prospect: a replaceable local account anchor (ADR-19). The register never
-     * stores it.
-     */
-    EID_RESTRICTED_ID("restricted_id"),
-    /**
-     * The card pseudonym from an eID read through Nect. The pseudonym is specific to card and
-     * service provider (§18 PAuswG), so it never equals [EID_RESTRICTED_ID] for the same card.
-     * Its own anchor with the same rules; neither kind of run overwrites the other's anchor.
-     */
-    NECT_RESTRICTED_ID("nect_restricted_id"),
-    /** Family name. Master-data field for a bound account, attested history in the claim log. */
-    FAMILY_NAME("family_name"),
-    /** Given name(s). Master-data field, same rule as [FAMILY_NAME]. */
-    GIVEN_NAMES("given_names"),
-    /** ISO date, e.g. `1970-01-01`. Master-data field: delegated, never projected (ADR notes in
-     *  docs/02-domaenenmodell.md #6). */
-    BIRTH_DATE("birth_date"),
-    /**
-     * Street and house number in one line, as documents attest it (eID `Street`, BSI TR-03130;
-     * EUDI PID `address.street_address`). The register keeps the two apart and joins them at its
-     * own boundary (docs/08-projektrahmen.md P-4). Like [POSTAL_CODE] and [LOCALITY] a master-data
-     * field like [BIRTH_DATE].
-     */
-    STREET_ADDRESS("street_address"),
-    /** Postal code. */
-    POSTAL_CODE("postal_code"),
-    /** City/town. */
-    LOCALITY("locality"),
-    /**
-     * E-mail address. Unlike the other attributes, a value the account owns itself
-     * (`AttributeAuthority.Local`): `confirm-email` establishes it, lookup tools resolve an account
-     * through it, and a retraction deletes its anchor row (ADR-12).
-     */
-    EMAIL("email"),
-    /** Mobile number, established by an `enroll-sms` run - the address a TAN is delivered to. */
-    PHONE_NUMBER("phone_number"),
-
-    /**
-     * "This account holds a password credential", established by `enroll-password` and retracted
-     * with it. A fact about the credentials, not the person. It lets another method depend on the
-     * password with a plain `requires` (ADR-24). Its value is the constant [PASSWORD_EXISTS_MARKER].
-     */
-    PASSWORD_EXISTS("password_exists");
-
-    companion object {
-        /** Reverse of [wireName]; `null` lets a caller facing outside input refuse an unknown name. */
-        fun fromWireName(wireName: String): AttributeType? = entries.firstOrNull { it.wireName == wireName }
-    }
-}
+import com.example.identity.contract.tool_api.Tool
 
 /**
  * Who established a [Claim]: the register ([PERSON_DIRECTORY]), a tool run (named by its [ToolId]), or
@@ -112,12 +41,9 @@ val ClaimSource.claimTrust: ClaimTrust
         else -> ClaimTrust.PROVEN
     }
 
-/** The only value of an [AttributeType.PASSWORD_EXISTS] claim; the claim itself is the statement. */
-const val PASSWORD_EXISTS_MARKER = "true"
-
 /**
  * One attribute value a completed tool run asserts, with who established it and at what assurance.
- * Covered by the descriptor's [ToolDescriptor.claims], at most one per [AttributeType]
+ * Covered by the tool's [Tool.claims], at most one per [AttributeType]
  * (docs/02-domaenenmodell.md #6).
  */
 data class Claim(
@@ -142,25 +68,19 @@ fun Claim.validateValue() {
     check(value.isNotBlank()) {
         "${attributeType.wireName} claim must not be blank"
     }
-    when (attributeType) {
-        AttributeType.PERSON_ID -> check(PartnerNumber.parse(value) != null) {
-            "person_id claim must be a Partnernummer (P and nine digits)"
-        }
-        AttributeType.BIRTH_DATE -> check(runCatching { LocalDate.parse(value.trim()) }.isSuccess) {
-            "geburtsdatum claim must be an ISO date"
-        }
-        else -> Unit
+    check(attributeType.acceptsValue(value)) {
+        "${attributeType.wireName} claim has an invalid value"
     }
 }
 
-/** One entry of [ToolDescriptor.requires]: [attributeType] at no less than [minClaimTrust]. */
+/** One entry of [Tool.requires]: [attributeType] at no less than [minClaimTrust]. */
 data class ClaimRequirement(
     val attributeType: AttributeType,
     val minClaimTrust: ClaimTrust
 )
 
 /**
- * One entry of [ToolDescriptor.claims]: an [AttributeType] and the [ClaimSource] a run asserts it
+ * One entry of [Tool.claims]: an [AttributeType] and the [ClaimSource] a run asserts it
  * with. No [ClaimTrust] here: it follows from the source via [ClaimSource.claimTrust], which is
  * global policy, not per-tool knowledge.
  */
@@ -170,24 +90,24 @@ data class ClaimDeclaration(
 )
 
 /**
- * Checks the [Claim]s of one run against [ToolDescriptor.claims]: each declared with the same
+ * Checks the [Claim]s of one run against [Tool.claims]: each declared with the same
  * source, at most one per attribute (a claim set is a snapshot, docs/02-domaenenmodell.md #6).
  * A mismatch is a programming error and fails the transaction instead of recording an assertion
  * the catalog never promised.
  */
-fun assertClaimsCovered(descriptor: ToolDescriptor, claims: List<Claim>) {
-    val declared = descriptor.claims.associateBy { it.attributeType }
+fun assertClaimsCovered(tool: Tool, claims: List<Claim>) {
+    val declared = tool.claims.associateBy { it.attributeType }
     val seen = mutableSetOf<AttributeType>()
     claims.forEach { claim ->
         claim.validateValue()
         val declaration = checkNotNull(declared[claim.attributeType]) {
-            "${descriptor.toolId} reported a ${claim.attributeType.wireName} claim but declares none"
+            "${tool.toolId} reported a ${claim.attributeType.wireName} claim but declares none"
         }
         check(declaration.source == claim.source) {
-            "${descriptor.toolId} reported ${claim.attributeType.wireName} with source ${claim.source}, but declares ${declaration.source}"
+            "${tool.toolId} reported ${claim.attributeType.wireName} with source ${claim.source}, but declares ${declaration.source}"
         }
         check(seen.add(claim.attributeType)) {
-            "${descriptor.toolId} reported more than one claim for ${claim.attributeType.wireName}"
+            "${tool.toolId} reported more than one claim for ${claim.attributeType.wireName}"
         }
     }
 }

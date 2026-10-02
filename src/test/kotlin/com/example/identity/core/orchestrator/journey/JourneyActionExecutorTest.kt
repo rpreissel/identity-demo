@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.journey
 
 import com.example.identity.TEST_NOW
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -21,7 +22,6 @@ import com.example.identity.core.orchestrator.session.SessionEvidenceService
 import com.example.identity.core.orchestrator.domain.SessionEvidenceId
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolOutcome
-import com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor
 import java.util.UUID
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -96,7 +96,7 @@ class JourneyActionExecutorTest : BehaviorSpec({
             val outcome = ToolOutcome.Completed.Approved(
                 amr = listOf("qr"), achievedAcr = AcrLevel.LOA3, factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE)
             )
-            fixture.executor.perform(fixture.journey, fixture.channel, Action.RecordApproval(ConfirmQrLoginDescriptor, outcome))
+            fixture.executor.perform(fixture.journey, fixture.channel, Action.RecordApproval(tool("approve-qr"), outcome))
 
             then("the confirming session's evidence is left unchanged") {
                 verify(exactly = 0) { fixture.sessionEvidenceService.applyEvidence(any(), any()) }
@@ -142,7 +142,7 @@ private class SelfLockoutFixture(floor: AcrLevel) {
 
     private fun method(id: String, method: String) = AuthMethodView(
         id = id, method = method, active = true, createdAt = TEST_NOW, enrolledUnderAcr = "loa2",
-        details = null, enrollmentRef = EnrollmentRef("$method.enrollment", id)
+        boundKeyRef = null, reference = null, enrollmentRef = EnrollmentRef("$method.enrollment", id)
     )
 }
 

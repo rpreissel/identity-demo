@@ -1,8 +1,8 @@
 package com.example.identity.core.orchestrator.journey
 
-import com.example.identity.tools.auth_email.EnrollEmailDescriptor
-import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.catalogOf
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.session.ChannelSession
@@ -20,7 +20,7 @@ import java.time.Instant
 
 /**
  * A single candidate is started on its own, unless activating it completes it at once
- * (ToolDescriptor.completesOnActivation). Otherwise a method would be added that the user never
+ * (Tool.withoutUserStep). Otherwise a method would be added that the user never
  * saw or chose.
  */
 class JourneyRoutingTest : BehaviorSpec({
@@ -29,7 +29,7 @@ class JourneyRoutingTest : BehaviorSpec({
         every { disabledToolIds(any()) } returns emptySet()
         every { ordered(any(), any()) } answers { secondArg<Collection<ToolId>>().toList() }
     }
-    val routing = JourneyRouting(ToolHandlerRegistry(listOf(EnrollEmailDescriptor, EnrollSmsDescriptor)), availability)
+    val routing = JourneyRouting(catalogOf("enroll-email", "enroll-sms"), availability)
     val webChannel = ChannelSession(channel = ChannelType.WEB, now = Instant.now()).apply {
         availableClientTools = mutableSetOf("enroll-email", "enroll-sms")
     }
@@ -47,7 +47,7 @@ class JourneyRoutingTest : BehaviorSpec({
                 select.title shouldBe Text("Neues Anmeldeverfahren hinzufügen")
                 select.description shouldBe Text(
                     "Nur dieses Verfahren steht hier noch zur Wahl. {grund}",
-                    "grund" to EnrollEmailDescriptor.completesOnActivation,
+                    "grund" to tool("enroll-email").withoutUserStep,
                 )
             }
         }
@@ -58,7 +58,7 @@ class JourneyRoutingTest : BehaviorSpec({
             val step = routing.stepFor(adding("enroll-sms"), webChannel)
 
             then("it still starts on its own - it has a step of its own to show") {
-                step.next shouldBe Next.tool("enroll-sms", EnrollSmsDescriptor.startStep)
+                step.next shouldBe Next.tool("enroll-sms", tool("enroll-sms").startStep)
             }
         }
     }

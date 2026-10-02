@@ -4,7 +4,7 @@
 
 **Entscheidung**: Ein Verfahren vergibt nur das Niveau, das der Server selbst nachprüfen kann oder
 das ein Fremdsystem über seinen Port zusagt ([ADR-35](ADR-035-betriebsanspruch-backend-kern-produktionsreif.md)).
-Ein Verfahren, das mehr vergibt, als es beweisen kann, erklärt das selbst: `ToolDescriptor.demoOnly`
+Ein Verfahren, das mehr vergibt, als es beweisen kann, erklärt das selbst: `ToolModule.demoOnly`
 mit Begründung. Solche Verfahren sind nur im **Demomodus** (`demo.mode=true`) verfügbar. Mit
 `demo.mode=false` bietet der Kern sie nicht an, lässt sie nicht aktivieren, und keine
 Betreiber-Einstellung schaltet sie wieder ein (`ToolAvailabilityService`).

@@ -1,7 +1,6 @@
 package com.example.identity.tools.auth_qr.internal.authqrlookup
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
-import com.example.identity.tools.auth_qr.AuthQrLookupDescriptor
 import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
 import com.example.identity.tools.auth_qr.internal.QrLoginBrowserSide
 import com.example.identity.contract.tool_api.MissingFields
@@ -13,11 +12,10 @@ import java.time.Clock
 
 /**
  * toolId=auth-qr-lookup: the WEB channel does not know the account yet. The account approving via
- * `confirm-qr-login` reveals it, a passwordless "log in with your phone" (docs/04-orchestrierung.md).
+ * `approve-qr` reveals it, a passwordless "log in with your phone" (docs/04-orchestrierung.md).
  */
 @Component
 class AuthQrLookupToolHandler(
-    private val descriptor: AuthQrLookupDescriptor,
     private val toolDataRepository: AuthQrLookupToolSessionRepository,
     private val browserSide: QrLoginBrowserSide,
     private val clock: Clock
@@ -42,9 +40,6 @@ class AuthQrLookupToolHandler(
             QrLoginBrowserSide.State.WaitingForApp -> waitingFor(pairingCode)
             QrLoginBrowserSide.State.EnterCode -> ENTER_CODE
             is QrLoginBrowserSide.State.Confirmed -> ToolOutcome.Completed.Authenticated(
-                amr = listOf(descriptor.method),
-                achievedAcr = descriptor.maxAcr,
-                factorTypes = descriptor.factorTypes,
                 subject = Subject.Account(state.accountId)
             )
             // What is guessed here is the confirmation code, bounded by the pairing's own attempt

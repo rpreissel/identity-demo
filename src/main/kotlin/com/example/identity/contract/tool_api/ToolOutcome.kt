@@ -17,7 +17,7 @@ sealed interface ToolOutcome {
     data class InProgress(
         /**
          * What the client must do next, in the tool's own step vocabulary (e.g. `"code"`).
-         * Surfaces as `next.step`; the first one of a fresh session equals [ToolDescriptor.startStep].
+         * Surfaces as `next.step`; the first one of a fresh session equals [Tool.startStep].
          */
         val nextStep: String,
         /**
@@ -38,7 +38,7 @@ sealed interface ToolOutcome {
      * The attempt failed; [reason] is a message for the client. Whom the attempt was against
      * decides which brute-force counter is charged, and for lookup and ident tools only the tool
      * knows. So each variant names its subject as a required field; "nobody" is an explicit `null`.
-     * The allowed variant follows from [ToolDescriptor.role] ([fits]).
+     * The allowed variant follows from [Tool.role] ([fits]).
      */
     sealed interface Failed : ToolOutcome {
         val reason: Text
@@ -74,16 +74,20 @@ sealed interface ToolOutcome {
     }
 
     /**
-     * The tool finished successfully. The concrete variant must match the tool's
-     * [ToolDescriptor.role] ([fits]) and determines what the caller does with the result.
+     * The tool finished successfully. The concrete variant must match the tool's [Tool.role]
+     * ([fits]) and determines what the caller does with the result.
+     *
+     * [amr], [achievedAcr] and [factorTypes] report only what deviates from the tool's declaration;
+     * `null` means "as declared". The orchestrator reads them through the tool ([Tool.amrOf],
+     * [Tool.levelOf], [Tool.factorsOf]), so a tool repeats nothing its module already states.
      */
     sealed interface Completed : ToolOutcome {
-        /** The amr value(s) this run proved. */
-        val amr: List<String>
-        /** The level this run itself achieved, if the tool can determine it. */
+        /** The amr value(s) this run proved, if not just the tool's method. */
+        val amr: List<String>?
+        /** The level this run achieved, if below the tool's ceiling. */
         val achievedAcr: AcrLevel?
-        /** The factor kinds actually proven this run; a subset of [ToolDescriptor.factorTypes]. */
-        val factorTypes: Set<FactorType>
+        /** The factor kinds this run proved, if fewer than the tool declares. */
+        val factorTypes: Set<FactorType>?
 
         fun fits(role: ToolRole): Boolean = when (this) {
             is Identified -> role == ToolRole.IDENTIFICATION || role == ToolRole.CORRELATION
@@ -94,25 +98,16 @@ sealed interface ToolOutcome {
         }
 
         /**
-         * Whether this run stays within what [descriptor] declares: no level above
-         * [ToolDescriptor.maxAcr], no factor kind outside [ToolDescriptor.factorTypes].
-         * The descriptor is what the policy planned with; a run must not prove more than that.
-         */
-        fun staysWithin(descriptor: ToolDescriptor): Boolean =
-            (achievedAcr?.let { it <= descriptor.maxAcr } ?: true) &&
-                descriptor.factorTypes.containsAll(factorTypes)
-
-        /**
          * An identifying tool established who the subject is. The person reference is a
          * `PERSON_ID` claim, at most one. It may be missing: `ident-eid` reads no person
          * reference, and the central resolution decides between an existing account and an
          * prospect (ADR-10).
          */
         data class Identified(
-            override val amr: List<String> = emptyList(),
+            override val amr: List<String>? = null,
             override val achievedAcr: AcrLevel? = null,
-            override val factorTypes: Set<FactorType> = emptySet(),
-            /** The attributes this run asserted; covered by the descriptor's [ToolDescriptor.claims]. */
+            override val factorTypes: Set<FactorType>? = null,
+            /** The attributes this run asserted; covered by the tool's [Tool.claims]. */
             val claims: List<Claim> = emptyList(),
             /** Method-specific verification evidence, passed through unchanged for auditing. */
             val auditDetails: Map<String, Any?>? = null
@@ -137,17 +132,23 @@ sealed interface ToolOutcome {
              * used to authenticate against it and to delete it ([com.example.identity.contract.tool_api.credentials.EnrollmentCleanup]).
              */
             val enrollmentRef: EnrollmentRef,
-            override val amr: List<String> = emptyList(),
+            override val amr: List<String>? = null,
             override val achievedAcr: AcrLevel? = null,
-            override val factorTypes: Set<FactorType> = emptySet(),
-            /** The attributes this enrollment asserted; covered by [ToolDescriptor.claims]. */
+            override val factorTypes: Set<FactorType>? = null,
+            /** The attributes this enrollment asserted; covered by [Tool.claims]. */
             val claims: List<Claim> = emptyList(),
             /**
-             * What the owning module reads back about this instance later, through its
-             * [ToolDescriptor.keyBinding] or [ToolDescriptor.instanceDisclosure]. Deleted with the
-             * method, so it is no audit evidence (ADR-39).
+             * The caller key this instance lives on, for a [ToolModule.onePerDevice] method. Read
+             * back to offer the credential only on that device. Deleted with the method, so it is
+             * no audit evidence (ADR-39).
              */
-            val instanceDetails: Map<String, Any?> = emptyMap(),
+            val boundKeyRef: String? = null,
+            /**
+             * A short, showable reference for this instance (the KOBIL phone identifier) that a
+             * client cannot learn any other way. Never a credential: it goes to a client that has
+             * only proven possession of the key this instance lives on.
+             */
+            val reference: String? = null,
             /** User-chosen display name, meaningful only for multi-instance methods. */
             val label: String? = null
         ) : Completed
@@ -162,9 +163,9 @@ sealed interface ToolOutcome {
             /** What the subject just proved control of. Never empty. */
             val claims: List<Claim>,
         ) : Completed {
-            override val amr: List<String> = emptyList()
-            override val achievedAcr: AcrLevel? = null
-            override val factorTypes: Set<FactorType> = emptySet()
+            override val amr: List<String>? get() = null
+            override val achievedAcr: AcrLevel? get() = null
+            override val factorTypes: Set<FactorType>? get() = null
 
             init {
                 check(claims.isNotEmpty()) { "Completed.Attested without a claim attests nothing" }
@@ -174,9 +175,9 @@ sealed interface ToolOutcome {
 
         /** A [KNOWN_ACCOUNT_AUTH][ToolRole.KNOWN_ACCOUNT_AUTH] or [ACCOUNT_LOOKUP_AUTH][ToolRole.ACCOUNT_LOOKUP_AUTH] tool succeeded. */
         data class Authenticated(
-            override val amr: List<String>,
+            override val amr: List<String>? = null,
             override val achievedAcr: AcrLevel? = null,
-            override val factorTypes: Set<FactorType> = emptySet(),
+            override val factorTypes: Set<FactorType>? = null,
             /**
              * Set only by a [ACCOUNT_LOOKUP_AUTH][ToolRole.ACCOUNT_LOOKUP_AUTH] tool, which resolves whom it proved
              * itself: an account, or the invitation of a one-time password ([Subject]).
@@ -189,9 +190,9 @@ sealed interface ToolOutcome {
          * channel. Declining is an ordinary [Failed].
          */
         data class Approved(
-            override val amr: List<String> = emptyList(),
+            override val amr: List<String>? = null,
             override val achievedAcr: AcrLevel? = null,
-            override val factorTypes: Set<FactorType> = emptySet(),
+            override val factorTypes: Set<FactorType>? = null,
         ) : Completed
     }
 }

@@ -1,13 +1,16 @@
 package com.example.identity.tools.ident_nect.api.v1
 
-import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.ident_nect.IDENT_NECT_TOOL_ID
 import com.example.identity.tools.ident_nect.internal.IdentNectToolHandler
 import com.example.identity.contract.tool_api.envelope.API_V1
-import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.contract.tool_api.ActivateTool
+import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.AuthorizedToolContext
+import com.example.identity.contract.tool_api.ToolContext
+import com.example.identity.contract.tool_api.readResponse
+import com.example.identity.contract.tool_api.activated
 import com.fasterxml.jackson.annotation.JsonAlias
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
@@ -16,18 +19,14 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
 import java.util.UUID
-
-private const val IDENT_NECT_TOOL_ID = "ident-nect"
 
 data class IdentNectActivateRequest(
     @field:Schema(
@@ -65,7 +64,7 @@ class IdentNectToolController(
     private val toolJourney: ToolJourney
 ) {
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/ident-nect")
+    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$IDENT_NECT_TOOL_ID")
     @Operation(
         summary = "Activate ident-nect",
         description = "Opens a Nect case; stepData carries the jump URL. The optional body names where Nect sends the user back to.",
@@ -83,19 +82,16 @@ class IdentNectToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String,
         @RequestBody(required = false) request: IdentNectActivateRequest?,
+        // After the body: a request that cannot be read must not activate anything.
+        @ActivateTool(IDENT_NECT_TOOL_ID) context: AuthorizedToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.beginActivation(channelSessionId, bindingKeyRef, IDENT_NECT_TOOL_ID)
         val outcome = handler.start(context.toolSessionId, request?.returnUri?.takeIf { it.isNotBlank() })
-        val response = toolJourney.applyOutcome(context, outcome)
-        val location = toolJourney.activationLocation(context, uriBuilder.build().toUri())
-        return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)
+        return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/ident-nect")
+    @PatchMapping("$API_V1/tools/{toolSessionId}/$IDENT_NECT_TOOL_ID")
     @Operation(
         summary = "Report the returned Nect case, or open a new one",
         description = "The backend redeems the case's result from Nect itself - once, and only for the case this tool session opened.",
@@ -113,30 +109,19 @@ class IdentNectToolController(
         ]
     )
     fun patch(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String,
+        @LoadTool(IDENT_NECT_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody(required = false) request: IdentNectPatchRequest?
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, IDENT_NECT_TOOL_ID)
         val body = request ?: IdentNectPatchRequest()
-        val outcome = handler.patch(toolSessionId, body.caseId, body.retry == true, body.returnUri?.takeIf { it.isNotBlank() })
+        val outcome = handler.patch(context.toolSessionId, body.caseId, body.retry == true, body.returnUri?.takeIf { it.isNotBlank() })
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/ident-nect")
+    @GetMapping("$API_V1/tools/{toolSessionId}/$IDENT_NECT_TOOL_ID")
     @Operation(summary = "Read the current ident-nect state")
     fun read(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String
+        @LoadTool(IDENT_NECT_TOOL_ID) context: ToolContext
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, IDENT_NECT_TOOL_ID)
-        val outcome = if (toolJourney.isCurrentTool(context)) {
-            checkNotNull(handler.read(toolSessionId) as? ToolOutcome.InProgress) {
-                "read() must return InProgress while the tool is still current"
-            }
-        } else {
-            null
-        }
-        return ResponseEntity.ok(toolJourney.buildReadResponse(context, outcome))
+        return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }
 }

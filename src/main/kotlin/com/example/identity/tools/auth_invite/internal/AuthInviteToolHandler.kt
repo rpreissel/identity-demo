@@ -7,20 +7,18 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.directory.Invitations
-import com.example.identity.tools.auth_invite.AuthInviteDescriptor
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 
 /**
- * toolId=auth-invite (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). The controller resolves the
+ * toolId=auth-invite-lookup (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). The controller resolves the
  * number to a person and says whether that person is rate-limited; this handler asks the person
  * register whether the one-time password opens one of that person's invitations. A code alone never opens anything: it has to belong
  * to the person named.
  */
 @Component
 class AuthInviteToolHandler(
-    private val descriptor: AuthInviteDescriptor,
     private val sessions: AuthInviteToolSessionRepository,
     private val invitations: Invitations,
     private val clock: Clock,
@@ -38,7 +36,7 @@ class AuthInviteToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, kvnr: String?, partnerNumber: String?, code: String?, personId: PartnerNumber?, rateLimited: Boolean): ToolOutcome {
-        checkNotNull(sessions.findByToolSessionId(toolSessionId)) { "Unknown auth-invite tool session: $toolSessionId" }
+        checkNotNull(sessions.findByToolSessionId(toolSessionId)) { "Unknown auth-invite-lookup tool session: $toolSessionId" }
 
         return when (val decision = AuthInviteFlow.decide(AuthInviteInput(kvnr, partnerNumber, code))) {
             is AuthInviteDecision.Incomplete -> outcomeFor(decision.missingFields)
@@ -48,9 +46,7 @@ class AuthInviteToolHandler(
                     ToolOutcome.Failed.AccountLookupAuth(Text("Nummer oder Einmalkennwort ungueltig"), attempted = personId?.let(Attempted::Person))
                 } else {
                     ToolOutcome.Completed.Authenticated(
-                        amr = listOf(descriptor.method),
                         achievedAcr = grant.acr,
-                        factorTypes = descriptor.factorTypes,
                         subject = Subject.Invitation(grant.invitation),
                     )
                 }
@@ -60,7 +56,7 @@ class AuthInviteToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        checkNotNull(sessions.findByToolSessionId(toolSessionId)) { "Unknown auth-invite tool session: $toolSessionId" }
+        checkNotNull(sessions.findByToolSessionId(toolSessionId)) { "Unknown auth-invite-lookup tool session: $toolSessionId" }
         return outcomeFor()
     }
 

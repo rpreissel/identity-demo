@@ -1,9 +1,9 @@
 package com.example.identity.tools.ident_fsc.internal
 
 import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.tools.ident_fsc.FscModule
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
-import com.example.identity.tools.ident_fsc.IdentFscDescriptor
 import com.example.identity.contract.tool_api.directory.ActivationCodes
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -24,7 +24,6 @@ private val PERSONAL_DETAILS_REJECTED = Text("Die Angaben passen zu keiner Perso
 
 @Component
 class IdentFscToolHandler(
-    private val descriptor: IdentFscDescriptor,
     private val repository: IdentFscToolSessionRepository,
     private val activationCodes: ActivationCodes,
     private val personDirectory: PersonDirectory,
@@ -103,23 +102,20 @@ class IdentFscToolHandler(
                 ToolOutcome.Failed.Identification(Text("Freischaltcode ungueltig oder abgelaufen"), attemptedPersonId = personId)
         }
         return state to ToolOutcome.Completed.Identified(
-            amr = listOf(descriptor.method),
-            achievedAcr = descriptor.maxAcr,
-            factorTypes = descriptor.factorTypes,
             claims = listOfNotNull(
                 // FSC is a master-data channel: every attribute this run asserts
                 // was checked against personenverzeichnis, hence PERSON_DIRECTORY as the
                 // trust anchor, not this tool's own id.
-                Claim(AttributeType.PERSON_ID, personId.value, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr),
+                Claim(AttributeType.PERSON_ID, personId.value, ClaimSource.PERSON_DIRECTORY, FscModule.maxAcr),
                 // A Partner identifies by Partnernummer and has no KVNR (ADR-34).
-                state.kvnr?.let { Claim(AttributeType.KVNR, it, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr) },
-                Claim(AttributeType.FAMILY_NAME, checkNotNull(state.familyName), ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr),
-                Claim(AttributeType.GIVEN_NAMES, checkNotNull(state.givenNames), ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr),
+                state.kvnr?.let { Claim(AttributeType.KVNR, it, ClaimSource.PERSON_DIRECTORY, FscModule.maxAcr) },
+                Claim(AttributeType.FAMILY_NAME, checkNotNull(state.familyName), ClaimSource.PERSON_DIRECTORY, FscModule.maxAcr),
+                Claim(AttributeType.GIVEN_NAMES, checkNotNull(state.givenNames), ClaimSource.PERSON_DIRECTORY, FscModule.maxAcr),
                 // Checked against the register like the name (matchesPersonalDetails) - and one of the
                 // three things that find this identification in the change log (ADR-39).
-                Claim(AttributeType.BIRTH_DATE, checkNotNull(state.birthDate).toString(), ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr),
+                Claim(AttributeType.BIRTH_DATE, checkNotNull(state.birthDate).toString(), ClaimSource.PERSON_DIRECTORY, FscModule.maxAcr),
                 // Insured with us: the Versicherungsnummer becomes an anchor too (ADR-34).
-                personDirectory.memberNumberOf(personId)?.let { Claim(AttributeType.MEMBER_NUMBER, it, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr) }
+                personDirectory.memberNumberOf(personId)?.let { Claim(AttributeType.MEMBER_NUMBER, it, ClaimSource.PERSON_DIRECTORY, FscModule.maxAcr) }
             ),
             auditDetails = mapOf(
                 "provider" to "fsc-service",

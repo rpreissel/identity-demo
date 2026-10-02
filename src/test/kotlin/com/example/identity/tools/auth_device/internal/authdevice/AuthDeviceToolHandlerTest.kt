@@ -1,13 +1,13 @@
 package com.example.identity.tools.auth_device.internal.authdevice
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_device.internal.DeviceEnrollment
 import com.example.identity.tools.auth_device.internal.DeviceEnrollmentRepository
 
-import com.example.identity.tools.auth_device.AuthDeviceDescriptor
-import com.example.identity.tools.auth_device.DEVICE_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_device.internal.DEVICE_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.device.DevicePublicKey
 import com.example.identity.contract.tool_api.device.UserVerification
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -36,7 +36,7 @@ private class Fixture {
     val enrollments = mockk<DeviceEnrollmentRepository>().also {
         every { it.findById(any()) } returns Optional.empty()
     }
-    val handler = AuthDeviceToolHandler(AuthDeviceDescriptor, sessions, enrollments, clock = TEST_CLOCK)
+    val handler = AuthDeviceToolHandler( sessions, enrollments, clock = TEST_CLOCK)
 
     fun withEnrolledDevice(id: Long) = apply {
         every { enrollments.findById(id) } returns Optional.of(DeviceEnrollment(thumbprint = ENROLLED_KEY.thumbprint, createdAt = TEST_NOW).apply { this.id = id })
@@ -104,10 +104,10 @@ class AuthDeviceToolHandlerTest : BehaviorSpec({
         `when`("the presented device key's thumbprint matches the enrolled one") {
             val outcome = f.handler.patch(f.toolSessionId, ENROLLED_KEY, UserVerification.BIOMETRIC)
 
-            then("it authenticates at the descriptor's own maxAcr, BIOMETRIC mapped to POSSESSION+INHERENCE") {
+            then("it authenticates at its tool's own level, BIOMETRIC mapped to POSSESSION+INHERENCE") {
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
                 authenticated.amr shouldBe listOf("device", "biometric")
-                authenticated.achievedAcr shouldBe AuthDeviceDescriptor.maxAcr
+                authenticated.achievedAcr shouldBe null
                 authenticated.factorTypes shouldBe setOf(FactorType.POSSESSION, FactorType.INHERENCE)
             }
         }

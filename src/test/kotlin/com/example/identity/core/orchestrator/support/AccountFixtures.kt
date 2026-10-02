@@ -1,6 +1,8 @@
 package com.example.identity.core.orchestrator.support
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.tools.auth_sms.PHONE_NUMBER as PHONE_NUMBER_ATTRIBUTE
+import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
 import com.example.identity.core.account.AccountService
 import com.example.identity.tools.auth_device.internal.DeviceEnrollment
 import com.example.identity.tools.auth_device.internal.DeviceEnrollmentRepository
@@ -81,7 +83,7 @@ class AccountFixtures(
         if (restrictedId != null) {
             accountService.recordClaims(
                 accountId,
-                listOf(Claim(AttributeType.EID_RESTRICTED_ID, restrictedId, ClaimSource("ident-eid"), IDENT_ACR)),
+                listOf(Claim(EID_RESTRICTED_ID, restrictedId, ClaimSource("ident-eid"), IDENT_ACR)),
                 provenAcr = IDENT_ACR
             )
         }
@@ -124,7 +126,7 @@ class AccountFixtures(
                 val enrollment = smsEnrollmentRepository.save(AuthSmsEnrollment(phoneNumber = method.phoneNumber, createdAt = Instant.now()))
                 accountService.recordClaims(
                     accountId,
-                    listOf(Claim(AttributeType.PHONE_NUMBER, method.phoneNumber, ENROLL_SMS_SOURCE, AcrLevel.LOA1)),
+                    listOf(Claim(PHONE_NUMBER_ATTRIBUTE, method.phoneNumber, ENROLL_SMS_SOURCE, AcrLevel.LOA1)),
                     provenAcr = ENROLLED_UNDER_ACR,
                     authMethodId = instanceId
                 )
@@ -132,7 +134,6 @@ class AccountFixtures(
                     accountId, "sms",
                     EnrollmentRef("auth_sms.enrollment", enrollment.id.toString()),
                     enrolledUnderAcr = ENROLLED_UNDER_ACR.value,
-                    details = emptyMap(),
                     enrolledUnderAmr = listOf("fsc"),
                     instanceId = instanceId
                 )
@@ -142,7 +143,6 @@ class AccountFixtures(
                 accountId, "password",
                 passwordCredentialPort.setNew(method.password),
                 enrolledUnderAcr = ENROLLED_UNDER_ACR.value,
-                details = emptyMap(),
                 enrolledUnderAmr = listOf("fsc"),
                 instanceId = instanceId
             )
@@ -150,7 +150,6 @@ class AccountFixtures(
             is Method.Email -> accountService.addAuthenticationMethod(
                 accountId, "email", EMAIL_ANCHOR_ENROLLMENT,
                 enrolledUnderAcr = ENROLLED_UNDER_ACR.value,
-                details = emptyMap(),
                 enrolledUnderAmr = listOf("fsc"),
                 instanceId = instanceId
             )
@@ -161,7 +160,7 @@ class AccountFixtures(
                     accountId, "device",
                     EnrollmentRef("auth_device.enrollment", enrollment.id.toString()),
                     enrolledUnderAcr = ENROLLED_UNDER_ACR.value,
-                    details = mapOf("deviceBindingKeyRef" to method.thumbprint),
+                    boundKeyRef = method.thumbprint,
                     enrolledUnderAmr = listOf("fsc"),
                     allowsMultipleInstances = true,
                     label = method.label,

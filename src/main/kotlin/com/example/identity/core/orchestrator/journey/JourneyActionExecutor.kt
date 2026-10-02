@@ -88,9 +88,9 @@ class JourneyActionExecutor(
             is Action.AcceptProof -> performAcceptProof(journey, channel, action)
             is Action.ApplyRestoredEvidence ->
                 journeyRecorder.mergeEvidence(journey, channel, action.source, action.methods)
-            // The tool already wrote its own effect (QrLoginRequest). achievedAcr/amr are empty, so
-            // this bookkeeping never changes the channel's evidence.
-            is Action.RecordApproval -> journeyRecorder.recordToolCompletion(journey, channel, action.tool, action.outcome, action.outcome.achievedAcr)
+            // The tool already wrote its own effect (QrLoginRequest). A peer approval proves nothing
+            // on this channel (no amr, on no evidence axis), so this bookkeeping never changes its evidence.
+            is Action.RecordApproval -> journeyRecorder.recordToolCompletion(journey, channel, action.tool, action.outcome, action.tool.levelOf(action.outcome))
             is Action.RevokeAuthMethod -> removeMethod(journey, channel, action.methodInstanceId)
             is Action.RetractAttribute -> performRetractAttribute(journey, channel, action.attributeType)
             is Action.LinkDevice -> performLinkDevice(journey, channel)
@@ -136,9 +136,9 @@ class JourneyActionExecutor(
         bindAccount(journey, channel, accountId)
         // An identification's achieved level is what this session proved about the identity.
         // AnchorRule.acrFloor prices the PERSON_ID anchor against it.
-        accountService.recordClaims(accountId, action.outcome.claims, provenAcr = action.outcome.achievedAcr ?: AcrLevel.NONE)
+        accountService.recordClaims(accountId, action.outcome.claims, provenAcr = action.tool.levelOf(action.outcome))
         journeyRecorder.recordIdentification(journey, channel, action.tool, action.outcome)
-        journeyRecorder.recordToolCompletion(journey, channel, action.tool, action.outcome, action.outcome.achievedAcr)
+        journeyRecorder.recordToolCompletion(journey, channel, action.tool, action.outcome, action.tool.levelOf(action.outcome))
     }
 
     /** Which account a confirmed identification writes to, see [AccountMerge] (ADR-20). */
@@ -267,7 +267,8 @@ class JourneyActionExecutor(
             action.tool.method,
             enrolled.enrollmentRef,
             enrolledUnderAcr = enrolledUnderAcr.value,
-            details = enrolled.instanceDetails,
+            boundKeyRef = enrolled.boundKeyRef,
+            reference = enrolled.reference,
             enrolledUnderAmr = evidence.currentAmr,
             channel = channel.channel?.name,
             allowsMultipleInstances = action.tool.allowsMultipleInstances,
@@ -275,7 +276,7 @@ class JourneyActionExecutor(
             instanceId = methodInstanceId
         )
         linkDeviceIfIntentImplies(journey, channel, accountId)
-        journeyRecorder.recordToolCompletion(journey, channel, action.tool, enrolled, enrolled.achievedAcr)
+        journeyRecorder.recordToolCompletion(journey, channel, action.tool, enrolled, action.tool.levelOf(enrolled))
         return demoNotice
     }
 
@@ -291,7 +292,7 @@ class JourneyActionExecutor(
         linkDeviceIfIntentImplies(journey, channel, accountId)
         // Capped by the instance that was used, see proofLevel (ADR-5).
         val effectiveAcr = proofLevel(
-            accountService.findActiveMethods(accountId, action.tool.method), action.tool.keyBinding, channel.bindingKeyRef, authenticated.achievedAcr
+            accountService.findActiveMethods(accountId, action.tool.method), action.tool.module, channel.bindingKeyRef, action.tool.levelOf(authenticated)
         )
         journeyRecorder.recordToolCompletion(journey, channel, action.tool, authenticated, effectiveAcr)
     }
@@ -313,7 +314,7 @@ class JourneyActionExecutor(
         channel.subject = Subject.Invitation(invitation)
         channel.sessionEvidenceId = sessionEvidenceService.createForInvitation(invitation).sessionEvidenceId
         sessionManagementService.updateChannelSession(channel)
-        journeyRecorder.recordToolCompletion(journey, channel, action.tool, action.outcome, action.outcome.achievedAcr)
+        journeyRecorder.recordToolCompletion(journey, channel, action.tool, action.outcome, action.tool.levelOf(action.outcome))
     }
 
     /**

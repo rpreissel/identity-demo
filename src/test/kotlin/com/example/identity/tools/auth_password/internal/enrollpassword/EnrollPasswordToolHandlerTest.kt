@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_password.internal.enrollpassword
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.auth_password.PASSWORD_EXISTS
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
@@ -7,14 +9,13 @@ import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollment
 import com.example.identity.tools.auth_password.internal.PasswordHasher
 
 import com.example.identity.tools.auth_password.DEMO_PASSWORD
-import com.example.identity.tools.auth_password.EnrollPasswordDescriptor
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
-import com.example.identity.contract.tool_api.claims.PASSWORD_EXISTS_MARKER
+import com.example.identity.tools.auth_password.PASSWORD_EXISTS_MARKER
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -33,7 +34,7 @@ private class Fixture {
     val enrollments = mockk<AuthPasswordEnrollmentRepository>().also {
         every { it.save(capture(saved)) } answers { saved.captured.apply { id = 7L } }
     }
-    val handler = EnrollPasswordToolHandler(EnrollPasswordDescriptor, sessions, enrollments, clock = TEST_CLOCK)
+    val handler = EnrollPasswordToolHandler( sessions, enrollments, clock = TEST_CLOCK)
 }
 
 /**
@@ -68,11 +69,8 @@ class EnrollPasswordToolHandlerTest : BehaviorSpec({
             then("it enrolls immediately - no confirmation handshake needed - and states that a password exists") {
                 outcome shouldBe ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef("auth_password.enrollment", "7"),
-                    amr = listOf("password"),
-                    achievedAcr = EnrollPasswordDescriptor.maxAcr,
-                    factorTypes = EnrollPasswordDescriptor.factorTypes,
                     claims = listOf(
-                        Claim(AttributeType.PASSWORD_EXISTS, PASSWORD_EXISTS_MARKER, ClaimSource(EnrollPasswordDescriptor.toolId.value), EnrollPasswordDescriptor.maxAcr)
+                        Claim(PASSWORD_EXISTS, PASSWORD_EXISTS_MARKER, ClaimSource(tool("enroll-password").toolId.value), tool("enroll-password").maxAcr)
                     ),
                 )
             }

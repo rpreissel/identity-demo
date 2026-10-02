@@ -34,7 +34,7 @@ import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.SessionManagementService
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.ToolDescriptor
+import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Service
@@ -267,7 +267,7 @@ class JourneyService(
      * does not offer. So LOGIN_LOOKUP cannot be talked into an identification: none of its states
      * lists one.
      */
-    fun activate(running: RunningJourney, live: LiveChannel, tool: ToolDescriptor, toolSessionId: ToolSessionId) {
+    fun activate(running: RunningJourney, live: LiveChannel, tool: Tool, toolSessionId: ToolSessionId) {
         keepSessionAlive(live)
         val journey = running.entity
         val channel = live.session
@@ -296,7 +296,7 @@ class JourneyService(
     fun applyOutcome(
         running: RunningJourney,
         channel: LiveChannel,
-        tool: ToolDescriptor,
+        tool: Tool,
         outcome: ToolOutcome
     ): Step {
         keepSessionAlive(channel)
@@ -306,7 +306,7 @@ class JourneyService(
     private fun applyOutcome(
         journey: AuthJourney,
         channel: ChannelSession,
-        tool: ToolDescriptor,
+        tool: Tool,
         outcome: ToolOutcome
     ): Step = when (outcome) {
         is ToolOutcome.InProgress -> {
@@ -328,7 +328,7 @@ class JourneyService(
      * every candidate, the abandoned one included. Whoever goes back wants to choose again. The
      * strategy is not asked. Only an [OfferingState] has a selection page; elsewhere this is [abandon].
      */
-    fun back(running: RunningJourney, live: LiveChannel, tool: ToolDescriptor): Step {
+    fun back(running: RunningJourney, live: LiveChannel, tool: Tool): Step {
         keepSessionAlive(live)
         val journey = running.entity
         val channel = live.session
@@ -343,7 +343,7 @@ class JourneyService(
     }
 
     /** "Anderes Verfahren": the tool is declined, and the state decides whether anything is left. */
-    fun abandon(running: RunningJourney, live: LiveChannel, tool: ToolDescriptor): Step {
+    fun abandon(running: RunningJourney, live: LiveChannel, tool: Tool): Step {
         keepSessionAlive(live)
         val journey = running.entity
         val channel = live.session
@@ -523,7 +523,7 @@ class JourneyService(
      * with budget left behaves like missing input, not like an HTTP error. An exhausted budget ends
      * the journey, not just the current state.
      */
-    private fun chargeAttempt(journey: AuthJourney, channel: ChannelSession, tool: ToolDescriptor, outcome: ToolOutcome.Failed): Step {
+    private fun chargeAttempt(journey: AuthJourney, channel: ChannelSession, tool: Tool, outcome: ToolOutcome.Failed): Step {
         journey.attemptBudget -= 1
         journeyTraceService.record(channel.forLog(), journey.forLog(), "TOOL_FAILED",
             journeyState = codec.read(journey)::class.simpleName,

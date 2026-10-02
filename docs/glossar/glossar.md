@@ -146,7 +146,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   einlädt, etwa einer Beitragsrückerstattung. Er enthält ein Einmalkennwort, mit dem sich die Person
   auf der Website anmelden kann, auch ohne Konto. Die Einladung gehört dem Personenverzeichnis; der
   Orchestrator merkt sich nur ihre Kennung.
-  *Im Code:* `Invitation`, Tool `auth-invite`.
+  *Im Code:* `Invitation`, Tool `auth-invite-lookup`.
   *Mehr dazu:* [ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
 - **Einmalkennwort**: Das Kennwort im Einladungsbrief. Zusammen mit der Mitglieds- oder
   Partnernummer öffnet es den Zugang zu genau einem Vorgang. Trotz des Namens lässt es sich mehrmals
@@ -203,7 +203,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   Geräteverknüpfung, die das Gerät nur wiedererkennt und nicht als Anmeldung zählt.
   *Im Code:* Verfahren `device` (Tools `enroll-device`, `auth-device`) und `kobil` (`enroll-kobil`,
   `auth-kobil`); ob ein solches Verfahren auf dem anfragenden Gerät nutzbar ist, prüft
-  `ToolDescriptor.usableByCaller`.
+  `Tool.usableByCaller`.
   *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 1,
   [06-ablaeufe](../06-ablaeufe.md) Abschnitte 5 und 7, [ADR-21](../adr/ADR-021-der-kobil-pin-liegt-im-backend-und-das.md).
 - **Geräteverknüpfung**: Merkt sich, welches Smartphone zu welchem Konto gehört, erkannt an seinem
@@ -356,7 +356,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
 - **Modul** und **Tool-Modul**: Die Anwendung ist in Module geteilt, die nur über festgelegte
   Schnittstellen miteinander reden; ein Test hält diese Grenzen ein. Ein Tool-Modul enthält die Tools
   eines Verfahrens, etwa alles zu SMS, und kennt den Orchestrator nur über `tool_api`.
-  *Im Code:* Pakete unter `tools/` (etwa `tools/auth_sms`), `ModuleMetadata`.
+  *Im Code:* Pakete unter `tools/` (etwa `tools/auth_sms`), je Modul eine Klasse mit `@ApplicationModule` (etwa `SmsToolModule`).
   *Mehr dazu:* [08-projektrahmen](../08-projektrahmen.md) Abschnitt 3.
 
 ## N
@@ -449,7 +449,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
 - **QR-Login**: Anmeldung auf der Website mit Hilfe der App. Der Browser zeigt einen QR-Code, der
   Nutzer scannt ihn mit der schon angemeldeten App und gibt die Anmeldung dort frei. Danach tippt er
   den Bestätigungscode im Browser ein.
-  *Im Code:* Tools `auth-qr`, `auth-qr-lookup`; die Freigabe in der App `confirm-qr-login`, Intent
+  *Im Code:* Tools `auth-qr`, `auth-qr-lookup`; die Freigabe in der App `approve-qr`, Intent
   `CONFIRM_PEER_LOGIN`.
   *Mehr dazu:* [06-ablaeufe](../06-ablaeufe.md) Abschnitt 8.
 - **Quelle**: Wer für eine Angabe einsteht: das Personenverzeichnis, ein Prüfverfahren wie der
@@ -547,7 +547,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   was es kann: welches Verfahren es betrifft, welche Rolle es hat, welche Faktortypen es beweist,
   welches Niveau es höchstens liefert und was vorher erfüllt sein muss. Daraus stellt der
   Orchestrator das Angebot zusammen.
-  *Im Code:* `toolId` (etwa `enroll-sms`); die Beschreibung heißt `ToolDescriptor`.
+  *Im Code:* `toolId` (etwa `enroll-sms`); die Beschreibung heißt `Tool`, das Verfahren mit allen seinen Tools `ToolModule`.
   *Mehr dazu:* [03-tool-architektur](../03-tool-architektur.md) Abschnitte 1 und 2.
 - **Tool-Beschreibung**: siehe Tool.
 - **Tool-Durchlauf**: Ein einmal gestartetes Tool, das oft nur wenige Minuten lebt, etwa das Warten
@@ -599,7 +599,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
 - **Vorgangszugang**: Die Anmeldung auf der Website mit einem Einmalkennwort aus einer Einladung,
   auch ohne Konto. Er gilt nur für den einen Vorgang, für den eingeladen wurde; die Tokens nennen
   diesen Vorgang. Es gibt ihn nur auf der Website, und er lässt sich nicht aufwerten.
-  *Im Code:* Tool `auth-invite`, Token-Claim `process`.
+  *Im Code:* Tool `auth-invite-lookup`, Token-Claim `process`.
   *Mehr dazu:* [ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
 
 ## W

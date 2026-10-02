@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_email.internal.authemaillookup
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.tool_api.Subject
@@ -12,7 +13,6 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.simulation.mail.MailServer
-import com.example.identity.tools.auth_email.AuthEmailLookupDescriptor
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import com.example.identity.tools.auth_email.internal.EmailSendLimit
 import io.kotest.core.spec.style.BehaviorSpec
@@ -38,7 +38,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
     val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<EmailSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val mailServer = MailServer(clock = TEST_CLOCK)
-    val handler = AuthEmailLookupToolHandler(AuthEmailLookupDescriptor, toolDataRepository, accountDirectory, emailCodeGenerator, mailServer, sendLimit, clock = TEST_CLOCK)
+    val handler = AuthEmailLookupToolHandler( toolDataRepository, accountDirectory, emailCodeGenerator, mailServer, sendLimit, clock = TEST_CLOCK)
 
     // What every unresolved submission answers: the code step, no demo code, nothing naming an account.
     val neutralAnswer = ToolOutcome.InProgress(nextStep = "codeInput", stepData = MissingFields(listOf("code")), demo = emptyMap())
@@ -137,12 +137,12 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
         `when`("confirming with the correct code") {
             val outcome = handler.patch(toolSessionId, issued.plainCode)
 
-            then("it authenticates for that account at the descriptor's own maxAcr and factorTypes") {
+            then("it authenticates for that account at its tool's own level and factors") {
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
                 authenticated.subject shouldBe Subject.Account(AccountId(42L))
-                authenticated.amr shouldBe listOf("email")
-                authenticated.achievedAcr shouldBe AuthEmailLookupDescriptor.maxAcr
-                authenticated.factorTypes shouldBe AuthEmailLookupDescriptor.factorTypes
+                authenticated.amr shouldBe null
+                authenticated.achievedAcr shouldBe null
+                authenticated.factorTypes shouldBe null
             }
 
             then("the address's send budget starts over") {

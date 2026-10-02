@@ -176,7 +176,7 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
 
     /** Enrollment tools for one method name, found through the catalog, never a fixed toolId. */
     private fun enrollmentCandidatesFor(method: String, ctx: JourneyContext): List<ToolId> =
-        ctx.catalog.descriptors()
+        ctx.catalog.tools()
             .filter { it.role == ToolRole.ENROLLMENT && it.method == method }
             .map { it.toolId }
             .filter { it in ctx.availableTools }

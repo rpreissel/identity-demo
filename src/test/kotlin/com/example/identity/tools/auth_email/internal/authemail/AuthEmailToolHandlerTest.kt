@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_email.internal.authemail
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
@@ -12,7 +13,6 @@ import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.simulation.mail.MailServer
-import com.example.identity.tools.auth_email.AuthEmailDescriptor
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import com.example.identity.tools.auth_email.internal.EmailSendLimit
 import io.kotest.assertions.throwables.shouldThrow
@@ -42,7 +42,7 @@ private class Fixture {
     val codes = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<EmailSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val mailServer = MailServer(clock = TEST_CLOCK)
-    val handler = AuthEmailToolHandler(AuthEmailDescriptor, sessions, accountDirectory, codes, mailServer, sendLimit, clock = TEST_CLOCK)
+    val handler = AuthEmailToolHandler( sessions, accountDirectory, codes, mailServer, sendLimit, clock = TEST_CLOCK)
 
     fun withConfirmedAddress() = apply {
         every { accountDirectory.anchorValue(accountId, AttributeType.EMAIL) } returns ADDRESS
@@ -119,11 +119,11 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
         `when`("confirming with the correct code") {
             val outcome = f.handler.patch(f.toolSessionId, issued.plainCode, f.accountId)
 
-            then("it authenticates at the descriptor's own maxAcr and factorTypes") {
+            then("it authenticates at its tool's own level and factors") {
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
-                authenticated.amr shouldBe listOf("email")
-                authenticated.achievedAcr shouldBe AuthEmailDescriptor.maxAcr
-                authenticated.factorTypes shouldBe AuthEmailDescriptor.factorTypes
+                authenticated.amr shouldBe null
+                authenticated.achievedAcr shouldBe null
+                authenticated.factorTypes shouldBe null
                 authenticated.subject shouldBe null
             }
 

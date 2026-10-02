@@ -1,10 +1,10 @@
 package com.example.identity.tools.auth_email.internal.confirmemail
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.simulation.mail.MailServer
-import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import com.example.identity.tools.auth_email.internal.EmailSendLimit
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -33,7 +33,7 @@ private class Fixture {
     val codes = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<EmailSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val mailServer = MailServer(clock = TEST_CLOCK)
-    val handler = ConfirmEmailToolHandler(ConfirmEmailDescriptor, sessions, codes, mailServer, sendLimit, clock = TEST_CLOCK)
+    val handler = ConfirmEmailToolHandler( sessions, codes, mailServer, sendLimit, clock = TEST_CLOCK)
 
     fun withSessionAwaitingEmail() = apply {
         every { sessions.findByToolSessionId(toolSessionId) } returns ConfirmEmailToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
@@ -114,7 +114,7 @@ class ConfirmEmailToolHandlerTest : BehaviorSpec({
             then("it attests the address without creating a credential") {
                 outcome shouldBe ToolOutcome.Completed.Attested(
                     claims = listOf(
-                        Claim(AttributeType.EMAIL, "max@example.com", ClaimSource(ConfirmEmailDescriptor.toolId.value), ConfirmEmailDescriptor.maxAcr)
+                        Claim(AttributeType.EMAIL, "max@example.com", ClaimSource(tool("confirm-email").toolId.value), tool("confirm-email").maxAcr)
                     )
                 )
             }

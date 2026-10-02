@@ -1,14 +1,9 @@
 package com.example.identity.core.orchestrator.tool
 
 import com.example.identity.TEST_CLOCK
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.catalogOf
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.demo.demo_mode.DemoMode
-import com.example.identity.tools.auth_device.AuthDeviceDescriptor
-import com.example.identity.tools.auth_device.EnrollDeviceDescriptor
-import com.example.identity.tools.auth_kobil.AuthKobilDescriptor
-import com.example.identity.tools.auth_kobil.EnrollKobilDescriptor
-import com.example.identity.tools.ident_eid.IdentEidDescriptor
-import com.example.identity.tools.ident_nect.IdentNectDescriptor
-import com.example.identity.tools.auth_sms.AuthSmsDescriptor
 import com.example.identity.core.orchestrator.domain.ChannelType
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainAll
@@ -19,12 +14,12 @@ import io.mockk.mockk
 import java.util.Optional
 
 /**
- * A tool that declares itself demo-only ([com.example.identity.contract.tool_api.ToolDescriptor.demoOnly])
+ * A tool that declares itself demo-only ([com.example.identity.contract.tool_api.Tool.demoOnly])
  * is unavailable outside `demo.mode` - even where an operator setting explicitly enables it.
  */
 class DemoOnlyToolAvailabilityTest : BehaviorSpec({
 
-    val registry = ToolHandlerRegistry(listOf(AuthDeviceDescriptor, EnrollDeviceDescriptor, AuthSmsDescriptor))
+    val registry = catalogOf("auth-device", "enroll-device", "auth-sms")
     val repository = mockk<ToolAvailabilityRepository>()
     // An operator row that explicitly switches auth-device ON - it must not matter outside demo mode.
     every { repository.findById(any()) } answers {
@@ -37,9 +32,9 @@ class DemoOnlyToolAvailabilityTest : BehaviorSpec({
 
     given("the tools whose level this instance cannot back (ADR-36)") {
         then("the device tools (claimed user verification), KOBIL, eID and Nect (simulated counterparts) declare themselves demo-only") {
-            listOf(AuthDeviceDescriptor, EnrollDeviceDescriptor, AuthKobilDescriptor, EnrollKobilDescriptor, IdentEidDescriptor, IdentNectDescriptor)
+            listOf(tool("auth-device"), tool("enroll-device"), tool("auth-kobil"), tool("enroll-kobil"), tool("ident-eid"), tool("ident-nect"))
                 .forEach { (it.demoOnly != null) shouldBe true }
-            AuthSmsDescriptor.demoOnly shouldBe null
+            tool("auth-sms").demoOnly shouldBe null
         }
     }
 

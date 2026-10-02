@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_invite.internal
 
 import com.example.identity.contract.tool_api.ids.InvitationId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
@@ -14,7 +15,6 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.directory.InvitationGrant
 import com.example.identity.contract.tool_api.directory.Invitations
-import com.example.identity.tools.auth_invite.AuthInviteDescriptor
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -44,7 +44,7 @@ private class Fixture {
         every { it.redeem(any(), any()) } returns null
         every { it.redeem(PartnerNumber(PERSON), CODE) } returns GRANT
     }
-    val handler = AuthInviteToolHandler(AuthInviteDescriptor, sessions, invitations, TEST_CLOCK)
+    val handler = AuthInviteToolHandler( sessions, invitations, TEST_CLOCK)
 }
 
 /**
@@ -53,7 +53,7 @@ private class Fixture {
  */
 class AuthInviteToolHandlerTest : BehaviorSpec({
 
-    given("no auth-invite tool session yet") {
+    given("no auth-invite-lookup tool session yet") {
         val f = Fixture()
 
         `when`("a tool session starts") {
@@ -73,9 +73,7 @@ class AuthInviteToolHandlerTest : BehaviorSpec({
 
             then("the channel is authenticated for the invitation at its level") {
                 outcome shouldBe ToolOutcome.Completed.Authenticated(
-                    amr = listOf("invite"),
                     achievedAcr = AcrLevel.LOA2,
-                    factorTypes = setOf(FactorType.POSSESSION),
                     subject = Subject.Invitation(InvitationId("invitation-hash")),
                 )
             }

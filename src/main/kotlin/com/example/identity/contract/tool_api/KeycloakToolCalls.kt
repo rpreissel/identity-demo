@@ -16,8 +16,10 @@ interface KeycloakToolCalls {
     fun requireKeycloakFor(accountId: AccountId, bindingKeyRef: String)
 
     /**
-     * Books [outcome] of [descriptor] for [accountId]: a proof on the account's lockout, an
-     * enrollment as claims and a method instance. Any other outcome is a contract error.
+     * Books [outcome] of [module] for [accountId]: a proof on the account's lockout, an enrollment
+     * as claims and a method instance. The tool is the module's one for the role the outcome
+     * answers ([ToolRole.KNOWN_ACCOUNT_AUTH] or [ToolRole.ENROLLMENT]). Any other outcome is a
+     * contract error.
      */
-    fun apply(accountId: AccountId, descriptor: ToolDescriptor, outcome: ToolOutcome)
+    fun apply(accountId: AccountId, module: ToolModule, outcome: ToolOutcome)
 }

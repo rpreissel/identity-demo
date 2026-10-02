@@ -11,7 +11,6 @@ import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
 import com.example.identity.contract.texts.Text
-import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -48,7 +47,7 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
     private fun completed(state: WebSelectMethodState.SelectMethod, event: JourneyEvent.Completed, ctx: JourneyContext): Transition {
         val outcome = event.outcome
         if (outcome is ToolOutcome.Completed.Authenticated && outcome.subject is Subject.Invitation &&
-            (outcome.achievedAcr ?: AcrLevel.NONE) < ctx.acrFloor
+            event.tool.levelOf(outcome) < ctx.acrFloor
         ) return insufficientInvitation()
         return Transition.Perform(proofAction(event), resumeState = state)
     }

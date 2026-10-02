@@ -1,14 +1,17 @@
 package com.example.identity.tools.ident_kvnr.api.v1
 
-import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.ident_kvnr.IDENT_KVNR_TOOL_ID
 import com.example.identity.tools.ident_kvnr.internal.IdentKvnrToolHandler
-import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.ToolJourney
+import com.example.identity.contract.tool_api.ActivateTool
+import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.AuthorizedToolContext
+import com.example.identity.contract.tool_api.ToolContext
+import com.example.identity.contract.tool_api.readResponse
+import com.example.identity.contract.tool_api.activated
 import com.example.identity.contract.tool_api.directory.normalizeKvnr
-import com.example.identity.contract.tool_api.ToolOutcome
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -16,18 +19,14 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.envelope.API_V1
-
-private const val IDENT_KVNR_TOOL_ID = "ident-kvnr"
 
 data class IdentKvnrPatchRequest(
     @field:Schema(example = "A123456789") val kvnr: String? = null,
@@ -48,7 +47,7 @@ class IdentKvnrToolController(
     private val toolJourney: ToolJourney
 ) {
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/ident-kvnr")
+    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$IDENT_KVNR_TOOL_ID")
     @Operation(
         summary = "Activate ident-kvnr",
         description = "No request body: toolId already carries kind and method.",
@@ -65,18 +64,14 @@ class IdentKvnrToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String,
+        @ActivateTool(IDENT_KVNR_TOOL_ID) context: AuthorizedToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.beginActivation(channelSessionId, bindingKeyRef, IDENT_KVNR_TOOL_ID)
         val outcome = handler.start(context.toolSessionId)
-        val response = toolJourney.applyOutcome(context, outcome)
-        val location = toolJourney.activationLocation(context, uriBuilder.build().toUri())
-        return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)
+        return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/ident-kvnr")
+    @PatchMapping("$API_V1/tools/{toolSessionId}/$IDENT_KVNR_TOOL_ID")
     @Operation(
         summary = "Supply the Versichertennummer - or, without one, the Partnernummer",
         responses = [
@@ -92,12 +87,9 @@ class IdentKvnrToolController(
         ]
     )
     fun patch(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String,
+        @LoadTool(IDENT_KVNR_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody(required = false) request: IdentKvnrPatchRequest?
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, IDENT_KVNR_TOOL_ID)
-
         val body = request ?: IdentKvnrPatchRequest()
         // The KVNR comes first (ADR-34): given, it alone decides; the Partnernummer only counts without one.
         val personId = when {
@@ -106,25 +98,16 @@ class IdentKvnrToolController(
             else -> null
         }
         val matches = personId != null && toolJourney.matchesAttestedIdentity(context, personId)
-        val outcome = handler.patch(toolSessionId, body.kvnr, body.partnerNumber, personId, matches)
+        val outcome = handler.patch(context.toolSessionId, body.kvnr, body.partnerNumber, personId, matches)
 
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/ident-kvnr")
+    @GetMapping("$API_V1/tools/{toolSessionId}/$IDENT_KVNR_TOOL_ID")
     @Operation(summary = "Read the current ident-kvnr state")
     fun read(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String
+        @LoadTool(IDENT_KVNR_TOOL_ID) context: ToolContext
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, IDENT_KVNR_TOOL_ID)
-        val outcome = if (toolJourney.isCurrentTool(context)) {
-            checkNotNull(handler.read(toolSessionId) as? ToolOutcome.InProgress) {
-                "read() must return InProgress while the tool is still current"
-            }
-        } else {
-            null
-        }
-        return ResponseEntity.ok(toolJourney.buildReadResponse(context, outcome))
+        return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }
 }

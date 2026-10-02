@@ -42,7 +42,7 @@ class ChangeLogDbTest(
         accountService.addIdentification(accountId, "ident-fsc", "loa2", role = "IDENTIFICATION",
             report = mapOf("provider" to "fsc-service", "providerTxId" to "FSC-1", "documentNumber" to "C01X00T47"))
         val method = accountService.addAuthenticationMethod(
-            accountId, "sms", EnrollmentRef("auth_sms.enrollment", "1"), enrolledUnderAcr = "loa1", details = mapOf("phone" to "+491701234567"),
+            accountId, "sms", EnrollmentRef("auth_sms.enrollment", "1"), enrolledUnderAcr = "loa1",
             enrolledUnderAmr = listOf("email", "password"), channel = "WEB"
         ).activeAuthenticationMethods.single()
         accountService.deactivateAuthenticationMethod(accountId, method.id)

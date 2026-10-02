@@ -159,7 +159,7 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
      */
     protected fun withDefaultAvailableTools(body: String): String {
         if (body.contains("availableTools")) return body
-        val allToolIds = toolRegistry.descriptors().joinToString(",", "[", "]") { "\"${it.toolId}\"" }
+        val allToolIds = toolRegistry.tools().joinToString(",", "[", "]") { "\"${it.toolId}\"" }
         return if (body.isBlank() || body.trim() == "{}") {
             """{"availableTools":$allToolIds}"""
         } else {

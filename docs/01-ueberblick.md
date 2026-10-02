@@ -122,7 +122,7 @@ Die Doku ist deutsch, der Code englisch. Hinter jedem Begriff steht in Klammern 
   Anker zu schreiben.
 - **Obergrenze eines Verfahrens** (`maxAcr`, `enrolledUnderAcr`): das höchste Niveau, das ein
   Verfahren technisch hergibt bzw. unter dem es eingerichtet wurde.
-- **Einladung** und **Einmalkennwort** (`auth-invite`, [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)):
+- **Einladung** und **Einmalkennwort** (`auth-invite-lookup`, [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)):
   Das Personenverzeichnis lädt eine Person per Brief zu einem **Vorgang** ein. Mit Mitglieds-
   oder Partnernummer und dem Einmalkennwort meldet sie sich auf der Website an, auch ohne Konto; die
   Tokens tragen den Vorgang (`process`) und gelten nur für ihn. Das Kennwort gilt bis zur Frist oder

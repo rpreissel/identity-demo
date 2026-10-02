@@ -1,5 +1,8 @@
 package com.example.identity.contract.tool_api
 
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.contract.tool_api.values.PartnerNumber
@@ -9,12 +12,14 @@ import java.net.URI
 
 /**
  * The handle a tool controller holds for one request. Obtained from [ToolJourney.beginActivation]
- * or [ToolJourney.loadContext] and passed to every other [ToolJourney] call afterwards.
+ * or as a [LoadTool] parameter and passed to every other [ToolJourney] call afterwards.
  */
 interface ToolContext {
     /** The toolId this context was obtained for. */
     val toolId: String
     val toolSessionId: ToolSessionId
+    /** The caller's resolved binding key (see [BindingKey]), already checked against the channel. */
+    val bindingKeyRef: String
     /**
      * The account in hand: the one this channel knows (device link, earlier login, or bound by the
      * running journey), or `null` while nobody is known yet.
@@ -70,6 +75,16 @@ interface ToolJourney {
      */
     fun loadCurrent(toolSessionId: ToolSessionId, bindingKeyRef: String, toolId: String): AuthorizedToolContext
 
+    /**
+     * The credential of [module]'s method this caller may prove: the account's active one, or for a
+     * [ToolModule.onePerDevice] method the one living on the caller's key - a credential bound to
+     * another device is not reachable. Resolved here, since a handler may not reference `account`
+     * (docs/06-ablaeufe.md #3).
+     *
+     * @throws UnresolvableReferenceException (422) without an account or without such a credential.
+     */
+    fun requireEnrollment(context: ToolContext, module: ToolModule): EnrollmentRef
+
     /** @return whether [context]'s toolId is still the journey's current tool. */
     fun isCurrentTool(context: ToolContext): Boolean
 
@@ -103,4 +118,31 @@ interface ToolJourney {
      * current tool; the response then shows the journey's current step.
      */
     fun buildReadResponse(context: ToolContext, freshOutcome: ToolOutcome.InProgress?): ChannelResponse
+}
+
+/**
+ * The answer to a tool activation: applies the first [outcome] and returns `201 Created` with the
+ * new tool resource as `Location`. The closing step of every tool controller's `activate`.
+ */
+fun ToolJourney.activated(
+    context: AuthorizedToolContext,
+    outcome: ToolOutcome,
+    uriBuilder: UriComponentsBuilder,
+): ResponseEntity<ChannelResponse> {
+    val response = applyOutcome(context, outcome)
+    val location = activationLocation(context, uriBuilder.build().toUri())
+    return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)
+}
+
+/**
+ * The answer to a GET on a tool session: [read] rebuilds the tool's current step while it is still
+ * the journey's current tool; otherwise the response shows where the journey is now.
+ */
+fun ToolJourney.readResponse(context: ToolContext, read: () -> ToolOutcome): ResponseEntity<ChannelResponse> {
+    val outcome = if (isCurrentTool(context)) {
+        checkNotNull(read() as? ToolOutcome.InProgress) { "read() must return InProgress while the tool is still current" }
+    } else {
+        null
+    }
+    return ResponseEntity.ok(buildReadResponse(context, outcome))
 }

@@ -13,7 +13,7 @@ leitet nichts aus Client-Angaben ab, die das System hätte prüfen müssen.
 
 ## Personenverzeichnis (`PersonDirectory`, `PersonMasterData`, `ActivationCodes`, `Invitations`)
 
-Genutzt von `ident-fsc`, `ident-kvnr`, `auth-invite`, dem Abgleich jeder Identifizierung und den
+Genutzt von `ident-fsc`, `ident-kvnr`, `auth-invite-lookup`, dem Abgleich jeder Identifizierung und den
 Token-Claims in Keycloak. **Nicht** `demoOnly`:
 Mit `demo.mode=false` ist es der einzige Weg zu einer Identifizierung, also ist dieser Vertrag der
 wichtigste.

@@ -32,10 +32,6 @@ import com.example.identity.core.orchestrator.session.SessionRefusedException
 import com.example.identity.core.orchestrator.session.TokenService
 import com.example.identity.core.orchestrator.session.toCoreEvidence
 import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.ToolRole
-import com.example.identity.contract.tool_api.claims.authority
-import com.example.identity.contract.tool_api.claims.anchorRule
-import com.example.identity.contract.tool_api.claims.isLocalAnchor
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import java.time.Duration
@@ -369,18 +365,14 @@ class ChannelService(
 
     /**
      * What else this device is known by: for every key-bound credential of [accountId] on
-     * [bindingKeyRef], the reference its method discloses ([ToolDescriptor.instanceDisclosure]).
-     * Generic: no method name appears here. Resolved by `(method, KNOWN_ACCOUNT_AUTH)`, as in
-     * `credentialsLivingOn`, since the method name alone would also match an enrollment tool.
+     * [bindingKeyRef], the reference its enrollment left to show (`AuthMethodView.reference`).
+     * Generic: no method name appears here.
      */
     private fun boundCredentials(accountId: AccountId, bindingKeyRef: String): List<BoundCredentialView> =
         accountService.findAccount(accountId)?.activeAuthenticationMethods.orEmpty().mapNotNull { instance ->
-            val descriptor = toolRegistry.descriptors()
-                .firstOrNull { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.method == instance.method }
-                ?: return@mapNotNull null
-            if (descriptor.keyBinding?.livesOn(instance.details, bindingKeyRef) != true) return@mapNotNull null
-            descriptor.instanceDisclosure?.referenceOf(instance.details)
-                ?.let { BoundCredentialView(method = instance.method, reference = it) }
+            val module = toolRegistry.moduleOf(instance.method) ?: return@mapNotNull null
+            if (!module.livesOn(instance.boundKeyRef, bindingKeyRef)) return@mapNotNull null
+            instance.reference?.let { BoundCredentialView(method = instance.method, reference = it) }
         }
 
     companion object {

@@ -7,12 +7,12 @@ import jakarta.ws.rs.core.Response;
 import org.keycloak.forms.login.LoginFormsProvider;
 
 /**
- * Web-channel page of auth-invite (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md): KVNR, or the
+ * Web-channel page of auth-invite-lookup (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md): KVNR, or the
  * Partnernummer without one, and the one-time password from the letter, sent together in one step.
  */
 public class AuthInviteRendererFactory extends AbstractWebToolRendererFactory {
 
-    public static final String PROVIDER_ID = "auth-invite";
+    public static final String PROVIDER_ID = "auth-invite-lookup";
 
     @Override
     public String getId() {

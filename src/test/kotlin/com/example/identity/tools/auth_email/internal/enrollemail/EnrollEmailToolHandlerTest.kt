@@ -1,11 +1,11 @@
 package com.example.identity.tools.auth_email.internal.enrollemail
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
-import com.example.identity.tools.auth_email.EnrollEmailDescriptor
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -21,14 +21,12 @@ import java.util.UUID
 class EnrollEmailToolHandlerTest : BehaviorSpec({
 
     val toolDataRepository = mockk<EnrollEmailToolSessionRepository>()
-    val handler = EnrollEmailToolHandler(EnrollEmailDescriptor, toolDataRepository, clock = TEST_CLOCK)
+    val handler = EnrollEmailToolHandler( toolDataRepository, clock = TEST_CLOCK)
 
     // No amr: control of the address was proven by confirm-email, not in this run.
     val expected = ToolOutcome.Completed.Enrolled(
         enrollmentRef = EMAIL_ANCHOR_ENROLLMENT,
         amr = emptyList(),
-        achievedAcr = EnrollEmailDescriptor.maxAcr,
-        factorTypes = EnrollEmailDescriptor.factorTypes
     )
 
     given("no enroll-email tool session yet") {

@@ -1,6 +1,8 @@
 package com.example.identity.tools.ident_nect.internal
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.ident_nect.NECT_RESTRICTED_ID
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -17,7 +19,6 @@ import com.example.identity.simulation.nect.NectFailure
 import com.example.identity.simulation.nect.NectIdent
 import com.example.identity.simulation.nect.NectProcedure
 import com.example.identity.simulation.nect.NectResult
-import com.example.identity.tools.ident_nect.IdentNectDescriptor
 import com.example.identity.tools.ident_nect.api.v1.NectRedirectStep
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -38,8 +39,8 @@ class IdentNectToolHandlerTest : BehaviorSpec({
 
     val repository = mockk<IdNectToolSessionRepository>()
     val nect = mockk<NectIdent>()
-    val handler = IdentNectToolHandler(IdentNectDescriptor, repository, nect, clock = TEST_CLOCK)
-    val source = ClaimSource(IdentNectDescriptor.toolId.value)
+    val handler = IdentNectToolHandler( repository, nect, clock = TEST_CLOCK)
+    val source = ClaimSource(tool("ident-nect").toolId.value)
 
     /** A tool session waiting for a fresh case; returns both ids. */
     fun waitingForCase(): Pair<ToolSessionId, UUID> {
@@ -77,7 +78,7 @@ class IdentNectToolHandlerTest : BehaviorSpec({
 
     given("a channel that names where Nect sends the user back to") {
         val prefixes = IdentNectProperties(returnUriPrefixes = listOf("https://kc.test/realms/"))
-        val webHandler = IdentNectToolHandler(IdentNectDescriptor, repository, nect, clock = TEST_CLOCK, properties = prefixes)
+        val webHandler = IdentNectToolHandler( repository, nect, clock = TEST_CLOCK, properties = prefixes)
         val actionUrl = "https://kc.test/realms/Demo/login-actions/authenticate?session_code=c1&execution=e1&client_id=web&tab_id=t1"
 
         `when`("the address lies under a configured prefix") {
@@ -240,10 +241,10 @@ class IdentNectToolHandlerTest : BehaviorSpec({
                     Claim(AttributeType.STREET_ADDRESS, "Heidestraße 17", source, AcrLevel.LOA3),
                     Claim(AttributeType.POSTAL_CODE, "51147", source, AcrLevel.LOA3),
                     Claim(AttributeType.LOCALITY, "Köln", source, AcrLevel.LOA3),
-                    Claim(AttributeType.NECT_RESTRICTED_ID, "nect-pseudonym-1", source, AcrLevel.LOA3),
+                    Claim(NECT_RESTRICTED_ID, "nect-pseudonym-1", source, AcrLevel.LOA3),
                 )
                 identified.personId shouldBe null
-                assertClaimsCovered(IdentNectDescriptor, identified.claims)
+                assertClaimsCovered(tool("ident-nect"), identified.claims)
             }
 
             then("it records the case for the audit, without a document number") {

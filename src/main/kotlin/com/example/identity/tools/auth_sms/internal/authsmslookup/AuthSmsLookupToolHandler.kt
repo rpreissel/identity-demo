@@ -9,8 +9,8 @@ import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
 import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 
-import com.example.identity.tools.auth_sms.AuthSmsLookupDescriptor
-import com.example.identity.tools.auth_sms.SMS_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_sms.SmsModule
+import com.example.identity.tools.auth_sms.internal.SMS_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -26,7 +26,6 @@ import java.time.Clock
  */
 @Component
 class AuthSmsLookupToolHandler(
-    private val descriptor: AuthSmsLookupDescriptor,
     private val toolDataRepository: AuthSmsLookupToolSessionRepository,
     private val enrollmentRepository: AuthSmsEnrollmentRepository,
     private val tanGenerator: TanGenerator,
@@ -86,14 +85,11 @@ class AuthSmsLookupToolHandler(
             is AuthSmsLookupDecision.Unchanged -> outcomeFor(decision.state)
 
             is AuthSmsLookupDecision.Complete -> {
-                accountDirectory.activeEnrollment(decision.accountId, descriptor.method)
+                accountDirectory.activeEnrollment(decision.accountId, SmsModule.method)
                     ?.id?.toLongOrNull()
                     ?.let { enrollmentRepository.findByIdOrNull(it) }
                     ?.let { sendLimit.received(it.phoneNumber.orEmpty()) }
                 ToolOutcome.Completed.Authenticated(
-                    amr = listOf(descriptor.method),
-                    achievedAcr = descriptor.maxAcr,
-                    factorTypes = descriptor.factorTypes,
                     subject = Subject.Account(decision.accountId)
                 )
             }

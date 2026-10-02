@@ -1,14 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.policy.fromNow
 import com.example.identity.core.orchestrator.domain.ChannelType
-import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
-import com.example.identity.tools.auth_password.EnrollPasswordDescriptor
-import com.example.identity.tools.auth_sms.AuthSmsDescriptor
-import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
-import com.example.identity.tools.ident_fsc.IdentFscDescriptor
-import com.example.identity.tools.ident_kvnr.IdentKvnrDescriptor
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.Action
@@ -59,28 +54,28 @@ class RegisterStrategyTest : BehaviorSpec({
     listOf(
         RegisterCompletion(
             RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc")))),
-            JourneyEvent.Completed(IdentFscDescriptor, identifiedOutcome()),
-            Action.RecordIdentification(IdentFscDescriptor, identifiedOutcome())
+            JourneyEvent.Completed(tool("ident-fsc"), identifiedOutcome()),
+            Action.RecordIdentification(tool("ident-fsc"), identifiedOutcome())
         ),
         RegisterCompletion(
             AuthChoice(Offer(listOf(ToolId("auth-sms")))),
-            JourneyEvent.Completed(AuthSmsDescriptor, smsProof),
-            Action.AcceptProof(AuthSmsDescriptor, smsProof)
+            JourneyEvent.Completed(tool("auth-sms"), smsProof),
+            Action.AcceptProof(tool("auth-sms"), smsProof)
         ),
         RegisterCompletion(
             RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email")))),
-            JourneyEvent.Completed(ConfirmEmailDescriptor, emailAttestation()),
-            Action.AdoptAttestation(ConfirmEmailDescriptor, emailAttestation())
+            JourneyEvent.Completed(tool("confirm-email"), emailAttestation()),
+            Action.AdoptAttestation(tool("confirm-email"), emailAttestation())
         ),
         RegisterCompletion(
             Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = true),
-            JourneyEvent.Completed(EnrollSmsDescriptor, smsEnrollment),
-            Action.AdoptCredential(EnrollSmsDescriptor, smsEnrollment)
+            JourneyEvent.Completed(tool("enroll-sms"), smsEnrollment),
+            Action.AdoptCredential(tool("enroll-sms"), smsEnrollment)
         ),
         RegisterCompletion(
             RegisterState.SecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS)),
-            JourneyEvent.Completed(EnrollPasswordDescriptor, passwordEnrollment),
-            Action.AdoptCredential(EnrollPasswordDescriptor, passwordEnrollment)
+            JourneyEvent.Completed(tool("enroll-password"), passwordEnrollment),
+            Action.AdoptCredential(tool("enroll-password"), passwordEnrollment)
         )
     ).forEach { (state, event, action) ->
         given("${state::class.simpleName}, its offered tool about to complete") {
@@ -140,7 +135,7 @@ class RegisterStrategyTest : BehaviorSpec({
         val state = RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"))))
 
         `when`("one is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(IdentFscDescriptor), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("ident-fsc")), ctx())
             then("keeps the choice among the rest") {
                 transition shouldBe
                     Transition.To(state.withOffer(state.offer.copy(declined = setOf(ToolId("ident-fsc")))))
@@ -152,7 +147,7 @@ class RegisterStrategyTest : BehaviorSpec({
         val state = RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc"))))
 
         `when`("the last offered candidate is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(IdentFscDescriptor), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("ident-fsc")), ctx())
             then("gives up - the whole journey cancels, this is not an error") {
                 transition shouldBe Transition.Cancel
             }
@@ -296,7 +291,7 @@ class RegisterStrategyTest : BehaviorSpec({
         val state = RegisterState.Assigning(Offer(listOf(ToolId("ident-kvnr"))))
 
         `when`("the assignment is backed out of (\"not now\")") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(IdentKvnrDescriptor), theCtx)
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("ident-kvnr")), theCtx)
 
             then("the registration carries on unbound and offers enrollment (ADR-10)") {
                 val enrolling = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<Enrolling>()
@@ -306,16 +301,16 @@ class RegisterStrategyTest : BehaviorSpec({
 
         `when`("ident-kvnr finds the person in the register") {
             val found = identifiedOutcome()
-            val transition = strategy.transition(state, JourneyEvent.Completed(IdentKvnrDescriptor, found), theCtx)
+            val transition = strategy.transition(state, JourneyEvent.Completed(tool("ident-kvnr"), found), theCtx)
 
             then("records the identification and resumes here") {
-                transition shouldBe Transition.Perform(Action.RecordIdentification(IdentKvnrDescriptor, found), resumeState = state)
+                transition shouldBe Transition.Perform(Action.RecordIdentification(tool("ident-kvnr"), found), resumeState = state)
             }
         }
 
         `when`("a tool completes with anything but an identification") {
             val enrolled = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("kvnr", "ref"))
-            val result = runCatching { strategy.transition(state, JourneyEvent.Completed(IdentKvnrDescriptor, enrolled), theCtx) }
+            val result = runCatching { strategy.transition(state, JourneyEvent.Completed(tool("ident-kvnr"), enrolled), theCtx) }
 
             then("fails loudly - the assignment step offers nothing else") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
@@ -358,7 +353,7 @@ class RegisterStrategyTest : BehaviorSpec({
         `when`("the last candidate is abandoned") {
             val transition = strategy.transition(
                 state,
-                JourneyEvent.Abandoned(AuthSmsDescriptor),
+                JourneyEvent.Abandoned(tool("auth-sms")),
                 ctx(account = acc, channel = ChannelType.WEB)
             )
             then("falls back to identification again, not to enrollment - never wrapped with the factor-kind obligation") {
@@ -371,7 +366,7 @@ class RegisterStrategyTest : BehaviorSpec({
         val state = RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email"))))
 
         `when`("abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(ConfirmEmailDescriptor), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("confirm-email")), ctx())
             then("re-offers the same full choice - the obligation itself is never waived by backing out") {
                 transition shouldBe
                     Transition.To(state.withActive(null))
@@ -400,7 +395,7 @@ class RegisterStrategyTest : BehaviorSpec({
         val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), emailObligation = true)
 
         `when`("abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(AuthSmsDescriptor), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), ctx())
             then("re-offers the same full choice, the tool just backed out of included") {
                 transition shouldBe Transition.To(state.withActive(null))
             }
@@ -626,7 +621,7 @@ class RegisterStrategyTest : BehaviorSpec({
         val state = RegisterState.SecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS))
 
         `when`("abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(EnrollPasswordDescriptor), ctx(availableTools = StrategyTestFixtures.appTools))
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("enroll-password")), ctx(availableTools = StrategyTestFixtures.appTools))
             then("re-offers the same full choice - the obligation itself is never waived by backing out") {
                 transition shouldBe
                     Transition.To(state.withActive(null))

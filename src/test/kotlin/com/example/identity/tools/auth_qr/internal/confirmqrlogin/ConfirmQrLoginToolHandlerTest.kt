@@ -1,11 +1,11 @@
 package com.example.identity.tools.auth_qr.internal.confirmqrlogin
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
-import com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor
 import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
 import com.example.identity.tools.auth_qr.internal.QrLoginRequest
 import com.example.identity.tools.auth_qr.internal.ConfirmationCodeDigest
@@ -27,7 +27,7 @@ private const val PAIRING = "ABCD1234"
 private val CONFIRMING = AccountId(99L)
 
 /**
- * A confirm-qr-login tool session that already resolved [PAIRING], a pending request opened for
+ * A approve-qr tool session that already resolved [PAIRING], a pending request opened for
  * [expectedAccountId]; approving and declining succeed unless a test says otherwise.
  */
 private class Fixture(expectedAccountId: AccountId?) {
@@ -43,7 +43,7 @@ private class Fixture(expectedAccountId: AccountId?) {
         every { it.approveIfPending(PAIRING, CONFIRMING, capture(approvedHash), any(), any()) } returns 1
         every { it.denyIfPending(PAIRING, any()) } returns 1
     }
-    val handler = ConfirmQrLoginToolHandler(ConfirmQrLoginDescriptor, sessions, requests, digest, clock = TEST_CLOCK)
+    val handler = ConfirmQrLoginToolHandler( sessions, requests, digest, clock = TEST_CLOCK)
 
     fun withRequestAlreadyDecided() = apply {
         every { requests.denyIfPending(PAIRING, any()) } returns 0
@@ -51,7 +51,7 @@ private class Fixture(expectedAccountId: AccountId?) {
 }
 
 /**
- * Unit test of accept/reject and the expectedAccountId guard: `confirm-qr-login` fails fast in the
+ * Unit test of accept/reject and the expectedAccountId guard: `approve-qr` fails fast in the
  * app when it can never satisfy the web side's `auth-qr` step-up (matching the late check in
  * [com.example.identity.tools.auth_qr.internal.authqr.AuthQrToolHandler]).
  */

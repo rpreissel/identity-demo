@@ -69,7 +69,7 @@ Bei Zustimmung bräuchte es:
 
 - eine neue `Action` (`Action.UpgradeMethods(accountId, methodInstanceIds, newAcr)`), die der
   `JourneyActionExecutor` ausführt. Dort wird jedes Verfahren auf das `maxAcr` seines Tools
-  begrenzt, weil `AccountService` bewusst nichts von `ToolDescriptor` weiß.
+  begrenzt, weil `AccountService` bewusst nichts von `Tool` weiß.
 - eine neue Methode zum Speichern, `AccountService.upgradeMethods(...)`, nach dem Muster des
   bestehenden `deactivateAuthenticationMethod`. Sie findet die Verfahren über ihre `id` und nicht
   über den Namen des Verfahrens, damit mehrere aktive Instanzen desselben Verfahrens (etwa mehrere

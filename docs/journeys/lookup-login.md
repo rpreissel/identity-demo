@@ -5,7 +5,7 @@
 
 Anmelden ohne gekoppeltes Gerät: Der Nutzer gibt seine E-Mail-Adresse an und weist eines seiner
 Verfahren nach. Angeboten werden alle Tools mit der Rolle `ToolRole.ACCOUNT_LOOKUP_AUTH`, die die App
-meldet. `auth-invite` gehört auch zu dieser Rolle, gibt es aber nur im Web-Kanal: Die App meldet es
+meldet. `auth-invite-lookup` gehört auch zu dieser Rolle, gibt es aber nur im Web-Kanal: Die App meldet es
 nicht, und die Voreinstellung sperrt es im App-Kanal
 ([ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Die
 Kandidatenliste von `AuthPolicy.authCandidates` passt hier nicht, denn sie setzt ein bereits

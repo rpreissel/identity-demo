@@ -1,13 +1,13 @@
 package com.example.identity.tools.ident_kvnr.internal
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.directory.PersonDirectory
-import com.example.identity.tools.ident_kvnr.IdentKvnrDescriptor
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
@@ -33,7 +33,7 @@ private class Fixture {
     val personDirectory = mockk<PersonDirectory>().also {
         every { it.memberNumberOf(any()) } returns null
     }
-    val handler = IdentKvnrToolHandler(IdentKvnrDescriptor, repository, personDirectory, clock = TEST_CLOCK)
+    val handler = IdentKvnrToolHandler( repository, personDirectory, clock = TEST_CLOCK)
 
     fun withMemberNumber(person: PartnerNumber, memberNumber: String) = apply {
         every { personDirectory.memberNumberOf(person) } returns memberNumber
@@ -68,8 +68,8 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
 
             then("it asserts the person reference and the number, both vouched for by the register") {
                 outcome.shouldBeInstanceOf<ToolOutcome.Completed.Identified>().claims shouldBe listOf(
-                    Claim(AttributeType.PERSON_ID, "P000000042", ClaimSource.PERSON_DIRECTORY, IdentKvnrDescriptor.maxAcr),
-                    Claim(AttributeType.KVNR, "A123456789", ClaimSource.PERSON_DIRECTORY, IdentKvnrDescriptor.maxAcr)
+                    Claim(AttributeType.PERSON_ID, "P000000042", ClaimSource.PERSON_DIRECTORY, tool("ident-kvnr").maxAcr),
+                    Claim(AttributeType.KVNR, "A123456789", ClaimSource.PERSON_DIRECTORY, tool("ident-kvnr").maxAcr)
                 )
             }
 
@@ -88,7 +88,7 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
 
             then("the Versicherungsnummer comes along as an anchor claim (ADR-34)") {
                 outcome.shouldBeInstanceOf<ToolOutcome.Completed.Identified>().claims.last() shouldBe
-                    Claim(AttributeType.MEMBER_NUMBER, "10000001", ClaimSource.PERSON_DIRECTORY, IdentKvnrDescriptor.maxAcr)
+                    Claim(AttributeType.MEMBER_NUMBER, "10000001", ClaimSource.PERSON_DIRECTORY, tool("ident-kvnr").maxAcr)
             }
         }
     }
@@ -101,7 +101,7 @@ class IdentKvnrToolHandlerTest : BehaviorSpec({
 
             then("it asserts the person reference only - no KVNR claim") {
                 outcome.shouldBeInstanceOf<ToolOutcome.Completed.Identified>().claims shouldBe listOf(
-                    Claim(AttributeType.PERSON_ID, "P000000004", ClaimSource.PERSON_DIRECTORY, IdentKvnrDescriptor.maxAcr)
+                    Claim(AttributeType.PERSON_ID, "P000000004", ClaimSource.PERSON_DIRECTORY, tool("ident-kvnr").maxAcr)
                 )
             }
 

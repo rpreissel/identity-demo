@@ -7,7 +7,6 @@ import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import com.example.identity.tools.auth_email.internal.EmailSendLimit
 import com.example.identity.contract.tool_api.TooManyRequestsException
 
-import com.example.identity.tools.auth_email.AuthEmailDescriptor
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -23,7 +22,6 @@ import java.time.Clock
  */
 @Component
 class AuthEmailToolHandler(
-    private val descriptor: AuthEmailDescriptor,
     private val toolDataRepository: AuthEmailToolSessionRepository,
     private val accountDirectory: AccountDirectory,
     private val emailCodeGenerator: EmailCodeGenerator,
@@ -71,11 +69,7 @@ class AuthEmailToolHandler(
             AuthEmailDecision.WrongCode -> ToolOutcome.Failed.KnownAccountAuth(Text("Code ungueltig oder abgelaufen"))
             AuthEmailDecision.Complete -> {
                 accountId?.let { accountDirectory.anchorValue(it, AttributeType.EMAIL) }?.let { sendLimit.received(it) }
-                ToolOutcome.Completed.Authenticated(
-                    amr = listOf(descriptor.method),
-                    achievedAcr = descriptor.maxAcr,
-                    factorTypes = descriptor.factorTypes
-                )
+                ToolOutcome.Completed.Authenticated()
             }
         }
     }

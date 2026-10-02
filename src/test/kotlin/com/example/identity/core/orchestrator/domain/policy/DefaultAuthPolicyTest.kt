@@ -5,19 +5,22 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import java.time.Duration
-import com.example.identity.contract.tool_api.claims.ClaimSource
-import com.example.identity.contract.tool_api.claims.ClaimDeclaration
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AuthMethodView
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
+import com.example.identity.contract.tool_api.Proves
+import com.example.identity.contract.tool_api.Tool
+import com.example.identity.contract.tool_api.ToolModule
+import com.example.identity.contract.tool_api.enroll
+import com.example.identity.contract.tool_api.identify
+import com.example.identity.contract.tool_api.login
+import com.example.identity.contract.tool_api.toolModule
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.CallerKeyBinding
 import com.example.identity.contract.tool_api.claims.ClaimRequirement
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolRole
-import com.example.identity.contract.tool_api.ToolDescriptor
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.ClaimTrust
 import io.kotest.core.spec.style.BehaviorSpec
@@ -34,27 +37,37 @@ import io.kotest.matchers.shouldBe
  */
 class DefaultAuthPolicyTest : BehaviorSpec({
 
-    fun descriptor(id: String, role: ToolRole, method: String, factorTypes: Set<FactorType>, maxAcr: AcrLevel): ToolDescriptor =
-        object : ToolDescriptor {
-            override val toolId = ToolId(id)
-            override val role = role
-            override val method = method
-            override val factorTypes = factorTypes
-            override val maxAcr = maxAcr
-            // What the catalog demands of every identification (ToolHandlerRegistry, ADR-39).
-            override val claims =
-                if (role == ToolRole.IDENTIFICATION) setOf(AttributeType.FAMILY_NAME, AttributeType.GIVEN_NAMES, AttributeType.BIRTH_DATE)
-                    .map { ClaimDeclaration(it, ClaimSource(toolId.value)) }.toSet()
-                else emptySet()
-        }
+    /** One synthetic procedure playing [roles]; [optInEnrollment] makes its enrollment prove nothing (like qr). */
+    fun module(
+        method: String, factorTypes: Set<FactorType>, maxAcr: AcrLevel, vararg roles: ToolRole,
+        onePerDevice: Boolean = false, optInEnrollment: Boolean = false,
+    ): ToolModule = toolModule(
+        method = method,
+        proves = Proves(factorTypes, maxAcr),
+        onePerDevice = onePerDevice,
+        tools = listOfNotNull(
+            if (ToolRole.IDENTIFICATION in roles) identify("ident-$method") else null,
+            if (ToolRole.ENROLLMENT in roles) enroll("enroll-$method", optInOnly = optInEnrollment) else null,
+            if (ToolRole.KNOWN_ACCOUNT_AUTH in roles) login("auth-$method") else null,
+        ),
+    )
+    fun ToolModule.tool(role: ToolRole): Tool = tools.single { it.role == role }
+    /** A catalog of the modules behind [tools]. */
+    fun catalog(vararg tools: Tool) = ToolHandlerRegistry(tools.map { it.module }.distinct())
+    /** A one-tool procedure, for the local catalogs below. */
+    fun descriptor(role: ToolRole, method: String, factorTypes: Set<FactorType>, maxAcr: AcrLevel): Tool =
+        module(method, factorTypes, maxAcr, role).tool(role)
 
-    val identFsc = descriptor("ident-fsc", ToolRole.IDENTIFICATION, "fsc", setOf(FactorType.POSSESSION), AcrLevel.LOA2)
-    val enrollSms = descriptor("enroll-sms", ToolRole.ENROLLMENT, "sms", setOf(FactorType.POSSESSION), AcrLevel.LOA2)
-    val authSms = descriptor("auth-sms", ToolRole.KNOWN_ACCOUNT_AUTH, "sms", setOf(FactorType.POSSESSION), AcrLevel.LOA2)
-    val authPasskey = descriptor("auth-passkey", ToolRole.KNOWN_ACCOUNT_AUTH, "passkey", setOf(FactorType.POSSESSION, FactorType.INHERENCE), AcrLevel.LOA3)
-    val enrollPasskey = descriptor("enroll-passkey", ToolRole.ENROLLMENT, "passkey", setOf(FactorType.POSSESSION, FactorType.INHERENCE), AcrLevel.LOA3)
+    val fsc = module("fsc", setOf(FactorType.POSSESSION), AcrLevel.LOA2, ToolRole.IDENTIFICATION)
+    val sms = module("sms", setOf(FactorType.POSSESSION), AcrLevel.LOA2, ToolRole.ENROLLMENT, ToolRole.KNOWN_ACCOUNT_AUTH)
+    val passkey = module("passkey", setOf(FactorType.POSSESSION, FactorType.INHERENCE), AcrLevel.LOA3, ToolRole.ENROLLMENT, ToolRole.KNOWN_ACCOUNT_AUTH)
+    val identFsc = fsc.tool(ToolRole.IDENTIFICATION)
+    val enrollSms = sms.tool(ToolRole.ENROLLMENT)
+    val authSms = sms.tool(ToolRole.KNOWN_ACCOUNT_AUTH)
+    val authPasskey = passkey.tool(ToolRole.KNOWN_ACCOUNT_AUTH)
+    val enrollPasskey = passkey.tool(ToolRole.ENROLLMENT)
 
-    val registry = ToolHandlerRegistry(listOf(identFsc, enrollSms, authSms, authPasskey, enrollPasskey))
+    val registry = ToolHandlerRegistry(listOf(fsc, sms, passkey))
     val policy = DefaultAuthPolicy(registry, TEST_CLOCK)
 
     fun candidates(
@@ -71,7 +84,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
     )
 
     fun method(method: String, enrolledUnderAcr: AcrLevel, active: Boolean = true) =
-        AuthMethodView(id = "$method-instance", method = method, active = active, createdAt = null, enrolledUnderAcr = enrolledUnderAcr.value, details = null, enrollmentRef = EnrollmentRef("${method}_enrollment", "1"))
+        AuthMethodView(id = "$method-instance", method = method, active = active, createdAt = null, enrolledUnderAcr = enrolledUnderAcr.value, boundKeyRef = null, reference = null, enrollmentRef = EnrollmentRef("${method}_enrollment", "1"))
 
     val nothingProven = SessionEvidence(emptyList())
     val smsAtLoa2 = SessionEvidence.fromNow(amr = listOf("sms"), factorTypes = setOf(FactorType.POSSESSION), methodAcr = mapOf("sms" to AcrLevel.LOA2.value))
@@ -261,8 +274,8 @@ class DefaultAuthPolicyTest : BehaviorSpec({
     }
 
     given("ident-eid proven on its own - card and PIN on the IDENTITY axis") {
-        val identEid = descriptor("ident-eid", ToolRole.IDENTIFICATION, "eid", setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), AcrLevel.LOA3)
-        val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(identEid)), TEST_CLOCK)
+        val identEid = descriptor(ToolRole.IDENTIFICATION, "eid", setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), AcrLevel.LOA3)
+        val localPolicy = DefaultAuthPolicy(catalog(identEid), TEST_CLOCK)
         val evidence = SessionEvidence.fromNow(
             listOf("eid"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), mapOf("eid" to AcrLevel.LOA3.value),
             axis = mapOf("eid" to EvidenceAxis.IDENTITY)
@@ -289,8 +302,8 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         // The identification sits on the IDENTITY axis. An attacker who steals the password only
         // has to defeat the password, so fsc + password is one authenticator, not two, and gets no
         // MFA bump even with a claimed loa3 enrolledUnderAcr.
-        val tokenPassword = descriptor("auth-password", ToolRole.KNOWN_ACCOUNT_AUTH, "password", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
-        val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(identFsc, tokenPassword)), TEST_CLOCK)
+        val tokenPassword = descriptor(ToolRole.KNOWN_ACCOUNT_AUTH, "password", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
+        val localPolicy = DefaultAuthPolicy(catalog(identFsc, tokenPassword), TEST_CLOCK)
         val evidence = SessionEvidence.fromNow(
             amr = listOf("fsc", "password"),
             factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE),
@@ -437,10 +450,10 @@ class DefaultAuthPolicyTest : BehaviorSpec({
     given("sms and email active, each capped at loa1, and qr reaching loa2 alone, but the channel cannot offer qr") {
         // Mirrors the real catalog: auth-qr reaches loa2 alone, but the App never declares it in
         // availableTools. Regression for CONFIRM_PEER_LOGIN aborting for an account with sms and email.
-        val tokenSms = descriptor("auth-sms", ToolRole.KNOWN_ACCOUNT_AUTH, "sms", setOf(FactorType.POSSESSION), AcrLevel.LOA1)
-        val tokenEmail = descriptor("auth-email", ToolRole.KNOWN_ACCOUNT_AUTH, "email", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
-        val tokenQr = descriptor("auth-qr", ToolRole.KNOWN_ACCOUNT_AUTH, "qr", setOf(FactorType.POSSESSION), AcrLevel.LOA2)
-        val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenSms, tokenEmail, tokenQr)), TEST_CLOCK)
+        val tokenSms = descriptor(ToolRole.KNOWN_ACCOUNT_AUTH, "sms", setOf(FactorType.POSSESSION), AcrLevel.LOA1)
+        val tokenEmail = descriptor(ToolRole.KNOWN_ACCOUNT_AUTH, "email", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
+        val tokenQr = descriptor(ToolRole.KNOWN_ACCOUNT_AUTH, "qr", setOf(FactorType.POSSESSION), AcrLevel.LOA2)
+        val localPolicy = DefaultAuthPolicy(catalog(tokenSms, tokenEmail, tokenQr), TEST_CLOCK)
         val acc = account(method("sms", AcrLevel.LOA2), method("email", AcrLevel.LOA2), method("qr", AcrLevel.LOA2))
         val context = candidates(
             nothingProven, AcrLevel.LOA2, acc, "test-binding-key", linkedAccountId = acc.accountId,
@@ -457,21 +470,12 @@ class DefaultAuthPolicyTest : BehaviorSpec({
     }
 
     given("an account with a key-bound device credential on key-1") {
-        val deviceAuth = object : ToolDescriptor {
-            override val toolId = ToolId("auth-device")
-            override val role = ToolRole.KNOWN_ACCOUNT_AUTH
-            override val method = "device"
-            override val factorTypes = setOf(FactorType.POSSESSION)
-            override val maxAcr = AcrLevel.LOA2
-            override val allowsMultipleInstances = true
-            override val keyBinding = CallerKeyBinding { instanceDetails, callerBindingKeyRef ->
-                instanceDetails?.get("deviceBindingKeyRef") == callerBindingKeyRef
-            }
-        }
-        val devicePolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(deviceAuth)), TEST_CLOCK)
+        val deviceAuth = module("device", setOf(FactorType.POSSESSION), AcrLevel.LOA2, ToolRole.KNOWN_ACCOUNT_AUTH, onePerDevice = true)
+            .tool(ToolRole.KNOWN_ACCOUNT_AUTH)
+        val devicePolicy = DefaultAuthPolicy(catalog(deviceAuth), TEST_CLOCK)
         val deviceMethod = AuthMethodView(
             id = "device-instance", method = "device", active = true, createdAt = null,
-            enrolledUnderAcr = AcrLevel.LOA2.value, details = mapOf("deviceBindingKeyRef" to "key-1"),
+            enrolledUnderAcr = AcrLevel.LOA2.value, boundKeyRef = "key-1", reference = null,
             enrollmentRef = EnrollmentRef("auth_device.enrollment", "1")
         )
         val acc = account(deviceMethod)
@@ -501,24 +505,19 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
     }
 
-    // One method whose enrollment and auth procedure declare different factor types (like qr): the
-    // reachability counts what proving the method gives, whatever the bean order.
-    val enrollX = descriptor("enroll-x", ToolRole.ENROLLMENT, "x", emptySet(), AcrLevel.LOA1)
-    val authX = descriptor("auth-x", ToolRole.KNOWN_ACCOUNT_AUTH, "x", setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), AcrLevel.LOA2)
-    listOf(
-        "enrollment first" to listOf(enrollX, authX),
-        "auth first" to listOf(authX, enrollX)
-    ).forEach { (order, descriptors) ->
-        given("method x, whose enrollment and auth tools differ in factor types, listed $order") {
-            val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(descriptors), TEST_CLOCK)
-            val acc = account(method("x", enrolledUnderAcr = AcrLevel.LOA2))
+    // One method whose enrollment proves nothing and whose auth tool covers two factor types (like
+    // qr): the reachability counts what proving the method gives - the module's, not one tool's.
+    given("method x, whose enrollment is an opt-in and whose auth tool proves two factor types") {
+        val x = module("x", setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), AcrLevel.LOA2,
+            ToolRole.ENROLLMENT, ToolRole.KNOWN_ACCOUNT_AUTH, optInEnrollment = true)
+        val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(x)), TEST_CLOCK)
+        val acc = account(method("x", enrolledUnderAcr = AcrLevel.LOA2))
 
-            `when`("reachability of loa2 is checked") {
-                val reachability = localPolicy.reachability(acc, AcrLevel.LOA2)
+        `when`("reachability of loa2 is checked") {
+            val reachability = localPolicy.reachability(acc, AcrLevel.LOA2)
 
-                then("it is reachable through the auth tool's factor types") {
-                    reachability shouldBe Reachability.Reachable
-                }
+            then("it is reachable through the auth tool's factor types") {
+                reachability shouldBe Reachability.Reachable
             }
         }
     }
@@ -527,9 +526,9 @@ class DefaultAuthPolicyTest : BehaviorSpec({
 
     // Two loa1-only tools of different factor types (a = possession, b = knowledge). enrolledUnderAcr
     // is the caller's claim in SessionEvidence; AuthPolicy does not re-derive it from the account.
-    val tokenA = descriptor("auth-a", ToolRole.KNOWN_ACCOUNT_AUTH, "a", setOf(FactorType.POSSESSION), AcrLevel.LOA1)
-    val tokenB = descriptor("auth-b", ToolRole.KNOWN_ACCOUNT_AUTH, "b", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
-    val abPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenA, tokenB)), TEST_CLOCK)
+    val tokenA = descriptor(ToolRole.KNOWN_ACCOUNT_AUTH, "a", setOf(FactorType.POSSESSION), AcrLevel.LOA1)
+    val tokenB = descriptor(ToolRole.KNOWN_ACCOUNT_AUTH, "b", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
+    val abPolicy = DefaultAuthPolicy(catalog(tokenA, tokenB), TEST_CLOCK)
     fun abEvidence(enrolledUnderAcr: Map<String, String>) = SessionEvidence.fromNow(
         amr = listOf("a", "b"), factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE),
         methodAcr = mapOf("a" to AcrLevel.LOA1.value, "b" to AcrLevel.LOA1.value), enrolledUnderAcr = enrolledUnderAcr
@@ -612,9 +611,9 @@ class DefaultAuthPolicyTest : BehaviorSpec({
     // reach loa2, and so does an identification.
 
     given("two single-factor AUTH tools of different kinds proven, enrolled under loa2, no identification") {
-        val tokenSms = descriptor("auth-sms", ToolRole.KNOWN_ACCOUNT_AUTH, "sms", setOf(FactorType.POSSESSION), AcrLevel.LOA1)
-        val tokenPassword = descriptor("auth-password", ToolRole.KNOWN_ACCOUNT_AUTH, "password", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
-        val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenSms, tokenPassword)), TEST_CLOCK)
+        val tokenSms = descriptor(ToolRole.KNOWN_ACCOUNT_AUTH, "sms", setOf(FactorType.POSSESSION), AcrLevel.LOA1)
+        val tokenPassword = descriptor(ToolRole.KNOWN_ACCOUNT_AUTH, "password", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA1)
+        val localPolicy = DefaultAuthPolicy(catalog(tokenSms, tokenPassword), TEST_CLOCK)
         val evidence = SessionEvidence.fromNow(
             amr = listOf("sms", "password"),
             factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE),
@@ -640,8 +639,8 @@ class DefaultAuthPolicyTest : BehaviorSpec({
     }
 
     given("a single AUTH tool proven that declares two factor types itself (device-like: possession+knowledge)") {
-        val tokenDevice = descriptor("auth-device", ToolRole.KNOWN_ACCOUNT_AUTH, "device", setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), AcrLevel.LOA2)
-        val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(tokenDevice)), TEST_CLOCK)
+        val tokenDevice = descriptor(ToolRole.KNOWN_ACCOUNT_AUTH, "device", setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), AcrLevel.LOA2)
+        val localPolicy = DefaultAuthPolicy(catalog(tokenDevice), TEST_CLOCK)
         val evidence = SessionEvidence.fromNow(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), mapOf("device" to AcrLevel.LOA2.value))
 
         `when`("the level is resolved") {
@@ -688,9 +687,9 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         // NIST defines a combination rule only for AAL2. AAL3 requires a specific authenticator
         // technology (hardware-based, verifier-impersonation-resistant), so the generic bump stops
         // at loa2.
-        val strongA = descriptor("auth-a", ToolRole.KNOWN_ACCOUNT_AUTH, "a", setOf(FactorType.POSSESSION), AcrLevel.LOA2)
-        val strongB = descriptor("auth-b", ToolRole.KNOWN_ACCOUNT_AUTH, "b", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA2)
-        val localPolicy = DefaultAuthPolicy(ToolHandlerRegistry(listOf(strongA, strongB)), TEST_CLOCK)
+        val strongA = descriptor(ToolRole.KNOWN_ACCOUNT_AUTH, "a", setOf(FactorType.POSSESSION), AcrLevel.LOA2)
+        val strongB = descriptor(ToolRole.KNOWN_ACCOUNT_AUTH, "b", setOf(FactorType.KNOWLEDGE), AcrLevel.LOA2)
+        val localPolicy = DefaultAuthPolicy(catalog(strongA, strongB), TEST_CLOCK)
         val evidence = SessionEvidence.fromNow(
             amr = listOf("a", "b"),
             factorTypes = setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE),
@@ -707,7 +706,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
     }
 
-    // requiresSatisfied - the generic ToolDescriptor.requires gate ---------------------------------
+    // requiresSatisfied - the generic Tool.requires gate ---------------------------------
 
     fun profile(vararg established: Pair<AttributeType, ClaimTrust>) = AccountProfile(
         accountId = AccountId(1L), personId = null, authenticationMethods = emptyList(),

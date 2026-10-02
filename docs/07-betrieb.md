@@ -397,7 +397,7 @@ gehören; jeder hat einen eigenen `@Service` mit eigenen Grenzen:
   - *Antwort, wenn die Grenze überschritten ist:* `423 Locked` (`ACCOUNT_LOCKED`) bei KNOWN_ACCOUNT_AUTH. Bei ACCOUNT_LOOKUP_AUTH steckt die Sperre in der gewöhnlichen Antwort „E-Mail oder Code ungültig“; sonst ließe sich daraus ablesen, ob ein Konto existiert
 - **`PersonLockoutService`**
   - *Bereich:* `PERSON`
-  - *Zählt:* Fehlgeschlagene Identifizierungsversuche für eine Person (`ident-fsc` rät ein Geheimnis, und ein Treffer übernimmt das Konto) und falsche Einmalkennwörter (`auth-invite`, das Kennwort gehört einer Person, ADR-48). Zählt nur, wo der Versuch überhaupt eine Person benennt: `ident-eid` bestätigt nur die Karte (ADR-18) und findet niemanden; seine PIN-Versuche begrenzt das Versuchsbudget der Journey
+  - *Zählt:* Fehlgeschlagene Identifizierungsversuche für eine Person (`ident-fsc` rät ein Geheimnis, und ein Treffer übernimmt das Konto) und falsche Einmalkennwörter (`auth-invite-lookup`, das Kennwort gehört einer Person, ADR-48). Zählt nur, wo der Versuch überhaupt eine Person benennt: `ident-eid` bestätigt nur die Karte (ADR-18) und findet niemanden; seine PIN-Versuche begrenzt das Versuchsbudget der Journey
   - *Antwort, wenn die Grenze überschritten ist:* immer in der gewöhnlichen Fehlerantwort, nie als eigener Fehler
 - **`ChannelCreationRateLimitService`**
   - *Bereich:* `BINDING_KEY`
@@ -463,7 +463,7 @@ Namensraum ([Tool-Architektur](03-tool-architektur.md) Abschnitt 4):
 
 ## 5) QR-Login (`auth_qr`): Sicherheit des Pairing-Codes
 
-Der Schritt `input` von `confirm-qr-login` nimmt einen `pairingCode` entgegen, den der Nutzer
+Der Schritt `input` von `approve-qr` nimmt einen `pairingCode` entgegen, den der Nutzer
 eingibt oder den ein Deep-Link vorausfüllt ([`CONFIRM_PEER_LOGIN`](journeys/confirm-peer-login.md)):
 
 - **Schutz davor, einen fremden QR-Code zu bestätigen – Code in Gegenrichtung:** Die Freigabe in

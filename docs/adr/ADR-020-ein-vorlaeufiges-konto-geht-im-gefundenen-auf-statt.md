@@ -77,7 +77,7 @@ auflösen kann.
 
 **Erwogene Alternative:** die eID-Claims bis zur Bindung nur in der Journey halten (JSON-Spalte an
 `auth_journey`, darübergelegt über ein künstliches `AccountProfile`). Verworfen, weil
-`IdentKvnrDescriptor.requires` gegen `ctx.account` geprüft wird: Ohne gespeichertes Konto ließe sich
+das `requires` von `ident-kvnr` gegen `ctx.account` geprüft wird: Ohne gespeichertes Konto ließe sich
 die Zuordnung gar nicht anbieten. Das wäre viel Aufwand gegen einen Fehler, der nur aus einem `409`
 besteht.
 

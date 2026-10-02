@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.authsmslookup
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.tool_api.Subject
@@ -13,8 +14,7 @@ import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollment
 
-import com.example.identity.tools.auth_sms.AuthSmsLookupDescriptor
-import com.example.identity.tools.auth_sms.SMS_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_sms.internal.SMS_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -56,7 +56,7 @@ private class Fixture {
     val tans = TanGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val gateway = SmsGateway(clock = TEST_CLOCK)
-    val handler = AuthSmsLookupToolHandler(AuthSmsLookupDescriptor, sessions, enrollments, tans, gateway, sendLimit, accountDirectory, clock = TEST_CLOCK)
+    val handler = AuthSmsLookupToolHandler( sessions, enrollments, tans, gateway, sendLimit, accountDirectory, clock = TEST_CLOCK)
 
     fun withSendBudgetUsedUp() = apply {
         every { sendLimit.trySend(PHONE) } returns false
@@ -148,11 +148,8 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
         `when`("confirming with the correct TAN") {
             val outcome = f.handler.patch(f.toolSessionId, issued.plainTan)
 
-            then("it authenticates for that account at the descriptor's own maxAcr and factorTypes") {
+            then("it authenticates for that account at its tool's own level and factors") {
                 outcome shouldBe ToolOutcome.Completed.Authenticated(
-                    amr = listOf("sms"),
-                    achievedAcr = AuthSmsLookupDescriptor.maxAcr,
-                    factorTypes = AuthSmsLookupDescriptor.factorTypes,
                     subject = Subject.Account(ACCOUNT),
                 )
             }

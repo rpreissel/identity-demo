@@ -10,7 +10,7 @@ import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
 import com.example.identity.core.orchestrator.domain.policy.Reachability
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.CallerKeyBinding
+import com.example.identity.contract.tool_api.ToolModule
 import com.example.identity.contract.tool_api.ToolRole
 
 /*
@@ -31,12 +31,12 @@ fun levelToWriteUnder(sessionAcr: AcrLevel): AcrLevel =
 /**
  * The level a proof counts at: what the tool achieved, capped by the level the used credential was
  * enrolled under (ADR-5). With several instances the used one is the one on the caller's key
- * ([keyBinding]). If that still leaves more than one, the lowest cap applies: a level is never
- * granted on a guess.
+ * ([ToolModule.onePerDevice]). If that still leaves more than one, the lowest cap applies: a level
+ * is never granted on a guess.
  */
-fun proofLevel(active: List<AuthMethodView>, keyBinding: CallerKeyBinding?, bindingKeyRef: String?, achieved: AcrLevel?): AcrLevel {
+fun proofLevel(active: List<AuthMethodView>, module: ToolModule, bindingKeyRef: String?, achieved: AcrLevel?): AcrLevel {
     check(active.isNotEmpty()) { "No active instance to count the proof against" }
-    val used = active.filter { keyBinding?.livesOn(it.details, bindingKeyRef) ?: true }.ifEmpty { active }
+    val used = active.filter { !module.onePerDevice || module.livesOn(it.boundKeyRef, bindingKeyRef) }.ifEmpty { active }
     val cap = used.map { it.enrolledUnderAcr?.let(AcrLevel::parse) }.reduce { a, b -> AcrLevel.min(a, b) }
     return AcrLevel.min(achieved, cap)
 }
@@ -52,15 +52,11 @@ fun linksDeviceImplicitly(intent: AuthIntent, linkedTo: AccountId?, accountId: A
 
 /**
  * The active methods of [account] whose credential lives on [bindingKeyRef], i.e. those that stop
- * working when that key moves to another account. Resolved by `(method, KNOWN_ACCOUNT_AUTH)`: by method
- * name alone the enrollment tool would answer too, from the wrong declaration.
+ * working when that key moves to another account.
  */
 fun credentialsLivingOn(account: AccountProfile?, bindingKeyRef: String, catalog: ToolCatalog): List<AuthMethodView> =
     account?.activeAuthenticationMethods.orEmpty().filter { method ->
-        val binding = catalog.descriptors()
-            .firstOrNull { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.method == method.method }
-            ?.keyBinding
-        binding != null && binding.livesOn(method.details, bindingKeyRef)
+        catalog.moduleOf(method.method)?.livesOn(method.boundKeyRef, bindingKeyRef) == true
     }
 
 /**
@@ -139,7 +135,7 @@ class MethodDependencies(
 
     /** Whether [instance]'s enrollment declares a precondition on one of [attributeTypes]. */
     private fun requiresAnyOf(instance: AuthMethodView, attributeTypes: Set<AttributeType>): Boolean =
-        catalog.descriptors()
+        catalog.tools()
             .filter { it.method == instance.method && it.role == ToolRole.ENROLLMENT }
             .any { descriptor -> descriptor.requires.any { it.attributeType in attributeTypes } }
 }

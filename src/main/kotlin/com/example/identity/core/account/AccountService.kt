@@ -17,9 +17,6 @@ import com.example.identity.core.account.application.PersonLookupKey
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.claims.AttributeAuthority
 import com.example.identity.contract.tool_api.directory.IdentityConflictException
-import com.example.identity.contract.tool_api.claims.anchorRule
-import com.example.identity.contract.tool_api.claims.authority
-import com.example.identity.contract.tool_api.claims.isLocalAnchor
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
@@ -239,10 +236,13 @@ class AccountService(
         method: String,
         enrollmentRef: EnrollmentRef,
         enrolledUnderAcr: String?,
-        details: Map<String, Any?>,
+        /** The caller key a one-per-device instance lives on. */
+        boundKeyRef: String? = null,
+        /** What of the instance may be shown on that device. */
+        reference: String? = null,
         /**
          * The session's proofs when the method was added. Audit evidence only (ADR-39): recorded with
-         * the `METHOD_ADDED` event, which outlives the account, not in [details].
+         * the `METHOD_ADDED` event, which outlives the account, not on the instance.
          */
         enrolledUnderAmr: List<String> = emptyList(),
         channel: String? = null,
@@ -280,7 +280,9 @@ class AccountService(
                 enrollmentId = enrollmentRef.id,
                 enrolledUnderAcr = enrolledUnderAcr,
                 label = label,
-                details = details
+                boundKeyRef = boundKeyRef,
+                reference = reference,
+                allowsMultipleInstances = allowsMultipleInstances
             ).also { it.id = instanceId; it.createdAt = now }
         )
         return getProfileOrThrow(accountId)
@@ -390,8 +392,8 @@ class AccountService(
     override fun activeEnrollment(accountId: AccountId, method: String): EnrollmentRef? =
         findActiveMethod(accountId, method)?.enrollmentRef
 
-    override fun activeInstanceEnrollment(accountId: AccountId, method: String, livesOnCallerKey: (instanceDetails: Map<String, Any?>?) -> Boolean): EnrollmentRef? =
-        findActiveMethods(accountId, method).firstOrNull { livesOnCallerKey(it.details) }?.enrollmentRef
+    override fun activeInstanceEnrollment(accountId: AccountId, method: String, boundKeyRef: String): EnrollmentRef? =
+        findActiveMethods(accountId, method).firstOrNull { it.boundKeyRef == boundKeyRef }?.enrollmentRef
 
     /**
      * Follows a change the Personenverzeichnis reported (ADR-34). KVNR and Versicherungsnummer are the
@@ -464,7 +466,8 @@ class AccountService(
         active = active,
         createdAt = createdAt,
         enrolledUnderAcr = enrolledUnderAcr,
-        details = details,
+        boundKeyRef = boundKeyRef,
+        reference = reference,
         enrollmentRef = enrollmentRef,
         label = label
     )

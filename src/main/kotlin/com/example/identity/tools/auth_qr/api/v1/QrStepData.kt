@@ -1,12 +1,9 @@
 package com.example.identity.tools.auth_qr.api.v1
 
 import com.example.identity.contract.tool_api.StepData
-import com.example.identity.contract.tool_api.StepDataTypes
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonTypeName
 import io.swagger.v3.oas.annotations.media.Schema
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 
 /**
  * What a QR pairing step shows: the browser the [pairingCode], the app after approving the
@@ -26,10 +23,3 @@ data class QrPairingStep(
 data class QrConfirmationCodeRequest(
     @field:Schema(example = "482913") val confirmationCode: String? = null
 )
-
-@Configuration
-class QrStepDataTypes {
-
-    @Bean
-    fun qrStepDataShapes() = StepDataTypes { listOf(QrPairingStep::class) }
-}

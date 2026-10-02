@@ -8,6 +8,9 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
 
+/** The [com.example.identity.contract.tool_api.EnrollmentRef.type] enroll-kobil writes and auth-kobil reads back. */
+internal const val KOBIL_ENROLLMENT_TYPE = "auth_kobil.enrollment"
+
 /**
  * Long-lived, account-bound KOBIL credential. KOBIL holds the key material. This row decides whether
  * a redeemed assertion belongs here ([kobilDeviceId]), releases the PIN to the rightful app
@@ -37,7 +40,7 @@ class KobilEnrollment(
     @Column(name = "unlock_secret_hash")
     var unlockSecretHash: String? = null,
 
-    /** The enrolling channel's DPoP key: what `ToolDescriptor.keyBinding` matches at offer time. */
+    /** The enrolling channel's DPoP key: what `AuthMethodView.boundKeyRef` names and is matched at offer time. */
     @Column(name = "binding_key_ref", nullable = false)
     var bindingKeyRef: String = "",
 

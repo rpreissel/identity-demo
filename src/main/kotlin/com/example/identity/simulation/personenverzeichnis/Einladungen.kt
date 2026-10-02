@@ -41,7 +41,7 @@ data class EinladungView(
 /**
  * The register's invitations to a process (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md), built like
  * its Freischaltcodes (ADR-31): the register issues them, sends the one-time password by letter and
- * ends them - in reality through its own API or UI; `auth-invite` only asks ([Invitations]). An
+ * ends them - in reality through its own API or UI; `auth-invite-lookup` only asks ([Invitations]). An
  * ended invitation is announced ([InvitationEnded]), as a changed person is (ADR-34).
  *
  * The one-time password has [CODE_LENGTH] characters from [ALPHABET] (about 59 bit). The id is

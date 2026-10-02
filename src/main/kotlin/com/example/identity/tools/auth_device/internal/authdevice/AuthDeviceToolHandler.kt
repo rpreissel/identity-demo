@@ -1,10 +1,10 @@
 package com.example.identity.tools.auth_device.internal.authdevice
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.auth_device.DeviceModule
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_device.internal.DeviceEnrollmentRepository
 
-import com.example.identity.tools.auth_device.AuthDeviceDescriptor
-import com.example.identity.tools.auth_device.DEVICE_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_device.internal.DEVICE_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.device.DevicePublicKey
 import com.example.identity.contract.tool_api.device.UserVerification
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -23,7 +23,6 @@ import java.time.Clock
  */
 @Component
 class AuthDeviceToolHandler(
-    private val descriptor: AuthDeviceDescriptor,
     private val toolDataRepository: AuthDeviceToolSessionRepository,
     private val enrollmentRepository: DeviceEnrollmentRepository,
     private val clock: Clock
@@ -60,8 +59,7 @@ class AuthDeviceToolHandler(
         return when (val decision = AuthDeviceFlow.decide(devicePublicKey.thumbprint, enrollment.thumbprint, userVerification)) {
             AuthDeviceDecision.WrongDevice -> ToolOutcome.Failed.KnownAccountAuth(Text("Geraet nicht erkannt"))
             is AuthDeviceDecision.Complete -> ToolOutcome.Completed.Authenticated(
-                amr = listOf(descriptor.method, decision.userVerification.wireValue),
-                achievedAcr = descriptor.maxAcr,
+                amr = listOf(DeviceModule.method, decision.userVerification.wireValue),
                 factorTypes = factorTypesFor(decision.userVerification)
             )
         }

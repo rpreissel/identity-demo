@@ -5,7 +5,7 @@ import com.example.identity.contract.tool_api.ids.InvitationId
 
 /**
  * Whom a lookup tool proved: the tool resolved it from the submitted input itself. An account in
- * the ordinary case; an invitation for a one-time password (`auth-invite`,
+ * the ordinary case; an invitation for a one-time password (`auth-invite-lookup`,
  * docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md), whose session then has no account at all.
  */
 sealed interface Subject {

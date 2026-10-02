@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_kobil.internal.enrollkobil
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -8,10 +9,7 @@ import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.simulation.kobil.KobilSsms
 import com.example.identity.simulation.kobil.KobilUserRef
-import com.example.identity.tools.auth_kobil.EnrollKobilDescriptor
-import com.example.identity.tools.auth_kobil.KOBIL_BINDING_KEY_REF
-import com.example.identity.tools.auth_kobil.KOBIL_DEVICE_ID
-import com.example.identity.tools.auth_kobil.KOBIL_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_kobil.internal.KOBIL_ENROLLMENT_TYPE
 import com.example.identity.tools.auth_kobil.api.v1.KobilActivationStep
 import com.example.identity.tools.auth_kobil.internal.KobilEnrollment
 import com.example.identity.tools.auth_kobil.internal.KobilEnrollmentRepository
@@ -40,7 +38,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
     val secrets = KobilSecrets(pinLength = 8)
     val ssms = mockk<KobilSsms>()
     val tenantId = "identity-demo"
-    val handler = EnrollKobilToolHandler(EnrollKobilDescriptor, toolDataRepository, enrollmentRepository, secrets, ssms, tenantId, clock = TEST_CLOCK)
+    val handler = EnrollKobilToolHandler( toolDataRepository, enrollmentRepository, secrets, ssms, tenantId, clock = TEST_CLOCK)
 
     /** A session mid-setup for KOBIL user [kobilUserId], still holding its minted secrets. */
     fun activating(kobilUserId: String): Pair<ToolSessionId, EnrollKobilToolSession> {
@@ -107,9 +105,9 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
                 outcome shouldBe ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef(KOBIL_ENROLLMENT_TYPE, "40"),
                     amr = listOf("kobil", "biometric"),
-                    achievedAcr = EnrollKobilDescriptor.maxAcr,
                     factorTypes = setOf(FactorType.POSSESSION, FactorType.INHERENCE),
-                    instanceDetails = mapOf(KOBIL_BINDING_KEY_REF to "jkt-a", KOBIL_DEVICE_ID to "dev-a"),
+                    boundKeyRef = "jkt-a",
+                    reference = "dev-a",
                     label = "Mein Handy",
                 )
             }

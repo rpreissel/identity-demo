@@ -1,11 +1,10 @@
 package com.example.identity.core.orchestrator.tool
 
 import com.example.identity.TEST_CLOCK
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.catalogOf
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.demo.demo_mode.DemoMode
-import com.example.identity.tools.auth_email.AuthEmailDescriptor
-import com.example.identity.tools.auth_password.AuthPasswordDescriptor
-import com.example.identity.tools.auth_sms.AuthSmsDescriptor
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
@@ -20,9 +19,9 @@ import java.util.Optional
  */
 class ToolAvailabilityServiceTest : BehaviorSpec({
 
-    val sms = AuthSmsDescriptor.toolId
-    val password = AuthPasswordDescriptor.toolId
-    val email = AuthEmailDescriptor.toolId
+    val sms = tool("auth-sms").toolId
+    val password = tool("auth-password").toolId
+    val email = tool("auth-email").toolId
 
     given("an App channel ranked password before sms") {
         val service = toolAvailabilityService()
@@ -118,6 +117,6 @@ private fun toolAvailabilityService(): ToolAvailabilityService {
             firstArg<ToolAvailability>().also { rows[ToolAvailabilityKey(it.toolId, it.channel)] = it }
         }
     }
-    val registry = ToolHandlerRegistry(listOf(AuthSmsDescriptor, AuthPasswordDescriptor, AuthEmailDescriptor))
+    val registry = catalogOf("auth-sms", "auth-password", "auth-email")
     return ToolAvailabilityService(repository, registry, ToolDefaults(), DemoMode(true), clock = TEST_CLOCK)
 }

@@ -1,11 +1,8 @@
 package com.example.identity.tools.ident_nect.api.v1
 
 import com.example.identity.contract.tool_api.StepData
-import com.example.identity.contract.tool_api.StepDataTypes
 import com.fasterxml.jackson.annotation.JsonTypeName
 import io.swagger.v3.oas.annotations.media.Schema
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import java.util.UUID
 
 /** Where to send the user to identify, and which case the return belongs to. */
@@ -16,10 +13,3 @@ data class NectRedirectStep(
     val jumpUrl: String,
     val caseId: UUID
 ) : StepData
-
-@Configuration
-class NectStepDataTypes {
-
-    @Bean
-    fun nectStepDataShapes() = StepDataTypes { listOf(NectRedirectStep::class) }
-}

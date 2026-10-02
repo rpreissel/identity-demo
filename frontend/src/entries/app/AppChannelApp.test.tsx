@@ -185,7 +185,7 @@ describe('entry by URL intent (docs/10-frontend.md #1)', () => {
     rememberChannel()
     window.history.replaceState(null, '', '/?intent=confirm_peer_login&pairingCode=AB3D-7KQ2')
     api.getChannel.mockResolvedValue(channelResponse({ channel: channel('AUTHENTICATED', { currentAcr: 'loa2' }), next: AUTHENTICATED_NEXT }))
-    const confirming = channelResponse({ channel: channel('STEP_UP_IN_PROGRESS'), next: toolNext('confirm-qr-login', 'input', 'ts-2') })
+    const confirming = channelResponse({ channel: channel('STEP_UP_IN_PROGRESS'), next: toolNext('approve-qr', 'input', 'ts-2') })
     api.startPeerLogin.mockResolvedValue(confirming)
     api.getTool.mockResolvedValue(confirming)
 

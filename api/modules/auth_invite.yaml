@@ -32,7 +32,7 @@ info:
   version: v1
 openapi: 3.1.0
 paths:
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-invite:
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-invite-lookup:
     post:
       description: 'No request body: toolId already carries kind and method.'
       operationId: activate
@@ -53,7 +53,7 @@ paths:
                   state: ANONYMOUS
                 next:
                   step: input
-                  toolId: auth-invite
+                  toolId: auth-invite-lookup
                   toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
                   type: tool
               schema:
@@ -70,10 +70,10 @@ paths:
           ]
       - kc-peer-auth: [
           ]
-      summary: Activate auth-invite
+      summary: Activate auth-invite-lookup
       tags:
       - 'Tool: Einmalkennwort'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-invite:
+  /orchestrator/api/v1/tools/{toolSessionId}/auth-invite-lookup:
     get:
       operationId: read
       parameters:
@@ -101,7 +101,7 @@ paths:
           ]
       - kc-peer-auth: [
           ]
-      summary: Read the current auth-invite state
+      summary: Read the current auth-invite-lookup state
       tags:
       - 'Tool: Einmalkennwort'
     patch:

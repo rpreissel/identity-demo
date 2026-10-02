@@ -298,15 +298,15 @@ class ChannelController(
         summary = "Confirm a WEB-channel QR login from this already-authenticated APP channel",
         description = "Channel must already be AUTHENTICATED (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN). Same " +
             "AuthIntent.CONFIRM_PEER_LOGIN as the cold-entry path via POST /app/channels - gates on loa2 " +
-            "(step-up offered first if below it), then offers confirm-qr-login as the one candidate.",
+            "(step-up offered first if below it), then offers approve-qr as the one candidate.",
         responses = [
             ApiResponse(
                 responseCode = "200",
-                description = "Already at loa2 - confirm-qr-login offered directly.",
+                description = "Already at loa2 - approve-qr offered directly.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
                       "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa2"},
-                      "next": {"type": "tool", "toolId": "confirm-qr-login", "step": "input"}
+                      "next": {"type": "tool", "toolId": "approve-qr", "step": "input"}
                     }
                 """)])]
             )

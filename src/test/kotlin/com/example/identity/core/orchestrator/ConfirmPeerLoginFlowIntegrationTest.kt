@@ -11,7 +11,7 @@ import java.util.UUID
 
 /**
  * `AuthIntent.CONFIRM_PEER_LOGIN` (docs/04-orchestrierung.md): the loa2 gate, and abort instead of
- * identification. Stops before `confirm-qr-login` activates; the approval itself is covered by
+ * identification. Stops before `approve-qr` activates; the approval itself is covered by
  * `AuthQrFlowIntegrationTest`, the abort on a cold device by `ConfirmPeerLoginStrategyTest`.
  */
 class ConfirmPeerLoginFlowIntegrationTest : IntegrationTestSupport() {

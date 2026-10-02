@@ -1,8 +1,8 @@
 package com.example.identity.tools.auth_qr.internal.enrollqr
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
-import com.example.identity.tools.auth_qr.EnrollQrDescriptor
-import com.example.identity.tools.auth_qr.QR_OPTIN_ENROLLMENT_TYPE
+import com.example.identity.contract.tool_api.ToolRole
+import com.example.identity.tools.auth_qr.internal.QR_OPTIN_ENROLLMENT_TYPE
 import com.example.identity.tools.auth_qr.internal.QrOptIn
 import com.example.identity.tools.auth_qr.internal.QrOptInRepository
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -17,7 +17,6 @@ import java.time.Clock
  */
 @Component
 class EnrollQrToolHandler(
-    private val descriptor: EnrollQrDescriptor,
     private val toolDataRepository: EnrollQrToolSessionRepository,
     private val qrOptInRepository: QrOptInRepository,
     private val clock: Clock
@@ -36,9 +35,6 @@ class EnrollQrToolHandler(
         val optIn = qrOptInRepository.save(QrOptIn(clock.instant()))
         return ToolOutcome.Completed.Enrolled(
             enrollmentRef = EnrollmentRef(type = QR_OPTIN_ENROLLMENT_TYPE, id = optIn.id.toString()),
-            amr = emptyList(),
-            achievedAcr = descriptor.maxAcr,
-            factorTypes = descriptor.factorTypes
         )
     }
 
@@ -48,5 +44,5 @@ class EnrollQrToolHandler(
         return outcomeFor()
     }
 
-    private fun outcomeFor(): ToolOutcome.InProgress = ToolOutcome.InProgress(nextStep = descriptor.startStep)
+    private fun outcomeFor(): ToolOutcome.InProgress = ToolOutcome.InProgress(nextStep = ToolRole.ENROLLMENT.defaultStartStep)
 }

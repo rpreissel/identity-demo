@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_qr.internal.authqrlookup
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
@@ -8,7 +9,6 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
-import com.example.identity.tools.auth_qr.AuthQrLookupDescriptor
 import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
 import com.example.identity.tools.auth_qr.internal.QrLoginBrowserSide
 import io.kotest.core.spec.style.BehaviorSpec
@@ -29,7 +29,7 @@ private class Fixture {
         every { it.findByToolSessionId(toolSessionId) } returns AuthQrLookupToolSession(toolSessionId = toolSessionId, pairingCode = PAIRING, createdAt = TEST_NOW)
     }
     val browserSide = mockk<QrLoginBrowserSide>()
-    val handler = AuthQrLookupToolHandler(AuthQrLookupDescriptor, sessions, browserSide, clock = TEST_CLOCK)
+    val handler = AuthQrLookupToolHandler( sessions, browserSide, clock = TEST_CLOCK)
 
     fun withState(state: QrLoginBrowserSide.State, confirmationCode: String? = null) = apply {
         every { browserSide.advance(PAIRING, confirmationCode) } returns state
@@ -87,11 +87,8 @@ class AuthQrLookupToolHandlerTest : BehaviorSpec({
         `when`("the browser sends the confirmation code") {
             val outcome = f.handler.patch(f.toolSessionId, confirmationCode = "123456")
 
-            then("it authenticates the approving account at the descriptor's own maxAcr and factorTypes") {
+            then("it authenticates the approving account at its tool's own level and factors") {
                 outcome shouldBe ToolOutcome.Completed.Authenticated(
-                    amr = listOf("qr"),
-                    achievedAcr = AuthQrLookupDescriptor.maxAcr,
-                    factorTypes = AuthQrLookupDescriptor.factorTypes,
                     subject = Subject.Account(AccountId(99L)),
                 )
             }

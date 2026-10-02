@@ -160,7 +160,7 @@ export function startManageMethods(dpop: DpopKeyPair, channelSessionId: string):
 
 /**
  * Confirms a WEB-channel QR login from this AUTHENTICATED channel (AuthIntent.CONFIRM_PEER_LOGIN,
- * docs/04-orchestrierung.md). Gates on loa2 (step-up first if below), then offers confirm-qr-login.
+ * docs/04-orchestrierung.md). Gates on loa2 (step-up first if below), then offers approve-qr.
  */
 export function startPeerLogin(dpop: DpopKeyPair, channelSessionId: string): Promise<ChannelResponse> {
   return call(dpop, 'POST', `/orchestrator/api/v1/channels/${channelSessionId}/peer-logins`)
@@ -220,7 +220,7 @@ export function backFromTool(dpop: DpopKeyPair, toolSessionId: string, toolId: s
 
 /**
  * toolId always comes from next.toolId or a chosen stepData.options entry, never built by the
- * client. [body] is only used by confirm-qr-login: a known pairing code lets the server skip its
+ * client. [body] is only used by approve-qr: a known pairing code lets the server skip its
  * `input` step (ConfirmQrLoginToolController).
  */
 export function activateTool(

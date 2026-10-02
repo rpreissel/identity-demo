@@ -1,13 +1,16 @@
 package com.example.identity.tools.auth_device.api.v1
 
-import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.auth_device.ENROLL_DEVICE_TOOL_ID
 import com.example.identity.tools.auth_device.internal.enrolldevice.EnrollDeviceToolHandler
-import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.device.DeviceProofs
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.contract.tool_api.ActivateTool
+import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.AuthorizedToolContext
+import com.example.identity.contract.tool_api.ToolContext
+import com.example.identity.contract.tool_api.readResponse
+import com.example.identity.contract.tool_api.activated
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -16,18 +19,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.envelope.API_V1
-
-private const val ENROLL_DEVICE_TOOL_ID = "enroll-device"
 
 data class DeviceProofPatchRequest(
     @field:Schema(example = "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0In0.eyJodG0iOiJQQVRDSCIsImh0dSI6Ii4uLiJ9.MEUCIQ")
@@ -51,7 +50,7 @@ class EnrollDeviceToolController(
     private val toolJourney: ToolJourney
 ) {
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/enroll-device")
+    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_DEVICE_TOOL_ID")
     @Operation(
         summary = "Activate enroll-device",
         description = "No request body: toolId already carries kind and method.",
@@ -68,18 +67,14 @@ class EnrollDeviceToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String,
+        @ActivateTool(ENROLL_DEVICE_TOOL_ID) context: AuthorizedToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.beginActivation(channelSessionId, bindingKeyRef, ENROLL_DEVICE_TOOL_ID)
         val outcome = handler.start(context.toolSessionId)
-        val response = toolJourney.applyOutcome(context, outcome)
-        val location = toolJourney.activationLocation(context, uriBuilder.build().toUri())
-        return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)
+        return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/enroll-device")
+    @PatchMapping("$API_V1/tools/{toolSessionId}/$ENROLL_DEVICE_TOOL_ID")
     @Operation(
         summary = "Confirm device enrollment",
         description = "Body carries a self-signed device-proof JWT (typ=device-proof+jwt) over this exact URL, produced after the user confirms the mocked PIN/biometric prompt.",
@@ -96,20 +91,17 @@ class EnrollDeviceToolController(
         ]
     )
     fun patch(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String,
+        @LoadTool(ENROLL_DEVICE_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody(required = false) request: DeviceProofPatchRequest?,
         httpRequest: HttpServletRequest
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, ENROLL_DEVICE_TOOL_ID)
-
         val proof = deviceProofs.validate(request?.deviceProof, httpRequest)
-        val outcome = handler.patch(toolSessionId, proof.publicKey, proof.userVerification, bindingKeyRef, request?.label)
+        val outcome = handler.patch(context.toolSessionId, proof.publicKey, proof.userVerification, context.bindingKeyRef, request?.label)
 
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/enroll-device")
+    @GetMapping("$API_V1/tools/{toolSessionId}/$ENROLL_DEVICE_TOOL_ID")
     @Operation(
         summary = "Read the current enroll-device state",
         responses = [
@@ -125,17 +117,8 @@ class EnrollDeviceToolController(
         ]
     )
     fun read(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String
+        @LoadTool(ENROLL_DEVICE_TOOL_ID) context: ToolContext
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, ENROLL_DEVICE_TOOL_ID)
-        val outcome = if (toolJourney.isCurrentTool(context)) {
-            checkNotNull(handler.read(toolSessionId) as? ToolOutcome.InProgress) {
-                "read() must return InProgress while the tool is still current"
-            }
-        } else {
-            null
-        }
-        return ResponseEntity.ok(toolJourney.buildReadResponse(context, outcome))
+        return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }
 }

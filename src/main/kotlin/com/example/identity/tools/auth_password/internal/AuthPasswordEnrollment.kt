@@ -7,6 +7,9 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
 
+/** The [com.example.identity.contract.tool_api.EnrollmentRef.type] enroll-password writes and the login tools read back. */
+internal const val PASSWORD_ENROLLMENT_TYPE = "auth_password.enrollment"
+
 /**
  * Long-lived password credential (docs/06-ablaeufe.md #1). A chosen password is self-verifying, so
  * there is no unconfirmed interim record. No identifier field: the account's confirmed email is the

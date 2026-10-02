@@ -1,9 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsStrategy
-import com.example.identity.tools.auth_sms.AuthSmsDescriptor
-import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
-import com.example.identity.tools.ident_fsc.IdentFscDescriptor
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -184,7 +182,7 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
         val state = ManageAuthMethodsState.Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))))
 
         `when`("a tool is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(AuthSmsDescriptor), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), ctx())
             then("stays in Enrolling with the full choice back - not a decline, just picking differently") {
                 transition shouldBe
                     Transition.To(state.withActive(null))
@@ -193,16 +191,16 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
 
         `when`("a method is enrolled") {
             val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
-            val event = JourneyEvent.Completed(EnrollSmsDescriptor, outcome)
+            val event = JourneyEvent.Completed(tool("enroll-sms"), outcome)
             val transition = strategy.transition(state, event, ctx())
             then("adopts the credential - binding the already known device again is a harmless no-op") {
                 transition shouldBe
-                    Transition.Perform(Action.AdoptCredential(EnrollSmsDescriptor, outcome), resumeState = state)
+                    Transition.Perform(Action.AdoptCredential(tool("enroll-sms"), outcome), resumeState = state)
             }
         }
 
         `when`("a tool completes Identified") {
-            val event = JourneyEvent.Completed(IdentFscDescriptor, identifiedOutcome())
+            val event = JourneyEvent.Completed(tool("ident-fsc"), identifiedOutcome())
             val result = runCatching { strategy.transition(state, event, ctx()) }
             then("Identified is not offered by this intent") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
@@ -210,7 +208,7 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
         }
 
         `when`("a tool completes Authenticated") {
-            val event = JourneyEvent.Completed(AuthSmsDescriptor, ToolOutcome.Completed.Authenticated(amr = listOf("sms")))
+            val event = JourneyEvent.Completed(tool("auth-sms"), ToolOutcome.Completed.Authenticated(amr = listOf("sms")))
             val result = runCatching { strategy.transition(state, event, ctx()) }
             then("Authenticated is not offered by this intent") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }

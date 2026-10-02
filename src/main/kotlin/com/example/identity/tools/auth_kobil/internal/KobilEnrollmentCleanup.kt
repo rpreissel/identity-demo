@@ -1,6 +1,5 @@
 package com.example.identity.tools.auth_kobil.internal
 
-import com.example.identity.tools.auth_kobil.KOBIL_ENROLLMENT_TYPE
 import com.example.identity.simulation.kobil.KobilSsms
 import com.example.identity.simulation.kobil.KobilUserRef
 import com.example.identity.contract.tool_api.credentials.EnrollmentCleanup

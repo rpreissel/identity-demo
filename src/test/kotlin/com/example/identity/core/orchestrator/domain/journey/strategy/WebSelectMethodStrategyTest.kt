@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
@@ -20,9 +21,6 @@ import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTe
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.webTools
-import com.example.identity.tools.auth_password.AuthPasswordLookupDescriptor
-import com.example.identity.tools.auth_password.EnrollPasswordDescriptor
-import com.example.identity.tools.auth_sms.AuthSmsLookupDescriptor
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -37,7 +35,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 class WebSelectMethodStrategyTest : BehaviorSpec({
 
     val strategy = WebSelectMethodStrategy()
-    val lookupTools = listOf("auth-sms-lookup", "auth-password-lookup", "auth-qr-lookup", "auth-invite").map(::ToolId)
+    val lookupTools = listOf("auth-sms-lookup", "auth-password-lookup", "auth-qr-lookup", "auth-invite-lookup").map(::ToolId)
 
     fun webCtx(
         account: AccountProfile? = null,
@@ -83,16 +81,16 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
 
         `when`("a lookup tool authenticates") {
             val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("password"), subject = Subject.Account(AccountId(1L)))
-            val transition = strategy.transition(state, JourneyEvent.Completed(AuthPasswordLookupDescriptor, outcome), webCtx())
+            val transition = strategy.transition(state, JourneyEvent.Completed(tool("auth-password-lookup"), outcome), webCtx())
 
             then("it performs AcceptProof and resumes in the same state") {
-                transition shouldBe Transition.Perform(Action.AcceptProof(AuthPasswordLookupDescriptor, outcome), resumeState = state)
+                transition shouldBe Transition.Perform(Action.AcceptProof(tool("auth-password-lookup"), outcome), resumeState = state)
             }
         }
 
         `when`("an enrollment outcome arrives, which this intent never offers") {
             val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("auth_password.enrollment", "1"))
-            val result = runCatching { strategy.transition(state, JourneyEvent.Completed(EnrollPasswordDescriptor, outcome), webCtx()) }
+            val result = runCatching { strategy.transition(state, JourneyEvent.Completed(tool("enroll-password"), outcome), webCtx()) }
 
             then("it fails loudly with IllegalStateException") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
@@ -100,7 +98,7 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
         }
 
         `when`("one of several offered tools is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(AuthSmsLookupDescriptor), webCtx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms-lookup")), webCtx())
 
             then("it keeps the choice among the rest") {
                 transition shouldBe Transition.To(state.declining(ToolId("auth-sms-lookup")))
@@ -112,7 +110,7 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
         val state = WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-sms-lookup"))), accountAlreadyKnown = false)
 
         `when`("that tool is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(AuthSmsLookupDescriptor), webCtx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms-lookup")), webCtx())
 
             then("it cancels") {
                 transition shouldBe Transition.Cancel

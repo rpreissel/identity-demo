@@ -1,10 +1,10 @@
 package com.example.identity.tools.auth_kobil.internal.authkobil
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.auth_kobil.KobilModule
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import com.example.identity.contract.texts.Text
-import com.example.identity.tools.auth_kobil.AuthKobilDescriptor
-import com.example.identity.tools.auth_kobil.KOBIL_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_kobil.internal.KOBIL_ENROLLMENT_TYPE
 import com.example.identity.tools.auth_kobil.api.v1.KobilUnlockCredential
 import com.example.identity.tools.auth_kobil.internal.KobilEnrollment
 import com.example.identity.tools.auth_kobil.internal.KobilEnrollmentRepository
@@ -31,7 +31,6 @@ import com.example.identity.tools.auth_kobil.api.v1.KobilOtpStep
  */
 @Component
 class AuthKobilToolHandler(
-    private val descriptor: AuthKobilDescriptor,
     private val toolDataRepository: AuthKobilToolSessionRepository,
     private val enrollmentRepository: KobilEnrollmentRepository,
     private val secrets: KobilSecrets,
@@ -163,8 +162,7 @@ class AuthKobilToolHandler(
             // Authenticated carries no evidence blob, so non-blocking signals (e.g. OS_OUTDATED)
             // go unrecorded.
             is AuthKobilDecision.Complete -> ToolOutcome.Completed.Authenticated(
-                amr = listOf(descriptor.method, decision.userVerification.wireValue),
-                achievedAcr = descriptor.maxAcr,
+                amr = listOf(KobilModule.method, decision.userVerification.wireValue),
                 factorTypes = decision.userVerification.kobilFactorTypes(),
             )
         }

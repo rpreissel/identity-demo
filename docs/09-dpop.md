@@ -117,7 +117,7 @@ Stelle eine native App mit hardwaregestütztem Schlüsselspeicher.
   ganze `ident-fsc`.
 - **Drei Schlüssel mit drei Aufgaben, die man nicht verwechseln darf:**
   1. Der **DPoP-Schlüssel des Kanals** bindet die Anfragen an diesen Kanal. An dem daraus berechneten
-     Wert (`bindingKeyRef`) hängen `DeviceAccountLink` und jedes `keyBinding`.
+     Wert (`bindingKeyRef`) hängen `DeviceAccountLink` und jedes gerätegebundene Credential (`AuthMethodView.boundKeyRef`).
   2. Das **Credential von `auth_device`** ist ein eigenes, nicht exportierbares Schlüsselpaar. Damit
      signiert der Client den Geräte-Proof, der zeigt, dass er das Gerät besitzt.
   3. Das **Entsperrgeheimnis von KOBIL** ist kein Schlüssel im kryptografischen Sinn, sondern ein
@@ -162,9 +162,9 @@ Stelle eine native App mit hardwaregestütztem Schlüsselspeicher.
   Stimmt der Nutzer zu, wird zusätzlich **jedes** an diesen Schlüssel gebundene Credential des
   bisherigen Kontos deaktiviert, und sein Datensatz im Tool-Modul wird gelöscht
   (`AccountDeletionService.revokeMethod`). Heute sind das `device` und `kobil`; `JourneyActionExecutor`
-  findet sie über `keyBinding != null` und nie über eine Liste von `toolId`s. Lehnt der Nutzer ab,
+  findet sie über `Tool.boundToCallerKey` und nie über eine Liste von `toolId`s. Lehnt der Nutzer ab,
   bricht die Journey ab, und die alte Verknüpfung bleibt bestehen. Unabhängig davon gilt ohnehin bei der
-  Auswahl der Kandidaten: Ein gerätegebundenes Credential (`ToolDescriptor.usableByCaller`,
+  Auswahl der Kandidaten: Ein gerätegebundenes Credential (`Tool.usableByCaller`,
   [03-tool-architektur.md](03-tool-architektur.md)) ist nur nutzbar, solange `DeviceAccountLink` für
   seinen Schlüssel noch auf genau das Konto zeigt, dem es gehört.
 

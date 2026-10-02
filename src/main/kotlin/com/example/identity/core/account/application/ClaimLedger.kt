@@ -10,7 +10,6 @@ import com.example.identity.core.account.domain.ClaimKey
 import com.example.identity.core.account.domain.normalizeClaimValue
 import com.example.identity.core.account.RetractionSource
 import com.example.identity.contract.tool_api.claims.AttributeAuthority
-import com.example.identity.contract.tool_api.claims.authority
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
@@ -134,7 +133,7 @@ class ClaimLedger(
 
     /** One withdrawal, logged in the change log; the value stays in the retraction row, which goes with the account. */
     fun retract(accountId: AccountId, type: AttributeType, normalizedValue: String?, retractionSource: RetractionSource, reason: String?, at: Instant) {
-        changeLog.attributeRetracted(accountId, type.name, retractionSource = retractionSource.name, reason = reason, at = at)
+        changeLog.attributeRetracted(accountId, type.wireName, retractionSource = retractionSource.name, reason = reason, at = at)
         accountRetractionRepository.save(
             AccountRetraction(
                 accountId = accountId,

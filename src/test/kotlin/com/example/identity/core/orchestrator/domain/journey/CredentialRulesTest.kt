@@ -2,10 +2,10 @@ package com.example.identity.core.orchestrator.domain.journey
 
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AuthMethodView
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
 import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.CallerKeyBinding
 import com.example.identity.contract.tool_api.EnrollmentRef
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -15,8 +15,9 @@ import io.kotest.matchers.shouldBe
 class CredentialRulesTest : BehaviorSpec({
 
     fun instance(id: String, enrolledUnder: String?, key: String? = null) =
-        AuthMethodView(id, "device", true, null, enrolledUnder, key?.let { mapOf("key" to it) }, EnrollmentRef("device", id))
-    val onCallerKey = CallerKeyBinding { details, caller -> details?.get("key") == caller }
+        AuthMethodView(id, "device", true, null, enrolledUnder, key, null, EnrollmentRef("device", id))
+    val onCallerKey = StrategyTestFixtures.tool("auth-device").module
+    val notKeyBound = StrategyTestFixtures.tool("auth-sms").module
 
     val loa1Key = "key-of-the-loa1-instance"
     val loa2Key = "key-of-the-loa2-instance"
@@ -76,7 +77,7 @@ class CredentialRulesTest : BehaviorSpec({
         val active = listOf(instance("a", "loa1"), instance("b", "loa2"))
 
         `when`("a proof is counted") {
-            val level = proofLevel(active, null, null, AcrLevel.LOA2)
+            val level = proofLevel(active, notKeyBound, null, AcrLevel.LOA2)
 
             then("it cannot tell which instance was used, so the lowest cap applies") {
                 level shouldBe AcrLevel.LOA1
@@ -86,7 +87,7 @@ class CredentialRulesTest : BehaviorSpec({
 
     given("one active instance enrolled under loa2") {
         `when`("the tool itself achieved only loa1") {
-            val level = proofLevel(listOf(instance("a", "loa2")), null, null, AcrLevel.LOA1)
+            val level = proofLevel(listOf(instance("a", "loa2")), notKeyBound, null, AcrLevel.LOA1)
 
             then("the proof counts at loa1 - never above what the tool achieved") {
                 level shouldBe AcrLevel.LOA1
@@ -96,7 +97,7 @@ class CredentialRulesTest : BehaviorSpec({
 
     given("no active instance") {
         `when`("a proof is counted") {
-            val result = runCatching { proofLevel(emptyList(), null, null, AcrLevel.LOA1) }
+            val result = runCatching { proofLevel(emptyList(), notKeyBound, null, AcrLevel.LOA1) }
 
             then("it fails - there is nothing to count against") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }

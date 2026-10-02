@@ -1,6 +1,6 @@
 package com.example.identity.tools.auth_sms.internal
 
-import com.example.identity.tools.auth_sms.SMS_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_sms.internal.SMS_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.credentials.EnrollmentCleanup
 import com.example.identity.contract.tool_api.EnrollmentRef
 import org.springframework.stereotype.Component

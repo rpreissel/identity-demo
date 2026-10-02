@@ -77,7 +77,11 @@ CREATE TABLE account.auth_method (
     active             BOOLEAN      NOT NULL,
     enrolled_under_acr VARCHAR(16),
     label              VARCHAR(100),
-    details            JSON,
+    -- The caller key a one-per-device credential lives on, and what of the instance may be shown.
+    bound_key_ref      VARCHAR(255),
+    reference          VARCHAR(255),
+    -- From the method's declaration (ToolModule.onePerDevice): several active instances may coexist.
+    allows_multiple_instances BOOLEAN NOT NULL DEFAULT FALSE,
     created_at         TIMESTAMP WITH TIME ZONE NOT NULL,
     deactivated_at     TIMESTAMP WITH TIME ZONE,
     CONSTRAINT ck_auth_method_deactivation CHECK (active = (deactivated_at IS NULL)),

@@ -1,6 +1,8 @@
 package com.example.identity.tools.auth_password.api.v1
 
 import com.example.identity.TEST_CLOCK
+import com.example.identity.tools.auth_password.PASSWORD_EXISTS
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.InvalidStateException
@@ -8,13 +10,11 @@ import com.example.identity.contract.tool_api.KeycloakToolCalls
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.claims.PASSWORD_EXISTS_MARKER
+import com.example.identity.tools.auth_password.PASSWORD_EXISTS_MARKER
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.ids.AccountId
-import com.example.identity.tools.auth_password.AuthPasswordDescriptor
-import com.example.identity.tools.auth_password.EnrollPasswordDescriptor
-import com.example.identity.tools.auth_password.PASSWORD_ENROLLMENT_TYPE
-import com.example.identity.tools.auth_password.PASSWORD_METHOD
+import com.example.identity.tools.auth_password.internal.PASSWORD_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_password.PasswordModule
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollment
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
 import com.example.identity.tools.auth_password.internal.PasswordCredentialPortImpl
@@ -70,9 +70,9 @@ class MgmtPasswordControllerTest : BehaviorSpec({
             then("a new instance is booked, carrying its own 'has a password' claim like one set up in the app") {
                 val enrolled = fixture.booked.captured.shouldBeInstanceOf<ToolOutcome.Completed.Enrolled>()
                 enrolled.enrollmentRef.type shouldBe PASSWORD_ENROLLMENT_TYPE
-                enrolled.claims.single().attributeType shouldBe AttributeType.PASSWORD_EXISTS
+                enrolled.claims.single().attributeType shouldBe PASSWORD_EXISTS
                 enrolled.claims.single().value shouldBe PASSWORD_EXISTS_MARKER
-                verify { fixture.keycloakToolCalls.apply(accountId, EnrollPasswordDescriptor, any()) }
+                verify { fixture.keycloakToolCalls.apply(accountId, PasswordModule, any()) }
             }
         }
     }
@@ -99,7 +99,7 @@ class MgmtPasswordControllerTest : BehaviorSpec({
 
             then("it is invalid without throwing (constant shape, no enumeration oracle)") {
                 response.body!!.valid shouldBe false
-                verify { fixture.keycloakToolCalls.apply(accountId, AuthPasswordDescriptor, any()) }
+                verify { fixture.keycloakToolCalls.apply(accountId, PasswordModule, any()) }
             }
         }
 
@@ -129,7 +129,7 @@ private class MgmtPasswordFixture(accountId: AccountId, enrolled: Boolean, locke
     }
     private val lockouts = mockk<Lockouts> { every { isLockedOut(accountId) } returns locked }
     private val accountDirectory = mockk<AccountDirectory> {
-        every { activeEnrollment(accountId, PASSWORD_METHOD) } returns enrollmentRef.takeIf { enrolled }
+        every { activeEnrollment(accountId, PasswordModule.method) } returns enrollmentRef.takeIf { enrolled }
     }
     val enrollmentRepository = mockk<AuthPasswordEnrollmentRepository> {
         every { findById(1L) } returns Optional.of(

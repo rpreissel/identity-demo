@@ -6,8 +6,7 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_password.internal.PasswordHasher
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
 
-import com.example.identity.tools.auth_password.PASSWORD_ENROLLMENT_TYPE
-import com.example.identity.tools.auth_password.AuthPasswordLookupDescriptor
+import com.example.identity.tools.auth_password.internal.PASSWORD_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -23,7 +22,6 @@ import java.time.Clock
  */
 @Component
 class AuthPasswordLookupToolHandler(
-    private val descriptor: AuthPasswordLookupDescriptor,
     private val toolDataRepository: AuthPasswordLookupToolSessionRepository,
     private val enrollmentRepository: AuthPasswordEnrollmentRepository,
     private val clock: Clock
@@ -60,9 +58,6 @@ class AuthPasswordLookupToolHandler(
                 if (accountId != null && enrollment != null && passwordOk) {
                     PasswordHasher.upgrade(enrollment, decision.password)
                     ToolOutcome.Completed.Authenticated(
-                        amr = listOf(descriptor.method),
-                        achievedAcr = descriptor.maxAcr,
-                        factorTypes = descriptor.factorTypes,
                         subject = Subject.Account(accountId)
                     )
                 } else {

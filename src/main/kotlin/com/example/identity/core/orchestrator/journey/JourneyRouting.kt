@@ -53,8 +53,8 @@ class JourneyRouting(
         state.active?.let { return Next.tool(it.toolId.value, it.step, it.toolSessionId) }
         val activatable = state.activatable(availableTools)
         val single = activatable.singleOrNull()
-        return if (single != null && completesOnActivation(single) == null) {
-            Next.tool(single.value, toolRegistry.descriptorOf(single).startStep)
+        return if (single != null && withoutUserStep(single) == null) {
+            Next.tool(single.value, toolRegistry.toolOf(single).startStep)
         } else {
             // A single candidate that completes on activation gets the selection page too: started
             // alone it would change the account before the user saw anything. Zero candidates
@@ -71,14 +71,14 @@ class JourneyRouting(
     fun stepFor(state: JourneyState, channel: ChannelSession): Step {
         val availableTools = availableToolsOf(channel)
         val options = state.activatable(availableTools)
-        val completesAtOnce = options.singleOrNull()?.let { completesOnActivation(it) }
+        val withoutUserStep = options.singleOrNull()?.let { withoutUserStep(it) }
         val stepData: StepData? = when {
             // Sorted here, not in the stored offer, which is frozen for the journey: a changed
             // order applies to the next screen of a running journey too.
             state is OfferingState && options.size > 1 -> selectMethodStep(state, channel, options)
             // The only candidate completes on activation: offered as a choice of one, with a
             // description of why.
-            state is OfferingState && completesAtOnce != null -> selectMethodStep(state, channel, options)
+            state is OfferingState && withoutUserStep != null -> selectMethodStep(state, channel, options)
             // Single candidate, auto-activated: the description travels as a message, so the tool
             // form can explain why this step is required.
             state is OfferingState && options.size == 1 ->
@@ -99,16 +99,16 @@ class JourneyRouting(
     }
 
     private fun selectMethodStep(state: OfferingState, channel: ChannelSession, options: Set<ToolId>): SelectMethodStep {
-        val completesAtOnce = options.singleOrNull()?.let { completesOnActivation(it) }
+        val withoutUserStep = options.singleOrNull()?.let { withoutUserStep(it) }
         return SelectMethodStep(
             options = toolAvailabilityService.ordered(channelTypeOf(channel), options).map { it.value },
             title = state.selectionTitle,
-            description = completesAtOnce?.let { Text("Nur dieses Verfahren steht hier noch zur Wahl. {grund}", "grund" to it) }
+            description = withoutUserStep?.let { Text("Nur dieses Verfahren steht hier noch zur Wahl. {grund}", "grund" to it) }
                 ?: state.selectionDescription
         )
     }
 
-    private fun completesOnActivation(toolId: ToolId): Text? = toolRegistry.descriptorOf(toolId).completesOnActivation
+    private fun withoutUserStep(toolId: ToolId): Text? = toolRegistry.toolOf(toolId).withoutUserStep
 
     private fun channelTypeOf(channel: ChannelSession): ChannelType =
         channel.channelType

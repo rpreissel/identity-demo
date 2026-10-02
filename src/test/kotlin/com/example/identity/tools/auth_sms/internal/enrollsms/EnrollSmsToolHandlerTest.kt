@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_sms.internal.enrollsms
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.auth_sms.PHONE_NUMBER
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.simulation.sms.SmsGateway
@@ -8,7 +10,6 @@ import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollment
 import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 
-import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
@@ -42,7 +43,7 @@ private class Fixture {
     val tans = TanGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val gateway = SmsGateway(clock = TEST_CLOCK)
-    val handler = EnrollSmsToolHandler(EnrollSmsDescriptor, sessions, enrollments, tans, gateway, sendLimit, clock = TEST_CLOCK)
+    val handler = EnrollSmsToolHandler( sessions, enrollments, tans, gateway, sendLimit, clock = TEST_CLOCK)
 
     /** Holds the session the handler reads and writes. */
     fun withSession(session: EnrollSmsToolSession): EnrollSmsToolSession = session.also {
@@ -129,18 +130,15 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
 
             // The confirmed number is an assertion about the subject, so it reaches the account's
             // claim log (AccountService.recordClaims) - in its normalized form, not as typed.
-            then("it enrolls the credential at the descriptor's own maxAcr and factorTypes, asserting the number as a PHONE_NUMBER claim") {
+            then("it enrolls the credential at its tool's own level and factors, asserting the number as a PHONE_NUMBER claim") {
                 outcome shouldBe ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef("auth_sms.enrollment", "42"),
-                    amr = listOf("sms"),
-                    achievedAcr = EnrollSmsDescriptor.maxAcr,
-                    factorTypes = EnrollSmsDescriptor.factorTypes,
-                    claims = listOf(Claim(AttributeType.PHONE_NUMBER, PHONE, ClaimSource(EnrollSmsDescriptor.toolId.value), EnrollSmsDescriptor.maxAcr)),
+                    claims = listOf(Claim(PHONE_NUMBER, PHONE, ClaimSource(tool("enroll-sms").toolId.value), tool("enroll-sms").maxAcr)),
                 )
             }
 
             then("the claim passes the contract check JourneyService runs before adopting the outcome") {
-                assertClaimsCovered(EnrollSmsDescriptor, outcome.shouldBeInstanceOf<ToolOutcome.Completed.Enrolled>().claims)
+                assertClaimsCovered(tool("enroll-sms"), outcome.shouldBeInstanceOf<ToolOutcome.Completed.Enrolled>().claims)
             }
 
             then("the number's send budget starts over: whoever asked received the TAN") {

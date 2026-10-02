@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_password.internal.authpasswordlookup
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.tool_api.Subject
@@ -10,9 +11,8 @@ import com.example.identity.tools.auth_password.internal.PasswordHasher
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollment
 
-import com.example.identity.tools.auth_password.AuthPasswordLookupDescriptor
 import com.example.identity.tools.auth_password.DEMO_PASSWORD
-import com.example.identity.tools.auth_password.PASSWORD_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_password.internal.PASSWORD_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -39,7 +39,7 @@ private class Fixture {
     val enrollments = mockk<AuthPasswordEnrollmentRepository>().also {
         every { it.findById(1L) } returns Optional.of(AuthPasswordEnrollment(passwordHash = PasswordHasher.hash("hunter2"), createdAt = TEST_NOW).apply { id = 1L })
     }
-    val handler = AuthPasswordLookupToolHandler(AuthPasswordLookupDescriptor, sessions, enrollments, clock = TEST_CLOCK)
+    val handler = AuthPasswordLookupToolHandler( sessions, enrollments, clock = TEST_CLOCK)
 }
 
 /**
@@ -95,11 +95,8 @@ class AuthPasswordLookupToolHandlerTest : BehaviorSpec({
         `when`("email and password resolve to an active, matching enrollment") {
             val outcome = f.handler.patch(f.toolSessionId, email = "max@example.com", password = "hunter2", accountId = ACCOUNT, enrollmentRef = PASSWORD_REF)
 
-            then("it authenticates for that account at the descriptor's own maxAcr and factorTypes") {
+            then("it authenticates for that account at its tool's own level and factors") {
                 outcome shouldBe ToolOutcome.Completed.Authenticated(
-                    amr = listOf("password"),
-                    achievedAcr = AuthPasswordLookupDescriptor.maxAcr,
-                    factorTypes = AuthPasswordLookupDescriptor.factorTypes,
                     subject = Subject.Account(ACCOUNT),
                 )
             }

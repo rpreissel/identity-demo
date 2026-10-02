@@ -1,11 +1,10 @@
 package com.example.identity.tools.auth_device.internal.enrolldevice
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.auth_device.DeviceModule
 import com.example.identity.tools.auth_device.internal.DeviceEnrollmentRepository
 import com.example.identity.tools.auth_device.internal.DeviceEnrollment
 
-import com.example.identity.tools.auth_device.DEVICE_BINDING_KEY_REF
-import com.example.identity.tools.auth_device.DEVICE_ENROLLMENT_TYPE
-import com.example.identity.tools.auth_device.EnrollDeviceDescriptor
+import com.example.identity.tools.auth_device.internal.DEVICE_ENROLLMENT_TYPE
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.device.DevicePublicKey
 import com.example.identity.contract.tool_api.device.UserVerification
@@ -22,7 +21,6 @@ import java.time.Clock
  */
 @Component
 class EnrollDeviceToolHandler(
-    private val descriptor: EnrollDeviceDescriptor,
     private val toolDataRepository: EnrollDeviceToolSessionRepository,
     private val enrollmentRepository: DeviceEnrollmentRepository,
     private val clock: Clock
@@ -66,10 +64,11 @@ class EnrollDeviceToolHandler(
 
         return ToolOutcome.Completed.Enrolled(
             enrollmentRef = EnrollmentRef(type = DEVICE_ENROLLMENT_TYPE, id = enrollment.id.toString()),
-            amr = listOf(descriptor.method, decision.userVerification.wireValue),
-            achievedAcr = descriptor.maxAcr,
+            amr = listOf(DeviceModule.method, decision.userVerification.wireValue),
             factorTypes = factorTypesFor(decision.userVerification),
-            instanceDetails = mapOf(DEVICE_BINDING_KEY_REF to decision.deviceBindingKeyRef),
+            // The channel's DPoP key this credential lives on, shown as its reference on that device.
+            boundKeyRef = decision.deviceBindingKeyRef,
+            reference = decision.deviceBindingKeyRef,
             label = decision.label
         )
     }

@@ -1,12 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.ChannelType
-import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
-import com.example.identity.tools.auth_password.EnrollPasswordDescriptor
-import com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor
-import com.example.identity.tools.auth_sms.AuthSmsDescriptor
-import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
-import com.example.identity.tools.ident_fsc.IdentFscDescriptor
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -62,28 +57,28 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
     listOf(
         EnrollFirstCompletion(
             RegisterEnrollFirstState.EnrollFirstAttestingEmail(Offer(listOf(ToolId("confirm-email")))),
-            JourneyEvent.Completed(ConfirmEmailDescriptor, emailAttestation()),
-            Action.AdoptAttestation(ConfirmEmailDescriptor, emailAttestation())
+            JourneyEvent.Completed(tool("confirm-email"), emailAttestation()),
+            Action.AdoptAttestation(tool("confirm-email"), emailAttestation())
         ),
         EnrollFirstCompletion(
             RegisterEnrollFirstState.EnrollFirstEnrollingSms(Offer(listOf(ToolId("enroll-sms")))),
-            JourneyEvent.Completed(EnrollSmsDescriptor, smsEnrollment),
-            Action.AdoptCredential(EnrollSmsDescriptor, smsEnrollment)
+            JourneyEvent.Completed(tool("enroll-sms"), smsEnrollment),
+            Action.AdoptCredential(tool("enroll-sms"), smsEnrollment)
         ),
         EnrollFirstCompletion(
             RegisterEnrollFirstState.EnrollFirstEnrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password")))),
-            JourneyEvent.Completed(EnrollPasswordDescriptor, passwordEnrollment),
-            Action.AdoptCredential(EnrollPasswordDescriptor, passwordEnrollment)
+            JourneyEvent.Completed(tool("enroll-password"), passwordEnrollment),
+            Action.AdoptCredential(tool("enroll-password"), passwordEnrollment)
         ),
         EnrollFirstCompletion(
             RegisterEnrollFirstState.EnrollFirstConfirmingEmail(Offer(listOf(ToolId("confirm-email")))),
-            JourneyEvent.Completed(ConfirmEmailDescriptor, emailAttestation()),
-            Action.AdoptAttestation(ConfirmEmailDescriptor, emailAttestation())
+            JourneyEvent.Completed(tool("confirm-email"), emailAttestation()),
+            Action.AdoptAttestation(tool("confirm-email"), emailAttestation())
         ),
         EnrollFirstCompletion(
             RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS)),
-            JourneyEvent.Completed(EnrollPasswordDescriptor, passwordEnrollment),
-            Action.AdoptCredential(EnrollPasswordDescriptor, passwordEnrollment)
+            JourneyEvent.Completed(tool("enroll-password"), passwordEnrollment),
+            Action.AdoptCredential(tool("enroll-password"), passwordEnrollment)
         )
     ).forEach { (state, event, action) ->
         given("${state::class.simpleName}, its offered tool about to complete") {
@@ -100,9 +95,9 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         val state = RegisterEnrollFirstState.EnrollFirstEnrolling(Offer(listOf(ToolId("enroll-sms"))))
 
         listOf(
-            JourneyEvent.Completed(IdentFscDescriptor, identifiedOutcome()),
-            JourneyEvent.Completed(AuthSmsDescriptor, ToolOutcome.Completed.Authenticated(amr = listOf("sms"))),
-            JourneyEvent.Completed(ConfirmQrLoginDescriptor, ToolOutcome.Completed.Approved())
+            JourneyEvent.Completed(tool("ident-fsc"), identifiedOutcome()),
+            JourneyEvent.Completed(tool("auth-sms"), ToolOutcome.Completed.Authenticated(amr = listOf("sms"))),
+            JourneyEvent.Completed(tool("approve-qr"), ToolOutcome.Completed.Approved())
         ).forEach { event ->
             `when`("it completes with ${event.outcome::class.simpleName}") {
                 val result = runCatching { strategy.transition(state, event, ctx()) }
@@ -167,7 +162,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         val state = RegisterEnrollFirstState.EnrollFirstAttestingEmail(Offer(listOf(ToolId("confirm-email"))))
 
         `when`("the tool is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(ConfirmEmailDescriptor), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("confirm-email")), ctx())
             then("re-offers the same mandatory step, no skipping ahead to SMS") {
                 transition shouldBe
                     Transition.To(state.withActive(null))
@@ -193,7 +188,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         val state = RegisterEnrollFirstState.EnrollFirstEnrollingSms(Offer(listOf(ToolId("enroll-sms"))))
 
         `when`("the tool is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(EnrollSmsDescriptor), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("enroll-sms")), ctx())
             then("re-offers the same mandatory step") {
                 transition shouldBe
                     Transition.To(state.withActive(null))
@@ -223,7 +218,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         val state = RegisterEnrollFirstState.EnrollFirstEnrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("confirm-email"))))
 
         `when`("a tool is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(EnrollSmsDescriptor), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("enroll-sms")), ctx())
             then("re-offers the FULL choice - this is a mandatory state, not a fallback") {
                 transition shouldBe
                     Transition.To(state.withActive(null))

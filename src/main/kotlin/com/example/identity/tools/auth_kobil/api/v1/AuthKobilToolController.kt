@@ -1,18 +1,20 @@
 package com.example.identity.tools.auth_kobil.api.v1
 
-import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.auth_kobil.AUTH_KOBIL_TOOL_ID
+import com.example.identity.tools.auth_kobil.KobilModule
 import com.example.identity.contract.tool_api.ids.AccountId
-import com.example.identity.contract.texts.Text
-import com.example.identity.tools.auth_kobil.AuthKobilDescriptor
 import com.example.identity.tools.auth_kobil.internal.authkobil.AuthKobilToolHandler
 import com.example.identity.contract.tool_api.directory.AccountDirectory
-import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.credentials.PasswordCredentialPort
 import com.example.identity.contract.tool_api.ToolJourney
+import com.example.identity.contract.tool_api.ActivateTool
+import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.AuthorizedToolContext
+import com.example.identity.contract.tool_api.ToolContext
+import com.example.identity.contract.tool_api.readResponse
+import com.example.identity.contract.tool_api.activated
 import com.example.identity.contract.tool_api.ToolOutcome
-import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -24,14 +26,11 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.envelope.API_V1
-
-private const val AUTH_KOBIL_TOOL_ID = "auth-kobil"
 
 data class AuthKobilPatchRequest(
     /** The one-time password KOBIL handed the app - a reference to an assertion, not the assertion. */
@@ -48,13 +47,12 @@ data class AuthKobilPatchRequest(
 @Tag(name = "Tool: KOBIL")
 @SecurityRequirement(name = "dpop")
 class AuthKobilToolController(
-    private val descriptor: AuthKobilDescriptor,
     private val handler: AuthKobilToolHandler,
     private val toolJourney: ToolJourney,
     private val accountDirectory: AccountDirectory,
 ) {
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/auth-kobil")
+    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_KOBIL_TOOL_ID")
     @Operation(
         summary = "Activate auth-kobil",
         responses = [
@@ -71,27 +69,15 @@ class AuthKobilToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String,
+        @ActivateTool(AUTH_KOBIL_TOOL_ID) context: AuthorizedToolContext,
         uriBuilder: UriComponentsBuilder,
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.beginActivation(channelSessionId, bindingKeyRef, AUTH_KOBIL_TOOL_ID)
-
-        // Resolved at the call site, as auth-device does: only the instance whose details live on
-        // this caller's key may be used, so a credential bound to another phone is not reachable.
-        val enrollmentRef = context.accountId?.let { accountId ->
-            accountDirectory.activeInstanceEnrollment(accountId, descriptor.method) { details ->
-                descriptor.keyBinding.livesOn(details, bindingKeyRef)
-            }
-        } ?: throw UnresolvableReferenceException(Text("Auf diesem Gerät ist KOBIL nicht als Anmeldeverfahren eingerichtet"))
-
+        val enrollmentRef = toolJourney.requireEnrollment(context, KobilModule)
         val outcome = handler.start(context.toolSessionId, enrollmentRef, passwordAvailable(context.accountId))
-        val response = toolJourney.applyOutcome(context, outcome)
-        val location = toolJourney.activationLocation(context, uriBuilder.build().toUri())
-        return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)
+        return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PostMapping("$API_V1/tools/{toolSessionId}/auth-kobil/pin-releases")
+    @PostMapping("$API_V1/tools/{toolSessionId}/$AUTH_KOBIL_TOOL_ID/pin-releases")
     @Operation(
         summary = "Release the backend-held PIN",
         description = "The app presents either the locally stored unlock secret (guarded by its " +
@@ -116,23 +102,20 @@ class AuthKobilToolController(
         ]
     )
     fun releasePin(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String,
+        @LoadTool(AUTH_KOBIL_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody request: KobilPinReleaseRequest,
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, AUTH_KOBIL_TOOL_ID)
-
         // Resolved even when the account has no password: PasswordCredentialPort.verify must run
         // either way so a missing credential costs exactly what a wrong one does.
         val passwordEnrollment = passwordEnrollmentOf(context.accountId)
 
-        val outcome = handler.releasePin(toolSessionId, request.unlock, passwordEnrollment)
+        val outcome = handler.releasePin(context.toolSessionId, request.unlock, passwordEnrollment)
         val response = toolJourney.applyOutcome(context, outcome)
         val status = if (outcome is ToolOutcome.Failed) HttpStatus.OK else HttpStatus.CREATED
         return ResponseEntity.status(status).body(response)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/auth-kobil")
+    @PatchMapping("$API_V1/tools/{toolSessionId}/$AUTH_KOBIL_TOOL_ID")
     @Operation(
         summary = "Redeem the one-time password",
         description = "The backend fetches the assertion behind the OTP from KOBIL, compares the " +
@@ -150,12 +133,10 @@ class AuthKobilToolController(
         ]
     )
     fun patch(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String,
+        @LoadTool(AUTH_KOBIL_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody(required = false) request: AuthKobilPatchRequest?,
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, AUTH_KOBIL_TOOL_ID)
-        val outcome = handler.patch(toolSessionId, request?.otp)
+        val outcome = handler.patch(context.toolSessionId, request?.otp)
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
@@ -168,20 +149,11 @@ class AuthKobilToolController(
 
     private fun passwordAvailable(accountId: AccountId?) = passwordEnrollmentOf(accountId) != null
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/auth-kobil")
+    @GetMapping("$API_V1/tools/{toolSessionId}/$AUTH_KOBIL_TOOL_ID")
     @Operation(summary = "Read the current auth-kobil state")
     fun read(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String,
+        @LoadTool(AUTH_KOBIL_TOOL_ID) context: ToolContext,
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, AUTH_KOBIL_TOOL_ID)
-        val outcome = if (toolJourney.isCurrentTool(context)) {
-            checkNotNull(handler.read(toolSessionId, passwordAvailable(context.accountId)) as? ToolOutcome.InProgress) {
-                "read() must return InProgress while the tool is still current"
-            }
-        } else {
-            null
-        }
-        return ResponseEntity.ok(toolJourney.buildReadResponse(context, outcome))
+        return toolJourney.readResponse(context) { handler.read(context.toolSessionId, passwordAvailable(context.accountId)) }
     }
 }

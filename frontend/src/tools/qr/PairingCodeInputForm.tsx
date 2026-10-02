@@ -9,9 +9,9 @@ interface PairingCodeInputFormProps {
 }
 
 /**
- * `confirm-qr-login`'s `input` step (docs/05-api.md, Peer-Login bestätigen): the pairing code is
+ * `approve-qr`'s `input` step (docs/05-api.md, Peer-Login bestätigen): the pairing code is
  * scanned or typed here, or pre-filled from the WEB channel's demo link (session.ts). Forgotten
- * once submitted, so a later confirm-qr-login run never reuses a stale code. A code known at
+ * once submitted, so a later approve-qr run never reuses a stale code. A code known at
  * activation skips this step server-side (AppChannelApp.tsx).
  */
 export function PairingCodeInputForm({ onSubmit, error }: PairingCodeInputFormProps) {

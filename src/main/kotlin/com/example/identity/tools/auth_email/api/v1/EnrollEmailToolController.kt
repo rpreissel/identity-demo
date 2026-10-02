@@ -1,11 +1,14 @@
 package com.example.identity.tools.auth_email.api.v1
 
-import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.auth_email.ENROLL_EMAIL_TOOL_ID
 import com.example.identity.tools.auth_email.internal.enrollemail.EnrollEmailToolHandler
-import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolJourney
+import com.example.identity.contract.tool_api.ActivateTool
+import com.example.identity.contract.tool_api.AuthorizedToolContext
+import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ToolContext
+import com.example.identity.contract.tool_api.activated
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -13,16 +16,12 @@ import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.envelope.API_V1
-
-private const val ENROLL_EMAIL_TOOL_ID = "enroll-email"
 
 /**
  * toolId=enroll-email. One controller per tool (docs/08-projektrahmen.md A11), but this one has no
@@ -37,7 +36,7 @@ class EnrollEmailToolController(
     private val toolJourney: ToolJourney
 ) {
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/enroll-email")
+    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_EMAIL_TOOL_ID")
     @Operation(
         summary = "Activate enroll-email",
         description = "One shot: no request body, and the response already carries the completed outcome.",
@@ -54,24 +53,18 @@ class EnrollEmailToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String,
+        @ActivateTool(ENROLL_EMAIL_TOOL_ID) context: AuthorizedToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.beginActivation(channelSessionId, bindingKeyRef, ENROLL_EMAIL_TOOL_ID)
         val outcome = handler.start(context.toolSessionId)
-        val response = toolJourney.applyOutcome(context, outcome)
-        val location = toolJourney.activationLocation(context, uriBuilder.build().toUri())
-        return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)
+        return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/enroll-email")
+    @GetMapping("$API_V1/tools/{toolSessionId}/$ENROLL_EMAIL_TOOL_ID")
     @Operation(summary = "Read the current enroll-email state")
     fun read(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String
+        @LoadTool(ENROLL_EMAIL_TOOL_ID) context: ToolContext
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, ENROLL_EMAIL_TOOL_ID)
         // Never InProgress - this tool has a single, already-completed state, so the read path
         // only ever reports what the journey has moved on to.
         return ResponseEntity.ok(toolJourney.buildReadResponse(context, null))

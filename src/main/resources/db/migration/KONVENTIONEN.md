@@ -33,7 +33,7 @@ Datei wiederholt. Ausgelegt für ≥ 10 Mio. Konten und eine lange Betriebszeit.
 - **Langlebige Zugangsmittel** liegen in `<modul>.enrollment`. Dieser qualifizierte Name *ist*
   zugleich `EnrollmentRef.type`.
 - **Arbeitsdaten eines Tool-Durchlaufs** liegen in `<modul>.<tool-rolle>_tool_session`
-  (`auth_qr.confirm_tool_session` für `confirm-qr-login`). Der Schlüssel *ist* die
+  (`auth_qr.confirm_tool_session` für `approve-qr`). Der Schlüssel *ist* die
   `tool_session_id`: Die Zeile ist die Modulhälfte von `orchestrator.tool_session`, keine vierte
   Session-Ebene und keine Zeile je Versuch — ein Durchlauf übersteht mehrere Fehlversuche
   (`AuthJourney.attempt_budget`).

@@ -2,7 +2,7 @@ package com.example.identity.contract.tool_api.claims
 
 /**
  * One of the known acr levels ("none", "loa1".."loa3"), used on both sides of the tool contract
- * ([ToolDescriptor.maxAcr], [ToolOutcome.Completed.achievedAcr]). Not an enum, because raw values
+ * ([Tool.maxAcr][com.example.identity.contract.tool_api.Tool.maxAcr], [ToolOutcome.Completed.achievedAcr]). Not an enum, because raw values
  * arrive from untyped borders (tokens, columns, wire DTOs): [parse] answers `null` for an unknown
  * one, while the constructor rejects in-process typos.
  */

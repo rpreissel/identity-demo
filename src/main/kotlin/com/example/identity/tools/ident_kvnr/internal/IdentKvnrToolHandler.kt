@@ -1,10 +1,10 @@
 package com.example.identity.tools.ident_kvnr.internal
 
 import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.tools.ident_kvnr.KvnrModule
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.texts.Text
-import com.example.identity.tools.ident_kvnr.IdentKvnrDescriptor
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
@@ -21,7 +21,6 @@ import com.example.identity.contract.tool_api.MissingFields
  */
 @Component
 class IdentKvnrToolHandler(
-    private val descriptor: IdentKvnrDescriptor,
     private val repository: IdentKvnrToolSessionRepository,
     private val personDirectory: PersonDirectory,
     private val clock: Clock
@@ -52,14 +51,11 @@ class IdentKvnrToolHandler(
         if (!matchesAttestedIdentity) return ToolOutcome.Failed.Identification(notAssignable, attemptedPersonId = personId)
 
         return ToolOutcome.Completed.Identified(
-            amr = listOf(descriptor.method),
-            achievedAcr = descriptor.maxAcr,
-            factorTypes = descriptor.factorTypes,
             claims = listOfNotNull(
-                Claim(AttributeType.PERSON_ID, personId.value, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr),
-                kvnr?.takeIf { it.isNotBlank() }?.let { Claim(AttributeType.KVNR, it, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr) },
+                Claim(AttributeType.PERSON_ID, personId.value, ClaimSource.PERSON_DIRECTORY, KvnrModule.maxAcr),
+                kvnr?.takeIf { it.isNotBlank() }?.let { Claim(AttributeType.KVNR, it, ClaimSource.PERSON_DIRECTORY, KvnrModule.maxAcr) },
                 // Insured with us: the Versicherungsnummer becomes an anchor too (ADR-34).
-                personDirectory.memberNumberOf(personId)?.let { Claim(AttributeType.MEMBER_NUMBER, it, ClaimSource.PERSON_DIRECTORY, descriptor.maxAcr) }
+                personDirectory.memberNumberOf(personId)?.let { Claim(AttributeType.MEMBER_NUMBER, it, ClaimSource.PERSON_DIRECTORY, KvnrModule.maxAcr) }
             ),
             auditDetails = mapOf("methodVersion" to "1.0")
         )

@@ -7,9 +7,13 @@ import org.springframework.web.servlet.config.annotation.ViewControllerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
 @Configuration
-class WebConfig(private val dpopBindingKeyResolver: DpopBindingKeyResolver) : WebMvcConfigurer {
+class WebConfig(
+    private val dpopBindingKeyResolver: DpopBindingKeyResolver,
+    private val toolContextResolver: ToolContextResolver,
+) : WebMvcConfigurer {
     override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
         resolvers.add(dpopBindingKeyResolver)
+        resolvers.add(toolContextResolver)
     }
 
     /**

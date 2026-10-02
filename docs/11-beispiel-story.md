@@ -156,7 +156,7 @@ zweierlei von der Sitzung in der **App**:
 2. Sie muss **neu** beweisen, dass gerade jetzt Mara am Gerät sitzt. Ein alter Nachweis von heute
    Morgen darf die Zustimmung nicht geben.
 
-Erst dann erscheint `confirm-qr-login`. Mara tippt auf „Bestätigen“, und der Browser ist angemeldet,
+Erst dann erscheint `approve-qr`. Mara tippt auf „Bestätigen“, und der Browser ist angemeldet,
 auf `loa2`, ohne dass dort je ein Passwort eingegeben wurde. Geschenkt ist das Niveau dabei nicht:
 `auth-qr` darf es nur melden, weil die App vorher selbst die Schwelle `loa2` erreichen musste. Die
 Anmeldung per QR-Code gibt nur weiter, was in der App schon bewiesen wurde.
@@ -181,7 +181,7 @@ deshalb zuerst ab. Ein Wechsel zwischen Konto und Vorgangszugang geht in beiden 
 die Abmeldung.
 
 Im Kundenportal wählt er „Mit Einmalkennwort anmelden“ und gibt auf der Anmeldeseite seine
-Versichertennummer und das Kennwort aus dem Brief ein. Das Tool `auth-invite` prüft beides beim
+Versichertennummer und das Kennwort aus dem Brief ein. Das Tool `auth-invite-lookup` prüft beides beim
 Personenverzeichnis, so wie `ident-fsc` den Freischaltcode prüft. Sein Ergebnis nennt als Subjekt
 aber **kein Konto, sondern die Einladung** (`Subject.Invitation`). Der Orchestrator legt kein Konto
 an und sucht keines. Der Web-Kanal gehört jetzt der Einladung, und zwar auf dem Niveau, das die Kasse
@@ -230,7 +230,7 @@ Konto gab und wann es gelöscht wurde
 | `sms` + `password` zusammen | Besitz + Wissen | `loa2` | Kapitel 5 |
 | `device` | Besitz + Wissen/Biometrie | `loa2` | Kapitel 6 |
 | `qr` | Besitz + Wissen (aus der App übernommen) | `loa2` | Kapitel 6/7 |
-| `auth-invite` (Einmalkennwort per Brief, ihr Vater) | Besitz, kein Konto | das Niveau der Einladung (`loa1` oder `loa2`) | Kapitel 8 |
+| `auth-invite-lookup` (Einmalkennwort per Brief, ihr Vater) | Besitz, kein Konto | das Niveau der Einladung (`loa1` oder `loa2`) | Kapitel 8 |
 | DPoP-Schlüssel / `DeviceAccountLink` | keine – nur Wiedererkennung | — | Kapitel 1/4 |
 
 ## Welche Begriffe das Beispiel verbindet
@@ -245,7 +245,7 @@ Konto gab und wann es gelöscht wurde
 | „Besitz, Wissen, Biometrie – wie viele davon?“ | `factorTypes`, Kombination mehrerer Faktoren | [04-orchestrierung.md](04-orchestrierung.md) |
 | „Ist das wirklich Maras Gerät?“ | DPoP-Proof | [09-dpop.md](09-dpop.md) |
 | „Darf dieses Handy für eine Anmeldung anderswo einstehen?“ | `CONFIRM_PEER_LOGIN`, `PEER_APPROVAL` | [04-orchestrierung.md](04-orchestrierung.md) |
-| „Ein Brief für einen Vorgang, ohne Konto“ | Einladung, `auth-invite`, `Subject.Invitation`, Claim `process` | [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md) |
+| „Ein Brief für einen Vorgang, ohne Konto“ | Einladung, `auth-invite-lookup`, `Subject.Invitation`, Claim `process` | [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md) |
 
 Jeder dieser Schritte funktioniert für Maras App-Kanal genauso wie für eine Anmeldung im Browser über
 Keycloak. Zwischen den beiden Kanälen unterscheidet sich nur, *wer die Oberfläche zeigt* und *wie die

@@ -72,5 +72,23 @@ class ChannelBindingIntegrationTest : IntegrationTestSupport() {
                 }
             }
         }
+
+        given("a tool session id in the path that is no UUID or belongs to nobody") {
+            `when`("the tool endpoints are called with it") {
+                val malformedRead = runCatching { get("/orchestrator/api/v1/tools/not-a-uuid/ident-fsc") }
+                val malformedPatch = runCatching { patch("/orchestrator/api/v1/tools/not-a-uuid/ident-fsc", personalData) }
+                val unknownPatch = runCatching {
+                    patch("/orchestrator/api/v1/tools/00000000-0000-0000-0000-000000000000/ident-fsc", personalData)
+                }
+
+                then("a malformed id is a bad request, on the read and the write path") {
+                    malformedRead.status() shouldBe HttpStatus.BAD_REQUEST
+                    malformedPatch.status() shouldBe HttpStatus.BAD_REQUEST
+                }
+                then("an unknown id is not found") {
+                    unknownPatch.status() shouldBe HttpStatus.NOT_FOUND
+                }
+            }
+        }
     }
 }

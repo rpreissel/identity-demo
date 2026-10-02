@@ -1,15 +1,18 @@
 package com.example.identity.tools.ident_fsc.api.v1
 
-import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.ident_fsc.IDENT_FSC_TOOL_ID
 import com.example.identity.tools.ident_fsc.internal.IdentFscToolHandler
-import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolJourney
+import com.example.identity.contract.tool_api.ActivateTool
+import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.AuthorizedToolContext
+import com.example.identity.contract.tool_api.ToolContext
+import com.example.identity.contract.tool_api.readResponse
+import com.example.identity.contract.tool_api.activated
 import com.example.identity.contract.tool_api.directory.normalizeKvnr
-import com.example.identity.contract.tool_api.ToolOutcome
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -18,18 +21,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import java.time.LocalDate
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.envelope.API_V1
-
-private const val IDENT_FSC_TOOL_ID = "ident-fsc"
 
 data class IdentFscPatchRequest(
     @field:Schema(example = "A123456789") val kvnr: String? = null,
@@ -55,7 +54,7 @@ class IdentFscToolController(
     private val lockouts: Lockouts
 ) {
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/ident-fsc")
+    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$IDENT_FSC_TOOL_ID")
     @Operation(
         summary = "Activate ident-fsc",
         description = "No request body: toolId already carries kind and method.",
@@ -72,18 +71,14 @@ class IdentFscToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String,
+        @ActivateTool(IDENT_FSC_TOOL_ID) context: AuthorizedToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.beginActivation(channelSessionId, bindingKeyRef, IDENT_FSC_TOOL_ID)
         val outcome = handler.start(context.toolSessionId)
-        val response = toolJourney.applyOutcome(context, outcome)
-        val location = toolJourney.activationLocation(context, uriBuilder.build().toUri())
-        return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)
+        return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/ident-fsc")
+    @PatchMapping("$API_V1/tools/{toolSessionId}/$IDENT_FSC_TOOL_ID")
     @Operation(
         summary = "Supply KVNR/name/givenNames/birthDate/FSC",
         description = "Only the fields being supplied or corrected need to be sent; all five together also resolves in one call.",
@@ -102,12 +97,9 @@ class IdentFscToolController(
         ]
     )
     fun patch(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String,
+        @LoadTool(IDENT_FSC_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody(required = false) request: IdentFscPatchRequest?
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, IDENT_FSC_TOOL_ID)
-
         val body = request ?: IdentFscPatchRequest()
         // The KVNR comes first (ADR-34): given, it alone decides; the Partnernummer only counts without one.
         val personId = when {
@@ -118,12 +110,12 @@ class IdentFscToolController(
         // Folded into the handler's ordinary failure rather than raised - see
         // Lockouts.isIdentLockedOut: a distinguishable lock would leak which KVNRs exist.
         val rateLimited = lockouts.isIdentLockedOut(personId)
-        val outcome = handler.patch(toolSessionId, body.kvnr, body.partnerNumber, body.familyName, body.givenNames, body.birthDate, body.fsc, personId, rateLimited)
+        val outcome = handler.patch(context.toolSessionId, body.kvnr, body.partnerNumber, body.familyName, body.givenNames, body.birthDate, body.fsc, personId, rateLimited)
 
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/ident-fsc")
+    @GetMapping("$API_V1/tools/{toolSessionId}/$IDENT_FSC_TOOL_ID")
     @Operation(
         summary = "Read the current ident-fsc state",
         responses = [
@@ -139,17 +131,8 @@ class IdentFscToolController(
         ]
     )
     fun read(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String
+        @LoadTool(IDENT_FSC_TOOL_ID) context: ToolContext
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, IDENT_FSC_TOOL_ID)
-        val outcome = if (toolJourney.isCurrentTool(context)) {
-            checkNotNull(handler.read(toolSessionId) as? ToolOutcome.InProgress) {
-                "read() must return InProgress while the tool is still current"
-            }
-        } else {
-            null
-        }
-        return ResponseEntity.ok(toolJourney.buildReadResponse(context, outcome))
+        return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }
 }

@@ -35,14 +35,13 @@ interface AccountDirectory {
     fun activeEnrollment(accountId: AccountId, method: String): EnrollmentRef?
 
     /**
-     * The account's active credential for [method] whose instance details satisfy
-     * [livesOnCallerKey]. For multi-instance methods (e.g. `"device"`), where only one instance
-     * belongs to the calling device. The caller supplies the predicate (typically
-     * `ToolDescriptor.keyBinding`), because `account` stores instance details as an opaque blob.
+     * The account's active credential for [method] that lives on the caller key [boundKeyRef]. For
+     * a [ToolModule.onePerDevice][com.example.identity.contract.tool_api.ToolModule.onePerDevice]
+     * method (e.g. `"device"`), where only one instance belongs to the calling device.
      *
-     * @return the first active instance [livesOnCallerKey] accepts, or `null`.
+     * @return that instance's enrollment reference, or `null`.
      */
-    fun activeInstanceEnrollment(accountId: AccountId, method: String, livesOnCallerKey: (instanceDetails: Map<String, Any?>?) -> Boolean): EnrollmentRef?
+    fun activeInstanceEnrollment(accountId: AccountId, method: String, boundKeyRef: String): EnrollmentRef?
 }
 
 /**

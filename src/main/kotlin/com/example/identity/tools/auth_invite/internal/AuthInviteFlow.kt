@@ -3,7 +3,7 @@ package com.example.identity.tools.auth_invite.internal
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.StepData
 
-/** What one PATCH of auth-invite carries. The number is either the KVNR or the Partnernummer. */
+/** What one PATCH of auth-invite-lookup carries. The number is either the KVNR or the Partnernummer. */
 internal data class AuthInviteInput(val kvnr: String? = null, val partnerNumber: String? = null, val code: String? = null)
 
 internal sealed interface AuthInviteDecision {

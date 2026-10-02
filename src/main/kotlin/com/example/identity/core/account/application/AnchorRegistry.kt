@@ -5,8 +5,6 @@ import com.example.identity.core.account.infrastructure.AccountAnchor
 import com.example.identity.core.account.infrastructure.AccountAnchorRepository
 import com.example.identity.core.account.domain.AnchorDecision
 import com.example.identity.core.account.RetractionSource
-import com.example.identity.contract.tool_api.claims.anchorRule
-import com.example.identity.contract.tool_api.claims.normalizeAnchorValue
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import org.springframework.stereotype.Component

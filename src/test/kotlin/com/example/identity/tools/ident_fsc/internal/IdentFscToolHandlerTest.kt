@@ -1,13 +1,13 @@
 package com.example.identity.tools.ident_fsc.internal
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.directory.ActivationCodes
-import com.example.identity.tools.ident_fsc.IdentFscDescriptor
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
@@ -48,7 +48,7 @@ private class Fixture(sessionOf: (ToolSessionId) -> IdentFscToolSession = { Iden
         every { it.matchesPersonalDetails(any(), any(), any(), any()) } returns false
         every { it.matchesPersonalDetails(PERSON, "Muster", "Max", BIRTHDATE) } returns true
     }
-    val handler = IdentFscToolHandler(IdentFscDescriptor, repository, activationCodes, personDirectory, clock = TEST_CLOCK)
+    val handler = IdentFscToolHandler( repository, activationCodes, personDirectory, clock = TEST_CLOCK)
 
     fun withValidCode(person: PartnerNumber, code: String) = apply {
         every { activationCodes.isValid(person, "digest:$code") } returns true
@@ -130,11 +130,11 @@ class IdentFscToolHandlerTest : BehaviorSpec({
 
             then("it identifies, asserting the master-data attributes as claims under PERSON_DIRECTORY") {
                 outcome.shouldBeInstanceOf<ToolOutcome.Completed.Identified>().claims shouldBe listOf(
-                    Claim(AttributeType.PERSON_ID, "P000000007", ClaimSource.PERSON_DIRECTORY, IdentFscDescriptor.maxAcr),
-                    Claim(AttributeType.KVNR, "A123456789", ClaimSource.PERSON_DIRECTORY, IdentFscDescriptor.maxAcr),
-                    Claim(AttributeType.FAMILY_NAME, "Muster", ClaimSource.PERSON_DIRECTORY, IdentFscDescriptor.maxAcr),
-                    Claim(AttributeType.GIVEN_NAMES, "Max", ClaimSource.PERSON_DIRECTORY, IdentFscDescriptor.maxAcr),
-                    Claim(AttributeType.BIRTH_DATE, "1985-06-15", ClaimSource.PERSON_DIRECTORY, IdentFscDescriptor.maxAcr)
+                    Claim(AttributeType.PERSON_ID, "P000000007", ClaimSource.PERSON_DIRECTORY, tool("ident-fsc").maxAcr),
+                    Claim(AttributeType.KVNR, "A123456789", ClaimSource.PERSON_DIRECTORY, tool("ident-fsc").maxAcr),
+                    Claim(AttributeType.FAMILY_NAME, "Muster", ClaimSource.PERSON_DIRECTORY, tool("ident-fsc").maxAcr),
+                    Claim(AttributeType.GIVEN_NAMES, "Max", ClaimSource.PERSON_DIRECTORY, tool("ident-fsc").maxAcr),
+                    Claim(AttributeType.BIRTH_DATE, "1985-06-15", ClaimSource.PERSON_DIRECTORY, tool("ident-fsc").maxAcr)
                 )
             }
         }

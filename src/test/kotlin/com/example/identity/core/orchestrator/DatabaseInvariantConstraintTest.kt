@@ -3,8 +3,6 @@ package com.example.identity.core.orchestrator
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import org.springframework.dao.DataIntegrityViolationException
-import java.nio.file.Files
-import java.nio.file.Path
 import java.util.UUID
 
 /**
@@ -80,14 +78,15 @@ class DatabaseInvariantConstraintTest : IntegrationTestSupport() {
         given("I-13: an account with two active devices and an active password") {
             `when`("a second active password is inserted") {
                 val accountId = accountFixtures.seedAccount(methods = emptyList())
-                fun insertMethod(method: String) = jdbcTemplate.update(
-                    """INSERT INTO account.auth_method (id, account_id, method, enrollment_type, enrollment_id, active, created_at)
-                       VALUES (?, ?, ?, 't', ?, TRUE, CURRENT_TIMESTAMP)""",
-                    UUID.randomUUID(), accountId.value, method, UUID.randomUUID().toString()
+                // Each row carries whether its method allows several instances (ToolModule.onePerDevice).
+                fun insertMethod(method: String, multiple: Boolean = false) = jdbcTemplate.update(
+                    """INSERT INTO account.auth_method (id, account_id, method, enrollment_type, enrollment_id, active, allows_multiple_instances, created_at)
+                       VALUES (?, ?, ?, 't', ?, TRUE, ?, CURRENT_TIMESTAMP)""",
+                    UUID.randomUUID(), accountId.value, method, UUID.randomUUID().toString(), multiple
                 )
                 val singletonsAndMultiples = runCatching {
-                    insertMethod("device")
-                    insertMethod("device")
+                    insertMethod("device", multiple = true)
+                    insertMethod("device", multiple = true)
                     insertMethod("password")
                 }
 
@@ -102,21 +101,5 @@ class DatabaseInvariantConstraintTest : IntegrationTestSupport() {
             }
         }
 
-        // The one place where SQL repeats code knowledge; no action, so no `when`.
-        given("the SQL list of multi-instance methods and the tool descriptors") {
-            val fromDescriptors = toolRegistry.descriptors().filter { it.allowsMultipleInstances }.map { it.method }.toSet()
-            val migration = Files.readString(
-                generateSequence(Path.of("").toAbsolutePath()) { it.parent }
-                    .map { it.resolve("src/main/resources/db/migration/account/V23__eine_aktive_singleton_methode.sql") }
-                    .first { Files.exists(it) }
-            )
-            val fromSql = Regex("""method NOT IN \(([^)]*)\)""").findAll(migration)
-                .map { match -> match.groupValues[1].split(",").map { it.trim().trim('\'') }.toSet() }
-                .toSet()
-
-            then("they match") {
-                fromSql shouldBe setOf(fromDescriptors)
-            }
-        }
     }
 }

@@ -30,7 +30,7 @@ Derselbe Zustand bedient zwei Fälle im Web-Kanal. Sie unterscheiden sich nur im
 
 - **Erste Anmeldung** (`ctx.account` ist `null`): Angeboten werden alle Tools, die ihr Subjekt aus der
   Eingabe selbst finden (`CandidateTools.forLookupLogin`), nie eine Identifizierung. Das sind die
-  Anmeldungen über die E-Mail-Adresse, die ein Konto finden, und `auth-invite`, das mit
+  Anmeldungen über die E-Mail-Adresse, die ein Konto finden, und `auth-invite-lookup`, das mit
   KVNR oder Partnernummer und Einmalkennwort eine Einladung findet
   ([ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Nach einem Einmalkennwort ist
   das Subjekt des Kanals die Einladung, kein Konto; die Journey ist dann sofort fertig, denn weitere

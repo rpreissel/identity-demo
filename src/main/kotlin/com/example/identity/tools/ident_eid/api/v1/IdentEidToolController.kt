@@ -1,13 +1,16 @@
 package com.example.identity.tools.ident_eid.api.v1
 
-import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.ident_eid.IDENT_EID_TOOL_ID
 import com.example.identity.tools.ident_eid.internal.EidPatchFields
 import com.example.identity.tools.ident_eid.internal.IdentEidToolHandler
-import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.contract.tool_api.ActivateTool
+import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.AuthorizedToolContext
+import com.example.identity.contract.tool_api.ToolContext
+import com.example.identity.contract.tool_api.readResponse
+import com.example.identity.contract.tool_api.activated
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -16,18 +19,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import java.time.LocalDate
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.envelope.API_V1
-
-private const val IDENT_EID_TOOL_ID = "ident-eid"
 
 data class IdentEidPatchRequest(
     @field:Schema(example = "Muster") val familyName: String? = null,
@@ -53,7 +52,7 @@ class IdentEidToolController(
     private val toolJourney: ToolJourney
 ) {
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/ident-eid")
+    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$IDENT_EID_TOOL_ID")
     @Operation(
         summary = "Activate ident-eid",
         description = "No request body: toolId already carries kind and method.",
@@ -71,18 +70,14 @@ class IdentEidToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String,
+        @ActivateTool(IDENT_EID_TOOL_ID) context: AuthorizedToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.beginActivation(channelSessionId, bindingKeyRef, IDENT_EID_TOOL_ID)
         val outcome = handler.start(context.toolSessionId)
-        val response = toolJourney.applyOutcome(context, outcome)
-        val location = toolJourney.activationLocation(context, uriBuilder.build().toUri())
-        return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)
+        return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/ident-eid")
+    @PatchMapping("$API_V1/tools/{toolSessionId}/$IDENT_EID_TOOL_ID")
     @Operation(
         summary = "Supply the simulated card's Ausweisdaten, then the PIN",
         description = "Only the fields being supplied or corrected need to be sent; all of them together also completes in one call. " +
@@ -109,12 +104,9 @@ class IdentEidToolController(
         ]
     )
     fun patch(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String,
+        @LoadTool(IDENT_EID_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody(required = false) request: IdentEidPatchRequest?
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, IDENT_EID_TOOL_ID)
-
         val body = request ?: IdentEidPatchRequest()
         val fields = EidPatchFields(
             familyName = body.familyName,
@@ -126,12 +118,12 @@ class IdentEidToolController(
             restrictedId = body.restrictedId,
             pin = body.pin
         )
-        val outcome = handler.patch(toolSessionId, fields)
+        val outcome = handler.patch(context.toolSessionId, fields)
 
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/ident-eid")
+    @GetMapping("$API_V1/tools/{toolSessionId}/$IDENT_EID_TOOL_ID")
     @Operation(
         summary = "Read the current ident-eid state",
         responses = [
@@ -148,17 +140,8 @@ class IdentEidToolController(
         ]
     )
     fun read(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String
+        @LoadTool(IDENT_EID_TOOL_ID) context: ToolContext
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, IDENT_EID_TOOL_ID)
-        val outcome = if (toolJourney.isCurrentTool(context)) {
-            checkNotNull(handler.read(toolSessionId) as? ToolOutcome.InProgress) {
-                "read() must return InProgress while the tool is still current"
-            }
-        } else {
-            null
-        }
-        return ResponseEntity.ok(toolJourney.buildReadResponse(context, outcome))
+        return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }
 }

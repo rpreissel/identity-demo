@@ -1,17 +1,18 @@
 package com.example.identity.tools.auth_password.internal.enrollpassword
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.auth_password.PASSWORD_EXISTS
+import com.example.identity.contract.tool_api.ToolRole
+import com.example.identity.tools.auth_password.PasswordModule
 import com.example.identity.tools.auth_password.internal.PasswordHasher
 import com.example.identity.tools.auth_password.internal.PasswordPolicy
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollment
 
-import com.example.identity.tools.auth_password.PASSWORD_ENROLLMENT_TYPE
-import com.example.identity.tools.auth_password.EnrollPasswordDescriptor
+import com.example.identity.tools.auth_password.internal.PASSWORD_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
-import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.EnrollmentRef
-import com.example.identity.contract.tool_api.claims.PASSWORD_EXISTS_MARKER
+import com.example.identity.tools.auth_password.PASSWORD_EXISTS_MARKER
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -24,7 +25,6 @@ import java.time.Clock
  */
 @Component
 class EnrollPasswordToolHandler(
-    private val descriptor: EnrollPasswordDescriptor,
     private val toolDataRepository: EnrollPasswordToolSessionRepository,
     private val enrollmentRepository: AuthPasswordEnrollmentRepository,
     private val clock: Clock
@@ -51,17 +51,14 @@ class EnrollPasswordToolHandler(
                 val enrollment = enrollmentRepository.save(AuthPasswordEnrollment(passwordHash = PasswordHasher.hash(decision.password), createdAt = clock.instant()))
                 ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef(type = PASSWORD_ENROLLMENT_TYPE, id = enrollment.id.toString()),
-                    amr = listOf(descriptor.method),
-                    achievedAcr = descriptor.maxAcr,
-                    factorTypes = descriptor.factorTypes,
                     // Not the password or a digest: the claim states that one exists, so a
                     // dependent method can require it (EnrollPasswordDescriptor).
                     claims = listOf(
                         Claim(
-                            attributeType = AttributeType.PASSWORD_EXISTS,
+                            attributeType = PASSWORD_EXISTS,
                             value = PASSWORD_EXISTS_MARKER,
-                            source = ClaimSource(descriptor.toolId.value),
-                            establishedAcr = descriptor.maxAcr
+                            source = PasswordModule.source(ToolRole.ENROLLMENT),
+                            establishedAcr = PasswordModule.maxAcr
                         )
                     )
                 )

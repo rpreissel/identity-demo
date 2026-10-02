@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * auth-invite has one step "auth" (ADR-48). Its page hands the demo's open invitations to the
+ * auth-invite-lookup has one step "auth" (ADR-48). Its page hands the demo's open invitations to the
  * picker, and says "null" when the demo discloses none.
  */
 class AuthInviteRendererFactoryTest {
@@ -38,7 +38,7 @@ class AuthInviteRendererFactoryTest {
     }
 
     private static WebToolRenderContext context(String step, Map<String, JsonNode> demo) {
-        return new WebToolRenderContext("auth-invite", step, Map.of(), demo, null, null, Set.of(), null);
+        return new WebToolRenderContext("auth-invite-lookup", step, Map.of(), demo, null, null, Set.of(), null);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.authsms
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.simulation.sms.SmsGateway
@@ -8,8 +9,7 @@ import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollment
 
-import com.example.identity.tools.auth_sms.AuthSmsDescriptor
-import com.example.identity.tools.auth_sms.SMS_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_sms.internal.SMS_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -42,7 +42,7 @@ private class Fixture {
     val tans = TanGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val gateway = SmsGateway(clock = TEST_CLOCK)
-    val handler = AuthSmsToolHandler(AuthSmsDescriptor, sessions, enrollments, tans, gateway, sendLimit, clock = TEST_CLOCK)
+    val handler = AuthSmsToolHandler( sessions, enrollments, tans, gateway, sendLimit, clock = TEST_CLOCK)
 
     fun withEnrolledNumber(id: Long) = apply {
         every { enrollments.findById(id) } returns Optional.of(AuthSmsEnrollment(phoneNumber = PHONE, createdAt = TEST_NOW).apply { this.id = id })
@@ -126,11 +126,11 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
         `when`("confirming with the correct TAN") {
             val outcome = f.handler.patch(f.toolSessionId, issued.plainTan)
 
-            then("it authenticates at the descriptor's own maxAcr and factorTypes") {
+            then("it authenticates at its tool's own level and factors") {
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
-                authenticated.amr shouldBe listOf("sms")
-                authenticated.achievedAcr shouldBe AuthSmsDescriptor.maxAcr
-                authenticated.factorTypes shouldBe AuthSmsDescriptor.factorTypes
+                authenticated.amr shouldBe null
+                authenticated.achievedAcr shouldBe null
+                authenticated.factorTypes shouldBe null
             }
 
             then("the number's send budget starts over: whoever asked received the TAN") {

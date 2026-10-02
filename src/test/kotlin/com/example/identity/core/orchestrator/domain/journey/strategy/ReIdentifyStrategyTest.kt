@@ -1,9 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.policy.fromNow
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyStrategy
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.tools.ident_fsc.IdentFscDescriptor
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.Action
@@ -39,16 +39,16 @@ class ReIdentifyStrategyTest : BehaviorSpec({
 
         `when`("the tool completes with Identified") {
             val outcome = identifiedOutcome()
-            val event = JourneyEvent.Completed(IdentFscDescriptor, outcome)
+            val event = JourneyEvent.Completed(tool("ident-fsc"), outcome)
             val transition = strategy.transition(state, event, ctx())
             then("always confirms the caller's already-known account, never adopts a different one") {
                 transition shouldBe
-                    Transition.Perform(Action.RecordIdentification(IdentFscDescriptor, outcome), resumeState = state)
+                    Transition.Perform(Action.RecordIdentification(tool("ident-fsc"), outcome), resumeState = state)
             }
         }
 
         `when`("the tool completes with Authenticated") {
-            val event = JourneyEvent.Completed(IdentFscDescriptor, ToolOutcome.Completed.Authenticated(amr = listOf("fsc")))
+            val event = JourneyEvent.Completed(tool("ident-fsc"), ToolOutcome.Completed.Authenticated(amr = listOf("fsc")))
             val result = runCatching { strategy.transition(state, event, ctx()) }
             then("Authenticated is not offered by this intent") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
@@ -56,7 +56,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         }
 
         `when`("the tool completes with Enrolled") {
-            val event = JourneyEvent.Completed(IdentFscDescriptor, ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("fsc", "ref")))
+            val event = JourneyEvent.Completed(tool("ident-fsc"), ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("fsc", "ref")))
             val result = runCatching { strategy.transition(state, event, ctx()) }
             then("Enrolled is not offered by this intent") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
@@ -139,7 +139,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         val state = ReIdentifyState.Identifying(AcrLevel.LOA2, AcrLevel.LOA1, Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"))))
 
         `when`("one is abandoned but another remains") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(IdentFscDescriptor), theCtx)
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("ident-fsc")), theCtx)
             then("advances, marking only that one declined") {
                 transition shouldBe
                     Transition.To(state.declining(ToolId("ident-fsc")))
@@ -160,7 +160,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         val state = ReIdentifyState.Identifying(AcrLevel.LOA2, AcrLevel.LOA1, offer)
 
         `when`("the last remaining candidate is abandoned too") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(IdentFscDescriptor), theCtx)
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("ident-fsc")), theCtx)
             then("cancels - giving up here is not an error") {
                 transition shouldBe Transition.Cancel
             }

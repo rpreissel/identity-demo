@@ -1,10 +1,8 @@
 package com.example.identity.tools.auth_kobil.internal.enrollkobil
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
-import com.example.identity.tools.auth_kobil.EnrollKobilDescriptor
-import com.example.identity.tools.auth_kobil.KOBIL_BINDING_KEY_REF
-import com.example.identity.tools.auth_kobil.KOBIL_DEVICE_ID
-import com.example.identity.tools.auth_kobil.KOBIL_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_kobil.KobilModule
+import com.example.identity.tools.auth_kobil.internal.KOBIL_ENROLLMENT_TYPE
 import com.example.identity.tools.auth_kobil.internal.KobilEnrollment
 import com.example.identity.tools.auth_kobil.internal.KobilEnrollmentRepository
 import com.example.identity.tools.auth_kobil.internal.KobilSecrets
@@ -26,7 +24,6 @@ import com.example.identity.tools.auth_kobil.api.v1.KobilActivationStep
  */
 @Component
 class EnrollKobilToolHandler(
-    private val descriptor: EnrollKobilDescriptor,
     private val toolDataRepository: EnrollKobilToolSessionRepository,
     private val enrollmentRepository: KobilEnrollmentRepository,
     private val secrets: KobilSecrets,
@@ -114,15 +111,13 @@ class EnrollKobilToolHandler(
 
                 ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef(type = KOBIL_ENROLLMENT_TYPE, id = enrollment.id.toString()),
-                    amr = listOf(descriptor.method, decision.userVerification.wireValue),
-                    achievedAcr = descriptor.maxAcr,
+                    amr = listOf(KobilModule.method, decision.userVerification.wireValue),
                     factorTypes = decision.userVerification.kobilFactorTypes(),
                     // The KOBIL user id is not repeated here: it lives in this module's own
-                    // enrollment row, where the auth and cleanup paths read it.
-                    instanceDetails = mapOf(
-                        KOBIL_BINDING_KEY_REF to bindingKeyRef,
-                        KOBIL_DEVICE_ID to decision.deviceId,
-                    ),
+                    // enrollment row, where the auth and cleanup paths read it. The device id is
+                    // what the phone may show; the client cannot learn it any other way.
+                    boundKeyRef = bindingKeyRef,
+                    reference = decision.deviceId,
                     label = label,
                 )
             }

@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_password.internal.authpassword
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
@@ -7,9 +8,8 @@ import com.example.identity.tools.auth_password.internal.PasswordHasher
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollment
 
-import com.example.identity.tools.auth_password.AuthPasswordDescriptor
 import com.example.identity.tools.auth_password.DEMO_PASSWORD
-import com.example.identity.tools.auth_password.PASSWORD_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_password.internal.PASSWORD_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -32,7 +32,7 @@ private class Fixture {
         every { it.existsById(any()) } returns false
         every { it.findById(any()) } returns Optional.empty()
     }
-    val handler = AuthPasswordToolHandler(AuthPasswordDescriptor, sessions, enrollments, clock = TEST_CLOCK)
+    val handler = AuthPasswordToolHandler( sessions, enrollments, clock = TEST_CLOCK)
 
     fun withEnrolledPassword(id: Long, password: String) = apply {
         every { enrollments.existsById(id) } returns true
@@ -86,11 +86,8 @@ class AuthPasswordToolHandlerTest : BehaviorSpec({
         `when`("submitting the correct password") {
             val outcome = f.handler.patch(f.toolSessionId, "hunter2")
 
-            then("it authenticates at the descriptor's own maxAcr and factorTypes") {
+            then("it authenticates at its tool's own level and factors") {
                 outcome shouldBe ToolOutcome.Completed.Authenticated(
-                    amr = listOf("password"),
-                    achievedAcr = AuthPasswordDescriptor.maxAcr,
-                    factorTypes = AuthPasswordDescriptor.factorTypes,
                 )
             }
         }

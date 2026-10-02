@@ -10,7 +10,7 @@ interface ShowConfirmationCodeProps {
 }
 
 /**
- * `confirm-qr-login`'s `showCode` step: the code the user types into the browser that is waiting.
+ * `approve-qr`'s `showCode` step: the code the user types into the browser that is waiting.
  * It must never be passed on - whoever types it into their browser is logged in as this account.
  */
 export function ShowConfirmationCode({ confirmationCode, onDone, error }: ShowConfirmationCodeProps) {

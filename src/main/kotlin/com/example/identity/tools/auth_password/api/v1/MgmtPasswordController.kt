@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_password.api.v1
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.tools.auth_password.PASSWORD_EXISTS
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -8,15 +9,16 @@ import com.example.identity.contract.tool_api.InvalidStateException
 import com.example.identity.contract.tool_api.KeycloakToolCalls
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.contract.tool_api.ToolRole
+import com.example.identity.tools.auth_password.PasswordModule
+import com.example.identity.tools.auth_password.AUTH_PASSWORD_TOOL_ID
+import com.example.identity.tools.auth_password.ENROLL_PASSWORD_TOOL_ID
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
-import com.example.identity.contract.tool_api.claims.ClaimSource
-import com.example.identity.contract.tool_api.claims.PASSWORD_EXISTS_MARKER
+import com.example.identity.tools.auth_password.PASSWORD_EXISTS_MARKER
 import com.example.identity.contract.tool_api.credentials.PasswordCredentialPort
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.envelope.API_V1
-import com.example.identity.tools.auth_password.AuthPasswordDescriptor
-import com.example.identity.tools.auth_password.EnrollPasswordDescriptor
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.enums.ParameterIn
@@ -51,7 +53,7 @@ class MgmtPasswordController(
 
     // The Authorization header carries the assertion; the @BindingKey resolver reads it, the
     // @Parameter keeps it in the published contract.
-    @PostMapping("$API_V1/tools/auth-password/mgmt/{accountId}")
+    @PostMapping("$API_V1/tools/$AUTH_PASSWORD_TOOL_ID/mgmt/{accountId}")
     @Operation(summary = "Verify a candidate password against the account's stored credential")
     @Parameter(name = "Authorization", `in` = ParameterIn.HEADER, required = false, schema = Schema(type = "string"))
     fun verify(
@@ -63,19 +65,19 @@ class MgmtPasswordController(
         // The same lockout as auth-password: it is the same password to guess. The hash is computed
         // even when locked, so the timing does not reveal the lock.
         val locked = lockouts.isLockedOut(accountId)
-        val enrollmentRef = accountDirectory.activeEnrollment(accountId, AuthPasswordDescriptor.method)
+        val enrollmentRef = accountDirectory.activeEnrollment(accountId, PasswordModule.method)
         val matches = passwordCredentialPort.verify(enrollmentRef, request?.password.orEmpty())
         if (!locked) {
             keycloakToolCalls.apply(
-                accountId, AuthPasswordDescriptor,
-                if (matches) ToolOutcome.Completed.Authenticated(amr = listOf(AuthPasswordDescriptor.method))
+                accountId, PasswordModule,
+                if (matches) ToolOutcome.Completed.Authenticated()
                 else ToolOutcome.Failed.KnownAccountAuth(Text("Passwort ungueltig"))
             )
         }
         return ResponseEntity.ok(MgmtPasswordVerifyResponse(matches && !locked))
     }
 
-    @PostMapping("$API_V1/tools/enroll-password/mgmt/{accountId}")
+    @PostMapping("$API_V1/tools/$ENROLL_PASSWORD_TOOL_ID/mgmt/{accountId}")
     @Operation(
         summary = "Replace the account's password credential with a new one",
         responses = [ApiResponse(responseCode = "204", description = "Replaced - no body.")]
@@ -89,17 +91,16 @@ class MgmtPasswordController(
         keycloakToolCalls.requireKeycloakFor(accountId, bindingKeyRef)
         // Only replaces an existing password. Keycloak's admin reset must not give an account a new
         // method; that is enroll-password's job behind the MANAGE check.
-        if (accountDirectory.activeEnrollment(accountId, EnrollPasswordDescriptor.method) == null) {
+        if (accountDirectory.activeEnrollment(accountId, PasswordModule.method) == null) {
             throw InvalidStateException(Text("Für dieses Konto ist kein Passwort eingerichtet"))
         }
         val newPassword = requireNotNull(request.newPassword) { "newPassword is required" }
         val enrollmentRef: EnrollmentRef = passwordCredentialPort.setNew(newPassword)
         keycloakToolCalls.apply(
-            accountId, EnrollPasswordDescriptor,
+            accountId, PasswordModule,
             ToolOutcome.Completed.Enrolled(
                 enrollmentRef = enrollmentRef,
-                claims = listOf(Claim(AttributeType.PASSWORD_EXISTS, PASSWORD_EXISTS_MARKER, ClaimSource(EnrollPasswordDescriptor.toolId.value))),
-                instanceDetails = mapOf("source" to "kc-native"),
+                claims = listOf(Claim(PASSWORD_EXISTS, PASSWORD_EXISTS_MARKER, PasswordModule.source(ToolRole.ENROLLMENT))),
             )
         )
         return ResponseEntity.noContent().build()

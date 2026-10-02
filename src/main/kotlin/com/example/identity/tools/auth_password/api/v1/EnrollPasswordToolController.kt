@@ -1,12 +1,15 @@
 package com.example.identity.tools.auth_password.api.v1
 
-import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.auth_password.ENROLL_PASSWORD_TOOL_ID
 import com.example.identity.tools.auth_password.internal.enrollpassword.EnrollPasswordToolHandler
-import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.contract.tool_api.ActivateTool
+import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.AuthorizedToolContext
+import com.example.identity.contract.tool_api.ToolContext
+import com.example.identity.contract.tool_api.readResponse
+import com.example.identity.contract.tool_api.activated
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -14,18 +17,14 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.envelope.API_V1
-
-private const val ENROLL_PASSWORD_TOOL_ID = "enroll-password"
 
 data class EnrollPasswordPatchRequest(
     @field:Schema(example = "Passwort!23") val password: String? = null
@@ -43,7 +42,7 @@ class EnrollPasswordToolController(
     private val toolJourney: ToolJourney
 ) {
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/enroll-password")
+    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_PASSWORD_TOOL_ID")
     @Operation(
         summary = "Activate enroll-password",
         description = "No request body: toolId already carries kind and method.",
@@ -60,18 +59,14 @@ class EnrollPasswordToolController(
         ]
     )
     fun activate(
-        @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String,
+        @ActivateTool(ENROLL_PASSWORD_TOOL_ID) context: AuthorizedToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.beginActivation(channelSessionId, bindingKeyRef, ENROLL_PASSWORD_TOOL_ID)
         val outcome = handler.start(context.toolSessionId)
-        val response = toolJourney.applyOutcome(context, outcome)
-        val location = toolJourney.activationLocation(context, uriBuilder.build().toUri())
-        return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)
+        return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/enroll-password")
+    @PatchMapping("$API_V1/tools/{toolSessionId}/$ENROLL_PASSWORD_TOOL_ID")
     @Operation(
         summary = "Supply the password",
         description = "The credential is self-verifying, no separate confirmation step.",
@@ -88,19 +83,16 @@ class EnrollPasswordToolController(
         ]
     )
     fun patch(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String,
+        @LoadTool(ENROLL_PASSWORD_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody(required = false) request: EnrollPasswordPatchRequest?
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, ENROLL_PASSWORD_TOOL_ID)
-
         val body = request ?: EnrollPasswordPatchRequest()
-        val outcome = handler.patch(toolSessionId, body.password)
+        val outcome = handler.patch(context.toolSessionId, body.password)
 
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/enroll-password")
+    @GetMapping("$API_V1/tools/{toolSessionId}/$ENROLL_PASSWORD_TOOL_ID")
     @Operation(
         summary = "Read the current enroll-password state",
         responses = [
@@ -116,17 +108,8 @@ class EnrollPasswordToolController(
         ]
     )
     fun read(
-        @PathVariable toolSessionId: ToolSessionId,
-        @BindingKey bindingKeyRef: String
+        @LoadTool(ENROLL_PASSWORD_TOOL_ID) context: ToolContext
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadContext(toolSessionId, bindingKeyRef, ENROLL_PASSWORD_TOOL_ID)
-        val outcome = if (toolJourney.isCurrentTool(context)) {
-            checkNotNull(handler.read(toolSessionId) as? ToolOutcome.InProgress) {
-                "read() must return InProgress while the tool is still current"
-            }
-        } else {
-            null
-        }
-        return ResponseEntity.ok(toolJourney.buildReadResponse(context, outcome))
+        return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }
 }

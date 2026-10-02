@@ -38,7 +38,7 @@ sealed interface ConfirmPeerLoginState : JourneyState {
     }
 
     /**
-     * loa2 satisfied: the peer-approval tools are the candidates (today only `confirm-qr-login`). An
+     * loa2 satisfied: the peer-approval tools are the candidates (today only `approve-qr`). An
      * [OfferingState], so the usual skip-the-selection rule applies to a single offer.
      */
     data class Confirming(

@@ -156,7 +156,7 @@ Eintrags führt zum Buchstaben dort.
 - **`method`** → **Anmeldeverfahren**; „Methode“ nur als Name im Code. [Glossar](glossar.md#a)
 - **`MethodEvidence`**, **`MethodEvidenceRecord`** → ein Verfahren im **Nachweis** der Sitzung,
   gespeichert im Feld `methods`. [Glossar](glossar.md#n)
-- **`ModuleMetadata`** → beschreibt ein **Modul** und die Module, die es benutzen darf.
+- **`@ApplicationModule`** (an `AccountModule`, `SmsToolModule` …) → beschreibt ein **Modul** und die Module, die es benutzen darf.
   [Glossar](glossar.md#m)
 
 ## N
@@ -235,8 +235,9 @@ Eintrags führt zum Buchstaben dort.
   [Glossar](glossar.md#u)
 - **`tool_api`** → die Modulgrenze, über die die Verfahren am **Orchestrator** hängen.
   [Glossar](glossar.md#o)
-- **`ToolDescriptor`** → wie sich ein **Tool** selbst beschreibt: Rolle, Verfahren, Faktortypen,
-  Obergrenze. [Glossar](glossar.md#t)
+- **`ToolModule`**, **`Tool`** → wie sich ein **Verfahren** mit seinen **Tools** selbst
+  beschreibt: Methode, Faktortypen und Obergrenze einmal je Verfahren, je Rolle ein Tool.
+  [Glossar](glossar.md#t)
 - **`toolId`** → **Tool**: ein einzelner Ablauf, etwa `enroll-sms`. [Glossar](glossar.md#t)
 - **`ToolOutcome`** → das Ergebnis, das ein **Tool** dem Orchestrator meldet. [Glossar](glossar.md#t)
 - **`ToolRole`** → **Tool-Rolle**: was ein Tool fachlich tut. [Glossar](glossar.md#t)
@@ -246,7 +247,7 @@ Eintrags führt zum Buchstaben dort.
 
 ## U
 
-- **`usableByCaller`** (`ToolDescriptor.usableByCaller`) → prüft, ob ein Verfahren mit
+- **`usableByCaller`** (`Tool.usableByCaller`) → prüft, ob ein Verfahren mit
   **Gerätebindung** auf dem anfragenden Gerät nutzbar ist. [Glossar](glossar.md#g)
 
 ## V
@@ -272,14 +273,14 @@ ist. Ausführlich: [03-tool-architektur](../03-tool-architektur.md) Abschnitt 1.
 - **`auth-device`**, **`enroll-device`** → **Gerätebindung**: Anmeldung mit dem Schlüssel eines Geräts.
 - **`auth-email`**, **`auth-email-lookup`**, **`enroll-email`** → Anmeldung per Code an die
   E-Mail-Adresse.
-- **`auth-invite`** → **Vorgangszugang** mit Einmalkennwort, nur im Web-Kanal.
+- **`auth-invite-lookup`** → **Vorgangszugang** mit Einmalkennwort, nur im Web-Kanal.
 - **`auth-kobil`**, **`enroll-kobil`** → **Gerätebindung**: Anmeldung mit der KOBIL-App.
 - **`auth-password`**, **`auth-password-lookup`**, **`enroll-password`** → Anmeldung mit Passwort.
 - **`auth-qr`**, **`auth-qr-lookup`**, **`enroll-qr`** → Anmeldung im Browser, bestätigt in der App
   per QR-Code.
 - **`auth-sms`**, **`auth-sms-lookup`**, **`enroll-sms`** → Anmeldung per TAN an die Handynummer.
 - **`confirm-email`** → **Bestätigen** der E-Mail-Adresse.
-- **`confirm-qr-login`** → die Freigabe eines QR-Logins in der App.
+- **`approve-qr`** → die Freigabe eines QR-Logins in der App.
 - **`ident-eid`** → **Identifizierung** mit dem Online-Ausweis.
 - **`ident-fsc`** → **Identifizierung** mit dem **Freischaltcode** per Brief.
 - **`ident-kvnr`** → **Korrelation** über die Krankenversichertennummer.

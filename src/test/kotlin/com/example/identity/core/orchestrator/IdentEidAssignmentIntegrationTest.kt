@@ -255,7 +255,7 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 }
                 then("the correlation step leaves no session evidence - it proves nothing, so it prices nothing") {
                     // Recorded, `kvnr` would buy loa2 by typing a semi-public number
-                    // (ToolDescriptor.evidenceAxis).
+                    // (Tool.evidenceAxis).
                     val evidence = evidenceJsonOf(channelSessionId)
                     evidence shouldContainText "eid"
                     evidence shouldNotContainText "kvnr"

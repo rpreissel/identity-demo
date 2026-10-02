@@ -1,7 +1,11 @@
 package com.example.identity.contract.tool_api.claims
 
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.ToolDescriptor
+import com.example.identity.tools.auth_password.PASSWORD_EXISTS
+import com.example.identity.tools.auth_sms.PHONE_NUMBER
+import com.example.identity.tools.ident_nect.NECT_RESTRICTED_ID
+import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
 import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.FactorType
 import io.kotest.assertions.throwables.shouldThrow
@@ -16,13 +20,15 @@ import io.kotest.matchers.string.shouldContain
  */
 class ClaimsTest : BehaviorSpec({
     given("the attribute types") {
+        // The modules' own attributes exist once their module is loaded; load all of them first.
+        StrategyTestFixtures.catalog
         then("wire names are stable - they become account.claim.attribute_type values") {
-            AttributeType.entries.associateWith { it.wireName } shouldBe mapOf(
+            AttributeType.declared.associateWith { it.wireName } shouldBe mapOf(
                 AttributeType.PERSON_ID to "person_id",
                 AttributeType.KVNR to "kvnr",
                 AttributeType.MEMBER_NUMBER to "member_number",
-                AttributeType.EID_RESTRICTED_ID to "restricted_id",
-                AttributeType.NECT_RESTRICTED_ID to "nect_restricted_id",
+                EID_RESTRICTED_ID to "restricted_id",
+                NECT_RESTRICTED_ID to "nect_restricted_id",
                 AttributeType.FAMILY_NAME to "family_name",
                 AttributeType.GIVEN_NAMES to "given_names",
                 AttributeType.BIRTH_DATE to "birth_date",
@@ -30,8 +36,8 @@ class ClaimsTest : BehaviorSpec({
                 AttributeType.POSTAL_CODE to "postal_code",
                 AttributeType.LOCALITY to "locality",
                 AttributeType.EMAIL to "email",
-                AttributeType.PHONE_NUMBER to "phone_number",
-                AttributeType.PASSWORD_EXISTS to "password_exists",
+                PHONE_NUMBER to "phone_number",
+                PASSWORD_EXISTS to "password_exists",
             )
         }
     }
@@ -82,18 +88,8 @@ class ClaimsTest : BehaviorSpec({
         }
     }
 
-    given("a descriptor declaring KVNR from the master data and EMAIL from the tool itself") {
-        val descriptor = object : ToolDescriptor {
-            override val toolId = ToolId("test-ident")
-            override val method = "test"
-            override val role = ToolRole.IDENTIFICATION
-            override val factorTypes = setOf(FactorType.POSSESSION)
-            override val maxAcr = AcrLevel.LOA2
-            override val claims = setOf(
-                ClaimDeclaration(AttributeType.KVNR, ClaimSource.PERSON_DIRECTORY),
-                ClaimDeclaration(AttributeType.EMAIL, ClaimSource(toolId.value))
-            )
-        }
+    given("ident-fsc, declaring KVNR and the names from the master data") {
+        val descriptor = StrategyTestFixtures.tool("ident-fsc")
 
         `when`("a run reports claims that match the declaration") {
             val result = runCatching {
@@ -101,7 +97,7 @@ class ClaimsTest : BehaviorSpec({
                     descriptor,
                     listOf(
                         Claim(AttributeType.KVNR, "A123456789", ClaimSource.PERSON_DIRECTORY, AcrLevel.LOA2),
-                        Claim(AttributeType.EMAIL, "a@b.de", ClaimSource(descriptor.toolId.value))
+                        Claim(AttributeType.FAMILY_NAME, "Muster", ClaimSource.PERSON_DIRECTORY)
                     )
                 )
             }
@@ -119,7 +115,7 @@ class ClaimsTest : BehaviorSpec({
         }
         `when`("a run reports an undeclared attribute type") {
             val result = runCatching {
-                assertClaimsCovered(descriptor, listOf(Claim(AttributeType.FAMILY_NAME, "Muster", ClaimSource.PERSON_DIRECTORY)))
+                assertClaimsCovered(descriptor, listOf(Claim(AttributeType.EMAIL, "a@b.de", ClaimSource(descriptor.toolId.value))))
             }
 
             then("it is rejected") {

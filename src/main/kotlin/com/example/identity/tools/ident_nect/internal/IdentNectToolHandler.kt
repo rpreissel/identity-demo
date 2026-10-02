@@ -1,8 +1,10 @@
 package com.example.identity.tools.ident_nect.internal
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.ident_nect.NECT_RESTRICTED_ID
+import com.example.identity.contract.tool_api.ToolRole
+import com.example.identity.tools.ident_nect.NectModule
 import com.example.identity.contract.texts.Text
-import com.example.identity.tools.ident_nect.IdentNectDescriptor
 import com.example.identity.tools.ident_nect.api.v1.NectRedirectStep
 import com.example.identity.simulation.nect.NectAttribute
 import com.example.identity.simulation.nect.NectAttributes
@@ -13,7 +15,6 @@ import com.example.identity.simulation.nect.NectResult
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
-import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Component
@@ -51,7 +52,6 @@ internal val NECT_REQUESTED = setOf(
  */
 @Component
 class IdentNectToolHandler(
-    private val descriptor: IdentNectDescriptor,
     private val repository: IdNectToolSessionRepository,
     private val nect: NectIdent,
     private val clock: Clock,
@@ -124,7 +124,7 @@ class IdentNectToolHandler(
     private fun identified(toolSessionId: ToolSessionId, caseId: UUID, result: NectResult.Identified): ToolOutcome.Completed.Identified {
         val level = levelOf(result.procedure)
         val a = result.attributes
-        val source = ClaimSource(descriptor.toolId.value)
+        val source = NectModule.source(ToolRole.IDENTIFICATION)
         val values = listOfNotNull(
             a.name?.let { AttributeType.FAMILY_NAME to it },
             a.vorname?.let { AttributeType.GIVEN_NAMES to it },
@@ -134,7 +134,7 @@ class IdentNectToolHandler(
             a.ort?.let { AttributeType.LOCALITY to it },
             // Only the eID chip carries a card pseudonym, and read by Nect it is Nect's own
             // (§18 PAuswG) - its own anchor, never the one ident-eid writes (ADR-19).
-            a.restrictedId?.takeIf { result.procedure == NectProcedure.EID }?.let { AttributeType.NECT_RESTRICTED_ID to it }
+            a.restrictedId?.takeIf { result.procedure == NectProcedure.EID }?.let { NECT_RESTRICTED_ID to it }
         )
         return ToolOutcome.Completed.Identified(
             amr = listOf("nect-${result.procedure.wireName}"),

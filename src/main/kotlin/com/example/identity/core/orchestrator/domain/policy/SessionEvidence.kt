@@ -4,7 +4,7 @@ import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolRole
-import com.example.identity.contract.tool_api.ToolDescriptor
+import com.example.identity.contract.tool_api.Tool
 import java.time.Instant
 
 /**
@@ -35,7 +35,7 @@ enum class EvidenceAxis {
  * Exhaustive over [ToolRole] on purpose, so a new role must state its axis. An identification and a
  * [ToolRole.CORRELATION] step look alike, but only the identification raises the IAL.
  */
-fun ToolDescriptor.evidenceAxis(): EvidenceAxis? = when (role) {
+fun Tool.evidenceAxis(): EvidenceAxis? = when (role) {
     // Proves who the subject is - the only role that may raise the IAL.
     ToolRole.IDENTIFICATION -> EvidenceAxis.IDENTITY
     // Attaches an already attested identity to a person record and proves nothing itself.

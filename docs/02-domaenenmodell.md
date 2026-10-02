@@ -315,7 +315,7 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
   geprüft) und *behauptet* (`SELF_REPORTED`). Gibt es für ein Attribut mehr als einen Wert,
   entscheidet zuerst die Stufe, dann die Zeit.
 - Wem ein Attribut gehört, steht deklariert im Code: `AttributeType.authority`
-  (`tool_api/claims/AttributeRules.kt`) kennt drei Fälle:
+  (`tool_api/claims/AttributeType.kt`) kennt drei Fälle:
   - `Local` (`PERSON_ID`, `MEMBER_NUMBER`, `EID_RESTRICTED_ID`, `NECT_RESTRICTED_ID`, `EMAIL`): Der Wert liegt im Konto in
     `account.anchor`; dieser Fall bringt die Regeln für Anker gleich mit.
   - `PersonDirectory` (`KVNR`, `FAMILY_NAME`, `GIVEN_NAMES`, `BIRTH_DATE`, `STREET_ADDRESS` (Straße mit

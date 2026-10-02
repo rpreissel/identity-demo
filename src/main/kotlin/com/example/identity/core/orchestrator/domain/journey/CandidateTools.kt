@@ -6,7 +6,7 @@ import com.example.identity.core.orchestrator.domain.policy.requiresSatisfied
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.ToolDescriptor
+import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolId
 
@@ -26,8 +26,8 @@ internal object CandidateTools {
     private fun JourneyContext.filterAvailable(ids: List<ToolId>): List<ToolId> = ids.filter { it in availableTools }
 
     /** The available tools of one [role] in catalog order, optionally narrowed by [matches]. */
-    private inline fun JourneyContext.availableToolsOf(role: ToolRole, matches: (ToolDescriptor) -> Boolean = { true }): List<ToolId> =
-        filterAvailable(catalog.descriptors().filter { it.role == role && matches(it) }.map { it.toolId })
+    private inline fun JourneyContext.availableToolsOf(role: ToolRole, matches: (Tool) -> Boolean = { true }): List<ToolId> =
+        filterAvailable(catalog.tools().filter { it.role == role && matches(it) }.map { it.toolId })
 
     private fun JourneyContext.candidateContext(targetAcr: AcrLevel, account: AccountProfile? = null): CandidateContext =
         CandidateContext(
@@ -64,15 +64,15 @@ internal object CandidateTools {
 
     /**
      * The auth tool for a credential that lives on this device, if the account has one
-     * ([ToolDescriptor.keyBinding]). It is the fastest offer and the only one that can succeed
+     * ([Tool.boundToCallerKey]). It is the fastest offer and the only one that can succeed
      * without further input.
      */
     fun preferredDeviceAuth(account: AccountProfile, ctx: JourneyContext): ToolId? {
-        val deviceAuthTools = ctx.catalog.descriptors()
-            .filter { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.keyBinding != null }
+        val deviceAuthTools = ctx.catalog.tools()
+            .filter { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.boundToCallerKey }
         val preferred = deviceAuthTools.firstOrNull { descriptor ->
             account.activeAuthenticationMethods.any {
-                it.method == descriptor.method && descriptor.usableByCaller(it.details, ctx.bindingKeyRef, ctx.linkedAccountId, account.accountId)
+                it.method == descriptor.method && descriptor.usableByCaller(it.boundKeyRef, ctx.bindingKeyRef, ctx.linkedAccountId, account.accountId)
             }
         }?.toolId
         return preferred?.takeIf { it in ctx.availableTools }
@@ -91,7 +91,7 @@ internal object CandidateTools {
             val method = account.activeAuthenticationMethods.firstOrNull { it.method == descriptor.method }
             // A device-bound credential only works on the device it was enrolled on
             // (docs/03-tool-architektur.md); the descriptor decides.
-            method != null && descriptor.usableByCaller(method.details, ctx.bindingKeyRef, ctx.linkedAccountId, account.accountId)
+            method != null && descriptor.usableByCaller(method.boundKeyRef, ctx.bindingKeyRef, ctx.linkedAccountId, account.accountId)
         }
 
     fun forEnrollment(account: AccountProfile, targetAcr: AcrLevel, ctx: JourneyContext): List<ToolId> =
@@ -100,7 +100,7 @@ internal object CandidateTools {
     /** The factor kinds the account's active methods cover, read from their enrollment descriptors. */
     fun factorKindsOf(account: AccountProfile, ctx: JourneyContext): Set<FactorType> {
         val activeMethods = account.activeAuthenticationMethods.map { it.method }.toSet()
-        return ctx.catalog.descriptors()
+        return ctx.catalog.tools()
             .filter { it.role == ToolRole.ENROLLMENT && it.method in activeMethods }
             .flatMap { it.factorTypes }
             .toSet()
@@ -112,12 +112,12 @@ internal object CandidateTools {
      * what the account can reach here (e.g. the email login while `auth-email` is switched off).
      */
     fun forMissingFactorKind(account: AccountProfile, covered: Set<FactorType>, ctx: JourneyContext): List<ToolId> {
-        val provableMethods = ctx.catalog.descriptors()
+        val provableMethods = ctx.catalog.tools()
             .filter { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.toolId in ctx.availableTools }
             .map { it.method }
             .toSet()
         return forEnrollment(account, ctx.acrFloor, ctx)
-            .map { ctx.catalog.descriptorOf(it) }
+            .map { ctx.catalog.toolOf(it) }
             .filter { it.role == ToolRole.ENROLLMENT && it.method in provableMethods }
             .filter { (it.factorTypes - covered).isNotEmpty() }
             .map { it.toolId }

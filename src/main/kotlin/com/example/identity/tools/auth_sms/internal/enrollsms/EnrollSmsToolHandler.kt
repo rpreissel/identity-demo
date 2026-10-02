@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.enrollsms
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.auth_sms.PHONE_NUMBER
 import com.example.identity.contract.tool_api.InvalidInputException
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.contract.texts.Text
@@ -8,14 +9,14 @@ import com.example.identity.tools.auth_sms.internal.TanGenerator
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
 import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 
-import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
-import com.example.identity.tools.auth_sms.SMS_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_sms.SmsModule
+import com.example.identity.tools.auth_sms.internal.SMS_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
-import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.TooManyRequestsException
 import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.contract.tool_api.ToolRole
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -26,7 +27,6 @@ import java.time.Clock
  */
 @Component
 class EnrollSmsToolHandler(
-    private val descriptor: EnrollSmsDescriptor,
     private val toolDataRepository: EnrollSmsToolSessionRepository,
     private val enrollmentRepository: AuthSmsEnrollmentRepository,
     private val tanGenerator: TanGenerator,
@@ -81,15 +81,12 @@ class EnrollSmsToolHandler(
                 val enrollment = enrollmentRepository.save(AuthSmsEnrollment(decision.phoneNumber, createdAt = clock.instant()))
                 ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef(type = SMS_ENROLLMENT_TYPE, id = enrollment.id.toString()),
-                    amr = listOf(descriptor.method),
-                    achievedAcr = descriptor.maxAcr,
-                    factorTypes = descriptor.factorTypes,
                     claims = listOf(
                         Claim(
-                            attributeType = AttributeType.PHONE_NUMBER,
+                            attributeType = PHONE_NUMBER,
                             value = decision.phoneNumber,
-                            source = ClaimSource(descriptor.toolId.value),
-                            establishedAcr = descriptor.maxAcr
+                            source = SmsModule.source(ToolRole.ENROLLMENT),
+                            establishedAcr = SmsModule.maxAcr
                         )
                     )
                 )

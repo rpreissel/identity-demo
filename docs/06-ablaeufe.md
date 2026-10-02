@@ -1,7 +1,7 @@
 # Konkrete Abläufe
 
 Wie die einzelnen Tools, von `ident-fsc` und `auth-sms` bis `auth-kobil`, `auth-qr` und
-`auth-invite`, die Bausteine aus [03-tool-architektur.md](03-tool-architektur.md) und
+`auth-invite-lookup`, die Bausteine aus [03-tool-architektur.md](03-tool-architektur.md) und
 [04-orchestrierung.md](04-orchestrierung.md) konkret nutzen – mit dem Schwerpunkt auf dem
 Datenmodell und den Entscheidungen dahinter. Ein durchgehendes Beispiel mit allen Aufrufen steht in
 [05-api.md](05-api.md).
@@ -96,7 +96,7 @@ Entscheidungen, die an diesem Modell hängen:
   verhindert, dass dieselbe Adresse in irgendeiner Schreibweise zweimal vergeben wird.
 - **`enroll-password`/`auth-password` haben kein eigenes Feld für einen Benutzernamen.** Diese
   Aufgabe übernimmt der EMAIL-Anker, erzwungen über
-  `ToolDescriptor.requires = { ClaimRequirement(EMAIL, PROVEN) }`
+  `enroll("enroll-password", requires = setOf(ClaimRequirement(EMAIL, PROVEN)))`
   ([Tool-Architektur](03-tool-architektur.md) Abschnitt 2).
 - **Die TAN steht nicht im Enrollment.** Sie ist ein Einmalgeheimnis für genau einen Versuch und
   liegt als Hash mit Ablaufzeit in der Tabelle der Tool-Sitzung; sonst würden sich zwei
@@ -453,7 +453,7 @@ Fehlversuch, der die Login-Sperre belastet.
 
 Der Preis dafür: Die Antwort verrät dem Aufrufer, ob das Konto ein Passwort hat. Das ist hier
 vertretbar, weil `auth-kobil` überhaupt nur für einen Aufrufer läuft, dessen Schlüssel schon zu
-einem eingetragenen Credential **dieses** Kontos passt (`keyBinding`). Außerdem sieht derselbe
+einem eingetragenen Credential **dieses** Kontos passt (`AuthMethodView.boundKeyRef`). Außerdem sieht derselbe
 Aufrufer `activeMethods`, sobald er fertig ist.
 
 Eine leere Liste ist möglich und wird auch so angezeigt: Ein Credential ohne Zustimmung zur
@@ -469,7 +469,7 @@ im Browser nicht ansprechen) – siehe [API](05-api.md) Abschnitt 3.
 ## 8) `auth-qr` / `auth-qr-lookup`: die Warteseite im Browser
 
 Der Browser zeigt QR-Code und Pairing-Code und wartet, bis die App entscheidet
-(`confirm-qr-login`, [API](05-api.md) „Peer-Login bestätigen“). Der Ablauf auf der Seite:
+(`approve-qr`, [API](05-api.md) „Peer-Login bestätigen“). Der Ablauf auf der Seite:
 
 1. Keycloak zeigt `tool-qr-wait` im Schritt `waitForApp`, mit `statusUrl` als Seitenattribut.
 2. Die Seite fragt alle zwei Sekunden `statusUrl` ab. Keycloak findet über das Cookie der
@@ -485,7 +485,7 @@ Der Browser zeigt QR-Code und Pairing-Code und wartet, bis die App entscheidet
 nicht mehr per Formular fragt und welche Regeln die Abfrage hat, steht in
 [ADR-45](adr/ADR-045-qr-warteseite-fragt-im-hintergrund.md).
 
-## 9) `auth-invite`: Vorgangszugang mit Einmalkennwort
+## 9) `auth-invite-lookup`: Vorgangszugang mit Einmalkennwort
 
 Eine Person ohne Konto erledigt genau einen Vorgang, zu dem das Personenverzeichnis sie per Brief
 eingeladen hat ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Zunächst nur im
@@ -498,7 +498,7 @@ Web-Kanal.
    liegt im Briefkasten. Auf der Anmeldeseite bietet die Demo eine Auswahl der offenen Einladungen an,
    die Nummer und Kennwort einträgt (`invitations` im Demo-Block, ADR-28).
 2. **Anmelden.** Die Website startet eine gewöhnliche Anmeldung über den Browser-Client. Ohne Konto
-   bietet die Auswahl `auth-invite` an. Die Person gibt KVNR oder Partnernummer und das
+   bietet die Auswahl `auth-invite-lookup` an. Die Person gibt KVNR oder Partnernummer und das
    Kennwort ein. Der Controller löst die Nummer zur Person auf; das Tool fragt das Verzeichnis, ob das
    Kennwort eine offene Einladung genau dieser Person öffnet (`Invitations.redeem`). Ein Fehlversuch
    zählt gegen die Person (Personen-Mengenbegrenzung wie beim Freischaltcode) und sieht für jede

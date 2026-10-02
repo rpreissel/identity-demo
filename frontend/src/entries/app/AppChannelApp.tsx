@@ -613,7 +613,7 @@ export function AppChannelApp() {
 
   /**
    * Confirms a WEB-channel QR login from this authenticated channel. Gates on loa2 (step-up first
-   * if needed), then confirm-qr-login, like the cold-entry 'confirmPeerLogin' start.
+   * if needed), then approve-qr, like the cold-entry 'confirmPeerLogin' start.
    */
   async function handlePeerLogin() {
     if (!dpop || !channelSessionId) return
@@ -695,12 +695,12 @@ export function AppChannelApp() {
   }
 
   /**
-   * confirm-qr-login is the only tool whose activation body carries anything (a one-off, not a
+   * approve-qr is the only tool whose activation body carries anything (a one-off, not a
    * generic dispatch). A known pairing code goes straight into the activation POST, so the backend
    * skips the `input` step (ConfirmQrLoginToolController).
    */
   function activationBodyFor(toolId: string): Record<string, unknown> | undefined {
-    if (toolId !== 'confirm-qr-login') return undefined
+    if (toolId !== 'approve-qr') return undefined
     const pairingCode = loadPendingPairingCode()
     if (!pairingCode) return undefined
     forgetPendingPairingCode()

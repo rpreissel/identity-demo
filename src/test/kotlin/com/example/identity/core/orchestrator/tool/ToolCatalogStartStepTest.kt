@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.tool
 
-import com.example.identity.contract.tool_api.ToolDescriptor
+import com.example.identity.contract.tool_api.Tool
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.maps.shouldContainExactly
 import org.springframework.boot.test.context.SpringBootTest
@@ -8,7 +8,7 @@ import org.springframework.test.context.ActiveProfiles
 
 /**
  * Pins the start step of every registered tool against the real Spring-collected catalog.
- * [ToolDescriptor.startStep] derives it from `role`; a tool missing here fails ("catalog has tools not
+ * [Tool.startStep] derives it from `role`; a tool missing here fails ("catalog has tools not
  * covered") instead of defaulting to a plausible but wrong step.
  *
  * Keep in sync with the handlers' first `InProgress(nextStep = ...)`: both are the same contract.
@@ -41,13 +41,13 @@ class ToolCatalogStartStepTest(toolRegistry: ToolHandlerRegistry) : BehaviorSpec
         "enroll-qr" to "enroll",
         "auth-qr" to "waitForApp",
         "auth-qr-lookup" to "waitForApp",
-        "confirm-qr-login" to "input",
-        "auth-invite" to "auth"
+        "approve-qr" to "input",
+        "auth-invite-lookup" to "auth"
     )
 
     given("the real Spring-collected tool catalog") {
         then("every registered tool starts on its documented step") {
-            val actual = toolRegistry.descriptors().associate { it.toolId.value to it.startStep }
+            val actual = toolRegistry.tools().associate { it.toolId.value to it.startStep }
             actual shouldContainExactly expectedStartSteps
         }
     }

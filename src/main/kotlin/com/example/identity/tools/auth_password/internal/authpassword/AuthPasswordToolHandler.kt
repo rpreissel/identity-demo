@@ -4,8 +4,7 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_password.internal.PasswordHasher
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
 
-import com.example.identity.tools.auth_password.AuthPasswordDescriptor
-import com.example.identity.tools.auth_password.PASSWORD_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_password.internal.PASSWORD_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
@@ -21,7 +20,6 @@ import java.time.Clock
  */
 @Component
 class AuthPasswordToolHandler(
-    private val descriptor: AuthPasswordDescriptor,
     private val toolDataRepository: AuthPasswordToolSessionRepository,
     private val enrollmentRepository: AuthPasswordEnrollmentRepository,
     private val clock: Clock
@@ -62,11 +60,7 @@ class AuthPasswordToolHandler(
 
                 if (PasswordHasher.matches(decision.password, enrollment.passwordHash)) {
                     PasswordHasher.upgrade(enrollment, decision.password)
-                    ToolOutcome.Completed.Authenticated(
-                        amr = listOf(descriptor.method),
-                        achievedAcr = descriptor.maxAcr,
-                        factorTypes = descriptor.factorTypes
-                    )
+                    ToolOutcome.Completed.Authenticated()
                 } else {
                     ToolOutcome.Failed.KnownAccountAuth(Text("Passwort ungueltig"))
                 }

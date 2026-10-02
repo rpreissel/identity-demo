@@ -339,7 +339,7 @@ auf den App-Kanal. `intent` hat dieselben Werte wie das Feld `intent` von `creat
 URL gelesen und sofort entfernt. `intent=confirm_peer_login` startet denselben Ablauf wie der Knopf
 „Anmeldung bestätigen“. Ein bekannter Kanal wird dabei zuerst geladen; ist er
 `AUTHENTICATED`, läuft die Bestätigung über ihn. Den `pairingCode` merkt sich die App lokal
-(`pendingPairingCode`), damit der Schritt `input` von `confirm-qr-login` ihn vorausfüllt.
+(`pendingPairingCode`), damit der Schritt `input` von `approve-qr` ihn vorausfüllt.
 
 ---
 

@@ -1,11 +1,12 @@
 package com.example.identity.tools.ident_eid.internal
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
-import com.example.identity.tools.ident_eid.IdentEidDescriptor
 import com.example.identity.tools.ident_eid.internal.EidFixtures.CARD
 import com.example.identity.tools.ident_eid.internal.EidFixtures.CARD_FIELDS
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -29,7 +30,7 @@ private class Fixture(sessionOf: (ToolSessionId) -> IdentEidToolSession) {
         every { it.findByToolSessionId(toolSessionId) } returns session
         every { it.save(any()) } answers { firstArg() }
     }
-    val handler = IdentEidToolHandler(IdentEidDescriptor, repository, clock = TEST_CLOCK)
+    val handler = IdentEidToolHandler( repository, clock = TEST_CLOCK)
 }
 
 /**
@@ -60,15 +61,15 @@ class IdentEidToolHandlerTest : BehaviorSpec({
                 .shouldBeInstanceOf<ToolOutcome.Completed.Identified>()
 
             then("it attests every card attribute as a claim under its own tool anchor") {
-                val source = ClaimSource(IdentEidDescriptor.toolId.value)
+                val source = ClaimSource(tool("ident-eid").toolId.value)
                 identified.claims shouldBe listOf(
-                    Claim(AttributeType.FAMILY_NAME, "Muster", source, IdentEidDescriptor.maxAcr),
-                    Claim(AttributeType.GIVEN_NAMES, "Max", source, IdentEidDescriptor.maxAcr),
-                    Claim(AttributeType.BIRTH_DATE, "1970-01-01", source, IdentEidDescriptor.maxAcr),
-                    Claim(AttributeType.STREET_ADDRESS, "Musterweg 1", source, IdentEidDescriptor.maxAcr),
-                    Claim(AttributeType.POSTAL_CODE, "12345", source, IdentEidDescriptor.maxAcr),
-                    Claim(AttributeType.LOCALITY, "Musterstadt", source, IdentEidDescriptor.maxAcr),
-                    Claim(AttributeType.EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", source, IdentEidDescriptor.maxAcr)
+                    Claim(AttributeType.FAMILY_NAME, "Muster", source, tool("ident-eid").maxAcr),
+                    Claim(AttributeType.GIVEN_NAMES, "Max", source, tool("ident-eid").maxAcr),
+                    Claim(AttributeType.BIRTH_DATE, "1970-01-01", source, tool("ident-eid").maxAcr),
+                    Claim(AttributeType.STREET_ADDRESS, "Musterweg 1", source, tool("ident-eid").maxAcr),
+                    Claim(AttributeType.POSTAL_CODE, "12345", source, tool("ident-eid").maxAcr),
+                    Claim(AttributeType.LOCALITY, "Musterstadt", source, tool("ident-eid").maxAcr),
+                    Claim(EID_RESTRICTED_ID, "T0103005K1D5S0V8T9W6UM2RTX", source, tool("ident-eid").maxAcr)
                 )
             }
 

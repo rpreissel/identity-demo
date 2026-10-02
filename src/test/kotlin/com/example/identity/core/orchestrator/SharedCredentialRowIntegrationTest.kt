@@ -41,8 +41,8 @@ class SharedCredentialRowIntegrationTest : IntegrationTestSupport() {
         val ref = EnrollmentRef("auth_device.enrollment", row.toString())
         val first = accountService.createAccountInSetup().accountId
         val second = accountService.createAccountInSetup().accountId
-        accountService.addAuthenticationMethod(first, "device", ref, enrolledUnderAcr = null, details = emptyMap(), allowsMultipleInstances = true)
-        accountService.addAuthenticationMethod(second, "device", ref, enrolledUnderAcr = null, details = emptyMap(), allowsMultipleInstances = true)
+        accountService.addAuthenticationMethod(first, "device", ref, enrolledUnderAcr = null, allowsMultipleInstances = true)
+        accountService.addAuthenticationMethod(second, "device", ref, enrolledUnderAcr = null, allowsMultipleInstances = true)
         return Triple(row, first, second)
     }
 

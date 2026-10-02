@@ -8,29 +8,18 @@ import com.example.identity.TEST_NOW
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AuthMethodView
-import com.example.identity.tools.auth_device.AuthDeviceDescriptor
-import com.example.identity.tools.auth_device.EnrollDeviceDescriptor
-import com.example.identity.tools.auth_kobil.AuthKobilDescriptor
-import com.example.identity.tools.auth_kobil.EnrollKobilDescriptor
-import com.example.identity.tools.auth_email.AuthEmailLookupDescriptor
-import com.example.identity.tools.auth_email.AuthEmailDescriptor
-import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
-import com.example.identity.tools.auth_email.EnrollEmailDescriptor
-import com.example.identity.tools.auth_password.AuthPasswordLookupDescriptor
-import com.example.identity.tools.auth_password.AuthPasswordDescriptor
-import com.example.identity.tools.auth_password.EnrollPasswordDescriptor
-import com.example.identity.tools.auth_qr.AuthQrDescriptor
-import com.example.identity.tools.auth_qr.AuthQrLookupDescriptor
-import com.example.identity.tools.auth_invite.AuthInviteDescriptor
-import com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor
-import com.example.identity.tools.auth_qr.EnrollQrDescriptor
-import com.example.identity.tools.auth_sms.AuthSmsLookupDescriptor
-import com.example.identity.tools.auth_sms.AuthSmsDescriptor
-import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
-import com.example.identity.tools.ident_eid.IdentEidDescriptor
-import com.example.identity.tools.ident_nect.IdentNectDescriptor
-import com.example.identity.tools.ident_fsc.IdentFscDescriptor
-import com.example.identity.tools.ident_kvnr.IdentKvnrDescriptor
+import com.example.identity.tools.auth_device.DeviceModule
+import com.example.identity.tools.auth_email.EmailModule
+import com.example.identity.tools.auth_invite.InviteModule
+import com.example.identity.tools.auth_kobil.KobilModule
+import com.example.identity.tools.auth_password.PasswordModule
+import com.example.identity.tools.auth_qr.QrModule
+import com.example.identity.tools.auth_sms.SmsModule
+import com.example.identity.tools.ident_eid.EidModule
+import com.example.identity.tools.ident_fsc.FscModule
+import com.example.identity.tools.ident_kvnr.KvnrModule
+import com.example.identity.tools.ident_nect.NectModule
+import com.example.identity.contract.tool_api.Tool
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.DefaultAuthPolicy
@@ -47,25 +36,27 @@ import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
  * Shared fixtures for [IntentStrategy] unit tests, built on the real catalog (every module's
- * `Descriptors.kt` object), so strategies see the same candidate resolution as production
- * (docs/03-tool-architektur.md #1). The descriptors are plain objects; no Spring context is needed.
+ * `ToolModule`), so strategies see the same candidate resolution as production
+ * (docs/03-tool-architektur.md #1). The modules are plain values; no Spring context is needed.
  */
 object StrategyTestFixtures {
 
-    val catalog = ToolHandlerRegistry(
-        listOf(
-            IdentFscDescriptor, IdentEidDescriptor, IdentNectDescriptor, IdentKvnrDescriptor,
-            EnrollSmsDescriptor, AuthSmsDescriptor, AuthSmsLookupDescriptor,
-            ConfirmEmailDescriptor, EnrollEmailDescriptor, AuthEmailDescriptor, AuthEmailLookupDescriptor,
-            EnrollPasswordDescriptor, AuthPasswordDescriptor, AuthPasswordLookupDescriptor,
-            EnrollDeviceDescriptor, AuthDeviceDescriptor,
-            EnrollKobilDescriptor, AuthKobilDescriptor,
-            EnrollQrDescriptor, AuthQrDescriptor, AuthQrLookupDescriptor, ConfirmQrLoginDescriptor,
-            AuthInviteDescriptor
-        )
+    /** Every procedure, in the order the catalog lists them. */
+    val modules = listOf(
+        FscModule, EidModule, NectModule, KvnrModule, SmsModule, EmailModule, PasswordModule,
+        DeviceModule, KobilModule, QrModule, InviteModule,
     )
+
+    val catalog = ToolHandlerRegistry(modules)
+
+    /** The tool with [toolId] from the real catalog, e.g. `tool("auth-sms")`. */
+    fun tool(toolId: String): Tool = catalog.toolOf(ToolId(toolId))
+
+    /** A catalog of just the procedures behind [toolIds], each with all its tools. */
+    fun catalogOf(vararg toolIds: String): ToolHandlerRegistry = ToolHandlerRegistry(toolIds.map { tool(it).module }.distinct())
+
     val policy = DefaultAuthPolicy(catalog, TEST_CLOCK)
-    val allToolIds: Set<ToolId> = catalog.descriptors().map { it.toolId }.toSet()
+    val allToolIds: Set<ToolId> = catalog.tools().map { it.toolId }.toSet()
 
     /** The App channel with the shipped defaults: everything declared, minus `tool-defaults.channels.APP.disabled`. */
     val appTools: Set<ToolId> = allToolIds - listOf("auth-qr", "auth-email", "auth-qr-lookup", "auth-email-lookup").map(::ToolId).toSet()
@@ -123,15 +114,13 @@ object StrategyTestFixtures {
         method: String,
         enrolledUnderAcr: AcrLevel,
         active: Boolean = true,
-        details: Map<String, Any?>? = null
+        boundKeyRef: String? = null,
+        reference: String? = null,
     ) = AuthMethodView(
         id = "$method-instance", method = method, active = active,
-        createdAt = null, enrolledUnderAcr = enrolledUnderAcr.value, details = details,
+        createdAt = null, enrolledUnderAcr = enrolledUnderAcr.value, boundKeyRef = boundKeyRef, reference = reference,
         enrollmentRef = EnrollmentRef("${method}_enrollment", "1")
     )
-
-    /** A device credential's `details` map, matching what `CandidateTools.preferredDeviceAuth` looks for. */
-    fun deviceDetails(bindingKeyRef: String = BINDING_KEY): Map<String, Any?> = mapOf("deviceBindingKeyRef" to bindingKeyRef)
 
     /**
      * Derives each method's loa from the real catalog (its highest maxAcr), as JourneyService does
@@ -146,7 +135,7 @@ object StrategyTestFixtures {
         amrSourceId: Map<String, String> = emptyMap()
     ): SessionEvidence {
         val methodAcr = amr.associateWith { m ->
-            catalog.descriptors().filter { it.method == m }.maxByOrNull { AcrLevel.rank(it.maxAcr) }?.maxAcr?.value ?: AcrLevel.NONE.value
+            catalog.tools().filter { it.method == m }.maxByOrNull { AcrLevel.rank(it.maxAcr) }?.maxAcr?.value ?: AcrLevel.NONE.value
         }
         val enrolledUnderAcr = account?.authenticationMethods
             ?.filter { it.method in amr }

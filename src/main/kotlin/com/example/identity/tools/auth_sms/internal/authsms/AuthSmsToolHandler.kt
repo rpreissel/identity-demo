@@ -7,8 +7,7 @@ import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
 import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 import com.example.identity.contract.tool_api.TooManyRequestsException
 
-import com.example.identity.tools.auth_sms.AuthSmsDescriptor
-import com.example.identity.tools.auth_sms.SMS_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_sms.internal.SMS_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
@@ -23,7 +22,6 @@ import java.time.Clock
  */
 @Component
 class AuthSmsToolHandler(
-    private val descriptor: AuthSmsDescriptor,
     private val toolDataRepository: AuthSmsToolSessionRepository,
     private val enrollmentRepository: AuthSmsEnrollmentRepository,
     private val tanGenerator: TanGenerator,
@@ -79,11 +77,7 @@ class AuthSmsToolHandler(
                 val enrollment = data.enrollmentRefId?.toLongOrNull()?.let { enrollmentRepository.findByIdOrNull(it) }
                     ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "toolSession=$toolSessionId")
                 sendLimit.received(enrollment.phoneNumber.orEmpty())
-                ToolOutcome.Completed.Authenticated(
-                    amr = listOf(descriptor.method),
-                    achievedAcr = descriptor.maxAcr,
-                    factorTypes = descriptor.factorTypes
-                )
+                ToolOutcome.Completed.Authenticated()
             }
         }
     }

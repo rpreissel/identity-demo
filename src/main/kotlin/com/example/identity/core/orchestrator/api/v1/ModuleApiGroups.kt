@@ -3,6 +3,7 @@ package com.example.identity.core.orchestrator.api.v1
 import com.example.identity.contract.tool_api.ModuleId
 import com.example.identity.contract.tool_api.ModuleRef
 import com.example.identity.contract.tool_api.StepDataTypes
+import com.example.identity.contract.tool_api.ToolModule
 import org.springdoc.core.customizers.OpenApiCustomizer
 import org.springdoc.core.customizers.OperationCustomizer
 import com.example.identity.contract.tool_api.envelope.API_V1
@@ -113,7 +114,11 @@ class ModuleApiGroupFactoryBean(
             // Group-aware, so a module's contract lists only the step shapes it can answer with.
             addOpenApiCustomizer(
                 context.getBean(StepDataSchemaCustomizer::class.java)
-                    .forPackage(packageToScan, context.getBeanProvider(StepDataTypes::class.java).toList())
+                    .forPackage(
+                        packageToScan,
+                        context.getBeanProvider(StepDataTypes::class.java).toList() +
+                            context.getBeanProvider(ToolModule::class.java).map { module -> StepDataTypes { module.stepData } }
+                    )
             )
         }
         .build()

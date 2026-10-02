@@ -1,13 +1,11 @@
 package com.example.identity.contract.tool_api
 
 import com.example.identity.contract.texts.Text
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
-import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
-import com.example.identity.tools.auth_password.AuthPasswordDescriptor
-import com.example.identity.tools.ident_kvnr.IdentKvnrDescriptor
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
@@ -18,7 +16,7 @@ import io.kotest.matchers.shouldBe
  */
 class ToolOutcomeTest : BehaviorSpec({
 
-    val email = Claim(AttributeType.EMAIL, "max@example.com", ClaimSource(ConfirmEmailDescriptor.toolId.value), AcrLevel.LOA1)
+    val email = Claim(AttributeType.EMAIL, "max@example.com", ClaimSource(tool("confirm-email").toolId.value), AcrLevel.LOA1)
     val completed: List<ToolOutcome.Completed> = listOf(
         ToolOutcome.Completed.Identified(),
         ToolOutcome.Completed.Enrolled(EnrollmentRef("t", "1")),
@@ -65,38 +63,39 @@ class ToolOutcomeTest : BehaviorSpec({
 
     given("the real descriptors") {
         then("confirm-email may attest, but not identify") {
-            ToolOutcome.Completed.Attested(listOf(email)).fits(ConfirmEmailDescriptor.role) shouldBe true
-            ToolOutcome.Completed.Identified().fits(ConfirmEmailDescriptor.role) shouldBe false
+            ToolOutcome.Completed.Attested(listOf(email)).fits(tool("confirm-email").role) shouldBe true
+            ToolOutcome.Completed.Identified().fits(tool("confirm-email").role) shouldBe false
         }
         then("ident-kvnr, a correlation step, answers with Identified") {
-            ToolOutcome.Completed.Identified().fits(IdentKvnrDescriptor.role) shouldBe true
+            ToolOutcome.Completed.Identified().fits(tool("ident-kvnr").role) shouldBe true
         }
     }
 
-    given("a run measured against its descriptor (auth-password: loa1, knowledge)") {
+    given("a run measured against its tool (auth-password: loa1, knowledge)") {
         fun run(acr: AcrLevel?, vararg factors: FactorType) =
             ToolOutcome.Completed.Authenticated(amr = listOf("password"), achievedAcr = acr, factorTypes = factors.toSet())
 
         then("the descriptor's own level and factor kind stay within it") {
-            run(AcrLevel.LOA1, FactorType.KNOWLEDGE).staysWithin(AuthPasswordDescriptor) shouldBe true
+            tool("auth-password").staysWithin(run(AcrLevel.LOA1, FactorType.KNOWLEDGE)) shouldBe true
         }
         then("a run without a level of its own stays within it") {
-            run(null).staysWithin(AuthPasswordDescriptor) shouldBe true
+            tool("auth-password").staysWithin(run(null)) shouldBe true
         }
         then("a higher level goes beyond it") {
-            run(AcrLevel.LOA2, FactorType.KNOWLEDGE).staysWithin(AuthPasswordDescriptor) shouldBe false
+            tool("auth-password").staysWithin(run(AcrLevel.LOA2, FactorType.KNOWLEDGE)) shouldBe false
         }
         then("a factor kind the descriptor does not declare goes beyond it") {
-            run(AcrLevel.LOA1, FactorType.KNOWLEDGE, FactorType.POSSESSION).staysWithin(AuthPasswordDescriptor) shouldBe false
+            tool("auth-password").staysWithin(run(AcrLevel.LOA1, FactorType.KNOWLEDGE, FactorType.POSSESSION)) shouldBe false
         }
     }
 
     given("an attestation") {
-        then("reports neither amr nor a level of its own") {
+        then("reports neither amr nor a level of its own, and its tool provides none") {
             val attested = ToolOutcome.Completed.Attested(listOf(email))
-            attested.amr.shouldBeEmpty()
+            attested.amr shouldBe null
             attested.achievedAcr shouldBe null
-            attested.factorTypes.shouldBeEmpty()
+            tool("confirm-email").amrOf(attested).shouldBeEmpty()
+            tool("confirm-email").factorsOf(attested).shouldBeEmpty()
         }
     }
 })

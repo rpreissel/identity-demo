@@ -8,7 +8,7 @@ import jakarta.persistence.Table
 import java.time.Instant
 
 /**
- * Tool-session-scoped working data for toolId=confirm-qr-login. [pairingCode] is `null` until the
+ * Tool-session-scoped working data for toolId=approve-qr. [pairingCode] is `null` until the
  * `input` step resolves a valid one; that moves the tool from `input` to `confirm`.
  */
 @Entity

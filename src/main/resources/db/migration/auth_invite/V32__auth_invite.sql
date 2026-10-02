@@ -1,4 +1,4 @@
--- Tool-Sitzungen von auth-invite (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md): nur ein
+-- Tool-Sitzungen von auth-invite-lookup (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md): nur ein
 -- Existenzmarker, das Einmalkennwort wird nie gespeichert.
 CREATE SCHEMA IF NOT EXISTS auth_invite;
 

@@ -13,6 +13,7 @@ import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
 import com.example.identity.contract.tool_api.envelope.Next
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.Subject
+import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Component
 
@@ -32,7 +33,7 @@ class JourneyTraceDetails(
 
     /** Event-specific detail for the trace: the tool involved and how the outcome or answer read. */
     fun eventDetail(event: JourneyEvent): Map<String, Any?> = when (event) {
-        is JourneyEvent.Completed -> mapOf("toolId" to event.tool.toolId, "method" to event.tool.method) + outcomeDetail(event.outcome)
+        is JourneyEvent.Completed -> mapOf("toolId" to event.tool.toolId, "method" to event.tool.method) + outcomeDetail(event.tool, event.outcome)
         is JourneyEvent.Abandoned -> mapOf("toolId" to event.tool.toolId)
         is JourneyEvent.Answered -> mapOf("answer" to event.answer)
         is JourneyEvent.SubJourneyFinished -> mapOf("subIntent" to event.intent.name, "achievedAcr" to event.achievedAcr)
@@ -43,12 +44,12 @@ class JourneyTraceDetails(
     }
 
     /** The variant-specific fields of a completed tool run, besides the common ones. */
-    private fun outcomeDetail(outcome: ToolOutcome.Completed): Map<String, Any?> {
+    private fun outcomeDetail(tool: Tool, outcome: ToolOutcome.Completed): Map<String, Any?> {
         val common = mapOf(
             "outcome" to outcome::class.simpleName,
-            "amr" to outcome.amr,
-            "achievedAcr" to outcome.achievedAcr,
-            "factorTypes" to outcome.factorTypes.map { it.name }
+            "amr" to tool.amrOf(outcome),
+            "achievedAcr" to tool.levelOf(outcome),
+            "factorTypes" to tool.factorsOf(outcome).map { it.name }
         )
         val specific = when (outcome) {
             is ToolOutcome.Completed.Identified -> mapOf("personId" to outcome.personId)
@@ -83,7 +84,7 @@ class JourneyTraceDetails(
             mapOf(
                 "decision" to "To",
                 "toState" to transition.state::class.simpleName,
-                "authCandidates" to candidates.map { toolId -> toolId to toolRegistry.descriptorOf(toolId).method }.toMap(),
+                "authCandidates" to candidates.map { toolId -> toolId to toolRegistry.toolOf(toolId).method }.toMap(),
                 "next" to next(transition.state).let { n -> mapOf("type" to n.type, "toolId" to n.toolId, "context" to n.context, "step" to n.step) }
             )
         }
@@ -101,7 +102,7 @@ class JourneyTraceDetails(
         Transition.Authenticated -> mapOf(
             "decision" to "Authenticated",
             "authCandidates" to state.activatable(availableTools)
-                .map { toolId -> toolId to toolRegistry.descriptorOf(toolId).method }.toMap()
+                .map { toolId -> toolId to toolRegistry.toolOf(toolId).method }.toMap()
         )
         is Transition.Perform -> mapOf("decision" to "Perform", "action" to transition.action::class.simpleName) +
             actionDetail(transition.action, journey, channel)

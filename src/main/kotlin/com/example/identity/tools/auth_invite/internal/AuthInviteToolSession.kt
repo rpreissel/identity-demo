@@ -12,7 +12,7 @@ import org.springframework.data.repository.query.Param
 import java.time.Instant
 import java.util.UUID
 
-/** Tool session for toolId=auth-invite; only an existence marker for a single-step tool. */
+/** Tool session for toolId=auth-invite-lookup; only an existence marker for a single-step tool. */
 @Entity
 @Table(schema = "auth_invite", name = "invite_tool_session")
 class AuthInviteToolSession(

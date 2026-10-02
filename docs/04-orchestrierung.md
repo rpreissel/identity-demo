@@ -189,7 +189,7 @@ pausierten Eltern ab; nur eine Sub-Journey läuft neben ihrer pausierten Eltern-
 Die Journey hält, was für den ganzen Weg gilt (Intent, Konto, Versuchsbudget, Lebenszyklus), aber
 nicht, wo der Nutzer gerade steht. Das steht im `JourneyState`.
 
-Intent und Journey verhalten sich zueinander wie `ToolDescriptor` und `ToolSession`: Das eine
+Intent und Journey verhalten sich zueinander wie `Tool` und `ToolSession`: Das eine
 benennt die *Art*, das andere ist *ein Durchlauf* davon. Ein Kanal kann nacheinander mehrere
 Journeys desselben Intents durchlaufen.
 
@@ -343,7 +343,7 @@ Endpunkt der Client aufruft.
 
 ### `IntentStrategy` – die SPI
 
-Sie ist das Gegenstück zu `ToolDescriptor` in `tool_api`: Dort beschreiben sich die Tools selbst, hier die Intents. Jede
+Sie ist das Gegenstück zu `Tool` in `tool_api`: Dort beschreiben sich die Tools selbst, hier die Intents. Jede
 Strategie ist ein Moore-Automat für ihren eigenen Zustandstyp. Sie hat `transition(state, event, ctx)`,
 dazu `initialState(ctx)` (wo eine direkt gestartete Journey beginnt). Wohin der Kanal bei einem
 Abbruch zurückfällt, entscheidet keine Strategie: Er kehrt zu dem Anmeldestand zurück, den er vor
@@ -398,7 +398,7 @@ Die Varianten von `Action`:
 
 - **`RecordIdentification(tool, outcome)`** — Eine Identifizierung (`ident-fsc`/`ident-eid`/`ident-nect`) oder Zuordnung (`ident-kvnr`) hat eine Identität festgestellt. **Ein** Handler für beide Fälle: Ob schon ein Konto gebunden ist, liest er zur Laufzeit aus Journey und Kanal; die Strategie legt das nicht über die Variante fest
 - **`AdoptCredential(tool, outcome)`** — Ein neues Verfahren wurde eingerichtet
-- **`AcceptProof(tool, outcome)`** — Ein Nachweis wurde erbracht. Ob das Tool sein Subjekt selbst *nennen* darf, leitet der Executor aus `ToolRole.ACCOUNT_LOOKUP_AUTH` und der aktuellen Zuordnung ab; widerspricht ein genanntes Konto einem schon gebundenen, gibt es `409`. Nennt das Tool eine Einladung (`Subject.Invitation`, `auth-invite`), bindet der Executor sie statt eines Kontos als Subjekt des Kanals, nur im Web-Kanal und nur auf einem Kanal ohne Subjekt ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md))
+- **`AcceptProof(tool, outcome)`** — Ein Nachweis wurde erbracht. Ob das Tool sein Subjekt selbst *nennen* darf, leitet der Executor aus `ToolRole.ACCOUNT_LOOKUP_AUTH` und der aktuellen Zuordnung ab; widerspricht ein genanntes Konto einem schon gebundenen, gibt es `409`. Nennt das Tool eine Einladung (`Subject.Invitation`, `auth-invite-lookup`), bindet der Executor sie statt eines Kontos als Subjekt des Kanals, nur im Web-Kanal und nur auf einem Kanal ohne Subjekt ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md))
 - **`AdoptAttestation(tool, outcome)`** — Ein Attribut des Kontos wurde bestätigt (z. B. die E-Mail-Adresse). Das allein darf nie zu einem *anderen* Konto wechseln; dafür braucht es eine echte Identifizierung in derselben Sitzung
 - **`ApplyRestoredEvidence(source, methods)`** — siehe „RestoreData als erster Übergang" unten
 - **`RecordApproval(tool, outcome)`** — Ein `PEER_APPROVAL`-Tool hat über die Anfrage eines anderen Kanals entschieden (`CONFIRM_PEER_LOGIN`); das wird nur verbucht und ändert keinen eigenen Nachweis
@@ -659,7 +659,7 @@ Ende zu dem `acr`-Wert zusammen, der nach außen sichtbar ist:
   Einrichten und Anmelden gerechnet.
 
 `resolveAcr = max(IAL, AAL)`. Jede Zeile `MethodEvidence`/`MethodEvidenceRecord` trägt dafür eine `axis`
-(`EvidenceAxis.IDENTITY` oder `AUTHENTICATOR`, `DefaultAuthPolicy`/`ToolDescriptor.evidenceAxis()`),
+(`EvidenceAxis.IDENTITY` oder `AUTHENTICATOR`, `DefaultAuthPolicy`/`Tool.evidenceAxis()`),
 abgeleitet aus der `role`. Ein Schritt mit der Rolle `CORRELATION` wie `ident-kvnr` hebt keine der
 beiden Nachweisarten. Der Grund für die Trennung: Eine Identifizierung darf ihr eigenes `loa` direkt
 beisteuern (ein einzelnes `ident-fsc` erreicht `loa2`). Sie darf sich aber **nicht** mit einem

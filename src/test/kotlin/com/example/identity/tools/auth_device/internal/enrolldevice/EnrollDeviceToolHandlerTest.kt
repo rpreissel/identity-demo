@@ -1,13 +1,12 @@
 package com.example.identity.tools.auth_device.internal.enrolldevice
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.tools.auth_device.internal.DeviceEnrollment
 import com.example.identity.tools.auth_device.internal.DeviceEnrollmentRepository
 
-import com.example.identity.tools.auth_device.DEVICE_BINDING_KEY_REF
-import com.example.identity.tools.auth_device.DEVICE_ENROLLMENT_TYPE
-import com.example.identity.tools.auth_device.EnrollDeviceDescriptor
+import com.example.identity.tools.auth_device.internal.DEVICE_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.device.DevicePublicKey
 import com.example.identity.contract.tool_api.device.UserVerification
 import com.example.identity.contract.tool_api.FactorType
@@ -33,7 +32,7 @@ private class Fixture {
         every { it.findByThumbprint(any()) } returns null
         every { it.save(any()) } answers { firstArg<DeviceEnrollment>().apply { id = 9L } }
     }
-    val handler = EnrollDeviceToolHandler(EnrollDeviceDescriptor, sessions, enrollments, clock = TEST_CLOCK)
+    val handler = EnrollDeviceToolHandler( sessions, enrollments, clock = TEST_CLOCK)
 
     fun withEnrolledDevice(id: Long) = apply {
         every { enrollments.findByThumbprint(DEVICE_KEY.thumbprint) } returns DeviceEnrollment(thumbprint = DEVICE_KEY.thumbprint, createdAt = TEST_NOW).apply { this.id = id }
@@ -69,9 +68,10 @@ class EnrollDeviceToolHandlerTest : BehaviorSpec({
                 enrolled.enrollmentRef.type shouldBe DEVICE_ENROLLMENT_TYPE
                 enrolled.enrollmentRef.id shouldBe "9"
                 enrolled.amr shouldBe listOf("device", "pin")
-                enrolled.achievedAcr shouldBe EnrollDeviceDescriptor.maxAcr
+                enrolled.achievedAcr shouldBe null
                 enrolled.factorTypes shouldBe setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE)
-                enrolled.instanceDetails shouldBe mapOf(DEVICE_BINDING_KEY_REF to "binding-key-1")
+                enrolled.boundKeyRef shouldBe "binding-key-1"
+                enrolled.reference shouldBe "binding-key-1"
                 enrolled.label shouldBe "Handy"
             }
         }

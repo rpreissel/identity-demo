@@ -55,7 +55,7 @@ class ToolAvailabilityController(
     @GetMapping("/availability")
     @Operation(summary = "Every catalog tool per channel type, in that channel's order, with its enabled state")
     fun list(): List<ChannelToolAvailability> {
-        val catalog = toolRegistry.descriptors()
+        val catalog = toolRegistry.tools()
         val descriptorOf = catalog.associateBy { it.toolId }
         val disabled = toolAvailabilityService.disabledEntries()
         return ChannelType.entries.map { channel ->
