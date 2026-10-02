@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.kc
 
 import com.example.identity.core.orchestrator.IntegrationTestSupport
 import com.example.identity.core.orchestrator.support.AccountFixtures
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import org.springframework.http.HttpEntity
@@ -18,9 +17,6 @@ import java.util.UUID
  * list; each lookup names what it looks up in its peer-auth binding.
  */
 class KcAccountLookupIntegrationTest : IntegrationTestSupport() {
-
-    @MockkBean
-    private lateinit var peerAuthValidator: PeerAuthValidator
 
     private fun binding(value: String) {
         every { peerAuthValidator.validate(any(), any(), any()) } returns

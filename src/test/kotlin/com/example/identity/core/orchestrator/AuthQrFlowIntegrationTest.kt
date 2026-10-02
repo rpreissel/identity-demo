@@ -3,10 +3,7 @@ package com.example.identity.core.orchestrator
 import com.example.identity.contract.texts.templateOf
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import org.springframework.web.client.HttpClientErrorException
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
-import com.example.identity.core.orchestrator.kc.PeerAuthValidator
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -25,14 +22,8 @@ import org.springframework.http.HttpStatus
  */
 class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var peerAuthValidator: PeerAuthValidator
-
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     private fun stubAssertion(channelBinding: String) {

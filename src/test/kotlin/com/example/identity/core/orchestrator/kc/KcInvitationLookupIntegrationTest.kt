@@ -3,7 +3,6 @@ package com.example.identity.core.orchestrator.kc
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.orchestrator.IntegrationTestSupport
 import com.example.identity.simulation.personenverzeichnis.Einladungen
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.maps.shouldContainAll
 import io.kotest.matchers.maps.shouldNotContainKey
 import io.kotest.matchers.shouldBe
@@ -25,9 +24,6 @@ import java.util.UUID
  * invitation comes back disabled.
  */
 class KcInvitationLookupIntegrationTest : IntegrationTestSupport() {
-
-    @MockkBean
-    private lateinit var peerAuthValidator: PeerAuthValidator
 
     @Autowired
     private lateinit var einladungen: Einladungen

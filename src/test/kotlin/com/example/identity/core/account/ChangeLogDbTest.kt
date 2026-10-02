@@ -1,5 +1,6 @@
 package com.example.identity.core.account
 
+import com.example.identity.core.orchestrator.SharedSpringContext
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.infrastructure.ChangeLogEntry
@@ -11,11 +12,8 @@ import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.EnrollmentRef
 import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.test.context.ActiveProfiles
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -24,15 +22,13 @@ import java.time.ZoneOffset
  * ADR-39: what an account deletion leaves behind is the change log without values - that and how,
  * never what - and only until the retention period since the deletion has passed.
  */
-@SpringBootTest
-@ActiveProfiles("test")
 class ChangeLogDbTest(
     private val accountService: AccountService,
     private val changeLogRetention: ChangeLogRetention,
     private val changeLogSearch: ChangeLogSearch,
     private val changeLogRepository: ChangeLogRepository,
     private val jdbcTemplate: JdbcTemplate,
-) : BehaviorSpec({
+) : SharedSpringContext({
 
     // Runs first in every `when`: beforeEach would only precede the `then` leaves, after the action.
     fun clearAccountsAndLog() {

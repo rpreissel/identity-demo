@@ -2,8 +2,6 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.texts.templateOf
 import com.example.identity.contract.tool_api.values.PartnerNumber
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import org.awaitility.Awaitility.await
@@ -20,11 +18,8 @@ import kotlin.random.Random
  */
 class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     private fun registerCall(method: HttpMethod, path: String, body: String? = null): Map<String, Any?> {

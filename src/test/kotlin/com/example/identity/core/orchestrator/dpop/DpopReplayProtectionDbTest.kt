@@ -1,10 +1,8 @@
 package com.example.identity.core.orchestrator.dpop
 
+import com.example.identity.core.orchestrator.SharedSpringContext
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.Callable
@@ -15,9 +13,7 @@ import java.util.concurrent.Executors
  * Single use against the real table: the primary key IS the replay check, so a second proof with the same
  * `thumbprint:jti` must fail - one after the other, and when several arrive at the same moment.
  */
-@SpringBootTest
-@ActiveProfiles("test")
-class DpopReplayProtectionDbTest(private val service: DpopReplayProtectionService) : BehaviorSpec({
+class DpopReplayProtectionDbTest(private val service: DpopReplayProtectionService) : SharedSpringContext({
 
     val expiresAt = Instant.now().plusSeconds(300)
 

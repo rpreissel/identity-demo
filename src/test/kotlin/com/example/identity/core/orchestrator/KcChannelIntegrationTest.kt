@@ -3,10 +3,7 @@ package com.example.identity.core.orchestrator
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.account.AccountService
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
-import com.example.identity.core.orchestrator.kc.PeerAuthValidator
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -26,17 +23,11 @@ import org.springframework.web.client.HttpClientErrorException
 /** Covers the kc-facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). */
 class KcChannelIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var peerAuthValidator: PeerAuthValidator
-
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     @Autowired
     private lateinit var accountService: AccountService
 
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     private fun stubAssertion(channelBinding: String) {

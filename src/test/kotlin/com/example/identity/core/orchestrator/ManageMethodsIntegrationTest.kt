@@ -1,7 +1,5 @@
 package com.example.identity.core.orchestrator
 
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
@@ -18,11 +16,8 @@ import org.springframework.web.client.HttpClientErrorException
  */
 class ManageMethodsIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     @Suppress("UNCHECKED_CAST")

@@ -1,10 +1,7 @@
 package com.example.identity.core.orchestrator
 
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.session.SessionRefusedException
 import com.example.identity.core.orchestrator.session.TokenPair
-import com.example.identity.core.orchestrator.session.TokenProvider
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -20,14 +17,8 @@ import java.util.UUID
  */
 class SessionRefusedIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
-    @MockkBean
-    private lateinit var tokenProvider: TokenProvider
-
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     private fun refuseSessions() {

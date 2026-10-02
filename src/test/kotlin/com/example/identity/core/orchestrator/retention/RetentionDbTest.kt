@@ -1,10 +1,8 @@
 package com.example.identity.core.orchestrator.retention
 
 import com.example.identity.core.orchestrator.IntegrationTestSupport
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
-import com.ninjasquad.springmockk.MockkBean
 import org.springframework.beans.factory.annotation.Autowired
 import java.util.UUID
 
@@ -18,13 +16,10 @@ class RetentionDbTest : IntegrationTestSupport() {
     @Autowired
     private lateinit var retentionJob: RetentionJob
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     private fun count(sql: String, vararg args: Any): Long = jdbcTemplate.queryForObject(sql, Long::class.java, *args)!!
 
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
 
         given("a logged-in channel past its retention window and a live one") {
             `when`("the retention job cleans up") {

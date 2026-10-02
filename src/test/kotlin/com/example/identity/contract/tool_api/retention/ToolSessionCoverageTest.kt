@@ -1,11 +1,9 @@
 package com.example.identity.contract.tool_api.retention
 
-import io.kotest.core.spec.style.BehaviorSpec
+import com.example.identity.core.orchestrator.SharedSpringContext
 import io.kotest.matchers.collections.shouldBeEmpty
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.test.context.ActiveProfiles
 import java.time.Instant
 
 /**
@@ -14,9 +12,7 @@ import java.time.Instant
  * The table list is read from the live schema, not hard-coded, so a new module's table is covered
  * as soon as its migration lands.
  */
-@SpringBootTest
-@ActiveProfiles("test")
-class ToolSessionCoverageTest : BehaviorSpec() {
+class ToolSessionCoverageTest : SharedSpringContext() {
 
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate

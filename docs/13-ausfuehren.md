@@ -235,11 +235,17 @@ abgeleitet, kein Spec trägt eine Markierung (`io.kotest.provided.TestTier`). Vo
 zählt der volle Lauf `test`.
 
 **Wo die Zeit hingeht.** Der volle Lauf dauert zwei bis drei Minuten. Die Zeit geht in die wenigen
-großen Specs (`ModelBasedJourneyTest`, `OpenApiSnapshotTest`), in die Kontextstarts, einen je
-`@MockkBean`-Kombination, und in die Szenarien der Integrationstests: Die Datenbank wird vor jedem
-`when` geleert, also baut jedes Szenario seinen Ausgangszustand über HTTP neu auf. Parallele
-Test-JVMs (`maxParallelForks`) helfen kaum, weil jede ihre Kontexte selbst startet: Zwei sparen
-wenige Sekunden, vier sind langsamer.
+großen Specs (`ModelBasedJourneyTest`, `OpenApiSnapshotTest`), in die Kontextstarts und in die
+Szenarien der Integrationstests.
+
+- **Kontextstarts.** Spring startet einen Kontext je Konfiguration. Deshalb erben die Specs von
+  `SharedSpringContext`; Beans, die eine Spec fälscht, stehen dort als Spy, und
+  `SharedSpringContextTest` wacht darüber. Einen eigenen Kontext haben nur Specs, die eigene Beans
+  importieren.
+- **Szenarien.** Die Datenbank wird vor jedem `when` geleert, also baut jedes Szenario seinen
+  Ausgangszustand neu auf.
+- **Parallele Test-JVMs** (`maxParallelForks`) helfen kaum, weil jede ihre Kontexte selbst startet:
+  Zwei sparen wenige Sekunden, vier sind langsamer.
 
 Welche Art von Test man schreibt, entscheidet deshalb nicht die Laufzeit, sondern was er prüft: Eine
 Regel prüft ein Unit-Test, in `domain` oder am Handler. Ein Integrationstest prüft, was nur mit

@@ -1,8 +1,6 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.texts.templateOf
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
@@ -19,11 +17,8 @@ import java.util.UUID
  */
 class LoginFlowIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     private val authenticatedNext = mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")

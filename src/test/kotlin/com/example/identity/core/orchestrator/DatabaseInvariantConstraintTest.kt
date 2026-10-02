@@ -1,7 +1,5 @@
 package com.example.identity.core.orchestrator
 
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import org.springframework.dao.DataIntegrityViolationException
@@ -17,11 +15,8 @@ import java.util.UUID
  */
 class DatabaseInvariantConstraintTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     private fun channelId(): UUID = UUID.fromString(post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String)

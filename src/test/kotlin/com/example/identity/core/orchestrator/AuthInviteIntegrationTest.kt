@@ -4,10 +4,7 @@ import com.example.identity.contract.texts.templateOf
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.contract.tool_api.values.PartnerNumber
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
-import com.example.identity.core.orchestrator.kc.PeerAuthValidator
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -32,12 +29,6 @@ import org.springframework.web.client.HttpClientErrorException
  */
 class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var peerAuthValidator: PeerAuthValidator
-
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     @Autowired
     private lateinit var clock: Clock
 
@@ -48,7 +39,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
     private lateinit var signInLog: SignInLog
 
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     private fun stubAssertion(channelBinding: String) {

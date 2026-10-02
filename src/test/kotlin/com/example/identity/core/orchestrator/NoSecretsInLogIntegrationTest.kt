@@ -3,8 +3,6 @@ package com.example.identity.core.orchestrator
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
@@ -18,11 +16,8 @@ import org.springframework.web.client.HttpClientErrorException
  */
 class NoSecretsInLogIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
 
         given("a registration with address and SMS, and a lookup login with a mistyped address") {
             val appender = ListAppender<ILoggingEvent>()

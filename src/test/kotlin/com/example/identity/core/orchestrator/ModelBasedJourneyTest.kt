@@ -3,8 +3,6 @@ package com.example.identity.core.orchestrator
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.channel.KcChannelService
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
-import com.ninjasquad.springmockk.MockkBean
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.PlainJWT
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -25,9 +23,6 @@ import kotlin.random.Random
  * sequence and reported with its seed. 4xx answers are expected; a 5xx is a violation.
  */
 class ModelBasedJourneyTest : IntegrationTestSupport() {
-
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
 
     @Autowired
     private lateinit var kcChannelService: KcChannelService
@@ -235,7 +230,7 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
      */
     private fun execute(steps: List<Step>): String? {
         resetDatabase()
-        stubDpopWithFakeJwk(jwkThumbprintService)
+        stubDpopWithFakeJwk()
         seedRegisteredAccount()
         val run = Run(deviceA = currentBindingKeyRef)
         steps.forEachIndexed { index, step ->

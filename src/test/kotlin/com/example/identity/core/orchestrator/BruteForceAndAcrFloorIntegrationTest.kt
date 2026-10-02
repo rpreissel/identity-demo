@@ -1,8 +1,6 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.texts.templateOf
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -18,11 +16,8 @@ import java.util.UUID
  */
 class BruteForceAndAcrFloorIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     /** `ChannelCreationRateLimitService`'s budget of channels per binding key and window. */

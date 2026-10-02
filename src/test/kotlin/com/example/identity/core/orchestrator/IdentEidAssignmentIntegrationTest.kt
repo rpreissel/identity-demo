@@ -1,9 +1,7 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.tool_api.ids.AccountId
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.support.AccountFixtures
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -20,11 +18,8 @@ import org.springframework.web.client.HttpClientErrorException
  */
 class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
 
         /** Card read plus PIN - the whole tool, with nothing typed to look anybody up first. */
         fun attestViaEid(channelSessionId: String): Map<String, Any?> {

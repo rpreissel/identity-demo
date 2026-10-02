@@ -2,10 +2,7 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.SignInLog
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
-import com.example.identity.core.orchestrator.kc.PeerAuthValidator
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -27,17 +24,11 @@ import java.util.UUID
  */
 class SignInLogIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
-    @MockkBean
-    private lateinit var peerAuthValidator: PeerAuthValidator
-
     @Autowired
     private lateinit var signInLog: SignInLog
 
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     private fun accountOf(channelSessionId: String): AccountId =

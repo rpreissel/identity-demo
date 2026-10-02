@@ -1,9 +1,6 @@
 package com.example.identity.core.orchestrator
 
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
-import com.example.identity.core.orchestrator.kc.PeerAuthValidator
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -21,14 +18,8 @@ import org.springframework.web.client.HttpClientErrorException
  */
 class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var peerAuthValidator: PeerAuthValidator
-
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     private fun stubAssertion(accountBinding: String) {

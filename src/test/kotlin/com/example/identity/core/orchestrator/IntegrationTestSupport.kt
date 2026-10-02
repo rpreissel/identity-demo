@@ -5,28 +5,21 @@ import com.example.identity.simulation.mail.MailServer
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.core.orchestrator.admin.ADMIN_API
 import com.example.identity.core.orchestrator.dpop.DpopProof
-import com.example.identity.core.orchestrator.dpop.DpopValidator
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.support.AccountFixtures
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
-import com.ninjasquad.springmockk.MockkBean
 import com.nimbusds.jose.jwk.JWK
-import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.every
 import io.mockk.mockk
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
-import org.springframework.context.annotation.Import
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.web.client.RestTemplate
 import io.kotest.core.names.TestName
 import io.kotest.core.test.TestCase
@@ -37,20 +30,14 @@ import java.util.UUID
 /**
  * Shared HTTP client, DB reset and flow helpers for the orchestrator integration tests.
  *
- * Each subclass wires the DpopValidator stub in its own `beforeEach`. Most use
+ * Each subclass stubs the [dpopValidator] spy in its own `beforeScenario`. Most use
  * [stubDpopWithFakeJwk]; the flow helpers below assume that stub. Device-binding suites use a real
  * EC key instead.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ActiveProfiles("test")
-@Import(PinnedToolCatalogTestConfig::class)
-abstract class IntegrationTestSupport : BehaviorSpec() {
+abstract class IntegrationTestSupport : SharedSpringContext() {
 
     @LocalServerPort
     protected var port: Int = 0
-
-    @MockkBean
-    protected lateinit var dpopValidator: DpopValidator
 
     @Autowired
     protected lateinit var jdbcTemplate: JdbcTemplate
@@ -133,7 +120,7 @@ abstract class IntegrationTestSupport : BehaviorSpec() {
      * [currentBindingKeyRef]. Call from a subclass's `beforeEach`. Device-binding tests do not use
      * it: a mocked thumbprint would defeat testing key binding.
      */
-    protected fun stubDpopWithFakeJwk(jwkThumbprintService: JwkThumbprintService) {
+    protected fun stubDpopWithFakeJwk() {
         val fakeJwk = mockk<JWK>()
         every { dpopValidator.validate(any(), any(), any()) } returns DpopProof(
             token = "mock-token",

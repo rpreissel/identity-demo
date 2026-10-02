@@ -1,5 +1,6 @@
 package com.example.identity.core.account
 
+import com.example.identity.core.orchestrator.SharedSpringContext
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.infrastructure.AccountAnchorRepository
@@ -12,17 +13,14 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import io.kotest.assertions.throwables.shouldThrow
-import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import org.aopalliance.intercept.MethodInterceptor
 import org.hibernate.exception.ConstraintViolationException
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.aop.framework.Advised
 import com.example.identity.contract.tool_api.EnrollmentRef
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.http.HttpStatus
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
 import java.util.concurrent.CyclicBarrier
@@ -34,15 +32,13 @@ import java.util.concurrent.TimeUnit
  * that the surrounding transaction commits or rolls back as one unit and that unique constraints hold
  * against the real H2 schema. A MockK-based test cannot show either.
  */
-@SpringBootTest
-@ActiveProfiles("test")
 class AccountServiceDbTest(
     private val accountService: AccountService,
     private val jdbcTemplate: JdbcTemplate,
     private val transactionManager: PlatformTransactionManager,
     private val anchorRepository: AccountAnchorRepository,
     private val changeLogRepository: ChangeLogRepository
-) : BehaviorSpec({
+) : SharedSpringContext({
 
     // Runs first in every `when`: beforeEach would only precede the `then` leaves, after the action.
     fun clearAccounts() {

@@ -1,11 +1,9 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.example.identity.core.orchestrator.SharedSpringContext
 import com.nimbusds.jose.jwk.ECKey
-import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
@@ -18,12 +16,10 @@ import java.util.UUID
  * the commit (`KeycloakSessionLogoutListener`). There the caller's transaction is over, so the
  * insert has to bring its own.
  */
-@SpringBootTest
-@ActiveProfiles("test")
 class NodeKeysDbTest(
     private val repository: NodeSigningKeyRepository,
     private val transactionManager: PlatformTransactionManager,
-) : BehaviorSpec({
+) : SharedSpringContext({
 
     given("a purpose without a key pair yet") {
         `when`("the first use happens after the commit of the surrounding transaction") {

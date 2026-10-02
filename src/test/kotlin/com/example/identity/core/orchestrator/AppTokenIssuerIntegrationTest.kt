@@ -2,8 +2,6 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.channel.KcChannelService
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
-import com.ninjasquad.springmockk.MockkBean
 import com.nimbusds.jwt.PlainJWT
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.comparables.shouldBeLessThan
@@ -25,14 +23,11 @@ import java.util.UUID
  */
 class AppTokenIssuerIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     @Autowired
     private lateinit var kcChannelService: KcChannelService
 
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     /** ChannelService's fixed lifetime of a channel that has not authenticated yet. */

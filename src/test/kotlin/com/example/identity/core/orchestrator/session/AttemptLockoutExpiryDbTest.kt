@@ -1,9 +1,7 @@
 package com.example.identity.core.orchestrator.session
 
-import io.kotest.core.spec.style.BehaviorSpec
+import com.example.identity.core.orchestrator.SharedSpringContext
 import io.kotest.matchers.shouldBe
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
 import java.time.Duration
 import java.util.UUID
 
@@ -12,12 +10,10 @@ import java.util.UUID
  * would keep a stranger's account locked for good (docs/07-betrieb.md #4). Against the real
  * statement, since the rule lives in one UPDATE.
  */
-@SpringBootTest
-@ActiveProfiles("test")
 class AttemptLockoutExpiryDbTest(
     private val rateLimitCounter: RateLimitCounter,
     private val repository: RateLimitRecordRepository,
-) : BehaviorSpec({
+) : SharedSpringContext({
 
     fun fail(subject: String, lockout: Duration) =
         rateLimitCounter.recordFailure(RateLimitScope.ACCOUNT, subject, maxFailures = 2, lockout = lockout)

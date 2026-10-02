@@ -58,7 +58,9 @@ Ein Kommentar hilft, den Code zu verstehen, er ersetzt nicht die Doku. Deshalb:
 - **Specs mit Spring-Kontext.** `IntegrationTestSupport` leert die Datenbank vor jedem `when`
   (und vor einem `then` direkt unter `given`). Stubs, die das `when` braucht, stellt
   `beforeScenario { … }` bereit, nicht `beforeEach`: Kotest ruft `beforeEach` erst vor dem `then`.
-  Specs ohne `IntegrationTestSupport` leeren ihre Tabellen am Anfang des `when`.
+  Specs ohne `IntegrationTestSupport` leeren ihre Tabellen am Anfang des `when`. Alle erben von
+  `SharedSpringContext` und deklarieren keine eigenen Mock-Beans; jede eigene kostet einen
+  Kontextstart.
 
 ## Arbeitsregeln (kurz)
 

@@ -3,9 +3,7 @@ package com.example.identity.core.orchestrator
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AccountService
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.support.AccountFixtures
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -25,15 +23,12 @@ import java.util.UUID
  */
 class RegisterEnrollFirstFlowIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     @Autowired
     private lateinit var accountService: AccountService
 
     init {
         beforeScenario {
-            stubDpopWithFakeJwk(jwkThumbprintService)
+            stubDpopWithFakeJwk()
             put("/orchestrator/admin/registration-order", """{"enrollFirst":true}""") shouldBe HttpStatus.OK
         }
     }

@@ -1,9 +1,7 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.core.orchestrator.domain.ChannelType
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.tool.ToolAvailabilityService
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -20,14 +18,11 @@ import org.springframework.web.client.HttpClientErrorException
  */
 class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     @Autowired
     private lateinit var toolAvailabilityService: ToolAvailabilityService
 
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     private fun adminAvailability(): List<Map<String, Any?>> = restTemplate.exchange(

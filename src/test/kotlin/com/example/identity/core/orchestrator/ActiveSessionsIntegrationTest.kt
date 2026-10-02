@@ -5,10 +5,8 @@ import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.admin.ActiveSessions
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -30,9 +28,6 @@ import java.util.UUID
  */
 class ActiveSessionsIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     @Autowired
     private lateinit var channelSessionRepository: ChannelSessionRepository
 
@@ -40,7 +35,7 @@ class ActiveSessionsIntegrationTest : IntegrationTestSupport() {
     private lateinit var activeSessions: ActiveSessions
 
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     /** A channel created [age] ago; the entity sets its own timestamps, so they are moved back here. */

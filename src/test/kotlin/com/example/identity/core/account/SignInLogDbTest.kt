@@ -1,11 +1,9 @@
 package com.example.identity.core.account
 
+import com.example.identity.core.orchestrator.SharedSpringContext
 import com.example.identity.core.account.infrastructure.SignInLogRepository
-import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.test.context.ActiveProfiles
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -13,15 +11,13 @@ import java.time.ZoneOffset
  * ADR-39, addendum: the sign-in log belongs to the account - it goes with the account, and it is
  * kept for months, not years.
  */
-@SpringBootTest
-@ActiveProfiles("test")
 class SignInLogDbTest(
     private val accountService: AccountService,
     private val signInLog: SignInLog,
     private val retention: SignInLogRetention,
     private val repository: SignInLogRepository,
     private val jdbcTemplate: JdbcTemplate,
-) : BehaviorSpec({
+) : SharedSpringContext({
 
     // Runs first in every `when`: beforeEach would only precede the `then` leaves, after the action.
     fun clearAccounts() {

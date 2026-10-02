@@ -1,11 +1,9 @@
 package com.example.identity.core.orchestrator.api.v1
 
-import io.kotest.core.spec.style.BehaviorSpec
+import com.example.identity.core.orchestrator.SharedSpringContext
 import org.springdoc.core.models.GroupedOpenApi
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.web.client.RestTemplate
 import org.yaml.snakeyaml.DumperOptions
 import org.yaml.snakeyaml.Yaml
@@ -23,9 +21,7 @@ import java.util.concurrent.Executors
  * To accept an intended change: `./gradlew updateOpenApiSnapshot`, then
  * `./gradlew generateFrontendApiTypes`, and review both diffs (docs/adr/ADR-026).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ActiveProfiles("test")
-class OpenApiSnapshotTest : BehaviorSpec() {
+class OpenApiSnapshotTest : SharedSpringContext() {
 
     @LocalServerPort
     private var port: Int = 0

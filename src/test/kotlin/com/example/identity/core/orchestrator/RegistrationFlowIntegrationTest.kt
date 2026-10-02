@@ -1,9 +1,7 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.core.account.AccountService
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.support.AccountFixtures
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import org.springframework.beans.factory.annotation.Autowired
 import io.kotest.matchers.collections.shouldContainAll
@@ -23,14 +21,11 @@ import org.springframework.http.HttpMethod
  */
 class RegistrationFlowIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     @Autowired
     private lateinit var accountService: AccountService
 
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     init {

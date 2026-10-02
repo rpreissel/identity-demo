@@ -1,8 +1,6 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.core.account.SignInLog
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
-import com.ninjasquad.springmockk.MockkBean
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,14 +12,11 @@ import org.springframework.web.client.HttpClientErrorException
  */
 class AccountRateLimitIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     @Autowired
     private lateinit var signInLog: SignInLog
 
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     private val authPasswordOffered = mapOf("type" to "tool", "toolId" to "auth-password", "step" to "auth")

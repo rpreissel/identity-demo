@@ -2,8 +2,6 @@ package com.example.identity.core.orchestrator.kc
 
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.IntegrationTestSupport
-import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
-import com.ninjasquad.springmockk.MockkBean
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.ECDSASigner
@@ -32,14 +30,8 @@ import java.util.UUID
  */
 class KeycloakResponseSigningIntegrationTest : IntegrationTestSupport() {
 
-    @MockkBean
-    private lateinit var peerAuthValidator: PeerAuthValidator
-
-    @MockkBean
-    private lateinit var jwkThumbprintService: JwkThumbprintService
-
     init {
-        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk() }
     }
 
     /** A peer-auth assertion as Keycloak sends it, signed with a throwaway key: [peerAuthValidator] is stubbed. */
