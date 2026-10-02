@@ -5,6 +5,8 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import java.io.File
 
+private const val MAIN = "src/main/kotlin/com/example/identity"
+
 /**
  * `demo.mode` is read in one place (ADR-36): the module `demo_mode` turns it into `DemoMode`,
  * `OnlyInDemoMode` and `OutsideDemoMode`. A second reader could give it a different default, and
@@ -14,17 +16,13 @@ import java.io.File
 class DemoModeSwitchTest : BehaviorSpec({
 
     given("the main sources outside demo/demo_mode") {
-        val sources = File("src/main/kotlin/com/example/identity").walkTopDown()
-            .filter { it.isFile && it.extension == "kt" && "/demo/demo_mode/" !in it.invariantSeparatorsPath }
-            .toList()
-        val read = Regex(""""demo\.mode"|\$\{demo\.mode""")
+        val outsideDemoMode = { file: File -> "/demo/demo_mode/" !in file.invariantSeparatorsPath }
 
-        then("it reads them at all") {
-            sources.size shouldBeGreaterThan 100
+        then("they are read at all") {
+            kotlinSources(MAIN, outsideDemoMode).size shouldBeGreaterThan 100
         }
         then("none reads the property itself") {
-            sources.flatMap { file -> file.readLines().mapIndexedNotNull { i, line -> if (read.containsMatchIn(line)) "${file.path}:${i + 1}" else null } }
-                .shouldBeEmpty()
+            sourceLinesMatching(MAIN, Regex(""""demo\.mode"|\$\{demo\.mode"""), outsideDemoMode).shouldBeEmpty()
         }
     }
 })

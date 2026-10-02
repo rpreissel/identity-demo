@@ -2,19 +2,23 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.core.account.ChangeLogLookupKeys
 import com.example.identity.demo.demo_mode.DemoMode
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
-import io.mockk.every
-import io.mockk.mockk
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.mockk.every
+import io.mockk.mockk
 
-/** Outside demo mode, no demo default may survive the start. */
+/**
+ * Outside demo mode, no demo default may survive the start: the constructor refuses it. In demo mode
+ * the constructor checks nothing, so [ProductionModeCheck.violations] is read there directly.
+ */
 class ProductionModeCheckTest : BehaviorSpec({
 
     val secret = "x".repeat(32)
 
+    /** Starts the check; every parameter defaults to a value fit for real people. */
     fun check(
         demoMode: Boolean = false,
         adminPassword: String = "{bcrypt}\$2a\$10\$abcdefghijklmnopqrstuv",
@@ -35,51 +39,95 @@ class ProductionModeCheckTest : BehaviorSpec({
         adminPassword, h2Console, otpPepper, lookupSecret, trustSelfSigned, keycloakBaseUrl, orchestratorBaseUrlForKeycloak
     )
 
-    given("demo mode") {
-        then("the demo defaults are allowed - nothing is checked") {
-            check(demoMode = true, adminPassword = "admin", h2Console = true, otpPepper = "", lookupSecret = "", trustSelfSigned = true, keycloakBaseUrl = "http://keycloak", orchestratorBaseUrlForKeycloak = "http://orchestrator")
+    given("demo mode with every demo default in place") {
+        `when`("the orchestrator starts") {
+            val result = runCatching {
+                check(
+                    demoMode = true, adminPassword = "admin", h2Console = true, otpPepper = "", lookupSecret = "", trustSelfSigned = true,
+                    keycloakBaseUrl = "http://keycloak", orchestratorBaseUrlForKeycloak = "http://orchestrator", orphanedLookupKeyIds = setOf("1")
+                )
+            }
+
+            then("it starts - the demo defaults are allowed, and orphaned search keys only warn") {
+                shouldNotThrowAny { result.getOrThrow() }
+            }
         }
     }
 
     given("demo mode off with a configuration fit for real people") {
-        then("it starts") {
-            check().violations().shouldBeEmpty()
+        `when`("the orchestrator starts") {
+            val result = runCatching { check() }
+
+            then("it starts") {
+                shouldNotThrowAny { result.getOrThrow() }
+            }
         }
     }
 
     given("demo mode off with every demo default still in place") {
-        then("it refuses to start and names each of them at once") {
-            val failure = shouldThrow<IllegalStateException> {
-                check(adminPassword = "admin", h2Console = true, otpPepper = "", lookupSecret = "short", trustSelfSigned = true, keycloakBaseUrl = "http://keycloak:8080", orchestratorBaseUrlForKeycloak = "http://orchestrator:8080")
+        `when`("the orchestrator starts") {
+            val result = runCatching {
+                check(
+                    adminPassword = "admin", h2Console = true, otpPepper = "", lookupSecret = "short", trustSelfSigned = true,
+                    keycloakBaseUrl = "http://keycloak:8080", orchestratorBaseUrlForKeycloak = "http://orchestrator:8080"
+                )
             }
-            listOf("demo.admin.password", "spring.h2.console", "otp-pepper", "lookup-secret", "trustSelfSignedCertificate", "http://keycloak", "http://orchestrator").forEach {
-                failure.message!! shouldContain it
+
+            then("it refuses to start and names each of them at once") {
+                val failure = shouldThrow<IllegalStateException> { result.getOrThrow() }
+                listOf("demo.admin.password", "spring.h2.console", "otp-pepper", "lookup-secret", "trustSelfSignedCertificate", "http://keycloak", "http://orchestrator").forEach {
+                    failure.message!! shouldContain it
+                }
             }
         }
     }
 
-    given("an admin password in plain text") {
-        then("it is refused even when it is not the demo value - the login needs a hash") {
-            // Built in demo mode so the constructor does not refuse it outright - violations() is the same list.
-            check(demoMode = true, adminPassword = "correct-horse-battery-staple").violations().single() shouldContain "Klartext"
+    given("an admin password in plain text that is not the demo value") {
+        val check = check(demoMode = true, adminPassword = "correct-horse-battery-staple")
+
+        `when`("listing the violations") {
+            val violations = check.violations()
+
+            then("it is refused anyway - the login needs a hash") {
+                violations.single() shouldContain "Klartext"
+            }
         }
     }
 
     given("no Keycloak configured (the non-keycloak profile)") {
-        then("the https rule does not apply") {
-            check(keycloakBaseUrl = "", orchestratorBaseUrlForKeycloak = "").violations().size shouldBe 0
+        val check = check(demoMode = true, keycloakBaseUrl = "", orchestratorBaseUrlForKeycloak = "")
+
+        `when`("listing the violations") {
+            val violations = check.violations()
+
+            then("the https rule does not apply") {
+                violations.shouldBeEmpty()
+            }
         }
     }
 
-    given("the change log's search keys (ADR-39)") {
-        then("the public demo secret is refused, though long enough") {
-            check(demoMode = true, usesDemoLookupSecret = true).violations().single() shouldContain "Demo-Wert"
+    // The change log's search keys (ADR-39).
+    given("the public demo secret for the search keys, though long enough") {
+        val check = check(demoMode = true, usesDemoLookupSecret = true)
+
+        `when`("listing the violations") {
+            val violations = check.violations()
+
+            then("it is refused") {
+                violations.single() shouldContain "Demo-Wert"
+            }
         }
-        then("keys no configured secret matches are refused - those entries could no longer be found") {
-            check(demoMode = true, orphanedLookupKeyIds = setOf("1")).violations().single() shouldContain "[1]"
-        }
-        then("demo mode only warns about them") {
-            check(demoMode = true, orphanedLookupKeyIds = setOf("1"))
+    }
+
+    given("search keys no configured secret matches") {
+        val check = check(demoMode = true, orphanedLookupKeyIds = setOf("1"))
+
+        `when`("listing the violations") {
+            val violations = check.violations()
+
+            then("they are refused - those entries could no longer be found") {
+                violations.single() shouldContain "[1]"
+            }
         }
     }
 })

@@ -6,7 +6,6 @@ import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
-import com.example.identity.contract.tool_api.MissingFields
 
 class AuthEmailFlowTest : BehaviorSpec({
 
@@ -16,33 +15,37 @@ class AuthEmailFlowTest : BehaviorSpec({
 
     given("a pending code") {
         `when`("nothing was submitted") {
+            val decision = AuthEmailFlow.decide(state, AuthEmailInput(), emailCodeGenerator)
+
             then("the state is unchanged") {
-                AuthEmailFlow.decide(state, AuthEmailInput(), emailCodeGenerator) shouldBe AuthEmailDecision.Unchanged
+                decision shouldBe AuthEmailDecision.Unchanged
             }
         }
 
         `when`("the wrong code was submitted") {
+            val decision = AuthEmailFlow.decide(state, AuthEmailInput("000000"), emailCodeGenerator)
+
             then("it is rejected") {
-                AuthEmailFlow.decide(state, AuthEmailInput("000000"), emailCodeGenerator) shouldBe AuthEmailDecision.WrongCode
+                decision shouldBe AuthEmailDecision.WrongCode
             }
         }
 
         `when`("the correct code was submitted") {
+            val decision = AuthEmailFlow.decide(state, AuthEmailInput(issued.plainCode), emailCodeGenerator)
+
             then("it completes") {
-                AuthEmailFlow.decide(state, AuthEmailInput(issued.plainCode), emailCodeGenerator) shouldBe AuthEmailDecision.Complete
+                decision shouldBe AuthEmailDecision.Complete
             }
         }
     }
 
-    given("describe()") {
-        then("it asks for code at step auth") {
-            state.describe() shouldBe ("auth" to MissingFields(listOf("code")))
-        }
-    }
+    given("the persisted hash and expiry of a pending code") {
+        `when`("the state is rebuilt from them") {
+            val rebuilt = AuthEmailState.of(ToolSessionId(UUID.randomUUID()), issued.hash, issued.expiresAt)
 
-    given("toState()") {
-        then("it reconstructs the pending code") {
-            AuthEmailState.of(ToolSessionId(UUID.randomUUID()), issued.hash, issued.expiresAt) shouldBe state
+            then("it is the pending code's state") {
+                rebuilt shouldBe state
+            }
         }
     }
 })

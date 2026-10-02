@@ -8,32 +8,55 @@ import org.springframework.http.HttpStatus
 
 class TextBundleTest : BehaviorSpec({
 
-    val bundle = TextBundle("app")
+    given("the app bundle") {
+        val bundle = TextBundle("app")
 
-    given("GET .../texts/{lang}") {
-        val first = bundle.respond("en", null)
+        `when`("a client fetches the English texts for the first time") {
+            val first = bundle.respond("en", null)
 
-        then("the bundle comes with a strong ETag and must be revalidated") {
-            first.statusCode shouldBe HttpStatus.OK
-            first.headers.eTag shouldNotBe null
-            first.headers.cacheControl shouldBe "no-cache"
-            first.headers.getFirst(HttpHeaders.CONTENT_LANGUAGE) shouldBe "en"
+            then("the bundle comes with a strong ETag and must be revalidated") {
+                first.statusCode shouldBe HttpStatus.OK
+                first.headers.eTag shouldNotBe null
+                first.headers.cacheControl shouldBe "no-cache"
+                first.headers.getFirst(HttpHeaders.CONTENT_LANGUAGE) shouldBe "en"
+            }
         }
 
-        then("asking again with that ETag answers 304 without a body") {
-            val again = bundle.respond("en", first.headers.eTag)
-            again.statusCode shouldBe HttpStatus.NOT_MODIFIED
-            again.body shouldBe null
-            again.headers.eTag shouldBe first.headers.eTag
+        `when`("a client asks again with the ETag it got") {
+            val eTag = bundle.respond("en", null).headers.eTag
+            val again = bundle.respond("en", eTag)
+
+            then("it answers 304 without a body") {
+                again.statusCode shouldBe HttpStatus.NOT_MODIFIED
+                again.body shouldBe null
+                again.headers.eTag shouldBe eTag
+            }
         }
 
-        then("another language has another ETag") {
-            bundle.respond("de", first.headers.eTag).statusCode shouldBe HttpStatus.OK
+        `when`("a client fetches German after English") {
+            val english = bundle.respond("en", null)
+            val german = bundle.respond("de", english.headers.eTag)
+
+            then("German has another ETag, so the English one does not match it") {
+                german.headers.eTag shouldNotBe english.headers.eTag
+                german.statusCode shouldBe HttpStatus.OK
+            }
         }
 
-        then("an unknown language falls back to German, a region is ignored") {
-            bundle.respond("fr", null).headers.getFirst(HttpHeaders.CONTENT_LANGUAGE) shouldBe "de"
-            bundle.respond("en-GB", null).headers.getFirst(HttpHeaders.CONTENT_LANGUAGE) shouldBe "en"
+        `when`("a client asks for an unknown language") {
+            val response = bundle.respond("fr", null)
+
+            then("it falls back to German") {
+                response.headers.getFirst(HttpHeaders.CONTENT_LANGUAGE) shouldBe "de"
+            }
+        }
+
+        `when`("a client asks for a language with a region") {
+            val response = bundle.respond("en-GB", null)
+
+            then("the region is ignored") {
+                response.headers.getFirst(HttpHeaders.CONTENT_LANGUAGE) shouldBe "en"
+            }
         }
     }
 })

@@ -1,8 +1,6 @@
 package com.example.identity.architecture
 
 import com.example.identity.core.orchestrator.SCHEDULED_JOBS
-import com.tngtech.archunit.core.importer.ClassFileImporter
-import com.tngtech.archunit.core.importer.ImportOption
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import org.springframework.scheduling.annotation.Scheduled
@@ -14,9 +12,7 @@ import org.springframework.scheduling.annotation.Scheduled
 class ScheduledJobsTest : BehaviorSpec({
     given("the application's classes") {
         then("every class with a @Scheduled method is a declared job, and every declared job has one") {
-            val scheduled = ClassFileImporter()
-                .withImportOption(ImportOption.DoNotIncludeTests())
-                .importPackages("com.example.identity")
+            val scheduled = MAIN_CLASSES
                 .filter { cls -> cls.methods.any { it.isAnnotatedWith(Scheduled::class.java) } }
                 .map { it.simpleName }
                 .toSet()

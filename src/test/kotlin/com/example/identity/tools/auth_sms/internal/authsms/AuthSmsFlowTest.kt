@@ -6,7 +6,6 @@ import com.example.identity.tools.auth_sms.internal.TanGenerator
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
-import com.example.identity.contract.tool_api.MissingFields
 
 class AuthSmsFlowTest : BehaviorSpec({
 
@@ -16,33 +15,37 @@ class AuthSmsFlowTest : BehaviorSpec({
 
     given("a pending TAN") {
         `when`("nothing was submitted") {
+            val decision = AuthSmsFlow.decide(state, AuthSmsInput(), tanGenerator)
+
             then("the state is unchanged") {
-                AuthSmsFlow.decide(state, AuthSmsInput(), tanGenerator) shouldBe AuthSmsDecision.Unchanged
+                decision shouldBe AuthSmsDecision.Unchanged
             }
         }
 
         `when`("the wrong tan was submitted") {
+            val decision = AuthSmsFlow.decide(state, AuthSmsInput("000000"), tanGenerator)
+
             then("it is rejected") {
-                AuthSmsFlow.decide(state, AuthSmsInput("000000"), tanGenerator) shouldBe AuthSmsDecision.WrongTan
+                decision shouldBe AuthSmsDecision.WrongTan
             }
         }
 
         `when`("the correct tan was submitted") {
+            val decision = AuthSmsFlow.decide(state, AuthSmsInput(issued.plainTan), tanGenerator)
+
             then("it completes") {
-                AuthSmsFlow.decide(state, AuthSmsInput(issued.plainTan), tanGenerator) shouldBe AuthSmsDecision.Complete
+                decision shouldBe AuthSmsDecision.Complete
             }
         }
     }
 
-    given("describe()") {
-        then("it asks for tan at step auth") {
-            state.describe() shouldBe ("auth" to MissingFields(listOf("tan")))
-        }
-    }
+    given("the persisted hash and expiry of a pending TAN") {
+        `when`("the state is rebuilt from them") {
+            val rebuilt = AuthSmsState.of(ToolSessionId(UUID.randomUUID()), issued.hash, issued.expiresAt)
 
-    given("toState()") {
-        then("it reconstructs the pending TAN") {
-            AuthSmsState.of(ToolSessionId(UUID.randomUUID()), issued.hash, issued.expiresAt) shouldBe state
+            then("it is the pending TAN's state") {
+                rebuilt shouldBe state
+            }
         }
     }
 })

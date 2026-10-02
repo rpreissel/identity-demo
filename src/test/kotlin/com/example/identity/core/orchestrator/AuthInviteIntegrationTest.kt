@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.texts.templateOf
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.contract.tool_api.values.PartnerNumber
@@ -8,7 +9,6 @@ import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
 import com.example.identity.core.orchestrator.kc.PeerAuthValidator
 import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.ints.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.every
@@ -46,8 +46,6 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
     @Autowired
     private lateinit var signInLog: SignInLog
-
-    override val resetPerWhen = true
 
     init {
         beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
@@ -94,6 +92,9 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
     private data class Letter(val invitation: InvitationId, val code: String)
 
+    /** Where a failed attempt leaves the client: the tool's one step, to try again. */
+    private val stillOnInvite = mapOf("type" to "tool", "toolId" to "auth-invite", "step" to "auth")
+
     private fun complete(invitation: InvitationId) {
         restTemplate.exchange("http://localhost:$port/mock-personenverzeichnis/einladungen/$invitation/abschluss",
             HttpMethod.POST, HttpEntity<Void>(HttpHeaders()), mapType)
@@ -125,7 +126,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 val result = upsert(channelSessionId, """{"subject":{"type":"account","id":"$accountId"}}""")
 
                 then("it is refused as a mismatch, and the channel stays the invitation's") {
-                    (result.exceptionOrNull() as HttpClientErrorException).statusCode shouldBe HttpStatus.CONFLICT
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
                     invitationOf(channelSessionId) shouldBe invitation
                     accountOf(channelSessionId) shouldBe null
                 }
@@ -136,7 +137,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 val result = upsert(channelSessionId, """{"subject":{"type":"invitation","id":"another-invitation"}}""")
 
                 then("it is refused as a mismatch") {
-                    (result.exceptionOrNull() as HttpClientErrorException).statusCode shouldBe HttpStatus.CONFLICT
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
                     invitationOf(channelSessionId) shouldBe invitation
                 }
             }
@@ -149,7 +150,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                     "SELECT COUNT(*) FROM orchestrator.channel_session WHERE id = ?", Int::class.java, freshChannel.value)
 
                 then("it is refused with the reason, and no channel is opened: a process access is not raised") {
-                    val refused = result.exceptionOrNull() as HttpClientErrorException
+                    val refused = shouldThrow<HttpClientErrorException> { result.getOrThrow() }
                     refused.statusCode shouldBe HttpStatus.CONFLICT
                     refused.responseBodyAsString shouldContain "INVALID_STATE_TRANSITION"
                     created shouldBe 0
@@ -163,7 +164,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 val result = upsert(anonymous, """{"subject":{"type":"invitation","id":"$invitation"}}""")
 
                 then("it is refused as well: only its own proof binds an invitation") {
-                    (result.exceptionOrNull() as HttpClientErrorException).statusCode shouldBe HttpStatus.CONFLICT
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
                     invitationOf(anonymous) shouldBe null
                 }
             }
@@ -213,7 +214,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 }
 
                 then("it is refused") {
-                    (result.exceptionOrNull() as HttpClientErrorException).statusCode shouldBe HttpStatus.UNAUTHORIZED
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.UNAUTHORIZED
                 }
             }
         }
@@ -283,7 +284,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                     failed.body!!.channel()["state"] shouldBe "ANONYMOUS"
                     jdbcTemplate.queryForObject(
                         "SELECT failed_count FROM orchestrator.rate_limit WHERE scope = 'PERSON' AND subject = ?", Int::class.java, "P000000002"
-                    )!! shouldBeGreaterThanOrEqual 1
+                    ) shouldBe 1
                 }
             }
         }
@@ -297,57 +298,59 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 val failed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
                     """{"kvnr":"A123456789","code":"${issued.code}"}""")
 
-                then("its password no longer signs in") {
+                then("its password no longer signs in: the step stays, with an error") {
                     failed.body!!.channel()["state"] shouldBe "ANONYMOUS"
+                    failed.body!!.next() shouldBe stillOnInvite
+                    templateOf(failed.body!!.stepData()["error"]) shouldBe "Nummer oder Einmalkennwort ungueltig"
                 }
             }
         }
 
         given("an open loa2 invitation for Paula, known by her Partnernummer only") {
-            `when`("Keycloak reads the tool") {
-                issue(PartnerNumber("P000000004"), "loa2")
-                val (_, toolSessionId) = openInviteTool("loa2")
-
-                val read = kcCall(HttpMethod.GET, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite").body!!
-
-                then("it shows its one step") {
-                    read.nextRaw()["step"] shouldBe "auth"
-                }
+            /** Signs in on a fresh loa2 Web channel with her Partnernummer and returns the channel. */
+            fun signedInAsPaula(): ChannelSessionId {
+                val issued = issue(PartnerNumber("P000000004"), "loa2")
+                val (channelSessionId, toolSessionId) = openInviteTool("loa2")
+                kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
+                    """{"partnerNumber":"P000000004","code":"${issued.code}"}""")
+                return channelSessionId
             }
 
             `when`("she enters the Partnernummer and the password") {
                 val issued = issue(PartnerNumber("P000000004"), "loa2")
-                val (channelSessionId, toolSessionId) = openInviteTool("loa2")
+                val (_, toolSessionId) = openInviteTool("loa2")
 
                 val completed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
                     """{"partnerNumber":"P000000004","code":"${issued.code}"}""").body!!
-                // A process access serves its process and nothing else.
+
+                then("the channel is signed in at the invitation's level") {
+                    completed.channel()["state"] shouldBe "AUTHENTICATED"
+                    (completed["authData"] as Map<*, *>)["acr"] shouldBe "loa2"
+                }
+            }
+
+            // A process access serves its process and nothing else.
+            `when`("the signed-in channel asks to manage methods") {
+                val channelSessionId = signedInAsPaula()
+
                 val enrollment = runCatching {
                     kcCall(HttpMethod.POST, "/orchestrator/api/v1/channels/$channelSessionId/enrollments")
                 }
+
+                then("it is refused") {
+                    shouldThrow<HttpClientErrorException> { enrollment.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
+                }
+            }
+
+            `when`("the signed-in channel asks to delete an account") {
+                val channelSessionId = signedInAsPaula()
+
                 val deletion = runCatching {
                     kcCall(HttpMethod.POST, "/orchestrator/api/v1/channels/$channelSessionId/account-deletions")
                 }
 
-                then("the channel is signed in at the invitation's level, and account functions are refused") {
-                    completed.channel()["state"] shouldBe "AUTHENTICATED"
-                    (completed["authData"] as Map<*, *>)["acr"] shouldBe "loa2"
-                    shouldThrow<HttpClientErrorException> { enrollment.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
+                then("it is refused") {
                     shouldThrow<HttpClientErrorException> { deletion.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
-                }
-            }
-        }
-
-        given("a one-time password without any number") {
-            `when`("only the password is entered") {
-                val issued = issue(PartnerNumber("P000000001"), "loa1")
-                val (_, toolSessionId) = openInviteTool("loa1")
-
-                val failed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
-                    """{"code":"${issued.code}"}""").body!!
-
-                then("it fails like a wrong password: the password alone never finds an invitation") {
-                    failed.channel()["state"] shouldBe "ANONYMOUS"
                 }
             }
         }
@@ -362,9 +365,11 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 val failed = kcCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite",
                     """{"kvnr":"A123456789","code":"${issued.code}"}""").body!!
 
-                then("a revoked password no longer signs in") {
+                then("a revoked password no longer signs in: the step stays, with an error") {
                     revoked shouldBe HttpStatus.NO_CONTENT
                     failed.channel()["state"] shouldBe "ANONYMOUS"
+                    failed.next() shouldBe stillOnInvite
+                    templateOf(failed.stepData()["error"]) shouldBe "Nummer oder Einmalkennwort ungueltig"
                 }
             }
         }

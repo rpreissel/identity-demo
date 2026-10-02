@@ -17,37 +17,46 @@ import io.mockk.slot
 import io.mockk.verify
 import java.util.UUID
 
+/** One active tool session; a saved opt-in gets id 5. */
+private class Fixture {
+    val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
+    val saved = slot<EnrollQrToolSession>()
+    val sessions = mockk<EnrollQrToolSessionRepository>().also {
+        every { it.save(capture(saved)) } answers { saved.captured }
+        every { it.findByToolSessionId(any()) } returns null
+        every { it.findByToolSessionId(toolSessionId) } returns EnrollQrToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
+    }
+    val optIns = mockk<QrOptInRepository>().also {
+        every { it.save(any()) } answers { firstArg<QrOptIn>().apply { id = 5L } }
+    }
+    val handler = EnrollQrToolHandler(EnrollQrDescriptor, sessions, optIns, clock = TEST_CLOCK)
+}
+
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. enroll-qr is a pure opt-in:
  * the PATCH itself is the confirmation and writes a marker row, no secret.
  */
 class EnrollQrToolHandlerTest : BehaviorSpec({
 
-    val toolDataRepository = mockk<EnrollQrToolSessionRepository>()
-    val qrOptInRepository = mockk<QrOptInRepository>()
-    val handler = EnrollQrToolHandler(EnrollQrDescriptor, toolDataRepository, qrOptInRepository, clock = TEST_CLOCK)
+    given("no enroll-qr tool session yet") {
+        val f = Fixture()
 
-    given("start()") {
         `when`("an enroll-qr run begins") {
             val toolSessionId = ToolSessionId(UUID.randomUUID())
-            val saved = slot<EnrollQrToolSession>()
-            every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
-            val outcome = handler.start(toolSessionId)
+            val outcome = f.handler.start(toolSessionId)
 
             then("it records the run and waits at the descriptor's start step") {
-                saved.captured.toolSessionId shouldBe toolSessionId
+                f.saved.captured.toolSessionId shouldBe toolSessionId
                 outcome shouldBe ToolOutcome.InProgress(nextStep = EnrollQrDescriptor.startStep)
             }
         }
     }
 
     given("an active enroll-qr tool session") {
-        val toolSessionId = ToolSessionId(UUID.randomUUID())
-        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns EnrollQrToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-        every { qrOptInRepository.save(any()) } answers { firstArg<QrOptIn>().apply { id = 5L } }
+        val f = Fixture()
 
         `when`("the user confirms") {
-            val outcome = handler.patch(toolSessionId)
+            val outcome = f.handler.patch(f.toolSessionId)
 
             then("it writes the opt-in marker and enrolls it, with no amr and no factor") {
                 outcome shouldBe ToolOutcome.Completed.Enrolled(
@@ -60,19 +69,18 @@ class EnrollQrToolHandlerTest : BehaviorSpec({
         }
     }
 
-    given("no enroll-qr tool session") {
-        val unknownId = ToolSessionId(UUID.randomUUID())
-        every { toolDataRepository.findByToolSessionId(unknownId) } returns null
-        // Its own opt-in repository, so no earlier confirmation counts against the check below.
-        val untouchedOptIns = mockk<QrOptInRepository>()
-        val isolatedHandler = EnrollQrToolHandler(EnrollQrDescriptor, toolDataRepository, untouchedOptIns, clock = TEST_CLOCK)
+    given("an unknown enroll-qr tool session") {
+        val f = Fixture()
 
-        `when`("a confirmation arrives") {
-            val result = runCatching { isolatedHandler.patch(unknownId) }
+        `when`("a confirmation arrives for it") {
+            val result = runCatching { f.handler.patch(ToolSessionId(UUID.randomUUID())) }
 
-            then("it fails as a programming error and writes no opt-in") {
+            then("it fails as a programming error") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
-                verify(exactly = 0) { untouchedOptIns.save(any<QrOptIn>()) }
+            }
+
+            then("it writes no opt-in") {
+                verify(exactly = 0) { f.optIns.save(any<QrOptIn>()) }
             }
         }
     }

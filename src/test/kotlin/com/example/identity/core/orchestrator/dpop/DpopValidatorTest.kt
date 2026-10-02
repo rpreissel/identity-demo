@@ -5,10 +5,12 @@ import com.example.identity.TEST_NOW
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.JWSSigner
 import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.jwk.Curve
 import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.JWTClaimsSet
@@ -17,16 +19,14 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
-import io.mockk.every
-import io.mockk.mockk
-import org.springframework.dao.DataIntegrityViolationException
 import java.util.Date
 import java.util.UUID
 
 /**
  * Unit test of [DpopValidator]'s RFC 9449 proof checks, without Spring or HTTP. Integration tests mock
  * `DpopValidator`, so this is the only place its logic runs. [JwkThumbprintService] and
- * [DpopReplayProtectionService] are real, as in [DeviceProofValidatorTest].
+ * [DpopReplayProtectionService] are real, as in [DeviceProofValidatorTest]. How `htu` is compared
+ * is pinned by [HtuMatchesTest].
  */
 class DpopValidatorTest : BehaviorSpec({
 
@@ -41,212 +41,242 @@ class DpopValidatorTest : BehaviorSpec({
     val method = "POST"
     val url = "https://example.test/orchestrator/api/v1/channels"
 
+    /** A proof for [method] and [url]; each parameter breaks one part of it. `null` leaves the part out. */
     fun signProof(
         key: ECKey,
         htm: String = method,
         htu: String = url,
         issuedAt: Date = Date.from(TEST_NOW),
-        jti: String = UUID.randomUUID().toString(),
+        jti: String? = UUID.randomUUID().toString(),
         nonce: String? = null,
-        headerJwk: com.nimbusds.jose.jwk.JWK = key.toPublicJWK(),
-        type: String = "dpop+jwt",
-        algorithm: JWSAlgorithm = JWSAlgorithm.ES256
+        headerJwk: JWK? = key.toPublicJWK(),
+        type: String? = "dpop+jwt",
+        algorithm: JWSAlgorithm = JWSAlgorithm.ES256,
+        signer: JWSSigner = ECDSASigner(key.toECPrivateKey())
     ): String {
         val header = JWSHeader.Builder(algorithm)
-            .type(JOSEObjectType(type))
+            .apply { type?.let { type(JOSEObjectType(it)) } }
             .jwk(headerJwk)
             .build()
-        val claimsBuilder = JWTClaimsSet.Builder()
+        val claims = JWTClaimsSet.Builder()
             .jwtID(jti)
             .issueTime(issuedAt)
             .claim("htm", htm)
             .claim("htu", htu)
-        nonce?.let { claimsBuilder.claim("nonce", it) }
-        val signedJWT = SignedJWT(header, claimsBuilder.build())
-        signedJWT.sign(ECDSASigner(key.toECPrivateKey()))
-        return signedJWT.serialize()
+            .apply { nonce?.let { claim("nonce", it) } }
+            .build()
+        return SignedJWT(header, claims).apply { sign(signer) }.serialize()
     }
 
-    given("a validly signed, fresh DPoP proof") {
+    fun failureOf(result: Result<DpopProof>): DpopFailure =
+        shouldThrow<DpopValidationException> { result.getOrThrow() }.failure
+
+    given("a validly signed, fresh DPoP proof with a nonce") {
+        val key = ECKeyGenerator(Curve.P_256).generate()
+        val jti = UUID.randomUUID().toString()
+        val proof = signProof(key, jti = jti, nonce = "server-nonce")
+
         `when`("validating it") {
-            then("it succeeds and reports the proof's own claims") {
-                val key = ECKeyGenerator(Curve.P_256).generate()
-                val jti = UUID.randomUUID().toString()
-                val proof = signProof(key, jti = jti, nonce = "server-nonce")
+            val result = validator().validate(proof, method, url)
 
-                val result = validator().validate(proof, method, url)
-
+            then("it reports the proof's own claims and key") {
                 result.jti shouldBe jti
                 result.htm shouldBe method
                 result.htu shouldBe url
                 result.nonce shouldBe "server-nonce"
-                JwkThumbprintService().computeThumbprint(result.publicKey) shouldBe JwkThumbprintService().computeThumbprint(key.toPublicJWK())
+                JwkThumbprintService().computeThumbprint(result.publicKey) shouldBe
+                    JwkThumbprintService().computeThumbprint(key.toPublicJWK())
             }
         }
+    }
 
-        `when`("no nonce claim was sent") {
-            then("the result carries none either, rather than inventing one") {
-                val key = ECKeyGenerator(Curve.P_256).generate()
-                val result = validator().validate(signProof(key), method, url)
+    given("a validly signed, fresh DPoP proof without a nonce") {
+        val proof = signProof(ECKeyGenerator(Curve.P_256).generate())
+
+        `when`("validating it") {
+            val result = validator().validate(proof, method, url)
+
+            then("the result carries no nonce either, rather than inventing one") {
                 result.nonce.shouldBeNull()
             }
         }
+    }
 
-        `when`("the request URL carries a query string or fragment the proof's htu doesn't") {
-            then("it still matches - only the URL itself is compared, not query/fragment") {
-                val key = ECKeyGenerator(Curve.P_256).generate()
-                val proof = signProof(key, htu = url)
-                validator().validate(proof, method, "$url?foo=bar#section")
-            }
-        }
+    given("a proof the validator has already accepted once") {
+        val proof = signProof(ECKeyGenerator(Curve.P_256).generate())
+        val validator = validator()
+        validator.validate(proof, method, url)
 
-        `when`("validating that same proof a second time") {
+        `when`("validating the same proof a second time") {
+            val result = runCatching { validator.validate(proof, method, url) }
+
             then("it is rejected as a replay") {
-                val key = ECKeyGenerator(Curve.P_256).generate()
-                val proof = signProof(key)
-                val v = validator()
-
-                v.validate(proof, method, url)
-
-                shouldThrow<DpopValidationException> { v.validate(proof, method, url) }
+                failureOf(result) shouldBe DpopFailure.REPLAY
             }
         }
     }
 
     given("no proof at all") {
-        then("a null proof is rejected as missing") {
-            shouldThrow<DpopValidationException> { validator().validate(null, method, url) }
+        `when`("validating a null proof") {
+            val result = runCatching { validator().validate(null, method, url) }
+
+            then("it is rejected as missing") {
+                failureOf(result) shouldBe DpopFailure.MISSING
+            }
         }
-        then("a blank proof is rejected as missing") {
-            shouldThrow<DpopValidationException> { validator().validate("   ", method, url) }
+
+        `when`("validating a blank proof") {
+            val result = runCatching { validator().validate("   ", method, url) }
+
+            then("it is rejected as missing") {
+                failureOf(result) shouldBe DpopFailure.MISSING
+            }
         }
     }
 
     given("a proof that isn't a well-formed JWT at all") {
-        then("it is rejected as an invalid format") {
-            shouldThrow<DpopValidationException> { validator().validate("not-a-jwt", method, url) }
+        `when`("validating it") {
+            val result = runCatching { validator().validate("not-a-jwt", method, url) }
+
+            then("it is rejected as malformed") {
+                failureOf(result) shouldBe DpopFailure.MALFORMED
+            }
         }
     }
 
-    given("header problems") {
+    given("a proof with header problems") {
         val key = ECKeyGenerator(Curve.P_256).generate()
+        val rsaKey = RSAKeyGenerator(2048).generate()
 
-        then("a missing typ header is rejected") {
-            val header = JWSHeader.Builder(JWSAlgorithm.ES256).jwk(key.toPublicJWK()).build()
-            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build())
-            jwt.sign(ECDSASigner(key.toECPrivateKey()))
-            shouldThrow<DpopValidationException> { validator().validate(jwt.serialize(), method, url) }
+        `when`("the typ header is missing") {
+            val result = runCatching { validator().validate(signProof(key, type = null), method, url) }
+
+            then("it is rejected for its type") {
+                failureOf(result) shouldBe DpopFailure.WRONG_TYPE
+            }
         }
 
-        then("the wrong typ header is rejected") {
-            val proof = signProof(key, type = "JWT")
-            shouldThrow<DpopValidationException> { validator().validate(proof, method, url) }
+        `when`("the typ header is a plain JWT") {
+            val result = runCatching { validator().validate(signProof(key, type = "JWT"), method, url) }
+
+            then("it is rejected for its type") {
+                failureOf(result) shouldBe DpopFailure.WRONG_TYPE
+            }
         }
 
-        then("an unsupported algorithm is rejected") {
-            val rsaKey = RSAKeyGenerator(2048).generate()
-            val header = JWSHeader.Builder(JWSAlgorithm.RS256).type(JOSEObjectType("dpop+jwt")).jwk(rsaKey.toPublicJWK()).build()
-            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build())
-            jwt.sign(RSASSASigner(rsaKey.toPrivateKey()))
-            shouldThrow<DpopValidationException> { validator().validate(jwt.serialize(), method, url) }
+        `when`("the proof is signed with RS256") {
+            val proof = signProof(
+                key,
+                headerJwk = rsaKey.toPublicJWK(),
+                algorithm = JWSAlgorithm.RS256,
+                signer = RSASSASigner(rsaKey.toPrivateKey())
+            )
+            val result = runCatching { validator().validate(proof, method, url) }
+
+            then("it is rejected for its algorithm") {
+                failureOf(result) shouldBe DpopFailure.UNSUPPORTED_ALGORITHM
+            }
         }
 
-        then("a missing JWK is rejected") {
-            val header = JWSHeader.Builder(JWSAlgorithm.ES256).type(JOSEObjectType("dpop+jwt")).build()
-            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build())
-            jwt.sign(ECDSASigner(key.toECPrivateKey()))
-            shouldThrow<DpopValidationException> { validator().validate(jwt.serialize(), method, url) }
+        `when`("the header carries no JWK") {
+            val result = runCatching { validator().validate(signProof(key, headerJwk = null), method, url) }
+
+            then("it is rejected for its key") {
+                failureOf(result) shouldBe DpopFailure.INVALID_KEY
+            }
         }
 
         // `jwk.isPrivate` has no reachable test: Nimbus's JWSHeader.Builder.jwk() already rejects a
         // private JWK.
 
-        then("a header claiming an EC algorithm but carrying a non-EC JWK is rejected") {
-            val rsaKey = RSAKeyGenerator(2048).generate()
-            val header = JWSHeader.Builder(JWSAlgorithm.ES256).type(JOSEObjectType("dpop+jwt")).jwk(rsaKey.toPublicJWK()).build()
-            val jwt = SignedJWT(header, JWTClaimsSet.Builder().jwtID("j").issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build())
-            jwt.sign(ECDSASigner(key.toECPrivateKey()))
-            shouldThrow<DpopValidationException> { validator().validate(jwt.serialize(), method, url) }
-        }
-    }
+        `when`("the header claims an EC algorithm but carries an RSA JWK") {
+            val result = runCatching { validator().validate(signProof(key, headerJwk = rsaKey.toPublicJWK()), method, url) }
 
-    given("a proof whose header carries a different key than the one that signed it") {
-        then("the signature check fails") {
+            then("it is rejected for its key") {
+                failureOf(result) shouldBe DpopFailure.INVALID_KEY
+            }
+        }
+
+        `when`("the header carries a different key than the one that signed it") {
             val headerKey = ECKeyGenerator(Curve.P_256).generate()
-            val signingKey = ECKeyGenerator(Curve.P_256).generate()
-            val proof = signProof(signingKey, headerJwk = headerKey.toPublicJWK())
-            shouldThrow<DpopValidationException> { validator().validate(proof, method, url) }
+            val result = runCatching { validator().validate(signProof(key, headerJwk = headerKey.toPublicJWK()), method, url) }
+
+            then("the signature check fails") {
+                failureOf(result) shouldBe DpopFailure.INVALID_SIGNATURE
+            }
         }
     }
 
-    given("claim mismatches") {
+    given("a proof whose claims don't match the request") {
         val key = ECKeyGenerator(Curve.P_256).generate()
 
-        then("a different HTTP method than the request is rejected") {
-            val proof = signProof(key, htm = "GET")
-            shouldThrow<DpopValidationException> { validator().validate(proof, method, url) }
+        `when`("it names a different HTTP method") {
+            val result = runCatching { validator().validate(signProof(key, htm = "GET"), method, url) }
+
+            then("it is rejected for its method") {
+                failureOf(result) shouldBe DpopFailure.HTM_MISMATCH
+            }
         }
 
-        then("a different URL than the request is rejected") {
+        `when`("it names a different URL") {
             val proof = signProof(key, htu = "https://example.test/somewhere-else")
-            shouldThrow<DpopValidationException> { validator().validate(proof, method, url) }
+            val result = runCatching { validator().validate(proof, method, url) }
+
+            then("it is rejected for its URL") {
+                failureOf(result) shouldBe DpopFailure.HTU_MISMATCH
+            }
+        }
+
+        `when`("it has no jti") {
+            val result = runCatching { validator().validate(signProof(key, jti = null), method, url) }
+
+            then("it is rejected for the missing jti") {
+                failureOf(result) shouldBe DpopFailure.JTI_MISSING
+            }
         }
     }
 
-    given("timing problems") {
+    given("a proof whose iat lies outside the window") {
         val key = ECKeyGenerator(Curve.P_256).generate()
 
-        then("a proof issued too far in the future is rejected") {
+        `when`("it was issued beyond the clock-skew allowance in the future") {
             val proof = signProof(key, issuedAt = Date.from(TEST_NOW.plusSeconds(600)))
-            shouldThrow<DpopValidationException> { validator().validate(proof, method, url) }
+            val result = runCatching { validator().validate(proof, method, url) }
+
+            then("it is rejected as issued in the future") {
+                failureOf(result) shouldBe DpopFailure.IAT_IN_FUTURE
+            }
         }
 
-        then("a proof older than maxProofAgeSeconds is rejected") {
-            val proof = signProof(key, issuedAt = Date.from(TEST_NOW.minusSeconds(600)))
-            shouldThrow<DpopValidationException> { validator().validate(proof, method, url) }
-        }
-
-        then("a proof 90 seconds old is rejected: the window is 60 seconds without a nonce") {
+        `when`("it is 90 seconds old, beyond the 60-second window") {
             val proof = signProof(key, issuedAt = Date.from(TEST_NOW.minusSeconds(90)))
-            shouldThrow<DpopValidationException> { validator().validate(proof, method, url) }
-        }
+            val result = runCatching { validator().validate(proof, method, url) }
 
-        then("a proof 50 seconds old is accepted") {
-            val proof = signProof(key, issuedAt = Date.from(TEST_NOW.minusSeconds(50)))
-            validator().validate(proof, method, url)
-        }
-
-        then("a proof just inside the clock-skew allowance is accepted") {
-            val proof = signProof(key, issuedAt = Date.from(TEST_NOW.plusSeconds(29)))
-            validator().validate(proof, method, url)
+            then("it is rejected as too old") {
+                failureOf(result) shouldBe DpopFailure.IAT_TOO_OLD
+            }
         }
     }
 
-    given("a proof with no jti") {
-        then("it is rejected") {
-            val key = ECKeyGenerator(Curve.P_256).generate()
-            val header = JWSHeader.Builder(JWSAlgorithm.ES256).type(JOSEObjectType("dpop+jwt")).jwk(key.toPublicJWK()).build()
-            val claims = JWTClaimsSet.Builder().issueTime(Date.from(TEST_NOW)).claim("htm", method).claim("htu", url).build()
-            val jwt = SignedJWT(header, claims)
-            jwt.sign(ECDSASigner(key.toECPrivateKey()))
-            shouldThrow<DpopValidationException> { validator().validate(jwt.serialize(), method, url) }
+    given("a proof whose iat lies just inside the window") {
+        val key = ECKeyGenerator(Curve.P_256).generate()
+
+        `when`("it is 50 seconds old") {
+            val issuedAt = TEST_NOW.minusSeconds(50)
+            val result = validator().validate(signProof(key, issuedAt = Date.from(issuedAt)), method, url)
+
+            then("it is accepted with its own iat") {
+                result.issuedAt shouldBe issuedAt
+            }
+        }
+
+        `when`("it was issued 29 seconds in the future, inside the clock-skew allowance") {
+            val issuedAt = TEST_NOW.plusSeconds(29)
+            val result = validator().validate(signProof(key, issuedAt = Date.from(issuedAt)), method, url)
+
+            then("it is accepted with its own iat") {
+                result.issuedAt shouldBe issuedAt
+            }
         }
     }
 })
-
-/**
- * The smallest stub that keeps replay detection real: a set plus the primary-key violation. The
- * service only calls `insert`, and the insert is the check. The real behaviour is pinned by
- * `DpopReplayProtectionDbTest`.
- */
-private fun inMemoryReplayRepository(): DpopProofReplayRepository {
-    val seen = mutableSetOf<String>()
-    val repository = mockk<DpopProofReplayRepository>()
-    every { repository.insert(any(), any()) } answers {
-        val proofHash = firstArg<String>()
-        if (!seen.add(proofHash)) {
-            throw DataIntegrityViolationException("duplicate proof_hash $proofHash")
-        }
-    }
-    return repository
-}

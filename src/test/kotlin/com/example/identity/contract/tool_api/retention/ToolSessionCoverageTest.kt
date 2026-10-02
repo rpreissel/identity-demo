@@ -25,25 +25,25 @@ class ToolSessionCoverageTest : BehaviorSpec() {
     private lateinit var sweepers: List<ToolSessionSweeper>
 
     init {
-        given("every *_tool_session table in the schema") {
-            then("each one is emptied of expired rows by some module's sweeper") {
-                val tables = toolSessionTables()
-                tables.shouldNotBeEmptyList()
+        given("one long-expired row in every *_tool_session table of the schema") {
+            val tables = toolSessionTables()
+            tables.shouldNotBeEmptyList()
+            val expired = Instant.now().minusSeconds(365 * 24 * 3600)
+            tables.forEach { table -> insertExpiredRow(table, expired) }
 
-                // One long-expired row per table, then the sweep as the driver runs it. A leftover row
-                // names the module that lacks a ToolSessionSweeper.
-                val expired = Instant.now().minusSeconds(365 * 24 * 3600)
-                tables.forEach { table -> insertExpiredRow(table, expired) }
-
+            `when`("every module's sweeper runs as the driver runs it") {
                 sweepers.forEach { it.sweep(Instant.now().minusSeconds(24 * 3600)) }
 
-                val stillPopulated = tables.filter { table ->
-                    val remaining = jdbcTemplate.queryForObject(
-                        "select count(*) from $table where created_at < ?", Long::class.java, java.sql.Timestamp.from(expired.plusSeconds(1))
-                    ) ?: 0L
-                    remaining > 0
+                then("no table keeps its expired row") {
+                    // A table left over names the module that lacks a ToolSessionSweeper.
+                    val stillPopulated = tables.filter { table ->
+                        val remaining = jdbcTemplate.queryForObject(
+                            "select count(*) from $table where created_at < ?", Long::class.java, java.sql.Timestamp.from(expired.plusSeconds(1))
+                        ) ?: 0L
+                        remaining > 0
+                    }
+                    stillPopulated.shouldBeEmpty()
                 }
-                stillPopulated.shouldBeEmpty()
             }
         }
     }

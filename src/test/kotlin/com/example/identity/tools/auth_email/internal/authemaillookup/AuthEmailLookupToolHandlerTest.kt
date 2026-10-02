@@ -52,7 +52,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
         return toolSessionId to data
     }
 
-    given("start()") {
+    given("no auth-email-lookup tool session yet") {
         `when`("a lookup login begins") {
             val saved = slot<AuthEmailLookupToolSession>()
             every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
@@ -130,9 +130,8 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
     given("a resolved account with a pending code") {
         val toolSessionId = ToolSessionId(UUID.randomUUID())
         val issued = emailCodeGenerator.issue()
-        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns 
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns
             AuthEmailLookupToolSession(toolSessionId = toolSessionId, accountId = AccountId(42L), issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
-        
         every { accountDirectory.anchorValue(AccountId(42L), AttributeType.EMAIL) } returns "max@example.com"
 
         `when`("confirming with the correct code") {
@@ -163,9 +162,8 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
     given("an unresolved address with a pending code") {
         val toolSessionId = ToolSessionId(UUID.randomUUID())
         val issued = emailCodeGenerator.issue()
-        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns 
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns
             AuthEmailLookupToolSession(toolSessionId = toolSessionId, accountId = null, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
-        
 
         `when`("submitting even the issued code") {
             val outcome = handler.patch(toolSessionId, issued.plainCode)

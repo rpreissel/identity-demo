@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.session
 
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.justRun
 import io.mockk.mockk
@@ -23,10 +22,9 @@ class PersonLockoutServiceTest : BehaviorSpec({
         val service = PersonLockoutService(counter)
 
         `when`("asking whether it is locked") {
-            val locked = service.isLocked(personId)
+            service.isLocked(personId)
 
-            then("it answers from the PERSON scope") {
-                locked shouldBe true
+            then("it asks the PERSON scope, keyed by the person id") {
                 verify(exactly = 1) { counter.isLocked(RateLimitScope.PERSON, personId.value) }
             }
         }

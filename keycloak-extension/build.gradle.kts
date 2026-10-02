@@ -92,6 +92,8 @@ val generateOrchestratorModels = tasks.register<org.openapitools.generator.gradl
     globalProperties.set(mapOf("models" to "", "supportingFiles" to ""))
     generateModelDocumentation.set(false)
     generateApiDocumentation.set(false)
+    generateModelTests.set(false)
+    generateApiTests.set(false)
     configOptions.set(
         mapOf(
             // Jackson 2, wie es dieses Modul ohnehin shaded - so kommt KEINE Abhaengigkeit dazu.

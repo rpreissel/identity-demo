@@ -1,12 +1,12 @@
 package com.example.identity.core.orchestrator.admin
 
-import com.example.identity.contract.tool_api.ids.AccountId
-import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
+import com.example.identity.contract.tool_api.directory.PersonDirectory
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AccountService
-import com.example.identity.kcmigrate.federatedUserId
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.kc.KeycloakClientSessions
@@ -17,39 +17,52 @@ import com.example.identity.core.orchestrator.session.AppTokenSession
 import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
-import com.example.identity.contract.tool_api.directory.PersonDirectory
+import com.example.identity.kcmigrate.federatedUserId
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.ObjectProvider
 import java.time.Instant
+import java.util.UUID
 
 /** Keycloak's half of [ActiveSessions], against a fake instead of a running Keycloak. */
-class ActiveSessionsKeycloakTest {
+class ActiveSessionsKeycloakTest : BehaviorSpec({
 
-    private val repository = mockk<ChannelSessionRepository>(relaxed = true)
-    private val appTokenSessions = mockk<AppTokenSessionRepository>(relaxed = true)
-    private val accountService = mockk<AccountService> {
-        every { findAccount(any()) } returns null
-        every { findAccount(AccountId(7)) } returns AccountProfile(AccountId(7), PartnerNumber("P000000007"), emptyList())
+    val start = Instant.parse("2026-09-26T10:00:00Z")
+
+    /** [ActiveSessions] over relaxed repositories; account 7 is bound to "Mara Muster", no other account exists. */
+    class Fixture(source: KeycloakUserSessions?) {
+        val channels = mockk<ChannelSessionRepository>(relaxed = true)
+        val appTokenSessions = mockk<AppTokenSessionRepository>(relaxed = true)
+        private val accountService = mockk<AccountService> {
+            every { findAccount(any()) } returns null
+            every { findAccount(AccountId(7)) } returns AccountProfile(AccountId(7), PartnerNumber("P000000007"), emptyList())
+        }
+        private val personDirectory = mockk<PersonDirectory> { every { displayName(PartnerNumber("P000000007")) } returns "Mara Muster" }
+        val service = ActiveSessions(
+            channels, appTokenSessions, accountService, personDirectory,
+            mockk<ObjectProvider<KeycloakUserSessions>> { every { ifAvailable } returns source },
+            clock = TEST_CLOCK,
+        )
     }
-    private val personDirectory = mockk<PersonDirectory> { every { displayName(PartnerNumber("P000000007")) } returns "Mara Muster" }
 
-    private fun service(source: KeycloakUserSessions?) = ActiveSessions(
-        repository, appTokenSessions, accountService, personDirectory,
-        mockk<ObjectProvider<KeycloakUserSessions>> { every { ifAvailable } returns source },
-        clock = TEST_CLOCK,
-    )
+    fun session(id: String, userId: String?) = KeycloakUserSession(id, "user-$id", userId, start, start.plusSeconds(60))
 
-    private val start = Instant.parse("2026-09-26T10:00:00Z")
-
-    private fun session(id: String, userId: String?) = KeycloakUserSession(id, "user-$id", userId, start, start.plusSeconds(60))
-
-    private val appContext = AppTokenSession(accountId = AccountId(7), keycloakSessionId = "kc-app", now = TEST_NOW).apply { appTokenSessionId = java.util.UUID.randomUUID() }
-
-    @Test
-    fun `groups by client, names the account and finds the channel of each session`() {
+    given("Keycloak sessions of the app and the website, the website one run twice through the flow") {
+        val fake = KeycloakUserSessions {
+            mapOf(
+                KeycloakSessionClient.APP to KeycloakClientSessions("app-token", 1, listOf(session("kc-app", federatedUserId(7)))),
+                KeycloakSessionClient.WEBSITE to KeycloakClientSessions(
+                    "browser", 14, listOf(session("kc-web", federatedUserId(8)), session("kc-other", "local-user")),
+                ),
+            )
+        }
+        val fixture = Fixture(fake)
+        val appContext = AppTokenSession(accountId = AccountId(7), keycloakSessionId = "kc-app", now = TEST_NOW)
+            .apply { appTokenSessionId = UUID.randomUUID() }
         val appChannel = ChannelSession(ChannelType.APP, "key", start.plusSeconds(600), now = TEST_NOW).apply {
             state = ChannelState.AUTHENTICATED
             appTokenSessionId = appContext.appTokenSessionId
@@ -63,49 +76,60 @@ class ActiveSessionsKeycloakTest {
             state = ChannelState.AUTHENTICATED
             createdAt = start.plusSeconds(5)
         }
-        every { appTokenSessions.findByKeycloakSessionIdIn(listOf("kc-app")) } returns listOf(appContext)
-        every { repository.findByAppTokenSessionIdIn(listOf(appContext.appTokenSessionId!!)) } returns listOf(appChannel)
-        every { repository.findByDurableKcSessionIdIn(listOf("kc-web", "kc-other")) } returns listOf(older, newer)
-        val fake = KeycloakUserSessions {
-            mapOf(
-                KeycloakSessionClient.APP to KeycloakClientSessions("app-token", 1, listOf(session("kc-app", federatedUserId(7)))),
-                KeycloakSessionClient.WEBSITE to KeycloakClientSessions(
-                    "browser", 14, listOf(session("kc-web", federatedUserId(8)), session("kc-other", "local-user")),
-                ),
-            )
+        every { fixture.appTokenSessions.findByKeycloakSessionIdIn(listOf("kc-app")) } returns listOf(appContext)
+        every { fixture.channels.findByAppTokenSessionIdIn(listOf(appContext.appTokenSessionId!!)) } returns listOf(appChannel)
+        every { fixture.channels.findByDurableKcSessionIdIn(listOf("kc-web", "kc-other")) } returns listOf(older, newer)
+
+        `when`("the report is built") {
+            val keycloak = fixture.service.report().keycloak!!
+
+            then("it groups by client, website first, without an error") {
+                keycloak.error.shouldBeNull()
+                keycloak.clients.map { it.client } shouldBe listOf(KeycloakSessionClient.WEBSITE, KeycloakSessionClient.APP)
+            }
+
+            then("the website sessions name their accounts, and the later of two flow runs stands for its Keycloak session") {
+                val website = keycloak.clients[0]
+                website.count shouldBe 14
+                website.newest.map { it.accountId } shouldBe listOf(AccountId(8L), null)
+                website.newest[0].channelSessionId shouldBe newer.channelSessionId
+                website.newest[1].channelSessionId.shouldBeNull()
+            }
+
+            then("the app session names the account and finds its channel") {
+                val app = keycloak.clients[1].newest.single()
+                app.accountId shouldBe AccountId(7)
+                app.displayName shouldBe "Mara Muster"
+                app.channelSessionId shouldBe appChannel.channelSessionId
+                app.channelState shouldBe ChannelState.AUTHENTICATED
+            }
         }
+    }
 
-        val keycloak = service(fake).report().keycloak!!
+    given("an unreachable Keycloak and three app channels") {
+        val fixture = Fixture { error("Connection refused") }
+        every { fixture.channels.countByChannelAndStateNotInAndExpiresAtAfter(ChannelType.APP, any(), any()) } returns 3
 
-        assertThat(keycloak.error).isNull()
-        assertThat(keycloak.clients.map { it.client }).containsExactly(KeycloakSessionClient.WEBSITE, KeycloakSessionClient.APP)
-        val (website, app) = keycloak.clients
-        assertThat(website.count).isEqualTo(14)
-        assertThat(website.newest.map { it.accountId }).containsExactly(AccountId(8L), null)
-        // Two flow runs of one Keycloak session: the later one stands for it.
-        assertThat(website.newest[0].channelSessionId).isEqualTo(newer.channelSessionId)
-        assertThat(website.newest[1].channelSessionId).isNull()
-        with(app.newest.single()) {
-            assertThat(accountId).isEqualTo(AccountId(7))
-            assertThat(displayName).isEqualTo("Mara Muster")
-            assertThat(channelSessionId).isEqualTo(appChannel.channelSessionId)
-            assertThat(channelState).isEqualTo(ChannelState.AUTHENTICATED)
+        `when`("the report is built") {
+            val report = fixture.service.report()
+
+            then("the error is reported, the channels still are") {
+                report.channels.total shouldBe 3
+                report.keycloak!!.clients.shouldBeEmpty()
+                report.keycloak.error shouldBe "Connection refused"
+            }
         }
     }
 
-    @Test
-    fun `an unreachable Keycloak is reported, the channels still are`() {
-        every { repository.countByChannelAndStateNotInAndExpiresAtAfter(ChannelType.APP, any(), any()) } returns 3
+    given("no keycloak profile") {
+        val fixture = Fixture(source = null)
 
-        val report = service { error("Connection refused") }.report()
+        `when`("the report is built") {
+            val report = fixture.service.report()
 
-        assertThat(report.channels.total).isEqualTo(3)
-        assertThat(report.keycloak!!.clients).isEmpty()
-        assertThat(report.keycloak.error).isEqualTo("Connection refused")
+            then("there is no Keycloak block") {
+                report.keycloak.shouldBeNull()
+            }
+        }
     }
-
-    @Test
-    fun `without the keycloak profile there is no Keycloak block`() {
-        assertThat(service(null).report().keycloak).isNull()
-    }
-}
+})

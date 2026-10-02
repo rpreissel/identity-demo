@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -23,15 +22,13 @@ class LogoutStrategyTest : BehaviorSpec({
     val strategy = LogoutStrategy()
     val theCtx = ctx(account = account(method("sms", AcrLevel.LOA1)))
 
-    given("the intent") {
-        then("is LOGOUT") {
-            strategy.intent shouldBe AuthIntent.LOGOUT
-        }
-    }
+    given("a new journey") {
+        `when`("its first state is chosen") {
+            val initial = strategy.initialState(theCtx)
 
-    given("initialState") {
-        then("is the confirmation prompt") {
-            strategy.initialState(theCtx) shouldBe LogoutState.ConfirmPending
+            then("it is the confirmation prompt") {
+                initial shouldBe LogoutState.ConfirmPending
+            }
         }
     }
 

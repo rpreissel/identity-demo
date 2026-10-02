@@ -5,8 +5,6 @@ import com.example.identity.core.orchestrator.kc.PeerAuthValidator
 import com.example.identity.contract.tool_api.BindingKey
 import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.JavaMethod
-import com.tngtech.archunit.core.importer.ClassFileImporter
-import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.ArchCondition
 import com.tngtech.archunit.lang.ConditionEvents
 import com.tngtech.archunit.lang.SimpleConditionEvent
@@ -32,11 +30,7 @@ import org.springframework.web.bind.annotation.RestController
  */
 class ApiBoundaryArchitectureTest : BehaviorSpec({
 
-    val everything = ClassFileImporter()
-        .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-        .importPackages("com.example.identity")
-
-    /** Controllers without `@BindingKey`, by the protection they rely on instead. */
+        /** Controllers without `@BindingKey`, by the protection they rely on instead. */
     val guardedByAdminLogin = setOf(
         "com.example.identity.core.orchestrator.admin.AdminAccountsController",
         "com.example.identity.core.orchestrator.admin.AdminJourneyTraceController",
@@ -83,7 +77,7 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
                 .and(isHandler())
                 .should(haveBindingKey)
                 .because("DPoP binds a request to its channel only through @BindingKey - a handler without it is open")
-                .check(everything)
+                .check(MAIN_CLASSES)
         }
     }
 
@@ -97,13 +91,13 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
                 .or().haveFullyQualifiedName("com.example.identity.core.orchestrator.admin.DemoSessionsController")
                 .should().beAnnotatedWith(DemoSurface::class.java)
                 .because("reachable in an instance with real people, each would be a way to take over accounts")
-                .check(everything)
+                .check(MAIN_CLASSES)
         }
     }
 
     given("the controllers exempt because the admin login guards them") {
         then("they are mapped under ADMIN_API, the one path Spring Security protects (AdminSecurityConfig)") {
-            val outside = guardedByAdminLogin.map { everything.get(it) }
+            val outside = guardedByAdminLogin.map { MAIN_CLASSES.get(it) }
                 .filterNot { basePath(it).startsWith("/orchestrator/admin") }
                 .map { "${it.name} -> ${basePath(it)}" }
             outside.shouldBeEmpty()
@@ -115,13 +109,13 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
             classes()
                 .that(namedIn(guardedByPeerAuth))
                 .should().dependOnClassesThat().areAssignableTo(PeerAuthValidator::class.java)
-                .check(everything)
+                .check(MAIN_CLASSES)
         }
     }
 
     given("the exception list itself") {
         then("names only controllers that exist - a stale entry would hide nothing and mislead") {
-            exempt.filterNot { everything.contain(it) }.shouldBeEmpty()
+            exempt.filterNot { MAIN_CLASSES.contain(it) }.shouldBeEmpty()
         }
     }
 })

@@ -1,12 +1,12 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterEnrollFirstStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterStrategy
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
 import com.example.identity.tools.auth_password.EnrollPasswordDescriptor
+import com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor
 import com.example.identity.tools.auth_sms.AuthSmsDescriptor
 import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
+import com.example.identity.tools.ident_fsc.IdentFscDescriptor
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -14,18 +14,19 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrollFirstState
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.APP_SECOND_FACTOR_KINDS
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.emailAttestation
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.claims.Claim
-import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
@@ -43,11 +44,73 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
 
     // Mirrors the literal RegisterEnrollFirstStrategy.offerIdentificationOrFinish builds: its closing
     // offer needs its own wording (never identified before), not RE_IDENTIFY's shared default text.
-    val enrollFirstIdentificationWording = ReIdentifyState.Wording.OPTIONAL_IDENTIFICATION
+    fun optionalIdentification(startingAcr: AcrLevel) = Transition.RequireSubJourney(
+        AuthIntent.RE_IDENTIFY,
+        seedWith = ReIdentifyState.forSubJourney(
+            targetAcr = AcrLevel.LOA1,
+            startingAcr = startingAcr,
+            wording = ReIdentifyState.Wording.OPTIONAL_IDENTIFICATION
+        ),
+        resumeWith = RegisterEnrollFirstState.EnrollFirstStart
+    )
 
-    given("the intent") {
-        then("is REGISTER, same as the ident-first variant - only the dispatcher tells them apart") {
-            strategy.intent shouldBe AuthIntent.REGISTER
+    val smsEnrollment = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
+    val passwordEnrollment = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("password", "ref"))
+
+    // Every state here is mandatory and maps a completed tool the same way: an enrollment adopts the
+    // credential, an attestation the address. The run resumes where it was.
+    listOf(
+        EnrollFirstCompletion(
+            RegisterEnrollFirstState.EnrollFirstAttestingEmail(Offer(listOf(ToolId("confirm-email")))),
+            JourneyEvent.Completed(ConfirmEmailDescriptor, emailAttestation()),
+            Action.AdoptAttestation(ConfirmEmailDescriptor, emailAttestation())
+        ),
+        EnrollFirstCompletion(
+            RegisterEnrollFirstState.EnrollFirstEnrollingSms(Offer(listOf(ToolId("enroll-sms")))),
+            JourneyEvent.Completed(EnrollSmsDescriptor, smsEnrollment),
+            Action.AdoptCredential(EnrollSmsDescriptor, smsEnrollment)
+        ),
+        EnrollFirstCompletion(
+            RegisterEnrollFirstState.EnrollFirstEnrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password")))),
+            JourneyEvent.Completed(EnrollPasswordDescriptor, passwordEnrollment),
+            Action.AdoptCredential(EnrollPasswordDescriptor, passwordEnrollment)
+        ),
+        EnrollFirstCompletion(
+            RegisterEnrollFirstState.EnrollFirstConfirmingEmail(Offer(listOf(ToolId("confirm-email")))),
+            JourneyEvent.Completed(ConfirmEmailDescriptor, emailAttestation()),
+            Action.AdoptAttestation(ConfirmEmailDescriptor, emailAttestation())
+        ),
+        EnrollFirstCompletion(
+            RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS)),
+            JourneyEvent.Completed(EnrollPasswordDescriptor, passwordEnrollment),
+            Action.AdoptCredential(EnrollPasswordDescriptor, passwordEnrollment)
+        )
+    ).forEach { (state, event, action) ->
+        given("${state::class.simpleName}, its offered tool about to complete") {
+            `when`("the tool completes") {
+                val transition = strategy.transition(state, event, ctx())
+                then("performs ${action::class.simpleName} and resumes in the same state") {
+                    transition shouldBe Transition.Perform(action, resumeState = state)
+                }
+            }
+        }
+    }
+
+    given("EnrollFirstEnrolling, a tool that neither enrolls nor attests reports back") {
+        val state = RegisterEnrollFirstState.EnrollFirstEnrolling(Offer(listOf(ToolId("enroll-sms"))))
+
+        listOf(
+            JourneyEvent.Completed(IdentFscDescriptor, identifiedOutcome()),
+            JourneyEvent.Completed(AuthSmsDescriptor, ToolOutcome.Completed.Authenticated(amr = listOf("sms"))),
+            JourneyEvent.Completed(ConfirmQrLoginDescriptor, ToolOutcome.Completed.Approved())
+        ).forEach { event ->
+            `when`("it completes with ${event.outcome::class.simpleName}") {
+                val result = runCatching { strategy.transition(state, event, ctx()) }
+
+                then("the outcome is refused - this journey never offers such a tool") {
+                    shouldThrow<IllegalStateException> { result.getOrThrow() }
+                }
+            }
         }
     }
 
@@ -79,8 +142,9 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         `when`("started") {
             val transition = strategy.transition(RegisterEnrollFirstState.EnrollFirstStart, JourneyEvent.Started, theCtx)
             then("falls back to the old free-choice-among-everything offer instead of crashing on a missing account") {
-                transition
-                    .shouldBeEnrollingWith("enroll-device", "enroll-kobil", "enroll-qr")
+                val next = transition.shouldBeInstanceOf<Transition.To>().state
+                next.shouldBeInstanceOf<RegisterEnrollFirstState.EnrollFirstEnrolling>().offered shouldContainExactlyInAnyOrder
+                    listOf(ToolId("enroll-device"), ToolId("enroll-kobil"), ToolId("enroll-qr"))
             }
         }
     }
@@ -90,17 +154,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("email"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
         val state = RegisterEnrollFirstState.EnrollFirstAttestingEmail(Offer(listOf(ToolId("confirm-email"))))
 
-        `when`("email is just enrolled") {
-            val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("email", "ref"))
-            val event = JourneyEvent.Completed(ConfirmEmailDescriptor, outcome)
-            val transition = strategy.transition(state, event, theCtx)
-            then("adopts the credential") {
-                transition shouldBe
-                    Transition.Perform(Action.AdoptCredential(ConfirmEmailDescriptor, outcome), resumeState = state)
-            }
-        }
-
-        `when`("resumed after adopting (ActionCompleted)") {
+        `when`("resumed after adopting the attestation (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("moves on to the mandatory SMS step - not to the free-choice menu") {
                 transition shouldBe
@@ -109,10 +163,10 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         }
     }
 
-    given("EnrollFirstAttestingEmail, more than one offered candidate") {
+    given("EnrollFirstAttestingEmail, the mandatory email step offered") {
         val state = RegisterEnrollFirstState.EnrollFirstAttestingEmail(Offer(listOf(ToolId("confirm-email"))))
 
-        `when`("a tool is abandoned") {
+        `when`("the tool is abandoned") {
             val transition = strategy.transition(state, JourneyEvent.Abandoned(ConfirmEmailDescriptor), ctx())
             then("re-offers the same mandatory step, no skipping ahead to SMS") {
                 transition shouldBe
@@ -126,17 +180,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
         val state = RegisterEnrollFirstState.EnrollFirstEnrollingSms(Offer(listOf(ToolId("enroll-sms"))))
 
-        `when`("sms is just enrolled") {
-            val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
-            val event = JourneyEvent.Completed(AuthSmsDescriptor, outcome)
-            val transition = strategy.transition(state, event, theCtx)
-            then("adopts the credential") {
-                transition shouldBe
-                    Transition.Perform(Action.AdoptCredential(AuthSmsDescriptor, outcome), resumeState = state)
-            }
-        }
-
-        `when`("resumed after adopting (ActionCompleted)") {
+        `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("falls into the normal obligation cascade - email is always obligatory here") {
                 transition shouldBe
@@ -145,10 +189,10 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         }
     }
 
-    given("EnrollFirstEnrollingSms, more than one offered candidate") {
+    given("EnrollFirstEnrollingSms, the mandatory SMS step offered") {
         val state = RegisterEnrollFirstState.EnrollFirstEnrollingSms(Offer(listOf(ToolId("enroll-sms"))))
 
-        `when`("a tool is abandoned") {
+        `when`("the tool is abandoned") {
             val transition = strategy.transition(state, JourneyEvent.Abandoned(EnrollSmsDescriptor), ctx())
             then("re-offers the same mandatory step") {
                 transition shouldBe
@@ -192,17 +236,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
         val state = RegisterEnrollFirstState.EnrollFirstEnrolling(Offer(listOf(ToolId("enroll-sms"))))
 
-        `when`("a method is just enrolled") {
-            val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
-            val event = JourneyEvent.Completed(AuthSmsDescriptor, outcome)
-            val transition = strategy.transition(state, event, theCtx)
-            then("adopts the credential") {
-                transition shouldBe
-                    Transition.Perform(Action.AdoptCredential(AuthSmsDescriptor, outcome), resumeState = state)
-            }
-        }
-
-        `when`("resumed after adopting (ActionCompleted)") {
+        `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("moves on to ConfirmingEmail - email is always obligatory here") {
                 transition shouldBe
@@ -218,18 +252,6 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
             acrFloor = AcrLevel.LOA1, channel = ChannelType.APP, availableTools = StrategyTestFixtures.appTools
         )
         val state = RegisterEnrollFirstState.EnrollFirstConfirmingEmail(Offer(listOf(ToolId("confirm-email"))))
-
-        `when`("the email is confirmed (Attested)") {
-            val outcome = ToolOutcome.Completed.Attested(
-                claims = listOf(Claim(AttributeType.EMAIL, "max@example.com", ClaimSource("confirm-email")))
-            )
-            val event = JourneyEvent.Completed(ConfirmEmailDescriptor, outcome)
-            val transition = strategy.transition(state, event, theCtx)
-            then("the address is attested") {
-                transition shouldBe
-                    Transition.Perform(Action.AdoptAttestation(ConfirmEmailDescriptor, outcome), resumeState = state)
-            }
-        }
 
         `when`("resumed after attesting (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
@@ -248,17 +270,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         )
         val state = RegisterEnrollFirstState.EnrollFirstConfirmingEmail(Offer(listOf(ToolId("confirm-email"))))
 
-        `when`("the email is confirmed (Enrolled)") {
-            val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("email", "ref"))
-            val event = JourneyEvent.Completed(ConfirmEmailDescriptor, outcome)
-            val transition = strategy.transition(state, event, theCtx)
-            then("adopts the credential") {
-                transition shouldBe
-                    Transition.Perform(Action.AdoptCredential(ConfirmEmailDescriptor, outcome), resumeState = state)
-            }
-        }
-
-        `when`("resumed after adopting (ActionCompleted)") {
+        `when`("resumed after attesting (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("falls through to the still-open factor-kind obligation with only the password, not to the identification offer yet") {
                 transition shouldBe
@@ -278,21 +290,10 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         )
         val state = RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS))
 
-        `when`("the password is just enrolled") {
-            val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("password", "ref"))
-            val event = JourneyEvent.Completed(EnrollPasswordDescriptor, outcome)
-            val transition = strategy.transition(state, event, theCtx)
-            then("adopts the credential") {
-                transition shouldBe
-                    Transition.Perform(Action.AdoptCredential(EnrollPasswordDescriptor, outcome), resumeState = state)
-            }
-        }
-
-        `when`("resumed after adopting (ActionCompleted)") {
+        `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("offers the optional identification step - no second round for the device binding") {
-                transition.shouldBeInstanceOf<Transition.RequireSubJourney>()
-                transition.intent shouldBe AuthIntent.RE_IDENTIFY
+                transition shouldBe optionalIdentification(startingAcr = AcrLevel.LOA1)
             }
         }
     }
@@ -306,18 +307,14 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         )
         val state = RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS))
 
-        `when`("resumed after adopting (ActionCompleted)") {
+        `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("offers the optional identification step - no password on top") {
-                transition.shouldBeInstanceOf<Transition.RequireSubJourney>()
+                transition shouldBe optionalIdentification(startingAcr = AcrLevel.LOA2)
             }
         }
     }
 })
 
-private fun Transition.shouldBeEnrollingWith(vararg toolIds: String) {
-    require(this is Transition.To) { "expected Transition.To, was $this" }
-    val to = state
-    require(to is RegisterEnrollFirstState.EnrollFirstEnrolling) { "expected RegisterEnrollFirstState.EnrollFirstEnrolling, was $to" }
-    to.offered shouldContainExactlyInAnyOrder toolIds.map { ToolId(it) }
-}
+/** One row of the completed-tool table: the state, the completion it receives, the action it performs. */
+private data class EnrollFirstCompletion(val state: RegisterEnrollFirstState, val event: JourneyEvent.Completed, val action: Action)

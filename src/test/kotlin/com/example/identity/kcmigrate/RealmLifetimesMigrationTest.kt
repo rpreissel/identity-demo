@@ -17,12 +17,6 @@ import org.keycloak.representations.idm.RealmRepresentation
  */
 class RealmLifetimesMigrationTest : BehaviorSpec({
 
-    val setup = RealmSetup(
-        realmName = "demo", realmDisplayName = "Demo", loginTheme = "orchestrator",
-        browserClientId = "web", adminApiClientId = "admin", appTokenClientId = "app",
-        browserRedirectUris = listOf("http://localhost/*"), orchestratorBaseUrl = "http://orchestrator:8080",
-        publicOrchestratorBaseUrl = "http://localhost:8080", peerAuthIssuer = "kc", peerAuthAudience = "orch"
-    )
     val migration = checkNotNull(
         RealmLifetimesMigrationTest::class.java.getResource("/keycloak-migrations/V5__realm_lifetimes.kc.kts")
     ).readText().let { checkNotNull(MigrationFile.parse("V5__realm_lifetimes.kc.kts", it)) }
@@ -58,7 +52,7 @@ class RealmLifetimesMigrationTest : BehaviorSpec({
             every { realm.flows() } returns flows
             val kc = mockk<Keycloak>()
             every { kc.realm("demo") } returns realm
-            runner = MigrationRunner(kc, setup, listOf(migration), allowRealmReset = false)
+            runner = MigrationRunner(kc, TEST_REALM_SETUP, listOf(migration), allowRealmReset = false)
         }
     }
 

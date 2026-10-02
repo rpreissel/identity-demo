@@ -1,4 +1,4 @@
-// Cuts the raw recording of e2e-video/demo.spec.ts into docs/media/demo.mp4 (called by record-demo-video.sh).
+// Cuts the raw recording of e2e-video/demo.record.ts into docs/media/demo.mp4 (called by record-demo-video.sh).
 // timing.json holds the spec's clock: when the first card appeared (calibration), when the app tab was shown and
 // which stretches were hidden (page loads). The first dark frame of the video is that first card, which aligns
 // the spec's clock with the video's. Then: app tab as picture-in-picture, hidden stretches cut out.

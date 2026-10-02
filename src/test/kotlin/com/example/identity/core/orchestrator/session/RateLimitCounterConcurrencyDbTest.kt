@@ -21,24 +21,31 @@ class RateLimitCounterConcurrencyDbTest(
     private val repository: RateLimitRecordRepository,
 ) : BehaviorSpec({
 
-    given("eight failed attempts at once on a fresh subject") {
-        then("all eight are counted") {
-            val subject = "concurrency-" + UUID.randomUUID()
+    given("a subject without a counter yet") {
+        val subject = "concurrency-" + UUID.randomUUID()
+
+        `when`("eight failed attempts arrive at once") {
             val start = CountDownLatch(1)
             val pool = Executors.newFixedThreadPool(8)
-            try {
-                val results = (1..8).map {
+            val results = try {
+                val futures = (1..8).map {
                     pool.submit(Callable {
                         start.await()
                         runCatching { rateLimitCounter.recordFailure(RateLimitScope.ACCOUNT, subject, maxFailures = 100, lockout = Duration.ofMinutes(15)) }
                     })
                 }
                 start.countDown()
-                results.map { it.get() }.filter { it.isFailure }.map { it.exceptionOrNull()?.toString() } shouldBe emptyList()
+                futures.map { it.get() }
             } finally {
                 pool.shutdownNow()
             }
-            repository.findFailedCount(RateLimitScope.ACCOUNT.name, subject) shouldBe 8
+
+            then("none of them fails") {
+                results.filter { it.isFailure }.map { it.exceptionOrNull()?.toString() } shouldBe emptyList()
+            }
+            then("all eight are counted") {
+                repository.findFailedCount(RateLimitScope.ACCOUNT.name, subject) shouldBe 8
+            }
         }
     }
 })

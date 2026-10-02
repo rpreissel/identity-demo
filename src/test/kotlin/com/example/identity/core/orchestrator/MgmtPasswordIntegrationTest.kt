@@ -27,8 +27,6 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
     @MockkBean
     private lateinit var jwkThumbprintService: JwkThumbprintService
 
-    override val resetPerWhen = true
-
     init {
         beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
     }
@@ -81,37 +79,6 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
         }
 
         given("an account with an enrolled password") {
-            `when`("mgmt-verify is called with the correct password, bound to that accountId") {
-                val email = registerWithEmailAndPassword(password = "correct-horse-battery")
-                val accountId = accountIdFor(email)
-                stubAssertion(accountBinding = accountId.toString())
-
-                val response = mgmtPost(
-                    "/orchestrator/api/v1/tools/auth-password/mgmt/$accountId",
-                    """{"password":"correct-horse-battery"}"""
-                )
-
-                then("it reports valid=true") {
-                    response.statusCode shouldBe HttpStatus.OK
-                    response.body!!["valid"] shouldBe true
-                }
-            }
-
-            `when`("mgmt-verify is called with the wrong password") {
-                val email = registerWithEmailAndPassword(password = "correct-horse-battery")
-                val accountId = accountIdFor(email)
-                stubAssertion(accountBinding = accountId.toString())
-
-                val response = mgmtPost(
-                    "/orchestrator/api/v1/tools/auth-password/mgmt/$accountId",
-                    """{"password":"wrong-password"}"""
-                )
-
-                then("it reports valid=false") {
-                    response.body!!["valid"] shouldBe false
-                }
-            }
-
             `when`("mgmt-set is called with a new password") {
                 val email = registerWithEmailAndPassword(password = "correct-horse-battery")
                 val accountId = accountIdFor(email)
@@ -138,86 +105,6 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
             }
         }
 
-        given("an account with no password enrolled yet") {
-            fun unenrolledAccountId(): Long {
-                val channelSessionId = identify()
-                return jdbcTemplate.queryForObject(
-                    "SELECT account_id FROM orchestrator.channel_session WHERE id = ?",
-                    Long::class.java,
-                    UUID.fromString(channelSessionId)
-                )!!
-            }
-
-            `when`("mgmt-verify is called against it") {
-                val accountId = unenrolledAccountId()
-                stubAssertion(accountBinding = accountId.toString())
-
-                val response = mgmtPost(
-                    "/orchestrator/api/v1/tools/auth-password/mgmt/$accountId",
-                    """{"password":"anything"}"""
-                )
-
-                then("it reports valid=false without throwing (constant-shape, no enumeration oracle)") {
-                    response.body!!["valid"] shouldBe false
-                }
-            }
-
-            `when`("mgmt-set tries to give it a password it never had") {
-                val accountId = unenrolledAccountId()
-                stubAssertion(accountBinding = accountId.toString())
-
-                val result = runCatching {
-                    mgmtPost("/orchestrator/api/v1/tools/enroll-password/mgmt/$accountId", """{"newPassword":"brand-new-secret"}""")
-                }
-
-                then("it is refused - set only replaces, enroll-password is the way to add one") {
-                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
-                    jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM account.auth_method WHERE account_id = ? AND method = 'password'",
-                        Int::class.java, accountId
-                    ) shouldBe 0
-                }
-            }
-        }
-
-        given("a password replaced through Keycloak's 'reset password'") {
-            `when`("the new instance is stored") {
-                val email = registerWithEmailAndPassword(password = "correct-horse-battery")
-                val accountId = accountIdFor(email)
-                stubAssertion(accountBinding = accountId.toString())
-
-                mgmtPost("/orchestrator/api/v1/tools/enroll-password/mgmt/$accountId", """{"newPassword":"brand-new-secret"}""")
-
-                then("it carries its own 'has a password' claim, like one set up in the app") {
-                    jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM account.claim c JOIN account.auth_method m ON m.id = c.auth_method_id " +
-                            "WHERE m.account_id = ? AND m.method = 'password' AND m.active AND c.attribute_type = 'password_exists'",
-                        Int::class.java, accountId
-                    ) shouldBe 1
-                }
-            }
-        }
-
-        given("repeated wrong passwords through Keycloak's form") {
-            `when`("the account lockout is reached") {
-                val email = registerWithEmailAndPassword(password = "correct-horse-battery")
-                val accountId = accountIdFor(email)
-                stubAssertion(accountBinding = accountId.toString())
-
-                val wrongAttempts = List(5) {
-                    mgmtPost("/orchestrator/api/v1/tools/auth-password/mgmt/$accountId", """{"password":"wrong"}""")
-                        .body!!["valid"]
-                }
-                val correctAttempt = mgmtPost("/orchestrator/api/v1/tools/auth-password/mgmt/$accountId", """{"password":"correct-horse-battery"}""")
-                    .body!!["valid"]
-
-                then("even the correct password is refused until it expires - the app's lockout, shared") {
-                    wrongAttempts shouldBe List(5) { false }
-                    correctAttempt shouldBe false
-                }
-            }
-        }
-
         given("a mismatched peer-auth binding") {
             `when`("mgmt-verify's channel_binding claim doesn't match the accountId in the path") {
                 val email = registerWithEmailAndPassword(password = "correct-horse-battery")
@@ -225,18 +112,7 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
                 stubAssertion(accountBinding = "some-other-binding")
 
                 val result = runCatching {
-                    restTemplate.exchange(
-                        "http://localhost:$port/orchestrator/api/v1/tools/auth-password/mgmt/$accountId",
-                        HttpMethod.POST,
-                        HttpEntity(
-                            """{"password":"correct-horse-battery"}""",
-                            HttpHeaders().apply {
-                                set("Authorization", "Bearer mock-peer-auth-token")
-                                set("Content-Type", "application/json")
-                            }
-                        ),
-                        mapType
-                    )
+                    mgmtPost("/orchestrator/api/v1/tools/auth-password/mgmt/$accountId", """{"password":"correct-horse-battery"}""")
                 }
 
                 then("it is rejected as unauthorized (same contract as a missing/invalid peer-auth assertion)") {

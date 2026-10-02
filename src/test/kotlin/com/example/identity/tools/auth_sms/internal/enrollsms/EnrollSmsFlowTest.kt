@@ -5,149 +5,119 @@ import com.example.identity.tools.auth_sms.internal.TanGenerator
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import java.util.UUID
-import com.example.identity.contract.tool_api.MissingFields
 
 /**
  * Pure unit test for the decision table alone: no Spring, no repositories, no [EnrollSmsToolHandler] -
  * just [EnrollSmsState] in, [EnrollSmsDecision] out. [EnrollSmsToolHandlerTest] covers the other half,
  * how a [EnrollSmsDecision] gets translated into persistence and [com.example.identity.contract.tool_api.ToolOutcome].
+ * Which numbers count as valid is [com.example.identity.contract.tool_api.values.PhoneNumberTest]'s matter.
  */
 class EnrollSmsFlowTest : BehaviorSpec({
 
     // Explicit pepper so issue()/matches() stay reproducible within the test run.
     val tanGenerator = TanGenerator("test-pepper", clock = TEST_CLOCK)
 
-    given("AwaitingPhoneNumber") {
+    given("a session still awaiting the phone number") {
         val state = EnrollSmsState.AwaitingPhoneNumber
 
         `when`("nothing was submitted") {
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(), tanGenerator)
+
             then("the state is unchanged") {
-                EnrollSmsFlow.decide(state, EnrollSmsInput(), tanGenerator) shouldBe EnrollSmsDecision.Unchanged(state)
+                decision shouldBe EnrollSmsDecision.Unchanged(state)
             }
         }
 
         `when`("an unrecognizable phone number was submitted") {
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "not-a-number"), tanGenerator)
+
             then("it is rejected as invalid") {
-                EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "not-a-number"), tanGenerator) shouldBe
-                    EnrollSmsDecision.InvalidPhoneNumber("not-a-number")
-            }
-        }
-
-        `when`("a number outside the EU/EEA, or without a country code, was submitted") {
-            then("it is rejected before any SMS is sent") {
-                listOf("+1 202 555 0143", "+44 7700 900123", "0170 1234567", "+49 12").forEach { number ->
-                    EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = number), tanGenerator) shouldBe
-                        EnrollSmsDecision.InvalidPhoneNumber(number)
-                }
-            }
-        }
-
-        `when`("an EU/EEA number arrives in another spelling") {
-            then("it is normalized - 00 becomes +, separators go") {
-                EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "0049 (170) 123-4567"), tanGenerator) shouldBe
-                    EnrollSmsDecision.SendTan("+491701234567")
-                EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "+47 412 34 567"), tanGenerator) shouldBe
-                    EnrollSmsDecision.SendTan("+4741234567")
+                decision shouldBe EnrollSmsDecision.InvalidPhoneNumber("not-a-number")
             }
         }
 
         `when`("a valid phone number was submitted") {
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "+49 170 1234567"), tanGenerator)
+
             then("a TAN is sent to the normalized number") {
-                EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "+49 170 1234567"), tanGenerator) shouldBe
-                    EnrollSmsDecision.SendTan("+491701234567")
+                decision shouldBe EnrollSmsDecision.SendTan("+491701234567")
             }
         }
 
         `when`("a valid phone number AND a tan were submitted together") {
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "+49 170 1234567", tan = "123456"), tanGenerator)
+
             then("the phone number wins - there is no pending TAN yet for any tan to be checked against") {
-                val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "+49 170 1234567", tan = "123456"), tanGenerator)
                 decision shouldBe EnrollSmsDecision.SendTan("+491701234567")
             }
         }
     }
 
-    given("AwaitingTan for +491701234567") {
+    given("a pending TAN for +491701234567") {
         val issued = tanGenerator.issue()
         val state = EnrollSmsState.AwaitingTan("+491701234567", issued.hash, issued.expiresAt)
 
         `when`("nothing was submitted") {
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(), tanGenerator)
+
             then("the state is unchanged") {
-                EnrollSmsFlow.decide(state, EnrollSmsInput(), tanGenerator) shouldBe EnrollSmsDecision.Unchanged(state)
+                decision shouldBe EnrollSmsDecision.Unchanged(state)
             }
         }
 
         `when`("the wrong tan was submitted") {
-            then("it is rejected without completing") {
-                EnrollSmsFlow.decide(state, EnrollSmsInput(tan = "000000"), tanGenerator) shouldBe EnrollSmsDecision.WrongTan(state)
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(tan = "000000"), tanGenerator)
+
+            then("it is rejected without completing, carrying the unchanged state") {
+                decision shouldBe EnrollSmsDecision.WrongTan(state)
             }
         }
 
         `when`("the correct tan was submitted") {
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(tan = issued.plainTan), tanGenerator)
+
             then("the enrollment completes for this phone number") {
-                EnrollSmsFlow.decide(state, EnrollSmsInput(tan = issued.plainTan), tanGenerator) shouldBe
-                    EnrollSmsDecision.Complete("+491701234567")
+                decision shouldBe EnrollSmsDecision.Complete("+491701234567")
             }
         }
 
         `when`("a different phone number AND the still-valid tan for the old one were submitted together") {
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "+49 171 9999999", tan = issued.plainTan), tanGenerator)
+
             then("the new number wins - a changed number invalidates whatever TAN was pending for the old one") {
-                val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "+49 171 9999999", tan = issued.plainTan), tanGenerator)
                 decision shouldBe EnrollSmsDecision.SendTan("+491719999999")
             }
         }
 
         `when`("an unrecognizable phone number was submitted instead") {
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "not-a-number"), tanGenerator)
+
             then("it is rejected as invalid, the pending TAN untouched") {
-                EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "not-a-number"), tanGenerator) shouldBe
-                    EnrollSmsDecision.InvalidPhoneNumber("not-a-number")
+                decision shouldBe EnrollSmsDecision.InvalidPhoneNumber("not-a-number")
             }
         }
     }
 
-    given("describe()") {
-        `when`("AwaitingPhoneNumber") {
-            then("it asks for phoneNumber at step enroll") {
-                EnrollSmsState.AwaitingPhoneNumber.describe() shouldBe
-                    ("enroll" to MissingFields(listOf("phoneNumber")))
-            }
-        }
+    given("persisted columns without a phone number") {
+        `when`("the state is rebuilt from them") {
+            val rebuilt = EnrollSmsState.of(ToolSessionId(UUID.randomUUID()), null, null, null)
 
-        `when`("AwaitingTan") {
-            then("it asks for tan at step tanInput") {
-                val issued = tanGenerator.issue()
-                val state = EnrollSmsState.AwaitingTan("+491701234567", issued.hash, issued.expiresAt)
-                state.describe() shouldBe ("tanInput" to MissingFields(listOf("tan")))
+            then("it is AwaitingPhoneNumber") {
+                rebuilt shouldBe EnrollSmsState.AwaitingPhoneNumber
             }
         }
     }
 
-    given("toState()") {
-        val toolSessionId = ToolSessionId(UUID.randomUUID())
+    given("persisted columns with a phone number and its tan data") {
+        val issued = tanGenerator.issue()
 
-        `when`("no phoneNumber was ever persisted") {
-            then("it reconstructs AwaitingPhoneNumber") {
-                EnrollSmsState.of(toolSessionId, null, null, null) shouldBe EnrollSmsState.AwaitingPhoneNumber
+        `when`("the state is rebuilt from them") {
+            val rebuilt = EnrollSmsState.of(ToolSessionId(UUID.randomUUID()), "+491701234567", issued.hash, issued.expiresAt)
+
+            then("it is AwaitingTan for that number") {
+                rebuilt shouldBe EnrollSmsState.AwaitingTan("+491701234567", issued.hash, issued.expiresAt)
             }
-        }
-
-        `when`("a phoneNumber with its tan data was persisted") {
-            then("it reconstructs AwaitingTan") {
-                val issued = tanGenerator.issue()
-                EnrollSmsState.of(toolSessionId, "+491701234567", issued.hash, issued.expiresAt) shouldBe
-                    EnrollSmsState.AwaitingTan("+491701234567", issued.hash, issued.expiresAt)
-            }
-        }
-    }
-
-    given("a WrongTan decision") {
-        then("it carries the unchanged AwaitingTan state, not a fresh one") {
-            val issued = tanGenerator.issue()
-            val state = EnrollSmsState.AwaitingTan("+491701234567", issued.hash, issued.expiresAt)
-            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(tan = "000000"), tanGenerator)
-            decision.shouldBeInstanceOf<EnrollSmsDecision.WrongTan>()
-            decision.state shouldBe state
         }
     }
 })

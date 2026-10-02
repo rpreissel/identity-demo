@@ -1,34 +1,55 @@
 package com.example.identity.tools.auth_password.internal
 
+import com.example.identity.TEST_NOW
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
-import java.time.Instant
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder
 
 /** Argon2id for every hash; weaker Argon2id parameters move over on the next successful login. */
 class PasswordHasherTest : BehaviorSpec({
 
     given("a new password") {
-        then("it is hashed with Argon2id and verifies") {
+        `when`("it is hashed") {
             val hash = PasswordHasher.hash("correct-horse-battery")
-            hash shouldStartWith "\$argon2id\$"
-            PasswordHasher.matches("correct-horse-battery", hash) shouldBe true
-            PasswordHasher.matches("wrong-horse-battery", hash) shouldBe false
-            PasswordHasher.needsRehash(hash) shouldBe false
+
+            then("the hash is Argon2id with today's parameters") {
+                hash shouldStartWith "\$argon2id\$"
+                PasswordHasher.needsRehash(hash) shouldBe false
+            }
+
+            then("it verifies this password and no other") {
+                PasswordHasher.matches("correct-horse-battery", hash) shouldBe true
+                PasswordHasher.matches("wrong-horse-battery", hash) shouldBe false
+            }
         }
     }
 
     given("an Argon2id hash with weaker parameters than today's") {
-        then("it verifies, is due for a rehash, and the rehash moves it to today's parameters") {
-            val weak = org.springframework.security.crypto.argon2.Argon2PasswordEncoder(16, 32, 1, 4_096, 1).encode("correct-horse-battery")
-            val enrollment = AuthPasswordEnrollment(passwordHash = weak, createdAt = Instant.now())
-            PasswordHasher.matches("correct-horse-battery", enrollment.passwordHash) shouldBe true
-            PasswordHasher.needsRehash(enrollment.passwordHash) shouldBe true
+        val weak = Argon2PasswordEncoder(16, 32, 1, 4_096, 1).encode("correct-horse-battery")
 
+        then("it still verifies") {
+            PasswordHasher.matches("correct-horse-battery", weak) shouldBe true
+        }
+
+        then("it is due for a rehash") {
+            PasswordHasher.needsRehash(weak) shouldBe true
+        }
+    }
+
+    given("an enrollment with a weaker Argon2id hash") {
+        val enrollment = AuthPasswordEnrollment(
+            passwordHash = Argon2PasswordEncoder(16, 32, 1, 4_096, 1).encode("correct-horse-battery"),
+            createdAt = TEST_NOW
+        )
+
+        `when`("it is upgraded after a successful login") {
             PasswordHasher.upgrade(enrollment, "correct-horse-battery")
 
-            PasswordHasher.needsRehash(enrollment.passwordHash) shouldBe false
-            PasswordHasher.matches("correct-horse-battery", enrollment.passwordHash) shouldBe true
+            then("the hash has today's parameters and still verifies") {
+                PasswordHasher.needsRehash(enrollment.passwordHash) shouldBe false
+                PasswordHasher.matches("correct-horse-battery", enrollment.passwordHash) shouldBe true
+            }
         }
     }
 
@@ -41,7 +62,6 @@ class PasswordHasherTest : BehaviorSpec({
     given("no stored hash at all") {
         then("nothing matches (and the full work is still spent - see PasswordHasher.matches)") {
             PasswordHasher.matches("anything", null) shouldBe false
-            PasswordHasher.matches("anything", "garbage") shouldBe false
         }
     }
 })

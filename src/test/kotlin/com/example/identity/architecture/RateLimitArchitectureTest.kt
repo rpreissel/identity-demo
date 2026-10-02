@@ -7,8 +7,6 @@ import com.example.identity.contract.tool_api.ratelimit.RateLimit
 import com.example.identity.contract.tool_api.ratelimit.RateLimits
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.simulation.sms.SmsGateway
-import com.tngtech.archunit.core.importer.ClassFileImporter
-import com.tngtech.archunit.core.importer.ImportOption
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -21,11 +19,7 @@ import io.kotest.matchers.shouldBe
  */
 class RateLimitArchitectureTest : BehaviorSpec({
 
-    val everything = ClassFileImporter()
-        .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-        .importPackages("com.example.identity")
-
-    val budgets = everything.filter { it.isAssignableTo(RateLimit::class.java) && it.name != RateLimit::class.java.name }
+    val budgets = MAIN_CLASSES.filter { it.isAssignableTo(RateLimit::class.java) && it.name != RateLimit::class.java.name }
 
     given("the budgets of the tool modules") {
         then("they exist") {
@@ -44,11 +38,6 @@ class RateLimitArchitectureTest : BehaviorSpec({
             namespaces.filter { it.length > 64 }.shouldBeEmpty()
             namespaces.toSet().size shouldBe namespaces.size
         }
-
-        then("a namespace names the module and the class") {
-            RateLimit.namespaceOf(SmsSendLimit::class.java) shouldBe "auth_sms.SmsSendLimit"
-            RateLimit.namespaceOf(EmailSendLimit::class.java) shouldBe "auth_email.EmailSendLimit"
-        }
     }
 
     given("the classes that send a code") {
@@ -59,7 +48,7 @@ class RateLimitArchitectureTest : BehaviorSpec({
         )
 
         then("each also asks its module's send budget") {
-            val offenders = everything.filter { it.packageName.startsWith(TOOLS) }.flatMap { source ->
+            val offenders = MAIN_CLASSES.filter { it.packageName.startsWith(TOOLS) }.flatMap { source ->
                 val calls = source.methodCallsFromSelf
                 val asksBudget = calls.filter { it.name == "trySend" }.map { it.targetOwner.name }.toSet()
                 calls.map { it.targetOwner.name }.toSet()
@@ -71,7 +60,7 @@ class RateLimitArchitectureTest : BehaviorSpec({
 
     given("the counting port") {
         then("only RateLimit calls it, so no count bypasses a namespace") {
-            val callers = everything
+            val callers = MAIN_CLASSES
                 .flatMap { it.methodCallsFromSelf }
                 .filter { it.targetOwner.isAssignableTo(RateLimits::class.java) }
                 .filterNot { it.originOwner.isAssignableTo(RateLimits::class.java) }

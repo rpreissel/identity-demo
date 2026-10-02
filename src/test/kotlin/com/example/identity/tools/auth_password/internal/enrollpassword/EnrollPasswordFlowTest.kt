@@ -4,46 +4,64 @@ import com.example.identity.tools.auth_password.internal.PasswordPolicy
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import com.example.identity.contract.tool_api.MissingFields
 
 class EnrollPasswordFlowTest : BehaviorSpec({
 
-    given("no password submitted") {
-        then("the state is unchanged") {
-            EnrollPasswordFlow.decide(EnrollPasswordInput()) shouldBe EnrollPasswordDecision.Unchanged
+    given("an input without a password") {
+        `when`("the flow decides") {
+            val decision = EnrollPasswordFlow.decide(EnrollPasswordInput())
+
+            then("the state is unchanged") {
+                decision shouldBe EnrollPasswordDecision.Unchanged
+            }
         }
     }
 
     given("a password shorter than the minimum length") {
-        then("it is rejected as too short") {
-            EnrollPasswordFlow.decide(EnrollPasswordInput("short")) shouldBe EnrollPasswordDecision.Rejected(PasswordPolicy.Rejection.TOO_SHORT)
+        `when`("the flow decides") {
+            val decision = EnrollPasswordFlow.decide(EnrollPasswordInput("short"))
+
+            then("it is rejected as too short") {
+                decision shouldBe EnrollPasswordDecision.Rejected(PasswordPolicy.Rejection.TOO_SHORT)
+            }
         }
     }
 
     given("a password longer than the maximum length") {
-        then("it is rejected as too long") {
-            EnrollPasswordFlow.decide(EnrollPasswordInput("x".repeat(129))) shouldBe EnrollPasswordDecision.Rejected(PasswordPolicy.Rejection.TOO_LONG)
+        `when`("the flow decides") {
+            val decision = EnrollPasswordFlow.decide(EnrollPasswordInput("x".repeat(129)))
+
+            then("it is rejected as too long") {
+                decision shouldBe EnrollPasswordDecision.Rejected(PasswordPolicy.Rejection.TOO_LONG)
+            }
         }
     }
 
     given("one of the passwords every guessing attack tries first") {
-        then("it is rejected as too common, whatever its case") {
-            EnrollPasswordFlow.decide(EnrollPasswordInput("Passwort123")) shouldBe EnrollPasswordDecision.Rejected(PasswordPolicy.Rejection.TOO_COMMON)
+        `when`("it is submitted capitalized") {
+            val decision = EnrollPasswordFlow.decide(EnrollPasswordInput("Passwort123"))
+
+            then("it is rejected as too common") {
+                decision shouldBe EnrollPasswordDecision.Rejected(PasswordPolicy.Rejection.TOO_COMMON)
+            }
+        }
+
+        `when`("it is submitted in upper case") {
+            val decision = EnrollPasswordFlow.decide(EnrollPasswordInput("PASSWORT123"))
+
+            then("it is rejected as too common all the same") {
+                decision shouldBe EnrollPasswordDecision.Rejected(PasswordPolicy.Rejection.TOO_COMMON)
+            }
         }
     }
 
     given("a password meeting the minimum length") {
-        then("enrollment is requested") {
-            EnrollPasswordFlow.decide(EnrollPasswordInput("correct-horse-battery")) shouldBe
-                EnrollPasswordDecision.Enroll("correct-horse-battery")
-        }
-    }
+        `when`("the flow decides") {
+            val decision = EnrollPasswordFlow.decide(EnrollPasswordInput("correct-horse-battery"))
 
-    given("describe()") {
-        then("it asks for password at step enroll, with the demo password") {
-            val (step, fields) = EnrollPasswordFlow.describe()
-            step shouldBe "enroll"
-            fields shouldBe MissingFields(listOf("password"))
+            then("enrollment is requested") {
+                decision shouldBe EnrollPasswordDecision.Enroll("correct-horse-battery")
+            }
         }
     }
 })

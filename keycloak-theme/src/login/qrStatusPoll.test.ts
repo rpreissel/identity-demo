@@ -8,21 +8,25 @@ function answering(status: number, body?: string): typeof fetch {
 }
 
 describe('checkQrStatus', () => {
-  it('reads waiting and ready from the answer', async () => {
-    expect(await checkQrStatus(STATUS_URL, answering(200, '{"state":"waiting"}'))).toBe('waiting')
-    expect(await checkQrStatus(STATUS_URL, answering(200, '{"state":"ready"}'))).toBe('ready')
+  it.each(['waiting', 'ready'])('reads %s from the answer', async (state) => {
+    expect(await checkQrStatus(STATUS_URL, answering(200, `{"state":"${state}"}`))).toBe(state)
   })
 
   it('asks with the page cookies of its own origin only, never from a cache', async () => {
     const fetchFn = answering(200, '{"state":"waiting"}')
+
     await checkQrStatus(STATUS_URL, fetchFn)
+
     expect(fetchFn).toHaveBeenCalledWith(STATUS_URL, expect.objectContaining({ credentials: 'same-origin', cache: 'no-store' }))
   })
 
-  it('treats a refusal or an unreadable answer as ready, so the form post shows what happened', async () => {
-    expect(await checkQrStatus(STATUS_URL, answering(404))).toBe('ready')
-    expect(await checkQrStatus(STATUS_URL, answering(502, 'bad gateway'))).toBe('ready')
-    expect(await checkQrStatus(STATUS_URL, answering(200, 'not json'))).toBe('ready')
+  // Ready, so the form post shows what happened.
+  it.each([
+    [404, undefined],
+    [502, 'bad gateway'],
+    [200, 'not json'],
+  ])('treats the answer %s %s as ready', async (status, body) => {
+    expect(await checkQrStatus(STATUS_URL, answering(status, body))).toBe('ready')
   })
 
   it('treats a network failure as unreachable, not as a change', async () => {

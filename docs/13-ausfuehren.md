@@ -234,12 +234,12 @@ Backend und Keycloak-Erweiterung:
 abgeleitet, kein Spec trägt eine Markierung (`io.kotest.provided.TestTier`). Vor einem Commit
 zählt der volle Lauf `test`.
 
-**Wo die Zeit hingeht.** Der volle Lauf dauert rund zwei Minuten. Die Integrationstests sind dabei
-nicht der Treiber: Nach dem Start des Spring-Kontexts braucht eine Integrationstest-Klasse etwa eine
-Sekunde. Die Zeit geht in die wenigen großen Specs (`ModelBasedJourneyTest`,
-`IdentityApplicationTests` mit dem ersten Kontextstart, `OpenApiSnapshotTest`) und in die
-Kontextstarts, einen je `@MockkBean`-Kombination. Parallele Test-JVMs (`maxParallelForks`) helfen
-kaum, weil jede ihre Kontexte selbst startet: Zwei sparen wenige Sekunden, vier sind langsamer.
+**Wo die Zeit hingeht.** Der volle Lauf dauert zwei bis drei Minuten. Die Zeit geht in die wenigen
+großen Specs (`ModelBasedJourneyTest`, `OpenApiSnapshotTest`), in die Kontextstarts, einen je
+`@MockkBean`-Kombination, und in die Szenarien der Integrationstests: Die Datenbank wird vor jedem
+`when` geleert, also baut jedes Szenario seinen Ausgangszustand über HTTP neu auf. Parallele
+Test-JVMs (`maxParallelForks`) helfen kaum, weil jede ihre Kontexte selbst startet: Zwei sparen
+wenige Sekunden, vier sind langsamer.
 
 Welche Art von Test man schreibt, entscheidet deshalb nicht die Laufzeit, sondern was er prüft: Eine
 Regel prüft ein Unit-Test, in `domain` oder am Handler. Ein Integrationstest prüft, was nur mit
@@ -274,11 +274,11 @@ Beim ersten Mal braucht Playwright seinen Browser: `npx playwright install chrom
 
 ## 8) Das Demo-Video neu aufnehmen
 
-`docs/media/demo.mp4` (Git LFS) entsteht aus `frontend/e2e-video/demo.spec.ts`: ein Playwright-Lauf,
+`docs/media/demo.mp4` (Git LFS) entsteht aus `frontend/e2e-video/demo.record.ts`: ein Playwright-Lauf,
 der die Aufgaben der Willkommensseite im Browser durchspielt und Titelkarten und Untertitel als
 Teil der Seite einblendet. Das Skript `frontend/record-demo-video.sh` setzt den Compose-Stack mit
 leeren Volumes neu auf und nimmt auf (`playwright.video.config.ts`, 1600×1100, verlangsamt).
-`frontend/cut-demo-video.mjs` schneidet danach mit ffmpeg: Der Spec markiert jeden Seitenwechsel
+`frontend/cut-demo-video.mjs` schneidet danach mit ffmpeg: Der Rekorder markiert jeden Seitenwechsel
 als verborgen, und diese Stellen fallen heraus, sodass nie eine halb geladene Seite zu sehen ist.
 Der App-Tab erscheint als Bild im Bild über der Website-Anmeldung. Es braucht Podman, den
 Playwright-Browser und ffmpeg und dauert etwa 15 Minuten. Das Skript baut die Images nicht neu

@@ -19,36 +19,45 @@ class OperationsIntegrationTest : IntegrationTestSupport() {
 
     init {
         given("the management port") {
-            then("readiness depends on the database and is UP") {
+            `when`("readiness and prometheus are read") {
                 val readiness = restTemplate.getForObject("http://localhost:$managementPort/actuator/health/readiness", Map::class.java)!!
-                readiness["status"] shouldBe "UP"
-            }
-
-            then("prometheus carries this project's own meters") {
                 val scrape = restTemplate.getForObject("http://localhost:$managementPort/actuator/prometheus", String::class.java)!!
-                scrape shouldContain "identity_events_incomplete"
+
+                then("readiness depends on the database and is UP") {
+                    readiness["status"] shouldBe "UP"
+                }
+
+                then("prometheus carries this project's own meters") {
+                    scrape shouldContain "identity_events_incomplete"
+                }
             }
         }
 
         given("the public port") {
-            then("has no actuator - health and metrics never leave through the public route") {
-                val e = shouldThrow<HttpClientErrorException> {
+            `when`("the actuator health is requested there") {
+                val result = runCatching {
                     restTemplate.getForObject("http://localhost:$port/actuator/health", String::class.java)
                 }
-                e.statusCode shouldBe HttpStatus.NOT_FOUND
+
+                then("it is not found - health and metrics never leave through the public route") {
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.NOT_FOUND
+                }
             }
         }
 
         given("the welcome page's server info") {
-            then("shows the same health and the project's meters") {
+            `when`("it is read") {
                 @Suppress("UNCHECKED_CAST")
                 val operations = restTemplate.getForObject("http://localhost:$port/orchestrator/demo/server-info", Map::class.java)!!["operations"] as Map<String, Any?>
-                operations["status"] shouldBe "UP"
-                @Suppress("UNCHECKED_CAST")
-                val components = (operations["components"] as List<Map<String, Any?>>).associate { it["name"] to it["status"] }
-                components["db"] shouldBe "UP"
-                @Suppress("UNCHECKED_CAST")
-                (operations["metrics"] as List<Map<String, Any?>>).map { it["name"] } shouldContain "identity.events.incomplete"
+
+                then("it shows the same health and the project's meters") {
+                    operations["status"] shouldBe "UP"
+                    @Suppress("UNCHECKED_CAST")
+                    val components = (operations["components"] as List<Map<String, Any?>>).associate { it["name"] to it["status"] }
+                    components["db"] shouldBe "UP"
+                    @Suppress("UNCHECKED_CAST")
+                    (operations["metrics"] as List<Map<String, Any?>>).map { it["name"] } shouldContain "identity.events.incomplete"
+                }
             }
         }
     }

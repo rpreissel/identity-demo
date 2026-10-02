@@ -2,6 +2,7 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsStrategy
 import com.example.identity.tools.auth_sms.AuthSmsDescriptor
+import com.example.identity.tools.auth_sms.EnrollSmsDescriptor
 import com.example.identity.tools.ident_fsc.IdentFscDescriptor
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
@@ -12,6 +13,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMet
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -21,6 +23,7 @@ import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
@@ -33,46 +36,15 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
 
     val strategy = ManageAuthMethodsStrategy()
 
-    given("the intent") {
-        then("is MANAGE_AUTH_METHODS") {
-            strategy.intent shouldBe AuthIntent.MANAGE_AUTH_METHODS
-        }
-    }
+    // An identification proves loa2 on its own, whatever methods the account holds.
+    val loa2Evidence = evidence(listOf("fsc"), setOf(FactorType.POSSESSION))
 
-    given("initialState") {
-        then("is AddRequested") {
-            strategy.initialState(ctx()) shouldBe ManageAuthMethodsState.AddRequested
-        }
-    }
+    given("a new journey") {
+        `when`("its first state is chosen") {
+            val initial = strategy.initialState(ctx())
 
-    given("Enrolling, a single candidate offered") {
-        val state = ManageAuthMethodsState.Enrolling(Offer(listOf(ToolId("enroll-sms"))))
-
-        `when`("a tool completes Enrolled") {
-            val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
-            val event = JourneyEvent.Completed(AuthSmsDescriptor, outcome)
-            val transition = strategy.transition(state, event, ctx())
-            then("binds the device - it's already known, so this is a harmless no-op that keeps it reachable") {
-                transition shouldBe
-                    Transition.Perform(Action.AdoptCredential(AuthSmsDescriptor, outcome), resumeState = state)
-            }
-        }
-
-        `when`("a tool completes Identified") {
-            val result = runCatching {
-                strategy.transition(state, JourneyEvent.Completed(IdentFscDescriptor, ToolOutcome.Completed.Identified(claims = listOf(com.example.identity.contract.tool_api.claims.Claim(com.example.identity.contract.tool_api.claims.AttributeType.PERSON_ID, "P000000001", com.example.identity.contract.tool_api.claims.ClaimSource.PERSON_DIRECTORY)))), ctx())
-            }
-            then("Identified is not offered by this intent") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-            }
-        }
-
-        `when`("a tool completes Authenticated") {
-            val result = runCatching {
-                strategy.transition(state, JourneyEvent.Completed(AuthSmsDescriptor, ToolOutcome.Completed.Authenticated(amr = listOf("sms"))), ctx())
-            }
-            then("Authenticated is not offered by this intent") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
+            then("it is AddRequested") {
+                initial shouldBe ManageAuthMethodsState.AddRequested
             }
         }
     }
@@ -109,7 +81,8 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
         `when`("started") {
             val transition = strategy.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.Started, theCtx)
             then("selfServiceAcrFloor only demands loa1 for this account - offers enrollment candidates directly, no step-up") {
-                transition.shouldBeInstanceOf<Transition.To>()
+                val next = transition.shouldBeInstanceOf<Transition.To>().state
+                next.shouldBeInstanceOf<ManageAuthMethodsState.Enrolling>().offered shouldContainExactlyInAnyOrder ENROLLABLE_BESIDES_SMS
             }
         }
     }
@@ -130,12 +103,13 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
 
     given("AddRequested, the session already carries loa2") {
         val acc = account(method("sms", AcrLevel.LOA1))
-        val theCtx = ctx(account = acc, evidence = evidence(listOf("fsc"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
+        val theCtx = ctx(account = acc, evidence = loa2Evidence, acrFloor = AcrLevel.LOA1)
 
         `when`("started") {
             val transition = strategy.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.Started, theCtx)
             then("offers enrollment candidates directly") {
-                transition.shouldBeInstanceOf<Transition.To>()
+                val next = transition.shouldBeInstanceOf<Transition.To>().state
+                next.shouldBeInstanceOf<ManageAuthMethodsState.Enrolling>().offered shouldContainExactlyInAnyOrder ENROLLABLE_BESIDES_SMS
             }
         }
     }
@@ -145,13 +119,15 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
             method("sms", AcrLevel.LOA2), method("password", AcrLevel.LOA2), method("email", AcrLevel.LOA2),
             method("device", AcrLevel.LOA2), method("kobil", AcrLevel.LOA2), method("qr", AcrLevel.LOA2)
         )
-        val theCtx = ctx(account = acc, evidence = evidence(listOf("fsc"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
         // device and kobil (allowsMultipleInstances) are deliberately still offered even with
         // one active instance, so this case is only reachable by ALSO backend-disabling them.
-        val disabled = theCtx.availableTools - ToolId("enroll-device") - ToolId("enroll-kobil")
+        val theCtx = ctx(
+            account = acc, evidence = loa2Evidence, acrFloor = AcrLevel.LOA1,
+            availableTools = StrategyTestFixtures.allToolIds - ToolId("enroll-device") - ToolId("enroll-kobil")
+        )
 
         `when`("started") {
-            val transition = strategy.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.Started, theCtx.copy(availableTools = disabled))
+            val transition = strategy.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.Started, theCtx)
             then("finishes - not an error, just nothing more to add (the device-bound methods stay offered since they allow multiple instances, so this really only fires once every singleton method is active)") {
                 transition shouldBe Transition.Authenticated
             }
@@ -185,7 +161,7 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
 
     given("RemoveRequested, the session already carries loa2") {
         val acc = account(method("sms", AcrLevel.LOA2))
-        val theCtx = ctx(account = acc, evidence = evidence(listOf("fsc"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
+        val theCtx = ctx(account = acc, evidence = loa2Evidence, acrFloor = AcrLevel.LOA1)
         val state = ManageAuthMethodsState.RemoveRequested("sms-instance")
 
         `when`("started") {
@@ -217,11 +193,27 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
 
         `when`("a method is enrolled") {
             val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
-            val event = JourneyEvent.Completed(AuthSmsDescriptor, outcome)
+            val event = JourneyEvent.Completed(EnrollSmsDescriptor, outcome)
             val transition = strategy.transition(state, event, ctx())
-            then("adopts the credential") {
+            then("adopts the credential - binding the already known device again is a harmless no-op") {
                 transition shouldBe
-                    Transition.Perform(Action.AdoptCredential(AuthSmsDescriptor, outcome), resumeState = state)
+                    Transition.Perform(Action.AdoptCredential(EnrollSmsDescriptor, outcome), resumeState = state)
+            }
+        }
+
+        `when`("a tool completes Identified") {
+            val event = JourneyEvent.Completed(IdentFscDescriptor, identifiedOutcome())
+            val result = runCatching { strategy.transition(state, event, ctx()) }
+            then("Identified is not offered by this intent") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
+            }
+        }
+
+        `when`("a tool completes Authenticated") {
+            val event = JourneyEvent.Completed(AuthSmsDescriptor, ToolOutcome.Completed.Authenticated(amr = listOf("sms")))
+            val result = runCatching { strategy.transition(state, event, ctx()) }
+            then("Authenticated is not offered by this intent") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
 
@@ -233,3 +225,8 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
         }
     }
 })
+
+/** What an account holding only sms can still enroll, with every tool available. */
+private val ENROLLABLE_BESIDES_SMS = listOf(
+    ToolId("enroll-password"), ToolId("enroll-email"), ToolId("enroll-device"), ToolId("enroll-kobil"), ToolId("enroll-qr")
+)

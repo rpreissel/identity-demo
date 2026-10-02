@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ActiveSessionsReport } from '../../api'
 import { WelcomeApp } from './WelcomeApp'
@@ -26,6 +26,8 @@ const busy: ActiveSessionsReport = {
   keycloak: { clients: [], error: 'Connection refused' },
 }
 
+const idle: ActiveSessionsReport = { channels: { total: 0, perType: [], newest: [] }, keycloak: null }
+
 /** server-info, the session report and the reset - each call recorded. */
 function fakeBackend(report: ActiveSessionsReport) {
   return vi.fn(async (path: string, init?: RequestInit) => {
@@ -37,36 +39,57 @@ function fakeBackend(report: ActiveSessionsReport) {
 
 describe('WelcomeApp - Demo zurücksetzen', () => {
   afterEach(() => {
-    cleanup()
     vi.unstubAllGlobals()
   })
 
-  it('warns about active sessions, lists them, and resets only after the second click', async () => {
+  it('warns about active sessions and lists them on the first click, without resetting', async () => {
     const fetch = fakeBackend(busy)
     vi.stubGlobal('fetch', fetch)
     render(<WelcomeApp />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Demo zurücksetzen…' }))
+
     expect(await screen.findByText(/2 Sitzungen sind gerade aktiv/)).toBeInTheDocument()
     expect(screen.getByText(/Mara Muster/)).toBeInTheDocument()
     expect(screen.getByText(/Keycloak ist nicht erreichbar: Connection refused/)).toBeInTheDocument()
-    expect(fetch.mock.calls.some(([path]) => String(path).endsWith('/demo/reset'))).toBe(false)
+    expect(resetCalled(fetch)).toBe(false)
+  })
+
+  it('resets after the second click', async () => {
+    vi.stubGlobal('fetch', fakeBackend(busy))
+    render(<WelcomeApp />)
+    fireEvent.click(screen.getByRole('button', { name: 'Demo zurücksetzen…' }))
+    await screen.findByText(/2 Sitzungen sind gerade aktiv/)
 
     fireEvent.click(screen.getByRole('button', { name: 'Jetzt zurücksetzen' }))
+
     expect(await screen.findByText('Demo zurückgesetzt. Gelöschte Konten: 3. Beendete Sitzungen: 2.')).toBeInTheDocument()
     expect(screen.queryByText(/Sitzungen sind gerade aktiv/)).not.toBeInTheDocument()
   })
 
-  it('says so when nobody is using the demo, and cancelling resets nothing', async () => {
-    const fetch = fakeBackend({ channels: { total: 0, perType: [], newest: [] }, keycloak: null })
-    vi.stubGlobal('fetch', fetch)
+  it('says so when nobody is using the demo', async () => {
+    vi.stubGlobal('fetch', fakeBackend(idle))
     render(<WelcomeApp />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Demo zurücksetzen…' }))
+
     expect(await screen.findByText('Gerade ist keine Sitzung aktiv.')).toBeInTheDocument()
+  })
+
+  it('resets nothing when cancelled', async () => {
+    const fetch = fakeBackend(idle)
+    vi.stubGlobal('fetch', fetch)
+    render(<WelcomeApp />)
+    fireEvent.click(screen.getByRole('button', { name: 'Demo zurücksetzen…' }))
+    await screen.findByText('Gerade ist keine Sitzung aktiv.')
+
     fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }))
 
     expect(screen.getByRole('button', { name: 'Demo zurücksetzen…' })).toBeInTheDocument()
-    expect(fetch.mock.calls.some(([path]) => String(path).endsWith('/demo/reset'))).toBe(false)
+    expect(resetCalled(fetch)).toBe(false)
   })
 })
+
+function resetCalled(fetch: ReturnType<typeof fakeBackend>): boolean {
+  return fetch.mock.calls.some(([path]) => String(path).endsWith('/demo/reset'))
+}

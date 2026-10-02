@@ -6,9 +6,40 @@ import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import jakarta.ws.rs.NotFoundException
 import org.keycloak.admin.client.Keycloak
 import org.keycloak.admin.client.resource.RealmResource
+import org.keycloak.admin.client.resource.RealmsResource
 import org.keycloak.representations.idm.RealmRepresentation
+
+/**
+ * Keycloak with realm `demo`, built with a different orchestratorBaseUrl than the one configured.
+ * Removing the realm makes it unknown until it is created again.
+ */
+private class Fixture {
+    private var removed = false
+    private var recreated = false
+    val realm = mockk<RealmResource>(relaxed = true).also {
+        every { it.toRepresentation() } answers {
+            when {
+                recreated -> RealmRepresentation().apply { setRealm("demo") }
+                removed -> throw NotFoundException()
+                else -> RealmRepresentation().apply {
+                    setRealm("demo")
+                    attributes = mutableMapOf("kcmig_setup__orchestratorBaseUrl" to "http://old-host:8080")
+                }
+            }
+        }
+        every { it.remove() } answers { removed = true }
+    }
+    val realms = mockk<RealmsResource>(relaxed = true).also {
+        every { it.create(any()) } answers { recreated = true }
+    }
+    val kc = mockk<Keycloak>().also {
+        every { it.realm("demo") } returns realm
+        every { it.realms() } returns realms
+    }
+}
 
 /**
  * A changed setup value (or migration) needs the realm rebuilt - which throws away sessions, every `sub` and
@@ -17,42 +48,35 @@ import org.keycloak.representations.idm.RealmRepresentation
  */
 class RealmResetGateTest : BehaviorSpec({
 
-    val setup = RealmSetup(
-        realmName = "demo", realmDisplayName = "Demo", loginTheme = "orchestrator",
-        browserClientId = "web", adminApiClientId = "admin", appTokenClientId = "app",
-        browserRedirectUris = listOf("http://localhost/*"), orchestratorBaseUrl = "http://orchestrator:8080",
-        publicOrchestratorBaseUrl = "http://localhost:8080", peerAuthIssuer = "kc", peerAuthAudience = "orch"
-    )
+    given("a setup value that changed since the realm was built, and no rebuild allowed (demo.mode=false)") {
+        val f = Fixture()
 
-    fun keycloakWithStoredSetup(): Pair<Keycloak, RealmResource> {
-        val realm = mockk<RealmResource>(relaxed = true)
-        // The realm was built with a different orchestratorBaseUrl than the one configured.
-        every { realm.toRepresentation() } returns RealmRepresentation().apply {
-            setRealm("demo")
-            attributes = mutableMapOf("kcmig_setup__orchestratorBaseUrl" to "http://old-host:8080")
-        }
-        val kc = mockk<Keycloak>()
-        every { kc.realm("demo") } returns realm
-        return kc to realm
-    }
+        `when`("the migrations run") {
+            val result = runCatching { MigrationRunner(f.kc, TEST_REALM_SETUP, emptyList(), allowRealmReset = false).up() }
 
-    given("a setup value that changed since the realm was built") {
-        `when`("the rebuild is not allowed (demo.mode=false)") {
-            then("the run stops with the reason, and the realm is not removed") {
-                val (kc, realm) = keycloakWithStoredSetup()
-                val refused = shouldThrow<RealmResetRefusedException> {
-                    MigrationRunner(kc, setup, emptyList(), allowRealmReset = false).up()
-                }
-                refused.message shouldContain "orchestratorBaseUrl"
-                verify(exactly = 0) { realm.remove() }
+            then("the run stops with the reason") {
+                shouldThrow<RealmResetRefusedException> { result.getOrThrow() }.message shouldContain "orchestratorBaseUrl"
+            }
+
+            then("the realm is not removed") {
+                verify(exactly = 0) { f.realm.remove() }
             }
         }
+    }
 
-        `when`("the rebuild is allowed (demo mode)") {
-            then("the realm is removed and rebuilt, as before") {
-                val (kc, realm) = keycloakWithStoredSetup()
-                runCatching { MigrationRunner(kc, setup, emptyList(), allowRealmReset = true).up() }
-                verify(atLeast = 1) { realm.remove() }
+    given("a setup value that changed since the realm was built, and the rebuild allowed (demo mode)") {
+        val f = Fixture()
+
+        `when`("the migrations run") {
+            val result = runCatching { MigrationRunner(f.kc, TEST_REALM_SETUP, emptyList(), allowRealmReset = true).up() }
+
+            then("the run completes") {
+                result.getOrThrow()
+            }
+
+            then("the realm is removed and created anew") {
+                verify(exactly = 1) { f.realm.remove() }
+                verify(exactly = 1) { f.realms.create(match { it.realm == "demo" }) }
             }
         }
     }

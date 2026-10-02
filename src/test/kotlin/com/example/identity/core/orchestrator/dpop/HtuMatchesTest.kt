@@ -7,22 +7,39 @@ import io.kotest.matchers.shouldBe
 class HtuMatchesTest : BehaviorSpec({
     val request = "https://api.example.org/orchestrator/api/v1/tools/abc/auth-sms"
 
-    given("the same target written differently") {
-        then("it matches - query, fragment, case of scheme and host, an explicit default port") {
-            htuMatches("https://api.example.org/orchestrator/api/v1/tools/abc/auth-sms?x=1#f", request) shouldBe true
-            htuMatches("HTTPS://API.Example.ORG/orchestrator/api/v1/tools/abc/auth-sms", request) shouldBe true
-            htuMatches("https://api.example.org:443/orchestrator/api/v1/tools/abc/auth-sms", request) shouldBe true
-        }
-    }
+    given("a request to $request") {
+        val sameTarget = mapOf(
+            "the htu adds a query and a fragment" to "https://api.example.org/orchestrator/api/v1/tools/abc/auth-sms?x=1#f",
+            "the htu writes scheme and host in other case" to "HTTPS://API.Example.ORG/orchestrator/api/v1/tools/abc/auth-sms",
+            "the htu writes out the default port" to "https://api.example.org:443/orchestrator/api/v1/tools/abc/auth-sms"
+        )
+        val otherTarget = mapOf(
+            "the htu writes the path in other case" to "https://api.example.org/Orchestrator/api/v1/tools/abc/auth-sms",
+            "the htu names another path" to "https://api.example.org/orchestrator/api/v1/tools/abd/auth-sms",
+            "the htu names another port" to "https://api.example.org:8443/orchestrator/api/v1/tools/abc/auth-sms",
+            "the htu uses http instead of https" to "http://api.example.org/orchestrator/api/v1/tools/abc/auth-sms",
+            "the htu is a bare path" to "/orchestrator/api/v1/tools/abc/auth-sms",
+            "the htu uses a scheme other than http(s)" to "ftp://api.example.org/orchestrator/api/v1/tools/abc/auth-sms"
+        )
 
-    given("a different target") {
-        then("it does not match - another path case, path, port, scheme, or no URL at all") {
-            htuMatches("https://api.example.org/Orchestrator/api/v1/tools/abc/auth-sms", request) shouldBe false
-            htuMatches("https://api.example.org/orchestrator/api/v1/tools/abd/auth-sms", request) shouldBe false
-            htuMatches("https://api.example.org:8443/orchestrator/api/v1/tools/abc/auth-sms", request) shouldBe false
-            htuMatches("http://api.example.org/orchestrator/api/v1/tools/abc/auth-sms", request) shouldBe false
-            htuMatches("/orchestrator/api/v1/tools/abc/auth-sms", request) shouldBe false
-            htuMatches("ftp://api.example.org/orchestrator/api/v1/tools/abc/auth-sms", request) shouldBe false
+        sameTarget.forEach { (variant, htu) ->
+            `when`(variant) {
+                val matches = htuMatches(htu, request)
+
+                then("it matches") {
+                    matches shouldBe true
+                }
+            }
+        }
+
+        otherTarget.forEach { (variant, htu) ->
+            `when`(variant) {
+                val matches = htuMatches(htu, request)
+
+                then("it does not match") {
+                    matches shouldBe false
+                }
+            }
         }
     }
 })

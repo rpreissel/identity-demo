@@ -1,6 +1,8 @@
 package com.example.identity.core.orchestrator.kc
 
+import com.nimbusds.jose.jwk.ECKey
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
@@ -38,8 +40,8 @@ class NodeKeysDbTest(
             }
 
             then("the pair is created and stored") {
-                created?.exceptionOrNull() shouldBe null
-                repository.findById(purpose).isPresent shouldBe true
+                val keyId = created.shouldNotBeNull().getOrThrow()
+                ECKey.parse(repository.findById(purpose).get().publicKeyJwk).keyID shouldBe keyId
             }
         }
     }

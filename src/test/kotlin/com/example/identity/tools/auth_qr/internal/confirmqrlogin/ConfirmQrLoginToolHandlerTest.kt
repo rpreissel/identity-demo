@@ -12,13 +12,43 @@ import com.example.identity.tools.auth_qr.internal.ConfirmationCodeDigest
 import com.example.identity.tools.auth_qr.internal.QrLoginRequestRepository
 import com.example.identity.contract.tool_api.ToolOutcome
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
 import java.util.Optional
 import java.util.UUID
+
+private const val PAIRING = "ABCD1234"
+private val CONFIRMING = AccountId(99L)
+
+/**
+ * A confirm-qr-login tool session that already resolved [PAIRING], a pending request opened for
+ * [expectedAccountId]; approving and declining succeed unless a test says otherwise.
+ */
+private class Fixture(expectedAccountId: AccountId?) {
+    val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
+    val digest = ConfirmationCodeDigest("test-pepper")
+    val sessions = mockk<ConfirmQrLoginToolSessionRepository>().also {
+        every { it.findByToolSessionId(toolSessionId) } returns
+            ConfirmQrLoginToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW).apply { pairingCode = PAIRING }
+    }
+    val approvedHash = slot<String>()
+    val requests = mockk<QrLoginRequestRepository>().also {
+        every { it.findById(PAIRING) } returns Optional.of(QrLoginRequest(pairingCode = PAIRING, expectedAccountId = expectedAccountId, createdAt = TEST_NOW))
+        every { it.approveIfPending(PAIRING, CONFIRMING, capture(approvedHash), any(), any()) } returns 1
+        every { it.denyIfPending(PAIRING, any()) } returns 1
+    }
+    val handler = ConfirmQrLoginToolHandler(ConfirmQrLoginDescriptor, sessions, requests, digest, clock = TEST_CLOCK)
+
+    fun withRequestAlreadyDecided() = apply {
+        every { requests.denyIfPending(PAIRING, any()) } returns 0
+    }
+}
 
 /**
  * Unit test of accept/reject and the expectedAccountId guard: `confirm-qr-login` fails fast in the
@@ -27,67 +57,85 @@ import java.util.UUID
  */
 class ConfirmQrLoginToolHandlerTest : BehaviorSpec({
 
-    val toolDataRepository = mockk<ConfirmQrLoginToolSessionRepository>()
-    val qrLoginRequestRepository = mockk<QrLoginRequestRepository>()
-    val handler = ConfirmQrLoginToolHandler(ConfirmQrLoginDescriptor, toolDataRepository, qrLoginRequestRepository, ConfirmationCodeDigest("test-pepper"), clock = TEST_CLOCK)
-    val toolSessionId = ToolSessionId(UUID.randomUUID())
-    val pairingCode = "ABCD1234"
+    given("a pairing opened for account 42, and account 99 with an active qr enrollment") {
+        val f = Fixture(expectedAccountId = AccountId(42L))
 
-    given("a confirm-qr-login tool session that already resolved its pairing code") {
-        val data = ConfirmQrLoginToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW).apply { this.pairingCode = pairingCode }
-        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
+        `when`("account 99 accepts") {
+            val outcome = f.handler.patch(f.toolSessionId, pairingCode = null, decision = "accept", accountId = CONFIRMING, hasQrEnrollment = true)
 
-        `when`("the pairing's expectedAccountId belongs to a DIFFERENT account than the one confirming") {
-            every { qrLoginRequestRepository.findById(pairingCode) } returns Optional.of(
-                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = AccountId(42L), createdAt = TEST_NOW)
-            )
-
-            then("it fails immediately, never reaching approveIfPending") {
-                val outcome = handler.patch(toolSessionId, pairingCode = null, decision = "accept", accountId = AccountId(99L), hasQrEnrollment = true)
-
+            then("it fails immediately") {
                 outcome shouldBe ToolOutcome.Failed.NothingGuessed(Text("Bestätigung passt nicht zu diesem Konto"))
             }
-        }
 
-        `when`("the pairing's expectedAccountId matches the confirming account") {
-            every { qrLoginRequestRepository.findById(pairingCode) } returns Optional.of(
-                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = AccountId(99L), createdAt = TEST_NOW)
-            )
-            every { qrLoginRequestRepository.approveIfPending(pairingCode, AccountId(99L), any(), any(), any()) } returns 1
+            then("it never approves the pairing") {
+                verify(exactly = 0) { f.requests.approveIfPending(any(), any(), any(), any(), any()) }
+            }
+        }
+    }
+
+    given("a pairing opened for account 42, and account 99 without any qr enrollment") {
+        val f = Fixture(expectedAccountId = AccountId(42L))
+
+        `when`("account 99 accepts") {
+            val outcome = f.handler.patch(f.toolSessionId, pairingCode = null, decision = "accept", accountId = CONFIRMING, hasQrEnrollment = false)
+
+            then("the missing enrollment wins over the account mismatch") {
+                outcome shouldBe ToolOutcome.Failed.NothingGuessed(Text("QR-Login ist für dieses Konto nicht aktiviert."))
+            }
+        }
+    }
+
+    given("a pairing opened for account 99, the confirming account") {
+        val f = Fixture(expectedAccountId = CONFIRMING)
+
+        `when`("account 99 accepts") {
+            val outcome = f.handler.patch(f.toolSessionId, pairingCode = null, decision = "accept", accountId = CONFIRMING, hasQrEnrollment = true)
 
             then("it approves and shows the six-digit code for the browser - it does not finish yet") {
-                val outcome = handler.patch(toolSessionId, pairingCode = null, decision = "accept", accountId = AccountId(99L), hasQrEnrollment = true)
-
-                outcome.shouldBeApproved()
+                outcome.shouldShowConfirmationCode(f)
             }
         }
+    }
 
-        `when`("expectedAccountId is null (auth-qr-lookup, no target account to violate)") {
-            every { qrLoginRequestRepository.findById(pairingCode) } returns Optional.of(
-                QrLoginRequest(pairingCode = pairingCode, expectedAccountId = null, createdAt = TEST_NOW)
-            )
-            every { qrLoginRequestRepository.approveIfPending(pairingCode, AccountId(99L), any(), any(), any()) } returns 1
+    given("a pairing opened without an expected account (auth-qr-lookup, no target account to violate)") {
+        val f = Fixture(expectedAccountId = null)
+
+        `when`("account 99 accepts") {
+            val outcome = f.handler.patch(f.toolSessionId, pairingCode = null, decision = "accept", accountId = CONFIRMING, hasQrEnrollment = true)
 
             then("it approves - any account may confirm - and shows the code for the browser") {
-                val outcome = handler.patch(toolSessionId, pairingCode = null, decision = "accept", accountId = AccountId(99L), hasQrEnrollment = true)
-
-                outcome.shouldBeApproved()
+                outcome.shouldShowConfirmationCode(f)
             }
         }
 
-        `when`("the account has no active qr enrollment at all") {
-            then("it fails before even looking at expectedAccountId") {
-                val outcome = handler.patch(toolSessionId, pairingCode = null, decision = "accept", accountId = AccountId(99L), hasQrEnrollment = false)
+        `when`("account 99 declines") {
+            val outcome = f.handler.patch(f.toolSessionId, pairingCode = null, decision = "reject", accountId = CONFIRMING, hasQrEnrollment = true)
 
-                outcome shouldBe ToolOutcome.Failed.NothingGuessed(Text("QR-Login ist für dieses Konto nicht aktiviert."))
+            then("the pairing is declined and the app run ends without guessing anything") {
+                outcome shouldBe ToolOutcome.Failed.NothingGuessed(Text("Vom Nutzer abgelehnt"))
+                verify { f.requests.denyIfPending(PAIRING, any()) }
+            }
+        }
+    }
+
+    given("a pairing another device decided on meanwhile") {
+        val f = Fixture(expectedAccountId = null).withRequestAlreadyDecided()
+
+        `when`("account 99 declines") {
+            val outcome = f.handler.patch(f.toolSessionId, pairingCode = null, decision = "reject", accountId = CONFIRMING, hasQrEnrollment = true)
+
+            then("it says the request was already handled") {
+                outcome shouldBe ToolOutcome.Failed.NothingGuessed(Text("Anfrage wurde bereits bearbeitet oder ist abgelaufen"))
             }
         }
     }
 })
 
-/** Approval shows the confirmation code; `done` finishes the tool later. */
-private fun ToolOutcome.shouldBeApproved() {
+/** Approval shows a six-digit confirmation code, stored only as its hash; `done` finishes the tool later. */
+private fun ToolOutcome.shouldShowConfirmationCode(f: Fixture) {
     val step = this.shouldBeInstanceOf<ToolOutcome.InProgress>()
     step.nextStep shouldBe "showCode"
-    step.stepData.shouldBeInstanceOf<QrPairingStep>().confirmationCode!! shouldMatch Regex("\\d{6}")
+    val code = step.stepData.shouldBeInstanceOf<QrPairingStep>().confirmationCode.shouldNotBeNull()
+    code shouldMatch Regex("\\d{6}")
+    f.approvedHash.captured shouldBe f.digest.of(code)
 }

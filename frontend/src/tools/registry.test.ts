@@ -3,7 +3,7 @@ import { createElement } from 'react'
 import { InnerBackProvider } from '../components/InnerBack'
 import { describe, expect, it, vi } from 'vitest'
 import type { DpopKeyPair } from '../dpop'
-import { knownToolIds, metaFor, renderToolStep } from './registry'
+import { explainToolStep, knownToolIds, metaFor, renderToolStep } from './registry'
 import type { ToolRenderContext } from './types'
 
 function baseCtx(overrides: Partial<ToolRenderContext>): ToolRenderContext {
@@ -15,6 +15,13 @@ function baseCtx(overrides: Partial<ToolRenderContext>): ToolRenderContext {
     onError: vi.fn(),
     ...overrides,
   }
+}
+
+/** Renders the step inside an InnerBackProvider and returns the handler the step registered, if any. */
+function renderWithInnerBack(ctx: Partial<ToolRenderContext>): (() => void) | null {
+  let back: (() => void) | null = null
+  render(createElement(InnerBackProvider, { value: { set: (handler) => (back = handler) } }, renderToolStep(baseCtx(ctx))))
+  return back
 }
 
 describe('knownToolIds', () => {
@@ -46,14 +53,25 @@ describe('metaFor', () => {
   })
 })
 
+describe('explainToolStep', () => {
+  it.each(knownToolIds)('has a what and a who for %s', (toolId) => {
+    const explained = explainToolStep(toolId, 'any-step')
+
+    expect(explained?.does).toBeTruthy()
+    expect(explained?.actor).toBeTruthy()
+  })
+})
+
 describe('renderToolStep', () => {
   it('renders the SMS enroll form for enroll-sms/enroll', () => {
     render(renderToolStep(baseCtx({ toolId: 'enroll-sms', step: 'enroll' })))
+
     expect(screen.getByRole('heading', { name: 'SMS als zweiten Faktor einrichten' })).toBeInTheDocument()
   })
 
   it('renders the TAN form for enroll-sms/tanInput', () => {
     render(renderToolStep(baseCtx({ toolId: 'enroll-sms', step: 'tanInput' })))
+
     expect(screen.getByRole('heading', { name: 'TAN eingeben' })).toBeInTheDocument()
   })
 
@@ -65,37 +83,37 @@ describe('renderToolStep', () => {
     expect(renderToolStep(baseCtx({ toolId: 'not-a-real-tool', step: 'enroll' }))).toBeNull()
   })
 
-  it('withholds device forms until toolSessionId is set (matches the previous activeTool guard)', () => {
+  it('withholds the device form while toolSessionId is missing', () => {
     expect(renderToolStep(baseCtx({ toolId: 'enroll-device', step: 'enroll' }))).toBeNull()
+  })
+
+  it('renders the device form once toolSessionId is set', () => {
     render(renderToolStep(baseCtx({ toolId: 'enroll-device', step: 'enroll', toolSessionId: 'ts-1' })))
+
     expect(screen.getByRole('heading', { name: 'Gerät benennen' })).toBeInTheDocument()
   })
 
   // Ohne diesen Weg wäre der Code-Schritt eine Sackgasse: Wer die Adresse vertippt hat, käme nur
   // durch Abbrechen weiter. "Zurück" wechselt im Tool zur Adressmaske, ohne Serveraufruf.
   it('goes back from confirm-email/codeInput to the address screen', () => {
-    let back: (() => void) | null = null
-    render(
-      createElement(InnerBackProvider, { value: { set: (handler) => (back = handler) } }, renderToolStep(baseCtx({ toolId: 'confirm-email', step: 'codeInput' }))),
-    )
-    expect(back).not.toBeNull()
+    const back = renderWithInnerBack({ toolId: 'confirm-email', step: 'codeInput' })
+
     act(() => back!())
+
     expect(screen.getByLabelText('E-Mail-Adresse')).toBeInTheDocument()
   })
 
   it('goes back from enroll-sms/tanInput to the phone number screen', () => {
-    let back: (() => void) | null = null
-    render(
-      createElement(InnerBackProvider, { value: { set: (handler) => (back = handler) } }, renderToolStep(baseCtx({ toolId: 'enroll-sms', step: 'tanInput' }))),
-    )
-    expect(back).not.toBeNull()
+    const back = renderWithInnerBack({ toolId: 'enroll-sms', step: 'tanInput' })
+
     act(() => back!())
+
     expect(screen.getByLabelText('Telefonnummer')).toBeInTheDocument()
   })
 
   it('registers no inner back where the flow has no address screen (auth-email)', () => {
-    let back: (() => void) | null = null
-    render(createElement(InnerBackProvider, { value: { set: (handler) => (back = handler) } }, renderToolStep(baseCtx({ toolId: 'auth-email', step: 'auth' }))))
+    const back = renderWithInnerBack({ toolId: 'auth-email', step: 'auth' })
+
     expect(back).toBeNull()
   })
 })

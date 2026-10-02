@@ -4,7 +4,6 @@ import com.example.identity.tools.auth_kobil.api.v1.KobilUnlockCredential
 import com.example.identity.contract.tool_api.device.UserVerification
 import com.example.identity.contract.tool_api.FactorType
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 
 /**
@@ -29,10 +28,6 @@ class KobilFactorsTest : BehaviorSpec({
     }
 
     given("an access means") {
-        then("possession is always part of what a run proves - it is the redeemed assertion") {
-            UserVerification.entries.forEach { it.kobilFactorTypes() shouldContain FactorType.POSSESSION }
-        }
-
         then("the second factor follows the access means, and only those two shapes exist") {
             UserVerification.PIN.kobilFactorTypes() shouldBe setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE)
             UserVerification.BIOMETRIC.kobilFactorTypes() shouldBe setOf(FactorType.POSSESSION, FactorType.INHERENCE)

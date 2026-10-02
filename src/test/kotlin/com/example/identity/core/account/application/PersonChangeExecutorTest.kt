@@ -1,8 +1,6 @@
 package com.example.identity.core.account.application
 
-import com.example.identity.core.account.application.PersonChangeListener
 import com.example.identity.core.account.infrastructure.PERSON_CHANGE_EXECUTOR
-import com.example.identity.core.account.infrastructure.PersonChangeExecutorConfig
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -14,7 +12,6 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Import
-import org.springframework.core.annotation.AnnotatedElementUtils
 import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.scheduling.annotation.Async
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
@@ -29,7 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
  * The directory's change events run one at a time (PersonChangeExecutorConfig) - and that lane does
  * not swallow every other `@Async` in the application. A probe listener carries the same annotation
- * pair as the real one; the real listener is pinned separately.
+ * pair as the real one; the real listener's routing is pinned in PersonChangeListenerRoutingTest.
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -42,35 +39,38 @@ class PersonChangeExecutorTest : BehaviorSpec() {
     @Autowired @Qualifier(PERSON_CHANGE_EXECUTOR) private lateinit var lane: ThreadPoolTaskExecutor
 
     init {
-        given("several changes committed in separate transactions at once") {
-            then("they run one after another on the person-change thread") {
+        given("a person-change listener that holds the lane until released") {
+            `when`("three changes are committed in separate transactions at once") {
                 repeat(3) { i -> transactions.executeWithoutResult { events.publishEvent(ProbeChange(i)) } }
-
-                // The first change holds the lane until released: the other two must be queued
-                // behind it, not running beside it.
-                await().atMost(5, TimeUnit.SECONDS).until { lane.queueSize == 2 }
-                probe.started.get() shouldBe 1
+                val queuedBehindFirst = runCatching {
+                    await().atMost(5, TimeUnit.SECONDS).until { lane.queueSize == 2 }
+                }.isSuccess
+                val startedWhileHeld = probe.started.get()
                 probe.release.countDown()
+                val allDone = probe.done.await(5, TimeUnit.SECONDS)
 
-                probe.done.await(5, TimeUnit.SECONDS) shouldBe true
-                probe.threads shouldHaveSize 3
-                probe.threads.forEach { it shouldStartWith "person-change-" }
-                probe.maxConcurrent.get() shouldBe 1
+                then("the other two wait in the queue behind the first instead of running beside it") {
+                    queuedBehindFirst shouldBe true
+                    startedWhileHeld shouldBe 1
+                }
+                then("all three run one after another on the person-change thread") {
+                    allDone shouldBe true
+                    probe.threads shouldHaveSize 3
+                    probe.threads.forEach { it shouldStartWith "person-change-" }
+                    probe.maxConcurrent.get() shouldBe 1
+                }
             }
         }
 
         given("any other @Async method") {
-            then("it still runs on Spring Boot's shared pool, not on the single lane") {
-                // Without spring.task.execution.mode=force, Boot drops its own executor as soon as
-                // personChangeExecutor exists - hence the positive check on Boot's "task-" prefix.
-                probe.plainAsync().get() shouldStartWith "task-"
-            }
-        }
+            `when`("it is called") {
+                val thread = probe.plainAsync().get()
 
-        given("the real PersonChangeListener") {
-            then("is routed to the person-change lane") {
-                val method = PersonChangeListener::class.java.methods.single { it.name == "onPersonChanged" }
-                AnnotatedElementUtils.findMergedAnnotation(method, Async::class.java)?.value shouldBe PERSON_CHANGE_EXECUTOR
+                then("it still runs on Spring Boot's shared pool, not on the single lane") {
+                    // Without spring.task.execution.mode=force, Boot drops its own executor as soon as
+                    // personChangeExecutor exists - hence the positive check on Boot's "task-" prefix.
+                    thread shouldStartWith "task-"
+                }
             }
         }
     }

@@ -8,23 +8,28 @@ import io.kotest.matchers.shouldBe
  */
 class OutboxIntegrationTest : IntegrationTestSupport() {
 
+    @Suppress("UNCHECKED_CAST")
+    private fun newestIn(outbox: String): Map<String, Any?> =
+        (restTemplate.getForObject("http://localhost:$port$outbox", List::class.java)!! as List<Map<String, Any?>>).first()
+
     init {
         given("an SMS and an e-mail just sent") {
-            smsGateway.sendTan("+491700000099", "424242")
-            mailServer.sendCode("outbox@example.org", "737373")
+            `when`("the Briefkasten reads both outboxes") {
+                smsGateway.sendTan("+491700000099", "424242")
+                mailServer.sendCode("outbox@example.org", "737373")
 
-            then("/mock-sms/outbox lists the SMS first") {
-                @Suppress("UNCHECKED_CAST")
-                val newest = (restTemplate.getForObject("http://localhost:$port/mock-sms/outbox", List::class.java)!! as List<Map<String, Any?>>).first()
-                newest["phoneNumber"] shouldBe "+491700000099"
-                newest["tan"] shouldBe "424242"
-            }
+                val newestSms = newestIn("/mock-sms/outbox")
+                val newestMail = newestIn("/mock-mail/outbox")
 
-            then("/mock-mail/outbox lists the e-mail first") {
-                @Suppress("UNCHECKED_CAST")
-                val newest = (restTemplate.getForObject("http://localhost:$port/mock-mail/outbox", List::class.java)!! as List<Map<String, Any?>>).first()
-                newest["address"] shouldBe "outbox@example.org"
-                newest["code"] shouldBe "737373"
+                then("/mock-sms/outbox lists the SMS first") {
+                    newestSms["phoneNumber"] shouldBe "+491700000099"
+                    newestSms["tan"] shouldBe "424242"
+                }
+
+                then("/mock-mail/outbox lists the e-mail first") {
+                    newestMail["address"] shouldBe "outbox@example.org"
+                    newestMail["code"] shouldBe "737373"
+                }
             }
         }
     }

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AdminApp } from './AdminApp'
+import { clearAdminCredentials } from '../../adminAuth'
 
 /** Just enough of fetch for the admin page: 401 unless the Basic header carries admin/admin. */
 function fakeBackend() {
@@ -18,25 +19,44 @@ function fakeBackend() {
 
 describe('AdminApp', () => {
   afterEach(() => {
-    sessionStorage.clear()
+    clearAdminCredentials()
     vi.unstubAllGlobals()
   })
 
-  it('keeps the login form on wrong credentials and opens the admin tabs on the right ones', async () => {
+  it('keeps the login form on wrong credentials', async () => {
     vi.stubGlobal('fetch', fakeBackend())
     render(<AdminApp />)
 
-    fireEvent.change(screen.getByLabelText('Passwort'), { target: { value: 'falsch' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }))
-    expect(await screen.findByText(/Anmeldung fehlgeschlagen/)).toBeInTheDocument()
+    logIn('falsch')
 
-    fireEvent.change(screen.getByLabelText('Passwort'), { target: { value: 'admin' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }))
+    expect(await screen.findByText(/Anmeldung fehlgeschlagen/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Passwort')).toBeInTheDocument()
+  })
+
+  it('opens the admin tabs on the right credentials', async () => {
+    vi.stubGlobal('fetch', fakeBackend())
+    render(<AdminApp />)
+
+    logIn('admin')
+
     expect(await screen.findByRole('tab', { name: 'Journey-Trace' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Abmelden' })).toBeInTheDocument()
+  })
+
+  it('shows the active sessions in the sessions tab', async () => {
+    vi.stubGlobal('fetch', fakeBackend())
+    render(<AdminApp />)
+    logIn('admin')
+    await screen.findByRole('tab', { name: 'Sitzungen' })
 
     fireEvent.click(screen.getByRole('tab', { name: 'Sitzungen' }))
+
     expect(await screen.findByText('1 aktiv')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Aktualisieren' })).toBeInTheDocument()
   })
 })
+
+function logIn(password: string) {
+  fireEvent.change(screen.getByLabelText('Passwort'), { target: { value: password } })
+  fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }))
+}

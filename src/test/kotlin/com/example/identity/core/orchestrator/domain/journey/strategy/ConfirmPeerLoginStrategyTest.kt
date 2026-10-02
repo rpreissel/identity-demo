@@ -1,7 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginStrategy
+import com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor
 import com.example.identity.tools.auth_sms.AuthSmsDescriptor
+import com.example.identity.tools.ident_fsc.IdentFscDescriptor
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -12,6 +14,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
@@ -33,15 +36,20 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
 
     val strategy = ConfirmPeerLoginStrategy()
 
-    given("the intent") {
-        then("is CONFIRM_PEER_LOGIN") {
-            strategy.intent shouldBe AuthIntent.CONFIRM_PEER_LOGIN
-        }
-    }
+    // The loa2 gate: a step-up without re-identification, resuming at the parked wish.
+    val peerLoginStepUp = Transition.RequireSubJourney(
+        AuthIntent.STEP_UP,
+        seedWith = StepUpState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1, allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN),
+        resumeWith = ConfirmPeerLoginState.Requested(false)
+    )
 
-    given("initialState") {
-        then("is Requested(startedAuthenticated = false) - the cold-entry default") {
-            strategy.initialState(ctx()) shouldBe ConfirmPeerLoginState.Requested(startedAuthenticated = false)
+    given("a new journey") {
+        `when`("its first state is chosen") {
+            val initial = strategy.initialState(ctx())
+
+            then("it is Requested(startedAuthenticated = false) - the cold-entry default") {
+                initial shouldBe ConfirmPeerLoginState.Requested(startedAuthenticated = false)
+            }
         }
     }
 
@@ -60,12 +68,7 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
         `when`("the journey starts") {
             val transition = strategy.transition(ConfirmPeerLoginState.Requested(false), JourneyEvent.Started, theCtx)
             then("the loa2 gate parks the wish and demands a step-up first") {
-                transition shouldBe
-                    Transition.RequireSubJourney(
-                        AuthIntent.STEP_UP,
-                        seedWith = StepUpState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1, allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN),
-                        resumeWith = ConfirmPeerLoginState.Requested(false)
-                    )
+                transition shouldBe peerLoginStepUp
             }
         }
     }
@@ -96,7 +99,6 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
             }
         }
 
-
         `when`("the gate's own step-up was declined instead (SubJourneyCancelled)") {
             val event = JourneyEvent.SubJourneyCancelled(AuthIntent.STEP_UP)
             val transition = strategy.transition(ConfirmPeerLoginState.Requested(false), event, ctx())
@@ -114,12 +116,7 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
             val event = JourneyEvent.SubJourneyFinished(AuthIntent.STEP_UP, achievedAcr = AcrLevel.LOA1)
             val transition = strategy.transition(ConfirmPeerLoginState.Requested(false), event, theCtx)
             then("re-evaluates from scratch instead of silently accepting it as sufficient") {
-                transition shouldBe
-                    Transition.RequireSubJourney(
-                        AuthIntent.STEP_UP,
-                        seedWith = StepUpState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1, allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN),
-                        resumeWith = ConfirmPeerLoginState.Requested(false)
-                    )
+                transition shouldBe peerLoginStepUp
             }
         }
 
@@ -127,12 +124,7 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
             val event = JourneyEvent.SubJourneyFinished(AuthIntent.RE_IDENTIFY, achievedAcr = AcrLevel.LOA3)
             val transition = strategy.transition(ConfirmPeerLoginState.Requested(false), event, theCtx)
             then("re-evaluates from scratch") {
-                transition shouldBe
-                    Transition.RequireSubJourney(
-                        AuthIntent.STEP_UP,
-                        seedWith = StepUpState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1, allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN),
-                        resumeWith = ConfirmPeerLoginState.Requested(false)
-                    )
+                transition shouldBe peerLoginStepUp
             }
         }
     }
@@ -172,13 +164,8 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
     given("ConfirmationRequired, offering an identification tool") {
         val state = ConfirmPeerLoginState.ConfirmationRequired(false, Offer(listOf(ToolId("ident-fsc"))))
         `when`("an outcome this state never offers arrives (Identified)") {
-            val result = runCatching {
-                strategy.transition(
-                    state,
-                    JourneyEvent.Completed(com.example.identity.tools.ident_fsc.IdentFscDescriptor, ToolOutcome.Completed.Identified(claims = listOf(com.example.identity.contract.tool_api.claims.Claim(com.example.identity.contract.tool_api.claims.AttributeType.PERSON_ID, "P000000001", com.example.identity.contract.tool_api.claims.ClaimSource.PERSON_DIRECTORY)))),
-                    ctx()
-                )
-            }
+            val event = JourneyEvent.Completed(IdentFscDescriptor, identifiedOutcome())
+            val result = runCatching { strategy.transition(state, event, ctx()) }
             then("fails loudly rather than silently confirming") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
@@ -191,10 +178,10 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
         val state = ConfirmPeerLoginState.Confirming(false, CONFIRM_OFFER)
         `when`("the approval just ran (Completed)") {
             val outcome = ToolOutcome.Completed.Approved()
-            val event = JourneyEvent.Completed(com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor, outcome)
+            val event = JourneyEvent.Completed(ConfirmQrLoginDescriptor, outcome)
             val transition = strategy.transition(state, event, theCtx)
             then("performs RecordApproval") {
-                transition shouldBe Transition.Perform(Action.RecordApproval(com.example.identity.tools.auth_qr.ConfirmQrLoginDescriptor, outcome), resumeState = state)
+                transition shouldBe Transition.Perform(Action.RecordApproval(ConfirmQrLoginDescriptor, outcome), resumeState = state)
             }
         }
     }

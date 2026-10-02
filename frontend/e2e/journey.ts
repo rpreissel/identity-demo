@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test'
-import { ui, uiPattern } from './texts'
+import { ui, uiPattern, welcomeHeading } from './texts'
 
 /**
  * Drives a fresh REGISTRATION journey to the authenticated screen.
@@ -21,32 +21,35 @@ export async function completeRegistration(page: Page): Promise<void> {
   await page.getByRole('button', { name: ui('Weiter zur Freischaltcode-Eingabe') }).click()
   await page.getByRole('button', { name: ui('Identifizieren') }).click()
 
-  // The welcome that greets a logged-in user - its name part varies, so only the words before it.
-  const success = page.getByRole('heading', { name: new RegExp(`^${ui('Willkommen, {name}!').split('{name}')[0]}`) })
+  const success = page.getByRole('heading', { name: welcomeHeading })
 
-  for (let step = 0; step < 12 && !(await success.isVisible()); step++) {
-    // Every click re-renders the step and detaches the button mid-action - settle first rather
-    // than racing the re-render.
-    await page.waitForTimeout(600)
-    // The last click may have landed on the welcome already - clicking on from there would start
-    // something else entirely (the menu offers more than the journey did).
+  // SMS first so the resulting amr is predictable for assertions; the rest are the generic
+  // "send a code / confirm a code" steps every enroll-* tool shares. Demo mode pre-fills the
+  // phone number, e-mail and the just-issued TAN/code, so no typing is needed.
+  // 'Einrichten' closes any enroll-* form whose fields demo mode already pre-filled (password
+  // today). It comes last so the more specific labels win when both are on screen. After SMS
+  // the choice of a method of another kind follows; the password is the one without a device
+  // SDK. Anchored at the label, since the KOBIL hint mentions the password too.
+  const passwordChoice = new RegExp(`^${ui('Passwort')} `)
+  const steps = [uiPattern('SMS'), ui('Code senden'), ui('TAN bestätigen'), ui('Code bestätigen'), ui('Einrichten'), passwordChoice].map((name) =>
+    // Exact for plain labels: a substring match found "einrichten" inside a menu row's hint
+    // on the welcome screen and wandered off into confirming a browser login.
+    page.getByRole('button', typeof name === 'string' ? { name, exact: true } : { name }).first(),
+  )
+  const anyStep = steps.reduce((either, step) => either.or(step))
+
+  for (let round = 0; round < 12; round++) {
+    // Wait for the next screen: the welcome, or a step to click.
+    await expect(success.or(anyStep).first()).toBeVisible({ timeout: 10_000 })
+    // Clicking on from the welcome would start something else entirely (the menu offers more
+    // than the journey did).
     if (await success.isVisible()) break
 
-    // SMS first so the resulting amr is predictable for assertions; the rest are the generic
-    // "send a code / confirm a code" steps every enroll-* tool shares. Demo mode pre-fills the
-    // phone number, e-mail and the just-issued TAN/code, so no typing is needed.
-    // 'Einrichten' closes any enroll-* form whose fields demo mode already pre-filled (password
-    // today). It comes last so the more specific labels win when both are on screen. After SMS
-    // the choice of a method of another kind follows; the password is the one without a device
-    // SDK. Anchored at the label, since the KOBIL hint mentions the password too.
-    const passwordChoice = new RegExp(`^${ui('Passwort')} `)
-    for (const name of [uiPattern('SMS'), ui('Code senden'), ui('TAN bestätigen'), ui('Code bestätigen'), ui('Einrichten'), passwordChoice]) {
-      // Exact for plain labels: a substring match found "einrichten" inside a menu row's hint
-      // on the welcome screen and wandered off into confirming a browser login.
-      const button = page.getByRole('button', typeof name === 'string' ? { name, exact: true } : { name }).first()
+    for (const button of steps) {
       if (await button.isVisible()) {
         await button.click()
-        await page.waitForTimeout(800)
+        // The click re-renders the step; the next round must not catch this screen once more.
+        await expect(button).toBeHidden({ timeout: 10_000 })
         break
       }
     }

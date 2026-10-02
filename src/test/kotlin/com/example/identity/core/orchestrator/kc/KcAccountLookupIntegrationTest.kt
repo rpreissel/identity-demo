@@ -4,7 +4,6 @@ import com.example.identity.core.orchestrator.IntegrationTestSupport
 import com.example.identity.core.orchestrator.support.AccountFixtures
 import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
@@ -46,61 +45,138 @@ class KcAccountLookupIntegrationTest : IntegrationTestSupport() {
         }
 
     init {
-        given("an identified account with a confirmed address") {
-            then("Keycloak finds it by id, by email and by username - with names, attributes and the account id") {
-                val accountId = accountFixtures.seedAccount(methods = listOf(AccountFixtures.Method.Sms()))
+        given("an identified account with a confirmed address and a login method") {
+            fun seeded() = accountFixtures.seedAccount(methods = listOf(AccountFixtures.Method.Sms()))
 
+            `when`("Keycloak looks it up by id") {
+                val accountId = seeded()
                 binding(accountId.toString())
-                val byId = lookup("accounts/$accountId")
-                byId["accountId"] shouldBe accountId.value.toInt()
-                byId["email"] shouldBe AccountFixtures.EMAIL
-                byId["username"] shouldBe AccountFixtures.EMAIL
-                byId["emailVerified"] shouldBe true
-                byId["firstName"] shouldNotBe null
-                @Suppress("UNCHECKED_CAST")
-                (byId["attributes"] as Map<String, Any?>)["orchestratorAccountId"] shouldBe accountId.toString()
 
+                val byId = lookup("accounts/$accountId")
+
+                then("it gets the account id, the address as email and username, and the names") {
+                    byId["accountId"] shouldBe accountId.value.toInt()
+                    byId["email"] shouldBe AccountFixtures.EMAIL
+                    byId["username"] shouldBe AccountFixtures.EMAIL
+                    byId["emailVerified"] shouldBe true
+                    byId["firstName"] shouldBe AccountFixtures.VORNAME
+                }
+                then("the account id is also an attribute") {
+                    @Suppress("UNCHECKED_CAST")
+                    (byId["attributes"] as Map<String, Any?>)["orchestratorAccountId"] shouldBe accountId.toString()
+                }
+            }
+
+            `when`("Keycloak searches by email") {
+                val accountId = seeded()
                 binding("account-lookup")
-                lookup("accounts?email=${AccountFixtures.EMAIL}")["accountId"] shouldBe accountId.value.toInt()
-                lookup("accounts?username=${AccountFixtures.EMAIL}")["accountId"] shouldBe accountId.value.toInt()
-                lookup("accounts?username=account-$accountId")["accountId"] shouldBe accountId.value.toInt()
+
+                val found = lookup("accounts?email=${AccountFixtures.EMAIL}")
+
+                then("it finds the account") {
+                    found["accountId"] shouldBe accountId.value.toInt()
+                }
+            }
+
+            `when`("Keycloak searches by the address as username") {
+                val accountId = seeded()
+                binding("account-lookup")
+
+                val found = lookup("accounts?username=${AccountFixtures.EMAIL}")
+
+                then("it finds the account") {
+                    found["accountId"] shouldBe accountId.value.toInt()
+                }
+            }
+
+            `when`("Keycloak searches by the username account-<id>") {
+                val accountId = seeded()
+                binding("account-lookup")
+
+                val found = lookup("accounts?username=account-$accountId")
+
+                then("it finds the account") {
+                    found["accountId"] shouldBe accountId.value.toInt()
+                }
+            }
+
+            `when`("a lookup by id carries the search binding instead of the account's") {
+                val accountId = seeded()
+                binding("account-lookup")
+
+                val refused = status("accounts/$accountId")
+
+                then("the mismatched binding is refused") {
+                    refused shouldBe HttpStatus.UNAUTHORIZED
+                }
             }
         }
 
         given("an account still being set up - identified and confirmed, but no login method yet (ADR-46)") {
-            then("the search by email does not find it, only the orchestrator's own lookup by id") {
+            `when`("Keycloak searches by email and looks it up by id") {
                 val accountId = accountFixtures.seedAccount()
-
                 binding("account-lookup")
-                status("accounts?email=${AccountFixtures.EMAIL}") shouldBe HttpStatus.NOT_FOUND
+                val byEmail = status("accounts?email=${AccountFixtures.EMAIL}")
                 binding(accountId.toString())
-                lookup("accounts/$accountId")["accountId"] shouldBe accountId.value.toInt()
+                val byId = lookup("accounts/$accountId")
+
+                then("the search by email does not find it, only the orchestrator's own lookup by id") {
+                    byEmail shouldBe HttpStatus.NOT_FOUND
+                    byId["accountId"] shouldBe accountId.value.toInt()
+                }
             }
         }
 
         given("an account without an address") {
-            then("its username is account-<id>") {
+            `when`("Keycloak looks it up by id") {
                 val accountId = accountFixtures.seedAccount(email = null)
                 binding(accountId.toString())
-                lookup("accounts/$accountId")["username"] shouldBe "account-$accountId"
+
+                val byId = lookup("accounts/$accountId")
+
+                then("its username is account-<id>") {
+                    byId["username"] shouldBe "account-$accountId"
+                }
             }
         }
 
-        given("lookups that must not answer") {
-            then("unknown accounts are 404, a mismatched binding is refused, and there is no list") {
+        given("no account behind the lookup") {
+            `when`("an unknown id is looked up") {
                 binding("999999")
-                status("accounts/999999") shouldBe HttpStatus.NOT_FOUND
-                binding("account-lookup")
-                status("accounts?email=nobody@example.com") shouldBe HttpStatus.NOT_FOUND
-                // Keycloak asks every federation for every name, also the invitation federation's
-                // invitation-<id> (ADR-48): a name that is no address is nobody, not a bad request.
-                status("accounts?username=invitation-9f86d081") shouldBe HttpStatus.NOT_FOUND
-                status("accounts?email=not-an-address") shouldBe HttpStatus.NOT_FOUND
-                status("accounts") shouldBe HttpStatus.BAD_REQUEST
 
-                val accountId = accountFixtures.seedAccount()
+                val answer = status("accounts/999999")
+
+                then("it is 404") {
+                    answer shouldBe HttpStatus.NOT_FOUND
+                }
+            }
+
+            // Keycloak asks every federation for every name, also the invitation federation's
+            // invitation-<id> (ADR-48): a name that is no address is nobody, not a bad request.
+            listOf(
+                "an unknown address" to "accounts?email=nobody@example.com",
+                "an invitation's username" to "accounts?username=invitation-9f86d081",
+                "a value that is no address" to "accounts?email=not-an-address",
+            ).forEach { (what, path) ->
+                `when`("$what is searched") {
+                    binding("account-lookup")
+
+                    val answer = status(path)
+
+                    then("it is 404, not a bad request") {
+                        answer shouldBe HttpStatus.NOT_FOUND
+                    }
+                }
+            }
+
+            `when`("the accounts are asked for without a search term") {
                 binding("account-lookup")
-                (status("accounts/$accountId").value() in 400..499) shouldBe true
+
+                val answer = status("accounts")
+
+                then("it is refused - there is no list") {
+                    answer shouldBe HttpStatus.BAD_REQUEST
+                }
             }
         }
     }

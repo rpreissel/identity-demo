@@ -1,16 +1,17 @@
 package com.example.identity.core.orchestrator.admin
 
+import com.example.identity.core.orchestrator.domain.FeatureFlags
 import com.example.identity.core.orchestrator.kc.KeycloakRealmLoginTheme
 import com.example.identity.core.orchestrator.kc.LoginTheme
-import com.example.identity.core.orchestrator.domain.FeatureFlags
 import com.example.identity.core.orchestrator.session.FeatureFlagService
+import io.kotest.assertions.throwables.shouldNotThrowAny
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifyOrder
-import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.junit.jupiter.api.Test
 import org.springframework.boot.DefaultApplicationArguments
 
 /**
@@ -18,43 +19,84 @@ import org.springframework.boot.DefaultApplicationArguments
  * exercises it for real. Realm first, flag second, so a refused write changes nothing; and a
  * failed alignment at start never stops the orchestrator.
  */
-class LoginThemeSwitchTest {
+class LoginThemeSwitchTest : BehaviorSpec({
 
-    private val flags = mockk<FeatureFlagService>(relaxed = true)
-    private val realm = mockk<KeycloakRealmLoginTheme>(relaxed = true)
-    private val switch = LoginThemeSwitch(flags, realm)
-
-    @Test
-    fun `no flag means FreeMarker, the flag means Keycloakify`() {
-        every { flags.isEnabled(FeatureFlags.KEYCLOAK_LOGIN_KEYCLOAKIFY) } returns false
-        assertThat(switch.current()).isEqualTo(LoginTheme.FREEMARKER)
-        every { flags.isEnabled(FeatureFlags.KEYCLOAK_LOGIN_KEYCLOAKIFY) } returns true
-        assertThat(switch.current()).isEqualTo(LoginTheme.KEYCLOAKIFY)
+    /** The switch over relaxed mocks, the Keycloakify flag set to [keycloakify]. */
+    class Fixture(keycloakify: Boolean = false) {
+        val flags = mockk<FeatureFlagService>(relaxed = true) {
+            every { isEnabled(FeatureFlags.KEYCLOAK_LOGIN_KEYCLOAKIFY) } returns keycloakify
+        }
+        val realm = mockk<KeycloakRealmLoginTheme>(relaxed = true)
+        val switch = LoginThemeSwitch(flags, realm)
     }
 
-    @Test
-    fun `switching writes the realm first, then remembers the choice`() {
-        switch.switchTo(LoginTheme.KEYCLOAKIFY)
-        verifyOrder {
-            realm.apply(LoginTheme.KEYCLOAKIFY)
-            flags.setEnabled(FeatureFlags.KEYCLOAK_LOGIN_KEYCLOAKIFY, true)
+    given("no Keycloakify flag") {
+        val fixture = Fixture(keycloakify = false)
+
+        `when`("reading the current theme") {
+            val theme = fixture.switch.current()
+
+            then("it is FreeMarker") {
+                theme shouldBe LoginTheme.FREEMARKER
+            }
+        }
+
+        `when`("switching to Keycloakify") {
+            fixture.switch.switchTo(LoginTheme.KEYCLOAKIFY)
+
+            then("the realm is written first, then the choice is remembered") {
+                verifyOrder {
+                    fixture.realm.apply(LoginTheme.KEYCLOAKIFY)
+                    fixture.flags.setEnabled(FeatureFlags.KEYCLOAK_LOGIN_KEYCLOAKIFY, true)
+                }
+            }
         }
     }
 
-    @Test
-    fun `a refused realm write leaves the flag as it was`() {
-        every { realm.apply(any()) } throws IllegalStateException("Keycloak sagt nein")
-        assertThatThrownBy { switch.switchTo(LoginTheme.KEYCLOAKIFY) }.hasMessage("Keycloak sagt nein")
-        verify(exactly = 0) { flags.setEnabled(any(), any(), any()) }
+    given("a Keycloak that refuses the realm write") {
+        val fixture = Fixture()
+        every { fixture.realm.apply(any()) } throws IllegalStateException("Keycloak says no")
+
+        `when`("switching to Keycloakify") {
+            val result = runCatching { fixture.switch.switchTo(LoginTheme.KEYCLOAKIFY) }
+
+            then("the refusal reaches the caller, and the flag stays as it was") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }.message shouldBe "Keycloak says no"
+                verify(exactly = 0) { fixture.flags.setEnabled(any(), any(), any()) }
+            }
+        }
     }
 
-    @Test
-    fun `at start the realm follows the flag, and a failure there does not stop the start`() {
-        every { flags.isEnabled(FeatureFlags.KEYCLOAK_LOGIN_KEYCLOAKIFY) } returns true
-        switch.run(DefaultApplicationArguments())
-        verify { realm.apply(LoginTheme.KEYCLOAKIFY) }
+    given("the Keycloakify flag") {
+        val fixture = Fixture(keycloakify = true)
 
-        every { realm.apply(any()) } throws IllegalStateException("Keycloak nicht erreichbar")
-        switch.run(DefaultApplicationArguments())
+        `when`("reading the current theme") {
+            val theme = fixture.switch.current()
+
+            then("it is Keycloakify") {
+                theme shouldBe LoginTheme.KEYCLOAKIFY
+            }
+        }
+
+        `when`("the orchestrator starts") {
+            fixture.switch.run(DefaultApplicationArguments())
+
+            then("the realm follows the flag") {
+                verify { fixture.realm.apply(LoginTheme.KEYCLOAKIFY) }
+            }
+        }
     }
-}
+
+    given("the Keycloakify flag, and a Keycloak that cannot be reached") {
+        val fixture = Fixture(keycloakify = true)
+        every { fixture.realm.apply(any()) } throws IllegalStateException("Keycloak unreachable")
+
+        `when`("the orchestrator starts") {
+            val result = runCatching { fixture.switch.run(DefaultApplicationArguments()) }
+
+            then("the failed alignment does not stop the start") {
+                shouldNotThrowAny { result.getOrThrow() }
+            }
+        }
+    }
+})

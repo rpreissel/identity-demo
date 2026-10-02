@@ -8,7 +8,7 @@ import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
 import com.example.identity.tools.ident_kvnr.IdentKvnrDescriptor
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 
 /**
@@ -75,9 +75,9 @@ class ToolOutcomeTest : BehaviorSpec({
     given("an attestation") {
         then("reports neither amr nor a level of its own") {
             val attested = ToolOutcome.Completed.Attested(listOf(email))
-            attested.amr shouldBe emptyList()
+            attested.amr.shouldBeEmpty()
             attested.achievedAcr shouldBe null
-            attested.factorTypes shouldContainExactlyInAnyOrder emptySet()
+            attested.factorTypes.shouldBeEmpty()
         }
     }
 })

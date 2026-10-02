@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpStrategy
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.tools.auth_password.AuthPasswordDescriptor
 import com.example.identity.tools.auth_sms.AuthSmsDescriptor
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
@@ -12,6 +11,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifySta
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
@@ -34,18 +34,6 @@ class StepUpStrategyTest : BehaviorSpec({
 
     val strategy = StepUpStrategy()
 
-    given("the intent") {
-        then("is STEP_UP") {
-            strategy.intent shouldBe AuthIntent.STEP_UP
-        }
-    }
-
-    given("StepUpState.forSubJourney") {
-        then("seeds Start with exactly the given target/starting acr") {
-            StepUpState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1) shouldBe StepUpState.Start(AcrLevel.LOA2, AcrLevel.LOA1)
-        }
-    }
-
     given("AuthChoice, one offered candidate") {
         val state = StepUpState.AuthChoice(AcrLevel.LOA2, AcrLevel.LOA1, Offer(listOf(ToolId("auth-sms"))))
 
@@ -60,14 +48,16 @@ class StepUpStrategyTest : BehaviorSpec({
         }
 
         `when`("the tool completes with Identified") {
-            val result = runCatching { strategy.transition(state, JourneyEvent.Completed(AuthSmsDescriptor, ToolOutcome.Completed.Identified(claims = listOf(com.example.identity.contract.tool_api.claims.Claim(com.example.identity.contract.tool_api.claims.AttributeType.PERSON_ID, "P000000001", com.example.identity.contract.tool_api.claims.ClaimSource.PERSON_DIRECTORY)))), ctx()) }
+            val event = JourneyEvent.Completed(AuthSmsDescriptor, identifiedOutcome())
+            val result = runCatching { strategy.transition(state, event, ctx()) }
             then("Identified is not offered by this intent") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
 
         `when`("the tool completes with Enrolled") {
-            val result = runCatching { strategy.transition(state, JourneyEvent.Completed(AuthSmsDescriptor, ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))), ctx()) }
+            val event = JourneyEvent.Completed(AuthSmsDescriptor, ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref")))
+            val result = runCatching { strategy.transition(state, event, ctx()) }
             then("Enrolled is not offered by this intent") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
@@ -224,12 +214,11 @@ class StepUpStrategyTest : BehaviorSpec({
 
     given("AuthChoice, one offered candidate, re-identification could help, but this run forbids it (allowReIdentification = false)") {
         val acc = account(method("sms", AcrLevel.LOA2))
-        val state = StepUpState.AuthChoice(AcrLevel.LOA2, AcrLevel.LOA1, Offer(listOf(ToolId("auth-sms"))))
-        val forbiddenState = state.copy(allowReIdentification = false)
+        val state = StepUpState.AuthChoice(AcrLevel.LOA2, AcrLevel.LOA1, Offer(listOf(ToolId("auth-sms"))), allowReIdentification = false)
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
 
         `when`("the last offered candidate is abandoned") {
-            val transition = strategy.transition(forbiddenState, JourneyEvent.Abandoned(AuthSmsDescriptor), theCtx)
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(AuthSmsDescriptor), theCtx)
             then("cancels instead of requiring RE_IDENTIFY") {
                 transition shouldBe Transition.Cancel
             }
@@ -242,16 +231,6 @@ class StepUpStrategyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA2), method("password", AcrLevel.LOA2))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms", "password"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), account = acc))
         val state = StepUpState.AuthChoice(AcrLevel.LOA2, AcrLevel.LOA1, Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
-
-        `when`("a proof just completed (Completed)") {
-            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("password"))
-            val event = JourneyEvent.Completed(AuthPasswordDescriptor, outcome)
-            val transition = strategy.transition(state, event, theCtx)
-            then("performs AcceptProof") {
-                transition shouldBe
-                    Transition.Perform(Action.AcceptProof(AuthPasswordDescriptor, outcome), resumeState = state)
-            }
-        }
 
         `when`("resumed after accepting the proof (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)

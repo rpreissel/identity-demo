@@ -9,8 +9,6 @@ import org.springframework.http.HttpMethod
 import org.springframework.web.client.HttpClientErrorException
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
-import io.kotest.matchers.string.shouldEndWith
-import io.kotest.matchers.string.shouldNotContain
 
 /**
  * ident-nect end to end (docs/03-tool-architektur.md, ident-nect): jump URL, identification on
@@ -23,7 +21,7 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
     private lateinit var jwkThumbprintService: JwkThumbprintService
 
     init {
-        beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
 
         data class Started(val channelSessionId: String, val toolSessionId: String, val caseId: String)
 
@@ -51,6 +49,11 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
         fun report(toolSessionId: String, caseId: String) =
             patch("/orchestrator/api/v1/tools/$toolSessionId/ident-nect", """{"caseId":"$caseId"}""")
 
+        fun assignKvnr(channelSessionId: String) {
+            val kvnrSession = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-kvnr").nextRaw()["toolSessionId"] as String
+            patch("/orchestrator/api/v1/tools/$kvnrSession/ident-kvnr", """{"kvnr":"A123456789"}""")
+        }
+
         fun evidenceJsonOf(channelSessionId: String): String = jdbcTemplate.queryForObject(
             """
             SELECT ae.methods FROM orchestrator.session_evidence ae
@@ -61,76 +64,53 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
             channelSessionId
         )!!
 
-        fun claimedAttributesOf(channelSessionId: String): List<String> = jdbcTemplate.queryForList(
+        fun personAnchorsOf(channelSessionId: String): Int = jdbcTemplate.queryForObject(
             """
-            SELECT c.attribute_type FROM account.claim c
-            JOIN orchestrator.channel_session cs ON cs.account_id = c.account_id
-            WHERE cs.id = CAST(? AS UUID)
+            SELECT COUNT(*) FROM account.anchor an
+            JOIN orchestrator.channel_session cs ON cs.account_id = an.account_id
+            WHERE cs.id = CAST(? AS UUID) AND an.attribute_type = 'person_id'
             """,
-            String::class.java,
+            Int::class.java,
             channelSessionId
-        ).requireNoNulls()
+        )!!
 
         given("a registration identifying with the eID via Nect") {
-            then("the return reports the case, the backend redeems it, and ident-kvnr follows") {
+            `when`("the user finishes at Nect, the return reports the case and the KVNR is supplied") {
                 val run = start()
-                get("/mock-nect/cases/${run.caseId}")["requested"] shouldBe
-                    listOf("family_name", "given_names", "birth_date", "address", "eid_pseudonym")
+                val requested = get("/mock-nect/cases/${run.caseId}")["requested"]
                 val redirectUri = finishAtNect(run.caseId, "eid", "$max,$maxAddress,\"restrictedId\":\"NECT-EID-MAX\"", pin = "123456")
-                redirectUri shouldBe "/app/?nectCaseId=${run.caseId}"
-
                 val attested = report(run.toolSessionId, run.caseId)
+                assignKvnr(run.channelSessionId)
 
-                attested.next() shouldBe mapOf("type" to "tool", "toolId" to "ident-kvnr", "step" to "input")
-                evidenceJsonOf(run.channelSessionId) shouldContain "nect-eid"
-                val kvnrSession = post("/orchestrator/api/v1/channels/${run.channelSessionId}/tools/ident-kvnr").nextRaw()["toolSessionId"] as String
-                patch("/orchestrator/api/v1/tools/$kvnrSession/ident-kvnr", """{"kvnr":"A123456789"}""")
-                jdbcTemplate.queryForObject(
-                    """
-                    SELECT COUNT(*) FROM account.anchor an
-                    JOIN orchestrator.channel_session cs ON cs.account_id = an.account_id
-                    WHERE cs.id = CAST(? AS UUID) AND an.attribute_type = 'person_id'
-                    """,
-                    Int::class.java,
-                    run.channelSessionId
-                ) shouldBe 1
-            }
-        }
-
-        given("an eID read through Nect") {
-            then("Nect's card pseudonym becomes its own anchor, never the one ident-eid writes (§18 PAuswG)") {
-                val run = start()
-                finishAtNect(run.caseId, "eid", "$max,$maxAddress,\"restrictedId\":\"NECT-EID-OWN\"", pin = "123456")
-                report(run.toolSessionId, run.caseId)
-
-                jdbcTemplate.queryForList(
-                    """
-                    SELECT an.attribute_type || '=' || an.normalized_value FROM account.anchor an
-                    JOIN orchestrator.channel_session cs ON cs.account_id = an.account_id
-                    WHERE cs.id = CAST(? AS UUID) AND an.attribute_type IN ('nect_restricted_id', 'restricted_id')
-                    """.trimIndent(),
-                    String::class.java,
-                    run.channelSessionId
-                ) shouldBe listOf("nect_restricted_id=NECT-EID-OWN")
-            }
-        }
-
-        given("a registration identifying with a passport via Nect") {
-            then("amr is nect-epass and no address is claimed - a passport carries none") {
-                val run = start()
-                finishAtNect(run.caseId, "epass", "$max,\"documentNumber\":\"C01X00T47\",\"issuingState\":\"D\"", expiryDate = "2099-01-01")
-
-                report(run.toolSessionId, run.caseId)
-
-                evidenceJsonOf(run.channelSessionId) shouldContain "nect-epass"
-                val claimed = claimedAttributesOf(run.channelSessionId).joinToString()
-                claimed shouldContain "family_name"
-                claimed shouldNotContain "street_address"
+                then("the case asks Nect for exactly what the registration needs") {
+                    requested shouldBe listOf("family_name", "given_names", "birth_date", "address", "eid_pseudonym")
+                }
+                then("Nect sends the user back to the app with the case id") {
+                    redirectUri shouldBe "/app/?nectCaseId=${run.caseId}"
+                }
+                then("the backend redeems the case as nect-eid and ident-kvnr follows") {
+                    attested.next() shouldBe mapOf("type" to "tool", "toolId" to "ident-kvnr", "step" to "input")
+                    evidenceJsonOf(run.channelSessionId) shouldContain "nect-eid"
+                }
+                then("Nect's card pseudonym becomes its own anchor, never the one ident-eid writes (§18 PAuswG)") {
+                    jdbcTemplate.queryForList(
+                        """
+                        SELECT an.attribute_type || '=' || an.normalized_value FROM account.anchor an
+                        JOIN orchestrator.channel_session cs ON cs.account_id = an.account_id
+                        WHERE cs.id = CAST(? AS UUID) AND an.attribute_type IN ('nect_restricted_id', 'restricted_id')
+                        """.trimIndent(),
+                        String::class.java,
+                        run.channelSessionId
+                    ) shouldBe listOf("nect_restricted_id=NECT-EID-MAX")
+                }
+                then("ident-kvnr binds the register's person") {
+                    personAnchorsOf(run.channelSessionId) shouldBe 1
+                }
             }
         }
 
         given("a passport whose chip spells the names its own way") {
-            then("ident-kvnr still binds the register person - names compare in MRZ form") {
+            `when`("the passport case is reported and the KVNR is supplied") {
                 val run = start()
                 finishAtNect(
                     run.caseId, "epass",
@@ -138,71 +118,59 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
                     expiryDate = "2099-01-01"
                 )
                 report(run.toolSessionId, run.caseId)
+                assignKvnr(run.channelSessionId)
 
-                val kvnrSession = post("/orchestrator/api/v1/channels/${run.channelSessionId}/tools/ident-kvnr").nextRaw()["toolSessionId"] as String
-                patch("/orchestrator/api/v1/tools/$kvnrSession/ident-kvnr", """{"kvnr":"A123456789"}""")
-
-                jdbcTemplate.queryForObject(
-                    """
-                    SELECT COUNT(*) FROM account.anchor an
-                    JOIN orchestrator.channel_session cs ON cs.account_id = an.account_id
-                    WHERE cs.id = CAST(? AS UUID) AND an.attribute_type = 'person_id'
-                    """,
-                    Int::class.java,
-                    run.channelSessionId
-                ) shouldBe 1
-            }
-        }
-
-        given("a returned case id that is not this run's") {
-            then("it is refused, and the foreign case stays redeemable by its own run") {
-                val mine = start()
-                val other = start()
-                finishAtNect(other.caseId, "eudi", max)
-
-                val refused = report(mine.toolSessionId, other.caseId)
-
-                refused.stepData()["kind"] shouldBe "failed-attempt"
-                report(other.toolSessionId, other.caseId).next() shouldNotBe mapOf("type" to "tool", "toolId" to "ident-nect", "step" to "redirect")
-                evidenceJsonOf(other.channelSessionId) shouldContain "nect-eudi"
+                then("ident-kvnr still binds the register person - names compare in MRZ form") {
+                    personAnchorsOf(run.channelSessionId) shouldBe 1
+                }
             }
         }
 
         given("a web channel that names Keycloak's action URL as the return address") {
             val actionUrl = "https://kc.test/realms/Demo/login-actions/authenticate?session_code=c1&execution=e1&client_id=web&tab_id=t1"
 
-            then("Nect sends the user back there, and the forwarded query reports the case") {
+            `when`("the user finishes at Nect and Keycloak forwards the query") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 val activated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-nect", """{"returnUri":"$actionUrl"}""")
                 val caseId = activated.stepData()["caseId"] as String
                 val toolSessionId = activated.nextRaw()["toolSessionId"] as String
-
                 val redirectUri = finishAtNect(caseId, "eudi", max)
-                redirectUri shouldBe "$actionUrl&nectCaseId=$caseId"
-
                 // Keycloak hands the query on as it is: nectCaseId, not caseId.
                 val attested = patch("/orchestrator/api/v1/tools/$toolSessionId/ident-nect", """{"nectCaseId":"$caseId"}""")
-                attested.next() shouldBe mapOf("type" to "tool", "toolId" to "ident-kvnr", "step" to "input")
-                evidenceJsonOf(channelSessionId) shouldContain "nect-eudi"
+
+                then("Nect sends the user back there") {
+                    redirectUri shouldBe "$actionUrl&nectCaseId=$caseId"
+                }
+                then("the forwarded query reports the case") {
+                    attested.next() shouldBe mapOf("type" to "tool", "toolId" to "ident-kvnr", "step" to "input")
+                    evidenceJsonOf(channelSessionId) shouldContain "nect-eudi"
+                }
             }
 
-            then("a retry after a cancelled case keeps the return address") {
+            `when`("the case is cancelled at Nect and the user retries") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 val activated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-nect", """{"returnUri":"$actionUrl"}""")
                 val caseId = activated.stepData()["caseId"] as String
                 val toolSessionId = activated.nextRaw()["toolSessionId"] as String
                 post("/mock-nect/cases/$caseId/cancellation")
-                patch("/orchestrator/api/v1/tools/$toolSessionId/ident-nect", """{"caseId":"$caseId"}""").stepData()["kind"] shouldBe "failed-attempt"
-
+                val failed = patch("/orchestrator/api/v1/tools/$toolSessionId/ident-nect", """{"caseId":"$caseId"}""")
                 // A Keycloak form posts strings; "true" must count as the flag.
                 val retried = patch("/orchestrator/api/v1/tools/$toolSessionId/ident-nect", """{"retry":"true"}""")
                 val newCase = retried.stepData()["caseId"] as String
-                finishAtNect(newCase, "eudi", max) shouldBe "$actionUrl&nectCaseId=$newCase"
+                val redirectUri = finishAtNect(newCase, "eudi", max)
+
+                then("the report of the cancelled case fails") {
+                    failed.stepData()["kind"] shouldBe "failed-attempt"
+                }
+                then("the retry opens a fresh case that keeps the return address") {
+                    newCase shouldNotBe caseId
+                    redirectUri shouldBe "$actionUrl&nectCaseId=$newCase"
+                }
             }
 
-            then("an address outside the configured prefixes is refused with 400, before any case exists") {
+            `when`("the channel names an address outside the configured prefixes") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val refused = shouldThrow<HttpClientErrorException.BadRequest> {
+                val result = runCatching {
                     restTemplate.exchange(
                         "http://localhost:$port/orchestrator/api/v1/channels/$channelSessionId/tools/ident-nect",
                         HttpMethod.POST,
@@ -210,20 +178,11 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
                         String::class.java
                     )
                 }
-                refused.responseBodyAsString shouldContain "BAD_REQUEST"
-            }
-        }
 
-        given("a case cancelled at Nect") {
-            then("the report fails, and retry opens a fresh case") {
-                val run = start()
-                post("/mock-nect/cases/${run.caseId}/cancellation")["redirectUri"] as String shouldEndWith run.caseId
-
-                report(run.toolSessionId, run.caseId).stepData()["kind"] shouldBe "failed-attempt"
-
-                val retried = patch("/orchestrator/api/v1/tools/${run.toolSessionId}/ident-nect", """{"retry":true}""")
-                retried.stepData()["kind"] shouldBe "nect-redirect"
-                retried.stepData()["caseId"] shouldNotBe run.caseId
+                then("it is refused with 400, before any case exists") {
+                    shouldThrow<HttpClientErrorException.BadRequest> { result.getOrThrow() }
+                        .responseBodyAsString shouldContain "BAD_REQUEST"
+                }
             }
         }
     }

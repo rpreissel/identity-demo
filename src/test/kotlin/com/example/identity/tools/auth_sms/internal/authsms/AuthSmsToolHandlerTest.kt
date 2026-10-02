@@ -11,11 +11,11 @@ import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollment
 import com.example.identity.tools.auth_sms.AuthSmsDescriptor
 import com.example.identity.tools.auth_sms.SMS_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.EnrollmentRef
+import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
@@ -27,74 +27,104 @@ import com.example.identity.contract.tool_api.TooManyRequestsException
 import java.util.Optional
 import java.util.UUID
 
+private const val PHONE = "+491701234567"
+
+/** No SMS enrollment and no tool session exist, and the send budget is open, until a test changes that. */
+private class Fixture {
+    val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
+    val saved = slot<AuthSmsToolSession>()
+    val sessions = mockk<AuthSmsToolSessionRepository>().also {
+        every { it.save(capture(saved)) } answers { saved.captured }
+    }
+    val enrollments = mockk<AuthSmsEnrollmentRepository>().also {
+        every { it.findById(any()) } returns Optional.empty()
+    }
+    val tans = TanGenerator("test-pepper", clock = TEST_CLOCK)
+    val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
+    val gateway = SmsGateway(clock = TEST_CLOCK)
+    val handler = AuthSmsToolHandler(AuthSmsDescriptor, sessions, enrollments, tans, gateway, sendLimit, clock = TEST_CLOCK)
+
+    fun withEnrolledNumber(id: Long) = apply {
+        every { enrollments.findById(id) } returns Optional.of(AuthSmsEnrollment(phoneNumber = PHONE, createdAt = TEST_NOW).apply { this.id = id })
+    }
+
+    fun withSendBudgetUsedUp() = apply {
+        every { sendLimit.trySend(PHONE) } returns false
+    }
+
+    /** Persists a pending TAN for [toolSessionId], bound to [enrollmentRefId], and returns it. */
+    fun withPendingTan(enrollmentRefId: String): TanGenerator.Issued = tans.issue().also { issued ->
+        every { sessions.findByToolSessionId(toolSessionId) } returns
+            AuthSmsToolSession(toolSessionId = toolSessionId, enrollmentRefId = enrollmentRefId, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
+    }
+}
+
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
  * wiring only - the tan-vs-state decision is covered by [AuthSmsFlowTest].
  */
 class AuthSmsToolHandlerTest : BehaviorSpec({
 
-    val toolDataRepository = mockk<AuthSmsToolSessionRepository>()
-    val enrollmentRepository = mockk<AuthSmsEnrollmentRepository>()
-    val tanGenerator = TanGenerator("test-pepper", clock = TEST_CLOCK)
-    val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
-    val handler = AuthSmsToolHandler(AuthSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, SmsGateway(clock = TEST_CLOCK), sendLimit, clock = TEST_CLOCK)
-    val toolSessionId = ToolSessionId(UUID.randomUUID())
+    given("no SMS enrollment") {
+        val f = Fixture()
 
-    given("start()") {
-        `when`("the enrollment reference has the wrong type") {
-            val result = runCatching { handler.start(toolSessionId, EnrollmentRef("auth_device.enrollment", "1")) }
+        `when`("a tool session starts with an enrollment reference of the wrong type") {
+            val result = runCatching { f.handler.start(f.toolSessionId, EnrollmentRef("auth_device.enrollment", "1")) }
 
             then("it throws UnresolvableReferenceException") {
                 shouldThrow<UnresolvableReferenceException> { result.getOrThrow() }
             }
         }
 
-        `when`("the referenced enrollment does not exist") {
-            every { enrollmentRepository.findById(99L) } returns Optional.empty()
-            val result = runCatching { handler.start(toolSessionId, EnrollmentRef(SMS_ENROLLMENT_TYPE, "99")) }
+        `when`("a tool session starts with a reference to a missing enrollment") {
+            val result = runCatching { f.handler.start(f.toolSessionId, EnrollmentRef(SMS_ENROLLMENT_TYPE, "99")) }
 
             then("it throws UnresolvableReferenceException") {
                 shouldThrow<UnresolvableReferenceException> { result.getOrThrow() }
             }
         }
+    }
 
-        `when`("the referenced enrollment exists") {
-            val enrollment = AuthSmsEnrollment(phoneNumber = "+491701234567", createdAt = TEST_NOW).apply { id = 1L }
-            every { enrollmentRepository.findById(1L) } returns Optional.of(enrollment)
-            val saved = slot<AuthSmsToolSession>()
-            every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
-            val outcome = handler.start(toolSessionId, EnrollmentRef(SMS_ENROLLMENT_TYPE, "1"))
+    given("an enrolled phone number") {
+        val f = Fixture().withEnrolledNumber(1L)
 
-            then("it persists a fresh TAN and asks for it at step auth") {
-                outcome.shouldBeInstanceOf<ToolOutcome.InProgress>()
-                outcome.nextStep shouldBe "auth"
-                saved.captured.issuedTanHash.shouldNotBeNull()
+        `when`("a tool session starts with a reference to it") {
+            val outcome = f.handler.start(f.toolSessionId, EnrollmentRef(SMS_ENROLLMENT_TYPE, "1"))
+            val sms = f.gateway.outbox().single()
+
+            then("it texts a TAN to the number and asks for it at step auth, revealing it as the demo value") {
+                sms.phoneNumber shouldBe PHONE
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "auth", stepData = MissingFields(listOf("tan")), demo = mapOf("tan" to sms.tan))
+            }
+
+            then("it persists the hash of the texted TAN") {
+                f.tans.matches(sms.tan, f.saved.captured.issuedTanHash, f.saved.captured.tanExpiresAt) shouldBe true
             }
         }
+    }
 
-        `when`("the number's send budget is used up") {
-            val enrollment = AuthSmsEnrollment(phoneNumber = "+491707654321", createdAt = TEST_NOW).apply { id = 2L }
-            every { enrollmentRepository.findById(2L) } returns Optional.of(enrollment)
-            every { sendLimit.trySend("+491707654321") } returns false
-            val gateway = SmsGateway(clock = TEST_CLOCK)
-            val rateLimitedHandler = AuthSmsToolHandler(AuthSmsDescriptor, toolDataRepository, enrollmentRepository, tanGenerator, gateway, sendLimit, clock = TEST_CLOCK)
-            val result = runCatching { rateLimitedHandler.start(toolSessionId, EnrollmentRef(SMS_ENROLLMENT_TYPE, "2")) }
+    given("an enrolled phone number whose send budget is used up") {
+        val f = Fixture().withEnrolledNumber(2L).withSendBudgetUsedUp()
 
-            then("it refuses with TooManyRequestsException and sends nothing") {
+        `when`("a tool session starts with a reference to it") {
+            val result = runCatching { f.handler.start(f.toolSessionId, EnrollmentRef(SMS_ENROLLMENT_TYPE, "2")) }
+
+            then("it refuses with TooManyRequestsException") {
                 shouldThrow<TooManyRequestsException> { result.getOrThrow() }
-                gateway.outbox().shouldBeEmpty()
+            }
+
+            then("it sends nothing") {
+                f.gateway.outbox().shouldBeEmpty()
             }
         }
     }
 
     given("an active auth-sms tool session with a pending TAN") {
-        val issued = tanGenerator.issue()
-        val data = AuthSmsToolSession(toolSessionId = toolSessionId, enrollmentRefId = "1", issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
-        every { enrollmentRepository.findById(1L) } returns Optional.of(AuthSmsEnrollment(phoneNumber = "+491701234567", createdAt = TEST_NOW).apply { id = 1L })
-        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
+        val f = Fixture().withEnrolledNumber(1L)
+        val issued = f.withPendingTan("1")
 
         `when`("confirming with the correct TAN") {
-            val outcome = handler.patch(toolSessionId, issued.plainTan)
+            val outcome = f.handler.patch(f.toolSessionId, issued.plainTan)
 
             then("it authenticates at the descriptor's own maxAcr and factorTypes") {
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
@@ -104,20 +134,17 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
             }
 
             then("the number's send budget starts over: whoever asked received the TAN") {
-                verify { sendLimit.received("+491701234567") }
+                verify { f.sendLimit.received(PHONE) }
             }
         }
     }
 
     given("an auth-sms tool session whose enrollment was removed meanwhile, on another channel") {
-        val goneSessionId = ToolSessionId(UUID.randomUUID())
-        val issued = tanGenerator.issue()
-        every { toolDataRepository.findByToolSessionId(goneSessionId) } returns
-            AuthSmsToolSession(toolSessionId = goneSessionId, enrollmentRefId = "7", issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
-        every { enrollmentRepository.findById(7L) } returns Optional.empty()
+        val f = Fixture()
+        val issued = f.withPendingTan("7")
 
         `when`("the right TAN arrives") {
-            val result = runCatching { handler.patch(goneSessionId, issued.plainTan) }
+            val result = runCatching { f.handler.patch(f.toolSessionId, issued.plainTan) }
 
             then("it authenticates nobody and counts nothing: the reference is unresolvable") {
                 shouldThrow<UnresolvableReferenceException> { result.getOrThrow() }

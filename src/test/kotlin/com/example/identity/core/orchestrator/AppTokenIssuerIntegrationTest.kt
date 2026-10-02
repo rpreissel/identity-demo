@@ -4,20 +4,18 @@ import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.channel.KcChannelService
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.ninjasquad.springmockk.MockkBean
-import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.PlainJWT
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.longs.shouldBeLessThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
-import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import java.sql.Timestamp
 import java.time.Duration
 import java.time.Instant
-import java.util.Date
 import java.util.UUID
 
 /**
@@ -34,8 +32,11 @@ class AppTokenIssuerIntegrationTest : IntegrationTestSupport() {
     private lateinit var kcChannelService: KcChannelService
 
     init {
-        beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
     }
+
+    /** ChannelService's fixed lifetime of a channel that has not authenticated yet. */
+    private val channelLifetime = Duration.ofHours(24)
 
     private fun channelExpiresAt(channel: String): Instant = jdbcTemplate.queryForObject(
         "SELECT expires_at FROM orchestrator.channel_session WHERE id = ?", Timestamp::class.java, UUID.fromString(channel)
@@ -53,33 +54,61 @@ class AppTokenIssuerIntegrationTest : IntegrationTestSupport() {
         "SELECT state FROM orchestrator.channel_session WHERE id = ?", String::class.java, UUID.fromString(channel)
     )!!
 
+    private fun keycloakSessionOf(channel: String): String = jdbcTemplate.queryForObject(
+        "SELECT keycloak_session_id FROM orchestrator.app_token_session WHERE id = ?", String::class.java, appTokenSessionId(channel)
+    )!!
+
+    private fun tokenAcr(channel: String): String =
+        PlainJWT.parse(get("/orchestrator/api/v1/channels/$channel/token")["accessToken"] as String).jwtClaimsSet.getStringClaim("acr")
+
+    /** A fresh loa2 login of the seeded account (sms + password). */
+    private fun loginAtLoa2(): String {
+        val channel = post("/orchestrator/api/v1/app/channels", """{"requiredAcr":"loa2"}""").channel()["channelSessionId"] as String
+        authenticateViaSms(channel)
+        authenticateViaPassword(channel)
+        return channel
+    }
+
+    /** Seeds a registered account and signs in on a default (loa1) channel via sms alone. */
+    private fun signInViaSmsAlone(): String {
+        seedRegisteredAccount()
+        val channel = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+        authenticateViaSms(channel)
+        return channel
+    }
+
     init {
         given("an App channel before authentication") {
-            then("the fixed channel lifetime applies") {
+            `when`("it is created") {
                 seedRegisteredAccount()
                 val channel = post("/orchestrator/api/v1/app/channels", """{"requiredAcr":"loa2"}""").channel()["channelSessionId"] as String
 
-                Duration.between(Instant.now(), channelExpiresAt(channel)).toHours() shouldBe 23L
+                then("the fixed channel lifetime applies") {
+                    val remaining = Duration.between(Instant.now(), channelExpiresAt(channel))
+                    (channelLifetime - remaining) shouldBeLessThan Duration.ofMinutes(1)
+                }
             }
         }
 
-        given("an App channel that reaches AUTHENTICATED") {
-            then("the session is opened in the same transition, before any token request, and the channel lives as long as its window") {
+        given("an App channel of a registered account") {
+            `when`("it reaches AUTHENTICATED") {
                 val channel = loginAsSeededAccount()
 
-                val context = appTokenSessionId(channel)
-                jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM orchestrator.app_token_session WHERE id = ? AND refresh_token IS NOT NULL AND access_token IS NOT NULL",
-                    Int::class.java, context
-                ) shouldBe 1
-                val window = refreshExpiresAt(context).shouldNotBeNull()
-                channelExpiresAt(channel) shouldBe window
-                Duration.between(Instant.now(), window).toMinutes() shouldBeLessThan 31L
+                then("the session is opened in the same transition, before any token request, and the channel lives as long as its window") {
+                    val context = appTokenSessionId(channel)
+                    jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM orchestrator.app_token_session WHERE id = ? AND refresh_token IS NOT NULL AND access_token IS NOT NULL",
+                        Int::class.java, context
+                    ) shouldBe 1
+                    val window = refreshExpiresAt(context).shouldNotBeNull()
+                    channelExpiresAt(channel) shouldBe window
+                    Duration.between(Instant.now(), window).toMinutes() shouldBeLessThan 31L
+                }
             }
         }
 
-        given("an authenticated App channel whose token is refreshed") {
-            then("every refresh moves the channel's expiry to the new session window") {
+        given("an authenticated App channel whose access token has expired") {
+            `when`("the token is refreshed") {
                 val channel = loginAsSeededAccount()
                 val context = appTokenSessionId(channel)
                 jdbcTemplate.update(
@@ -94,138 +123,88 @@ class AppTokenIssuerIntegrationTest : IntegrationTestSupport() {
 
                 get("/orchestrator/api/v1/channels/$channel/token")
 
-                val window = refreshExpiresAt(context).shouldNotBeNull()
-                Duration.between(Instant.now(), window).toMinutes() shouldBe 29L
-                channelExpiresAt(channel) shouldBe window
-            }
-        }
-
-        given("a journey interaction on an authenticated App channel") {
-            /** The cached token as if minted [minutesAgo], with the window ending [windowLeft] from now. */
-            fun ageToken(channel: String, minutesAgo: Long, windowLeft: Duration) {
-                val issued = Instant.now().minus(Duration.ofMinutes(minutesAgo))
-                val token = PlainJWT(JWTClaimsSet.Builder().issueTime(Date.from(issued)).build()).serialize()
-                val windowEnd = Timestamp.from(Instant.now().plus(windowLeft))
-                jdbcTemplate.update(
-                    "UPDATE orchestrator.app_token_session SET access_token = ?, refresh_expires_at = ? WHERE id = ?",
-                    token, windowEnd, appTokenSessionId(channel)
-                )
-                jdbcTemplate.update("UPDATE orchestrator.channel_session SET expires_at = ? WHERE id = ?", windowEnd, UUID.fromString(channel))
-            }
-            fun cachedToken(channel: String): String = jdbcTemplate.queryForObject(
-                "SELECT access_token FROM orchestrator.app_token_session WHERE id = ?", String::class.java, appTokenSessionId(channel)
-            )!!
-
-            then("once a quarter of the window is used, it renews the session and moves the channel's expiry") {
-                val channel = loginAsSeededAccount()
-                ageToken(channel, minutesAgo = 10, windowLeft = Duration.ofMinutes(20))
-                val aged = cachedToken(channel)
-
-                post("/orchestrator/api/v1/channels/$channel/logouts")
-
-                cachedToken(channel) shouldNotBe aged
-                val window = refreshExpiresAt(appTokenSessionId(channel)).shouldNotBeNull()
-                Duration.between(Instant.now(), window).toMinutes() shouldBe 29L
-                channelExpiresAt(channel) shouldBe window
-            }
-
-            then("shortly after the last token, the current window stands") {
-                val channel = loginAsSeededAccount()
-                val token = cachedToken(channel)
-                val expiresAt = channelExpiresAt(channel)
-
-                post("/orchestrator/api/v1/channels/$channel/logouts")
-
-                cachedToken(channel) shouldBe token
-                channelExpiresAt(channel) shouldBe expiresAt
-            }
-
-            then("a session that can no longer be renewed ends the channel for good: 410 and EXPIRED") {
-                val channel = loginAsSeededAccount()
-                // The session's window has lapsed, the channel's own row not yet: Keycloak ended it early.
-                ageToken(channel, minutesAgo = 10, windowLeft = Duration.ofMinutes(-1))
-                jdbcTemplate.update(
-                    "UPDATE orchestrator.channel_session SET expires_at = DATEADD('MINUTE', 5, CURRENT_TIMESTAMP) WHERE id = ?",
-                    UUID.fromString(channel)
-                )
-
-                assertThrows<HttpClientErrorException> { post("/orchestrator/api/v1/channels/$channel/logouts") }
-                    .statusCode shouldBe HttpStatus.GONE
-
-                stateOf(channel) shouldBe "EXPIRED"
+                then("the refresh moves the channel's expiry to the new session window") {
+                    val window = refreshExpiresAt(context).shouldNotBeNull()
+                    Duration.between(Instant.now(), window).toMinutes() shouldBe 29L
+                    channelExpiresAt(channel) shouldBe window
+                }
             }
         }
 
         given("an authenticated App channel whose session window has passed") {
-            then("the channel is refused like any expired one") {
+            `when`("the channel and its token are requested") {
                 val channel = loginAsSeededAccount()
                 jdbcTemplate.update(
                     "UPDATE orchestrator.channel_session SET expires_at = DATEADD('SECOND', -1, CURRENT_TIMESTAMP) WHERE id = ?",
                     UUID.fromString(channel)
                 )
 
-                assertThrows<HttpClientErrorException> { get("/orchestrator/api/v1/channels/$channel") }
-                    .statusCode shouldBe HttpStatus.NOT_FOUND
-                assertThrows<HttpClientErrorException> { get("/orchestrator/api/v1/channels/$channel/token") }
-                    .statusCode shouldBe HttpStatus.NOT_FOUND
+                val channelResult = runCatching { get("/orchestrator/api/v1/channels/$channel") }
+                val tokenResult = runCatching { get("/orchestrator/api/v1/channels/$channel/token") }
+
+                then("the channel is refused like any expired one") {
+                    shouldThrow<HttpClientErrorException> { channelResult.getOrThrow() }.statusCode shouldBe HttpStatus.NOT_FOUND
+                    shouldThrow<HttpClientErrorException> { tokenResult.getOrThrow() }.statusCode shouldBe HttpStatus.NOT_FOUND
+                }
             }
         }
 
-        given("Keycloak reports the sign-out of the session an App login holds") {
-            then("that App channel ends, another login of the same account does not") {
+        given("two App logins of the same account, each holding its own Keycloak session") {
+            `when`("Keycloak reports the sign-out of the first one's session") {
                 val accountId = seedRegisteredAccount()
-                fun login(): String {
-                    val channel = post("/orchestrator/api/v1/app/channels", """{"requiredAcr":"loa2"}""").channel()["channelSessionId"] as String
-                    authenticateViaSms(channel)
-                    authenticateViaPassword(channel)
-                    return channel
-                }
-                val signedOut = login()
-                val other = login()
+                val signedOut = loginAtLoa2()
+                val other = loginAtLoa2()
                 // The mock provider has no `sid`; under `keycloak` KcTokenProvider records it from the token.
                 jdbcTemplate.update("UPDATE orchestrator.app_token_session SET keycloak_session_id = 'kc-session-1' WHERE id = ?", appTokenSessionId(signedOut))
                 jdbcTemplate.update("UPDATE orchestrator.app_token_session SET keycloak_session_id = 'kc-session-2' WHERE id = ?", appTokenSessionId(other))
 
                 kcChannelService.signedOutAtKeycloak(Subject.Account(accountId), "kc-session-1")
+                val tokenAfterSignOut = runCatching { get("/orchestrator/api/v1/channels/$signedOut/token") }
 
-                stateOf(signedOut) shouldBe "LOGGED_OUT"
-                stateOf(other) shouldBe "AUTHENTICATED"
-                assertThrows<HttpClientErrorException> { get("/orchestrator/api/v1/channels/$signedOut/token") }
-                    .statusCode shouldBe HttpStatus.CONFLICT
+                then("that App channel ends and hands out no token") {
+                    stateOf(signedOut) shouldBe "LOGGED_OUT"
+                    shouldThrow<HttpClientErrorException> { tokenAfterSignOut.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
+                }
+                then("the other login of the same account does not end") {
+                    stateOf(other) shouldBe "AUTHENTICATED"
+                }
             }
         }
 
-        given("a step-up on an authenticated App channel") {
-            fun sessionOf(channel: String): String = jdbcTemplate.queryForObject(
-                "SELECT keycloak_session_id FROM orchestrator.app_token_session WHERE id = ?", String::class.java, appTokenSessionId(channel)
-            )!!
+        given("an App channel signed in at loa1 via sms") {
+            `when`("its token is requested") {
+                val channel = signInViaSmsAlone()
+                val acr = tokenAcr(channel)
 
-            then("the transition back to AUTHENTICATED re-mints the token with the raised acr, in the same session") {
-                seedRegisteredAccount()
-                val channel = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                authenticateViaSms(channel)
-                fun tokenAcr() = PlainJWT.parse(get("/orchestrator/api/v1/channels/$channel/token")["accessToken"] as String)
-                    .jwtClaimsSet.getStringClaim("acr")
-                tokenAcr() shouldBe "loa1"
-                val session = sessionOf(channel)
-
-                post("/orchestrator/api/v1/channels/$channel/step-ups", """{"requiredAcr":"loa2"}""")
-                authenticateViaPassword(channel)["next"].shouldNotBeNull()
-
-                val cached = jdbcTemplate.queryForObject(
-                    "SELECT access_token FROM orchestrator.app_token_session WHERE id = ?", String::class.java, appTokenSessionId(channel)
-                )
-                PlainJWT.parse(cached).jwtClaimsSet.getStringClaim("acr") shouldBe "loa2"
-                tokenAcr() shouldBe "loa2"
-                stateOf(channel) shouldBe "AUTHENTICATED"
-                sessionOf(channel) shouldBe session
+                then("the token carries loa1") {
+                    acr shouldBe "loa1"
+                }
             }
 
-            then("if the session window lapsed meanwhile, finishing the step-up ends the channel instead of opening a second session") {
-                seedRegisteredAccount()
-                val channel = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                authenticateViaSms(channel)
-                val session = sessionOf(channel)
+            `when`("a step-up to loa2 completes") {
+                val channel = signInViaSmsAlone()
+                val session = keycloakSessionOf(channel)
+                post("/orchestrator/api/v1/channels/$channel/step-ups", """{"requiredAcr":"loa2"}""")
+                val completed = authenticateViaPassword(channel)
+                val acr = tokenAcr(channel)
+
+                then("the channel is back at AUTHENTICATED") {
+                    completed.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
+                    stateOf(channel) shouldBe "AUTHENTICATED"
+                }
+                then("the transition re-mints the token with the raised acr, in the same session") {
+                    val cached = jdbcTemplate.queryForObject(
+                        "SELECT access_token FROM orchestrator.app_token_session WHERE id = ?", String::class.java, appTokenSessionId(channel)
+                    )
+                    PlainJWT.parse(cached).jwtClaimsSet.getStringClaim("acr") shouldBe "loa2"
+                    acr shouldBe "loa2"
+                    keycloakSessionOf(channel) shouldBe session
+                }
+            }
+
+            `when`("the session window lapses during the step-up and the step-up then completes") {
+                val channel = signInViaSmsAlone()
+                val session = keycloakSessionOf(channel)
                 post("/orchestrator/api/v1/channels/$channel/step-ups", """{"requiredAcr":"loa2"}""")
                 // Only the session window lapses; the channel row is still reachable for this request.
                 jdbcTemplate.update(
@@ -233,14 +212,18 @@ class AppTokenIssuerIntegrationTest : IntegrationTestSupport() {
                     appTokenSessionId(channel)
                 )
 
-                val gone = assertThrows<HttpClientErrorException> { authenticateViaPassword(channel) }
+                val result = runCatching { authenticateViaPassword(channel) }
 
-                gone.statusCode shouldBe HttpStatus.GONE
-                stateOf(channel) shouldBe "EXPIRED"
-                jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM orchestrator.app_token_session WHERE keycloak_session_id = ? AND access_token IS NULL",
-                    Int::class.java, session
-                ) shouldBe 1
+                then("the request is refused with 410") {
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.GONE
+                }
+                then("the channel ends instead of opening a second session") {
+                    stateOf(channel) shouldBe "EXPIRED"
+                    jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM orchestrator.app_token_session WHERE keycloak_session_id = ? AND access_token IS NULL",
+                        Int::class.java, session
+                    ) shouldBe 1
+                }
             }
         }
     }

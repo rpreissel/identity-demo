@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_password.internal.authpasswordlookup
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
@@ -10,61 +11,121 @@ import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentR
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollment
 
 import com.example.identity.tools.auth_password.AuthPasswordLookupDescriptor
+import com.example.identity.tools.auth_password.DEMO_PASSWORD
 import com.example.identity.tools.auth_password.PASSWORD_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.EnrollmentRef
+import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import java.util.Optional
 import java.util.UUID
 
+private val ACCOUNT = AccountId(42L)
+private val PASSWORD_REF = EnrollmentRef(PASSWORD_ENROLLMENT_TYPE, "1")
+
+/** The one reason every failed login gives, known address or not (enumeration protection). */
+private val WRONG_ANSWER = Text("E-Mail oder Passwort ungueltig")
+
+/** One active tool session; enrollment 1 holds the password "hunter2". */
+private class Fixture {
+    val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
+    val sessions = mockk<AuthPasswordLookupToolSessionRepository>().also {
+        every { it.save(any()) } answers { firstArg() }
+        every { it.findByToolSessionId(toolSessionId) } returns AuthPasswordLookupToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
+    }
+    val enrollments = mockk<AuthPasswordEnrollmentRepository>().also {
+        every { it.findById(1L) } returns Optional.of(AuthPasswordEnrollment(passwordHash = PasswordHasher.hash("hunter2"), createdAt = TEST_NOW).apply { id = 1L })
+    }
+    val handler = AuthPasswordLookupToolHandler(AuthPasswordLookupDescriptor, sessions, enrollments, clock = TEST_CLOCK)
+}
+
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
- * wiring only - the completeness decision is covered by [AuthPasswordLookupFlowTest].
+ * wiring and the enumeration-neutral failure; the completeness decision is covered by
+ * [AuthPasswordLookupFlowTest].
  */
 class AuthPasswordLookupToolHandlerTest : BehaviorSpec({
 
-    val toolDataRepository = mockk<AuthPasswordLookupToolSessionRepository>()
-    val enrollmentRepository = mockk<AuthPasswordEnrollmentRepository>()
-    val handler = AuthPasswordLookupToolHandler(AuthPasswordLookupDescriptor, toolDataRepository, enrollmentRepository, clock = TEST_CLOCK)
-    val toolSessionId = ToolSessionId(UUID.randomUUID())
+    given("no auth-password-lookup tool session yet") {
+        val f = Fixture()
+
+        `when`("a tool session starts") {
+            val outcome = f.handler.start(ToolSessionId(UUID.randomUUID()))
+
+            then("it asks for email and password at step auth, offering the demo password") {
+                outcome shouldBe ToolOutcome.InProgress(
+                    nextStep = "auth",
+                    stepData = MissingFields(listOf("email", "password")),
+                    demo = mapOf("password" to DEMO_PASSWORD),
+                )
+            }
+        }
+    }
 
     given("an active auth-password-lookup tool session") {
-        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns AuthPasswordLookupToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
+        val f = Fixture()
 
-        `when`("email and password resolve to an active, matching enrollment") {
-            val enrollment = AuthPasswordEnrollment(passwordHash = PasswordHasher.hash("hunter2"), createdAt = TEST_NOW).apply { id = 1L }
-            every { enrollmentRepository.findById(1L) } returns Optional.of(enrollment)
+        `when`("the form is read before anything is entered") {
+            val outcome = f.handler.read(f.toolSessionId)
 
-            then("it authenticates for that account") {
-                val outcome = handler.patch(
-                    toolSessionId, email = "max@example.com", password = "hunter2",
-                    accountId = AccountId(42L), enrollmentRef = EnrollmentRef(PASSWORD_ENROLLMENT_TYPE, "1")
+            then("it carries the demo password, so the login form comes pre-filled like auth-password's") {
+                outcome shouldBe ToolOutcome.InProgress(
+                    nextStep = "auth",
+                    stepData = MissingFields(listOf("email", "password")),
+                    demo = mapOf("password" to DEMO_PASSWORD),
                 )
-
-                val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
-                authenticated.subject shouldBe Subject.Account(AccountId(42L))
-                authenticated.amr shouldBe listOf("password")
             }
         }
 
-        `when`("the form is read before anything is entered") {
-            then("it carries the demo password, so the login form comes pre-filled like auth-password's") {
-                val outcome = handler.read(toolSessionId)
+        `when`("only the email arrives") {
+            val outcome = f.handler.patch(f.toolSessionId, email = "max@example.com", password = null, accountId = ACCOUNT, enrollmentRef = PASSWORD_REF)
 
-                outcome.shouldBeInstanceOf<ToolOutcome.InProgress>()
-                outcome.demo?.get("password") shouldBe "Demo1234!"
+            then("it asks for the password alone") {
+                outcome shouldBe ToolOutcome.InProgress(
+                    nextStep = "auth",
+                    stepData = MissingFields(listOf("password")),
+                    demo = mapOf("password" to DEMO_PASSWORD),
+                )
+            }
+        }
+
+        `when`("email and password resolve to an active, matching enrollment") {
+            val outcome = f.handler.patch(f.toolSessionId, email = "max@example.com", password = "hunter2", accountId = ACCOUNT, enrollmentRef = PASSWORD_REF)
+
+            then("it authenticates for that account at the descriptor's own maxAcr and factorTypes") {
+                outcome shouldBe ToolOutcome.Completed.Authenticated(
+                    amr = listOf("password"),
+                    achievedAcr = AuthPasswordLookupDescriptor.maxAcr,
+                    factorTypes = AuthPasswordLookupDescriptor.factorTypes,
+                    subject = Subject.Account(ACCOUNT),
+                )
+            }
+        }
+
+        `when`("the email resolves to an account, but the password is wrong") {
+            val outcome = f.handler.patch(f.toolSessionId, email = "max@example.com", password = "wrong", accountId = ACCOUNT, enrollmentRef = PASSWORD_REF)
+
+            then("it fails with the constant-shape message, naming the account for the orchestrator to charge") {
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(WRONG_ANSWER, attempted = Attempted.Account(ACCOUNT))
+            }
+        }
+
+        `when`("the email resolves to an account without a password method") {
+            val outcome = f.handler.patch(f.toolSessionId, email = "max@example.com", password = "hunter2", accountId = ACCOUNT, enrollmentRef = null)
+
+            then("it fails with the constant-shape message, naming the account") {
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(WRONG_ANSWER, attempted = Attempted.Account(ACCOUNT))
             }
         }
 
         `when`("the email never resolved to anything (enumeration protection)") {
-            then("it fails with the same constant-shape message, naming no account") {
-                val outcome = handler.patch(toolSessionId, email = "unknown@example.com", password = "hunter2", accountId = null, enrollmentRef = null)
+            val outcome = f.handler.patch(f.toolSessionId, email = "unknown@example.com", password = "hunter2", accountId = null, enrollmentRef = null)
 
-                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder Passwort ungueltig"), attempted = null)
+            then("it fails with the same constant-shape message, naming no account") {
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(WRONG_ANSWER, attempted = null)
             }
         }
     }

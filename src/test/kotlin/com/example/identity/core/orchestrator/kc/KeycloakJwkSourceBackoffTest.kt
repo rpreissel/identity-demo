@@ -6,8 +6,9 @@ import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.sun.net.httpserver.HttpServer
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.collections.shouldContainOnlyNulls
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -17,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class KeycloakJwkSourceBackoffTest : BehaviorSpec({
 
-    given("a JWKS endpoint that counts its fetches") {
+    given("a JWKS endpoint that serves the key 'real' and counts its fetches") {
         val key = ECKeyGenerator(Curve.P_256).keyID("real").generate()
         val fetches = AtomicInteger()
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
@@ -32,10 +33,18 @@ class KeycloakJwkSourceBackoffTest : BehaviorSpec({
         afterSpec { server.stop(0) }
         val source = KeycloakJwkSource("http://127.0.0.1:${server.address.port}/jwks", cacheTtlSeconds = 600, clock = TEST_CLOCK)
 
-        then("a burst of unknown kids costs one fetch, and the known key is still found") {
-            repeat(20) { source.find("made-up-$it") shouldBe null }
-            source.find("real") shouldNotBe null
-            fetches.get() shouldBe 1
+        `when`("a burst of 20 unknown kids is looked up, then the known one") {
+            val unknown = (1..20).map { source.find("made-up-$it") }
+            val known = source.find("real")
+
+            then("the unknown kids are not found, the known key is") {
+                unknown.shouldContainOnlyNulls()
+                known.shouldNotBeNull()
+            }
+
+            then("the whole burst costs one fetch") {
+                fetches.get() shouldBe 1
+            }
         }
     }
 })

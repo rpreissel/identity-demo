@@ -51,9 +51,20 @@ class PersonenverzeichnisMatchingTest : BehaviorSpec({
             ) shouldBe true
         }
 
-        then("a different person does not") {
-            register.matchesMasterData(PartnerNumber("P000000001"), ClaimedIdentity(familyName = "MUELLER", givenNames = "JUERGEN", birthDate = geburtsdatum)) shouldBe false
-            register.matchesMasterData(PartnerNumber("P000000001"), ClaimedIdentity(familyName = "Müller-Lüdenscheidt", givenNames = "Jürgen", streetAddress = "Heidestraße 18")) shouldBe false
+        `when`("a reading with another family name is compared") {
+            val matches = register.matchesMasterData(PartnerNumber("P000000001"), ClaimedIdentity(familyName = "MUELLER", givenNames = "JUERGEN", birthDate = geburtsdatum))
+
+            then("it is a different person") {
+                matches shouldBe false
+            }
+        }
+
+        `when`("a reading with another house number is compared") {
+            val matches = register.matchesMasterData(PartnerNumber("P000000001"), ClaimedIdentity(familyName = "Müller-Lüdenscheidt", givenNames = "Jürgen", streetAddress = "Heidestraße 18"))
+
+            then("it is a different person") {
+                matches shouldBe false
+            }
         }
 
         then("typed Personalien compare the same way") {

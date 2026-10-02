@@ -10,6 +10,7 @@ import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.directory.InvitationGrant
 import com.example.identity.contract.tool_api.directory.Invitations
@@ -17,7 +18,6 @@ import com.example.identity.tools.auth_invite.AuthInviteDescriptor
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -29,12 +29,16 @@ private const val CODE = "ABCD-EFGH-JKMN"
 private const val WRONG_CODE = "WXYZ-WXYZ-WXYZ"
 private val GRANT = InvitationGrant(invitation = InvitationId("invitation-hash"), process = "process-1", acr = AcrLevel.LOA2)
 
+/** The one reason a wrong code, an unknown number and a rate-limited person all give. */
+private val wrongCodeAnswer = Text("Nummer oder Einmalkennwort ungueltig")
+
 /** One active tool session; the register opens [GRANT] for [PERSON] with [CODE] and nothing else. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
     val sessions = mockk<AuthInviteToolSessionRepository>().also {
         every { it.findByToolSessionId(any()) } returns null
         every { it.findByToolSessionId(toolSessionId) } returns AuthInviteToolSession(toolSessionId, TEST_NOW)
+        every { it.save(any()) } answers { firstArg() }
     }
     val invitations = mockk<Invitations>().also {
         every { it.redeem(any(), any()) } returns null
@@ -48,6 +52,18 @@ private class Fixture {
  * person, an unknown number and a wrong code look the same.
  */
 class AuthInviteToolHandlerTest : BehaviorSpec({
+
+    given("no auth-invite tool session yet") {
+        val f = Fixture()
+
+        `when`("a tool session starts") {
+            val outcome = f.handler.start(ToolSessionId(UUID.randomUUID()))
+
+            then("it asks for the number and the code at step auth") {
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "auth", stepData = MissingFields(listOf("kvnr", "code")))
+            }
+        }
+    }
 
     given("an active session and a code that opens an invitation of the person") {
         val f = Fixture()
@@ -73,9 +89,7 @@ class AuthInviteToolHandlerTest : BehaviorSpec({
             val outcome = f.handler.patch(f.toolSessionId, KVNR, null, WRONG_CODE, PartnerNumber(PERSON), rateLimited = false)
 
             then("it fails and names the person tried") {
-                val failed = outcome.shouldBeInstanceOf<ToolOutcome.Failed.AccountLookupAuth>()
-                failed.reason.template shouldBe "Nummer oder Einmalkennwort ungueltig"
-                failed.attempted shouldBe Attempted.Person(PartnerNumber(PERSON))
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(wrongCodeAnswer, attempted = Attempted.Person(PartnerNumber(PERSON)))
             }
         }
     }
@@ -87,9 +101,7 @@ class AuthInviteToolHandlerTest : BehaviorSpec({
             val outcome = f.handler.patch(f.toolSessionId, KVNR, null, CODE, PartnerNumber(PERSON), rateLimited = true)
 
             then("the answer is the one for a wrong code") {
-                val failed = outcome.shouldBeInstanceOf<ToolOutcome.Failed.AccountLookupAuth>()
-                failed.reason.template shouldBe "Nummer oder Einmalkennwort ungueltig"
-                failed.attempted shouldBe Attempted.Person(PartnerNumber(PERSON))
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(wrongCodeAnswer, attempted = Attempted.Person(PartnerNumber(PERSON)))
             }
 
             then("the register is not asked") {
@@ -105,9 +117,7 @@ class AuthInviteToolHandlerTest : BehaviorSpec({
             val outcome = f.handler.patch(f.toolSessionId, "Z999999999", null, CODE, personId = null, rateLimited = false)
 
             then("the answer is the one for a wrong code, without a person") {
-                val failed = outcome.shouldBeInstanceOf<ToolOutcome.Failed.AccountLookupAuth>()
-                failed.reason.template shouldBe "Nummer oder Einmalkennwort ungueltig"
-                failed.attempted shouldBe null
+                outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(wrongCodeAnswer, attempted = null)
             }
 
             then("the register is not asked") {

@@ -13,73 +13,110 @@ class LoginCompletionTest {
 
     private static final OrchestratorClient.Next AUTHENTICATED = new OrchestratorClient.Next("orchestrator", null, "authentication", "authenticated", null);
     private static final OrchestratorClient.Next SELECT = new OrchestratorClient.Next("orchestrator", null, "auth", "selectMethod", null);
+    private static final KcSubject ACCOUNT_7 = KcSubject.account(7L);
+    private static final KcSubject ACCOUNT_8 = KcSubject.account(8L);
+    private static final KcSubject INVITATION = KcSubject.invitation("9f86d081");
 
     @Test
     void anAnswerWithoutNextOnAChannelNotLoggedInIsRefused() {
-        assertInstanceOf(LoginCompletion.Refuse.class, LoginCompletion.judge(response("STARTED", null, (KcSubject) null, null), null, null));
+        assertInstanceOf(LoginCompletion.Refuse.class, LoginCompletion.judge(answer("STARTED").build(), null, null));
     }
 
     @Test
     void anAnswerWithoutNextOnALoggedInChannelIsDone() {
-        assertInstanceOf(LoginCompletion.Complete.class, LoginCompletion.judge(response("AUTHENTICATED", null, 7L, "loa1"), null, "loa1"));
+        assertInstanceOf(LoginCompletion.Complete.class,
+                LoginCompletion.judge(answer("AUTHENTICATED").subject(ACCOUNT_7).acr("loa1").build(), null, "loa1"));
     }
 
     @Test
     void aFurtherStepContinues() {
-        assertInstanceOf(LoginCompletion.Continue.class, LoginCompletion.judge(response("STARTED", SELECT, (KcSubject) null, null), null, "loa2"));
+        assertInstanceOf(LoginCompletion.Continue.class, LoginCompletion.judge(answer("STARTED").next(SELECT).build(), null, "loa2"));
     }
 
     @Test
     void anotherAccountThanTheOneTheFlowCarriesIsRefused() {
-        assertInstanceOf(LoginCompletion.Refuse.class, LoginCompletion.judge(response("AUTHENTICATED", AUTHENTICATED, 8L, "loa2"), ACCOUNT_7, "loa2"));
+        assertInstanceOf(LoginCompletion.Refuse.class,
+                LoginCompletion.judge(authenticated().subject(ACCOUNT_8).acr("loa2").build(), ACCOUNT_7, "loa2"));
     }
 
     @Test
     void aLevelBelowWhatThisSubflowCertifiesIsRefused() {
-        assertInstanceOf(LoginCompletion.Refuse.class, LoginCompletion.judge(response("AUTHENTICATED", AUTHENTICATED, 7L, "loa1"), ACCOUNT_7, "loa2"));
+        assertInstanceOf(LoginCompletion.Refuse.class,
+                LoginCompletion.judge(authenticated().subject(ACCOUNT_7).acr("loa1").build(), ACCOUNT_7, "loa2"));
     }
 
     @Test
     void aMissingLevelNeverSatisfiesAFloor() {
-        assertInstanceOf(LoginCompletion.Refuse.class, LoginCompletion.judge(response("AUTHENTICATED", AUTHENTICATED, 7L, null), ACCOUNT_7, "loa1"));
+        assertInstanceOf(LoginCompletion.Refuse.class,
+                LoginCompletion.judge(authenticated().subject(ACCOUNT_7).build(), ACCOUNT_7, "loa1"));
     }
 
     @Test
     void doneWithoutASubjectIsRefused() {
-        assertInstanceOf(LoginCompletion.Refuse.class, LoginCompletion.judge(response("AUTHENTICATED", AUTHENTICATED, (KcSubject) null, "loa2"), null, null));
+        assertInstanceOf(LoginCompletion.Refuse.class, LoginCompletion.judge(authenticated().acr("loa2").build(), null, null));
     }
 
     @Test
     void theSameAccountAtTheCertifiedLevelIsDone() {
-        assertInstanceOf(LoginCompletion.Complete.class, LoginCompletion.judge(response("AUTHENTICATED", AUTHENTICATED, 7L, "loa2"), ACCOUNT_7, "loa2"));
+        assertInstanceOf(LoginCompletion.Complete.class,
+                LoginCompletion.judge(authenticated().subject(ACCOUNT_7).acr("loa2").build(), ACCOUNT_7, "loa2"));
     }
 
     @Test
     void anInvitationNeverCompletesTheFlowOfAnAccount() {
         assertInstanceOf(LoginCompletion.Refuse.class,
-                LoginCompletion.judge(response("AUTHENTICATED", AUTHENTICATED, INVITATION, "loa2"), ACCOUNT_7, "loa1"));
+                LoginCompletion.judge(authenticated().subject(INVITATION).acr("loa2").build(), ACCOUNT_7, "loa1"));
     }
 
     @Test
     void anAccountNeverRaisesTheSessionOfAnInvitation() {
         assertInstanceOf(LoginCompletion.Refuse.class,
-                LoginCompletion.judge(response("AUTHENTICATED", AUTHENTICATED, ACCOUNT_7, "loa2"), INVITATION, "loa2"));
+                LoginCompletion.judge(authenticated().subject(ACCOUNT_7).acr("loa2").build(), INVITATION, "loa2"));
     }
 
     @Test
     void anInvitationAtTheCertifiedLevelIsDone() {
         assertInstanceOf(LoginCompletion.Complete.class,
-                LoginCompletion.judge(response("AUTHENTICATED", AUTHENTICATED, INVITATION, "loa1"), null, "loa1"));
+                LoginCompletion.judge(authenticated().subject(INVITATION).acr("loa1").build(), null, "loa1"));
     }
 
-    private static final KcSubject ACCOUNT_7 = KcSubject.account(7L);
-    private static final KcSubject INVITATION = KcSubject.invitation("9f86d081");
-
-    private static OrchestratorClient.ChannelResponse response(String state, OrchestratorClient.Next next, Long accountId, String acr) {
-        return response(state, next, accountId == null ? null : KcSubject.account(accountId), acr);
+    private static Answer answer(String state) {
+        return new Answer(state);
     }
 
-    private static OrchestratorClient.ChannelResponse response(String state, OrchestratorClient.Next next, KcSubject subject, String acr) {
-        return new OrchestratorClient.ChannelResponse("channel-1", state, next, Map.of(), Map.of(), subject, acr, Map.of());
+    /** An authenticated channel whose next step says so. */
+    private static Answer authenticated() {
+        return answer("AUTHENTICATED").next(AUTHENTICATED);
+    }
+
+    /** Builds the orchestrator's answer; what is not set stays empty. */
+    private static final class Answer {
+        private final String state;
+        private OrchestratorClient.Next next;
+        private KcSubject subject;
+        private String acr;
+
+        private Answer(String state) {
+            this.state = state;
+        }
+
+        Answer next(OrchestratorClient.Next next) {
+            this.next = next;
+            return this;
+        }
+
+        Answer subject(KcSubject subject) {
+            this.subject = subject;
+            return this;
+        }
+
+        Answer acr(String acr) {
+            this.acr = acr;
+            return this;
+        }
+
+        OrchestratorClient.ChannelResponse build() {
+            return new OrchestratorClient.ChannelResponse("channel-1", state, next, Map.of(), Map.of(), subject, acr, Map.of());
+        }
     }
 }

@@ -1,13 +1,11 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { IdentKvnrForm } from './IdentKvnrForm'
 
 const max = { personId: 'P000000001', kvnr: 'A123456789', givenNames: 'Max', familyName: 'Muster' }
 const paula = { personId: 'P000000004', kvnr: null, givenNames: 'Paula', familyName: 'Schulz' }
 
 describe('IdentKvnrForm', () => {
-  afterEach(cleanup)
-
   it('prefills the first test person’s KVNR', () => {
     const onSubmit = vi.fn()
     render(<IdentKvnrForm onSubmit={onSubmit} skipLabel="Überspringen" demoPersons={[max, paula]} />)

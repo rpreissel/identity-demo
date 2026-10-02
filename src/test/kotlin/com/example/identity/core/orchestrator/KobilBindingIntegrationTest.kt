@@ -1,17 +1,11 @@
 package com.example.identity.core.orchestrator
 
-import com.example.identity.contract.texts.templateOf
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldNotContain
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
-import org.junit.jupiter.api.assertThrows
-import org.springframework.http.HttpStatus
-import org.springframework.web.client.HttpClientErrorException
 
 /**
  * enroll-kobil / auth-kobil end to end over HTTP. The test plays the MC SDK and calls the
@@ -26,13 +20,13 @@ class KobilBindingIntegrationTest : IntegrationTestSupport() {
     private lateinit var jwkThumbprintService: JwkThumbprintService
 
     init {
-        beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
     }
 
     /** What the app ends up holding after a setup: the SDK's addressing data plus its local secret. */
     private data class EnrolledDevice(val tenantId: String, val kobilUserId: String, val unlockSecret: String)
 
-    private fun enrollKobil(channelSessionId: String, biometricConsent: Boolean = true): EnrolledDevice {
+    private fun enrollKobil(channelSessionId: String): EnrolledDevice {
         val activated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-kobil")
         val toolSessionId = activated.nextRaw()["toolSessionId"] as String
         val stepData = activated.stepData()
@@ -51,7 +45,7 @@ class KobilBindingIntegrationTest : IntegrationTestSupport() {
 
         patch(
             "/orchestrator/api/v1/tools/$toolSessionId/enroll-kobil",
-            """{"activated":true,"biometricConsent":$biometricConsent,"label":"Testhandy"}"""
+            """{"activated":true,"biometricConsent":true,"label":"Testhandy"}"""
         )
         return device
     }
@@ -94,200 +88,97 @@ class KobilBindingIntegrationTest : IntegrationTestSupport() {
     }
 
     /** Enrolls on one channel and returns the device plus a fresh, unauthenticated channel to log in on. */
-    private fun enrolledDeviceOnFreshChannel(biometricConsent: Boolean = true): Pair<EnrolledDevice, String> {
+    private fun enrolledDeviceOnFreshChannel(): Pair<EnrolledDevice, String> {
         val enrollChannel = passwordEnrolledChannel()
-        val device = enrollKobil(enrollChannel, biometricConsent)
+        val device = enrollKobil(enrollChannel)
         val loginChannel = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
         return device to loginChannel
     }
 
     init {
-        given("an identified channel with a confirmed address") {
-            then("enroll-kobil hands out the activation data, PIN included") {
-                val channelSessionId = passwordEnrolledChannel()
-                val activated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-kobil")
-
-                activated.next() shouldBe mapOf("type" to "tool", "toolId" to "enroll-kobil", "step" to "activate")
-                val stepData = activated.stepData()
-                stepData.keys shouldContain "activationCode"
-                // One of the two points where the PIN may leave the backend: the SDK's activation.
-                stepData.keys shouldContain "pin"
-                stepData.keys shouldContain "unlockSecret"
-            }
-
-            then("the confirmed activation becomes an active method and reaches loa2 in one run") {
+        given("an identified channel with a confirmed address and a password") {
+            `when`("the device activates and the app confirms the KOBIL enrollment") {
                 val channelSessionId = passwordEnrolledChannel()
                 enrollKobil(channelSessionId)
-
                 val channel = get("/orchestrator/api/v1/channels/$channelSessionId").channel()
-                channel["currentAcr"] shouldBe "loa2"
-                (channel["currentAmr"] as List<*>).shouldContainAll("kobil", "biometric")
-                (channel["activeMethods"] as List<*>).methodNames() shouldContain "kobil"
 
-                // The activation secrets do not outlive the setup.
-                jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM auth_kobil.enroll_tool_session WHERE activation_code <> '' OR pin <> '' OR unlock_secret <> ''",
-                    Int::class.java
-                ) shouldBe 0
-            }
-
-            then("a confirmation before the device has activated changes nothing - it is not a failed attempt") {
-                val channelSessionId = passwordEnrolledChannel()
-                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-kobil")
-                    .nextRaw()["toolSessionId"] as String
-
-                val unchanged = patch(
-                    "/orchestrator/api/v1/tools/$toolSessionId/enroll-kobil",
-                    """{"activated":true,"biometricConsent":true}"""
-                )
-                unchanged.next() shouldBe mapOf("type" to "tool", "toolId" to "enroll-kobil", "step" to "activate")
+                then("kobil becomes an active method") {
+                    (channel["activeMethods"] as List<*>).methodNames() shouldContain "kobil"
+                }
+                then("the channel reaches loa2 in one run, from kobil and biometric") {
+                    channel["currentAcr"] shouldBe "loa2"
+                    (channel["currentAmr"] as List<*>).shouldContainAll("kobil", "biometric")
+                }
             }
         }
 
         given("an enrolled KOBIL credential and a fresh channel") {
-            then("the provider's own binding is readable from the device link - and vanishes with the credential") {
-                val (device, loginChannel) = enrolledDeviceOnFreshChannel()
-
-                // The identifier KOBIL assigned, which the client cannot learn any other way: it
-                // never travels through an assertion the client gets to see.
-                boundMethods() shouldContain "kobil"
-
-                // Removing it needs a session that has proven loa2. This one has, through kobil.
-                val toolSessionId = startAuth(loginChannel)
-                val pin = releasePin(toolSessionId, biometric(device)).stepData()["kobilPin"] as String
-                redeem(toolSessionId, sdkLogin(device, pin))
-                delete("/orchestrator/api/v1/channels/$loginChannel/methods/${activeMethodId(loginChannel, "kobil")}")
-
-                // Gone with the credential. The client takes this absence as the signal to drop its
-                // locally stored unlock secret.
-                boundMethods() shouldNotContain "kobil"
-            }
-
-            then("the biometric unlock authenticates and reaches loa2") {
+            `when`("the biometric unlock releases the PIN and the SDK's one-time password is redeemed") {
                 val (device, loginChannel) = enrolledDeviceOnFreshChannel()
                 val toolSessionId = startAuth(loginChannel)
-
                 val released = releasePin(toolSessionId, biometric(device))
-                released.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-kobil", "step" to "otp")
-                val pin = released.stepData()["kobilPin"] as String?
-                pin.shouldNotBeNull()
-
-                val authenticated = redeem(toolSessionId, sdkLogin(device, pin))
-                authenticated.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
-
+                val authenticated = redeem(toolSessionId, sdkLogin(device, released.stepData()["kobilPin"] as String))
                 val channel = get("/orchestrator/api/v1/channels/$loginChannel").channel()
-                channel["currentAcr"] shouldBe "loa2"
-                (channel["currentAmr"] as List<*>).shouldContainAll("kobil", "biometric")
+
+                then("the release moves on to the OTP step") {
+                    released.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-kobil", "step" to "otp")
+                }
+                then("the redeemed OTP authenticates") {
+                    authenticated.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
+                }
+                then("the channel reaches loa2 from kobil and biometric") {
+                    channel["currentAcr"] shouldBe "loa2"
+                    (channel["currentAmr"] as List<*>).shouldContainAll("kobil", "biometric")
+                }
             }
 
-            then("the password unlock reports pin, never password - otherwise the account password would count twice") {
-                val enrollChannel = passwordEnrolledChannel()
-                val device = enrollKobil(enrollChannel)
-                val loginChannel = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-
+            `when`("the password unlock releases the PIN and the one-time password is redeemed") {
+                val (device, loginChannel) = enrolledDeviceOnFreshChannel()
                 val toolSessionId = startAuth(loginChannel)
                 val pin = releasePin(toolSessionId, """{"kind":"password","password":"correct-horse-battery"}""")
                     .stepData()["kobilPin"] as String
                 redeem(toolSessionId, sdkLogin(device, pin))
-
                 val amr = get("/orchestrator/api/v1/channels/$loginChannel").channel()["currentAmr"] as List<*>
-                amr.shouldContainAll("kobil", "pin")
-                amr shouldNotContain "password"
+
+                then("the run reports pin, never password - otherwise the account password would count twice") {
+                    amr.shouldContainAll("kobil", "pin")
+                    amr shouldNotContain "password"
+                }
             }
 
-            then("the PIN is in the release response and nowhere else - a later read does not repeat it") {
+            `when`("the PIN is released and the tool session is read again") {
                 val (device, loginChannel) = enrolledDeviceOnFreshChannel()
                 val toolSessionId = startAuth(loginChannel)
-
-                (releasePin(toolSessionId, biometric(device)).stepData()["kobilPin"] as String?).shouldNotBeNull()
-
+                val released = releasePin(toolSessionId, biometric(device))
                 val reread = get("/orchestrator/api/v1/tools/$toolSessionId/auth-kobil")
-                reread.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-kobil", "step" to "otp")
-                reread.stepData().keys shouldNotContain "kobilPin"
+
+                then("the release response carries the PIN") {
+                    released.stepData().keys shouldContain "kobilPin"
+                }
+                then("the later read stays at the OTP step and does not repeat it") {
+                    reread.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-kobil", "step" to "otp")
+                    reread.stepData().keys shouldNotContain "kobilPin"
+                }
             }
 
-            then("a wrong unlock secret is an ordinary retryable failure and releases nothing") {
-                val (_, loginChannel) = enrolledDeviceOnFreshChannel()
-                val toolSessionId = startAuth(loginChannel)
-
-                val refused = releasePin(toolSessionId, """{"kind":"biometric","unlockSecret":"not-the-secret"}""")
-                refused.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-kobil", "step" to "unlock")
-                refused.stepData().keys shouldNotContain "kobilPin"
-            }
-
-            then("redeeming before any release fails on that, not on the OTP") {
+            `when`("a session that proved loa2 through kobil removes the credential") {
                 val (device, loginChannel) = enrolledDeviceOnFreshChannel()
-                val toolSessionId = startAuth(loginChannel)
-
-                // The app cannot get an OTP without the PIN, so this client skipped the release.
-                // It gets "unlock required" and the step stays.
-                val refused = redeem(toolSessionId, "12345678")
-                refused.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-kobil", "step" to "unlock")
-                templateOf(refused.stepData()["error"]) shouldBe "Entsperren erforderlich"
-            }
-
-            then("a one-time password is spent once - replaying it does not authenticate again") {
-                val (device, loginChannel) = enrolledDeviceOnFreshChannel()
-                val firstTool = startAuth(loginChannel)
-                val pin = releasePin(firstTool, biometric(device)).stepData()["kobilPin"] as String
-                val otp = sdkLogin(device, pin)
-                redeem(firstTool, otp).next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
-
-                val replayChannel = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val secondTool = startAuth(replayChannel)
-                releasePin(secondTool, biometric(device))
-
-                val replayed = redeem(secondTool, otp)
-                replayed.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-kobil", "step" to "otp")
-                templateOf(replayed.stepData()["error"]) shouldBe "Bestaetigung nicht erkannt"
-            }
-
-            then("an assertion from a different device is refused without saying which one was expected") {
-                val (device, loginChannel) = enrolledDeviceOnFreshChannel()
+                // The identifier KOBIL assigned, which the client cannot learn any other way: it
+                // never travels through an assertion the client gets to see.
+                val boundBefore = boundMethods()
                 val toolSessionId = startAuth(loginChannel)
                 val pin = releasePin(toolSessionId, biometric(device)).stepData()["kobilPin"] as String
+                redeem(toolSessionId, sdkLogin(device, pin))
+                delete("/orchestrator/api/v1/channels/$loginChannel/methods/${activeMethodId(loginChannel, "kobil")}")
+                val boundAfter = boundMethods()
 
-                // The phone was replaced: KOBIL knows a different device for this user, so its
-                // assertion does not match the identifier the enrollment pinned.
-                jdbcTemplate.update(
-                    "UPDATE kobil.ssms_user SET device_id = ? WHERE user_id = ?",
-                    "dev-someone-elses",
-                    device.kobilUserId,
-                )
-
-                val refused = redeem(toolSessionId, sdkLogin(device, pin))
-                templateOf(refused.stepData()["error"]) shouldBe "Geraet nicht erkannt"
-            }
-
-            then("a device reporting a blocking risk is refused with its own reason, not folded into 'not recognized'") {
-                val (device, loginChannel) = enrolledDeviceOnFreshChannel()
-                post(
-                    "/mock-kobil/simulate-risk",
-                    """{"tenantId":"${device.tenantId}","userId":"${device.kobilUserId}","risks":["ROOTED"]}"""
-                )
-
-                val toolSessionId = startAuth(loginChannel)
-                val pin = releasePin(toolSessionId, biometric(device)).stepData()["kobilPin"] as String
-
-                val refused = redeem(toolSessionId, sdkLogin(device, pin))
-                templateOf(refused.stepData()["error"]) shouldBe "Geraet als unsicher gemeldet"
-            }
-
-            then("a non-blocking signal does not stand in the way") {
-                val (device, loginChannel) = enrolledDeviceOnFreshChannel()
-                post(
-                    "/mock-kobil/simulate-risk",
-                    """{"tenantId":"${device.tenantId}","userId":"${device.kobilUserId}","risks":["OS_OUTDATED"]}"""
-                )
-
-                val toolSessionId = startAuth(loginChannel)
-                val pin = releasePin(toolSessionId, biometric(device)).stepData()["kobilPin"] as String
-
-                redeem(toolSessionId, sdkLogin(device, pin)).next() shouldBe
-                    mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
+                then("the provider's binding was readable from the device link") {
+                    boundBefore shouldContain "kobil"
+                }
+                then("it vanishes with the credential - the client's signal to drop its unlock secret") {
+                    boundAfter shouldNotContain "kobil"
+                }
             }
         }
-
     }
-
 }

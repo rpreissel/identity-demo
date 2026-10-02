@@ -1,6 +1,6 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent, { type UserEvent } from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppChannelApp } from './AppChannelApp'
 import type { ChannelResponse, Prompt } from '../../types'
 
@@ -31,9 +31,38 @@ vi.mock('../../api.ts', async (importOriginal) => {
   return { ...actual, ...api, onApiCall: () => () => {} }
 })
 
+type Channel = ChannelResponse['channel']
+
 /** Fills in only what applyResponse actually reads; individual tests override per case. */
-function channelResponse(overrides: Partial<ChannelResponse> & { channel: ChannelResponse['channel'] }): ChannelResponse {
+function channelResponse(overrides: Partial<ChannelResponse> & { channel: Channel }): ChannelResponse {
   return { next: undefined, stepData: undefined, demo: undefined, ...overrides }
+}
+
+/** The channel block of the one app channel every test talks to. */
+function channel(state: Channel['state'], extra: Partial<Channel> = {}): Channel {
+  return { channelSessionId: 'chan-1', channelType: 'APP', state, ...extra }
+}
+
+function toolNext(toolId: string, step: string, toolSessionId = 'ts-1') {
+  return { type: 'tool', toolId, step, toolSessionId } as const
+}
+
+const AUTHENTICATED_NEXT = { type: 'orchestrator', context: 'authentication', step: 'authenticated' } as const
+
+/** Taps the phone's own button; the demo column offers the same journeys again further down. */
+async function tapFirst(user: UserEvent, name: string) {
+  await user.click((await screen.findAllByRole('button', { name }))[0])
+}
+
+/** Starts a new account and sends the SMS number; without demo values the field starts empty (ADR-28). */
+async function startSmsRegistration(user: UserEvent) {
+  await tapFirst(user, 'Neues Konto anlegen')
+  await user.type(await screen.findByLabelText('Telefonnummer'), '+49 170 0000001')
+  await user.click(await screen.findByRole('button', { name: 'Code senden' }))
+}
+
+function rememberChannel() {
+  window.localStorage.setItem('identity-demo-channel-session-id', 'chan-1')
 }
 
 beforeEach(() => {
@@ -46,35 +75,18 @@ beforeEach(() => {
   api.getDeviceLink.mockResolvedValue({ linked: false })
 })
 
-afterEach(() => {
-  cleanup()
-})
-
 describe('resume mid-tool (docs/05-api.md #2: next.toolSessionId)', () => {
   it('reuses the running ToolSession instead of reactivating the tool', async () => {
-    window.localStorage.setItem('identity-demo-channel-session-id', 'chan-1')
-    const resumedNext = { type: 'tool', toolId: 'enroll-sms', step: 'tanInput', toolSessionId: 'ts-resumed' } as const
-    api.getChannel.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'REGISTERING' },
-        next: resumedNext,
-      })
-    )
+    rememberChannel()
+    const resumedNext = toolNext('enroll-sms', 'tanInput', 'ts-resumed')
+    api.getChannel.mockResolvedValue(channelResponse({ channel: channel('REGISTERING'), next: resumedNext }))
     // The channel-level GET reports only a bare pointer; the client fetches the tool's stepData
     // separately (ToolControllerSupport.buildReadResponse).
-    api.getTool.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'REGISTERING' },
-        next: resumedNext,
-        demo: { tan: '123456' },
-      })
-    )
-
+    api.getTool.mockResolvedValue(channelResponse({ channel: channel('REGISTERING'), next: resumedNext, demo: { tan: '123456' } }))
     render(<AppChannelApp />)
     const user = userEvent.setup()
 
-    const resumeButton = await screen.findByRole('button', { name: /Sitzung fortsetzen/ })
-    await user.click(resumeButton)
+    await user.click(await screen.findByRole('button', { name: /Sitzung fortsetzen/ }))
 
     // The resumed step (tanInput) renders directly - no second activation round-trip, no second TAN.
     await screen.findByRole('heading', { name: 'TAN eingeben' })
@@ -85,112 +97,83 @@ describe('resume mid-tool (docs/05-api.md #2: next.toolSessionId)', () => {
 })
 
 describe('security-summary backfill (docs/05-api.md #2: on-demand, not part of tool responses)', () => {
-  it('fetches currentAcr/currentAmr/activeMethods once, only after settling into authenticated', async () => {
-    const enrollNext = { type: 'tool', toolId: 'enroll-sms', step: 'enroll', toolSessionId: 'ts-1' } as const
-    api.createChannel.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'REGISTERING' },
-        next: enrollNext,
-      })
-    )
-    // The auto-activate effect treats any next.toolSessionId as "already active" and re-fetches
-    // its stepData via the per-tool GET (docs/05-api.md #2) rather than reusing createChannel's own.
-    api.getTool.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'REGISTERING' },
-        next: enrollNext,
-      })
-    )
-    // Matches the real backend contract: a tool response settling into authenticated still
-    // carries no account fields - the client must fetch them explicitly.
-    api.patchTool.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'AUTHENTICATED' },
-        next: { type: 'orchestrator', context: 'authentication', step: 'authenticated' },
-      })
-    )
-    api.getChannel.mockResolvedValue(
-      channelResponse({
-        channel: {
-          channelSessionId: 'chan-1',
-          channelType: 'APP',
-          state: 'AUTHENTICATED',
-          currentAcr: 'loa1',
-          currentAmr: ['sms'],
-          activeMethods: [{ id: 'method-1', method: 'sms' }],
-        },
-        next: { type: 'orchestrator', context: 'authentication', step: 'authenticated' },
-      })
-    )
+  describe('after a registration that settles into authenticated', () => {
+    beforeEach(() => {
+      const enrolling = channelResponse({ channel: channel('REGISTERING'), next: toolNext('enroll-sms', 'enroll') })
+      api.createChannel.mockResolvedValue(enrolling)
+      // The auto-activate effect treats any next.toolSessionId as "already active" and re-fetches
+      // its stepData via the per-tool GET (docs/05-api.md #2) rather than reusing createChannel's own.
+      api.getTool.mockResolvedValue(enrolling)
+      // Matches the real backend contract: a tool response settling into authenticated still
+      // carries no account fields - the client must fetch them explicitly.
+      api.patchTool.mockResolvedValue(channelResponse({ channel: channel('AUTHENTICATED'), next: AUTHENTICATED_NEXT }))
+      api.getChannel.mockResolvedValue(
+        channelResponse({
+          channel: channel('AUTHENTICATED', { currentAcr: 'loa1', currentAmr: ['sms'], activeMethods: [{ id: 'method-1', method: 'sms' }] }),
+          next: AUTHENTICATED_NEXT,
+        }),
+      )
+    })
 
-    render(<AppChannelApp />)
-    const user = userEvent.setup()
+    it('fetches currentAcr/currentAmr once', async () => {
+      render(<AppChannelApp />)
+      const user = userEvent.setup()
+      await startSmsRegistration(user)
 
-    await user.click((await screen.findAllByRole('button', { name: 'Neues Konto anlegen' }))[0])
-    // Without demo values the number field starts empty (ADR-28).
-    await user.type(await screen.findByLabelText('Telefonnummer'), '+49 170 0000001')
-    await user.click(await screen.findByRole('button', { name: 'Code senden' }))
+      // Level and methods live on the security screen, one tap from the welcome.
+      await user.click(await screen.findByRole('button', { name: /^Sicherheit/ }))
 
-    // Level and methods live on the security screen, one tap from the welcome.
-    await user.click(await screen.findByRole('button', { name: /^Sicherheit/ }))
-    await screen.findByText('loa1', { selector: '.status-list .value' })
-    expect(api.getChannel).toHaveBeenCalledTimes(1)
-    // activeMethods backfilled too: the method list leads to a method that can be deactivated.
-    await user.click(screen.getByRole('button', { name: /^Anmeldeverfahren/ }))
-    await user.click(screen.getByRole('button', { name: /^SMS/ }))
-    expect(screen.getByRole('button', { name: 'Deaktivieren' })).toBeInTheDocument()
+      await screen.findByText('loa1', { selector: '.status-list .value' })
+      expect(api.getChannel).toHaveBeenCalledTimes(1)
+    })
 
-    // Re-renders after the backfill lands must not trigger a second fetch.
-    await waitFor(() => expect(api.getChannel).toHaveBeenCalledTimes(1))
+    it('backfills activeMethods, so the method list leads to a method that can be deactivated', async () => {
+      render(<AppChannelApp />)
+      const user = userEvent.setup()
+      await startSmsRegistration(user)
+      await user.click(await screen.findByRole('button', { name: /^Sicherheit/ }))
+
+      await user.click(await screen.findByRole('button', { name: /^Anmeldeverfahren/ }))
+      await user.click(screen.getByRole('button', { name: /^SMS/ }))
+
+      expect(screen.getByRole('button', { name: 'Deaktivieren' })).toBeInTheDocument()
+    })
   })
 
   it('skips the backfill fetch when the channel-level response already carries the fields', async () => {
     // e.g. a step-up that turns out to already be satisfied - raiseRequiredAcr is a genuine
     // channel endpoint, so its own response already includes the account fields.
-    window.localStorage.setItem('identity-demo-channel-session-id', 'chan-1')
+    rememberChannel()
     api.getChannel.mockResolvedValue(
       channelResponse({
-        channel: {
-          channelSessionId: 'chan-1',
-          channelType: 'APP',
-          state: 'AUTHENTICATED',
+        channel: channel('AUTHENTICATED', {
           currentAcr: 'loa2',
           currentAmr: ['sms', 'password'],
           activeMethods: [
             { id: 'method-1', method: 'sms' },
             { id: 'method-2', method: 'password' },
           ],
-        },
-        next: { type: 'orchestrator', context: 'authentication', step: 'authenticated' },
-      })
+        }),
+        next: AUTHENTICATED_NEXT,
+      }),
     )
-
     render(<AppChannelApp />)
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: /Sitzung fortsetzen/ }))
 
     await user.click(await screen.findByRole('button', { name: /^Sicherheit/ }))
+
     await screen.findByText('loa2', { selector: '.status-list .value' })
     expect(api.getChannel).toHaveBeenCalledTimes(1) // the resume GET itself - no extra backfill call
   })
 })
 
-describe('URL-Einstieg per intent (docs/10-frontend.md #1)', () => {
-  it('startet confirm_peer_login automatisch und bereinigt die URL', async () => {
+describe('entry by URL intent (docs/10-frontend.md #1)', () => {
+  it('starts confirm_peer_login on its own and clears the URL', async () => {
     window.history.replaceState(null, '', '/?intent=confirm_peer_login&pairingCode=AB3D-7KQ2')
-    const authNext = { type: 'tool', toolId: 'auth-device', step: 'auth', toolSessionId: 'ts-1' } as const
-    api.createChannel.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'STEP_UP_IN_PROGRESS' },
-        next: authNext,
-      })
-    )
-    api.getTool.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'STEP_UP_IN_PROGRESS' },
-        next: authNext,
-      })
-    )
+    const stepUp = channelResponse({ channel: channel('STEP_UP_IN_PROGRESS'), next: toolNext('auth-device', 'auth') })
+    api.createChannel.mockResolvedValue(stepUp)
+    api.getTool.mockResolvedValue(stepUp)
 
     render(<AppChannelApp />)
 
@@ -198,28 +181,13 @@ describe('URL-Einstieg per intent (docs/10-frontend.md #1)', () => {
     expect(window.location.search).toBe('')
   })
 
-  it('bestätigt über den bereits authentifizierten Channel statt einen neuen anzulegen', async () => {
-    window.localStorage.setItem('identity-demo-channel-session-id', 'chan-1')
+  it('confirms over the channel already authenticated instead of creating a new one', async () => {
+    rememberChannel()
     window.history.replaceState(null, '', '/?intent=confirm_peer_login&pairingCode=AB3D-7KQ2')
-    api.getChannel.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'AUTHENTICATED', currentAcr: 'loa2' },
-        next: { type: 'orchestrator', context: 'authentication', step: 'authenticated' },
-      })
-    )
-    const confirmQrNext = { type: 'tool', toolId: 'confirm-qr-login', step: 'input', toolSessionId: 'ts-2' } as const
-    api.startPeerLogin.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'STEP_UP_IN_PROGRESS' },
-        next: confirmQrNext,
-      })
-    )
-    api.getTool.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'STEP_UP_IN_PROGRESS' },
-        next: confirmQrNext,
-      })
-    )
+    api.getChannel.mockResolvedValue(channelResponse({ channel: channel('AUTHENTICATED', { currentAcr: 'loa2' }), next: AUTHENTICATED_NEXT }))
+    const confirming = channelResponse({ channel: channel('STEP_UP_IN_PROGRESS'), next: toolNext('confirm-qr-login', 'input', 'ts-2') })
+    api.startPeerLogin.mockResolvedValue(confirming)
+    api.getTool.mockResolvedValue(confirming)
 
     render(<AppChannelApp />)
 
@@ -228,26 +196,14 @@ describe('URL-Einstieg per intent (docs/10-frontend.md #1)', () => {
   })
 })
 
-describe('Back-Button bis zur Startauswahl (docs/10-frontend.md #1)', () => {
-  it('verlässt einen laufenden Vorgang lokal, ohne Backend-Aufruf', async () => {
-    const identFscNext = { type: 'tool', toolId: 'ident-fsc', step: 'input', toolSessionId: 'ts-1' } as const
-    api.createChannel.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'REGISTERING' },
-        next: identFscNext,
-      })
-    )
-    api.getTool.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'REGISTERING' },
-        next: identFscNext,
-      })
-    )
-
+describe('browser back up to the start choice (docs/10-frontend.md #1)', () => {
+  it('leaves a running journey locally, without a backend call', async () => {
+    const identifying = channelResponse({ channel: channel('REGISTERING'), next: toolNext('ident-fsc', 'input') })
+    api.createChannel.mockResolvedValue(identifying)
+    api.getTool.mockResolvedValue(identifying)
     render(<AppChannelApp />)
     const user = userEvent.setup()
-    // The phone's own button comes first; the demo column offers the same journey again.
-    await user.click((await screen.findAllByRole('button', { name: 'Neues Konto anlegen' }))[0])
+    await tapFirst(user, 'Neues Konto anlegen')
     await screen.findByRole('heading', { name: /Freischaltcode/ })
 
     window.dispatchEvent(new PopStateEvent('popstate', { state: null }))
@@ -258,21 +214,28 @@ describe('Back-Button bis zur Startauswahl (docs/10-frontend.md #1)', () => {
   })
 })
 
-describe('gescannter Pairing-Code auf einem Gerät ohne Konto', () => {
-  it('bietet nur den Ausweg an und verwirft den Code', async () => {
+describe('a scanned pairing code on a device without an account', () => {
+  beforeEach(() => {
     window.history.replaceState(null, '', '/?pairingCode=AB3D-7KQ2')
+  })
+
+  it('offers only the way back', async () => {
     render(<AppChannelApp />)
-    const user = userEvent.setup()
 
     // Confirming would fail without an account here - so only the way back, not a dead end.
     await screen.findByLabelText('Pairing-Code: AB3D-7KQ2')
-    const cancel = await screen.findByRole('button', { name: 'Abbrechen' })
+    expect(await screen.findByRole('button', { name: 'Abbrechen' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Anmeldung bestätigen' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Mit E-Mail-Adresse anmelden' })).not.toBeInTheDocument()
+  })
 
-    await user.click(cancel)
+  it('drops the code on cancel and shows the ordinary start screen', async () => {
+    render(<AppChannelApp />)
+    const user = userEvent.setup()
+    await screen.findByLabelText('Pairing-Code: AB3D-7KQ2')
 
-    // Back on the ordinary start screen, the code dropped.
+    await user.click(await screen.findByRole('button', { name: 'Abbrechen' }))
+
     await waitFor(() => expect(screen.queryByLabelText('Pairing-Code: AB3D-7KQ2')).not.toBeInTheDocument())
     expect(screen.getAllByRole('button', { name: 'Neues Konto anlegen' }).length).toBeGreaterThan(0)
   })
@@ -280,44 +243,35 @@ describe('gescannter Pairing-Code auf einem Gerät ohne Konto', () => {
 
 describe('a channel that ends with a tool response', () => {
   it('goes back to the start screen instead of showing an empty phone', async () => {
-    const enrollNext = { type: 'tool', toolId: 'enroll-sms', step: 'enroll', toolSessionId: 'ts-1' } as const
-    const registering = channelResponse({
-      channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'REGISTERING' },
-      next: enrollNext,
-    })
-    api.createChannel.mockResolvedValue(registering)
-    api.getTool.mockResolvedValue(registering)
+    const enrolling = channelResponse({ channel: channel('REGISTERING'), next: toolNext('enroll-sms', 'enroll') })
+    api.createChannel.mockResolvedValue(enrolling)
+    api.getTool.mockResolvedValue(enrolling)
     // Like the last re-proof before an account is deleted: the channel ends, no next step.
-    api.patchTool.mockResolvedValue(
-      channelResponse({ channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'LOGGED_OUT' } })
-    )
-
+    api.patchTool.mockResolvedValue(channelResponse({ channel: channel('LOGGED_OUT') }))
     render(<AppChannelApp />)
     const user = userEvent.setup()
-    await user.click((await screen.findAllByRole('button', { name: 'Neues Konto anlegen' }))[0])
-    // Without demo values the number field starts empty (ADR-28).
-    await user.type(await screen.findByLabelText('Telefonnummer'), '+49 170 0000001')
-    await user.click(await screen.findByRole('button', { name: 'Code senden' }))
+
+    await startSmsRegistration(user)
 
     expect((await screen.findAllByRole('button', { name: 'Neues Konto anlegen' })).length).toBeGreaterThan(0)
   })
 })
 
-describe('Abbrechen, bevor etwas nachgewiesen ist', () => {
-  it('führt von der Anmeldeauswahl zurück zur Startseite, statt dieselbe Auswahl neu zu beginnen', async () => {
+describe('the way out before anything is proven', () => {
+  it('leads from the login choice back to the start instead of beginning the same choice again', async () => {
     api.getDeviceLink.mockResolvedValue({ linked: true, accountId: 42 })
     const selection = channelResponse({
-      channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'ANONYMOUS', hasProvenFactor: false },
+      channel: channel('ANONYMOUS', { hasProvenFactor: false }),
       next: { type: 'orchestrator', context: 'auth', step: 'selectMethod' },
       stepData: { kind: 'select-method', options: ['auth-password-lookup', 'auth-sms-lookup'] },
     })
     api.createChannel.mockResolvedValue(selection)
     // The backend restarts the channel's entry journey on cancel: the very same selection again.
     api.cancelJourney.mockResolvedValue(selection)
-
     render(<AppChannelApp />)
     const user = userEvent.setup()
-    await user.click((await screen.findAllByRole('button', { name: 'Mit E-Mail-Adresse anmelden' }))[0])
+    await tapFirst(user, 'Mit E-Mail-Adresse anmelden')
+
     // On the first screen of the journey the way out reads like the registration's: back.
     await user.click(await screen.findByRole('button', { name: 'Zurück' }))
 
@@ -325,72 +279,91 @@ describe('Abbrechen, bevor etwas nachgewiesen ist', () => {
     expect(api.cancelJourney).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('button', { name: 'Abbrechen' })).not.toBeInTheDocument()
   })
-})
 
-describe('Weg zur Startseite, solange nicht angemeldet', () => {
-  it('führt nach einem ersten Nachweis zur Startseite, statt die Anmeldung neu zu beginnen', async () => {
-    api.getDeviceLink.mockResolvedValue({ linked: true, accountId: 42 })
-    // One factor proven, a second one required (LOOKUP_LOGIN AdditionalFactor).
-    const additionalFactor = channelResponse({
-      channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'ANONYMOUS', hasProvenFactor: true },
-      next: { type: 'orchestrator', context: 'auth', step: 'selectMethod' },
-      stepData: { kind: 'select-method', options: ['auth-sms'] },
-    })
-    api.createChannel.mockResolvedValue(additionalFactor)
-    api.cancelJourney.mockResolvedValue(additionalFactor)
-
-    render(<AppChannelApp />)
-    const user = userEvent.setup()
-    await user.click((await screen.findAllByRole('button', { name: 'Mit E-Mail-Adresse anmelden' }))[0])
-    await user.click(await screen.findByRole('button', { name: 'Abbrechen' }))
-
-    await screen.findByRole('heading', { name: 'Willkommen zurück' })
-  })
-
-  it('bietet auch auf einer Rückfrage den Weg zurück', async () => {
+  it('leads from a question back to the start as well', async () => {
     api.getDeviceLink.mockResolvedValue({ linked: true, accountId: 42 })
     api.createChannel.mockResolvedValue(
       channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'ANONYMOUS', hasProvenFactor: false },
+        channel: channel('ANONYMOUS', { hasProvenFactor: false }),
         next: { type: 'orchestrator', context: 'prompt', step: 'confirm' },
         stepData: {
           kind: 'confirm',
           // Prompt is open in the contract; the Confirm fields come from types.ts (confirmPromptOf).
           prompt: { kind: 'Confirm', title: { key: 'frage' }, confirmLabel: { key: 'ja' }, cancelLabel: { key: 'nein' } } as Prompt,
         },
-      })
+      }),
     )
-    api.cancelJourney.mockResolvedValue(channelResponse({ channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'ANONYMOUS' } }))
-
+    api.cancelJourney.mockResolvedValue(channelResponse({ channel: channel('ANONYMOUS') }))
     render(<AppChannelApp />)
     const user = userEvent.setup()
-    await user.click((await screen.findAllByRole('button', { name: 'Mit E-Mail-Adresse anmelden' }))[0])
+    await tapFirst(user, 'Mit E-Mail-Adresse anmelden')
+
     await user.click(await screen.findByRole('button', { name: 'Zurück' }))
 
     await screen.findByRole('heading', { name: 'Willkommen zurück' })
+    expect(api.cancelJourney).toHaveBeenCalledTimes(1)
+  })
+
+  // Leaving a registration before anything is proven throws nothing away - so there is no
+  // "really discard?" question, and on the very first screen the way out is a plain "Zurück".
+  it('leads from the first registration screen straight back to the start, without asking', async () => {
+    api.createChannel.mockResolvedValue(
+      channelResponse({
+        channel: channel('REGISTERING', { hasProvenFactor: false }),
+        next: { type: 'orchestrator', context: 'identification', step: 'selectMethod' },
+        stepData: { kind: 'select-method', options: ['ident-fsc', 'ident-eid'] },
+      }),
+    )
+    api.cancelJourney.mockResolvedValue(channelResponse({ channel: channel('ANONYMOUS') }))
+    render(<AppChannelApp />)
+    const user = userEvent.setup()
+    await tapFirst(user, 'Neues Konto anlegen')
+
+    await user.click(await screen.findByRole('button', { name: 'Zurück' }))
+
+    await screen.findByRole('heading', { name: 'Willkommen' })
+    expect(screen.queryByRole('button', { name: 'Verwerfen' })).not.toBeInTheDocument()
+    expect(api.cancelJourney).toHaveBeenCalledTimes(1)
   })
 })
 
-describe('Abbrechen während eines Step-Ups', () => {
-  it('bleibt angemeldet und verwirft den Kanal nicht', async () => {
+describe('the way out once a first factor is proven, while not logged in', () => {
+  it('leads to the start instead of beginning the login again', async () => {
+    api.getDeviceLink.mockResolvedValue({ linked: true, accountId: 42 })
+    // One factor proven, a second one required (LOOKUP_LOGIN AdditionalFactor).
+    const additionalFactor = channelResponse({
+      channel: channel('ANONYMOUS', { hasProvenFactor: true }),
+      next: { type: 'orchestrator', context: 'auth', step: 'selectMethod' },
+      stepData: { kind: 'select-method', options: ['auth-sms'] },
+    })
+    api.createChannel.mockResolvedValue(additionalFactor)
+    api.cancelJourney.mockResolvedValue(additionalFactor)
+    render(<AppChannelApp />)
+    const user = userEvent.setup()
+    await tapFirst(user, 'Mit E-Mail-Adresse anmelden')
+
+    await user.click(await screen.findByRole('button', { name: 'Abbrechen' }))
+
+    await screen.findByRole('heading', { name: 'Willkommen zurück' })
+    expect(api.cancelJourney).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('cancelling a step-up', () => {
+  it('stays logged in and keeps the channel', async () => {
     api.getDeviceLink.mockResolvedValue({ linked: true, accountId: 42 })
     api.createChannel.mockResolvedValue(
       channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'STEP_UP_IN_PROGRESS', hasProvenFactor: true },
+        channel: channel('STEP_UP_IN_PROGRESS', { hasProvenFactor: true }),
         next: { type: 'orchestrator', context: 'auth', step: 'selectMethod' },
         stepData: { kind: 'select-method', options: ['auth-sms'] },
-      })
+      }),
     )
-    api.cancelJourney.mockResolvedValue(
-      channelResponse({
-        channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'AUTHENTICATED', hasProvenFactor: true },
-        next: { type: 'orchestrator', context: 'authentication', step: 'authenticated' },
-      })
-    )
-
+    api.cancelJourney.mockResolvedValue(channelResponse({ channel: channel('AUTHENTICATED', { hasProvenFactor: true }), next: AUTHENTICATED_NEXT }))
     render(<AppChannelApp />)
     const user = userEvent.setup()
-    await user.click((await screen.findAllByRole('button', { name: 'Mit diesem Gerät anmelden' }))[0])
+    await tapFirst(user, 'Mit diesem Gerät anmelden')
+
     await user.click(await screen.findByRole('button', { name: 'Abbrechen' }))
 
     await waitFor(() => expect(api.cancelJourney).toHaveBeenCalledTimes(1))
@@ -400,23 +373,22 @@ describe('Abbrechen während eines Step-Ups', () => {
   })
 })
 
-describe('Registrierung verwerfen, ohne Demomodus', () => {
-  it('fragt nach, sobald das Backend ein Konto im Aufbau meldet (REGISTERING), und endet auf der Startseite', async () => {
-    api.getDeviceLink.mockResolvedValue({ linked: false })
+describe('discarding a registration, without demo mode', () => {
+  it('asks once the backend reports an account under construction (REGISTERING) and ends on the start screen', async () => {
     const enrolling = channelResponse({
       // No demo block at all: the question rests on the channel state alone (ADR-46).
-      channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'REGISTERING', hasProvenFactor: true },
+      channel: channel('REGISTERING', { hasProvenFactor: true }),
       next: { type: 'orchestrator', context: 'enrollment', step: 'selectMethod' },
       stepData: { kind: 'select-method', options: ['enroll-sms', 'enroll-password'] },
     })
     api.createChannel.mockResolvedValue(enrolling)
     api.getChannel.mockResolvedValue(enrolling)
-    api.cancelJourney.mockResolvedValue(channelResponse({ channel: { channelSessionId: 'chan-1', channelType: 'APP', state: 'ANONYMOUS' } }))
-
+    api.cancelJourney.mockResolvedValue(channelResponse({ channel: channel('ANONYMOUS') }))
     render(<AppChannelApp />)
     const user = userEvent.setup()
-    await user.click((await screen.findAllByRole('button', { name: 'Neues Konto anlegen' }))[0])
+    await tapFirst(user, 'Neues Konto anlegen')
     await user.click(await screen.findByRole('button', { name: 'Registrierung verwerfen' }))
+
     await user.click(await screen.findByRole('button', { name: 'Verwerfen' }))
 
     await screen.findByRole('heading', { name: 'Willkommen' })

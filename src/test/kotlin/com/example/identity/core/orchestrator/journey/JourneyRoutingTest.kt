@@ -37,31 +37,41 @@ class JourneyRoutingTest : BehaviorSpec({
     fun adding(vararg tools: String) = ManageAuthMethodsState.Enrolling(Offer(tools.map { ToolId(it) }))
 
     given("adding a sign-in method with only enroll-email left") {
-        val step = routing.stepFor(adding("enroll-email"), webChannel)
+        `when`("the next step is routed") {
+            val step = routing.stepFor(adding("enroll-email"), webChannel)
 
-        then("the selection page opens instead of starting it, naming why there is just this one") {
-            step.next shouldBe Next.orchestrator("enrollment", "selectMethod")
-            val select = step.stepData.shouldBeInstanceOf<SelectMethodStep>()
-            select.options shouldBe listOf("enroll-email")
-            select.title shouldBe Text("Neues Anmeldeverfahren hinzufügen")
-            select.description shouldBe Text(
-                "Nur dieses Verfahren steht hier noch zur Wahl. {grund}",
-                "grund" to EnrollEmailDescriptor.completesOnActivation,
-            )
+            then("the selection page opens instead of starting it, naming why there is just this one") {
+                step.next shouldBe Next.orchestrator("enrollment", "selectMethod")
+                val select = step.stepData.shouldBeInstanceOf<SelectMethodStep>()
+                select.options shouldBe listOf("enroll-email")
+                select.title shouldBe Text("Neues Anmeldeverfahren hinzufügen")
+                select.description shouldBe Text(
+                    "Nur dieses Verfahren steht hier noch zur Wahl. {grund}",
+                    "grund" to EnrollEmailDescriptor.completesOnActivation,
+                )
+            }
         }
     }
 
     given("adding a sign-in method with only enroll-sms left") {
-        then("it still starts on its own - it has a step of its own to show") {
-            routing.stepFor(adding("enroll-sms"), webChannel).next shouldBe Next.tool("enroll-sms", EnrollSmsDescriptor.startStep)
+        `when`("the next step is routed") {
+            val step = routing.stepFor(adding("enroll-sms"), webChannel)
+
+            then("it still starts on its own - it has a step of its own to show") {
+                step.next shouldBe Next.tool("enroll-sms", EnrollSmsDescriptor.startStep)
+            }
         }
     }
 
     given("adding a sign-in method with both left") {
-        then("the ordinary selection, with the state's own description") {
-            val select = routing.stepFor(adding("enroll-email", "enroll-sms"), webChannel).stepData.shouldBeInstanceOf<SelectMethodStep>()
-            select.options shouldBe listOf("enroll-email", "enroll-sms")
-            select.description shouldBe adding().selectionDescription
+        `when`("the next step is routed") {
+            val step = routing.stepFor(adding("enroll-email", "enroll-sms"), webChannel)
+
+            then("the ordinary selection, with the state's own description") {
+                val select = step.stepData.shouldBeInstanceOf<SelectMethodStep>()
+                select.options shouldBe listOf("enroll-email", "enroll-sms")
+                select.description shouldBe adding().selectionDescription
+            }
         }
     }
 })

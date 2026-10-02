@@ -24,7 +24,6 @@ import com.example.identity.tools.auth_kobil.internal.KobilEnrollmentRepository
 import com.example.identity.tools.auth_kobil.internal.KobilSecrets
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
@@ -79,11 +78,12 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
         return toolSessionId to data
     }
 
-    given("start()") {
-        `when`("the enrollment has biometric consent and the account still has a password") {
-            enrollment(1L, biometricConsent = true)
-            val saved = slot<AuthKobilToolSession>()
-            every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
+    given("an enrollment with biometric consent, on an account that still has a password") {
+        enrollment(1L, biometricConsent = true)
+        val saved = slot<AuthKobilToolSession>()
+        every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
+
+        `when`("a tool session starts with a reference to it") {
             val outcome = handler.start(ToolSessionId(UUID.randomUUID()), EnrollmentRef(KOBIL_ENROLLMENT_TYPE, "1"), passwordAvailable = true)
 
             then("it stores the enrollment reference and offers both unlock ways at step unlock") {
@@ -95,20 +95,26 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
                 )
             }
         }
+    }
 
-        `when`("the enrollment has no biometric consent and the account has no password") {
-            enrollment(2L, biometricConsent = false)
-            every { toolDataRepository.save(any()) } answers { firstArg() }
+    given("an enrollment without biometric consent, on an account without a password") {
+        enrollment(2L, biometricConsent = false)
+        every { toolDataRepository.save(any()) } answers { firstArg() }
+
+        `when`("a tool session starts with a reference to it") {
             val outcome = handler.start(ToolSessionId(UUID.randomUUID()), EnrollmentRef(KOBIL_ENROLLMENT_TYPE, "2"), passwordAvailable = false)
 
             then("it offers no unlock way at all, and the client can say so") {
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "unlock", stepData = KobilUnlockStep(emptyList(), tenantId, "kob-2"))
             }
         }
+    }
 
-        `when`("the referenced enrollment does not exist") {
-            every { enrollmentRepository.findById(99L) } returns Optional.empty()
-            every { toolDataRepository.save(any()) } answers { firstArg() }
+    given("no enrollment with id 99") {
+        every { enrollmentRepository.findById(99L) } returns Optional.empty()
+        every { toolDataRepository.save(any()) } answers { firstArg() }
+
+        `when`("a tool session starts with a reference to it") {
             val result = runCatching { handler.start(ToolSessionId(UUID.randomUUID()), EnrollmentRef(KOBIL_ENROLLMENT_TYPE, "99"), passwordAvailable = true) }
 
             then("it is an unresolvable reference (422), as in auth-sms") {
@@ -117,7 +123,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
         }
     }
 
-    given("releasePin() on an enrollment with biometric consent") {
+    given("an enrollment with biometric consent, awaiting its unlock") {
         val enrollment = enrollment(10L, biometricConsent = true)
 
         `when`("the app presents the right unlock secret") {
@@ -131,9 +137,9 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
                 )
             }
 
-            then("it records a biometric release with an end") {
+            then("it records a biometric release that ends after the configured 120 seconds") {
                 data.userVerification shouldBe "biometric"
-                data.pinReleaseExpiresAt.shouldNotBeNull()
+                data.pinReleaseExpiresAt shouldBe TEST_NOW.plusSeconds(120)
             }
         }
 
@@ -173,7 +179,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
         }
     }
 
-    given("releasePin() on an enrollment without biometric consent") {
+    given("an enrollment without biometric consent, awaiting its unlock") {
         enrollment(11L, biometricConsent = false)
 
         `when`("the app presents an unlock secret anyway") {
@@ -187,7 +193,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
         }
     }
 
-    given("patch() on enrollment 20, device dev-20") {
+    given("enrollment 20 on device dev-20, and KOBIL answering for several one-time passwords") {
         enrollment(20L, biometricConsent = true)
         val kobilUser = KobilUserRef(tenantId, "kob-20")
         every { ssms.verifyOtp(kobilUser, "otp-clean") } returns KobilOtpVerification("dev-20", setOf(KobilRisk.OS_OUTDATED))
@@ -265,6 +271,50 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
 
             then("it fails with its own reason, not folded into not recognized") {
                 outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Geraet als unsicher gemeldet"))
+            }
+        }
+    }
+
+    given("a tool session whose enrollment was removed meanwhile, on another channel") {
+        every { enrollmentRepository.findById(30L) } returns Optional.empty()
+        val (awaitingUnlock, _) = session(30L)
+        val (released, _) = session(30L, UserVerification.BIOMETRIC)
+
+        `when`("the app asks for the PIN release") {
+            val result = runCatching { handler.releasePin(awaitingUnlock, KobilUnlockCredential.BiometricUnlock("unlock-secret-30"), passwordEnrollment = null) }
+
+            then("it is an unresolvable reference, not a failed unlock") {
+                shouldThrow<UnresolvableReferenceException> { result.getOrThrow() }
+            }
+        }
+
+        `when`("an OTP arrives on a live release") {
+            val result = runCatching { handler.patch(released, "otp-clean") }
+
+            then("it is an unresolvable reference, not a wrong guess") {
+                shouldThrow<UnresolvableReferenceException> { result.getOrThrow() }
+            }
+        }
+    }
+
+    given("a tool session bound to a reference that is no enrollment id") {
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
+        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns
+            AuthKobilToolSession(toolSessionId = toolSessionId, enrollmentRefId = "not-a-number", createdAt = TEST_NOW)
+
+        `when`("the app asks for the PIN release") {
+            val result = runCatching { handler.releasePin(toolSessionId, KobilUnlockCredential.BiometricUnlock("unlock-secret"), passwordEnrollment = null) }
+
+            then("it is an unresolvable reference") {
+                shouldThrow<UnresolvableReferenceException> { result.getOrThrow() }
+            }
+        }
+
+        `when`("an OTP arrives") {
+            val result = runCatching { handler.patch(toolSessionId, "otp-clean") }
+
+            then("it is an unresolvable reference") {
+                shouldThrow<UnresolvableReferenceException> { result.getOrThrow() }
             }
         }
     }

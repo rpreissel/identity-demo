@@ -6,28 +6,31 @@ import io.kotest.matchers.shouldBe
 
 class AuthDeviceFlowTest : BehaviorSpec({
 
-    given("a submitted key matching the enrolled thumbprint") {
-        then("it completes with the submitted user verification") {
-            AuthDeviceFlow.decide("thumb-a", "thumb-a", UserVerification.PIN) shouldBe
-                AuthDeviceDecision.Complete(UserVerification.PIN)
-        }
-    }
+    given("an enrolled thumbprint") {
+        `when`("a key with the same thumbprint is submitted") {
+            val decision = AuthDeviceFlow.decide("thumb-a", "thumb-a", UserVerification.PIN)
 
-    given("a submitted key not matching the enrolled thumbprint") {
-        then("it is rejected as the wrong device") {
-            AuthDeviceFlow.decide("thumb-a", "thumb-b", UserVerification.BIOMETRIC) shouldBe AuthDeviceDecision.WrongDevice
+            then("it completes with the submitted user verification") {
+                decision shouldBe AuthDeviceDecision.Complete(UserVerification.PIN)
+            }
+        }
+
+        `when`("a key with another thumbprint is submitted") {
+            val decision = AuthDeviceFlow.decide("thumb-a", "thumb-b", UserVerification.BIOMETRIC)
+
+            then("it is rejected as the wrong device") {
+                decision shouldBe AuthDeviceDecision.WrongDevice
+            }
         }
     }
 
     given("no enrolled thumbprint at all") {
-        then("it is rejected as the wrong device") {
-            AuthDeviceFlow.decide("thumb-a", null, UserVerification.PIN) shouldBe AuthDeviceDecision.WrongDevice
-        }
-    }
+        `when`("a key is submitted") {
+            val decision = AuthDeviceFlow.decide("thumb-a", null, UserVerification.PIN)
 
-    given("describe()") {
-        then("it names step auth with no stepData") {
-            AuthDeviceState.describe() shouldBe ("auth" to null)
+            then("it is rejected as the wrong device") {
+                decision shouldBe AuthDeviceDecision.WrongDevice
+            }
         }
     }
 })

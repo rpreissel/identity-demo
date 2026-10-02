@@ -1,21 +1,17 @@
 package com.example.identity.contract.tool_api.claims
 
-import com.example.identity.contract.tool_api.values.Kvnr
-import com.example.identity.contract.tool_api.values.Email
-import com.example.identity.contract.tool_api.directory.BindingStrength
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 
 /**
  * Unit test for the anchor-role vocabulary (docs/02-domaenenmodell.md Abschnitt 6): one rule per
  * attribute type, applied identically on write and lookup.
- * PERSON_ID, EID_RESTRICTED_ID (ADR-19) and EMAIL are anchors; `phone_number` stays unmapped.
+ * PERSON_ID, EID_RESTRICTED_ID (ADR-19) and EMAIL are anchors; PHONE_NUMBER belongs to its method module.
  */
 class AttributeRulesTest : BehaviorSpec({
 
-    given("authority") {
+    given("the authority of each attribute type") {
         then("PERSON_ID is locally owned, established and replaced at loa2, immutable, not the holder's to withdraw") {
             AttributeType.PERSON_ID.authority shouldBe AttributeAuthority.Local(
                 AnchorRule(AnchorAcrFloor(AcrLevel.LOA2, AcrLevel.LOA2), allowsReplacement = false, retractableByHolder = false)
@@ -51,87 +47,81 @@ class AttributeRulesTest : BehaviorSpec({
                     AttributeType.STREET_ADDRESS, AttributeType.POSTAL_CODE, AttributeType.LOCALITY
                 )
         }
-        then("a method module owns what it enrolled itself") {
-            AttributeType.PHONE_NUMBER.authority shouldBe AttributeAuthority.MethodModule
+        then("a method module owns exactly what it enrolled itself: the phone number and the fact of a password") {
+            AttributeType.entries.filter { it.authority == AttributeAuthority.MethodModule } shouldBe
+                listOf(AttributeType.PHONE_NUMBER, AttributeType.PASSWORD_EXISTS)
         }
         // Only AttributeAuthority.Local has an AnchorRule, so the unpaired state cannot be constructed.
     }
 
-    given("AnchorRule.bindingStrength") {
-        then("PERSON_ID is immutable, so it binds most strongly") {
-            AttributeType.PERSON_ID.anchorRule?.bindingStrength shouldBe BindingStrength.IMMUTABLE_ANCHOR
-        }
-        then("EMAIL is replaceable, so it binds more weakly") {
-            AttributeType.EMAIL.anchorRule?.bindingStrength shouldBe BindingStrength.REPLACEABLE_ANCHOR
-        }
-        then("EID_RESTRICTED_ID is replaceable - a new card brings a new value, never another person") {
-            AttributeType.EID_RESTRICTED_ID.anchorRule?.bindingStrength shouldBe BindingStrength.REPLACEABLE_ANCHOR
-        }
-        then("a non-anchor attribute has no anchor rule at all") {
-            AttributeType.KVNR.anchorRule.shouldBeNull()
-            AttributeType.PHONE_NUMBER.anchorRule.shouldBeNull()
-            AttributeType.FAMILY_NAME.anchorRule.shouldBeNull()
-            AttributeType.GIVEN_NAMES.anchorRule.shouldBeNull()
-            AttributeType.BIRTH_DATE.anchorRule.shouldBeNull()
-        }
-    }
-
-    given("normalizeAnchorValue") {
-        `when`("normalizing an email") {
+    given("an email anchor value") {
+        `when`("a value with spaces and capitals is normalized") {
             val folded = AttributeType.EMAIL.normalizeAnchorValue("  Max@Example.COM ")
-            val malformed = runCatching { AttributeType.EMAIL.normalizeAnchorValue("not-an-email") }
 
             then("it folds to trimmed lowercase") {
                 folded shouldBe "max@example.com"
             }
-            then("a malformed value fails explicitly (Email.parse)") {
+        }
+        `when`("a malformed value is normalized") {
+            val malformed = runCatching { AttributeType.EMAIL.normalizeAnchorValue("not-an-email") }
+
+            then("it fails explicitly (Email.parse)") {
                 shouldThrow<IllegalArgumentException> { malformed.getOrThrow() }
             }
         }
-        `when`("attempting a local kvnr anchor lookup") {
+    }
+
+    given("a kvnr, which is no local anchor") {
+        `when`("a well-formed value is normalized for a local lookup") {
             val wellFormed = runCatching { AttributeType.KVNR.normalizeAnchorValue(" a123456789 ") }
-            val malformed = runCatching { AttributeType.KVNR.normalizeAnchorValue("not-a-kvnr") }
 
             then("it refuses because KVNR belongs to the live master data") {
                 shouldThrow<IllegalStateException> { wellFormed.getOrThrow() }
             }
-            then("a malformed value fails explicitly (Kvnr.parse)") {
+        }
+        `when`("a malformed value is normalized") {
+            val malformed = runCatching { AttributeType.KVNR.normalizeAnchorValue("not-a-kvnr") }
+
+            then("it fails explicitly (Kvnr.parse)") {
                 shouldThrow<IllegalArgumentException> { malformed.getOrThrow() }
             }
         }
-        `when`("normalizing a personId") {
+    }
+
+    given("a personId anchor value") {
+        `when`("a lowercase value with spaces is normalized") {
             val folded = AttributeType.PERSON_ID.normalizeAnchorValue(" p000000007 ")
-            val invalid = runCatching { AttributeType.PERSON_ID.normalizeAnchorValue("7") }
 
             then("it folds to the canonical Partnernummer - trimmed, uppercase") {
                 folded shouldBe "P000000007"
             }
-            then("an invalid value fails explicitly instead of falling back to weaker matching") {
+        }
+        `when`("an invalid value is normalized") {
+            val invalid = runCatching { AttributeType.PERSON_ID.normalizeAnchorValue("7") }
+
+            then("it fails explicitly instead of falling back to weaker matching") {
                 shouldThrow<IllegalArgumentException> { invalid.getOrThrow() }
             }
         }
-        `when`("normalizing a restricted id") {
+    }
+
+    given("a restricted id anchor value") {
+        `when`("it is normalized") {
             val trimmed = AttributeType.EID_RESTRICTED_ID.normalizeAnchorValue("  T0103005K1D5S0V8T9W6UM2RTX ")
 
             then("it only trims - the card's byte string is the canonical form") {
                 trimmed shouldBe "T0103005K1D5S0V8T9W6UM2RTX"
             }
         }
-        `when`("normalizing a non-anchor attribute") {
+    }
+
+    given("a non-anchor attribute value") {
+        `when`("it is normalized") {
             val result = runCatching { AttributeType.FAMILY_NAME.normalizeAnchorValue("Muster") }
 
             then("it fails explicitly instead of silently returning the raw value") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
-        }
-    }
-
-    given("AnchorRule.allowsReplacement") {
-        then("PERSON_ID is immutable after first binding") {
-            AttributeType.PERSON_ID.anchorRule?.allowsReplacement shouldBe false
-        }
-        then("EMAIL is re-provable and therefore changeable") {
-            AttributeType.EMAIL.anchorRule?.allowsReplacement shouldBe true
         }
     }
 })

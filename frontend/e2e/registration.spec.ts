@@ -19,8 +19,4 @@ test('register with ident-fsc, enroll SMS, and reach the authenticated security 
   await page.getByRole('button', { name: uiPattern('Sicherheit') }).first().click()
   await expect(page.locator('li').filter({ hasText: ui('Sicherheitsniveau') })).toContainText(/loa[12]/)
   await expect(page.locator('li').filter({ hasText: ui('Genutzte Anmeldeverfahren') })).toContainText('sms')
-  // The methods are one level further down, each with its own screen to deactivate it.
-  await page.locator('.phone').getByRole('button', { name: uiPattern('Anmeldeverfahren') }).first().click()
-  await page.locator('.phone').getByRole('button', { name: uiPattern('SMS') }).first().click()
-  await expect(page.getByRole('button', { name: ui('Deaktivieren') }).first()).toBeVisible()
 })

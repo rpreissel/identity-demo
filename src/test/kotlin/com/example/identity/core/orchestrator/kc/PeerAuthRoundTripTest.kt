@@ -14,7 +14,7 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import java.util.Date
 import java.util.UUID
 import org.springframework.beans.factory.annotation.Autowired
@@ -60,14 +60,14 @@ class PeerAuthRoundTripTest : BehaviorSpec() {
     @Autowired
     private lateinit var replayProtectionService: DpopReplayProtectionService
 
-    private fun sign(key: ECKey, htm: String, htu: String, channelBinding: String): String {
+    private fun sign(key: ECKey, htm: String, htu: String, channelBinding: String, jti: String): String {
         val claims = JWTClaimsSet.Builder()
             .issuer("test-issuer")
             .audience("identity-demo-orchestrator")
             .claim("htm", htm)
             .claim("htu", htu)
             .claim("channel_binding", channelBinding)
-            .jwtID(UUID.randomUUID().toString())
+            .jwtID(jti)
             .issueTime(Date.from(TEST_NOW))
             .build()
         val header = JWSHeader.Builder(JWSAlgorithm.ES256).type(PeerAuthValidator.ASSERTION_TYPE).keyID(key.keyID).build()
@@ -94,13 +94,15 @@ class PeerAuthRoundTripTest : BehaviorSpec() {
                     clock = TEST_CLOCK
                 )
                 val htu = "http://localhost:$port/orchestrator/api/v1/kc/channels/${UUID.randomUUID()}"
-                val token = sign(TEST_PEER_AUTH_KEY, "PATCH", htu, "channel-binding-${UUID.randomUUID()}")
+                val binding = "channel-binding-${UUID.randomUUID()}"
+                val jti = UUID.randomUUID().toString()
+                val token = sign(TEST_PEER_AUTH_KEY, "PATCH", htu, binding, jti)
 
                 val assertion = validator.validate(token, "PATCH", htu)
 
-                then("it verifies successfully via the real sign -> fetch -> verify round trip") {
-                    assertion.shouldNotBeNull()
-                    assertion.channelBinding.shouldNotBeNull()
+                then("it verifies via the real sign -> fetch -> verify round trip and hands on what was signed") {
+                    assertion.channelBinding shouldBe binding
+                    assertion.jti shouldBe jti
                 }
             }
         }

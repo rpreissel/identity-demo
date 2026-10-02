@@ -22,7 +22,19 @@ function Form({ onSubmit }: { onSubmit: () => void }) {
 }
 
 describe('StepActions', () => {
-  it('renders a step action in the phone bar, and its submit button still submits its form', () => {
+  it('renders a step action in the phone bar, not in the sheet', () => {
+    const { container } = render(
+      <PhoneFrame title="Demo">
+        <Form onSubmit={() => {}} />
+      </PhoneFrame>,
+    )
+
+    const button = within(container).getByRole('button', { name: 'Weiter' })
+    expect(container.querySelector('.phone__bar')).toContainElement(button)
+    expect(container.querySelector('.phone__sheet')).not.toContainElement(button)
+  })
+
+  it('a submit button in the phone bar still submits its form', () => {
     const onSubmit = vi.fn()
     const { container } = render(
       <PhoneFrame title="Demo">
@@ -30,11 +42,8 @@ describe('StepActions', () => {
       </PhoneFrame>,
     )
 
-    const button = within(container).getByRole('button', { name: 'Weiter' })
-    expect(container.querySelector('.phone__bar')).toContainElement(button)
-    expect(container.querySelector('.phone__sheet')).not.toContainElement(button)
+    fireEvent.click(within(container).getByRole('button', { name: 'Weiter' }))
 
-    fireEvent.click(button)
     expect(onSubmit).toHaveBeenCalledOnce()
   })
 
@@ -66,7 +75,9 @@ describe('StepActions', () => {
     const { container } = render(<Form onSubmit={() => {}} />)
     expect(container.querySelector('form')).toContainElement(within(container).getByRole('button', { name: 'Weiter' }))
   })
+})
 
+describe('tool form sources', () => {
   it('every submit button of a tool form names its form, since the bar is outside it', () => {
     const sources = import.meta.glob('../tools/**/*.tsx', { query: '?raw', import: 'default', eager: true }) as Record<string, string>
     let checked = 0

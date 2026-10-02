@@ -2,13 +2,13 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.ninjasquad.springmockk.MockkBean
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
-import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 
@@ -22,79 +22,84 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
     private lateinit var jwkThumbprintService: JwkThumbprintService
 
     init {
-        beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
     }
 
+    @Suppress("UNCHECKED_CAST")
+    private fun methodsOf(channelSessionId: String): List<Map<String, Any?>> =
+        get("/orchestrator/api/v1/channels/$channelSessionId/methods")["methods"] as List<Map<String, Any?>>
+
+    private fun startManage(channelSessionId: String): Map<String, Any?> =
+        post("/orchestrator/api/v1/channels/$channelSessionId/enrollments")
+
+    @Suppress("UNCHECKED_CAST")
+    private fun Map<String, Any?>.options(): List<String> = stepData()["options"] as List<String>
+
+    private fun countOf(sql: String): Int = jdbcTemplate.queryForObject(sql, Int::class.java)!!
+
     init {
-        given("a registered and authenticated account (fsc + sms + confirmed email + password)") {
+        given("a fresh channel with no account known yet") {
             `when`("reading GET .../methods") {
-                then("it matches the channel response's activeMethods") {
-
-                // No account known yet - empty collection, not an error (docs/05-api.md #2).
                 val freshChannelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                @Suppress("UNCHECKED_CAST")
-                (get("/orchestrator/api/v1/channels/$freshChannelSessionId/methods")["methods"] as List<*>).shouldBeEmpty()
+                val methods = methodsOf(freshChannelSessionId)
 
-                val channelSessionId = loginAsSeededAccount()
-                @Suppress("UNCHECKED_CAST")
-                val methods = get("/orchestrator/api/v1/channels/$channelSessionId/methods")["methods"] as List<Map<String, Any?>>
-                methods.methodNames() shouldContainExactlyInAnyOrder listOf("sms", "password")
-
-                val channel = get("/orchestrator/api/v1/channels/$channelSessionId")
-                @Suppress("UNCHECKED_CAST")
-                channel.channel()["activeMethods"] as List<Map<String, Any?>> shouldBe methods
-
-
+                then("it answers an empty collection, not an error (docs/05-api.md #2)") {
+                    methods.shouldBeEmpty()
                 }
             }
         }
 
         given("a registered and authenticated account (fsc + sms + confirmed email + password)") {
-            `when`("starting MANAGE on an authenticated channel") {
-                then("another method can be added") {
-
+            `when`("reading GET .../methods") {
                 val channelSessionId = loginAsSeededAccount()
+                val methods = methodsOf(channelSessionId)
+                val channel = get("/orchestrator/api/v1/channels/$channelSessionId")
 
-                val started = post("/orchestrator/api/v1/channels/$channelSessionId/enrollments")
-                // sms and password already active from the registration; email as a login method
-                // and device are offered - two candidates means a selection page, not a skip.
-                started.next() shouldBe mapOf("type" to "orchestrator", "context" to "enrollment", "step" to "selectMethod")
-                @Suppress("UNCHECKED_CAST")
-                val startedOptions = started.stepData()["options"] as List<String>
-                // shouldContainAll (not exact) for the enrollable rest; sms/email stay explicit
-                // exclusions since they're already active - that's the point of this scenario.
-                startedOptions shouldContainAll listOf("enroll-email", "enroll-device", "enroll-qr")
-                startedOptions shouldNotContain "enroll-sms"
-                startedOptions shouldNotContain "enroll-password"
-                startedOptions shouldNotContain "confirm-email"
+                then("it lists the active methods") {
+                    methods.methodNames() shouldContainExactlyInAnyOrder listOf("sms", "password")
+                }
+                then("it matches the channel response's activeMethods") {
+                    @Suppress("UNCHECKED_CAST")
+                    channel.channel()["activeMethods"] as List<Map<String, Any?>> shouldBe methods
+                }
+            }
 
+            `when`("starting MANAGE on an authenticated channel and adding email as a login method") {
+                val channelSessionId = loginAsSeededAccount()
+                val started = startManage(channelSessionId)
                 // One shot: the address was confirmed during registration, so activating the tool
                 // completes it - there is nothing left to prove.
                 val enrolled = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-email")
-                // Finishes after one enrollment, whether or not a higher floor was reached: MANAGE never
-                // depends on canAccountReach, unlike the identification path.
-                enrolled.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
+                val channel = get("/orchestrator/api/v1/channels/$channelSessionId").channel()
 
-                val channel = get("/orchestrator/api/v1/channels/$channelSessionId")
-                channel.channel()["state"] shouldBe "AUTHENTICATED"
-                @Suppress("UNCHECKED_CAST")
-                channel.channel()["currentAmr"] as List<String> shouldContain "password"
-
-
+                then("a selection page offers what is not active yet") {
+                    // email as a login method and device are offered - two candidates means a
+                    // selection page, not a skip.
+                    started.next() shouldBe mapOf("type" to "orchestrator", "context" to "enrollment", "step" to "selectMethod")
+                    // shouldContainAll (not exact) for the enrollable rest; sms/password stay explicit
+                    // exclusions since they're already active - that's the point of this scenario.
+                    started.options() shouldContainAll listOf("enroll-email", "enroll-device", "enroll-qr")
+                    started.options() shouldNotContain "enroll-sms"
+                    started.options() shouldNotContain "enroll-password"
+                    started.options() shouldNotContain "confirm-email"
+                }
+                then("MANAGE finishes after one enrollment") {
+                    // Whether or not a higher floor was reached: MANAGE never depends on
+                    // canAccountReach, unlike the identification path.
+                    enrolled.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
+                }
+                then("the channel stays authenticated with its proofs") {
+                    channel["state"] shouldBe "AUTHENTICATED"
+                    @Suppress("UNCHECKED_CAST")
+                    channel["currentAmr"] as List<String> shouldContain "password"
                 }
             }
-        }
 
-        given("a registered and authenticated account (fsc + sms + confirmed email + password)") {
-            `when`("starting MANAGE once sms, password and email are all active") {
-                then("the last remaining candidate is offered directly") {
-
-                // sms and password are active from the registration; email as a login method is still
-                // missing (the address itself is confirmed).
+            `when`("starting MANAGE once sms, password, email and qr are all active") {
                 val channelSessionId = loginAsSeededAccount()
-                post("/orchestrator/api/v1/channels/$channelSessionId/enrollments")
+                startManage(channelSessionId)
                 post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-email")
-                post("/orchestrator/api/v1/channels/$channelSessionId/enrollments")
+                startManage(channelSessionId)
                 val enrollQrToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-qr").nextRaw()["toolSessionId"] as String
                 patch("/orchestrator/api/v1/tools/$enrollQrToolSessionId/enroll-qr", "{}")
 
@@ -103,211 +108,111 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
                 // single-candidate skip.
                 put("/orchestrator/admin/tools/enroll-kobil/availability/APP", """{"enabled":false,"reason":"single-candidate case"}""")
 
-                // sms, email, password and qr are active, so enroll-device is the single remaining
-                // candidate. The "nothing left" message is covered in DeviceBindingIntegrationTest.
-                val started = post("/orchestrator/api/v1/channels/$channelSessionId/enrollments")
-                started.next() shouldBe mapOf("type" to "tool", "toolId" to "enroll-device", "step" to "enroll")
+                val started = startManage(channelSessionId)
 
-
+                then("the last remaining candidate, enroll-device, is offered directly") {
+                    // The "nothing left" message is covered in DeviceBindingIntegrationTest.
+                    started.next() shouldBe mapOf("type" to "tool", "toolId" to "enroll-device", "step" to "enroll")
                 }
             }
-        }
 
-        given("a fresh channel") {
-            `when`("deactivating a method that would drop below the channel's floor") {
-                then("it is rejected") {
-
-                // sms (POSSESSION) + password (KNOWLEDGE) reach loa2 together. Deactivating the
-                // password - the only KNOWLEDGE factor - would drop the account below the channel's
-                // floor, so the self-lockout guard rejects it.
-                val channelSessionId = identifyAndConfirmEmail(requiredAcr = "loa2")
-                val enrollSmsToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-sms").nextRaw()["toolSessionId"] as String
-                val (smsTan, _) = captureMockTan {
-                    patch("/orchestrator/api/v1/tools/$enrollSmsToolSessionId/enroll-sms", """{"phoneNumber":"+49 170 1234567"}""")
-                }
-                patch("/orchestrator/api/v1/tools/$enrollSmsToolSessionId/enroll-sms", """{"tan":"$smsTan"}""")
-                enrollPassword(channelSessionId)
-
-                @Suppress("UNCHECKED_CAST")
-                val methods = get("/orchestrator/api/v1/channels/$channelSessionId/methods")["methods"] as List<Map<String, Any?>>
-                val passwordInstanceId = methods.first { it["method"] == "password" }["id"] as String
-
-                val exception = assertThrows<HttpClientErrorException> {
-                    delete("/orchestrator/api/v1/channels/$channelSessionId/methods/$passwordInstanceId")
-                }
-                exception.statusCode shouldBe HttpStatus.CONFLICT
-
-
-                }
-            }
-        }
-
-        given("a registered and authenticated account (fsc + sms + confirmed email + password)") {
-            `when`("deactivating a method while another still covers the floor") {
-                then("it succeeds") {
-
+            `when`("deactivating sms while password still covers the floor") {
                 // A real registration, not a seeded login: the channel needs identification evidence of
                 // its own. After logging in with sms and password, dropping sms would pull the session
-                // below its own floor (409), which is the scenario below.
+                // below its own floor and be refused (409).
                 val channelSessionId = registerAndAuthenticate()
-                @Suppress("UNCHECKED_CAST")
-                val methods = get("/orchestrator/api/v1/channels/$channelSessionId/methods")["methods"] as List<Map<String, Any?>>
-                val smsInstanceId = methods.first { it["method"] == "sms" }["id"] as String
-                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM auth_sms.enrollment", Int::class.java) shouldBe 1
+                val smsInstanceId = methodsOf(channelSessionId).first { it["method"] == "sms" }["id"] as String
+                val smsEnrollmentsBefore = countOf("SELECT COUNT(*) FROM auth_sms.enrollment")
 
                 delete("/orchestrator/api/v1/channels/$channelSessionId/methods/$smsInstanceId")
+                val started = startManage(channelSessionId)
 
-                // Removing a method revokes the credential itself, not just the instance flag: the
-                // phone number is gone from the owning module, while the deactivated
-                // account.auth_method row stays so account deletion still walks every ref.
-                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM auth_sms.enrollment", Int::class.java) shouldBe 0
-                // ...and what only that credential backed is withdrawn (ADR-12): a retraction row,
-                // while the claim row itself stays - the log never mutates.
-                jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.retraction WHERE attribute_type = 'phone_number'", Int::class.java
-                ) shouldBe 1
-                jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.claim WHERE attribute_type = 'phone_number'", Int::class.java
-                ) shouldBe 1
-
-                // sms is a candidate again, and with the email confirmed password is one too, hence a
-                // selection page rather than a skip.
-                val started = post("/orchestrator/api/v1/channels/$channelSessionId/enrollments")
-                started.next() shouldBe mapOf("type" to "orchestrator", "context" to "enrollment", "step" to "selectMethod")
-                @Suppress("UNCHECKED_CAST")
-                val startedOptions = started.stepData()["options"] as List<String>
-                // shouldContainAll (not exact) for the enrollable rest; email stays an explicit
-                // exclusion since it's already active - that's the point of this scenario.
-                startedOptions shouldContainAll listOf("enroll-sms", "enroll-email", "enroll-device", "enroll-qr")
-                startedOptions shouldNotContain "enroll-password"
-                startedOptions shouldNotContain "confirm-email"
-
-
+                then("the credential itself is revoked, not just the instance flag") {
+                    // The phone number is gone from the owning module, while the deactivated
+                    // account.auth_method row stays so account deletion still walks every ref.
+                    smsEnrollmentsBefore shouldBe 1
+                    countOf("SELECT COUNT(*) FROM auth_sms.enrollment") shouldBe 0
+                }
+                then("what only that credential backed is withdrawn by a retraction, the claim itself stays (ADR-12)") {
+                    countOf("SELECT COUNT(*) FROM account.retraction WHERE attribute_type = 'phone_number'") shouldBe 1
+                    countOf("SELECT COUNT(*) FROM account.claim WHERE attribute_type = 'phone_number'") shouldBe 1
+                }
+                then("sms is a candidate again, beside the rest that is not active") {
+                    // With the email confirmed password would be one too, hence a selection page.
+                    started.next() shouldBe mapOf("type" to "orchestrator", "context" to "enrollment", "step" to "selectMethod")
+                    // shouldContainAll (not exact) for the enrollable rest; password stays an explicit
+                    // exclusion since it's still active - that's the point of this scenario.
+                    started.options() shouldContainAll listOf("enroll-sms", "enroll-email", "enroll-device", "enroll-qr")
+                    started.options() shouldNotContain "enroll-password"
+                    started.options() shouldNotContain "confirm-email"
                 }
             }
         }
 
-        given("a fresh channel") {
-            `when`("starting MANAGE with only loa1 session evidence") {
-                then("it offers email as the complementary factor for loa2") {
-
-                // Register with fsc+sms in one continuous session (loa2), then simulate a completely
-                // fresh app session on the same device: DeviceAccountLink skips straight to LOGIN via
-                // auth-sms alone, never re-proving fsc, so this session's own evidence sits at loa1.
+        given("a registered account on this device, logged in on a fresh channel via sms alone") {
+            `when`("starting MANAGE with only loa1 session evidence and stepping up through the enrolled password") {
+                // DeviceAccountLink skips straight to LOGIN via auth-sms alone, never re-proving fsc,
+                // so this session's own evidence sits at loa1.
                 seedRegisteredAccount()
-                val loginStart = post("/orchestrator/api/v1/app/channels")
-                val newChannelSessionId = loginStart.channel()["channelSessionId"] as String
-                authenticateViaSms(newChannelSessionId)
-                val afterLogin = get("/orchestrator/api/v1/channels/$newChannelSessionId")
-                afterLogin.channel()["currentAcr"] shouldBe "loa1"
+                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                authenticateViaSms(channelSessionId)
+                val acrAfterLogin = get("/orchestrator/api/v1/channels/$channelSessionId").channel()["currentAcr"]
 
-                // Password is the enrolled KNOWLEDGE factor complementary to SMS (POSSESSION), so
-                // MANAGE can step up through existing methods without re-identification.
-                val started = triggerEnrollmentStepUp(newChannelSessionId)
-                started.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-password", "step" to "auth")
-                val passwordToolSessionId = post("/orchestrator/api/v1/channels/$newChannelSessionId/tools/auth-password").nextRaw()["toolSessionId"] as String
-                val steppedUp = patch(
-                    "/orchestrator/api/v1/tools/$passwordToolSessionId/auth-password",
-                    """{"password":"correct-horse-battery"}"""
-                )
-                steppedUp.next() shouldBe mapOf("type" to "orchestrator", "context" to "enrollment", "step" to "selectMethod")
-                @Suppress("UNCHECKED_CAST")
-                val steppedUpOptions = steppedUp.stepData()["options"] as List<String>
-                // shouldContainAll (not exact) for the enrollable rest; sms/email stay explicit
-                // exclusions since they're already active - that's the point of this scenario.
-                steppedUpOptions shouldContainAll listOf("enroll-email", "enroll-device", "enroll-qr")
-                steppedUpOptions shouldNotContain "enroll-sms"
-                steppedUpOptions shouldNotContain "enroll-password"
-                steppedUpOptions shouldNotContain "confirm-email"
+                val started = triggerEnrollmentStepUp(channelSessionId)
+                val steppedUp = authenticateViaPassword(channelSessionId)
+                val acrAfterStepUp = get("/orchestrator/api/v1/channels/$channelSessionId").channel()["currentAcr"]
 
-                val afterStepUp = get("/orchestrator/api/v1/channels/$newChannelSessionId")
-                afterStepUp.channel()["currentAcr"] shouldBe "loa2"
-
-
+                then("the session starts at loa1") {
+                    acrAfterLogin shouldBe "loa1"
                 }
-            }
-        }
-
-        given("a fresh channel") {
-            `when`("starting MANAGE after proving only SMS") {
-                then("it uses the enrolled email before offering re-identification") {
-
-                seedRegisteredAccount()
-                val loginStart = post("/orchestrator/api/v1/app/channels")
-                val newChannelSessionId = loginStart.channel()["channelSessionId"] as String
-                authenticateViaSms(newChannelSessionId)
-
-                val started = post("/orchestrator/api/v1/channels/$newChannelSessionId/enrollments")
-                started.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-password", "step" to "auth")
-
-
+                then("the step-up goes through the password, without re-identification") {
+                    // Password is the enrolled KNOWLEDGE factor complementary to SMS (POSSESSION).
+                    started.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-password", "step" to "auth")
+                }
+                then("after the step-up, what can still be enrolled is offered") {
+                    steppedUp.next() shouldBe mapOf("type" to "orchestrator", "context" to "enrollment", "step" to "selectMethod")
+                    // shouldContainAll (not exact) for the enrollable rest; sms/password stay explicit
+                    // exclusions since they're already active - that's the point of this scenario.
+                    steppedUp.options() shouldContainAll listOf("enroll-email", "enroll-device", "enroll-qr")
+                    steppedUp.options() shouldNotContain "enroll-sms"
+                    steppedUp.options() shouldNotContain "enroll-password"
+                    steppedUp.options() shouldNotContain "confirm-email"
+                    acrAfterStepUp shouldBe "loa2"
                 }
             }
         }
 
         given("a password that was enrolled against a confirmed address") {
             `when`("the address itself is withdrawn") {
-                then("the password goes with it - nobody declared that, its own requires did") {
-
                 // A real registration: sms and password, both against the confirmed address.
                 val channelSessionId = registerAndAuthenticate()
-                @Suppress("UNCHECKED_CAST")
-                val before = get("/orchestrator/api/v1/channels/$channelSessionId/methods")["methods"] as List<Map<String, Any?>>
-                before.map { it["method"] } shouldContainAll listOf("sms", "password")
+                val before = methodsOf(channelSessionId).map { it["method"] }
 
                 delete("/orchestrator/api/v1/channels/$channelSessionId/attributes/email")
+                val after = methodsOf(channelSessionId).map { it["method"] }
 
-                // enroll-password requires ClaimRequirement(EMAIL, PROVEN), and `requires` is a standing
-                // precondition (ADR-24): what a credential needed to exist it needs to keep existing.
-                // sms required nothing and stays.
-                @Suppress("UNCHECKED_CAST")
-                val after = get("/orchestrator/api/v1/channels/$channelSessionId/methods")["methods"] as List<Map<String, Any?>>
-                after.map { it["method"] } shouldNotContain "password"
-                after.map { it["method"] } shouldContain "sms"
-                // The credential row itself is gone, not merely flagged - same as any revocation.
-                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM auth_password.enrollment", Int::class.java) shouldBe 0
-
-
+                then("the password goes with it - nobody declared that, its own requires did") {
+                    // enroll-password requires ClaimRequirement(EMAIL, PROVEN), and `requires` is a standing
+                    // precondition (ADR-24): what a credential needed to exist it needs to keep existing.
+                    before shouldContainAll listOf("sms", "password")
+                    after shouldNotContain "password"
+                }
+                then("sms required nothing and stays") {
+                    after shouldContain "sms"
+                }
+                then("the password credential row itself is gone, as with any revocation") {
+                    countOf("SELECT COUNT(*) FROM auth_password.enrollment") shouldBe 0
                 }
             }
 
-            `when`("the address was never confirmed on this account") {
-                then("withdrawing it is refused instead of silently revoking what required it") {
-
+            `when`("the address is withdrawn a second time") {
                 val channelSessionId = registerAndAuthenticate()
                 delete("/orchestrator/api/v1/channels/$channelSessionId/attributes/email")
 
-                val refused = assertThrows<HttpClientErrorException> {
-                    delete("/orchestrator/api/v1/channels/$channelSessionId/attributes/email")
-                }
-                refused.statusCode shouldBe HttpStatus.NOT_FOUND
+                val result = runCatching { delete("/orchestrator/api/v1/channels/$channelSessionId/attributes/email") }
 
-
-                }
-            }
-        }
-
-        given("an identified account") {
-            `when`("the holder tries to withdraw an identity anchor") {
-                then("it is refused - only the confirmed address is theirs to give up") {
-
-                val channelSessionId = registerAndAuthenticate()
-                fun personAnchors() = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.anchor WHERE attribute_type = 'person_id'", Int::class.java
-                )
-                personAnchors() shouldBe 1
-
-                // "versnr" is not an attribute name: refused like the anchors, never a 500.
-                listOf("person_id", "member_number", "restricted_id", "nect_restricted_id", "versnr").forEach { attribute ->
-                    val refused = assertThrows<HttpClientErrorException> {
-                        delete("/orchestrator/api/v1/channels/$channelSessionId/attributes/$attribute")
-                    }
-                    refused.statusCode shouldBe HttpStatus.CONFLICT
-                }
-                personAnchors() shouldBe 1
-                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.retraction", Int::class.java) shouldBe 0
-
-
+                then("there is no confirmed address left, so it is not found") {
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.NOT_FOUND
                 }
             }
         }

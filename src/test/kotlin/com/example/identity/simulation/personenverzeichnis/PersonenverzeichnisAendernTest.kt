@@ -117,13 +117,35 @@ class PersonenverzeichnisAendernTest : BehaviorSpec({
             verify(exactly = 0) { events.publishEvent(any<Any>()) }
         }
 
-        then("a Versicherungsnummer that is not eight digits, or already someone else's, is refused") {
-            val person = max()
-            val other = Person(kvnr = "B987654321", versnr = "30000003").also { it.id = "P000000002" }
-            val (verzeichnis, _) = fixture(person, taken = other)
-            shouldThrow<PersonRejectedException> { verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(versnr = "1234")) }
-            shouldThrow<PersonRejectedException> { verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(versnr = "30000003")) }
-            shouldThrow<PersonRejectedException> { verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(kvnr = "B987654321")) }
+    }
+
+    given("Max on file, and another person holding KVNR B987654321 and Versicherungsnummer 30000003") {
+        val person = max()
+        val other = Person(kvnr = "B987654321", versnr = "30000003").also { it.id = "P000000002" }
+        val (verzeichnis, _) = fixture(person, taken = other)
+
+        `when`("Max's Versicherungsnummer is changed to one that is not eight digits") {
+            val result = runCatching { verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(versnr = "1234")) }
+
+            then("it is refused") {
+                shouldThrow<PersonRejectedException> { result.getOrThrow() }
+            }
+        }
+
+        `when`("Max's Versicherungsnummer is changed to the other person's") {
+            val result = runCatching { verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(versnr = "30000003")) }
+
+            then("it is refused") {
+                shouldThrow<PersonRejectedException> { result.getOrThrow() }
+            }
+        }
+
+        `when`("Max's KVNR is changed to the other person's") {
+            val result = runCatching { verzeichnis.aendern(PartnerNumber("P000000001"), data(person).copy(kvnr = "B987654321")) }
+
+            then("it is refused") {
+                shouldThrow<PersonRejectedException> { result.getOrThrow() }
+            }
         }
     }
 })

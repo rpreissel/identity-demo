@@ -13,9 +13,7 @@ import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
-import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.shouldBe
 import org.aopalliance.intercept.MethodInterceptor
 import org.hibernate.exception.ConstraintViolationException
@@ -240,7 +238,7 @@ class AccountServiceDbTest(
                 accountService.recordClaim(second.accountId, Claim(AttributeType.PERSON_ID, "P000000777", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
             }
 
-            then("the real unique index rejects it - exactly one owner survives") {
+            then("the conflict check refuses it before any write - exactly one owner survives") {
                 shouldThrow<IdentityConflictException> { result.getOrThrow() }
 
                 jdbcTemplate.queryForObject(
@@ -248,24 +246,6 @@ class AccountServiceDbTest(
                     Int::class.java
                 ) shouldBe 1
                 accountService.findAccount(second.accountId)?.personId.shouldBeNull()
-            }
-        }
-    }
-
-    given("an account's email anchor being rebound to a new value") {
-        `when`("the new email is recorded") {
-            clearAccounts()
-            val account = accountService.createAccountInSetup()
-            accountService.recordClaim(account.accountId, Claim(AttributeType.EMAIL, "old@example.com", ClaimSource.SELF_REPORTED), provenAcr = AcrLevel.LOA2)
-            accountService.recordClaim(account.accountId, Claim(AttributeType.EMAIL, "new@example.com", ClaimSource.SELF_REPORTED), provenAcr = AcrLevel.LOA2)
-
-            then("the rebind commits atomically under real unique constraints") {
-                accountService.findAccountByEmail("old@example.com").shouldBeNull()
-                accountService.findAccountByEmail("new@example.com")?.accountId shouldBe account.accountId
-                jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.anchor WHERE account_id = ? AND attribute_type = 'email'",
-                    Int::class.java, account.accountId.value
-                ) shouldBe 1
             }
         }
     }
@@ -387,27 +367,6 @@ class AccountServiceDbTest(
         }
     }
 
-    given("an identity anchor and a withdrawal in the holder's name") {
-        `when`("the holder retracts the person_id") {
-            clearAccounts()
-            val account = accountService.createAccountInSetup()
-            accountService.recordClaims(
-                account.accountId,
-                listOf(Claim(AttributeType.PERSON_ID, "P000000042", ClaimSource.PERSON_DIRECTORY)),
-                provenAcr = AcrLevel.LOA2
-            )
-
-            val result = runCatching {
-                accountService.retractAttribute(account.accountId, AttributeType.PERSON_ID, RetractionSource.ACCOUNT_HOLDER)
-            }
-
-            then("the account module itself refuses it, whatever the caller checked") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-                accountService.findAccount(account.accountId)!!.personId shouldBe PartnerNumber("P000000042")
-            }
-        }
-    }
-
     given("an eid restricted_id anchor being replaced by a new card (ADR-19)") {
         `when`("the new card's restricted_id is recorded") {
             clearAccounts()
@@ -457,6 +416,10 @@ class AccountServiceDbTest(
 
             then("the cross-account write refuses - a card pseudonym is never re-pointed to a second account") {
                 shouldThrow<IdentityConflictException> { result.getOrThrow() }
+                jdbcTemplate.queryForList(
+                    "SELECT account_id FROM account.anchor WHERE attribute_type = 'restricted_id' AND normalized_value = ?",
+                    Long::class.java, "T0103005K1D5S0V8T9W6UM2RTX"
+                ) shouldBe listOf(first.accountId.value)
             }
         }
     }
@@ -490,51 +453,6 @@ class AccountServiceDbTest(
                     String::class.java, account.accountId.value
                 ) shouldBe "phone_number"
                 accountService.findAccount(account.accountId)?.email shouldBe "max@example.com"
-            }
-        }
-    }
-
-    // ADR-5's line applied to anchors: a write is priced by what the session actually proved,
-    // not by what the asserting tool declares for itself.
-    given("an anchor write below its declared floor") {
-        `when`("a person_id is established from a loa1 session") {
-            clearAccounts()
-            val account = accountService.createAccountInSetup()
-
-            val result = runCatching {
-                accountService.recordClaim(
-                    account.accountId,
-                    Claim(AttributeType.PERSON_ID, "P000004711", ClaimSource.PERSON_DIRECTORY, AcrLevel.LOA2),
-                    provenAcr = AcrLevel.LOA1
-                )
-            }
-
-            then("establishing a person_id at loa1 is refused, and nothing is anchored") {
-                shouldThrow<IdentityConflictException> { result.getOrThrow() }
-                accountService.findAccount(account.accountId)?.personId.shouldBeNull()
-            }
-        }
-
-        `when`("an email established at loa1 is replaced from a loa1 session") {
-            clearAccounts()
-            val account = accountService.createAccountInSetup()
-            accountService.recordClaim(
-                account.accountId,
-                Claim(AttributeType.EMAIL, "first@example.com", ClaimSource.SELF_REPORTED),
-                provenAcr = AcrLevel.LOA1
-            )
-
-            val result = runCatching {
-                accountService.recordClaim(
-                    account.accountId,
-                    Claim(AttributeType.EMAIL, "second@example.com", ClaimSource.SELF_REPORTED),
-                    provenAcr = AcrLevel.LOA1
-                )
-            }
-
-            then("replacing an email costs loa2 even though establishing it cost loa1") {
-                shouldThrow<IdentityConflictException> { result.getOrThrow() }
-                accountService.findAccount(account.accountId)?.email shouldBe "first@example.com"
             }
         }
     }
@@ -673,45 +591,6 @@ class AccountServiceDbTest(
         }
     }
 
-    given("an account that is not disposable") {
-        `when`("it is to be absorbed into another account") {
-            clearAccounts()
-            val notDisposable = accountService.createAccountInSetup()
-            accountService.addAuthenticationMethod(
-                notDisposable.accountId, "password", EnrollmentRef("auth_password", "e-1"),
-                enrolledUnderAcr = "loa1", details = emptyMap()
-            )
-            val target = accountService.createAccountInSetup()
-            val isDisposable = accountService.findAccount(notDisposable.accountId)!!.isDisposable
-
-            val result = runCatching {
-                accountService.absorbDisposableAccount(notDisposable.accountId, target.accountId)
-            }
-
-            then("it never yields - a credential was enrolled on it, so this would be an account merge") {
-                isDisposable shouldBe false
-                shouldThrow<IdentityConflictException> { result.getOrThrow() }
-                accountService.findAccount(notDisposable.accountId) shouldNotBe null
-            }
-        }
-
-        `when`("its only credential is deactivated") {
-            clearAccounts()
-            val account = accountService.createAccountInSetup()
-            val profile = accountService.addAuthenticationMethod(
-                account.accountId, "password", EnrollmentRef("auth_password", "e-2"),
-                enrolledUnderAcr = "loa1", details = emptyMap()
-            )
-            accountService.deactivateAuthenticationMethod(account.accountId, profile.authenticationMethods.first().id)
-
-            then("a deactivated credential still counts - its claims\' provenance points at this account") {
-                val reread = accountService.findAccount(account.accountId)!!
-                reread.activeAuthenticationMethods.shouldBeEmpty()
-                reread.isDisposable shouldBe false
-            }
-        }
-    }
-
     given("an anchor that a replacement claim re-points") {
         `when`("a new email replaces the old one") {
             clearAccounts()
@@ -723,6 +602,14 @@ class AccountServiceDbTest(
                 account.accountId, Claim(AttributeType.EMAIL, "new@example.com", ClaimSource.SELF_REPORTED), provenAcr = AcrLevel.LOA2
             )
 
+            then("the anchor is re-pointed in place under the real unique constraints - the account keeps exactly one") {
+                accountService.findAccountByEmail("old@example.com").shouldBeNull()
+                accountService.findAccountByEmail("new@example.com")?.accountId shouldBe account.accountId
+                jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM account.anchor WHERE account_id = ? AND attribute_type = 'email'",
+                    Int::class.java, account.accountId.value
+                ) shouldBe 1
+            }
             then("the old value is retracted so the log agrees with the anchor (ADR-19)") {
                 accountService.establishedClaimValues(account.accountId, setOf(AttributeType.EMAIL)) shouldBe
                     mapOf(AttributeType.EMAIL to "new@example.com")

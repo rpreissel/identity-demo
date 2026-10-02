@@ -23,22 +23,41 @@ describe('texts', () => {
     vi.restoreAllMocks()
   })
 
-  it('a language chosen in the app wins over the browser language, an unknown one does not', () => {
-    expect(language()).toBe('en')
-    localStorage.setItem('identity-demo-language', 'de')
-    expect(language()).toBe('de')
-    localStorage.setItem('identity-demo-language', 'fr')
-    expect(language()).toBe('en')
+  // The browser says en-GB (beforeEach); a language chosen in the app wins, an unknown one does not.
+  it.each([
+    [null, 'en'],
+    ['de', 'de'],
+    ['fr', 'en'],
+  ])('with %s chosen in the app the language is %s', (chosen, expected) => {
+    if (chosen) localStorage.setItem('identity-demo-language', chosen)
+
+    expect(language()).toBe(expected)
   })
 
-  it('loads the bundle in the browser language and resolves placeholders, nested texts first-class', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      respond(200, { a: 'Limit reached: {reason} ({tries})', b: 'invalid TAN', c: 'knowledge', d: 'possession', e: 'Factors: {f}' }, '"v1"'),
-    )
+  it('loads the bundle in the browser language', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(respond(200, { a: 'loaded' }, '"v1"'))
+
     await loadTexts(APP_TEXTS)
+
     expect(fetchMock).toHaveBeenCalledWith(`${APP_TEXTS}/en`, { headers: {} })
-    expect(resolveText({ key: 'a', args: { tries: '3' }, texts: { reason: [{ key: 'b' }] } })).toBe('Limit reached: invalid TAN (3)')
-    expect(resolveText({ key: 'e', texts: { f: [{ key: 'c' }, { key: 'd' }] } })).toBe('Factors: knowledge, possession')
+    expect(resolveText({ key: 'a' })).toBe('loaded')
+  })
+
+  describe('with a loaded bundle', () => {
+    beforeEach(async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        respond(200, { a: 'Limit reached: {reason} ({tries})', b: 'invalid TAN', c: 'knowledge', d: 'possession', e: 'Factors: {f}' }, '"v1"'),
+      )
+      await loadTexts(APP_TEXTS)
+    })
+
+    it('resolves placeholders from args and from nested texts', () => {
+      expect(resolveText({ key: 'a', args: { tries: '3' }, texts: { reason: [{ key: 'b' }] } })).toBe('Limit reached: invalid TAN (3)')
+    })
+
+    it('joins a list of nested texts', () => {
+      expect(resolveText({ key: 'e', texts: { f: [{ key: 'c' }, { key: 'd' }] } })).toBe('Factors: knowledge, possession')
+    })
   })
 
   it('revalidates with the stored ETag and keeps the cached copy on 304', async () => {
@@ -79,7 +98,8 @@ describe('the frontend’s own texts', () => {
   })
 
   it('computes the same id as the backend (Text.idOf) and node’s SHA-256', () => {
-    // The shared samples - the same list pins Text.idOf (TextIdTest) and KcText.idOf (KcTextsTest).
+    // The shared samples - the same list pins Text.idOf (TextIdTest), KcText.idOf (KcTextsTest) and
+    // the theme's textId (keycloak-theme/src/texts.test.ts).
     const samples: Record<string, string> = {
   'Account not found': 'account-not-found-08a2ef',
   'Journey-Trace laden fehlgeschlagen': 'journey-trace-laden-fehlgeschlagen-cf9829',

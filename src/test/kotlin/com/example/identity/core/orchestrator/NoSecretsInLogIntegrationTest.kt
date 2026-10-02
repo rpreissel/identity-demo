@@ -5,9 +5,9 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.ninjasquad.springmockk.MockkBean
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
-import org.junit.jupiter.api.assertThrows
 import org.slf4j.LoggerFactory
 import org.springframework.web.client.HttpClientErrorException
 
@@ -22,14 +22,13 @@ class NoSecretsInLogIntegrationTest : IntegrationTestSupport() {
     private lateinit var jwkThumbprintService: JwkThumbprintService
 
     init {
+        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+
         given("a registration with address and SMS, and a lookup login with a mistyped address") {
             val appender = ListAppender<ILoggingEvent>()
             val root = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME) as Logger
 
             `when`("the codes are sent, entered, and the mistyped address is rejected") {
-                // beforeEach runs before the then-leaves only; this action runs in the container.
-                resetDatabase()
-                stubDpopWithFakeJwk(jwkThumbprintService)
                 appender.start()
                 root.addAppender(appender)
                 val mistyped = "max.mustermann@@example.com"
@@ -42,7 +41,7 @@ class NoSecretsInLogIntegrationTest : IntegrationTestSupport() {
                         .channel()["channelSessionId"] as String
                     val toolSessionId = post("/orchestrator/api/v1/channels/$lookup/tools/auth-sms-lookup")
                         .nextRaw()["toolSessionId"] as String
-                    val rejected = assertThrows<HttpClientErrorException> {
+                    val rejected = runCatching {
                         patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms-lookup", """{"email":"$mistyped"}""")
                     }
                     email to rejected
@@ -60,7 +59,7 @@ class NoSecretsInLogIntegrationTest : IntegrationTestSupport() {
                 }
 
                 then("the mistyped address is refused with 400") {
-                    rejected.statusCode.value() shouldBe 400
+                    shouldThrow<HttpClientErrorException> { rejected.getOrThrow() }.statusCode.value() shouldBe 400
                 }
                 then("no log line carries a code, an address or a number") {
                     lines.filter { line -> secrets.any { it.containsMatchIn(line) } }.shouldBeEmpty()

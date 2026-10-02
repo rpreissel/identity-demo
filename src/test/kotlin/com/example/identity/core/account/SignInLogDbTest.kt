@@ -43,17 +43,29 @@ class SignInLogDbTest(
             }
         }
 
-        `when`("the retention purge runs five and then seven months later") {
+        // The retention period is 6 months by default.
+        `when`("the retention purge runs five months later") {
             clearAccounts()
             val accountId = accountService.createAccountInSetup().accountId
             signInLog.signedIn(accountId, "APP", "loa2", listOf("sms"), "FAST_ACCESS")
 
-            val purgedWithin = retention.purge(Instant.now().atZone(ZoneOffset.UTC).plusMonths(5).toInstant())
-            val purgedAfter = retention.purge(Instant.now().atZone(ZoneOffset.UTC).plusMonths(7).toInstant())
+            val purged = retention.purge(Instant.now().atZone(ZoneOffset.UTC).plusMonths(5).toInstant())
 
-            then("the retention period (6 months by default) keeps it within and deletes it after") {
-                purgedWithin shouldBe 0
-                purgedAfter shouldBe 1
+            then("the entry is kept within the period") {
+                purged shouldBe 0
+                signInLog.of(accountId).size shouldBe 1
+            }
+        }
+
+        `when`("the retention purge runs seven months later") {
+            clearAccounts()
+            val accountId = accountService.createAccountInSetup().accountId
+            signInLog.signedIn(accountId, "APP", "loa2", listOf("sms"), "FAST_ACCESS")
+
+            val purged = retention.purge(Instant.now().atZone(ZoneOffset.UTC).plusMonths(7).toInstant())
+
+            then("the entry is deleted after the period") {
+                purged shouldBe 1
                 signInLog.of(accountId).size shouldBe 0
             }
         }

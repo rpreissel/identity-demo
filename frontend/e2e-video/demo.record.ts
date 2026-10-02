@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ui, uiPattern } from '../e2e/texts'
+import { ui, uiPattern, welcomeHeading } from '../e2e/texts'
 import { kc } from '../e2e-keycloak/texts'
 
 /**
@@ -300,7 +300,7 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   hidden.push({ from: 0 })
   await context.exposeFunction('__demoCaption', () => current)
   await context.addInitScript(installer, DEMO_CSS)
-  const welcome = () => page.getByRole('heading', { name: new RegExp(`^${ui('Willkommen, {name}!').split('{name}')[0]}`) })
+  const welcome = () => page.getByRole('heading', { name: welcomeHeading })
   const biometrics = ui('Mit Biometrie bestätigen')
   const loginLoop = async () => {
     await caption(page, 'Anmelden mit diesem Gerät. Der Nachweis ist der Geräteschlüssel, entsperrt mit Biometrie.', 3000)
@@ -325,8 +325,6 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
     + '4. Die Sitzungen in Keycloak ansehen<br>5. Den Vornamen ändern<br>6. Den Journey-Trace ansehen<br>7. Das Konto löschen</p>',
     { holdMs: TITLE_MS + 2000, next: 'Die Willkommensseite der Demo.' })
   await page.waitForTimeout(4000)
-
-  // 1) Registrierung in der App  await page.waitForTimeout(6000)
 
   // 1) Registrierung in der App
   await open(page, '/app/?intent=register', () => phone(page).getByRole('button', { name: uiPattern('Freischaltcode') }).waitFor(), '', true)

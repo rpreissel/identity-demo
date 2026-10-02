@@ -59,7 +59,7 @@ class IdentNectToolHandlerTest : BehaviorSpec({
         restrictedId = "nect-pseudonym-1",
     )
 
-    given("start()") {
+    given("the app channel, which Nect sends back to its own callback") {
         `when`("an ident-nect run begins") {
             val toolSessionId = ToolSessionId(UUID.randomUUID())
             val caseId = UUID.randomUUID()
@@ -98,9 +98,8 @@ class IdentNectToolHandlerTest : BehaviorSpec({
             val toolSessionId = ToolSessionId(UUID.randomUUID())
             val oldCase = UUID.randomUUID()
             val newCase = UUID.randomUUID()
-            every { repository.findByToolSessionId(toolSessionId) } returns 
+            every { repository.findByToolSessionId(toolSessionId) } returns
                 IdNectToolSession(toolSessionId = toolSessionId, caseId = oldCase, returnUri = actionUrl, createdAt = TEST_NOW)
-            
             every { nect.createCase(actionUrl, NECT_REQUESTED) } returns NectCaseRef(newCase, "/nect/?case=$newCase")
             every { repository.save(any()) } answers { firstArg() }
             val outcome = webHandler.patch(toolSessionId, caseId = oldCase, retry = true)
@@ -130,9 +129,8 @@ class IdentNectToolHandlerTest : BehaviorSpec({
 
         `when`("a retry names an address outside the prefixes") {
             val toolSessionId = ToolSessionId(UUID.randomUUID())
-            every { repository.findByToolSessionId(toolSessionId) } returns 
+            every { repository.findByToolSessionId(toolSessionId) } returns
                 IdNectToolSession(toolSessionId = toolSessionId, caseId = UUID.randomUUID(), returnUri = actionUrl, createdAt = TEST_NOW)
-            
             val result = runCatching { webHandler.patch(toolSessionId, caseId = null, retry = true, returnUri = "https://attacker.example/return") }
 
             then("it is rejected as bad input, and no case is opened") {
@@ -141,18 +139,25 @@ class IdentNectToolHandlerTest : BehaviorSpec({
             }
         }
 
-        `when`("the address lies elsewhere") {
-            val elsewhere = "https://attacker.example/return"
+        `when`("a start names an address elsewhere") {
+            val elsewhere = "https://elsewhere.example/return"
+            val result = runCatching { webHandler.start(ToolSessionId(UUID.randomUUID()), returnUri = elsewhere) }
 
             then("the start is rejected as bad input, and no case is opened") {
-                shouldThrow<IllegalArgumentException> { webHandler.start(ToolSessionId(UUID.randomUUID()), returnUri = elsewhere) }
+                shouldThrow<IllegalArgumentException> { result.getOrThrow() }
                 verify(exactly = 0) { nect.createCase(elsewhere, any()) }
             }
         }
+    }
 
-        `when`("no prefix is configured at all") {
-            then("only the app channel's own address is left") {
-                shouldThrow<IllegalArgumentException> { handler.start(ToolSessionId(UUID.randomUUID()), returnUri = actionUrl) }
+    given("no return address prefix configured at all") {
+        val actionUrl = "https://kc.test/realms/Demo/login-actions/authenticate?session_code=c1&execution=e1&client_id=web&tab_id=t1"
+
+        `when`("a start names a channel address") {
+            val result = runCatching { handler.start(ToolSessionId(UUID.randomUUID()), returnUri = actionUrl) }
+
+            then("it is rejected - only the app channel's own address is left") {
+                shouldThrow<IllegalArgumentException> { result.getOrThrow() }
             }
         }
     }
@@ -219,17 +224,15 @@ class IdentNectToolHandlerTest : BehaviorSpec({
         every { nect.redeem(caseId) } returns NectResult.Identified(NectProcedure.EID, fullAttributes)
 
         `when`("the client reports the case") {
-            val outcome = handler.patch(toolSessionId, caseId, retry = false)
+            val identified = handler.patch(toolSessionId, caseId, retry = false).shouldBeInstanceOf<ToolOutcome.Completed.Identified>()
 
             then("it identifies at loa3 with possession plus knowledge") {
-                val identified = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Identified>()
                 identified.amr shouldBe listOf("nect-eid")
                 identified.achievedAcr shouldBe AcrLevel.LOA3
                 identified.factorTypes shouldBe setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE)
             }
 
             then("it asserts every attribute, including Nect's own card pseudonym, within the descriptor's claims") {
-                val identified = outcome as ToolOutcome.Completed.Identified
                 identified.claims shouldBe listOf(
                     Claim(AttributeType.FAMILY_NAME, "Mustermann", source, AcrLevel.LOA3),
                     Claim(AttributeType.GIVEN_NAMES, "Erika", source, AcrLevel.LOA3),
@@ -244,7 +247,7 @@ class IdentNectToolHandlerTest : BehaviorSpec({
             }
 
             then("it records the case for the audit, without a document number") {
-                (outcome as ToolOutcome.Completed.Identified).auditDetails shouldBe mapOf(
+                identified.auditDetails shouldBe mapOf(
                     "provider" to "nect-mock",
                     "providerTxId" to caseId.toString(),
                     "toolSessionId" to toolSessionId.toString(),

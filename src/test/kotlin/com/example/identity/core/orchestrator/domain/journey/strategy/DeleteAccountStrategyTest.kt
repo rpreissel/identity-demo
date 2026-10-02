@@ -1,7 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.core.orchestrator.domain.journey.strategy.DeleteAccountStrategy
 import com.example.identity.tools.auth_sms.AuthSmsDescriptor
+import com.example.identity.tools.ident_fsc.IdentFscDescriptor
+import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
+import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -11,9 +13,11 @@ import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccount
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
+import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -26,49 +30,18 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 /**
  * Pure unit coverage of [DeleteAccountStrategy] - self-service account deletion
  * (docs/04-orchestrierung.md #3, docs/05-api.md "Account löschen"). No Spring context, no HTTP.
+ * The givens follow the journey: confirmation, loa2 gate, re-confirmation, delete.
  */
 class DeleteAccountStrategyTest : BehaviorSpec({
 
     val strategy = DeleteAccountStrategy()
 
-    given("the intent") {
-        then("is DELETE_ACCOUNT") {
-            strategy.intent shouldBe AuthIntent.DELETE_ACCOUNT
-        }
-    }
+    given("a new journey") {
+        `when`("its first state is chosen") {
+            val initial = strategy.initialState(ctx())
 
-    given("initialState") {
-        then("is ConfirmPending - the yes/no confirmation always comes first, unconditionally") {
-            strategy.initialState(ctx()) shouldBe DeleteAccountState.ConfirmPending
-        }
-    }
-
-    given("ConfirmationRequired, offering an identification tool") {
-        val state = DeleteAccountState.ConfirmationRequired(Offer(listOf(ToolId("ident-fsc"))))
-
-        `when`("an outcome this intent never offers arrives: Identified") {
-            val result = runCatching {
-                strategy.transition(
-                    state,
-                    JourneyEvent.Completed(com.example.identity.tools.ident_fsc.IdentFscDescriptor, ToolOutcome.Completed.Identified(claims = listOf(com.example.identity.contract.tool_api.claims.Claim(com.example.identity.contract.tool_api.claims.AttributeType.PERSON_ID, "P000000001", com.example.identity.contract.tool_api.claims.ClaimSource.PERSON_DIRECTORY)))),
-                    ctx()
-                )
-            }
-            then("Identified fails loudly rather than silently deleting") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-            }
-        }
-
-        `when`("an outcome this intent never offers arrives: Enrolled") {
-            val result = runCatching {
-                strategy.transition(
-                    state,
-                    JourneyEvent.Completed(AuthSmsDescriptor, ToolOutcome.Completed.Enrolled(enrollmentRef = com.example.identity.contract.tool_api.EnrollmentRef("sms", "ref"))),
-                    ctx()
-                )
-            }
-            then("Enrolled fails loudly rather than silently deleting") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
+            then("it is ConfirmPending - the yes/no confirmation always comes first, unconditionally") {
+                initial shouldBe DeleteAccountState.ConfirmPending
             }
         }
     }
@@ -82,7 +55,7 @@ class DeleteAccountStrategyTest : BehaviorSpec({
         }
 
         `when`("the confirmation is declined") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered("decline"), ctx())
+            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(ANSWER_DECLINE), ctx())
             then("cancels - no gate is ever evaluated before an explicit yes") {
                 transition shouldBe Transition.Cancel
             }
@@ -94,20 +67,13 @@ class DeleteAccountStrategyTest : BehaviorSpec({
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
-
-        `when`("the gate's own step-up delete just ran (ActionCompleted)") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.ActionCompleted, ctx())
-            then("ends the channel for good") {
-                transition shouldBe Transition.Logout
-            }
-        }
     }
 
     given("ConfirmPending, the session does not yet carry loa2") {
         val acc = account(method("sms", AcrLevel.LOA1))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
         `when`("the confirmation is accepted") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered("accept"), theCtx)
+            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
             then("the loa2 gate parks the wish and demands a step-up first - only NOW, never before accepting") {
                 transition shouldBe
                     Transition.RequireSubJourney(
@@ -123,10 +89,9 @@ class DeleteAccountStrategyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1), personId = null)
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
         `when`("the confirmation is accepted") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered("accept"), theCtx)
+            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
             then("loa1 already satisfies the gate - straight to the re-confirmation step, no STEP_UP to loa2 demanded") {
-                transition.shouldBeInstanceOf<Transition.To>()
-                val to = transition.state
+                val to = transition.shouldBeInstanceOf<Transition.To>().state
                 to.shouldBeInstanceOf<DeleteAccountState.ConfirmationRequired>()
                 to.offered shouldContainExactlyInAnyOrder listOf(ToolId("auth-sms"))
             }
@@ -139,10 +104,9 @@ class DeleteAccountStrategyTest : BehaviorSpec({
         val acc = account(method("device", AcrLevel.LOA2, details = StrategyTestFixtures.deviceDetails()))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE), account = acc), acrFloor = AcrLevel.LOA1)
         `when`("the confirmation is accepted") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered("accept"), theCtx)
+            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
             then("still demands a fresh re-confirmation of any active factor - unlike STEP_UP, evidence of unknown age is never enough on its own") {
-                transition.shouldBeInstanceOf<Transition.To>()
-                val to = transition.state
+                val to = transition.shouldBeInstanceOf<Transition.To>().state
                 to.shouldBeInstanceOf<DeleteAccountState.ConfirmationRequired>()
                 to.offered shouldContainExactlyInAnyOrder listOf(ToolId("auth-device"))
             }
@@ -187,6 +151,15 @@ class DeleteAccountStrategyTest : BehaviorSpec({
         }
     }
 
+    given("ConfirmPending, the delete after the gate's step-up") {
+        `when`("the delete just ran (ActionCompleted)") {
+            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.ActionCompleted, ctx())
+            then("ends the channel for good") {
+                transition shouldBe Transition.Logout
+            }
+        }
+    }
+
     given("ConfirmationRequired, more than one offered candidate") {
         val state = DeleteAccountState.ConfirmationRequired(Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
         `when`("one candidate is abandoned") {
@@ -226,6 +199,26 @@ class DeleteAccountStrategyTest : BehaviorSpec({
             val transition = strategy.transition(state, event, theCtx)
             then("goes straight to deleting - one proof, at any level, is always sufficient here, and is never itself recorded as MethodEvidence") {
                 transition shouldBe Transition.Perform(Action.DeleteAccount, resumeState = state)
+            }
+        }
+    }
+
+    given("ConfirmationRequired, offering an identification tool") {
+        val state = DeleteAccountState.ConfirmationRequired(Offer(listOf(ToolId("ident-fsc"))))
+
+        `when`("an outcome this intent never offers arrives: Identified") {
+            val event = JourneyEvent.Completed(IdentFscDescriptor, identifiedOutcome())
+            val result = runCatching { strategy.transition(state, event, ctx()) }
+            then("Identified fails loudly rather than silently deleting") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
+            }
+        }
+
+        `when`("an outcome this intent never offers arrives: Enrolled") {
+            val event = JourneyEvent.Completed(AuthSmsDescriptor, ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref")))
+            val result = runCatching { strategy.transition(state, event, ctx()) }
+            then("Enrolled fails loudly rather than silently deleting") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
     }

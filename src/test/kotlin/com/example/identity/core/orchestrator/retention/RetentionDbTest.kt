@@ -4,7 +4,6 @@ import com.example.identity.core.orchestrator.IntegrationTestSupport
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import com.ninjasquad.springmockk.MockkBean
 import org.springframework.beans.factory.annotation.Autowired
 import java.util.UUID
@@ -25,35 +24,40 @@ class RetentionDbTest : IntegrationTestSupport() {
     private fun count(sql: String, vararg args: Any): Long = jdbcTemplate.queryForObject(sql, Long::class.java, *args)!!
 
     init {
-        beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
 
-        given("a registered channel past its retention window and a live one") {
-            then("the old channel goes with everything it owns; the live channel and the account stay") {
-                val old = UUID.fromString(registerAndAuthenticate())
+        given("a logged-in channel past its retention window and a live one") {
+            `when`("the retention job cleans up") {
+                val old = UUID.fromString(loginAsSeededAccount())
                 val live = UUID.fromString(post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String)
-
                 val row = jdbcTemplate.queryForMap(
                     "SELECT account_id, app_token_session_id, session_evidence_id FROM orchestrator.channel_session WHERE id = ?", old
                 )
                 val accountId = row["ACCOUNT_ID"] as Long
+                val appTokenSessionId = row["APP_TOKEN_SESSION_ID"] as UUID
                 val sessionEvidenceId = row["SESSION_EVIDENCE_ID"] as UUID
-                sessionEvidenceId shouldNotBe null
                 val journeys = jdbcTemplate.queryForList("SELECT id FROM orchestrator.auth_journey WHERE channel_session_id = ?", UUID::class.java, old)
-                journeys.shouldNotBeEmpty()
-
                 // Past the channel window (14 days after expiry), nothing else touched.
                 jdbcTemplate.update("UPDATE orchestrator.channel_session SET expires_at = DATEADD('DAY', -15, CURRENT_TIMESTAMP) WHERE id = ?", old)
 
                 retentionJob.cleanup()
 
-                count("SELECT COUNT(*) FROM orchestrator.channel_session WHERE id = ?", old) shouldBe 0
-                count("SELECT COUNT(*) FROM orchestrator.auth_journey WHERE channel_session_id = ?", old) shouldBe 0
-                journeys.forEach { count("SELECT COUNT(*) FROM orchestrator.tool_session WHERE journey_id = ?", it!!) shouldBe 0 }
-                count("SELECT COUNT(*) FROM orchestrator.session_evidence WHERE id = ?", sessionEvidenceId) shouldBe 0
-                (row["APP_TOKEN_SESSION_ID"] as UUID?)?.let { count("SELECT COUNT(*) FROM orchestrator.app_token_session WHERE id = ?", it) shouldBe 0 }
-
-                count("SELECT COUNT(*) FROM orchestrator.channel_session WHERE id = ?", live) shouldBe 1
-                count("SELECT COUNT(*) FROM account.account WHERE id = ?", accountId) shouldBe 1
+                then("the old channel goes") {
+                    count("SELECT COUNT(*) FROM orchestrator.channel_session WHERE id = ?", old) shouldBe 0
+                }
+                then("its journeys and their tool sessions go with it") {
+                    journeys.shouldNotBeEmpty()
+                    count("SELECT COUNT(*) FROM orchestrator.auth_journey WHERE channel_session_id = ?", old) shouldBe 0
+                    journeys.forEach { count("SELECT COUNT(*) FROM orchestrator.tool_session WHERE journey_id = ?", it!!) shouldBe 0 }
+                }
+                then("its evidence and its AppTokenSession go with it") {
+                    count("SELECT COUNT(*) FROM orchestrator.session_evidence WHERE id = ?", sessionEvidenceId) shouldBe 0
+                    count("SELECT COUNT(*) FROM orchestrator.app_token_session WHERE id = ?", appTokenSessionId) shouldBe 0
+                }
+                then("the live channel and the account stay") {
+                    count("SELECT COUNT(*) FROM orchestrator.channel_session WHERE id = ?", live) shouldBe 1
+                    count("SELECT COUNT(*) FROM account.account WHERE id = ?", accountId) shouldBe 1
+                }
             }
         }
     }

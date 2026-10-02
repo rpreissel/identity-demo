@@ -39,20 +39,29 @@ class KeycloakResponseSigningIntegrationTest : IntegrationTestSupport() {
     private lateinit var jwkThumbprintService: JwkThumbprintService
 
     init {
-        beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+    }
 
+    /** A peer-auth assertion as Keycloak sends it, signed with a throwaway key: [peerAuthValidator] is stubbed. */
+    private fun peerAuthAssertion(jti: String, channelBinding: String): String =
+        SignedJWT(
+            JWSHeader(JWSAlgorithm.ES256),
+            JWTClaimsSet.Builder().issuer("kc-test").audience("orch-test").jwtID(jti)
+                .issueTime(Date()).claim("channel_binding", channelBinding).build()
+        ).apply { sign(ECDSASigner(ECKeyGenerator(Curve.P_256).generate())) }.serialize()
+
+    private fun sha256(body: String): String =
+        Base64URL.encode(MessageDigest.getInstance("SHA-256").digest(body.toByteArray())).toString()
+
+    init {
         given("a peer-auth request from Keycloak") {
-            then("the answer is signed for exactly this request, status and body") {
+            `when`("the orchestrator answers it") {
                 val channelSessionId = ChannelSessionId(UUID.randomUUID())
                 val jti = UUID.randomUUID().toString()
                 every { peerAuthValidator.validate(any(), any(), any()) } returns PeerAuthAssertion(
                     jti = jti, issuedAt = Instant.now(), channelBinding = channelSessionId.toString(), subject = null
                 )
-                val assertion = SignedJWT(
-                    JWSHeader(JWSAlgorithm.ES256),
-                    JWTClaimsSet.Builder().issuer("kc-test").audience("orch-test").jwtID(jti)
-                        .issueTime(Date()).claim("channel_binding", channelSessionId.toString()).build()
-                ).apply { sign(ECDSASigner(ECKeyGenerator(Curve.P_256).generate())) }.serialize()
+                val assertion = peerAuthAssertion(jti, channelSessionId.toString())
 
                 val response = restTemplate.exchange(
                     "http://localhost:$port/orchestrator/api/v1/kc/channels/$channelSessionId",
@@ -63,52 +72,53 @@ class KeycloakResponseSigningIntegrationTest : IntegrationTestSupport() {
                     }),
                     String::class.java
                 )
-
-                val signature = response.headers.getFirst(KeycloakResponseSigner.HEADER)
-                signature shouldNotBe null
-                val jwt = SignedJWT.parse(signature)
                 val jwks = restTemplate.getForObject("http://localhost:$port$RESPONSE_JWKS_PATH", String::class.java)
-                val key = JWKSet.parse(jwks).getKeyByKeyId(jwt.header.keyID) as ECKey
-                jwt.verify(ECDSAVerifier(key)) shouldBe true
 
-                val claims = jwt.jwtClaimsSet
-                claims.getStringClaim("req") shouldBe jti
-                claims.issuer shouldBe "orch-test"
-                claims.audience shouldBe listOf("kc-test")
-                (claims.getClaim("status") as Number).toInt() shouldBe response.statusCode.value()
-                claims.getStringClaim("body_sha256") shouldBe
-                    Base64URL.encode(MessageDigest.getInstance("SHA-256").digest(response.body!!.toByteArray())).toString()
+                then("the answer is signed for exactly this request, status and body") {
+                    val signature = response.headers.getFirst(KeycloakResponseSigner.HEADER)
+                    signature shouldNotBe null
+                    val jwt = SignedJWT.parse(signature)
+                    val key = JWKSet.parse(jwks).getKeyByKeyId(jwt.header.keyID) as ECKey
+                    jwt.verify(ECDSAVerifier(key)) shouldBe true
+
+                    val claims = jwt.jwtClaimsSet
+                    claims.getStringClaim("req") shouldBe jti
+                    claims.issuer shouldBe "orch-test"
+                    claims.audience shouldBe listOf("kc-test")
+                    (claims.getClaim("status") as Number).toInt() shouldBe response.statusCode.value()
+                    claims.getStringClaim("body_sha256") shouldBe sha256(response.body!!)
+                }
             }
         }
 
         given("Keycloak asking for the text bundle with a peer-auth assertion") {
-            then("the wordings come signed too, so nobody on the hop decides what the login page says") {
+            `when`("the orchestrator answers it") {
                 val jti = UUID.randomUUID().toString()
-                val assertion = SignedJWT(
-                    JWSHeader(JWSAlgorithm.ES256),
-                    JWTClaimsSet.Builder().issuer("kc-test").audience("orch-test").jwtID(jti)
-                        .issueTime(Date()).claim("channel_binding", "texts").build()
-                ).apply { sign(ECDSASigner(ECKeyGenerator(Curve.P_256).generate())) }.serialize()
+                val assertion = peerAuthAssertion(jti, "texts")
 
                 val response = restTemplate.exchange(
                     "http://localhost:$port/orchestrator/api/v1/texts/de", HttpMethod.GET,
                     HttpEntity<Void>(HttpHeaders().apply { set("Authorization", "Bearer $assertion") }), String::class.java
                 )
 
-                val jwt = SignedJWT.parse(response.headers.getFirst(KeycloakResponseSigner.HEADER))
-                jwt.jwtClaimsSet.getStringClaim("req") shouldBe jti
-                jwt.jwtClaimsSet.getStringClaim("body_sha256") shouldBe
-                    Base64URL.encode(MessageDigest.getInstance("SHA-256").digest(response.body!!.toByteArray())).toString()
+                then("the wordings come signed too, so nobody on the hop decides what the login page says") {
+                    val jwt = SignedJWT.parse(response.headers.getFirst(KeycloakResponseSigner.HEADER))
+                    jwt.jwtClaimsSet.getStringClaim("req") shouldBe jti
+                    jwt.jwtClaimsSet.getStringClaim("body_sha256") shouldBe sha256(response.body!!)
+                }
             }
         }
 
         given("an ordinary App request (DPoP, no peer-auth assertion)") {
-            then("nothing is signed") {
+            `when`("the orchestrator answers it") {
                 val response = restTemplate.exchange(
                     "http://localhost:$port/orchestrator/api/v1/app/channels", HttpMethod.POST,
                     HttpEntity(withDefaultAvailableTools("{}"), headers()), String::class.java
                 )
-                response.headers.getFirst(KeycloakResponseSigner.HEADER) shouldBe null
+
+                then("nothing is signed") {
+                    response.headers.getFirst(KeycloakResponseSigner.HEADER) shouldBe null
+                }
             }
         }
     }

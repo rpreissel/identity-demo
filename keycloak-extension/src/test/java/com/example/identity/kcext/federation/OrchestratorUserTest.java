@@ -2,13 +2,15 @@ package com.example.identity.kcext.federation;
 
 import org.junit.jupiter.api.Test;
 import org.keycloak.component.ComponentModel;
-import org.keycloak.models.UserModel;
 import org.keycloak.storage.ReadOnlyException;
 
 import java.util.Map;
 
+import static com.example.identity.kcext.KcTestFixtures.component;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A federated user is the orchestrator account. Its id, the token's sub, comes
@@ -16,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 class OrchestratorUserTest {
 
-    private final ComponentModel component = componentWithId("orch-accounts");
+    private final ComponentModel component = component("orch-accounts");
     private final KcAccount account = new KcAccount(42, "max@example.com", "max@example.com", true, "Max", "Muster",
             Map.of("orchestratorAccountId", "42", "person_id", "P000000001"));
     private final OrchestratorUser user = new OrchestratorUser(null, null, component, account);
@@ -34,7 +36,7 @@ class OrchestratorUserTest {
         assertEquals("Muster", user.getLastName());
         assertEquals("42", user.getFirstAttribute("orchestratorAccountId"));
         assertEquals("P000000001", user.getFirstAttribute("person_id"));
-        assertEquals(true, user.isEmailVerified());
+        assertTrue(user.isEmailVerified());
     }
 
     @Test
@@ -50,14 +52,7 @@ class OrchestratorUserTest {
     void anAccountWithoutAddressHasNoEmail() {
         OrchestratorUser noMail = new OrchestratorUser(null, null, component,
                 new KcAccount(7, "account-7", null, false, "Unbekannt", "(nicht identifiziert)", Map.of()));
-        assertEquals(null, noMail.getEmail());
+        assertNull(noMail.getEmail());
         assertEquals("account-7", noMail.getUsername());
-        assertEquals(UserModel.USERNAME, "username");
-    }
-
-    private static ComponentModel componentWithId(String id) {
-        ComponentModel model = new ComponentModel();
-        model.setId(id);
-        return model;
     }
 }

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DpopKeyPair } from '../../dpop'
 import { loadUnlockSecret, storeUnlockSecret } from '../../kobilUnlockSecret'
@@ -30,9 +30,6 @@ function ctx(overrides: Partial<ToolRenderContext>): ToolRenderContext {
 }
 
 afterEach(() => {
-  // Explicit: this project's vitest setup registers only jest-dom, not RTL's auto-cleanup, so two
-  // renders in one file would otherwise share a DOM.
-  cleanup()
   vi.clearAllMocks()
   localStorage.clear()
 })

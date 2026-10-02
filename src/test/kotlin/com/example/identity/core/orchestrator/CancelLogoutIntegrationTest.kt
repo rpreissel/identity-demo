@@ -2,14 +2,15 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.ninjasquad.springmockk.MockkBean
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import java.util.UUID
 
 /**
  * Cancelling an in-progress process versus logging out of a finished one. Shared plumbing lives in
@@ -21,296 +22,238 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
     private lateinit var jwkThumbprintService: JwkThumbprintService
 
     init {
-        beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
+    }
+
+    private fun stateOf(channelSessionId: String): String = jdbcTemplate.queryForObject(
+        "SELECT state FROM orchestrator.channel_session WHERE id = ?", String::class.java, UUID.fromString(channelSessionId)
+    )!!
+
+    private fun appTokenSessionOf(channelSessionId: String): UUID = jdbcTemplate.queryForObject(
+        "SELECT app_token_session_id FROM orchestrator.channel_session WHERE id = ?", UUID::class.java,
+        UUID.fromString(channelSessionId)
+    )!!
+
+    /** Lets the channel's refresh window lapse, as if the app had been idle. */
+    private fun lapseRefreshWindow(channelSessionId: String) {
+        jdbcTemplate.update(
+            "UPDATE orchestrator.app_token_session SET access_expires_at = DATEADD('SECOND', -10, CURRENT_TIMESTAMP), " +
+                "refresh_expires_at = DATEADD('SECOND', -1, CURRENT_TIMESTAMP) WHERE id = ?",
+            appTokenSessionOf(channelSessionId)
+        )
+    }
+
+    /** Runs ident-fsc to Identified on a fresh channel; returns the channel and the finished tool session. */
+    private fun identifiedChannel(): Pair<String, String> {
+        val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+        val identToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
+        patch(
+            "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
+            """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","fsc":"VALIDCODE"}"""
+        )
+        return channelSessionId to identToolSessionId
+    }
+
+    /** A channel that ended in [finalState]: logged out directly, or expired after its refresh window lapsed. */
+    private fun endedChannel(finalState: String): String {
+        val channelSessionId = loginAsSeededAccount()
+        if (finalState == "LOGGED_OUT") {
+            deleteNoContent("/orchestrator/api/v1/channels/$channelSessionId")
+        } else {
+            get("/orchestrator/api/v1/channels/$channelSessionId/token")
+            lapseRefreshWindow(channelSessionId)
+            runCatching { get("/orchestrator/api/v1/channels/$channelSessionId/token") }
+        }
+        return channelSessionId
     }
 
     init {
-        given("a fresh channel") {
-            `when`("cancelling mid-registration") {
-                then("the process resets and offers a fresh start") {
-
-                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val identToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
-                // Get all the way to Identified (account created) before cancelling, to prove the
-                // channel doesn't stay half-bound to that account afterwards.
-                patch(
-                    "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
-                    """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","fsc":"VALIDCODE"}"""
-                )
+        given("a channel identified mid-registration") {
+            `when`("the journey is cancelled and the finished ident-fsc tool session is used again") {
+                // Identified (account created) before cancelling, to prove the channel doesn't stay
+                // half-bound to that account afterwards.
+                val (channelSessionId, identToolSessionId) = identifiedChannel()
 
                 val cancelled = delete("/orchestrator/api/v1/channels/$channelSessionId/journey")
-                // The account being set up goes with the cancel, as a whole (ADR-46). A fresh
-                // registration is offered at once, without an account, so the channel is ANONYMOUS.
-                cancelled.channel()["state"] shouldBe "ANONYMOUS"
-                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.account", Int::class.java) shouldBe 0
-                cancelled.next() shouldBe mapOf("type" to "orchestrator", "context" to "registration", "step" to "selectIdentificationMethod")
-                @Suppress("UNCHECKED_CAST")
-                // shouldContainAll, not exact: this only cares that identification is offered as a
-                // selection page, not which identification methods the catalog happens to have.
-                (cancelled.stepData()["options"] as List<String>) shouldContainAll listOf("ident-fsc", "ident-eid")
+                val reused = runCatching { patch("/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc", """{"fsc":"VALIDCODE"}""") }
 
-                // The old ident-fsc tool session is gone: it ended the moment it completed.
-                val exception = assertThrows<HttpClientErrorException> {
-                    patch("/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc", """{"fsc":"VALIDCODE"}""")
+                then("the account being set up goes with the cancel, as a whole (ADR-46)") {
+                    cancelled.channel()["state"] shouldBe "ANONYMOUS"
+                    jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.account", Int::class.java) shouldBe 0
                 }
-                exception.statusCode shouldBe HttpStatus.NOT_FOUND
+                then("a fresh registration is offered at once") {
+                    cancelled.next() shouldBe mapOf("type" to "orchestrator", "context" to "registration", "step" to "selectIdentificationMethod")
+                    // shouldContainAll, not exact: identification is offered, not the catalog's exact set.
+                    @Suppress("UNCHECKED_CAST")
+                    (cancelled.stepData()["options"] as List<String>) shouldContainAll listOf("ident-fsc", "ident-eid")
+                }
+                then("the old ident-fsc tool session is gone: it ended the moment it completed") {
+                    shouldThrow<HttpClientErrorException> { reused.getOrThrow() }.statusCode shouldBe HttpStatus.NOT_FOUND
+                }
+            }
 
+            `when`("the channel is logged out directly and a new channel is opened") {
+                val (channelSessionId, identToolSessionId) = identifiedChannel()
 
+                // Direct DELETE logs out without confirmation (non-authenticated channel).
+                val logout = deleteNoContent("/orchestrator/api/v1/channels/$channelSessionId")
+                val reused = runCatching { patch("/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc", """{"fsc":"VALIDCODE"}""") }
+                val newChannel = post("/orchestrator/api/v1/app/channels")
+
+                then("the logout goes through") {
+                    logout shouldBe HttpStatus.NO_CONTENT
+                }
+                then("the registration is cancelled too: the old tool session is gone") {
+                    shouldThrow<HttpClientErrorException> { reused.getOrThrow() }.statusCode shouldBe HttpStatus.NOT_FOUND
+                }
+                then("half-registered is not a returning user, so the new channel starts registration again") {
+                    // Same rule as plain Cancel, docs/06-ablaeufe.md.
+                    newChannel.next() shouldBe mapOf("type" to "orchestrator", "context" to "registration", "step" to "selectIdentificationMethod")
                 }
             }
         }
 
-        given("a fresh channel") {
-            `when`("cancelling mid-login") {
-                then("a fresh login attempt is offered") {
-
+        given("a registered account with sms and password, bound to this device") {
+            `when`("a login is cancelled mid-way") {
                 seedRegisteredAccount()
-                // Simulate a fresh app session on the same device: new channel, straight to LOGIN via the device link.
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms")
 
                 val cancelled = delete("/orchestrator/api/v1/channels/$channelSessionId/journey")
-                // LOGIN cancel does not change the channel state (only REGISTERING/STEP_UP do). The
-                // candidates are offered again; two active methods (sms, email) mean a selection page.
-                cancelled.next() shouldBe mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
-                @Suppress("UNCHECKED_CAST")
-                cancelled.stepData()["options"] as List<String> shouldContainExactlyInAnyOrder listOf("auth-sms", "auth-password")
 
-
+                then("a fresh login attempt is offered") {
+                    // LOGIN cancel does not change the channel state (only REGISTERING/STEP_UP do).
+                    // Two active methods (sms, password) mean a selection page.
+                    cancelled.next() shouldBe mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
+                    @Suppress("UNCHECKED_CAST")
+                    (cancelled.stepData()["options"] as List<String>) shouldContainExactlyInAnyOrder listOf("auth-sms", "auth-password")
                 }
             }
         }
 
-        given("a registered and authenticated account (fsc + sms + confirmed email)") {
-            `when`("logging out of an authenticated channel") {
-                then("the channel ends for good and a new one starts a fresh login via the device link") {
-
+        given("an authenticated channel") {
+            `when`("the user confirms an interactive logout and then opens a new channel") {
                 val channelSessionId = loginAsSeededAccount()
-                val beforeLogout = get("/orchestrator/api/v1/channels/$channelSessionId")
-                beforeLogout.channel()["state"] shouldBe "AUTHENTICATED"
-
-                // Interactive logout starts a confirmation journey via POST /logouts.
                 val logoutPrompt = post("/orchestrator/api/v1/channels/$channelSessionId/logouts")
-                logoutPrompt.channel()["state"] shouldBe "AUTHENTICATED"
-                logoutPrompt.next() shouldBe mapOf("type" to "orchestrator", "context" to "prompt", "step" to "confirm")
-
                 post("/orchestrator/api/v1/channels/$channelSessionId/answer", """{"answer":"accept"}""")
-
-                // GET still resolves the old channelSessionId (same key, valid binding), but it stays
-                // LOGGED_OUT with no next step and is never re-derived.
                 val loggedOutChannel = get("/orchestrator/api/v1/channels/$channelSessionId")
-                loggedOutChannel.channel()["state"] shouldBe "LOGGED_OUT"
-                loggedOutChannel["next"].shouldBeNull()
-                loggedOutChannel.channel()["currentAcr"].shouldBeNull()
 
-                // A new channel with the same DPoP key recognizes the account via DeviceAccountLink and
-                // goes to LOGIN; two active methods (sms, email) mean a selection page.
                 val newChannel = post("/orchestrator/api/v1/app/channels")
                 val newChannelSessionId = newChannel.channel()["channelSessionId"] as String
-                newChannelSessionId shouldNotBe channelSessionId
-                newChannel.next() shouldBe mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
-                @Suppress("UNCHECKED_CAST")
-                newChannel.stepData()["options"] as List<String> shouldContainExactlyInAnyOrder listOf("auth-sms", "auth-password")
-
                 val authenticated = authenticateViaSms(newChannelSessionId)
-                authenticated.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
-
                 val afterLogin = get("/orchestrator/api/v1/channels/$newChannelSessionId")
-                afterLogin.channel()["state"] shouldBe "AUTHENTICATED"
 
-
+                then("the logout asks for confirmation first, the channel still authenticated") {
+                    logoutPrompt.channel()["state"] shouldBe "AUTHENTICATED"
+                    logoutPrompt.next() shouldBe mapOf("type" to "orchestrator", "context" to "prompt", "step" to "confirm")
+                }
+                then("the old channel stays LOGGED_OUT with no next step and is never re-derived") {
+                    loggedOutChannel.channel()["state"] shouldBe "LOGGED_OUT"
+                    loggedOutChannel["next"].shouldBeNull()
+                    loggedOutChannel.channel()["currentAcr"].shouldBeNull()
+                }
+                then("the new channel recognizes the account via the device link and offers both login methods") {
+                    newChannelSessionId shouldNotBe channelSessionId
+                    // Two active methods (sms, password) mean a selection page.
+                    newChannel.next() shouldBe mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
+                    @Suppress("UNCHECKED_CAST")
+                    (newChannel.stepData()["options"] as List<String>) shouldContainExactlyInAnyOrder listOf("auth-sms", "auth-password")
+                }
+                then("the new login succeeds") {
+                    authenticated.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
+                    afterLogin.channel()["state"] shouldBe "AUTHENTICATED"
                 }
             }
-        }
 
-        given("a fresh channel") {
-            `when`("logging out during active registration") {
-                then("the registration process is cancelled too") {
-
-                // Rolled out by hand: this test needs the ident-fsc toolSessionId itself to prove
-                // it is dead after the logout.
-                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val identToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
-                patch(
-                    "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
-                    """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","fsc":"VALIDCODE"}"""
-                )
-
-                // Direct DELETE logs out without confirmation (non-authenticated channel).
-                deleteNoContent("/orchestrator/api/v1/channels/$channelSessionId") shouldBe HttpStatus.NO_CONTENT
-
-                // The old ident-fsc tool session is gone: it ended the moment it completed.
-                val exception = assertThrows<HttpClientErrorException> {
-                    patch("/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc", """{"fsc":"VALIDCODE"}""")
-                }
-                exception.statusCode shouldBe HttpStatus.NOT_FOUND
-
-                // Half-registered is not a returning user (same rule as plain Cancel, docs/06-ablaeufe.md):
-                // no account was fully provisioned, so the new channel starts registration again.
-                val newChannel = post("/orchestrator/api/v1/app/channels")
-                newChannel.next() shouldBe mapOf("type" to "orchestrator", "context" to "registration", "step" to "selectIdentificationMethod")
-
-
-                }
-            }
-        }
-
-        given("a registered and authenticated account (fsc + sms + confirmed email)") {
-            `when`("logging out with a mismatched binding key") {
-                then("it is forbidden") {
-
+            `when`("it is logged out directly (DELETE)") {
                 val channelSessionId = loginAsSeededAccount()
+                get("/orchestrator/api/v1/channels/$channelSessionId/token")
+                val appTokenSessionId = appTokenSessionOf(channelSessionId)
 
-                currentBindingKeyRef = "a-completely-different-binding-key"
+                val logout = deleteNoContent("/orchestrator/api/v1/channels/$channelSessionId")
 
-                val exception = assertThrows<HttpClientErrorException> {
-                    deleteNoContent("/orchestrator/api/v1/channels/$channelSessionId")
+                then("the logout goes through") {
+                    logout shouldBe HttpStatus.NO_CONTENT
                 }
-                exception.statusCode shouldBe HttpStatus.FORBIDDEN
-
-
+                then("its RefreshToken is discarded as well, the same way as the confirmed logout") {
+                    jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM orchestrator.app_token_session WHERE id = ? AND refresh_token IS NULL",
+                        Int::class.java, appTokenSessionId
+                    ) shouldBe 1
                 }
             }
         }
 
         given("an authenticated channel whose refresh window has lapsed (idle)") {
             `when`("the app asks for a token") {
-                then("the login is over: 410, the channel ends as EXPIRED, its tokens are discarded") {
-
                 val channelSessionId = loginAsSeededAccount()
                 get("/orchestrator/api/v1/channels/$channelSessionId/token")
-                val appTokenSessionId = jdbcTemplate.queryForObject(
-                    "SELECT app_token_session_id FROM orchestrator.channel_session WHERE id = ?", java.util.UUID::class.java,
-                    java.util.UUID.fromString(channelSessionId)
-                )
-                jdbcTemplate.update(
-                    "UPDATE orchestrator.app_token_session SET access_expires_at = DATEADD('SECOND', -10, CURRENT_TIMESTAMP), " +
-                        "refresh_expires_at = DATEADD('SECOND', -1, CURRENT_TIMESTAMP) WHERE id = ?",
-                    appTokenSessionId
-                )
+                val appTokenSessionId = appTokenSessionOf(channelSessionId)
+                lapseRefreshWindow(channelSessionId)
 
-                val gone = assertThrows<HttpClientErrorException> { get("/orchestrator/api/v1/channels/$channelSessionId/token") }
-                gone.statusCode shouldBe HttpStatus.GONE
-                jdbcTemplate.queryForObject(
-                    "SELECT state FROM orchestrator.channel_session WHERE id = ?", String::class.java, java.util.UUID.fromString(channelSessionId)
-                ) shouldBe "EXPIRED"
-                jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM orchestrator.app_token_session WHERE id = ? AND refresh_token IS NULL AND access_token IS NULL",
-                    Int::class.java, appTokenSessionId
-                ) shouldBe 1
+                val result = runCatching { get("/orchestrator/api/v1/channels/$channelSessionId/token") }
 
-
+                then("the login is over: 410") {
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.GONE
                 }
-            }
-        }
-
-        given("an authenticated channel that is logged out directly (DELETE)") {
-            `when`("the logout goes through") {
-                then("its RefreshToken is discarded as well, the same way as the confirmed logout") {
-
-                val channelSessionId = loginAsSeededAccount()
-                get("/orchestrator/api/v1/channels/$channelSessionId/token")
-                val appTokenSessionId = jdbcTemplate.queryForObject(
-                    "SELECT app_token_session_id FROM orchestrator.channel_session WHERE id = ?", java.util.UUID::class.java,
-                    java.util.UUID.fromString(channelSessionId)
-                )
-
-                deleteNoContent("/orchestrator/api/v1/channels/$channelSessionId") shouldBe HttpStatus.NO_CONTENT
-
-                jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM orchestrator.app_token_session WHERE id = ? AND refresh_token IS NULL",
-                    Int::class.java, appTokenSessionId
-                ) shouldBe 1
-
-
+                then("the channel ends as EXPIRED") {
+                    stateOf(channelSessionId) shouldBe "EXPIRED"
                 }
-            }
-        }
-
-        given("a channel that has ended - logged out, or expired (docs/invarianten.md I-1)") {
-            `when`("anything tries to move it again: a GET, a step-up, method management, a peer login, a deletion, a tool") {
-                then("every move is refused and the channel stays in its final state") {
-
-                fun stateOf(channel: String) = jdbcTemplate.queryForObject(
-                    "SELECT state FROM orchestrator.channel_session WHERE id = ?", String::class.java, java.util.UUID.fromString(channel)
-                )
-                fun expire(channel: String) {
-                    get("/orchestrator/api/v1/channels/$channel/token")
-                    jdbcTemplate.update(
-                        "UPDATE orchestrator.app_token_session SET access_expires_at = DATEADD('SECOND', -10, CURRENT_TIMESTAMP), " +
-                            "refresh_expires_at = DATEADD('SECOND', -1, CURRENT_TIMESTAMP) " +
-                            "WHERE id = (SELECT app_token_session_id FROM orchestrator.channel_session WHERE id = ?)",
-                        java.util.UUID.fromString(channel)
-                    )
-                    assertThrows<HttpClientErrorException> { get("/orchestrator/api/v1/channels/$channel/token") }
-                }
-
-                val loggedOut = loginAsSeededAccount()
-                deleteNoContent("/orchestrator/api/v1/channels/$loggedOut") shouldBe HttpStatus.NO_CONTENT
-                val expired = post("/orchestrator/api/v1/app/channels", """{"requiredAcr":"loa2"}""").channel()["channelSessionId"] as String
-                authenticateViaSms(expired)
-                authenticateViaPassword(expired)
-                expire(expired)
-
-                val moved = mutableListOf<String>()
-                listOf(loggedOut to "LOGGED_OUT", expired to "EXPIRED").forEach { (channel, finalState) ->
-                    stateOf(channel) shouldBe finalState
-                    get("/orchestrator/api/v1/channels/$channel").let {
-                        if (it.channel()["state"] != finalState || it["next"] != null) moved += "$finalState: GET -> ${it.channel()["state"]}, next=${it["next"]}"
-                    }
-                    listOf(
-                        "/orchestrator/api/v1/channels/$channel/step-ups" to """{"requiredAcr":"loa3"}""",
-                        "/orchestrator/api/v1/channels/$channel/enrollments" to "{}",
-                        "/orchestrator/api/v1/channels/$channel/peer-logins" to "{}",
-                        "/orchestrator/api/v1/channels/$channel/account-deletions" to "{}",
-                        "/orchestrator/api/v1/channels/$channel/logouts" to "{}",
-                        "/orchestrator/api/v1/channels/$channel/tools/auth-sms" to "{}",
-                    ).forEach { (url, body) ->
-                        val accepted = runCatching { post(url, body) }.isSuccess
-                        val state = stateOf(channel)
-                        if (accepted || state != finalState) moved += "$finalState: POST ${url.substringAfterLast(channel)} accepted=$accepted -> $state"
-                    }
+                then("its tokens are discarded") {
                     jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM orchestrator.auth_journey WHERE channel_session_id = ? AND lifecycle = 'STARTED'",
-                        Int::class.java, java.util.UUID.fromString(channel)
-                    ).let { if (it != 0) moved += "$finalState: $it running journeys" }
-                }
-                moved shouldBe emptyList()
-
-
+                        "SELECT COUNT(*) FROM orchestrator.app_token_session WHERE id = ? AND refresh_token IS NULL AND access_token IS NULL",
+                        Int::class.java, appTokenSessionId
+                    ) shouldBe 1
                 }
             }
         }
 
-        given("an sms user who authenticated and then logged out") {
-            `when`("the completed auth-sms PATCH is replayed with the same TAN") {
-                then("it is rejected and the channel stays logged out") {
+        // docs/invarianten.md I-1: a channel that has ended never moves again. One check refuses every
+        // move, whichever way the channel ended, so all endpoints run against LOGGED_OUT and one
+        // against EXPIRED. ModelBasedJourneyTest checks I-1 across random sequences.
+        val allMoves = listOf(
+            "a step-up" to ("step-ups" to """{"requiredAcr":"loa3"}"""),
+            "method management" to ("enrollments" to "{}"),
+            "a peer login" to ("peer-logins" to "{}"),
+            "an account deletion" to ("account-deletions" to "{}"),
+            "a logout" to ("logouts" to "{}"),
+            "a tool" to ("tools/auth-sms" to "{}"),
+        )
+        mapOf("LOGGED_OUT" to allMoves, "EXPIRED" to allMoves.takeLast(1)).forEach { (finalState, moves) ->
+            given("a channel that has ended as $finalState") {
+                `when`("it is read") {
+                    val channelSessionId = endedChannel(finalState)
 
-                registerWithSmsOnly()
-                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val (tan, activation) = captureMockTan {
-                    post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms")
+                    val read = get("/orchestrator/api/v1/channels/$channelSessionId")
+
+                    then("it reports its final state and no next step") {
+                        read.channel()["state"] shouldBe finalState
+                        read["next"].shouldBeNull()
+                    }
                 }
-                val toolSessionId = activation.nextRaw()["toolSessionId"] as String
-                patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"$tan"}""")
-                    .channel()["state"] shouldBe "AUTHENTICATED"
 
-                deleteNoContent("/orchestrator/api/v1/channels/$channelSessionId") shouldBe HttpStatus.NO_CONTENT
+                moves.forEach { (move, request) ->
+                    val (path, body) = request
+                    `when`("$move is requested") {
+                        val channelSessionId = endedChannel(finalState)
 
-                assertThrows<HttpClientErrorException> {
-                    patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"$tan"}""")
-                }
-                get("/orchestrator/api/v1/channels/$channelSessionId").channel()["state"] shouldBe "LOGGED_OUT"
+                        val result = runCatching { post("/orchestrator/api/v1/channels/$channelSessionId/$path", body) }
 
-
+                        then("it is refused and the channel stays $finalState, with no journey running") {
+                            shouldThrow<HttpClientErrorException> { result.getOrThrow() }
+                            stateOf(channelSessionId) shouldBe finalState
+                            jdbcTemplate.queryForObject(
+                                "SELECT COUNT(*) FROM orchestrator.auth_journey WHERE channel_session_id = ? AND lifecycle = 'STARTED'",
+                                Int::class.java, UUID.fromString(channelSessionId)
+                            ) shouldBe 0
+                        }
+                    }
                 }
             }
         }
 
         given("an sms user who just authenticated") {
             `when`("the completed auth-sms PATCH is replayed on the still-open channel") {
-                then("the finished tool session is no longer usable") {
-
                 registerWithSmsOnly()
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 val (tan, activation) = captureMockTan {
@@ -319,11 +262,10 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
                 val toolSessionId = activation.nextRaw()["toolSessionId"] as String
                 patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"$tan"}""")
 
-                assertThrows<HttpClientErrorException> {
-                    patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"$tan"}""")
-                }
+                val replay = runCatching { patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"$tan"}""") }
 
-
+                then("the finished tool session is no longer usable") {
+                    shouldThrow<HttpClientErrorException> { replay.getOrThrow() }.statusCode shouldBe HttpStatus.NOT_FOUND
                 }
             }
         }

@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { IdentEidForm } from './IdentEidForm'
 
 const CARD_FIELDS = ['familyName', 'givenNames', 'birthDate', 'streetAddress', 'postalCode', 'locality', 'restrictedId']
@@ -27,19 +27,14 @@ const erika = {
   restrictedId: 'T0208011X7Y2Q4M6B3LT0T28WJ',
 }
 
-const maxCard = {
-  familyName: 'Muster',
-  givenNames: 'Max',
-  birthDate: '1985-06-15',
-  streetAddress: 'Musterstraße 1',
-  postalCode: '12345',
-  locality: 'Musterstadt',
-  restrictedId: 'T0103005K1D5S0V8T9W6UM2RTX',
+/** What the simulated card reader reads: the person without the register's own keys. */
+function cardOf({ personId: _personId, kvnr: _kvnr, ...card }: typeof max) {
+  return card
 }
 
-describe('IdentEidForm', () => {
-  afterEach(cleanup)
+const maxCard = cardOf(max)
 
+describe('IdentEidForm', () => {
   it('reads the card first and PATCHes only the card data', () => {
     const onSubmit = vi.fn()
     render(<IdentEidForm onSubmit={onSubmit} missingFields={CARD_FIELDS} demoPersons={[max]} />)
@@ -66,8 +61,8 @@ describe('IdentEidForm', () => {
 
     rerender(<IdentEidForm onSubmit={vi.fn()} error="Die Kartendaten sind ungültig" demoPersons={[max]} />)
 
-    expect(screen.getByLabelText('Nachname')).toBeTruthy()
-    expect(screen.getByText('Die Kartendaten sind ungültig')).toBeTruthy()
+    expect(screen.getByLabelText('Nachname')).toBeInTheDocument()
+    expect(screen.getByText('Die Kartendaten sind ungültig')).toBeInTheDocument()
   })
 
   it('stays on the PIN page when the PIN was rejected', () => {
@@ -76,7 +71,7 @@ describe('IdentEidForm', () => {
 
     rerender(<IdentEidForm onSubmit={vi.fn()} error="eID-PIN ungueltig" demoPersons={[max]} />)
 
-    expect(screen.getByLabelText('PIN')).toBeTruthy()
+    expect(screen.getByLabelText('PIN')).toBeInTheDocument()
   })
 
   it('goes back to the card with "Angaben ändern" and sends the corrected card on its own', () => {
@@ -104,6 +99,7 @@ describe('IdentEidForm', () => {
 
   it('starts empty without demo values (ADR-28)', () => {
     render(<IdentEidForm onSubmit={vi.fn()} missingFields={CARD_FIELDS} />)
+
     expect((screen.getByLabelText('Nachname') as HTMLInputElement).value).toBe('')
   })
 })

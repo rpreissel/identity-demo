@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const api = vi.hoisted(() => ({
   fetchToolAvailability: vi.fn(),
@@ -13,8 +13,6 @@ import { AdminToolAvailabilityView } from './AdminToolAvailabilityView'
 const tool = (toolId: string, enabled = true) => ({ toolId, method: toolId.split('-')[1], role: 'KNOWN_ACCOUNT_AUTH', enabled })
 
 describe('AdminToolAvailabilityView', () => {
-  afterEach(cleanup)
-
   beforeEach(() => {
     vi.clearAllMocks()
     api.fetchToolAvailability.mockResolvedValue([
@@ -42,20 +40,34 @@ describe('AdminToolAvailabilityView', () => {
     expect(api.setToolAvailability).toHaveBeenCalledWith('auth-sms', 'WEB', true)
   })
 
-  it('groups by role and keeps the arrows inside a role', async () => {
-    api.fetchToolAvailability.mockResolvedValue([
-      {
-        channel: 'APP',
-        tools: [tool('auth-sms'), { toolId: 'ident-fsc', method: 'fsc', role: 'IDENTIFICATION', enabled: true }, { toolId: 'ident-eid', method: 'eid', role: 'IDENTIFICATION', enabled: true }],
-      },
-    ])
-    render(<AdminToolAvailabilityView />)
+  describe('with tools of two roles in one channel', () => {
+    beforeEach(() => {
+      api.fetchToolAvailability.mockResolvedValue([
+        {
+          channel: 'APP',
+          tools: [tool('auth-sms'), { toolId: 'ident-fsc', method: 'fsc', role: 'IDENTIFICATION', enabled: true }, { toolId: 'ident-eid', method: 'eid', role: 'IDENTIFICATION', enabled: true }],
+        },
+      ])
+    })
 
-    expect(await screen.findByRole('heading', { name: 'Identifizieren' })).toBeInTheDocument()
-    // The only login tool: nowhere to move within its role, even though ident tools follow.
-    expect(screen.getByLabelText('auth-sms nach unten')).toBeDisabled()
+    it('groups the tools by role', async () => {
+      render(<AdminToolAvailabilityView />)
 
-    fireEvent.click(screen.getByLabelText('ident-eid nach oben'))
-    expect(api.setToolOrder).toHaveBeenCalledWith('APP', ['auth-sms', 'ident-eid', 'ident-fsc'])
+      expect(await screen.findByRole('heading', { name: 'Identifizieren' })).toBeInTheDocument()
+    })
+
+    it('gives the only tool of a role nowhere to move, even though tools of another role follow', async () => {
+      render(<AdminToolAvailabilityView />)
+
+      expect(await screen.findByLabelText('auth-sms nach unten')).toBeDisabled()
+    })
+
+    it('moves a tool within its role', async () => {
+      render(<AdminToolAvailabilityView />)
+
+      fireEvent.click(await screen.findByLabelText('ident-eid nach oben'))
+
+      expect(api.setToolOrder).toHaveBeenCalledWith('APP', ['auth-sms', 'ident-eid', 'ident-fsc'])
+    })
   })
 })

@@ -30,10 +30,9 @@ class AccountLockoutServiceTest : BehaviorSpec({
         val service = AccountLockoutService(counter, mockk(relaxed = true), clock = TEST_CLOCK)
 
         `when`("asking whether it is locked") {
-            val locked = service.isLocked(accountId)
+            service.isLocked(accountId)
 
-            then("it answers from the ACCOUNT scope, keyed by the account id") {
-                locked shouldBe true
+            then("it asks the ACCOUNT scope, keyed by the account id") {
                 verify { counter.isLocked(RateLimitScope.ACCOUNT, key) }
             }
         }

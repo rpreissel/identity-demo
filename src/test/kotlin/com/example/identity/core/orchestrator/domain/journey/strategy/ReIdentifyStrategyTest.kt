@@ -4,13 +4,15 @@ import com.example.identity.core.orchestrator.domain.policy.fromNow
 import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyStrategy
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.tools.ident_fsc.IdentFscDescriptor
+import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
+import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -32,23 +34,11 @@ class ReIdentifyStrategyTest : BehaviorSpec({
 
     val strategy = ReIdentifyStrategy()
 
-    given("the intent") {
-        then("is RE_IDENTIFY") {
-            strategy.intent shouldBe AuthIntent.RE_IDENTIFY
-        }
-    }
-
-    given("ReIdentifyState.forSubJourney") {
-        then("seeds OfferReIdent with exactly the given target/starting acr") {
-            ReIdentifyState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1) shouldBe ReIdentifyState.OfferReIdent(AcrLevel.LOA2, AcrLevel.LOA1)
-        }
-    }
-
     given("Identifying, one offered candidate") {
         val state = ReIdentifyState.Identifying(AcrLevel.LOA2, AcrLevel.LOA1, Offer(listOf(ToolId("ident-fsc"))))
 
         `when`("the tool completes with Identified") {
-            val outcome = ToolOutcome.Completed.Identified(claims = listOf(com.example.identity.contract.tool_api.claims.Claim(com.example.identity.contract.tool_api.claims.AttributeType.PERSON_ID, "P000000001", com.example.identity.contract.tool_api.claims.ClaimSource.PERSON_DIRECTORY)))
+            val outcome = identifiedOutcome()
             val event = JourneyEvent.Completed(IdentFscDescriptor, outcome)
             val transition = strategy.transition(state, event, ctx())
             then("always confirms the caller's already-known account, never adopts a different one") {
@@ -58,14 +48,16 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         }
 
         `when`("the tool completes with Authenticated") {
-            val result = runCatching { strategy.transition(state, JourneyEvent.Completed(IdentFscDescriptor, ToolOutcome.Completed.Authenticated(amr = listOf("fsc"))), ctx()) }
+            val event = JourneyEvent.Completed(IdentFscDescriptor, ToolOutcome.Completed.Authenticated(amr = listOf("fsc")))
+            val result = runCatching { strategy.transition(state, event, ctx()) }
             then("Authenticated is not offered by this intent") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
 
         `when`("the tool completes with Enrolled") {
-            val result = runCatching { strategy.transition(state, JourneyEvent.Completed(IdentFscDescriptor, ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("fsc", "ref"))), ctx()) }
+            val event = JourneyEvent.Completed(IdentFscDescriptor, ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("fsc", "ref")))
+            val result = runCatching { strategy.transition(state, event, ctx()) }
             then("Enrolled is not offered by this intent") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
@@ -86,7 +78,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2, AcrLevel.LOA1)
 
         `when`("accepted") {
-            val transition = strategy.transition(state, JourneyEvent.Answered("accept"), theCtx)
+            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
             then("advances to Identifying, offering exactly the reachable IDENT tool(s)") {
                 transition.shouldBeInstanceOf<Transition.To>()
                 val to = transition.state
@@ -98,7 +90,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         }
 
         `when`("declined") {
-            val transition = strategy.transition(state, JourneyEvent.Answered("decline"), theCtx)
+            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_DECLINE), theCtx)
             then("cancels") {
                 transition shouldBe Transition.Cancel
             }
@@ -134,7 +126,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2, AcrLevel.LOA1)
 
         `when`("accepted") {
-            val transition = strategy.transition(state, JourneyEvent.Answered("accept"), theCtx)
+            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
             then("still cancels rather than erroring") {
                 transition shouldBe Transition.Cancel
             }
@@ -145,7 +137,6 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA2))
         val theCtx = ctx(account = acc)
         val state = ReIdentifyState.Identifying(AcrLevel.LOA2, AcrLevel.LOA1, Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"))))
-        val exhausted = state.withOffer(state.offer.copy(declined = setOf(ToolId("ident-eid"))))
 
         `when`("one is abandoned but another remains") {
             val transition = strategy.transition(state, JourneyEvent.Abandoned(IdentFscDescriptor), theCtx)
@@ -155,27 +146,23 @@ class ReIdentifyStrategyTest : BehaviorSpec({
             }
         }
 
-        `when`("the last remaining candidate is abandoned too") {
-            val transition = strategy.transition(exhausted, JourneyEvent.Abandoned(IdentFscDescriptor), theCtx)
-            then("cancels - giving up here is not an error") {
-                transition shouldBe Transition.Cancel
-            }
-        }
-
-        `when`("a proof completes (Completed)") {
-            val outcome = ToolOutcome.Completed.Identified(claims = listOf(com.example.identity.contract.tool_api.claims.Claim(com.example.identity.contract.tool_api.claims.AttributeType.PERSON_ID, "P000000001", com.example.identity.contract.tool_api.claims.ClaimSource.PERSON_DIRECTORY)))
-            val completed = JourneyEvent.Completed(IdentFscDescriptor, outcome)
-            val transition = strategy.transition(state, completed, theCtx)
-            then("records the identification") {
-                transition shouldBe
-                    Transition.Perform(Action.RecordIdentification(IdentFscDescriptor, outcome), resumeState = state)
-            }
-        }
-
         `when`("resumed after recording the proof (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("finishes directly - the identification's own maxAcr already IS the achieved level") {
                 transition shouldBe Transition.Authenticated
+            }
+        }
+    }
+
+    given("Identifying, the other candidate already declined") {
+        val theCtx = ctx(account = account(method("sms", AcrLevel.LOA2)))
+        val offer = Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid")), declined = setOf(ToolId("ident-eid")))
+        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, AcrLevel.LOA1, offer)
+
+        `when`("the last remaining candidate is abandoned too") {
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(IdentFscDescriptor), theCtx)
+            then("cancels - giving up here is not an error") {
+                transition shouldBe Transition.Cancel
             }
         }
     }

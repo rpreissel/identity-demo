@@ -1,173 +1,171 @@
 package com.example.identity.core.orchestrator.session
 
-import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.core.orchestrator.domain.SessionEvidenceId
-import com.example.identity.contract.tool_api.ids.AccountId
-import com.example.identity.core.orchestrator.domain.ChannelState
-import com.example.identity.core.account.AccountService
-import com.example.identity.core.orchestrator.journeytrace.JourneyTraceRepository
-import com.example.identity.contract.tool_api.credentials.EnrollmentCleanup
+import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.EnrollmentRef
+import com.example.identity.contract.tool_api.credentials.EnrollmentCleanup
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.core.account.AccountService
+import com.example.identity.core.orchestrator.domain.ChannelState
+import com.example.identity.core.orchestrator.domain.SessionEvidenceId
+import com.example.identity.core.orchestrator.journeytrace.JourneyTraceRepository
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldNotContain
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import io.mockk.verifyOrder
-import java.time.Instant
+import java.util.UUID
 
 /**
  * Unit test of [AccountDeletionService]: the id fields of [ChannelSession] are cleared before the
- * [AppTokenSession]/[SessionEvidenceRecord] rows they point to are deleted.
+ * [AppTokenSession]/[SessionEvidenceRecord] rows they point to are deleted, credentials go through
+ * the cleanup of their own module, and only account-keyed throttle counters are erased.
  */
 class AccountDeletionServiceTest : BehaviorSpec({
 
-    fun service(
-        accountService: AccountService,
-        cleanups: List<EnrollmentCleanup> = emptyList(),
-        deviceAccountLinkRepository: DeviceAccountLinkRepository = mockk(relaxed = true),
-        channelSessionRepository: ChannelSessionRepository = mockk(relaxed = true),
-        appTokenSessionRepository: AppTokenSessionRepository = mockk(relaxed = true),
-        sessionEvidenceRepository: SessionEvidenceRecordRepository = mockk(relaxed = true),
-        journeyTraceRepository: JourneyTraceRepository = mockk(relaxed = true),
-        rateLimitRecordRepository: RateLimitRecordRepository = mockk(relaxed = true)
-    ) = AccountDeletionService(
-        accountService,
-        cleanups,
-        deviceAccountLinkRepository,
-        channelSessionRepository,
-        appTokenSessionRepository,
-        sessionEvidenceRepository,
-        journeyTraceRepository,
-        rateLimitRecordRepository
-    )
+    val accountId = AccountId(1L)
 
-    given("an account with channel sessions still bound to it") {
-        then("every one of them is logged out with BOTH appTokenSessionId and sessionEvidenceId cleared, not just one") {
-            val accountService = mockk<AccountService>(relaxed = true)
-            every { accountService.allEnrollmentRefs(AccountId(1L)) } returns emptyList()
-            val session = ChannelSession(now = Instant.now()).apply {
-                state = ChannelState.AUTHENTICATED
-                appTokenSessionId = java.util.UUID.randomUUID()
-                sessionEvidenceId = SessionEvidenceId(java.util.UUID.randomUUID())
+    given("an account with an authenticated channel session still bound to it") {
+        val fixture = AccountDeletionFixture()
+        val session = ChannelSession(now = TEST_NOW).apply {
+            channelSessionId = ChannelSessionId(UUID.randomUUID())
+            state = ChannelState.AUTHENTICATED
+            appTokenSessionId = UUID.randomUUID()
+            sessionEvidenceId = SessionEvidenceId(UUID.randomUUID())
+        }
+        every { fixture.channelSessionRepository.findByAccountId(accountId) } returns listOf(session)
+        every { fixture.channelSessionRepository.save(any<ChannelSession>()) } answers { firstArg() }
+
+        `when`("the account is deleted") {
+            fixture.service.deleteAccount(accountId)
+
+            then("the session is logged out with BOTH appTokenSessionId and sessionEvidenceId cleared, not just one") {
+                session.state shouldBe ChannelState.LOGGED_OUT
+                session.appTokenSessionId.shouldBeNull()
+                session.sessionEvidenceId.shouldBeNull()
+                verify { fixture.channelSessionRepository.save(session) }
             }
-            val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
-            every { channelSessionRepository.findByAccountId(AccountId(1L)) } returns listOf(session)
-            every { channelSessionRepository.save(any<ChannelSession>()) } answers { firstArg() }
 
-            service(accountService, channelSessionRepository = channelSessionRepository).deleteAccount(AccountId(1L))
+            then("the journey trace is erased by account AND by the account's channel sessions") {
+                verify { fixture.journeyTraceRepository.deleteByAccountIdOrChannelSessionIdIn(accountId, listOf(session.channelSessionId!!)) }
+            }
 
-            session.state shouldBe ChannelState.LOGGED_OUT
-            session.appTokenSessionId shouldBe null
-            session.sessionEvidenceId shouldBe null
-            verify { channelSessionRepository.save(session) }
+            then("the device link goes before the account row itself, never after") {
+                verifyOrder {
+                    fixture.deviceAccountLinkRepository.deleteByAccountId(accountId)
+                    fixture.accountService.deleteAccount(accountId)
+                }
+            }
+        }
+    }
+
+    given("an account with throttle counters") {
+        val fixture = AccountDeletionFixture()
+        val scopes = slot<Collection<String>>()
+        every { fixture.rateLimitRecordRepository.deleteBySubjectAndScopeIn("1", capture(scopes)) } returns 0
+
+        `when`("the account is deleted") {
+            fixture.service.deleteAccount(accountId)
+
+            then("the account-keyed counters are erased (A5)") {
+                scopes.captured shouldBe listOf(RateLimitScope.ACCOUNT.name)
+            }
+
+            then("the scopes that are not account-keyed stay - deletion must not reset someone else's budget") {
+                scopes.captured shouldNotContain RateLimitScope.PERSON.name
+                scopes.captured shouldNotContain RateLimitScope.BINDING_KEY.name
+            }
         }
     }
 
     given("an account with enrollment refs across different method modules") {
-        then("each ref is dispatched to the cleanup matching its own type, never a different module's") {
-            val accountService = mockk<AccountService>(relaxed = true)
-            every { accountService.allEnrollmentRefs(AccountId(1L)) } returns listOf(
-                EnrollmentRef("sms", "sms-ref"), EnrollmentRef("password", "password-ref")
-            )
-            val smsCleanup = mockk<EnrollmentCleanup>(relaxed = true)
-            every { smsCleanup.enrollmentType } returns "sms"
-            val passwordCleanup = mockk<EnrollmentCleanup>(relaxed = true)
-            every { passwordCleanup.enrollmentType } returns "password"
+        val fixture = AccountDeletionFixture(cleanupTypes = listOf("sms", "password"))
+        every { fixture.accountService.allEnrollmentRefs(accountId) } returns listOf(
+            EnrollmentRef("sms", "sms-ref"), EnrollmentRef("password", "password-ref")
+        )
 
-            service(accountService, cleanups = listOf(smsCleanup, passwordCleanup)).deleteAccount(AccountId(1L))
+        `when`("the account is deleted") {
+            fixture.service.deleteAccount(accountId)
 
-            verify { smsCleanup.delete(EnrollmentRef("sms", "sms-ref")) }
-            verify { passwordCleanup.delete(EnrollmentRef("password", "password-ref")) }
-            verify(exactly = 0) { smsCleanup.delete(EnrollmentRef("password", "password-ref")) }
-        }
-
-        then("a ref whose type no registered module claims is skipped, not a crash") {
-            val accountService = mockk<AccountService>(relaxed = true)
-            every { accountService.allEnrollmentRefs(AccountId(1L)) } returns listOf(EnrollmentRef("unknown-method", "ref"))
-
-            service(accountService, cleanups = emptyList()).deleteAccount(AccountId(1L))
+            then("each ref is dispatched to the cleanup matching its own type, never a different module's") {
+                verify { fixture.cleanup("sms").delete(EnrollmentRef("sms", "sms-ref")) }
+                verify { fixture.cleanup("password").delete(EnrollmentRef("password", "password-ref")) }
+                verify(exactly = 0) { fixture.cleanup("sms").delete(EnrollmentRef("password", "password-ref")) }
+            }
         }
     }
 
-    given("revokeMethod - a single credential, not the whole account") {
-        then("deletes only that instance's own enrollment and deactivates it, leaving the account row untouched") {
-            val accountService = mockk<AccountService>(relaxed = true)
-            every { accountService.enrollmentRefFor(AccountId(1L), "method-instance-1") } returns EnrollmentRef("device", "device-ref")
-            val deviceCleanup = mockk<EnrollmentCleanup>(relaxed = true)
-            every { deviceCleanup.enrollmentType } returns "device"
+    given("an account with an enrollment ref whose type no registered module claims") {
+        val fixture = AccountDeletionFixture()
+        every { fixture.accountService.allEnrollmentRefs(accountId) } returns listOf(EnrollmentRef("unknown-method", "ref"))
 
-            service(accountService, cleanups = listOf(deviceCleanup)).revokeMethod(AccountId(1L), "method-instance-1")
+        `when`("the account is deleted") {
+            fixture.service.deleteAccount(accountId)
 
-            verify { deviceCleanup.delete(EnrollmentRef("device", "device-ref")) }
-            verify { accountService.deactivateAuthenticationMethod(AccountId(1L), "method-instance-1") }
-            verify(exactly = 0) { accountService.deleteAccount(any()) }
-        }
-
-        then("a method with no resolvable enrollmentRef is still deactivated, just without a cleanup call") {
-            val accountService = mockk<AccountService>(relaxed = true)
-            every { accountService.enrollmentRefFor(AccountId(1L), "method-instance-1") } returns null
-
-            service(accountService).revokeMethod(AccountId(1L), "method-instance-1")
-
-            verify { accountService.deactivateAuthenticationMethod(AccountId(1L), "method-instance-1") }
+            then("the ref is skipped and the account row still goes") {
+                verify { fixture.accountService.deleteAccount(accountId) }
+            }
         }
     }
 
-    given("the full deletion") {
-        then("removes cross-module credentials and the device link before the account row itself, never after") {
-            val accountService = mockk<AccountService>(relaxed = true)
-            every { accountService.allEnrollmentRefs(AccountId(1L)) } returns emptyList()
-            val deviceAccountLinkRepository = mockk<DeviceAccountLinkRepository>(relaxed = true)
+    given("a method instance with a device enrollment") {
+        val fixture = AccountDeletionFixture(cleanupTypes = listOf("device"))
+        every { fixture.accountService.enrollmentRefFor(accountId, "method-instance-1") } returns EnrollmentRef("device", "device-ref")
 
-            service(accountService, deviceAccountLinkRepository = deviceAccountLinkRepository).deleteAccount(AccountId(1L))
+        `when`("revoking that single method") {
+            fixture.service.revokeMethod(accountId, "method-instance-1")
 
-            verifyOrder {
-                deviceAccountLinkRepository.deleteByAccountId(AccountId(1L))
-                accountService.deleteAccount(AccountId(1L))
+            then("only that instance's own enrollment is deleted and the instance deactivated, the account row stays") {
+                verify { fixture.cleanup("device").delete(EnrollmentRef("device", "device-ref")) }
+                verify { fixture.accountService.deactivateAuthenticationMethod(accountId, "method-instance-1") }
+                verify(exactly = 0) { fixture.accountService.deleteAccount(any()) }
             }
         }
+    }
 
-        then("erases the journey trace by account AND by the account's channel sessions, plus the account-keyed throttle counters (A5)") {
-            val accountService = mockk<AccountService>(relaxed = true)
-            every { accountService.allEnrollmentRefs(AccountId(1L)) } returns emptyList()
-            val channelSessionId = ChannelSessionId(java.util.UUID.randomUUID())
-            val session = ChannelSession(now = Instant.now()).apply { this.channelSessionId = channelSessionId }
-            val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
-            every { channelSessionRepository.findByAccountId(AccountId(1L)) } returns listOf(session)
-            every { channelSessionRepository.save(any()) } returns session
-            val journeyTraceRepository = mockk<JourneyTraceRepository>(relaxed = true)
-            val rateLimitRecordRepository = mockk<RateLimitRecordRepository>(relaxed = true)
+    given("a method instance without a resolvable enrollment ref") {
+        val fixture = AccountDeletionFixture()
+        every { fixture.accountService.enrollmentRefFor(accountId, "method-instance-1") } returns null
 
-            service(
-                accountService,
-                channelSessionRepository = channelSessionRepository,
-                journeyTraceRepository = journeyTraceRepository,
-                rateLimitRecordRepository = rateLimitRecordRepository
-            ).deleteAccount(AccountId(1L))
+        `when`("revoking that method") {
+            fixture.service.revokeMethod(accountId, "method-instance-1")
 
-            verify { journeyTraceRepository.deleteByAccountIdOrChannelSessionIdIn(AccountId(1L), listOf(channelSessionId)) }
-            verify {
-                rateLimitRecordRepository.deleteBySubjectAndScopeIn(
-                    "1",
-                    listOf(RateLimitScope.ACCOUNT.name)
-                )
+            then("it is still deactivated, just without a cleanup call") {
+                verify { fixture.accountService.deactivateAuthenticationMethod(accountId, "method-instance-1") }
             }
-        }
-
-        then("leaves the throttle scopes that are not account-keyed alone - deletion must not become a way to reset someone else's budget") {
-            val accountService = mockk<AccountService>(relaxed = true)
-            every { accountService.allEnrollmentRefs(AccountId(1L)) } returns emptyList()
-            val rateLimitRecordRepository = mockk<RateLimitRecordRepository>(relaxed = true)
-            val scopes = slot<Collection<String>>()
-            every { rateLimitRecordRepository.deleteBySubjectAndScopeIn(any(), capture(scopes)) } returns 0
-
-            service(accountService, rateLimitRecordRepository = rateLimitRecordRepository).deleteAccount(AccountId(1L))
-
-            scopes.captured shouldNotContain RateLimitScope.PERSON.name
-            scopes.captured shouldNotContain RateLimitScope.BINDING_KEY.name
         }
     }
 })
+
+/** The service over relaxed mocks; [cleanupTypes] each get a registered [EnrollmentCleanup]. */
+private class AccountDeletionFixture(cleanupTypes: List<String> = emptyList()) {
+    val accountService = mockk<AccountService>(relaxed = true)
+    private val cleanups = cleanupTypes.associateWith { type ->
+        mockk<EnrollmentCleanup>(relaxed = true) { every { enrollmentType } returns type }
+    }
+    val deviceAccountLinkRepository = mockk<DeviceAccountLinkRepository>(relaxed = true)
+    val channelSessionRepository = mockk<ChannelSessionRepository>(relaxed = true)
+    val journeyTraceRepository = mockk<JourneyTraceRepository>(relaxed = true)
+    val rateLimitRecordRepository = mockk<RateLimitRecordRepository>(relaxed = true)
+    val service = AccountDeletionService(
+        accountService,
+        cleanups.values.toList(),
+        deviceAccountLinkRepository,
+        channelSessionRepository,
+        mockk<AppTokenSessionRepository>(relaxed = true),
+        mockk<SessionEvidenceRecordRepository>(relaxed = true),
+        journeyTraceRepository,
+        rateLimitRecordRepository
+    )
+
+    init {
+        every { accountService.allEnrollmentRefs(any()) } returns emptyList()
+        every { accountService.isEnrollmentSharedWithOtherAccount(any(), any()) } returns false
+    }
+
+    fun cleanup(type: String): EnrollmentCleanup = cleanups.getValue(type)
+}

@@ -7,89 +7,84 @@ import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
-import com.example.identity.contract.tool_api.MissingFields
 
 /** Pure unit test for the code-vs-state decision - mirrors `auth_sms`'s `AuthSmsLookupFlowTest`. */
 class AuthEmailLookupFlowTest : BehaviorSpec({
 
     val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
 
-    given("AwaitingEmail") {
+    given("a session still awaiting the email") {
         val state = AuthEmailLookupState.AwaitingEmail
 
         `when`("a code is submitted before any email was ever resolved") {
+            val decision = AuthEmailLookupFlow.decideCode(state, "000000", emailCodeGenerator)
+
             then("the state is unchanged - not a wrong-code failure") {
-                AuthEmailLookupFlow.decideCode(state, "000000", emailCodeGenerator) shouldBe AuthEmailLookupDecision.Unchanged(state)
+                decision shouldBe AuthEmailLookupDecision.Unchanged(state)
             }
         }
     }
 
-    given("AwaitingCode for a resolved account") {
+    given("a pending code for a resolved account") {
         val issued = emailCodeGenerator.issue()
         val state = AuthEmailLookupState.AwaitingCode(accountId = AccountId(42L), issued.hash, issued.expiresAt)
 
         `when`("nothing was submitted") {
+            val decision = AuthEmailLookupFlow.decideCode(state, null, emailCodeGenerator)
+
             then("the state is unchanged") {
-                AuthEmailLookupFlow.decideCode(state, null, emailCodeGenerator) shouldBe AuthEmailLookupDecision.Unchanged(state)
+                decision shouldBe AuthEmailLookupDecision.Unchanged(state)
             }
         }
 
         `when`("the wrong code was submitted") {
+            val decision = AuthEmailLookupFlow.decideCode(state, "000000", emailCodeGenerator)
+
             then("it is rejected, naming the account for the throttle") {
-                AuthEmailLookupFlow.decideCode(state, "000000", emailCodeGenerator) shouldBe AuthEmailLookupDecision.WrongCode(AccountId(42L))
+                decision shouldBe AuthEmailLookupDecision.WrongCode(AccountId(42L))
             }
         }
 
         `when`("the correct code was submitted") {
+            val decision = AuthEmailLookupFlow.decideCode(state, issued.plainCode, emailCodeGenerator)
+
             then("it completes for that account") {
-                AuthEmailLookupFlow.decideCode(state, issued.plainCode, emailCodeGenerator) shouldBe AuthEmailLookupDecision.Complete(AccountId(42L))
+                decision shouldBe AuthEmailLookupDecision.Complete(AccountId(42L))
             }
         }
     }
 
-    given("AwaitingCode for an unresolved email (enumeration protection)") {
+    given("a pending code for an unresolved email (enumeration protection)") {
         val issued = emailCodeGenerator.issue()
         val state = AuthEmailLookupState.AwaitingCode(accountId = null, issued.hash, issued.expiresAt)
 
         `when`("the code that would have matched a real account is submitted") {
+            val decision = AuthEmailLookupFlow.decideCode(state, issued.plainCode, emailCodeGenerator)
+
             then("it still fails - there is no account to complete for") {
-                AuthEmailLookupFlow.decideCode(state, issued.plainCode, emailCodeGenerator) shouldBe AuthEmailLookupDecision.WrongCode(null)
+                decision shouldBe AuthEmailLookupDecision.WrongCode(null)
             }
         }
     }
 
-    given("describe()") {
-        `when`("AwaitingEmail") {
-            then("it asks for email at step auth") {
-                val (step, fields) = AuthEmailLookupState.AwaitingEmail.describe()
-                step shouldBe "auth"
-                fields shouldBe MissingFields(listOf("email"))
-            }
-        }
+    given("persisted columns without an issued code") {
+        `when`("the state is rebuilt from them") {
+            val rebuilt = AuthEmailLookupState.of(ToolSessionId(UUID.randomUUID()), null, null, null)
 
-        `when`("AwaitingCode") {
-            then("it asks for code at step codeInput") {
-                val issued = emailCodeGenerator.issue()
-                val state = AuthEmailLookupState.AwaitingCode(AccountId(42L), issued.hash, issued.expiresAt)
-                state.describe() shouldBe ("codeInput" to MissingFields(listOf("code")))
+            then("it is AwaitingEmail") {
+                rebuilt shouldBe AuthEmailLookupState.AwaitingEmail
             }
         }
     }
 
-    given("toState()") {
-        val toolSessionId = ToolSessionId(UUID.randomUUID())
+    given("persisted columns with a code issued for a resolved account") {
+        val issued = emailCodeGenerator.issue()
 
-        `when`("no code was ever issued") {
-            then("it reconstructs AwaitingEmail") {
-                AuthEmailLookupState.of(toolSessionId, null, null, null) shouldBe AuthEmailLookupState.AwaitingEmail
-            }
-        }
+        `when`("the state is rebuilt from them") {
+            val rebuilt = AuthEmailLookupState.of(ToolSessionId(UUID.randomUUID()), AccountId(42L), issued.hash, issued.expiresAt)
 
-        `when`("a code was issued for a resolved account") {
-            then("it reconstructs AwaitingCode") {
-                val issued = emailCodeGenerator.issue()
-                AuthEmailLookupState.of(toolSessionId, AccountId(42L), issued.hash, issued.expiresAt) shouldBe
-                    AuthEmailLookupState.AwaitingCode(AccountId(42L), issued.hash, issued.expiresAt)
+            then("it is AwaitingCode for that account") {
+                rebuilt shouldBe AuthEmailLookupState.AwaitingCode(AccountId(42L), issued.hash, issued.expiresAt)
             }
         }
     }

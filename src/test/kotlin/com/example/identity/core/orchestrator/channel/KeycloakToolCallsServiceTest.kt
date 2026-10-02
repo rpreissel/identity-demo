@@ -55,7 +55,8 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
         }
 
         `when`("the binding is a DPoP thumbprint") {
-            val result = runCatching { service.requireKeycloakFor(accountId, "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs") }
+            val dpopThumbprint = "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs"
+            val result = runCatching { service.requireKeycloakFor(accountId, dpopThumbprint) }
 
             then("it refuses with PeerAuthValidationException") {
                 shouldThrow<PeerAuthValidationException> { result.getOrThrow() }

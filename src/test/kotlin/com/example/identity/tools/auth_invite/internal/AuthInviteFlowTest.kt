@@ -1,6 +1,5 @@
 package com.example.identity.tools.auth_invite.internal
 
-import com.example.identity.contract.tool_api.MissingFields
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 
@@ -52,16 +51,6 @@ class AuthInviteFlowTest : BehaviorSpec({
 
             then("both fields are missing") {
                 decision shouldBe AuthInviteDecision.Incomplete(listOf("kvnr", "code"))
-            }
-        }
-    }
-
-    given("no missing fields named") {
-        `when`("the step is described") {
-            val described = AuthInviteFlow.describe()
-
-            then("it is step auth, asking for all fields") {
-                described shouldBe ("auth" to MissingFields(listOf("kvnr", "code")))
             }
         }
     }

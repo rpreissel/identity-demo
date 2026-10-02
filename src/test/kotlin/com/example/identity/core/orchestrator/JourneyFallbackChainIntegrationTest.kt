@@ -2,10 +2,9 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.ninjasquad.springmockk.MockkBean
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainAll
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import java.util.UUID
@@ -14,7 +13,7 @@ import java.util.UUID
  * The properties of the per-intent state machine (docs/04-orchestrierung.md): the FAST fallback chain
  * and its memory of what was declined, identification as a LOGIN path when nothing else is left, the
  * states LOGIN_LOOKUP does not have, and the journey-wide attempt budget. The happy paths of each
- * intent are in RegistrationLoginStepUpFlowIntegrationTest.
+ * intent are in RegistrationFlowIntegrationTest and LoginFlowIntegrationTest.
  */
 class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
 
@@ -22,107 +21,81 @@ class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
     private lateinit var jwkThumbprintService: JwkThumbprintService
 
     init {
-        beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
     }
 
-    /** Registers the seeded test person with sms only and returns the resulting accountId. */
     init {
-        given("the per-intent state machine's fallback chain, attempt budget, and entry intent") {
-        // Fallback chain -----------------------------------------------------------
+        given("an account with sms only, bound to this device") {
+            // Fallback chain: the transition itself is FastAccessStrategyTest's; here the round trip.
+            `when`("a fresh channel declines its only auth method and identifies via ident-fsc") {
+                val accountId = registerWithSmsOnly()
+                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                val authToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms").nextRaw()["toolSessionId"] as String
 
-        then("Fast chain declining the auth state falls through to identification") {
-            registerWithSmsOnly()
+                val afterDecline = delete("/orchestrator/api/v1/tools/$authToolSessionId/auth-sms")
+                val identified = reIdentifyViaFsc(channelSessionId)
 
-            // Fresh session on the same device: the link routes straight to the existing sms method.
-            val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-            val next = get("/orchestrator/api/v1/channels/$channelSessionId").next()
-            next shouldBe mapOf("type" to "tool", "toolId" to "auth-sms", "step" to "auth")
-
-            // Backing out of the only remaining auth method is not a dead end: the chain falls through
-            // to its last state, identification.
-            val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms").nextRaw()["toolSessionId"] as String
-            val afterDecline = delete("/orchestrator/api/v1/tools/$toolSessionId/auth-sms")
-            afterDecline.next() shouldBe mapOf("type" to "orchestrator", "context" to "registration", "step" to "selectIdentificationMethod")
-            @Suppress("UNCHECKED_CAST")
-            // shouldContainAll, not exact: identification is the point, not the catalog's exact set.
-            (afterDecline.stepData()["options"] as List<String>) shouldContainAll listOf("ident-fsc", "ident-eid")
-        }
-
-        then("Fast chain identifying after declining auth logs into the same account without registering again") {
-            val accountId = registerWithSmsOnly()
-
-            val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-            val authToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms").nextRaw()["toolSessionId"] as String
-            delete("/orchestrator/api/v1/tools/$authToolSessionId/auth-sms")
-
-            val identToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
-            val identified = patch(
-                "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
-                """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","fsc":"VALIDCODE"}"""
-            )
-
-            // The same KVNR finds the same account again: "registration" versus "login" is not chosen
-            // up front, it describes the path taken. Identifying on the last state must not leave a
-            // second account behind.
-            identified.next()["type"].shouldNotBeNull()
-            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.account", Int::class.java) shouldBe 1
-            jdbcTemplate.queryForObject("SELECT MIN(id) FROM account.account", Long::class.java) shouldBe accountId.value
-        }
-
-        // LOGIN_LOOKUP -------------------------------------------------------------
-
-        then("Lookup login cannot be talked into an identification") {
-            registerWithSmsOnly()
-
-            val channelSessionId = post("/orchestrator/api/v1/app/channels", """{"intent":"lookup_login"}""")
-                .channel()["channelSessionId"] as String
-
-            // No state of this intent offers an identification, so naming the tool directly is rejected
-            // at the boundary instead of failing deeper with a 500.
-            val exception = assertThrows<HttpClientErrorException> {
-                post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc")
+                then("declining is not a dead end: the chain falls through to identification") {
+                    afterDecline.next() shouldBe mapOf("type" to "orchestrator", "context" to "registration", "step" to "selectIdentificationMethod")
+                    // shouldContainAll, not exact: identification is the point, not the catalog's exact set.
+                    @Suppress("UNCHECKED_CAST")
+                    (afterDecline.stepData()["options"] as List<String>) shouldContainAll listOf("ident-fsc", "ident-eid")
+                }
+                then("the same KVNR logs into the same account, without registering a second one") {
+                    // "registration" versus "login" is not chosen up front, it describes the path taken.
+                    identified.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-sms", "step" to "auth")
+                    jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.account", Int::class.java) shouldBe 1
+                    jdbcTemplate.queryForObject("SELECT MIN(id) FROM account.account", Long::class.java) shouldBe accountId.value
+                }
             }
-            exception.statusCode shouldBe HttpStatus.CONFLICT
-        }
 
-        // Attempt budget -----------------------------------------------------------
+            `when`("a lookup login names ident-fsc directly") {
+                registerWithSmsOnly()
+                val channelSessionId = post("/orchestrator/api/v1/app/channels", """{"intent":"lookup_login"}""")
+                    .channel()["channelSessionId"] as String
 
-        then("Attempt budget spans the whole journey not a single tool") {
-            registerWithSmsOnly()
-            val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                val result = runCatching { post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc") }
 
-            // Two failures on one tool session, the third on a fresh one: a per-tool counter would
-            // start over at zero, and the journey would survive indefinitely.
-            val firstToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms").nextRaw()["toolSessionId"] as String
-            patch("/orchestrator/api/v1/tools/$firstToolSessionId/auth-sms", """{"tan":"000000"}""")
-            patch("/orchestrator/api/v1/tools/$firstToolSessionId/auth-sms", """{"tan":"000000"}""")
-
-            val secondToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms").nextRaw()["toolSessionId"] as String
-            val exception = assertThrows<HttpClientErrorException> {
-                patch("/orchestrator/api/v1/tools/$secondToolSessionId/auth-sms", """{"tan":"000000"}""")
+                then("it is rejected at the boundary - no state of this intent offers an identification") {
+                    // Instead of failing deeper with a 500.
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
+                }
             }
-            exception.statusCode shouldBe HttpStatus.GONE
-        }
 
-        // Entry intent -------------------------------------------------------------
+            `when`("two wrong TANs go to one tool session and a third to a fresh one") {
+                registerWithSmsOnly()
+                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                val firstToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms").nextRaw()["toolSessionId"] as String
+                patch("/orchestrator/api/v1/tools/$firstToolSessionId/auth-sms", """{"tan":"000000"}""")
+                patch("/orchestrator/api/v1/tools/$firstToolSessionId/auth-sms", """{"tan":"000000"}""")
+                val secondToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms").nextRaw()["toolSessionId"] as String
 
-        then("Cancelling a lookup login restarts a lookup login not a registration") {
-            registerWithSmsOnly()
-            currentBindingKeyRef = "binding-" + UUID.randomUUID()
+                val result = runCatching { patch("/orchestrator/api/v1/tools/$secondToolSessionId/auth-sms", """{"tan":"000000"}""") }
 
-            val channelSessionId = post("/orchestrator/api/v1/app/channels", """{"intent":"lookup_login"}""")
-                .channel()["channelSessionId"] as String
-            val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms-lookup").nextRaw()["toolSessionId"] as String
+                then("the attempt budget spans the whole journey, not a single tool: the process ends as 410") {
+                    // A per-tool counter would start over at zero, and the journey would survive indefinitely.
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.GONE
+                }
+            }
 
-            // The channel remembers which intent it was entered with, so abandoning does not turn a
-            // "log me into my existing account" into "let's register you".
-            delete("/orchestrator/api/v1/tools/$toolSessionId/auth-sms-lookup")
-            val afterCancel = delete("/orchestrator/api/v1/channels/$channelSessionId/journey")
-            afterCancel.next() shouldBe mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
-            @Suppress("UNCHECKED_CAST")
-            // shouldContainAll, not exact: the lookup intent is preserved, not the catalog's exact lookup-tool set.
-            afterCancel.stepData()["options"] as List<String> shouldContainAll listOf("auth-sms-lookup", "auth-password-lookup", "auth-email-lookup", "auth-qr-lookup")
-        }
+            `when`("a lookup login on another device is abandoned and cancelled") {
+                registerWithSmsOnly()
+                currentBindingKeyRef = "binding-" + UUID.randomUUID()
+                val channelSessionId = post("/orchestrator/api/v1/app/channels", """{"intent":"lookup_login"}""")
+                    .channel()["channelSessionId"] as String
+                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms-lookup").nextRaw()["toolSessionId"] as String
+                delete("/orchestrator/api/v1/tools/$toolSessionId/auth-sms-lookup")
+
+                val afterCancel = delete("/orchestrator/api/v1/channels/$channelSessionId/journey")
+
+                then("it restarts a lookup login, not a registration - the channel remembers its entry intent") {
+                    afterCancel.next() shouldBe mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
+                    // shouldContainAll, not exact: the lookup intent is preserved, not the catalog's exact lookup-tool set.
+                    @Suppress("UNCHECKED_CAST")
+                    (afterCancel.stepData()["options"] as List<String>) shouldContainAll
+                        listOf("auth-sms-lookup", "auth-password-lookup", "auth-email-lookup", "auth-qr-lookup")
+                }
+            }
         }
     }
 }

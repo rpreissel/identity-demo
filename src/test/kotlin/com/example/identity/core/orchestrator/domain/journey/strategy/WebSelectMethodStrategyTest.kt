@@ -4,12 +4,10 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
-import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.account.AccountProfile
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -28,7 +26,6 @@ import com.example.identity.tools.auth_sms.AuthSmsLookupDescriptor
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
-import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
@@ -48,32 +45,28 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
         acrFloor: AcrLevel = AcrLevel.LOA1
     ) = ctx(account = account, evidence = evidence, acrFloor = acrFloor, availableTools = webTools, channel = ChannelType.WEB)
 
-    given("the intent") {
-        then("is WEB_SELECT_METHOD") {
-            strategy.intent shouldBe AuthIntent.WEB_SELECT_METHOD
+    given("no account known yet") {
+        `when`("a new journey is created") {
+            val initial = strategy.initialState(webCtx())
+
+            then("it offers the Web channel's lookup-login tools") {
+                initial.shouldBeInstanceOf<WebSelectMethodState.SelectMethod>()
+                initial.offer.offered shouldContainExactlyInAnyOrder lookupTools
+                initial.accountAlreadyKnown shouldBe false
+            }
         }
     }
 
-    given("initialState without an account") {
-        then("offers the Web channel's lookup-login tools") {
-            val state = strategy.initialState(webCtx())
-            state.shouldBeInstanceOf<WebSelectMethodState.SelectMethod>()
-            state.offer.offered shouldContainExactlyInAnyOrder lookupTools
-            state.accountAlreadyKnown shouldBe false
-        }
-    }
-
-    given("initialState with a known account (a Web step-up)") {
+    given("a known account with sms and password, sms proven, the floor at loa2 (a Web step-up)") {
         val acc = account(method("sms", AcrLevel.LOA1), method("password", AcrLevel.LOA1))
         val theCtx = webCtx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
 
-        then("offers only auth tools for that account") {
-            val state = strategy.initialState(theCtx)
-            state.shouldBeInstanceOf<WebSelectMethodState.SelectMethod>()
-            state.accountAlreadyKnown shouldBe true
-            state.offer.offered.shouldNotBeEmpty()
-            state.offer.offered.map { theCtx.catalog.descriptors().first { d -> d.toolId == it }.role }.toSet() shouldBe
-                setOf(ToolRole.KNOWN_ACCOUNT_AUTH)
+        `when`("a new journey is created") {
+            val initial = strategy.initialState(theCtx)
+
+            then("it offers only the account's auth tool still missing, no lookup tool") {
+                initial shouldBe WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-password"))), accountAlreadyKnown = true)
+            }
         }
     }
 
@@ -158,10 +151,8 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
             val transition = strategy.transition(state, JourneyEvent.EvidenceReported, theCtx)
 
             then("it offers the account's auth tools again") {
-                transition shouldBe Transition.To(strategy.initialState(theCtx))
-                val next = (transition as Transition.To).state
-                next.shouldBeInstanceOf<WebSelectMethodState.SelectMethod>()
-                next.accountAlreadyKnown shouldBe true
+                transition shouldBe
+                    Transition.To(WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-password"))), accountAlreadyKnown = true))
             }
         }
     }

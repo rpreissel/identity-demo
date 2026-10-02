@@ -32,10 +32,6 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
     @Autowired
     private lateinit var kcChannelService: KcChannelService
 
-    init {
-        beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
-    }
-
     private enum class Step {
         OPEN_CHANNEL, SIGN_IN_SMS, WRONG_TAN, SIGN_IN_PASSWORD, REPLAY_LAST_PATCH,
         LOG_OUT, CANCEL_JOURNEY, START_MANAGE, START_PEER_LOGIN, START_STEP_UP, READ_CHANNEL, SWITCH_DEVICE,
@@ -55,8 +51,11 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
         private val everSetUp = mutableSetOf<Long>()
 
         fun perform(step: Step): String? = when (step) {
-            Step.OPEN_CHANNEL -> call(HttpMethod.POST, "/orchestrator/api/v1/app/channels", withDefaultAvailableTools("{}"))
-                .second?.let { channelIdOf(it) }?.also { channel = it }.let { null }
+            Step.OPEN_CHANNEL -> {
+                val created = call(HttpMethod.POST, "/orchestrator/api/v1/app/channels", withDefaultAvailableTools("{}")).second
+                created?.let(::channelIdOf)?.let { channel = it }
+                null
+            }
             Step.SIGN_IN_SMS -> signInSms(correct = true)
             Step.WRONG_TAN -> signInSms(correct = false)
             Step.SIGN_IN_PASSWORD -> channel?.let { ch ->
@@ -78,10 +77,15 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
             }
             Step.FETCH_TOKEN -> channel?.let { serverError(call(HttpMethod.GET, "/orchestrator/api/v1/channels/$it/token")) }
             // A quarter of the window is used, so the next interaction renews the session.
-            Step.SESSION_AGES -> channel?.let { ageSession(it, issuedAgo = Duration.ofMinutes(10), windowLeft = Duration.ofMinutes(20)) }.let { null }
-            Step.SESSION_LAPSES -> channel?.let { ch ->
-                if (ageSession(ch, issuedAgo = Duration.ofMinutes(40), windowLeft = Duration.ofSeconds(-1))) sessionGone += ch
-            }.let { null }
+            Step.SESSION_AGES -> {
+                channel?.let { ageSession(it, issuedAgo = Duration.ofMinutes(10), windowLeft = Duration.ofMinutes(20)) }
+                null
+            }
+            Step.SESSION_LAPSES -> {
+                val ch = channel
+                if (ch != null && ageSession(ch, issuedAgo = Duration.ofMinutes(40), windowLeft = Duration.ofSeconds(-1))) sessionGone += ch
+                null
+            }
             Step.KEYCLOAK_SIGN_OUT -> channel?.let { signOutAtKeycloak(it) }
         }
 
@@ -225,7 +229,10 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
 
     private fun wrongTan(tan: String) = if (tan == "000000") "000001" else "000000"
 
-    /** Runs [steps] from a clean database; the first violation with the step index, or null. */
+    /**
+     * Runs [steps] from a clean database, with a fresh device key and the registered account; the
+     * first violation with the step index, or null. One `when` runs many of these.
+     */
     private fun execute(steps: List<Step>): String? {
         resetDatabase()
         stubDpopWithFakeJwk(jwkThumbprintService)
@@ -259,7 +266,7 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
 
     init {
         given("random sequences of channel and journey actions") {
-            then("no step ever breaks an invariant of docs/invarianten.md") {
+            `when`("$SEEDS seeded runs of $STEPS_PER_RUN steps each are executed, failures shrunk") {
                 val failures = (1..SEEDS).mapNotNull { seed ->
                     val random = Random(seed)
                     val steps = listOf(Step.OPEN_CHANNEL) + List(STEPS_PER_RUN) { Step.entries[random.nextInt(Step.entries.size)] }
@@ -267,11 +274,14 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
                     val (minimal, failure) = shrink(steps)
                     "seed $seed: $failure - shortest sequence: $minimal"
                 }
-                failures.shouldBeEmpty()
+
+                then("no step ever breaks an invariant of docs/invarianten.md") {
+                    failures.shouldBeEmpty()
+                }
             }
 
-            then("the sequences it once found stay fixed - independent of which seeds happen to reach them") {
-                listOf(
+            `when`("the sequences it once found are executed again") {
+                val failures = listOf(
                     // A tool PATCH replayed after logout must not re-authenticate the channel.
                     listOf(Step.OPEN_CHANNEL, Step.SIGN_IN_SMS, Step.LOG_OUT, Step.REPLAY_LAST_PATCH),
                     // Method management, then a peer login, must not leave two running journeys.
@@ -291,7 +301,11 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
                     listOf(Step.OPEN_CHANNEL, Step.SIGN_IN_SMS, Step.START_STEP_UP, Step.SESSION_LAPSES, Step.SIGN_IN_PASSWORD, Step.FETCH_TOKEN),
                     // A sign-out at Keycloak ends the App channel mid step-up (I-23).
                     listOf(Step.OPEN_CHANNEL, Step.SIGN_IN_SMS, Step.START_STEP_UP, Step.KEYCLOAK_SIGN_OUT, Step.SIGN_IN_PASSWORD),
-                ).mapNotNull { steps -> execute(steps)?.let { "$steps: $it" } }.shouldBeEmpty()
+                ).mapNotNull { steps -> execute(steps)?.let { "$steps: $it" } }
+
+                then("they stay fixed - independent of which seeds happen to reach them") {
+                    failures.shouldBeEmpty()
+                }
             }
         }
     }

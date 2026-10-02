@@ -10,8 +10,8 @@ import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import java.time.Instant
 import java.util.Date
@@ -28,7 +28,7 @@ class DeviceRebindIntegrationTest : IntegrationTestSupport() {
     private val channelKey = ECKeyGenerator(Curve.P_256).generate()
 
     init {
-        beforeEach {
+        beforeScenario {
             every { dpopValidator.validate(any(), any(), any()) } returns DpopProof(
                 token = "mock-token",
                 publicKey = channelKey.toPublicJWK(),
@@ -74,51 +74,65 @@ class DeviceRebindIntegrationTest : IntegrationTestSupport() {
         return channelSessionId
     }
 
+    private fun accountIdOf(channelSessionId: String): Long = jdbcTemplate.queryForObject(
+        "SELECT account_id FROM orchestrator.channel_session WHERE id = ?", Long::class.java, UUID.fromString(channelSessionId)
+    )!!
+
     init {
         given("a device already linked to account A, with A's own device credential") {
             `when`("a fresh REGISTER identifies a different person B on the same device") {
-                then("asks for confirmation right after identification, before any method is offered") {
-                    val channelA = identifyAndConfirmEmail()
-                    enrollDevice(channelA)
+                enrollDevice(identifyAndConfirmEmail())
 
-                    val channelB = identifyAsSecondPerson()
-                    val afterIdent = get("/orchestrator/api/v1/channels/$channelB")
+                val channelB = identifyAsSecondPerson()
+                val afterIdent = get("/orchestrator/api/v1/channels/$channelB")
+
+                then("asks for confirmation right after identification, before any method is offered") {
                     afterIdent.next() shouldBe mapOf("type" to "orchestrator", "context" to "prompt", "step" to "confirm")
                 }
+            }
 
-                then("accepting rebinds the device and revokes A's device credential") {
-                    val channelA = identifyAndConfirmEmail()
-                    enrollDevice(channelA)
+            `when`("B accepts the rebind") {
+                val channelA = identifyAndConfirmEmail()
+                enrollDevice(channelA)
+                val accountA = accountIdOf(channelA)
+                val channelB = identifyAsSecondPerson()
 
-                    val channelB = identifyAsSecondPerson()
-                    val accepted = post("/orchestrator/api/v1/channels/$channelB/answer", """{"answer":"accept"}""")
-                    // The journey continues; no dead end.
-                    accepted.next().shouldNotBeNull()
+                val accepted = post("/orchestrator/api/v1/channels/$channelB/answer", """{"answer":"accept"}""")
+                val deviceLink = get("/orchestrator/api/v1/app/channels/device-link")
+                // A's device credential is deactivated, not just hidden on this device. So re-identify
+                // as A and read the account's methods unfiltered by device.
+                val channelAAgain = post("/orchestrator/api/v1/app/channels", """{"intent":"register"}""").channel()["channelSessionId"] as String
+                reIdentifyViaFsc(channelAAgain)
+                @Suppress("UNCHECKED_CAST")
+                val methodsOfA = get("/orchestrator/api/v1/channels/$channelAAgain/methods")["methods"] as List<Map<String, Any?>>
 
-                    val deviceLink = get("/orchestrator/api/v1/app/channels/device-link")
-                    deviceLink["linked"] shouldBe true
-
-                    // A's device credential is deactivated, not just hidden on this device. So re-identify
-                    // as A and read the account's methods unfiltered by device.
-                    val channelAAgain = post("/orchestrator/api/v1/app/channels", """{"intent":"register"}""").channel()["channelSessionId"] as String
-                    reIdentifyViaFsc(channelAAgain)
-                    @Suppress("UNCHECKED_CAST")
-                    val methods = get("/orchestrator/api/v1/channels/$channelAAgain/methods")["methods"] as List<Map<String, Any?>>
-                    methods.none { it["method"] == "device" } shouldBe true
+                then("B's registration continues with the address, no dead end") {
+                    accepted.next() shouldBe mapOf("type" to "tool", "toolId" to "confirm-email", "step" to "input")
                 }
+                then("the device is linked to B's account now, no longer to A's") {
+                    val linkedAccount = (deviceLink["accountId"] as Number).toLong()
+                    linkedAccount shouldBe accountIdOf(channelB)
+                    linkedAccount shouldNotBe accountA
+                }
+                then("A's device credential is revoked") {
+                    methodsOfA.none { it["method"] == "device" } shouldBe true
+                }
+            }
 
-                then("declining cancels the journey outright and leaves the old binding untouched") {
-                    val channelA = identifyAndConfirmEmail()
-                    enrollDevice(channelA)
-                    val deviceLinkBefore = get("/orchestrator/api/v1/app/channels/device-link")
+            `when`("B declines the rebind") {
+                enrollDevice(identifyAndConfirmEmail())
+                val deviceLinkBefore = get("/orchestrator/api/v1/app/channels/device-link")
+                val channelB = identifyAsSecondPerson()
 
-                    val channelB = identifyAsSecondPerson()
-                    val declined = post("/orchestrator/api/v1/channels/$channelB/answer", """{"answer":"decline"}""")
-                    // Cancel restarts the entry intent REGISTER; it is no error. The second person's
-                    // account was still being set up and went with the cancel (ADR-46).
+                val declined = post("/orchestrator/api/v1/channels/$channelB/answer", """{"answer":"decline"}""")
+                val deviceLinkAfter = get("/orchestrator/api/v1/app/channels/device-link")
+
+                then("the journey is cancelled outright, which is no error") {
+                    // Cancel restarts the entry intent REGISTER. The second person's account was still
+                    // being set up and went with the cancel (ADR-46).
                     declined.channel()["state"] shouldBe "ANONYMOUS"
-
-                    val deviceLinkAfter = get("/orchestrator/api/v1/app/channels/device-link")
+                }
+                then("the old binding is untouched") {
                     deviceLinkAfter shouldBe deviceLinkBefore
                 }
             }

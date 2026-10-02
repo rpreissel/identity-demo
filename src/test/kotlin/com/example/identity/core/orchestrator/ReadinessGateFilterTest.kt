@@ -1,41 +1,52 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.core.orchestrator.kc.CLIENT_JWKS_PATH
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
 import org.springframework.mock.web.MockFilterChain
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 
 /**
- * Waehrend der Keycloak-Migrationen blockt das Gate alles ausser dem Client-JWKS: gegen dieses prueft
- * Keycloak die Anmeldung der Migration selbst. Stuende es hinter dem Gate, lehnte Keycloak die
- * Assertion ab, und der Orchestrator startete nie.
+ * During the Keycloak migrations the gate blocks everything except the client JWKS: Keycloak checks
+ * the migration's own sign-in against it. Were it behind the gate, Keycloak would reject the
+ * assertion and the orchestrator would never start.
  */
-class ReadinessGateFilterTest {
+class ReadinessGateFilterTest : BehaviorSpec({
 
-    private val starting = object : ReadinessState {
-        override val isReady = false
-    }
+    given("an orchestrator still running its Keycloak migrations") {
+        val starting = object : ReadinessState {
+            override val isReady = false
+        }
 
-    private fun call(uri: String): MockHttpServletResponse {
-        val response = MockHttpServletResponse()
-        ReadinessGateFilter(starting).doFilter(MockHttpServletRequest("GET", uri), response, MockFilterChain())
-        return response
-    }
+        fun call(uri: String): Int {
+            val response = MockHttpServletResponse()
+            ReadinessGateFilter(starting).doFilter(MockHttpServletRequest("GET", uri), response, MockFilterChain())
+            return response.status
+        }
 
-    @Test
-    fun `blockt waehrend der Migration normale Requests mit 503`() {
-        assertThat(call("/orchestrator/api/v1/app/channels").status).isEqualTo(503)
-    }
+        `when`("an ordinary request arrives") {
+            val status = call("/orchestrator/api/v1/app/channels")
 
-    @Test
-    fun `laesst das Client-JWKS schon waehrend der Migration durch`() {
-        assertThat(call("$CLIENT_JWKS_PATH/.well-known/jwks.json").status).isEqualTo(200)
-    }
+            then("it is blocked with 503") {
+                status shouldBe 503
+            }
+        }
 
-    @Test
-    fun `nimmt nur genau diesen Pfad aus, keinen gleich beginnenden`() {
-        assertThat(call("${CLIENT_JWKS_PATH}-andere/x").status).isEqualTo(503)
+        `when`("Keycloak fetches the client JWKS") {
+            val status = call("$CLIENT_JWKS_PATH/.well-known/jwks.json")
+
+            then("it passes already") {
+                status shouldBe 200
+            }
+        }
+
+        `when`("a request arrives on a path that only starts like the client JWKS") {
+            val status = call("${CLIENT_JWKS_PATH}-other/x")
+
+            then("it is blocked - only exactly that path is exempt") {
+                status shouldBe 503
+            }
+        }
     }
-}
+})

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.session.AccountDeletionService
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -34,21 +35,38 @@ class SharedCredentialRowIntegrationTest : IntegrationTestSupport() {
     private fun rowExists(id: Long) =
         jdbcTemplate.queryForObject("SELECT COUNT(*) FROM auth_device.enrollment WHERE id = ?", Int::class.java, id) == 1
 
+    /** Two accounts whose device methods point at the same credential row; returns the row and both accounts. */
+    private fun twoAccountsSharingOneRow(): Triple<Long, AccountId, AccountId> {
+        val row = deviceRow()
+        val ref = EnrollmentRef("auth_device.enrollment", row.toString())
+        val first = accountService.createAccountInSetup().accountId
+        val second = accountService.createAccountInSetup().accountId
+        accountService.addAuthenticationMethod(first, "device", ref, enrolledUnderAcr = null, details = emptyMap(), allowsMultipleInstances = true)
+        accountService.addAuthenticationMethod(second, "device", ref, enrolledUnderAcr = null, details = emptyMap(), allowsMultipleInstances = true)
+        return Triple(row, first, second)
+    }
+
     init {
         given("two accounts whose device methods point at the same credential row") {
-            then("deleting the first keeps the row; deleting the last one removes it") {
-                val row = deviceRow()
-                val ref = EnrollmentRef("auth_device.enrollment", row.toString())
-                val first = accountService.createAccountInSetup().accountId
-                val second = accountService.createAccountInSetup().accountId
-                accountService.addAuthenticationMethod(first, "device", ref, enrolledUnderAcr = null, details = emptyMap(), allowsMultipleInstances = true)
-                accountService.addAuthenticationMethod(second, "device", ref, enrolledUnderAcr = null, details = emptyMap(), allowsMultipleInstances = true)
+            `when`("the first account is deleted") {
+                val (row, first, _) = twoAccountsSharingOneRow()
 
                 accountDeletionService.deleteAccount(first)
-                rowExists(row) shouldBe true
 
+                then("the row stays, since the second account's method still points at it") {
+                    rowExists(row) shouldBe true
+                }
+            }
+
+            `when`("both accounts are deleted") {
+                val (row, first, second) = twoAccountsSharingOneRow()
+
+                accountDeletionService.deleteAccount(first)
                 accountDeletionService.deleteAccount(second)
-                rowExists(row) shouldBe false
+
+                then("deleting the last one removes the row") {
+                    rowExists(row) shouldBe false
+                }
             }
         }
     }

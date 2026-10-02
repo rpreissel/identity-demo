@@ -62,15 +62,6 @@ class RestoreDataCodecTest : BehaviorSpec({
             }
         }
 
-        `when`("decoding a proof encoded without its time") {
-            val ageless = restoreData.copy(evidence = SessionEvidence(restoreData.evidence!!.methods.map { it.copy(provenAt = null) }))
-            val decoded = codec.decode(codec.encode(ageless, kcSessionId), kcSessionId)
-
-            then("it comes back as old as can be, never as just proven") {
-                decoded?.evidence?.methods?.map { it.provenAt } shouldBe listOf(Instant.EPOCH, Instant.EPOCH)
-            }
-        }
-
         `when`("decoding it for another session") {
             val decoded = codec.decode(token, "kc-session-2")
 
@@ -107,6 +98,20 @@ class RestoreDataCodecTest : BehaviorSpec({
 
             then("it returns null") {
                 decoded.shouldBeNull()
+            }
+        }
+    }
+
+    given("a token whose proofs were encoded without their time") {
+        val codec = RestoreDataCodec(clock = TEST_CLOCK)
+        val ageless = restoreData.copy(evidence = SessionEvidence(restoreData.evidence!!.methods.map { it.copy(provenAt = null) }))
+        val token = codec.encode(ageless, kcSessionId)
+
+        `when`("decoding it") {
+            val decoded = codec.decode(token, kcSessionId)
+
+            then("each proof comes back as old as can be, never as just proven") {
+                decoded?.evidence?.methods?.map { it.provenAt } shouldBe listOf(Instant.EPOCH, Instant.EPOCH)
             }
         }
     }

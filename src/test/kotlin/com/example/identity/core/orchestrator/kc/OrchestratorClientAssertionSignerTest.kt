@@ -6,11 +6,16 @@ import com.nimbusds.jose.crypto.ECDSAVerifier
 import com.nimbusds.jwt.SignedJWT
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import java.util.Optional
+
+private const val ADMIN_CLIENT = "orchestrator-admin"
+private const val APP_TOKEN_CLIENT = "orchestrator-app-token"
+private const val REALM = "https://kc/realms/Demo"
 
 /**
  * Pure unit test of [OrchestratorClientAssertionSigner]: every Keycloak client signs with its own key, so a
@@ -18,6 +23,7 @@ import java.util.Optional
  */
 class OrchestratorClientAssertionSignerTest : BehaviorSpec({
 
+    /** A signer over an in-memory key store that refuses a second key for the same purpose. */
     fun signer(): OrchestratorClientAssertionSigner {
         val stored = mutableMapOf<String, NodeSigningKey>()
         val repository = mockk<NodeSigningKeyRepository>()
@@ -27,38 +33,61 @@ class OrchestratorClientAssertionSignerTest : BehaviorSpec({
             check(purpose !in stored) { "duplicate purpose $purpose" }
             stored[purpose] = NodeSigningKey(purpose = purpose, publicKeyJwk = secondArg(), privateKeyJwk = thirdArg(), createdAt = TEST_NOW)
         }
-        return OrchestratorClientAssertionSigner(repository, "orchestrator-admin", "orchestrator-app-token", clock = TEST_CLOCK)
+        return OrchestratorClientAssertionSigner(repository, ADMIN_CLIENT, APP_TOKEN_CLIENT, clock = TEST_CLOCK)
     }
 
     given("the three clients this node represents") {
         val signer = signer()
-        val admin = signer.publicKeyOf("orchestrator-admin")!!
-        val appToken = signer.publicKeyOf("orchestrator-app-token")!!
-        val migration = signer.publicKeyOf(KeycloakMigrationToken.CLIENT_ID)!!
 
-        then("each has a key of its own") {
-            admin.computeThumbprint() shouldNotBe appToken.computeThumbprint()
-            admin.computeThumbprint() shouldNotBe migration.computeThumbprint()
-            appToken.computeThumbprint() shouldNotBe migration.computeThumbprint()
+        `when`("reading each client's public key") {
+            val admin = signer.publicKeyOf(ADMIN_CLIENT)!!
+            val appToken = signer.publicKeyOf(APP_TOKEN_CLIENT)!!
+            val migration = signer.publicKeyOf(KeycloakMigrationToken.CLIENT_ID)!!
+
+            then("each has a key of its own") {
+                admin.computeThumbprint() shouldNotBe appToken.computeThumbprint()
+                admin.computeThumbprint() shouldNotBe migration.computeThumbprint()
+                appToken.computeThumbprint() shouldNotBe migration.computeThumbprint()
+            }
         }
 
-        then("an assertion verifies only against its own client's key") {
-            val jwt = SignedJWT.parse(signer.assertionFor("orchestrator-app-token", "https://kc/realms/Demo"))
-            jwt.verify(ECDSAVerifier(appToken)) shouldBe true
-            jwt.verify(ECDSAVerifier(admin)) shouldBe false
-            jwt.verify(ECDSAVerifier(migration)) shouldBe false
+        `when`("reading the admin client's key a second time") {
+            val first = signer.publicKeyOf(ADMIN_CLIENT)!!
+            val second = signer.publicKeyOf(ADMIN_CLIENT)!!
+
+            then("the key stays the same") {
+                second.computeThumbprint() shouldBe first.computeThumbprint()
+            }
         }
 
-        then("the key stays the same across calls") {
-            signer.publicKeyOf("orchestrator-admin")!!.computeThumbprint() shouldBe admin.computeThumbprint()
+        `when`("signing an assertion for the app-token client") {
+            val jwt = SignedJWT.parse(signer.assertionFor(APP_TOKEN_CLIENT, REALM))
+
+            then("it verifies only against that client's own key") {
+                jwt.verify(ECDSAVerifier(signer.publicKeyOf(APP_TOKEN_CLIENT)!!)) shouldBe true
+                jwt.verify(ECDSAVerifier(signer.publicKeyOf(ADMIN_CLIENT)!!)) shouldBe false
+                jwt.verify(ECDSAVerifier(signer.publicKeyOf(KeycloakMigrationToken.CLIENT_ID)!!)) shouldBe false
+            }
         }
     }
 
     given("a client this node does not represent") {
         val signer = signer()
-        then("it has no key and gets no assertion") {
-            signer.publicKeyOf("some-other-client") shouldBe null
-            shouldThrow<IllegalStateException> { signer.assertionFor("some-other-client", "https://kc/realms/Demo") }
+
+        `when`("reading its public key") {
+            val key = signer.publicKeyOf("some-other-client")
+
+            then("it has none") {
+                key.shouldBeNull()
+            }
+        }
+
+        `when`("signing an assertion for it") {
+            val result = runCatching { signer.assertionFor("some-other-client", REALM) }
+
+            then("it gets none") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
+            }
         }
     }
 })

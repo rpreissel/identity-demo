@@ -3,7 +3,6 @@ package com.example.identity.kcext.client;
 import com.example.identity.kcext.federation.KcSubject;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.example.identity.kcext.api.model.ChannelResponse;
@@ -51,9 +50,6 @@ class ContractModelTest {
              "stepData": {"kind": "eine-form-von-morgen", "irgendwas": 1}}
             """;
         assertThrows(Exception.class, () -> mapper.readValue(vonMorgen, ChannelResponse.class));
-
-        // Als offener Knoten gelesen ueberlebt dieselbe Antwort.
-        assertNotNull(assertDoesNotThrowJson(vonMorgen).path("stepData").path("kind").asText(null));
     }
 
     /**
@@ -74,7 +70,7 @@ class ContractModelTest {
               "authData": {"subject": {"type": "account", "id": "42"}, "acr": "loa2", "amr": {"sms": "orchestrator"}}
             }
             """;
-        OrchestratorClient.ChannelResponse flach = OrchestratorClient.ChannelResponse.from(assertDoesNotThrowJson(vonMorgen));
+        OrchestratorClient.ChannelResponse flach = OrchestratorClient.ChannelResponse.from(readTree(vonMorgen));
 
         assertEquals("3fa85f64-5717-4562-b3fc-2c963f66afa6", flach.channelSessionId());
         assertEquals("STEP_UP_IN_PROGRESS", flach.channelState());
@@ -96,11 +92,11 @@ class ContractModelTest {
               "authData": {"acr": "loa1", "amr": {"invite": "orchestrator"}, "subject": {"type": "invitation", "id": "9f86d081"}}
             }
             """;
-        OrchestratorClient.ChannelResponse flach = OrchestratorClient.ChannelResponse.from(assertDoesNotThrowJson(json));
+        OrchestratorClient.ChannelResponse flach = OrchestratorClient.ChannelResponse.from(readTree(json));
         assertEquals(KcSubject.invitation("9f86d081"), flach.authDataSubject());
     }
 
-    private JsonNode assertDoesNotThrowJson(String json) {
+    private JsonNode readTree(String json) {
         try {
             return mapper.readTree(json);
         } catch (Exception e) {

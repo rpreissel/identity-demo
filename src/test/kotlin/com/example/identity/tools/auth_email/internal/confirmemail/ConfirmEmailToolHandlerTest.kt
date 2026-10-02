@@ -9,19 +9,46 @@ import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import com.example.identity.tools.auth_email.internal.EmailSendLimit
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
+import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.TooManyRequestsException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import java.util.UUID
+
+/** No tool session exists and the send budget is open until a test changes that. */
+private class Fixture {
+    val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
+    val saved = slot<ConfirmEmailToolSession>()
+    val sessions = mockk<ConfirmEmailToolSessionRepository>().also {
+        every { it.save(capture(saved)) } answers { saved.captured }
+    }
+    val codes = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
+    val sendLimit = mockk<EmailSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
+    val mailServer = MailServer(clock = TEST_CLOCK)
+    val handler = ConfirmEmailToolHandler(ConfirmEmailDescriptor, sessions, codes, mailServer, sendLimit, clock = TEST_CLOCK)
+
+    fun withSessionAwaitingEmail() = apply {
+        every { sessions.findByToolSessionId(toolSessionId) } returns ConfirmEmailToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
+    }
+
+    fun withSendBudgetUsedUp(address: String) = apply {
+        every { sendLimit.trySend(address) } returns false
+    }
+
+    /** Persists a pending code for [address] and returns it. */
+    fun withPendingCode(address: String): EmailCodeGenerator.Issued = codes.issue().also { issued ->
+        every { sessions.findByToolSessionId(toolSessionId) } returns
+            ConfirmEmailToolSession(toolSessionId = toolSessionId, email = address, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
+    }
+}
 
 /**
  * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
@@ -30,64 +57,71 @@ import java.util.UUID
  */
 class ConfirmEmailToolHandlerTest : BehaviorSpec({
 
-    val toolDataRepository = mockk<ConfirmEmailToolSessionRepository>()
-    val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
-    val sendLimit = mockk<EmailSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
-    val handler = ConfirmEmailToolHandler(ConfirmEmailDescriptor, toolDataRepository, emailCodeGenerator, MailServer(clock = TEST_CLOCK), sendLimit, clock = TEST_CLOCK)
-    val toolSessionId = ToolSessionId(UUID.randomUUID())
+    given("no confirm-email tool session yet") {
+        val f = Fixture()
 
-    given("an active enroll-email tool session with no email yet") {
-        val data = ConfirmEmailToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
+        `when`("a tool session starts") {
+            val outcome = f.handler.start(f.toolSessionId)
 
-        `when`("submitting an email") {
-            val saved = slot<ConfirmEmailToolSession>()
-            every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
-
-            then("it persists the address and a fresh code, asking for codeInput") {
-                val outcome = handler.patch(toolSessionId, email = "max@example.com", code = null)
-
-                outcome.shouldBeInstanceOf<ToolOutcome.InProgress>()
-                outcome.nextStep shouldBe "codeInput"
-                saved.captured.email shouldBe "max@example.com"
-                saved.captured.issuedCodeHash.shouldNotBeNull()
-            }
-        }
-
-        `when`("the address has used up its send budget") {
-            every { sendLimit.trySend("flooded@example.com") } returns false
-            val result = runCatching { handler.patch(toolSessionId, email = "flooded@example.com", code = null) }
-
-            then("it refuses with 429 and sends no code - nothing was guessed, the caller chose the address") {
-                shouldThrow<TooManyRequestsException> { result.getOrThrow() }
+            then("it asks for the email at step input") {
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "input", stepData = MissingFields(listOf("email")), demo = emptyMap())
             }
         }
     }
 
-    given("an active enroll-email tool session with a pending code") {
-        val issued = emailCodeGenerator.issue()
-        val data = ConfirmEmailToolSession(toolSessionId = toolSessionId, email = "max@example.com", issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
-        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
+    given("an active confirm-email tool session with no email yet") {
+        val f = Fixture().withSessionAwaitingEmail()
 
-            `when`("confirming with the correct code") {
-                then("it attests the address without creating a credential") {
-                    val outcome = handler.patch(toolSessionId, email = null, code = issued.plainCode)
+        `when`("submitting an email") {
+            val outcome = f.handler.patch(f.toolSessionId, email = "max@example.com", code = null)
+            val mail = f.mailServer.outbox().single()
 
-                    outcome.shouldBeInstanceOf<ToolOutcome.Completed.Attested>()
-                    outcome.claims shouldBe listOf(
+            then("it mails a code to the address and asks for it at step codeInput, revealing it as the demo value") {
+                mail.address shouldBe "max@example.com"
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "codeInput", stepData = MissingFields(listOf("code")), demo = mapOf("tan" to mail.code))
+            }
+
+            then("it persists the address and the hash of the mailed code") {
+                f.saved.captured.email shouldBe "max@example.com"
+                f.codes.matches(mail.code, f.saved.captured.issuedCodeHash, f.saved.captured.codeExpiresAt) shouldBe true
+            }
+        }
+    }
+
+    given("an active confirm-email tool session with no email yet, and an address that has used up its send budget") {
+        val f = Fixture().withSessionAwaitingEmail().withSendBudgetUsedUp("flooded@example.com")
+
+        `when`("submitting that address") {
+            val result = runCatching { f.handler.patch(f.toolSessionId, email = "flooded@example.com", code = null) }
+
+            then("it refuses with 429 - nothing was guessed, the caller chose the address") {
+                shouldThrow<TooManyRequestsException> { result.getOrThrow() }
+            }
+
+            then("it sends no code") {
+                f.mailServer.outbox().shouldBeEmpty()
+            }
+        }
+    }
+
+    given("an active confirm-email tool session with a pending code") {
+        val f = Fixture()
+        val issued = f.withPendingCode("max@example.com")
+
+        `when`("confirming with the correct code") {
+            val outcome = f.handler.patch(f.toolSessionId, email = null, code = issued.plainCode)
+
+            then("it attests the address without creating a credential") {
+                outcome shouldBe ToolOutcome.Completed.Attested(
+                    claims = listOf(
                         Claim(AttributeType.EMAIL, "max@example.com", ClaimSource(ConfirmEmailDescriptor.toolId.value), ConfirmEmailDescriptor.maxAcr)
                     )
-                    // No amr and no factor: confirming an address is not an authentication proof,
-                    // so it must not raise the channel's assurance.
-                    outcome.amr shouldBe emptyList()
-                    outcome.factorTypes shouldBe emptySet()
-                }
-
-                then("the address's send budget starts over: whoever asked received the code") {
-                    handler.patch(toolSessionId, email = null, code = issued.plainCode)
-
-                    verify { sendLimit.received("max@example.com") }
-                }
+                )
             }
+
+            then("the address's send budget starts over: whoever asked received the code") {
+                verify { f.sendLimit.received("max@example.com") }
+            }
+        }
     }
 })

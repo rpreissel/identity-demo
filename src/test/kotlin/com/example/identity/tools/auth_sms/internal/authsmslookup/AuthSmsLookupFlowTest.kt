@@ -7,92 +7,87 @@ import com.example.identity.tools.auth_sms.internal.TanGenerator
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
-import com.example.identity.contract.tool_api.MissingFields
 
 /**
- * Pure unit test for the tan-vs-state decision. [AuthSmsLookupToolHandlerTest] would cover
- * persistence/enrollment-resolution wiring - not yet added, see class doc there.
+ * Pure unit test for the tan-vs-state decision. [AuthSmsLookupToolHandlerTest] covers the
+ * persistence and the enumeration-neutral answers.
  */
 class AuthSmsLookupFlowTest : BehaviorSpec({
 
     val tanGenerator = TanGenerator("test-pepper", clock = TEST_CLOCK)
 
-    given("AwaitingEmail") {
+    given("a session still awaiting the email") {
         val state = AuthSmsLookupState.AwaitingEmail
 
         `when`("a tan is submitted before any email was ever resolved") {
+            val decision = AuthSmsLookupFlow.decideTan(state, "000000", tanGenerator)
+
             then("the state is unchanged - not a wrong-tan failure") {
-                AuthSmsLookupFlow.decideTan(state, "000000", tanGenerator) shouldBe AuthSmsLookupDecision.Unchanged(state)
+                decision shouldBe AuthSmsLookupDecision.Unchanged(state)
             }
         }
     }
 
-    given("AwaitingTan for a resolved account") {
+    given("a pending TAN for a resolved account") {
         val issued = tanGenerator.issue()
         val state = AuthSmsLookupState.AwaitingTan(accountId = AccountId(42L), issued.hash, issued.expiresAt)
 
         `when`("nothing was submitted") {
+            val decision = AuthSmsLookupFlow.decideTan(state, null, tanGenerator)
+
             then("the state is unchanged") {
-                AuthSmsLookupFlow.decideTan(state, null, tanGenerator) shouldBe AuthSmsLookupDecision.Unchanged(state)
+                decision shouldBe AuthSmsLookupDecision.Unchanged(state)
             }
         }
 
         `when`("the wrong tan was submitted") {
+            val decision = AuthSmsLookupFlow.decideTan(state, "000000", tanGenerator)
+
             then("it is rejected, naming the account for the throttle") {
-                AuthSmsLookupFlow.decideTan(state, "000000", tanGenerator) shouldBe AuthSmsLookupDecision.WrongTan(AccountId(42L))
+                decision shouldBe AuthSmsLookupDecision.WrongTan(AccountId(42L))
             }
         }
 
         `when`("the correct tan was submitted") {
+            val decision = AuthSmsLookupFlow.decideTan(state, issued.plainTan, tanGenerator)
+
             then("it completes for that account") {
-                AuthSmsLookupFlow.decideTan(state, issued.plainTan, tanGenerator) shouldBe AuthSmsLookupDecision.Complete(AccountId(42L))
+                decision shouldBe AuthSmsLookupDecision.Complete(AccountId(42L))
             }
         }
     }
 
-    given("AwaitingTan for an unresolved email (enumeration protection)") {
+    given("a pending TAN for an unresolved email (enumeration protection)") {
         val issued = tanGenerator.issue()
         val state = AuthSmsLookupState.AwaitingTan(accountId = null, issued.hash, issued.expiresAt)
 
         `when`("the tan that would have matched a real account is submitted") {
+            val decision = AuthSmsLookupFlow.decideTan(state, issued.plainTan, tanGenerator)
+
             then("it still fails - there is no account to complete for") {
-                AuthSmsLookupFlow.decideTan(state, issued.plainTan, tanGenerator) shouldBe AuthSmsLookupDecision.WrongTan(null)
+                decision shouldBe AuthSmsLookupDecision.WrongTan(null)
             }
         }
     }
 
-    given("describe()") {
-        `when`("AwaitingEmail") {
-            then("it asks for email at step auth") {
-                val (step, fields) = AuthSmsLookupState.AwaitingEmail.describe()
-                step shouldBe "auth"
-                fields shouldBe MissingFields(listOf("email"))
-            }
-        }
+    given("persisted columns without an issued tan") {
+        `when`("the state is rebuilt from them") {
+            val rebuilt = AuthSmsLookupState.of(ToolSessionId(UUID.randomUUID()), null, null, null)
 
-        `when`("AwaitingTan") {
-            then("it asks for tan at step tanInput") {
-                val issued = tanGenerator.issue()
-                val state = AuthSmsLookupState.AwaitingTan(AccountId(42L), issued.hash, issued.expiresAt)
-                state.describe() shouldBe ("tanInput" to MissingFields(listOf("tan")))
+            then("it is AwaitingEmail") {
+                rebuilt shouldBe AuthSmsLookupState.AwaitingEmail
             }
         }
     }
 
-    given("toState()") {
-        val toolSessionId = ToolSessionId(UUID.randomUUID())
+    given("persisted columns with a tan issued for a resolved account") {
+        val issued = tanGenerator.issue()
 
-        `when`("no tan was ever issued") {
-            then("it reconstructs AwaitingEmail") {
-                AuthSmsLookupState.of(toolSessionId, null, null, null) shouldBe AuthSmsLookupState.AwaitingEmail
-            }
-        }
+        `when`("the state is rebuilt from them") {
+            val rebuilt = AuthSmsLookupState.of(ToolSessionId(UUID.randomUUID()), AccountId(42L), issued.hash, issued.expiresAt)
 
-        `when`("a tan was issued for a resolved account") {
-            then("it reconstructs AwaitingTan") {
-                val issued = tanGenerator.issue()
-                AuthSmsLookupState.of(toolSessionId, AccountId(42L), issued.hash, issued.expiresAt) shouldBe
-                    AuthSmsLookupState.AwaitingTan(AccountId(42L), issued.hash, issued.expiresAt)
+            then("it is AwaitingTan for that account") {
+                rebuilt shouldBe AuthSmsLookupState.AwaitingTan(AccountId(42L), issued.hash, issued.expiresAt)
             }
         }
     }

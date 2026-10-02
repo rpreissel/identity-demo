@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,7 +53,7 @@ class NextClassificationTest {
         );
         var next = OrchestratorClient.Next.from(json);
         assertTrue(next.isTool());
-        assertTrue(next.toolId().equals("ident-fsc"));
-        assertTrue(next.toolSessionId().equals("abc-123"));
+        assertEquals("ident-fsc", next.toolId());
+        assertEquals("abc-123", next.toolSessionId());
     }
 }

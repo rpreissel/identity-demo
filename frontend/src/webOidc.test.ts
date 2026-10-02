@@ -1,13 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createWebOidc, LoginNotCompletedError, SessionEndedError } from './webOidc'
+import { createWebOidc, LoginNotCompletedError, SessionEndedError, type WebOidcConfig } from './webOidc'
 
-const { completeLoginIfRedirected } = createWebOidc({
-  baseUrl: 'https://kc.example',
-  realm: 'Demo',
-  browserClientId: 'identity-demo-web',
-  loginTheme: 'FREEMARKER',
-  loa1Login: 'ORCHESTRATOR',
-})
+function oidc(overrides: Partial<WebOidcConfig> = {}) {
+  return createWebOidc({
+    baseUrl: 'https://kc.example',
+    realm: 'Demo',
+    browserClientId: 'identity-demo-web',
+    loginTheme: 'FREEMARKER',
+    loa1Login: 'ORCHESTRATOR',
+    ...overrides,
+  })
+}
+
+const { completeLoginIfRedirected } = oidc()
 
 describe('completeLoginIfRedirected', () => {
   afterEach(() => window.history.replaceState(null, '', '/'))
@@ -45,15 +50,9 @@ describe('createWebOidc', () => {
       new Response(JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_in: 60 }), { status: 200 }),
     )
     vi.stubGlobal('fetch', fetchMock)
-    const oidc = createWebOidc({
-      baseUrl: 'https://keycloak.apps.example',
-      realm: 'Andere',
-      browserClientId: 'web-client',
-      loginTheme: 'FREEMARKER',
-      loa1Login: 'ORCHESTRATOR',
-    })
+    const client = oidc({ baseUrl: 'https://keycloak.apps.example', realm: 'Andere', browserClientId: 'web-client' })
 
-    const tokens = await oidc.refreshTokens('r0')
+    const tokens = await client.refreshTokens('r0')
 
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('https://keycloak.apps.example/realms/Andere/protocol/openid-connect/token')
@@ -65,15 +64,8 @@ describe('createWebOidc', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ error: 'invalid_grant', error_description: 'Session not active' }), { status: 400 }),
     ))
-    const oidc = createWebOidc({
-      baseUrl: 'https://kc.example',
-      realm: 'Demo',
-      browserClientId: 'identity-demo-web',
-      loginTheme: 'FREEMARKER',
-      loa1Login: 'ORCHESTRATOR',
-    })
 
-    const err = await oidc.refreshTokens('r0').catch((e: unknown) => e)
+    const err = await oidc().refreshTokens('r0').catch((e: unknown) => e)
 
     expect(err).toBeInstanceOf(SessionEndedError)
     expect((err as Error).message).not.toContain('Session not active')

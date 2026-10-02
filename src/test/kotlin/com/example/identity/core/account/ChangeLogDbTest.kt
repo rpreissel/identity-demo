@@ -34,7 +34,8 @@ class ChangeLogDbTest(
     private val jdbcTemplate: JdbcTemplate,
 ) : BehaviorSpec({
 
-    beforeEach {
+    // Runs first in every `when`: beforeEach would only precede the `then` leaves, after the action.
+    fun clearAccountsAndLog() {
         jdbcTemplate.update("DELETE FROM account.account")
         jdbcTemplate.update("DELETE FROM account.change_log")
     }
@@ -52,92 +53,133 @@ class ChangeLogDbTest(
         accountService.deleteAccount(accountId)
     }
 
-    given("an account that was identified, got a method, lost it and was deleted") {
-        then("the trail survives the deletion - names and levels only, no value, while the value tables are gone") {
+    fun yearsFromNow(years: Long): Instant = Instant.now().atZone(ZoneOffset.UTC).plusYears(years).toInstant()
+
+    given("an account that was identified, got a method and lost it") {
+        `when`("the account is deleted") {
+            clearAccountsAndLog()
             val accountId = accountService.createAccountInSetup().accountId
+
             livedThrough(accountId)
 
-            val trail = events(accountId)
-            trail.map { it.changeType.name } shouldBe listOf("IDENTIFIED", "METHOD_ADDED", "METHOD_DEACTIVATED", "ACCOUNT_DELETED")
-            trail[0].subject shouldBe "ident-fsc"
-            trail[0].acr shouldBe "loa2"
-            // Every row names its own type and version, so it explains itself without this code.
-            trail.forEach { it.details!!["type"] shouldBe it.changeType.name; it.details!!["version"] shouldBe 1 }
-            // The references are kept, the document number the tool reported is not (§ 20 PAuswG).
-            trail[0].details!!["providerTxId"] shouldBe "FSC-1"
-            trail[0].details!!.containsKey("documentNumber") shouldBe false
-            // How the method was added outlives it: the session's proofs and the channel.
-            trail[1].details!!["amr"] shouldBe listOf("email", "password")
-            trail[1].details!!["channel"] shouldBe "WEB"
-            trail[2].details!!["reason"] shouldBe "REMOVED_BY_HOLDER"
-            // No value of the account made it into the trail.
-            trail.none { it.details.toString().contains("+49") } shouldBe true
-            jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.auth_method WHERE account_id = ?", Int::class.java, accountId.value) shouldBe 0
+            then("the trail survives the deletion - names and levels only, no value, while the value tables are gone") {
+                val trail = events(accountId)
+                trail.map { it.changeType.name } shouldBe listOf("IDENTIFIED", "METHOD_ADDED", "METHOD_DEACTIVATED", "ACCOUNT_DELETED")
+                trail[0].subject shouldBe "ident-fsc"
+                trail[0].acr shouldBe "loa2"
+                // Every row names its own type and version, so it explains itself without this code.
+                trail.forEach { it.details!!["type"] shouldBe it.changeType.name; it.details!!["version"] shouldBe 1 }
+                // The references are kept, the document number the tool reported is not (§ 20 PAuswG).
+                trail[0].details!!["providerTxId"] shouldBe "FSC-1"
+                trail[0].details!!.containsKey("documentNumber") shouldBe false
+                // How the method was added outlives it: the session's proofs and the channel.
+                trail[1].details!!["amr"] shouldBe listOf("email", "password")
+                trail[1].details!!["channel"] shouldBe "WEB"
+                trail[2].details!!["reason"] shouldBe "REMOVED_BY_HOLDER"
+                // No value of the account made it into the trail.
+                trail.none { it.details.toString().contains("+49") } shouldBe true
+                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.auth_method WHERE account_id = ?", Int::class.java, accountId.value) shouldBe 0
+            }
         }
     }
 
-    given("the retention period (10 years by default)") {
-        then("keeps the trail within it and deletes it once it has passed since the deletion") {
+    given("the trail of a deleted account and the retention period (10 years by default)") {
+        `when`("the retention purge runs nine years after the deletion") {
+            clearAccountsAndLog()
             val accountId = accountService.createAccountInSetup().accountId
             livedThrough(accountId)
-            val nineYears = Instant.now().atZone(ZoneOffset.UTC).plusYears(9).toInstant()
-            val elevenYears = Instant.now().atZone(ZoneOffset.UTC).plusYears(11).toInstant()
 
-            changeLogRetention.purge(nineYears) shouldBe 0
-            events(accountId).size shouldBe 4
-            changeLogRetention.purge(elevenYears) shouldBe 4
-            events(accountId).size shouldBe 0
+            val purged = changeLogRetention.purge(yearsFromNow(9))
+
+            then("the trail is kept within the period") {
+                purged shouldBe 0
+                events(accountId).size shouldBe 4
+            }
         }
 
-        then("never touches the trail of an account that still exists") {
+        `when`("the retention purge runs eleven years after the deletion") {
+            clearAccountsAndLog()
+            val accountId = accountService.createAccountInSetup().accountId
+            livedThrough(accountId)
+
+            val purged = changeLogRetention.purge(yearsFromNow(11))
+
+            then("the trail is deleted once the period has passed") {
+                purged shouldBe 4
+                events(accountId).size shouldBe 0
+            }
+        }
+    }
+
+    given("the trail of an account that still exists") {
+        `when`("the retention purge runs fifty years later") {
+            clearAccountsAndLog()
             val accountId = accountService.createAccountInSetup().accountId
             accountService.addIdentification(accountId, "ident-fsc", "loa2", null)
-            changeLogRetention.purge(Instant.now().atZone(ZoneOffset.UTC).plusYears(50).toInstant()) shouldBe 0
-            events(accountId).size shouldBe 1
+
+            val purged = changeLogRetention.purge(yearsFromNow(50))
+
+            then("the trail is never touched") {
+                purged shouldBe 0
+                events(accountId).size shouldBe 1
+            }
         }
     }
 
-    given("a person identified once, whose account was deleted since") {
-        fun identifiedAndDeleted(source: ClaimSource, personId: PartnerNumber?): AccountId {
-            val accountId = accountService.createAccountInSetup().accountId
-            accountService.recordClaims(
-                accountId,
-                listOfNotNull(
-                    Claim(AttributeType.FAMILY_NAME, "Müller", source, AcrLevel.LOA2),
-                    Claim(AttributeType.GIVEN_NAMES, "Max", source, AcrLevel.LOA2),
-                    Claim(AttributeType.BIRTH_DATE, "1985-06-15", source, AcrLevel.LOA2),
-                    personId?.let { Claim(AttributeType.PERSON_ID, it.value, ClaimSource.PERSON_DIRECTORY, AcrLevel.LOA2) },
-                ),
-                provenAcr = AcrLevel.LOA2
-            )
-            accountService.addIdentification(accountId, "ident-eid", "loa3", role = "IDENTIFICATION", report = mapOf("provider" to "eid-mock-service"))
-            accountService.deleteAccount(accountId)
-            return accountId
-        }
+    fun identifiedAndDeleted(source: ClaimSource, personId: PartnerNumber?): AccountId {
+        val accountId = accountService.createAccountInSetup().accountId
+        accountService.recordClaims(
+            accountId,
+            listOfNotNull(
+                Claim(AttributeType.FAMILY_NAME, "Müller", source, AcrLevel.LOA2),
+                Claim(AttributeType.GIVEN_NAMES, "Max", source, AcrLevel.LOA2),
+                Claim(AttributeType.BIRTH_DATE, "1985-06-15", source, AcrLevel.LOA2),
+                personId?.let { Claim(AttributeType.PERSON_ID, it.value, ClaimSource.PERSON_DIRECTORY, AcrLevel.LOA2) },
+            ),
+            provenAcr = AcrLevel.LOA2
+        )
+        accountService.addIdentification(accountId, "ident-eid", "loa3", role = "IDENTIFICATION", report = mapOf("provider" to "eid-mock-service"))
+        accountService.deleteAccount(accountId)
+        return accountId
+    }
 
-        then("name, first name and date of birth alone find it - in any spelling a passport would agree with, without a person id") {
+    given("a person identified once by a tool, whose account was deleted since") {
+        `when`("the trail is searched by name, first name and date of birth") {
+            clearAccountsAndLog()
             val accountId = identifiedAndDeleted(ClaimSource("ident-eid"), personId = null)
 
-            val found = changeLogSearch.byPerson(" mueller ", "MAX", LocalDate.parse("1985-06-15"))
-            found.map { it.accountId }.distinct() shouldBe listOf(accountId)
-            found.map { it.changeType } shouldBe listOf("IDENTIFIED", "ACCOUNT_DELETED")
-            changeLogSearch.byPerson("Müller", "Max", LocalDate.parse("1985-06-16")).shouldBeEmpty()
-            // The key is a keyed hash - no name or date is readable in the row itself.
-            jdbcTemplate.queryForObject("SELECT lookup_key FROM account.change_log WHERE account_id = ? AND change_type = 'IDENTIFIED'",
-                String::class.java, accountId.value)!!.length shouldBe 64
-            // ...and names the secret it was computed with, the rotation path.
-            jdbcTemplate.queryForObject("SELECT lookup_key_id FROM account.change_log WHERE account_id = ? AND change_type = 'IDENTIFIED'",
-                String::class.java, accountId.value) shouldBe "1"
-        }
+            val found = changeLogSearch.byPerson("Müller", "Max", LocalDate.parse("1985-06-15"))
 
-        then("the register's person id finds it too, when there was one") {
+            then("these three alone find it, without a person id") {
+                found.map { it.accountId }.distinct() shouldBe listOf(accountId)
+                found.map { it.changeType } shouldBe listOf("IDENTIFIED", "ACCOUNT_DELETED")
+            }
+        }
+    }
+
+    given("a person the register knew by person id, whose account was deleted since") {
+        `when`("the trail is searched by that person id") {
+            clearAccountsAndLog()
             val accountId = identifiedAndDeleted(ClaimSource.PERSON_DIRECTORY, personId = PartnerNumber("P000000042"))
-            changeLogSearch.byPersonId(PartnerNumber("P000000042")).map { it.accountId }.distinct() shouldBe listOf(accountId)
-        }
 
-        then("self-reported names never make a key - otherwise anyone could plant hits under someone else's name") {
+            val found = changeLogSearch.byPersonId(PartnerNumber("P000000042"))
+
+            then("the register's person id finds it too") {
+                found.map { it.accountId }.distinct() shouldBe listOf(accountId)
+            }
+        }
+    }
+
+    given("a person who only reported their names themselves, whose account was deleted since") {
+        `when`("the trail is searched by name, first name and date of birth") {
+            clearAccountsAndLog()
             identifiedAndDeleted(ClaimSource.SELF_REPORTED, personId = null)
-            changeLogSearch.byPerson("Müller", "Max", LocalDate.parse("1985-06-15")).shouldBeEmpty()
+
+            val found = changeLogSearch.byPerson("Müller", "Max", LocalDate.parse("1985-06-15"))
+
+            then("nothing is found - otherwise anyone could plant hits under someone else's name") {
+                found.shouldBeEmpty()
+            }
         }
     }
 })

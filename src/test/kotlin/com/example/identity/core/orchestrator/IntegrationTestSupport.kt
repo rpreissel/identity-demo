@@ -75,14 +75,6 @@ abstract class IntegrationTestSupport : BehaviorSpec() {
 
     protected var currentBindingKeyRef: String = ""
 
-    /**
-     * When the database is wiped. `false`, the older style: before every `then`, so a `then` may act
-     * itself. `true`: before every `when` (and before a `then` straight under `given`), so the
-     * `when` acts once and its `then`s only check (AGENTS.md, Testregeln). [beforeScenario] runs at
-     * the same points.
-     */
-    protected open val resetPerWhen: Boolean = false
-
     private val scenarioSetups = mutableListOf<() -> Unit>()
 
     /** Runs [setup] wherever the database is wiped, e.g. to stub a mock the `when` already needs. */
@@ -91,15 +83,10 @@ abstract class IntegrationTestSupport : BehaviorSpec() {
     }
 
     init {
-        // Registered first, so a subclass's own beforeEach still runs after the wipe.
-        beforeEach {
-            if (!resetPerWhen) {
-                resetDatabase()
-                scenarioSetups.forEach { it() }
-            }
-        }
+        // The database is wiped before every `when` (and before a `then` straight under `given`), so
+        // the `when` acts once and its `then`s only check (AGENTS.md, Testregeln).
         beforeAny { testCase ->
-            if (resetPerWhen && startsScenario(testCase)) {
+            if (startsScenario(testCase)) {
                 resetDatabase()
                 scenarioSetups.forEach { it() }
             }

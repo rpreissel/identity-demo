@@ -1,23 +1,25 @@
 package com.example.identity.core.orchestrator.kc
 
-import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.junit.jupiter.api.Test
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import org.springframework.boot.SpringApplication
 import org.springframework.core.env.MapPropertySource
 import org.springframework.core.io.ClassPathResource
 import org.springframework.mock.env.MockEnvironment
 
 /**
- * [KeycloakSetupEnvironment] macht aus dem gewaehlten Parametersatz die Laufzeitwerte des
- * Orchestrators. Faellt sie aus, scheitert der Start weit weg von der Ursache mit "Could not
- * resolve placeholder". Die Tests pruefen die Ableitung und die Registrierung.
+ * [KeycloakSetupEnvironment] turns the chosen parameter set into the orchestrator's runtime values.
+ * Without it the start fails far from the cause with "Could not resolve placeholder". The tests check
+ * the derivation and the registration.
  */
-class KeycloakSetupEnvironmentTest {
+class KeycloakSetupEnvironmentTest : BehaviorSpec({
 
-    private fun environmentWith(variant: String): MockEnvironment {
+    fun environmentWith(variant: String, profile: String = "keycloak"): MockEnvironment {
         val env = MockEnvironment()
-        env.setActiveProfiles("keycloak")
+        env.setActiveProfiles(profile)
         env.propertySources.addFirst(
             MapPropertySource(
                 "test-setup",
@@ -47,70 +49,84 @@ class KeycloakSetupEnvironmentTest {
         return env
     }
 
-    @Test
-    fun `leitet Sync-, Peer-Auth- und OIDC-Werte aus der gewaehlten Variante ab`() {
+    given("the keycloak profile with the compose variant") {
         val env = environmentWith("compose")
 
-        KeycloakSetupEnvironment().postProcessEnvironment(env, SpringApplication())
+        `when`("the environment is post-processed") {
+            KeycloakSetupEnvironment().postProcessEnvironment(env, SpringApplication())
 
-        // Die Variante gewinnt ueber die Basis, ueberall wo der Wert einfliesst.
-        assertThat(env.getProperty("keycloak-sync.base-url")).isEqualTo("https://keycloak:8443")
-        assertThat(env.getProperty("keycloak-migrate.base-url")).isEqualTo("https://keycloak:8443")
-        assertThat(env.getProperty("keycloak-migrate.admin-username")).isNull()
-        // Trust-all nur, weil die Variante es ausdruecklich einschaltet.
-        assertThat(env.getProperty("keycloak-tls.trust-self-signed")).isEqualTo("true")
-        assertThat(env.getProperty("keycloak-sync.realm")).isEqualTo("Demo")
-        assertThat(env.getProperty("keycloak-sync.admin-client-id")).isEqualTo("orchestrator-admin")
-        assertThat(env.getProperty("keycloak-sync.app-client-id")).isEqualTo("orchestrator-app-token")
-        // Der Browser bekommt die oeffentliche Adresse, nicht die der Variante fuer Server-zu-Server.
-        assertThat(env.getProperty("keycloak-sync.public-base-url")).isEqualTo("https://localhost:8543")
-        assertThat(env.getProperty("keycloak-web.browser-client-id")).isEqualTo("identity-demo-web")
-        assertThat(env.getProperty("kc.peer-auth.jwks-uri"))
-            .isEqualTo("https://keycloak:8443/realms/Demo/orchestrator-jwks/.well-known/jwks.json")
-        assertThat(env.getProperty("kc.peer-auth.issuer")).isEqualTo("identity-demo-keycloak")
-        assertThat(env.getProperty("kc.peer-auth.audience")).isEqualTo("identity-demo-orchestrator")
+            then("the variant wins over the base wherever the value flows in") {
+                env.getProperty("keycloak-sync.base-url") shouldBe "https://keycloak:8443"
+                env.getProperty("keycloak-migrate.base-url") shouldBe "https://keycloak:8443"
+                env.getProperty("kc.peer-auth.jwks-uri") shouldBe "https://keycloak:8443/realms/Demo/orchestrator-jwks/.well-known/jwks.json"
+                env.getProperty("keycloak-migrate.admin-username").shouldBeNull()
+            }
+
+            then("the self-signed certificate is trusted, because the variant switches it on explicitly") {
+                env.getProperty("keycloak-tls.trust-self-signed") shouldBe "true"
+            }
+
+            then("realm, clients and peer-auth values come from the base") {
+                env.getProperty("keycloak-sync.realm") shouldBe "Demo"
+                env.getProperty("keycloak-sync.admin-client-id") shouldBe "orchestrator-admin"
+                env.getProperty("keycloak-sync.app-client-id") shouldBe "orchestrator-app-token"
+                env.getProperty("keycloak-web.browser-client-id") shouldBe "identity-demo-web"
+                env.getProperty("kc.peer-auth.issuer") shouldBe "identity-demo-keycloak"
+                env.getProperty("kc.peer-auth.audience") shouldBe "identity-demo-orchestrator"
+            }
+
+            then("the browser gets the public address, not the variant's server-to-server one") {
+                env.getProperty("keycloak-sync.public-base-url") shouldBe "https://localhost:8543"
+            }
+        }
     }
 
-    @Test
-    fun `haelt sich heraus, solange das keycloak-Profil nicht aktiv ist`() {
-        val env = environmentWith("compose")
-        env.setActiveProfiles("default")
-
-        KeycloakSetupEnvironment().postProcessEnvironment(env, SpringApplication())
-
-        // Das Default-Profil bringt eigene kc.*-Werte mit (leerer Aussteller), die bleiben unberuehrt.
-        assertThat(env.getProperty("keycloak-sync.base-url")).isNull()
-    }
-
-    @Test
-    fun `nennt eine unbekannte Variante beim Namen, statt still nichts zu tun`() {
-        val env = environmentWith("gibtsnicht")
-
-        assertThatThrownBy { KeycloakSetupEnvironment().postProcessEnvironment(env, SpringApplication()) }
-            .hasMessageContaining("gibtsnicht")
-            .hasMessageContaining("compose")
-    }
-
-    @Test
-    fun `vertraut dem Keycloak-Zertifikat nicht, solange die Variante es nicht einschaltet`() {
+    given("the keycloak profile with a variant that does not switch on trust") {
         val env = environmentWith("remote")
 
-        KeycloakSetupEnvironment().postProcessEnvironment(env, SpringApplication())
+        `when`("the environment is post-processed") {
+            KeycloakSetupEnvironment().postProcessEnvironment(env, SpringApplication())
 
-        assertThat(env.getProperty("keycloak-tls.trust-self-signed")).isEqualTo("false")
+            then("Keycloak's certificate is not trusted") {
+                env.getProperty("keycloak-tls.trust-self-signed") shouldBe "false"
+            }
+        }
     }
 
-    /**
-     * Ohne diesen Eintrag laedt Spring den Post-Processor nicht. `.imports`-Dateien helfen hier
-     * nicht, sie gelten nur fuer Auto-Konfigurationen.
-     */
-    @Test
-    fun `ist in spring-factories registriert`() {
-        val registration = ClassPathResource("META-INF/spring.factories")
-            .inputStream.bufferedReader().readText()
+    given("the default profile instead of the keycloak profile") {
+        val env = environmentWith("compose", profile = "default")
 
-        assertThat(registration)
-            .contains("org.springframework.boot.EnvironmentPostProcessor")
-            .contains(KeycloakSetupEnvironment::class.java.name)
+        `when`("the environment is post-processed") {
+            KeycloakSetupEnvironment().postProcessEnvironment(env, SpringApplication())
+
+            then("it stays out - the default profile's own kc.* values (empty issuer) are left alone") {
+                env.getProperty("keycloak-sync.base-url").shouldBeNull()
+            }
+        }
     }
-}
+
+    given("the keycloak profile with an unknown variant") {
+        val env = environmentWith("doesnotexist")
+
+        `when`("the environment is post-processed") {
+            val result = runCatching { KeycloakSetupEnvironment().postProcessEnvironment(env, SpringApplication()) }
+
+            then("it names the unknown variant and the known ones, instead of quietly doing nothing") {
+                val failure = shouldThrow<Exception> { result.getOrThrow() }
+                failure.message shouldContain "doesnotexist"
+                failure.message shouldContain "compose"
+            }
+        }
+    }
+
+    // Without this entry Spring does not load the post-processor. `.imports` files do not help here,
+    // they apply only to auto-configurations.
+    given("META-INF/spring.factories") {
+        val registration = ClassPathResource("META-INF/spring.factories").inputStream.bufferedReader().readText()
+
+        then("it registers KeycloakSetupEnvironment as an EnvironmentPostProcessor") {
+            registration shouldContain "org.springframework.boot.EnvironmentPostProcessor"
+            registration shouldContain KeycloakSetupEnvironment::class.java.name
+        }
+    }
+})

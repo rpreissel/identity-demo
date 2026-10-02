@@ -20,13 +20,18 @@ describe('DemoArea intro', () => {
     localStorage.clear()
   })
 
-  it('is open on the first visit only', () => {
-    const first = renderArea()
-    expect(introOpen(first.container)).toBe(true)
-    first.unmount()
+  it('is open on the first visit', () => {
+    const { container } = renderArea()
 
-    const second = renderArea()
-    expect(introOpen(second.container)).toBe(false)
+    expect(introOpen(container)).toBe(true)
+  })
+
+  it('is closed on the next visit', () => {
+    renderArea().unmount()
+
+    const { container } = renderArea()
+
+    expect(introOpen(container)).toBe(false)
   })
 
   it('stays closed and does not break when the browser refuses storage', () => {
@@ -36,7 +41,9 @@ describe('DemoArea intro', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('blocked')
     })
+
     const { container } = renderArea()
+
     expect(introOpen(container)).toBe(false)
   })
 })

@@ -4,6 +4,7 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.orchestrator.domain.policy.fromNow
 import com.example.identity.TEST_CLOCK
+import com.example.identity.TEST_NOW
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AuthMethodView
@@ -40,7 +41,9 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.ClaimTrust
-import java.time.Instant
+import com.example.identity.contract.tool_api.claims.Claim
+import com.example.identity.contract.tool_api.claims.ClaimSource
+import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
  * Shared fixtures for [IntentStrategy] unit tests, built on the real catalog (every module's
@@ -75,7 +78,20 @@ object StrategyTestFixtures {
         "ident-nect", "enroll-device", "auth-device", "enroll-kobil", "auth-kobil", "auth-email", "auth-email-lookup"
     ).map(::ToolId).toSet()
 
+    /** What an sms-only account is offered on the App channel to add a factor kind, in catalog order. */
+    val APP_SECOND_FACTOR_KINDS = listOf(ToolId("enroll-password"), ToolId("enroll-device"), ToolId("enroll-kobil"))
+
     const val BINDING_KEY = "test-binding-key"
+
+    /** What an identification tool reports for the person behind [account]'s default personId. */
+    fun identifiedOutcome() = ToolOutcome.Completed.Identified(
+        claims = listOf(Claim(AttributeType.PERSON_ID, "P000000001", ClaimSource.PERSON_DIRECTORY))
+    )
+
+    /** What `confirm-email` reports: the address, no credential. */
+    fun emailAttestation() = ToolOutcome.Completed.Attested(
+        claims = listOf(Claim(AttributeType.EMAIL, "max@example.com", ClaimSource("confirm-email")))
+    )
 
     /**
      * [attestedIdentity] mirrors what an attestation (`ident-eid`) leaves on an account: the claims
@@ -91,7 +107,7 @@ object StrategyTestFixtures {
         accountId = accountId,
         personId = personId,
         authenticationMethods = methods.toList(),
-        emailConfirmedAt = if (emailConfirmed) Instant.now() else null,
+        emailConfirmedAt = if (emailConfirmed) TEST_NOW else null,
         establishedClaims = buildMap {
             // A confirmed address is an EMAIL claim at PROVEN; the anchor is only its projection.
             if (emailConfirmed) put(AttributeType.EMAIL, ClaimTrust.PROVEN)

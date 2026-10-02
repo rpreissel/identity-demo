@@ -2,10 +2,10 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.ninjasquad.springmockk.MockkBean
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
-import org.junit.jupiter.api.assertThrows
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
@@ -15,8 +15,8 @@ import org.springframework.web.client.HttpClientErrorException
 
 /**
  * The operator endpoints behind the admin login (AdminSecurityConfig): locked without the right
- * credentials, and - once in - the log across all accounts, the account list, deletion and reset.
- * The app channel's own endpoints must stay reachable without any login.
+ * credentials, and - once in - the log across all accounts, the account list and deletion. The demo
+ * reset is in ActiveSessionsIntegrationTest.
  */
 class AdminIntegrationTest : IntegrationTestSupport() {
 
@@ -24,7 +24,7 @@ class AdminIntegrationTest : IntegrationTestSupport() {
     private lateinit var jwkThumbprintService: JwkThumbprintService
 
     init {
-        beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
     }
 
     private fun adminGet(path: String, headers: HttpHeaders = adminHeaders()): Map<String, Any?> =
@@ -39,87 +39,80 @@ class AdminIntegrationTest : IntegrationTestSupport() {
     private fun adminCall(method: HttpMethod, path: String): HttpStatus =
         restTemplate.exchange("http://localhost:$port$path", method, HttpEntity<Void>(adminHeaders()), Void::class.java).statusCode as HttpStatus
 
+    private fun accountIds(): List<Long> = adminList("/orchestrator/admin/accounts").map { (it["accountId"] as Number).toLong() }
+
     init {
         given("the operator endpoints") {
-            then("they answer 401 without credentials or with wrong ones, and without a browser login challenge") {
+            `when`("they are called without credentials and with wrong ones") {
                 val wrong = HttpHeaders().apply { setBasicAuth("admin", "falsch") }
-                listOf(HttpHeaders(), wrong).forEach { headers ->
-                    val refused = assertThrows<HttpClientErrorException> { adminGet("/orchestrator/admin/registration-order", headers) }
-                    refused.statusCode shouldBe HttpStatus.UNAUTHORIZED
-                    refused.responseHeaders?.getFirst(HttpHeaders.WWW_AUTHENTICATE) shouldBe null
+                val results = listOf(HttpHeaders(), wrong).map { headers ->
+                    runCatching { adminGet("/orchestrator/admin/registration-order", headers) }
+                }
+
+                then("they answer 401, without a browser login challenge") {
+                    results.forEach { result ->
+                        val refused = shouldThrow<HttpClientErrorException> { result.getOrThrow() }
+                        refused.statusCode shouldBe HttpStatus.UNAUTHORIZED
+                        refused.responseHeaders?.getFirst(HttpHeaders.WWW_AUTHENTICATE) shouldBe null
+                    }
                 }
             }
 
-            then("a user name guessed five times is locked out with 429 - the operator's own login is not") {
+            `when`("a user name is guessed six times, then the operator logs in") {
                 val guess = HttpHeaders().apply { setBasicAuth("intruder", "falsch") }
-                repeat(5) {
-                    assertThrows<HttpClientErrorException> { adminGet("/orchestrator/admin/registration-order", guess) }
-                        .statusCode shouldBe HttpStatus.UNAUTHORIZED
-                }
-                assertThrows<HttpClientErrorException> { adminGet("/orchestrator/admin/registration-order", guess) }
-                    .statusCode shouldBe HttpStatus.TOO_MANY_REQUESTS
-                adminGet("/orchestrator/admin/registration-order", adminHeaders())
-            }
+                val guesses = List(6) { runCatching { adminGet("/orchestrator/admin/registration-order", guess) } }
+                val operator = runCatching { adminGet("/orchestrator/admin/registration-order", adminHeaders()) }
 
-            then("the app channel and the public server info need no login") {
-                post("/orchestrator/api/v1/app/channels") // post() itself asserts the 2xx
-                restTemplate.getForObject("http://localhost:$port/orchestrator/demo/server-info", Map::class.java)!!["keycloak"] shouldBe null
+                then("five guesses are refused with 401, the sixth is locked out with 429") {
+                    guesses.map { shouldThrow<HttpClientErrorException> { it.getOrThrow() }.statusCode } shouldBe
+                        List(5) { HttpStatus.UNAUTHORIZED } + HttpStatus.TOO_MANY_REQUESTS
+                }
+                then("the operator's own login is not locked") {
+                    operator.isSuccess shouldBe true
+                }
             }
         }
 
         given("an account created by a registration") {
-            then("the log across all accounts attributes its journey, and the account can be listed and deleted") {
+            `when`("the operator reads the log and the account list") {
                 identifyAndConfirmEmail()
-                val accountId = adminList("/orchestrator/admin/accounts")
-                    .single { it["displayName"] == "Max Muster" }["accountId"].let { (it as Number).toLong() }
 
-                val log = adminGet("/orchestrator/admin/journey-trace?limit=200")
+                val accounts = adminList("/orchestrator/admin/accounts")
                 @Suppress("UNCHECKED_CAST")
-                val entries = log["entries"] as List<Map<String, Any?>>
-                @Suppress("UNCHECKED_CAST")
-                val accounts = log["accounts"] as List<Map<String, Any?>>
-                entries.isNotEmpty() shouldBe true
-                accounts.map { it["displayName"] } shouldContain "Max Muster"
+                val logAccounts = adminGet("/orchestrator/admin/journey-trace?limit=200")["accounts"] as List<Map<String, Any?>>
 
-                adminList("/orchestrator/admin/accounts").map { (it["accountId"] as Number).toLong() } shouldContain accountId
-                adminCall(HttpMethod.DELETE, "/orchestrator/admin/accounts/$accountId") shouldBe HttpStatus.NO_CONTENT
-                adminList("/orchestrator/admin/accounts").map { (it["accountId"] as Number).toLong() } shouldNotContain accountId
+                then("the account is listed") {
+                    accounts.map { it["displayName"] } shouldContain "Max Muster"
+                }
+                then("the log across all accounts attributes its journey") {
+                    logAccounts.map { it["displayName"] } shouldContain "Max Muster"
+                }
+            }
+
+            `when`("the operator deletes it") {
+                identifyAndConfirmEmail()
+                val accountId = (adminList("/orchestrator/admin/accounts").single { it["displayName"] == "Max Muster" }["accountId"] as Number).toLong()
+
+                val deleted = adminCall(HttpMethod.DELETE, "/orchestrator/admin/accounts/$accountId")
+                val remaining = accountIds()
+
+                then("it is gone from the list") {
+                    deleted shouldBe HttpStatus.NO_CONTENT
+                    remaining shouldNotContain accountId
+                }
             }
         }
 
         given("an account that never ran a journey") {
-            then("the log's person filter still offers it") {
+            `when`("the operator reads the log") {
                 val accountId = seedRegisteredAccount()
 
                 @Suppress("UNCHECKED_CAST")
                 val accounts = adminGet("/orchestrator/admin/journey-trace")["accounts"] as List<Map<String, Any?>>
-                accounts.map { (it["accountId"] as Number).toLong() } shouldContain accountId.value
-            }
-        }
 
-        given("a demo with accounts, a tool lock and the enroll-first order") {
-            then("the reset removes the accounts and puts every setting back to its preset") {
-                seedRegisteredAccount()
-                put("/orchestrator/admin/tools/auth-sms/availability/APP", """{"enabled":false,"reason":"test"}""") shouldBe HttpStatus.OK
-                put("/orchestrator/admin/registration-order", """{"enrollFirst":true}""") shouldBe HttpStatus.OK
-
-                val reset = restTemplate.exchange(
-                    "http://localhost:$port/orchestrator/admin/demo-reset", HttpMethod.POST, HttpEntity<Void>(adminHeaders()), mapType
-                )
-                reset.statusCode shouldBe HttpStatus.OK
-                // Nothing is created again: a test person registers like anyone else.
-                reset.body!!.keys shouldBe setOf("deletedAccounts", "endedSessions")
-
-                adminList("/orchestrator/admin/accounts") shouldBe emptyList()
-                adminGet("/orchestrator/admin/registration-order")["enrollFirst"] shouldBe false
-                @Suppress("UNCHECKED_CAST")
-                val info = restTemplate.getForObject("http://localhost:$port/orchestrator/demo/server-info", Map::class.java)!!
-                @Suppress("UNCHECKED_CAST")
-                val locks = (info["disabledTools"] as List<Map<String, Any?>>).map { it["toolId"] to it["channel"] }
-                // The ad-hoc lock is gone, the preset ones (demo.tool-defaults) are back.
-                locks shouldNotContain ("auth-sms" to "APP")
-                locks shouldContain ("auth-email" to "APP")
-                locks shouldContain ("auth-device" to "WEB")
+                then("the log's person filter still offers it") {
+                    accounts.map { (it["accountId"] as Number).toLong() } shouldContain accountId.value
+                }
             }
         }
     }

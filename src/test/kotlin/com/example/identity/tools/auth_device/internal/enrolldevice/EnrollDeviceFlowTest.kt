@@ -10,20 +10,20 @@ class EnrollDeviceFlowTest : BehaviorSpec({
     given("an already-verified device proof") {
         val key = DevicePublicKey(kty = "EC", crv = "P-256", x = "x", y = "y", thumbprint = "thumb-a")
 
-        then("it enrolls, carrying the input through unchanged") {
-            EnrollDeviceFlow.decide(EnrollDeviceInput(key, UserVerification.PIN, "channel-key", "My Phone")) shouldBe
-                EnrollDeviceDecision.Enroll(key, UserVerification.PIN, "channel-key", "My Phone")
+        `when`("it arrives over a channel with another DPoP key") {
+            val decision = EnrollDeviceFlow.decide(EnrollDeviceInput(key, UserVerification.PIN, "channel-key", "My Phone"))
+
+            then("it enrolls, carrying the input through unchanged") {
+                decision shouldBe EnrollDeviceDecision.Enroll(key, UserVerification.PIN, "channel-key", "My Phone")
+            }
         }
 
-        then("it refuses a device key that is the channel's own DPoP key") {
-            EnrollDeviceFlow.decide(EnrollDeviceInput(key, UserVerification.PIN, key.thumbprint, "My Phone")) shouldBe
-                EnrollDeviceDecision.SameKeyAsChannel
-        }
-    }
+        `when`("it arrives over a channel whose DPoP key is the device key") {
+            val decision = EnrollDeviceFlow.decide(EnrollDeviceInput(key, UserVerification.PIN, key.thumbprint, "My Phone"))
 
-    given("describe()") {
-        then("it names step enroll with no stepData") {
-            EnrollDeviceState.describe() shouldBe ("enroll" to null)
+            then("it refuses the device key") {
+                decision shouldBe EnrollDeviceDecision.SameKeyAsChannel
+            }
         }
     }
 })

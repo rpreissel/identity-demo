@@ -5,67 +5,49 @@ import com.example.identity.simulation.kobil.KobilRisk
 import com.example.identity.contract.tool_api.device.UserVerification
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 
-/** The redemption decision, in isolation - no Spring, no repositories, no provider. */
+/**
+ * The precedence of the redemption decision, in isolation - no Spring, no repositories, no provider.
+ * Each single outcome is covered through the handler by [AuthKobilToolHandlerTest].
+ */
 class AuthKobilFlowTest : BehaviorSpec({
 
     val enrolled = "dev-enrolled"
     val blocking = setOf(KobilRisk.ROOTED, KobilRisk.APP_TAMPERED)
 
-    given("no live PIN release") {
-        then("that is the answer, whatever the OTP says - an unlock was never presented") {
-            AuthKobilFlow.decide(
-                verification = KobilOtpVerification(enrolled, emptySet()),
-                enrolledDeviceId = enrolled,
-                release = null,
-                blockingRisks = blocking,
-            ) shouldBe AuthKobilDecision.NotReleased
+    given("no live PIN release, and a clean assertion from the enrolled device") {
+        val verification = KobilOtpVerification(enrolled, emptySet())
+
+        `when`("the flow decides") {
+            val decision = AuthKobilFlow.decide(verification, enrolled, release = null, blockingRisks = blocking)
+
+            then("it is not released, whatever the OTP says - an unlock was never presented") {
+                decision shouldBe AuthKobilDecision.NotReleased
+            }
         }
     }
 
-    given("a live release") {
-        then("nothing back from the provider means the OTP is unknown or already spent") {
-            AuthKobilFlow.decide(null, enrolled, UserVerification.BIOMETRIC, blocking) shouldBe
-                AuthKobilDecision.OtpInvalid
-        }
+    given("a live release, and an assertion from another device that also reports a blocking risk") {
+        val verification = KobilOtpVerification("dev-other", setOf(KobilRisk.ROOTED))
 
-        then("an assertion from another device is refused before any risk is even considered") {
-            AuthKobilFlow.decide(
-                KobilOtpVerification("dev-other", setOf(KobilRisk.ROOTED)),
-                enrolled,
-                UserVerification.BIOMETRIC,
-                blocking,
-            ) shouldBe AuthKobilDecision.WrongDevice
-        }
+        `when`("the flow decides") {
+            val decision = AuthKobilFlow.decide(verification, enrolled, UserVerification.BIOMETRIC, blocking)
 
-        then("a blocking signal is refused, and the decision names which ones blocked") {
-            val decision = AuthKobilFlow.decide(
-                KobilOtpVerification(enrolled, setOf(KobilRisk.ROOTED, KobilRisk.OS_OUTDATED)),
-                enrolled,
-                UserVerification.BIOMETRIC,
-                blocking,
-            )
-            decision.shouldBeInstanceOf<AuthKobilDecision.RiskRejected>()
-            decision.risks shouldBe setOf(KobilRisk.ROOTED)
+            then("the device is refused before any risk is even considered") {
+                decision shouldBe AuthKobilDecision.WrongDevice
+            }
         }
+    }
 
-        then("a signal outside the blocking set does not stand in the way") {
-            AuthKobilFlow.decide(
-                KobilOtpVerification(enrolled, setOf(KobilRisk.OS_OUTDATED)),
-                enrolled,
-                UserVerification.PIN,
-                blocking,
-            ) shouldBe AuthKobilDecision.Complete(UserVerification.PIN)
-        }
+    given("a live release, and the enrolled device reporting a blocking and a harmless signal") {
+        val verification = KobilOtpVerification(enrolled, setOf(KobilRisk.ROOTED, KobilRisk.OS_OUTDATED))
 
-        then("the access means that unlocked the PIN is what the completed run carries forward") {
-            AuthKobilFlow.decide(
-                KobilOtpVerification(enrolled, emptySet()),
-                enrolled,
-                UserVerification.BIOMETRIC,
-                blocking,
-            ) shouldBe AuthKobilDecision.Complete(UserVerification.BIOMETRIC)
+        `when`("the flow decides") {
+            val decision = AuthKobilFlow.decide(verification, enrolled, UserVerification.BIOMETRIC, blocking)
+
+            then("the blocking one outweighs the harmless one, and only it is named") {
+                decision shouldBe AuthKobilDecision.RiskRejected(setOf(KobilRisk.ROOTED))
+            }
         }
     }
 })

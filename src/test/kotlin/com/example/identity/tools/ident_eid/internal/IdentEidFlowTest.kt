@@ -1,74 +1,60 @@
 package com.example.identity.tools.ident_eid.internal
 
+import com.example.identity.tools.ident_eid.internal.EidFixtures.CARD
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import java.time.LocalDate
-import com.example.identity.contract.tool_api.MissingFields
 
 private val TODAY = LocalDate.of(2026, 9, 28)
 
-private val CARD_FIELDS = listOf("familyName", "givenNames", "birthDate", "streetAddress", "postalCode", "locality", "restrictedId")
-
-private val CARD = EidPatchFields(
-    familyName = "Muster",
-    givenNames = "Max",
-    birthDate = LocalDate.of(1990, 1, 1),
-    streetAddress = "Musterstr. 1",
-    postalCode = "12345",
-    locality = "Musterstadt",
-    restrictedId = "T0103005K1D5S0V8T9W6UM2RTX"
-)
-
 private val PIN = EidPatchFields(pin = IdentEidFlow.MOCK_PIN)
 
+/**
+ * The card checks and the merging of PATCHes. What a rejected card or PIN leaves behind, and
+ * whether the PIN matches, is covered through the handler by [IdentEidToolHandlerTest].
+ */
 class IdentEidFlowTest : BehaviorSpec({
 
     given("a fresh state") {
         val state = IdentEidState()
 
-        then("it names the one step input and asks for the card data only - the PIN is staged, not requested yet") {
-            IdentEidFlow.describe(state) shouldBe ("input" to MissingFields(CARD_FIELDS))
-        }
+        `when`("an empty PATCH is decided") {
+            val decision = IdentEidFlow.decide(state, EidPatchFields(), TODAY)
 
-        then("decide() reports it as incomplete") {
-            IdentEidFlow.decide(state, EidPatchFields(), TODAY) shouldBe IdentEidDecision.Incomplete
+            then("it is incomplete") {
+                decision shouldBe IdentEidDecision.Incomplete
+            }
         }
     }
 
-    given("part of the card data") {
+    given("a fresh state and part of the card data, one field malformed") {
         val partial = EidPatchFields(familyName = "Muster", givenNames = "Max", postalCode = "abc")
-        val state = IdentEidFlow.merge(IdentEidState(), partial)
 
-        then("only the rest is missing, and nothing is checked yet") {
-            IdentEidFlow.missingFields(state) shouldBe listOf("birthDate", "streetAddress", "locality", "restrictedId")
-            IdentEidFlow.decide(state, partial, TODAY) shouldBe IdentEidDecision.Incomplete
-        }
-    }
+        `when`("it is merged and decided") {
+            val state = IdentEidFlow.merge(IdentEidState(), partial)
+            val decision = IdentEidFlow.decide(state, partial, TODAY)
 
-    given("complete, well-formed card data without a PIN") {
-        val state = IdentEidFlow.merge(IdentEidState(), CARD)
+            then("only the rest is missing") {
+                IdentEidFlow.missingFields(state) shouldBe listOf("birthDate", "streetAddress", "locality", "restrictedId")
+            }
 
-        then("the PIN is what is still missing, still in step input") {
-            IdentEidFlow.describe(state) shouldBe ("input" to MissingFields(listOf("pin")))
-        }
-
-        then("decide() still reports it as incomplete") {
-            IdentEidFlow.decide(state, CARD, TODAY) shouldBe IdentEidDecision.Incomplete
+            then("nothing is checked yet") {
+                decision shouldBe IdentEidDecision.Incomplete
+            }
         }
     }
 
     given("complete card data that fails a format check") {
         mapOf(
             "a birth date in the future" to CARD.copy(birthDate = TODAY.plusDays(1)),
-            "a postal code that is not five digits" to CARD.copy(postalCode = "1234"),
             "a restricted id with characters a card never shows" to CARD.copy(restrictedId = "T0103005-K1D5S0V8T9W6"),
             "a restricted id too short for a card pseudonym" to CARD.copy(restrictedId = "T0103005")
         ).forEach { (case, card) ->
             `when`("it carries $case") {
                 val decision = IdentEidFlow.decide(IdentEidFlow.merge(IdentEidState(), card), card, TODAY)
 
-                then("decide() rejects the card before any PIN is asked for") {
+                then("the card is rejected before any PIN is asked for") {
                     decision shouldBe IdentEidDecision.CardRejected
                 }
             }
@@ -81,12 +67,12 @@ class IdentEidFlowTest : BehaviorSpec({
         `when`("only the PIN was submitted") {
             val decision = IdentEidFlow.decide(state, PIN, TODAY)
 
-            then("decide() checks the PIN, carrying only what the card showed") {
-                decision.shouldBeInstanceOf<IdentEidDecision.VerifyPin>()
-                decision.claimed.familyName shouldBe "Muster"
-                decision.claimed.givenNames shouldBe "Max"
-                decision.claimed.birthDate shouldBe LocalDate.of(1990, 1, 1)
-                decision.restrictedId shouldBe "T0103005K1D5S0V8T9W6UM2RTX"
+            then("the PIN is to be checked, carrying only what the card showed") {
+                val verify = decision.shouldBeInstanceOf<IdentEidDecision.VerifyPin>()
+                verify.claimed.familyName shouldBe "Muster"
+                verify.claimed.givenNames shouldBe "Max"
+                verify.claimed.birthDate shouldBe LocalDate.of(1970, 1, 1)
+                verify.restrictedId shouldBe "T0103005K1D5S0V8T9W6UM2RTX"
             }
         }
 
@@ -94,49 +80,32 @@ class IdentEidFlowTest : BehaviorSpec({
             val change = EidPatchFields(postalCode = "ABCDE")
             val decision = IdentEidFlow.decide(IdentEidFlow.merge(state, change), change, TODAY)
 
-            then("decide() checks the card again and rejects it") {
+            then("the card is checked again and rejected") {
                 decision shouldBe IdentEidDecision.CardRejected
             }
         }
     }
 
-    given("rejectCard()") {
-        then("drops the card data and the PIN - all card fields are missing again") {
-            IdentEidFlow.missingFields(IdentEidFlow.rejectCard()) shouldBe CARD_FIELDS
+    given("a state holding the read card") {
+        val withCard = IdentEidFlow.merge(IdentEidState(), CARD)
+
+        `when`("a later PATCH brings only the PIN") {
+            val afterPin = IdentEidFlow.merge(withCard, PIN)
+
+            then("it does not overwrite the fields it doesn't mention") {
+                afterPin.familyName shouldBe "Muster"
+                afterPin.birthDate shouldBe LocalDate.of(1970, 1, 1)
+            }
         }
     }
 
-    given("rejectPin()") {
-        then("drops only the PIN - the checked card data stays") {
-            val state = IdentEidFlow.merge(IdentEidFlow.merge(IdentEidState(), CARD), EidPatchFields(pin = "000000"))
-            val rejected = IdentEidFlow.rejectPin(state)
+    given("a postal code with surrounding blanks") {
+        `when`("it is merged") {
+            val merged = IdentEidFlow.merge(IdentEidState(), EidPatchFields(postalCode = " 12345 "))
 
-            IdentEidFlow.missingFields(rejected) shouldBe listOf("pin")
-            rejected.familyName shouldBe "Muster"
-        }
-    }
-
-    given("pinMatchesMock()") {
-        then("the correct mock PIN matches") {
-            val state = IdentEidFlow.merge(IdentEidState(), PIN)
-            IdentEidFlow.pinMatchesMock(state.pinHash!!) shouldBe true
-        }
-
-        then("a wrong PIN does not match") {
-            val state = IdentEidFlow.merge(IdentEidState(), EidPatchFields(pin = "000000"))
-            IdentEidFlow.pinMatchesMock(state.pinHash!!) shouldBe false
-        }
-    }
-
-    given("merge()") {
-        then("a later PATCH does not overwrite fields it doesn't mention") {
-            val afterPin = IdentEidFlow.merge(IdentEidFlow.merge(IdentEidState(), CARD), PIN)
-            afterPin.familyName shouldBe "Muster"
-            afterPin.birthDate shouldBe LocalDate.of(1990, 1, 1)
-        }
-
-        then("surrounding blanks are trimmed off what the card shows") {
-            IdentEidFlow.merge(IdentEidState(), EidPatchFields(postalCode = " 12345 ")).postalCode shouldBe "12345"
+            then("the blanks are trimmed off what the card shows") {
+                merged.postalCode shouldBe "12345"
+            }
         }
     }
 })

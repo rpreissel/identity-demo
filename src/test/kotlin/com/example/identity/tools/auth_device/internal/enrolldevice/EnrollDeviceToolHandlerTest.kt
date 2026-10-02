@@ -17,7 +17,28 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import java.util.UUID
+
+private val DEVICE_KEY = DevicePublicKey(kty = "EC", crv = "P-256", x = "x-coord", y = "y-coord", thumbprint = "thumb-1")
+
+/** One active tool session; no device is enrolled until a test adds one. */
+private class Fixture {
+    val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
+    val sessions = mockk<EnrollDeviceToolSessionRepository>().also {
+        every { it.save(any()) } answers { firstArg() }
+        every { it.findByToolSessionId(toolSessionId) } returns EnrollDeviceToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
+    }
+    val enrollments = mockk<DeviceEnrollmentRepository>().also {
+        every { it.findByThumbprint(any()) } returns null
+        every { it.save(any()) } answers { firstArg<DeviceEnrollment>().apply { id = 9L } }
+    }
+    val handler = EnrollDeviceToolHandler(EnrollDeviceDescriptor, sessions, enrollments, clock = TEST_CLOCK)
+
+    fun withEnrolledDevice(id: Long) = apply {
+        every { enrollments.findByThumbprint(DEVICE_KEY.thumbprint) } returns DeviceEnrollment(thumbprint = DEVICE_KEY.thumbprint, createdAt = TEST_NOW).apply { this.id = id }
+    }
+}
 
 /**
  * Unit test of the handler's persistence and its idempotent reuse by thumbprint. [EnrollDeviceFlow]
@@ -25,22 +46,25 @@ import java.util.UUID
  */
 class EnrollDeviceToolHandlerTest : BehaviorSpec({
 
-    val toolDataRepository = mockk<EnrollDeviceToolSessionRepository>()
-    val enrollmentRepository = mockk<DeviceEnrollmentRepository>()
-    val handler = EnrollDeviceToolHandler(EnrollDeviceDescriptor, toolDataRepository, enrollmentRepository, clock = TEST_CLOCK)
-    val toolSessionId = ToolSessionId(UUID.randomUUID())
-    val devicePublicKey = DevicePublicKey(kty = "EC", crv = "P-256", x = "x-coord", y = "y-coord", thumbprint = "thumb-1")
+    given("no enroll-device tool session yet") {
+        val f = Fixture()
 
-    given("an active enroll-device tool session") {
-        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns EnrollDeviceToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
+        `when`("a tool session starts") {
+            val outcome = f.handler.start(ToolSessionId(UUID.randomUUID()))
 
-        `when`("no device with this thumbprint is enrolled yet") {
-            every { enrollmentRepository.findByThumbprint("thumb-1") } returns null
-            every { enrollmentRepository.save(any()) } answers { firstArg<DeviceEnrollment>().apply { id = 9L } }
+            then("it asks for the device proof at step enroll, without stepData") {
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "enroll", stepData = null)
+            }
+        }
+    }
+
+    given("an active enroll-device tool session and no device with this thumbprint") {
+        val f = Fixture()
+
+        `when`("the device proof arrives with PIN verification") {
+            val outcome = f.handler.patch(f.toolSessionId, DEVICE_KEY, UserVerification.PIN, "binding-key-1", "Handy")
 
             then("it enrolls a new auth_device.enrollment row, with PIN mapped to POSSESSION+KNOWLEDGE") {
-                val outcome = handler.patch(toolSessionId, devicePublicKey, UserVerification.PIN, "binding-key-1", "Handy")
-
                 val enrolled = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Enrolled>()
                 enrolled.enrollmentRef.type shouldBe DEVICE_ENROLLMENT_TYPE
                 enrolled.enrollmentRef.id shouldBe "9"
@@ -51,18 +75,22 @@ class EnrollDeviceToolHandlerTest : BehaviorSpec({
                 enrolled.label shouldBe "Handy"
             }
         }
+    }
 
-        `when`("this exact thumbprint is already enrolled (re-enrolling the same physical key)") {
-            val existing = DeviceEnrollment(thumbprint = "thumb-1", createdAt = TEST_NOW).apply { id = 3L }
-            every { enrollmentRepository.findByThumbprint("thumb-1") } returns existing
+    given("an active enroll-device tool session and this exact thumbprint already enrolled") {
+        val f = Fixture().withEnrolledDevice(3L)
 
-            then("the existing row is reused, not a second INSERT, with BIOMETRIC mapped to POSSESSION+INHERENCE") {
-                val outcome = handler.patch(toolSessionId, devicePublicKey, UserVerification.BIOMETRIC, "binding-key-1", null)
+        `when`("the same physical key is enrolled again, with BIOMETRIC verification") {
+            val outcome = f.handler.patch(f.toolSessionId, DEVICE_KEY, UserVerification.BIOMETRIC, "binding-key-1", null)
 
+            then("the existing row is reused, with BIOMETRIC mapped to POSSESSION+INHERENCE") {
                 val enrolled = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Enrolled>()
                 enrolled.enrollmentRef.id shouldBe "3"
                 enrolled.factorTypes shouldBe setOf(FactorType.POSSESSION, FactorType.INHERENCE)
-                // save() is not stubbed: the strict mock would throw, which proves reuse, not insert.
+            }
+
+            then("no second row is inserted") {
+                verify(exactly = 0) { f.enrollments.save(any()) }
             }
         }
     }

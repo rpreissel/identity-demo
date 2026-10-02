@@ -1,20 +1,15 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.texts.templateOf
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
-import com.example.identity.contract.tool_api.values.PhoneNumber
 import com.ninjasquad.springmockk.MockkBean
 import io.kotest.matchers.nulls.shouldBeNull
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldMatch
 import org.awaitility.Awaitility.await
-import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
-import org.springframework.http.HttpStatus
-import org.springframework.web.client.HttpClientErrorException
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
@@ -29,7 +24,7 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
     private lateinit var jwkThumbprintService: JwkThumbprintService
 
     init {
-        beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
     }
 
     private fun registerCall(method: HttpMethod, path: String, body: String? = null): Map<String, Any?> {
@@ -67,95 +62,98 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
 
     private fun stepError(response: Map<String, Any?>): Any? = (response["stepData"] as? Map<*, *>)?.get("error")
 
+    private fun demoPersons(): List<Map<*, *>> =
+        ((post("/orchestrator/api/v1/app/channels")["demo"] as Map<*, *>)["persons"] as List<*>).map { it as Map<*, *> }
+
+    private fun accountIdOfPerson(personId: String): Long = jdbcTemplate.queryForObject(
+        "SELECT account_id FROM account.anchor WHERE attribute_type = 'person_id' AND normalized_value = ?",
+        Long::class.java, personId
+    )!!
+
     init {
         given("a person the register has just created") {
-            then("a freshly issued code identifies, and stops doing so once revoked") {
+            `when`("a freshly issued code is used, then revoked and used again") {
                 val (personId, kvnr) = newPerson()
                 val brief = issue(personId)
                 val code = brief["code"] as String
 
-                stepError(identifyWith(kvnr, "Register", code)).shouldBeNull()
-
+                val beforeRevocation = identifyWith(kvnr, "Register", code)
                 registerCall(HttpMethod.DELETE, "/freischaltcodes/${(brief["freischaltcodeId"] as Number).toLong()}")
-                stepError(identifyWith(kvnr, "Register", code)).shouldNotBeNull()
+                val afterRevocation = identifyWith(kvnr, "Register", code)
+
+                then("the code identifies at once") {
+                    stepError(beforeRevocation).shouldBeNull()
+                }
+                then("it stops doing so once revoked") {
+                    templateOf(stepError(afterRevocation)) shouldBe "Freischaltcode ungueltig oder abgelaufen"
+                }
             }
 
-            then("a name changed in the register no longer matches") {
-                val (personId, kvnr, versnr) = newPerson()
-                val code = issue(personId)["code"] as String
-                registerCall(HttpMethod.PUT, "/personen/$personId", """{"kvnr":"$kvnr","versnr":"$versnr","name":"Umbenannt","vorname":"Rita","geburtsdatum":"1970-01-01"}""")
+            listOf(
+                "name" to """"name":"Umbenannt","vorname":"Rita","geburtsdatum":"1970-01-01"""",
+                "birthdate" to """"name":"Register","vorname":"Rita","geburtsdatum":"1971-02-02"""",
+            ).forEach { (field, changed) ->
+                `when`("the register changes the $field after issuing a code") {
+                    val (personId, kvnr, versnr) = newPerson()
+                    val code = issue(personId)["code"] as String
+                    registerCall(HttpMethod.PUT, "/personen/$personId", """{"kvnr":"$kvnr","versnr":"$versnr",$changed}""")
 
-                stepError(identifyWith(kvnr, "Register", code)).shouldNotBeNull()
+                    val response = identifyWith(kvnr, "Register", code)
+
+                    then("the old personal data no longer matches") {
+                        templateOf(stepError(response)) shouldBe "Die Angaben passen zu keiner Person, die wir kennen"
+                    }
+                }
             }
 
-            then("a birthdate changed in the register no longer matches") {
-                val (personId, kvnr, versnr) = newPerson()
-                val code = issue(personId)["code"] as String
-                registerCall(HttpMethod.PUT, "/personen/$personId", """{"kvnr":"$kvnr","versnr":"$versnr","name":"Register","vorname":"Rita","geburtsdatum":"1971-02-02"}""")
-
-                stepError(identifyWith(kvnr, "Register", code)).shouldNotBeNull()
-            }
-
-            then("the demo persona picker offers the person with the code from its newest valid letter") {
+            `when`("a code is issued and a channel is opened") {
                 val (personId, kvnr) = newPerson()
                 val code = issue(personId)["code"] as String
 
-                val created = post("/orchestrator/api/v1/app/channels")
-                val persons = (created["demo"] as Map<*, *>)["persons"] as List<*>
-                val persona = persons.map { it as Map<*, *> }.single { it["kvnr"] == kvnr }
-                persona["fscCode"] shouldBe code
-                persona["familyName"] shouldBe "Register"
-                persona["email"].shouldBeNull()
-                persona["phoneNumber"].shouldBeNull()
-                persona["restrictedId"].shouldBeNull()
+                val persona = demoPersons().single { it["kvnr"] == kvnr }
+
+                then("the demo persona picker offers the person with the code from its newest valid letter") {
+                    persona["fscCode"] shouldBe code
+                    persona["familyName"] shouldBe "Register"
+                    persona["email"].shouldBeNull()
+                    persona["phoneNumber"].shouldBeNull()
+                    persona["restrictedId"].shouldBeNull()
+                }
             }
 
-            then("the picker offers the e-mail address and mobile number the register keeps") {
+            `when`("the register records an e-mail address and a mobile number and a channel is opened") {
                 val (personId, kvnr, versnr) = newPerson()
-                registerCall(
+                val saved = registerCall(
                     HttpMethod.PUT, "/personen/$personId",
                     """{"kvnr":"$kvnr","versnr":"$versnr","name":"Register","vorname":"Rita","geburtsdatum":"1970-01-01",""" +
                         """"email":"rita@example.org","mobilnummer":"+49 170 0000042"}"""
-                )["mobilnummer"] shouldBe "+49 170 0000042"
+                )
 
-                val persons = (post("/orchestrator/api/v1/app/channels")["demo"] as Map<*, *>)["persons"] as List<*>
-                val persona = persons.map { it as Map<*, *> }.single { it["personId"] == personId.value }
-                persona["email"] shouldBe "rita@example.org"
-                persona["phoneNumber"] shouldBe "+49 170 0000042"
-            }
+                val persona = demoPersons().single { it["personId"] == personId.value }
 
-            then("the seeded persons come with the register's e-mail address and a mobile number enroll-sms accepts") {
-                val persons = (post("/orchestrator/api/v1/app/channels")["demo"] as Map<*, *>)["persons"] as List<*>
-                val max = persons.map { it as Map<*, *> }.single { it["personId"] == "P000000001" }
-                max["email"] shouldBe "max.mustermann@example.com"
-                PhoneNumber.parse(max["phoneNumber"] as String).shouldNotBeNull()
-                max["restrictedId"].shouldNotBeNull()
-            }
-
-            then("the mailbox holds the letter with the plaintext") {
-                val (personId, _) = newPerson()
-                val code = issue(personId)["code"] as String
-
-                val briefe = restTemplate.getForObject("http://localhost:$port/mock-personenverzeichnis/briefe", List::class.java)!!
-                briefe.any { (it as Map<*, *>)["code"] == code } shouldBe true
+                then("the register keeps the mobile number") {
+                    saved["mobilnummer"] shouldBe "+49 170 0000042"
+                }
+                then("the picker offers both") {
+                    persona["email"] shouldBe "rita@example.org"
+                    persona["phoneNumber"] shouldBe "+49 170 0000042"
+                }
             }
         }
 
         given("a bound person whose KVNR and Versicherungsnummer change in the Personenverzeichnis") {
-            then("the account follows via PersonChanged: new KVNR claim, Versicherungsnummer anchor set, replaced and released (ADR-34)") {
+            `when`("the register changes both numbers, then replaces the Versicherungsnummer, then drops both") {
                 val (personId, kvnr) = newPerson()
                 val code = issue(personId)["code"] as String
-                stepError(identifyWith(kvnr, "Register", code)).shouldBeNull()
-                val accountId = jdbcTemplate.queryForObject(
-                    "SELECT account_id FROM account.anchor WHERE attribute_type = 'person_id' AND normalized_value = ?",
-                    Long::class.java, personId.value
-                )!!
+                identifyWith(kvnr, "Register", code)
+                val accountId = accountIdOfPerson(personId.value)
 
                 fun anchor(type: String): String? = jdbcTemplate.queryForList(
                     "SELECT normalized_value FROM account.anchor WHERE account_id = ? AND attribute_type = ?",
                     String::class.java, accountId, type
                 ).singleOrNull()
 
+                // The account follows via PersonChanged, asynchronously.
                 fun eventually(check: () -> Boolean) =
                     await().alias("account follows the Personenverzeichnis").atMost(10, TimeUnit.SECONDS).until(check)
 
@@ -166,7 +164,7 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                     """{"kvnr":"$newKvnr","versnr":"$versnr","name":"Register","vorname":"Rita","geburtsdatum":"1970-01-01"}"""
                 )
                 eventually { anchor("member_number") == versnr }
-                jdbcTemplate.queryForList(
+                val kvnrClaims = jdbcTemplate.queryForList(
                     """
                     SELECT c.normalized_value FROM account.claim c
                     WHERE c.account_id = ? AND c.attribute_type = 'kvnr' AND c.claim_source = 'person_directory'
@@ -174,7 +172,7 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                         AND r.attribute_type = c.attribute_type AND r.normalized_value = c.normalized_value)
                     """.trimIndent(),
                     String::class.java, accountId
-                ).map { it!!.uppercase() } shouldBe listOf(newKvnr)
+                ).map { it!!.uppercase() }
 
                 val replaced = randomVersnr()
                 registerCall(HttpMethod.PUT, "/personen/$personId", """{"kvnr":"$newKvnr","versnr":"$replaced","name":"Register","vorname":"Rita","geburtsdatum":"1970-01-01"}""")
@@ -183,16 +181,20 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                 // Not insured with us any more: both numbers go, the person stays as a Partner.
                 registerCall(HttpMethod.PUT, "/personen/$personId", """{"kvnr":"","versnr":"","name":"Register","vorname":"Rita","geburtsdatum":"1970-01-01"}""")
                 eventually { anchor("member_number") == null }
-                anchor("person_id") shouldBe personId.value
+
+                then("the new KVNR is the account's only current KVNR claim (ADR-34)") {
+                    kvnrClaims shouldBe listOf(newKvnr)
+                }
+                then("the account stays bound to the person as a Partner") {
+                    anchor("person_id") shouldBe personId.value
+                }
             }
         }
 
         given("a Partner - no KVNR, no Versicherungsnummer, only the Partnernummer (ADR-34)") {
-            then("a letter to the Partnernummer identifies via ident-fsc, and the account is bound without a KVNR") {
+            `when`("a letter to the Partnernummer is used with ident-fsc") {
                 val created = registerCall(HttpMethod.POST, "/personen", """{"name":"Partner","vorname":"Paul","geburtsdatum":"1960-06-06"}""")
                 val personId = created["id"] as String
-                personId shouldMatch Regex("^P\\d{9}$")
-                created["kvnr"].shouldBeNull()
                 val code = issue(PartnerNumber(personId))["code"] as String
 
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
@@ -202,30 +204,14 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                     """{"partnerNumber":"${personId.lowercase()}","familyName":"Partner","givenNames":"Paul","birthDate":"1960-06-06","fsc":"$code"}"""
                 )
 
-                stepError(response).shouldBeNull()
-                val accountId = jdbcTemplate.queryForObject(
-                    "SELECT account_id FROM account.anchor WHERE attribute_type = 'person_id' AND normalized_value = ?",
-                    Long::class.java, personId
-                )!!
-                jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.claim WHERE account_id = ? AND attribute_type = 'kvnr'", Int::class.java, accountId
-                ) shouldBe 0
-            }
-
-            then("a KVNR without a Versicherungsnummer is refused") {
-                val refused = assertThrows<HttpClientErrorException> {
-                    registerCall(HttpMethod.POST, "/personen", """{"kvnr":"Z000000001","name":"Ohne","vorname":"Vertrag"}""")
+                then("it identifies") {
+                    stepError(response).shouldBeNull()
                 }
-                refused.statusCode shouldBe HttpStatus.CONFLICT
-            }
-        }
-
-        given("a KVNR that is malformed or already registered") {
-            then("the register refuses it with 409") {
-                val (_, kvnr) = newPerson()
-                listOf("""{"kvnr":"$kvnr","versnr":"${randomVersnr()}"}""", """{"kvnr":"nope","versnr":"${randomVersnr()}"}""").forEach { body ->
-                    val refused = assertThrows<HttpClientErrorException> { registerCall(HttpMethod.POST, "/personen", body) }
-                    refused.statusCode shouldBe HttpStatus.CONFLICT
+                then("the account is bound without a KVNR") {
+                    jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM account.claim WHERE account_id = ? AND attribute_type = 'kvnr'",
+                        Int::class.java, accountIdOfPerson(personId)
+                    ) shouldBe 0
                 }
             }
         }

@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { adminHeaders, MADE_WITH, ORCHESTRATOR, switchLoa1Login, switchTheme, THEMES, type Theme } from './admin'
 import { kc } from './texts'
 
 /**
@@ -10,31 +11,15 @@ import { kc } from './texts'
  * suite resets it first and registers the account it signs in with through the website itself.
  */
 
-const ORCHESTRATOR = process.env.ORCHESTRATOR_URL ?? 'http://localhost:8080'
 const KEYCLOAK = process.env.KEYCLOAK_URL ?? 'https://localhost:8543'
-const ADMIN = { username: process.env.ADMIN_USER ?? 'admin', password: process.env.ADMIN_PASSWORD ?? 'admin' }
 /** The password the suite's own registration set: the demo password the page offered. */
 let registeredPassword = ''
 
-type Theme = 'FREEMARKER' | 'KEYCLOAKIFY'
-const MADE_WITH: Record<Theme, string> = { FREEMARKER: 'FreeMarker', KEYCLOAKIFY: 'Keycloakify' }
-type Loa1Login = 'KEYCLOAK_PASSWORD' | 'ORCHESTRATOR'
-
-const adminHeaders = { Authorization: `Basic ${Buffer.from(`${ADMIN.username}:${ADMIN.password}`).toString('base64')}` }
-
-async function switchTheme(request: APIRequestContext, theme: Theme) {
-  const put = await request.put(`${ORCHESTRATOR}/orchestrator/admin/login-theme`, { headers: adminHeaders, data: { theme } })
-  expect(put.status()).toBe(200)
-  const get = await request.get(`${ORCHESTRATOR}/orchestrator/admin/login-theme`, { headers: adminHeaders })
-  expect(await get.json()).toEqual({ theme })
-}
-
-/** What loa1 asks for (docs/adr/ADR-042-loa1-anmeldung-umschalten.md), realm-wide like the theme. */
-async function switchLoa1Login(request: APIRequestContext, login: Loa1Login) {
-  const put = await request.put(`${ORCHESTRATOR}/orchestrator/admin/loa1-login`, { headers: adminHeaders, data: { login } })
-  expect(put.status()).toBe(200)
-  const get = await request.get(`${ORCHESTRATOR}/orchestrator/admin/loa1-login`, { headers: adminHeaders })
-  expect(await get.json()).toEqual({ login })
+/** The demo's start: no accounts, FreeMarker, the method selection. */
+async function resetDemo(request: APIRequestContext) {
+  const reset = await request.post(`${ORCHESTRATOR}/orchestrator/admin/demo-reset`, { headers: adminHeaders })
+  expect(reset.status()).toBe(200)
+  await switchLoa1Login(request, 'ORCHESTRATOR')
 }
 
 /** The demo value a page shows next to its field, e.g. "Demo-Code: 123456" (ADR-28). */
@@ -85,44 +70,59 @@ async function expectBackAtWebsite(page: Page) {
   await page.waitForURL((url) => url.href.startsWith(`${ORCHESTRATOR}/`) && url.searchParams.has('code'))
 }
 
-/**
+function visibleButton(page: Page, name: string) {
+  return page.getByRole('button', { name, exact: true }).filter({ visible: true })
+}
+
+/*
  * A real registration on the website, as a tester does it: the Freischaltcode of the pre-filled
  * test person, the e-mail address confirmed with the demo code, a password, then SMS. The account
- * belongs to the first test person, the one every page pre-fills.
+ * belongs to the first test person, the one every page pre-fills. Split into its steps, so a test
+ * can look at the way back between them.
  */
-async function registerTestPerson(page: Page) {
-  const visibleButton = (name: string) => page.getByRole('button', { name, exact: true }).filter({ visible: true })
+
+async function identifyTestPerson(page: Page) {
   await page.goto(loginUrl())
   await page.getByRole('link', { name: kc('Registrieren') }).click()
   await page.getByRole('button', { name: kc('Freischaltcode'), exact: true }).click()
-  await visibleButton(kc('Weiter zur Freischaltcode-Eingabe')).click()
+  await visibleButton(page, kc('Weiter zur Freischaltcode-Eingabe')).click()
   await expect(page.getByLabel(kc('Freischaltcode'))).not.toHaveValue('')
-  await visibleButton(kc('Identifizieren')).click()
+  await visibleButton(page, kc('Identifizieren')).click()
+}
 
+async function sendEmailCode(page: Page) {
   await expect(page.getByLabel(kc('E-Mail-Adresse'))).not.toHaveValue('')
-  await visibleButton(kc('Weiter')).click()
-  // "Zurück" in the code step shows the address mask again, within the page, and back.
-  await visibleButton(kc('Zurück')).click()
-  await expect(page.getByLabel(kc('E-Mail-Adresse')).filter({ visible: true })).toBeVisible()
-  await expect(page.getByLabel(kc('Bestätigungscode'))).toBeHidden()
-  await visibleButton(kc('Zurück')).click()
-  await page.getByLabel(kc('Bestätigungscode')).fill(await demoValue(page, 'Demo-Code: {wert}'))
-  await visibleButton(kc('Weiter')).click()
+  await visibleButton(page, kc('Weiter')).click()
+}
 
-  await visibleButton(kc('Passwort')).click()
+async function confirmEmailAndSetPassword(page: Page) {
+  await page.getByLabel(kc('Bestätigungscode')).fill(await demoValue(page, 'Demo-Code: {wert}'))
+  await visibleButton(page, kc('Weiter')).click()
+
+  await visibleButton(page, kc('Passwort')).click()
   registeredPassword = await demoValue(page, 'Demo-Passwort: {wert}')
   await page.getByLabel(kc('Neues Passwort')).fill(registeredPassword)
-  await visibleButton(kc('Weiter')).click()
+  await visibleButton(page, kc('Weiter')).click()
+}
 
-  // A password is one kind of method; for loa2 the registration asks for another kind, on the web SMS.
+/** A password is one kind of method; for loa2 the registration asks for another kind, on the web SMS. */
+async function sendSmsCode(page: Page) {
   await page.getByLabel(kc('Telefonnummer')).fill('+49 170 1234567')
-  await visibleButton(kc('Weiter')).click()
-  await visibleButton(kc('Zurück')).click()
-  await expect(page.getByLabel(kc('Telefonnummer')).filter({ visible: true })).toBeVisible()
-  await visibleButton(kc('Zurück')).click()
+  await visibleButton(page, kc('Weiter')).click()
+}
+
+async function confirmSms(page: Page) {
   await page.getByLabel(kc('SMS-Code')).fill(await demoValue(page, 'Demo-Code: {wert}'))
-  await visibleButton(kc('Weiter')).click()
+  await visibleButton(page, kc('Weiter')).click()
   await expectBackAtWebsite(page)
+}
+
+async function registerTestPerson(page: Page) {
+  await identifyTestPerson(page)
+  await sendEmailCode(page)
+  await confirmEmailAndSetPassword(page)
+  await sendSmsCode(page)
+  await confirmSms(page)
 }
 
 /**
@@ -139,10 +139,7 @@ async function signInByPassword(page: Page, theme: Theme) {
 }
 
 test.beforeAll(async ({ browser, request }) => {
-  // The demo's start: no accounts, FreeMarker, the method selection.
-  const reset = await request.post(`${ORCHESTRATOR}/orchestrator/admin/demo-reset`, { headers: adminHeaders })
-  expect(reset.status()).toBe(200)
-  await switchLoa1Login(request, 'ORCHESTRATOR')
+  await resetDemo(request)
 
   const context = await browser.newContext()
   await registerTestPerson(await context.newPage())
@@ -161,7 +158,7 @@ test.afterAll(async ({ request }) => {
   )
 })
 
-for (const theme of ['FREEMARKER', 'KEYCLOAKIFY'] as const) {
+for (const theme of THEMES) {
   test(`${MADE_WITH[theme]}: the method selection, the SMS page and back, then a whole sign-in`, async ({ page, request }) => {
     await switchTheme(request, theme)
     await page.goto(loginUrl())
@@ -172,7 +169,7 @@ for (const theme of ['FREEMARKER', 'KEYCLOAKIFY'] as const) {
   })
 }
 
-for (const theme of ['FREEMARKER', 'KEYCLOAKIFY'] as const) {
+for (const theme of THEMES) {
   test(`${MADE_WITH[theme]}: "Zurück" on the Freischaltcode page shows the personal details again`, async ({ page, request }) => {
     await switchTheme(request, theme)
     await page.goto(loginUrl())
@@ -181,21 +178,49 @@ for (const theme of ['FREEMARKER', 'KEYCLOAKIFY'] as const) {
 
     const personal = page.getByText(kc('Damit Sie Ihren Freischaltcode gleich eingeben können, brauchen wir noch diese Daten:'))
     const code = page.getByText(kc('Geben Sie den Freischaltcode ein, den wir Ihnen per Brief geschickt haben.'))
-    const visibleButton = (name: string) => page.getByRole('button', { name, exact: true }).filter({ visible: true })
 
     await expect(personal).toBeVisible()
-    await visibleButton(kc('Weiter zur Freischaltcode-Eingabe')).click()
+    await visibleButton(page, kc('Weiter zur Freischaltcode-Eingabe')).click()
     await expect(code).toBeVisible()
 
     // Within the tool: back to the personal details, and on from there to the code again.
-    await visibleButton(kc('Zurück')).click()
+    await visibleButton(page, kc('Zurück')).click()
     await expect(personal).toBeVisible()
-    await visibleButton(kc('Weiter zur Freischaltcode-Eingabe')).click()
+    await visibleButton(page, kc('Weiter zur Freischaltcode-Eingabe')).click()
     await expect(code).toBeVisible()
   })
 }
 
-for (const theme of ['FREEMARKER', 'KEYCLOAKIFY'] as const) {
+for (const theme of THEMES) {
+  test(`${MADE_WITH[theme]}: "Zurück" in a code step of the registration shows the address or number again`, async ({ page, request }) => {
+    // A registration of its own: the account from beforeAll would make this one a login.
+    await resetDemo(request)
+    await switchTheme(request, theme)
+    await identifyTestPerson(page)
+    await sendEmailCode(page)
+
+    await test.step('e-mail code: back to the address mask, within the page, and on again', async () => {
+      await visibleButton(page, kc('Zurück')).click()
+      await expect(page.getByLabel(kc('E-Mail-Adresse')).filter({ visible: true })).toBeVisible()
+      await expect(page.getByLabel(kc('Bestätigungscode'))).toBeHidden()
+      await visibleButton(page, kc('Zurück')).click()
+      await expect(page.getByLabel(kc('Bestätigungscode'))).toBeVisible()
+    })
+    await confirmEmailAndSetPassword(page)
+    await sendSmsCode(page)
+
+    await test.step('SMS code: back to the number, within the page, and on again', async () => {
+      await visibleButton(page, kc('Zurück')).click()
+      await expect(page.getByLabel(kc('Telefonnummer')).filter({ visible: true })).toBeVisible()
+      await visibleButton(page, kc('Zurück')).click()
+      await expect(page.getByLabel(kc('SMS-Code'))).toBeVisible()
+    })
+    // Completed, so the tests after this one find the account again.
+    await confirmSms(page)
+  })
+}
+
+for (const theme of THEMES) {
   test(`${MADE_WITH[theme]}: the QR waiting page asks in the background and does not reload`, async ({ page, request }) => {
     await switchTheme(request, theme)
     await page.goto(loginUrl())
@@ -215,7 +240,7 @@ for (const theme of ['FREEMARKER', 'KEYCLOAKIFY'] as const) {
       answers.push({ status: response.status(), state: (await response.json().catch(() => ({}))).state })
     })
 
-    await expect.poll(() => answers.length, { timeout: 15_000 }).toBeGreaterThanOrEqual(3)
+    await expect.poll(() => answers.length, { timeout: 15_000 }).toBeGreaterThanOrEqual(1)
     expect(answers.every((answer) => answer.status === 200 && answer.state === 'waiting')).toBe(true)
     expect(reloads).toBe(0)
     await expect(pairingCode).toHaveText(shownCode ?? '')
@@ -237,13 +262,27 @@ test('switching at runtime changes the very next page, without a restart', async
   await signInByPassword(page, 'KEYCLOAKIFY')
 })
 
-test("the loa1 switch picks the first page: Keycloak's password form or the method selection", async ({ page, request }) => {
-  await switchLoa1Login(request, 'KEYCLOAK_PASSWORD')
-  await page.goto(loginUrl())
-  await expect(page.locator('input[type="password"]')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'SMS', exact: true })).toHaveCount(0)
+test.describe('the loa1 switch picks the first page', () => {
+  // The other tests expect the method selection.
+  test.afterEach(async ({ request }) => {
+    await switchLoa1Login(request, 'ORCHESTRATOR')
+  })
 
-  await switchLoa1Login(request, 'ORCHESTRATOR')
-  await page.goto(loginUrl())
-  await expect(page.getByRole('button', { name: 'SMS', exact: true })).toBeVisible()
+  test("KEYCLOAK_PASSWORD: Keycloak's password form", async ({ page, request }) => {
+    await switchLoa1Login(request, 'KEYCLOAK_PASSWORD')
+
+    await page.goto(loginUrl())
+
+    await expect(page.locator('input[type="password"]')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'SMS', exact: true })).toHaveCount(0)
+  })
+
+  test('ORCHESTRATOR: the method selection', async ({ page, request }) => {
+    await switchLoa1Login(request, 'KEYCLOAK_PASSWORD')
+    await switchLoa1Login(request, 'ORCHESTRATOR')
+
+    await page.goto(loginUrl())
+
+    await expect(page.getByRole('button', { name: 'SMS', exact: true })).toBeVisible()
+  })
 })

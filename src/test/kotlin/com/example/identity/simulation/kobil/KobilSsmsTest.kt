@@ -8,6 +8,7 @@ import com.example.identity.simulation.kobil.internal.SsmsUser
 import com.example.identity.simulation.kobil.internal.SsmsUserRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.maps.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -16,6 +17,31 @@ import io.mockk.mockk
 import io.mockk.slot
 import java.util.Optional
 
+private const val TENANT = "identity-demo"
+private const val PIN = "12345678"
+
+/** A user of [TENANT] with [PIN]; everything else only where a test needs it. */
+private fun ssmsUser(
+    userId: String = "kob-1",
+    activationCode: String? = null,
+    deviceId: String? = null,
+    riskSignals: String = "",
+) = SsmsUser(userId = userId, tenantId = TENANT, pin = PIN, activationCode = activationCode, deviceId = deviceId, riskSignals = riskSignals, createdAt = TEST_NOW)
+
+/** KOBIL over mocked repositories that know [users]; filed assertions land in [store], keyed by OTP. */
+private class Fixture(vararg users: SsmsUser) {
+    val store = mutableMapOf<String, SsmsAssertion>()
+    private val userRepository = mockk<SsmsUserRepository>(relaxed = true).also { repository ->
+        every { repository.findById(any()) } answers { Optional.ofNullable(users.find { it.userId == firstArg<String>() }) }
+    }
+    private val assertionRepository = mockk<SsmsAssertionRepository>(relaxed = true).also { repository ->
+        val saved = slot<SsmsAssertion>()
+        every { repository.save(capture(saved)) } answers { store[saved.captured.otp] = saved.captured; saved.captured }
+        every { repository.findById(any()) } answers { Optional.ofNullable(store[firstArg<String>()]) }
+    }
+    val ssms = KobilSsms(userRepository, assertionRepository, clock = TEST_CLOCK)
+}
+
 /**
  * The provider's own rules, with its repositories mocked - the properties that make the OTP detour
  * worth anything: an activation code is spent once, a wrong PIN produces no assertion, and a
@@ -23,90 +49,115 @@ import java.util.Optional
  */
 class KobilSsmsTest : BehaviorSpec({
 
-    fun fixture(user: SsmsUser): Triple<KobilSsms, SsmsUserRepository, MutableMap<String, SsmsAssertion>> {
-        val users = mockk<SsmsUserRepository>(relaxed = true)
-        val assertions = mockk<SsmsAssertionRepository>(relaxed = true)
-        val store = mutableMapOf<String, SsmsAssertion>()
-
-        every { users.findById(any()) } answers { Optional.ofNullable(if (firstArg<String>() == user.userId) user else null) }
-        val saved = slot<SsmsAssertion>()
-        every { assertions.save(capture(saved)) } answers { store[saved.captured.otp] = saved.captured; saved.captured }
-        every { assertions.findById(any()) } answers { Optional.ofNullable(store[firstArg<String>()]) }
-
-        return Triple(KobilSsms(users, assertions, clock = TEST_CLOCK), users, store)
-    }
-
-    val tenant = "identity-demo"
+    val ref = KobilUserRef(TENANT, "kob-1")
 
     given("a provisioned user with an activation code and a PIN") {
-        then("activation binds a device and spends the code") {
-            val user = SsmsUser(userId = "kob-1", tenantId = tenant, pin = "12345678", activationCode = "ABC123", createdAt = TEST_NOW)
-            val (ssms, _, _) = fixture(user)
-            val ref = KobilUserRef(tenant, "kob-1")
+        val f = Fixture(ssmsUser(activationCode = "ABC123"))
 
-            val deviceId = ssms.activate(ref, "ABC123", "12345678")
-            deviceId shouldNotBe ""
-            ssms.deviceOf(ref) shouldBe deviceId
+        `when`("the device activates with the code and the PIN") {
+            val deviceId = f.ssms.activate(ref, "ABC123", PIN)
 
-            // One activation code, one activation - as with any real activation secret.
-            shouldThrow<KobilRejectedException> { ssms.activate(ref, "ABC123", "12345678") }
+            then("a device is bound to the user") {
+                deviceId shouldNotBe ""
+                f.ssms.deviceOf(ref) shouldBe deviceId
+            }
         }
 
-        then("a wrong activation code binds nothing") {
-            val user = SsmsUser(userId = "kob-1", tenantId = tenant, pin = "12345678", activationCode = "ABC123", createdAt = TEST_NOW)
-            val (ssms, _, _) = fixture(user)
-            shouldThrow<KobilRejectedException> { ssms.activate(KobilUserRef(tenant, "kob-1"), "WRONG", "12345678") }
-            user.deviceId.shouldBeNull()
+        `when`("the same code is used for a second activation") {
+            val result = runCatching { f.ssms.activate(ref, "ABC123", PIN) }
+
+            then("it is refused - one activation code, one activation, as with any real activation secret") {
+                shouldThrow<KobilRejectedException> { result.getOrThrow() }
+            }
+        }
+    }
+
+    given("another provisioned user with an activation code") {
+        val user = ssmsUser(activationCode = "ABC123")
+        val f = Fixture(user)
+
+        `when`("the device activates with a wrong code") {
+            val result = runCatching { f.ssms.activate(ref, "WRONG", PIN) }
+
+            then("it is refused and binds nothing") {
+                shouldThrow<KobilRejectedException> { result.getOrThrow() }
+                user.deviceId.shouldBeNull()
+            }
         }
 
-        then("a user of another tenant is simply unknown") {
-            val user = SsmsUser(userId = "kob-1", tenantId = tenant, pin = "12345678", activationCode = "ABC123", createdAt = TEST_NOW)
-            val (ssms, _, _) = fixture(user)
-            shouldThrow<KobilRejectedException> { ssms.activate(KobilUserRef("other", "kob-1"), "ABC123", "12345678") }
+        `when`("the device activates under another tenant") {
+            val result = runCatching { f.ssms.activate(KobilUserRef("other", "kob-1"), "ABC123", PIN) }
+
+            then("the user is simply unknown") {
+                shouldThrow<KobilRejectedException> { result.getOrThrow() }
+            }
+        }
+    }
+
+    given("an activated device that reports itself rooted") {
+        val f = Fixture(ssmsUser(deviceId = "dev-1", riskSignals = "ROOTED"))
+
+        `when`("the user logs in with the PIN") {
+            val otp = f.ssms.login(ref, PIN)
+
+            then("an assertion is filed, and only the OTP that points at it is handed back") {
+                f.store.keys shouldBe setOf(otp)
+            }
+        }
+
+        `when`("the relying party redeems that OTP") {
+            val otp = f.store.keys.single()
+            val verification = f.ssms.verifyOtp(ref, otp)
+
+            then("it learns the device and its risk signals") {
+                verification shouldBe KobilOtpVerification("dev-1", setOf(KobilRisk.ROOTED))
+            }
+        }
+
+        `when`("the same OTP is redeemed again") {
+            val replay = f.ssms.verifyOtp(ref, f.store.keys.single())
+
+            then("it is spent - a replayed reference buys nothing") {
+                replay.shouldBeNull()
+            }
         }
     }
 
     given("an activated device") {
-        then("a login files an assertion and hands back only the OTP that points at it") {
-            val user = SsmsUser(userId = "kob-1", tenantId = tenant, pin = "12345678", deviceId = "dev-1", riskSignals = "ROOTED", createdAt = TEST_NOW)
-            val (ssms, _, store) = fixture(user)
-            val ref = KobilUserRef(tenant, "kob-1")
+        val f = Fixture(ssmsUser(deviceId = "dev-1"))
 
-            val otp = ssms.login(ref, "12345678")
-            store.keys shouldBe setOf(otp)
+        `when`("the user logs in with a wrong PIN") {
+            val result = runCatching { f.ssms.login(ref, "87654321") }
 
-            val verification = ssms.verifyOtp(ref, otp)
-            verification shouldBe KobilOtpVerification("dev-1", setOf(KobilRisk.ROOTED))
-
-            // Redeemable exactly once, so a replayed reference buys nothing.
-            ssms.verifyOtp(ref, otp).shouldBeNull()
+            then("it is refused and produces no assertion at all") {
+                shouldThrow<KobilRejectedException> { result.getOrThrow() }
+                f.store.shouldBeEmpty()
+            }
         }
+    }
 
-        then("a wrong PIN produces no assertion at all") {
-            val user = SsmsUser(userId = "kob-1", tenantId = tenant, pin = "12345678", deviceId = "dev-1", createdAt = TEST_NOW)
-            val (ssms, _, store) = fixture(user)
-            shouldThrow<KobilRejectedException> { ssms.login(KobilUserRef(tenant, "kob-1"), "87654321") }
-            store.isEmpty() shouldBe true
-        }
+    given("two activated users of one tenant, and an OTP of the first") {
+        val f = Fixture(ssmsUser(deviceId = "dev-1"), ssmsUser(userId = "kob-2", deviceId = "dev-2"))
+        val otp = f.ssms.login(ref, PIN)
 
-        then("an OTP belonging to someone else is as good as unknown") {
-            val user = SsmsUser(userId = "kob-1", tenantId = tenant, pin = "12345678", deviceId = "dev-1", createdAt = TEST_NOW)
-            val (ssms, _, _) = fixture(user)
-            val ref = KobilUserRef(tenant, "kob-1")
-            val otp = ssms.login(ref, "12345678")
+        `when`("the OTP is redeemed for the second user") {
+            val verification = f.ssms.verifyOtp(KobilUserRef(TENANT, "kob-2"), otp)
 
-            // Same tenant, different user: unknown, spent and foreign are deliberately one answer.
-            val other = SsmsUser(userId = "kob-2", tenantId = tenant, pin = "12345678", deviceId = "dev-2", createdAt = TEST_NOW)
-            val (otherSsms, _, _) = fixture(other)
-            otherSsms.verifyOtp(KobilUserRef(tenant, "kob-2"), otp).shouldBeNull()
+            then("it is as good as unknown - unknown, spent and foreign are deliberately one answer") {
+                verification.shouldBeNull()
+            }
         }
     }
 
     given("a user with no device yet") {
-        then("a login cannot happen") {
-            val user = SsmsUser(userId = "kob-1", tenantId = tenant, pin = "12345678", createdAt = TEST_NOW)
-            val (ssms, _, _) = fixture(user)
-            shouldThrow<KobilRejectedException> { ssms.login(KobilUserRef(tenant, "kob-1"), "12345678") }
+        val f = Fixture(ssmsUser())
+
+        `when`("the user tries to log in") {
+            val result = runCatching { f.ssms.login(ref, PIN) }
+
+            then("a login cannot happen") {
+                shouldThrow<KobilRejectedException> { result.getOrThrow() }
+            }
         }
     }
 })

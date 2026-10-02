@@ -58,7 +58,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
         return toolSessionId to data
     }
 
-    given("start()") {
+    given("a KOBIL tenant ready to provision a new user") {
         `when`("an enroll-kobil run begins") {
             val toolSessionId = ToolSessionId(UUID.randomUUID())
             val kobilUser = KobilUserRef(tenantId, "kob-new")
@@ -82,7 +82,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
             }
 
             then("the PIN handed out is the one set at KOBIL and kept in the session") {
-                val activation = (outcome as ToolOutcome.InProgress).stepData as KobilActivationStep
+                val activation = outcome.shouldBeInstanceOf<ToolOutcome.InProgress>().stepData.shouldBeInstanceOf<KobilActivationStep>()
                 pinAtKobil.captured shouldBe activation.pin
                 saved.captured.pin shouldBe activation.pin
                 saved.captured.unlockSecret shouldBe activation.unlockSecret
@@ -174,9 +174,12 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
                 verify(exactly = 0) { enrollmentRepository.save(match<KobilEnrollment> { it.kobilUserId == "kob-pending" }) }
             }
         }
+    }
 
-        `when`("the app has not activated yet") {
-            val (toolSessionId, _) = activating("kob-idle")
+    given("a session whose app has not activated yet") {
+        val (toolSessionId, _) = activating("kob-idle")
+
+        `when`("the app reports it has not activated") {
             val outcome = handler.patch(toolSessionId, activated = false, biometricConsent = null, bindingKeyRef = "jkt", label = null)
 
             then("it stays at step activate without asking KOBIL") {

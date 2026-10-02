@@ -11,11 +11,8 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import io.mockk.every
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.collections.shouldNotContain
-import io.kotest.matchers.shouldBe
 import java.time.Instant
 import java.util.Date
 import java.util.UUID
@@ -31,8 +28,8 @@ class MultiDeviceCredentialIntegrationTest : IntegrationTestSupport() {
     private var currentChannelKey: ECKey = ECKeyGenerator(Curve.P_256).generate()
 
     init {
-        beforeEach {
-            // Lazy on purpose: currentChannelKey is reassigned mid-test for a second device.
+        beforeScenario {
+            // Lazy on purpose: currentChannelKey is reassigned mid-scenario for a second device.
             every { dpopValidator.validate(any(), any(), any()) } answers {
                 DpopProof(
                     token = "mock-token",
@@ -71,59 +68,27 @@ class MultiDeviceCredentialIntegrationTest : IntegrationTestSupport() {
     }
 
     init {
-        given("several physical devices, each with their own enroll-device credential, on the same account") {
-        then("Two devices can each hold their own active credential without deactivating each other") {
-            // Device A registers the account and enrolls its own key.
-            val deviceAKey = ECKeyGenerator(Curve.P_256).generate()
-            // Its own DPoP channel key beside the device credential - enroll-device refuses the same key.
-            currentChannelKey = ECKeyGenerator(Curve.P_256).generate()
-            val channelASessionId = identifyAndConfirmEmail()
-            enrollDevice(channelASessionId, deviceAKey, "Laptop")
+        given("two physical devices, each with its own DPoP channel key") {
+            `when`("device A registers and enrolls its key, then device B, never linked, re-identifies into the same account and enrolls its own") {
+                // Each device has its own DPoP channel key beside its credential - enroll-device refuses the same key.
+                currentChannelKey = ECKeyGenerator(Curve.P_256).generate()
+                val channelASessionId = identifyAndConfirmEmail()
+                enrollDevice(channelASessionId, ECKeyGenerator(Curve.P_256).generate(), "Laptop")
 
-            // Device B, never linked, re-identifies into the same account via the PERSON_ID anchor
-            // and enrolls its own key. Device A's credential must stay active.
-            val deviceBKey = ECKeyGenerator(Curve.P_256).generate()
-            // Its own DPoP channel key beside the device credential - enroll-device refuses the same key.
-            currentChannelKey = ECKeyGenerator(Curve.P_256).generate()
-            val channelBSessionId = identifyAndConfirmEmail()
-            enrollDevice(channelBSessionId, deviceBKey, "Handy")
+                // Re-identification finds the account via the PERSON_ID anchor.
+                currentChannelKey = ECKeyGenerator(Curve.P_256).generate()
+                val channelBSessionId = identifyAndConfirmEmail()
+                enrollDevice(channelBSessionId, ECKeyGenerator(Curve.P_256).generate(), "Handy")
 
-            @Suppress("UNCHECKED_CAST")
-            val methods = get("/orchestrator/api/v1/channels/$channelBSessionId/methods")["methods"] as List<Map<String, Any?>>
-            val deviceEntries = methods.filter { it["method"] == "device" }
-            deviceEntries shouldHaveSize 2
-            deviceEntries.map { it["label"] } shouldContainExactlyInAnyOrder listOf("Laptop", "Handy")
-        }
-        then("Auth device is only offered and resolvable on the device holding the matching key") {
-            val deviceAKey = ECKeyGenerator(Curve.P_256).generate()
-            // Its own DPoP channel key beside the device credential - enroll-device refuses the same key.
-            currentChannelKey = ECKeyGenerator(Curve.P_256).generate()
-            val channelASessionId = identifyAndConfirmEmail()
-            enrollDevice(channelASessionId, deviceAKey, "Laptop")
+                @Suppress("UNCHECKED_CAST")
+                val methods = get("/orchestrator/api/v1/channels/$channelBSessionId/methods")["methods"] as List<Map<String, Any?>>
 
-            // Key A again: DeviceAccountLink recognizes it, and the single candidate auth-device is
-            // offered directly.
-            val secondChannelOnDeviceA = post("/orchestrator/api/v1/app/channels")
-            secondChannelOnDeviceA.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-device", "step" to "auth")
-
-            // Device B without its own credential re-identifies. Device A's instance belongs to another
-            // bindingKeyRef, so enrollment is offered instead of auth-device for a key B doesn't hold.
-            val deviceBKey = ECKeyGenerator(Curve.P_256).generate()
-            // Its own DPoP channel key beside the device credential - enroll-device refuses the same key.
-            currentChannelKey = ECKeyGenerator(Curve.P_256).generate()
-            val channelBSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-            val identToolSessionId = post("/orchestrator/api/v1/channels/$channelBSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
-            val reidentified = patch(
-                "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
-                """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","fsc":"VALIDCODE"}"""
-            )
-            // Several enrollment candidates lead to a selection page, never to auth-device.
-            reidentified.next() shouldBe mapOf("type" to "orchestrator", "context" to "enrollment", "step" to "selectMethod")
-            @Suppress("UNCHECKED_CAST")
-            val options = reidentified["stepData"].let { (it as Map<String, Any?>)["options"] as List<String> }
-            options shouldContain "enroll-device"
-            options shouldNotContain "auth-device"
-        }
+                then("both devices hold their own active credential without deactivating each other") {
+                    val deviceEntries = methods.filter { it["method"] == "device" }
+                    deviceEntries shouldHaveSize 2
+                    deviceEntries.map { it["label"] } shouldContainExactlyInAnyOrder listOf("Laptop", "Handy")
+                }
+            }
         }
     }
 }

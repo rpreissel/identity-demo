@@ -1,5 +1,6 @@
 package com.example.identity.kcext.login;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -18,8 +19,13 @@ class ApiFailureTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {500, 502, 503, 504, 302})
+    @ValueSource(ints = {500, 502, 503, 504})
     void serverErrorMeansUnavailable(int status) {
         assertEquals(ApiFailure.UNAVAILABLE, ApiFailure.of(status));
+    }
+
+    @Test
+    void aRedirectIsNoRejectionEitherButUnavailable() {
+        assertEquals(ApiFailure.UNAVAILABLE, ApiFailure.of(302));
     }
 }

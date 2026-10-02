@@ -33,23 +33,26 @@ class EventPublicationRegistryTest : BehaviorSpec() {
 
     init {
         given("a module listener that fails") {
-            then("its publication stays open in orchestrator.event_publication") {
+            `when`("an event is published inside a transaction") {
                 val marker = UUID.randomUUID().toString()
 
-                // Published inside a transaction: recording it with the commit makes the registry an
-                // outbox rather than a log written afterwards.
+                // Recording it with the commit makes the registry an outbox rather than a log written afterwards.
                 transactions.executeWithoutResult { events.publishEvent(ProbeEvent(marker)) }
-
                 // The listener is @Async: the row is only meaningful once it has run and failed.
-                listener.invoked.await(5, TimeUnit.SECONDS) shouldBe true
-                val open = jdbcTemplate.queryForObject(
-                    """
-                    select count(*) from orchestrator.event_publication
-                    where completion_date is null and serialized_event like ?
-                    """.trimIndent(),
-                    Long::class.java, "%$marker%"
-                )
-                open shouldBe 1L
+                val invoked = listener.invoked.await(5, TimeUnit.SECONDS)
+
+                then("the listener ran") {
+                    invoked shouldBe true
+                }
+                then("its publication stays open in orchestrator.event_publication") {
+                    jdbcTemplate.queryForObject(
+                        """
+                        select count(*) from orchestrator.event_publication
+                        where completion_date is null and serialized_event like ?
+                        """.trimIndent(),
+                        Long::class.java, "%$marker%"
+                    ) shouldBe 1L
+                }
             }
         }
     }

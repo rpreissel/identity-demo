@@ -35,8 +35,6 @@ class KcInvitationLookupIntegrationTest : IntegrationTestSupport() {
     @Autowired
     private lateinit var clock: Clock
 
-    override val resetPerWhen = true
-
     private fun binding(value: String) {
         every { peerAuthValidator.validate(any(), any(), any()) } returns
             PeerAuthAssertion(jti = UUID.randomUUID().toString(), issuedAt = Instant.now(), channelBinding = value, subject = null)
@@ -114,7 +112,7 @@ class KcInvitationLookupIntegrationTest : IntegrationTestSupport() {
                 val status = status(id)
 
                 then("the lookup is refused") {
-                    status.is4xxClientError shouldBe true
+                    status shouldBe HttpStatus.UNAUTHORIZED
                 }
             }
         }

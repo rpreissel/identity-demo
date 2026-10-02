@@ -11,91 +11,78 @@ import io.kotest.matchers.string.shouldContain
 
 /**
  * Pins the claims vocabulary of tool_api: [AttributeType], [ClaimSource] with its [ClaimTrust]s,
- * [Claim]/[ClaimRequirement] and the [ClaimDeclaration] check [assertClaimsCovered]. The
+ * the value check of a [Claim] and the [ClaimDeclaration] check [assertClaimsCovered]. The
  * orchestrator's `requiresSatisfied` is tested there.
  */
 class ClaimsTest : BehaviorSpec({
-    given("AttributeType") {
+    given("the attribute types") {
         then("wire names are stable - they become account.claim.attribute_type values") {
-            AttributeType.PERSON_ID.wireName shouldBe "person_id"
-            AttributeType.KVNR.wireName shouldBe "kvnr"
-            AttributeType.EID_RESTRICTED_ID.wireName shouldBe "restricted_id"
-            AttributeType.FAMILY_NAME.wireName shouldBe "family_name"
-            AttributeType.GIVEN_NAMES.wireName shouldBe "given_names"
-            AttributeType.BIRTH_DATE.wireName shouldBe "birth_date"
-            AttributeType.EMAIL.wireName shouldBe "email"
-            AttributeType.PHONE_NUMBER.wireName shouldBe "phone_number"
+            AttributeType.entries.associateWith { it.wireName } shouldBe mapOf(
+                AttributeType.PERSON_ID to "person_id",
+                AttributeType.KVNR to "kvnr",
+                AttributeType.MEMBER_NUMBER to "member_number",
+                AttributeType.EID_RESTRICTED_ID to "restricted_id",
+                AttributeType.NECT_RESTRICTED_ID to "nect_restricted_id",
+                AttributeType.FAMILY_NAME to "family_name",
+                AttributeType.GIVEN_NAMES to "given_names",
+                AttributeType.BIRTH_DATE to "birth_date",
+                AttributeType.STREET_ADDRESS to "street_address",
+                AttributeType.POSTAL_CODE to "postal_code",
+                AttributeType.LOCALITY to "locality",
+                AttributeType.EMAIL to "email",
+                AttributeType.PHONE_NUMBER to "phone_number",
+                AttributeType.PASSWORD_EXISTS to "password_exists",
+            )
         }
     }
 
-    given("ClaimSource") {
+    given("the claim sources") {
         then("the two named constants carry their wire values") {
             ClaimSource.PERSON_DIRECTORY.value shouldBe "person_directory"
             ClaimSource.SELF_REPORTED.value shouldBe "self-reported"
         }
-        then("of() names the proving tool by its toolId") {
+        then("a proving tool is named by its toolId") {
             ClaimSource("ident-eid").value shouldBe "ident-eid"
         }
     }
 
-    given("ClaimTrust") {
+    given("the claim trust levels") {
         then("rank encodes the precedence order: Stammdaten > Proven > Self-reported") {
             (ClaimTrust.AUTHORITATIVE.rank > ClaimTrust.PROVEN.rank) shouldBe true
             (ClaimTrust.PROVEN.rank > ClaimTrust.SELF_REPORTED.rank) shouldBe true
         }
-        then("ClaimSource.claimTrust maps every source kind to its level") {
+        then("every source kind maps to its level") {
             ClaimSource.PERSON_DIRECTORY.claimTrust shouldBe ClaimTrust.AUTHORITATIVE
             ClaimSource.SELF_REPORTED.claimTrust shouldBe ClaimTrust.SELF_REPORTED
             ClaimSource("ident-eid").claimTrust shouldBe ClaimTrust.PROVEN
         }
     }
 
-    given("Claim") {
-        val claim = Claim(
-            attributeType = AttributeType.KVNR,
-            value = "A123456789",
-            source = ClaimSource.PERSON_DIRECTORY,
-            establishedAcr = AcrLevel.LOA2
-        )
-        then("carries value, provenance and assurance") {
-            claim.attributeType shouldBe AttributeType.KVNR
-            claim.value shouldBe "A123456789"
-            claim.source shouldBe ClaimSource.PERSON_DIRECTORY
-            claim.establishedAcr shouldBe AcrLevel.LOA2
-        }
-        then("establishedAcr defaults to null") {
-            Claim(AttributeType.EMAIL, "a@b.de", ClaimSource("confirm-email")).establishedAcr shouldBe null
-        }
-        then("rejects malformed shared identity values") {
-            shouldThrow<IllegalStateException> {
-                Claim(AttributeType.PERSON_ID, "not-a-number", ClaimSource.PERSON_DIRECTORY).validateValue()
+    given("malformed shared identity values") {
+        `when`("a person id that is no Partnernummer is validated") {
+            val result = runCatching { Claim(AttributeType.PERSON_ID, "not-a-number", ClaimSource.PERSON_DIRECTORY).validateValue() }
+
+            then("it is rejected") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
-            shouldThrow<IllegalStateException> {
-                Claim(AttributeType.BIRTH_DATE, "31.12.1970", ClaimSource.PERSON_DIRECTORY).validateValue()
+        }
+        `when`("a birth date that is no ISO date is validated") {
+            val result = runCatching { Claim(AttributeType.BIRTH_DATE, "31.12.1970", ClaimSource.PERSON_DIRECTORY).validateValue() }
+
+            then("it is rejected") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
-            shouldThrow<IllegalStateException> {
-                Claim(AttributeType.EMAIL, " ", ClaimSource.SELF_REPORTED).validateValue()
+        }
+        `when`("a blank email is validated") {
+            val result = runCatching { Claim(AttributeType.EMAIL, " ", ClaimSource.SELF_REPORTED).validateValue() }
+
+            then("it is rejected") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
     }
 
-    given("ClaimRequirement") {
-        then("mirrors a claim's attribute type with a minimum claim trust") {
-            val requirement = ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN)
-            requirement.attributeType shouldBe AttributeType.EMAIL
-            requirement.minClaimTrust shouldBe ClaimTrust.PROVEN
-        }
-    }
-
-    given("ClaimDeclaration") {
-        then("declares an attribute type with the source a run asserts it with") {
-            val declaration = ClaimDeclaration(AttributeType.KVNR, ClaimSource.PERSON_DIRECTORY)
-            declaration.attributeType shouldBe AttributeType.KVNR
-            declaration.source shouldBe ClaimSource.PERSON_DIRECTORY
-        }
-    }
-
-    given("assertClaimsCovered") {
+    given("a descriptor declaring KVNR from the master data and EMAIL from the tool itself") {
         val descriptor = object : ToolDescriptor {
             override val toolId = ToolId("test-ident")
             override val method = "test"
@@ -107,30 +94,49 @@ class ClaimsTest : BehaviorSpec({
                 ClaimDeclaration(AttributeType.EMAIL, ClaimSource(toolId.value))
             )
         }
-        then("accepts reported claims that match the declaration") {
-            assertClaimsCovered(
-                descriptor,
-                listOf(
-                    Claim(AttributeType.KVNR, "A123456789", ClaimSource.PERSON_DIRECTORY, AcrLevel.LOA2),
-                    Claim(AttributeType.EMAIL, "a@b.de", ClaimSource(descriptor.toolId.value))
+
+        `when`("a run reports claims that match the declaration") {
+            val result = runCatching {
+                assertClaimsCovered(
+                    descriptor,
+                    listOf(
+                        Claim(AttributeType.KVNR, "A123456789", ClaimSource.PERSON_DIRECTORY, AcrLevel.LOA2),
+                        Claim(AttributeType.EMAIL, "a@b.de", ClaimSource(descriptor.toolId.value))
+                    )
                 )
-            )
+            }
+
+            then("they are accepted") {
+                result.isSuccess shouldBe true
+            }
         }
-        then("accepts an empty report") {
-            assertClaimsCovered(descriptor, emptyList())
+        `when`("a run reports no claim") {
+            val result = runCatching { assertClaimsCovered(descriptor, emptyList()) }
+
+            then("the empty report is accepted") {
+                result.isSuccess shouldBe true
+            }
         }
-        then("rejects an undeclared attribute type") {
-            shouldThrow<IllegalStateException> {
+        `when`("a run reports an undeclared attribute type") {
+            val result = runCatching {
                 assertClaimsCovered(descriptor, listOf(Claim(AttributeType.FAMILY_NAME, "Muster", ClaimSource.PERSON_DIRECTORY)))
-            }.message shouldContain "declares none"
+            }
+
+            then("it is rejected") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }.message shouldContain "declares none"
+            }
         }
-        then("rejects a claim source that differs from the declaration") {
-            shouldThrow<IllegalStateException> {
+        `when`("a run reports a claim source that differs from the declaration") {
+            val result = runCatching {
                 assertClaimsCovered(descriptor, listOf(Claim(AttributeType.KVNR, "A123456789", ClaimSource(descriptor.toolId.value))))
-            }.message shouldContain "but declares"
+            }
+
+            then("it is rejected") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }.message shouldContain "but declares"
+            }
         }
-        then("rejects more than one claim for the same attribute type") {
-            shouldThrow<IllegalStateException> {
+        `when`("a run reports more than one claim for the same attribute type") {
+            val result = runCatching {
                 assertClaimsCovered(
                     descriptor,
                     listOf(
@@ -138,7 +144,11 @@ class ClaimsTest : BehaviorSpec({
                         Claim(AttributeType.KVNR, "A987654321", ClaimSource.PERSON_DIRECTORY)
                     )
                 )
-            }.message shouldContain "more than one claim"
+            }
+
+            then("it is rejected") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }.message shouldContain "more than one claim"
+            }
         }
     }
 })

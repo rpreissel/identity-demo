@@ -59,7 +59,7 @@ Ordner, kein Modul: Spring Modulith erkennt Module an `@ApplicationModule` in ih
 `ModuleMetadata.kt` (`spring.modulith.detection-strategy: explicitly-annotated`). Die Modul-ID ist
 das letzte Paketsegment und zugleich Datenbankschema, Flyway-Ordner `db/migration/<id>/`,
 OpenAPI-Datei `api/modules/<id>.yaml` und bei den Simulationen das Text-Bundle. Wer im Code nach
-der ID eines Moduls fragt, fragt `ModuleId` (`tool_api`); `IdentityApplicationTests` prüft Gruppe
+der ID eines Moduls fragt, fragt `ModuleId` (`tool_api`); `ModulithStructureTest` prüft Gruppe
 und Namen.
 
 ```
@@ -162,13 +162,13 @@ nur entlang einer benannten Kante, das Personenverzeichnis nur über Ports
 - Die HTTP-Pfade (`/orchestrator/api/v1/tools/...`) sind unabhängig vom Kotlin-Paket des jeweiligen `@RestController` (`ident_fsc.api.v1`, `ident_eid.api.v1`, `ident_kvnr.api.v1`, `auth_sms.api.v1`, `auth_password.api.v1`, `auth_email.api.v1`, `auth_device.api.v1`, `auth_qr.api.v1`, `auth_kobil.api.v1`, `auth_invite.api.v1`, `ident_nect.api.v1`) — Spring leitet nach `@RequestMapping` weiter, nicht nach Paket. Ausnahmen: `kobil.api.v1`, `nect.api.v1`, `personenverzeichnis.api.v1`, `sms.api.v1` und `mail.api.v1` liegen bewusst NICHT unter `/orchestrator/api`, sondern unter `/mock-kobil`, `/mock-nect`, `/mock-personenverzeichnis`, `/mock-sms` bzw. `/mock-mail` — sie sind die Fremdsysteme, nicht diese Anwendung.
 - Die Tool-Module sind voneinander und von `account` entkoppelt, einschließlich `auth_email`. Abhängigkeiten zu simulierten Fremdsystemen sind ausdrücklich erlaubt, nicht nur geduldet: `auth_kobil → kobil`, `ident_nect → nect` (nur `NectIdent`); das Personenverzeichnis nur über Ports (ADR-31, Nachtrag). Konten werden über `tool_api.AccountDirectory` nachgeschlagen. Geschrieben wird nur über Claims im `ToolOutcome`, die die Journey übernimmt. Hilfsfunktionen, die ein Konto über die E-Mail-Adresse suchen, sind Kotlin-Erweiterungsfunktionen des Ports.
 - `auth_sms` versteckt seine internen Datenbank-IDs hinter einer undurchsichtigen `EnrollmentRef` ([06-ablaeufe.md](06-ablaeufe.md)).
-- Die Grenzen zwischen den Paketen sichert `@ApplicationModule(allowedDependencies = ...)` je Modul ab, und `IdentityApplicationTests` prüft sie („the modulith structure is valid“); eine unerlaubte Abhängigkeit lässt den Build scheitern. Da Kotlin keine Annotationen an Paketen kennt, trägt je eine `ModuleMetadata.kt` die Deklaration (`@ApplicationModule` ist `@Target({PACKAGE, TYPE})`); ein `package-info.java` ist nicht nötig.
+- Die Grenzen zwischen den Paketen sichert `@ApplicationModule(allowedDependencies = ...)` je Modul ab, und `ModulithStructureTest` prüft sie („each module depends only on what it declares“); eine unerlaubte Abhängigkeit lässt den Build scheitern. Da Kotlin keine Annotationen an Paketen kennt, trägt je eine `ModuleMetadata.kt` die Deklaration (`@ApplicationModule` ist `@Target({PACKAGE, TYPE})`); ein `package-info.java` ist nicht nötig.
 - Das Frontend kommuniziert ausschließlich über HTTP mit der Applikation als Ganzes; welches Modul einen Endpunkt implementiert, ist für es nicht sichtbar.
 
 ### Anforderungen an die Modulstruktur
 
 - **M-1** — Jedes Modul hat ein eigenes Paket in einer der Gruppen `core`, `contract`, `tools`, `simulation`, `demo`; seine ID ist das letzte Paketsegment.
-  - *Kriterium:* Paketstruktur `com.example.identity.<gruppe>.<modul>`, `@ApplicationModule(id = "<modul>")`; geprüft in `IdentityApplicationTests`
+  - *Kriterium:* Paketstruktur `com.example.identity.<gruppe>.<modul>`, `@ApplicationModule(id = "<modul>")`; geprüft in `ModulithStructureTest`
 - **M-2** — Jedes Modul mit Laufzeitlogik stellt sie als Spring-Bean bereit.
   - *Kriterium:* `@Service`/`@Component`/`@RestController` im Modul; `texts` und `tool_api` sind reine Verträge ohne Bean (`ToolApiArchitectureTest`)
 - **M-3** — Tool-Module und Orchestrator sind nur über die gemeinsame SPI `tool_api` verbunden, nie direkt.

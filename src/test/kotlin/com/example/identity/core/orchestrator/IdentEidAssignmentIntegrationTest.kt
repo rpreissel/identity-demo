@@ -1,18 +1,15 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.tool_api.ids.AccountId
-import com.example.identity.contract.texts.templateOf
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 import com.example.identity.core.orchestrator.support.AccountFixtures
 import com.ninjasquad.springmockk.MockkBean
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain as shouldContainText
 import io.kotest.matchers.string.shouldNotContain as shouldNotContainText
-import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.collections.shouldContainExactly
-import io.kotest.matchers.collections.shouldNotContain
-import org.junit.jupiter.api.assertThrows
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 
@@ -27,7 +24,7 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
     private lateinit var jwkThumbprintService: JwkThumbprintService
 
     init {
-        beforeEach { stubDpopWithFakeJwk(jwkThumbprintService) }
+        beforeScenario { stubDpopWithFakeJwk(jwkThumbprintService) }
 
         /** Card read plus PIN - the whole tool, with nothing typed to look anybody up first. */
         fun attestViaEid(channelSessionId: String): Map<String, Any?> {
@@ -54,6 +51,16 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
         /** Activates the correlation step the attestation left `next` pointing at. */
         fun activateAssignment(channelSessionId: String): String =
             post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-kvnr").nextRaw()["toolSessionId"] as String
+
+        /** Runs confirm-email to completion for one specific address on an already-running journey. */
+        fun confirmAddress(channelSessionId: String, email: String): Map<String, Any?> {
+            val confirmSession = post("/orchestrator/api/v1/channels/$channelSessionId/tools/confirm-email")
+                .nextRaw()["toolSessionId"] as String
+            val (code, _) = captureMockTan {
+                patch("/orchestrator/api/v1/tools/$confirmSession/confirm-email", """{"email":"$email"}""")
+            }
+            return patch("/orchestrator/api/v1/tools/$confirmSession/confirm-email", """{"code":"$code"}""")
+        }
 
         /** How many PERSON_ID anchors the channel's account has - 0 for a prospect, 1 once bound. */
         fun personAnchorsOf(channelSessionId: String): Int = jdbcTemplate.queryForObject(
@@ -91,53 +98,17 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
             accountId.value
         )!!
 
-        given("a fresh channel starting a registration") {
-            then("the identification choice does not offer the correlation step - there is nothing attested to correlate yet") {
-                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val next = get("/orchestrator/api/v1/channels/$channelSessionId").nextRaw()
+        fun accountExists(accountId: AccountId): Boolean = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM account.account WHERE id = ?", Int::class.java, accountId.value
+        ) == 1
 
-                // Either a selection page or a single-candidate skip - both must exclude ident-kvnr.
-                @Suppress("UNCHECKED_CAST")
-                val options = get("/orchestrator/api/v1/channels/$channelSessionId").stepData()["options"] as? List<String>
-                (options ?: listOf(next["toolId"] as String)) shouldNotContain "ident-kvnr"
-            }
-        }
-
-        given("a fresh channel on ident-eid") {
-            `when`("the card data is malformed, then corrected, then a wrong PIN follows") {
-                then("each rejection stays in step input and drops only what it rejected, naming no field") {
-                    val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                    val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-eid")
-                        .nextRaw()["toolSessionId"] as String
-                    val url = "/orchestrator/api/v1/tools/$toolSessionId/ident-eid"
-                    val card = """"familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","streetAddress":"Musterstraße 1","locality":"Musterstadt","restrictedId":"T0103005K1D5S0V8T9W6UM2RTX""""
-                    val stillOnEid = mapOf("type" to "tool", "toolId" to "ident-eid", "step" to "input")
-
-                    val cardRejected = patch(url, """{$card,"postalCode":"1234"}""")
-                    templateOf(cardRejected.stepData()["error"]) shouldBe "Die Kartendaten sind ungültig"
-                    cardRejected.next() shouldBe stillOnEid
-                    @Suppress("UNCHECKED_CAST")
-                    get(url).stepData()["missingFields"] as List<String> shouldContainExactly
-                        listOf("familyName", "givenNames", "birthDate", "streetAddress", "postalCode", "locality", "restrictedId")
-
-                    val cardAccepted = patch(url, """{$card,"postalCode":"12345"}""")
-                    cardAccepted.next() shouldBe stillOnEid
-                    @Suppress("UNCHECKED_CAST")
-                    cardAccepted.stepData()["missingFields"] as List<String> shouldContainExactly listOf("pin")
-
-                    val pinRejected = patch(url, """{"pin":"000000"}""")
-                    templateOf(pinRejected.stepData()["error"]) shouldBe "eID-PIN ungueltig"
-                    pinRejected.next() shouldBe stillOnEid
-                    @Suppress("UNCHECKED_CAST")
-                    get(url).stepData()["missingFields"] as List<String> shouldContainExactly listOf("pin")
-                }
-            }
-        }
+        /** The login choice an existing account with sms and password gets: prove a method, not enroll one. */
+        val loginChoice = mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
 
         // ADR-19: once an account holds a card's restricted_id, the next run with that card
         // resolves onto it instead of registering a second account.
         given("a card whose restricted_id an existing account already holds") {
-            then("the run is recognized onto that account instead of registering a new one") {
+            `when`("the card is attested on a fresh channel") {
                 val existing = accountFixtures.seedAccount(
                     kvnr = "B987654321", name = "Beispiel", vorname = "Erika",
                     email = "erika.beispiel@example.com",
@@ -146,32 +117,23 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 )
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
 
-                attestAsErika(channelSessionId)
+                val attested = attestAsErika(channelSessionId)
 
-                accountIdOf(channelSessionId) shouldBe existing
-                // Her account is complete, so the run offers her own methods, not the KVNR step.
-                @Suppress("UNCHECKED_CAST")
-                val options = get("/orchestrator/api/v1/channels/$channelSessionId").stepData()["options"] as? List<String>
-                val offered = options ?: listOf(get("/orchestrator/api/v1/channels/$channelSessionId").nextRaw()["toolId"] as String)
-                offered shouldContain "auth-sms"
-                offered shouldNotContain "ident-kvnr"
+                then("the run is recognized onto that account instead of registering a new one") {
+                    accountIdOf(channelSessionId) shouldBe existing
+                }
+                then("her account is complete, so the run offers her own methods, not the KVNR step") {
+                    attested.next() shouldBe loginChoice
+                    @Suppress("UNCHECKED_CAST")
+                    (attested.stepData()["options"] as List<String>) shouldContainExactlyInAnyOrder listOf("auth-sms", "auth-password")
+                }
             }
-        }
-
-        /** Runs confirm-email to completion for one specific address on an already-running journey. */
-        fun confirmAddress(channelSessionId: String, email: String): Map<String, Any?> {
-            val confirmSession = post("/orchestrator/api/v1/channels/$channelSessionId/tools/confirm-email")
-                .nextRaw()["toolSessionId"] as String
-            val (code, _) = captureMockTan {
-                patch("/orchestrator/api/v1/tools/$confirmSession/confirm-email", """{"email":"$email"}""")
-            }
-            return patch("/orchestrator/api/v1/tools/$confirmSession/confirm-email", """{"code":"$code"}""")
         }
 
         // ADR-20 through the email anchor: a confirmed address resolves accounts, so the
         // disposable account goes into the one that holds it. Skipping the KVNR step is no dead end.
-        given("an Interessent confirming an address that belongs to their own account") {
-            then("the disposable account goes into it, and the run continues there") {
+        given("an Interessent whose address belongs to their own account") {
+            `when`("the Interessent skips the KVNR step and confirms that address") {
                 val existing = accountFixtures.seedAccount(
                     kvnr = "B987654321", name = "Beispiel", vorname = "Erika",
                     email = "erika.beispiel@example.com",
@@ -184,17 +146,18 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
 
                 confirmAddress(channelSessionId, "erika.beispiel@example.com")
 
-                accountIdOf(channelSessionId) shouldBe existing
-                jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.account WHERE id = ?", Int::class.java, disposable.value
-                ) shouldBe 0
-                // The attestation came along - her card now recognizes this account (ADR-19).
-                restrictedIdAnchorsOf(existing) shouldBe 1
+                then("the run continues on the existing account and the disposable one is gone") {
+                    accountIdOf(channelSessionId) shouldBe existing
+                    accountExists(disposable) shouldBe false
+                }
+                then("the attestation came along - her card now recognizes this account (ADR-19)") {
+                    restrictedIdAnchorsOf(existing) shouldBe 1
+                }
             }
         }
 
-        given("an Interessent confirming an address that belongs to somebody else") {
-            then("it is refused - holding a mailbox does not make you that person") {
+        given("an Interessent whose address belongs to somebody else") {
+            `when`("the Interessent skips the KVNR step and confirms that address") {
                 accountFixtures.seedAccount(
                     kvnr = "B987654321", name = "Beispiel", vorname = "Erika",
                     email = "erika.beispiel@example.com",
@@ -206,17 +169,17 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 val disposable = checkNotNull(accountIdOf(channelSessionId)) { "the attestation created no account" }
                 delete("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr")
 
-                val conflict = assertThrows<HttpClientErrorException> {
-                    confirmAddress(channelSessionId, "erika.beispiel@example.com")
-                }
+                val result = runCatching { confirmAddress(channelSessionId, "erika.beispiel@example.com") }
 
-                conflict.statusCode shouldBe HttpStatus.CONFLICT
-                accountIdOf(channelSessionId) shouldBe disposable
+                then("it is refused - holding a mailbox does not make you that person") {
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
+                    accountIdOf(channelSessionId) shouldBe disposable
+                }
             }
         }
 
         given("an eID attestation whose KVNR belongs to an account that already exists") {
-            then("the disposable account yields, the run continues on the existing one") {
+            `when`("the KVNR is supplied to the correlation step") {
                 val existing = accountFixtures.seedAccount(
                     kvnr = "A123456789", name = "Muster", vorname = "Max",
                     methods = listOf(AccountFixtures.Method.Sms(), AccountFixtures.Method.Password())
@@ -224,60 +187,58 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 attestViaEid(channelSessionId)
                 val disposable = checkNotNull(accountIdOf(channelSessionId)) { "the attestation created no account" }
-                disposable shouldNotBe existing
 
-                val toolSessionId = activateAssignment(channelSessionId)
-                val assigned = patch("/orchestrator/api/v1/tools/$toolSessionId/ident-kvnr", """{"kvnr":"A123456789"}""")
+                val assigned = patch("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr", """{"kvnr":"A123456789"}""")
 
-                // The run moved over, and the placeholder is gone rather than left as a stray.
-                accountIdOf(channelSessionId) shouldBe existing
-                jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.account WHERE id = ?", Int::class.java, disposable.value
-                ) shouldBe 0
-                // The attestation came along - the card's own anchor now recognizes this account.
-                restrictedIdAnchorsOf(existing) shouldBe 1
-                jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM account.change_log WHERE account_id = ? AND change_type = 'IDENTIFIED' AND subject = 'eid'",
-                    Int::class.java, existing.value
-                ) shouldBe 1
-
-                // Like every route to an existing account: prove one of its methods, not enroll a new one.
-                @Suppress("UNCHECKED_CAST")
-                val options = get("/orchestrator/api/v1/channels/$channelSessionId").stepData()["options"] as? List<String>
-                (options ?: listOf(assigned.nextRaw()["toolId"] as String)) shouldContain "auth-sms"
+                then("the attestation had created a disposable account of its own") {
+                    disposable shouldNotBe existing
+                }
+                then("the run moved over, and the placeholder is gone rather than left as a stray") {
+                    accountIdOf(channelSessionId) shouldBe existing
+                    accountExists(disposable) shouldBe false
+                }
+                then("the attestation came along, audited on the existing account") {
+                    restrictedIdAnchorsOf(existing) shouldBe 1
+                    jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM account.change_log WHERE account_id = ? AND change_type = 'IDENTIFIED' AND subject = 'eid'",
+                        Int::class.java, existing.value
+                    ) shouldBe 1
+                }
+                then("like every route to an existing account, it asks to prove one of its methods") {
+                    assigned.next() shouldBe loginChoice
+                    @Suppress("UNCHECKED_CAST")
+                    (assigned.stepData()["options"] as List<String>) shouldContainExactlyInAnyOrder listOf("auth-sms", "auth-password")
+                }
             }
         }
 
         given("an eID attestation that resolved nobody") {
             `when`("the assignment step is abandoned - the 'jetzt nicht' of this flow") {
-                then("the run carries on and the account stays an Interessent") {
-                    val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                val attested = attestViaEid(channelSessionId)
+                val skipped = delete("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr")
 
-                    // No prompt in between: the attestation points straight at the correlation tool.
-                    val attested = attestViaEid(channelSessionId)
+                then("the attestation points straight at the correlation tool, no prompt in between") {
                     attested.next() shouldBe mapOf("type" to "tool", "toolId" to "ident-kvnr", "step" to "input")
-
-                    val toolSessionId = activateAssignment(channelSessionId)
-                    val skipped = delete("/orchestrator/api/v1/tools/$toolSessionId/ident-kvnr")
-                    // The registration continues where it always does - the address step.
-                    (skipped.nextRaw()["toolId"] ?: skipped.nextRaw()["context"]) shouldBe "confirm-email"
-
+                }
+                then("the registration continues where it always does - the address step") {
+                    skipped.next() shouldBe mapOf("type" to "tool", "toolId" to "confirm-email", "step" to "input")
+                }
+                then("the account stays an Interessent") {
                     personAnchorsOf(channelSessionId) shouldBe 0
                 }
             }
 
             `when`("a matching KVNR is supplied") {
+                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                attestViaEid(channelSessionId)
+                patch("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr", """{"kvnr":"A123456789"}""")
+
                 then("it binds the register's person to the very same account") {
-                    val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                    val attested = attestViaEid(channelSessionId)
-
-                    attested.next() shouldBe mapOf("type" to "tool", "toolId" to "ident-kvnr", "step" to "input")
-                    val toolSessionId = activateAssignment(channelSessionId)
-                    patch("/orchestrator/api/v1/tools/$toolSessionId/ident-kvnr", """{"kvnr":"A123456789"}""")
-
                     personAnchorsOf(channelSessionId) shouldBe 1
-                    // Both acts are audited with their role. Without it, a `kvnr / loa2` row would
-                    // read like a procedure that reached loa2 by itself.
+                }
+                then("both acts are audited with their role") {
+                    // Without it, a `kvnr / loa2` row would read like a procedure that reached loa2 by itself.
                     jdbcTemplate.queryForList(
                         """
                         SELECT e.subject FROM account.change_log e
@@ -297,55 +258,47 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                         channelSessionId
                     )!! shouldContainText "CORRELATION"
                 }
+                then("the correlation step leaves no session evidence - it proves nothing, so it prices nothing") {
+                    // Recorded, `kvnr` would buy loa2 by typing a semi-public number
+                    // (ToolDescriptor.evidenceAxis).
+                    val evidence = evidenceJsonOf(channelSessionId)
+                    evidence shouldContainText "eid"
+                    evidence shouldNotContainText "kvnr"
+                }
             }
 
-            then("the correlation step leaves no session evidence - it proves nothing, so it prices nothing") {
+            `when`("a person is bound and the correlation step is requested a second time") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 attestViaEid(channelSessionId)
-                val toolSessionId = activateAssignment(channelSessionId)
-                patch("/orchestrator/api/v1/tools/$toolSessionId/ident-kvnr", """{"kvnr":"A123456789"}""")
+                patch("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr", """{"kvnr":"A123456789"}""")
 
-                // Recorded, `kvnr` would buy loa2 by typing a semi-public number
-                // (ToolDescriptor.evidenceAxis).
-                val evidence = evidenceJsonOf(channelSessionId)
-                evidence shouldContainText "eid"
-                evidence shouldNotContainText "kvnr"
-                personAnchorsOf(channelSessionId) shouldBe 1
-            }
+                val result = runCatching { activateAssignment(channelSessionId) }
 
-            `when`("the account already has a person bound") {
-                then("the correlation step is not offered a second time") {
-                    val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                    attestViaEid(channelSessionId)
-                    val first = activateAssignment(channelSessionId)
-                    patch("/orchestrator/api/v1/tools/$first/ident-kvnr", """{"kvnr":"A123456789"}""")
-                    personAnchorsOf(channelSessionId) shouldBe 1
-
-                    // A second person on the account would change identity without proof. This
-                    // asserts the offer layer, which is as far as a client can get.
-                    val refused = assertThrows<HttpClientErrorException> { activateAssignment(channelSessionId) }
-                    refused.statusCode shouldBe HttpStatus.CONFLICT
+                then("it is not offered - a second person would change identity without proof") {
+                    // This asserts the offer layer, which is as far as a client can get.
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
                     personAnchorsOf(channelSessionId) shouldBe 1
                 }
             }
 
-            `when`("somebody else's KVNR is supplied") {
-                then("it is refused exactly like an unknown KVNR - the answer reveals nothing") {
-                    val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                    attestViaEid(channelSessionId)
-                    val foreign = patch(
-                        "/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr",
-                        """{"kvnr":"B987654321"}"""
-                    )
+            `when`("somebody else's KVNR is supplied on one channel and an unknown one on another") {
+                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                attestViaEid(channelSessionId)
+                val foreign = patch(
+                    "/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr",
+                    """{"kvnr":"B987654321"}"""
+                )
+                val otherChannel = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                attestViaEid(otherChannel)
+                val unknown = patch(
+                    "/orchestrator/api/v1/tools/${activateAssignment(otherChannel)}/ident-kvnr",
+                    """{"kvnr":"X999999999"}"""
+                )
+
+                then("the foreign KVNR binds nobody") {
                     personAnchorsOf(channelSessionId) shouldBe 0
-
-                    val otherChannel = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                    attestViaEid(otherChannel)
-                    val unknown = patch(
-                        "/orchestrator/api/v1/tools/${activateAssignment(otherChannel)}/ident-kvnr",
-                        """{"kvnr":"X999999999"}"""
-                    )
-
+                }
+                then("it is refused exactly like the unknown one - the answer reveals nothing") {
                     foreign.next() shouldBe unknown.next()
                     foreign["stepData"] shouldBe unknown["stepData"]
                     foreign.channel()["state"] shouldBe unknown.channel()["state"]

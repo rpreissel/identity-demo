@@ -9,118 +9,90 @@ import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.tools.auth_qr.AuthQrDescriptor
 import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
-import com.example.identity.tools.auth_qr.internal.ConfirmationCodeDigest
 import com.example.identity.tools.auth_qr.internal.QrLoginBrowserSide
-import com.example.identity.tools.auth_qr.internal.QrLoginRequest
-import com.example.identity.tools.auth_qr.internal.QrLoginRequestRepository
-import com.example.identity.tools.auth_qr.internal.QrLoginStatus
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
-import io.mockk.verify
-import java.time.Instant
-import java.util.Optional
 import java.util.UUID
 
+private const val PAIRING = "PAIRING1"
+
+/** One tool session on [PAIRING]; the browser side reports whatever state a test sets. */
+private class Fixture {
+    val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
+    val saved = slot<AuthQrToolSession>()
+    val sessions = mockk<AuthQrToolSessionRepository>().also {
+        every { it.save(capture(saved)) } answers { saved.captured }
+        every { it.findByToolSessionId(toolSessionId) } returns AuthQrToolSession(toolSessionId = toolSessionId, pairingCode = PAIRING, createdAt = TEST_NOW)
+    }
+    val browserSide = mockk<QrLoginBrowserSide>()
+    val handler = AuthQrToolHandler(AuthQrDescriptor, sessions, browserSide, clock = TEST_CLOCK)
+
+    fun withState(state: QrLoginBrowserSide.State, confirmationCode: String? = null) = apply {
+        every { browserSide.advance(PAIRING, confirmationCode) } returns state
+    }
+}
+
 /**
- * Pure unit test: no Spring context, repositories mocked with MockK, the browser side real. Covers
+ * Pure unit test: no Spring context, repositories and the browser side mocked with MockK. Covers
  * how each pairing state becomes an outcome, and the check that the confirming account is the one
- * the channel already knows.
+ * the channel already knows. Which state a pairing is in is [com.example.identity.tools.auth_qr.internal.QrLoginBrowserSideTest]'s matter.
  */
 class AuthQrToolHandlerTest : BehaviorSpec({
 
-    val toolDataRepository = mockk<AuthQrToolSessionRepository>()
-    val requests = mockk<QrLoginRequestRepository>()
-    val digest = ConfirmationCodeDigest("test-pepper")
-    val handler = AuthQrToolHandler(AuthQrDescriptor, toolDataRepository, QrLoginBrowserSide(requests, digest, clock = TEST_CLOCK), clock = TEST_CLOCK)
+    given("a WEB channel that knows account 42") {
+        val f = Fixture()
+        every { f.browserSide.open(expectedAccountId = AccountId(42L)) } returns PAIRING
 
-    /** A tool session waiting on a pairing in [status]; returns its id. */
-    fun sessionOn(
-        pairingCode: String,
-        status: QrLoginStatus,
-        expectedAccountId: AccountId = AccountId(42L),
-        resolvingAccountId: AccountId? = null,
-        expiresAt: Instant = TEST_NOW.plusSeconds(60),
-    ): ToolSessionId {
-        val request = QrLoginRequest(pairingCode = pairingCode, expectedAccountId = expectedAccountId, createdAt = TEST_NOW).apply {
-            this.status = status
-            this.resolvingAccountId = resolvingAccountId
-            this.expiresAt = expiresAt
-        }
-        every { requests.findById(pairingCode) } returns Optional.of(request)
-        val toolSessionId = ToolSessionId(UUID.randomUUID())
-        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns AuthQrToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode, createdAt = TEST_NOW)
-        return toolSessionId
-    }
-
-    given("start()") {
         `when`("a step-up for account 42 begins") {
-            val savedRequest = slot<QrLoginRequest>()
-            every { requests.save(capture(savedRequest)) } answers { savedRequest.captured }
-            val savedSession = slot<AuthQrToolSession>()
-            every { toolDataRepository.save(capture(savedSession)) } answers { savedSession.captured }
-            val outcome = handler.start(ToolSessionId(UUID.randomUUID()), accountId = AccountId(42L))
+            val outcome = f.handler.start(f.toolSessionId, accountId = AccountId(42L))
 
-            then("it opens a pairing that expects account 42 and shows its code at step waitForApp") {
-                val pairingCode = savedRequest.captured.pairingCode
-                savedRequest.captured.expectedAccountId shouldBe AccountId(42)
-                savedSession.captured.pairingCode shouldBe pairingCode
-                outcome shouldBe ToolOutcome.InProgress(nextStep = "waitForApp", stepData = QrPairingStep(pairingCode))
+            then("it binds the tool session to the pairing it opened for account 42 and shows its code at step waitForApp") {
+                f.saved.captured.pairingCode shouldBe PAIRING
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "waitForApp", stepData = QrPairingStep(PAIRING))
             }
         }
     }
 
-    given("patch() while the app has not decided") {
-        val toolSessionId = sessionOn("PENDING1", QrLoginStatus.PENDING)
+    given("a pairing the app has not decided on") {
+        val f = Fixture().withState(QrLoginBrowserSide.State.WaitingForApp)
 
         `when`("the browser polls") {
-            val outcome = handler.patch(toolSessionId, confirmationCode = null)
+            val outcome = f.handler.patch(f.toolSessionId, confirmationCode = null)
 
             then("it keeps showing the pairing code") {
-                outcome shouldBe ToolOutcome.InProgress(nextStep = "waitForApp", stepData = QrPairingStep("PENDING1"))
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "waitForApp", stepData = QrPairingStep(PAIRING))
             }
         }
     }
 
-    given("patch() on a pairing that ran out before the app decided") {
-        val toolSessionId = sessionOn("EXPIRED1", QrLoginStatus.PENDING, expiresAt = TEST_NOW.minusSeconds(1))
-
-        `when`("the browser polls") {
-            val outcome = handler.patch(toolSessionId, confirmationCode = null)
-
-            then("it fails as expired") {
-                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("QR-Code abgelaufen"))
-            }
-        }
-    }
-
-    given("patch() after account 42 approved in the app") {
-        val toolSessionId = sessionOn("APPROVE1", QrLoginStatus.APPROVED, resolvingAccountId = AccountId(42L))
-        every { requests.completeIfConfirmed("APPROVE1", digest.of("123456"), any()) } returns 1
-        every { requests.completeIfConfirmed("APPROVE1", digest.of("000000"), any()) } returns 0
-        every { requests.countWrongConfirmation("APPROVE1", any()) } returns 1
+    given("a pairing the app approved, awaiting the confirmation code") {
+        val f = Fixture().withState(QrLoginBrowserSide.State.EnterCode)
 
         `when`("the browser polls without a code") {
-            val outcome = handler.patch(toolSessionId, confirmationCode = null)
+            val outcome = f.handler.patch(f.toolSessionId, confirmationCode = null)
 
             then("it asks for the confirmation code the app shows") {
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "enterCode", stepData = MissingFields(listOf("confirmationCode")))
             }
         }
 
-        `when`("the browser sends a wrong confirmation code") {
-            val outcome = handler.patch(toolSessionId, confirmationCode = "000000")
+        `when`("the page is reloaded") {
+            val outcome = f.handler.read(f.toolSessionId)
 
-            then("it fails and counts the wrong code on the pairing") {
-                outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Bestätigungscode falsch"))
-                verify { requests.countWrongConfirmation("APPROVE1", any()) }
+            then("it still asks for the confirmation code") {
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "enterCode", stepData = MissingFields(listOf("confirmationCode")))
             }
         }
+    }
 
-        `when`("the browser sends the right confirmation code") {
-            val outcome = handler.patch(toolSessionId, confirmationCode = "123456")
+    given("a pairing confirmed by account 42, the account it was opened for") {
+        val f = Fixture().withState(QrLoginBrowserSide.State.Confirmed(AccountId(42L), expectedAccountId = AccountId(42L)), "123456")
+
+        `when`("the browser sends the confirmation code") {
+            val outcome = f.handler.patch(f.toolSessionId, confirmationCode = "123456")
 
             then("it authenticates at the descriptor's own maxAcr and factorTypes, naming no account") {
                 outcome shouldBe ToolOutcome.Completed.Authenticated(
@@ -132,12 +104,11 @@ class AuthQrToolHandlerTest : BehaviorSpec({
         }
     }
 
-    given("patch() after a different account than the expected one approved") {
-        val toolSessionId = sessionOn("FOREIGN1", QrLoginStatus.APPROVED, expectedAccountId = AccountId(42L), resolvingAccountId = AccountId(99L))
-        every { requests.completeIfConfirmed("FOREIGN1", digest.of("123456"), any()) } returns 1
+    given("a pairing confirmed by account 99, though opened for account 42") {
+        val f = Fixture().withState(QrLoginBrowserSide.State.Confirmed(AccountId(99L), expectedAccountId = AccountId(42L)), "123456")
 
-        `when`("the browser sends the right confirmation code") {
-            val outcome = handler.patch(toolSessionId, confirmationCode = "123456")
+        `when`("the browser sends the confirmation code") {
+            val outcome = f.handler.patch(f.toolSessionId, confirmationCode = "123456")
 
             then("it fails instead of silently switching the account") {
                 outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Bestätigung passt nicht zu diesem Konto"))
@@ -145,23 +116,19 @@ class AuthQrToolHandlerTest : BehaviorSpec({
         }
     }
 
-    given("patch() after the app declined") {
-        val toolSessionId = sessionOn("DENIED01", QrLoginStatus.DENIED)
+    given("a pairing that failed on the browser side") {
+        val f = Fixture().withState(QrLoginBrowserSide.State.Failed(Text("Vom Nutzer abgelehnt")))
 
         `when`("the browser polls") {
-            val outcome = handler.patch(toolSessionId, confirmationCode = null)
+            val outcome = f.handler.patch(f.toolSessionId, confirmationCode = null)
 
-            then("it fails as declined") {
+            then("it fails against the known account with the browser side's reason") {
                 outcome shouldBe ToolOutcome.Failed.KnownAccountAuth(Text("Vom Nutzer abgelehnt"))
             }
         }
-    }
-
-    given("read() after the app declined") {
-        val toolSessionId = sessionOn("DENIED02", QrLoginStatus.DENIED)
 
         `when`("the page is reloaded") {
-            val outcome = handler.read(toolSessionId)
+            val outcome = f.handler.read(f.toolSessionId)
 
             then("it reads as closed and leaves reporting the outcome to the next PATCH") {
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "closed")

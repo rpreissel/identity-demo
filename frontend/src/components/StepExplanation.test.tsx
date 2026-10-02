@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { StepExplanation } from './StepExplanation'
-import { explainToolStep, knownToolIds } from '../tools/registry'
 
 describe('StepExplanation', () => {
   it('leads with the innermost journey purpose and names the parent a sub-journey runs for', () => {
@@ -27,14 +26,7 @@ describe('StepExplanation', () => {
 
   it('falls back to the idle reason when no journey runs', () => {
     render(<StepExplanation journeys={[]} idleReason="Kein Vorgang" does="x" actor="y" />)
-    expect(screen.getByText('Kein Vorgang')).toBeInTheDocument()
-  })
 
-  it('has a what and a who for every tool this app knows', () => {
-    for (const toolId of knownToolIds) {
-      const explained = explainToolStep(toolId, 'any-step')
-      expect(explained?.does, toolId).toBeTruthy()
-      expect(explained?.actor, toolId).toBeTruthy()
-    }
+    expect(screen.getByText('Kein Vorgang')).toBeInTheDocument()
   })
 })

@@ -23,6 +23,9 @@ export function ui(template: string): string {
   return bundle.get(textId(template)) ?? template
 }
 
+/** The welcome heading of a logged-in user: its name part varies, so only the words before it. */
+export const welcomeHeading = new RegExp(`^${ui('Willkommen, {name}!').split('{name}')[0]}`)
+
 /** For matching inside a larger text or a regex. */
 export function uiPattern(...templates: string[]): RegExp {
   return new RegExp(templates.map((t) => ui(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'))

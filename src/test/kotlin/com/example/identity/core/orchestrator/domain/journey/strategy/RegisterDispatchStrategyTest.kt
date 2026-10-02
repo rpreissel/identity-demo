@@ -1,16 +1,17 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.core.orchestrator.domain.FeatureFlags
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.LogoutState
+import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrollFirstState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 
 /**
  * Unit test of [RegisterDispatchStrategy] (docs/journeys/register.md): the feature flag picks the
@@ -23,21 +24,23 @@ class RegisterDispatchStrategyTest : BehaviorSpec({
     val flagOff = ctx(account = null)
     val flagOn = ctx(account = null).copy(featureFlags = setOf(FeatureFlags.REGISTER_ENROLL_FIRST))
 
-    given("the intent") {
-        then("is REGISTER") {
-            strategy.intent shouldBe AuthIntent.REGISTER
+    given("the enroll-first flag is off") {
+        `when`("a new journey is created") {
+            val initial = strategy.initialState(flagOff)
+
+            then("it starts the ident-first variant") {
+                initial shouldBe RegisterState.Start
+            }
         }
     }
 
-    given("initialState without the enroll-first flag") {
-        then("starts the ident-first variant") {
-            strategy.initialState(flagOff) shouldBe RegisterState.Start
-        }
-    }
+    given("the enroll-first flag is on") {
+        `when`("a new journey is created") {
+            val initial = strategy.initialState(flagOn)
 
-    given("initialState with the enroll-first flag") {
-        then("starts the enroll-first variant") {
-            strategy.initialState(flagOn) shouldBe RegisterEnrollFirstState.EnrollFirstStart
+            then("it starts the enroll-first variant") {
+                initial shouldBe RegisterEnrollFirstState.EnrollFirstStart
+            }
         }
     }
 
@@ -45,9 +48,9 @@ class RegisterDispatchStrategyTest : BehaviorSpec({
         `when`("the journey starts") {
             val transition = strategy.transition(RegisterState.Start, JourneyEvent.Started, flagOn)
 
-            then("it follows the state's variant, RegisterStrategy, not the flag") {
-                transition shouldBe RegisterStrategy().transition(RegisterState.Start, JourneyEvent.Started, flagOn)
-                transition shouldNotBe RegisterEnrollFirstStrategy().transition(RegisterEnrollFirstState.EnrollFirstStart, JourneyEvent.Started, flagOn)
+            then("it follows the state's variant and offers identification, not the email confirmation of enroll-first") {
+                transition shouldBe
+                    Transition.To(RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"), ToolId("ident-nect")))))
             }
         }
     }
@@ -56,9 +59,9 @@ class RegisterDispatchStrategyTest : BehaviorSpec({
         `when`("the journey starts") {
             val transition = strategy.transition(RegisterEnrollFirstState.EnrollFirstStart, JourneyEvent.Started, flagOff)
 
-            then("it follows the state's variant, RegisterEnrollFirstStrategy, not the flag") {
-                transition shouldBe RegisterEnrollFirstStrategy().transition(RegisterEnrollFirstState.EnrollFirstStart, JourneyEvent.Started, flagOff)
-                transition shouldNotBe RegisterStrategy().transition(RegisterState.Start, JourneyEvent.Started, flagOff)
+            then("it follows the state's variant and offers email confirmation, not the identification of ident-first") {
+                transition shouldBe
+                    Transition.To(RegisterEnrollFirstState.EnrollFirstAttestingEmail(Offer(listOf(ToolId("confirm-email")))))
             }
         }
     }

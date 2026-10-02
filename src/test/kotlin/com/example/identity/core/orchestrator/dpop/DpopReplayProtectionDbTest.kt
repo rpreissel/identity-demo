@@ -22,19 +22,25 @@ class DpopReplayProtectionDbTest(private val service: DpopReplayProtectionServic
     val expiresAt = Instant.now().plusSeconds(300)
 
     given("a proof that was already accepted") {
-        then("the same thumbprint and jti are refused the second time") {
-            val jti = UUID.randomUUID().toString()
-            service.validateAndStore("thumb", jti, expiresAt)
-            shouldThrow<DpopValidationException> { service.validateAndStore("thumb", jti, expiresAt) }
+        val jti = UUID.randomUUID().toString()
+        service.validateAndStore("thumb", jti, expiresAt)
+
+        `when`("the same thumbprint and jti arrive again") {
+            val result = runCatching { service.validateAndStore("thumb", jti, expiresAt) }
+
+            then("they are refused") {
+                shouldThrow<DpopValidationException> { result.getOrThrow() }
+            }
         }
     }
 
-    given("the same proof sent eight times at once") {
-        then("exactly one is accepted") {
-            val jti = UUID.randomUUID().toString()
+    given("a proof never seen before") {
+        val jti = UUID.randomUUID().toString()
+
+        `when`("it is sent eight times at once") {
             val start = CountDownLatch(1)
             val pool = Executors.newFixedThreadPool(8)
-            try {
+            val accepted = try {
                 val results = (1..8).map {
                     pool.submit(Callable {
                         start.await()
@@ -42,9 +48,13 @@ class DpopReplayProtectionDbTest(private val service: DpopReplayProtectionServic
                     })
                 }
                 start.countDown()
-                results.count { it.get() } shouldBe 1
+                results.count { it.get() }
             } finally {
                 pool.shutdownNow()
+            }
+
+            then("exactly one is accepted") {
+                accepted shouldBe 1
             }
         }
     }

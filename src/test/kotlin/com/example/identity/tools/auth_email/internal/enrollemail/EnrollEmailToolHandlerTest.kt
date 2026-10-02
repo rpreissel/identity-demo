@@ -31,7 +31,7 @@ class EnrollEmailToolHandlerTest : BehaviorSpec({
         factorTypes = EnrollEmailDescriptor.factorTypes
     )
 
-    given("start()") {
+    given("no enroll-email tool session yet") {
         `when`("an enroll-email run begins") {
             val toolSessionId = ToolSessionId(UUID.randomUUID())
             val saved = slot<EnrollEmailToolSession>()

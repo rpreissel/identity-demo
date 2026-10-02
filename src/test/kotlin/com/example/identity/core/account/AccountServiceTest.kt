@@ -1,339 +1,460 @@
 package com.example.identity.core.account
 
-import com.example.identity.contract.tool_api.ids.AccountId
-import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
-import com.example.identity.core.account.application.PersonLookupKey
-import com.example.identity.core.account.application.ChangeLog
-import com.example.identity.core.account.infrastructure.AccountAuthMethodRepository
+import com.example.identity.contract.tool_api.claims.AcrLevel
+import com.example.identity.contract.tool_api.claims.AttributeType
+import com.example.identity.contract.tool_api.claims.Claim
+import com.example.identity.contract.tool_api.claims.ClaimSource
+import com.example.identity.contract.tool_api.directory.IdentityConflictException
+import com.example.identity.contract.tool_api.directory.PersonDirectory
+import com.example.identity.contract.tool_api.directory.resolveAccountByPersonId
+import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.application.AnchorRegistry
+import com.example.identity.core.account.application.ChangeLog
 import com.example.identity.core.account.application.ClaimLedger
+import com.example.identity.core.account.application.PersonLookupKey
 import com.example.identity.core.account.infrastructure.Account
 import com.example.identity.core.account.infrastructure.AccountAnchor
 import com.example.identity.core.account.infrastructure.AccountAnchorRepository
+import com.example.identity.core.account.infrastructure.AccountAuthMethod
+import com.example.identity.core.account.infrastructure.AccountAuthMethodRepository
 import com.example.identity.core.account.infrastructure.AccountClaim
 import com.example.identity.core.account.infrastructure.AccountClaimRepository
 import com.example.identity.core.account.infrastructure.AccountRepository
+import com.example.identity.core.account.infrastructure.AccountRetraction
 import com.example.identity.core.account.infrastructure.AccountRetractionRepository
-import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.directory.IdentityConflictException
-import com.example.identity.contract.tool_api.directory.PersonDirectory
-import com.example.identity.contract.tool_api.directory.resolveAccountByEmail
-import com.example.identity.contract.tool_api.directory.resolveAccountByPersonId
-import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.claims.Claim
-import com.example.identity.contract.tool_api.claims.ClaimSource
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.runs
 import io.mockk.verify
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.data.repository.findByIdOrNull
+import java.util.UUID
 
 /**
- * Unit test of the claims-log write: every claim lands in `account.claim`; PERSON_ID and EMAIL
- * also go into `account.anchor`, where `AnchorRule.allowsReplacement` makes the difference.
- * Mocks are created per `given` block so call counts of one scenario do not leak into another.
+ * Unit test of the per-call decisions: every claim lands in `account.claim`; local anchors such as
+ * PERSON_ID and EMAIL also go into `account.anchor`, where `AnchorRule` decides replacement and the
+ * ACR floor. [AccountServiceDbTest] pins what needs the real schema: transactions and unique
+ * constraints. Each `when` builds its own [AccountServiceFixture], so no call count leaks between them.
  */
 class AccountServiceTest : BehaviorSpec({
 
-    given("an unidentified account receiving a person_id claim") {
-        val accountRepository = mockk<AccountRepository>()
-        val accountClaimRepository = mockk<AccountClaimRepository>()
-        val accountAnchorRepository = mockk<AccountAnchorRepository>(relaxed = true)
-        val eventPublisher = mockk<ApplicationEventPublisher>(relaxed = true)
-        val service = AccountService(accountRepository, accountClaimRepository, accountAnchorRepository, mockk(relaxed = true), mockk(relaxed = true), eventPublisher, mockk(relaxed = true), mockk(relaxed = true))
+    val ownAccount = AccountId(7L)
 
-        val account = Account(createdAt = TEST_NOW).apply { id = 7L }
-        every { accountRepository.findAccount(AccountId(7)) } returns account
-        every { accountRepository.findForUpdate(AccountId(7)) } returns account
-        every { accountAnchorRepository.findByAccountIdAndAttributeType(AccountId(7L), AttributeType.PERSON_ID) } returns null
-        every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.PERSON_ID, any()) } returns null
-        every { accountClaimRepository.findEstablished(any()) } returns emptyList()
-
-        `when`("recording a claim from an identifying tool") {
-            val savedClaims = mutableListOf<AccountClaim>()
-            every { accountClaimRepository.save(capture(savedClaims)) } answers { savedClaims.last() }
-            val savedAnchors = mutableListOf<AccountAnchor>()
-            every { accountAnchorRepository.save(capture(savedAnchors)) } answers { savedAnchors.last() }
-
-            service.recordClaim(
-                accountId = AccountId(7L),
+    given("an unidentified account") {
+        `when`("a person_id from the register is recorded from a loa2 session") {
+            val fixture = AccountServiceFixture(ownAccount)
+            fixture.service.recordClaim(
+                accountId = ownAccount,
                 claim = Claim(AttributeType.PERSON_ID, "P000000042", ClaimSource.PERSON_DIRECTORY, AcrLevel.LOA2),
                 provenAcr = AcrLevel.LOA2
             )
 
-            then("the claim lands in the log and its anchor consolidates") {
-                savedClaims shouldHaveSize 1
-                savedClaims.single().accountId shouldBe AccountId(7)
-                savedClaims.single().attributeType shouldBe AttributeType.PERSON_ID
-                savedClaims.single().value shouldBe "P000000042"
-                savedClaims.single().claimSource shouldBe "person_directory"
-                savedClaims.single().establishedAcr shouldBe "loa2"
-                savedClaims.single().establishedAt.shouldNotBeNull()
-                savedAnchors shouldHaveSize 1
-                savedAnchors.single().attributeType shouldBe AttributeType.PERSON_ID
-                savedAnchors.single().value shouldBe "P000000042"
-                savedAnchors.single().accountId shouldBe AccountId(7)
+            then("the claim lands in the log") {
+                val claim = fixture.savedClaims.single()
+                claim.accountId shouldBe ownAccount
+                claim.attributeType shouldBe AttributeType.PERSON_ID
+                claim.value shouldBe "P000000042"
+                claim.claimSource shouldBe "person_directory"
+                claim.establishedAcr shouldBe "loa2"
+                claim.establishedAt.shouldNotBeNull()
+            }
+
+            then("its anchor consolidates") {
+                val anchor = fixture.savedAnchors.single()
+                anchor.attributeType shouldBe AttributeType.PERSON_ID
+                anchor.value shouldBe "P000000042"
+                anchor.accountId shouldBe ownAccount
+            }
+        }
+
+        // ADR-5's line applied to anchors: a write is priced by what the session actually proved,
+        // not by what the asserting tool declares for itself.
+        `when`("a person_id declared at loa2 is recorded from a session that only proved loa1") {
+            val fixture = AccountServiceFixture(ownAccount)
+            val result = runCatching {
+                fixture.service.recordClaim(
+                    ownAccount,
+                    Claim(AttributeType.PERSON_ID, "P000004711", ClaimSource.PERSON_DIRECTORY, AcrLevel.LOA2),
+                    provenAcr = AcrLevel.LOA1
+                )
+            }
+
+            then("establishing a person_id below its floor is refused, and nothing is anchored") {
+                shouldThrow<IdentityConflictException> { result.getOrThrow() }
+                fixture.savedAnchors.shouldBeEmpty()
+            }
+        }
+
+        `when`("an email is recorded in another spelling") {
+            val fixture = AccountServiceFixture(ownAccount)
+            fixture.service.recordClaim(
+                accountId = ownAccount,
+                claim = Claim(AttributeType.EMAIL, "  Max@Example.COM ", ClaimSource.SELF_REPORTED, AcrLevel.LOA1),
+                provenAcr = AcrLevel.LOA2
+            )
+
+            then("the claim is logged raw") {
+                fixture.savedClaims.single().value shouldBe "  Max@Example.COM "
+            }
+
+            then("its anchor materializes normalized") {
+                val anchor = fixture.savedAnchors.single()
+                anchor.accountId shouldBe ownAccount
+                anchor.attributeType shouldBe AttributeType.EMAIL
+                anchor.value shouldBe "max@example.com"
+                anchor.establishedAt.shouldNotBeNull()
+            }
+        }
+    }
+
+    given("an account whose email was established at loa1") {
+        `when`("a new email is recorded from a loa1 session") {
+            val fixture = AccountServiceFixture(ownAccount)
+            val anchor = fixture.holds(ownAccount, AttributeType.EMAIL, "first@example.com", establishedAcr = AcrLevel.LOA1)
+            val result = runCatching {
+                fixture.service.recordClaim(ownAccount, Claim(AttributeType.EMAIL, "second@example.com", ClaimSource.SELF_REPORTED), provenAcr = AcrLevel.LOA1)
+            }
+
+            then("replacing an email costs loa2 even though establishing it cost loa1") {
+                shouldThrow<IdentityConflictException> { result.getOrThrow() }
+                fixture.savedAnchors.shouldBeEmpty()
+                anchor.value shouldBe "first@example.com"
             }
         }
     }
 
     given("an account already bound to a person_id") {
-        val accountRepository = mockk<AccountRepository>()
-        val accountClaimRepository = mockk<AccountClaimRepository>(relaxed = true)
-        val accountAnchorRepository = mockk<AccountAnchorRepository>(relaxed = true)
-        val eventPublisher = mockk<ApplicationEventPublisher>(relaxed = true)
-        val service = AccountService(accountRepository, accountClaimRepository, accountAnchorRepository, mockk(relaxed = true), mockk(relaxed = true), eventPublisher, mockk(relaxed = true), mockk(relaxed = true))
+        fun fixture() = AccountServiceFixture(ownAccount).apply {
+            holds(ownAccount, AttributeType.PERSON_ID, "P000000042")
+        }
 
-        val account = Account(createdAt = TEST_NOW).apply { id = 7L }
-        every { accountRepository.findAccount(AccountId(7)) } returns account
-        every { accountRepository.findForUpdate(AccountId(7)) } returns account
-        every { accountClaimRepository.save(any()) } answers { firstArg() }
-        val existingAnchor = AccountAnchor(attributeType = AttributeType.PERSON_ID, value = "P000000042", accountId = AccountId(7L), establishedAt = TEST_NOW)
-
-        `when`("re-asserting the same person_id") {
-            every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.PERSON_ID, "P000000042") } returns existingAnchor
+        `when`("the same person_id is asserted again") {
+            val fixture = fixture()
+            fixture.service.recordClaim(ownAccount, Claim(AttributeType.PERSON_ID, "P000000042", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
 
             then("it is idempotent - no new anchor row, no rejection") {
-                service.recordClaim(AccountId(7L), Claim(AttributeType.PERSON_ID, "P000000042", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
-                verify(exactly = 0) { accountAnchorRepository.save(any()) }
-                verify(exactly = 0) { accountAnchorRepository.delete(any()) }
+                verify(exactly = 0) { fixture.anchorRepository.save(any()) }
+                verify(exactly = 0) { fixture.anchorRepository.delete(any()) }
             }
         }
 
-        `when`("asserting a DIFFERENT person_id for the same account") {
-            every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.PERSON_ID, "P000000099") } returns null
-            every { accountAnchorRepository.findByAccountIdAndAttributeType(AccountId(7L), AttributeType.PERSON_ID) } returns existingAnchor
+        `when`("a different person_id is asserted for the same account") {
+            val fixture = fixture()
+            val result = runCatching {
+                fixture.service.recordClaim(ownAccount, Claim(AttributeType.PERSON_ID, "P000000099", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
+            }
 
             then("it is rejected - person_id is immutable after first binding (docs/02-domaenenmodell.md Abschnitt 6)") {
-                shouldThrow<IdentityConflictException> {
-                    service.recordClaim(AccountId(7L), Claim(AttributeType.PERSON_ID, "P000000099", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
-                }
-                verify(exactly = 0) { accountAnchorRepository.delete(any()) }
-                verify(exactly = 0) { accountAnchorRepository.save(any()) }
+                shouldThrow<IdentityConflictException> { result.getOrThrow() }
+                verify(exactly = 0) { fixture.anchorRepository.delete(any()) }
+                verify(exactly = 0) { fixture.anchorRepository.save(any()) }
+            }
+        }
+
+        `when`("the holder withdraws the person_id") {
+            val fixture = fixture()
+            val result = runCatching {
+                fixture.service.retractAttribute(ownAccount, AttributeType.PERSON_ID, RetractionSource.ACCOUNT_HOLDER)
+            }
+
+            then("the account module itself refuses it, whatever the caller checked") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
+                fixture.savedRetractions.shouldBeEmpty()
+                verify(exactly = 0) { fixture.anchorRepository.delete(any()) }
             }
         }
     }
 
     given("no account exists yet") {
-        val accountRepository = mockk<AccountRepository>()
-        val accountClaimRepository = mockk<AccountClaimRepository>()
-        val accountAnchorRepository = mockk<AccountAnchorRepository>(relaxed = true)
-        val eventPublisher = mockk<ApplicationEventPublisher>(relaxed = true)
-        val service = AccountService(accountRepository, accountClaimRepository, accountAnchorRepository, mockk(relaxed = true), mockk(relaxed = true), eventPublisher, mockk(relaxed = true), mockk(relaxed = true))
-
-        every { accountRepository.save(any()) } answers { firstArg<Account>().apply { id = 7L } }
-
-        `when`("creating an account before accepting its claims") {
-            val profile = service.createAccountInSetup()
+        `when`("an account is created before its claims are accepted") {
+            val fixture = AccountServiceFixture(ownAccount)
+            val profile = fixture.service.createAccountInSetup()
 
             then("the new account has no direct person binding") {
                 profile.personId shouldBe null
-                verify(exactly = 1) { accountRepository.save(any()) }
+                verify(exactly = 1) { fixture.accountRepository.save(any()) }
             }
         }
     }
 
-    given("an account with an anchor-role claim") {
-        val accountRepository = mockk<AccountRepository>()
-        val accountClaimRepository = mockk<AccountClaimRepository>()
-        val accountAnchorRepository = mockk<AccountAnchorRepository>(relaxed = true)
-        val eventPublisher = mockk<ApplicationEventPublisher>(relaxed = true)
-        // A relaxed mock cannot answer the generic save(S): its fabricated return fails the cast.
-        val accountRetractionRepository = mockk<AccountRetractionRepository>()
-        every { accountRetractionRepository.save(any()) } answers { firstArg() }
-        val service = AccountService(accountRepository, accountClaimRepository, accountAnchorRepository, mockk(relaxed = true), accountRetractionRepository, eventPublisher, mockk(relaxed = true), mockk(relaxed = true))
+    given("an account with a login method, holding email and person_id anchors") {
+        fun fixture() = AccountServiceFixture(ownAccount).apply {
+            holds(ownAccount, AttributeType.EMAIL, "max@example.com")
+            holds(ownAccount, AttributeType.PERSON_ID, "P000000042")
+        }
 
-        val account = Account(createdAt = TEST_NOW).apply { id = 7L }
-        every { accountRepository.findAccount(AccountId(7)) } returns account
-        every { accountRepository.findForUpdate(AccountId(7)) } returns account
+        `when`("resolving an account by the email in another spelling") {
+            val fixture = fixture()
+            val resolved = fixture.service.resolveByAnchor(AttributeType.EMAIL, "  Max@Example.COM ")
 
-        val savedClaims = mutableListOf<AccountClaim>()
-        every { accountClaimRepository.save(capture(savedClaims)) } answers { savedClaims.last() }
-        val savedAnchors = mutableListOf<AccountAnchor>()
-        every { accountAnchorRepository.save(capture(savedAnchors)) } answers { savedAnchors.last() }
-        every { accountAnchorRepository.findByAccountIdAndAttributeType(AccountId(7L), AttributeType.EMAIL) } returns null
-        every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.EMAIL, any()) } returns null
-        every { accountClaimRepository.findEstablished(any()) } returns emptyList()
+            then("the lookup runs normalized and finds the account") {
+                resolved shouldBe ownAccount
+            }
 
-        `when`("recording an email claim") {
-            service.recordClaim(
-                accountId = AccountId(7L),
-                claim = Claim(AttributeType.EMAIL, "  Max@Example.COM ", ClaimSource.SELF_REPORTED, AcrLevel.LOA1),
-                provenAcr = AcrLevel.LOA2
-            )
-
-            then("the claim is logged raw, its anchor materializes normalized") {
-                savedClaims.single().value shouldBe "  Max@Example.COM "
-                savedAnchors shouldHaveSize 1
-                savedAnchors.single().accountId shouldBe AccountId(7)
-                savedAnchors.single().attributeType shouldBe AttributeType.EMAIL
-                savedAnchors.single().value shouldBe "max@example.com"
-                savedAnchors.single().establishedAt.shouldNotBeNull()
+            then("only whether a login method exists is read (ADR-46), never the account itself") {
+                verify(exactly = 0) { fixture.accountRepository.findAccount(any()) }
+                verify(exactly = 0) { fixture.accountRepository.findForUpdate(any()) }
             }
         }
 
-        `when`("recording an anchor another account already holds") {
-            every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.EMAIL, "other@example.com") } returns
-                AccountAnchor(attributeType = AttributeType.EMAIL, value = "other@example.com", accountId = AccountId(99L), establishedAt = TEST_NOW)
+        `when`("resolving an account by the person_id") {
+            val fixture = fixture()
+            val resolved = fixture.service.resolveAccountByPersonId(PartnerNumber("P000000042"))
 
-            then("the claim is rejected instead of silently skipping the anchor (ADR-11)") {
-                shouldThrow<IdentityConflictException> {
-                    service.recordClaim(
-                        accountId = AccountId(7L),
-                        claim = Claim(AttributeType.EMAIL, "other@example.com", ClaimSource.SELF_REPORTED, AcrLevel.LOA1),
-                        provenAcr = AcrLevel.LOA2
-                    )
-                }
-                // No second anchor. Rolling back the appended log row is the transaction's job,
-                // so the claim count still moves here.
-                savedAnchors shouldHaveSize 1
-                savedClaims shouldHaveSize 2
+            then("it finds the account without loading it") {
+                resolved shouldBe ownAccount
+                verify(exactly = 0) { fixture.accountRepository.findAccount(any()) }
             }
         }
 
-        `when`("re-binding this account's own anchor to a new value") {
-            val oldAnchor = AccountAnchor(attributeType = AttributeType.EMAIL, value = "old@example.com", accountId = AccountId(7L), establishedAt = TEST_NOW)
-            every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.EMAIL, "new@example.com") } returns null
-            every { accountAnchorRepository.findByAccountIdAndAttributeType(AccountId(7L), AttributeType.EMAIL) } returns oldAnchor
+        `when`("resolving an account by an email nobody holds") {
+            val fixture = fixture()
+            val resolved = fixture.service.resolveByAnchor(AttributeType.EMAIL, "other@example.com")
 
-            service.recordClaim(
-                accountId = AccountId(7L),
-                claim = Claim(AttributeType.EMAIL, "new@example.com", ClaimSource.SELF_REPORTED, AcrLevel.LOA1),
-                provenAcr = AcrLevel.LOA2
-            )
+            then("there is none") {
+                resolved.shouldBeNull()
+            }
+        }
 
-            then("the existing row is UPDATED in place, not deleted and re-inserted (real unique-constraint ordering, docs/02-domaenenmodell.md Abschnitt 6)") {
-                verify(exactly = 0) { accountAnchorRepository.delete(any()) }
-                // savedAnchors is shared with the first `when`; the rebind saves the mutated
-                // oldAnchor instance, not a fresh AccountAnchor.
-                savedAnchors.last() shouldBe oldAnchor
-                oldAnchor.value shouldBe "new@example.com"
+        `when`("finding the account by email") {
+            val fixture = fixture()
+            val profile = fixture.service.findAccountByEmail("max@example.com")
+
+            then("its profile comes back") {
+                profile?.accountId shouldBe ownAccount
+            }
+        }
+
+        `when`("finding the account by person_id") {
+            val fixture = fixture()
+            val profile = fixture.service.findAccountByPersonId(PartnerNumber("P000000042"))
+
+            then("its profile comes back") {
+                profile?.accountId shouldBe ownAccount
+            }
+        }
+
+        `when`("finding an account by an email nobody holds") {
+            val fixture = fixture()
+            val profile = fixture.service.findAccountByEmail("missing@example.com")
+
+            then("there is none") {
+                profile.shouldBeNull()
+            }
+        }
+
+        `when`("finding an account by a person_id nobody holds") {
+            val fixture = fixture()
+            val profile = fixture.service.findAccountByPersonId(PartnerNumber("P000000099"))
+
+            then("there is none") {
+                profile.shouldBeNull()
+            }
+        }
+
+        `when`("reading the account's email anchor value") {
+            val fixture = fixture()
+            val value = fixture.service.anchorValue(ownAccount, AttributeType.EMAIL)
+
+            then("it is the stored normalized value") {
+                value shouldBe "max@example.com"
+            }
+        }
+
+        `when`("reading another account's email anchor value") {
+            val fixture = fixture()
+            val value = fixture.service.anchorValue(AccountId(8L), AttributeType.EMAIL)
+
+            then("there is none") {
+                value.shouldBeNull()
             }
         }
     }
 
-    given("ID lookups on the concrete account service") {
-        then("they do not load an account or build a profile") {
-            val accounts = mockk<AccountRepository>()
-            val anchors = mockk<AccountAnchorRepository>()
-            val authMethods = mockk<AccountAuthMethodRepository>()
-            val service = AccountService(accounts, mockk(), anchors, authMethods, mockk(), mockk(), mockk(relaxed = true), mockk(relaxed = true))
-            every { anchors.findByAttributeTypeAndValue(AttributeType.EMAIL, "max@example.com") } returns
-                AccountAnchor(attributeType = AttributeType.EMAIL, value = "max@example.com", accountId = AccountId(7L), establishedAt = TEST_NOW)
-            every { anchors.findByAttributeTypeAndValue(AttributeType.PERSON_ID, "P000000042") } returns
-                AccountAnchor(attributeType = AttributeType.PERSON_ID, value = "P000000042", accountId = AccountId(7L), establishedAt = TEST_NOW)
-            every { authMethods.existsByAccountId(AccountId(7L)) } returns true
-            service.resolveAccountByEmail("  Max@Example.COM ") shouldBe AccountId(7)
-            service.resolveAccountByPersonId(PartnerNumber("P000000042")) shouldBe AccountId(7)
-            // Only whether a login method exists (ADR-46), never the account itself.
-            verify(exactly = 0) { accounts.findAccount(any()) }
-            verify(exactly = 0) { accounts.findForUpdate(any()) }
+    given("an account still being set up, holding an email anchor") {
+        `when`("resolving an account by that email") {
+            val fixture = AccountServiceFixture(ownAccount).apply {
+                holds(ownAccount, AttributeType.EMAIL, "max@example.com")
+                every { authMethodRepository.existsByAccountId(ownAccount) } returns false
+            }
+            val resolved = fixture.service.resolveByAnchor(AttributeType.EMAIL, "max@example.com")
+
+            then("it is not found (ADR-46)") {
+                resolved.shouldBeNull()
+            }
         }
     }
 
-    given("the anchor read ports") {
-        val accountRepository = mockk<AccountRepository>()
-        // Relaxed: toProfile also reads the claim log, which these anchor cases do not exercise.
-        val accountClaimRepository = mockk<AccountClaimRepository>(relaxed = true)
-        val accountAnchorRepository = mockk<AccountAnchorRepository>(relaxed = true)
-        val eventPublisher = mockk<ApplicationEventPublisher>(relaxed = true)
-        val accountAuthMethodRepository = mockk<AccountAuthMethodRepository>(relaxed = true)
-        val service = AccountService(accountRepository, accountClaimRepository, accountAnchorRepository, accountAuthMethodRepository, mockk(relaxed = true), eventPublisher, mockk(relaxed = true), mockk(relaxed = true))
-
-        then("KVNR changes follow personenverzeichnis without creating or reading a local KVNR anchor") {
-            val persons = mockk<PersonDirectory>()
-            val account = Account(createdAt = TEST_NOW).apply { id = 7L }
-            every { accountRepository.findAccount(AccountId(7)) } returns account
-            every { accountAuthMethodRepository.existsByAccountId(AccountId(7L)) } returns true
-            every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.PERSON_ID, "P000000042") } returns
-                AccountAnchor(attributeType = AttributeType.PERSON_ID, value = "P000000042", accountId = AccountId(7L), establishedAt = TEST_NOW)
-            every { persons.findPersonIdByKvnr("A123456789") } returns PartnerNumber("P000000042")
-            service.findAccountByKvnr(" a123456789 ", persons)?.accountId shouldBe AccountId(7)
-
-            every { persons.findPersonIdByKvnr("A123456789") } returns null
-            every { persons.findPersonIdByKvnr("B987654321") } returns PartnerNumber("P000000042")
-            service.findAccountByKvnr("A123456789", persons) shouldBe null
-            service.findAccountByKvnr("B987654321", persons)?.accountId shouldBe AccountId(7)
-            verify(exactly = 0) { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.KVNR, any()) }
-            shouldThrow<IllegalStateException> { service.resolveByAnchor(AttributeType.KVNR, "A123456789") }
-            shouldThrow<IllegalStateException> { service.anchorValue(AccountId(7L), AttributeType.KVNR) }
+    // KVNR changes follow the Personenverzeichnis without creating or reading a local KVNR anchor.
+    given("an account bound to person P000000042, whose KVNR the register maps") {
+        fun fixture() = AccountServiceFixture(ownAccount).apply {
+            holds(ownAccount, AttributeType.PERSON_ID, "P000000042")
+        }
+        fun register(vararg kvnrToPerson: Pair<String, String>) = mockk<PersonDirectory> {
+            every { findPersonIdByKvnr(any()) } returns null
+            kvnrToPerson.forEach { (kvnr, personId) -> every { findPersonIdByKvnr(kvnr) } returns PartnerNumber(personId) }
         }
 
-        then("a KVNR claim records provenance only, not a local binding") {
-            every { accountClaimRepository.save(any()) } answers { firstArg() }
-            service.recordClaim(AccountId(7L), Claim(AttributeType.KVNR, "A123456789", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
-            verify(exactly = 1) { accountClaimRepository.save(match { it.attributeType == AttributeType.KVNR }) }
-            verify(exactly = 0) { accountAnchorRepository.save(any()) }
-            verify(exactly = 0) { accountRepository.save(any()) }
-        }
+        `when`("finding the account by its KVNR in another spelling") {
+            val fixture = fixture()
+            val profile = fixture.service.findAccountByKvnr(" a123456789 ", register("A123456789" to "P000000042"))
 
-        then("typed extensions resolve both person ID and email through anchors") {
-            val account = Account(createdAt = TEST_NOW).apply { id = 7L }
-            every { accountRepository.findAccount(AccountId(7)) } returns account
-            every { accountAuthMethodRepository.existsByAccountId(AccountId(7L)) } returns true
-            for ((type, value) in listOf(AttributeType.EMAIL to "max@example.com", AttributeType.PERSON_ID to "P000000042")) {
-                every { accountAnchorRepository.findByAttributeTypeAndValue(type, value) } returns
-                    AccountAnchor(attributeType = type, value = value, accountId = AccountId(7L), establishedAt = TEST_NOW)
-            }
-            service.findAccountByEmail("  Max@Example.COM ")?.accountId shouldBe AccountId(7)
-            service.findAccountByPersonId(PartnerNumber("P000000042"))?.accountId shouldBe AccountId(7)
-            every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.EMAIL, "missing@example.com") } returns null
-            every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.PERSON_ID, "P000000099") } returns null
-            service.findAccountByEmail("missing@example.com") shouldBe null
-            service.findAccountByPersonId(PartnerNumber("P000000099")) shouldBe null
-        }
-
-        `when`("resolving an account by anchor") {
-            every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.EMAIL, "max@example.com") } returns
-                AccountAnchor(attributeType = AttributeType.EMAIL, value = "max@example.com", accountId = AccountId(7L), establishedAt = TEST_NOW)
-
-            then("the lookup runs normalized") {
-                every { accountAuthMethodRepository.existsByAccountId(AccountId(7L)) } returns true
-                service.resolveByAnchor(AttributeType.EMAIL, "  Max@Example.COM ") shouldBe AccountId(7)
-                every { accountAnchorRepository.findByAttributeTypeAndValue(AttributeType.EMAIL, "other@example.com") } returns null
-                service.resolveByAnchor(AttributeType.EMAIL, "other@example.com") shouldBe null
-            }
-
-            then("an account still being set up is not found (ADR-46)") {
-                every { accountAuthMethodRepository.existsByAccountId(AccountId(7L)) } returns false
-                service.resolveByAnchor(AttributeType.EMAIL, "max@example.com") shouldBe null
+            then("the register's current mapping finds it, without a local KVNR anchor") {
+                profile?.accountId shouldBe ownAccount
+                verify(exactly = 0) { fixture.anchorRepository.findByAttributeTypeAndValue(AttributeType.KVNR, any()) }
             }
         }
 
-        `when`("reading an account's anchor value") {
-            every { accountAnchorRepository.findByAccountIdAndAttributeType(AccountId(7L), AttributeType.EMAIL) } returns
-                AccountAnchor(attributeType = AttributeType.EMAIL, value = "max@example.com", accountId = AccountId(7L), establishedAt = TEST_NOW)
+        `when`("finding the account by the KVNR the register has since moved away") {
+            val fixture = fixture()
+            val profile = fixture.service.findAccountByKvnr("A123456789", register("B987654321" to "P000000042"))
 
-            then("it returns the stored normalized value") {
-                service.anchorValue(AccountId(7L), AttributeType.EMAIL) shouldBe "max@example.com"
-                every { accountAnchorRepository.findByAccountIdAndAttributeType(AccountId(8L), AttributeType.EMAIL) } returns null
-                service.anchorValue(AccountId(8L), AttributeType.EMAIL) shouldBe null
+            then("there is none") {
+                profile.shouldBeNull()
+            }
+        }
+
+        `when`("finding the account by the KVNR the register moved to it") {
+            val fixture = fixture()
+            val profile = fixture.service.findAccountByKvnr("B987654321", register("B987654321" to "P000000042"))
+
+            then("it is found") {
+                profile?.accountId shouldBe ownAccount
+            }
+        }
+
+        `when`("resolving an account by a KVNR anchor") {
+            val fixture = fixture()
+            val result = runCatching { fixture.service.resolveByAnchor(AttributeType.KVNR, "A123456789") }
+
+            then("it is refused - KVNR is no local anchor") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
+            }
+        }
+
+        `when`("reading the account's KVNR anchor value") {
+            val fixture = fixture()
+            val result = runCatching { fixture.service.anchorValue(ownAccount, AttributeType.KVNR) }
+
+            then("it is refused - KVNR is no local anchor") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
+            }
+        }
+
+        `when`("recording a KVNR claim") {
+            val fixture = fixture()
+            fixture.service.recordClaim(ownAccount, Claim(AttributeType.KVNR, "A123456789", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
+
+            then("it records provenance only, not a local binding") {
+                fixture.savedClaims.single().attributeType shouldBe AttributeType.KVNR
+                verify(exactly = 0) { fixture.anchorRepository.save(any()) }
+                verify(exactly = 0) { fixture.accountRepository.save(any()) }
+            }
+        }
+    }
+
+    given("an unidentified account with an enrolled login method") {
+        `when`("it is to be absorbed into another account") {
+            val fixture = AccountServiceFixture(ownAccount).apply { enrolled(passwordMethod(ownAccount)) }
+            val result = runCatching { fixture.service.absorbDisposableAccount(ownAccount, AccountId(8L)) }
+
+            then("it never yields - a credential was enrolled on it, so this would be an account merge") {
+                shouldThrow<IdentityConflictException> { result.getOrThrow() }
+                verify(exactly = 0) { fixture.accountRepository.deleteAccount(any()) }
+            }
+        }
+    }
+
+    given("an unidentified account whose only login method is active") {
+        `when`("the holder deactivates that method") {
+            val method = passwordMethod(ownAccount)
+            val fixture = AccountServiceFixture(ownAccount).apply { enrolled(method) }
+            val profile = fixture.service.deactivateAuthenticationMethod(ownAccount, method.id.toString())
+
+            then("a deactivated credential still counts - its claims' provenance points at this account") {
+                profile.activeAuthenticationMethods.shouldBeEmpty()
+                profile.authenticationMethods shouldHaveSize 1
+                profile.isDisposable shouldBe false
             }
         }
     }
 })
 
 /**
- * The service over mocked repositories, with the real [ClaimLedger] and [AnchorRegistry] in between:
- * these tests are about what gets written, so the two parts stay real.
+ * The service over mocked repositories that start out empty, with the real [ClaimLedger] and
+ * [AnchorRegistry] in between: these tests are about what gets written, so the two parts stay real.
+ * [accountId] exists and has a login method.
  */
-private fun AccountService(
-    accountRepository: AccountRepository,
-    accountClaimRepository: AccountClaimRepository,
-    accountAnchorRepository: AccountAnchorRepository,
-    accountAuthMethodRepository: AccountAuthMethodRepository,
-    accountRetractionRepository: AccountRetractionRepository,
-    eventPublisher: ApplicationEventPublisher,
-    changeLog: ChangeLog,
-    personLookupKey: PersonLookupKey,
-): AccountService {
-    val ledger = ClaimLedger(accountClaimRepository, accountRetractionRepository, changeLog, clock = TEST_CLOCK)
-    return AccountService(accountRepository, ledger, AnchorRegistry(accountAnchorRepository, ledger), accountAuthMethodRepository, eventPublisher, changeLog, personLookupKey, TEST_CLOCK)
+private class AccountServiceFixture(accountId: AccountId) {
+    val accountRepository = mockk<AccountRepository>()
+    val claimRepository = mockk<AccountClaimRepository>()
+    val anchorRepository = mockk<AccountAnchorRepository>()
+    val authMethodRepository = mockk<AccountAuthMethodRepository>()
+    val retractionRepository = mockk<AccountRetractionRepository>()
+    private val changeLog = mockk<ChangeLog>(relaxed = true)
+
+    val savedClaims = mutableListOf<AccountClaim>()
+    val savedAnchors = mutableListOf<AccountAnchor>()
+    val savedRetractions = mutableListOf<AccountRetraction>()
+    private val anchors = mutableListOf<AccountAnchor>()
+
+    val service: AccountService
+
+    init {
+        val account = Account(createdAt = TEST_NOW).apply { id = accountId.value }
+        every { accountRepository.findAccount(accountId) } returns account
+        every { accountRepository.findForUpdate(accountId) } returns account
+        every { accountRepository.save(any()) } answers { firstArg<Account>().apply { id = accountId.value } }
+
+        every { claimRepository.findEstablished(any()) } returns emptyList()
+        every { claimRepository.save(capture(savedClaims)) } answers { firstArg() }
+
+        every { anchorRepository.findByAttributeTypeAndValue(any(), any()) } returns null
+        every { anchorRepository.findByAccountIdAndAttributeType(any(), any()) } returns null
+        every { anchorRepository.findByAccountId(any()) } answers { anchors.filter { it.accountId == firstArg() } }
+        every { anchorRepository.save(capture(savedAnchors)) } answers { firstArg() }
+        every { anchorRepository.delete(any()) } just runs
+
+        every { authMethodRepository.existsByAccountId(any()) } returns true
+        every { authMethodRepository.findByAccountIdOrderByCreatedAt(any()) } returns emptyList()
+
+        // A relaxed mock cannot answer the generic save(S): its fabricated return fails the cast.
+        every { retractionRepository.save(capture(savedRetractions)) } answers { firstArg() }
+
+        val ledger = ClaimLedger(claimRepository, retractionRepository, changeLog, clock = TEST_CLOCK)
+        service = AccountService(
+            accountRepository, ledger, AnchorRegistry(anchorRepository, ledger), authMethodRepository,
+            mockk<ApplicationEventPublisher>(relaxed = true), changeLog, mockk<PersonLookupKey>(relaxed = true), TEST_CLOCK
+        )
+    }
+
+    /** [holder] holds [value] as its [type] anchor. */
+    fun holds(holder: AccountId, type: AttributeType, value: String, establishedAcr: AcrLevel = AcrLevel.LOA2): AccountAnchor {
+        val anchor = AccountAnchor(attributeType = type, value = value, accountId = holder, establishedAcr = establishedAcr.value, establishedAt = TEST_NOW)
+        anchors += anchor
+        every { anchorRepository.findByAttributeTypeAndValue(type, value) } returns anchor
+        every { anchorRepository.findByAccountIdAndAttributeType(holder, type) } returns anchor
+        return anchor
+    }
+
+    /** [method] is the account's only login method, found by its id. */
+    fun enrolled(method: AccountAuthMethod) {
+        val accountId = checkNotNull(method.accountId)
+        every { authMethodRepository.findByAccountIdOrderByCreatedAt(accountId) } returns listOf(method)
+        every { authMethodRepository.findByIdAndAccountId(checkNotNull(method.id), accountId) } returns method
+    }
 }
+
+private fun passwordMethod(accountId: AccountId) = AccountAuthMethod(
+    accountId = accountId, method = "password", enrollmentType = "auth_password", enrollmentId = "e-1", enrolledUnderAcr = "loa1"
+).apply { id = UUID.randomUUID(); createdAt = TEST_NOW }

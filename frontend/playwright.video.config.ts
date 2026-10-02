@@ -3,6 +3,8 @@ import { defineConfig } from '@playwright/test'
 /** Screen recording of the demo tasks against the compose stack (orchestrator 8080, Keycloak 8543) - not part of the test suites. */
 export default defineConfig({
   testDir: './e2e-video',
+  // A recorder, not a test: named *.record.ts so no test run picks it up by accident.
+  testMatch: '*.record.ts',
   outputDir: './test-results-video',
   timeout: 600_000,
   workers: 1,

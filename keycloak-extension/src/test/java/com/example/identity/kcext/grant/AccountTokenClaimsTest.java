@@ -1,6 +1,8 @@
 package com.example.identity.kcext.grant;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -11,31 +13,36 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  */
 class AccountTokenClaimsTest {
 
-    @Test
-    void theOrchestratorsLevelsAndMethodNamesAreAccepted() {
-        assertNull(AccountTokenClaims.problem("loa1", "password"));
-        assertNull(AccountTokenClaims.problem("loa2", "password,sms,auth_qr-2"));
-        // An identification in the App (ident-eid, ident-nect) reaches loa3.
-        assertNull(AccountTokenClaims.problem("loa3", "eid"));
+    // An identification in the App (ident-eid, ident-nect) reaches loa3.
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "loa1 | password",
+            "loa2 | password,sms,auth_qr-2",
+            "loa3 | eid"
+    })
+    void theOrchestratorsLevelsAndMethodNamesAreAccepted(String acr, String amr) {
+        assertNull(AccountTokenClaims.problem(acr, amr));
     }
 
-    @Test
-    void withoutEvidenceNeitherIsSent() {
-        assertNull(AccountTokenClaims.problem(null, ""));
-        assertNull(AccountTokenClaims.problem(null, null));
+    // An empty unquoted value is null, '' is the empty string.
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            " | ''",
+            " | "
+    })
+    void withoutEvidenceNeitherIsSent(String acr, String amr) {
+        assertNull(AccountTokenClaims.problem(acr, amr));
     }
 
-    @Test
-    void anUnknownLevelIsRejected() {
-        assertEquals("Unknown acr", AccountTokenClaims.problem("loa4", "password"));
-        assertEquals("Unknown acr", AccountTokenClaims.problem("gold", "password"));
+    @ParameterizedTest
+    @ValueSource(strings = {"loa4", "gold"})
+    void anUnknownLevelIsRejected(String acr) {
+        assertEquals("Unknown acr", AccountTokenClaims.problem(acr, "password"));
     }
 
-    @Test
-    void aMethodNameOutsideTheAlphabetIsRejected() {
-        assertEquals("Malformed amr", AccountTokenClaims.problem("loa1", "Password"));
-        assertEquals("Malformed amr", AccountTokenClaims.problem("loa1", "sms,,password"));
-        assertEquals("Malformed amr", AccountTokenClaims.problem("loa1", "sms, password"));
-        assertEquals("Malformed amr", AccountTokenClaims.problem("loa1", "pwd\"}"));
+    @ParameterizedTest
+    @ValueSource(strings = {"Password", "sms,,password", "sms, password", "pwd\"}"})
+    void aMethodNameOutsideTheAlphabetIsRejected(String amr) {
+        assertEquals("Malformed amr", AccountTokenClaims.problem("loa1", amr));
     }
 }
