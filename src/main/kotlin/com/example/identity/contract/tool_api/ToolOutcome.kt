@@ -94,6 +94,15 @@ sealed interface ToolOutcome {
         }
 
         /**
+         * Whether this run stays within what [descriptor] declares: no level above
+         * [ToolDescriptor.maxAcr], no factor kind outside [ToolDescriptor.factorTypes].
+         * The descriptor is what the policy planned with; a run must not prove more than that.
+         */
+        fun staysWithin(descriptor: ToolDescriptor): Boolean =
+            (achievedAcr?.let { it <= descriptor.maxAcr } ?: true) &&
+                descriptor.factorTypes.containsAll(factorTypes)
+
+        /**
          * An identifying tool established who the subject is. The person reference is a
          * `PERSON_ID` claim, at most one. It may be missing: `ident-eid` reads no person
          * reference, and the central resolution decides between an existing account and an

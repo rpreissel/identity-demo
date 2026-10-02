@@ -267,6 +267,7 @@ class ToolJourneyService(
                 check(outcome.fits(descriptor.role)) {
                     "${descriptor.toolId} (${descriptor.role}) answered with ${outcome::class.simpleName}"
                 }
+                checkStaysWithin(descriptor, outcome)
                 when (outcome) {
                     is ToolOutcome.Completed.Authenticated -> ((outcome.subject as? Subject.Account)?.id ?: channelAccountId)?.let { accountLockoutService.recordSuccess(it) }
                     is ToolOutcome.Completed.Identified -> outcome.personId?.let { personLockoutService.recordSuccess(it) }
@@ -332,3 +333,13 @@ class ToolJourneyService(
         private val TOOL_TTL: Duration = Duration.ofMinutes(10)
     }
 }
+
+/**
+ * A run that proves more than its descriptor declares is a contract error of the tool module: the
+ * excess would flow unchecked into the session's evidence and the claims (docs/03-tool-architektur.md).
+ */
+internal fun checkStaysWithin(descriptor: ToolDescriptor, outcome: ToolOutcome.Completed) =
+    check(outcome.staysWithin(descriptor)) {
+        "${descriptor.toolId} reported ${outcome.achievedAcr}/${outcome.factorTypes}, " +
+            "beyond its descriptor's ${descriptor.maxAcr}/${descriptor.factorTypes}"
+    }

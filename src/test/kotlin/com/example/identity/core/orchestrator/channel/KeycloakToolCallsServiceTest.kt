@@ -4,7 +4,9 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.EnrollmentRef
+import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
@@ -144,6 +146,26 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
 
             then("it refuses with IllegalStateException") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }
+            }
+        }
+    }
+
+    given("an auth-password call that reports more than its descriptor declares (loa1, knowledge)") {
+        val lockout = mockk<AccountLockoutService>()
+        justRun { lockout.recordSuccess(accountId) }
+        val service = KeycloakToolCallsService(lockout, mockk())
+        val outcome = ToolOutcome.Completed.Authenticated(
+            amr = listOf("password"), achievedAcr = AcrLevel.LOA2, factorTypes = setOf(FactorType.KNOWLEDGE),
+        )
+
+        `when`("it is applied") {
+            val result = runCatching { service.apply(accountId, AuthPasswordDescriptor, outcome) }
+
+            then("it refuses with IllegalStateException - a contract error of the tool module") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
+            }
+            then("nothing is booked, not even the counter reset") {
+                verify(exactly = 0) { lockout.recordSuccess(any()) }
             }
         }
     }

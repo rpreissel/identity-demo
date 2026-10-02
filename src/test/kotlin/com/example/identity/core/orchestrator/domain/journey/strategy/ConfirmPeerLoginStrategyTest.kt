@@ -73,6 +73,19 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
         }
     }
 
+    // Unlike DELETE_ACCOUNT and MANAGE_AUTH_METHODS (selfServiceAcrFloor), vouching for a foreign
+    // login keeps loa2 for a never-identified account too (docs/journeys/confirm-peer-login.md).
+    given("Requested, the account was never identified (personId == null) and the session only carries loa1") {
+        val acc = account(method("sms", AcrLevel.LOA1), personId = null)
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
+        `when`("the journey starts") {
+            val transition = strategy.transition(ConfirmPeerLoginState.Requested(false), JourneyEvent.Started, theCtx)
+            then("the loa2 gate is not lowered - a step-up to loa2 is still demanded") {
+                transition shouldBe peerLoginStepUp
+            }
+        }
+    }
+
     given("Requested, the session already carries loa2") {
         // device is the only method that reaches loa2 alone, so it seeds loa2 evidence with one method.
         val acc = account(method("device", AcrLevel.LOA2, details = StrategyTestFixtures.deviceDetails()))

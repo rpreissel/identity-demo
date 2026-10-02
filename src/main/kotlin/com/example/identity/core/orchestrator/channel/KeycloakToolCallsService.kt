@@ -40,10 +40,12 @@ class KeycloakToolCallsService(
             }
             is ToolOutcome.Completed.Authenticated -> {
                 checkFits(outcome.fits(descriptor.role), descriptor, outcome)
+                checkStaysWithin(descriptor, outcome)
                 accountLockoutService.recordSuccess(accountId)
             }
             is ToolOutcome.Completed.Enrolled -> {
                 checkFits(outcome.fits(descriptor.role), descriptor, outcome)
+                checkStaysWithin(descriptor, outcome)
                 assertClaimsCovered(descriptor, outcome.claims)
                 // The claim naming the instance first, then the instance, as in a journey: without
                 // the claim a later revocation would leave "has a password" standing.

@@ -54,7 +54,7 @@ public class AccountTokenGrantType extends OAuth2GrantTypeBase {
      */
     public static final String SESSION_ID_PARAM = "session_id";
     public static final String ACCOUNT_ID_ATTRIBUTE = AccountUsers.ACCOUNT_ID_ATTRIBUTE;
-    private static final String SESSION_MARKER_NOTE = "identity-demo-account-token-session";
+    static final String SESSION_MARKER_NOTE = "identity-demo-account-token-session";
 
 
     @Override
@@ -108,12 +108,7 @@ public class AccountTokenGrantType extends OAuth2GrantTypeBase {
                     UserSessionModel.SessionPersistenceState.PERSISTENT);
             userSession.setNote(SESSION_MARKER_NOTE, "true");
         } else {
-            userSession = continuedSession(user, sessionId);
-            if (userSession == null) {
-                // Die Session-Id steht im Ereignis, nicht in der OAuth-Fehlerantwort.
-                event.session(sessionId);
-                return reject("Session has ended or is not this login's");
-            }
+            userSession = continueSession(user, sessionId);
         }
         // The same note keys the Web channel writes, read by OrchestratorAcrAmrMapper. Only the
         // orchestrator's own client gets here; AccountTokenClaims has checked the form of the values.
@@ -131,6 +126,17 @@ public class AccountTokenGrantType extends OAuth2GrantTypeBase {
         updateUserSessionFromClientAuth(userSession);
 
         return createTokenResponse(user, userSession, clientSessionCtx, scope, true, null);
+    }
+
+    /** Continues session {@code sessionId} or rejects the call (ADR-43). */
+    UserSessionModel continueSession(UserModel user, String sessionId) {
+        UserSessionModel existing = continuedSession(user, sessionId);
+        if (existing == null) {
+            // Die Session-Id steht im Ereignis, nicht in der OAuth-Fehlerantwort.
+            event.session(sessionId);
+            reject("Session has ended or is not this login's");
+        }
+        return existing;
     }
 
     /**

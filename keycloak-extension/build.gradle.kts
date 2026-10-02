@@ -16,16 +16,14 @@ repositories {
     mavenCentral()
 }
 
-val keycloakVersion = "26.6.4"
-
 dependencies {
     // Provided by the Keycloak runtime - not shaded into the provider jar.
-    compileOnly("org.keycloak:keycloak-server-spi:$keycloakVersion")
-    compileOnly("org.keycloak:keycloak-server-spi-private:$keycloakVersion")
-    compileOnly("org.keycloak:keycloak-services:$keycloakVersion")
+    compileOnly(libs.keycloak.server.spi)
+    compileOnly(libs.keycloak.server.spi.private)
+    compileOnly(libs.keycloak.services)
     // AbstractUserAdapterFederatedStorage - der Adapter fuer foederierte Nutzer ohne Import (ADR-38).
-    compileOnly("org.keycloak:keycloak-model-storage:$keycloakVersion")
-    compileOnly("org.keycloak:keycloak-model-storage-private:$keycloakVersion")
+    compileOnly(libs.keycloak.model.storage)
+    compileOnly(libs.keycloak.model.storage.private)
 
     // Same JOSE/JWT library AND version the orchestrator's PeerAuthValidator uses - one entry in
     // the version catalog, so ES256 signing on this side and verification on the orchestrator side
@@ -39,29 +37,34 @@ dependencies {
     // Der Generator schreibt @javax.annotation.Nonnull an jedes Pflichtfeld. compileOnly, weil die
     // Annotation CLASS-Retention hat: der Compiler braucht sie, die Laufzeit nicht - so bleibt sie
     // aus dem Shadow-Jar heraus.
-    compileOnly("com.google.code.findbugs:jsr305:3.0.2")
+    compileOnly(libs.jsr305)
     // QR encoding for auth-qr/auth-qr-lookup's WebToolRenderer - core only, no `javase` artifact:
     // the BitMatrix -> PNG conversion is small enough to write directly (QrImageEncoder) without
     // pulling in its extra dependencies.
-    implementation("com.google.zxing:core:3.5.3")
+    implementation(libs.zxing.core)
 
     // Nur fuer Tests, die ein ComponentModel in die Hand nehmen (OrchestratorSettingsTest) - zur
     // Laufzeit stellt Keycloak diese Klassen, siehe compileOnly oben.
-    testImplementation("org.keycloak:keycloak-server-spi:$keycloakVersion")
+    testImplementation(libs.keycloak.server.spi)
     // SessionEndTest: Keycloaks eigene Berechnung der Sitzungsfristen (SessionExpirationUtils).
-    testImplementation("org.keycloak:keycloak-server-spi-private:$keycloakVersion")
-    testImplementation("org.keycloak:keycloak-model-storage:$keycloakVersion")
-    testImplementation("org.keycloak:keycloak-model-storage-private:$keycloakVersion")
-    testImplementation("org.keycloak:keycloak-common:$keycloakVersion")
-    testImplementation("org.keycloak:keycloak-core:$keycloakVersion")
+    testImplementation(libs.keycloak.server.spi.private)
+    testImplementation(libs.keycloak.model.storage)
+    testImplementation(libs.keycloak.model.storage.private)
+    testImplementation(libs.keycloak.common)
+    testImplementation(libs.keycloak.core)
+    // AccountTokenSessionTest: der Grant selbst und Keycloaks Gueltigkeitspruefung der Sitzung
+    // (AuthenticationManager.isSessionValid). Ohne Transitive, die Tests brauchen keinen Server.
+    testImplementation(libs.keycloak.services) { isTransitive = false }
+    // Die Fehlerantwort des Grants ist eine WebApplicationException; sie braucht eine JAX-RS-Laufzeit.
+    testRuntimeOnly(libs.resteasy.core)
     // OrchestratorNextDispatchTest: MultivaluedMap, zur Laufzeit von Keycloak gestellt (RESTEasy).
-    testImplementation("jakarta.ws.rs:jakarta.ws.rs-api:3.1.0")
-    testImplementation(platform("org.junit:junit-bom:6.0.3"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation(libs.jakarta.ws.rs.api)
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
     // KcTextCatalog: eigene Nutzertexte aus den kompilierten Klassen einsammeln (docs/adr/ADR-033).
     testImplementation(libs.asm.tree)
     testImplementation(libs.asm.analysis)
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 /**
