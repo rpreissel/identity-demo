@@ -87,17 +87,19 @@ export async function resetDpopKeyPair(): Promise<void> {
 }
 
 /**
- * RFC 7638 JWK thumbprint in the backend's JwkThumbprintService member order (kty, crv, x, y; not
- * lexicographic), so this displays the same value the backend derives as `bindingKeyRef`.
+ * RFC 7638 JWK thumbprint of an EC key. The required members stand in lexicographic order (crv, kty,
+ * x, y) as RFC 7638 3.2/3.3 demands and the backend's JwkThumbprintService does, so this displays the
+ * same value the backend derives as `bindingKeyRef`.
  */
 export async function computeJwkThumbprint(jwk: JsonWebKey): Promise<string> {
-  const canonical = `{"kty":"${jwk.kty}","crv":"${jwk.crv}","x":"${jwk.x}","y":"${jwk.y}"}`
+  const canonical = `{"crv":"${jwk.crv}","kty":"${jwk.kty}","x":"${jwk.x}","y":"${jwk.y}"}`
   const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical))
   return base64UrlEncode(hash)
 }
 
 export function base64UrlEncode(buffer: ArrayBuffer | Uint8Array): string {
-  const bytes = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer
+  // Checks Uint8Array, not ArrayBuffer: a buffer from another realm (WebCrypto under jsdom) fails instanceof ArrayBuffer.
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
   let binary = ''
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i])

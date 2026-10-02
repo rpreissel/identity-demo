@@ -58,4 +58,15 @@ describe('createDeviceProof', () => {
 
     expect(actualThumbprint).toBe(expectedThumbprint)
   })
+
+  it('computes the RFC 7638 thumbprint the backend derives for the RFC 7517 A.1 EC key', async () => {
+    const thumbprint = await computeJwkThumbprint({
+      kty: 'EC',
+      crv: 'P-256',
+      x: 'MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4',
+      y: '4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM',
+    })
+
+    expect(thumbprint).toBe('cn-I_WNMClehiVp51i_0VpOENW1upEerA8sEam5hn-s')
+  })
 })
