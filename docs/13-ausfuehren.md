@@ -239,7 +239,7 @@ zählt der volle Lauf `test`.
 die einmal einen Fehler gefunden hat. Wer an Kanal, Journey oder Sitzung baut, sucht mit
 `-PmodelSeeds=1000` gründlicher; eine gefundene Folge kommt danach in die festen Folgen.
 
-**Wo die Zeit hingeht.** Der volle Lauf dauert zwei bis drei Minuten. Die Zeit geht in die wenigen
+**Wo die Zeit hingeht.** Der volle Lauf dauert knapp zwei Minuten. Die Zeit geht in die wenigen
 großen Specs (`OpenApiSnapshotTest`, `ModelBasedJourneyTest`), in die Kontextstarts und in die
 Szenarien der Integrationstests.
 
