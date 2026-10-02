@@ -46,14 +46,14 @@ class ChannelSession(
 
     /**
      * WEB only: Keycloak's durable `UserSessionModel` id, known once a flow has completed
-     * (set by `KcChannelService.restoreData`). Only [com.example.identity.core.orchestrator.retention.RetentionJob]
+     * (set by `KeycloakChannelService.restoreData`). Only [com.example.identity.core.orchestrator.retention.RetentionJob]
      * reads it, to ask whether the session is still alive. Never used for authorization.
      */
     @Column(name = "kc_durable_session_id", length = 64)
-    var durableKcSessionId: String? = null
+    var durableKeycloakSessionId: String? = null
 
     /**
-     * Self-assigned, so the kc facade can set its client-chosen id before the first save for
+     * Self-assigned, so the Keycloak facade can set its client-chosen id before the first save for
      * idempotent upserts (docs/05-api.md Abschnitt 3). APP callers get a random id.
      */
     @Id

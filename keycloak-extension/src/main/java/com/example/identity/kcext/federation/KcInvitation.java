@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * An invitation as the orchestrator shows it to Keycloak ({@code KcInvitationLookupController}) -
+ * An invitation as the orchestrator shows it to Keycloak ({@code KeycloakInvitationLookupController}) -
  * read through on every lookup, never stored here.
  */
 public record KcInvitation(

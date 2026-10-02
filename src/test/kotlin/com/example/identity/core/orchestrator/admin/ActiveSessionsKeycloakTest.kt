@@ -9,10 +9,10 @@ import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
-import com.example.identity.core.orchestrator.kc.KeycloakClientSessions
-import com.example.identity.core.orchestrator.kc.KeycloakSessionClient
-import com.example.identity.core.orchestrator.kc.KeycloakUserSession
-import com.example.identity.core.orchestrator.kc.KeycloakUserSessions
+import com.example.identity.core.orchestrator.keycloak.KeycloakClientSessions
+import com.example.identity.core.orchestrator.keycloak.KeycloakSessionClient
+import com.example.identity.core.orchestrator.keycloak.KeycloakUserSession
+import com.example.identity.core.orchestrator.keycloak.KeycloakUserSessions
 import com.example.identity.core.orchestrator.session.AppTokenSession
 import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
 import com.example.identity.core.orchestrator.session.ChannelSession
@@ -68,17 +68,17 @@ class ActiveSessionsKeycloakTest : BehaviorSpec({
             appTokenSessionId = appContext.appTokenSessionId
         }
         val older = ChannelSession(ChannelType.WEB, null, start.plusSeconds(600), now = TEST_NOW).apply {
-            durableKcSessionId = "kc-web"
+            durableKeycloakSessionId = "kc-web"
             createdAt = start
         }
         val newer = ChannelSession(ChannelType.WEB, null, start.plusSeconds(600), now = TEST_NOW).apply {
-            durableKcSessionId = "kc-web"
+            durableKeycloakSessionId = "kc-web"
             state = ChannelState.AUTHENTICATED
             createdAt = start.plusSeconds(5)
         }
         every { fixture.appTokenSessions.findByKeycloakSessionIdIn(listOf("kc-app")) } returns listOf(appContext)
         every { fixture.channels.findByAppTokenSessionIdIn(listOf(appContext.appTokenSessionId!!)) } returns listOf(appChannel)
-        every { fixture.channels.findByDurableKcSessionIdIn(listOf("kc-web", "kc-other")) } returns listOf(older, newer)
+        every { fixture.channels.findByDurableKeycloakSessionIdIn(listOf("kc-web", "kc-other")) } returns listOf(older, newer)
 
         `when`("the report is built") {
             val keycloak = fixture.service.report().keycloak!!

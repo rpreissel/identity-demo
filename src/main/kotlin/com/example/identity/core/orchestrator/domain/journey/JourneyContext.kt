@@ -27,7 +27,7 @@ data class JourneyContext(
     val evidence: SessionEvidence,
     /** The channel's durable lower bound, not a single run's target (that lives in the state). */
     val acrFloor: AcrLevel,
-    /** The calling device's DPoP-proven key thumbprint; null on a Keycloak channel. */
+    /** The calling device's DPoP-proven key thumbprint; null on a Web channel. */
     val bindingKeyRef: String?,
     /** The account this device is durably linked to, if any, independent of this channel. */
     val linkedAccountId: AccountId?,

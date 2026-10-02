@@ -5,7 +5,7 @@
 #
 # WO HIER WAS STEHT: Realm-Name und Keycloak-Adresse stehen NICHT mehr in
 # diesem Profil, sondern ausschliesslich im Parametersatz unten (keycloak-setup).
-# KeycloakSetupEnvironment leitet daraus kc.peer-auth.issuer/audience/jwks-uri,
+# KeycloakSetupEnvironment leitet daraus keycloak.peer-auth.issuer/audience/jwks-uri,
 # keycloak-sync.base-url/realm und keycloak-migrate.base-url ab, bevor die erste Bean
 # entsteht. Grund: Aufbau und Betrieb meinen dasselbe Realm und dieselben Clients - zwei Orte
 # dafuer waren ein Tippfehler von einem 401 entfernt, der erst tief im Betrieb auffaellt.
@@ -17,7 +17,7 @@ spring:
       # laufen. KeycloakMigrationRunnerStartup stellt sie danach selbst zu.
       republish-outstanding-events-on-restart: false
 
-kc:
+keycloak:
   peer-auth:
     # issuer/audience/jwks-uri: abgeleitet (siehe oben).
     jwks-cache-ttl-seconds: 600

@@ -99,7 +99,7 @@ Vorgang“, nicht „einmal nutzbar“, wie beim Freischaltcode
   und ob die Einladung nach dem Vorgang eine Registrierung als Identifizierung tragen soll.
 
 **Nachtrag 2026-09-30 (vierte Bewertung, A-1/A-2).** Die Anfrage von Keycloak nennt das Subjekt wie
-die Antwort (`KcChannelUpsertRequest.subject`); ein Kanal, dem schon ein anderes Subjekt gehört,
+die Antwort (`KeycloakChannelUpsertRequest.subject`); ein Kanal, dem schon ein anderes Subjekt gehört,
 lehnt es mit `409` ab, eine Einladung wird so nie still zum Konto. Keycloak meldet auch die
 Abmeldung eines Einladungs-Nutzers (`POST …/kc/invitations/{id}/sign-outs`); sie beendet die
 Web-Kanäle der Sitzung. Das Anmeldeprotokoll (`account.sign_in_log`) führt Vorgangszugänge als

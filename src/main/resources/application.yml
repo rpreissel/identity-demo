@@ -165,11 +165,11 @@ springdoc:
     # frontend to exercise the API.
     supported-submit-methods: []
 
-kc:
+keycloak:
   peer-auth:
-    # docs/05-api.md Abschnitt 3 / docs/12-entscheidungen.md ADR-7: one signed JWT per kc-facade request.
+    # docs/05-api.md Abschnitt 3 / docs/12-entscheidungen.md ADR-7: one signed JWT per Keycloak facade request.
     # Ohne Profil `keycloak` gibt es keinen Aussteller: issuer und jwks-uri bleiben leer, die
-    # kc-Fassade weist damit jede Assertion ab (KeycloakJwkSource kennt keinen Schluessel) - der
+    # Keycloak-Fassade weist damit jede Assertion ab (KeycloakJwkSource kennt keinen Schluessel) - der
     # Web-Kanal existiert nur mit echtem Keycloak. Im Profil `keycloak` setzt
     # KeycloakSetupEnvironment beide Werte aus dem Parametersatz.
     issuer: ""

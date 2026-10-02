@@ -8,7 +8,7 @@ import com.example.identity.contract.tool_api.claims.assertClaimsCovered
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.core.orchestrator.domain.ChannelType
-import com.example.identity.core.orchestrator.kc.PeerAuthValidationException
+import com.example.identity.core.orchestrator.keycloak.PeerAuthValidationException
 import com.example.identity.core.orchestrator.session.AccountLockoutService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -27,7 +27,7 @@ class KeycloakToolCallsService(
 ) : KeycloakToolCalls {
 
     override fun requireKeycloakFor(accountId: AccountId, bindingKeyRef: String) {
-        if (bindingKeyRef != DeviceChannelAccessGuard.KC_BINDING_PREFIX + accountId) {
+        if (bindingKeyRef != DeviceChannelAccessGuard.KEYCLOAK_BINDING_PREFIX + accountId) {
             throw PeerAuthValidationException("Peer-auth channel_binding does not match accountId")
         }
     }

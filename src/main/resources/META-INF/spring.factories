@@ -3,4 +3,4 @@
 # spring.factories registriert - nicht ueber eine .imports-Datei, die gilt nur fuer
 # Auto-Konfigurationen.
 org.springframework.boot.EnvironmentPostProcessor=\
-  com.example.identity.core.orchestrator.kc.KeycloakSetupEnvironment
+  com.example.identity.core.orchestrator.keycloak.KeycloakSetupEnvironment

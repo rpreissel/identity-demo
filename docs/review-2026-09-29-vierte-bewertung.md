@@ -82,7 +82,7 @@ das Modell ändern, sind als solche markiert und dem Inhaber vorzulegen.
   Zeitpunkt; `EvidenceTrail.AmrRecord` hat keinen; TTL des Tokens 12 h. `orchestrator-resume`
   steht als erster Schritt im Browser-Flow vor beiden LoA-Subflows (V1 Zeilen 101-125) und
   schickt bei jedem Durchlauf `restoreData` mit dem angefragten `targetAcr`
-  (`OrchestratorResumeAuthenticator.java:56-61`); `KcChannelService.upsertChannel` wendet die
+  (`OrchestratorResumeAuthenticator.java:56-61`); `KeycloakChannelService.upsertChannel` wendet die
   Faktoren als ersten Übergang an (`:178-182`), `KcSelectMethodStrategy.afterProof` antwortet
   `Authenticated`, sobald `isSatisfied(evidence, acrFloor, account)` (`:73-80`). Am Ende jedes
   Durchlaufs stellt `stashRestoreDataAtFlowEnd` ein neues Token mit derselben Evidenz aus
@@ -96,7 +96,7 @@ das Modell ändern, sind als solche markiert und dem Inhaber vorzulegen.
   Bypass ohne Zugriff auf den Browser mit laufender SSO-Sitzung, aber genau davor soll
   `loa-max-age` schützen; die Fristenmigration ist für Orchestrator-Nachweise wirkungslos. Fix:
   `provenAt` je `MethodEvidence`/`AmrRecord` (gesetzt in `JourneyRecorder.recordToolCompletion`
-  und für native Faktoren in `KcChannelService`), im Claim mitgeführt; beim Restore fallen
+  und für native Faktoren in `KeycloakChannelService`), im Claim mitgeführt; beim Restore fallen
   Faktoren, deren Alter `kc.restore.max-factor-age` (= `loa-max-age`) übersteigt, weg –
   oder `AuthPolicy.resolveAcr` bewertet Frische, dann gilt es auch für App-Sitzungen (Entscheidung
   des Inhabers). Test mit gestellter Uhr: RestoreData bei T, Upsert `targetAcr=loa2` bei T+10 min
@@ -111,7 +111,7 @@ das Modell ändern, sind als solche markiert und dem Inhaber vorzulegen.
   429); Sweeper für `ident_case` nach `createdAt`. Test: vierter `retry` → 429.
 - **S-3 (niedrig) Nutzereingaben in `OrchestratorException.detail` erreichen das Log ungefiltert.**
   `ChannelService.kt:93` (`intent=` aus dem Query-Parameter), `ToolJourneyService.kt:118-126`
-  (`toolId=` aus dem Pfad), `ToolHandlerRegistry.kt:54`, `KcChannelService.kt:117`
+  (`toolId=` aus dem Pfad), `ToolHandlerRegistry.kt:54`, `KeycloakChannelService.kt:117`
   (`nativeToolId` aus dem Keycloak-Body); der Handler loggt `ex.message` samt Detail
   (`OrchestratorExceptionHandler.kt:60`). Werte sind unbegrenzt und dürfen Zeilenumbrüche tragen:
   `POST /app/channels?intent=foo%0A2026-09-29 INFO …` fälscht eine Logzeile (im ECS-JSON-Profil
@@ -126,11 +126,11 @@ das Modell ändern, sind als solche markiert und dem Inhaber vorzulegen.
   Werte, für die das Management-Port bewusst nicht geroutet ist (`application.yml:273-292`).
   Fix: `@DemoSurface`, oder außerhalb des Demomodus nur `keycloak`/`demoMode` ohne `operations`.
 - **S-5 (Hinweis) `availableTools` wird ungeprüft persistiert.** `ChannelService.kt:89`,
-  `KcChannelService.kt:86,152` → JSON in `channel_session.available_tools`; weder Anzahl noch
+  `KeycloakChannelService.kt:86,152` → JSON in `channel_session.available_tools`; weder Anzahl noch
   Länge begrenzt; 20 Kanäle je 5 min je Schlüssel, Schlüssel kostenlos. Fix: gegen den Katalog
   schneiden (`toolRegistry.descriptors()`), Unbekanntes verwerfen – sicherheitsneutral, ein
   unbekannter Eintrag wird nie angeboten.
-- **S-6 (Hinweis) `targetAcr` im kc-Upsert wird nicht validiert.** `KcChannelService.kt:173` →
+- **S-6 (Hinweis) `targetAcr` im kc-Upsert wird nicht validiert.** `KeycloakChannelService.kt:173` →
   `AcrLevels.max` bildet Unbekanntes auf `none` ab: ein Tippfehler in der Erweiterung hebt den
   Floor still nicht an, statt laut zu scheitern; der App-Pfad prüft mit `AcrLevel.requested`
   (400). Fix: dasselbe hier.
@@ -198,7 +198,7 @@ das Modell ändern, sind als solche markiert und dem Inhaber vorzulegen.
   bestimmen. Fix: `toolId` gegen die angebotenen Optionen, `methodInstanceId` als UUID, Segmente
   kodieren. Test in `OrchestratorNextDispatchTest`.
 - **K-5 (niedrig) Step-up auf einer Einladungssitzung läuft anonym.** `authenticate:52` liest nur
-  `orchestratorAccountId`, für `InvitationUser` bewusst leer; `KcChannelUpsertRequest` kennt kein
+  `orchestratorAccountId`, für `InvitationUser` bewusst leer; `KeycloakChannelUpsertRequest` kennt kein
   Subjekt. Der Kanal hat kein Subjekt, alle `LOOKUP_AUTH`-Kandidaten werden angeboten, auch
   Konto-Anmeldungen, die `LoginCompletion:47` am Ende zu Recht verwirft – mit Keycloaks
   Fehlerseite statt einer Erklärung. ADR-48 lässt offen, ob eine Einladung aufwertbar ist.
@@ -227,8 +227,8 @@ das Modell ändern, sind als solche markiert und dem Inhaber vorzulegen.
 - **A-1 (mittel) Die Abmeldung eines Einladungs-Nutzers erreicht den Orchestrator nie; 07-betrieb
   sagt das Gegenteil zu.** `SignInLogEventListener.accountToReport` (`event/`, Zeilen 76-88)
   meldet nur `LOGOUT`-Ereignisse der Konto-Federation mit numerischer externer Id;
-  `OrchestratorClient.reportSignOut(long accountId, …)`, `KcSignOutController`
-  (`POST /kc/accounts/{accountId}/sign-outs`) und `KcChannelService.signedOutAtKeycloak`
+  `OrchestratorClient.reportSignOut(long accountId, …)`, `KeycloakSignOutController`
+  (`POST /kc/accounts/{accountId}/sign-outs`) und `KeycloakChannelService.signedOutAtKeycloak`
   (`:63`, `findByAccountId`) kennen nur Konten. Ein Einladungs-Nutzer (`f:<UUID>:<Hash>`) fällt an
   der ersten Stelle heraus; `InvitationEnded` beendet nur die Keycloak-Sitzung
   (`KeycloakInvitationLogoutListener`), nicht den Kanal. 07-betrieb Zeilen 218-222: „Keycloak
@@ -244,7 +244,7 @@ das Modell ändern, sind als solche markiert und dem Inhaber vorzulegen.
   meldet die Abmeldung → Kanal `LOGGED_OUT`“, `SignInLogEventListenerTest` mit Einladungs-Id.
   Gehört zu `DPoP-demo-oe06`.
 - **A-2 (mittel) Der Upsert von Keycloak nennt nur `accountId`; ein Einladungskanal würde still
-  zum Konto.** `KcChannelService.upsertChannel:161-170`: der Konflikttest vergleicht
+  zum Konto.** `KeycloakChannelService.upsertChannel:161-170`: der Konflikttest vergleicht
   `channel.accountId` mit `effectiveAccountId`; für `subject = Invitation` ist `accountId == null`,
   Zeile 167 setzt `subject = Account(...)`, und der Setter (`ChannelSession.kt:74-79`) löscht die
   Einladung. `authEvidenceId` zeigt weiter auf die Einladungs-Evidenz (`amr=invite`, bis `loa2`);
@@ -256,7 +256,7 @@ das Modell ändern, sind als solche markiert und dem Inhaber vorzulegen.
   sich auf Tests, die den Fall nicht kennen. Fix: `if (effectiveAccountId != null &&
   channel.invitation != null) invalidState(...)` spiegelbildlich zum Konto-Konflikt; die Anfrage
   trägt `subject` wie die Antwort, `accountId` „nur zur Kompatibilität“ (Vertragsänderung,
-  Entscheidung des Inhabers; löst zugleich K-5). Test in `KcChannelIntegrationTest`: Upsert mit
+  Entscheidung des Inhabers; löst zugleich K-5). Test in `KeycloakChannelIntegrationTest`: Upsert mit
   `accountId` auf einem per `auth-invite` angemeldeten Kanal → 409, `invitation` bleibt.
   Register: I-29 um diesen Test ergänzen.
 - **A-3 (niedrig) Die Paketaufteilung der Erweiterung (`a19ea85`) hat vier Zyklen und keine
@@ -300,8 +300,8 @@ das Modell ändern, sind als solche markiert und dem Inhaber vorzulegen.
   Umschlag `AuthSubject(AuthSubjectType, String)`. Fachlich verschieden (bewiesen, versucht,
   gemeldet) und in 03 §2 erklärt; `Subject.Invitation.hash` neben „Id der Einladung“ (ADR-48,
   05-api) stolpert. Fix: ein Name (`id`), Querverweis.
-- **A-8 (Hinweis) Die Peer-Auth-Prüfung ist dreimal kopiert** (`KcAccountLookupController.
-  validatePeerAuth`, `KcInvitationLookupController.byInvitation`, `KcSignOutController.signedOut`:
+- **A-8 (Hinweis) Die Peer-Auth-Prüfung ist dreimal kopiert** (`KeycloakAccountLookupController.
+  validatePeerAuth`, `KeycloakInvitationLookupController.byInvitation`, `KeycloakSignOutController.signedOut`:
   dieselben sechs Zeilen Header-Parsing und Anker-Vergleich). Fix:
   `PeerAuthValidator.validateRequest(authorization, request, expectedAnchor)`.
 
@@ -310,8 +310,8 @@ das Modell ändern, sind als solche markiert und dem Inhaber vorzulegen.
 - **Q-1 (mittel) Fünf Integrationstests setzen die Handlung ins `Then`, mit leerem `When`.**
   `AuthInviteIntegrationTest.kt:90-110`: `Given(…) { When(…) { Then(…) { val issued = issue(…);
   val (…) = openInviteTool("loa1"); kcCall(PATCH, …) … } } }` – alles im `Then`, das `When` ist
-  ein leerer Container. Gleiches Muster in `KcInvitationLookupIntegrationTest`,
-  `MgmtPasswordIntegrationTest`, `KcChannelIntegrationTest`, `PeerAuthRoundTripTest` (die fünf
+  ein leerer Container. Gleiches Muster in `KeycloakInvitationLookupIntegrationTest`,
+  `MgmtPasswordIntegrationTest`, `KeycloakChannelIntegrationTest`, `PeerAuthRoundTripTest` (die fünf
   Dateien mit `Given`/`When`/`Then` in Großschreibung; die übrigen 49 Spring-Specs halten die
   Regel). AGENTS.md: „Die Handlung steht im `when` und läuft dort einmal; ein `then` prüft nur.“
   Q-3 der dritten Bewertung ist damit umgangen, nicht verallgemeinert. Fix: Handlung ins `When`,
@@ -423,7 +423,7 @@ Bewertung), `DPoP-demo-oe06` (I-23), `DPoP-demo-36xz` (Lookup-Orakel), `DPoP-dem
   nie per Name/Adresse, kein Credential; `orchestratorAccountId` erzwungen leer; Suche höchstens
   ein Treffer, `*` nichts; Ausfall = `ModelException`; `LoginCompletion` lässt kein Subjekt die
   Sitzung des anderen fortsetzen; Einladungen erreichen den Grant nicht („nur Web“ hält
-  technisch); `KcInvitationViews` liefert `enabled=open`, sodass nach Abschluss kein Refresh mehr
+  technisch); `KeycloakInvitationViews` liefert `enabled=open`, sodass nach Abschluss kein Refresh mehr
   kommt.
 - **Clock-Bean.** `ClockConfig` als einzige Systemuhr, `ClockArchitectureTest` mit Selbsttest; kein
   `Instant.now()`/`LocalDate.now()`/`currentTimeMillis` im Kotlin-Main; Entitäten nehmen `now` als
@@ -434,7 +434,7 @@ Bewertung), `DPoP-demo-oe06` (I-23), `DPoP-demo-36xz` (Lookup-Orakel), `DPoP-dem
   `req`/`status`/`body_sha256` gebunden, auch bei Fehlern und `304`; jeder kc-Endpunkt prüft den
   Anker gegen das, was er adressiert; `keycloakOnly` lehnt DPoP ab; Kontowechsel auf bestehendem
   Kanal → 409; `IdentityResolver`/`absorbProvisionalAccount`/`linkDeviceToAccount` nur im Executor;
-  `applyOutcome` verlangt rollen-passende Outcomes; alle Zähler als ein `UPDATE`; `KcTokenProvider`
+  `applyOutcome` verlangt rollen-passende Outcomes; alle Zähler als ein `UPDATE`; `KeycloakTokenProvider`
   je Login eine Keycloak-Sitzung, Tokens bei jeder Evidenzänderung gelöscht; `ProductionModeCheck`
   und `DeploymentTopologyCheck`; `ReadinessGateFilter`; Retention von innen nach außen, auch
   `auth_invite` und `ident_nect` mit `ToolSessionSweeper`.
@@ -499,7 +499,7 @@ noch offen; für sie gibt es noch keine Issues.
   `identity.policy.elevated-level-max-age` (30 min; heute `identity.policy.loa2-max-age`), ältere
   tragen `loa1`, und das schon benutzte Verfahren wird wieder angeboten. RestoreData trägt den
   Zeitpunkt mit, ein Nachweis ohne ihn gilt als beliebig alt. Tests: `DefaultAuthPolicyTest` (29/31 min, unbekanntes Alter),
-  `RestoreDataCodecTest`, `KcChannelIntegrationTest` (echter Resume-Pfad mit gealtertem Nachweis).
+  `RestoreDataCodecTest`, `KeycloakChannelIntegrationTest` (echter Resume-Pfad mit gealtertem Nachweis).
   Doku: 04 §8 „Ein Nachweis über loa1 altert“, 07 §3, neue Invariante I-32.
 - ~~K-1 Orchestrator-Fehler als Fehlversuch~~ – erledigt: `OrchestratorAuthenticator.action` ruft
   nie mehr `failureChallenge`; 4xx zeigt die Meldung, sonst „Anmeldung derzeit nicht möglich.“
@@ -512,7 +512,7 @@ noch offen; für sie gibt es noch keine Issues.
 
 **Architektur**
 
-- ~~A-2 Einladungskanal im Upsert~~ – erledigt: `KcChannelUpsertRequest.subject` wie
+- ~~A-2 Einladungskanal im Upsert~~ – erledigt: `KeycloakChannelUpsertRequest.subject` wie
   `authData.subject`; `accountId` ist aus Anfrage und `authData` entfernt (vor dem ersten Release
   keine Kompatibilitätsfelder, `api/published/v1.yaml` neu eingefroren); ein Kanal eines anderen Subjekts
   antwortet `409` und bleibt, wie er ist; eine Einladung bindet nur ihr eigener Nachweis. Die

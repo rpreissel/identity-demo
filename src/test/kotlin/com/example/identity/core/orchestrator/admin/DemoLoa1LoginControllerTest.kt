@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.admin
 
-import com.example.identity.core.orchestrator.kc.Loa1Login
+import com.example.identity.core.orchestrator.keycloak.Loa1Login
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.mockk
 import io.mockk.verify

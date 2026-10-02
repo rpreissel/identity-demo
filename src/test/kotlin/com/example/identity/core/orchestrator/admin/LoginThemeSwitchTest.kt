@@ -1,8 +1,8 @@
 package com.example.identity.core.orchestrator.admin
 
 import com.example.identity.core.orchestrator.domain.FeatureFlags
-import com.example.identity.core.orchestrator.kc.KeycloakRealmLoginTheme
-import com.example.identity.core.orchestrator.kc.LoginTheme
+import com.example.identity.core.orchestrator.keycloak.KeycloakRealmLoginTheme
+import com.example.identity.core.orchestrator.keycloak.LoginTheme
 import com.example.identity.core.orchestrator.session.FeatureFlagService
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow

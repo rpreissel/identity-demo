@@ -88,8 +88,8 @@ anmelden.
 
 ## 3) Abmeldung in Keycloak beendet beide Kanäle
 
-Meldet Keycloak eine Abmeldung (`SignInLogEventListener` → `KcChannelService.signedOutAtKeycloak`),
-enden alle noch laufenden Kanäle dieser Sitzung: die Web-Kanäle mit dieser `durableKcSessionId` und
+Meldet Keycloak eine Abmeldung (`SignInLogEventListener` → `KeycloakChannelService.signedOutAtKeycloak`),
+enden alle noch laufenden Kanäle dieser Sitzung: die Web-Kanäle mit dieser `durableKeycloakSessionId` und
 der App-Kanal, dessen `AppTokenSession.keycloakSessionId` sie nennt.
 
 ## 4) Web-Kanal: Keycloak meldet das Sitzungsende

@@ -1,8 +1,8 @@
 package com.example.identity.core.orchestrator.admin
 
 import com.example.identity.core.orchestrator.domain.FeatureFlags
-import com.example.identity.core.orchestrator.kc.KeycloakLoa1Login
-import com.example.identity.core.orchestrator.kc.Loa1Login
+import com.example.identity.core.orchestrator.keycloak.KeycloakLoa1Login
+import com.example.identity.core.orchestrator.keycloak.Loa1Login
 import com.example.identity.core.orchestrator.session.FeatureFlagService
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationArguments

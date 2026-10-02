@@ -25,7 +25,7 @@ data class NativeAuthenticatorDescriptor(
 class NativeAuthenticatorRegistry {
     // The same loa1 ceiling as the orchestrator counterparts (AuthPasswordDescriptor,
     // AuthSmsDescriptor). Two distinct native methods still combine to loa2 via the MFA bump
-    // (see the uncapped enrolledUnderAcr in KcChannelService).
+    // (see the uncapped enrolledUnderAcr in KeycloakChannelService).
     private val byId: Map<String, NativeAuthenticatorDescriptor> = listOf(
         NativeAuthenticatorDescriptor("kc-password-form", "password", "loa1", setOf(FactorType.KNOWLEDGE)),
         NativeAuthenticatorDescriptor("kc-otp-form", "otp", "loa1", setOf(FactorType.POSSESSION)),

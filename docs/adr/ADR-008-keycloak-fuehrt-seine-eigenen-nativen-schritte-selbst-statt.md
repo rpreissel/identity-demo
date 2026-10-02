@@ -13,7 +13,7 @@ Schritte auf, die er selbst nicht kann. Dafür gibt es drei Wege:
 
 - **Innerhalb einer Anmeldung** mit einer gespeicherten `AuthJourney`: Der Einstieg ist
   [`WEB_SELECT_METHOD`](../journeys/web-select-method.md), bei einer Registrierung `REGISTER`
-  (`KcChannelService.entryIntentFor`). Solange eine solche Journey läuft, bestimmt allein der
+  (`KeycloakChannelService.entryIntentFor`). Solange eine solche Journey läuft, bestimmt allein der
   Orchestrator ACR und AMR und fasst die Nachweise mehrerer Tools zusammen
   ([05-api.md](../05-api.md) Abschnitt 3).
 - **Als Required Action** mit eigener Journey: Das Verwalten der Anmeldeverfahren

@@ -180,7 +180,7 @@ class ChannelService(
     }
 
     /**
-     * Resumes the channel and its active journey. [KcChannelService] reuses it for the kc facade's
+     * Resumes the channel and its active journey. [KeycloakChannelService] reuses it for the Keycloak facade's
      * upsert (docs/05-api.md Abschnitt 3). [seedAction] matters only when a fresh journey starts
      * (see [JourneyService.start]).
      */

@@ -1007,141 +1007,141 @@ export interface JourneyDebugStep {
 /**
  * 
  * @export
- * @interface KcAccountView
+ * @interface KeycloakAccountView
  */
-export interface KcAccountView {
+export interface KeycloakAccountView {
     /**
      * 
      * @type {number}
-     * @memberof KcAccountView
+     * @memberof KeycloakAccountView
      */
     accountId: number;
     /**
      * 
      * @type {{ [key: string]: string; }}
-     * @memberof KcAccountView
+     * @memberof KeycloakAccountView
      */
     attributes: { [key: string]: string; };
     /**
      * 
      * @type {string}
-     * @memberof KcAccountView
+     * @memberof KeycloakAccountView
      */
     email?: string;
     /**
      * 
      * @type {boolean}
-     * @memberof KcAccountView
+     * @memberof KeycloakAccountView
      */
     emailVerified: boolean;
     /**
      * 
      * @type {string}
-     * @memberof KcAccountView
+     * @memberof KeycloakAccountView
      */
     firstName: string;
     /**
      * 
      * @type {string}
-     * @memberof KcAccountView
+     * @memberof KeycloakAccountView
      */
     lastName: string;
     /**
      * 
      * @type {string}
-     * @memberof KcAccountView
+     * @memberof KeycloakAccountView
      */
     username: string;
 }
 /**
- * Upsert body for the kc-facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). All fields are optional. subject is whom Keycloak already knows (sub vorhanden) - an account binds the channel immediately, once, never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator ACR string, and only raises the channel's floor, never lowers it. amr lists which native Keycloak authenticators (never orchestrator tools) just proved something THIS flow run, one entry per proof - method/loa/factorTypes are resolved server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the kc-facade's own mirror of a ToolDescriptor, not resolved from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged into the channel's evidence and re-checked against the current floor exactly like any other proof; no separate 'combined native acr' field exists, since the orchestrator derives that itself.
+ * Upsert body for the Keycloak facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). All fields are optional. subject is whom Keycloak already knows (sub vorhanden) - an account binds the channel immediately, once, never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator ACR string, and only raises the channel's floor, never lowers it. amr lists which native Keycloak authenticators (never orchestrator tools) just proved something THIS flow run, one entry per proof - method/loa/factorTypes are resolved server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the Keycloak facade's own mirror of a ToolDescriptor, not resolved from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged into the channel's evidence and re-checked against the current floor exactly like any other proof; no separate 'combined native acr' field exists, since the orchestrator derives that itself.
  * @export
- * @interface KcChannelUpsertRequest
+ * @interface KeycloakChannelUpsertRequest
  */
-export interface KcChannelUpsertRequest {
+export interface KeycloakChannelUpsertRequest {
     /**
      * 
      * @type {Array<AmrEntry>}
-     * @memberof KcChannelUpsertRequest
+     * @memberof KeycloakChannelUpsertRequest
      */
     amr?: Array<AmrEntry>;
     /**
-     * The Web channel's own declaration of which toolIds its Keycloak theme can render (one com.example.identity.kcext.webtool.WebToolRenderer factory per toolId, registered via META-INF/services) - the kc-facade's counterpart to the App channel's own availableTools (POST /channels). Only read on this channel's first call (a later upsert resumes the already-persisted set); a channel-anonymous caller that omits this gets none of the orchestrator's tools, never all of them.
+     * The Web channel's own declaration of which toolIds its Keycloak theme can render (one com.example.identity.kcext.webtool.WebToolRenderer factory per toolId, registered via META-INF/services) - the Keycloak facade's counterpart to the App channel's own availableTools (POST /channels). Only read on this channel's first call (a later upsert resumes the already-persisted set); a channel-anonymous caller that omits this gets none of the orchestrator's tools, never all of them.
      * @type {Array<string>}
-     * @memberof KcChannelUpsertRequest
+     * @memberof KeycloakChannelUpsertRequest
      */
     availableTools?: Array<string>;
     /**
-     * Only read on this channel's first call, same restriction as availableTools - the kc facade's own, deliberately narrow counterpart to the App facade's `intent` request parameter (docs/05-api.md #"POST /app/channels: intent-Parameter"). Omitted (or null) means web_select_method, the existing login/step-up behaviour. Only web_select_method and register are accepted here - unlike the App facade, not every AuthIntent.isEntryIntent value: fast_access/lookup_login assume an APP-shaped channel this facade never has.
+     * Only read on this channel's first call, same restriction as availableTools - the Keycloak facade's own, deliberately narrow counterpart to the App facade's `intent` request parameter (docs/05-api.md #"POST /app/channels: intent-Parameter"). Omitted (or null) means web_select_method, the existing login/step-up behaviour. Only web_select_method and register are accepted here - unlike the App facade, not every AuthIntent.isEntryIntent value: fast_access/lookup_login assume an APP-shaped channel this facade never has.
      * @type {string}
-     * @memberof KcChannelUpsertRequest
+     * @memberof KeycloakChannelUpsertRequest
      */
     intent?: string;
     /**
-     * Required whenever restoreData is present, ignored otherwise. Keycloak's own, durable UserSessionModel id - deliberately NOT read off the peer-auth assertion (the assertion's kc binding is always THIS flow run's own channelSessionId, docs/02-domaenenmodell.md Abschnitt 1, so it can't verify a token minted for a DIFFERENT, earlier flow run's channel). Must match what GET .../restore-data was called with to produce this exact restoreData token.
+     * Required whenever restoreData is present, ignored otherwise. Keycloak's own, durable UserSessionModel id - deliberately NOT read off the peer-auth assertion (the assertion's Keycloak binding is always THIS flow run's own channelSessionId, docs/02-domaenenmodell.md Abschnitt 1, so it can't verify a token minted for a DIFFERENT, earlier flow run's channel). Must match what GET .../restore-data was called with to produce this exact restoreData token.
      * @type {string}
-     * @memberof KcChannelUpsertRequest
+     * @memberof KeycloakChannelUpsertRequest
      */
     kcSessionId?: string;
     /**
      * A signed RestoreData token this same UserSession's channel returned earlier via GET .../restore-data, resubmitted verbatim (docs/05-api.md, section 3) - the bulk, one-shot way to seed a brand-new channel with what a PRIOR, unrelated flow run already established, as opposed to subject/amr above which report what THIS flow run just proved. Both are merged into the channel the same way; only restoreData may already be meaningfully old by the time it arrives here. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
      * @type {string}
-     * @memberof KcChannelUpsertRequest
+     * @memberof KeycloakChannelUpsertRequest
      */
     restoreData?: string;
     /**
      * Whom Keycloak knows this flow run belongs to: an account or an invitation (ADR-48), the same shape as authData.subject in the answer. A channel already bound to another subject refuses it (409); an account binds a channel that has none, an invitation never does - only its own proof binds it.
      * @type {AuthSubject}
-     * @memberof KcChannelUpsertRequest
+     * @memberof KeycloakChannelUpsertRequest
      */
     subject?: AuthSubject;
     /**
      * 
      * @type {string}
-     * @memberof KcChannelUpsertRequest
+     * @memberof KeycloakChannelUpsertRequest
      */
     targetAcr?: string;
 }
 /**
  * 
  * @export
- * @interface KcInvitationView
+ * @interface KeycloakInvitationView
  */
-export interface KcInvitationView {
+export interface KeycloakInvitationView {
     /**
      * 
      * @type {{ [key: string]: string; }}
-     * @memberof KcInvitationView
+     * @memberof KeycloakInvitationView
      */
     attributes: { [key: string]: string; };
     /**
      * 
      * @type {boolean}
-     * @memberof KcInvitationView
+     * @memberof KeycloakInvitationView
      */
     enabled: boolean;
     /**
      * 
      * @type {string}
-     * @memberof KcInvitationView
+     * @memberof KeycloakInvitationView
      */
     firstName: string;
     /**
      * 
      * @type {string}
-     * @memberof KcInvitationView
+     * @memberof KeycloakInvitationView
      */
     invitation: string;
     /**
      * 
      * @type {string}
-     * @memberof KcInvitationView
+     * @memberof KeycloakInvitationView
      */
     lastName: string;
     /**
      * 
      * @type {string}
-     * @memberof KcInvitationView
+     * @memberof KeycloakInvitationView
      */
     username: string;
 }

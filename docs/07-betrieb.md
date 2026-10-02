@@ -217,7 +217,7 @@ Wie mit den Verweisen zwischen den Tabellen umgegangen wird:
   oben.
 - **`WEB`-Kanäle haben dieselbe Aufbewahrungsfrist wie alle anderen.** Die Abmeldung im
   Web-Kanal gehört Keycloak ([05-api.md](05-api.md) Abschnitt 3); Keycloak meldet sie dem
-  Orchestrator (`SignInLogEventListener` → `KcChannelService.signedOutAtKeycloak`), und das beendet
+  Orchestrator (`SignInLogEventListener` → `KeycloakChannelService.signedOutAtKeycloak`), und das beendet
   die noch laufenden Kanäle dieser Sitzung sofort, Web- wie App-Kanal; für einen Vorgangszugang
   (ADR-48) die Web-Kanäle der Einladung. Der Orchestrator fragt
   Keycloak dafür nicht ab.
@@ -245,7 +245,7 @@ das es nicht mehr gibt. Er meldet dann in Keycloak alle ab (`KeycloakOrphanSessi
 ## 3a) Keycloak liest die Konten – keine Spiegelung
 
 Keycloak hält keine Kopie der Konten. Seine Nutzer-Federation (`OrchestratorStorageProvider`, ohne
-Import) liest ein Konto bei Bedarf beim Orchestrator nach (`KcAccountLookupController`): nach
+Import) liest ein Konto bei Bedarf beim Orchestrator nach (`KeycloakAccountLookupController`): nach
 Konto-Id, exakter E-Mail-Adresse oder Benutzername, jeweils ein einzelner Zugriff über Primärschlüssel
 oder den eindeutigen E-Mail-Anker. Eine Liste aller Konten gibt es nicht; die Suche der Admin-Konsole
 findet nur exakte Treffer ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
@@ -267,7 +267,7 @@ findet nur exakte Treffer ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
 - **Einladungen** ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)): Eine zweite
   Nutzer-Federation (`InvitationStorageProvider`, feste UUID `INVITATION_STORAGE_COMPONENT_ID`, Migration
   V6) liest Einladungen des Personenverzeichnisses als eigene Nutzer, nur per Id
-  (`KcInvitationLookupController`), Cache ebenfalls 60 Sekunden. Nutzer-Id und `sub` sind
+  (`KeycloakInvitationLookupController`), Cache ebenfalls 60 Sekunden. Nutzer-Id und `sub` sind
   `f:<UUID der Einladungs-Federation>:<Id der Einladung>`. Der Nutzer trägt die Stammdaten der Person und die Attribute
   `orchestratorInvitation` und `orchestratorProcess` (Claims `invitation` und `process`); er ist nur
   aktiviert, solange die Einladung offen ist. Meldet das Verzeichnis ein Ende (`InvitationEnded`),

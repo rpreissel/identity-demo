@@ -101,12 +101,12 @@ Bausteine:
 
 ## 5) Web-Kanal ohne Codeänderung
 
-Die kc-Fassade (`/orchestrator/api/v1/kc/*`) erwartet ein signiertes Peer-Auth-JWT von Keycloak.
+Die Keycloak-Fassade (`/orchestrator/api/v1/kc/*`) erwartet ein signiertes Peer-Auth-JWT von Keycloak.
 Die Suite spielt Keycloak selbst:
 
 - Sie startet einen kleinen JWKS-Endpunkt im Testprozess und startet das System mit den
-  vorhandenen Properties `kc.peer-auth.issuer`, `kc.peer-auth.audience` und `kc.peer-auth.jwks-uri`
-  (`src/main/resources/application.yml`, Block `kc.peer-auth`). Dafür braucht es keine Änderung am
+  vorhandenen Properties `keycloak.peer-auth.issuer`, `keycloak.peer-auth.audience` und `keycloak.peer-auth.jwks-uri`
+  (`src/main/resources/application.yml`, Block `keycloak.peer-auth`). Dafür braucht es keine Änderung am
   Code.
 - Sie signiert Peer-Auth-JWTs mit `iss`, `aud`, `htm`, `htu`, `jti` und `iat`, wie
   `PeerAuthRoundTripTest` es schon tut.

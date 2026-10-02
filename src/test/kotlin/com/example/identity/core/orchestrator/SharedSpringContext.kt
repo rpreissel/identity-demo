@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.core.orchestrator.dpop.DpopValidator
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
-import com.example.identity.core.orchestrator.kc.PeerAuthValidator
+import com.example.identity.core.orchestrator.keycloak.PeerAuthValidator
 import com.example.identity.core.orchestrator.session.TokenProvider
 import com.ninjasquad.springmockk.MockkSpyBean
 import io.kotest.core.spec.style.BehaviorSpec

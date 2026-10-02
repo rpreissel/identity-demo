@@ -49,7 +49,7 @@ class SessionManagementService(
      * or [AuthIntent.REGISTER]; the other entry intents assume an App channel. [availableTools] is
      * the extension's declaration of what it can render, as on the App channel.
      */
-    fun createKcChannelSession(
+    fun createWebChannelSession(
         channelSessionId: ChannelSessionId,
         channelBinding: String,
         accountId: AccountId?,

@@ -4,9 +4,9 @@ import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.FeatureFlags
 import com.example.identity.core.orchestrator.journey.JourneyService
-import com.example.identity.core.orchestrator.kc.KeycloakRealmSessions
-import com.example.identity.core.orchestrator.kc.Loa1Login
-import com.example.identity.core.orchestrator.kc.LoginTheme
+import com.example.identity.core.orchestrator.keycloak.KeycloakRealmSessions
+import com.example.identity.core.orchestrator.keycloak.Loa1Login
+import com.example.identity.core.orchestrator.keycloak.LoginTheme
 import com.example.identity.core.orchestrator.session.AccountDeletionService
 import com.example.identity.core.orchestrator.session.RateLimitRecordRepository
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository

@@ -1,8 +1,8 @@
 package com.example.identity.core.orchestrator.admin
 
 import com.example.identity.demo.demo_mode.DemoMode
-import com.example.identity.core.orchestrator.kc.Loa1Login
-import com.example.identity.core.orchestrator.kc.LoginTheme
+import com.example.identity.core.orchestrator.keycloak.Loa1Login
+import com.example.identity.core.orchestrator.keycloak.LoginTheme
 import com.example.identity.core.orchestrator.domain.FeatureFlags
 import com.example.identity.core.orchestrator.session.FeatureFlagService
 import com.example.identity.core.orchestrator.tool.ToolAvailabilityService

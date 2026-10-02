@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator
 
-import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
+import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.mockk.every

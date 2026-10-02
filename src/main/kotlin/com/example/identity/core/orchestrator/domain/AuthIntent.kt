@@ -25,7 +25,7 @@ enum class AuthIntent {
     LOOKUP_LOGIN,
 
     /**
-     * Entry intent for the kc-facade (docs/04-orchestrierung.md Abschnitt 3): offers every kc-usable
+     * Entry intent for the Keycloak facade (docs/04-orchestrierung.md Abschnitt 3): offers every Keycloak-usable
      * tool as one `selectMethod` step, without fallback chain or enrollment. Keycloak drives the rest
      * natively. Serves initial login (resolves an account like [LOOKUP_LOGIN]) and step-up (account
      * pre-set on the channel).

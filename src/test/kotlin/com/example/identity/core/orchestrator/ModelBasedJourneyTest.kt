@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Subject
-import com.example.identity.core.orchestrator.channel.KcChannelService
+import com.example.identity.core.orchestrator.channel.KeycloakChannelService
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.PlainJWT
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -25,7 +25,7 @@ import kotlin.random.Random
 class ModelBasedJourneyTest : IntegrationTestSupport() {
 
     @Autowired
-    private lateinit var kcChannelService: KcChannelService
+    private lateinit var keycloakChannelService: KeycloakChannelService
 
     private enum class Step {
         OPEN_CHANNEL, SIGN_IN_SMS, WRONG_TAN, SIGN_IN_PASSWORD, REPLAY_LAST_PATCH,
@@ -110,7 +110,7 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
                 UUID.fromString(channel)
             ).firstOrNull() ?: return null
             return runCatching {
-                kcChannelService.signedOutAtKeycloak(Subject.Account(AccountId((login["ACCOUNT_ID"] as Number).toLong())), login["KEYCLOAK_SESSION_ID"] as String)
+                keycloakChannelService.signedOutAtKeycloak(Subject.Account(AccountId((login["ACCOUNT_ID"] as Number).toLong())), login["KEYCLOAK_SESSION_ID"] as String)
             }.fold({ sessionGone += channel; null }, { "sign-out failed: $it" })
         }
 

@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
+import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.SessionManagementService
@@ -28,7 +28,7 @@ interface ChannelAccessGuard {
 /**
  * Implementation for the facade-neutral tool endpoints (docs/09-dpop.md #3, docs/05-api.md
  * Abschnitt 3). It accepts what [DpopBindingKeyResolver] resolved: a DPoP thumbprint (App) or a
- * `"kc:"`-prefixed channel binding (Web). `KcChannelService` uses [KcChannelAccessGuard] with the
+ * `"kc:"`-prefixed channel binding (Web). `KeycloakChannelService` uses [KeycloakChannelAccessGuard] with the
  * typed [PeerAuthAssertion] instead.
  */
 @Component
@@ -39,8 +39,8 @@ class DeviceChannelAccessGuard(
     override fun requireChannel(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelSession {
         val channel = sessionManagementService.findChannelSessionById(channelSessionId)
             ?: throw OrchestratorException.notFound(Text("Channel session not found"), "channelSessionId=${channelSessionId}")
-        val matches = if (bindingKeyRef.startsWith(KC_BINDING_PREFIX)) {
-            val presented = bindingKeyRef.removePrefix(KC_BINDING_PREFIX)
+        val matches = if (bindingKeyRef.startsWith(KEYCLOAK_BINDING_PREFIX)) {
+            val presented = bindingKeyRef.removePrefix(KEYCLOAK_BINDING_PREFIX)
             constantTimeEquals(channel.channelBinding, presented)
         } else {
             // Constant-time, though both sides are public thumbprints: cheap insurance should the
@@ -59,7 +59,7 @@ class DeviceChannelAccessGuard(
     }
 
     companion object {
-        const val KC_BINDING_PREFIX = "kc:"
+        const val KEYCLOAK_BINDING_PREFIX = "kc:"
     }
 }
 
@@ -69,7 +69,7 @@ class DeviceChannelAccessGuard(
  * assertion would hijack the channel.
  */
 @Component
-class KcChannelAccessGuard(
+class KeycloakChannelAccessGuard(
     private val sessionManagementService: SessionManagementService
 ) {
 
@@ -78,7 +78,7 @@ class KcChannelAccessGuard(
             ?: throw OrchestratorException.notFound(Text("Channel session not found"), "channelSessionId=${channelSessionId}")
         val matches = constantTimeEquals(channel.channelBinding, assertion.channelBinding)
         if (!matches) {
-            throw OrchestratorException.bindingMismatch(Text("Keycloak assertion does not match this channel's kc binding"))
+            throw OrchestratorException.bindingMismatch(Text("Keycloak assertion does not match this channel's Keycloak binding"))
         }
         return channel
     }

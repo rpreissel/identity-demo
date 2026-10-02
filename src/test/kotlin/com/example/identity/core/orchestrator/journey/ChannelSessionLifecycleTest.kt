@@ -6,7 +6,7 @@ import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.ErrorCode
 import com.example.identity.core.orchestrator.domain.OrchestratorException
-import com.example.identity.core.orchestrator.kc.KeycloakSessionEnded
+import com.example.identity.core.orchestrator.keycloak.KeycloakSessionEnded
 import com.example.identity.core.orchestrator.session.AppTokenIssuer
 import com.example.identity.core.orchestrator.session.AppTokenSession
 import com.example.identity.core.orchestrator.session.AppTokenSessionService

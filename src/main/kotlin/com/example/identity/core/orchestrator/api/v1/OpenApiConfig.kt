@@ -35,7 +35,7 @@ class OpenApiConfig {
                 .version("v1")
                 .description(
                     "App-facing (orchestrator-first) API for the DPoP-bound registration and login demo. " +
-                        "See docs/05-api.md for the full contract; the Keycloak-facing kc facade is out of " +
+                        "See docs/05-api.md for the full contract; the Keycloak-facing Keycloak facade is out of " +
                         "scope for this build (docs/08-projektrahmen.md)."
                 )
         )

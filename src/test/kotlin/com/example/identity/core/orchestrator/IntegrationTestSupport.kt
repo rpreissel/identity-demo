@@ -155,7 +155,7 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
     /**
      * `availableTools` is required on channel creation (docs/03-tool-architektur.md). Unless a test
      * declares its own set, it gets the full catalog: the neutral default for flows not about
-     * availability. [KcChannelIntegrationTest] uses it for its own PATCH bodies.
+     * availability. [KeycloakChannelIntegrationTest] uses it for its own PATCH bodies.
      */
     protected fun withDefaultAvailableTools(body: String): String {
         if (body.contains("availableTools")) return body

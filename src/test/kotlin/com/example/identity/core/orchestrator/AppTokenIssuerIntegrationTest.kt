@@ -1,7 +1,7 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.tool_api.Subject
-import com.example.identity.core.orchestrator.channel.KcChannelService
+import com.example.identity.core.orchestrator.channel.KeycloakChannelService
 import com.nimbusds.jwt.PlainJWT
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.comparables.shouldBeLessThan
@@ -24,7 +24,7 @@ import java.util.UUID
 class AppTokenIssuerIntegrationTest : IntegrationTestSupport() {
 
     @Autowired
-    private lateinit var kcChannelService: KcChannelService
+    private lateinit var keycloakChannelService: KeycloakChannelService
 
     init {
         beforeScenario { stubDpopWithFakeJwk() }
@@ -149,11 +149,11 @@ class AppTokenIssuerIntegrationTest : IntegrationTestSupport() {
                 val accountId = seedRegisteredAccount()
                 val signedOut = loginAtLoa2()
                 val other = loginAtLoa2()
-                // The mock provider has no `sid`; under `keycloak` KcTokenProvider records it from the token.
+                // The mock provider has no `sid`; under `keycloak` KeycloakTokenProvider records it from the token.
                 jdbcTemplate.update("UPDATE orchestrator.app_token_session SET keycloak_session_id = 'kc-session-1' WHERE id = ?", appTokenSessionId(signedOut))
                 jdbcTemplate.update("UPDATE orchestrator.app_token_session SET keycloak_session_id = 'kc-session-2' WHERE id = ?", appTokenSessionId(other))
 
-                kcChannelService.signedOutAtKeycloak(Subject.Account(accountId), "kc-session-1")
+                keycloakChannelService.signedOutAtKeycloak(Subject.Account(accountId), "kc-session-1")
                 val tokenAfterSignOut = runCatching { get("/orchestrator/api/v1/channels/$signedOut/token") }
 
                 then("that App channel ends and hands out no token") {

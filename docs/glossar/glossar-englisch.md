@@ -128,7 +128,7 @@ Eintrags führt zum Buchstaben dort.
 
 ## K
 
-- **`Kc…`** (etwa `KcChannelService`), Pfade **`/kc/…`** → die Fassade des Orchestrators für den
+- **`Keycloak…`** (etwa `KeycloakChannelService`), Pfade **`/kc/…`** → die Fassade des Orchestrators für den
   **Web-Kanal**, benannt nach der Technik (Keycloak). [Glossar](glossar.md#w)
 - **`keycloak-migrations`** → das Modul, das das **Realm** anlegt und pflegt. [Glossar](glossar.md#r)
 - **`keycloakSessionId`**, **`UserSessionModel`** → **Keycloak-Sitzung**. [Glossar](glossar.md#k)

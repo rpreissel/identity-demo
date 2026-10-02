@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * An account as the orchestrator shows it to Keycloak ({@code KcAccountLookupController}) - read
+ * An account as the orchestrator shows it to Keycloak ({@code KeycloakAccountLookupController}) - read
  * through on every lookup, never stored here.
  */
 public record KcAccount(

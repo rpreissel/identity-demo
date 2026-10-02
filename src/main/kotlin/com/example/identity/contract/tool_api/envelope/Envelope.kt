@@ -76,7 +76,7 @@ data class ChannelBlock(
 )
 
 /**
- * What the kc-facade's `OrchestratorAuthenticator` writes into Keycloak's session notes on every
+ * What the Keycloak facade's `OrchestratorAuthenticator` writes into Keycloak's session notes on every
  * response (docs/05-api.md Abschnitt 3), for `WEB` channels only. Not gated on a proven
  * factor: Keycloak sets its user context from `subject` as soon as it is known.
  */
@@ -97,7 +97,7 @@ data class AuthData(
 )
 
 /**
- * The subject of a Keycloak channel. An account in the ordinary case; an invitation after a
+ * The subject of a Web channel. An account in the ordinary case; an invitation after a
  * one-time password (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md), whose id is the SHA-256 of that
  * password. Keycloak signs in the matching user of its own federation, never an account for an invitation.
  */

@@ -49,14 +49,14 @@ class DeviceChannelAccessGuardTest : BehaviorSpec({
         }
     }
 
-    given("a web channel bound to a Keycloak channel binding") {
+    given("a web channel bound to a Web channel binding") {
         val channel = ChannelSession(ChannelType.WEB, null, TEST_NOW.plusSeconds(3600), now = TEST_NOW).apply {
             channelBinding = "binding-1"
         }
         val guard = guardFor(channel)
 
         `when`("Keycloak's binding for it asks") {
-            val result = guard.requireChannel(id, "${DeviceChannelAccessGuard.KC_BINDING_PREFIX}binding-1")
+            val result = guard.requireChannel(id, "${DeviceChannelAccessGuard.KEYCLOAK_BINDING_PREFIX}binding-1")
 
             then("the channel is returned") {
                 result shouldBe channel
@@ -64,7 +64,7 @@ class DeviceChannelAccessGuardTest : BehaviorSpec({
         }
 
         `when`("another Keycloak binding asks") {
-            val result = runCatching { guard.requireChannel(id, "${DeviceChannelAccessGuard.KC_BINDING_PREFIX}someone-elses-binding") }
+            val result = runCatching { guard.requireChannel(id, "${DeviceChannelAccessGuard.KEYCLOAK_BINDING_PREFIX}someone-elses-binding") }
 
             then("it is refused as a binding mismatch") {
                 shouldThrow<OrchestratorException> { result.getOrThrow() }.code shouldBe ErrorCode.BINDING_MISMATCH

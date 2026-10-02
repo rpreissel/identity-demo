@@ -40,7 +40,7 @@ data class MgmtPasswordSetRequest(val newPassword: String? = null)
  * for the path's account; the result is booked by the orchestrator ([KeycloakToolCalls]).
  */
 @RestController
-@Tag(name = "KC password management", description = "Stateless password verify/set for Keycloak's native credential")
+@Tag(name = "Keycloak password management", description = "Stateless password verify/set for Keycloak's native credential")
 @SecurityRequirement(name = "kc-peer-auth")
 class MgmtPasswordController(
     private val keycloakToolCalls: KeycloakToolCalls,

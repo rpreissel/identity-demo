@@ -9,7 +9,7 @@ werden später gehärtet; bis dahin gelten sie als Vorführrahmen.
 Das Projekt zerfällt dafür in drei Bereiche mit verschiedenem Anspruch:
 
 1. **Kern – produktionsreif.**
-   - Module: die Gruppen `core/` (`orchestrator` samt `kc`-Anbindung, `account`), `contract/`
+   - Module: die Gruppen `core/` (`orchestrator` samt `keycloak`-Anbindung, `account`), `contract/`
      (`tool_api`, `texts`) und `tools/` (alle Tool-Module, `auth_*` wie
      `ident_*`).
    - Die Keycloak-Extension (`keycloak-extension`) und die Realm-Migrationen (`keycloak-migrations`):

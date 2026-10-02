@@ -7,8 +7,8 @@ import com.example.identity.core.orchestrator.dpop.DpopValidationException
 import com.example.identity.core.orchestrator.dpop.DpopValidator
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
 
-import com.example.identity.core.orchestrator.kc.PeerAuthValidationException
-import com.example.identity.core.orchestrator.kc.PeerAuthValidator
+import com.example.identity.core.orchestrator.keycloak.PeerAuthValidationException
+import com.example.identity.core.orchestrator.keycloak.PeerAuthValidator
 import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.core.orchestrator.dpop.buildRequestUrl
 import jakarta.servlet.http.HttpServletRequest
@@ -60,6 +60,6 @@ class DpopBindingKeyResolver(
             authorization.trim()
         }
         val assertion = peerAuthValidator.validate(token, request.method, buildRequestUrl(request))
-        return "${DeviceChannelAccessGuard.KC_BINDING_PREFIX}${assertion.channelBinding}"
+        return "${DeviceChannelAccessGuard.KEYCLOAK_BINDING_PREFIX}${assertion.channelBinding}"
     }
 }

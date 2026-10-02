@@ -13,7 +13,7 @@ import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.claims.PASSWORD_EXISTS_MARKER
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.AcrLevels
-import com.example.identity.core.orchestrator.kc.PeerAuthValidationException
+import com.example.identity.core.orchestrator.keycloak.PeerAuthValidationException
 import com.example.identity.core.orchestrator.session.AccountLockoutService
 import com.example.identity.tools.auth_password.AuthPasswordDescriptor
 import com.example.identity.tools.auth_password.AuthPasswordLookupDescriptor

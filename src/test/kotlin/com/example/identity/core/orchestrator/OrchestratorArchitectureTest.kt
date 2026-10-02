@@ -222,7 +222,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
             // kcmigrate lives in keycloak-migrations, carries no @ApplicationModule and is therefore
             // no Modulith module; this rule is its boundary instead of allowedDependencies.
             noClasses()
-                .that().resideOutsideOfPackage("com.example.identity.core.orchestrator.kc..")
+                .that().resideOutsideOfPackage("com.example.identity.core.orchestrator.keycloak..")
                 .and().resideOutsideOfPackage("com.example.identity.kcmigrate..")
                 // Reads the account id off a federated Keycloak user, the one helper outside kc.
                 .and().doNotHaveFullyQualifiedName("com.example.identity.core.orchestrator.admin.ActiveSessions")
@@ -305,14 +305,14 @@ class OrchestratorArchitectureTest : BehaviorSpec({
             // problem. Listeners act AFTER_COMMIT instead (KeycloakAccountRemovalListener).
             noClasses()
                 .that().areAnnotatedWith(Transactional::class.java)
-                .and().resideOutsideOfPackage("com.example.identity.core.orchestrator.kc..")
+                .and().resideOutsideOfPackage("com.example.identity.core.orchestrator.keycloak..")
                 // The one declared exception: minting an account token is a Keycloak round trip whose
                 // result is the response, and its transaction writes the refresh-token cache back onto
                 // the AppTokenSession. One call per token request or per transition to AUTHENTICATED
                 // (ADR-43), never per row.
-                .and().doNotHaveFullyQualifiedName("com.example.identity.core.orchestrator.session.KcTokenProvider")
+                .and().doNotHaveFullyQualifiedName("com.example.identity.core.orchestrator.session.KeycloakTokenProvider")
                 .should().dependOnClassesThat()
-                .haveFullyQualifiedName("com.example.identity.core.orchestrator.kc.KeycloakAdminClient")
+                .haveFullyQualifiedName("com.example.identity.core.orchestrator.keycloak.KeycloakAdminClient")
                 .because(
                     "a transaction that spans a Keycloak round trip holds row locks for the duration of a " +
                         "remote call; publish an event and act on it AFTER_COMMIT instead, the way " +

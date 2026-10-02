@@ -280,7 +280,7 @@ public final class OrchestratorClient {
         }
     }
 
-    /** The peer-auth binding of a search by address - {@code KcAccountLookupController.LOOKUP_BINDING}. */
+    /** The peer-auth binding of a search by address - {@code KeycloakAccountLookupController.LOOKUP_BINDING}. */
     private static final String ACCOUNT_LOOKUP_BINDING = "account-lookup";
 
     private KcAccount lookup(String path, String binding) throws IOException, InterruptedException {

@@ -36,7 +36,7 @@ sealed interface Action {
 
     /**
      * A new credential was enrolled. Whether this also links the device is not a field here; it
-     * follows from [AuthIntent.bindsDeviceImplicitly] and, for a Keycloak channel, from there being
+     * follows from [AuthIntent.bindsDeviceImplicitly] and, for a Web channel, from there being
      * no device.
      */
     data class AdoptCredential(

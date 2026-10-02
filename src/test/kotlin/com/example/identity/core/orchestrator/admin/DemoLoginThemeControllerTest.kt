@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.admin
 
-import com.example.identity.core.orchestrator.kc.LoginTheme
+import com.example.identity.core.orchestrator.keycloak.LoginTheme
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.mockk
 import io.mockk.verify

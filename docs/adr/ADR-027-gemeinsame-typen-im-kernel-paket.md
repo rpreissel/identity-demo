@@ -20,7 +20,7 @@ ist das größte Modul, und innerhalb davon gab es fünf Zyklen:
 - `session` ↔ `policy`
 - `session` ↔ `journey`
 - `session` ↔ `journeytrace`
-- `kc` ↔ `dpop`
+- `keycloak` ↔ `dpop`
 - `session` → `api.v1`
 
 ## Warum die Zyklen entstanden

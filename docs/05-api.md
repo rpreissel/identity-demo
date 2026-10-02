@@ -67,7 +67,7 @@ denselben Bericht (`ActiveSessions`):
 - **Keycloak** (nur mit Profil `keycloak`): die offenen Sitzungen des Browser-Clients und des
   App-Token-Clients, gelesen über die Admin-API als `orchestrator-migration`. Je Client die Anzahl und die
   zehn neuesten, jeweils mit dem Kanal, der dazugehört: im App-Kanal über
-  `AppTokenSession.keycloakSessionId`, auf der Website über `ChannelSession.durableKcSessionId`. Ist
+  `AppTokenSession.keycloakSessionId`, auf der Website über `ChannelSession.durableKeycloakSessionId`. Ist
   Keycloak nicht erreichbar, sagt `keycloak.error` das; der Rest des Berichts kommt trotzdem.
 
 `POST …/admin/demo-reset` und `POST …/demo/reset` setzen die Demo auf dieselbe Weise zurück
@@ -312,7 +312,7 @@ nach Profil:
 
 - **Standardprofil** (`MockTokenProvider`): liefert das Mock-JWT aus `TokenService`
   (`alg=none`, `iss=mock-keycloak`).
-- **Profil `keycloak`** (`KcTokenProvider`): liefert ein echtes, von Keycloak signiertes
+- **Profil `keycloak`** (`KeycloakTokenProvider`): liefert ein echtes, von Keycloak signiertes
   AccessToken mit echten Claims `acr` und `amr` (über `OrchestratorAcrAmrMapper`, wie im
   Web-Kanal). Es gibt vier Fälle, aufgebaut wie `TokenService.tokenFor`:
   1. Das Token ist noch lange genug gültig: Es wird unverändert zurückgegeben.
@@ -768,7 +768,7 @@ aktualisiert:
   unter dieser von Keycloak gewählten ID an und setzt ihn bei jedem weiteren Aufruf fort. Die ID
   stammt aus Keycloaks laufendem Anmeldeablauf (`AuthenticationSessionModel`/`UserSessionModel`).
 
-Inhalt der Anfrage (alle Felder optional, `KcChannelUpsertRequest`):
+Inhalt der Anfrage (alle Felder optional, `KeycloakChannelUpsertRequest`):
 
 - **`subject`** — Wem dieser Durchlauf in Keycloak gehört: `{"type":"account","id":"42"}` oder `{"type":"invitation","id":"…"}` ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)), dieselbe Form wie `authData.subject` der Antwort. Ein Konto ordnet einen Kanal ohne Subjekt sofort diesem Konto zu; eine Einladung bindet nur ihr eigener Nachweis, und ein Kanal, der ihr nicht schon gehört, wird mit `409` abgelehnt: Ein Vorgangszugang wird nicht aufgewertet (ADR-48, Nachtrag K-5). Ist der Kanal schon einem anderen Subjekt zugeordnet – einem anderen Konto, einer Einladung statt eines Kontos oder umgekehrt –, antwortet der Orchestrator `409` und ändert nichts.
 - **`targetAcr`** — Das von Keycloak angefragte LoA, bereits in einen ACR-Wert des Orchestrators übersetzt. Es hebt die Untergrenze des Kanals nur an, nie ab, und filtert die Kandidaten von `WEB_SELECT_METHOD` ([Orchestrierung](04-orchestrierung.md) Abschnitt 3).
@@ -802,14 +802,14 @@ Statt mit einem DPoP-Proof weist sich Keycloak mit einer signierten Peer-Auth-As
 - `htm`/`htu` dieser Anfrage,
 - `jti` und `iat`: Der Schutz gegen Wiederholung nutzt denselben Zwischenspeicher wie bei DPoP
   ([09-dpop.md](09-dpop.md)), aber unter einem eigenen Namensraum `kc:` und mit einem eigenen
-  Zeitfenster (`kc.peer-auth.max-clock-skew-seconds`/`max-age-seconds`, im Profil `keycloak` je
+  Zeitfenster (`keycloak.peer-auth.max-clock-skew-seconds`/`max-age-seconds`, im Profil `keycloak` je
   300 Sekunden),
-- der Kanalbindung dieses Anmeldedurchlaufs (Claim `channel_binding`), die `KcChannelAccessGuard`
+- der Kanalbindung dieses Anmeldedurchlaufs (Claim `channel_binding`), die `KeycloakChannelAccessGuard`
   gegen den Kanal prüft.
 
 Geprüft wird die Signatur gegen Keycloaks JWKS; es gibt ein Schlüsselpaar je Client, nicht je
 Nutzer. Der Orchestrator hält das JWKS zwischengespeichert (`KeycloakJwkSource`, standardmäßig
-600 Sekunden, `kc.peer-auth.jwks-cache-ttl-seconds`). Nennt eine Assertion eine unbekannte
+600 Sekunden, `keycloak.peer-auth.jwks-cache-ttl-seconds`). Nennt eine Assertion eine unbekannte
 Schlüssel-ID (`kid`), holt er das JWKS einmal neu, denn Keycloak kann den Schlüssel gewechselt
 haben; ein Neustart ist dafür nicht nötig. Das geschieht aber höchstens alle 30 Sekunden. So
 kann niemand mit erfundenen `kid`s jede Anfrage in einen Abruf bei Keycloak verwandeln. Umgekehrt
@@ -962,7 +962,7 @@ Keycloak nutzen für Eingabe- und Prüfschritte dieselben kanalneutralen Tool-UR
 - Die Antworten eines Ablaufs (`ChannelResponse`) nennen weder `accountId` noch `personId`;
   Ausnahmen sind das `demo`-Objekt und im Web-Kanal `authData.subject`, über das Keycloak den
   Nutzer setzt. Ausdrücklich liefern sie nur eigene Endpunkte: `GET /app/channels/device-link`,
-  `GET .../idclaims` und die Kontoabfrage der kc-Fassade (`/kc/accounts`).
+  `GET .../idclaims` und die Kontoabfrage der Keycloak-Fassade (`/kc/accounts`).
 
 Für Keycloak sind `auth-sms`, `auth-password` und `auth-email` (Login und Step-up) der einzige
 Fall, den der App-Zugang nicht schon abdeckt. Anlegen, `PATCH` und `GET` laufen aber genau wie in

@@ -119,7 +119,7 @@ nur entlang einer benannten Kante, das Personenverzeichnis nur über Ports
 
 ### Außerhalb der Anwendung
 
-- **M22** `kcmigrate` — Keycloak-Realm-Migrationen im Gradle-Projekt `keycloak-migrations` (Paket `com.example.identity.kcmigrate`). Eine Bibliothek, kein Modulith-Modul: Sie trägt keine `@ApplicationModule`, ihre Grenze sichert `OrchestratorArchitectureTest` (nur `core.orchestrator.kc` und `ActiveSessions` benutzen sie)
+- **M22** `kcmigrate` — Keycloak-Realm-Migrationen im Gradle-Projekt `keycloak-migrations` (Paket `com.example.identity.kcmigrate`). Eine Bibliothek, kein Modulith-Modul: Sie trägt keine `@ApplicationModule`, ihre Grenze sichert `OrchestratorArchitectureTest` (nur `core.orchestrator.keycloak` und `ActiveSessions` benutzen sie)
 - `keycloak-extension` (Paket `com.example.identity.kcext`) — Die Keycloak-Erweiterung, als eigenes Jar in Keycloak geladen; keine Abhängigkeit der Anwendung
 
 ### Modulabhängigkeiten (C4 Component View)
@@ -211,11 +211,18 @@ auch die Lesesicht `account.AccountProfile`). Beide Regeln prüft ArchUnit:
   `ClaimRequirements`.
 - Technik außen herum, weiter nach Thema geordnet: `journey` (`JourneyService`,
   `JourneyActionExecutor`, `JourneyContextFactory`, `JourneyRouting`, die Entität `AuthJourney`,
-  `JourneyStateCodec`) und daneben unter anderem `session`, `channel`, `api.v1`, `kc`, `dpop`,
+  `JourneyStateCodec`) und daneben unter anderem `session`, `channel`, `api.v1`, `keycloak`, `dpop`,
   `retention`.
 - `DomainBeans` im Wurzelpaket legt die Strategien und `DefaultAuthPolicy` als Spring-Beans an.
   Es ist die eine Stelle, die aufzählt, welche Strategien es gibt, und die einzige Klasse außerhalb
   von `domain.policy`, die `DefaultAuthPolicy` kennt; alle anderen benutzen `AuthPolicy`.
+- Fachlich heißt der Kanal **Web** (`ChannelType.WEB`, `WEB_SELECT_METHOD`, „Web-Kanal“), als
+  Gegenstück zur App. Die Technik, die ihn bedient, heißt **Keycloak**: Klassen `Keycloak…`, Paket
+  `keycloak`, Konfiguration `keycloak.peer-auth`, gleich ob Keycloak uns aufruft (Keycloak-Fassade)
+  oder wir Keycloak.
+  `kc` steht nur noch dort, wo es nach außen festliegt: in den Pfaden `/kc/…` und Feldern wie
+  `kcSessionId` des veröffentlichten Vertrags, im `amr`-Wert `kc` und in der Keycloak-Erweiterung
+  (Paket `kcext`).
 
 **Was im Konto-Modul wo liegt.**
 
@@ -403,7 +410,7 @@ freigegeben, und jeder, der ihn erreicht, bekäme vollen Lese- und Schreibzugrif
 - `OrchestratorArchitectureTest` prüft die Schichtung innerhalb von `orchestrator`, die Modulith nicht sieht:
   - Die Teilpakete müssen zyklenfrei sein (`slices().beFreeOfCycles()`). Dafür liegen die gemeinsamen Begriffe im untersten Paket `domain` (M1a und [ADR-27](adr/ADR-027-gemeinsame-typen-im-kernel-paket.md)).
   - `orchestrator.domain` benutzt kein Framework und hängt von nichts anderem im Orchestrator ab (Abschnitt 3, [Fachkern und Technik](#fachkern-und-technik)); dasselbe prüft `AccountArchitectureTest` für `account.domain`.
-  - Aus einer offenen Transaktion darf kein Keycloak-Aufruf herausgehen. Sonst hält die Transaktion Zeilensperren so lange, wie der fremde Dienst zum Antworten braucht. Einzige Ausnahme ist `KcTokenProvider`: dort ist das Token die Antwort selbst.
+  - Aus einer offenen Transaktion darf kein Keycloak-Aufruf herausgehen. Sonst hält die Transaktion Zeilensperren so lange, wie der fremde Dienst zum Antworten braucht. Einzige Ausnahme ist `KeycloakTokenProvider`: dort ist das Token die Antwort selbst.
   - Nichts außerhalb von `api` hängt an `api.v1`. Dort stehen nur Routen, Request-DTOs, Parameterbindung und die OpenAPI-Beschreibung. Die Kanal-Services, die Zugriffsprüfungen (`ChannelAccessGuard`), `DemoDisclosure` und die Antwortformen liegen darunter in `orchestrator/channel`. Die Antwortformen sind wie `ChannelResponse` in `tool_api` unversioniert, weil es eine globale Version gibt ([API](05-api.md) Abschnitt 1). Ein v2 könnte damit neben v1 stehen, ohne v1 zu importieren.
   - Nur `DemoDisclosure` erzeugt ein `DemoInfo`. Damit entfernt `demo.mode=false` die Klartext-TANs aus jeder Antwort, statt sie an einer von mehreren Stellen zu filtern ([ADR-28](adr/ADR-028-demo-werte-abschaltbar.md)).
 - `ClockArchitectureTest` prüft, dass außer `ClockConfig` keine Klasse der Anwendung die Systemuhr selbst liest (`Instant.now()`, `LocalDate.now()`, `System.currentTimeMillis()`, `Clock.system*()`, `Date()`), siehe Abschnitt 3, [Fachkern und Technik](#fachkern-und-technik).

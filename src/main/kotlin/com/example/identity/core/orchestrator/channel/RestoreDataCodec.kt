@@ -96,7 +96,7 @@ class RestoreDataCodec(private val clock: Clock, private val ttl: Duration = TTL
     )
 
     companion object {
-        // Longer than the kc channel TTL: a Keycloak UserSession can outlive many channels, and
+        // Longer than the Web channel TTL: a Keycloak UserSession can outlive many channels, and
         // this validity is what bounds a restore.
         private val TTL: Duration = Duration.ofHours(12)
     }

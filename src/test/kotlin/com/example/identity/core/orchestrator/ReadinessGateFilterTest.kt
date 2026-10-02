@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator
 
-import com.example.identity.core.orchestrator.kc.CLIENT_JWKS_PATH
+import com.example.identity.core.orchestrator.keycloak.CLIENT_JWKS_PATH
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import org.springframework.mock.web.MockFilterChain

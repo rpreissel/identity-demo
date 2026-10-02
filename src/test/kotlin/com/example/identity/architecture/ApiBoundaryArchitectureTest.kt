@@ -1,7 +1,7 @@
 package com.example.identity.architecture
 
 import com.example.identity.demo.demo_mode.DemoSurface
-import com.example.identity.core.orchestrator.kc.PeerAuthValidator
+import com.example.identity.core.orchestrator.keycloak.PeerAuthValidator
 import com.example.identity.contract.tool_api.BindingKey
 import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.JavaMethod
@@ -41,16 +41,16 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
         "com.example.identity.core.orchestrator.admin.ToolAvailabilityController",
     )
     val guardedByPeerAuth = setOf(
-        "com.example.identity.core.orchestrator.api.v1.kc.KcChannelController",
-        "com.example.identity.core.orchestrator.api.v1.kc.KcAccountLookupController",
-        "com.example.identity.core.orchestrator.api.v1.kc.KcSignOutController",
-        "com.example.identity.core.orchestrator.api.v1.kc.KcInvitationLookupController",
+        "com.example.identity.core.orchestrator.api.v1.keycloak.KeycloakChannelController",
+        "com.example.identity.core.orchestrator.api.v1.keycloak.KeycloakAccountLookupController",
+        "com.example.identity.core.orchestrator.api.v1.keycloak.KeycloakSignOutController",
+        "com.example.identity.core.orchestrator.api.v1.keycloak.KeycloakInvitationLookupController",
     )
     val publicByDesign = mapOf(
         "com.example.identity.core.orchestrator.api.v1.TextsController" to "the wordings every client renders, before any channel exists",
         "com.example.identity.core.orchestrator.api.v1.tool.ToolCatalogController" to "which tools exist - no account, no channel state",
-        "com.example.identity.core.orchestrator.kc.OrchestratorClientJwksController" to "public keys Keycloak verifies our client assertions against",
-        "com.example.identity.core.orchestrator.kc.KeycloakResponseJwksController" to "public key Keycloak verifies our signed answers against",
+        "com.example.identity.core.orchestrator.keycloak.OrchestratorClientJwksController" to "public keys Keycloak verifies our client assertions against",
+        "com.example.identity.core.orchestrator.keycloak.KeycloakResponseJwksController" to "public key Keycloak verifies our signed answers against",
         "com.example.identity.core.orchestrator.admin.ServerInfoController" to "demo overview under DEMO_API, read-only",
         "com.example.identity.core.orchestrator.admin.DemoLoginThemeController" to "demo theme switch under DEMO_API (AdminPaths), later hardening (ADR-35)",
         "com.example.identity.core.orchestrator.admin.DemoLoa1LoginController" to "demo loa1 switch under DEMO_API (AdminPaths), later hardening (ADR-35)",

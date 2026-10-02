@@ -48,7 +48,7 @@ class DomainBeans {
     fun fastAccessStrategy(): IntentStrategy<*> = FastAccessStrategy()
 
     @Bean
-    fun kcSelectMethodStrategy(): IntentStrategy<*> = WebSelectMethodStrategy()
+    fun webSelectMethodStrategy(): IntentStrategy<*> = WebSelectMethodStrategy()
 
     @Bean
     fun logoutStrategy(): IntentStrategy<*> = LogoutStrategy()

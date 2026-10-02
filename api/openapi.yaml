@@ -607,7 +607,7 @@ components:
       - lifecycle
       - stateType
       type: object
-    KcAccountView:
+    KeycloakAccountView:
       properties:
         accountId:
           format: int64
@@ -634,15 +634,15 @@ components:
       - lastName
       - username
       type: object
-    KcChannelUpsertRequest:
-      description: Upsert body for the kc-facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). All fields are
-        optional. subject is whom Keycloak already knows (sub vorhanden) - an account binds the channel immediately, once,
+    KeycloakChannelUpsertRequest:
+      description: Upsert body for the Keycloak facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). All fields
+        are optional. subject is whom Keycloak already knows (sub vorhanden) - an account binds the channel immediately, once,
         never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator
         ACR string, and only raises the channel's floor, never lowers it. amr lists which native Keycloak authenticators (never
         orchestrator tools) just proved something THIS flow run, one entry per proof - method/loa/factorTypes are resolved
-        server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the kc-facade's own mirror of a ToolDescriptor, not
-        resolved from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged into
-        the channel's evidence and re-checked against the current floor exactly like any other proof; no separate 'combined
+        server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the Keycloak facade's own mirror of a ToolDescriptor,
+        not resolved from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged
+        into the channel's evidence and re-checked against the current floor exactly like any other proof; no separate 'combined
         native acr' field exists, since the orchestrator derives that itself.
       properties:
         amr:
@@ -651,15 +651,15 @@ components:
           type: array
         availableTools:
           description: The Web channel's own declaration of which toolIds its Keycloak theme can render (one com.example.identity.kcext.webtool.WebToolRenderer
-            factory per toolId, registered via META-INF/services) - the kc-facade's counterpart to the App channel's own availableTools
-            (POST /channels). Only read on this channel's first call (a later upsert resumes the already-persisted set); a
-            channel-anonymous caller that omits this gets none of the orchestrator's tools, never all of them.
+            factory per toolId, registered via META-INF/services) - the Keycloak facade's counterpart to the App channel's
+            own availableTools (POST /channels). Only read on this channel's first call (a later upsert resumes the already-persisted
+            set); a channel-anonymous caller that omits this gets none of the orchestrator's tools, never all of them.
           items:
             type: string
           type: array
         intent:
-          description: 'Only read on this channel''s first call, same restriction as availableTools - the kc facade''s own,
-            deliberately narrow counterpart to the App facade''s `intent` request parameter (docs/05-api.md #"POST /app/channels:
+          description: 'Only read on this channel''s first call, same restriction as availableTools - the Keycloak facade''s
+            own, deliberately narrow counterpart to the App facade''s `intent` request parameter (docs/05-api.md #"POST /app/channels:
             intent-Parameter"). Omitted (or null) means web_select_method, the existing login/step-up behaviour. Only web_select_method
             and register are accepted here - unlike the App facade, not every AuthIntent.isEntryIntent value: fast_access/lookup_login
             assume an APP-shaped channel this facade never has.'
@@ -667,9 +667,10 @@ components:
           type: string
         kcSessionId:
           description: Required whenever restoreData is present, ignored otherwise. Keycloak's own, durable UserSessionModel
-            id - deliberately NOT read off the peer-auth assertion (the assertion's kc binding is always THIS flow run's own
-            channelSessionId, docs/02-domaenenmodell.md Abschnitt 1, so it can't verify a token minted for a DIFFERENT, earlier
-            flow run's channel). Must match what GET .../restore-data was called with to produce this exact restoreData token.
+            id - deliberately NOT read off the peer-auth assertion (the assertion's Keycloak binding is always THIS flow run's
+            own channelSessionId, docs/02-domaenenmodell.md Abschnitt 1, so it can't verify a token minted for a DIFFERENT,
+            earlier flow run's channel). Must match what GET .../restore-data was called with to produce this exact restoreData
+            token.
           type: string
         restoreData:
           description: A signed RestoreData token this same UserSession's channel returned earlier via GET .../restore-data,
@@ -687,7 +688,7 @@ components:
           example: loa2
           type: string
       type: object
-    KcInvitationView:
+    KeycloakInvitationView:
       properties:
         attributes:
           additionalProperties:
@@ -1086,7 +1087,7 @@ components:
       type: http
 info:
   description: App-facing (orchestrator-first) API for the DPoP-bound registration and login demo. See docs/05-api.md for
-    the full contract; the Keycloak-facing kc facade is out of scope for this build (docs/08-projektrahmen.md).
+    the full contract; the Keycloak-facing Keycloak facade is out of scope for this build (docs/08-projektrahmen.md).
   title: Identity-Demo Orchestrator API
   version: v1
 openapi: 3.1.0
@@ -2788,7 +2789,7 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: '#/components/schemas/KcAccountView'
+                $ref: '#/components/schemas/KeycloakAccountView'
           description: OK
         default:
           content:
@@ -2801,7 +2802,7 @@ paths:
           ]
       summary: The account as Keycloak shows it, by exact email or username - never a list
       tags:
-      - KC account lookup
+      - Keycloak account lookup
   /orchestrator/api/v1/kc/accounts/{accountId}:
     get:
       operationId: byId
@@ -2822,7 +2823,7 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: '#/components/schemas/KcAccountView'
+                $ref: '#/components/schemas/KeycloakAccountView'
           description: OK
         default:
           content:
@@ -2835,7 +2836,7 @@ paths:
           ]
       summary: The account as Keycloak shows it, by account id
       tags:
-      - KC account lookup
+      - Keycloak account lookup
   /orchestrator/api/v1/kc/accounts/{accountId}/sign-outs:
     post:
       operationId: signedOut
@@ -2870,7 +2871,7 @@ paths:
           ]
       summary: Keycloak ended one session of this account
       tags:
-      - KC sign-out
+      - Keycloak sign-out
   /orchestrator/api/v1/kc/channels/{channelSessionId}:
     patch:
       description: 'Upsert semantics (docs/05-api.md Abschnitt 3): creates the channel on first call under this Keycloak-chosen
@@ -2893,7 +2894,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/KcChannelUpsertRequest'
+              $ref: '#/components/schemas/KeycloakChannelUpsertRequest'
       responses:
         '200':
           content:
@@ -2913,7 +2914,7 @@ paths:
                   - auth-password
               schema:
                 $ref: '#/components/schemas/ChannelResponse'
-          description: First call for a fresh Keycloak flow run - offers every kc-usable method.
+          description: First call for a fresh Keycloak flow run - offers every Keycloak-usable method.
         default:
           content:
             application/json:
@@ -2923,9 +2924,9 @@ paths:
       security:
       - kc-peer-auth: [
           ]
-      summary: Upsert a kc channel and advance its journey
+      summary: Upsert a Web channel and advance its journey
       tags:
-      - KC channels
+      - Keycloak channels
   /orchestrator/api/v1/kc/channels/{channelSessionId}/restore-data:
     get:
       description: For the Authenticator's end-of-flow lifecycle hook only (docs/ideen/docs/05-api.md Abschnitt 3) - reads
@@ -2976,7 +2977,7 @@ paths:
           ]
       summary: Fetch this channel's signed RestoreData
       tags:
-      - KC channels
+      - Keycloak channels
   /orchestrator/api/v1/kc/invitations/{invitation}:
     get:
       operationId: byInvitation
@@ -2996,7 +2997,7 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: '#/components/schemas/KcInvitationView'
+                $ref: '#/components/schemas/KeycloakInvitationView'
           description: OK
         default:
           content:
@@ -3009,7 +3010,7 @@ paths:
           ]
       summary: The invitation as Keycloak shows it, as a user of its own
       tags:
-      - KC invitation lookup
+      - Keycloak invitation lookup
   /orchestrator/api/v1/kc/invitations/{invitation}/sign-outs:
     post:
       operationId: invitationSignedOut
@@ -3043,7 +3044,7 @@ paths:
           ]
       summary: Keycloak ended one session of this invitation
       tags:
-      - KC sign-out
+      - Keycloak sign-out
   /orchestrator/api/v1/kc/response-jwks/.well-known/jwks.json:
     get:
       operationId: keycloakResponseJwks
@@ -3136,7 +3137,7 @@ paths:
           ]
       summary: Verify a candidate password against the account's stored credential
       tags:
-      - KC password management
+      - Keycloak password management
   /orchestrator/api/v1/tools/catalog:
     get:
       description: No auth, no channel required - purely descriptive.
@@ -3206,7 +3207,7 @@ paths:
           ]
       summary: Replace the account's password credential with a new one
       tags:
-      - KC password management
+      - Keycloak password management
   /orchestrator/api/v1/tools/{toolSessionId}/auth-device:
     get:
       operationId: read_21
@@ -5298,10 +5299,12 @@ paths:
 tags:
 - description: Facade-neutral channel resource - shared by every facade that creates one
   name: Channels
+- description: The Keycloak facade's one facade-specific endpoint - upsert channel + advance journey
+  name: Keycloak channels
 - description: Gerätebindung über den externen Dienstleister KOBIL
   name: 'Tool: KOBIL'
-- description: Read-through invitation lookup for Keycloak's user federation
-  name: KC invitation lookup
+- description: Read-through account lookup for Keycloak's user federation
+  name: Keycloak account lookup
 - description: Wordings for the text references in every response, per language, with ETag
   name: Texts
 - description: 'Geraetebindung: Einrichtung und Anmeldung ueber den Geraeteschluessel'
@@ -5312,22 +5315,20 @@ tags:
   name: Tool catalog
 - description: Identification at Nect (eID, passport or EUDI wallet) via jump page and return
   name: 'Tool: Nect'
+- description: Stateless password verify/set for Keycloak's native credential
+  name: Keycloak password management
 - description: 'QR-Pairing: Freigabe eines Web-Kanals aus einer bereits angemeldeten App'
   name: 'Tool: QR-Login'
 - description: KVNR/name/givenNames/birthDate/FSC identification
   name: 'Tool: Freischaltcode'
+- description: Keycloak reports a logout for the sign-in log
+  name: Keycloak sign-out
 - description: 'SMS-TAN: Einrichtung als Faktor, Anmeldung und Login ohne DPoP'
   name: 'Tool: SMS'
 - description: KVNR or Partnernummer plus a one-time password for one process
   name: 'Tool: Einmalkennwort'
-- description: Keycloak reports a logout for the sign-in log
-  name: KC sign-out
 - description: Simulated eID card read, then PIN - attests what the card shows
   name: 'Tool: eID'
-- description: Stateless password verify/set for Keycloak's native credential
-  name: KC password management
-- description: Read-through account lookup for Keycloak's user federation
-  name: KC account lookup
 - description: 'Passwort: Einrichtung als Wissensfaktor, Anmeldung und Login ohne DPoP'
   name: 'Tool: Passwort'
 - description: The App facade's own endpoints - channel creation and the device-link read
@@ -5340,5 +5341,5 @@ tags:
   name: 'Tool: E-Mail-Login'
 - description: Ordnet eine bereits bezeugte Identität der Registerperson zu
   name: 'Tool: Versichertennummer'
-- description: The kc facade's one facade-specific endpoint - upsert channel + advance journey
-  name: KC channels
+- description: Read-through invitation lookup for Keycloak's user federation
+  name: Keycloak invitation lookup

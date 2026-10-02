@@ -3,7 +3,7 @@ package com.example.identity.core.orchestrator.api.v1
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.dpop.DpopFailure
 import com.example.identity.core.orchestrator.dpop.DpopValidationException
-import com.example.identity.core.orchestrator.kc.PeerAuthValidationException
+import com.example.identity.core.orchestrator.keycloak.PeerAuthValidationException
 import com.example.identity.core.orchestrator.session.ChannelSessionEndedException
 import com.example.identity.contract.tool_api.directory.IdentityConflictException
 import com.example.identity.contract.tool_api.InvalidInputException

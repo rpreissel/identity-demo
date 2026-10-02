@@ -6,9 +6,9 @@ import com.example.identity.core.account.AccountService
 import com.example.identity.kcmigrate.accountIdOfFederatedUser
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
-import com.example.identity.core.orchestrator.kc.KeycloakClientSessions
-import com.example.identity.core.orchestrator.kc.KeycloakSessionClient
-import com.example.identity.core.orchestrator.kc.KeycloakUserSessions
+import com.example.identity.core.orchestrator.keycloak.KeycloakClientSessions
+import com.example.identity.core.orchestrator.keycloak.KeycloakSessionClient
+import com.example.identity.core.orchestrator.keycloak.KeycloakUserSessions
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
@@ -124,8 +124,8 @@ class ActiveSessions(
                 channelSessionRepository.findByAppTokenSessionIdIn(sessionByContext.keys.filterNotNull())
                     .map { sessionByContext[it.appTokenSessionId] to it }
             }
-            KeycloakSessionClient.WEBSITE -> channelSessionRepository.findByDurableKcSessionIdIn(ids)
-                .map { it.durableKcSessionId to it }
+            KeycloakSessionClient.WEBSITE -> channelSessionRepository.findByDurableKeycloakSessionIdIn(ids)
+                .map { it.durableKeycloakSessionId to it }
         }
         // Several flow runs can share one Keycloak session; the latest stands for it.
         val channelBySession = channels.groupBy({ it.first }, { it.second })

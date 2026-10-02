@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.admin
 
-import com.example.identity.core.orchestrator.kc.Loa1Login
+import com.example.identity.core.orchestrator.keycloak.Loa1Login
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.context.annotation.Profile

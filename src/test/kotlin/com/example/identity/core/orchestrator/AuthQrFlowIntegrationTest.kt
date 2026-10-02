@@ -3,7 +3,7 @@ package com.example.identity.core.orchestrator
 import com.example.identity.contract.texts.templateOf
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import org.springframework.web.client.HttpClientErrorException
-import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
+import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -18,7 +18,7 @@ import org.springframework.http.HttpStatus
 /**
  * Cross-channel QR login (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN): a WEB `auth-qr-lookup`/`auth-qr`
  * activation is resolved by an authenticated APP channel's `confirm-qr-login`. Both sides run in
- * this process; only peer-auth is mocked (as in [KcChannelIntegrationTest]).
+ * this process; only peer-auth is mocked (as in [KeycloakChannelIntegrationTest]).
  */
 class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
 
@@ -35,30 +35,30 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
         )
     }
 
-    private fun kcHeaders(): HttpHeaders = HttpHeaders().apply {
+    private fun keycloakHeaders(): HttpHeaders = HttpHeaders().apply {
         set("Authorization", "Bearer mock-peer-auth-token")
         set("Content-Type", "application/json")
     }
 
-    private fun kcPatch(channelSessionId: ChannelSessionId, body: String = "{}"): Map<String, Any?> =
+    private fun keycloakPatch(channelSessionId: ChannelSessionId, body: String = "{}"): Map<String, Any?> =
         restTemplate.exchange(
             "http://localhost:$port/orchestrator/api/v1/kc/channels/$channelSessionId",
             HttpMethod.PATCH,
-            HttpEntity(withDefaultAvailableTools(body), kcHeaders()),
+            HttpEntity(withDefaultAvailableTools(body), keycloakHeaders()),
             mapType
         ).let { it.statusCode shouldBe HttpStatus.OK; it.body!! }
 
-    private fun kcPost(url: String, body: String = "{}"): Map<String, Any?> =
-        restTemplate.exchange("http://localhost:$port$url", HttpMethod.POST, HttpEntity(body, kcHeaders()), mapType)
+    private fun keycloakPost(url: String, body: String = "{}"): Map<String, Any?> =
+        restTemplate.exchange("http://localhost:$port$url", HttpMethod.POST, HttpEntity(body, keycloakHeaders()), mapType)
             .let { it.statusCode.is2xxSuccessful shouldBe true; it.body!! }
 
-    private fun kcPatchTool(url: String, body: String = "{}"): Map<String, Any?> =
-        restTemplate.exchange("http://localhost:$port$url", HttpMethod.PATCH, HttpEntity(body, kcHeaders()), mapType)
+    private fun keycloakPatchTool(url: String, body: String = "{}"): Map<String, Any?> =
+        restTemplate.exchange("http://localhost:$port$url", HttpMethod.PATCH, HttpEntity(body, keycloakHeaders()), mapType)
             .let { it.statusCode shouldBe HttpStatus.OK; it.body!! }
 
     /** The read-only GET the waiting page's status check uses (docs/05-api.md, Peer-Login bestätigen). */
-    private fun kcGetTool(url: String): Map<String, Any?> =
-        restTemplate.exchange("http://localhost:$port$url", HttpMethod.GET, HttpEntity<Unit>(kcHeaders()), mapType)
+    private fun keycloakGetTool(url: String): Map<String, Any?> =
+        restTemplate.exchange("http://localhost:$port$url", HttpMethod.GET, HttpEntity<Unit>(keycloakHeaders()), mapType)
             .let { it.statusCode shouldBe HttpStatus.OK; it.body!! }
 
     /** Registers+authenticates on the APP channel, then enrolls the qr opt-in on the same, still-AUTHENTICATED channel. */
@@ -89,10 +89,10 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
     private fun startWebLookup(): Pair<String, String> {
         val webChannelSessionId = ChannelSessionId(UUID.randomUUID())
         stubAssertion(channelBinding = webChannelSessionId.toString())
-        kcPatch(webChannelSessionId)
-        val webToolSessionId = kcPost("/orchestrator/api/v1/channels/$webChannelSessionId/tools/auth-qr-lookup")
+        keycloakPatch(webChannelSessionId)
+        val webToolSessionId = keycloakPost("/orchestrator/api/v1/channels/$webChannelSessionId/tools/auth-qr-lookup")
             .nextRaw()["toolSessionId"] as String
-        val waiting = kcPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
+        val waiting = keycloakPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
         val pairingCode = waiting.stepData()["pairingCode"] as String
         return webToolSessionId to pairingCode
     }
@@ -118,7 +118,7 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
             `when`("that same account confirms via confirm-qr-login on its own authenticated channel and the browser enters the code") {
                 val (webToolSessionId, pairingCode) = startWebLookup()
                 val (appChannelSessionId, accountId) = registerWithQrOptIn()
-                val beforeApproval = kcGetTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
+                val beforeApproval = keycloakGetTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
 
                 val started = post("/orchestrator/api/v1/channels/$appChannelSessionId/peer-logins")
                 resolveReconfirmation(appChannelSessionId)
@@ -131,9 +131,9 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
                 val shown = patch("/orchestrator/api/v1/tools/$confirmToolSessionId/confirm-qr-login", """{"decision":"accept"}""")
                 val confirmationCode = shown.stepData()["confirmationCode"] as String
 
-                val afterApproval = kcGetTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
-                val asking = kcPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
-                val resolved = kcPatchTool(
+                val afterApproval = keycloakGetTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
+                val asking = keycloakPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
+                val resolved = keycloakPatchTool(
                     "/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup",
                     """{"confirmationCode":"$confirmationCode"}"""
                 )
@@ -171,10 +171,10 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
                 val wrong = if (confirmationCode == "000000") "000001" else "000000"
 
                 val guesses = List(2) {
-                    kcPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup", """{"confirmationCode":"$wrong"}""")
+                    keycloakPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup", """{"confirmationCode":"$wrong"}""")
                 }
                 val third = runCatching {
-                    kcPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup", """{"confirmationCode":"$wrong"}""")
+                    keycloakPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup", """{"confirmationCode":"$wrong"}""")
                 }
 
                 then("the first two fail without logging in") {
@@ -203,8 +203,8 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
                 patch("/orchestrator/api/v1/tools/$confirmToolSessionId/confirm-qr-login", """{"pairingCode":"$pairingCode"}""")
                 val declined = patch("/orchestrator/api/v1/tools/$confirmToolSessionId/confirm-qr-login", """{"decision":"reject"}""")
 
-                val reads = List(2) { kcGetTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup") }
-                val poll = kcPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
+                val reads = List(2) { keycloakGetTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup") }
+                val poll = keycloakPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
 
                 then("the app side reports the rejection") {
                     templateOf(declined.stepData()["error"]) shouldBe "Vom Nutzer abgelehnt"

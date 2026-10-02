@@ -606,8 +606,8 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
 - **Web-Kanal**: Die Verbindung über die Website. Hier führt Keycloak die Anmeldung und fragt den
   Orchestrator, welche Schritte nötig sind; die Tokens stellt Keycloak aus. Das Gegenstück ist der
   App-Kanal.
-  *Im Code:* `ChannelType.WEB`. Die Anbindung an Keycloak heißt nach der Technik: Klassen `Kc…`
-  (etwa `KcChannelService`), Pfade `/kc/…`.
+  *Im Code:* `ChannelType.WEB`. Die Anbindung an Keycloak heißt nach der Technik: Klassen `Keycloak…`
+  (etwa `KeycloakChannelService`), Pfade `/kc/…`.
   *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3,
   [ADR-8](../adr/ADR-008-keycloak-fuehrt-seine-eigenen-nativen-schritte-selbst-statt.md).
 - **Widerruf**: Nimmt eine Angabe zurück, etwa wenn das Personenverzeichnis meldet, dass eine

@@ -161,7 +161,7 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
 
     /**
      * The last question: a device linked to another account was not bound implicitly
-     * ([RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind]). A Keycloak channel has no
+     * ([RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind]). A Web channel has no
      * device, so `linkedAccountId` is null and this falls through.
      */
     private fun finishOrOfferRebind(ctx: JourneyContext): Transition {

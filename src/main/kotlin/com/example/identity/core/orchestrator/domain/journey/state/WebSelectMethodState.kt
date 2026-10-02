@@ -4,7 +4,7 @@ import com.example.identity.contract.texts.Text
 
 /**
  * The single state of `WEB_SELECT_METHOD` (docs/04-orchestrierung.md Abschnitt 3): offers every
- * kc-usable tool as one `selectMethod` step, narrowed by [declined] until a proof closes the gap or
+ * Keycloak-usable tool as one `selectMethod` step, narrowed by [declined] until a proof closes the gap or
  * nothing is left.
  */
 sealed interface WebSelectMethodState : JourneyState {

@@ -71,7 +71,7 @@ data class AmrEntry(
 )
 
 /**
- * What a new kc channel may resume from without re-proving it (docs/05-api.md Abschnitt 3).
+ * What a new Web channel may resume from without re-proving it (docs/05-api.md Abschnitt 3).
  * [evidence] is the real `SessionEvidence`, not a lossy copy. Fetched from its own endpoint by the
  * authenticator's end-of-flow hook only. On the wire it is always signed by [RestoreDataCodec] and
  * bound to its UserSession, so a leaked note cannot hand evidence to another session.

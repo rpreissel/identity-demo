@@ -39,5 +39,5 @@ interface ChannelSessionRepository : JpaRepository<ChannelSession, UUID> {
     fun findByAppTokenSessionIdIn(appTokenSessionIds: Collection<UUID>): List<ChannelSession>
 
     /** Website channels whose flow ended in one of these Keycloak sessions. */
-    fun findByDurableKcSessionIdIn(keycloakSessionIds: Collection<String>): List<ChannelSession>
+    fun findByDurableKeycloakSessionIdIn(keycloakSessionIds: Collection<String>): List<ChannelSession>
 }

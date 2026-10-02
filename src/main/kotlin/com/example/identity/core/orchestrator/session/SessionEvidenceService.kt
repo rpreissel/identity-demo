@@ -71,7 +71,7 @@ class SessionEvidenceService(
     /**
      * Evidence changed, so tokens minted from it are stale; both token providers cache by time
      * only. Clearing, not re-minting, keeps this service free of [TokenProvider]. The RefreshToken
-     * goes too: [KcTokenProvider]'s refresh path (ADR-9) would keep renewing with pre-step-up
+     * goes too: [KeycloakTokenProvider]'s refresh path (ADR-9) would keep renewing with pre-step-up
      * acr/amr. The session and its window stay: the next token continues it (ADR-43).
      */
     private fun invalidateCachedTokens(sessionEvidenceId: SessionEvidenceId) {

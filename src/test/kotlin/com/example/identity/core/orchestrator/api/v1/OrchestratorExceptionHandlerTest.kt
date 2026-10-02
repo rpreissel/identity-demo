@@ -7,7 +7,7 @@ import com.example.identity.core.orchestrator.domain.ErrorCode
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.dpop.DpopFailure
 import com.example.identity.core.orchestrator.dpop.DpopValidationException
-import com.example.identity.core.orchestrator.kc.PeerAuthValidationException
+import com.example.identity.core.orchestrator.keycloak.PeerAuthValidationException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe

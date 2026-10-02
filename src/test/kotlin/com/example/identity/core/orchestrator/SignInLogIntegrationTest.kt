@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.SignInLog
-import com.example.identity.core.orchestrator.kc.PeerAuthAssertion
+import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -43,7 +43,7 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
             PeerAuthAssertion(jti = UUID.randomUUID().toString(), issuedAt = Instant.now(), channelBinding = binding, subject = null)
     }
 
-    private fun kcPost(path: String, body: String? = null) =
+    private fun keycloakPost(path: String, body: String? = null) =
         restTemplate.exchange(
             "http://localhost:$port$path", HttpMethod.POST,
             HttpEntity(body, HttpHeaders().apply {
@@ -108,9 +108,9 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
             `when`("a wrong password is entered there") {
                 val accountId = seedRegisteredAccount()
                 stubAssertion(accountId.toString())
-                kcPost("/orchestrator/api/v1/tools/auth-password/mgmt/$accountId", """{"password":"wrong-password-123"}""")
+                keycloakPost("/orchestrator/api/v1/tools/auth-password/mgmt/$accountId", """{"password":"wrong-password-123"}""")
 
-                then("it is a failed sign-in on the Keycloak channel") {
+                then("it is a failed sign-in on the Web channel") {
                     val failed = signInLog.of(accountId).single()
                     failed.signInType shouldBe "SIGN_IN_FAILED"
                     failed.channel shouldBe "WEB"
@@ -122,12 +122,12 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
             `when`("Keycloak reports it for the account its assertion is bound to") {
                 val accountId = seedRegisteredAccount()
                 stubAssertion(accountId.toString())
-                val response = kcPost("/orchestrator/api/v1/kc/accounts/$accountId/sign-outs?kcSessionId=kc-session-1")
+                val response = keycloakPost("/orchestrator/api/v1/kc/accounts/$accountId/sign-outs?kcSessionId=kc-session-1")
 
                 then("the report is accepted") {
                     response.statusCode shouldBe HttpStatus.NO_CONTENT
                 }
-                then("it is logged as a sign-out on the Keycloak channel") {
+                then("it is logged as a sign-out on the Web channel") {
                     val signedOut = signInLog.of(accountId).single()
                     signedOut.signInType shouldBe "SIGNED_OUT"
                     signedOut.channel shouldBe "WEB"
@@ -138,7 +138,7 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
                 val accountId = seedRegisteredAccount()
                 stubAssertion("someone-else")
                 val result = runCatching {
-                    kcPost("/orchestrator/api/v1/kc/accounts/$accountId/sign-outs?kcSessionId=kc-session-1")
+                    keycloakPost("/orchestrator/api/v1/kc/accounts/$accountId/sign-outs?kcSessionId=kc-session-1")
                 }
 
                 then("the report is refused") {
