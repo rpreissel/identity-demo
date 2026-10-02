@@ -63,9 +63,9 @@ class IdentityMatchingService(
     }
 
     /**
-     * Account-scoped counterpart of [verifyToolAttestedConsistency]: the attestation happened in an
-     * earlier step and lives on the account; only the person reference is new. Per attribute the
-     * strongest surviving claim wins, recency only breaks ties (docs/02-domaenenmodell.md #6).
+     * Checks a person reference against an attestation from an earlier step that lives on the
+     * account (`ident-kvnr`). Per attribute the strongest surviving claim wins, recency only breaks
+     * ties (docs/02-domaenenmodell.md #6). `ident-fsc` checks its own input against the register.
      */
     override fun attestedIdentityMatches(accountId: AccountId, personId: PartnerNumber): Boolean {
         val attested = accountClaimRepository.findEstablished(accountId)

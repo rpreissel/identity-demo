@@ -354,7 +354,8 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
   Anker-Claims in der Reihenfolge ihrer `AnchorRule.bindingStrength`; ohne Treffer bleibt nur
   `Unresolved`. Über Kombinationen von Attributen aus der Claim-Historie wird nicht
   aufgelöst. Name, Vorname und Geburtsdatum dienen nur dem Abgleich mit
-  `personenverzeichnis` (`verifyToolAttestedConsistency`, `attestedIdentityMatches`).
+  `personenverzeichnis`: in `ident-fsc` selbst (`matchesPersonalDetails`) und vor dem Anker einer
+  Zuordnung (`attestedIdentityMatches`).
 - Bewusst getrennt bleiben einige ähnlich klingende Namen, weil an ihren Unterschieden Regeln
   hängen: `personId` ist die Partnernummer, nicht `accountId`. `Claim`, `ClaimDeclaration` und
   `ClaimRequirement` sind ein Ergebnis, eine zugesicherte Fähigkeit eines Tools und eine

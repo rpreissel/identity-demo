@@ -23,8 +23,8 @@ Der Abgleich von Name, Vorname und Geburtsdatum bleibt dort, wo er fachlich hing
 gegen `personenverzeichnis`**, ob die Angaben zur gefundenen Person passen, nie als Suche über die
 Claims der Konten.
 
-- `verifyToolAttestedConsistency` prüft die über KVNR oder Partnernummer gefundene Person gegen die
-  bestätigten Attribute.
+- `ident-fsc` prüft die über die KVNR gefundene Person selbst gegen Name, Vornamen und
+  Geburtsdatum (`matchesPersonalDetails`), bevor es die KVNR meldet.
 - `attestedIdentityMatches` vergleicht, bevor der Anker der Zuordnung geschrieben wird, die Stammdaten
   hinter der Nummer mit der bestätigten Identität.
 
