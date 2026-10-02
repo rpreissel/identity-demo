@@ -4,6 +4,7 @@ import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_kobil.AuthKobilDescriptor
+import com.example.identity.tools.auth_kobil.KOBIL_ENROLLMENT_TYPE
 import com.example.identity.tools.auth_kobil.api.v1.KobilUnlockCredential
 import com.example.identity.tools.auth_kobil.internal.KobilEnrollment
 import com.example.identity.tools.auth_kobil.internal.KobilEnrollmentRepository
@@ -53,6 +54,9 @@ class AuthKobilToolHandler(
      */
     @Transactional
     fun start(toolSessionId: ToolSessionId, enrollmentRef: EnrollmentRef, passwordAvailable: Boolean): ToolOutcome {
+        if (enrollmentRef.type != KOBIL_ENROLLMENT_TYPE) {
+            throw UnresolvableReferenceException(Text("Unerwarteter Enrollment-Typ"), "type=${enrollmentRef.type}")
+        }
         val session = toolDataRepository.save(
             AuthKobilToolSession(
                 toolSessionId = toolSessionId,

@@ -123,6 +123,23 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
         }
     }
 
+    given("a kobil enrollment 3, and a reference of another tool's type with the same id") {
+        enrollment(3L, biometricConsent = true)
+        every { toolDataRepository.save(any()) } answers { firstArg() }
+        val smsRef = EnrollmentRef("auth_sms.enrollment", "3")
+
+        `when`("a tool session starts with that reference") {
+            val result = runCatching { handler.start(ToolSessionId(UUID.randomUUID()), smsRef, passwordAvailable = true) }
+
+            then("it is an unresolvable reference (422), as in auth-sms") {
+                shouldThrow<UnresolvableReferenceException> { result.getOrThrow() }
+            }
+            then("no tool session is stored for it") {
+                verify(exactly = 0) { toolDataRepository.save(match { it.enrollmentRefId == "3" }) }
+            }
+        }
+    }
+
     given("an enrollment with biometric consent, awaiting its unlock") {
         val enrollment = enrollment(10L, biometricConsent = true)
 
