@@ -22,6 +22,8 @@ Namensänderung, Journey-Trace und das Löschen des Kontos.
   und was lese ich als Nächstes?
 - **[Beispiel-Story](11-beispiel-story.md)**: Wie sieht das für eine einzelne Person aus, von der
   Registrierung über Login, Step-up und QR-Login bis zur Löschung?
+- **[Beispiel für Entwickler](15-beispiel-neues-verfahren.md)**: Was berührt ein neues Verfahren?
+  Ein Bank-Ident und eine Einmalcode-App werden angebunden, vom Descriptor bis zu den Tests.
 - **[Schnelleinstieg für Agents](00-agent-quickstart.md)**: Was muss ein KI-Agent wissen, bevor er
   gezielt einzelne Kapitel öffnet?
 

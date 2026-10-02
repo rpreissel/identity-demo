@@ -5,6 +5,8 @@ einzurichten oder sich anzumelden (`ident-fsc`, `enroll-sms`, `auth-sms`). Diese
 beschreibt, wie Tools sich selbst beschreiben und was sie über die Grenze ihres Moduls melden.
 
 Was der Orchestrator mit diesen Meldungen macht, steht in [04-orchestrierung.md](04-orchestrierung.md).
+Ein durchgehendes Beispiel, das ein neues Verfahren von Anfang bis Ende anbindet, steht in
+[15-beispiel-neues-verfahren.md](15-beispiel-neues-verfahren.md).
 
 ---
 
