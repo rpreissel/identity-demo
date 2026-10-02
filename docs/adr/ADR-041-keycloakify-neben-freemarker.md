@@ -32,7 +32,7 @@ zweites npm-Paket mit eigenem Build.
 ## 2) Der Schalter im Orchestrator
 
 - **Der Orchestrator ist die Quelle der Wahrheit,** Keycloak wird nachgezogen. Der Schalter ist das
-  Feature-Flag `FeatureFlags.KEYCLOAK_LOGIN_KEYCLOAKIFY`. Keine Zeile heißt FreeMarker.
+  Feature-Flag `KeycloakFeatureFlags.LOGIN_KEYCLOAKIFY`. Keine Zeile heißt FreeMarker.
 - **Endpunkt:** `$ADMIN_API/login-theme` mit GET und PUT, hinter dem Admin-Login. PUT setzt zuerst
   das Theme im Realm und erst dann den Schalter. Lehnt Keycloak ab, bleibt der Schalter, wie er war.
 - **Abgleich beim Start:** Nach den Keycloak-Migrationen setzt der Orchestrator das Theme einmal auf

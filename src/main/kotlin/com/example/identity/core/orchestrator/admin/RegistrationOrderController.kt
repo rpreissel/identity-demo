@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.admin
 
-import com.example.identity.core.orchestrator.domain.FeatureFlags
+import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.core.orchestrator.session.FeatureFlagService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -24,11 +24,11 @@ class RegistrationOrderController(private val featureFlagService: FeatureFlagSer
 
     @GetMapping
     @Operation(summary = "Current REGISTER order")
-    fun get(): RegistrationOrderState = RegistrationOrderState(featureFlagService.isEnabled(FeatureFlags.REGISTER_ENROLL_FIRST))
+    fun get(): RegistrationOrderState = RegistrationOrderState(featureFlagService.isEnabled(JourneyFeatureFlag.REGISTER_ENROLL_FIRST.key))
 
     @PutMapping
     @Operation(summary = "Set REGISTER order", description = "Takes effect for the next brand-new REGISTER journey - a running one keeps whichever order it started with.")
     fun put(@RequestBody request: RegistrationOrderState) {
-        featureFlagService.setEnabled(FeatureFlags.REGISTER_ENROLL_FIRST, request.enrollFirst)
+        featureFlagService.setEnabled(JourneyFeatureFlag.REGISTER_ENROLL_FIRST.key, request.enrollFirst)
     }
 }

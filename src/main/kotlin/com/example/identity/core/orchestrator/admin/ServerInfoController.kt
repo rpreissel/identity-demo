@@ -3,7 +3,7 @@ package com.example.identity.core.orchestrator.admin
 import com.example.identity.demo.demo_mode.DemoMode
 import com.example.identity.core.orchestrator.keycloak.Loa1Login
 import com.example.identity.core.orchestrator.keycloak.LoginTheme
-import com.example.identity.core.orchestrator.domain.FeatureFlags
+import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.core.orchestrator.session.FeatureFlagService
 import com.example.identity.core.orchestrator.tool.ToolAvailabilityService
 import io.micrometer.core.instrument.Counter
@@ -93,7 +93,7 @@ class ServerInfoController(
     fun get(): ServerInfo {
         return ServerInfo(
             keycloak = if (environment.acceptsProfiles(Profiles.of("keycloak"))) keycloakInfo() else null,
-            registrationEnrollFirst = featureFlagService.isEnabled(FeatureFlags.REGISTER_ENROLL_FIRST),
+            registrationEnrollFirst = featureFlagService.isEnabled(JourneyFeatureFlag.REGISTER_ENROLL_FIRST.key),
             disabledTools = toolAvailabilityService.disabledEntries().map { DisabledToolView(it.toolId!!, it.channel!!.name, it.reason) },
             demoMode = demoMode.on,
             operations = operations(),

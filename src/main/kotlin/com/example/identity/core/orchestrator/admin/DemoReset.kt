@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator.admin
 
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.ChannelState
-import com.example.identity.core.orchestrator.domain.FeatureFlags
+import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.keycloak.KeycloakRealmSessions
 import com.example.identity.core.orchestrator.keycloak.Loa1Login
@@ -68,7 +68,7 @@ class DemoReset(
         // Also sessions of accounts an earlier run left behind: every realm user is an account.
         keycloakRealmSessions.ifAvailable?.logoutAll()
         toolAvailabilityService.applyDefaults()
-        featureFlagService.setEnabled(FeatureFlags.REGISTER_ENROLL_FIRST, false)
+        featureFlagService.setEnabled(JourneyFeatureFlag.REGISTER_ENROLL_FIRST.key, false)
         loginThemeSwitch.ifAvailable?.switchTo(LoginTheme.FREEMARKER)
         loa1LoginSwitch.ifAvailable?.switchTo(Loa1Login.ORCHESTRATOR)
         return DemoResetResult(deletedAccounts = accountIds.size, endedSessions = liveBefore)

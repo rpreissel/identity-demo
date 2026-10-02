@@ -1,7 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.core.orchestrator.domain.FeatureFlags
+import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.LogoutState
@@ -22,7 +22,7 @@ class RegisterDispatchStrategyTest : BehaviorSpec({
 
     val strategy = RegisterDispatchStrategy()
     val flagOff = ctx(account = null)
-    val flagOn = ctx(account = null).copy(featureFlags = setOf(FeatureFlags.REGISTER_ENROLL_FIRST))
+    val flagOn = ctx(account = null).copy(featureFlags = setOf(JourneyFeatureFlag.REGISTER_ENROLL_FIRST))
 
     given("the enroll-first flag is off") {
         `when`("a new journey is created") {

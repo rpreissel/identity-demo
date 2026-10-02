@@ -149,7 +149,7 @@ Varianten. Welche Variante eine laufende Journey nutzt, ergibt sich danach allei
 Zustandstyp (`is RegisterEnrollFirstState` oder `is RegisterState`). Der Schalter wird dafür nie
 erneut gelesen.
 
-Eingeschaltet wird die Variante über den Laufzeitschalter `FeatureFlags.REGISTER_ENROLL_FIRST`
+Eingeschaltet wird die Variante über den Laufzeitschalter `JourneyFeatureFlag.REGISTER_ENROLL_FIRST`
 (`"register-enroll-first"`). Den Wert liefert `FeatureFlagService` (`@Service`, implementiert
 `FeatureFlagProvider`) aus der Tabelle `orchestrator.feature_flag`. Dort steht eine Zeile je
 Schalter; fehlt die Zeile, ist der Schalter aus. Lesen und setzen lässt er sich über

@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator.admin
 
 import com.example.identity.core.orchestrator.keycloak.KeycloakRealmLoginTheme
 import com.example.identity.core.orchestrator.keycloak.LoginTheme
-import com.example.identity.core.orchestrator.domain.FeatureFlags
+import com.example.identity.core.orchestrator.keycloak.KeycloakFeatureFlags
 import com.example.identity.core.orchestrator.session.FeatureFlagService
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationArguments
@@ -27,7 +27,7 @@ class LoginThemeSwitch(
     private val log = LoggerFactory.getLogger(LoginThemeSwitch::class.java)
 
     fun current(): LoginTheme =
-        if (featureFlagService.isEnabled(FeatureFlags.KEYCLOAK_LOGIN_KEYCLOAKIFY)) LoginTheme.KEYCLOAKIFY else LoginTheme.FREEMARKER
+        if (featureFlagService.isEnabled(KeycloakFeatureFlags.LOGIN_KEYCLOAKIFY)) LoginTheme.KEYCLOAKIFY else LoginTheme.FREEMARKER
 
     /**
      * Realm first, flag second: if Keycloak refuses, the flag still says what the realm shows and
@@ -35,7 +35,7 @@ class LoginThemeSwitch(
      */
     fun switchTo(theme: LoginTheme) {
         realmLoginTheme.apply(theme)
-        featureFlagService.setEnabled(FeatureFlags.KEYCLOAK_LOGIN_KEYCLOAKIFY, theme == LoginTheme.KEYCLOAKIFY)
+        featureFlagService.setEnabled(KeycloakFeatureFlags.LOGIN_KEYCLOAKIFY, theme == LoginTheme.KEYCLOAKIFY)
     }
 
     override fun run(args: ApplicationArguments) {

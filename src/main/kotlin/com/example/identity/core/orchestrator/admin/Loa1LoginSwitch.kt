@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.admin
 
-import com.example.identity.core.orchestrator.domain.FeatureFlags
+import com.example.identity.core.orchestrator.keycloak.KeycloakFeatureFlags
 import com.example.identity.core.orchestrator.keycloak.KeycloakLoa1Login
 import com.example.identity.core.orchestrator.keycloak.Loa1Login
 import com.example.identity.core.orchestrator.session.FeatureFlagService
@@ -27,12 +27,12 @@ class Loa1LoginSwitch(
     private val log = LoggerFactory.getLogger(Loa1LoginSwitch::class.java)
 
     fun current(): Loa1Login =
-        if (featureFlagService.isEnabled(FeatureFlags.KEYCLOAK_LOA1_PASSWORD)) Loa1Login.KEYCLOAK_PASSWORD else Loa1Login.ORCHESTRATOR
+        if (featureFlagService.isEnabled(KeycloakFeatureFlags.LOA1_PASSWORD)) Loa1Login.KEYCLOAK_PASSWORD else Loa1Login.ORCHESTRATOR
 
     /** Realm first, flag second: if Keycloak refuses, the flag still says what the realm does. */
     fun switchTo(login: Loa1Login) {
         keycloakLoa1Login.apply(login)
-        featureFlagService.setEnabled(FeatureFlags.KEYCLOAK_LOA1_PASSWORD, login == Loa1Login.KEYCLOAK_PASSWORD)
+        featureFlagService.setEnabled(KeycloakFeatureFlags.LOA1_PASSWORD, login == Loa1Login.KEYCLOAK_PASSWORD)
     }
 
     override fun run(args: ApplicationArguments) {

@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.admin
 
-import com.example.identity.core.orchestrator.domain.FeatureFlags
+import com.example.identity.core.orchestrator.keycloak.KeycloakFeatureFlags
 import com.example.identity.core.orchestrator.keycloak.KeycloakLoa1Login
 import com.example.identity.core.orchestrator.keycloak.Loa1Login
 import com.example.identity.core.orchestrator.session.FeatureFlagService
@@ -24,7 +24,7 @@ class Loa1LoginSwitchTest : BehaviorSpec({
     /** The switch over relaxed mocks, the Keycloak password flag set to [keycloakPassword]. */
     class Fixture(keycloakPassword: Boolean = false) {
         val flags = mockk<FeatureFlagService>(relaxed = true) {
-            every { isEnabled(FeatureFlags.KEYCLOAK_LOA1_PASSWORD) } returns keycloakPassword
+            every { isEnabled(KeycloakFeatureFlags.LOA1_PASSWORD) } returns keycloakPassword
         }
         val realm = mockk<KeycloakLoa1Login>(relaxed = true)
         val switch = Loa1LoginSwitch(flags, realm)
@@ -47,7 +47,7 @@ class Loa1LoginSwitchTest : BehaviorSpec({
             then("the realm is written first, then the choice is remembered") {
                 verifyOrder {
                     fixture.realm.apply(Loa1Login.KEYCLOAK_PASSWORD)
-                    fixture.flags.setEnabled(FeatureFlags.KEYCLOAK_LOA1_PASSWORD, true)
+                    fixture.flags.setEnabled(KeycloakFeatureFlags.LOA1_PASSWORD, true)
                 }
             }
         }

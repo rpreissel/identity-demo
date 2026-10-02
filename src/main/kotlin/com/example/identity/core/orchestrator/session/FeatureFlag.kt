@@ -7,7 +7,8 @@ import jakarta.persistence.Table
 import java.time.Instant
 
 /**
- * One runtime feature flag, keyed by a name from [com.example.identity.core.orchestrator.domain.FeatureFlags],
+ * One runtime feature flag, keyed by [com.example.identity.core.orchestrator.domain.JourneyFeatureFlag.key]
+ * or a [com.example.identity.core.orchestrator.keycloak.KeycloakFeatureFlags] name,
  * switchable without a redeploy. No row means off, so a new flag needs no seeding (as
  * [com.example.identity.core.orchestrator.tool.ToolAvailability]). One generic table, not a table per flag:
  * a flag is operational state. Its meaning lives in the constant and the strategy reading it.

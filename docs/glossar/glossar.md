@@ -173,8 +173,9 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   zu starten. Beispiele: ob die Registrierung mit dem Einrichten eines Verfahrens beginnt statt mit der
   Identifizierung, welches Aussehen die Keycloak-Anmeldeseite hat, und ob Keycloak für `loa1` selbst
   nach dem Passwort fragt.
-  *Im Code:* `FeatureFlags`, `FeatureFlagService`, etwa `register-enroll-first`,
-  `keycloak-login-keycloakify`, `keycloak-loa1-password`.
+  *Im Code:* `FeatureFlagService`; was eine Strategie liest, nennt `JourneyFeatureFlag`
+  (`register-enroll-first`), die Schalter für Keycloak `KeycloakFeatureFlags`
+  (`keycloak-login-keycloakify`, `keycloak-loa1-password`).
   *Mehr dazu:* [ADR-41](../adr/ADR-041-keycloakify-neben-freemarker.md),
   [ADR-42](../adr/ADR-042-loa1-anmeldung-umschalten.md).
 - **Freischaltcode**: Ein Code, den die Versicherung per Brief schickt und mit dem sich eine Person

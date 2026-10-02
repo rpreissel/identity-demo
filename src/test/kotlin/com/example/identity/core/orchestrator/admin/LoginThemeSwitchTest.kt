@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.admin
 
-import com.example.identity.core.orchestrator.domain.FeatureFlags
+import com.example.identity.core.orchestrator.keycloak.KeycloakFeatureFlags
 import com.example.identity.core.orchestrator.keycloak.KeycloakRealmLoginTheme
 import com.example.identity.core.orchestrator.keycloak.LoginTheme
 import com.example.identity.core.orchestrator.session.FeatureFlagService
@@ -24,7 +24,7 @@ class LoginThemeSwitchTest : BehaviorSpec({
     /** The switch over relaxed mocks, the Keycloakify flag set to [keycloakify]. */
     class Fixture(keycloakify: Boolean = false) {
         val flags = mockk<FeatureFlagService>(relaxed = true) {
-            every { isEnabled(FeatureFlags.KEYCLOAK_LOGIN_KEYCLOAKIFY) } returns keycloakify
+            every { isEnabled(KeycloakFeatureFlags.LOGIN_KEYCLOAKIFY) } returns keycloakify
         }
         val realm = mockk<KeycloakRealmLoginTheme>(relaxed = true)
         val switch = LoginThemeSwitch(flags, realm)
@@ -47,7 +47,7 @@ class LoginThemeSwitchTest : BehaviorSpec({
             then("the realm is written first, then the choice is remembered") {
                 verifyOrder {
                     fixture.realm.apply(LoginTheme.KEYCLOAKIFY)
-                    fixture.flags.setEnabled(FeatureFlags.KEYCLOAK_LOGIN_KEYCLOAKIFY, true)
+                    fixture.flags.setEnabled(KeycloakFeatureFlags.LOGIN_KEYCLOAKIFY, true)
                 }
             }
         }

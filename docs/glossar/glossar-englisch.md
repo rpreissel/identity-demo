@@ -103,7 +103,7 @@ Eintrags führt zum Buchstaben dort.
 - **`FactorType`** (`KNOWLEDGE`, `POSSESSION`, `INHERENCE`) → **Faktortyp**: Wissen, Besitz,
   Biometrie. [Glossar](glossar.md#f)
 - **`FAST_ACCESS`** → **Schnellzugang**: die übliche Anmeldung in der App. [Glossar](glossar.md#s)
-- **`FeatureFlags`**, **`FeatureFlagService`** → **Feature-Flag** (etwa `register-enroll-first`,
+- **`JourneyFeatureFlag`**, **`KeycloakFeatureFlags`**, **`FeatureFlagService`** → **Feature-Flag** (etwa `register-enroll-first`,
   `keycloak-login-keycloakify`, `keycloak-loa1-password`). [Glossar](glossar.md#f)
 
 ## I

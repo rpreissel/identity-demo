@@ -9,7 +9,7 @@ import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
 import com.example.identity.core.orchestrator.domain.ToolCatalog
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.core.orchestrator.domain.FeatureFlags
+import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 
 /**
  * Everything a strategy may look at. Read-only by construction: [policy] and [catalog] answer
@@ -43,10 +43,10 @@ data class JourneyContext(
      */
     val availableTools: Set<ToolId>,
     /**
-     * Runtime feature flags currently enabled ([FeatureFlags] names them). Resolved here because a
+     * Runtime feature flags currently enabled ([JourneyFeatureFlag] names them). Resolved here because a
      * strategy never depends on a `@Service` itself.
      */
-    val featureFlags: Set<String> = emptySet(),
+    val featureFlags: Set<JourneyFeatureFlag> = emptySet(),
     /**
      * The invitation this channel signed in with instead of an account
      * (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). Never set together with [account].

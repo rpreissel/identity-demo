@@ -48,7 +48,7 @@ einen und ein zweiter Tab den anderen Ablauf zeigen.
 
 ## 2) Der Schalter im Orchestrator
 
-- **Quelle der Wahrheit** ist das Feature-Flag `FeatureFlags.KEYCLOAK_LOA1_PASSWORD`
+- **Quelle der Wahrheit** ist das Feature-Flag `KeycloakFeatureFlags.LOA1_PASSWORD`
   (`Loa1LoginSwitch`, Keycloak-Seite in `KeycloakLoa1Login`). Es ist nach der Ausnahme benannt:
   Ohne Zeile gilt die Verfahrensauswahl, derselbe Stand, den die Migration anlegt.
 - **Endpunkte:** `$ADMIN_API/loa1-login` mit GET und PUT, hinter dem Admin-Login, und dieselben ohne

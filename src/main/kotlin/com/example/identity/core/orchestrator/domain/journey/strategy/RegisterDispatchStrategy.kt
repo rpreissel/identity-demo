@@ -1,7 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.AuthIntent
-import com.example.identity.core.orchestrator.domain.FeatureFlags
+import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -28,7 +28,7 @@ class RegisterDispatchStrategy : IntentStrategy<JourneyState> {
      * flipping the flag mid-journey cannot corrupt it.
      */
     override fun initialState(ctx: JourneyContext): JourneyState =
-        if (FeatureFlags.REGISTER_ENROLL_FIRST in ctx.featureFlags) enrollFirst.initialState(ctx) else identFirst.initialState(ctx)
+        if (JourneyFeatureFlag.REGISTER_ENROLL_FIRST in ctx.featureFlags) enrollFirst.initialState(ctx) else identFirst.initialState(ctx)
 
     override fun transition(state: JourneyState, event: JourneyEvent, ctx: JourneyContext): Transition = when (state) {
         is RegisterEnrollFirstState -> enrollFirst.transition(state, event, ctx)
