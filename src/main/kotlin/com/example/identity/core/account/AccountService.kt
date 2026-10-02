@@ -136,7 +136,8 @@ class AccountService(
      * [AttributeType]. A local anchor attribute is also written to its [AccountAnchor]. An already
      * established (type, value, source, method) adds no row; re-proving is an IDENTIFIED event (ADR-39).
      * [provenAcr] is the session's capped level, not the tool's ceiling. It pays for anchor writes
-     * ([AnchorRule.acrFloor]); a claim below the floor is still logged but does not move the anchor.
+     * ([AnchorRule.acrFloor]); an anchor claim below the floor is refused (`AnchorDecision`), and the
+     * transaction rolls back the claims logged with it.
      */
     @Transactional
     fun recordClaims(
