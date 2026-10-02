@@ -6,6 +6,7 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.tools.auth_email.ConfirmEmailDescriptor
+import com.example.identity.tools.auth_password.AuthPasswordDescriptor
 import com.example.identity.tools.ident_kvnr.IdentKvnrDescriptor
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -69,6 +70,24 @@ class ToolOutcomeTest : BehaviorSpec({
         }
         then("ident-kvnr, a correlation step, answers with Identified") {
             ToolOutcome.Completed.Identified().fits(IdentKvnrDescriptor.role) shouldBe true
+        }
+    }
+
+    given("a run measured against its descriptor (auth-password: loa1, knowledge)") {
+        fun run(acr: AcrLevel?, vararg factors: FactorType) =
+            ToolOutcome.Completed.Authenticated(amr = listOf("password"), achievedAcr = acr, factorTypes = factors.toSet())
+
+        then("the descriptor's own level and factor kind stay within it") {
+            run(AcrLevel.LOA1, FactorType.KNOWLEDGE).staysWithin(AuthPasswordDescriptor) shouldBe true
+        }
+        then("a run without a level of its own stays within it") {
+            run(null).staysWithin(AuthPasswordDescriptor) shouldBe true
+        }
+        then("a higher level goes beyond it") {
+            run(AcrLevel.LOA2, FactorType.KNOWLEDGE).staysWithin(AuthPasswordDescriptor) shouldBe false
+        }
+        then("a factor kind the descriptor does not declare goes beyond it") {
+            run(AcrLevel.LOA1, FactorType.KNOWLEDGE, FactorType.POSSESSION).staysWithin(AuthPasswordDescriptor) shouldBe false
         }
     }
 
