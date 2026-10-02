@@ -62,7 +62,7 @@ class IdentEidToolController(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
+                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
                       "next": {"type": "tool", "toolId": "ident-eid", "step": "input", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
                       "stepData": {"kind": "missing-fields", "missingFields": ["familyName", "givenNames", "birthDate", "streetAddress", "postalCode", "locality", "restrictedId"]}
                     }
@@ -93,14 +93,14 @@ class IdentEidToolController(
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [
                     ExampleObject(name = "After card data - the PIN is missing", value = """
                         {
-                          "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
+                          "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
                           "next": {"type": "tool", "toolId": "ident-eid", "step": "input", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
                           "stepData": {"kind": "missing-fields", "missingFields": ["pin"]}
                         }
                     """),
                     ExampleObject(name = "After pin - attested, the assignment step follows", value = """
                         {
-                          "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
+                          "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
                           "next": {"type": "tool", "toolId": "ident-kvnr", "step": "input"}
                         }
                     """)
@@ -139,7 +139,7 @@ class IdentEidToolController(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
+                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
                       "next": {"type": "tool", "toolId": "ident-eid", "step": "input", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
                       "stepData": {"kind": "missing-fields", "missingFields": ["pin"]}
                     }

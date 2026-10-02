@@ -40,7 +40,7 @@ function channelResponse(overrides: Partial<ChannelResponse> & { channel: Channe
 
 /** The channel block of the one app channel every test talks to. */
 function channel(state: Channel['state'], extra: Partial<Channel> = {}): Channel {
-  return { channelSessionId: 'chan-1', channelType: 'APP', state, ...extra }
+  return { channelSessionId: 'chan-1', channelType: 'APP', state, hasProvenFactor: false, ...extra }
 }
 
 function toolNext(toolId: string, step: string, toolSessionId = 'ts-1') {

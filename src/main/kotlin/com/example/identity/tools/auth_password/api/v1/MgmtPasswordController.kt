@@ -21,6 +21,7 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.enums.ParameterIn
 import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.ResponseEntity
@@ -75,7 +76,10 @@ class MgmtPasswordController(
     }
 
     @PostMapping("$API_V1/tools/enroll-password/mgmt/{accountId}")
-    @Operation(summary = "Replace the account's password credential with a new one")
+    @Operation(
+        summary = "Replace the account's password credential with a new one",
+        responses = [ApiResponse(responseCode = "204", description = "Replaced - no body.")]
+    )
     @Parameter(name = "Authorization", `in` = ParameterIn.HEADER, required = false, schema = Schema(type = "string"))
     fun set(
         @PathVariable accountId: AccountId,

@@ -57,7 +57,7 @@ class KcChannelController(
                 description = "First call for a fresh Keycloak flow run - offers every kc-usable method.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
+                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
                       "next": {"type": "orchestrator", "context": "auth", "step": "selectMethod"},
                       "stepData": {"kind": "select-method", "options": ["ident-fsc", "auth-password"]}
                     }

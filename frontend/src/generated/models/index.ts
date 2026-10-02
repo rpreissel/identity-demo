@@ -357,7 +357,7 @@ export interface ChannelBlock {
      * @type {boolean}
      * @memberof ChannelBlock
      */
-    hasProvenFactor?: boolean;
+    hasProvenFactor: boolean;
     /**
      * 
      * @type {string}
@@ -376,9 +376,9 @@ export interface ChannelCreateRequest {
      * @type {Array<string>}
      * @memberof ChannelCreateRequest
      */
-    availableTools?: Array<string>;
+    availableTools: Array<string>;
     /**
-     * The entry intent's own name, case-insensitively (AuthIntent.fromRequest) - no separate wire vocabulary. Omitted/fast_access (default): DeviceAccountLink found -> LOGIN, else REGISTRATION. lookup_login: always offers lookup-based login (email + credential), even on a linked device. register: always starts fresh REGISTRATION, even on a linked device (second account).
+     * The entry intent's own name, case-insensitively (AuthIntent.fromRequest) - no separate wire vocabulary. Omitted/fast_access (default): DeviceAccountLink found -> LOGIN, else REGISTRATION. lookup_login: always offers lookup-based login (email + credential), even on a linked device. register: always starts fresh REGISTRATION, even on a linked device (second account). confirm_peer_login: a cold app approves a waiting web login (QR pairing) for the device's linked account.
      * @type {string}
      * @memberof ChannelCreateRequest
      */
@@ -398,7 +398,8 @@ export interface ChannelCreateRequest {
 export const ChannelCreateRequestIntentEnum = {
     fast_access: 'fast_access',
     register: 'register',
-    lookup_login: 'lookup_login'
+    lookup_login: 'lookup_login',
+    confirm_peer_login: 'confirm_peer_login'
 } as const;
 export type ChannelCreateRequestIntentEnum = typeof ChannelCreateRequestIntentEnum[keyof typeof ChannelCreateRequestIntentEnum];
 

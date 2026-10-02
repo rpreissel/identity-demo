@@ -65,7 +65,7 @@ class ChannelCreationController(
                 description = "New channel - an unrecognized device lands on the identification choice.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
+                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
                       "next": {"type": "orchestrator", "context": "registration", "step": "selectIdentificationMethod"},
                       "stepData": {"kind": "select-method", "options": ["ident-fsc", "ident-eid"]}
                     }
@@ -157,7 +157,7 @@ class ChannelController(
                 description = "A cancelled REGISTER journey restarts the same entry intent from scratch.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
+                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
                       "next": {"type": "tool", "toolId": "ident-fsc", "step": "input"}
                     }
                 """)])]

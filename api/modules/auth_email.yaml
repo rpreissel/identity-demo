@@ -104,7 +104,7 @@ paths:
               example:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: REGISTERING
+                  state: ANONYMOUS
                 next:
                   step: auth
                   toolId: auth-email-lookup
@@ -313,7 +313,7 @@ paths:
               example:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: REGISTERING
+                  state: ANONYMOUS
                 next:
                   step: codeInput
                   toolId: auth-email-lookup
@@ -375,7 +375,7 @@ paths:
                   value:
                     channel:
                       channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                      state: REGISTERING
+                      state: ANONYMOUS
                     demo:
                       tan: '123456'
                     next:

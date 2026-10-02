@@ -19,8 +19,9 @@ Es gibt viele Tests, aber keiner prüft das unveränderte System von außen übe
 - Die Playwright-Specs in `frontend/e2e/` laufen wirklich von außen, aber über die Oberfläche. Sie
   decken nur wenige Abläufe ab.
 - `OpenApiSnapshotTest` und `checkPublishedApiCompatibility` sichern die **Form** der API
-  (`api/openapi.yaml`, `api/published/v1.yaml`). Statuscodes, Folgen von Schritten und Regeln wie
-  die Kanalbindung prüfen sie nicht.
+  (`api/openapi.yaml`, `api/published/v1.yaml`). Die Integrationstests prüfen zusätzlich jeden
+  Erfolgsstatus gegen den Vertrag (`ContractStatusCheck`), aber nur im eigenen Prozess. Folgen von
+  Schritten und Regeln wie die Kanalbindung prüft keiner dieser Wächter.
 
 ## 2) Ziel und Abgrenzung
 
@@ -160,9 +161,8 @@ Damit fällt eine Reimplementierung schon bei groben Abweichungen durch.
 - **Uhr.** Ohne Haken für die Uhr bleiben Ablauf und Sperrzeiten ungetestet. Ein Demo-Endpunkt zum
   Verstellen der Zeit würde das lösen, erweitert aber den Test-Contract.
 - **Heutiges Verhalten oder Zielbild?** Laut [AGENTS.md](../../AGENTS.md) hat die Doku Vorrang vor
-  dem Code. Ein Beispiel für eine Abweichung: `docs/05-api.md` sagt, das Anlegen einer Tool-Sitzung
-  liefere 201 ohne Inhalt; die Controller liefern 201 mit Body. Vor dem Festschreiben muss je Fall
-  entschieden werden, ob Code oder Doku angepasst wird.
+  dem Code. Abweichungen wie die in `DPoP-demo-hcdn` (Statuscodes im Vertrag, die der Server nie
+  liefert) müssen vor dem Festschreiben je Fall entschieden werden: Code oder Doku anpassen.
 - **Versionierung des Contracts.** Wenn sich Verhalten bewusst ändert, muss die Suite mitgehen.
   Denkbar ist eine Regel wie bei `api/published/v1.yaml`: Die Suite gehört zu einer API-Version,
   und nur ein neuer Major-Stand darf bestehende Tests brechen.

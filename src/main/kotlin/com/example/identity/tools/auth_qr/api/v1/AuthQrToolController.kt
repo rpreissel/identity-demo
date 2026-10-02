@@ -12,6 +12,9 @@ import com.example.identity.contract.tool_api.ToolJourney
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
@@ -42,7 +45,11 @@ class AuthQrToolController(
 ) {
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/auth-qr")
-    @Operation(summary = "Activate auth-qr", description = "No request body: toolId already carries kind and method.")
+    @Operation(
+        summary = "Activate auth-qr",
+        description = "No request body: toolId already carries kind and method.",
+        responses = [ApiResponse(responseCode = "201", content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class))])]
+    )
     fun activate(
         @PathVariable channelSessionId: ChannelSessionId,
         @BindingKey bindingKeyRef: String,

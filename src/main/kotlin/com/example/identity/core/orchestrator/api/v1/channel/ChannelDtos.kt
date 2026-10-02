@@ -16,9 +16,10 @@ data class ChannelCreateRequest(
         description = "The entry intent's own name, case-insensitively (AuthIntent.fromRequest) - no separate wire " +
             "vocabulary. Omitted/fast_access (default): DeviceAccountLink found -> LOGIN, else REGISTRATION. " +
             "lookup_login: always offers lookup-based login (email + credential), even on a linked device. " +
-            "register: always starts fresh REGISTRATION, even on a linked device (second account).",
+            "register: always starts fresh REGISTRATION, even on a linked device (second account). " +
+            "confirm_peer_login: a cold app approves a waiting web login (QR pairing) for the device's linked account.",
         example = "register",
-        allowableValues = ["fast_access", "register", "lookup_login"]
+        allowableValues = ["fast_access", "register", "lookup_login", "confirm_peer_login"]
     )
     val intent: String? = null,
     @field:NotEmpty
@@ -28,7 +29,7 @@ data class ChannelCreateRequest(
             "lifetime; a candidate list never offers a toolId outside this set, and activating one directly fails too.",
         example = "[\"ident-fsc\", \"enroll-sms\", \"auth-sms\"]"
     )
-    val availableTools: List<String> = emptyList()
+    val availableTools: List<String>
 )
 
 @Schema(

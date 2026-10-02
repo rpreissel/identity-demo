@@ -10,7 +10,9 @@ import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolJourney
 import com.example.identity.contract.tool_api.ToolOutcome
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
@@ -52,7 +54,8 @@ class ConfirmQrLoginToolController(
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/confirm-qr-login")
     @Operation(
         summary = "Activate confirm-qr-login",
-        description = "Optional body: {pairingCode}, when already known (e.g. from a demo-link deep link) - skips the input step."
+        description = "Optional body: {pairingCode}, when already known (e.g. from a demo-link deep link) - skips the input step.",
+        responses = [ApiResponse(responseCode = "201", content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class))])]
     )
     fun activate(
         @PathVariable channelSessionId: ChannelSessionId,

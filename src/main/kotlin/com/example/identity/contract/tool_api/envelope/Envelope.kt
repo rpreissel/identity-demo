@@ -60,7 +60,7 @@ data class ChannelBlock(
             "every response, tool responses included; says nothing about which factor.",
         example = "false"
     )
-    val hasProvenFactor: Boolean = false,
+    val hasProvenFactor: Boolean,
     @field:Schema(example = "loa2")
     val currentAcr: String? = null,
     @field:Schema(example = "[\"sms\", \"password\"]")

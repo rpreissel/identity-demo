@@ -6,6 +6,7 @@ import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.core.orchestrator.admin.ADMIN_API
 import com.example.identity.core.orchestrator.dpop.DpopProof
 import com.example.identity.core.orchestrator.support.AccountFixtures
+import com.example.identity.core.orchestrator.support.ContractStatusCheck
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
 import com.nimbusds.jose.jwk.JWK
 import io.mockk.every
@@ -56,7 +57,9 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
     protected lateinit var mailServer: MailServer
 
     // The JDK's default request factory can't send PATCH; HttpClient5 (already a test dep) can.
-    protected val restTemplate = RestTemplate(HttpComponentsClientHttpRequestFactory())
+    protected val restTemplate = RestTemplate(HttpComponentsClientHttpRequestFactory()).apply {
+        interceptors.add(ContractStatusCheck())
+    }
 
     protected val mapType = object : ParameterizedTypeReference<Map<String, Any?>>() {}
 

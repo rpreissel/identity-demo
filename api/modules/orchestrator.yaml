@@ -169,16 +169,20 @@ components:
           description: 'The entry intent''s own name, case-insensitively (AuthIntent.fromRequest) - no separate wire vocabulary.
             Omitted/fast_access (default): DeviceAccountLink found -> LOGIN, else REGISTRATION. lookup_login: always offers
             lookup-based login (email + credential), even on a linked device. register: always starts fresh REGISTRATION,
-            even on a linked device (second account).'
+            even on a linked device (second account). confirm_peer_login: a cold app approves a waiting web login (QR pairing)
+            for the device''s linked account.'
           enum:
           - fast_access
           - register
           - lookup_login
+          - confirm_peer_login
           example: register
           type: string
         requiredAcr:
           example: loa2
           type: string
+      required:
+      - availableTools
       type: object
     ChannelPatchRequest:
       description: Raises the channel's durable required-ACR floor; the step-up trigger of the App channel (docs/05-api.md,
@@ -966,7 +970,7 @@ paths:
               example:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: REGISTERING
+                  state: ANONYMOUS
                 next:
                   context: registration
                   step: selectIdentificationMethod
@@ -1368,7 +1372,7 @@ paths:
               example:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: REGISTERING
+                  state: ANONYMOUS
                 next:
                   step: input
                   toolId: ident-fsc
@@ -1755,8 +1759,8 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: OK
+        '204':
+          description: Recorded - no body.
         default:
           content:
             application/json:
@@ -1799,7 +1803,7 @@ paths:
               example:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: REGISTERING
+                  state: ANONYMOUS
                 next:
                   context: auth
                   step: selectMethod
@@ -1928,8 +1932,8 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          description: OK
+        '204':
+          description: Recorded - no body.
         default:
           content:
             application/json:
@@ -2109,7 +2113,7 @@ paths:
               example:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: REGISTERING
+                  state: ANONYMOUS
                 next:
                   context: registration
                   step: selectIdentificationMethod

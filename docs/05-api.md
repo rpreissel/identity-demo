@@ -96,6 +96,12 @@ zweite Quelle, sondern ein Ausschnitt: Eine Änderung an einem SMS-Endpunkt steh
 `api/modules/auth_sms.yaml` (knapp 500 Zeilen) statt irgendwo in über 5000 Zeilen. Die Gruppen
 leitet `ModuleApiGroups` aus den vorhandenen `@RestController` ab, nicht aus einer gepflegten Liste.
 
+Der Snapshot sichert nur, dass die Datei zu den Annotationen passt, nicht, dass der Server sendet,
+was dort steht. Deshalb läuft jede Anfrage der Integrationstests durch `ContractStatusCheck`: Ein
+Erfolgsstatus (2xx), den `api/openapi.yaml` für die Operation nicht deklariert, lässt den Test
+scheitern. Fehlerstatus deklariert der Vertrag nicht je Operation; sie folgen dem Fehlervertrag
+(`ErrorResponse`).
+
 Ein Schema, das mehr als ein Modul nutzt und das im App-Vertrag steht (das Antwortformat
 `ChannelResponse` mit allem, was dazugehört, und `ErrorResponse`), steht nur in `api/openapi.yaml`.
 Die Moduldateien verweisen mit `../openapi.yaml#/components/schemas/…` darauf. Sonst enthielte jede
@@ -234,8 +240,8 @@ Pfade:
 - Rückfrage beantworten: `POST .../{channelSessionId}/answer` mit `{"answer": "accept"|"decline"}` –
   der gemeinsame Endpunkt für jeden `Prompt` (siehe unten)
 - Tool über den Kanal anlegen: `POST .../{channelSessionId}/tools/{toolId}` – `201` mit
-  `Location: .../tools/{toolSessionId}/{toolId}` (ohne Inhalt; die `toolId` trägt Art und Verfahren
-  zusammen)
+  `Location: .../tools/{toolSessionId}/{toolId}` (Anfrage ohne Inhalt, die `toolId` trägt Art und
+  Verfahren zusammen; die Antwort ist wie jede andere `channel`, `next`, `stepData`)
 - Tool fortschreiben und lesen: im Regelfall `PATCH`/`GET /orchestrator/api/v1/tools/{toolSessionId}/{toolId}`
 - Zurück zur Auswahl: `POST /orchestrator/api/v1/tools/{toolSessionId}/{toolId}/back`
 - Tool-Versuch verwerfen (Verfahren ablehnen): `DELETE /orchestrator/api/v1/tools/{toolSessionId}/{toolId}`
@@ -769,7 +775,7 @@ Inhalt der Anfrage (alle Felder optional, `KcChannelUpsertRequest`):
 - **`amr`** — Liste `{nativeToolId, amrSourceId}`: was ein eigenes Keycloak-Verfahren (nie ein Tool des Orchestrators) in DIESEM Anmeldedurchlauf nachgewiesen hat. Verfahren, LoA und Faktortypen ermittelt der Orchestrator auf dem Server über `nativeToolId` (`NativeAuthenticatorDescriptor`). Es ist immer die VOLLSTÄNDIGE, derzeit gültige Menge, keine Änderungsliste.
 - **`restoreData` / `kcSessionId`** — Ein signiertes Token aus `GET .../restore-data` einer FRÜHEREN, unabhängigen `ChannelSession` derselben Keycloak-Nutzersitzung. Es gibt die dort erbrachten Nachweise samt ihrem Zeitpunkt an einen frisch angelegten Kanal weiter; über `loa1` zählen sie nur 30 Minuten ([Orchestrierung](04-orchestrierung.md) Abschnitt 8). `kcSessionId` bindet das Token an Keycloaks dauerhaftes `UserSessionModel`. Ein falsches, abgelaufenes oder manipuliertes Token wird als `null` behandelt, nie als Fehler.
 - **`availableTools`** — Welche `toolId`s das Keycloak-Theme darstellen kann (ein `WebToolRenderer` je Tool). Nur beim ersten Aufruf gelesen; das Gegenstück zu `availableTools` bei `POST /app/channels`.
-- **`intent`** — Nur beim ersten Aufruf gelesen. Fehlt er, gilt `web_select_method`; sonst ist nur `register` erlaubt. Ein unbekannter oder unzulässiger Wert wird abgelehnt (`409`).
+- **`intent`** — Nur beim ersten Aufruf gelesen. Fehlt er, gilt `web_select_method`; erlaubt sind nur `web_select_method` und `register`. Ein unbekannter oder unzulässiger Wert wird abgelehnt (`409`).
 
 `GET .../{channelSessionId}/restore-data?kcSessionId=...` gibt es nur für den Aufruf, den Keycloak am
 Ende des Anmeldeablaufs macht: Es liefert die gesammelten Nachweise dieses Kanals als Token, gebunden
@@ -953,8 +959,10 @@ Keycloak nutzen für Eingabe- und Prüfschritte dieselben kanalneutralen Tool-UR
   hält nur Daten zum Lebenszyklus (`toolSessionId`, `journeyId`, Zeitstempel): Die `toolId` ergibt
   sich aus der Route, `stepData` aus den Daten des Moduls, und das Versuchsbudget gilt für die ganze
   Journey (siehe [Domänenmodell](02-domaenenmodell.md)).
-- `accountId` und `personId` gehören nicht zum fachlichen Antwortvertrag; einzige Ausnahme ist das
-  `demo`-Objekt.
+- Die Antworten eines Ablaufs (`ChannelResponse`) nennen weder `accountId` noch `personId`;
+  Ausnahmen sind das `demo`-Objekt und im Web-Kanal `authData.subject`, über das Keycloak den
+  Nutzer setzt. Ausdrücklich liefern sie nur eigene Endpunkte: `GET /app/channels/device-link`,
+  `GET .../idclaims` und die Kontoabfrage der kc-Fassade (`/kc/accounts`).
 
 Für Keycloak sind `auth-sms`, `auth-password` und `auth-email` (Login und Step-up) der einzige
 Fall, den der App-Zugang nicht schon abdeckt. Anlegen, `PATCH` und `GET` laufen aber genau wie in

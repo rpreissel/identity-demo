@@ -69,12 +69,12 @@ paths:
           format: uuid
           type: string
       responses:
-        '200':
+        '201':
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: ../openapi.yaml#/components/schemas/ChannelResponse
-          description: OK
+          description: Created
         default:
           content:
             application/json:
@@ -101,12 +101,12 @@ paths:
           format: uuid
           type: string
       responses:
-        '200':
+        '201':
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: ../openapi.yaml#/components/schemas/ChannelResponse
-          description: OK
+          description: Created
         default:
           content:
             application/json:
@@ -138,12 +138,12 @@ paths:
             schema:
               $ref: '#/components/schemas/ConfirmQrLoginActivateRequest'
       responses:
-        '200':
+        '201':
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: ../openapi.yaml#/components/schemas/ChannelResponse
-          description: OK
+          description: Created
         default:
           content:
             application/json:
@@ -170,12 +170,12 @@ paths:
           format: uuid
           type: string
       responses:
-        '200':
+        '201':
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: ../openapi.yaml#/components/schemas/ChannelResponse
-          description: OK
+          description: Created
         default:
           content:
             application/json:

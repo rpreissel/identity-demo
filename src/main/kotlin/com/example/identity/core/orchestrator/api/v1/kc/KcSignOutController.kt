@@ -10,6 +10,7 @@ import com.example.identity.core.orchestrator.kc.PeerAuthValidator
 import com.example.identity.contract.tool_api.envelope.API_V1
 import com.example.identity.core.orchestrator.dpop.buildRequestUrl
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
@@ -34,7 +35,10 @@ class KcSignOutController(
 ) {
 
     @PostMapping("$API_V1/kc/accounts/{accountId}/sign-outs")
-    @Operation(summary = "Keycloak ended one session of this account")
+    @Operation(
+        summary = "Keycloak ended one session of this account",
+        responses = [ApiResponse(responseCode = "204", description = "Recorded - no body.")]
+    )
     fun signedOut(
         @PathVariable accountId: AccountId,
         @RequestParam kcSessionId: String,
@@ -51,7 +55,10 @@ class KcSignOutController(
 
     /** The same for a process access (ADR-48); the binding names the invitation. */
     @PostMapping("$API_V1/kc/invitations/{invitation}/sign-outs")
-    @Operation(summary = "Keycloak ended one session of this invitation")
+    @Operation(
+        summary = "Keycloak ended one session of this invitation",
+        responses = [ApiResponse(responseCode = "204", description = "Recorded - no body.")]
+    )
     fun invitationSignedOut(
         @PathVariable invitation: InvitationId,
         @RequestParam kcSessionId: String,
