@@ -21,6 +21,18 @@ jackson2 = "2.19.0"
 shadow = "9.2.2"
 # Argon2id fuer Passwoerter (Spring Securitys Argon2PasswordEncoder braucht die Implementierung).
 bouncycastle = "1.81"
+# Keycloak-Server, gegen den keycloak-extension baut. Die Image-Tags in compose.yml,
+# keycloak-extension/Dockerfile und openshift/local-up.sh muessen dazu passen.
+keycloak = "26.6.4"
+# keycloak-admin-client wird unabhaengig vom Server released; 26.0.12 ist die letzte Version auf
+# Maven Central. Das REST-API ist innerhalb von Keycloak 26.x stabil.
+keycloak-admin-client = "26.0.12"
+# Folgt der Keycloak-Version: resteasy.version in keycloak-parent.
+resteasy = "6.2.16.Final"
+jakarta-ws-rs = "3.1.0"
+zxing = "3.5.3"
+jsr305 = "3.0.2"
+junit = "6.0.3"
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
@@ -54,7 +66,11 @@ bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref 
 jackson2-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson2" }
 jackson2-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson2" }
 httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5" }
-kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+kotlin-scripting-jvm-host = { module = "org.jetbrains.kotlin:kotlin-scripting-jvm-host", version.ref = "kotlin" }
+kotlin-scripting-jvm = { module = "org.jetbrains.kotlin:kotlin-scripting-jvm", version.ref = "kotlin" }
+kotlin-scripting-common = { module = "org.jetbrains.kotlin:kotlin-scripting-common", version.ref = "kotlin" }
+kotlin-script-runtime = { module = "org.jetbrains.kotlin:kotlin-script-runtime", version.ref = "kotlin" }
 # Jackson 3 Kotlin module: JourneyState is persisted as JSON (data classes + sealed hierarchies).
 jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin" }
 # Jackson 2 Kotlin module for swagger-core (springdoc), which still runs on Jackson 2: without it the
@@ -69,3 +85,17 @@ kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.
 kotest-extensions-spring = { module = "io.kotest:kotest-extensions-spring", version.ref = "kotest" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 springmockk = { module = "com.ninja-squad:springmockk", version.ref = "springmockk" }
+keycloak-server-spi = { module = "org.keycloak:keycloak-server-spi", version.ref = "keycloak" }
+keycloak-server-spi-private = { module = "org.keycloak:keycloak-server-spi-private", version.ref = "keycloak" }
+keycloak-services = { module = "org.keycloak:keycloak-services", version.ref = "keycloak" }
+keycloak-model-storage = { module = "org.keycloak:keycloak-model-storage", version.ref = "keycloak" }
+keycloak-model-storage-private = { module = "org.keycloak:keycloak-model-storage-private", version.ref = "keycloak" }
+keycloak-common = { module = "org.keycloak:keycloak-common", version.ref = "keycloak" }
+keycloak-core = { module = "org.keycloak:keycloak-core", version.ref = "keycloak" }
+keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloak-admin-client" }
+resteasy-core = { module = "org.jboss.resteasy:resteasy-core", version.ref = "resteasy" }
+jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version.ref = "jakarta-ws-rs" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+jsr305 = { module = "com.google.code.findbugs:jsr305", version.ref = "jsr305" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
