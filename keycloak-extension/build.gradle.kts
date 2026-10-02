@@ -52,6 +52,11 @@ dependencies {
     testImplementation(libs.keycloak.model.storage.private)
     testImplementation(libs.keycloak.common)
     testImplementation(libs.keycloak.core)
+    // AccountTokenSessionTest: der Grant selbst und Keycloaks Gueltigkeitspruefung der Sitzung
+    // (AuthenticationManager.isSessionValid). Ohne Transitive, die Tests brauchen keinen Server.
+    testImplementation(libs.keycloak.services) { isTransitive = false }
+    // Die Fehlerantwort des Grants ist eine WebApplicationException; sie braucht eine JAX-RS-Laufzeit.
+    testRuntimeOnly(libs.resteasy.core)
     // OrchestratorNextDispatchTest: MultivaluedMap, zur Laufzeit von Keycloak gestellt (RESTEasy).
     testImplementation(libs.jakarta.ws.rs.api)
     testImplementation(platform(libs.junit.bom))

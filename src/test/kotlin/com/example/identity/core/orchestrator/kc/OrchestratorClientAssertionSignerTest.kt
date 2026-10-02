@@ -68,6 +68,25 @@ class OrchestratorClientAssertionSignerTest : BehaviorSpec({
                 jwt.verify(ECDSAVerifier(signer.publicKeyOf(ADMIN_CLIENT)!!)) shouldBe false
                 jwt.verify(ECDSAVerifier(signer.publicKeyOf(KeycloakMigrationToken.CLIENT_ID)!!)) shouldBe false
             }
+            then("it names the client as issuer and subject, and the realm as its one audience") {
+                jwt.jwtClaimsSet.issuer shouldBe APP_TOKEN_CLIENT
+                jwt.jwtClaimsSet.subject shouldBe APP_TOKEN_CLIENT
+                jwt.jwtClaimsSet.audience shouldBe listOf(REALM)
+            }
+            then("it is valid for 60 seconds from now (ADR-9)") {
+                jwt.jwtClaimsSet.issueTime.toInstant() shouldBe TEST_NOW
+                jwt.jwtClaimsSet.expirationTime.toInstant() shouldBe TEST_NOW.plusSeconds(60)
+            }
+        }
+
+        `when`("signing two assertions for the same client") {
+            val first = SignedJWT.parse(signer.assertionFor(APP_TOKEN_CLIENT, REALM)).jwtClaimsSet.jwtid
+            val second = SignedJWT.parse(signer.assertionFor(APP_TOKEN_CLIENT, REALM)).jwtClaimsSet.jwtid
+
+            then("each carries a fresh jti, so Keycloak can refuse a replay (ADR-9)") {
+                first shouldNotBe null
+                second shouldNotBe first
+            }
         }
     }
 
