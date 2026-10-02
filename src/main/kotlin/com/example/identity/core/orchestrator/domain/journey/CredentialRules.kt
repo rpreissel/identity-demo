@@ -6,6 +6,8 @@ import com.example.identity.core.account.AuthMethodView
 import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.ToolCatalog
+import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
+import com.example.identity.core.orchestrator.domain.policy.Reachability
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.CallerKeyBinding
@@ -97,6 +99,30 @@ class MethodDependencies(
         }
     }
 
+    /**
+     * Revoking [target]: it goes with its dependents, unless the account could then no longer reach
+     * the channel's [floor] (self-lockout guard). Dependents come first in [Removal.Allowed.falling],
+     * so no dependent credential outlives what it depends on.
+     */
+    fun removal(target: AuthMethodView, policy: AuthPolicy, floor: AcrLevel): Removal {
+        val dependents = dependentsOf(target)
+        return guarded(dependents + target, dependents, policy, floor)
+    }
+
+    /**
+     * Withdrawing [attributeType]: every credential that requires it falls, unless the account could
+     * then no longer reach the channel's [floor]. The attribute itself is not a method, so
+     * [Removal.Allowed.falling] holds only the dependents.
+     */
+    fun retraction(attributeType: AttributeType, policy: AuthPolicy, floor: AcrLevel): Removal {
+        val dependents = dependentsOfLostClaims(lost = setOf(attributeType), falling = emptyList())
+        return guarded(dependents, dependents, policy, floor)
+    }
+
+    private fun guarded(falling: List<AuthMethodView>, dependents: List<AuthMethodView>, policy: AuthPolicy, floor: AcrLevel): Removal =
+        if (policy.reachability(without(falling), floor) is Reachability.Reachable) Removal.Allowed(falling)
+        else Removal.BelowFloor(alsoFalling = dependents.map { it.method }.distinct())
+
     /** The account as it would be with [falling] deactivated - what the floor check runs against. */
     fun without(falling: Collection<AuthMethodView>): AccountProfile {
         val ids = falling.map { it.id }.toSet()
@@ -116,4 +142,13 @@ class MethodDependencies(
         catalog.descriptors()
             .filter { it.method == instance.method && it.role == ToolRole.ENROLLMENT }
             .any { descriptor -> descriptor.requires.any { it.attributeType in attributeTypes } }
+}
+
+/** What [MethodDependencies.removal] and [MethodDependencies.retraction] decide. */
+sealed interface Removal {
+    /** May go: revoke [falling] in this order. */
+    data class Allowed(val falling: List<AuthMethodView>) : Removal
+
+    /** Refused: the channel's floor would be out of reach; [alsoFalling] names the dependents' methods. */
+    data class BelowFloor(val alsoFalling: List<String>) : Removal
 }

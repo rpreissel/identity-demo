@@ -13,6 +13,7 @@ import com.example.identity.core.orchestrator.domain.journey.checkCorrelation
 import com.example.identity.core.orchestrator.domain.journey.checkAttestationMove
 import com.example.identity.core.orchestrator.domain.journey.accountOfProof
 import com.example.identity.core.orchestrator.domain.journey.MethodDependencies
+import com.example.identity.core.orchestrator.domain.journey.Removal
 import com.example.identity.core.orchestrator.domain.journey.IdentificationTarget
 import com.example.identity.core.orchestrator.domain.journey.AccountMerge
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -24,7 +25,6 @@ import com.example.identity.core.account.RetractionSource
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
-import com.example.identity.core.orchestrator.domain.policy.Reachability
 import com.example.identity.core.orchestrator.session.AccountDeletionService
 import com.example.identity.core.orchestrator.session.AppTokenSessionService
 import com.example.identity.core.orchestrator.session.SessionEvidenceService
@@ -377,21 +377,15 @@ class JourneyActionExecutor(
         val target = account.authenticationMethods.firstOrNull { it.active && it.id == methodInstanceId }
             ?: throw OrchestratorException.notFound(Text("No such active method for this account"), "methodInstanceId=${methodInstanceId}")
 
-        val dependencies = methodDependencies(account)
-        val dependents = dependencies.dependentsOf(target)
-        val afterRemoval = dependencies.without(listOf(target) + dependents)
-        if (authPolicy.reachability(afterRemoval, contextFactory.acrFloorOf(channel)) !is Reachability.Reachable) {
-            val alsoFalling = dependents.map { it.method }.distinct()
-            throw OrchestratorException.invalidState(
-                if (alsoFalling.isEmpty()) Text("Deaktivieren von '{method}' wuerde das Mindestniveau dieses Kanals unterschreiten", "method" to target.method)
-                else Text("Deaktivieren von '{method}' (zusammen mit {alsoFalling}) wuerde das Mindestniveau dieses Kanals unterschreiten", "method" to target.method, "alsoFalling" to alsoFalling.joinToString(", "))
+        when (val removal = methodDependencies(account).removal(target, authPolicy, contextFactory.acrFloorOf(channel))) {
+            is Removal.BelowFloor -> throw OrchestratorException.invalidState(
+                if (removal.alsoFalling.isEmpty()) Text("Deaktivieren von '{method}' wuerde das Mindestniveau dieses Kanals unterschreiten", "method" to target.method)
+                else Text("Deaktivieren von '{method}' (zusammen mit {alsoFalling}) wuerde das Mindestniveau dieses Kanals unterschreiten", "method" to target.method, "alsoFalling" to removal.alsoFalling.joinToString(", "))
             )
+            // revokeMethod, not deactivate: the owning module's credential row is deleted, the
+            // deactivated instance stays for account deletion to walk (docs/09-dpop.md).
+            is Removal.Allowed -> removal.falling.forEach { accountDeletionService.revokeMethod(accountId, it.id) }
         }
-        // revokeMethod, not deactivate: the owning module's credential row is deleted, the
-        // deactivated instance stays for account deletion to walk (docs/09-dpop.md).
-        // Dependents first, so no dependent credential outlives what it depends on.
-        dependents.forEach { accountDeletionService.revokeMethod(accountId, it.id) }
-        accountDeletionService.revokeMethod(accountId, methodInstanceId)
     }
 
     /**
@@ -410,18 +404,13 @@ class JourneyActionExecutor(
             throw OrchestratorException.notFound(Text("'{attributeType}' ist fuer dieses Konto nicht bestaetigt", "attributeType" to attributeType.wireName))
         }
 
-        val dependencies = methodDependencies(account)
-        val falling = dependencies.dependentsOfLostClaims(lost = setOf(attributeType), falling = emptyList())
-        val afterRetraction = dependencies.without(falling)
-        if (authPolicy.reachability(afterRetraction, contextFactory.acrFloorOf(channel)) !is Reachability.Reachable) {
-            val alsoFalling = falling.map { it.method }.distinct()
-            throw OrchestratorException.invalidState(
-                if (alsoFalling.isEmpty()) Text("Zuruecknehmen von '{attributeType}' wuerde das Mindestniveau dieses Kanals unterschreiten", "attributeType" to attributeType.wireName)
-                else Text("Zuruecknehmen von '{attributeType}' (zusammen mit {alsoFalling}) wuerde das Mindestniveau dieses Kanals unterschreiten", "attributeType" to attributeType.wireName, "alsoFalling" to alsoFalling.joinToString(", "))
+        when (val retraction = methodDependencies(account).retraction(attributeType, authPolicy, contextFactory.acrFloorOf(channel))) {
+            is Removal.BelowFloor -> throw OrchestratorException.invalidState(
+                if (retraction.alsoFalling.isEmpty()) Text("Zuruecknehmen von '{attributeType}' wuerde das Mindestniveau dieses Kanals unterschreiten", "attributeType" to attributeType.wireName)
+                else Text("Zuruecknehmen von '{attributeType}' (zusammen mit {alsoFalling}) wuerde das Mindestniveau dieses Kanals unterschreiten", "attributeType" to attributeType.wireName, "alsoFalling" to retraction.alsoFalling.joinToString(", "))
             )
+            is Removal.Allowed -> retraction.falling.forEach { accountDeletionService.revokeMethod(accountId, it.id) }
         }
-
-        falling.forEach { accountDeletionService.revokeMethod(accountId, it.id) }
         accountService.retractAttribute(accountId, attributeType, RetractionSource.ACCOUNT_HOLDER, reason = "attribute withdrawn")
     }
 

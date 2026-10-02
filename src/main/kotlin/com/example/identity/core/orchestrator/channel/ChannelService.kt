@@ -81,11 +81,8 @@ class ChannelService(
         // resets the attempt budget.
         channelCreationRateLimitService.recordAndAssertWithinBudget(bindingKeyRef)
 
-        val entryIntent = AuthIntent.fromRequest(intent)
-            ?: throw OrchestratorException.invalidState(Text("Unbekannter Vorgang"), "intent=${intent}")
-        if (!entryIntent.isEntryIntent) {
-            throw OrchestratorException.invalidState(Text("Dieser Vorgang kann keinen Kanal eroeffnen"), "entryIntent=${entryIntent}")
-        }
+        val entryIntent = AuthIntent.fromRequest(intent, ChannelType.APP)
+            ?: throw OrchestratorException.invalidState(Text("Dieser Vorgang kann keinen Kanal eroeffnen"), "intent=${intent}")
 
         // CONFIRM_PEER_LOGIN depends on the link like FAST_ACCESS: without one its strategy aborts.
         val linkedAccountId = if (entryIntent.startsFromDeviceLink) {
@@ -251,9 +248,7 @@ class ChannelService(
      */
     fun startLogout(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
         val channel = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
-        if (channel.session.state != ChannelState.AUTHENTICATED) {
-            throw OrchestratorException.invalidState(Text("Channel must be AUTHENTICATED to start a logout journey"))
-        }
+        requireStartable(channel, AuthIntent.LOGOUT)
         val activeJourney = journeyService.findActive(channelSessionId)
         if (activeJourney != null) {
             journeyService.cancel(activeJourney, channel)
@@ -317,13 +312,7 @@ class ChannelService(
 
     private fun startManage(channelSessionId: ChannelSessionId, bindingKeyRef: String, wish: ManageAuthMethodsState): ChannelResponse {
         val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
-        val channel = live.session
-        if (channel.state != ChannelState.AUTHENTICATED) {
-            throw OrchestratorException.invalidState(Text("Channel must be AUTHENTICATED to manage methods"))
-        }
-        // A process access (one-time password) is signed in without an account and serves only its process.
-        if (channel.accountId == null) throw OrchestratorException.invalidState(Text("Nur mit einem Konto moeglich"))
-
+        requireStartable(live, AuthIntent.MANAGE_AUTH_METHODS)
         val step = journeyService.start(live, AuthIntent.MANAGE_AUTH_METHODS, seed = wish)
         return responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)
     }
@@ -335,13 +324,7 @@ class ChannelService(
      */
     fun startPeerLogin(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
         val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
-        val channel = live.session
-        if (channel.state != ChannelState.AUTHENTICATED) {
-            throw OrchestratorException.invalidState(Text("Channel must be AUTHENTICATED to confirm a peer login"))
-        }
-        // A process access (one-time password) is signed in without an account and serves only its process.
-        if (channel.accountId == null) throw OrchestratorException.invalidState(Text("Nur mit einem Konto moeglich"))
-
+        requireStartable(live, AuthIntent.CONFIRM_PEER_LOGIN)
         val step = journeyService.start(
             live, AuthIntent.CONFIRM_PEER_LOGIN,
             seed = ConfirmPeerLoginState.Requested(startedAuthenticated = true)
@@ -355,15 +338,21 @@ class ChannelService(
      */
     fun startDeleteAccount(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
         val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
-        val channel = live.session
-        if (channel.state != ChannelState.AUTHENTICATED) {
-            throw OrchestratorException.invalidState(Text("Channel must be AUTHENTICATED to delete the account"))
-        }
-        // A process access (one-time password) is signed in without an account and serves only its process.
-        if (channel.accountId == null) throw OrchestratorException.invalidState(Text("Nur mit einem Konto moeglich"))
-
+        requireStartable(live, AuthIntent.DELETE_ACCOUNT)
         val step = journeyService.start(live, AuthIntent.DELETE_ACCOUNT)
         return responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)
+    }
+
+    /** Applies [AuthIntent.startRefusal] before a signed-in user's journey starts on [channel]. */
+    private fun requireStartable(channel: LiveChannel, intent: AuthIntent) {
+        when (intent.startRefusal(channel.session.state, hasAccount = channel.session.accountId != null)) {
+            null -> return
+            AuthIntent.StartRefusal.NOT_LOGGED_IN ->
+                throw OrchestratorException.invalidState(Text("Dieser Vorgang setzt eine Anmeldung voraus"), "intent=$intent")
+            AuthIntent.StartRefusal.NO_ACCOUNT ->
+                throw OrchestratorException.invalidState(Text("Nur mit einem Konto moeglich"), "intent=$intent")
+            AuthIntent.StartRefusal.NOT_STARTABLE_IN_SESSION -> error("$intent is not started from within a session")
+        }
     }
 
     /** The user's answer to what the current step waits on instead of a tool run. */

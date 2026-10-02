@@ -62,11 +62,52 @@ enum class AuthIntent {
     RE_IDENTIFY;
 
     /**
-     * The intents a client may name when entering a channel. The others are reached from an
-     * authenticated channel only; [CONFIRM_PEER_LOGIN] is both.
+     * The channel types a client may open with this intent (docs/04-orchestrierung.md Abschnitt 2).
+     * FAST_ACCESS, LOOKUP_LOGIN and CONFIRM_PEER_LOGIN assume an App channel with device binding;
+     * WEB_SELECT_METHOD is Keycloak's own entry. Empty for every intent reached only from within a
+     * session.
      */
+    val entryChannels: Set<ChannelType>
+        get() = when (this) {
+            FAST_ACCESS, LOOKUP_LOGIN, CONFIRM_PEER_LOGIN -> setOf(ChannelType.APP)
+            REGISTER -> setOf(ChannelType.APP, ChannelType.WEB)
+            WEB_SELECT_METHOD -> setOf(ChannelType.WEB)
+            STEP_UP, MANAGE_AUTH_METHODS, DELETE_ACCOUNT, LOGOUT, RE_IDENTIFY -> emptySet()
+        }
+
+    /** The intents a client may name when entering a channel; [CONFIRM_PEER_LOGIN] also runs on an open one. */
     val isEntryIntent: Boolean
-        get() = this == FAST_ACCESS || this == REGISTER || this == LOOKUP_LOGIN || this == WEB_SELECT_METHOD || this == CONFIRM_PEER_LOGIN
+        get() = entryChannels.isNotEmpty()
+
+    /**
+     * Started by a signed-in user from within a session, never as a sub-journey
+     * (docs/04-orchestrierung.md Abschnitt 2). Only on an AUTHENTICATED channel; see [startRefusal].
+     */
+    val startsOnLoggedInChannel: Boolean
+        get() = when (this) {
+            STEP_UP, MANAGE_AUTH_METHODS, CONFIRM_PEER_LOGIN, DELETE_ACCOUNT, LOGOUT -> true
+            FAST_ACCESS, REGISTER, LOOKUP_LOGIN, WEB_SELECT_METHOD, RE_IDENTIFY -> false
+        }
+
+    /**
+     * Acts on the account itself. A process access (one-time password, ADR-48) is signed in without
+     * an account and serves only its process, so it may log out but not manage, delete or confirm.
+     */
+    val requiresAccount: Boolean
+        get() = this == MANAGE_AUTH_METHODS || this == CONFIRM_PEER_LOGIN || this == DELETE_ACCOUNT
+
+    /**
+     * Why this intent may not start on an open channel in [state], or null if it may. The one place
+     * that decides "only on an AUTHENTICATED channel" for every intent a signed-in user starts.
+     */
+    fun startRefusal(state: ChannelState?, hasAccount: Boolean): StartRefusal? = when {
+        !startsOnLoggedInChannel -> StartRefusal.NOT_STARTABLE_IN_SESSION
+        state != ChannelState.AUTHENTICATED -> StartRefusal.NOT_LOGGED_IN
+        requiresAccount && !hasAccount -> StartRefusal.NO_ACCOUNT
+        else -> null
+    }
+
+    enum class StartRefusal { NOT_STARTABLE_IN_SESSION, NOT_LOGGED_IN, NO_ACCOUNT }
 
     /**
      * An APP channel entered with this intent starts from the account this device is linked to
@@ -94,13 +135,20 @@ enum class AuthIntent {
 
     companion object {
         /**
-         * `null` means FAST_ACCESS. Otherwise matches an entry intent's name case-insensitively
-         * (e.g. "register"), so there is no separate wire vocabulary. Returns null for anything
-         * else; the caller rejects it.
+         * The entry intent a client names when opening a [channel]. `null` means the channel's
+         * default: FAST_ACCESS for the App, WEB_SELECT_METHOD for Keycloak. Otherwise matches the
+         * intent's name case-insensitively (e.g. "register"), so there is no separate wire
+         * vocabulary. Returns null for an unknown name or one this channel type cannot be opened
+         * with; the caller rejects it.
          */
-        fun fromRequest(value: String?): AuthIntent? {
-            if (value == null) return FAST_ACCESS
-            return entries.firstOrNull { it.isEntryIntent && it.name.equals(value, ignoreCase = true) }
+        fun fromRequest(value: String?, channel: ChannelType): AuthIntent? {
+            if (value == null) {
+                return when (channel) {
+                    ChannelType.APP -> FAST_ACCESS
+                    ChannelType.WEB -> WEB_SELECT_METHOD
+                }
+            }
+            return entries.firstOrNull { channel in it.entryChannels && it.name.equals(value, ignoreCase = true) }
         }
     }
 }

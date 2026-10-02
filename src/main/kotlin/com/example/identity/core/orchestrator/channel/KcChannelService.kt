@@ -255,19 +255,10 @@ class KcChannelService(
         return restoreDataCodec.encode(RestoreData(accountId = channel.accountId, evidence = coreEvidence), kcSessionId)
     }
 
-    /**
-     * The kc facade's reading of `intent`: `null` means [AuthIntent.WEB_SELECT_METHOD], and only that
-     * or [AuthIntent.REGISTER] is accepted. FAST_ACCESS/LOOKUP_LOGIN assume an App channel with
-     * device binding (docs/04-orchestrierung.md #2/#3).
-     */
-    private fun entryIntentFor(intent: String?): AuthIntent {
-        if (intent == null) return AuthIntent.WEB_SELECT_METHOD
-        val resolved = AuthIntent.fromRequest(intent)
-        if (resolved != AuthIntent.WEB_SELECT_METHOD && resolved != AuthIntent.REGISTER) {
-            throw OrchestratorException.invalidState(Text("Dieser Vorgang ist im Web-Kanal nicht zugelassen"), "intent=${intent}")
-        }
-        return resolved
-    }
+    /** The kc facade's reading of `intent`: [AuthIntent.fromRequest] for a [ChannelType.WEB] channel. */
+    private fun entryIntentFor(intent: String?): AuthIntent =
+        AuthIntent.fromRequest(intent, ChannelType.WEB)
+            ?: throw OrchestratorException.invalidState(Text("Dieser Vorgang ist im Web-Kanal nicht zugelassen"), "intent=${intent}")
 
     companion object {
         // One Keycloak flow run; at its end [restoreData] caps it at the session's end (ADR-43).
