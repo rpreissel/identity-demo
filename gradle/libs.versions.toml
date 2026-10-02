@@ -23,7 +23,7 @@ shadow = "9.2.2"
 bouncycastle = "1.81"
 # Keycloak-Server, gegen den keycloak-extension baut. Die Image-Tags in compose.yml,
 # keycloak-extension/Dockerfile und openshift/local-up.sh muessen dazu passen.
-keycloak = "26.6.4"
+keycloak = "26.7.4"
 # keycloak-admin-client wird unabhaengig vom Server released; 26.0.12 ist die letzte Version auf
 # Maven Central. Das REST-API ist innerhalb von Keycloak 26.x stabil.
 keycloak-admin-client = "26.0.12"
