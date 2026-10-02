@@ -127,10 +127,9 @@ Die Liste ist nach Bereichen geordnet. Die Kennungen `DPoP-demo-…` sind Issues
 **Umgebung und Frontend** (ADR-35, Bereich 3):
 
 - TLS zwischen Keycloak und Orchestrator, Proxy-Header, Compose-Ports (`DPoP-demo-ai4x`).
-- Keycloak im optimierten Startmodus, H2-Konsole nur hinter Admin-Anmeldung (`DPoP-demo-9msv`),
+- Keycloak im optimierten Startmodus mit festem Hostnamen, DB-Passwort per Secret (`DPoP-demo-9msv`),
   Admin-Geheimnis auf OpenShift (`DPoP-demo-x25a`).
 - CSP im Frontend, Tokens des Web-Kanals, Thumbprint nach RFC 7638 (`DPoP-demo-dm2j`).
-- Die Verwaltungs-APIs der simulierten Systeme absichern oder entfernen (`DPoP-demo-l1k0`).
 
 **Schlüssel und Daten:**
 
