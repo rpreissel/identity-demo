@@ -241,6 +241,61 @@ class FastAccessStrategyTest : BehaviorSpec({
             }
         }
     }
+
+    // ENROLLMENT_FLOOR_ACR: a credential keeps the level it was enrolled under (ADR-5), so a session
+    // below loa2 may only enroll after a fresh identification (docs/journeys/fast-access.md).
+    given("AuthChoice, the proof falls short of loa2 while enrollment tools are available") {
+        val acc = account(method("sms", AcrLevel.LOA2))
+        val state = AuthChoice(Offer(listOf(ToolId("auth-sms"))))
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
+
+        `when`("resumed after the accepted proof (ActionCompleted)") {
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            then("requires RE_IDENTIFY before any enrollment - a loa1 session never enrolls a method") {
+                transition shouldBe
+                    Transition.RequireSubJourney(
+                        AuthIntent.RE_IDENTIFY,
+                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1),
+                        resumeWith = FastAccessState.Start
+                    )
+            }
+        }
+    }
+
+    given("Enrolling, the session still below loa2 and enrollment tools available") {
+        val acc = account(method("sms", AcrLevel.LOA1))
+        val state = Enrolling(Offer(listOf(ToolId("enroll-password"))), emailObligation = false)
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
+
+        `when`("resumed after an adopted credential that leaves the floor unmet (ActionCompleted)") {
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            then("requires RE_IDENTIFY instead of offering the next enrollment") {
+                transition shouldBe
+                    Transition.RequireSubJourney(
+                        AuthIntent.RE_IDENTIFY,
+                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1),
+                        resumeWith = FastAccessState.Start
+                    )
+            }
+        }
+    }
+
+    given("AuthChoice, the session already carries loa2 but the floor is loa3") {
+        val acc = account(method("sms", AcrLevel.LOA2), method("password", AcrLevel.LOA2))
+        val state = AuthChoice(Offer(listOf(ToolId("auth-password"))))
+        val theCtx = ctx(
+            account = acc,
+            evidence = evidence(listOf("sms", "password"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), account = acc),
+            acrFloor = AcrLevel.LOA3
+        )
+
+        `when`("resumed after the accepted proof (ActionCompleted)") {
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            then("offers enrollment directly - at loa2 no fresh identification is needed") {
+                transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<Enrolling>()
+            }
+        }
+    }
 })
 
 /** One row of the completed-tool table: the state, the completion it receives, the action it performs. */

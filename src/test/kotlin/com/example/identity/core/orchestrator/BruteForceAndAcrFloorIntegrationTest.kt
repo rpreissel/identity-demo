@@ -47,6 +47,59 @@ class BruteForceAndAcrFloorIntegrationTest : IntegrationTestSupport() {
             }
         }
 
+        // A client's requiredAcr is a lower bound only: max(policy, client) (docs/04-orchestrierung.md).
+        given("a device opening a channel") {
+            `when`("the client asks for requiredAcr none, below the policy's loa1") {
+                val channelSessionId = post("/orchestrator/api/v1/app/channels", """{"requiredAcr":"none"}""")
+                    .channel()["channelSessionId"] as String
+
+                then("the channel's floor stays at the policy's loa1") {
+                    acrFloorOf(channelSessionId) shouldBe "loa1"
+                }
+            }
+        }
+
+        given("an account with e-mail and password, reached by lookup login on a channel that demands loa2") {
+            `when`("the client asks for loa1 before logging in, then proves the password alone") {
+                val password = "correct-horse-battery"
+                val email = registerWithEmailAndPassword(password)
+                val channelSessionId = post(
+                    "/orchestrator/api/v1/app/channels",
+                    """{"intent":"lookup_login","requiredAcr":"loa2"}"""
+                ).channel()["channelSessionId"] as String
+                post("/orchestrator/api/v1/channels/$channelSessionId/step-ups", """{"requiredAcr":"loa1"}""")
+                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password-lookup")
+                    .nextRaw()["toolSessionId"] as String
+
+                val afterPassword = patch(
+                    "/orchestrator/api/v1/tools/$toolSessionId/auth-password-lookup",
+                    """{"email":"$email","password":"$password"}"""
+                )
+
+                then("the lower wish is ignored: the journey still asks for the second factor") {
+                    afterPassword.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-sms", "step" to "auth")
+                    afterPassword.channel()["state"] shouldNotBe "AUTHENTICATED"
+                    acrFloorOf(channelSessionId) shouldBe "loa2"
+                }
+            }
+        }
+
+        given("a channel logged in at loa2") {
+            `when`("the client asks for loa1 via the step-up endpoint") {
+                val channelSessionId = loginAsSeededAccount()
+
+                val response = post("/orchestrator/api/v1/channels/$channelSessionId/step-ups", """{"requiredAcr":"loa1"}""")
+
+                then("nothing starts: the channel stays AUTHENTICATED with next on authenticated") {
+                    response.channel()["state"] shouldBe "AUTHENTICATED"
+                    response.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
+                }
+                then("the channel's floor stays loa2") {
+                    acrFloorOf(channelSessionId) shouldBe "loa2"
+                }
+            }
+        }
+
         given("an account whose password is being guessed from fresh channels") {
             `when`("five wrong passwords are submitted, each in its own journey, then the right one") {
                 val password = "correct-horse-battery"
@@ -93,6 +146,12 @@ class BruteForceAndAcrFloorIntegrationTest : IntegrationTestSupport() {
             }
         }
     }
+
+    /** `ChannelSession.acrFloor`, which no endpoint reports. */
+    private fun acrFloorOf(channelSessionId: String): String? =
+        jdbcTemplate.queryForObject(
+            "SELECT acr_floor FROM orchestrator.channel_session WHERE id = ?", String::class.java, UUID.fromString(channelSessionId)
+        )
 
     /** One lookup-login attempt in its own channel and journey. */
     private fun submitLookupPassword(email: String, password: String): Map<String, Any?> {

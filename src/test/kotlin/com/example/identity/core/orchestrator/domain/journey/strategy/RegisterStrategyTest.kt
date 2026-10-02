@@ -19,6 +19,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
+import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.APP_SECOND_FACTOR_KINDS
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
@@ -402,6 +403,25 @@ class RegisterStrategyTest : BehaviorSpec({
             val transition = strategy.transition(state, JourneyEvent.Abandoned(AuthSmsDescriptor), ctx())
             then("re-offers the same full choice, the tool just backed out of included") {
                 transition shouldBe Transition.To(state.withActive(null))
+            }
+        }
+    }
+
+    // ENROLLMENT_FLOOR_ACR (docs/journeys/register.md): below loa2 a new method needs a fresh identification first.
+    given("Enrolling, the session still below loa2 and enrollment tools available") {
+        val acc = account(method("sms", AcrLevel.LOA1))
+        val state = Enrolling(Offer(listOf(ToolId("enroll-password"))), emailObligation = false)
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
+
+        `when`("resumed after an adopted credential that leaves the floor unmet (ActionCompleted)") {
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            then("requires RE_IDENTIFY instead of offering the next enrollment, resuming at Start") {
+                transition shouldBe
+                    Transition.RequireSubJourney(
+                        AuthIntent.RE_IDENTIFY,
+                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1),
+                        resumeWith = RegisterState.Start
+                    )
             }
         }
     }
