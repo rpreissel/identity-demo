@@ -10,8 +10,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
  * expressible with a mocked api.ts belongs in *.test.tsx.
  */
 // Not the dev port (8080, application.yml): this suite owns its server, and a dev instance
-// running there serves the file-based dev DB.
-const E2E_PORT = 8091
+// running there serves the file-based dev DB. Not 8090/8091 either: the local OpenShift test pod
+// (openshift/local-up.sh) publishes the orchestrator and Keycloak there.
+const E2E_PORT = 8095
 
 export default defineConfig({
   testDir: './e2e',

@@ -269,17 +269,26 @@ npm run test:e2e              # Playwright gegen das echte Backend
 npm run test:e2e:keycloak     # Playwright gegen die Login-Seiten von Keycloak
 ```
 
-- **`test:e2e`** startet selbst einen Orchestrator per `./gradlew bootRun` auf Port 8091 mit einer
-  frischen In-Memory-Datenbank. Ein auf Port 8080 laufender Orchestrator stört also nicht.
+- **`test:e2e`** startet selbst einen Orchestrator per `./gradlew bootRun` auf Port 8095 mit einer
+  frischen In-Memory-Datenbank. Ein Orchestrator auf Port 8080 und der lokale OpenShift-Pod auf
+  8090/8091 stören also nicht. Die Suite prüft nur, was allein im Browser sichtbar wird; die Logik
+  dahinter decken die Integrationstests ab: Registrierung, „Zurück“, Gerät zurücksetzen, Tokens,
+  die Rückkehr von Nect in die App (`nect-return.spec.ts`), KOBIL mit dem im Browser abgelegten
+  Entsperrgeheimnis (`kobil.spec.ts`) und das Fortsetzen nach einem Neuladen ohne zweite SMS
+  (`resume.spec.ts`).
 - **`test:e2e:keycloak`** startet keinen Server. Vorher muss der ganze Stack laufen
   (`podman compose up -d`). Andere Adressen lassen sich über `ORCHESTRATOR_URL`, `KEYCLOAK_URL`,
-  `ADMIN_USER` und `ADMIN_PASSWORD` setzen. Diese Suite läuft nicht in der CI. Sie setzt die Demo
+  `ADMIN_USER` und `ADMIN_PASSWORD` setzen, für den lokalen OpenShift-Pod etwa
+  `ORCHESTRATOR_URL=http://localhost:8090 KEYCLOAK_URL=http://localhost:8091`. Diese Suite läuft nicht in der CI. Sie setzt die Demo
   zu Beginn zurück und registriert das Konto, mit dem sie sich anmeldet, selbst über die Website.
   `vorgangszugang.spec.ts` prüft die Anmeldung mit Einmalkennwort in beiden Themes: Einladung beim
   Personenverzeichnis ausstellen, anmelden, Vorgangs-Marker im Token, „Vorgang beenden“ beendet die
   Sitzung, das Kennwort ist danach verbraucht, die Demo-Auswahl der Einladungen und die Abweisung
   einer Einladung unter dem verlangten Niveau
-  ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).
+  ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). `qr-login.spec.ts` folgt der
+  QR-Anmeldung über beide Kanäle: Die Website zeigt den Kopplungscode, die App bestätigt einen
+  frischen Faktor, nimmt den Code und gibt frei, und der Bestätigungscode der App beendet die
+  Anmeldung auf der Website.
 
 Beim ersten Mal braucht Playwright seinen Browser: `npx playwright install chromium`.
 
