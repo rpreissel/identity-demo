@@ -510,6 +510,24 @@ noch offen; für sie gibt es noch keine Issues.
   `IdentNectRendererFactoryTest`, `IdentNectToolHandlerTest`. Gegen ein laufendes Keycloak nicht
   gespielt (`DPoP-demo-z90h`).
 
+Nachtrag 2026-10-03, mit dem [Lesepfad Sicherheit](16-lesepfad-sicherheit.md):
+
+- ~~S-3 Nutzereingaben ungefiltert im Log~~ – erledigt: `OrchestratorException` ersetzt im Detail
+  Steuer- und Zeilentrennzeichen und kürzt auf 200 Zeichen (`OrchestratorExceptionTest`, I-19).
+- ~~S-4 `ServerInfoController` ohne Anmeldung~~ – erledigt: Außerhalb des Demomodus fehlt der Block
+  `operations` (`ServerInfoControllerTest`); die Keycloak-Angaben bleiben, der Web-Kanal braucht sie.
+- ~~S-5 `availableTools` ungeprüft~~ – erledigt: Beide Kanäle speichern nur `toolId`s des Katalogs
+  (`ChannelService.catalogToolsOf`, `ChannelToolDeclarationIntegrationTest`).
+- ~~S-6 `targetAcr` nicht validiert~~ – erledigt: Ein unbekannter Wert ist `400`, bevor sich am Kanal
+  etwas ändert (`KeycloakChannelIntegrationTest`).
+- ~~K-4 Formulardaten in Pfadsegmenten~~ – erledigt: `OrchestratorClient.segment` lässt nur
+  `[A-Za-z0-9._~-]` zu, ohne `.` und `..` (`OrchestratorClientSegmentTest`).
+- Neu: Der Signierfilter signierte auch Antworten auf ungeprüfte Assertions, mit `req`, `iss` und
+  `aud` aus der Anfrage. Erledigt: Er signiert nur, was `PeerAuthValidator.verify` annimmt
+  (`KeycloakResponseSigningIntegrationTest`, ADR-7).
+- `DPoP-demo-9ppv.6` (Swagger außerhalb des Demomodus) erledigt: `springdoc.api-docs.enabled` folgt
+  `demo.mode`, `ProductionModeCheck` lehnt ein Überschreiben ab.
+
 **Architektur**
 
 - ~~A-2 Einladungskanal im Upsert~~ – erledigt: `KeycloakChannelUpsertRequest.subject` wie

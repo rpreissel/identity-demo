@@ -49,8 +49,11 @@ data class ServerInfo(
     val disabledTools: List<DisabledToolView>,
     /** `demo.mode` - among other things, whether responses carry the demo block (TANs, personas, ...). */
     val demoMode: Boolean,
-    /** What the actuator reports on the management port, readable here without it. */
-    val operations: OperationsInfo,
+    /**
+     * What the actuator reports on the management port, readable here without it. Null outside
+     * demo mode: this endpoint has no login, and the management port is not routed on purpose.
+     */
+    val operations: OperationsInfo?,
 )
 
 /** Health and metrics as `/actuator/health` and `/actuator/prometheus` report them (docs/07-betrieb.md Abschnitt 7). */
@@ -96,7 +99,7 @@ class ServerInfoController(
             registrationEnrollFirst = featureFlagService.isEnabled(JourneyFeatureFlag.REGISTER_ENROLL_FIRST.key),
             disabledTools = toolAvailabilityService.disabledEntries().map { DisabledToolView(it.toolId!!, it.channel!!.name, it.reason) },
             demoMode = demoMode.on,
-            operations = operations(),
+            operations = if (demoMode.on) operations() else null,
         )
     }
 

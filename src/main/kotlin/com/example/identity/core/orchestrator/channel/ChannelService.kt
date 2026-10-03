@@ -90,11 +90,20 @@ class ChannelService(
             .createChannelSession(bindingKeyRef, ChannelType.APP, CHANNEL_TTL, linkedAccountId)
         channel.entryIntent = entryIntent
         // Fixed for the channel's lifetime (docs/03-tool-architektur.md); the backend switch is read live.
-        channel.availableClientTools = availableTools.toMutableSet()
+        channel.availableClientTools = catalogToolsOf(availableTools)
         sessionManagementService.updateChannelSession(channel)
         requestedAcrFloor?.let { sessionManagementService.raiseChannelAcrFloor(channel.id, requestedAcr(it).value) }
 
         return resumeChannel(sessionManagementService.reloadChannelSession(channel.id))
+    }
+
+    /**
+     * What a client declared it can render, cut to the catalog. Only a catalog tool is ever offered,
+     * so this changes nothing a client sees; it keeps arbitrary strings out of the stored list.
+     */
+    fun catalogToolsOf(declared: Collection<String>): MutableSet<String> {
+        val known = toolRegistry.tools().mapTo(HashSet()) { it.toolId.value }
+        return declared.filterTo(mutableSetOf()) { it in known }
     }
 
     /** The guaranteed resume entry point (docs/05-api.md #2): re-derives the currently due `next`. */
@@ -194,11 +203,6 @@ class ChannelService(
 
         return startEntryJourney(live, seedAction)
     }
-
-    /** A level a client asked for (`requiredAcr`); an unknown one is a 400, not an internal error. */
-    private fun requestedAcr(raw: String): AcrLevel = AcrLevel.parse(raw) ?: throw InvalidInputException(
-        Text("Unbekanntes Sicherheitsniveau '{acr}' - bekannt sind {known}", "acr" to raw, "known" to AcrLevel.KNOWN.joinToString())
-    )
 
     private fun startEntryJourney(channel: LiveChannel, seedAction: Action? = null): ChannelResponse {
         val step = journeyService.startEntryJourney(channel, seedAction)
@@ -381,3 +385,11 @@ class ChannelService(
         private val CHANNEL_TTL: Duration = Duration.ofHours(24)
     }
 }
+
+/**
+ * A level a client asked for (App `requiredAcr`, Keycloak `targetAcr`). An unknown one is a 400,
+ * never a silent `none`: a typo must not leave the floor where it was.
+ */
+internal fun requestedAcr(raw: String): AcrLevel = AcrLevel.parse(raw) ?: throw InvalidInputException(
+    Text("Unbekanntes Sicherheitsniveau '{acr}' - bekannt sind {known}", "acr" to raw, "known" to AcrLevel.KNOWN.joinToString())
+)

@@ -145,7 +145,7 @@ public final class OrchestratorClient {
      * Like enrollment, it may first ask for a loa2 step-up.
      */
     public ChannelResponse deactivateMethod(String channelSessionId, String methodInstanceId) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/methods/" + methodInstanceId;
+        String path = "/orchestrator/api/v1/channels/" + segment(channelSessionId) + "/methods/" + segment(methodInstanceId);
         return ChannelResponse.from(send("DELETE", path, channelSessionId, null));
     }
 
@@ -156,7 +156,7 @@ public final class OrchestratorClient {
 
     /** With what the tool's renderer asks to send along ({@code WebToolRendererFactory.activationFields}). */
     public ChannelResponse activateTool(String channelSessionId, String toolId, Map<String, String> fields) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/tools/" + toolId;
+        String path = "/orchestrator/api/v1/channels/" + segment(channelSessionId) + "/tools/" + segment(toolId);
         ObjectNode body = MAPPER.createObjectNode();
         fields.forEach(body::put);
         return ChannelResponse.from(send("POST", path, channelSessionId, body));
@@ -168,7 +168,7 @@ public final class OrchestratorClient {
      * Abschnitt 1), so the binding claim alone ties this call to the right channel.
      */
     public ChannelResponse patchTool(String channelSessionId, String toolSessionId, String toolId, Map<String, String> fields) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/tools/" + toolSessionId + "/" + toolId;
+        String path = "/orchestrator/api/v1/tools/" + segment(toolSessionId) + "/" + segment(toolId);
         ObjectNode body = MAPPER.createObjectNode();
         fields.forEach(body::put);
         return ChannelResponse.from(send("PATCH", path, channelSessionId, body));
@@ -179,19 +179,19 @@ public final class OrchestratorClient {
      * convention as {@link #patchTool}.
      */
     public ChannelResponse readTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/tools/" + toolSessionId + "/" + toolId;
+        String path = "/orchestrator/api/v1/tools/" + segment(toolSessionId) + "/" + segment(toolId);
         return ChannelResponse.from(send("GET", path, channelSessionId, null));
     }
 
     /** DELETE .../tools/{toolSessionId}/{toolId} - declines the running tool ("Abbrechen"). */
     public ChannelResponse abandonTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/tools/" + toolSessionId + "/" + toolId;
+        String path = "/orchestrator/api/v1/tools/" + segment(toolSessionId) + "/" + segment(toolId);
         return ChannelResponse.from(send("DELETE", path, channelSessionId, null));
     }
 
     /** POST .../tools/{toolSessionId}/{toolId}/back - leaves the running tool without declining it ("Zurück"). */
     public ChannelResponse backFromTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/tools/" + toolSessionId + "/" + toolId + "/back";
+        String path = "/orchestrator/api/v1/tools/" + segment(toolSessionId) + "/" + segment(toolId) + "/back";
         return ChannelResponse.from(send("POST", path, channelSessionId, MAPPER.createObjectNode()));
     }
 
@@ -349,6 +349,19 @@ public final class OrchestratorClient {
         }
         return MAPPER.readTree(answer);
     }
+
+    /**
+     * One path segment of a signed request. Tool and method ids come from form data; the signature
+     * covers the address ({@code htu}), so a value may not move it ("/", "?", "..").
+     */
+    static String segment(String value) {
+        if (value == null || !SEGMENT.matcher(value).matches() || value.equals(".") || value.equals("..")) {
+            throw new IllegalArgumentException("Not a path segment");
+        }
+        return value;
+    }
+
+    private static final java.util.regex.Pattern SEGMENT = java.util.regex.Pattern.compile("[A-Za-z0-9._~-]{1,128}");
 
     private static String urlEncode(String value) {
         return java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8);

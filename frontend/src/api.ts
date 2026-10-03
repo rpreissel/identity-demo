@@ -492,8 +492,8 @@ export interface ServerInfo {
   disabledTools: { toolId: string; channel: ChannelType; reason?: string | null }[]
   /** Demo mode - among other things, responses carry the demo values (TANs, personas). */
   demoMode: boolean
-  /** Health and metrics of the actuator (management port), read by the backend. */
-  operations: OperationsInfo
+  /** Health and metrics of the actuator (management port), read by the backend; null outside demo mode. */
+  operations?: OperationsInfo | null
 }
 
 export interface OperationsInfo {

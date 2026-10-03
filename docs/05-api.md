@@ -50,7 +50,8 @@ Arten von Endpunkten liegen bewusst woanders:
   Oberfläche der Keycloak-Anmeldeseiten, Anmeldung auf `loa1`, Journey-Trace aller Konten, aktive
   Sitzungen, Konten löschen, Demo zurücksetzen). Nur sie liegen hinter einer Anmeldung (HTTP Basic
   mit `demo.admin.*`).
-- Der öffentliche, nur lesende Server-Status unter `/orchestrator/demo/server-info`, daneben die
+- Der öffentliche, nur lesende Server-Status unter `/orchestrator/demo/server-info` (Zustand und
+  Kennzahlen im Block `operations` nur im Demomodus), daneben die
   beiden Demo-Schalter für Login-Theme und Anmeldung auf `loa1`
   ([ADR-41](adr/ADR-041-keycloakify-neben-freemarker.md), [ADR-42](adr/ADR-042-loa1-anmeldung-umschalten.md))
   sowie für die Startseite `GET /orchestrator/demo/sessions` und `POST /orchestrator/demo/reset`.
@@ -598,7 +599,7 @@ Gerät erkennt:
 Step-up. Das Backend rechnet mit `max(Policy-Anforderung, Client-Wunsch)`.
 
 `availableTools` (Pflicht) gibt an, welche `toolId`s dieser Client starten kann. Die Menge ist für
-die Lebensdauer des Kanals fest. Ein Tool außerhalb dieser Menge wird nie angeboten und auch bei
+die Lebensdauer des Kanals fest; gespeichert wird nur, was der Katalog kennt. Ein Tool außerhalb dieser Menge wird nie angeboten und auch bei
 direktem Aufruf abgelehnt (`docs/03-tool-architektur.md`, Verfügbarkeit). Zusätzlich kann der
 Betreiber jedes Tool je Kanaltyp zur Laufzeit sperren und die Reihenfolge der Angebote je Kanaltyp
 festlegen (`GET /orchestrator/admin/tools/availability`,
@@ -775,10 +776,10 @@ aktualisiert:
 Inhalt der Anfrage (alle Felder optional, `KeycloakChannelUpsertRequest`):
 
 - **`subject`** — Wem dieser Durchlauf in Keycloak gehört: `{"type":"account","id":"42"}` oder `{"type":"invitation","id":"…"}` ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)), dieselbe Form wie `authData.subject` der Antwort. Ein Konto ordnet einen Kanal ohne Subjekt sofort diesem Konto zu; eine Einladung bindet nur ihr eigener Nachweis, und ein Kanal, der ihr nicht schon gehört, wird mit `409` abgelehnt: Ein Vorgangszugang wird nicht aufgewertet (ADR-48, Nachtrag K-5). Ist der Kanal schon einem anderen Subjekt zugeordnet – einem anderen Konto, einer Einladung statt eines Kontos oder umgekehrt –, antwortet der Orchestrator `409` und ändert nichts.
-- **`targetAcr`** — Das von Keycloak angefragte LoA, bereits in einen ACR-Wert des Orchestrators übersetzt. Es hebt die Untergrenze des Kanals nur an, nie ab, und filtert die Kandidaten von `WEB_SELECT_METHOD` ([Orchestrierung](04-orchestrierung.md) Abschnitt 3).
+- **`targetAcr`** — Das von Keycloak angefragte LoA, bereits in einen ACR-Wert des Orchestrators übersetzt. Es hebt die Untergrenze des Kanals nur an, nie ab, und filtert die Kandidaten von `WEB_SELECT_METHOD` ([Orchestrierung](04-orchestrierung.md) Abschnitt 3). Ein unbekannter Wert ist `400`, bevor sich am Kanal etwas ändert, nie still `none`.
 - **`amr`** — Liste `{nativeToolId, amrSourceId}`: was ein eigenes Keycloak-Verfahren (nie ein Tool des Orchestrators) in DIESEM Anmeldedurchlauf nachgewiesen hat. Verfahren, LoA und Faktortypen ermittelt der Orchestrator auf dem Server über `nativeToolId` (`NativeAuthenticatorDescriptor`). Es ist immer die VOLLSTÄNDIGE, derzeit gültige Menge, keine Änderungsliste.
 - **`restoreData` / `kcSessionId`** — Ein signiertes Token aus `GET .../restore-data` einer FRÜHEREN, unabhängigen `ChannelSession` derselben Keycloak-Nutzersitzung. Es gibt die dort erbrachten Nachweise samt ihrem Zeitpunkt an einen frisch angelegten Kanal weiter; über `loa1` zählen sie nur 30 Minuten ([Orchestrierung](04-orchestrierung.md) Abschnitt 8). `kcSessionId` bindet das Token an Keycloaks dauerhaftes `UserSessionModel`. Ein falsches, abgelaufenes oder manipuliertes Token wird als `null` behandelt, nie als Fehler.
-- **`availableTools`** — Welche `toolId`s das Keycloak-Theme darstellen kann (ein `WebToolRenderer` je Tool). Nur beim ersten Aufruf gelesen; das Gegenstück zu `availableTools` bei `POST /app/channels`.
+- **`availableTools`** — Welche `toolId`s das Keycloak-Theme darstellen kann (ein `WebToolRenderer` je Tool). Nur beim ersten Aufruf gelesen; das Gegenstück zu `availableTools` bei `POST /app/channels`, und wie dort speichert der Kanal nur `toolId`s, die der Katalog kennt.
 - **`intent`** — Nur beim ersten Aufruf gelesen. Fehlt er, gilt `web_select_method`; erlaubt sind nur `web_select_method` und `register`. Ein unbekannter oder unzulässiger Wert wird abgelehnt (`409`).
 
 `GET .../{channelSessionId}/restore-data?kcSessionId=...` gibt es nur für den Aufruf, den Keycloak am

@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.keycloak
 
 import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.core.orchestrator.dpop.buildRequestUrl
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -66,15 +67,24 @@ class KeycloakResponseSigner(repository: NodeSigningKeyRepository, private val c
 
 /**
  * Haengt die Signatur an jede Antwort auf eine Peer-Auth-Anfrage. Erkannt an der Assertion selbst,
- * nicht an einer Pfadliste, damit kein neuer Endpunkt sie vergisst.
+ * nicht an einer Pfadliste, damit kein neuer Endpunkt sie vergisst. Signiert wird nur, was
+ * [PeerAuthValidator.verify] als Assertion von Keycloak annimmt; sonst bekaeme jeder eine vom
+ * Orchestrator signierte Antwort mit selbst gewaehltem `req`, `iss` und `aud`.
  */
 @Component
-class KeycloakResponseSigningFilter(private val signer: KeycloakResponseSigner) : OncePerRequestFilter() {
+class KeycloakResponseSigningFilter(
+    private val signer: KeycloakResponseSigner,
+    private val peerAuthValidator: PeerAuthValidator,
+) : OncePerRequestFilter() {
 
-    override fun shouldNotFilter(request: HttpServletRequest): Boolean = peerAuthClaims(request) == null
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean = bearerToken(request) == null
 
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
-        val claims = checkNotNull(peerAuthClaims(request))
+        val claims = peerAuthClaims(request)
+        if (claims == null) {
+            chain.doFilter(request, response)
+            return
+        }
         val wrapped = ContentCachingResponseWrapper(response)
         try {
             chain.doFilter(request, wrapped)
@@ -84,12 +94,12 @@ class KeycloakResponseSigningFilter(private val signer: KeycloakResponseSigner) 
         }
     }
 
-    /** Die Claims einer Peer-Auth-Assertion, sonst `null`. Nur gelesen; geprueft wird am Endpunkt. */
-    private fun peerAuthClaims(request: HttpServletRequest): JWTClaimsSet? {
-        val token = request.getHeader("Authorization")?.removePrefix("Bearer ")?.trim() ?: return null
-        val claims = runCatching { SignedJWT.parse(token).jwtClaimsSet }.getOrNull() ?: return null
-        return claims.takeIf { it.getClaim("channel_binding") != null && it.jwtid != null }
-    }
+    /** Die Claims einer gueltigen Peer-Auth-Assertion, sonst `null`. Die Einmaligkeit prueft der Endpunkt. */
+    private fun peerAuthClaims(request: HttpServletRequest): JWTClaimsSet? =
+        runCatching { peerAuthValidator.verify(bearerToken(request), request.method, buildRequestUrl(request)) }.getOrNull()
+
+    private fun bearerToken(request: HttpServletRequest): String? =
+        request.getHeader("Authorization")?.takeIf { it.startsWith("Bearer ") }?.removePrefix("Bearer ")?.trim()
 }
 
 @RestController

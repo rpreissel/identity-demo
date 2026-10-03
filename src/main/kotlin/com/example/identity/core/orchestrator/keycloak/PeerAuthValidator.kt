@@ -34,6 +34,27 @@ class PeerAuthValidator(
 ) {
 
     fun validate(assertion: String?, httpMethod: String, httpUrl: String): PeerAuthAssertion {
+        val (kid, claims) = verified(assertion, httpMethod, httpUrl)
+        val issuedAt = claims.issueTime.toInstant()
+        val replayKeyExpiresAt = issuedAt.plus(maxAssertionAgeSeconds + maxClockSkewSeconds, ChronoUnit.SECONDS)
+        try {
+            replayProtectionService.validateAndStore("kc:$kid", claims.jwtid, replayKeyExpiresAt)
+        } catch (e: DpopValidationException) {
+            // Reported as this validator's own exception, so callers catch only one type.
+            throw PeerAuthValidationException("Peer-auth assertion replay detected", e)
+        }
+
+        return PeerAuthAssertion(claims.jwtid, issuedAt, claims.getStringClaim("channel_binding"), claims.subject)
+    }
+
+    /**
+     * Everything [validate] checks except single use, so it may run more than once per request.
+     * The response signing filter uses it: the orchestrator signs answers to Keycloak only.
+     */
+    fun verify(assertion: String?, httpMethod: String, httpUrl: String): JWTClaimsSet =
+        verified(assertion, httpMethod, httpUrl).second
+
+    private fun verified(assertion: String?, httpMethod: String, httpUrl: String): Pair<String, JWTClaimsSet> {
         if (assertion.isNullOrBlank()) {
             throw PeerAuthValidationException("Missing peer-auth assertion")
         }
@@ -65,26 +86,13 @@ class PeerAuthValidator(
         validateSignature(signedJWT, jwk)
         validateClaims(claims, httpMethod, httpUrl)
 
-        val channelBinding = claims.getStringClaim("channel_binding")
-        if (channelBinding.isNullOrBlank()) {
+        if (claims.getStringClaim("channel_binding").isNullOrBlank()) {
             throw PeerAuthValidationException("Peer-auth assertion is missing channel_binding")
         }
-
-        val jti = claims.jwtid
-        if (jti.isNullOrBlank()) {
+        if (claims.jwtid.isNullOrBlank()) {
             throw PeerAuthValidationException("Peer-auth jti claim is missing")
         }
-        val issuedAt = claims.issueTime?.toInstant()
-            ?: throw PeerAuthValidationException("Peer-auth iat claim is missing")
-        val replayKeyExpiresAt = issuedAt.plus(maxAssertionAgeSeconds + maxClockSkewSeconds, ChronoUnit.SECONDS)
-        try {
-            replayProtectionService.validateAndStore("kc:$kid", jti, replayKeyExpiresAt)
-        } catch (e: DpopValidationException) {
-            // Reported as this validator's own exception, so callers catch only one type.
-            throw PeerAuthValidationException("Peer-auth assertion replay detected", e)
-        }
-
-        return PeerAuthAssertion(jti, issuedAt, channelBinding, claims.subject)
+        return kid to claims
     }
 
     private fun validateSignature(signedJWT: SignedJWT, jwk: JWK) {

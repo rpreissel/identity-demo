@@ -22,6 +22,7 @@ class ProductionModeCheck(
     @Value("\${keycloak-tls.trust-self-signed:false}") private val trustSelfSigned: Boolean,
     @Value("\${keycloak-migrate.base-url:}") private val keycloakBaseUrl: String,
     @Value("\${keycloak-setup.orchestrator-base-url:}") private val orchestratorBaseUrlForKeycloak: String,
+    @Value("\${springdoc.api-docs.enabled:true}") private val apiDocs: Boolean,
 ) {
     init {
         if (demoMode.on) {
@@ -44,6 +45,7 @@ class ProductionModeCheck(
             add("demo.admin.password steht im Klartext. Als Hash angeben, z. B. {bcrypt}... oder {argon2}...")
         }
         if (h2Console) add("spring.h2.console.enabled ist an - die Konsole liest und schreibt die ganze Datenbank. Abschalten.")
+        if (apiDocs) add("springdoc.api-docs.enabled ist an - /v3/api-docs nennt jedem ohne Anmeldung alle Endpunkte. Abschalten.")
         if (otpPepper.length < MIN_SECRET_LENGTH) {
             add("identity.secrets.otp-pepper ist leer oder kuerzer als $MIN_SECRET_LENGTH Zeichen - Codes waeren durchprobierbar bzw. nach jedem Neustart ungueltig.")
         }

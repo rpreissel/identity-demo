@@ -154,7 +154,7 @@ zusammengelegte oder gestrichene wird nie neu vergeben (Liste am Ende).
   - Mechanismus: `type:PersonMasterData`, `archunit:SimulationBoundaryArchitectureTest`
 - **I-19 Kein Code und kein Empfänger landet auf der Konsole oder im Log.**
   - Worum es geht: Einmalcodes, TANs, Telefonnummern und E-Mail-Adressen erscheinen nie auf der Konsole oder im Log, auch nicht bei abgelehnter Eingabe. Logs werden breit gelesen und lange aufbewahrt und wären sonst ein Datenleck.
-  - Mechanismus: `archunit:OrchestratorArchitectureTest` (kein `println`, kein `System.out`), `test:NoSecretsInLogIntegrationTest` (fängt jedes Log-Ereignis eines Versand- und Prüfdurchlaufs samt abgelehnter Eingabe ab); die Wertobjekte in `tool_api.values` nennen den abgelehnten Wert nicht, und der 400-Handler loggt nur Typ und Ort
+  - Mechanismus: `archunit:OrchestratorArchitectureTest` (kein `println`, kein `System.out`), `test:NoSecretsInLogIntegrationTest` (fängt jedes Log-Ereignis eines Versand- und Prüfdurchlaufs samt abgelehnter Eingabe ab); die Wertobjekte in `tool_api.values` nennen den abgelehnten Wert nicht, und der 400-Handler loggt nur Typ und Ort; `test:OrchestratorExceptionTest` (was ein Client in Pfad oder Query schickt, erreicht das Log ohne Steuerzeichen und begrenzt, fälscht also keine Logzeile)
 
 ## Nicht mehr vergebene Nummern
 

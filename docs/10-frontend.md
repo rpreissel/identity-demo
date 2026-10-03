@@ -103,7 +103,8 @@ zu lesen sieht, wo man ist:
     Quellcode, den Einstieg in die Doku ([01-ueberblick.md](01-ueberblick.md)) und die
     [Beispiel-Story](11-beispiel-story.md).
   - *Server-Status* liest nur das öffentliche `GET /orchestrator/demo/server-info`:
-    Keycloak-Profil, Reihenfolge der Registrierung, gesperrte Tools.
+    Keycloak-Profil, Reihenfolge der Registrierung, gesperrte Tools; im Demomodus dazu Zustand und
+    Kennzahlen.
 - **App-Kanal** (`/app/`): der an DPoP gebundene Ablauf des Orchestrators, ohne Reiter. Was nur diesen
   Client betrifft (Startniveau, unterstützte Verfahren), steht unter „Erweitert“. Welche Verfahren
   er darstellen kann, gibt der Client selbst an; sperren und ordnen kann sie der Betreiber je Kanal

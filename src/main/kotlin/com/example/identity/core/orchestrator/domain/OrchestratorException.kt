@@ -9,9 +9,19 @@ class OrchestratorException(
     val text: Text,
     /** What only the log gets - ids and the like, useless to a reader and not theirs to see. */
     detail: String? = null
-) : RuntimeException(detail?.let { "${text.template} ($it)" } ?: text.template) {
+) : RuntimeException(detail?.let { "${text.template} (${loggable(it)})" } ?: text.template) {
 
     companion object {
+        const val MAX_DETAIL_LENGTH = 200
+        private val LINE_BREAKING = Regex("[\\p{Cc}\\p{Zl}\\p{Zp}]")
+
+        /**
+         * A detail may carry what a client sent (a path segment, a query value). Without control
+         * characters and bounded, it cannot forge a log line or flood the log.
+         */
+        fun loggable(detail: String): String =
+            detail.replace(LINE_BREAKING, "?").let { if (it.length > MAX_DETAIL_LENGTH) it.take(MAX_DETAIL_LENGTH) + "..." else it }
+
         fun notFound(text: Text, detail: String? = null) =
             OrchestratorException(ErrorCode.NOT_FOUND, text, detail)
 

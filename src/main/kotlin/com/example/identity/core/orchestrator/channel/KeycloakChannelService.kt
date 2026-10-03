@@ -110,6 +110,8 @@ class KeycloakChannelService(
         availableTools: List<String>? = null,
         intent: String? = null
     ): ChannelResponse {
+        // Checked before anything changes, so a rejected level leaves the channel as it was.
+        val targetFloor = targetAcr?.let(::requestedAcr)
         // restoreDataToken carries an earlier flow run's state (docs/05-api.md Abschnitt 3). decode()
         // checks it is bound to [restoreDataKeycloakSessionId], Keycloak's durable UserSessionModel id,
         // which differs from assertion.channelBinding. A wrong, tampered or expired token yields null,
@@ -171,7 +173,7 @@ class KeycloakChannelService(
                 CHANNEL_TTL,
                 // The Web channel's declaration of what it can render, taken verbatim like the App
                 // channel's availableTools, never widened to the whole catalog.
-                availableTools.orEmpty().toSet(),
+                channelService.catalogToolsOf(availableTools.orEmpty()),
                 entryIntentFor(intent)
             )
         } else {
@@ -196,7 +198,7 @@ class KeycloakChannelService(
             }
         }
 
-        targetAcr?.let { sessionManagementService.raiseChannelAcrFloor(channelSessionId, it) }
+        targetFloor?.let { sessionManagementService.raiseChannelAcrFloor(channelSessionId, it.value) }
 
         // Restored methods come only with a channel this call created. They are applied as the
         // entry journey's first transition (docs/04-orchestrierung.md #5, "RestoreData als erster

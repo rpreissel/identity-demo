@@ -306,6 +306,9 @@ Die Nummern der Kapitel geben keine Leserichtung vor. Je nach Rolle:
 - **Betrieb**: [13-ausfuehren.md](13-ausfuehren.md) -> [07-betrieb.md](07-betrieb.md) ->
   [port-vertraege.md](port-vertraege.md), bevor ein simuliertes System durch ein echtes ersetzt
   wird.
+- **Sicherheitsexperte**: [16-lesepfad-sicherheit.md](16-lesepfad-sicherheit.md), von außen nach
+  innen mit Links auf den Code, danach [invarianten.md](invarianten.md) und die
+  [vierte Bewertung](review-2026-09-29-vierte-bewertung.md).
 - **KI-Agent**: [00-agent-quickstart.md](00-agent-quickstart.md), danach nur die Kapitel, die die
   Aufgabe braucht.
 

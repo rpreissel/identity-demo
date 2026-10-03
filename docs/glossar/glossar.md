@@ -419,8 +419,8 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   weil sie die Person bezeichnet.
   *Mehr dazu:* [02-domaenenmodell](../02-domaenenmodell.md) Abschnitt 6.
 - **Peer-Auth**: Wie sich Keycloak und Orchestrator gegenseitig ausweisen. Jede Anfrage von Keycloak
-  ist signiert und nennt die Kanalbindung; jede Antwort des Orchestrators ist ebenfalls signiert und
-  an genau diese Anfrage gebunden. So kann sich niemand dazwischenschalten.
+  ist signiert und nennt die Kanalbindung; jede Antwort des Orchestrators auf eine gültige Anfrage
+  ist ebenfalls signiert und an genau diese Anfrage gebunden. So kann sich niemand dazwischenschalten.
   *Mehr dazu:* [ADR-7](../adr/ADR-007-web-kanal-ohne-mtls-signierte-request-assertion-statt.md).
 - **Person**: Ein Mensch, wie ihn das Personenverzeichnis kennt, mit Partnernummer und Stammdaten.
   Ein Konto kann einer Person zugeordnet sein; die Zuordnung entsteht durch eine Identifizierung.

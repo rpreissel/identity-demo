@@ -169,6 +169,22 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
             }
         }
 
+        given("a step-up call with a level the orchestrator does not know") {
+            `when`("PATCH is called with targetAcr loa9") {
+                val accountId = accountIdOf(loginAsSeededAccount())
+                val keycloakChannelSessionId = ChannelSessionId(UUID.randomUUID())
+                stubAssertion(channelBinding = keycloakChannelSessionId.toString())
+
+                val result = runCatching {
+                    keycloakPatchRaw(keycloakChannelSessionId, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa9"}""")
+                }
+
+                then("it is a 400, never a silent floor of none") {
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.BAD_REQUEST
+                }
+            }
+        }
+
         given("a Web channel already bound to one account") {
             `when`("a later PATCH on the same channel names a different account") {
                 val accountId = accountIdOf(loginAsSeededAccount())

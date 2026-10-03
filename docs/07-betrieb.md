@@ -355,6 +355,8 @@ alle auf einmal:
 
 - `demo.admin.password` gesetzt, nicht `admin`, und als Hash (`{bcrypt}…`, `{argon2}…`), nicht im Klartext.
 - `spring.h2.console.enabled=false`.
+- `springdoc.api-docs.enabled=false`. Die Voreinstellung folgt `demo.mode`; Swagger-UI und
+  `/v3/api-docs` nennten sonst jedem ohne Anmeldung alle Endpunkte. Der Vertrag liegt in `api/`.
 - `identity.secrets.otp-pepper` und `account.change-log.lookup-secret` mit mindestens 32 Zeichen.
 - Keycloak über https mit geprüftem Zertifikat (kein `trustSelfSignedCertificate`).
 - Keycloak erreicht den Orchestrator über https (`orchestratorBaseUrl` der Keycloak-Einrichtung):
@@ -557,7 +559,8 @@ Health und Kennzahlen liegen auf einem **eigenen Management-Port** (`MANAGEMENT_
 
 Im Demomodus zeigt die Willkommensseite unter „Server-Status“ denselben Zustand und dieselben
 Kennzahlen (`GET /orchestrator/demo/server-info`, Block `operations`); der Browser erreicht den
-Management-Port nicht, deshalb liest das Backend sie aus.
+Management-Port nicht, deshalb liest das Backend sie aus. Außerhalb des Demomodus fehlt der Block:
+Der Endpunkt hat keine Anmeldung, und der Management-Port ist mit Absicht nicht geroutet.
 
 **Logs.** Jede Zeile, die während einer Anfrage geschrieben wird, trägt eine Anfrage-Id und – wenn
 der Pfad sie nennt – die `channelSessionId` bzw. `toolSessionId` (`LoggingContextFilter`, MDC).

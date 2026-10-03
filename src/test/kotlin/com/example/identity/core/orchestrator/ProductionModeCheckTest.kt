@@ -30,13 +30,14 @@ class ProductionModeCheckTest : BehaviorSpec({
         orchestratorBaseUrlForKeycloak: String = "https://orchestrator.example",
         usesDemoLookupSecret: Boolean = false,
         orphanedLookupKeyIds: Set<String> = emptySet(),
+        apiDocs: Boolean = false,
     ) = ProductionModeCheck(
         DemoMode(demoMode),
         mockk<ChangeLogLookupKeys> {
             every { usesDemoSecret() } returns usesDemoLookupSecret
             every { orphanedKeyIds() } returns orphanedLookupKeyIds
         },
-        adminPassword, h2Console, otpPepper, lookupSecret, trustSelfSigned, keycloakBaseUrl, orchestratorBaseUrlForKeycloak
+        adminPassword, h2Console, otpPepper, lookupSecret, trustSelfSigned, keycloakBaseUrl, orchestratorBaseUrlForKeycloak, apiDocs
     )
 
     given("demo mode with every demo default in place") {
@@ -69,13 +70,13 @@ class ProductionModeCheckTest : BehaviorSpec({
             val result = runCatching {
                 check(
                     adminPassword = "admin", h2Console = true, otpPepper = "", lookupSecret = "short", trustSelfSigned = true,
-                    keycloakBaseUrl = "http://keycloak:8080", orchestratorBaseUrlForKeycloak = "http://orchestrator:8080"
+                    keycloakBaseUrl = "http://keycloak:8080", orchestratorBaseUrlForKeycloak = "http://orchestrator:8080", apiDocs = true
                 )
             }
 
             then("it refuses to start and names each of them at once") {
                 val failure = shouldThrow<IllegalStateException> { result.getOrThrow() }
-                listOf("demo.admin.password", "spring.h2.console", "otp-pepper", "lookup-secret", "trustSelfSignedCertificate", "http://keycloak", "http://orchestrator").forEach {
+                listOf("demo.admin.password", "spring.h2.console", "springdoc.api-docs", "otp-pepper", "lookup-secret", "trustSelfSignedCertificate", "http://keycloak", "http://orchestrator").forEach {
                     failure.message!! shouldContain it
                 }
             }

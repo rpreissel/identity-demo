@@ -588,7 +588,6 @@ components:
       required:
       - demoMode
       - disabledTools
-      - operations
       - registrationEnrollFirst
       type: object
     TokenResponse:

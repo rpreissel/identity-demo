@@ -158,7 +158,12 @@ management:
           include: readinessState, db
 
 springdoc:
+  # Die API-Beschreibung gibt es nur im Demomodus: ausserhalb wuerde sie jedem ohne Anmeldung
+  # alle Endpunkte samt Demo-Flaechen nennen. Der Vertrag liegt ohnehin in api/ (ADR-26).
+  api-docs:
+    enabled: ${demo.mode}
   swagger-ui:
+    enabled: ${demo.mode}
     # "Try it out" can't work here: DPoP needs a fresh proof signed per request, bound to that
     # exact method+URL and single-use (jti) - a value pasted into Authorize would just misfire as
     # a 401 on every call after the first. Swagger UI stays read-only API reference; use the real

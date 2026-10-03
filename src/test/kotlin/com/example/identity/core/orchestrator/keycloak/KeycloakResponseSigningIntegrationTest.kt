@@ -42,6 +42,11 @@ class KeycloakResponseSigningIntegrationTest : IntegrationTestSupport() {
                 .issueTime(Date()).claim("channel_binding", channelBinding).build()
         ).apply { sign(ECDSASigner(ECKeyGenerator(Curve.P_256).generate())) }.serialize()
 
+    /** The throwaway key is unknown to the JWKS; the filter takes the assertion as Keycloak's anyway. */
+    private fun acceptAssertionsAsVerified() {
+        every { peerAuthValidator.verify(any(), any(), any()) } answers { SignedJWT.parse(firstArg<String>()).jwtClaimsSet }
+    }
+
     private fun sha256(body: String): String =
         Base64URL.encode(MessageDigest.getInstance("SHA-256").digest(body.toByteArray())).toString()
 
@@ -53,6 +58,7 @@ class KeycloakResponseSigningIntegrationTest : IntegrationTestSupport() {
                 every { peerAuthValidator.validate(any(), any(), any()) } returns PeerAuthAssertion(
                     jti = jti, issuedAt = Instant.now(), channelBinding = channelSessionId.toString(), subject = null
                 )
+                acceptAssertionsAsVerified()
                 val assertion = peerAuthAssertion(jti, channelSessionId.toString())
 
                 val response = restTemplate.exchange(
@@ -86,6 +92,7 @@ class KeycloakResponseSigningIntegrationTest : IntegrationTestSupport() {
         given("Keycloak asking for the text bundle with a peer-auth assertion") {
             `when`("the orchestrator answers it") {
                 val jti = UUID.randomUUID().toString()
+                acceptAssertionsAsVerified()
                 val assertion = peerAuthAssertion(jti, "texts")
 
                 val response = restTemplate.exchange(
@@ -97,6 +104,21 @@ class KeycloakResponseSigningIntegrationTest : IntegrationTestSupport() {
                     val jwt = SignedJWT.parse(response.headers.getFirst(KeycloakResponseSigner.HEADER))
                     jwt.jwtClaimsSet.getStringClaim("req") shouldBe jti
                     jwt.jwtClaimsSet.getStringClaim("body_sha256") shouldBe sha256(response.body!!)
+                }
+            }
+        }
+
+        given("a forged assertion: some JWT with channel_binding and jti, not signed by Keycloak") {
+            `when`("it is sent to a Keycloak endpoint") {
+                val assertion = peerAuthAssertion(UUID.randomUUID().toString(), UUID.randomUUID().toString())
+
+                val response = restTemplate.exchange(
+                    "http://localhost:$port/orchestrator/api/v1/texts/de", HttpMethod.GET,
+                    HttpEntity<Void>(HttpHeaders().apply { set("Authorization", "Bearer $assertion") }), String::class.java
+                )
+
+                then("the orchestrator signs nothing, so it is no signing oracle for chosen req, iss and aud") {
+                    response.headers.getFirst(KeycloakResponseSigner.HEADER) shouldBe null
                 }
             }
         }

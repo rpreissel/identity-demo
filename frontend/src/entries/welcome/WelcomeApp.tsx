@@ -502,7 +502,7 @@ function ServerStatus() {
           <span className="value">{info.demoMode ? t('an (TANs, Testpersonen, Vorbelegung)') : t('aus')}</span>
         </li>
       </ul>
-      <OperationsStatus operations={info.operations} />
+      {info.operations && <OperationsStatus operations={info.operations} />}
     </div>
   )
 }

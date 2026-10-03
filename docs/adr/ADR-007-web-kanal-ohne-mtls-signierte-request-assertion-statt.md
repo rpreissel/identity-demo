@@ -12,7 +12,11 @@ Anfrage, die Antwort aber entscheidet, wer eingeloggt wird. Der Orchestrator sig
 Antwort auf eine Peer-Auth-Anfrage (`KeycloakResponseSigner`, Header `Orchestrator-Response-Signature`)
 über Status und Inhalt, gebunden an die `jti` der Anfrage; die Erweiterung prüft das gegen
 `/orchestrator/api/v1/kc/response-jwks/.well-known/jwks.json`, bevor sie der Antwort glaubt
-(`OrchestratorResponseVerifier`).
+(`OrchestratorResponseVerifier`). Signiert wird nur die Antwort auf eine Assertion, deren
+Signatur, Aussteller, Empfänger, Adresse und Alter der Orchestrator angenommen hat
+(`PeerAuthValidator.verify`): Sonst bekäme jeder eine vom Orchestrator signierte Antwort mit selbst
+gewähltem `req`, `iss` und `aud`. Die Antwort auf eine abgelehnte Assertion ist unsigniert, und die
+Erweiterung behandelt sie wie jede nicht prüfbare Antwort als Fehler.
 
 Es gibt genau ein JWT je Anfrage, nicht ein Access-Token mit einem getrennten Proof dazu. Bei der
 ersten Anmeldung gibt es nämlich noch kein `sub`. Die Assertion sagt deshalb nur: „Ich handle für
