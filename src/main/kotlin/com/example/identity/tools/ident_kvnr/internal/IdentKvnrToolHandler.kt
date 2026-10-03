@@ -2,6 +2,8 @@ package com.example.identity.tools.ident_kvnr.internal
 
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.tools.ident_kvnr.KvnrModule
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.texts.Text
@@ -11,7 +13,6 @@ import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 import com.example.identity.contract.tool_api.MissingFields
 
 /**
@@ -21,14 +22,13 @@ import com.example.identity.contract.tool_api.MissingFields
  */
 @Component
 class IdentKvnrToolHandler(
-    private val repository: IdentKvnrToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val personDirectory: PersonDirectory,
-    private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        repository.save(IdentKvnrToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, IdentKvnrToolSession())
         return inProgress()
     }
 
@@ -40,11 +40,10 @@ class IdentKvnrToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, kvnr: String?, partnerNumber: String?, personId: PartnerNumber?, matchesAttestedIdentity: Boolean): ToolOutcome {
-        val data = checkNotNull(repository.findByToolSessionId(toolSessionId)) { "Unknown ident-kvnr tool session: $toolSessionId" }
+        val data = sessions.require<IdentKvnrToolSession>(toolSessionId)
         val byKvnr = !kvnr.isNullOrBlank()
         if (!byKvnr && partnerNumber.isNullOrBlank()) return inProgress()
-        if (byKvnr) data.kvnr = kvnr else data.partnerNumber = partnerNumber
-        repository.save(data)
+        sessions.save(toolSessionId, if (byKvnr) data.copy(kvnr = kvnr) else data.copy(partnerNumber = partnerNumber))
 
         val notAssignable = if (byKvnr) Text("Versichertennummer konnte nicht zugeordnet werden") else Text("Partnernummer konnte nicht zugeordnet werden")
         personId ?: return ToolOutcome.Failed.Identification(notAssignable, attemptedPersonId = null)
@@ -63,7 +62,7 @@ class IdentKvnrToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        checkNotNull(repository.findByToolSessionId(toolSessionId)) { "Unknown ident-kvnr tool session: $toolSessionId" }
+        sessions.require<IdentKvnrToolSession>(toolSessionId)
         return inProgress()
     }
 

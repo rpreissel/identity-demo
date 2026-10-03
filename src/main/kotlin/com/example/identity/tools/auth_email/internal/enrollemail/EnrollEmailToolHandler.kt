@@ -1,9 +1,10 @@
 package com.example.identity.tools.auth_email.internal.enrollemail
 
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
 import com.example.identity.contract.tool_api.ToolOutcome
-import java.time.Clock
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -15,13 +16,12 @@ import org.springframework.transaction.annotation.Transactional
  */
 @Component
 class EnrollEmailToolHandler(
-    private val toolDataRepository: EnrollEmailToolSessionRepository,
-    private val clock: Clock
+    private val sessions: ToolSessionData,
 ) {
 
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        toolDataRepository.save(EnrollEmailToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, EnrollEmailToolSession())
         return completed()
     }
 
@@ -31,9 +31,7 @@ class EnrollEmailToolHandler(
      */
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) {
-            "Unknown enroll-email tool session: $toolSessionId"
-        }
+        sessions.require<EnrollEmailToolSession>(toolSessionId)
         return completed()
     }
 

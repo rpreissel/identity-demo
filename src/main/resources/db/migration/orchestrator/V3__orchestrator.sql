@@ -95,6 +95,9 @@ CREATE TABLE orchestrator.tool_session (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     version    BIGINT NOT NULL DEFAULT 0,
+    -- The tool's working data (ToolSessionData): which module and class, and the state as JSON.
+    data_type  VARCHAR(160),
+    data       JSON,
     CONSTRAINT fk_tool_session_auth_journey FOREIGN KEY (journey_id) REFERENCES orchestrator.auth_journey (id)
 );
 CREATE INDEX ix_tool_session_journey_id ON orchestrator.tool_session (journey_id);

@@ -113,8 +113,12 @@ Für Sie als Backend-Entwickler heißt das:
 ## 1) Tool-Katalog
 
 `ToolSession` ist die dritte und kurzlebigste Ebene (`ChannelSession` → `AuthJourney` →
-`ToolSession`). Sie steht für genau einen Durchlauf eines Tools und hält nur technische Daten zu
-dessen Lebenszyklus. `toolId` (z. B. `ident-fsc`, `enroll-sms`, `auth-sms`) bezeichnet Art und
+`ToolSession`). Sie steht für genau einen Durchlauf eines Tools: Daten zu dessen Lebenszyklus und
+die Arbeitsdaten des Tools selbst. Diese hält das Tool als einfache Datenklasse
+(`AuthSmsToolSession`: Enrollment, TAN-Hash, Ablaufzeit) und speichert sie über `ToolSessionData`;
+der Orchestrator legt sie als JSON an die Zeile, liest sie aber nie
+([ADR-49](adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)). Ein Modul braucht dafür weder
+Tabelle noch Aufräumen. `toolId` (z. B. `ident-fsc`, `enroll-sms`, `auth-sms`) bezeichnet Art und
 Verfahren in einem einzigen Namen. Die `toolId` wird nicht gespeichert, sondern aus der Route
 abgeleitet; über sie werden Handler und Datenklasse des Moduls ausgewählt.
 

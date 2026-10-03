@@ -1,10 +1,9 @@
 package com.example.identity.tools.auth_qr.internal.authqr
 
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.AccountId
-import com.example.identity.TEST_CLOCK
-import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -14,7 +13,6 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import java.util.UUID
 
 private const val PAIRING = "PAIRING1"
@@ -22,13 +20,12 @@ private const val PAIRING = "PAIRING1"
 /** One tool session on [PAIRING]; the browser side reports whatever state a test sets. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val saved = slot<AuthQrToolSession>()
-    val sessions = mockk<AuthQrToolSessionRepository>().also {
-        every { it.save(capture(saved)) } answers { saved.captured }
-        every { it.findByToolSessionId(toolSessionId) } returns AuthQrToolSession(toolSessionId = toolSessionId, pairingCode = PAIRING, createdAt = TEST_NOW)
-    }
+    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, AuthQrToolSession(pairingCode = PAIRING)) }
+
+    /** The session as the handler last saved it. */
+    val saved: AuthQrToolSession get() = sessions.stored(toolSessionId)
     val browserSide = mockk<QrLoginBrowserSide>()
-    val handler = AuthQrToolHandler( sessions, browserSide, clock = TEST_CLOCK)
+    val handler = AuthQrToolHandler(sessions, browserSide)
 
     fun withState(state: QrLoginBrowserSide.State, confirmationCode: String? = null) = apply {
         every { browserSide.advance(PAIRING, confirmationCode) } returns state
@@ -36,7 +33,7 @@ private class Fixture {
 }
 
 /**
- * Pure unit test: no Spring context, repositories and the browser side mocked with MockK. Covers
+ * Pure unit test: no Spring context, the session data kept in memory, the browser side mocked with MockK. Covers
  * how each pairing state becomes an outcome, and the check that the confirming account is the one
  * the channel already knows. Which state a pairing is in is [com.example.identity.tools.auth_qr.internal.QrLoginBrowserSideTest]'s matter.
  */
@@ -50,7 +47,7 @@ class AuthQrToolHandlerTest : BehaviorSpec({
             val outcome = f.handler.start(f.toolSessionId, accountId = AccountId(42L))
 
             then("it binds the tool session to the pairing it opened for account 42 and shows its code at step waitForApp") {
-                f.saved.captured.pairingCode shouldBe PAIRING
+                f.saved.pairingCode shouldBe PAIRING
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "waitForApp", stepData = QrPairingStep(PAIRING))
             }
         }

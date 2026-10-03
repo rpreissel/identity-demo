@@ -1,10 +1,10 @@
 package com.example.identity.tools.ident_eid.internal
 
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
-import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.tools.ident_eid.internal.EidFixtures.CARD
@@ -22,15 +22,14 @@ import io.mockk.every
 import io.mockk.mockk
 import java.util.UUID
 
-/** One tool session holding [session]; every save keeps it. */
-private class Fixture(sessionOf: (ToolSessionId) -> IdentEidToolSession) {
+/** One tool session starting from [initial]; [session] is what the handler last saved. */
+private class Fixture(initial: IdentEidToolSession) {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val session = sessionOf(toolSessionId)
-    val repository = mockk<IdentEidToolSessionRepository>().also {
-        every { it.findByToolSessionId(toolSessionId) } returns session
-        every { it.save(any()) } answers { firstArg() }
-    }
-    val handler = IdentEidToolHandler( repository, clock = TEST_CLOCK)
+    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, initial) }
+
+    /** The session as the handler last saved it. */
+    val session: IdentEidToolSession get() = sessions.stored(toolSessionId)
+    val handler = IdentEidToolHandler(sessions, clock = TEST_CLOCK)
 }
 
 /**
@@ -42,7 +41,7 @@ private class Fixture(sessionOf: (ToolSessionId) -> IdentEidToolSession) {
 class IdentEidToolHandlerTest : BehaviorSpec({
 
     given("no ident-eid tool session yet") {
-        val f = Fixture { IdentEidToolSession(toolSessionId = it, createdAt = TEST_NOW) }
+        val f = Fixture(IdentEidToolSession())
 
         `when`("a tool session starts") {
             val outcome = f.handler.start(ToolSessionId(UUID.randomUUID()))
@@ -54,7 +53,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
     }
 
     given("an ident-eid session with the card read, waiting for the PIN") {
-        val f = Fixture { readCard(it) }
+        val f = Fixture(readCard())
 
         `when`("the correct mock PIN arrives") {
             val identified = f.handler.patch(f.toolSessionId, EidPatchFields(pin = IdentEidFlow.MOCK_PIN))
@@ -87,7 +86,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
     }
 
     given("another ident-eid session with the card read, waiting for the PIN") {
-        val f = Fixture { readCard(it) }
+        val f = Fixture(readCard())
 
         `when`("a wrong PIN arrives") {
             val outcome = f.handler.patch(f.toolSessionId, EidPatchFields(pin = "000000"))
@@ -105,7 +104,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
     }
 
     given("a fresh ident-eid session") {
-        val f = Fixture { IdentEidToolSession(toolSessionId = it, createdAt = TEST_NOW) }
+        val f = Fixture(IdentEidToolSession())
 
         `when`("complete card data with a malformed postal code arrives") {
             val outcome = f.handler.patch(f.toolSessionId, CARD.copy(postalCode = "1234"))
@@ -131,7 +130,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
     }
 
     given("another fresh ident-eid session") {
-        val f = Fixture { IdentEidToolSession(toolSessionId = it, createdAt = TEST_NOW) }
+        val f = Fixture(IdentEidToolSession())
 
         `when`("well-formed card data arrives") {
             val outcome = f.handler.patch(f.toolSessionId, CARD)
@@ -143,8 +142,7 @@ class IdentEidToolHandlerTest : BehaviorSpec({
     }
 })
 
-private fun readCard(toolSessionId: ToolSessionId) = IdentEidToolSession(
-    toolSessionId = toolSessionId,
+private fun readCard() = IdentEidToolSession(
     familyName = CARD.familyName,
     givenNames = CARD.givenNames,
     birthDate = CARD.birthDate,
@@ -152,5 +150,4 @@ private fun readCard(toolSessionId: ToolSessionId) = IdentEidToolSession(
     postalCode = CARD.postalCode,
     locality = CARD.locality,
     restrictedId = CARD.restrictedId,
-    createdAt = TEST_NOW
 )

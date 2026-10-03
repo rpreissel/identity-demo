@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_device.internal.enrolldevice
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_device.DeviceModule
 import com.example.identity.tools.auth_device.internal.DeviceEnrollmentRepository
@@ -21,7 +23,7 @@ import java.time.Clock
  */
 @Component
 class EnrollDeviceToolHandler(
-    private val toolDataRepository: EnrollDeviceToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val enrollmentRepository: DeviceEnrollmentRepository,
     private val clock: Clock
 ) {
@@ -29,7 +31,7 @@ class EnrollDeviceToolHandler(
     /** Called directly by EnrollDeviceToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        toolDataRepository.save(EnrollDeviceToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, EnrollDeviceToolSession())
         return outcomeFor()
     }
 
@@ -40,7 +42,7 @@ class EnrollDeviceToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, devicePublicKey: DevicePublicKey, userVerification: UserVerification, deviceBindingKeyRef: String, label: String?): ToolOutcome {
-        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-device tool session: $toolSessionId" }
+        sessions.require<EnrollDeviceToolSession>(toolSessionId)
 
         val decision = when (val decided = EnrollDeviceFlow.decide(EnrollDeviceInput(devicePublicKey, userVerification, deviceBindingKeyRef, label))) {
             EnrollDeviceDecision.SameKeyAsChannel ->
@@ -75,7 +77,7 @@ class EnrollDeviceToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-device tool session: $toolSessionId" }
+        sessions.require<EnrollDeviceToolSession>(toolSessionId)
         return outcomeFor()
     }
 

@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_kobil.internal.enrollkobil
 
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
@@ -27,34 +28,36 @@ import io.mockk.verify
 import java.util.UUID
 
 /**
- * Pure unit test: no Spring context, repositories and KOBIL mocked with MockK. Covers what start
+ * Pure unit test: no Spring context, the session data kept in memory, repositories and KOBIL
+ * mocked with MockK. Covers what start
  * mints and hands out, and what a confirmed activation writes; the decision itself is covered by
  * [EnrollKobilFlowTest].
  */
 class EnrollKobilToolHandlerTest : BehaviorSpec({
 
-    val toolDataRepository = mockk<EnrollKobilToolSessionRepository>()
+    val sessions = InMemoryToolSessionData()
     val enrollmentRepository = mockk<KobilEnrollmentRepository>()
     val secrets = KobilSecrets(pinLength = 8)
     val ssms = mockk<KobilSsms>()
     val tenantId = "identity-demo"
-    val handler = EnrollKobilToolHandler( toolDataRepository, enrollmentRepository, secrets, ssms, tenantId, clock = TEST_CLOCK)
+    val handler = EnrollKobilToolHandler(sessions, enrollmentRepository, secrets, ssms, tenantId, clock = TEST_CLOCK)
 
     /** A session mid-setup for KOBIL user [kobilUserId], still holding its minted secrets. */
-    fun activating(kobilUserId: String): Pair<ToolSessionId, EnrollKobilToolSession> {
+    fun activating(kobilUserId: String): ToolSessionId {
         val toolSessionId = ToolSessionId(UUID.randomUUID())
         val data = EnrollKobilToolSession(
-            toolSessionId = toolSessionId,
             kobilTenantId = tenantId,
             kobilUserId = kobilUserId,
             activationCode = "ACT23456",
             pin = "12345678",
             unlockSecret = "unlock-secret-$kobilUserId",
-            createdAt = TEST_NOW,
         )
-        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns data
-        return toolSessionId to data
+        sessions.save(toolSessionId, data)
+        return toolSessionId
     }
+
+    /** The session as the handler last saved it. */
+    fun stored(toolSessionId: ToolSessionId): EnrollKobilToolSession = sessions.stored(toolSessionId)
 
     given("a KOBIL tenant ready to provision a new user") {
         `when`("an enroll-kobil run begins") {
@@ -64,9 +67,8 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
             every { ssms.issueActivationCode(kobilUser) } returns "ACT23456"
             val pinAtKobil = slot<String>()
             every { ssms.setPin(kobilUser, capture(pinAtKobil)) } just Runs
-            val saved = slot<EnrollKobilToolSession>()
-            every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
             val outcome = handler.start(toolSessionId)
+            val saved = stored(toolSessionId)
 
             then("it hands out everything the SDK's activation needs, at step activate") {
                 val step = outcome.shouldBeInstanceOf<ToolOutcome.InProgress>()
@@ -82,8 +84,8 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
             then("the PIN handed out is the one set at KOBIL and kept in the session") {
                 val activation = outcome.shouldBeInstanceOf<ToolOutcome.InProgress>().stepData.shouldBeInstanceOf<KobilActivationStep>()
                 pinAtKobil.captured shouldBe activation.pin
-                saved.captured.pin shouldBe activation.pin
-                saved.captured.unlockSecret shouldBe activation.unlockSecret
+                saved.pin shouldBe activation.pin
+                saved.unlockSecret shouldBe activation.unlockSecret
             }
         }
     }
@@ -98,7 +100,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
         }
 
         `when`("the app confirms activation with biometric consent") {
-            val (toolSessionId, data) = activating("kob-a")
+            val toolSessionId = activating("kob-a")
             val outcome = handler.patch(toolSessionId, activated = true, biometricConsent = true, bindingKeyRef = "jkt-a", label = "Mein Handy")
 
             then("it enrolls with kobil and biometric, and reports binding key and device for later reads") {
@@ -121,14 +123,14 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
             }
 
             then("the tool session forgets the activation secrets") {
-                data.activationCode shouldBe ""
-                data.pin shouldBe ""
-                data.unlockSecret shouldBe ""
+                stored(toolSessionId).activationCode shouldBe ""
+                stored(toolSessionId).pin shouldBe ""
+                stored(toolSessionId).unlockSecret shouldBe ""
             }
         }
 
         `when`("the app confirms activation without biometric consent") {
-            val (toolSessionId, _) = activating("kob-b")
+            val toolSessionId = activating("kob-b")
             val outcome = handler.patch(toolSessionId, activated = true, biometricConsent = false, bindingKeyRef = "jkt-b", label = null)
 
             then("it enrolls with kobil and pin, possession plus knowledge") {
@@ -150,7 +152,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
         every { enrollmentRepository.findByKobilUserId("kob-again") } returns existing
 
         `when`("the app confirms the same activation again") {
-            val (toolSessionId, _) = activating("kob-again")
+            val toolSessionId = activating("kob-again")
             val outcome = handler.patch(toolSessionId, activated = true, biometricConsent = false, bindingKeyRef = "jkt", label = null)
 
             then("it reuses the existing row instead of writing a second one") {
@@ -164,7 +166,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
         every { ssms.deviceOf(KobilUserRef(tenantId, "kob-pending")) } returns null
 
         `when`("the app claims it has activated") {
-            val (toolSessionId, _) = activating("kob-pending")
+            val toolSessionId = activating("kob-pending")
             val outcome = handler.patch(toolSessionId, activated = true, biometricConsent = true, bindingKeyRef = "jkt", label = null)
 
             then("it stays at step activate and writes no credential, since the device id comes only from KOBIL") {
@@ -175,7 +177,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
     }
 
     given("a session whose app has not activated yet") {
-        val (toolSessionId, _) = activating("kob-idle")
+        val toolSessionId = activating("kob-idle")
 
         `when`("the app reports it has not activated") {
             val outcome = handler.patch(toolSessionId, activated = false, biometricConsent = null, bindingKeyRef = "jkt", label = null)

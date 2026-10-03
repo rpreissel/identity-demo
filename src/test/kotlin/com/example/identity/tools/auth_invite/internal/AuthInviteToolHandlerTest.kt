@@ -1,11 +1,10 @@
 package com.example.identity.tools.auth_invite.internal
 
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.ids.ToolSessionId
-import com.example.identity.TEST_CLOCK
-import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.MissingFields
@@ -35,16 +34,12 @@ private val wrongCodeAnswer = Text("Nummer oder Einmalkennwort ungueltig")
 /** One active tool session; the register opens [GRANT] for [PERSON] with [CODE] and nothing else. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val sessions = mockk<AuthInviteToolSessionRepository>().also {
-        every { it.findByToolSessionId(any()) } returns null
-        every { it.findByToolSessionId(toolSessionId) } returns AuthInviteToolSession(toolSessionId, TEST_NOW)
-        every { it.save(any()) } answers { firstArg() }
-    }
+    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, AuthInviteToolSession()) }
     val invitations = mockk<Invitations>().also {
         every { it.redeem(any(), any()) } returns null
         every { it.redeem(PartnerNumber(PERSON), CODE) } returns GRANT
     }
-    val handler = AuthInviteToolHandler( sessions, invitations, TEST_CLOCK)
+    val handler = AuthInviteToolHandler(sessions, invitations)
 }
 
 /**

@@ -1,9 +1,9 @@
 package com.example.identity.tools.auth_email.internal.confirmemail
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
-import com.example.identity.TEST_NOW
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.tools.auth_email.internal.EmailCodeGenerator
 import com.example.identity.tools.auth_email.internal.EmailSendLimit
@@ -19,24 +19,23 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.verify
 import java.util.UUID
 
 /** No tool session exists and the send budget is open until a test changes that. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val saved = slot<ConfirmEmailToolSession>()
-    val sessions = mockk<ConfirmEmailToolSessionRepository>().also {
-        every { it.save(capture(saved)) } answers { saved.captured }
-    }
+    val sessions = InMemoryToolSessionData()
+
+    /** The session as the handler last saved it. */
+    val saved: ConfirmEmailToolSession get() = sessions.stored(toolSessionId)
     val codes = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<EmailSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val mailServer = MailServer(clock = TEST_CLOCK)
-    val handler = ConfirmEmailToolHandler( sessions, codes, mailServer, sendLimit, clock = TEST_CLOCK)
+    val handler = ConfirmEmailToolHandler(sessions, codes, mailServer, sendLimit)
 
     fun withSessionAwaitingEmail() = apply {
-        every { sessions.findByToolSessionId(toolSessionId) } returns ConfirmEmailToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
+        sessions.save(toolSessionId, ConfirmEmailToolSession())
     }
 
     fun withSendBudgetUsedUp(address: String) = apply {
@@ -45,13 +44,12 @@ private class Fixture {
 
     /** Persists a pending code for [address] and returns it. */
     fun withPendingCode(address: String): EmailCodeGenerator.Issued = codes.issue().also { issued ->
-        every { sessions.findByToolSessionId(toolSessionId) } returns
-            ConfirmEmailToolSession(toolSessionId = toolSessionId, email = address, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
+        sessions.save(toolSessionId, ConfirmEmailToolSession(email = address, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt))
     }
 }
 
 /**
- * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
+ * Pure unit test: no Spring context, the session data kept in memory. Covers persistence/outcome
  * wiring only - the decision branches (invalid email, wrong code, ambiguous combinations) are
  * covered by [ConfirmEmailFlowTest].
  */
@@ -82,8 +80,8 @@ class ConfirmEmailToolHandlerTest : BehaviorSpec({
             }
 
             then("it persists the address and the hash of the mailed code") {
-                f.saved.captured.email shouldBe "max@example.com"
-                f.codes.matches(mail.code, f.saved.captured.issuedCodeHash, f.saved.captured.codeExpiresAt) shouldBe true
+                f.saved.email shouldBe "max@example.com"
+                f.codes.matches(mail.code, f.saved.issuedCodeHash, f.saved.codeExpiresAt) shouldBe true
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.example.identity.tools.ident_eid.internal
 
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
 import com.example.identity.contract.tool_api.ToolRole
@@ -23,14 +25,14 @@ private val PIN_REJECTED = Text("eID-PIN ungueltig")
  */
 @Component
 class IdentEidToolHandler(
-    private val repository: IdentEidToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val clock: Clock
 ) {
 
     /** Called directly by IdentEidToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        repository.save(IdentEidToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, IdentEidToolSession())
         return outcomeFor(IdentEidState())
     }
 
@@ -41,7 +43,7 @@ class IdentEidToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, fields: EidPatchFields): ToolOutcome {
-        val data = checkNotNull(repository.findByToolSessionId(toolSessionId)) { "Unknown ident-eid tool session: $toolSessionId" }
+        val data = sessions.require<IdentEidToolSession>(toolSessionId)
 
         val merged = IdentEidFlow.merge(data.toState(), fields)
         val (state, outcome) = when (val decision = IdentEidFlow.decide(merged, fields, LocalDate.now(clock))) {
@@ -58,8 +60,7 @@ class IdentEidToolHandler(
                 }
         }
 
-        data.applyState(state)
-        repository.save(data)
+        sessions.save(toolSessionId, state.toSession())
         return outcome
     }
 
@@ -92,8 +93,7 @@ class IdentEidToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val data = checkNotNull(repository.findByToolSessionId(toolSessionId)) { "Unknown ident-eid tool session: $toolSessionId" }
-        return outcomeFor(data.toState())
+        return outcomeFor(sessions.require<IdentEidToolSession>(toolSessionId).toState())
     }
 
     private fun outcomeFor(state: IdentEidState): ToolOutcome.InProgress {
@@ -104,14 +104,6 @@ class IdentEidToolHandler(
     private fun IdentEidToolSession.toState(): IdentEidState =
         IdentEidState(familyName, givenNames, birthDate, streetAddress, postalCode, locality, restrictedId, pinHash)
 
-    private fun IdentEidToolSession.applyState(state: IdentEidState) {
-        familyName = state.familyName
-        givenNames = state.givenNames
-        birthDate = state.birthDate
-        streetAddress = state.streetAddress
-        postalCode = state.postalCode
-        locality = state.locality
-        restrictedId = state.restrictedId
-        pinHash = state.pinHash
-    }
+    private fun IdentEidState.toSession(): IdentEidToolSession =
+        IdentEidToolSession(familyName, givenNames, birthDate, streetAddress, postalCode, locality, restrictedId, pinHash)
 }

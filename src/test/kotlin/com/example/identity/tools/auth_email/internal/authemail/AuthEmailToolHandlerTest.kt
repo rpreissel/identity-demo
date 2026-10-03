@@ -1,10 +1,10 @@
 package com.example.identity.tools.auth_email.internal.authemail
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
-import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -22,7 +22,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.verify
 import java.util.UUID
 
@@ -32,17 +31,17 @@ private const val ADDRESS = "max@example.com"
 private class Fixture {
     val accountId = AccountId(42L)
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val saved = slot<AuthEmailToolSession>()
-    val sessions = mockk<AuthEmailToolSessionRepository>().also {
-        every { it.save(capture(saved)) } answers { saved.captured }
-    }
+    val sessions = InMemoryToolSessionData()
+
+    /** The session as the handler last saved it. */
+    val saved: AuthEmailToolSession get() = sessions.stored(toolSessionId)
     val accountDirectory = mockk<AccountDirectory>().also {
         every { it.anchorValue(any(), AttributeType.EMAIL) } returns null
     }
     val codes = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<EmailSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val mailServer = MailServer(clock = TEST_CLOCK)
-    val handler = AuthEmailToolHandler( sessions, accountDirectory, codes, mailServer, sendLimit, clock = TEST_CLOCK)
+    val handler = AuthEmailToolHandler(sessions, accountDirectory, codes, mailServer, sendLimit)
 
     fun withConfirmedAddress() = apply {
         every { accountDirectory.anchorValue(accountId, AttributeType.EMAIL) } returns ADDRESS
@@ -54,13 +53,12 @@ private class Fixture {
 
     /** Persists a pending code for [toolSessionId] and returns it. */
     fun withPendingCode(): EmailCodeGenerator.Issued = codes.issue().also { issued ->
-        every { sessions.findByToolSessionId(toolSessionId) } returns
-            AuthEmailToolSession(toolSessionId = toolSessionId, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
+        sessions.save(toolSessionId, AuthEmailToolSession(issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt))
     }
 }
 
 /**
- * Pure unit test: no Spring context, repositories and the account directory mocked with MockK.
+ * Pure unit test: no Spring context, the session data kept in memory, the account directory mocked with MockK.
  * Covers persistence/outcome wiring only - the code-vs-state decision is covered by [AuthEmailFlowTest].
  */
 class AuthEmailToolHandlerTest : BehaviorSpec({
@@ -90,8 +88,7 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
             }
 
             then("it persists the hash of the mailed code for this tool session") {
-                f.saved.captured.toolSessionId shouldBe f.toolSessionId
-                f.codes.matches(mail.code, f.saved.captured.issuedCodeHash, f.saved.captured.codeExpiresAt) shouldBe true
+                f.codes.matches(mail.code, f.saved.issuedCodeHash, f.saved.codeExpiresAt) shouldBe true
             }
         }
     }

@@ -102,9 +102,10 @@ Entscheidungen, die an diesem Modell hängen:
   liegt als Hash mit Ablaufzeit in der Tabelle der Tool-Sitzung; sonst würden sich zwei
   gleichzeitige Versuche gegenseitig überschreiben. Die eingegebene TAN wird nie gespeichert, nur
   mit dem Hash verglichen.
-- **Der Orchestrator speichert nur Lebenszyklus und Routing**, nie Fach- oder Moduldaten. Die
-  liegen ausschließlich im jeweiligen Tool-Modul (bei SMS in
-  `auth_sms.auth_tool_session`/`auth_sms.enroll_tool_session`).
+- **Der Orchestrator liest keine Moduldaten.** Die Arbeitsdaten eines Tools (bei SMS Nummer, TAN-Hash
+  und Ablaufzeit) legt er zwar als JSON an seiner Tool-Sitzung ab (`orchestrator.tool_session.data`,
+  [ADR-49](adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)), aber nur das Modul kennt ihre Form
+  und liest sie.
 
 Regel für das Identifizierungs-Ereignis im Änderungsprotokoll (`account.change_log`, `IDENTIFIED`,
 [ADR-39](adr/ADR-039-was-eine-kontoloeschung-ueberlebt.md)): Es belegt, **dass und wie** geprüft

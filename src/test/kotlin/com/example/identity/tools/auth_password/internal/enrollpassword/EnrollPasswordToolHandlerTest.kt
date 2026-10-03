@@ -1,9 +1,9 @@
 package com.example.identity.tools.auth_password.internal.enrollpassword
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_password.PASSWORD_EXISTS
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
-import com.example.identity.TEST_NOW
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollment
 import com.example.identity.tools.auth_password.internal.PasswordHasher
@@ -26,19 +26,16 @@ import java.util.UUID
 /** One active tool session; a saved enrollment gets id 7. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val sessions = mockk<EnrollPasswordToolSessionRepository>().also {
-        every { it.save(any()) } answers { firstArg() }
-        every { it.findByToolSessionId(toolSessionId) } returns EnrollPasswordToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-    }
+    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, EnrollPasswordToolSession()) }
     val saved = slot<AuthPasswordEnrollment>()
     val enrollments = mockk<AuthPasswordEnrollmentRepository>().also {
         every { it.save(capture(saved)) } answers { saved.captured.apply { id = 7L } }
     }
-    val handler = EnrollPasswordToolHandler( sessions, enrollments, clock = TEST_CLOCK)
+    val handler = EnrollPasswordToolHandler(sessions, enrollments, clock = TEST_CLOCK)
 }
 
 /**
- * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
+ * Pure unit test: no Spring context, the session data kept in memory, repositories mocked with MockK. Covers persistence/outcome
  * wiring only - the decision branches (too short, nothing submitted) are covered by
  * [EnrollPasswordFlowTest].
  */

@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_invite.internal
 
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted
@@ -9,7 +11,6 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.directory.Invitations
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 
 /**
  * toolId=auth-invite-lookup (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). The controller resolves the
@@ -19,14 +20,13 @@ import java.time.Clock
  */
 @Component
 class AuthInviteToolHandler(
-    private val sessions: AuthInviteToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val invitations: Invitations,
-    private val clock: Clock,
 ) {
 
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        sessions.save(AuthInviteToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, AuthInviteToolSession())
         return outcomeFor()
     }
 
@@ -36,7 +36,7 @@ class AuthInviteToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, kvnr: String?, partnerNumber: String?, code: String?, personId: PartnerNumber?, rateLimited: Boolean): ToolOutcome {
-        checkNotNull(sessions.findByToolSessionId(toolSessionId)) { "Unknown auth-invite-lookup tool session: $toolSessionId" }
+        sessions.require<AuthInviteToolSession>(toolSessionId)
 
         return when (val decision = AuthInviteFlow.decide(AuthInviteInput(kvnr, partnerNumber, code))) {
             is AuthInviteDecision.Incomplete -> outcomeFor(decision.missingFields)
@@ -56,7 +56,7 @@ class AuthInviteToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        checkNotNull(sessions.findByToolSessionId(toolSessionId)) { "Unknown auth-invite-lookup tool session: $toolSessionId" }
+        sessions.require<AuthInviteToolSession>(toolSessionId)
         return outcomeFor()
     }
 

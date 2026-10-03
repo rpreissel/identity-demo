@@ -1,6 +1,8 @@
 package com.example.identity.tools.auth_qr.internal.authqr
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
@@ -9,7 +11,6 @@ import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 
 /**
  * toolId=auth-qr: the account is already known via the channel (step-up or re-auth), and the
@@ -17,15 +18,14 @@ import java.time.Clock
  */
 @Component
 class AuthQrToolHandler(
-    private val toolDataRepository: AuthQrToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val browserSide: QrLoginBrowserSide,
-    private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: ToolSessionId, accountId: AccountId): ToolOutcome {
         val pairingCode = browserSide.open(expectedAccountId = accountId)
-        toolDataRepository.save(AuthQrToolSession(toolSessionId = toolSessionId, pairingCode = pairingCode, createdAt = clock.instant()))
+        sessions.save(toolSessionId, AuthQrToolSession(pairingCode = pairingCode))
         return waitingFor(pairingCode)
     }
 
@@ -35,7 +35,7 @@ class AuthQrToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, confirmationCode: String?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-qr tool session: $toolSessionId" }
+        val data = sessions.require<AuthQrToolSession>(toolSessionId)
         val pairingCode = checkNotNull(data.pairingCode)
         return when (val state = browserSide.advance(pairingCode, confirmationCode)) {
             QrLoginBrowserSide.State.WaitingForApp -> waitingFor(pairingCode)
@@ -58,7 +58,7 @@ class AuthQrToolHandler(
      */
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-qr tool session: $toolSessionId" }
+        val data = sessions.require<AuthQrToolSession>(toolSessionId)
         val pairingCode = checkNotNull(data.pairingCode)
         return when (browserSide.advance(pairingCode, null)) {
             QrLoginBrowserSide.State.WaitingForApp -> waitingFor(pairingCode)

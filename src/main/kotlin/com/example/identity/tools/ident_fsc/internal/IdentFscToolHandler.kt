@@ -2,6 +2,8 @@ package com.example.identity.tools.ident_fsc.internal
 
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.tools.ident_fsc.FscModule
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.directory.ActivationCodes
@@ -12,7 +14,6 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 import java.time.LocalDate
 
 /**
@@ -24,16 +25,15 @@ private val PERSONAL_DETAILS_REJECTED = Text("Die Angaben passen zu keiner Perso
 
 @Component
 class IdentFscToolHandler(
-    private val repository: IdentFscToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val activationCodes: ActivationCodes,
     private val personDirectory: PersonDirectory,
-    private val clock: Clock
 ) {
 
     /** Called directly by IdentFscToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        repository.save(IdentFscToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, IdentFscToolSession())
         return outcomeFor(IdentFscState())
     }
 
@@ -54,7 +54,7 @@ class IdentFscToolHandler(
         personId: PartnerNumber?,
         rateLimited: Boolean
     ): ToolOutcome {
-        val data = checkNotNull(repository.findByToolSessionId(toolSessionId)) { "Unknown ident-fsc tool session: $toolSessionId" }
+        val data = sessions.require<IdentFscToolSession>(toolSessionId)
 
         val input = IdentFscInput(kvnr, partnerNumber, familyName, givenNames, birthDate, fsc, personId)
         val merged = IdentFscFlow.merge(data.toState(), input, activationCodes::digest)
@@ -85,8 +85,7 @@ class IdentFscToolHandler(
             is IdentFscDecision.VerifyCode -> verifyCode(toolSessionId, merged, decision.personId, decision.fscHash, rateLimited)
         }
 
-        data.applyState(outcome.first)
-        repository.save(data)
+        sessions.save(toolSessionId, outcome.first.toSession())
         return outcome.second
     }
 
@@ -128,8 +127,7 @@ class IdentFscToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val data = checkNotNull(repository.findByToolSessionId(toolSessionId)) { "Unknown ident-fsc tool session: $toolSessionId" }
-        return outcomeFor(data.toState())
+        return outcomeFor(sessions.require<IdentFscToolSession>(toolSessionId).toState())
     }
 
     private fun outcomeFor(state: IdentFscState): ToolOutcome.InProgress {
@@ -139,13 +137,13 @@ class IdentFscToolHandler(
 
     private fun IdentFscToolSession.toState(): IdentFscState = IdentFscState(kvnr, partnerNumber, familyName, givenNames, birthDate, fscHash, personId)
 
-    private fun IdentFscToolSession.applyState(state: IdentFscState) {
-        kvnr = state.kvnr
-        partnerNumber = state.partnerNumber
-        familyName = state.familyName
-        givenNames = state.givenNames
-        birthDate = state.birthDate
-        fscHash = state.fscHash
-        personId = state.personId
-    }
+    private fun IdentFscState.toSession(): IdentFscToolSession = IdentFscToolSession(
+        kvnr = kvnr,
+        partnerNumber = partnerNumber,
+        personId = personId,
+        familyName = familyName,
+        givenNames = givenNames,
+        birthDate = birthDate,
+        fscHash = fscHash,
+    )
 }

@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_qr.internal.enrollqr
 
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.tools.auth_qr.internal.QR_OPTIN_ENROLLMENT_TYPE
@@ -17,20 +19,20 @@ import java.time.Clock
  */
 @Component
 class EnrollQrToolHandler(
-    private val toolDataRepository: EnrollQrToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val qrOptInRepository: QrOptInRepository,
     private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        toolDataRepository.save(EnrollQrToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, EnrollQrToolSession())
         return outcomeFor()
     }
 
     @Transactional
     fun patch(toolSessionId: ToolSessionId): ToolOutcome {
-        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-qr tool session: $toolSessionId" }
+        sessions.require<EnrollQrToolSession>(toolSessionId)
 
         val optIn = qrOptInRepository.save(QrOptIn(clock.instant()))
         return ToolOutcome.Completed.Enrolled(
@@ -40,7 +42,7 @@ class EnrollQrToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-qr tool session: $toolSessionId" }
+        sessions.require<EnrollQrToolSession>(toolSessionId)
         return outcomeFor()
     }
 

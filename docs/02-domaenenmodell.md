@@ -506,8 +506,6 @@ erDiagram
   orchestrator.channel_session }o--o| orchestrator.session_evidence : "Nachweise dieses Kanals"
   orchestrator.app_token_session }o--o| orchestrator.session_evidence : "bewertet"
   orchestrator.auth_journey }o..o| orchestrator.auth_journey : "parent_journey_id (ohne FK)"
-  orchestrator.tool_session ||..o| auth_sms.enroll_tool_session : "tool_session_id ist PK"
-  orchestrator.tool_session ||..o| auth_sms.auth_tool_session : "tool_session_id ist PK"
   orchestrator.channel_session }o..o| account.account : "account_id"
   orchestrator.device_account_link }o..|| account.account : "account_id"
 
@@ -529,9 +527,11 @@ erDiagram
     json state "JourneyState, kein next_*"
   }
   orchestrator.tool_session {
-    uuid id PK
+    uuid id PK "UUIDv7"
     uuid journey_id FK
     timestamp expires_at "ix, Aufbewahrung"
+    varchar data_type "Modul und Klasse der Arbeitsdaten"
+    json data "Arbeitsdaten des Tools, nur das Modul liest sie"
   }
   orchestrator.app_token_session {
     uuid id PK
@@ -550,16 +550,6 @@ erDiagram
   account.account {
     bigint id PK "Spalten siehe Diagramm Konto"
   }
-  auth_sms.enroll_tool_session {
-    uuid tool_session_id PK
-    varchar issued_tan_hash
-    timestamp created_at "ix, Aufbewahrung"
-  }
-  auth_sms.auth_tool_session {
-    uuid tool_session_id PK
-    varchar enrollment_ref_type
-    varchar enrollment_ref_id
-  }
 ```
 
 `orchestrator.session_evidence` und `orchestrator.app_token_session` sind getrennt. Nachweise hat jeder
@@ -567,13 +557,11 @@ Kanal (der Web-Kanal legt nie eine `AppTokenSession` an), und sie sind die Wahrh
 Policy rechnet. Das Token ist nur eine daraus ausgestellte Kopie, die man verwerfen kann
 ([12-entscheidungen.md](12-entscheidungen.md) ADR-15).
 
-Die `*_tool_session`-Tabellen liegen im Schema ihres Moduls, obwohl ihr Lebenszyklus an
-`orchestrator.tool_session` hängt. Ihr Primärschlüssel *ist* die `tool_session_id`; ein
-Fremdschlüssel darauf würde also über eine Schemagrenze gehen. `auth_sms.enroll_tool_session` ist
-der Teil derselben `orchestrator.tool_session`, der im Modul liegt, keine vierte Sitzungsebene.
-Jedes Tool-Modul ist gleich aufgebaut: ein langlebiges `<modul>.enrollment` und für jedes Tool
-eine kurzlebige `<modul>.<tool-rolle>_tool_session`. Die Tabellen eines Moduls stehen in seiner
-eigenen Migration unter `db/migration/<modul>/`.
+Die Arbeitsdaten eines Tools haben keine eigene Tabelle. Das Tool speichert sie über
+`ToolSessionData`, und sie liegen als JSON an seiner `orchestrator.tool_session`
+([ADR-49](adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)): keine vierte Sitzungsebene, und sie
+enden mit der Zeile. Was dauerhaft bleibt, legt ein Tool-Modul in sein eigenes Schema, vor allem das
+langlebige `<modul>.enrollment`; seine Tabellen stehen in seiner Migration unter `db/migration/<modul>/`.
 
 Nicht im Diagramm, weil ohne Beziehungen: `orchestrator.journey_trace` (die Sitzungs-IDs dort sind historische Werte, keine Verweise; die
 Aufzeichnung überlebt die Sitzungen), `orchestrator.rate_limit`,

@@ -98,7 +98,7 @@ Journeys, die nach Rolle auswählen.
 | `api/v1/…StepData.kt` | die Formen von `stepData` als einfache Datenklassen, darüber ihre Deklaration (`kind`, Beschreibung, Beispiele), die das Modul unter `stepData` nennt | `tools/auth_kobil/api/v1/KobilStepData.kt` |
 | `internal/…Enrollment.kt` + Repository | das gespeicherte Verfahren in `<modul>.enrollment`, mit der Konstante für den Enrollment-Typ | `tools/auth_kobil/internal/KobilEnrollment.kt` |
 | `internal/…EnrollmentCleanup.kt` | löscht das Verfahren mit dem Konto | `tools/auth_sms/internal/AuthSmsEnrollmentCleanup.kt` |
-| `internal/…RetentionJob.kt` | `ToolSessionSweeper` für alte Tool-Sitzungen | `tools/auth_kobil/internal/AuthKobilRetentionJob.kt` |
+| `internal/…/…ToolSession.kt` | die Arbeitsdaten eines Durchlaufs als einfache Datenklasse, gespeichert über `ToolSessionData` (keine Tabelle, kein Aufräumen) | `tools/auth_sms/internal/authsms/AuthSmsToolSession.kt` |
 
 Ein Handler meldet in seinem Ergebnis nur, was von der Deklaration abweicht. `auth-totp` meldet bei
 Erfolg einfach `ToolOutcome.Completed.Authenticated()`: `amr`, Niveau und Faktoren ergänzt der
@@ -205,8 +205,8 @@ Von selbst, ohne Änderung im Kern:
   Faktoren und `maxAcr` aus dem Modul.
 - Ein eigener Anker und mehrere Instanzen je Konto (`onePerDevice`) brauchen keine Änderung im Kern
   und keine Migration im Konto.
-- Das Löschen des Kontos findet jedes `EnrollmentCleanup`, die Aufbewahrung jeden
-  `ToolSessionSweeper`.
+- Das Löschen des Kontos findet jedes `EnrollmentCleanup`. Die Arbeitsdaten der Tools liegen an der
+  Tool-Sitzung des Orchestrators und gehen mit ihr (ADR-49).
 - Neue Migrationsordner und neue `@RestController` werden gefunden; es gibt keine Listen.
 - Der Kern darf ein neues Tool gar nicht beim Namen kennen: `CoreNamesNoToolTest` verbietet
   `ToolId("…")` im Kern.
@@ -222,7 +222,8 @@ Von Hand:
 
 - **Datenbank.** Je Modul ein Ordner `db/migration/<modul>/`, Versionen laufen über alle Module
   durch. Regeln in `db/migration/KONVENTIONEN.md`: eigenes Schema, `enrollment` für das dauerhafte
-  Verfahren, `<rolle>_tool_session` für einen Durchlauf, keine Fremdschlüssel über Schemagrenzen.
+  Verfahren, keine Fremdschlüssel über Schemagrenzen. Für die Arbeitsdaten eines Durchlaufs braucht es
+  keine Tabelle.
   Vorbild `auth_kobil/V12__auth_kobil.sql`.
 - **Vertrag.** `./gradlew updateOpenApiSnapshot` schreibt `api/openapi.yaml` und
   `api/modules/<modul>.yaml`, danach `./gradlew generateFrontendApiTypes`. Neue Endpunkte und

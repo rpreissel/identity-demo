@@ -1,5 +1,8 @@
 package com.example.identity.core.orchestrator.session
 
+import org.hibernate.type.SqlTypes
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.annotations.UuidGenerator
 import com.example.identity.core.orchestrator.domain.JourneyId
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import jakarta.persistence.Enumerated
@@ -7,7 +10,6 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import jakarta.persistence.Version
@@ -24,9 +26,10 @@ enum class ToolSessionStatus {
 }
 
 /**
- * Third and shortest-lived session level (docs/03-tool-architektur.md #1). Only technical lifecycle
- * data: toolId comes from the route, stepData from the module's data. No retry counter: the
- * attempt budget spans the whole journey (docs/04-orchestrierung.md #7).
+ * Third and shortest-lived session level (docs/03-tool-architektur.md #1). Lifecycle data, plus the
+ * tool's own working data as JSON ([data], kept through `ToolSessionData`): toolId comes from the
+ * route, stepData from that data. No retry counter: the attempt budget spans the whole journey
+ * (docs/04-orchestrierung.md #7).
  */
 @Entity
 @Table(schema = "orchestrator", name = "tool_session")
@@ -38,8 +41,10 @@ class ToolSession(
     var expiresAt: Instant? = null,
     createdAt: Instant
 ) {
+    /** Time-ordered (UUIDv7), so new rows append to the index instead of landing anywhere in it. */
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
+    @UuidGenerator(style = UuidGenerator.Style.VERSION_7)
     @Column(name = "id", nullable = false)
     var toolSessionId: ToolSessionId? = null
 
@@ -53,6 +58,15 @@ class ToolSession(
     @Version
     @Column(name = "version", nullable = false)
     var version: Long? = null
+
+    /** The module and class of [data] (`auth_sms.AuthSmsToolSession`), or `null` before the tool saved any. */
+    @Column(name = "data_type", length = 160)
+    var dataType: String? = null
+
+    /** The tool's working data, written and read by `ToolSessionDataCodec` only. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "data")
+    var data: String? = null
 
     fun isExpiredAt(now: Instant): Boolean = expiresAt?.let { now.isAfter(it) } ?: false
 

@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_email.internal.confirmemail
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.tools.auth_email.EmailModule
@@ -14,7 +16,6 @@ import com.example.identity.contract.tool_api.TooManyRequestsException
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 
 /**
  * toolId=confirm-email, role=ATTESTATION: proves control of an address with a code exchange like
@@ -24,17 +25,16 @@ import java.time.Clock
  */
 @Component
 class ConfirmEmailToolHandler(
-    private val toolDataRepository: ConfirmEmailToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val emailCodeGenerator: EmailCodeGenerator,
     private val mailServer: MailServer,
     private val sendLimit: EmailSendLimit,
-    private val clock: Clock
 ) {
 
     /** Called directly by ConfirmEmailToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        toolDataRepository.save(ConfirmEmailToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, ConfirmEmailToolSession())
         return outcomeFor(ConfirmEmailState.AwaitingEmail)
     }
 
@@ -46,9 +46,9 @@ class ConfirmEmailToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, email: String?, code: String?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown confirm-email tool session: $toolSessionId" }
+        val data = sessions.require<ConfirmEmailToolSession>(toolSessionId)
 
-        return when (val decision = ConfirmEmailFlow.decide(data.toState(), ConfirmEmailInput(email, code), emailCodeGenerator)) {
+        return when (val decision = ConfirmEmailFlow.decide(data.toState(toolSessionId), ConfirmEmailInput(email, code), emailCodeGenerator)) {
             is ConfirmEmailDecision.InvalidEmail -> throw InvalidInputException(Text("Ungueltige E-Mail-Adresse"))
 
             is ConfirmEmailDecision.WrongCode -> ToolOutcome.Failed.NothingGuessed(Text("Code ungueltig oder abgelaufen"))
@@ -62,10 +62,10 @@ class ConfirmEmailToolHandler(
                     throw TooManyRequestsException(Text("Zu viele Codes angefordert. Bitte versuchen Sie es in einigen Minuten erneut."))
                 } else {
                     val issued = emailCodeGenerator.issue()
-                    data.email = decision.email
-                    data.issuedCodeHash = issued.hash
-                    data.codeExpiresAt = issued.expiresAt
-                    toolDataRepository.save(data)
+                    sessions.save(
+                        toolSessionId,
+                        data.copy(email = decision.email, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt),
+                    )
                     mailServer.sendCode(decision.email, issued.plainCode)
 
                     val state = ConfirmEmailState.AwaitingCode(decision.email, issued.hash, issued.expiresAt)
@@ -92,8 +92,7 @@ class ConfirmEmailToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown confirm-email tool session: $toolSessionId" }
-        return outcomeFor(data.toState())
+        return outcomeFor(sessions.require<ConfirmEmailToolSession>(toolSessionId).toState(toolSessionId))
     }
 
     private fun outcomeFor(state: ConfirmEmailState): ToolOutcome.InProgress {
@@ -101,8 +100,8 @@ class ConfirmEmailToolHandler(
         return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = state.demo)
     }
 
-    private fun ConfirmEmailToolSession.toState(): ConfirmEmailState = ConfirmEmailState.of(
-        toolSessionId = checkNotNull(toolSessionId),
+    private fun ConfirmEmailToolSession.toState(toolSessionId: ToolSessionId): ConfirmEmailState = ConfirmEmailState.of(
+        toolSessionId = toolSessionId,
         email = email,
         issuedCodeHash = issuedCodeHash,
         codeExpiresAt = codeExpiresAt

@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.authsms
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.contract.texts.Text
@@ -14,7 +16,6 @@ import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 
 /**
  * toolId=auth-sms (docs/06-ablaeufe.md #3). [start]'s [enrollmentRef] is resolved by the
@@ -22,12 +23,11 @@ import java.time.Clock
  */
 @Component
 class AuthSmsToolHandler(
-    private val toolDataRepository: AuthSmsToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val enrollmentRepository: AuthSmsEnrollmentRepository,
     private val tanGenerator: TanGenerator,
     private val smsGateway: SmsGateway,
-    private val sendLimit: SmsSendLimit,
-    private val clock: Clock
+    private val sendLimit: SmsSendLimit
 ) {
 
     @Transactional
@@ -45,14 +45,9 @@ class AuthSmsToolHandler(
             throw TooManyRequestsException(Text("Zu viele Codes angefordert. Bitte versuchen Sie es in einigen Minuten erneut."))
         }
         val issued = tanGenerator.issue()
-        toolDataRepository.save(
-            AuthSmsToolSession(
-                toolSessionId = toolSessionId,
-                enrollmentRefId = enrollmentRef.id,
-                issuedTanHash = issued.hash,
-                tanExpiresAt = issued.expiresAt,
-                createdAt = clock.instant()
-            )
+        sessions.save(
+            toolSessionId,
+            AuthSmsToolSession(enrollmentRefId = enrollmentRef.id, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt),
         )
         smsGateway.sendTan(enrollment.phoneNumber.orEmpty(), issued.plainTan)
 
@@ -65,8 +60,8 @@ class AuthSmsToolHandler(
     /** Called directly by AuthSmsToolController, not generically dispatched (docs/08-projektrahmen.md A11). */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, tan: String?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-sms tool session: $toolSessionId" }
-        val state = data.toState()
+        val data = sessions.require<AuthSmsToolSession>(toolSessionId)
+        val state = data.toState(toolSessionId)
 
         return when (AuthSmsFlow.decide(state, AuthSmsInput(tan), tanGenerator)) {
             AuthSmsDecision.Unchanged -> outcomeFor(state)
@@ -84,8 +79,7 @@ class AuthSmsToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-sms tool session: $toolSessionId" }
-        return outcomeFor(data.toState())
+        return outcomeFor(sessions.require<AuthSmsToolSession>(toolSessionId).toState(toolSessionId))
     }
 
     private fun outcomeFor(state: AuthSmsState): ToolOutcome.InProgress {
@@ -93,8 +87,8 @@ class AuthSmsToolHandler(
         return ToolOutcome.InProgress(nextStep = step, stepData = fields)
     }
 
-    private fun AuthSmsToolSession.toState(): AuthSmsState = AuthSmsState.of(
-        toolSessionId = checkNotNull(toolSessionId),
+    private fun AuthSmsToolSession.toState(toolSessionId: ToolSessionId): AuthSmsState = AuthSmsState.of(
+        toolSessionId = toolSessionId,
         issuedTanHash = issuedTanHash,
         tanExpiresAt = tanExpiresAt
     )

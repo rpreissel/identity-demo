@@ -32,11 +32,11 @@ Datei wiederholt. Ausgelegt für ≥ 10 Mio. Konten und eine lange Betriebszeit.
   (`EnrollmentCleanup`, `AccountDeletionService`), nie über eine schemaübergreifende Kaskade.
 - **Langlebige Zugangsmittel** liegen in `<modul>.enrollment`. Dieser qualifizierte Name *ist*
   zugleich `EnrollmentRef.type`.
-- **Arbeitsdaten eines Tool-Durchlaufs** liegen in `<modul>.<tool-rolle>_tool_session`
-  (`auth_qr.confirm_tool_session` für `approve-qr`). Der Schlüssel *ist* die
-  `tool_session_id`: Die Zeile ist die Modulhälfte von `orchestrator.tool_session`, keine vierte
-  Session-Ebene und keine Zeile je Versuch — ein Durchlauf übersteht mehrere Fehlversuche
-  (`AuthJourney.attempt_budget`).
+- **Arbeitsdaten eines Tool-Durchlaufs** bekommen keine Tabelle im Modul. Ein Tool speichert sie
+  über `ToolSessionData`; sie liegen als JSON in `orchestrator.tool_session.data`
+  ([ADR-49](../../../../../docs/adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)). Eine Zeile je
+  Durchlauf, keine je Versuch — ein Durchlauf übersteht mehrere Fehlversuche
+  (`AuthJourney.attempt_budget`). `ToolSessionCoverageTest` lehnt jede andere `*_tool_session`-Tabelle ab.
 
 ## Kontomodell
 

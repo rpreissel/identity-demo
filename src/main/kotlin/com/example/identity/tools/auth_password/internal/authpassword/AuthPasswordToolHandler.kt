@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_password.internal.authpassword
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_password.internal.PasswordHasher
@@ -11,7 +13,6 @@ import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 
 /**
  * toolId=auth-password, device-linked case (docs/06-ablaeufe.md #3). [start]'s [enrollmentRef] is
@@ -20,9 +21,8 @@ import java.time.Clock
  */
 @Component
 class AuthPasswordToolHandler(
-    private val toolDataRepository: AuthPasswordToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val enrollmentRepository: AuthPasswordEnrollmentRepository,
-    private val clock: Clock
 ) {
 
     @Transactional
@@ -36,20 +36,14 @@ class AuthPasswordToolHandler(
             throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "id=${enrollmentRef.id}")
         }
 
-        toolDataRepository.save(
-            AuthPasswordToolSession(
-                toolSessionId = toolSessionId,
-                enrollmentRefId = enrollmentRef.id,
-                createdAt = clock.instant()
-            )
-        )
+        sessions.save(toolSessionId, AuthPasswordToolSession(enrollmentRefId = enrollmentRef.id))
         return outcomeFor()
     }
 
     /** Called directly by AuthPasswordToolController (docs/08-projektrahmen.md A11). */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, password: String?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-password tool session: $toolSessionId" }
+        val data = sessions.require<AuthPasswordToolSession>(toolSessionId)
 
         return when (val decision = AuthPasswordFlow.decide(AuthPasswordInput(password))) {
             AuthPasswordDecision.Unchanged -> outcomeFor()
@@ -70,7 +64,7 @@ class AuthPasswordToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-password tool session: $toolSessionId" }
+        sessions.require<AuthPasswordToolSession>(toolSessionId)
         return outcomeFor()
     }
 

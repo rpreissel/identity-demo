@@ -99,17 +99,11 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
      */
     protected fun resetDatabase() {
         // Children first (FK order). The personenverzeichnis seed data stays. account's own
-        // children cascade.
+        // children cascade; the tools' working data goes with orchestrator.tool_session (ADR-49).
         listOf(
-            "ident_fsc.ident_tool_session", "ident_eid.ident_tool_session",
-            "auth_sms.enroll_tool_session", "auth_sms.auth_tool_session", "auth_sms.lookup_tool_session", "auth_sms.enrollment",
-            "auth_password.enroll_tool_session", "auth_password.auth_tool_session", "auth_password.lookup_tool_session", "auth_password.enrollment",
-            "auth_email.confirm_tool_session", "auth_email.enroll_tool_session", "auth_email.auth_tool_session", "auth_email.lookup_tool_session",
-            "auth_device.enroll_tool_session", "auth_device.auth_tool_session", "auth_device.enrollment",
-            "auth_kobil.enroll_tool_session", "auth_kobil.auth_tool_session", "auth_kobil.enrollment",
+            "auth_sms.enrollment", "auth_password.enrollment", "auth_device.enrollment", "auth_kobil.enrollment",
             // The foreign system's rows: a test must not inherit a device binding from the previous one.
             "kobil.ssms_assertion", "kobil.ssms_user",
-            "auth_qr.enroll_tool_session", "auth_qr.auth_tool_session", "auth_qr.lookup_tool_session", "auth_qr.confirm_tool_session",
             "auth_qr.login_request", "auth_qr.enrollment",
             "orchestrator.tool_session", "orchestrator.auth_journey", "orchestrator.journey_trace",
             "orchestrator.channel_session", "orchestrator.app_token_session", "orchestrator.session_evidence", "account.account",

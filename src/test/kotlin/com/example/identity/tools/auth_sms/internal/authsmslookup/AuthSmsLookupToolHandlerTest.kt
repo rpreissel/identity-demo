@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_sms.internal.authsmslookup
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.AccountId
@@ -24,7 +25,6 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.verify
 import java.util.Optional
 import java.util.UUID
@@ -42,11 +42,10 @@ private val NEUTRAL_ANSWER = ToolOutcome.InProgress(nextStep = "tanInput", stepD
  */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val session = AuthSmsLookupToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-    val sessions = mockk<AuthSmsLookupToolSessionRepository>().also {
-        every { it.findByToolSessionId(toolSessionId) } returns session
-        every { it.save(any()) } answers { firstArg() }
-    }
+    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, AuthSmsLookupToolSession()) }
+
+    /** The session as the handler last saved it. */
+    val session: AuthSmsLookupToolSession get() = sessions.stored(toolSessionId)
     val enrollments = mockk<AuthSmsEnrollmentRepository>().also {
         every { it.findById(1L) } returns Optional.of(AuthSmsEnrollment(phoneNumber = PHONE, createdAt = TEST_NOW).apply { id = 1L })
     }
@@ -56,7 +55,7 @@ private class Fixture {
     val tans = TanGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val gateway = SmsGateway(clock = TEST_CLOCK)
-    val handler = AuthSmsLookupToolHandler( sessions, enrollments, tans, gateway, sendLimit, accountDirectory, clock = TEST_CLOCK)
+    val handler = AuthSmsLookupToolHandler( sessions, enrollments, tans, gateway, sendLimit, accountDirectory)
 
     fun withSendBudgetUsedUp() = apply {
         every { sendLimit.trySend(PHONE) } returns false
@@ -64,9 +63,7 @@ private class Fixture {
 
     /** Puts a pending TAN for [accountId] into the session and returns it. */
     fun withPendingTan(accountId: AccountId?): TanGenerator.Issued = tans.issue().also { issued ->
-        session.accountId = accountId
-        session.issuedTanHash = issued.hash
-        session.tanExpiresAt = issued.expiresAt
+        sessions.save(toolSessionId, AuthSmsLookupToolSession(accountId, issued.hash, issued.expiresAt))
     }
 }
 
@@ -81,14 +78,14 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
         val f = Fixture()
 
         `when`("a lookup login begins") {
-            val saved = slot<AuthSmsLookupToolSession>()
-            every { f.sessions.save(capture(saved)) } answers { saved.captured }
-            val outcome = f.handler.start(ToolSessionId(UUID.randomUUID()))
+            val started = ToolSessionId(UUID.randomUUID())
+            val outcome = f.handler.start(started)
+            val saved = f.sessions.stored<AuthSmsLookupToolSession>(started)
 
             then("it asks for the email at step auth and stores no TAN yet") {
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "auth", stepData = MissingFields(listOf("email")), demo = emptyMap())
-                saved.captured.issuedTanHash shouldBe null
-                saved.captured.accountId shouldBe null
+                saved.issuedTanHash shouldBe null
+                saved.accountId shouldBe null
             }
         }
     }

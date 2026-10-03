@@ -18,16 +18,3 @@ CREATE TABLE auth_device.enrollment (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT ux_enrollment_thumbprint UNIQUE (thumbprint)
 );
-
-CREATE TABLE auth_device.enroll_tool_session (
-    tool_session_id UUID PRIMARY KEY,
-    created_at      TIMESTAMP WITH TIME ZONE NOT NULL
-);
-CREATE INDEX ix_enroll_tool_session_created_at ON auth_device.enroll_tool_session (created_at);
-
-CREATE TABLE auth_device.auth_tool_session (
-    tool_session_id     UUID PRIMARY KEY,
-    enrollment_ref_id   VARCHAR(255),
-    created_at          TIMESTAMP WITH TIME ZONE NOT NULL
-);
-CREATE INDEX ix_auth_tool_session_created_at ON auth_device.auth_tool_session (created_at);

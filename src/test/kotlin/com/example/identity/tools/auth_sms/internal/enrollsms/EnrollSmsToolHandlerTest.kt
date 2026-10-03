@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_sms.internal.enrollsms
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_sms.PHONE_NUMBER
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
@@ -33,9 +34,7 @@ private const val PHONE = "+491701234567"
 /** No tool session exists and the send budget is open until a test changes that. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val sessions = mockk<EnrollSmsToolSessionRepository>().also {
-        every { it.save(any()) } answers { firstArg() }
-    }
+    val sessions = InMemoryToolSessionData()
     val enrollments = mockk<AuthSmsEnrollmentRepository>().also {
         every { it.save(any()) } answers { firstArg<AuthSmsEnrollment>().apply { id = 42L } }
     }
@@ -45,10 +44,13 @@ private class Fixture {
     val gateway = SmsGateway(clock = TEST_CLOCK)
     val handler = EnrollSmsToolHandler( sessions, enrollments, tans, gateway, sendLimit, clock = TEST_CLOCK)
 
-    /** Holds the session the handler reads and writes. */
-    fun withSession(session: EnrollSmsToolSession): EnrollSmsToolSession = session.also {
-        every { sessions.findByToolSessionId(toolSessionId) } returns it
+    /** Stores [session] for the handler to read and write. */
+    fun withSession(session: EnrollSmsToolSession) {
+        sessions.save(toolSessionId, session)
     }
+
+    /** The session as the handler last saved it. */
+    val session: EnrollSmsToolSession get() = sessions.stored(toolSessionId)
 
     fun withSendBudgetUsedUp(number: String) = apply {
         every { sendLimit.trySend(number) } returns false
@@ -76,7 +78,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
 
     given("an active enroll-sms tool session with no phone number yet") {
         val f = Fixture()
-        val session = f.withSession(EnrollSmsToolSession(toolSessionId = f.toolSessionId, createdAt = TEST_NOW))
+        f.withSession(EnrollSmsToolSession())
 
         `when`("submitting a valid phone number") {
             val outcome = f.handler.patch(f.toolSessionId, phoneNumber = "+49 170 1234567", tan = null)
@@ -88,15 +90,15 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
             }
 
             then("it persists the normalized number and the hash of the texted TAN") {
-                session.phoneNumber shouldBe PHONE
-                f.tans.matches(sms.tan, session.issuedTanHash, session.tanExpiresAt) shouldBe true
+                f.session.phoneNumber shouldBe PHONE
+                f.tans.matches(sms.tan, f.session.issuedTanHash, f.session.tanExpiresAt) shouldBe true
             }
         }
     }
 
     given("an active enroll-sms tool session, and a number that has used up its send budget") {
         val f = Fixture().withSendBudgetUsedUp("+491709999999")
-        val session = f.withSession(EnrollSmsToolSession(toolSessionId = f.toolSessionId, createdAt = TEST_NOW))
+        f.withSession(EnrollSmsToolSession())
 
         `when`("submitting that number") {
             val result = runCatching { f.handler.patch(f.toolSessionId, phoneNumber = "+49 170 9999999", tan = null) }
@@ -106,7 +108,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
             }
 
             then("it issues and sends no TAN") {
-                session.issuedTanHash shouldBe null
+                f.session.issuedTanHash shouldBe null
                 f.gateway.outbox().shouldBeEmpty()
             }
         }
@@ -117,12 +119,9 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
         val issued = f.tans.issue()
         f.withSession(
             EnrollSmsToolSession(
-                toolSessionId = f.toolSessionId,
                 phoneNumber = PHONE,
                 issuedTanHash = issued.hash,
-                tanExpiresAt = issued.expiresAt,
-                createdAt = TEST_NOW
-            )
+                tanExpiresAt = issued.expiresAt)
         )
 
         `when`("confirming with the correct TAN") {

@@ -23,8 +23,10 @@ ausdrücklich **nicht** zur Frage.
 
 - Gespeicherte Daten werden derzeit **nicht** verschlüsselt. Alle Spalten mit personenbezogenen
   Daten (`account.claim.claim_value`, `account.anchor.normalized_value`,
-  `personenverzeichnis.person.*`, `ident_eid.ident_tool_session.*`) sind `VARCHAR` bzw. `DATE` im
-  Klartext (`db/migration/<modul>/`). Dazu kommt das simulierte Nect: `nect.ident_case.result`
+  `personenverzeichnis.person.*`) sind `VARCHAR` bzw. `DATE` im Klartext (`db/migration/<modul>/`),
+  die Arbeitsdaten der Tools (etwa die gelesenen eID-Daten von `ident-eid`) JSON im Klartext in
+  `orchestrator.tool_session.data` (ADR-49). Für Letztere ist `ToolSessionDataCodec` die eine Stelle,
+  an der eine Verschlüsselung ansetzen würde. Dazu kommt das simulierte Nect: `nect.ident_case.result`
   hält die ausgelesenen Ausweisdaten eines Vorgangs als JSON im Klartext. Kryptografisch gibt es
   nur Argon2id (Hash des Passworts), HMAC (TAN, E-Mail-Code, QR-Bestätigungscode, Zähler,
   Suchschlüssel im Änderungsprotokoll) und das Erzeugen von EC-Schlüsseln für die Assertions an
@@ -32,8 +34,8 @@ ausdrücklich **nicht** zur Frage.
   `NodeSigningKey.privateKeyJwk` liegt ausdrücklich im Klartext (Demo-Rahmen, ADR-22,
   `orchestrator/kc/NodeSigningKey.kt`).
 - Eine Regel „eID-Daten höchstens ein Jahr“ steht nirgends in der Doku; sie ist ein angenommenes
-  Beispiel. `ident_eid.ident_tool_session` fällt heute unter die allgemeine Frist von 24 Stunden für
-  `*_tool_session` ([07-betrieb.md](../07-betrieb.md) Abschnitt 3).
+  Beispiel. Die Arbeitsdaten von `ident-eid` fallen heute unter die allgemeine Frist von 24 Stunden für
+  `orchestrator.tool_session` ([07-betrieb.md](../07-betrieb.md) Abschnitt 3).
 - Ein Widerruf wirkt heute nur logisch: `AccountRetraction` macht Zeilen in `AccountClaim` anhand der
   Zeitpunkte ungültig („Angaben minus Widerrufe“, [02-domaenenmodell.md](../02-domaenenmodell.md)
   Abschnitt 6). Tatsächlich gelöscht wird aber nur der `AccountAnchor` (ADR-12). Die zugehörige Zeile
@@ -81,7 +83,7 @@ Abschnitt 6):
 - **(a) Ein Datenschlüssel je `AttributeType`** (z. B. ein Schlüssel für alle EMAIL-Claims eines Kontos) — Zu grob. `account.claim` wird nur ergänzt, und ein Konto hat oft mehrere historische Zeilen desselben Typs (alte, korrigierte, zurückgenommene, neu bestätigte E-Mail-Adresse). Ein Widerruf entkräftet nur Claims, die *vor* ihm liegen; ein danach neu bestätigter Wert gilt wieder (ADR-12). Ein gemeinsamer Datenschlüssel würde beim Löschen auch gültige Claims desselben Typs mit zerstören. **Als Hauptweg verworfen.**
 - **(b) Ein Datenschlüssel je Zeile in `AccountClaim`** — Passt zur Einheit von `AccountRetraction`, ist aber unnötig fein: Ein Lauf von `ident-eid` schreibt sieben Zeilen (`EID_RESTRICTED_ID`, `FAMILY_NAME`, `GIVEN_NAMES`, `BIRTH_DATE`, `STREET_ADDRESS`, `POSTAL_CODE`, `LOCALITY`) in einem Aufruf von `recordClaims`. Das wären sieben Datenschlüssel für einen einzigen fachlichen Vorgang. **Zugunsten von (b') verworfen.**
 - **(b') Ein Datenschlüssel je Gruppe von Claims** (= eine Transaktion von `recordClaims`) — Ein neues, schmales Feld `claim_batch_id` (UUID), einmal je Aufruf von `recordClaims` erzeugt und an alle Zeilen gehängt, die in diesem Aufruf gespeichert werden. `AccountClaim.authMethodId` eignet sich dafür NICHT: Bei Claims aus einer Identifizierung (`ident-eid`) ist es laut Kommentar im Code immer `null` (`AccountClaim.kt:46-49`, „claims from identification tools produce no credential“). Auch `claimSource` allein reicht nicht: `ClaimSource(toolId.value)` ist für jeden Lauf von `ident-eid` gleich (`"ident-eid"`) und würde eine erneute Identifizierung Jahre später fälschlich mit dem ersten Lauf zusammenwerfen. Ein Datenschlüssel je Gruppe fasst genau zusammen, was fachlich ein Vorgang ist (bei der eID etwa siebenmal weniger Schlüssel), und lässt trotzdem jedem Lesen der Karte seine eigene Frist von einem Jahr. Der Preis: Muss ein einzelnes Attribut einer Gruppe vorzeitig und für sich allein ungültig werden, müssen die übrigen Zeilen der Gruppe neu verschlüsselt werden. Im bestehenden Modell der Widerrufe ist das aber ein Randfall: Das Ersetzen eines Ankers (ADR-12) betrifft nur die lokal verankerten Attribute (`PERSON_ID`, `MEMBER_NUMBER`, `EID_RESTRICTED_ID`, `EMAIL`). Die übrigen eID-Felder gehören dem Personenverzeichnis und stehen nur als Historie im Log; sie werden nicht einzeln widerrufen. **Als Hauptweg für `account.claim` empfohlen.**
-- **(c) Ein Datenschlüssel je Aufbewahrungsklasse** (kleines Enum, z. B. `EID_RESTRICTED`, `STANDARD_CLAIM`) — Gröber und billiger zu verwalten. Sobald aber eine Zeile der Klasse vorzeitig gelöscht werden muss, braucht es regelmäßig eine Neuverschlüsselung. **Als pragmatischer Weg für die kurzlebigen Arbeitsdaten der Tools mit personenbezogenen Daten empfohlen** (`ident_eid.ident_tool_session` und ähnliche): Dort fällt ohnehin alles innerhalb von etwa 24 Stunden weg, und selbst ein Schlüssel je Gruppe wäre zu viel des Guten.
+- **(c) Ein Datenschlüssel je Aufbewahrungsklasse** (kleines Enum, z. B. `EID_RESTRICTED`, `STANDARD_CLAIM`) — Gröber und billiger zu verwalten. Sobald aber eine Zeile der Klasse vorzeitig gelöscht werden muss, braucht es regelmäßig eine Neuverschlüsselung. **Als pragmatischer Weg für die kurzlebigen Arbeitsdaten der Tools mit personenbezogenen Daten empfohlen** (etwa die Arbeitsdaten von `ident-eid` in `orchestrator.tool_session.data`; der Ansatzpunkt ist `ToolSessionDataCodec`): Dort fällt ohnehin alles innerhalb von etwa 24 Stunden weg, und selbst ein Schlüssel je Gruppe wäre zu viel des Guten.
 
 **Warum an die bestehende Einteilung anknüpfen, statt eine neue zu erfinden:**
 [02-domaenenmodell.md](../02-domaenenmodell.md) Abschnitt 6 und ADR-12 haben schon entschieden, was

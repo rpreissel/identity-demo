@@ -25,30 +25,3 @@ CREATE TABLE auth_qr.login_request (
     expires_at           TIMESTAMP WITH TIME ZONE NOT NULL
 );
 CREATE INDEX ix_login_request_expires_at ON auth_qr.login_request (expires_at);
-
-CREATE TABLE auth_qr.enroll_tool_session (
-    tool_session_id UUID PRIMARY KEY,
-    created_at      TIMESTAMP WITH TIME ZONE NOT NULL
-);
-CREATE INDEX ix_enroll_tool_session_created_at ON auth_qr.enroll_tool_session (created_at);
-
-CREATE TABLE auth_qr.auth_tool_session (
-    tool_session_id UUID PRIMARY KEY,
-    pairing_code    VARCHAR(16) NOT NULL,
-    created_at      TIMESTAMP WITH TIME ZONE NOT NULL
-);
-CREATE INDEX ix_auth_tool_session_created_at ON auth_qr.auth_tool_session (created_at);
-
-CREATE TABLE auth_qr.lookup_tool_session (
-    tool_session_id UUID PRIMARY KEY,
-    pairing_code    VARCHAR(16) NOT NULL,
-    created_at      TIMESTAMP WITH TIME ZONE NOT NULL
-);
-CREATE INDEX ix_lookup_tool_session_created_at ON auth_qr.lookup_tool_session (created_at);
-
-CREATE TABLE auth_qr.confirm_tool_session (
-    tool_session_id UUID PRIMARY KEY,
-    pairing_code    VARCHAR(16),
-    created_at      TIMESTAMP WITH TIME ZONE NOT NULL
-);
-CREATE INDEX ix_confirm_tool_session_created_at ON auth_qr.confirm_tool_session (created_at);

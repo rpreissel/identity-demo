@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_kobil.internal.authkobil
 
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_kobil.KobilModule
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
@@ -31,7 +33,7 @@ import com.example.identity.tools.auth_kobil.api.v1.KobilOtpStep
  */
 @Component
 class AuthKobilToolHandler(
-    private val toolDataRepository: AuthKobilToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val enrollmentRepository: KobilEnrollmentRepository,
     private val secrets: KobilSecrets,
     private val ssms: KobilSsms,
@@ -56,14 +58,9 @@ class AuthKobilToolHandler(
         if (enrollmentRef.type != KOBIL_ENROLLMENT_TYPE) {
             throw UnresolvableReferenceException(Text("Unerwarteter Enrollment-Typ"), "type=${enrollmentRef.type}")
         }
-        val session = toolDataRepository.save(
-            AuthKobilToolSession(
-                toolSessionId = toolSessionId,
-                enrollmentRefId = enrollmentRef.id,
-                createdAt = clock.instant(),
-            )
-        )
-        return inProgress(stateOf(session, passwordAvailable))
+        val session = AuthKobilToolSession(enrollmentRefId = enrollmentRef.id)
+        sessions.save(toolSessionId, session)
+        return inProgress(stateOf(toolSessionId, session, passwordAvailable))
     }
 
     /**
@@ -80,7 +77,7 @@ class AuthKobilToolHandler(
         passwordEnrollment: EnrollmentRef?,
     ): ToolOutcome {
         val session = loadSession(toolSessionId)
-        val enrollment = loadEnrollment(session)
+        val enrollment = loadEnrollment(toolSessionId, session)
 
         val unlocked = when (unlock) {
             is KobilUnlockCredential.BiometricUnlock ->
@@ -97,7 +94,7 @@ class AuthKobilToolHandler(
             return ToolOutcome.Failed.KnownAccountAuth(Text("Entsperren fehlgeschlagen"))
         }
 
-        session.release(unlock.userVerification, clock.instant().plusSeconds(pinReleaseTtlSeconds))
+        sessions.save(toolSessionId, session.released(unlock.userVerification, clock.instant().plusSeconds(pinReleaseTtlSeconds)))
 
         val (step, fields) = AuthKobilState.AwaitingOtp(enrollment.kobilTenantId, enrollment.kobilUserId).describe()
         return ToolOutcome.InProgress(
@@ -111,8 +108,8 @@ class AuthKobilToolHandler(
      * The step this session is in, derived from whether a release still counts - never stored
      * twice. A released PIN is not part of it: that value belongs to one response only.
      */
-    private fun stateOf(session: AuthKobilToolSession, passwordAvailable: Boolean): AuthKobilState {
-        val enrollment = loadEnrollment(session)
+    private fun stateOf(toolSessionId: ToolSessionId, session: AuthKobilToolSession, passwordAvailable: Boolean): AuthKobilState {
+        val enrollment = loadEnrollment(toolSessionId, session)
         if (session.liveRelease(clock.instant()) != null) {
             return AuthKobilState.AwaitingOtp(enrollment.kobilTenantId, enrollment.kobilUserId)
         }
@@ -134,7 +131,7 @@ class AuthKobilToolHandler(
     @Transactional
     fun patch(toolSessionId: ToolSessionId, otp: String?): ToolOutcome {
         val session = loadSession(toolSessionId)
-        val enrollment = loadEnrollment(session)
+        val enrollment = loadEnrollment(toolSessionId, session)
         val release = session.liveRelease(clock.instant())
 
         val verification = if (release != null && otp != null) {
@@ -170,15 +167,13 @@ class AuthKobilToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId, passwordAvailable: Boolean): ToolOutcome =
-        inProgress(stateOf(loadSession(toolSessionId), passwordAvailable))
+        inProgress(stateOf(toolSessionId, loadSession(toolSessionId), passwordAvailable))
 
     private fun loadSession(toolSessionId: ToolSessionId): AuthKobilToolSession =
-        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) {
-            "Unknown auth-kobil tool session: $toolSessionId"
-        }
+        sessions.require<AuthKobilToolSession>(toolSessionId)
 
     /** Gone (removed on another channel) or never there: no wrong guess, nothing to count, as in auth-sms. */
-    private fun loadEnrollment(session: AuthKobilToolSession): KobilEnrollment =
+    private fun loadEnrollment(toolSessionId: ToolSessionId, session: AuthKobilToolSession): KobilEnrollment =
         session.enrollmentRefId?.toLongOrNull()?.let { enrollmentRepository.findByIdOrNull(it) }
-            ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "toolSession=${session.toolSessionId}")
+            ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "toolSession=$toolSessionId")
 }

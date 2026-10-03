@@ -1,10 +1,9 @@
 package com.example.identity.tools.ident_fsc.internal
 
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.values.PartnerNumber
-import com.example.identity.TEST_CLOCK
-import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.directory.ActivationCodes
@@ -29,16 +28,15 @@ private val PERSON = PartnerNumber("P000000007")
 private val WRONG_CODE_ANSWER = ToolOutcome.Failed.Identification(Text("Freischaltcode ungueltig oder abgelaufen"), attemptedPersonId = PERSON)
 
 /**
- * One tool session holding [session]. The register knows [PERSON] as Max Muster, born
+ * One tool session starting from `initial`. The register knows [PERSON] as Max Muster, born
  * [BIRTHDATE], without a member number; no activation code is valid until a test says so.
  */
-private class Fixture(sessionOf: (ToolSessionId) -> IdentFscToolSession = { IdentFscToolSession(toolSessionId = it, createdAt = TEST_NOW) }) {
+private class Fixture(initial: IdentFscToolSession = IdentFscToolSession()) {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val session = sessionOf(toolSessionId)
-    val repository = mockk<IdentFscToolSessionRepository>().also {
-        every { it.findByToolSessionId(toolSessionId) } returns session
-        every { it.save(any()) } answers { firstArg() }
-    }
+    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, initial) }
+
+    /** The session as the handler last saved it. */
+    val session: IdentFscToolSession get() = sessions.stored(toolSessionId)
     val activationCodes = mockk<ActivationCodes>().also {
         every { it.digest(any()) } answers { "digest:" + firstArg<String>() }
         every { it.isValid(any(), any()) } returns false
@@ -48,7 +46,7 @@ private class Fixture(sessionOf: (ToolSessionId) -> IdentFscToolSession = { Iden
         every { it.matchesPersonalDetails(any(), any(), any(), any()) } returns false
         every { it.matchesPersonalDetails(PERSON, "Muster", "Max", BIRTHDATE) } returns true
     }
-    val handler = IdentFscToolHandler( repository, activationCodes, personDirectory, clock = TEST_CLOCK)
+    val handler = IdentFscToolHandler(sessions, activationCodes, personDirectory)
 
     fun withValidCode(person: PartnerNumber, code: String) = apply {
         every { activationCodes.isValid(person, "digest:$code") } returns true
@@ -65,14 +63,12 @@ private class Fixture(sessionOf: (ToolSessionId) -> IdentFscToolSession = { Iden
     ): ToolOutcome = handler.patch(toolSessionId, kvnr, partnerNumber = null, familyName, givenNames, birthDate, fsc, personId, rateLimited)
 }
 
-private fun verifiedPersonalDetails(toolSessionId: ToolSessionId) = IdentFscToolSession(
-    toolSessionId = toolSessionId,
+private fun verifiedPersonalDetails() = IdentFscToolSession(
     kvnr = "A123456789",
     personId = PERSON,
     familyName = "Muster",
     givenNames = "Max",
     birthDate = BIRTHDATE,
-    createdAt = TEST_NOW
 )
 
 /**
@@ -123,7 +119,7 @@ class IdentFscToolHandlerTest : BehaviorSpec({
     }
 
     given("verified personal data and a valid code") {
-        val f = Fixture(::verifiedPersonalDetails).withValidCode(PERSON, "VALIDCODE")
+        val f = Fixture(verifiedPersonalDetails()).withValidCode(PERSON, "VALIDCODE")
 
         `when`("the code is submitted") {
             val outcome = f.patch(fsc = "VALIDCODE")
@@ -141,7 +137,7 @@ class IdentFscToolHandlerTest : BehaviorSpec({
     }
 
     given("verified personal data and a code that is not valid") {
-        val f = Fixture(::verifiedPersonalDetails)
+        val f = Fixture(verifiedPersonalDetails())
 
         `when`("the code is submitted") {
             val outcome = f.patch(fsc = "WRONGCODE")
@@ -158,7 +154,7 @@ class IdentFscToolHandlerTest : BehaviorSpec({
     }
 
     given("verified personal data of a rate-limited person, and a valid code") {
-        val f = Fixture(::verifiedPersonalDetails).withValidCode(PERSON, "VALIDCODE")
+        val f = Fixture(verifiedPersonalDetails()).withValidCode(PERSON, "VALIDCODE")
 
         `when`("the code is submitted") {
             val outcome = f.patch(fsc = "VALIDCODE", rateLimited = true)
@@ -174,7 +170,7 @@ class IdentFscToolHandlerTest : BehaviorSpec({
     }
 
     given("verified personal data") {
-        val f = Fixture(::verifiedPersonalDetails)
+        val f = Fixture(verifiedPersonalDetails())
 
         `when`("a corrected birth date arrives that does not match the register") {
             val outcome = f.patch(birthDate = BIRTHDATE.plusDays(1))
@@ -195,13 +191,12 @@ class IdentFscToolHandlerTest : BehaviorSpec({
     }
 
     given("a Partner, verified by Partnernummer without a KVNR (ADR-34), and a valid code") {
-        val f = Fixture {
+        val f = Fixture(
             IdentFscToolSession(
-                toolSessionId = it, partnerNumber = "P000000004", personId = PartnerNumber("P000000004"),
+                partnerNumber = "P000000004", personId = PartnerNumber("P000000004"),
                 familyName = "Schulz", givenNames = "Paula", birthDate = BIRTHDATE,
-                createdAt = TEST_NOW
             )
-        }.withValidCode(PartnerNumber("P000000004"), "PAULA2026")
+        ).withValidCode(PartnerNumber("P000000004"), "PAULA2026")
 
         `when`("the code is submitted") {
             val outcome = f.patch(fsc = "PAULA2026")

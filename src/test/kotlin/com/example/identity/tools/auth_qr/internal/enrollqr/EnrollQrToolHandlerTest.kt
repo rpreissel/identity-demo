@@ -1,9 +1,9 @@
 package com.example.identity.tools.auth_qr.internal.enrollqr
 
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
-import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.tools.auth_qr.internal.QrOptIn
@@ -13,27 +13,21 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.verify
 import java.util.UUID
 
 /** One active tool session; a saved opt-in gets id 5. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val saved = slot<EnrollQrToolSession>()
-    val sessions = mockk<EnrollQrToolSessionRepository>().also {
-        every { it.save(capture(saved)) } answers { saved.captured }
-        every { it.findByToolSessionId(any()) } returns null
-        every { it.findByToolSessionId(toolSessionId) } returns EnrollQrToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-    }
+    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, EnrollQrToolSession()) }
     val optIns = mockk<QrOptInRepository>().also {
         every { it.save(any()) } answers { firstArg<QrOptIn>().apply { id = 5L } }
     }
-    val handler = EnrollQrToolHandler( sessions, optIns, clock = TEST_CLOCK)
+    val handler = EnrollQrToolHandler(sessions, optIns, clock = TEST_CLOCK)
 }
 
 /**
- * Pure unit test: no Spring context, repositories mocked with MockK. enroll-qr is a pure opt-in:
+ * Pure unit test: no Spring context, the session data kept in memory, repositories mocked with MockK. enroll-qr is a pure opt-in:
  * the PATCH itself is the confirmation and writes a marker row, no secret.
  */
 class EnrollQrToolHandlerTest : BehaviorSpec({
@@ -46,7 +40,7 @@ class EnrollQrToolHandlerTest : BehaviorSpec({
             val outcome = f.handler.start(toolSessionId)
 
             then("it records the run and waits at the descriptor's start step") {
-                f.saved.captured.toolSessionId shouldBe toolSessionId
+                f.sessions.stored<EnrollQrToolSession>(toolSessionId) shouldBe EnrollQrToolSession()
                 outcome shouldBe ToolOutcome.InProgress(nextStep = tool("enroll-qr").startStep)
             }
         }

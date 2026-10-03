@@ -1,10 +1,9 @@
 package com.example.identity.tools.ident_kvnr.internal
 
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.values.PartnerNumber
-import com.example.identity.TEST_CLOCK
-import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.directory.PersonDirectory
@@ -25,15 +24,14 @@ private val PARTNER_NUMBER_NOT_ASSIGNABLE = Text("Partnernummer konnte nicht zug
 /** A fresh tool session; the register knows no member number until a test adds one. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val session = IdentKvnrToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-    val repository = mockk<IdentKvnrToolSessionRepository>().also {
-        every { it.findByToolSessionId(toolSessionId) } returns session
-        every { it.save(any()) } answers { firstArg() }
-    }
+    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, IdentKvnrToolSession()) }
+
+    /** The session as the handler last saved it. */
+    val session: IdentKvnrToolSession get() = sessions.stored(toolSessionId)
     val personDirectory = mockk<PersonDirectory>().also {
         every { it.memberNumberOf(any()) } returns null
     }
-    val handler = IdentKvnrToolHandler( repository, personDirectory, clock = TEST_CLOCK)
+    val handler = IdentKvnrToolHandler(sessions, personDirectory)
 
     fun withMemberNumber(person: PartnerNumber, memberNumber: String) = apply {
         every { personDirectory.memberNumberOf(person) } returns memberNumber

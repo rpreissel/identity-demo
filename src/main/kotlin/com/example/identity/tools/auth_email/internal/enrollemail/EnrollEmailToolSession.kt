@@ -1,24 +1,7 @@
 package com.example.identity.tools.auth_email.internal.enrollemail
 
-import com.example.identity.contract.tool_api.ids.ToolSessionId
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.Id
-import jakarta.persistence.Table
-import java.time.Instant
-
 /**
- * Tool session for toolId=enroll-email. Holds nothing beyond the row itself; it exists so every
- * tool run is visible and ages out through the module's retention sweep.
+ * The working data of one enroll-email run, kept through `ToolSessionData`. Holds nothing but the
+ * mark that the run started; it exists so every tool run is visible.
  */
-@Entity
-@Table(schema = "auth_email", name = "enroll_tool_session")
-class EnrollEmailToolSession(
-    @Id
-    @Column(name = "tool_session_id", nullable = false)
-    var toolSessionId: ToolSessionId? = null,
-    createdAt: Instant
-) {
-    @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = createdAt
-}
+internal data class EnrollEmailToolSession(val started: Boolean = true)

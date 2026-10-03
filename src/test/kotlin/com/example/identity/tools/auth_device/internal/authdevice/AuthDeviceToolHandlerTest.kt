@@ -1,7 +1,7 @@
 package com.example.identity.tools.auth_device.internal.authdevice
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_device.internal.DeviceEnrollment
@@ -29,22 +29,18 @@ private val ENROLLED_KEY = DevicePublicKey(kty = "EC", crv = "P-256", x = "x-coo
 /** No device is enrolled and no tool session exists until a test adds them. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val sessions = mockk<AuthDeviceToolSessionRepository>().also {
-        every { it.findByToolSessionId(any()) } returns null
-        every { it.save(any()) } answers { firstArg() }
-    }
+    val sessions = InMemoryToolSessionData()
     val enrollments = mockk<DeviceEnrollmentRepository>().also {
         every { it.findById(any()) } returns Optional.empty()
     }
-    val handler = AuthDeviceToolHandler( sessions, enrollments, clock = TEST_CLOCK)
+    val handler = AuthDeviceToolHandler(sessions, enrollments)
 
     fun withEnrolledDevice(id: Long) = apply {
         every { enrollments.findById(id) } returns Optional.of(DeviceEnrollment(thumbprint = ENROLLED_KEY.thumbprint, createdAt = TEST_NOW).apply { this.id = id })
     }
 
     fun withSessionBoundTo(enrollmentRefId: String) = apply {
-        every { sessions.findByToolSessionId(toolSessionId) } returns
-            AuthDeviceToolSession(toolSessionId = toolSessionId, enrollmentRefId = enrollmentRefId, createdAt = TEST_NOW)
+        sessions.save(toolSessionId, AuthDeviceToolSession(enrollmentRefId = enrollmentRefId))
     }
 }
 
@@ -93,7 +89,7 @@ class AuthDeviceToolHandlerTest : BehaviorSpec({
             }
 
             then("it binds the tool session to the enrollment") {
-                verify { f.sessions.save(match { it.toolSessionId == f.toolSessionId && it.enrollmentRefId == "1" }) }
+                f.sessions.stored<AuthDeviceToolSession>(f.toolSessionId).enrollmentRefId shouldBe "1"
             }
         }
     }

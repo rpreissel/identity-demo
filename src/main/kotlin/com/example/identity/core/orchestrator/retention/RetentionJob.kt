@@ -41,6 +41,8 @@ class RetentionJob(
     private val accountDeletionService: AccountDeletionService,
     private val meterRegistry: MeterRegistry,
     private val clock: Clock,
+    /** How long a tool session, with its tool's working data (ADR-49), outlives its expiry. */
+    private val toolSessionRetention: ToolSessionRetentionProperties = ToolSessionRetentionProperties(),
 ) {
     private val log = LoggerFactory.getLogger(RetentionJob::class.java)
 
@@ -48,7 +50,7 @@ class RetentionJob(
     @Transactional
     fun cleanup() {
         val now = clock.instant()
-        toolSessionRepository.deleteByExpiresAtBefore(now.minus(TOOL_SESSION_RETENTION))
+        toolSessionRepository.deleteByExpiresAtBefore(now.minus(toolSessionRetention.retention))
         deleteExpiredJourneys(now.minus(JOURNEY_RETENTION))
         deleteExpiredChannels(now.minus(CHANNEL_SESSION_RETENTION))
         discardAbandonedRegistrations(now)
@@ -138,7 +140,6 @@ class RetentionJob(
         /** Page size for [deleteExpiredJourneys] and [deleteExpiredChannels]. */
         private const val RETENTION_BATCH_SIZE = 500
 
-        private val TOOL_SESSION_RETENTION: Duration = Duration.ofHours(24)
         private val JOURNEY_RETENTION: Duration = Duration.ofDays(7)
         /** An account being set up younger than this is never discarded, whatever the channels say. */
         private val REGISTRATION_GRACE: Duration = Duration.ofHours(1)

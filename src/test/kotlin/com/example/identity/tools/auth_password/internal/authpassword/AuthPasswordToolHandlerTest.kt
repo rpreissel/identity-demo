@@ -1,7 +1,7 @@
 package com.example.identity.tools.auth_password.internal.authpassword
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_password.internal.PasswordHasher
@@ -25,14 +25,12 @@ import java.util.UUID
 /** No password enrollment and no tool session exist until a test adds them. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val sessions = mockk<AuthPasswordToolSessionRepository>().also {
-        every { it.save(any()) } answers { firstArg() }
-    }
+    val sessions = InMemoryToolSessionData()
     val enrollments = mockk<AuthPasswordEnrollmentRepository>().also {
         every { it.existsById(any()) } returns false
         every { it.findById(any()) } returns Optional.empty()
     }
-    val handler = AuthPasswordToolHandler( sessions, enrollments, clock = TEST_CLOCK)
+    val handler = AuthPasswordToolHandler(sessions, enrollments)
 
     fun withEnrolledPassword(id: Long, password: String) = apply {
         every { enrollments.existsById(id) } returns true
@@ -41,13 +39,12 @@ private class Fixture {
     }
 
     fun withSessionBoundTo(enrollmentRefId: String) = apply {
-        every { sessions.findByToolSessionId(toolSessionId) } returns
-            AuthPasswordToolSession(toolSessionId = toolSessionId, enrollmentRefId = enrollmentRefId, createdAt = TEST_NOW)
+        sessions.save(toolSessionId, AuthPasswordToolSession(enrollmentRefId = enrollmentRefId))
     }
 }
 
 /**
- * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
+ * Pure unit test: no Spring context, the session data kept in memory, repositories mocked with MockK. Covers persistence/outcome
  * wiring only - the input decision is covered by [AuthPasswordFlowTest].
  */
 class AuthPasswordToolHandlerTest : BehaviorSpec({

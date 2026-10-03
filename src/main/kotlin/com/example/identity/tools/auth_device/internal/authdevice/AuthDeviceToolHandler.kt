@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_device.internal.authdevice
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_device.DeviceModule
 import com.example.identity.contract.texts.Text
@@ -14,7 +16,6 @@ import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 
 /**
  * toolId=auth-device (docs/03-tool-architektur.md). [start]'s [enrollmentRef] is resolved by the
@@ -23,9 +24,8 @@ import java.time.Clock
  */
 @Component
 class AuthDeviceToolHandler(
-    private val toolDataRepository: AuthDeviceToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val enrollmentRepository: DeviceEnrollmentRepository,
-    private val clock: Clock
 ) {
 
     @Transactional
@@ -38,20 +38,14 @@ class AuthDeviceToolHandler(
         enrollmentRepository.findByIdOrNull(enrollmentId)
             ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "id=${enrollmentRef.id}")
 
-        toolDataRepository.save(
-            AuthDeviceToolSession(
-                toolSessionId = toolSessionId,
-                enrollmentRefId = enrollmentRef.id,
-                createdAt = clock.instant()
-            )
-        )
+        sessions.save(toolSessionId, AuthDeviceToolSession(enrollmentRefId = enrollmentRef.id))
         return outcomeFor()
     }
 
     /** [devicePublicKey]/[userVerification] arrive already verified by DeviceProofValidator. */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, devicePublicKey: DevicePublicKey, userVerification: UserVerification): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-device tool session: $toolSessionId" }
+        val data = sessions.require<AuthDeviceToolSession>(toolSessionId)
         // Gone during the tool session (removed on another channel): no wrong guess, nothing to count.
         val enrollment = data.enrollmentRefId?.toLongOrNull()?.let { enrollmentRepository.findByIdOrNull(it) }
             ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "toolSession=$toolSessionId")
@@ -67,7 +61,7 @@ class AuthDeviceToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-device tool session: $toolSessionId" }
+        sessions.require<AuthDeviceToolSession>(toolSessionId)
         return outcomeFor()
     }
 

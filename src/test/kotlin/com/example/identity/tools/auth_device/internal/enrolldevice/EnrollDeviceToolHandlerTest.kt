@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_device.internal.enrolldevice
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
@@ -24,15 +25,12 @@ private val DEVICE_KEY = DevicePublicKey(kty = "EC", crv = "P-256", x = "x-coord
 /** One active tool session; no device is enrolled until a test adds one. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val sessions = mockk<EnrollDeviceToolSessionRepository>().also {
-        every { it.save(any()) } answers { firstArg() }
-        every { it.findByToolSessionId(toolSessionId) } returns EnrollDeviceToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-    }
+    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, EnrollDeviceToolSession()) }
     val enrollments = mockk<DeviceEnrollmentRepository>().also {
         every { it.findByThumbprint(any()) } returns null
         every { it.save(any()) } answers { firstArg<DeviceEnrollment>().apply { id = 9L } }
     }
-    val handler = EnrollDeviceToolHandler( sessions, enrollments, clock = TEST_CLOCK)
+    val handler = EnrollDeviceToolHandler(sessions, enrollments, clock = TEST_CLOCK)
 
     fun withEnrolledDevice(id: Long) = apply {
         every { enrollments.findByThumbprint(DEVICE_KEY.thumbprint) } returns DeviceEnrollment(thumbprint = DEVICE_KEY.thumbprint, createdAt = TEST_NOW).apply { this.id = id }

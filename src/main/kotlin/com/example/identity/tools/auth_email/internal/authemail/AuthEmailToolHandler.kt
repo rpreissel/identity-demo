@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_email.internal.authemail
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.simulation.mail.MailServer
@@ -13,7 +15,6 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 
 /**
  * toolId=auth-email, device-linked case (docs/03-tool-architektur.md). No EnrollmentRef: the
@@ -22,12 +23,11 @@ import java.time.Clock
  */
 @Component
 class AuthEmailToolHandler(
-    private val toolDataRepository: AuthEmailToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val accountDirectory: AccountDirectory,
     private val emailCodeGenerator: EmailCodeGenerator,
     private val mailServer: MailServer,
     private val sendLimit: EmailSendLimit,
-    private val clock: Clock
 ) {
 
     /**
@@ -46,9 +46,7 @@ class AuthEmailToolHandler(
             throw TooManyRequestsException(Text("Zu viele Codes angefordert. Bitte versuchen Sie es in einigen Minuten erneut."))
         }
         val issued = emailCodeGenerator.issue()
-        toolDataRepository.save(
-            AuthEmailToolSession(toolSessionId = toolSessionId, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt, createdAt = clock.instant())
-        )
+        sessions.save(toolSessionId, AuthEmailToolSession(issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt))
         mailServer.sendCode(email, issued.plainCode)
 
         val (step, fields) = AuthEmailState(issued.hash, issued.expiresAt).describe()
@@ -61,8 +59,7 @@ class AuthEmailToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, code: String?, accountId: AccountId?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-email tool session: $toolSessionId" }
-        val state = data.toState()
+        val state = sessions.require<AuthEmailToolSession>(toolSessionId).toState(toolSessionId)
 
         return when (AuthEmailFlow.decide(state, AuthEmailInput(code), emailCodeGenerator)) {
             AuthEmailDecision.Unchanged -> outcomeFor(state)
@@ -76,8 +73,7 @@ class AuthEmailToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-email tool session: $toolSessionId" }
-        return outcomeFor(data.toState())
+        return outcomeFor(sessions.require<AuthEmailToolSession>(toolSessionId).toState(toolSessionId))
     }
 
     private fun outcomeFor(state: AuthEmailState): ToolOutcome.InProgress {
@@ -85,8 +81,8 @@ class AuthEmailToolHandler(
         return ToolOutcome.InProgress(nextStep = step, stepData = fields)
     }
 
-    private fun AuthEmailToolSession.toState(): AuthEmailState = AuthEmailState.of(
-        toolSessionId = checkNotNull(toolSessionId),
+    private fun AuthEmailToolSession.toState(toolSessionId: ToolSessionId): AuthEmailState = AuthEmailState.of(
+        toolSessionId = toolSessionId,
         issuedCodeHash = issuedCodeHash,
         codeExpiresAt = codeExpiresAt
     )

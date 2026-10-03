@@ -1,30 +1,12 @@
 package com.example.identity.tools.auth_email.internal.authemail
 
-import com.example.identity.contract.tool_api.ids.ToolSessionId
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.Id
-import jakarta.persistence.Table
 import java.time.Instant
 
 /**
- * Tool-session-scoped working data for toolId=auth-email. No enrollment reference: the confirmed
- * email is the account's EMAIL anchor, so only the issued code needs remembering.
+ * The working data of one auth-email run, kept through `ToolSessionData`. No enrollment reference:
+ * the confirmed email is the account's EMAIL anchor, so only the issued code needs remembering.
  */
-@Entity
-@Table(schema = "auth_email", name = "auth_tool_session")
-class AuthEmailToolSession(
-    @Id
-    @Column(name = "tool_session_id", nullable = false)
-    var toolSessionId: ToolSessionId? = null,
-
-    @Column(name = "issued_code_hash")
-    var issuedCodeHash: String? = null,
-
-    @Column(name = "code_expires_at")
-    var codeExpiresAt: Instant? = null,
-    createdAt: Instant
-) {
-    @Column(name = "created_at", nullable = false)
-    var createdAt: Instant? = createdAt
-}
+internal data class AuthEmailToolSession(
+    val issuedCodeHash: String? = null,
+    val codeExpiresAt: Instant? = null,
+)

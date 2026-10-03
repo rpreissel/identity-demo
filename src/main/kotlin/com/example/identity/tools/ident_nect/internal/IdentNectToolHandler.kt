@@ -1,5 +1,7 @@
 package com.example.identity.tools.ident_nect.internal
 
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.ident_nect.NECT_RESTRICTED_ID
 import com.example.identity.contract.tool_api.ToolRole
@@ -19,7 +21,6 @@ import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 import java.util.UUID
 
 /**
@@ -52,9 +53,8 @@ internal val NECT_REQUESTED = setOf(
  */
 @Component
 class IdentNectToolHandler(
-    private val repository: IdNectToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val nect: NectIdent,
-    private val clock: Clock,
     private val properties: IdentNectProperties = IdentNectProperties()
 ) {
 
@@ -63,7 +63,7 @@ class IdentNectToolHandler(
     fun start(toolSessionId: ToolSessionId, returnUri: String? = null): ToolOutcome {
         val callbackUri = acceptedReturnUri(returnUri)
         val case = nect.createCase(callbackUri, NECT_REQUESTED)
-        repository.save(IdNectToolSession(toolSessionId = toolSessionId, caseId = case.caseId, returnUri = returnUri, createdAt = clock.instant()))
+        sessions.save(toolSessionId, IdNectToolSession(caseId = case.caseId, returnUri = returnUri))
         return redirect(case.caseId, case.jumpUrl)
     }
 
@@ -74,12 +74,11 @@ class IdentNectToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, caseId: UUID?, retry: Boolean, returnUri: String? = null): ToolOutcome {
-        val data = checkNotNull(repository.findByToolSessionId(toolSessionId)) { "Unknown ident-nect tool session: $toolSessionId" }
+        val data = sessions.require<IdNectToolSession>(toolSessionId)
         if (retry) {
-            if (returnUri != null) data.returnUri = acceptedReturnUri(returnUri)
-            val case = nect.createCase(data.returnUri ?: NECT_CALLBACK_URI, NECT_REQUESTED)
-            data.caseId = case.caseId
-            repository.save(data)
+            val nextReturnUri = if (returnUri != null) acceptedReturnUri(returnUri) else data.returnUri
+            val case = nect.createCase(nextReturnUri ?: NECT_CALLBACK_URI, NECT_REQUESTED)
+            sessions.save(toolSessionId, data.copy(caseId = case.caseId, returnUri = nextReturnUri))
             return redirect(case.caseId, case.jumpUrl)
         }
         if (caseId == null || caseId != data.caseId) {
@@ -104,8 +103,7 @@ class IdentNectToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val data = checkNotNull(repository.findByToolSessionId(toolSessionId)) { "Unknown ident-nect tool session: $toolSessionId" }
-        val caseId = checkNotNull(data.caseId)
+        val caseId = checkNotNull(sessions.require<IdNectToolSession>(toolSessionId).caseId)
         return redirect(caseId, nect.jumpUrl(caseId))
     }
 

@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_password.internal.authpasswordlookup
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted
@@ -13,7 +15,6 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 
 /**
  * toolId=auth-password-lookup: login without a known account (docs/04-orchestrierung.md). Takes
@@ -22,14 +23,13 @@ import java.time.Clock
  */
 @Component
 class AuthPasswordLookupToolHandler(
-    private val toolDataRepository: AuthPasswordLookupToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val enrollmentRepository: AuthPasswordEnrollmentRepository,
-    private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        toolDataRepository.save(AuthPasswordLookupToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, AuthPasswordLookupToolSession())
         return outcomeFor()
     }
 
@@ -40,7 +40,7 @@ class AuthPasswordLookupToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, email: String?, password: String?, accountId: AccountId?, enrollmentRef: EnrollmentRef?): ToolOutcome {
-        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-password-lookup tool session: $toolSessionId" }
+        sessions.require<AuthPasswordLookupToolSession>(toolSessionId)
 
         return when (val decision = AuthPasswordLookupFlow.decide(AuthPasswordLookupInput(email, password))) {
             is AuthPasswordLookupDecision.Incomplete -> outcomeFor(decision.missingFields)
@@ -72,7 +72,7 @@ class AuthPasswordLookupToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-password-lookup tool session: $toolSessionId" }
+        sessions.require<AuthPasswordLookupToolSession>(toolSessionId)
         return outcomeFor()
     }
 

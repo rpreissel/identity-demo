@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_kobil.internal.enrollkobil
 
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_kobil.KobilModule
 import com.example.identity.tools.auth_kobil.internal.KOBIL_ENROLLMENT_TYPE
@@ -24,7 +26,7 @@ import com.example.identity.tools.auth_kobil.api.v1.KobilActivationStep
  */
 @Component
 class EnrollKobilToolHandler(
-    private val toolDataRepository: EnrollKobilToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val enrollmentRepository: KobilEnrollmentRepository,
     private val secrets: KobilSecrets,
     private val ssms: KobilSsms,
@@ -45,17 +47,14 @@ class EnrollKobilToolHandler(
         ssms.setPin(user, pin)
         val unlockSecret = secrets.newUnlockSecret()
 
-        val session = toolDataRepository.save(
-            EnrollKobilToolSession(
-                toolSessionId = toolSessionId,
-                kobilTenantId = user.tenantId,
-                kobilUserId = user.userId,
-                activationCode = activationCode,
-                pin = pin,
-                unlockSecret = unlockSecret,
-                createdAt = clock.instant(),
-            )
+        val session = EnrollKobilToolSession(
+            kobilTenantId = user.tenantId,
+            kobilUserId = user.userId,
+            activationCode = activationCode,
+            pin = pin,
+            unlockSecret = unlockSecret,
         )
+        sessions.save(toolSessionId, session)
 
         return outcomeFor(session)
     }
@@ -73,9 +72,7 @@ class EnrollKobilToolHandler(
         bindingKeyRef: String,
         label: String?,
     ): ToolOutcome {
-        val session = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) {
-            "Unknown enroll-kobil tool session: $toolSessionId"
-        }
+        val session = sessions.require<EnrollKobilToolSession>(toolSessionId)
         val user = KobilUserRef(session.kobilTenantId, session.kobilUserId)
 
         // The identifier is asked of KOBIL, never accepted from the client: it is the anchor every
@@ -104,10 +101,8 @@ class EnrollKobilToolHandler(
                     )
                 // The activation secrets have done their job: the PIN now lives in the credential,
                 // the unlock secret only as its hash. Nothing keeps them in the tool session until
-                // the retention sweep, which may be up to 24 h away.
-                session.activationCode = ""
-                session.pin = ""
-                session.unlockSecret = ""
+                // it ends, which may be up to 24 h away.
+                sessions.save(toolSessionId, session.copy(activationCode = "", pin = "", unlockSecret = ""))
 
                 ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef(type = KOBIL_ENROLLMENT_TYPE, id = enrollment.id.toString()),
@@ -126,10 +121,7 @@ class EnrollKobilToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val session = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) {
-            "Unknown enroll-kobil tool session: $toolSessionId"
-        }
-        return outcomeFor(session)
+        return outcomeFor(sessions.require<EnrollKobilToolSession>(toolSessionId))
     }
 
     /**

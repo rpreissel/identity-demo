@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.enrollsms
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_sms.PHONE_NUMBER
 import com.example.identity.contract.tool_api.InvalidInputException
@@ -27,7 +29,7 @@ import java.time.Clock
  */
 @Component
 class EnrollSmsToolHandler(
-    private val toolDataRepository: EnrollSmsToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val enrollmentRepository: AuthSmsEnrollmentRepository,
     private val tanGenerator: TanGenerator,
     private val smsGateway: SmsGateway,
@@ -38,7 +40,7 @@ class EnrollSmsToolHandler(
     /** Called directly by EnrollSmsToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        toolDataRepository.save(EnrollSmsToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, EnrollSmsToolSession())
         return outcomeFor(EnrollSmsState.AwaitingPhoneNumber)
     }
 
@@ -50,9 +52,9 @@ class EnrollSmsToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, phoneNumber: String?, tan: String?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-sms tool session: $toolSessionId" }
+        val data = sessions.require<EnrollSmsToolSession>(toolSessionId)
 
-        return when (val decision = EnrollSmsFlow.decide(data.toState(), EnrollSmsInput(phoneNumber, tan), tanGenerator)) {
+        return when (val decision = EnrollSmsFlow.decide(data.toState(toolSessionId), EnrollSmsInput(phoneNumber, tan), tanGenerator)) {
             is EnrollSmsDecision.InvalidPhoneNumber -> throw InvalidInputException(Text("Bitte eine Mobilnummer mit Ländervorwahl aus der EU oder dem EWR angeben, z. B. +49 170 1234567"))
 
             is EnrollSmsDecision.WrongTan -> ToolOutcome.Failed.NothingGuessed(Text("TAN ungueltig oder abgelaufen"))
@@ -63,10 +65,10 @@ class EnrollSmsToolHandler(
                 throw TooManyRequestsException(Text("Zu viele Codes angefordert. Bitte versuchen Sie es in einigen Minuten erneut."))
             } else {
                 val issued = tanGenerator.issue()
-                data.phoneNumber = decision.phoneNumber
-                data.issuedTanHash = issued.hash
-                data.tanExpiresAt = issued.expiresAt
-                toolDataRepository.save(data)
+                sessions.save(
+                    toolSessionId,
+                    data.copy(phoneNumber = decision.phoneNumber, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt),
+                )
                 smsGateway.sendTan(decision.phoneNumber, issued.plainTan)
 
                 val state = EnrollSmsState.AwaitingTan(decision.phoneNumber, issued.hash, issued.expiresAt)
@@ -96,8 +98,7 @@ class EnrollSmsToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-sms tool session: $toolSessionId" }
-        return outcomeFor(data.toState())
+        return outcomeFor(sessions.require<EnrollSmsToolSession>(toolSessionId).toState(toolSessionId))
     }
 
     private fun outcomeFor(state: EnrollSmsState): ToolOutcome.InProgress {
@@ -105,8 +106,8 @@ class EnrollSmsToolHandler(
         return ToolOutcome.InProgress(nextStep = step, stepData = fields)
     }
 
-    private fun EnrollSmsToolSession.toState(): EnrollSmsState = EnrollSmsState.of(
-        toolSessionId = checkNotNull(toolSessionId),
+    private fun EnrollSmsToolSession.toState(toolSessionId: ToolSessionId): EnrollSmsState = EnrollSmsState.of(
+        toolSessionId = toolSessionId,
         phoneNumber = phoneNumber,
         issuedTanHash = issuedTanHash,
         tanExpiresAt = tanExpiresAt

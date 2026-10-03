@@ -1,4 +1,5 @@
 package com.example.identity.tools.auth_sms.internal.authsms
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
@@ -20,7 +21,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.verify
 import io.kotest.matchers.collections.shouldBeEmpty
 import com.example.identity.contract.tool_api.TooManyRequestsException
@@ -32,17 +32,14 @@ private const val PHONE = "+491701234567"
 /** No SMS enrollment and no tool session exist, and the send budget is open, until a test changes that. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val saved = slot<AuthSmsToolSession>()
-    val sessions = mockk<AuthSmsToolSessionRepository>().also {
-        every { it.save(capture(saved)) } answers { saved.captured }
-    }
+    val sessions = InMemoryToolSessionData()
     val enrollments = mockk<AuthSmsEnrollmentRepository>().also {
         every { it.findById(any()) } returns Optional.empty()
     }
     val tans = TanGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val gateway = SmsGateway(clock = TEST_CLOCK)
-    val handler = AuthSmsToolHandler( sessions, enrollments, tans, gateway, sendLimit, clock = TEST_CLOCK)
+    val handler = AuthSmsToolHandler( sessions, enrollments, tans, gateway, sendLimit)
 
     fun withEnrolledNumber(id: Long) = apply {
         every { enrollments.findById(id) } returns Optional.of(AuthSmsEnrollment(phoneNumber = PHONE, createdAt = TEST_NOW).apply { this.id = id })
@@ -54,8 +51,7 @@ private class Fixture {
 
     /** Persists a pending TAN for [toolSessionId], bound to [enrollmentRefId], and returns it. */
     fun withPendingTan(enrollmentRefId: String): TanGenerator.Issued = tans.issue().also { issued ->
-        every { sessions.findByToolSessionId(toolSessionId) } returns
-            AuthSmsToolSession(toolSessionId = toolSessionId, enrollmentRefId = enrollmentRefId, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt, createdAt = TEST_NOW)
+        sessions.save(toolSessionId, AuthSmsToolSession(enrollmentRefId = enrollmentRefId, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt))
     }
 }
 
@@ -98,7 +94,8 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
             }
 
             then("it persists the hash of the texted TAN") {
-                f.tans.matches(sms.tan, f.saved.captured.issuedTanHash, f.saved.captured.tanExpiresAt) shouldBe true
+                val stored = f.sessions.stored<AuthSmsToolSession>(f.toolSessionId)
+                f.tans.matches(sms.tan, stored.issuedTanHash, stored.tanExpiresAt) shouldBe true
             }
         }
     }

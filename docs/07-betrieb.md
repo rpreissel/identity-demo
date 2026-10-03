@@ -107,10 +107,6 @@ gelesen. Deshalb werden sie aktiv gelöscht und nicht aufbewahrt.
 
 Richtwerte (als Voreinstellung gedacht, nicht als Vorgabe für Compliance):
 
-- **`<modul>.*_tool_session` (Moduldaten)**
-  - *Frist beginnt mit:* `createdAt`
-  - *Richtwert:* 24 h (`tool-session.retention`)
-  - *Grund:* Personenbezug und TAN-Hash. Jedes Tool-Modul löscht seine eigenen Tabellen selbst (`*RetentionJob` implementiert `ToolSessionSweeper`); Frist und Intervall stehen dagegen nur einmal, in `orchestrator/retention/ToolSessionRetention.kt`. Bei `auth_kobil.enroll_tool_session` ist die Frist besonders wichtig: Dort liegen während einer laufenden Einrichtung KOBIL-PIN und Entsperrgeheimnis im Klartext ([ADR-22](adr/ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md))
 - **`kobil.*` (Fremdsystem)**
   - *Frist beginnt mit:* —
   - *Richtwert:* **kein** Aufräumen durch uns
@@ -129,8 +125,8 @@ Richtwerte (als Voreinstellung gedacht, nicht als Vorgabe für Compliance):
   - *Grund:* Der Schutz vor wiederholten Proofs gilt nur in dem Zeitfenster, in dem ein Proof angenommen wird
 - **`orchestrator.tool_session`**
   - *Frist beginnt mit:* `expiresAt`
-  - *Richtwert:* 24 h
-  - *Grund:* nur Angaben zum Lebenszyklus
+  - *Richtwert:* 24 h (`tool-session.retention`)
+  - *Grund:* Lebenszyklus und die Arbeitsdaten des Tools (Spalte `data`, [ADR-49](adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)): Personenbezug und Code-Hashes. Bei einer KOBIL-Einrichtung liegen dort während der Einrichtung PIN und Entsperrgeheimnis im Klartext und werden danach geleert ([ADR-22](adr/ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md))
 - **`AuthJourney`**
   - *Frist beginnt mit:* `consumedAt` / `expiresAt`
   - *Richtwert:* 7 Tage
@@ -179,20 +175,17 @@ Richtwerte (als Voreinstellung gedacht, nicht als Vorgabe für Compliance):
 
 Wie mit den Verweisen zwischen den Tabellen umgegangen wird:
 
-- **Besitzkette** (`ChannelSession` → `AuthJourney` → `orchestrator.tool_session` → der Teil im
-  Modul, `<modul>.*_tool_session`): Sie wird von innen nach außen aufgeräumt. Weil die Fristen von
-  innen nach außen länger werden, ergibt sich diese Reihenfolge von selbst.
-- **Daten der Module:** Welche Zeilen gelöscht werden, entscheidet jedes Modul selbst. Nur das Modul
-  weiß, welche seiner Tabellen zur Sitzung gehören und welche (`*_enrollment`) zum Konto. Wann
-  gelöscht wird, steht dagegen an einer einzigen Stelle (`tool-session.retention`), und ein
-  gemeinsamer Zeitplaner (`ToolSessionRetentionDriver`) stößt es an.
+- **Besitzkette** (`ChannelSession` → `AuthJourney` → `orchestrator.tool_session` mit den
+  Arbeitsdaten des Tools): Sie wird von innen nach außen aufgeräumt. Weil die Fristen von innen nach
+  außen länger werden, ergibt sich diese Reihenfolge von selbst. Die Arbeitsdaten gehen mit ihrer
+  Zeile; kein Modul räumt sie selbst auf.
 
-  `ToolSessionCoverageTest` prüft gegen das tatsächliche Schema, dass ein Aufräumlauf jede
-  `*_tool_session`-Tabelle leert, auch eine später hinzukommende. Fehlte einem Modul der
-  Aufräumlauf, fiele das sonst niemandem auf, weil nichts fehlschlägt.
-
-  Scheitert der Aufräumlauf eines Moduls, laufen die übrigen trotzdem. Sonst würden Daten länger
-  aufbewahrt als erlaubt, nur weil an anderer Stelle ein Fehler auftrat.
+  `ToolSessionCoverageTest` prüft gegen das tatsächliche Schema, dass kein Modul eine eigene
+  `*_tool_session`-Tabelle mitbringt: Sie würde von niemandem aufgeräumt.
+- **Andere kurzlebige Daten der Module:** Was ein Modul außerhalb einer Tool-Sitzung kurz festhält
+  (heute nur `auth_qr.login_request`), räumt es selbst auf (`ToolSessionSweeper`). Frist und
+  Intervall stehen an einer Stelle (`tool-session.retention`), ein gemeinsamer Zeitplaner
+  (`ToolSessionRetentionDriver`) stößt es an. Scheitert ein Aufräumlauf, laufen die übrigen trotzdem.
 - **Das Änderungsprotokoll hängt an keiner anderen Tabelle:** `account.change_log` speichert die `accountId` als
   historischen Wert, nicht als Fremdschlüssel – das Protokoll muss die Löschung des Kontos
   überleben. Eine Id, die auf kein Konto mehr zeigt, ist deshalb erwartet und kein Fehler.
@@ -327,7 +320,7 @@ Diese Annahme steckt an drei voneinander unabhängigen Stellen:
   erprobt. Die Liste steht in `SCHEDULED_JOBS` (`DeploymentTopology.kt`); `ScheduledJobsTest` prüft,
   dass sie mit den `@Scheduled`-Methoden übereinstimmt:
   - `RetentionJob`: Sitzungen, Journeys, Ablaufprotokoll, Zähler (stündlich);
-  - `ToolSessionRetentionDriver`: Arbeitsdaten der Tool-Sessions aller Module (stündlich);
+  - `ToolSessionRetentionDriver`: andere kurzlebige Daten der Module, heute die QR-Kopplungsanfragen (stündlich);
   - `DpopReplayProtectionService`: Schutz vor wiederholten DPoP-Proofs (minütlich);
   - `ChangeLogRetention`: Änderungsprotokoll gelöschter Konten (täglich);
   - `SignInLogRetention`: Anmeldeprotokoll (täglich).
@@ -512,10 +505,9 @@ Tabellen zeigt [02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 7.
   `account_id` in Tabellen des Orchestrators) sind Spalten mit Index und werden über die
   Schnittstellen der Module aufgeräumt.
 - **Namen:** Dauerhafte Credentials heißen `<modul>.enrollment`, und dieser vollständige Name ist
-  `EnrollmentRef.type`. Die Arbeitsdaten eines Tool-Durchlaufs heißen
-  `<modul>.<tool-rolle>_tool_session`. Ihr Schlüssel *ist* die `tool_session_id`; die Zeile ist
-  also der Teil von `orchestrator.tool_session`, der im Modul liegt. Die Primärschlüsselspalte heißt
-  immer `id`, Verweise heißen `<tabelle>_id`. Indizes und Constraints tragen kein Modulpräfix
+  `EnrollmentRef.type`. Die Arbeitsdaten eines Tool-Durchlaufs haben keine eigene Tabelle; sie liegen
+  als JSON an `orchestrator.tool_session` (ADR-49). Die Primärschlüsselspalte heißt immer `id`,
+  Verweise heißen `<tabelle>_id`. Indizes und Constraints tragen kein Modulpräfix
   (`ux_anchor_value`).
 - **Typen:** Zeitpunkte `TIMESTAMP WITH TIME ZONE`, Enum-Werte `VARCHAR(32)`, ACR-Werte
   `VARCHAR(16)`, Tool-IDs, Verfahren, Attributtypen und Quellen `VARCHAR(50)`, Hashes `VARCHAR(64)`.

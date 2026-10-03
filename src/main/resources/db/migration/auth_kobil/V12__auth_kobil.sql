@@ -38,30 +38,6 @@ CREATE TABLE auth_kobil.enrollment (
 );
 CREATE INDEX ix_kobil_enrollment_device ON auth_kobil.enrollment (kobil_device_id);
 
-CREATE TABLE auth_kobil.enroll_tool_session (
-    tool_session_id    UUID PRIMARY KEY,
-    kobil_tenant_id    VARCHAR(64)  NOT NULL,
-    kobil_user_id      VARCHAR(128) NOT NULL,
-    activation_code    VARCHAR(128) NOT NULL,
-    pin                VARCHAR(32)  NOT NULL,
-    -- Waehrend der Einrichtung im Klartext, damit ein Reload den Ablauf nicht abschneidet. Beim
-    -- Abschluss bleibt nur der Hash, und nur mit Zustimmung (auth_kobil.enrollment.unlock_secret_hash).
-    unlock_secret      VARCHAR(255) NOT NULL,
-    created_at         TIMESTAMP WITH TIME ZONE NOT NULL
-);
-CREATE INDEX ix_kobil_enroll_tool_session_created_at ON auth_kobil.enroll_tool_session (created_at);
-
-CREATE TABLE auth_kobil.auth_tool_session (
-    tool_session_id        UUID PRIMARY KEY,
-    enrollment_ref_id      VARCHAR(255),
-    -- NULL = noch nicht freigegeben. Gesetzt traegt die Spalte zugleich das Zugangsmittel
-    -- (pin | biometric), das der spaetere Completed als amr meldet: ein Feld, kein Flag daneben.
-    user_verification      VARCHAR(16),
-    pin_release_expires_at TIMESTAMP WITH TIME ZONE,
-    created_at             TIMESTAMP WITH TIME ZONE NOT NULL
-);
-CREATE INDEX ix_kobil_auth_tool_session_created_at ON auth_kobil.auth_tool_session (created_at);
-
 -- ---------------------------------------------------------------------------------------------
 -- kobil (Fremdsystem)
 -- ---------------------------------------------------------------------------------------------

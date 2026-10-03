@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_password.internal.enrollpassword
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_password.PASSWORD_EXISTS
 import com.example.identity.contract.tool_api.ToolRole
@@ -25,7 +27,7 @@ import java.time.Clock
  */
 @Component
 class EnrollPasswordToolHandler(
-    private val toolDataRepository: EnrollPasswordToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val enrollmentRepository: AuthPasswordEnrollmentRepository,
     private val clock: Clock
 ) {
@@ -33,14 +35,14 @@ class EnrollPasswordToolHandler(
     /** Called directly by EnrollPasswordToolController; nothing needs resolving before this can start. */
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        toolDataRepository.save(EnrollPasswordToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, EnrollPasswordToolSession())
         return outcomeFor()
     }
 
     /** Called directly by EnrollPasswordToolController (docs/08-projektrahmen.md A11). */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, password: String?): ToolOutcome {
-        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-password tool session: $toolSessionId" }
+        sessions.require<EnrollPasswordToolSession>(toolSessionId)
 
         return when (val decision = EnrollPasswordFlow.decide(EnrollPasswordInput(password))) {
             EnrollPasswordDecision.Unchanged -> outcomeFor()
@@ -68,7 +70,7 @@ class EnrollPasswordToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown enroll-password tool session: $toolSessionId" }
+        sessions.require<EnrollPasswordToolSession>(toolSessionId)
         return outcomeFor()
     }
 

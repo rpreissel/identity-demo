@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.authsmslookup
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted
@@ -17,7 +19,6 @@ import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 
 /**
  * toolId=auth-sms-lookup: login without a known account (docs/04-orchestrierung.md). Proves
@@ -26,18 +27,17 @@ import java.time.Clock
  */
 @Component
 class AuthSmsLookupToolHandler(
-    private val toolDataRepository: AuthSmsLookupToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val enrollmentRepository: AuthSmsEnrollmentRepository,
     private val tanGenerator: TanGenerator,
     private val smsGateway: SmsGateway,
     private val sendLimit: SmsSendLimit,
-    private val accountDirectory: AccountDirectory,
-    private val clock: Clock
+    private val accountDirectory: AccountDirectory
 ) {
 
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        toolDataRepository.save(AuthSmsLookupToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, AuthSmsLookupToolSession())
         return outcomeFor(AuthSmsLookupState.AwaitingEmail)
     }
 
@@ -49,8 +49,6 @@ class AuthSmsLookupToolHandler(
      */
     @Transactional
     fun submitEmail(toolSessionId: ToolSessionId, accountId: AccountId?, enrollmentRef: EnrollmentRef?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-sms-lookup tool session: $toolSessionId" }
-
         val enrollment = enrollmentRef
             ?.takeIf { it.type == SMS_ENROLLMENT_TYPE }
             ?.id?.toLongOrNull()
@@ -59,10 +57,10 @@ class AuthSmsLookupToolHandler(
         val resolvedAccountId = accountId.takeIf { enrollment != null }
 
         val issued = tanGenerator.issue()
-        data.accountId = resolvedAccountId
-        data.issuedTanHash = issued.hash
-        data.tanExpiresAt = issued.expiresAt
-        toolDataRepository.save(data)
+        sessions.save(
+            toolSessionId,
+            AuthSmsLookupToolSession(accountId = resolvedAccountId, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt),
+        )
 
         val state = AuthSmsLookupState.AwaitingTan(resolvedAccountId, issued.hash, issued.expiresAt)
         val (step, fields) = state.describe()
@@ -79,9 +77,9 @@ class AuthSmsLookupToolHandler(
     /** Called directly by AuthSmsLookupToolController (docs/08-projektrahmen.md A11). */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, tan: String?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-sms-lookup tool session: $toolSessionId" }
+        val data = sessions.require<AuthSmsLookupToolSession>(toolSessionId)
 
-        return when (val decision = AuthSmsLookupFlow.decideTan(data.toState(), tan, tanGenerator)) {
+        return when (val decision = AuthSmsLookupFlow.decideTan(data.toState(toolSessionId), tan, tanGenerator)) {
             is AuthSmsLookupDecision.Unchanged -> outcomeFor(decision.state)
 
             is AuthSmsLookupDecision.Complete -> {
@@ -103,8 +101,7 @@ class AuthSmsLookupToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-sms-lookup tool session: $toolSessionId" }
-        return outcomeFor(data.toState())
+        return outcomeFor(sessions.require<AuthSmsLookupToolSession>(toolSessionId).toState(toolSessionId))
     }
 
     private fun outcomeFor(state: AuthSmsLookupState): ToolOutcome.InProgress {
@@ -112,8 +109,8 @@ class AuthSmsLookupToolHandler(
         return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = state.demo)
     }
 
-    private fun AuthSmsLookupToolSession.toState(): AuthSmsLookupState = AuthSmsLookupState.of(
-        toolSessionId = checkNotNull(toolSessionId),
+    private fun AuthSmsLookupToolSession.toState(toolSessionId: ToolSessionId): AuthSmsLookupState = AuthSmsLookupState.of(
+        toolSessionId = toolSessionId,
         accountId = accountId,
         issuedTanHash = issuedTanHash,
         tanExpiresAt = tanExpiresAt

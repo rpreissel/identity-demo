@@ -1,27 +1,23 @@
 package com.example.identity.tools.auth_email.internal.enrollemail
 
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.TEST_CLOCK
-import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.slot
 import java.util.UUID
 
 /**
- * Pure unit test: no Spring context, the repository mocked with MockK. enroll-email is a one-shot,
+ * Pure unit test: no Spring context, the session data kept in memory. enroll-email is a one-shot,
  * so start and every later read return the same Enrolled outcome referencing the EMAIL anchor.
  */
 class EnrollEmailToolHandlerTest : BehaviorSpec({
 
-    val toolDataRepository = mockk<EnrollEmailToolSessionRepository>()
-    val handler = EnrollEmailToolHandler( toolDataRepository, clock = TEST_CLOCK)
+    val sessions = InMemoryToolSessionData()
+    val handler = EnrollEmailToolHandler(sessions)
 
     // No amr: control of the address was proven by confirm-email, not in this run.
     val expected = ToolOutcome.Completed.Enrolled(
@@ -32,12 +28,10 @@ class EnrollEmailToolHandlerTest : BehaviorSpec({
     given("no enroll-email tool session yet") {
         `when`("an enroll-email run begins") {
             val toolSessionId = ToolSessionId(UUID.randomUUID())
-            val saved = slot<EnrollEmailToolSession>()
-            every { toolDataRepository.save(capture(saved)) } answers { saved.captured }
             val outcome = handler.start(toolSessionId)
 
             then("it records the run and completes at once with the EMAIL anchor as credential") {
-                saved.captured.toolSessionId shouldBe toolSessionId
+                sessions.stored<EnrollEmailToolSession>(toolSessionId) shouldBe EnrollEmailToolSession()
                 outcome shouldBe expected
             }
         }
@@ -45,7 +39,7 @@ class EnrollEmailToolHandlerTest : BehaviorSpec({
 
     given("a completed enroll-email tool session") {
         val toolSessionId = ToolSessionId(UUID.randomUUID())
-        every { toolDataRepository.findByToolSessionId(toolSessionId) } returns EnrollEmailToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
+        sessions.save(toolSessionId, EnrollEmailToolSession())
 
         `when`("it is read again") {
             val outcome = handler.read(toolSessionId)
@@ -58,7 +52,6 @@ class EnrollEmailToolHandlerTest : BehaviorSpec({
 
     given("no enroll-email tool session") {
         val unknownId = ToolSessionId(UUID.randomUUID())
-        every { toolDataRepository.findByToolSessionId(unknownId) } returns null
 
         `when`("it is read") {
             val result = runCatching { handler.read(unknownId) }

@@ -1,10 +1,10 @@
 package com.example.identity.tools.auth_password.internal.authpasswordlookup
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.tool_api.Subject
-import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_password.internal.PasswordHasher
@@ -32,18 +32,15 @@ private val WRONG_ANSWER = Text("E-Mail oder Passwort ungueltig")
 /** One active tool session; enrollment 1 holds the password "hunter2". */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val sessions = mockk<AuthPasswordLookupToolSessionRepository>().also {
-        every { it.save(any()) } answers { firstArg() }
-        every { it.findByToolSessionId(toolSessionId) } returns AuthPasswordLookupToolSession(toolSessionId = toolSessionId, createdAt = TEST_NOW)
-    }
+    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, AuthPasswordLookupToolSession()) }
     val enrollments = mockk<AuthPasswordEnrollmentRepository>().also {
         every { it.findById(1L) } returns Optional.of(AuthPasswordEnrollment(passwordHash = PasswordHasher.hash("hunter2"), createdAt = TEST_NOW).apply { id = 1L })
     }
-    val handler = AuthPasswordLookupToolHandler( sessions, enrollments, clock = TEST_CLOCK)
+    val handler = AuthPasswordLookupToolHandler(sessions, enrollments)
 }
 
 /**
- * Pure unit test: no Spring context, repositories mocked with MockK. Covers persistence/outcome
+ * Pure unit test: no Spring context, the session data kept in memory, repositories mocked with MockK. Covers persistence/outcome
  * wiring and the enumeration-neutral failure; the completeness decision is covered by
  * [AuthPasswordLookupFlowTest].
  */

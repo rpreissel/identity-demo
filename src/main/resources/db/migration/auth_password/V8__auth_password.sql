@@ -13,22 +13,3 @@ CREATE TABLE auth_password.enrollment (
     password_hash VARCHAR(255) NOT NULL,
     created_at    TIMESTAMP WITH TIME ZONE NOT NULL
 );
-
-CREATE TABLE auth_password.enroll_tool_session (
-    tool_session_id UUID PRIMARY KEY,
-    created_at      TIMESTAMP WITH TIME ZONE NOT NULL
-);
-CREATE INDEX ix_enroll_tool_session_created_at ON auth_password.enroll_tool_session (created_at);
-
-CREATE TABLE auth_password.auth_tool_session (
-    tool_session_id     UUID PRIMARY KEY,
-    enrollment_ref_id   VARCHAR(255),
-    created_at          TIMESTAMP WITH TIME ZONE NOT NULL
-);
-CREATE INDEX ix_auth_tool_session_created_at ON auth_password.auth_tool_session (created_at);
-
-CREATE TABLE auth_password.lookup_tool_session (
-    tool_session_id UUID PRIMARY KEY,
-    created_at      TIMESTAMP WITH TIME ZONE NOT NULL
-);
-CREATE INDEX ix_lookup_tool_session_created_at ON auth_password.lookup_tool_session (created_at);

@@ -1,10 +1,9 @@
 package com.example.identity.tools.ident_nect.internal
 
+import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.ident_nect.NECT_RESTRICTED_ID
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.TEST_CLOCK
-import com.example.identity.TEST_NOW
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -26,27 +25,29 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.verify
 import java.time.LocalDate
 import java.util.UUID
 
 /**
- * Pure unit test: no Spring context, the repository and Nect mocked with MockK. Covers the case
+ * Pure unit test: no Spring context, the session data kept in memory, Nect mocked with MockK. Covers the case
  * binding, how each Nect result becomes an outcome, and the level, factors and claims per document.
  */
 class IdentNectToolHandlerTest : BehaviorSpec({
 
-    val repository = mockk<IdNectToolSessionRepository>()
+    val sessions = InMemoryToolSessionData()
     val nect = mockk<NectIdent>()
-    val handler = IdentNectToolHandler( repository, nect, clock = TEST_CLOCK)
+    val handler = IdentNectToolHandler(sessions, nect)
+
+    /** The session as the handler last saved it. */
+    fun stored(toolSessionId: ToolSessionId): IdNectToolSession = sessions.stored(toolSessionId)
     val source = ClaimSource(tool("ident-nect").toolId.value)
 
     /** A tool session waiting for a fresh case; returns both ids. */
     fun waitingForCase(): Pair<ToolSessionId, UUID> {
         val toolSessionId = ToolSessionId(UUID.randomUUID())
         val caseId = UUID.randomUUID()
-        every { repository.findByToolSessionId(toolSessionId) } returns IdNectToolSession(toolSessionId = toolSessionId, caseId = caseId, createdAt = TEST_NOW)
+        sessions.save(toolSessionId, IdNectToolSession(caseId = caseId))
         return toolSessionId to caseId
     }
 
@@ -65,12 +66,10 @@ class IdentNectToolHandlerTest : BehaviorSpec({
             val toolSessionId = ToolSessionId(UUID.randomUUID())
             val caseId = UUID.randomUUID()
             every { nect.createCase(NECT_CALLBACK_URI, NECT_REQUESTED) } returns NectCaseRef(caseId, "/nect/?case=$caseId")
-            val saved = slot<IdNectToolSession>()
-            every { repository.save(capture(saved)) } answers { saved.captured }
             val outcome = handler.start(toolSessionId)
 
             then("it binds the opened case to the session and redirects to Nect") {
-                saved.captured.caseId shouldBe caseId
+                stored(toolSessionId).caseId shouldBe caseId
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "redirect", stepData = NectRedirectStep("/nect/?case=$caseId", caseId))
             }
         }
@@ -78,19 +77,17 @@ class IdentNectToolHandlerTest : BehaviorSpec({
 
     given("a channel that names where Nect sends the user back to") {
         val prefixes = IdentNectProperties(returnUriPrefixes = listOf("https://kc.test/realms/"))
-        val webHandler = IdentNectToolHandler( repository, nect, clock = TEST_CLOCK, properties = prefixes)
+        val webHandler = IdentNectToolHandler(sessions, nect, properties = prefixes)
         val actionUrl = "https://kc.test/realms/Demo/login-actions/authenticate?session_code=c1&execution=e1&client_id=web&tab_id=t1"
 
         `when`("the address lies under a configured prefix") {
             val toolSessionId = ToolSessionId(UUID.randomUUID())
             val caseId = UUID.randomUUID()
             every { nect.createCase(actionUrl, NECT_REQUESTED) } returns NectCaseRef(caseId, "/nect/?case=$caseId")
-            val saved = slot<IdNectToolSession>()
-            every { repository.save(capture(saved)) } answers { saved.captured }
             webHandler.start(toolSessionId, returnUri = actionUrl)
 
             then("the case is opened with that address, and the session remembers it") {
-                saved.captured.returnUri shouldBe actionUrl
+                stored(toolSessionId).returnUri shouldBe actionUrl
                 verify(exactly = 1) { nect.createCase(actionUrl, NECT_REQUESTED) }
             }
         }
@@ -99,10 +96,8 @@ class IdentNectToolHandlerTest : BehaviorSpec({
             val toolSessionId = ToolSessionId(UUID.randomUUID())
             val oldCase = UUID.randomUUID()
             val newCase = UUID.randomUUID()
-            every { repository.findByToolSessionId(toolSessionId) } returns
-                IdNectToolSession(toolSessionId = toolSessionId, caseId = oldCase, returnUri = actionUrl, createdAt = TEST_NOW)
+            sessions.save(toolSessionId, IdNectToolSession(caseId = oldCase, returnUri = actionUrl))
             every { nect.createCase(actionUrl, NECT_REQUESTED) } returns NectCaseRef(newCase, "/nect/?case=$newCase")
-            every { repository.save(any()) } answers { firstArg() }
             val outcome = webHandler.patch(toolSessionId, caseId = oldCase, retry = true)
 
             then("the fresh case keeps the same return address") {
@@ -116,22 +111,19 @@ class IdentNectToolHandlerTest : BehaviorSpec({
             val oldCase = UUID.randomUUID()
             val newCase = UUID.randomUUID()
             val freshUrl = "https://kc.test/realms/Demo/login-actions/authenticate?session_code=c2&execution=e1&client_id=web&tab_id=t1"
-            val session = IdNectToolSession(toolSessionId = toolSessionId, caseId = oldCase, returnUri = actionUrl, createdAt = TEST_NOW)
-            every { repository.findByToolSessionId(toolSessionId) } returns session
+            sessions.save(toolSessionId, IdNectToolSession(caseId = oldCase, returnUri = actionUrl))
             every { nect.createCase(freshUrl, NECT_REQUESTED) } returns NectCaseRef(newCase, "/nect/?case=$newCase")
-            every { repository.save(any()) } answers { firstArg() }
             val outcome = webHandler.patch(toolSessionId, caseId = oldCase, retry = true, returnUri = freshUrl)
 
             then("the fresh case goes back there, and the session remembers it for the next retry") {
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "redirect", stepData = NectRedirectStep("/nect/?case=$newCase", newCase))
-                session.returnUri shouldBe freshUrl
+                stored(toolSessionId).returnUri shouldBe freshUrl
             }
         }
 
         `when`("a retry names an address outside the prefixes") {
             val toolSessionId = ToolSessionId(UUID.randomUUID())
-            every { repository.findByToolSessionId(toolSessionId) } returns
-                IdNectToolSession(toolSessionId = toolSessionId, caseId = UUID.randomUUID(), returnUri = actionUrl, createdAt = TEST_NOW)
+            sessions.save(toolSessionId, IdNectToolSession(caseId = UUID.randomUUID(), returnUri = actionUrl))
             val result = runCatching { webHandler.patch(toolSessionId, caseId = null, retry = true, returnUri = "https://attacker.example/return") }
 
             then("it is rejected as bad input, and no case is opened") {
@@ -179,12 +171,10 @@ class IdentNectToolHandlerTest : BehaviorSpec({
             val (toolSessionId, oldCase) = waitingForCase()
             val newCase = UUID.randomUUID()
             every { nect.createCase(NECT_CALLBACK_URI, NECT_REQUESTED) } returns NectCaseRef(newCase, "/nect/?case=$newCase")
-            val saved = slot<IdNectToolSession>()
-            every { repository.save(capture(saved)) } answers { saved.captured }
             val outcome = handler.patch(toolSessionId, caseId = oldCase, retry = true)
 
             then("it opens a fresh case, rebinds the session and redirects again") {
-                saved.captured.caseId shouldBe newCase
+                stored(toolSessionId).caseId shouldBe newCase
                 outcome shouldBe ToolOutcome.InProgress(nextStep = "redirect", stepData = NectRedirectStep("/nect/?case=$newCase", newCase))
             }
         }

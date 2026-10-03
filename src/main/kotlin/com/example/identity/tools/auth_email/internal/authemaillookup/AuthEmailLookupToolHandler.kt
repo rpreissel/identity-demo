@@ -1,4 +1,6 @@
 package com.example.identity.tools.auth_email.internal.authemaillookup
+import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.simulation.mail.MailServer
@@ -13,7 +15,6 @@ import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
 
 /**
  * toolId=auth-email-lookup: login without a known account (docs/04-orchestrierung.md). Proves
@@ -22,17 +23,16 @@ import java.time.Clock
  */
 @Component
 class AuthEmailLookupToolHandler(
-    private val toolDataRepository: AuthEmailLookupToolSessionRepository,
+    private val sessions: ToolSessionData,
     private val accountDirectory: AccountDirectory,
     private val emailCodeGenerator: EmailCodeGenerator,
     private val mailServer: MailServer,
     private val sendLimit: EmailSendLimit,
-    private val clock: Clock
 ) {
 
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        toolDataRepository.save(AuthEmailLookupToolSession(toolSessionId = toolSessionId, createdAt = clock.instant()))
+        sessions.save(toolSessionId, AuthEmailLookupToolSession())
         return outcomeFor(AuthEmailLookupState.AwaitingEmail)
     }
 
@@ -44,8 +44,6 @@ class AuthEmailLookupToolHandler(
      */
     @Transactional
     fun submitEmail(toolSessionId: ToolSessionId, email: String, locked: Boolean): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-email-lookup tool session: $toolSessionId" }
-
         val candidateAccountId = accountDirectory.resolveAccountByEmail(email).takeUnless { locked }
         val confirmedEmail = candidateAccountId
             ?.let { accountDirectory.anchorValue(it, AttributeType.EMAIL) }
@@ -53,10 +51,10 @@ class AuthEmailLookupToolHandler(
         val resolvedAccountId = candidateAccountId.takeIf { confirmedEmail != null }
 
         val issued = emailCodeGenerator.issue()
-        data.accountId = resolvedAccountId
-        data.issuedCodeHash = issued.hash
-        data.codeExpiresAt = issued.expiresAt
-        toolDataRepository.save(data)
+        sessions.save(
+            toolSessionId,
+            AuthEmailLookupToolSession(accountId = resolvedAccountId, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt),
+        )
 
         val state = AuthEmailLookupState.AwaitingCode(resolvedAccountId, issued.hash, issued.expiresAt)
         val (step, fields) = state.describe()
@@ -73,9 +71,9 @@ class AuthEmailLookupToolHandler(
     /** Called directly by AuthEmailLookupToolController (docs/08-projektrahmen.md A11). */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, code: String?): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-email-lookup tool session: $toolSessionId" }
+        val data = sessions.require<AuthEmailLookupToolSession>(toolSessionId)
 
-        return when (val decision = AuthEmailLookupFlow.decideCode(data.toState(), code, emailCodeGenerator)) {
+        return when (val decision = AuthEmailLookupFlow.decideCode(data.toState(toolSessionId), code, emailCodeGenerator)) {
             is AuthEmailLookupDecision.Unchanged -> outcomeFor(decision.state)
 
             is AuthEmailLookupDecision.Complete -> {
@@ -94,8 +92,7 @@ class AuthEmailLookupToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val data = checkNotNull(toolDataRepository.findByToolSessionId(toolSessionId)) { "Unknown auth-email-lookup tool session: $toolSessionId" }
-        return outcomeFor(data.toState())
+        return outcomeFor(sessions.require<AuthEmailLookupToolSession>(toolSessionId).toState(toolSessionId))
     }
 
     private fun outcomeFor(state: AuthEmailLookupState): ToolOutcome.InProgress {
@@ -103,8 +100,8 @@ class AuthEmailLookupToolHandler(
         return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = state.demo)
     }
 
-    private fun AuthEmailLookupToolSession.toState(): AuthEmailLookupState = AuthEmailLookupState.of(
-        toolSessionId = checkNotNull(toolSessionId),
+    private fun AuthEmailLookupToolSession.toState(toolSessionId: ToolSessionId): AuthEmailLookupState = AuthEmailLookupState.of(
+        toolSessionId = toolSessionId,
         accountId = accountId,
         issuedCodeHash = issuedCodeHash,
         codeExpiresAt = codeExpiresAt
