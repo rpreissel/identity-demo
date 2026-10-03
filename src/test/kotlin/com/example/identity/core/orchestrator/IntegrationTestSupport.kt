@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.ToolId
+import io.kotest.assertions.withClue
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.simulation.mail.MailServer
 import com.example.identity.simulation.sms.SmsGateway
@@ -151,6 +153,24 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
             HttpEntity(if (url == "/orchestrator/api/v1/app/channels") withDefaultAvailableTools(body) else body, headers()),
             mapType
         ).let { it.statusCode.is2xxSuccessful shouldBe true; it.body!! }
+            .also { response -> checkStartStep(url, body, response) }
+
+    /**
+     * A tool activated without input must start on the step its module declares
+     * (`ToolModule`'s `startStep`): the journey announces that step before the tool runs. Checked on
+     * every activation of every integration test, so no list of tools has to be kept by hand. An
+     * activation with input may skip ahead (`approve-qr` with a pairing code), so it is left out.
+     */
+    private fun checkStartStep(url: String, body: String, response: Map<String, Any?>) {
+        val toolId = ACTIVATION.matchEntire(url)?.groupValues?.get(1) ?: return
+        if (body.isNotBlank() && body.trim() != "{}") return
+        val next = response["next"] as? Map<*, *> ?: return
+        if (next["type"] != "tool" || next["toolId"] != toolId || next["toolSessionId"] == null) return
+        val declared = toolRegistry.toolOf(ToolId(toolId)).startStep
+        withClue("$toolId starts on '${next["step"]}', but its module declares startStep '$declared'") {
+            next["step"] shouldBe declared
+        }
+    }
 
     /**
      * `availableTools` is required on channel creation (docs/03-tool-architektur.md). Unless a test
@@ -438,3 +458,6 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
         return AccountFixtures.EMAIL
     }
 }
+
+/** `POST …/channels/{channelSessionId}/tools/{toolId}`: activating a tool. */
+private val ACTIVATION = Regex("/orchestrator/api/v1/channels/[^/]+/tools/([a-z-]+)")

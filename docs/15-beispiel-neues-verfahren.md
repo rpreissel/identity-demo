@@ -246,10 +246,10 @@ Diese Tests werden rot, wenn etwas fehlt. Man liest sie am besten als Checkliste
 | Test | Meldet |
 |---|---|
 | `ModulithStructureTest` | Modul falsch angelegt oder eine nicht erlaubte Abhängigkeit |
-| `ToolControllerMappingTest` | Tool ohne Controller, oder ein Pfad nennt ein anderes Tool als `ToolController.tool` |
+| `ToolControllerMappingTest` | Tool ohne Controller, ein Pfad nennt ein anderes Tool als `ToolController.tool`, oder das Modul fehlt in `StrategyTestFixtures.modules` (mit Hinweis, was zu tun ist) |
+| Integrationstests (`IntegrationTestSupport.post`) | ein Tool beginnt bei der Aktivierung ohne Eingabe nicht mit seinem deklarierten `startStep` |
 | `ApiBoundaryArchitectureTest` | Controller-Methode ohne Tool-Kontext oder `@BindingKey`, Kontext vor dem Body, Simulation ohne `@DemoSurface` |
 | `SimulationBoundaryArchitectureTest` | Code außerhalb des Tools greift auf die Simulation zu |
-| `ToolCatalogStartStepTest` | neues Tool fehlt in der Liste der Startschritte |
 | `OpenApiSnapshotTest`, `StepDataExamplesTest` | Vertrag nicht erneuert, Beispiel mit unbekannter Form |
 | `TextTranslationsTest` (`-PstrictTexts`), `KcTextCatalogTest` | Texte nicht übersetzt, Name in App und Login-Seite verschieden |
 | `frontend/src/tools/registry.test.ts` | doppelte `toolId`, fehlender Name oder fehlende Erklärung |
@@ -257,10 +257,11 @@ Diese Tests werden rot, wenn etwas fehlt. Man liest sie am besten als Checkliste
 Vieles, was früher ein Test meldete, lässt der Aufbau gar nicht mehr zu: eine Identifizierung ohne
 Name, Vornamen und Geburtsdatum, eine Rolle zweimal, verschiedene Niveaus innerhalb einer Methode.
 
-Für die Integrationstests gibt es eine Stelle, die man leicht übersieht: Sie laufen gegen einen
-festen Katalog (`StrategyTestFixtures.modules`). Ohne das neue Modul dort meldet jeder
-Integrationstest seiner Tools „Unknown tool“. Es dort einzutragen, kann Erwartungen an
-Kandidatenlisten in den Strategietests ändern.
+Für die Integrationstests gibt es eine Stelle, die man von Hand nachträgt: Sie laufen gegen einen
+festen Katalog (`StrategyTestFixtures.modules`), damit ihre erwarteten Kandidatenlisten sich nicht
+ändern, wenn anderswo ein Modul dazukommt. Fehlt das neue Modul dort, sagt `ToolControllerMappingTest`
+genau das. Es einzutragen, kann Erwartungen an Kandidatenlisten in den Strategietests ändern; das ist
+dann eine echte Auswirkung des neuen Verfahrens auf das Angebot.
 
 Die eigenen Tests schreibt man ab: `*ToolHandlerTest` und `*FlowTest` ohne Spring
 (`tools/auth_kobil/internal/`), ein Integrationstest über HTTP (`IdentNectIntegrationTest`,
