@@ -1,15 +1,16 @@
 package com.example.identity.tools.auth_kobil.api.v1
 
 import com.example.identity.tools.auth_kobil.AUTH_KOBIL_TOOL_ID
+import com.example.identity.tools.auth_kobil.AuthKobil
 import com.example.identity.tools.auth_kobil.KobilModule
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.tools.auth_kobil.internal.authkobil.AuthKobilToolHandler
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.credentials.PasswordCredentialPort
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -50,7 +51,9 @@ class AuthKobilToolController(
     private val handler: AuthKobilToolHandler,
     private val toolJourney: ToolJourney,
     private val accountDirectory: AccountDirectory,
-) {
+) : ToolController {
+
+    override val tool = AuthKobil
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_KOBIL_TOOL_ID")
     @Operation(
@@ -69,7 +72,7 @@ class AuthKobilToolController(
         ]
     )
     fun activate(
-        @ActivateTool(AUTH_KOBIL_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder,
     ): ResponseEntity<ChannelResponse> {
         val enrollmentRef = toolJourney.requireEnrollment(context, KobilModule)
@@ -102,8 +105,8 @@ class AuthKobilToolController(
         ]
     )
     fun releasePin(
-        @LoadTool(AUTH_KOBIL_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody request: KobilPinReleaseRequest,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         // Resolved even when the account has no password: PasswordCredentialPort.verify must run
         // either way so a missing credential costs exactly what a wrong one does.
@@ -133,8 +136,8 @@ class AuthKobilToolController(
         ]
     )
     fun patch(
-        @LoadTool(AUTH_KOBIL_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody(required = false) request: AuthKobilPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.patch(context.toolSessionId, request?.otp)
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
@@ -152,7 +155,7 @@ class AuthKobilToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/$AUTH_KOBIL_TOOL_ID")
     @Operation(summary = "Read the current auth-kobil state")
     fun read(
-        @LoadTool(AUTH_KOBIL_TOOL_ID) context: ToolContext,
+        context: ToolContext,
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId, passwordAvailable(context.accountId)) }
     }

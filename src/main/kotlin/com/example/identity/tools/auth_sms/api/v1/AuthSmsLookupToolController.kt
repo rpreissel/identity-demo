@@ -1,14 +1,15 @@
 package com.example.identity.tools.auth_sms.api.v1
 
 import com.example.identity.tools.auth_sms.AUTH_SMS_LOOKUP_TOOL_ID
+import com.example.identity.tools.auth_sms.AuthSmsLookup
 import com.example.identity.tools.auth_sms.SmsModule
 import com.example.identity.tools.auth_sms.internal.authsmslookup.AuthSmsLookupToolHandler
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.Lockouts
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -47,7 +48,9 @@ class AuthSmsLookupToolController(
     private val accountDirectory: AccountDirectory,
     private val toolJourney: ToolJourney,
     private val lockouts: Lockouts
-) {
+) : ToolController {
+
+    override val tool = AuthSmsLookup
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_SMS_LOOKUP_TOOL_ID")
     @Operation(
@@ -66,7 +69,7 @@ class AuthSmsLookupToolController(
         ]
     )
     fun activate(
-        @ActivateTool(AUTH_SMS_LOOKUP_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId)
@@ -99,8 +102,8 @@ class AuthSmsLookupToolController(
         ]
     )
     fun patch(
-        @LoadTool(AUTH_SMS_LOOKUP_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: AuthSmsLookupPatchRequest?
+        @RequestBody(required = false) request: AuthSmsLookupPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: AuthSmsLookupPatchRequest()
         // email wins over a tan submitted in the same call: a (re-)submitted email restarts the
@@ -136,7 +139,7 @@ class AuthSmsLookupToolController(
         ]
     )
     fun read(
-        @LoadTool(AUTH_SMS_LOOKUP_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

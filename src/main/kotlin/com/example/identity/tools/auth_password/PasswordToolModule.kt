@@ -8,9 +8,6 @@ import com.example.identity.contract.tool_api.claims.ClaimTrust
 import com.example.identity.contract.tool_api.credentials.PasswordCredentialPort
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.contract.tool_api.enroll
-import com.example.identity.contract.tool_api.login
-import com.example.identity.contract.tool_api.lookupLogin
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.modulith.ApplicationModule
@@ -40,16 +37,15 @@ internal const val AUTH_PASSWORD_LOOKUP_TOOL_ID = "auth-password-lookup"
 internal val PasswordModule = toolModule(
     method = PasswordCredentialPort.METHOD,
     proves = factors(KNOWLEDGE, upTo = AcrLevel.LOA1),
-    tools = listOf(
-        enroll(
-            ENROLL_PASSWORD_TOOL_ID,
-            claims = setOf(PASSWORD_EXISTS),
-            requires = setOf(ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN)),
-        ),
-        login(AUTH_PASSWORD_TOOL_ID),
-        lookupLogin(AUTH_PASSWORD_LOOKUP_TOOL_ID),
-    ),
 )
+
+internal val EnrollPassword = PasswordModule.enroll(
+    ENROLL_PASSWORD_TOOL_ID,
+    claims = setOf(PASSWORD_EXISTS),
+    requires = setOf(ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN)),
+)
+internal val AuthPassword = PasswordModule.login(AUTH_PASSWORD_TOOL_ID)
+internal val AuthPasswordLookup = PasswordModule.lookupLogin(AUTH_PASSWORD_LOOKUP_TOOL_ID)
 
 /**
  * A method module talks to the orchestrator through tool_api only, never to account or another

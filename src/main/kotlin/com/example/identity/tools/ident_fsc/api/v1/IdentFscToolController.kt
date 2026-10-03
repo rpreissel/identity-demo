@@ -1,13 +1,14 @@
 package com.example.identity.tools.ident_fsc.api.v1
 
 import com.example.identity.tools.ident_fsc.IDENT_FSC_TOOL_ID
+import com.example.identity.tools.ident_fsc.IdentFsc
 import com.example.identity.tools.ident_fsc.internal.IdentFscToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.Lockouts
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -52,7 +53,9 @@ class IdentFscToolController(
     private val personDirectory: PersonDirectory,
     private val toolJourney: ToolJourney,
     private val lockouts: Lockouts
-) {
+) : ToolController {
+
+    override val tool = IdentFsc
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$IDENT_FSC_TOOL_ID")
     @Operation(
@@ -71,7 +74,7 @@ class IdentFscToolController(
         ]
     )
     fun activate(
-        @ActivateTool(IDENT_FSC_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId)
@@ -97,8 +100,8 @@ class IdentFscToolController(
         ]
     )
     fun patch(
-        @LoadTool(IDENT_FSC_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: IdentFscPatchRequest?
+        @RequestBody(required = false) request: IdentFscPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: IdentFscPatchRequest()
         // The KVNR comes first (ADR-34): given, it alone decides; the Partnernummer only counts without one.
@@ -131,7 +134,7 @@ class IdentFscToolController(
         ]
     )
     fun read(
-        @LoadTool(IDENT_FSC_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

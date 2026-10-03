@@ -1,12 +1,13 @@
 package com.example.identity.tools.auth_email.api.v1
 
 import com.example.identity.tools.auth_email.AUTH_EMAIL_TOOL_ID
+import com.example.identity.tools.auth_email.AuthEmail
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_email.internal.authemail.AuthEmailToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -40,7 +41,9 @@ data class AuthEmailPatchRequest(@field:Schema(example = "123456") val code: Str
 class AuthEmailToolController(
     private val handler: AuthEmailToolHandler,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = AuthEmail
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_EMAIL_TOOL_ID")
     @Operation(
@@ -59,7 +62,7 @@ class AuthEmailToolController(
         ]
     )
     fun activate(
-        @ActivateTool(AUTH_EMAIL_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         // Only the accountId is resolved here, so the handler never sees a nullable parameter
@@ -88,8 +91,8 @@ class AuthEmailToolController(
         ]
     )
     fun patch(
-        @LoadTool(AUTH_EMAIL_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: AuthEmailPatchRequest?
+        @RequestBody(required = false) request: AuthEmailPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: AuthEmailPatchRequest()
         val outcome = handler.patch(context.toolSessionId, body.code, context.accountId)
@@ -113,7 +116,7 @@ class AuthEmailToolController(
         ]
     )
     fun read(
-        @LoadTool(AUTH_EMAIL_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

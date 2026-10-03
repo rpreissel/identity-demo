@@ -8,7 +8,6 @@ import com.example.identity.contract.tool_api.claims.AnchorAcrFloor
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.contract.tool_api.identify
 import com.example.identity.tools.ident_nect.api.v1.NectRedirectStep
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -39,13 +38,12 @@ internal val NectModule = toolModule(
     proves = factors(POSSESSION, KNOWLEDGE, INHERENCE, upTo = AcrLevel.LOA3),
     demoOnly = "Die Nect-Gegenstelle ist simuliert (nect); ein echtes Ergebnis kommt serverseitig von Nect",
     stepData = listOf(NectRedirectStep::class),
-    tools = listOf(
-        identify(
-            IDENT_NECT_TOOL_ID,
-            also = setOf(AttributeType.STREET_ADDRESS, AttributeType.POSTAL_CODE, AttributeType.LOCALITY, NECT_RESTRICTED_ID),
-            startStep = "redirect",
-        ),
-    ),
+)
+
+internal val IdentNect = NectModule.identify(
+    IDENT_NECT_TOOL_ID,
+    also = setOf(AttributeType.STREET_ADDRESS, AttributeType.POSTAL_CODE, AttributeType.LOCALITY, NECT_RESTRICTED_ID),
+    startStep = "redirect",
 )
 
 /**

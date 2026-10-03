@@ -6,8 +6,6 @@ import com.example.identity.contract.tool_api.FactorType.POSSESSION
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.contract.tool_api.enroll
-import com.example.identity.contract.tool_api.login
 import com.example.identity.tools.auth_kobil.api.v1.KobilActivationStep
 import com.example.identity.tools.auth_kobil.api.v1.KobilOtpStep
 import com.example.identity.tools.auth_kobil.api.v1.KobilUnlockStep
@@ -33,11 +31,10 @@ internal val KobilModule = toolModule(
     demoOnly = "Die KOBIL-Gegenstelle ist simuliert (kobil); was ein echter KOBIL-Server zusagt, steht noch aus",
     onePerDevice = true,
     stepData = listOf(KobilUnlockStep::class, KobilOtpStep::class, KobilActivationStep::class),
-    tools = listOf(
-        enroll(ENROLL_KOBIL_TOOL_ID, startStep = "activate"),
-        login(AUTH_KOBIL_TOOL_ID, startStep = "unlock"),
-    ),
 )
+
+internal val EnrollKobil = KobilModule.enroll(ENROLL_KOBIL_TOOL_ID, startStep = "activate")
+internal val AuthKobil = KobilModule.login(AUTH_KOBIL_TOOL_ID, startStep = "unlock")
 
 /**
  * A method module talks to the orchestrator through tool_api only (docs/03-tool-architektur.md #2).

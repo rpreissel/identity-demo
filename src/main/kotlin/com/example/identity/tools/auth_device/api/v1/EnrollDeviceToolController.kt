@@ -1,12 +1,13 @@
 package com.example.identity.tools.auth_device.api.v1
 
 import com.example.identity.tools.auth_device.ENROLL_DEVICE_TOOL_ID
+import com.example.identity.tools.auth_device.EnrollDevice
 import com.example.identity.tools.auth_device.internal.enrolldevice.EnrollDeviceToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.device.DeviceProofs
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -48,7 +49,9 @@ class EnrollDeviceToolController(
     private val deviceProofs: DeviceProofs,
     private val handler: EnrollDeviceToolHandler,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = EnrollDevice
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_DEVICE_TOOL_ID")
     @Operation(
@@ -67,7 +70,7 @@ class EnrollDeviceToolController(
         ]
     )
     fun activate(
-        @ActivateTool(ENROLL_DEVICE_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId)
@@ -91,8 +94,8 @@ class EnrollDeviceToolController(
         ]
     )
     fun patch(
-        @LoadTool(ENROLL_DEVICE_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody(required = false) request: DeviceProofPatchRequest?,
+        context: AuthorizedToolContext,
         httpRequest: HttpServletRequest
     ): ResponseEntity<ChannelResponse> {
         val proof = deviceProofs.validate(request?.deviceProof, httpRequest)
@@ -117,7 +120,7 @@ class EnrollDeviceToolController(
         ]
     )
     fun read(
-        @LoadTool(ENROLL_DEVICE_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

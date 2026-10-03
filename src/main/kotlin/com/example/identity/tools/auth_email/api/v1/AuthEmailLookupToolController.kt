@@ -1,14 +1,15 @@
 package com.example.identity.tools.auth_email.api.v1
 
 import com.example.identity.tools.auth_email.AUTH_EMAIL_LOOKUP_TOOL_ID
+import com.example.identity.tools.auth_email.AuthEmailLookup
 import com.example.identity.tools.auth_email.internal.authemaillookup.AuthEmailLookupToolHandler
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.directory.resolveAccountByEmail
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.Lockouts
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -46,7 +47,9 @@ class AuthEmailLookupToolController(
     private val accountDirectory: AccountDirectory,
     private val toolJourney: ToolJourney,
     private val lockouts: Lockouts
-) {
+) : ToolController {
+
+    override val tool = AuthEmailLookup
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_EMAIL_LOOKUP_TOOL_ID")
     @Operation(
@@ -65,7 +68,7 @@ class AuthEmailLookupToolController(
         ]
     )
     fun activate(
-        @ActivateTool(AUTH_EMAIL_LOOKUP_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId)
@@ -98,8 +101,8 @@ class AuthEmailLookupToolController(
         ]
     )
     fun patch(
-        @LoadTool(AUTH_EMAIL_LOOKUP_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: AuthEmailLookupPatchRequest?
+        @RequestBody(required = false) request: AuthEmailLookupPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: AuthEmailLookupPatchRequest()
         // email wins over a code submitted in the same call: a (re-)submitted email restarts the
@@ -134,7 +137,7 @@ class AuthEmailLookupToolController(
         ]
     )
     fun read(
-        @LoadTool(AUTH_EMAIL_LOOKUP_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

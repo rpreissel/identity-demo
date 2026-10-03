@@ -1,10 +1,11 @@
 package com.example.identity.tools.auth_invite.api.v1
 
 import com.example.identity.tools.auth_invite.AUTH_INVITE_LOOKUP_TOOL_ID
+import com.example.identity.tools.auth_invite.AuthInviteLookup
 import com.example.identity.contract.tool_api.Lockouts
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -49,7 +50,9 @@ class AuthInviteToolController(
     private val personDirectory: PersonDirectory,
     private val toolJourney: ToolJourney,
     private val lockouts: Lockouts
-) {
+) : ToolController {
+
+    override val tool = AuthInviteLookup
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_INVITE_LOOKUP_TOOL_ID")
     @Operation(
@@ -68,7 +71,7 @@ class AuthInviteToolController(
         ]
     )
     fun activate(
-        @ActivateTool(AUTH_INVITE_LOOKUP_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId)
@@ -93,8 +96,8 @@ class AuthInviteToolController(
         ]
     )
     fun patch(
-        @LoadTool(AUTH_INVITE_LOOKUP_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: AuthInvitePatchRequest?
+        @RequestBody(required = false) request: AuthInvitePatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: AuthInvitePatchRequest()
         // The KVNR comes first (ADR-34): given, it alone decides; the Partnernummer only counts without one.
@@ -112,7 +115,7 @@ class AuthInviteToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/$AUTH_INVITE_LOOKUP_TOOL_ID")
     @Operation(summary = "Read the current auth-invite-lookup state")
     fun read(
-        @LoadTool(AUTH_INVITE_LOOKUP_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

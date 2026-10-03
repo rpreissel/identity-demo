@@ -1,8 +1,8 @@
 package com.example.identity.core.orchestrator.api.v1
 
 import com.example.identity.contract.tool_api.BindingKey
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
+import com.example.identity.contract.tool_api.ToolContext
 import io.swagger.v3.oas.models.media.StringSchema
 import io.swagger.v3.oas.models.parameters.PathParameter
 import io.swagger.v3.oas.models.security.SecurityRequirement
@@ -26,7 +26,9 @@ class BindingKeyOpenApiConfig {
      * Spring contexts in a test run) is harmless, since it is a membership test.
      */
     init {
-        SpringDocUtils.getConfig().addAnnotationsToIgnore(BindingKey::class.java, LoadTool::class.java, ActivateTool::class.java)
+        SpringDocUtils.getConfig().addAnnotationsToIgnore(BindingKey::class.java)
+        // Resolved by ToolContextResolver from the path and the proof, never sent by the client.
+        SpringDocUtils.getConfig().addRequestWrapperToIgnore(ToolContext::class.java)
     }
 
     /**
@@ -53,8 +55,8 @@ class BindingKeyOpenApiConfig {
     }
 
     private fun toolContextPathVariable(handlerMethod: HandlerMethod): String? = when {
-        handlerMethod.methodParameters.any { it.hasParameterAnnotation(LoadTool::class.java) } -> ToolContextResolver.PATH_VARIABLE
-        handlerMethod.methodParameters.any { it.hasParameterAnnotation(ActivateTool::class.java) } -> ToolContextResolver.CHANNEL_PATH_VARIABLE
+        handlerMethod.methodParameters.any { ActivationToolContext::class.java.isAssignableFrom(it.parameterType) } -> ToolContextResolver.CHANNEL_PATH_VARIABLE
+        handlerMethod.methodParameters.any { ToolContext::class.java.isAssignableFrom(it.parameterType) } -> ToolContextResolver.PATH_VARIABLE
         else -> null
     }
 

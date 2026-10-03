@@ -11,9 +11,6 @@ import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
 import com.example.identity.contract.tool_api.Proves
 import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolModule
-import com.example.identity.contract.tool_api.enroll
-import com.example.identity.contract.tool_api.identify
-import com.example.identity.contract.tool_api.login
 import com.example.identity.contract.tool_api.toolModule
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -45,12 +42,11 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         method = method,
         proves = Proves(factorTypes, maxAcr),
         onePerDevice = onePerDevice,
-        tools = listOfNotNull(
-            if (ToolRole.IDENTIFICATION in roles) identify("ident-$method") else null,
-            if (ToolRole.ENROLLMENT in roles) enroll("enroll-$method", optInOnly = optInEnrollment) else null,
-            if (ToolRole.KNOWN_ACCOUNT_AUTH in roles) login("auth-$method") else null,
-        ),
-    )
+    ).apply {
+        if (ToolRole.IDENTIFICATION in roles) identify("ident-$method")
+        if (ToolRole.ENROLLMENT in roles) enroll("enroll-$method", optInOnly = optInEnrollment)
+        if (ToolRole.KNOWN_ACCOUNT_AUTH in roles) login("auth-$method")
+    }
     fun ToolModule.tool(role: ToolRole): Tool = tools.single { it.role == role }
     /** A catalog of the modules behind [tools]. */
     fun catalog(vararg tools: Tool) = ToolHandlerRegistry(tools.map { it.module }.distinct())

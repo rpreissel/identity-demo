@@ -1,12 +1,13 @@
 package com.example.identity.tools.ident_eid.api.v1
 
 import com.example.identity.tools.ident_eid.IDENT_EID_TOOL_ID
+import com.example.identity.tools.ident_eid.IdentEid
 import com.example.identity.tools.ident_eid.internal.EidPatchFields
 import com.example.identity.tools.ident_eid.internal.IdentEidToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -50,7 +51,9 @@ data class IdentEidPatchRequest(
 class IdentEidToolController(
     private val handler: IdentEidToolHandler,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = IdentEid
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$IDENT_EID_TOOL_ID")
     @Operation(
@@ -70,7 +73,7 @@ class IdentEidToolController(
         ]
     )
     fun activate(
-        @ActivateTool(IDENT_EID_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId)
@@ -104,8 +107,8 @@ class IdentEidToolController(
         ]
     )
     fun patch(
-        @LoadTool(IDENT_EID_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: IdentEidPatchRequest?
+        @RequestBody(required = false) request: IdentEidPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: IdentEidPatchRequest()
         val fields = EidPatchFields(
@@ -140,7 +143,7 @@ class IdentEidToolController(
         ]
     )
     fun read(
-        @LoadTool(IDENT_EID_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

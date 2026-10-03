@@ -4,7 +4,6 @@ import com.example.identity.contract.tool_api.FactorType.POSSESSION
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.contract.tool_api.lookupLogin
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.modulith.ApplicationModule
@@ -20,10 +19,9 @@ internal const val AUTH_INVITE_LOOKUP_TOOL_ID = "auth-invite-lookup"
 internal val InviteModule = toolModule(
     method = "invite",
     proves = factors(POSSESSION, upTo = AcrLevel.LOA2),
-    tools = listOf(
-        lookupLogin(AUTH_INVITE_LOOKUP_TOOL_ID),
-    ),
 )
+
+internal val AuthInviteLookup = InviteModule.lookupLogin(AUTH_INVITE_LOOKUP_TOOL_ID)
 
 /**
  * Process access by one-time password (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). Like

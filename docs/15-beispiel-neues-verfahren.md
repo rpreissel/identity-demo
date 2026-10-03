@@ -59,7 +59,8 @@ Je Verfahren ein Modul unter `K/tools/<modul>/`. Der Name des Moduls ist zugleic
 Ordner der Migration und Datei `api/modules/<modul>.yaml`.
 
 Alles, was das Modul über sich sagt, steht in einer Datei `<X>ToolModule.kt`: die Deklaration des
-Verfahrens und die Angaben für Spring Modulith. Für die Einmalcode-App:
+Verfahrens, darunter seine Tools als eigene Werte, und die Angaben für Spring Modulith. Für die
+Einmalcode-App:
 
 ```kotlin
 internal const val ENROLL_TOTP_TOOL_ID = "enroll-totp"
@@ -70,12 +71,11 @@ internal val TotpModule = toolModule(
     method = "totp",
     proves = factors(POSSESSION, upTo = AcrLevel.LOA1),
     stepData = listOf(TotpSetupStep::class),
-    tools = listOf(
-        enroll(ENROLL_TOTP_TOOL_ID),
-        login(AUTH_TOTP_TOOL_ID),
-        lookupLogin(AUTH_TOTP_LOOKUP_TOOL_ID),
-    ),
 )
+
+internal val EnrollTotp = TotpModule.enroll(ENROLL_TOTP_TOOL_ID)
+internal val AuthTotp = TotpModule.login(AUTH_TOTP_TOOL_ID)
+internal val AuthTotpLookup = TotpModule.lookupLogin(AUTH_TOTP_LOOKUP_TOOL_ID)
 
 @ApplicationModule(id = "auth_totp", allowedDependencies = ["tool_api", "texts"])
 @Configuration
@@ -104,20 +104,26 @@ Ein Handler meldet in seinem Ergebnis nur, was von der Deklaration abweicht. `au
 Erfolg einfach `ToolOutcome.Completed.Authenticated()`: `amr`, Niveau und Faktoren ergänzt der
 Orchestrator aus dem Modul.
 
-Die Controller sind dünn. Sie rufen `ToolJourney` und den Handler in fester Reihenfolge:
+Die Controller sind dünn. Jeder implementiert `ToolController` und zeigt auf sein Tool
+(`override val tool = AuthTotp`). Dann rufen sie `ToolJourney` und den Handler in fester Reihenfolge:
 
-- `POST .../channels/{id}/tools/<toolId>`: Parameter `@ActivateTool(ID) context: AuthorizedToolContext`,
-  dann `handler.start`, `activated` (bucht das Ergebnis und antwortet `201` mit `Location`).
-- `PATCH .../tools/{toolSessionId}/<toolId>`: Parameter `@LoadTool(ID) context: AuthorizedToolContext`,
-  dann `handler.patch`, `applyOutcome`.
-- `GET`: Parameter `@LoadTool(ID) context: ToolContext`, dann `readResponse { handler.read(…) }`.
+- `POST .../channels/{id}/tools/<toolId>`: Parameter `context: ActivationToolContext`, dann
+  `handler.start`, `activated` (bucht das Ergebnis und antwortet `201` mit `Location`).
+- `PATCH .../tools/{toolSessionId}/<toolId>`: Parameter `context: AuthorizedToolContext`, dann
+  `handler.patch`, `applyOutcome`.
+- `GET`: Parameter `context: ToolContext`, dann `readResponse { handler.read(…) }`.
+- Hat eine Methode einen `@RequestBody`, steht er vor dem Kontext. Spring löst die Parameter der
+  Reihe nach auf; so aktiviert eine unlesbare Anfrage nichts, und alle Endpunkte lesen gleich.
 - `back` und `DELETE` sind allgemein (`LeaveToolController`); dafür schreibt man nichts.
 
-Beide Parameter löst der Orchestrator vor dem Aufruf auf, schon gegen den Schlüssel des Aufrufers
-geprüft. `@ActivateTool` aktiviert das Tool auf dem Kanal aus dem Pfad und legt dabei die
-Tool-Sitzung an; `@LoadTool` lädt die Sitzung aus dem Pfad, und der Typ sagt, ob die Methode nur
-liest oder die Journey ändern darf. Einen der beiden (oder `@BindingKey`) muss jede Methode haben;
-das erzwingt `ApiBoundaryArchitectureTest`.
+Den Kontext löst der Orchestrator vor dem Aufruf auf, schon gegen den Schlüssel des Aufrufers
+geprüft; eine Annotation braucht es nicht, der Typ sagt alles. Ein `ActivationToolContext`
+aktiviert das Tool auf dem Kanal aus dem Pfad und legt dabei die Tool-Sitzung an; nur er wird von
+`activated` angenommen. Ein `AuthorizedToolContext` lädt die Sitzung aus dem Pfad und verlangt, dass
+sie der aktuelle Schritt ist; nur er darf die Journey ändern. Ein `ToolContext` lädt sie nur zum
+Lesen. Welches Tool gemeint ist, kommt vom Controller. Einen Kontext (oder `@BindingKey`) muss jede
+Methode haben, nur ein `ToolController` darf ihn nutzen, und der Body kommt vor dem Kontext; das
+erzwingt `ApiBoundaryArchitectureTest`.
 
 ## 3) Bank-Ident: Weiterleitung und Fremdsystem
 
@@ -240,7 +246,8 @@ Diese Tests werden rot, wenn etwas fehlt. Man liest sie am besten als Checkliste
 | Test | Meldet |
 |---|---|
 | `ModulithStructureTest` | Modul falsch angelegt oder eine nicht erlaubte Abhängigkeit |
-| `ApiBoundaryArchitectureTest` | Controller ohne `@ActivateTool`, `@LoadTool` oder `@BindingKey`, Simulation ohne `@DemoSurface` |
+| `ToolControllerMappingTest` | Tool ohne Controller, oder ein Pfad nennt ein anderes Tool als `ToolController.tool` |
+| `ApiBoundaryArchitectureTest` | Controller-Methode ohne Tool-Kontext oder `@BindingKey`, Kontext vor dem Body, Simulation ohne `@DemoSurface` |
 | `SimulationBoundaryArchitectureTest` | Code außerhalb des Tools greift auf die Simulation zu |
 | `ToolCatalogStartStepTest` | neues Tool fehlt in der Liste der Startschritte |
 | `OpenApiSnapshotTest`, `StepDataExamplesTest` | Vertrag nicht erneuert, Beispiel mit unbekannter Form |

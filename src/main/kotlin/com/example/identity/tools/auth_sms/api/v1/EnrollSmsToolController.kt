@@ -1,11 +1,12 @@
 package com.example.identity.tools.auth_sms.api.v1
 
 import com.example.identity.tools.auth_sms.ENROLL_SMS_TOOL_ID
+import com.example.identity.tools.auth_sms.EnrollSms
 import com.example.identity.tools.auth_sms.internal.enrollsms.EnrollSmsToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -41,7 +42,9 @@ data class EnrollSmsPatchRequest(
 class EnrollSmsToolController(
     private val handler: EnrollSmsToolHandler,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = EnrollSms
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_SMS_TOOL_ID")
     @Operation(
@@ -60,7 +63,7 @@ class EnrollSmsToolController(
         ]
     )
     fun activate(
-        @ActivateTool(ENROLL_SMS_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId)
@@ -94,8 +97,8 @@ class EnrollSmsToolController(
         ]
     )
     fun patch(
-        @LoadTool(ENROLL_SMS_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: EnrollSmsPatchRequest?
+        @RequestBody(required = false) request: EnrollSmsPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: EnrollSmsPatchRequest()
         val outcome = handler.patch(context.toolSessionId, body.phoneNumber, body.tan)
@@ -119,7 +122,7 @@ class EnrollSmsToolController(
         ]
     )
     fun read(
-        @LoadTool(ENROLL_SMS_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

@@ -8,10 +8,6 @@ import com.example.identity.contract.tool_api.claims.ClaimRequirement
 import com.example.identity.contract.tool_api.claims.ClaimTrust
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.contract.tool_api.confirm
-import com.example.identity.contract.tool_api.enroll
-import com.example.identity.contract.tool_api.login
-import com.example.identity.contract.tool_api.lookupLogin
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.modulith.ApplicationModule
@@ -31,17 +27,16 @@ internal const val AUTH_EMAIL_LOOKUP_TOOL_ID = "auth-email-lookup"
 internal val EmailModule = toolModule(
     method = "email",
     proves = factors(KNOWLEDGE, upTo = AcrLevel.LOA1),
-    tools = listOf(
-        confirm(CONFIRM_EMAIL_TOOL_ID, claims = setOf(AttributeType.EMAIL)),
-        enroll(
-            ENROLL_EMAIL_TOOL_ID,
-            requires = setOf(ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN)),
-            withoutUserStep = Text("Ihre bereits bestätigte E-Mail-Adresse wird sofort zum Anmeldeverfahren. Einen Code brauchen Sie dafür nicht."),
-        ),
-        login(AUTH_EMAIL_TOOL_ID),
-        lookupLogin(AUTH_EMAIL_LOOKUP_TOOL_ID),
-    ),
 )
+
+internal val ConfirmEmail = EmailModule.confirm(CONFIRM_EMAIL_TOOL_ID, claims = setOf(AttributeType.EMAIL))
+internal val EnrollEmail = EmailModule.enroll(
+    ENROLL_EMAIL_TOOL_ID,
+    requires = setOf(ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN)),
+    withoutUserStep = Text("Ihre bereits bestätigte E-Mail-Adresse wird sofort zum Anmeldeverfahren. Einen Code brauchen Sie dafür nicht."),
+)
+internal val AuthEmail = EmailModule.login(AUTH_EMAIL_TOOL_ID)
+internal val AuthEmailLookup = EmailModule.lookupLogin(AUTH_EMAIL_LOOKUP_TOOL_ID)
 
 /**
  * The confirmed email is the account's identifier, not a swappable credential

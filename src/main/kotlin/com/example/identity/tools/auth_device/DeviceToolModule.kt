@@ -6,8 +6,6 @@ import com.example.identity.contract.tool_api.FactorType.POSSESSION
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.contract.tool_api.enroll
-import com.example.identity.contract.tool_api.login
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.modulith.ApplicationModule
@@ -28,11 +26,10 @@ internal val DeviceModule = toolModule(
     proves = factors(POSSESSION, KNOWLEDGE, INHERENCE, upTo = AcrLevel.LOA2),
     demoOnly = "Die Nutzerverifikation (PIN/Biometrie) ist nur vom Client behauptet, ohne Plattform-Attestation",
     onePerDevice = true,
-    tools = listOf(
-        enroll(ENROLL_DEVICE_TOOL_ID),
-        login(AUTH_DEVICE_TOOL_ID),
-    ),
 )
+
+internal val EnrollDevice = DeviceModule.enroll(ENROLL_DEVICE_TOOL_ID)
+internal val AuthDevice = DeviceModule.login(AUTH_DEVICE_TOOL_ID)
 
 /**
  * A method module talks to the orchestrator through tool_api only, never to account or another

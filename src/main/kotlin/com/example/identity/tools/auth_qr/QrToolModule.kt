@@ -5,10 +5,6 @@ import com.example.identity.contract.tool_api.FactorType.POSSESSION
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.contract.tool_api.enroll
-import com.example.identity.contract.tool_api.login
-import com.example.identity.contract.tool_api.lookupLogin
-import com.example.identity.contract.tool_api.approve
 import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
 import java.time.Duration
 import org.springframework.context.annotation.Bean
@@ -32,13 +28,12 @@ internal val QrModule = toolModule(
     method = "qr",
     proves = factors(POSSESSION, KNOWLEDGE, upTo = AcrLevel.LOA2),
     stepData = listOf(QrPairingStep::class),
-    tools = listOf(
-        enroll(ENROLL_QR_TOOL_ID, optInOnly = true),
-        login(AUTH_QR_TOOL_ID, startStep = "waitForApp"),
-        lookupLogin(AUTH_QR_LOOKUP_TOOL_ID, startStep = "waitForApp"),
-        approve(APPROVE_QR_TOOL_ID),
-    ),
 )
+
+internal val EnrollQr = QrModule.enroll(ENROLL_QR_TOOL_ID, optInOnly = true)
+internal val AuthQr = QrModule.login(AUTH_QR_TOOL_ID, startStep = "waitForApp")
+internal val AuthQrLookup = QrModule.lookupLogin(AUTH_QR_LOOKUP_TOOL_ID, startStep = "waitForApp")
+internal val ApproveQr = QrModule.approve(APPROVE_QR_TOOL_ID)
 
 /** How long a pairing request stays open (docs/07-betrieb.md #5 - not further validated). */
 internal val QR_LOGIN_TTL: Duration = Duration.ofMinutes(5)

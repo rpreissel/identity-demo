@@ -7,7 +7,6 @@ import com.example.identity.contract.tool_api.claims.AnchorAcrFloor
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.contract.tool_api.identify
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.modulith.ApplicationModule
@@ -36,12 +35,11 @@ internal val EidModule = toolModule(
     method = "eid",
     proves = factors(POSSESSION, KNOWLEDGE, upTo = AcrLevel.LOA3),
     demoOnly = "Die eID-Kartenlesung ist simuliert; ein echtes Ergebnis kommt serverseitig vom eID-Server",
-    tools = listOf(
-        identify(
-            IDENT_EID_TOOL_ID,
-            also = setOf(AttributeType.STREET_ADDRESS, AttributeType.POSTAL_CODE, AttributeType.LOCALITY, EID_RESTRICTED_ID),
-        ),
-    ),
+)
+
+internal val IdentEid = EidModule.identify(
+    IDENT_EID_TOOL_ID,
+    also = setOf(AttributeType.STREET_ADDRESS, AttributeType.POSTAL_CODE, AttributeType.LOCALITY, EID_RESTRICTED_ID),
 )
 
 /**

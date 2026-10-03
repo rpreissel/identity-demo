@@ -1,13 +1,14 @@
 package com.example.identity.core.orchestrator.api.v1
 
 import com.example.identity.contract.tool_api.AuthorizedToolContext
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.ToolContext
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import jakarta.servlet.http.HttpServletRequest
+import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Lazy
 import org.springframework.core.MethodParameter
 import org.springframework.stereotype.Component
@@ -18,22 +19,28 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.method.support.ModelAndViewContainer
 import org.springframework.web.servlet.HandlerMapping
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Resolves a `@LoadTool` or `@ActivateTool` controller parameter: the context of the tool session
- * in the path, or of the tool just activated on the channel in the path, bound to the caller's key
- * like `@BindingKey` ([DpopBindingKeyResolver]). For `@LoadTool` the parameter's type picks the
- * read or the write path, so a handler that may change the journey cannot get an unverified session
- * (docs/03-tool-architektur.md #2).
+ * Resolves a [ToolContext] controller parameter for the controller's tool ([ToolController.tool]),
+ * bound to the caller's key like `@BindingKey` ([DpopBindingKeyResolver]). The parameter's type
+ * says what happens before the method runs (docs/03-tool-architektur.md #2): an
+ * [ActivationToolContext] activates the tool on the channel in the path, an [AuthorizedToolContext]
+ * loads the session in the path and requires it to be the journey's current tool, a plain
+ * [ToolContext] only loads it. So a handler that may change the journey cannot get an unverified
+ * session, and the path and the context cannot name different tools.
  */
 @Component
 class ToolContextResolver(
     private val bindingKeyResolver: DpopBindingKeyResolver,
     @Lazy private val toolJourney: ToolJourney,
+    private val applicationContext: ApplicationContext,
 ) : HandlerMethodArgumentResolver {
 
+    private val toolIdByController = ConcurrentHashMap<Class<*>, String>()
+
     override fun supportsParameter(parameter: MethodParameter): Boolean =
-        parameter.hasParameterAnnotation(LoadTool::class.java) || parameter.hasParameterAnnotation(ActivateTool::class.java)
+        ToolContext::class.java.isAssignableFrom(parameter.parameterType)
 
     override fun resolveArgument(
         parameter: MethodParameter,
@@ -45,11 +52,11 @@ class ToolContextResolver(
             "Tool context resolution requires a servlet request"
         }
         // Same order as a @PathVariable followed by @BindingKey: a malformed id is refused first.
-        parameter.getParameterAnnotation(ActivateTool::class.java)?.let { activate ->
+        val toolId = toolIdOf(parameter)
+        if (ActivationToolContext::class.java.isAssignableFrom(parameter.parameterType)) {
             val channelSessionId = ChannelSessionId(pathId(request, parameter, CHANNEL_PATH_VARIABLE, ChannelSessionId::class.java))
-            return toolJourney.beginActivation(channelSessionId, bindingKeyResolver.bindingKeyOf(request), activate.toolId)
+            return toolJourney.beginActivation(channelSessionId, bindingKeyResolver.bindingKeyOf(request), toolId)
         }
-        val toolId = checkNotNull(parameter.getParameterAnnotation(LoadTool::class.java)).toolId
         val toolSessionId = ToolSessionId(pathId(request, parameter, PATH_VARIABLE, ToolSessionId::class.java))
         val bindingKeyRef = bindingKeyResolver.bindingKeyOf(request)
         return if (AuthorizedToolContext::class.java.isAssignableFrom(parameter.parameterType)) {
@@ -58,6 +65,16 @@ class ToolContextResolver(
             toolJourney.loadContext(toolSessionId, bindingKeyRef, toolId)
         }
     }
+
+    /** The id of the tool the method's controller serves, read once per controller class. */
+    private fun toolIdOf(parameter: MethodParameter): String =
+        toolIdByController.computeIfAbsent(parameter.containingClass) { type ->
+            val controller = applicationContext.getBean(type)
+            check(controller is ToolController) {
+                "${type.name} takes a ToolContext but is no ToolController: it must name the tool it serves"
+            }
+            controller.tool.toolId.value
+        }
 
     /** A malformed id is answered like a mistyped @PathVariable (400, naming only the parameter). */
     private fun pathId(request: HttpServletRequest, parameter: MethodParameter, name: String, type: Class<*>): UUID {

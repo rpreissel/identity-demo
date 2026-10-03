@@ -6,7 +6,6 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.contract.tool_api.identify
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.modulith.ApplicationModule
@@ -21,13 +20,12 @@ internal const val IDENT_FSC_TOOL_ID = "ident-fsc"
 internal val FscModule = toolModule(
     method = "fsc",
     proves = factors(POSSESSION, upTo = AcrLevel.LOA2),
-    tools = listOf(
-        identify(
-            IDENT_FSC_TOOL_ID,
-            also = setOf(AttributeType.PERSON_ID, AttributeType.KVNR, AttributeType.MEMBER_NUMBER),
-            vouchedBy = ClaimSource.PERSON_DIRECTORY,
-        ),
-    ),
+)
+
+internal val IdentFsc = FscModule.identify(
+    IDENT_FSC_TOOL_ID,
+    also = setOf(AttributeType.PERSON_ID, AttributeType.KVNR, AttributeType.MEMBER_NUMBER),
+    vouchedBy = ClaimSource.PERSON_DIRECTORY,
 )
 
 /**

@@ -1,12 +1,13 @@
 package com.example.identity.tools.ident_kvnr.api.v1
 
 import com.example.identity.tools.ident_kvnr.IDENT_KVNR_TOOL_ID
+import com.example.identity.tools.ident_kvnr.IdentKvnr
 import com.example.identity.tools.ident_kvnr.internal.IdentKvnrToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.directory.PersonDirectory
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -45,7 +46,9 @@ class IdentKvnrToolController(
     private val handler: IdentKvnrToolHandler,
     private val personDirectory: PersonDirectory,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = IdentKvnr
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$IDENT_KVNR_TOOL_ID")
     @Operation(
@@ -64,7 +67,7 @@ class IdentKvnrToolController(
         ]
     )
     fun activate(
-        @ActivateTool(IDENT_KVNR_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId)
@@ -87,8 +90,8 @@ class IdentKvnrToolController(
         ]
     )
     fun patch(
-        @LoadTool(IDENT_KVNR_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: IdentKvnrPatchRequest?
+        @RequestBody(required = false) request: IdentKvnrPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: IdentKvnrPatchRequest()
         // The KVNR comes first (ADR-34): given, it alone decides; the Partnernummer only counts without one.
@@ -106,7 +109,7 @@ class IdentKvnrToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/$IDENT_KVNR_TOOL_ID")
     @Operation(summary = "Read the current ident-kvnr state")
     fun read(
-        @LoadTool(IDENT_KVNR_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

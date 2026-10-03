@@ -1,12 +1,13 @@
 package com.example.identity.tools.ident_nect.api.v1
 
 import com.example.identity.tools.ident_nect.IDENT_NECT_TOOL_ID
+import com.example.identity.tools.ident_nect.IdentNect
 import com.example.identity.tools.ident_nect.internal.IdentNectToolHandler
 import com.example.identity.contract.tool_api.envelope.API_V1
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -62,7 +63,9 @@ data class IdentNectPatchRequest(
 class IdentNectToolController(
     private val handler: IdentNectToolHandler,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = IdentNect
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$IDENT_NECT_TOOL_ID")
     @Operation(
@@ -83,8 +86,7 @@ class IdentNectToolController(
     )
     fun activate(
         @RequestBody(required = false) request: IdentNectActivateRequest?,
-        // After the body: a request that cannot be read must not activate anything.
-        @ActivateTool(IDENT_NECT_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId, request?.returnUri?.takeIf { it.isNotBlank() })
@@ -109,8 +111,8 @@ class IdentNectToolController(
         ]
     )
     fun patch(
-        @LoadTool(IDENT_NECT_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: IdentNectPatchRequest?
+        @RequestBody(required = false) request: IdentNectPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: IdentNectPatchRequest()
         val outcome = handler.patch(context.toolSessionId, body.caseId, body.retry == true, body.returnUri?.takeIf { it.isNotBlank() })
@@ -120,7 +122,7 @@ class IdentNectToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/$IDENT_NECT_TOOL_ID")
     @Operation(summary = "Read the current ident-nect state")
     fun read(
-        @LoadTool(IDENT_NECT_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

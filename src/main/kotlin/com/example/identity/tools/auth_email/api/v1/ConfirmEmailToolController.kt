@@ -1,11 +1,12 @@
 package com.example.identity.tools.auth_email.api.v1
 
 import com.example.identity.tools.auth_email.CONFIRM_EMAIL_TOOL_ID
+import com.example.identity.tools.auth_email.ConfirmEmail
 import com.example.identity.tools.auth_email.internal.confirmemail.ConfirmEmailToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -41,7 +42,9 @@ data class ConfirmEmailPatchRequest(
 class ConfirmEmailToolController(
     private val handler: ConfirmEmailToolHandler,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = ConfirmEmail
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$CONFIRM_EMAIL_TOOL_ID")
     @Operation(
@@ -60,7 +63,7 @@ class ConfirmEmailToolController(
         ]
     )
     fun activate(
-        @ActivateTool(CONFIRM_EMAIL_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId)
@@ -94,8 +97,8 @@ class ConfirmEmailToolController(
         ]
     )
     fun patch(
-        @LoadTool(CONFIRM_EMAIL_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: ConfirmEmailPatchRequest?
+        @RequestBody(required = false) request: ConfirmEmailPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: ConfirmEmailPatchRequest()
         val outcome = handler.patch(context.toolSessionId, body.email, body.code)
@@ -119,7 +122,7 @@ class ConfirmEmailToolController(
         ]
     )
     fun read(
-        @LoadTool(CONFIRM_EMAIL_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

@@ -4,6 +4,7 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainExactly
@@ -19,17 +20,15 @@ class ToolModuleTest : BehaviorSpec({
     val qr = toolModule(
         method = "qr",
         proves = factors(FactorType.POSSESSION, FactorType.KNOWLEDGE, upTo = AcrLevel.LOA2),
-        tools = listOf(
-            enroll("enroll-qr", optInOnly = true),
-            login("auth-qr", startStep = "waitForApp"),
-            lookupLogin("auth-qr-lookup", startStep = "waitForApp"),
-            approve("approve-qr"),
-        ),
     )
+    qr.enroll("enroll-qr", optInOnly = true)
+    qr.login("auth-qr", startStep = "waitForApp")
+    qr.lookupLogin("auth-qr-lookup", startStep = "waitForApp")
+    qr.approve("approve-qr")
     fun ToolModule.tool(role: ToolRole) = tools.single { it.role == role }
 
     given("a module with four roles") {
-        then("each tool's role follows from its factory") {
+        then("its tools are listed in the order they were registered, each with the role of its factory") {
             qr.tools.map { it.role } shouldContainExactly listOf(
                 ToolRole.ENROLLMENT, ToolRole.KNOWN_ACCOUNT_AUTH, ToolRole.ACCOUNT_LOOKUP_AUTH, ToolRole.PEER_APPROVAL,
             )
@@ -55,9 +54,8 @@ class ToolModuleTest : BehaviorSpec({
         val nect = toolModule(
             method = "nect",
             proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA3),
-            tools = listOf(identify("ident-nect", also = setOf(AttributeType.STREET_ADDRESS))),
         )
-        val ident = nect.tools.single()
+        val ident = nect.identify("ident-nect", also = setOf(AttributeType.STREET_ADDRESS))
 
         then("it always asserts name, given names and date of birth, so it can be found again (ADR-39)") {
             ident.claims.map { it.attributeType } shouldContainAll IDENTIFICATION_FINDABLE_BY + AttributeType.STREET_ADDRESS
@@ -69,21 +67,32 @@ class ToolModuleTest : BehaviorSpec({
     }
 
     given("a tool id that does not fit its role and method") {
-        fun build(vararg tools: RoleSpec) = runCatching {
-            toolModule(method = "totp", proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA1), tools = tools.toList())
-        }
+        fun totp() = toolModule(method = "totp", proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA1))
 
         then("an id of another method is refused") {
-            build(enroll("enroll-sms")).exceptionOrNull()!!.message shouldContain "must be called 'enroll-totp'"
+            shouldThrow<IllegalArgumentException> { totp().enroll("enroll-sms") }.message shouldContain "must be called 'enroll-totp'"
         }
         then("an id of another role is refused") {
-            build(login("auth-totp-lookup")).exceptionOrNull()!!.message shouldContain "must be called 'auth-totp'"
+            shouldThrow<IllegalArgumentException> { totp().login("auth-totp-lookup") }.message shouldContain "must be called 'auth-totp'"
         }
         then("a role declared twice is refused") {
-            build(login("auth-totp"), login("auth-totp")).exceptionOrNull()!!.message shouldContain "more than once"
+            val module = totp().apply { login("auth-totp") }
+            shouldThrow<IllegalArgumentException> { module.login("auth-totp") }.message shouldContain "more than once"
         }
         then("an identification and a correlation together are refused: they share the id") {
-            build(identify("ident-totp"), correlate("ident-totp", claims = emptySet())).exceptionOrNull()!!.message shouldContain "more than once"
+            val module = totp().apply { identify("ident-totp") }
+            shouldThrow<IllegalArgumentException> { module.correlate("ident-totp", claims = emptySet()) }.message shouldContain "more than once"
+        }
+    }
+
+    given("a module the catalog has already collected") {
+        val module = toolModule(method = "totp", proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA1))
+        module.enroll("enroll-totp")
+        module.tools
+
+        then("a tool registered afterwards is refused instead of silently missing from the catalog") {
+            shouldThrow<IllegalStateException> { module.login("auth-totp") }.message shouldContain "declare the tools of a module in its module file"
+            module.tools.map { it.toolId.value } shouldContainExactly listOf("enroll-totp")
         }
     }
 

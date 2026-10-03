@@ -1,11 +1,12 @@
 package com.example.identity.tools.auth_kobil.api.v1
 
 import com.example.identity.tools.auth_kobil.ENROLL_KOBIL_TOOL_ID
+import com.example.identity.tools.auth_kobil.EnrollKobil
 import com.example.identity.tools.auth_kobil.internal.enrollkobil.EnrollKobilToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -52,7 +53,9 @@ data class EnrollKobilPatchRequest(
 class EnrollKobilToolController(
     private val handler: EnrollKobilToolHandler,
     private val toolJourney: ToolJourney,
-) {
+) : ToolController {
+
+    override val tool = EnrollKobil
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_KOBIL_TOOL_ID")
     @Operation(
@@ -73,7 +76,7 @@ class EnrollKobilToolController(
         ]
     )
     fun activate(
-        @ActivateTool(ENROLL_KOBIL_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder,
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId)
@@ -97,8 +100,8 @@ class EnrollKobilToolController(
         ]
     )
     fun patch(
-        @LoadTool(ENROLL_KOBIL_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody(required = false) request: EnrollKobilPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.patch(
             context.toolSessionId,
@@ -113,7 +116,7 @@ class EnrollKobilToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/$ENROLL_KOBIL_TOOL_ID")
     @Operation(summary = "Read the current enroll-kobil state")
     fun read(
-        @LoadTool(ENROLL_KOBIL_TOOL_ID) context: ToolContext,
+        context: ToolContext,
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

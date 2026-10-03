@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import org.springframework.http.HttpStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import org.springframework.http.HttpEntity
@@ -177,6 +178,21 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
                 then("it is refused with 400, before any case exists") {
                     shouldThrow<HttpClientErrorException.BadRequest> { result.getOrThrow() }
                         .responseBodyAsString shouldContain "BAD_REQUEST"
+                }
+            }
+        }
+
+        given("an activation of ident-nect whose body is no JSON") {
+            `when`("it is posted") {
+                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                val broken = runCatching { post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-nect", "{not json") }
+                val after = get("/orchestrator/api/v1/channels/$channelSessionId")
+
+                then("it is a bad request") {
+                    shouldThrow<HttpClientErrorException> { broken.getOrThrow() }.statusCode shouldBe HttpStatus.BAD_REQUEST
+                }
+                then("nothing was activated: the body is read before the tool (ApiBoundaryArchitectureTest)") {
+                    after.nextRaw()["toolSessionId"] shouldBe null
                 }
             }
         }

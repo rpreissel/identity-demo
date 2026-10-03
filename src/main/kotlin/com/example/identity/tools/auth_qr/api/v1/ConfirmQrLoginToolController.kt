@@ -1,13 +1,14 @@
 package com.example.identity.tools.auth_qr.api.v1
 
 import com.example.identity.tools.auth_qr.APPROVE_QR_TOOL_ID
+import com.example.identity.tools.auth_qr.ApproveQr
 import com.example.identity.tools.auth_qr.QrModule
 import com.example.identity.tools.auth_qr.internal.confirmqrlogin.ConfirmQrLoginToolHandler
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -47,7 +48,9 @@ class ConfirmQrLoginToolController(
     private val handler: ConfirmQrLoginToolHandler,
     private val accountDirectory: AccountDirectory,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = ApproveQr
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$APPROVE_QR_TOOL_ID")
     @Operation(
@@ -57,8 +60,7 @@ class ConfirmQrLoginToolController(
     )
     fun activate(
         @RequestBody(required = false) request: ConfirmQrLoginActivateRequest?,
-        // After the body: a request that cannot be read must not activate anything.
-        @ActivateTool(APPROVE_QR_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId, request?.pairingCode)
@@ -71,8 +73,8 @@ class ConfirmQrLoginToolController(
         description = "First call: {pairingCode}. Once resolved: {decision: accept|reject}."
     )
     fun patch(
-        @LoadTool(APPROVE_QR_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: ConfirmQrLoginPatchRequest?
+        @RequestBody(required = false) request: ConfirmQrLoginPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: ConfirmQrLoginPatchRequest()
         val accountId = checkNotNull(context.accountId) { "approve-qr on a channel without an accountId" }
@@ -87,7 +89,7 @@ class ConfirmQrLoginToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/$APPROVE_QR_TOOL_ID")
     @Operation(summary = "Read the current approve-qr state")
     fun read(
-        @LoadTool(APPROVE_QR_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

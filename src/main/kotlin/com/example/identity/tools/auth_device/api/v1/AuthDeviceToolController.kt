@@ -1,13 +1,14 @@
 package com.example.identity.tools.auth_device.api.v1
 
 import com.example.identity.tools.auth_device.AUTH_DEVICE_TOOL_ID
+import com.example.identity.tools.auth_device.AuthDevice
 import com.example.identity.tools.auth_device.DeviceModule
 import com.example.identity.tools.auth_device.internal.authdevice.AuthDeviceToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.device.DeviceProofs
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -40,7 +41,9 @@ class AuthDeviceToolController(
     private val deviceProofs: DeviceProofs,
     private val handler: AuthDeviceToolHandler,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = AuthDevice
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_DEVICE_TOOL_ID")
     @Operation(
@@ -59,7 +62,7 @@ class AuthDeviceToolController(
         ]
     )
     fun activate(
-        @ActivateTool(AUTH_DEVICE_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {        val outcome = handler.start(context.toolSessionId, toolJourney.requireEnrollment(context, DeviceModule))
 
@@ -83,8 +86,8 @@ class AuthDeviceToolController(
         ]
     )
     fun patch(
-        @LoadTool(AUTH_DEVICE_TOOL_ID) context: AuthorizedToolContext,
         @RequestBody(required = false) request: DeviceProofPatchRequest?,
+        context: AuthorizedToolContext,
         httpRequest: HttpServletRequest
     ): ResponseEntity<ChannelResponse> {
         val proof = deviceProofs.validate(request?.deviceProof, httpRequest)
@@ -109,7 +112,7 @@ class AuthDeviceToolController(
         ]
     )
     fun read(
-        @LoadTool(AUTH_DEVICE_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

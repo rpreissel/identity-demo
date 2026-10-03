@@ -1,12 +1,13 @@
 package com.example.identity.tools.auth_qr.api.v1
 
 import com.example.identity.tools.auth_qr.AUTH_QR_TOOL_ID
+import com.example.identity.tools.auth_qr.AuthQr
 import com.example.identity.tools.auth_qr.QrModule
 import com.example.identity.tools.auth_qr.internal.authqr.AuthQrToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -36,7 +37,9 @@ import com.example.identity.contract.tool_api.envelope.API_V1
 class AuthQrToolController(
     private val handler: AuthQrToolHandler,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = AuthQr
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_QR_TOOL_ID")
     @Operation(
@@ -45,7 +48,7 @@ class AuthQrToolController(
         responses = [ApiResponse(responseCode = "201", content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class))])]
     )
     fun activate(
-        @ActivateTool(AUTH_QR_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         // The opt-in holds no secret; it only has to exist for the account in hand.
@@ -64,8 +67,8 @@ class AuthQrToolController(
             "Peer-Login bestätigen; docs/07-betrieb.md #5)."
     )
     fun patch(
-        @LoadTool(AUTH_QR_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: QrConfirmationCodeRequest?
+        @RequestBody(required = false) request: QrConfirmationCodeRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.patch(context.toolSessionId, request?.confirmationCode)
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
@@ -74,7 +77,7 @@ class AuthQrToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/$AUTH_QR_TOOL_ID")
     @Operation(summary = "Read the current auth-qr state")
     fun read(
-        @LoadTool(AUTH_QR_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

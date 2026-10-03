@@ -11,8 +11,19 @@ import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import java.net.URI
 
 /**
- * The handle a tool controller holds for one request. Obtained from [ToolJourney.beginActivation]
- * or as a [LoadTool] parameter and passed to every other [ToolJourney] call afterwards.
+ * The handle a tool controller holds for one request, for its own tool ([ToolController.tool]).
+ * A controller method declares it as a parameter, and its type says which of three states it
+ * needs; the orchestrator resolves it before the method runs, checked against the caller's key:
+ *
+ * - [ToolContext]: the session in the path (`{toolSessionId}`), possibly no longer current - for
+ *   reading, where a superseded session gets a clean answer instead of a 409 ([ToolJourney.loadContext]).
+ * - [AuthorizedToolContext]: the same, verified to be the journey's current tool - for changing it
+ *   ([ToolJourney.loadCurrent]).
+ * - [ActivationToolContext]: the tool just activated on the channel in the path
+ *   (`{channelSessionId}`), its session created by this request ([ToolJourney.beginActivation]).
+ *
+ * Parameters are resolved in order, so a `@RequestBody` comes first: an unreadable body then
+ * activates nothing (enforced by `ApiBoundaryArchitectureTest`).
  */
 interface ToolContext {
     /** The toolId this context was obtained for. */
@@ -31,10 +42,15 @@ interface ToolContext {
  * A [ToolContext] that may change the journey; the only kind [ToolJourney.applyOutcome] accepts.
  * [ToolJourney.beginActivation] creates a fresh session, [ToolJourney.loadCurrent] verifies an
  * existing one against the journey's active tool. So a controller cannot apply an outcome for an
- * unverified session. [ToolJourney.loadContext] returns the weaker type for the read path, where
- * a superseded session gets a clean answer instead of a 409.
+ * unverified session.
  */
 interface AuthorizedToolContext : ToolContext
+
+/**
+ * An [AuthorizedToolContext] whose session this request created. The only kind
+ * [ToolJourney.activated] accepts, so only an activation can answer `201` with a `Location`.
+ */
+interface ActivationToolContext : AuthorizedToolContext
 
 /**
  * The journey as a tool controller sees it: activation, binding checks, transitions and the
@@ -49,7 +65,7 @@ interface ToolJourney {
      * @param bindingKeyRef the caller's resolved DPoP binding key (see [BindingKey]).
      * @throws RuntimeException if the channel or binding is invalid, or the journey does not offer [toolId].
      */
-    fun beginActivation(channelSessionId: ChannelSessionId, bindingKeyRef: String, toolId: String): AuthorizedToolContext
+    fun beginActivation(channelSessionId: ChannelSessionId, bindingKeyRef: String, toolId: String): ActivationToolContext
 
     /**
      * Loads the context of an existing tool session for the read path. Whether it is still the
@@ -125,7 +141,7 @@ interface ToolJourney {
  * new tool resource as `Location`. The closing step of every tool controller's `activate`.
  */
 fun ToolJourney.activated(
-    context: AuthorizedToolContext,
+    context: ActivationToolContext,
     outcome: ToolOutcome,
     uriBuilder: UriComponentsBuilder,
 ): ResponseEntity<ChannelResponse> {

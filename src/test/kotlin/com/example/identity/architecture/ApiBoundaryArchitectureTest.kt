@@ -3,8 +3,8 @@ package com.example.identity.architecture
 import com.example.identity.demo.demo_mode.DemoSurface
 import com.example.identity.core.orchestrator.keycloak.PeerAuthValidator
 import com.example.identity.contract.tool_api.BindingKey
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ToolController
+import com.example.identity.contract.tool_api.ToolContext
 import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.JavaMethod
 import com.tngtech.archunit.lang.ArchCondition
@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
@@ -62,12 +63,11 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
     val simulatedForeignSystems = setOf("com.example.identity.simulation..")
     val exempt = guardedByAdminLogin + guardedByPeerAuth + publicByDesign.keys
 
-    // A @LoadTool or @ActivateTool context is resolved with the same proof and checked against the channel.
-    val boundToChannel = listOf(BindingKey::class.java, LoadTool::class.java, ActivateTool::class.java)
-    val haveBindingKey = object : ArchCondition<JavaMethod>("have a @BindingKey, @LoadTool or @ActivateTool parameter") {
+    // A ToolContext parameter is resolved with the same proof and checked against the channel.
+    val haveBindingKey = object : ArchCondition<JavaMethod>("have a @BindingKey or a ToolContext parameter") {
         override fun check(method: JavaMethod, events: ConditionEvents) {
-            if (method.parameters.none { parameter -> boundToChannel.any { parameter.isAnnotatedWith(it) } }) {
-                events.add(SimpleConditionEvent.violated(method, "${method.fullName} has no @BindingKey, @LoadTool or @ActivateTool parameter"))
+            if (method.parameters.none { it.isAnnotatedWith(BindingKey::class.java) || it.isToolContext() }) {
+                events.add(SimpleConditionEvent.violated(method, "${method.fullName} has no @BindingKey or ToolContext parameter"))
             }
         }
     }
@@ -96,6 +96,26 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
                 .should().beAnnotatedWith(DemoSurface::class.java)
                 .because("reachable in an instance with real people, each would be a way to take over accounts")
                 .check(MAIN_CLASSES)
+        }
+    }
+
+    given("the handlers that take their tool context as a parameter") {
+        fun JavaMethod.hasToolContext() = parameters.any { it.isToolContext() }
+        val handlers = MAIN_CLASSES.flatMap { it.methods }.filter { isHandler().test(it) }
+
+        then("sit in a ToolController, which names the tool the context is loaded for") {
+            val outside = handlers
+                .filter { it.hasToolContext() && !it.owner.isAssignableTo(ToolController::class.java) }
+                .map { it.fullName }
+            outside.shouldBeEmpty()
+        }
+        then("read a request body before the tool context - parameters resolve in order, so an unreadable body activates nothing") {
+            val contextFirst = handlers.filter { method ->
+                val context = method.parameters.indexOfFirst { it.isToolContext() }
+                val body = method.parameters.indexOfFirst { it.isAnnotatedWith(RequestBody::class.java) }
+                context >= 0 && body > context
+            }.map { it.fullName }
+            contextFirst.shouldBeEmpty()
         }
     }
 
@@ -132,6 +152,9 @@ private val HANDLER_ANNOTATIONS = listOf(
 private fun isHandler() = object : com.tngtech.archunit.base.DescribedPredicate<JavaMethod>("are request handlers") {
     override fun test(method: JavaMethod) = HANDLER_ANNOTATIONS.any { method.isAnnotatedWith(it) }
 }
+
+/** A parameter the orchestrator resolves to a tool context (`ToolContextResolver`). */
+private fun com.tngtech.archunit.core.domain.JavaParameter.isToolContext() = rawType.isAssignableTo(ToolContext::class.java)
 
 private fun notDeclaredIn(names: Set<String>) =
     object : com.tngtech.archunit.base.DescribedPredicate<JavaMethod>("are not declared in an exempt controller") {

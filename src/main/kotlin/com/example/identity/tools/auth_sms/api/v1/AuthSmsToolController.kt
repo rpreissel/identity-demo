@@ -1,12 +1,13 @@
 package com.example.identity.tools.auth_sms.api.v1
 
 import com.example.identity.tools.auth_sms.AUTH_SMS_TOOL_ID
+import com.example.identity.tools.auth_sms.AuthSms
 import com.example.identity.tools.auth_sms.SmsModule
 import com.example.identity.tools.auth_sms.internal.authsms.AuthSmsToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -39,7 +40,9 @@ data class AuthSmsPatchRequest(@field:Schema(example = "123456") val tan: String
 class AuthSmsToolController(
     private val handler: AuthSmsToolHandler,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = AuthSms
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_SMS_TOOL_ID")
     @Operation(
@@ -58,7 +61,7 @@ class AuthSmsToolController(
         ]
     )
     fun activate(
-        @ActivateTool(AUTH_SMS_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {        val outcome = handler.start(context.toolSessionId, toolJourney.requireEnrollment(context, SmsModule))
 
@@ -82,8 +85,8 @@ class AuthSmsToolController(
         ]
     )
     fun patch(
-        @LoadTool(AUTH_SMS_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: AuthSmsPatchRequest?
+        @RequestBody(required = false) request: AuthSmsPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: AuthSmsPatchRequest()
         val outcome = handler.patch(context.toolSessionId, body.tan)
@@ -107,7 +110,7 @@ class AuthSmsToolController(
         ]
     )
     fun read(
-        @LoadTool(AUTH_SMS_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

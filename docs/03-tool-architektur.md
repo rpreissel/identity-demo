@@ -317,8 +317,10 @@ Jedes Modul deklariert sein Verfahren genau einmal, in `<Modul>ToolModule.kt` (z
 `tools/auth_kobil/KobilToolModule.kt`). Die Deklaration ist eine reine Selbstbeschreibung ohne
 Abhängigkeiten, getrennt von der Fachlogik in `internal`. Dieselbe Datei trägt die Angaben für
 Spring Modulith (`@ApplicationModule` an der gleichnamigen Klasse `KobilToolModule`) und gibt das
-`ToolModule` als Bean heraus. Der Orchestrator sammelt die Module beim Start ein und bildet daraus den Katalog aus
-Abschnitt 1 (`ToolHandlerRegistry`):
+`ToolModule` als Bean heraus. Der Orchestrator sammelt die Module beim Start ein und bildet daraus
+den Katalog aus Abschnitt 1 (`ToolHandlerRegistry`). Die Deklaration hat zwei Teile: Was das
+Verfahren ist, beschreibt `toolModule(…)`; jedes seiner Tools ist danach ein eigener Wert, am Modul
+registriert:
 
 ```kotlin
 internal const val ENROLL_KOBIL_TOOL_ID = "enroll-kobil"
@@ -330,15 +332,17 @@ internal val KobilModule = toolModule(
     demoOnly = "Die KOBIL-Gegenstelle ist simuliert (kobil); …",
     onePerDevice = true,
     stepData = listOf(KobilUnlockStep::class, KobilOtpStep::class, KobilActivationStep::class),
-    tools = listOf(
-        enroll(ENROLL_KOBIL_TOOL_ID, startStep = "activate"),
-        login(AUTH_KOBIL_TOOL_ID, startStep = "unlock"),
-    ),
 )
+
+internal val EnrollKobil = KobilModule.enroll(ENROLL_KOBIL_TOOL_ID, startStep = "activate")
+internal val AuthKobil = KobilModule.login(AUTH_KOBIL_TOOL_ID, startStep = "unlock")
 ```
 
 Die `toolId` steht als Konstante genau einmal im Modul: Die Deklaration nennt sie, und der
-Controller des Tools nimmt dieselbe Konstante für seine Pfade und für `ToolJourney`.
+Controller des Tools nimmt dieselbe Konstante für seine Pfade. Auf das Tool selbst zeigt der
+Controller über `ToolController.tool` (`override val tool = AuthKobil`); seine Kontext-Parameter
+(`ActivationToolContext`, `AuthorizedToolContext`, `ToolContext`) werden für dieses Tool aufgelöst. Dass Pfad und Tool übereinstimmen und
+jedes Tool genau einen Controller hat, prüft `ToolControllerMappingTest`.
 
 Was das **Modul** angibt, gilt für alle seine Tools:
 
@@ -350,8 +354,9 @@ Was das **Modul** angibt, gilt für alle seine Tools:
 | `demoOnly` | gesetzt, wenn das Verfahren nur in der Demo taugt (ADR-36) |
 | `stepData` | die Formen von `stepData`, mit denen die Tools antworten, für die API-Beschreibung |
 
-Jedes **Tool** ist ein Eintrag in `tools`, gebaut von der Fabrik seiner Rolle. Die Fabrik legt die
-Rolle fest und nimmt die `toolId` und nur die Angaben, die diese Rolle machen darf:
+Jedes **Tool** entsteht über die Fabrik seiner Rolle, eine Funktion am Modul. Die Fabrik legt die
+Rolle fest, nimmt die `toolId` und nur die Angaben, die diese Rolle machen darf, und registriert das
+Tool sofort:
 
 | Fabrik | Rolle | `toolId` | Eigene Angaben |
 |---|---|---|---|
@@ -374,10 +379,13 @@ Daraus ergeben sich die Felder eines `Tool`: `toolId`, `role`, `startStep` (sons
 
 Durch diesen Aufbau sind ausgeschlossen: verschiedene Niveaus, Faktoren oder Schlüsselbindungen
 innerhalb einer Methode, ein Tool über dem Niveau seines Moduls, Angaben, die zur Rolle nicht
-passen, und eine Identifizierung ohne Name, Vornamen und Geburtsdatum (ADR-39). Beim Bauen eines
-Moduls geprüft wird, dass jede `toolId` zu Methode und Rolle passt, dass keine Rolle doppelt
+passen, und eine Identifizierung ohne Name, Vornamen und Geburtsdatum (ADR-39). Beim Registrieren
+eines Tools geprüft wird, dass seine `toolId` zu Methode und Rolle passt, dass keine Rolle doppelt
 vorkommt (Identifizierung und Korrelation teilen sich `ident-<m>`, schließen sich also aus) und dass
 nur das Personenverzeichnis für eine KVNR einsteht; beim Start, dass jede Methode nur ein Modul hat.
+Sobald der Katalog ein Modul eingesammelt hat, nimmt es keine Tools mehr an: Ein später
+registriertes Tool fehlte sonst still im Katalog. Deshalb stehen alle Tools eines Moduls in seiner
+Datei, gleich unter `toolModule(…)`.
 
 `maxAcr` und `factorTypes` dienen der Vorauswahl: Kann dieses Tool eine Lücke überhaupt schließen?
 Was ein konkreter Durchlauf tatsächlich erreicht hat, meldet `Completed` – nie mehr, als das Tool

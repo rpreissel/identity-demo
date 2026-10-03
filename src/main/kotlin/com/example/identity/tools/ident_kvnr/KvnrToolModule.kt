@@ -7,7 +7,6 @@ import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.claims.ClaimTrust
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.contract.tool_api.correlate
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.modulith.ApplicationModule
@@ -26,17 +25,16 @@ internal const val IDENT_KVNR_TOOL_ID = "ident-kvnr"
 internal val KvnrModule = toolModule(
     method = "kvnr",
     proves = factors(upTo = AcrLevel.LOA2),
-    tools = listOf(
-        correlate(
-            IDENT_KVNR_TOOL_ID,
-            claims = setOf(AttributeType.PERSON_ID, AttributeType.KVNR, AttributeType.MEMBER_NUMBER),
-            vouchedBy = ClaimSource.PERSON_DIRECTORY,
-            requires = setOf(
-                ClaimRequirement(AttributeType.FAMILY_NAME, ClaimTrust.PROVEN),
-                ClaimRequirement(AttributeType.GIVEN_NAMES, ClaimTrust.PROVEN),
-                ClaimRequirement(AttributeType.BIRTH_DATE, ClaimTrust.PROVEN),
-            ),
-        ),
+)
+
+internal val IdentKvnr = KvnrModule.correlate(
+    IDENT_KVNR_TOOL_ID,
+    claims = setOf(AttributeType.PERSON_ID, AttributeType.KVNR, AttributeType.MEMBER_NUMBER),
+    vouchedBy = ClaimSource.PERSON_DIRECTORY,
+    requires = setOf(
+        ClaimRequirement(AttributeType.FAMILY_NAME, ClaimTrust.PROVEN),
+        ClaimRequirement(AttributeType.GIVEN_NAMES, ClaimTrust.PROVEN),
+        ClaimRequirement(AttributeType.BIRTH_DATE, ClaimTrust.PROVEN),
     ),
 )
 

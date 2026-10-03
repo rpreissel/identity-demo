@@ -1,14 +1,15 @@
 package com.example.identity.tools.auth_password.api.v1
 
 import com.example.identity.tools.auth_password.AUTH_PASSWORD_LOOKUP_TOOL_ID
+import com.example.identity.tools.auth_password.AuthPasswordLookup
 import com.example.identity.tools.auth_password.PasswordModule
 import com.example.identity.tools.auth_password.internal.authpasswordlookup.AuthPasswordLookupToolHandler
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.Lockouts
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -47,7 +48,9 @@ class AuthPasswordLookupToolController(
     private val accountDirectory: AccountDirectory,
     private val toolJourney: ToolJourney,
     private val lockouts: Lockouts
-) {
+) : ToolController {
+
+    override val tool = AuthPasswordLookup
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_PASSWORD_LOOKUP_TOOL_ID")
     @Operation(
@@ -66,7 +69,7 @@ class AuthPasswordLookupToolController(
         ]
     )
     fun activate(
-        @ActivateTool(AUTH_PASSWORD_LOOKUP_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId)
@@ -90,8 +93,8 @@ class AuthPasswordLookupToolController(
         ]
     )
     fun patch(
-        @LoadTool(AUTH_PASSWORD_LOOKUP_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: AuthPasswordLookupPatchRequest?
+        @RequestBody(required = false) request: AuthPasswordLookupPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: AuthPasswordLookupPatchRequest()
         // Resolved here, since auth_password may not depend on `account`. Null for an unknown
@@ -122,7 +125,7 @@ class AuthPasswordLookupToolController(
         ]
     )
     fun read(
-        @LoadTool(AUTH_PASSWORD_LOOKUP_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

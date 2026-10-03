@@ -1,12 +1,13 @@
 package com.example.identity.tools.auth_password.api.v1
 
 import com.example.identity.tools.auth_password.AUTH_PASSWORD_TOOL_ID
+import com.example.identity.tools.auth_password.AuthPassword
 import com.example.identity.tools.auth_password.PasswordModule
 import com.example.identity.tools.auth_password.internal.authpassword.AuthPasswordToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
@@ -41,7 +42,9 @@ data class AuthPasswordPatchRequest(
 class AuthPasswordToolController(
     private val handler: AuthPasswordToolHandler,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = AuthPassword
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_PASSWORD_TOOL_ID")
     @Operation(
@@ -60,7 +63,7 @@ class AuthPasswordToolController(
         ]
     )
     fun activate(
-        @ActivateTool(AUTH_PASSWORD_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {        val outcome = handler.start(context.toolSessionId, toolJourney.requireEnrollment(context, PasswordModule))
 
@@ -83,8 +86,8 @@ class AuthPasswordToolController(
         ]
     )
     fun patch(
-        @LoadTool(AUTH_PASSWORD_TOOL_ID) context: AuthorizedToolContext,
-        @RequestBody(required = false) request: AuthPasswordPatchRequest?
+        @RequestBody(required = false) request: AuthPasswordPatchRequest?,
+        context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: AuthPasswordPatchRequest()
         val outcome = handler.patch(context.toolSessionId, body.password)
@@ -108,7 +111,7 @@ class AuthPasswordToolController(
         ]
     )
     fun read(
-        @LoadTool(AUTH_PASSWORD_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         return toolJourney.readResponse(context) { handler.read(context.toolSessionId) }
     }

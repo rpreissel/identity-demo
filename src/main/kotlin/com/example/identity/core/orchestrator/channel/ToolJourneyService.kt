@@ -25,6 +25,7 @@ import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.envelope.API_V1
 import com.example.identity.contract.tool_api.AuthorizedToolContext
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.envelope.DemoInfo
 import com.example.identity.contract.tool_api.envelope.Next
@@ -76,6 +77,16 @@ class ToolJourneyService(
         override val accountId: AccountId?
     ) : AuthorizedToolContext
 
+    /** A [Context] whose session the activating request created. */
+    data class Activation(val context: Context) : ActivationToolContext, AuthorizedToolContext by context
+
+    /** The service's own data behind any context it handed out. */
+    private fun ToolContext.data(): Context = when (this) {
+        is Context -> this
+        is Activation -> context
+        else -> error("Not a context of this journey: ${this::class.simpleName}")
+    }
+
     override fun activationLocation(context: ToolContext, baseUri: URI): URI =
         UriComponentsBuilder.fromUri(baseUri)
             .replacePath("$API_V1/tools/{toolSessionId}/{toolId}")
@@ -86,7 +97,7 @@ class ToolJourneyService(
      * Mints the ToolSession and lets the journey decide whether [toolId] may run. The check is
      * membership in the current offer, so a tool never offered cannot be activated by naming it.
      */
-    override fun beginActivation(channelSessionId: ChannelSessionId, bindingKeyRef: String, toolId: String): Context {
+    override fun beginActivation(channelSessionId: ChannelSessionId, bindingKeyRef: String, toolId: String): Activation {
         val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
         val channel = live.session
         val journey = journeyService.findActive(channelSessionId)
@@ -103,14 +114,14 @@ class ToolJourneyService(
 
         val toolSession = sessionManagementService.createToolSession(journey.journeyId, TOOL_TTL)
         journeyService.activate(journey, live, descriptor, toolSession.id)
-        return Context(
+        return Activation(Context(
             toolId = toolId,
             toolSessionId = toolSession.id,
             journeyId = journey.journeyId,
             channelSessionId = channel.id,
             bindingKeyRef = bindingKeyRef,
             accountId = channel.accountId
-        )
+        ))
     }
 
     /**
@@ -181,7 +192,7 @@ class ToolJourneyService(
     }
 
     override fun isCurrentTool(context: ToolContext): Boolean {
-        val ctx = context as Context
+        val ctx = context.data()
         val journey = resolveJourney(ctx)
         return journeyService.isCurrent(journey, ToolId(ctx.toolId), ctx.toolSessionId)
     }
@@ -198,7 +209,7 @@ class ToolJourneyService(
         leave(context) { journey, channel, tool -> journeyService.back(journey, channel, tool) }
 
     private fun leave(context: AuthorizedToolContext, move: (RunningJourney, LiveChannel, Tool) -> Step): ChannelResponse {
-        val ctx = context as Context
+        val ctx = context.data()
         val journey = resolveJourney(ctx)
         val live = resolveChannel(ctx, journey)
         val channel = live.session
@@ -220,7 +231,7 @@ class ToolJourneyService(
      * #2). The context carries ids only; entities are resolved fresh in this transaction.
      */
     override fun applyOutcome(context: AuthorizedToolContext, outcome: ToolOutcome): ChannelResponse {
-        val ctx = context as Context
+        val ctx = context.data()
         val journey = resolveJourney(ctx)
         val live = resolveChannel(ctx, journey)
         val channel = live.session
@@ -242,7 +253,7 @@ class ToolJourneyService(
     }
 
     override fun matchesAttestedIdentity(context: AuthorizedToolContext, personId: PartnerNumber): Boolean {
-        val ctx = context as Context
+        val ctx = context.data()
         val journey = resolveJourney(ctx)
         return journeyService.matchesAttestedIdentity(journey, resolveChannel(ctx, journey).session, personId)
     }
@@ -295,7 +306,7 @@ class ToolJourneyService(
 
     /** For GET: only the still-current tool's rebuilt InProgress state is shown. */
     override fun buildReadResponse(context: ToolContext, freshOutcome: ToolOutcome.InProgress?): ChannelResponse {
-        val ctx = context as Context
+        val ctx = context.data()
         val journey = resolveJourney(ctx)
         val channel = resolveChannel(ctx, journey).session
         val next = if (freshOutcome != null) {

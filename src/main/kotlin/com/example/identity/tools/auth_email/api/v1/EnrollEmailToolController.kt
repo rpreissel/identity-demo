@@ -1,12 +1,12 @@
 package com.example.identity.tools.auth_email.api.v1
 
 import com.example.identity.tools.auth_email.ENROLL_EMAIL_TOOL_ID
+import com.example.identity.tools.auth_email.EnrollEmail
 import com.example.identity.tools.auth_email.internal.enrollemail.EnrollEmailToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
+import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
-import com.example.identity.contract.tool_api.ActivateTool
-import com.example.identity.contract.tool_api.AuthorizedToolContext
-import com.example.identity.contract.tool_api.LoadTool
+import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.activated
 import io.swagger.v3.oas.annotations.Operation
@@ -34,7 +34,9 @@ import com.example.identity.contract.tool_api.envelope.API_V1
 class EnrollEmailToolController(
     private val handler: EnrollEmailToolHandler,
     private val toolJourney: ToolJourney
-) {
+) : ToolController {
+
+    override val tool = EnrollEmail
 
     @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_EMAIL_TOOL_ID")
     @Operation(
@@ -53,7 +55,7 @@ class EnrollEmailToolController(
         ]
     )
     fun activate(
-        @ActivateTool(ENROLL_EMAIL_TOOL_ID) context: AuthorizedToolContext,
+        context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.start(context.toolSessionId)
@@ -63,7 +65,7 @@ class EnrollEmailToolController(
     @GetMapping("$API_V1/tools/{toolSessionId}/$ENROLL_EMAIL_TOOL_ID")
     @Operation(summary = "Read the current enroll-email state")
     fun read(
-        @LoadTool(ENROLL_EMAIL_TOOL_ID) context: ToolContext
+        context: ToolContext
     ): ResponseEntity<ChannelResponse> {
         // Never InProgress - this tool has a single, already-completed state, so the read path
         // only ever reports what the journey has moved on to.

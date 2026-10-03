@@ -217,5 +217,23 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
                 }
             }
         }
+
+        given("an authenticated app channel about to approve a pairing") {
+            `when`("approve-qr is activated with a body that is no JSON") {
+                val (appChannelSessionId, _) = registerWithQrOptIn()
+                post("/orchestrator/api/v1/channels/$appChannelSessionId/peer-logins")
+                resolveReconfirmation(appChannelSessionId)
+                val broken = runCatching { post("/orchestrator/api/v1/channels/$appChannelSessionId/tools/approve-qr", "{not json") }
+                val after = get("/orchestrator/api/v1/channels/$appChannelSessionId")
+
+                then("it is a bad request") {
+                    shouldThrow<HttpClientErrorException> { broken.getOrThrow() }.statusCode shouldBe HttpStatus.BAD_REQUEST
+                }
+                then("nothing was activated: approve-qr is still offered, without a tool session") {
+                    after.next() shouldBe mapOf("type" to "tool", "toolId" to "approve-qr", "step" to "input")
+                    after.nextRaw()["toolSessionId"] shouldBe null
+                }
+            }
+        }
     }
 }
