@@ -4,11 +4,9 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.state.Question
 import com.example.identity.contract.tool_api.StepData
 import com.example.identity.contract.tool_api.StepDataTypes
-import com.fasterxml.jackson.annotation.JsonInclude
+import com.example.identity.contract.tool_api.stepData
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.fasterxml.jackson.annotation.JsonTypeName
-import io.swagger.v3.oas.annotations.media.Schema
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -19,12 +17,7 @@ import org.springframework.context.annotation.Configuration
  */
 
 /** Several candidates are open, so the client shows a choice (docs/04-orchestrierung.md #4). */
-@JsonTypeName("select-method")
-// NON_NULL like the other envelope DTOs: an absent description is an absent key on the wire.
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(description = "Several procedures are possible; the client shows a selection.")
 data class SelectMethodStep(
-    @field:Schema(example = "[\"auth-password\", \"auth-device\"]")
     val options: List<String>,
     val title: Text?,
     val description: Text? = null
@@ -34,15 +27,11 @@ data class SelectMethodStep(
  * Exactly one candidate was open, so the selection screen is skipped. The description still has
  * to reach the client, because it explains why this step is required.
  */
-@JsonTypeName("message")
-@Schema(description = "A single candidate was auto-activated; this explains why the step appears.")
 data class MessageStep(
     val message: Text
 ) : StepData
 
 /** An `AnswerableState` waits for `POST .../answer`; the text is authored by the backend. */
-@JsonTypeName("confirm")
-@Schema(description = "The step waits for a yes/no answer; the prompt is authored by the backend.")
 data class ConfirmStep(val prompt: Prompt) : StepData
 
 /**
@@ -77,8 +66,6 @@ fun Question.toPrompt(): Prompt = when (this) {
  * An attempt failed and the journey stays where it is. Carries only the reason - what the step
  * still needs is answered by the tool's own GET, which reports its shape unchanged.
  */
-@JsonTypeName("failed-attempt")
-@Schema(description = "The attempt failed; retries remain.")
 data class FailedAttemptStep(
     val error: Text
 ) : StepData
@@ -89,11 +76,14 @@ class OrchestratorStepDataTypes {
 
     @Bean
     fun orchestratorOwnStepDataTypes() = StepDataTypes {
-        listOf(
-            SelectMethodStep::class,
-            MessageStep::class,
-            ConfirmStep::class,
-            FailedAttemptStep::class
+        mapOf(
+            "select-method" to stepData<SelectMethodStep>(
+                "Several procedures are possible; the client shows a selection.",
+                "options" to listOf("auth-password", "auth-device"),
+            ),
+            "message" to stepData<MessageStep>("A single candidate was auto-activated; this explains why the step appears."),
+            "confirm" to stepData<ConfirmStep>("The step waits for a yes/no answer; the prompt is authored by the backend."),
+            "failed-attempt" to stepData<FailedAttemptStep>("The attempt failed; retries remain."),
         )
     }
 }

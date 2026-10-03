@@ -331,7 +331,7 @@ internal val KobilModule = toolModule(
     proves = factors(POSSESSION, KNOWLEDGE, INHERENCE, upTo = AcrLevel.LOA2),
     demoOnly = "Die KOBIL-Gegenstelle ist simuliert (kobil); …",
     onePerDevice = true,
-    stepData = listOf(KobilUnlockStep::class, KobilOtpStep::class, KobilActivationStep::class),
+    stepData = KobilStepData,                  // in api/v1/KobilStepData.kt, neben den Formen
 )
 
 internal val EnrollKobil = KobilModule.enroll(ENROLL_KOBIL_TOOL_ID, startStep = "activate")
@@ -352,7 +352,7 @@ Was das **Modul** angibt, gilt für alle seine Tools:
 | `proves` | Faktortypen und Niveau, die ein Nachweis des Verfahrens höchstens erbringt (`factorTypes`, `maxAcr`) |
 | `onePerDevice` | ein Eintrag je Gerät, an dessen Schlüssel gebunden (Abschnitt 1) |
 | `demoOnly` | gesetzt, wenn das Verfahren nur in der Demo taugt (ADR-36) |
-| `stepData` | die Formen von `stepData`, mit denen die Tools antworten, für die API-Beschreibung |
+| `stepData` | die Formen von `stepData`, mit denen die Tools antworten: eine Map vom `kind` auf die Form mit Beschreibung und Beispielen, deklariert neben den Klassen |
 
 Jedes **Tool** entsteht über die Fabrik seiner Rolle, eine Funktion am Modul. Die Fabrik legt die
 Rolle fest, nimmt die `toolId` und nur die Angaben, die diese Rolle machen darf, und registriert das

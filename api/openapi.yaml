@@ -755,7 +755,6 @@ components:
           example:
           - otp
           items:
-            example: '["otp"]'
             type: string
           type: array
         tenantId:
@@ -807,7 +806,6 @@ components:
           - biometric
           - password
           items:
-            example: '["biometric","password"]'
             type: string
           type: array
       required:
@@ -865,7 +863,6 @@ components:
           example:
           - tan
           items:
-            example: '["tan"]'
             type: string
           type: array
       required:
@@ -975,7 +972,6 @@ components:
           - auth-password
           - auth-device
           items:
-            example: '["auth-password","auth-device"]'
             type: string
           type: array
         title:

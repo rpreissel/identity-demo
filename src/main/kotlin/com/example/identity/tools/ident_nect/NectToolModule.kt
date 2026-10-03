@@ -1,5 +1,6 @@
 package com.example.identity.tools.ident_nect
 
+import com.example.identity.tools.ident_nect.api.v1.NectStepData
 import com.example.identity.contract.tool_api.FactorType.INHERENCE
 import com.example.identity.contract.tool_api.FactorType.KNOWLEDGE
 import com.example.identity.contract.tool_api.FactorType.POSSESSION
@@ -8,7 +9,6 @@ import com.example.identity.contract.tool_api.claims.AnchorAcrFloor
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.tools.ident_nect.api.v1.NectRedirectStep
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.modulith.ApplicationModule
@@ -37,7 +37,7 @@ internal val NectModule = toolModule(
     method = "nect",
     proves = factors(POSSESSION, KNOWLEDGE, INHERENCE, upTo = AcrLevel.LOA3),
     demoOnly = "Die Nect-Gegenstelle ist simuliert (nect); ein echtes Ergebnis kommt serverseitig von Nect",
-    stepData = listOf(NectRedirectStep::class),
+    stepData = NectStepData,
 )
 
 internal val IdentNect = NectModule.identify(

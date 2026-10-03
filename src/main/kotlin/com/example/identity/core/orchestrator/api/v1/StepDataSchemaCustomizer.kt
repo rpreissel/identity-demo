@@ -2,9 +2,8 @@ package com.example.identity.core.orchestrator.api.v1
 
 import com.example.identity.contract.tool_api.ModuleId
 import com.example.identity.contract.tool_api.StepData
+import com.example.identity.contract.tool_api.StepDataShape
 import com.example.identity.contract.tool_api.StepDataTypes
-import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.fasterxml.jackson.annotation.JsonTypeName
 import io.swagger.v3.core.converter.AnnotatedType
 import io.swagger.v3.core.converter.ModelConverters
 import io.swagger.v3.oas.models.media.Discriminator
@@ -15,7 +14,9 @@ import org.springframework.context.annotation.Configuration
 /**
  * Puts every declared [StepData] shape into the API description. The shapes travel through
  * `ToolOutcome`, never a controller signature, so springdoc cannot reach them on its own. The list
- * comes from the modules' [StepDataTypes] beans, not from a constant here.
+ * comes from the modules' declarations ([StepDataShape]: tool modules and [StepDataTypes] beans),
+ * not from a constant here; each brings its description and examples, the shapes carry no
+ * annotations.
  */
 @Configuration
 class StepDataSchemaCustomizer {
@@ -25,25 +26,27 @@ class StepDataSchemaCustomizer {
      * with. The SMS module's contract must not carry KOBIL's shapes.
      */
     fun forPackage(scannedPackage: String, declarations: List<StepDataTypes>): OpenApiCustomizer = OpenApiCustomizer { openApi ->
-        val shapes = declarations.flatMap { it.types() }
-            .distinct()
-            .filter { belongsTo(it.java, scannedPackage) }
+        val shapes = declarations.flatMap { it.types().entries }
+            .distinctBy { it.key }
+            .filter { belongsTo(it.value.type.java, scannedPackage) }
         if (shapes.isEmpty()) return@OpenApiCustomizer
 
         val components = openApi.components ?: return@OpenApiCustomizer
         val base = components.schemas?.get(STEP_DATA_SCHEMA) ?: return@OpenApiCustomizer
 
         val discriminator = Discriminator().propertyName(DISCRIMINATOR)
-        shapes.sortedBy { it.simpleName }.forEach { shape ->
-            val java = shape.java
+        shapes.sortedBy { it.value.type.simpleName }.forEach { (kind, shape) ->
+            val java = shape.type.java
             // Resolve into the document first, so the $ref below does not dangle.
             ModelConverters.getInstance().readAll(java).forEach { (name, schema) ->
                 components.schemas.putIfAbsent(name, schema)
             }
             val name = ModelConverters.getInstance().read(AnnotatedType(java)).keys.firstOrNull()
                 ?: java.simpleName
-            val kind = typeNameOf(java)
-            components.schemas[name]?.let { declareKind(it, kind) }
+            components.schemas[name]?.let {
+                declareKind(it, kind)
+                describe(it, shape)
+            }
             base.addOneOfItem(Schema<Any>().`$ref`("#/components/schemas/$name"))
             discriminator.mapping(kind, "#/components/schemas/$name")
         }
@@ -71,6 +74,17 @@ class StepDataSchemaCustomizer {
         shape.required = listOf(DISCRIMINATOR) + (shape.required ?: emptyList()).filterNot { it == DISCRIMINATOR }
     }
 
+    /** What the module declared about the shape: its description and the example per property. */
+    private fun describe(schema: Schema<*>, shape: StepDataShape) {
+        schema.description = shape.description
+        shape.examples.forEach { (property, example) ->
+            val target = checkNotNull(schema.properties?.get(property)) {
+                "${shape.type.simpleName} has no property '$property' for its declared example"
+            }
+            target.example = example
+        }
+    }
+
     /**
      * Its own module's shapes, plus the shared ones in `tool_api` and the orchestrator's screens,
      * which any tool endpoint may answer with when the journey moves on.
@@ -82,22 +96,11 @@ class StepDataSchemaCustomizer {
             pkg.startsWith(ORCHESTRATOR_PACKAGE)
     }
 
-    /**
-     * The value Jackson writes into `kind`: `@JsonTypeName`, or else the simple class name. Read
-     * from the same annotation, so the contract cannot disagree with the wire.
-     */
-    private fun typeNameOf(java: Class<*>): String =
-        java.getAnnotation(JsonTypeName::class.java)?.value?.takeIf { it.isNotEmpty() }
-            ?: java.simpleName
-
     private companion object {
         private const val STEP_DATA_SCHEMA = "StepData"
 
-        /** Read off [StepData]'s `@JsonTypeInfo`, so the spec names the property Jackson writes. */
-        private val DISCRIMINATOR: String =
-            checkNotNull(StepData::class.java.getAnnotation(JsonTypeInfo::class.java)) {
-                "StepData must carry @JsonTypeInfo - the whole union is keyed on it"
-            }.property
+        /** The property [StepDataWireFormat] writes, so the spec names what goes on the wire. */
+        private const val DISCRIMINATOR = StepDataWireFormat.KIND
         private val SHARED_PACKAGE = ModuleId.of(StepData::class.java).basePackage
         private val ORCHESTRATOR_PACKAGE = ModuleId.of(StepDataSchemaCustomizer::class.java).basePackage
     }

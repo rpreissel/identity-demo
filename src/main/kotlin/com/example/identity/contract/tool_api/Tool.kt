@@ -7,7 +7,6 @@ import com.example.identity.contract.tool_api.claims.ClaimDeclaration
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.texts.Text
-import kotlin.reflect.KClass
 
 /**
  * A tool's public identifier ("auth-sms", "enroll-password", ...). Written out in its module's
@@ -49,8 +48,8 @@ class ToolModule internal constructor(
      * method of its own.
      */
     val demoOnly: DemoOnly?,
-    /** The [StepData] shapes its tools answer with, for the API description. */
-    val stepData: List<KClass<out StepData>>,
+    /** The [StepData] shapes its tools answer with, by their `kind`. */
+    val stepData: Map<String, StepDataShape>,
 ) {
     private val registered = mutableListOf<Tool>()
     private var frozen = false
@@ -274,7 +273,7 @@ fun toolModule(
     proves: Proves,
     demoOnly: String? = null,
     onePerDevice: Boolean = false,
-    stepData: List<KClass<out StepData>> = emptyList(),
+    stepData: Map<String, StepDataShape> = emptyMap(),
 ): ToolModule = ToolModule(
     method = method,
     factorTypes = proves.factorTypes,

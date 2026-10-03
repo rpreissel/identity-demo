@@ -211,8 +211,12 @@ Alle Anfragen enthalten den Header `DPoP: <proof>`.
   `kobil-otp`). Welche Formen es gibt, steht im `discriminator.mapping` von `StepData` in der Spec.
   Jede Form führt `kind` selbst als Pflichtfeld mit genau ihrem Wert (ein `enum` mit einem einzigen
   Wert); `StepData` selbst ist nur `oneOf` plus Unterscheidungsmerkmal, ohne eigene
-  Properties. Jedes Modul deklariert seine Formen selbst; eine zentrale Liste gibt es nicht. Ein
-  Client muss mit einem unbekannten `kind` rechnen und es überspringen, statt abzubrechen.
+  Properties. Jedes Modul deklariert seine Formen selbst, neben ihren Klassen: eine Map vom `kind`
+  auf die Form, mit Beschreibung und Beispielwerten für den Vertrag
+  (`"kobil-otp" to stepData<KobilOtpStep>(…)`). Die Klassen selbst tragen keine Annotationen; wie
+  sie auf den Draht gehen, legt `StepDataWireFormat` einmal für alle fest, und ein doppelt
+  vergebener `kind` verhindert den Start. Eine zentrale Liste gibt es nicht. Ein Client muss mit
+  einem unbekannten `kind` rechnen und es überspringen, statt abzubrechen.
 - Das Unterscheidungsmerkmal heißt in allen übertragenen Daten `kind`, auch bei `Prompt` und
   `KobilUnlockCredential`. `@t` gibt es nur intern für die gespeicherten Zustände der
   Journeys: Der TypeScript-Generator kann diesen Namen nicht abbilden und macht daraus `t`.

@@ -1,11 +1,11 @@
 package com.example.identity.tools.auth_qr
 
+import com.example.identity.tools.auth_qr.api.v1.QrStepData
 import com.example.identity.contract.tool_api.FactorType.KNOWLEDGE
 import com.example.identity.contract.tool_api.FactorType.POSSESSION
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
 import java.time.Duration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -27,7 +27,7 @@ internal const val APPROVE_QR_TOOL_ID = "approve-qr"
 internal val QrModule = toolModule(
     method = "qr",
     proves = factors(POSSESSION, KNOWLEDGE, upTo = AcrLevel.LOA2),
-    stepData = listOf(QrPairingStep::class),
+    stepData = QrStepData,
 )
 
 internal val EnrollQr = QrModule.enroll(ENROLL_QR_TOOL_ID, optInOnly = true)

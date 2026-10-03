@@ -1,31 +1,33 @@
 package com.example.identity.tools.auth_kobil.api.v1
 
 import com.example.identity.contract.tool_api.StepData
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.fasterxml.jackson.annotation.JsonTypeName
-import io.swagger.v3.oas.annotations.media.Schema
+import com.example.identity.contract.tool_api.stepData
 
 /**
- * The step shapes `auth_kobil` produces, declared in the producing module (see [StepDataTypes]).
- * `tenantId`/`kobilUserId` go straight to the KOBIL SDK; they identify the user at the provider.
+ * The step shapes `auth_kobil` produces, declared in the producing module. `tenantId`/`kobilUserId`
+ * go straight to the KOBIL SDK; they identify the user at the provider.
  */
+internal val KobilStepData = mapOf(
+    "kobil-unlock" to stepData<KobilUnlockStep>(
+        "The app must unlock the backend-held PIN; these are the accepted ways.",
+        "unlockOptions" to listOf("biometric", "password"),
+    ),
+    "kobil-otp" to stepData<KobilOtpStep>(
+        "Waiting for the one-time password the KOBIL SDK produced.",
+        "missingFields" to listOf("otp"),
+    ),
+    "kobil-activation" to stepData<KobilActivationStep>("What the KOBIL SDK needs to activate this device."),
+)
 
 /** The app must unlock the stored PIN before it can be used - these are the ways it may. */
-@JsonTypeName("kobil-unlock")
-@Schema(description = "The app must unlock the backend-held PIN; these are the accepted ways.")
 data class KobilUnlockStep(
-    @field:Schema(example = "[\"biometric\", \"password\"]")
     val unlockOptions: List<String>,
     val tenantId: String,
     val kobilUserId: String
 ) : StepData
 
 /** The SDK produced an OTP and it is now expected back. */
-@JsonTypeName("kobil-otp")
-@Schema(description = "Waiting for the one-time password the KOBIL SDK produced.")
-@JsonInclude(JsonInclude.Include.NON_NULL)
 data class KobilOtpStep(
-    @field:Schema(example = "[\"otp\"]")
     val missingFields: List<String>,
     val tenantId: String,
     val kobilUserId: String,
@@ -40,9 +42,6 @@ data class KobilOtpStep(
  * Setting up a KOBIL binding: everything the SDK's activation call needs. `pin` and `unlockSecret`
  * go to the SDK, the user never sees either (ADR-21/ADR-22). They are part of the step, not the demo block.
  */
-@JsonTypeName("kobil-activation")
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(description = "What the KOBIL SDK needs to activate this device.")
 data class KobilActivationStep(
     val missingFields: List<String>,
     val tenantId: String,

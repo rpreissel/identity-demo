@@ -33,6 +33,3 @@ sealed interface KobilUnlockCredential {
         override val userVerification get() = UserVerification.PIN
     }
 }
-
-/** Body of `POST .../auth-kobil/pin-releases`. */
-data class KobilPinReleaseRequest(val unlock: KobilUnlockCredential)

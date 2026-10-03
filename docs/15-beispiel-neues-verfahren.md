@@ -70,7 +70,7 @@ internal const val AUTH_TOTP_LOOKUP_TOOL_ID = "auth-totp-lookup"
 internal val TotpModule = toolModule(
     method = "totp",
     proves = factors(POSSESSION, upTo = AcrLevel.LOA1),
-    stepData = listOf(TotpSetupStep::class),
+    stepData = TotpStepData,
 )
 
 internal val EnrollTotp = TotpModule.enroll(ENROLL_TOTP_TOOL_ID)
@@ -95,7 +95,7 @@ Journeys, die nach Rolle auswählen.
 | `internal/…ToolHandler.kt` | `start`, `patch`, `read`; gibt ein `ToolOutcome` zurück | `tools/auth_kobil/internal/enrollkobil/`, `…/authkobil/` |
 | `internal/…Flow.kt` (optional) | die Entscheidung als reine Funktion, ohne Spring | `tools/auth_sms/internal/authsms/AuthSmsFlow.kt` |
 | `api/v1/…ToolController.kt` | ein Controller je Tool (ADR-1) | `tools/auth_kobil/api/v1/`, `tools/ident_nect/api/v1/` |
-| `api/v1/…StepData.kt` | die Formen von `stepData`, im Modul unter `stepData` genannt | `tools/auth_kobil/api/v1/KobilStepData.kt` |
+| `api/v1/…StepData.kt` | die Formen von `stepData` als einfache Datenklassen, darüber ihre Deklaration (`kind`, Beschreibung, Beispiele), die das Modul unter `stepData` nennt | `tools/auth_kobil/api/v1/KobilStepData.kt` |
 | `internal/…Enrollment.kt` + Repository | das gespeicherte Verfahren in `<modul>.enrollment`, mit der Konstante für den Enrollment-Typ | `tools/auth_kobil/internal/KobilEnrollment.kt` |
 | `internal/…EnrollmentCleanup.kt` | löscht das Verfahren mit dem Konto | `tools/auth_sms/internal/AuthSmsEnrollmentCleanup.kt` |
 | `internal/…RetentionJob.kt` | `ToolSessionSweeper` für alte Tool-Sitzungen | `tools/auth_kobil/internal/AuthKobilRetentionJob.kt` |

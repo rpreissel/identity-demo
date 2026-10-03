@@ -71,7 +71,6 @@ components:
           example:
           - otp
           items:
-            example: '["otp"]'
             type: string
           type: array
         tenantId:
@@ -123,7 +122,6 @@ components:
           - biometric
           - password
           items:
-            example: '["biometric","password"]'
             type: string
           type: array
       required:

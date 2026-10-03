@@ -33,6 +33,9 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.envelope.API_V1
 
+/** Body of `POST .../auth-kobil/pin-releases`. */
+data class KobilPinReleaseRequest(val unlock: KobilUnlockCredential)
+
 data class AuthKobilPatchRequest(
     /** The one-time password KOBIL handed the app - a reference to an assertion, not the assertion. */
     @field:Schema(example = "48210937")

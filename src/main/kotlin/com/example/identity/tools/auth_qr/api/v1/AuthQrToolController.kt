@@ -28,6 +28,14 @@ import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.envelope.API_V1
 
 /**
+ * The browser's PATCH on `auth-qr` and `auth-qr-lookup` (the lookup controller uses it too):
+ * empty while polling, then the confirmation code.
+ */
+data class QrConfirmationCodeRequest(
+    @field:Schema(example = "482913") val confirmationCode: String? = null
+)
+
+/**
  * toolId=auth-qr. One controller owns activation, PATCH and GET for this tool
  * (docs/08-projektrahmen.md A11) - no generic toolId dispatch anywhere.
  */

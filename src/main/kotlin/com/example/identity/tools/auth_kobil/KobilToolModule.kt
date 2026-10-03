@@ -1,14 +1,12 @@
 package com.example.identity.tools.auth_kobil
 
+import com.example.identity.tools.auth_kobil.api.v1.KobilStepData
 import com.example.identity.contract.tool_api.FactorType.INHERENCE
 import com.example.identity.contract.tool_api.FactorType.KNOWLEDGE
 import com.example.identity.contract.tool_api.FactorType.POSSESSION
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.tools.auth_kobil.api.v1.KobilActivationStep
-import com.example.identity.tools.auth_kobil.api.v1.KobilOtpStep
-import com.example.identity.tools.auth_kobil.api.v1.KobilUnlockStep
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.modulith.ApplicationModule
@@ -30,7 +28,7 @@ internal val KobilModule = toolModule(
     proves = factors(POSSESSION, KNOWLEDGE, INHERENCE, upTo = AcrLevel.LOA2),
     demoOnly = "Die KOBIL-Gegenstelle ist simuliert (kobil); was ein echter KOBIL-Server zusagt, steht noch aus",
     onePerDevice = true,
-    stepData = listOf(KobilUnlockStep::class, KobilOtpStep::class, KobilActivationStep::class),
+    stepData = KobilStepData,
 )
 
 internal val EnrollKobil = KobilModule.enroll(ENROLL_KOBIL_TOOL_ID, startStep = "activate")
