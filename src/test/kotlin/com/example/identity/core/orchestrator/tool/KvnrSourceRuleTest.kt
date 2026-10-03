@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.tool
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -29,8 +30,8 @@ class KvnrSourceRuleTest : BehaviorSpec({
     given("an identification that reads a KVNR itself") {
         `when`("the tool is registered on its module") {
             val result = runCatching {
-                toolModule(method = "card-reader", proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA2))
-                    .identify("ident-card-reader", also = setOf(AttributeType.KVNR))
+                toolModule(method = "card-reader", name = Text("Test"), proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA2))
+                    .identify("ident-card-reader", hint = Text("Test"), also = setOf(AttributeType.KVNR))
             }
 
             then("it is refused") {
@@ -43,8 +44,8 @@ class KvnrSourceRuleTest : BehaviorSpec({
         `when`("the tool is registered on its module") {
             then("it is accepted") {
                 shouldNotThrowAny {
-                    toolModule(method = "register-lookup", proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA2))
-                        .identify("ident-register-lookup", also = setOf(AttributeType.KVNR), vouchedBy = ClaimSource.PERSON_DIRECTORY)
+                    toolModule(method = "register-lookup", name = Text("Test"), proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA2))
+                        .identify("ident-register-lookup", hint = Text("Test"), also = setOf(AttributeType.KVNR), vouchedBy = ClaimSource.PERSON_DIRECTORY)
                 }
             }
         }

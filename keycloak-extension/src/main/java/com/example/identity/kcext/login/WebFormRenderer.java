@@ -4,6 +4,7 @@ import com.example.identity.kcext.client.KcTexts;
 import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.client.OrchestratorSettings;
 import com.example.identity.kcext.client.OrchestratorTexts;
+import com.example.identity.kcext.client.OrchestratorToolCatalog;
 import com.example.identity.kcext.resource.QrWaitStatusResourceProvider;
 import com.example.identity.kcext.webtool.WebToolRenderContext;
 import com.example.identity.kcext.webtool.WebToolRenderer;
@@ -52,7 +53,7 @@ final class WebFormRenderer {
         Map<String, String> optionLabels = new LinkedHashMap<>();
         for (String option : options) {
             WebToolRendererFactory factory = rendererFactoryFor(session, option);
-            if (factory != null) optionLabels.put(option, KcTexts.resolve(session, factory.title()));
+            if (factory != null) optionLabels.put(option, OrchestratorToolCatalog.name(session, option));
         }
         // The backend names each selection screen (docs/04-orchestrierung.md #4); these are
         // different screens and must not collapse into one generic heading.
@@ -87,8 +88,8 @@ final class WebFormRenderer {
             var built = withTexts(session, form, factory != null ? factory.template() : null)
                     .setAuthenticationSession(authSession)
                     .setAttribute("toolId", next.toolId())
-                    .setAttribute(PAGE_TITLE, factory != null ? KcTexts.resolve(session, factory.title()) : next.toolId())
-                    .setAttribute("hint", factory != null ? KcTexts.resolve(session, factory.hint()) : "");
+                    .setAttribute(PAGE_TITLE, OrchestratorToolCatalog.name(session, next.toolId()))
+                    .setAttribute("hint", OrchestratorToolCatalog.hint(session, next.toolId()));
             if (effectiveError != null) built.setError(effectiveError);
             WebToolRenderContext ctx = new WebToolRenderContext(
                     next.toolId(), next.step(), response.stepData(), response.demo(), effectiveError,
@@ -152,6 +153,7 @@ final class WebFormRenderer {
             row.put("id", m.id());
             row.put("method", m.method());
             row.put("label", m.label());
+            row.put("methodName", OrchestratorToolCatalog.methodName(session, m.method()));
             rows.add(row);
         }
         var built = withTexts(session, form, MANAGE_METHODS_PAGE)

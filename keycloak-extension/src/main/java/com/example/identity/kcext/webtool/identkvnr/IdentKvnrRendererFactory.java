@@ -1,6 +1,5 @@
 package com.example.identity.kcext.webtool.identkvnr;
 
-import com.example.identity.kcext.client.KcText;
 import com.example.identity.kcext.webtool.AbstractWebToolRendererFactory;
 import com.example.identity.kcext.webtool.WebToolRenderContext;
 import jakarta.ws.rs.core.Response;
@@ -18,16 +17,6 @@ public class IdentKvnrRendererFactory extends AbstractWebToolRendererFactory {
     @Override
     public String getId() {
         return PROVIDER_ID;
-    }
-
-    @Override
-    public KcText title() {
-        return KcText.t("Versichertennummer");
-    }
-
-    @Override
-    public KcText hint() {
-        return KcText.t("Konto der eigenen Person im Personenverzeichnis zuordnen");
     }
 
     @Override

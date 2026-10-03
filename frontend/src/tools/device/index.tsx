@@ -6,12 +6,10 @@ import { attemptError } from '../stepData'
 import { t } from '../../texts'
 
 const ICON = '📲'
-const LABEL = t('Gerät')
-const HINT = t('Geräteeigener Schlüssel + PIN/Biometrie')
 
 export const enrollDeviceTool: ToolModule = {
   toolId: 'enroll-device',
-  meta: { icon: ICON, label: LABEL, hint: HINT, enrolls: 'device' },
+  meta: { icon: ICON },
   explain: () => ({
     does: t('Die App erzeugt einen Schlüssel, der das Gerät nie verlässt. Das Tool bindet dessen öffentlichen Teil an Ihr Konto - danach erkennt der Orchestrator dieses Gerät wieder.'),
     actor: t('Die App mit dem Geräteschlüssel, geprüft vom Tool enroll-device im Orchestrator.'),
@@ -35,7 +33,7 @@ export const enrollDeviceTool: ToolModule = {
 
 export const authDeviceTool: ToolModule = {
   toolId: 'auth-device',
-  meta: { icon: ICON, label: LABEL, hint: HINT },
+  meta: { icon: ICON },
   explain: () => ({
     does: t('Die App beweist mit dem Schlüssel dieses Geräts, dass es das an das Konto gebundene Gerät ist. Eine Eingabe braucht es dafür nicht.'),
     actor: t('Die App signiert, das Tool auth-device im Orchestrator prüft die Signatur.'),

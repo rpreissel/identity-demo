@@ -283,8 +283,8 @@ Haken und „Bereits eingerichtet“, und ist nicht wählbar. So rutschen die Ze
 oben unter den Finger. Welche Verfahren eingerichtet sind, liest die App aus `activeMethods` des
 Kontos. Das Geräte-Verfahren bietet das Backend weiter an, weil ein Konto mehrere Geräte haben kann;
 die App markiert es als eingerichtet, wenn **dieses** Gerät es schon trägt
-(`deviceLink.boundCredentials`). Welches Verfahren ein Tool einrichtet, sagt sein Modul selbst
-(`meta.enrolls`).
+(`deviceLink.boundCredentials`). Welches Verfahren ein Tool einrichtet, sagt der Tool-Katalog
+des Backends (Rolle `ENROLLMENT` und `method`, `enrollmentToolFor`).
 
 ### Nach der Anmeldung: Profil und Sicherheit
 
@@ -376,8 +376,10 @@ das Formular `IdentFscForm`.
 
 Auf einer Auswahlseite (`selectMethod`) füllt das Frontend die Auswahl aus `stepData.options`; die
 Einträge sind vollständige `toolId`-Werte. `SelectMethodView` macht daraus Auswahlkarten und holt
-dafür Symbol, Kurzname und Erklärung aus dem `meta` des jeweiligen Tool-Moduls (`metaFor`). Die
-gewählte `toolId` geht unverändert weiter.
+dafür über `metaFor` das Symbol aus dem `meta` des Tool-Moduls, Kurzname und Erklärung aus dem
+Tool-Katalog des Backends (`GET /tools/catalog`, `toolCatalog.ts`). Der Katalog wird wie die Texte
+vor dem Code der App geladen (`main.tsx`); Name und Hinweis stehen nur in der Moduldeklaration im
+Backend. Die gewählte `toolId` geht unverändert weiter.
 
 Ein `next.step` benennt eine fachliche Phase, keinen Bildschirm. Wie viele Bildschirme ein Tool
 daraus macht, entscheidet das Frontend anhand von `stepData.missingFields` und `PATCH`-Anfragen mit

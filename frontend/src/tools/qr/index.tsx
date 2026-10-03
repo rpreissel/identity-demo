@@ -10,7 +10,7 @@ import { t } from '../../texts'
 
 export const enrollQr: ToolModule = {
   toolId: 'enroll-qr',
-  meta: { icon: '📷', label: t('QR-Login'), hint: t('Web-Login per QR-Code erlauben'), enrolls: 'qr' },
+  meta: { icon: '📷' },
   explain: () => ({
     does: t('Erlaubt, dass Sie sich im Browser per QR-Code anmelden. Freigegeben wird eine solche Anmeldung dann mit diesem Gerät.'),
     actor: t('Sie bestätigen in der App, das Tool enroll-qr richtet es ein.'),
@@ -25,7 +25,7 @@ export const enrollQr: ToolModule = {
 
 export const confirmQrLogin: ToolModule = {
   toolId: 'approve-qr',
-  meta: { icon: '📷', label: t('QR-Login'), hint: t('Web-Login per QR bestätigen') },
+  meta: { icon: '📷' },
   explain: (step) =>
     step === 'confirm'
       ? {

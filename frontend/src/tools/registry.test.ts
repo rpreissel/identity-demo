@@ -3,7 +3,7 @@ import { createElement } from 'react'
 import { InnerBackProvider } from '../components/InnerBack'
 import { describe, expect, it, vi } from 'vitest'
 import type { DpopKeyPair } from '../dpop'
-import { explainToolStep, knownToolIds, metaFor, renderToolStep } from './registry'
+import { enrollmentToolFor, explainToolStep, knownToolIds, metaFor, renderToolStep } from './registry'
 import type { ToolRenderContext } from './types'
 
 function baseCtx(overrides: Partial<ToolRenderContext>): ToolRenderContext {
@@ -36,7 +36,7 @@ describe('knownToolIds', () => {
     expect(new Set(knownToolIds).size).toBe(knownToolIds.length)
   })
 
-  it('every discovered toolId resolves to its own meta, not the unknown-tool fallback', () => {
+  it('every discovered toolId has a name in the catalog, not the unknown-tool fallback', () => {
     for (const toolId of knownToolIds) {
       expect(metaFor(toolId).label).not.toBe(toolId)
     }
@@ -44,12 +44,25 @@ describe('knownToolIds', () => {
 })
 
 describe('metaFor', () => {
-  it('returns the declared meta for a known toolId', () => {
+  // The symbol is the app's own; name and hint come from the backend's catalog (test/setup.ts).
+  it('takes the symbol from the tool module, name and hint from the catalog', () => {
     expect(metaFor('auth-sms-lookup')).toEqual({ icon: '📱', label: 'SMS', hint: 'E-Mail-Adresse + SMS-Code' })
+  })
+
+  it('names the method an enrollment tool sets up', () => {
+    expect(metaFor('enroll-sms').enrolls).toBe('sms')
+    expect(metaFor('auth-sms').enrolls).toBeUndefined()
   })
 
   it('falls back to a generic meta for an unknown toolId', () => {
     expect(metaFor('not-a-real-tool')).toEqual({ icon: '🔐', label: 'not-a-real-tool', hint: '' })
+  })
+})
+
+describe('enrollmentToolFor', () => {
+  it('finds the tool that sets up a method in the catalog', () => {
+    expect(enrollmentToolFor('password')).toBe('enroll-password')
+    expect(enrollmentToolFor('not-a-method')).toBeUndefined()
   })
 })
 

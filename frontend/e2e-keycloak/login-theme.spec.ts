@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 import { adminHeaders, MADE_WITH, ORCHESTRATOR, switchLoa1Login, switchTheme, THEMES, type Theme } from './admin'
+import { ui } from '../e2e/texts'
 import { kc } from './texts'
 
 /**
@@ -84,7 +85,7 @@ function visibleButton(page: Page, name: string) {
 async function identifyTestPerson(page: Page) {
   await page.goto(loginUrl())
   await page.getByRole('link', { name: kc('Registrieren') }).click()
-  await page.getByRole('button', { name: kc('Freischaltcode'), exact: true }).click()
+  await page.getByRole('button', { name: ui('Freischaltcode'), exact: true }).click()
   await visibleButton(page, kc('Weiter zur Freischaltcode-Eingabe')).click()
   await expect(page.getByLabel(kc('Freischaltcode'))).not.toHaveValue('')
   await visibleButton(page, kc('Identifizieren')).click()
@@ -99,7 +100,7 @@ async function confirmEmailAndSetPassword(page: Page) {
   await page.getByLabel(kc('Bestätigungscode')).fill(await demoValue(page, 'Demo-Code: {wert}'))
   await visibleButton(page, kc('Weiter')).click()
 
-  await visibleButton(page, kc('Passwort')).click()
+  await visibleButton(page, ui('Passwort')).click()
   registeredPassword = await demoValue(page, 'Demo-Passwort: {wert}')
   await page.getByLabel(kc('Neues Passwort')).fill(registeredPassword)
   await visibleButton(page, kc('Weiter')).click()
@@ -130,7 +131,7 @@ async function registerTestPerson(page: Page) {
  * the one the suite registered.
  */
 async function signInByPassword(page: Page, theme: Theme) {
-  await page.getByRole('button', { name: kc('Passwort'), exact: true }).click()
+  await page.getByRole('button', { name: ui('Passwort'), exact: true }).click()
   await expectDrawnBy(page, theme)
   await expect(page.getByLabel(kc('E-Mail-Adresse'))).not.toHaveValue('')
   await page.getByLabel(kc('Passwort'), { exact: true }).fill(registeredPassword)
@@ -174,7 +175,7 @@ for (const theme of THEMES) {
     await switchTheme(request, theme)
     await page.goto(loginUrl())
     await page.getByRole('link', { name: kc('Registrieren') }).click()
-    await page.getByRole('button', { name: kc('Freischaltcode'), exact: true }).click()
+    await page.getByRole('button', { name: ui('Freischaltcode'), exact: true }).click()
 
     const personal = page.getByText(kc('Damit Sie Ihren Freischaltcode gleich eingeben können, brauchen wir noch diese Daten:'))
     const code = page.getByText(kc('Geben Sie den Freischaltcode ein, den wir Ihnen per Brief geschickt haben.'))
@@ -224,7 +225,7 @@ for (const theme of THEMES) {
   test(`${MADE_WITH[theme]}: the QR waiting page asks in the background and does not reload`, async ({ page, request }) => {
     await switchTheme(request, theme)
     await page.goto(loginUrl())
-    await page.getByRole('button', { name: kc('Mit App anmelden'), exact: true }).click()
+    await page.getByRole('button', { name: ui('Mit App anmelden'), exact: true }).click()
     await expectDrawnBy(page, theme)
 
     const pairingCode = page.locator('.orchestrator-qr-code, .orc-qr-code')
@@ -247,8 +248,8 @@ for (const theme of THEMES) {
 
     // "Abbrechen" still leaves the page, back to the selection - without the method just declined.
     await page.getByRole('button', { name: kc('Abbrechen') }).click()
-    await expect(page.getByRole('button', { name: kc('Passwort'), exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: kc('Mit App anmelden'), exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: ui('Passwort'), exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: ui('Mit App anmelden'), exact: true })).toHaveCount(0)
   })
 }
 

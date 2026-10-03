@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_sms
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.FactorType.POSSESSION
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -24,12 +25,17 @@ internal const val AUTH_SMS_LOOKUP_TOOL_ID = "auth-sms-lookup"
  */
 internal val SmsModule = toolModule(
     method = "sms",
+    name = Text("SMS"),
     proves = factors(POSSESSION, upTo = AcrLevel.LOA1),
 )
 
-internal val EnrollSms = SmsModule.enroll(ENROLL_SMS_TOOL_ID, claims = setOf(PHONE_NUMBER))
-internal val AuthSms = SmsModule.login(AUTH_SMS_TOOL_ID)
-internal val AuthSmsLookup = SmsModule.lookupLogin(AUTH_SMS_LOOKUP_TOOL_ID)
+internal val EnrollSms = SmsModule.enroll(
+    ENROLL_SMS_TOOL_ID,
+    hint = Text("Code an eine Telefonnummer"),
+    claims = setOf(PHONE_NUMBER),
+)
+internal val AuthSms = SmsModule.login(AUTH_SMS_TOOL_ID, hint = Text("Code an die hinterlegte Telefonnummer"))
+internal val AuthSmsLookup = SmsModule.lookupLogin(AUTH_SMS_LOOKUP_TOOL_ID, hint = Text("E-Mail-Adresse + SMS-Code"))
 
 /**
  * A method module talks to the orchestrator through tool_api only, never to account or another

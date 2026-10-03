@@ -110,11 +110,12 @@ Markierung, das Werkzeug zum Einsammeln und der Ort des Wortlauts:
 - **Ohne Wortlaut zeigt das Frontend die Vorlage** (anders als bei Referenzen aus dem Backend kennt es
   sie). Unit-Tests ohne geladenes Bundle prüfen deshalb weiterhin gegen die Vorlagen.
 - **Seiten laden die Texte vor dem Code der App** (`main.tsx` lädt die App erst nach `loadAllTexts`),
-  damit `t()` auch auf der obersten Ebene eines Moduls (Beschriftungen der Tools) den Wortlaut findet.
+  damit `t()` auch auf der obersten Ebene eines Moduls (Konstanten wie `SKIP_LABEL`) den Wortlaut findet.
 - **Keycloak wählt die Sprache selbst** (Realm de/en, `theme.properties` `locales=de,en`); `KcTexts` holt den
   Wortlaut aus den Messages des Themes und setzt Platzhalter selbst ein, ohne MessageFormat.
-- **Gleiche Vorlage, gleicher Hash, gleicher Wortlaut:** Ein Tool heißt in App und Login-Seite wortgleich
-  (`KcTextCatalogTest.toolNamesAreTheAppsOwn`), und `TextTranslationsTest` prüft, dass eine ID in allen
-  Bundles einer Sprache gleich formuliert ist.
+- **Gleiche Vorlage, gleicher Hash, gleicher Wortlaut:** `TextTranslationsTest` prüft, dass eine ID in
+  allen Bundles einer Sprache gleich formuliert ist. Name und Hinweis eines Tools stehen nur in seiner
+  Moduldeklaration im Backend (`toolModule(name = …)`, `hint = …`); App und Login-Seite holen sie aus
+  `GET /tools/catalog` und lösen sie im Bundle `app` auf.
 - Nicht markiert sind Oberflächen für Entwickler (Debug-Seitenleiste, Journey-Trace, `logEvent`), Code,
   Befehle, Pfade und Demo-Daten. Sie stehen als Werte von Platzhaltern im Satz.

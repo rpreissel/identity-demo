@@ -7,11 +7,10 @@ import { attemptError } from '../stepData'
 import { t } from '../../texts'
 
 const ICON = '🔑'
-const LABEL = t('Passwort')
 
 export const enrollPasswordTool: ToolModule = {
   toolId: 'enroll-password',
-  meta: { icon: ICON, label: LABEL, hint: t('Eigenes Passwort festlegen'), enrolls: 'password' },
+  meta: { icon: ICON },
   explain: () => ({
     does: t('Sie legen ein Passwort fest. Das Tool speichert davon nur einen Hash, nie das Passwort selbst.'),
     actor: t('Sie in der App, danach das Tool enroll-password im Orchestrator.'),
@@ -26,7 +25,7 @@ export const enrollPasswordTool: ToolModule = {
 
 export const authPassword: ToolModule = {
   toolId: 'auth-password',
-  meta: { icon: ICON, label: LABEL, hint: t('Mit dem hinterlegten Passwort') },
+  meta: { icon: ICON },
   explain: () => ({
     does: t('Das Passwort wird mit dem gespeicherten Hash verglichen.'),
     actor: t('Sie geben das Passwort ein, das Tool auth-password prüft es.'),
@@ -41,7 +40,7 @@ export const authPassword: ToolModule = {
 
 export const authPasswordLookup: ToolModule = {
   toolId: 'auth-password-lookup',
-  meta: { icon: ICON, label: LABEL, hint: t('E-Mail-Adresse + Passwort') },
+  meta: { icon: ICON },
   explain: () => ({
     does: t('Die E-Mail-Adresse sucht das Konto, das Passwort beweist, dass es Ihres ist - beides in einem Aufruf. Die Antwort verrät nicht, ob es die Adresse gibt.'),
     actor: t('Sie in der App, danach das Tool auth-password-lookup im Orchestrator.'),

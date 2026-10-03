@@ -63,27 +63,6 @@ class KcTextCatalogTest {
         assertTrue(failures.isEmpty(), String.join("\n", failures));
     }
 
-    /**
-     * A tool is named the same on the login page and in the app: each renderer factory's title and
-     * hint is word for word a frontend template - same template, same id, one wording per language.
-     */
-    @Test
-    void toolNamesAreTheAppsOwn() throws Exception {
-        String frontendCatalog = java.nio.file.Files.readString(java.nio.file.Path.of(
-                System.getProperty("texts.frontendCatalog", "../frontend/build/texts-catalog.json")));
-        Set<String> frontendIds = new TreeSet<>();
-        Matcher id = Pattern.compile("\"id\"\\s*:\\s*\"([a-z0-9-]+)\"").matcher(frontendCatalog);
-        while (id.find()) frontendIds.add(id.group(1));
-        List<String> differing = new ArrayList<>();
-        for (KcTextCatalog.Entry entry : KcTextCatalog.extension().entries.values()) {
-            boolean toolName = entry.locations().stream().anyMatch(l -> l.contains("RendererFactory.title") || l.contains("RendererFactory.hint"));
-            if (toolName && !frontendIds.contains(entry.id())) differing.add("\"" + entry.template() + "\" (" + entry.locations() + ")");
-        }
-        // auth-qr/auth-qr-lookup and auth-invite-lookup exist only on the web channel - the app has no screen for them.
-        differing.removeIf(d -> d.contains("AuthQrRendererFactory") || d.contains("AuthQrLookupRendererFactory")
-                || d.contains("AuthInviteRendererFactory"));
-        assertEquals(List.of(), differing, "tool title/hint not worded like the app's - align the templates");
-    }
 
     private static Set<String> placeholders(String wording) {
         Set<String> names = new TreeSet<>();

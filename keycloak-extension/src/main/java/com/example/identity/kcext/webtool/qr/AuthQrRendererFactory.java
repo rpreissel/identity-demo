@@ -1,6 +1,5 @@
 package com.example.identity.kcext.webtool.qr;
 
-import com.example.identity.kcext.client.KcText;
 /** Web-channel counterpart of `auth-qr` - account already known via the channel (step-up/re-auth). */
 public class AuthQrRendererFactory extends QrWaitRendererFactory {
 
@@ -11,13 +10,4 @@ public class AuthQrRendererFactory extends QrWaitRendererFactory {
         return PROVIDER_ID;
     }
 
-    @Override
-    public KcText title() {
-        return KcText.t("Mit App bestätigen");
-    }
-
-    @Override
-    public KcText hint() {
-        return KcText.t("QR-Code mit der App scannen oder Code manuell in der App eingeben");
-    }
 }

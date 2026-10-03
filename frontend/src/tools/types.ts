@@ -36,20 +36,28 @@ export interface ToolRenderContext {
   onSkip?: () => void
 }
 
-export interface ToolMeta {
+/**
+ * What only the app adds to a tool: its symbol, and how its way out is worded. Name and hint come
+ * from the backend's catalog (toolCatalog.ts); [metaFor] puts the two together.
+ */
+export interface ToolModuleMeta {
   icon: string
-  label: string
-  hint: string
   /**
    * Label for the abandon button when "Zurück" is the wrong word: an optional step rather than one
    * of several ways (ident-kvnr: "jetzt nicht", the run carries on without the register binding).
    * Only wording; the button is the same abandon (DELETE .../tools/{id}/{toolId}).
    */
   skipLabel?: string
+}
+
+/** A tool as the app shows it: its own [ToolModuleMeta] plus name and hint from the catalog. */
+export interface ToolMeta extends ToolModuleMeta {
+  label: string
+  hint: string
   /**
-   * The account method an enrollment tool sets up (`ActiveMethodView.method`). With it the choice
-   * of methods shows one that is already set up in its place, marked as such, instead of dropping
-   * it (docs/10-frontend.md, "Auswahl der Verfahren").
+   * The account method an enrollment tool sets up (`ActiveMethodView.method`), from the catalog.
+   * With it the choice of methods shows one that is already set up in its place, marked as such,
+   * instead of dropping it (docs/10-frontend.md, "Auswahl der Verfahren").
    */
   enrolls?: string
 }
@@ -66,7 +74,7 @@ export interface StepExplanation {
 /** One toolId's registration: its display meta and its own step -> form rendering. */
 export interface ToolModule {
   toolId: string
-  meta: ToolMeta
+  meta: ToolModuleMeta
   /** Required, so a new tool cannot leave the demo column silent about its steps. */
   explain(step: string): StepExplanation
   /** Returns null when `ctx.step` isn't one of this tool's own steps. */

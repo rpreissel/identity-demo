@@ -1,4 +1,6 @@
 import { createElement, type ReactNode } from 'react'
+import { resolveText } from '../texts'
+import { catalogEntry, enrollmentToolOf } from '../toolCatalog'
 import type { StepExplanation, ToolMeta, ToolModule, ToolRenderContext } from './types'
 
 /**
@@ -18,13 +20,25 @@ const BY_ID: Record<string, ToolModule> = Object.fromEntries(TOOL_MODULES.map((m
  */
 export const knownToolIds: string[] = TOOL_MODULES.map((module) => module.toolId)
 
+/**
+ * A tool as the app shows it: its symbol from its own module, name and hint from the backend's
+ * catalog, declared once in the tool's module there (docs/03-tool-architektur.md #2). A tool the
+ * catalog does not know shows its id.
+ */
 export function metaFor(toolId: string): ToolMeta {
-  return BY_ID[toolId]?.meta ?? { icon: '🔐', label: toolId, hint: '' }
+  const own = BY_ID[toolId]?.meta ?? { icon: '🔐' }
+  const entry = catalogEntry(toolId)
+  return {
+    ...own,
+    label: entry ? resolveText(entry.name) : toolId,
+    hint: entry ? resolveText(entry.hint) : '',
+    enrolls: entry?.role === 'ENROLLMENT' ? entry.method : undefined,
+  }
 }
 
 /** The enrollment tool that sets up `method`, for showing an account's method like its choice. */
 export function enrollmentToolFor(method: string): string | undefined {
-  return TOOL_MODULES.find((module) => module.meta.enrolls === method)?.toolId
+  return enrollmentToolOf(method)
 }
 
 /** What `step` of `toolId` does and who is at it - undefined for a tool this client doesn't know. */

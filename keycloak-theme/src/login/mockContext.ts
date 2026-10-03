@@ -53,8 +53,8 @@ const { getKcContextMock } = createGetKcContextMock({
     },
     'orchestrator-manage-methods.ftl': {
       methods: [
-        { id: '1', method: 'PASSWORD', label: 'Passwort' },
-        { id: '2', method: 'SMS', label: 'SMS an +49 151 ••• 67' },
+        { id: '1', method: 'password', methodName: 'Passwort' },
+        { id: '2', method: 'sms', label: 'SMS an +49 151 ••• 67', methodName: 'SMS' },
       ],
     },
     'orchestrator-tool.ftl': {

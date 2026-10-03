@@ -157,8 +157,24 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
                 val appEnabledAfter = smsEnabledIn("APP")
                 val webEnabledAfter = smsEnabledIn("WEB")
 
-                then("the catalog lists the tool") {
+                then("the catalog lists the tool, named as its module declares it") {
                     catalogEntries.map { it["toolId"] } shouldContain "auth-sms"
+                    val authSms = catalogEntries.single { it["toolId"] == "auth-sms" }
+                    (authSms["name"] as Map<*, *>)["key"] shouldBe com.example.identity.contract.texts.Text.idOf("SMS")
+                    (authSms["hint"] as Map<*, *>)["key"] shouldBe
+                        com.example.identity.contract.texts.Text.idOf("Code an die hinterlegte Telefonnummer")
+                }
+                then("the frontend's unit tests use this very catalog (frontend/src/tools/catalog.fixture.json)") {
+                    val fixture = tools.jackson.module.kotlin.jacksonObjectMapper().readValue(
+                        java.io.File("frontend/src/tools/catalog.fixture.json"),
+                        object : tools.jackson.core.type.TypeReference<List<Map<String, String>>>() {},
+                    )
+                    val idOf = com.example.identity.contract.texts.Text::idOf
+                    val asServed = catalogEntries.map { entry ->
+                        listOf(entry["toolId"], entry["method"], entry["role"], (entry["name"] as Map<*, *>)["key"], (entry["hint"] as Map<*, *>)["key"])
+                    }
+                    val asFixture = fixture.map { listOf(it["toolId"], it["method"], it["role"], idOf(it["name"]!!), idOf(it["hint"]!!)) }
+                    asFixture shouldContainExactlyInAnyOrder asServed
                 }
                 then("the admin view reflects the toggle for App and leaves Web untouched") {
                     appEnabledBefore shouldBe true

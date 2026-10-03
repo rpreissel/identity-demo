@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.policy
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.TEST_CLOCK
@@ -40,12 +41,13 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         onePerDevice: Boolean = false, optInEnrollment: Boolean = false,
     ): ToolModule = toolModule(
         method = method,
+        name = Text("Test"),
         proves = Proves(factorTypes, maxAcr),
         onePerDevice = onePerDevice,
     ).apply {
-        if (ToolRole.IDENTIFICATION in roles) identify("ident-$method")
-        if (ToolRole.ENROLLMENT in roles) enroll("enroll-$method", optInOnly = optInEnrollment)
-        if (ToolRole.KNOWN_ACCOUNT_AUTH in roles) login("auth-$method")
+        if (ToolRole.IDENTIFICATION in roles) identify("ident-$method", hint = Text("Test"))
+        if (ToolRole.ENROLLMENT in roles) enroll("enroll-$method", hint = Text("Test"), optInOnly = optInEnrollment)
+        if (ToolRole.KNOWN_ACCOUNT_AUTH in roles) login("auth-$method", hint = Text("Test"))
     }
     fun ToolModule.tool(role: ToolRole): Tool = tools.single { it.role == role }
     /** A catalog of the modules behind [tools]. */

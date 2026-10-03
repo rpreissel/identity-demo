@@ -320,6 +320,16 @@ public final class OrchestratorClient {
 
     private static final String TEXTS_BINDING = "texts";
 
+    /**
+     * GET .../tools/catalog: every tool with its method, role, name and hint (text references in
+     * the app bundle). Signed and verified like the texts: the names tell the user what they choose.
+     */
+    JsonNode toolCatalog() throws IOException, InterruptedException {
+        return send("GET", "/orchestrator/api/v1/tools/catalog", TOOL_CATALOG_BINDING, null);
+    }
+
+    private static final String TOOL_CATALOG_BINDING = "tool-catalog";
+
     private JsonNode send(String method, String path, String channelSessionId, JsonNode body) throws IOException, InterruptedException {
         String url = baseUrl + path;
         String assertion = signer.sign(method, url, channelSessionId);

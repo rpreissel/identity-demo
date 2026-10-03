@@ -1,5 +1,6 @@
 package com.example.identity.tools.ident_fsc
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.FactorType.POSSESSION
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -19,11 +20,13 @@ internal const val IDENT_FSC_TOOL_ID = "ident-fsc"
  */
 internal val FscModule = toolModule(
     method = "fsc",
+    name = Text("Freischaltcode"),
     proves = factors(POSSESSION, upTo = AcrLevel.LOA2),
 )
 
 internal val IdentFsc = FscModule.identify(
     IDENT_FSC_TOOL_ID,
+    hint = Text("Persönliche Daten und Freischaltcode"),
     also = setOf(AttributeType.PERSON_ID, AttributeType.KVNR, AttributeType.MEMBER_NUMBER),
     vouchedBy = ClaimSource.PERSON_DIRECTORY,
 )

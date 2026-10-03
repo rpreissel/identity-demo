@@ -7,12 +7,10 @@ import { attemptError } from '../stepData'
 import { t } from '../../texts'
 
 const ICON = '🛡️'
-const LABEL = t('KOBIL')
-const HINT = t('An das Gerät gebunden über KOBIL, entsperrt per Biometrie oder Passwort')
 
 export const enrollKobilTool: ToolModule = {
   toolId: 'enroll-kobil',
-  meta: { icon: ICON, label: LABEL, hint: HINT, enrolls: 'kobil' },
+  meta: { icon: ICON },
   explain: () => ({
     does: t('Das KOBIL-SDK auf dem Gerät wird aktiviert und an Ihr Konto gebunden. Entsperrt wird es später per Biometrie oder Passwort.'),
     actor: t('Das KOBIL-SDK in der App (simuliert), bestätigt vom Tool enroll-kobil.'),
@@ -36,7 +34,7 @@ export const enrollKobilTool: ToolModule = {
 
 export const authKobilTool: ToolModule = {
   toolId: 'auth-kobil',
-  meta: { icon: ICON, label: LABEL, hint: HINT },
+  meta: { icon: ICON },
   explain: (step) =>
     step === 'otp'
       ? {

@@ -1,6 +1,5 @@
 package com.example.identity.kcext.webtool.invite;
 
-import com.example.identity.kcext.client.KcText;
 import com.example.identity.kcext.webtool.AbstractWebToolRendererFactory;
 import com.example.identity.kcext.webtool.WebToolRenderContext;
 import jakarta.ws.rs.core.Response;
@@ -17,16 +16,6 @@ public class AuthInviteRendererFactory extends AbstractWebToolRendererFactory {
     @Override
     public String getId() {
         return PROVIDER_ID;
-    }
-
-    @Override
-    public KcText title() {
-        return KcText.t("Einmalkennwort");
-    }
-
-    @Override
-    public KcText hint() {
-        return KcText.t("Mit dem Einmalkennwort aus unserem Brief");
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_invite
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.FactorType.POSSESSION
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.factors
@@ -18,10 +19,14 @@ internal const val AUTH_INVITE_LOOKUP_TOOL_ID = "auth-invite-lookup"
  */
 internal val InviteModule = toolModule(
     method = "invite",
+    name = Text("Einmalkennwort"),
     proves = factors(POSSESSION, upTo = AcrLevel.LOA2),
 )
 
-internal val AuthInviteLookup = InviteModule.lookupLogin(AUTH_INVITE_LOOKUP_TOOL_ID)
+internal val AuthInviteLookup = InviteModule.lookupLogin(
+    AUTH_INVITE_LOOKUP_TOOL_ID,
+    hint = Text("Mit dem Einmalkennwort aus unserem Brief"),
+)
 
 /**
  * Process access by one-time password (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). Like

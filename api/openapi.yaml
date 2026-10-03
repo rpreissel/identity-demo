@@ -1054,9 +1054,13 @@ components:
       type: object
     ToolCatalogEntry:
       properties:
+        hint:
+          $ref: '#/components/schemas/TextRef'
         method:
           example: sms
           type: string
+        name:
+          $ref: '#/components/schemas/TextRef'
         role:
           example: KNOWN_ACCOUNT_AUTH
           type: string
@@ -1064,7 +1068,9 @@ components:
           example: auth-sms
           type: string
       required:
+      - hint
       - method
+      - name
       - role
       - toolId
       type: object
@@ -3143,18 +3149,27 @@ paths:
           content:
             application/json:
               example:
-              - method: fsc
+              - hint:
+                  key: persoenliche-daten-und-freischaltcode-8a654d
+                method: fsc
+                name:
+                  key: freischaltcode-1b35c2
                 role: IDENTIFICATION
                 toolId: ident-fsc
-              - method: sms
+              - hint:
+                  key: code-an-eine-telefonnummer-a62b47
+                method: sms
+                name:
+                  key: sms-40b601
                 role: ENROLLMENT
                 toolId: enroll-sms
-              - method: sms
+              - hint:
+                  key: code-an-die-hinterlegte-telefonnummer-76a2d3
+                method: sms
+                name:
+                  key: sms-40b601
                 role: KNOWN_ACCOUNT_AUTH
                 toolId: auth-sms
-              - method: sms
-                role: ACCOUNT_LOOKUP_AUTH
-                toolId: auth-sms-lookup
               schema:
                 items:
                   $ref: '#/components/schemas/ToolCatalogEntry'

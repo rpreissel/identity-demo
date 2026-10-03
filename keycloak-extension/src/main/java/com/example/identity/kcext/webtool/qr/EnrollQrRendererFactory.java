@@ -1,6 +1,5 @@
 package com.example.identity.kcext.webtool.qr;
 
-import com.example.identity.kcext.client.KcText;
 import com.example.identity.kcext.webtool.AbstractWebToolRendererFactory;
 import com.example.identity.kcext.webtool.WebToolRenderContext;
 import jakarta.ws.rs.core.Response;
@@ -18,16 +17,6 @@ public class EnrollQrRendererFactory extends AbstractWebToolRendererFactory {
     @Override
     public String getId() {
         return PROVIDER_ID;
-    }
-
-    @Override
-    public KcText title() {
-        return KcText.t("QR-Login");
-    }
-
-    @Override
-    public KcText hint() {
-        return KcText.t("Web-Login per QR-Code erlauben");
     }
 
     @Override

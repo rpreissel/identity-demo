@@ -1741,10 +1741,22 @@ export interface TokenResponse {
 export interface ToolCatalogEntry {
     /**
      * 
+     * @type {TextRef}
+     * @memberof ToolCatalogEntry
+     */
+    hint: TextRef;
+    /**
+     * 
      * @type {string}
      * @memberof ToolCatalogEntry
      */
     method: string;
+    /**
+     * 
+     * @type {TextRef}
+     * @memberof ToolCatalogEntry
+     */
+    name: TextRef;
     /**
      * 
      * @type {string}

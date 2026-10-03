@@ -8,11 +8,10 @@ import { attemptError } from '../stepData'
 import { t } from '../../texts'
 
 const ICON = '✉️'
-const LABEL = t('E-Mail')
 
 export const confirmEmailTool: ToolModule = {
   toolId: 'confirm-email',
-  meta: { icon: ICON, label: LABEL, hint: t('E-Mail-Adresse bestätigen') },
+  meta: { icon: ICON },
   explain: (step) =>
     step === 'codeInput'
       ? {
@@ -50,7 +49,7 @@ export const confirmEmailTool: ToolModule = {
 
 export const authEmail: ToolModule = {
   toolId: 'auth-email',
-  meta: { icon: ICON, label: LABEL, hint: t('Code an die bestätigte E-Mail-Adresse') },
+  meta: { icon: ICON },
   explain: () => ({
     does: t('Ein Code geht an die bestätigte E-Mail-Adresse des Kontos. Wer ihn eingibt, hat Zugriff auf das Postfach.'),
     actor: t('Sie geben den Code ein, das Tool auth-email prüft ihn.'),
@@ -65,7 +64,7 @@ export const authEmail: ToolModule = {
 
 export const authEmailLookup: ToolModule = {
   toolId: 'auth-email-lookup',
-  meta: { icon: ICON, label: LABEL, hint: t('E-Mail-Adresse + Bestätigungscode') },
+  meta: { icon: ICON },
   explain: (step) =>
     step === 'codeInput'
       ? {
@@ -99,7 +98,7 @@ export const authEmailLookup: ToolModule = {
  */
 export const enrollEmailTool: ToolModule = {
   toolId: 'enroll-email',
-  meta: { icon: ICON, label: LABEL, hint: t('Ihre bestätigte E-Mail-Adresse, ohne Code'), enrolls: 'email' },
+  meta: { icon: ICON },
   explain: () => ({
     does: t('Die schon bestätigte E-Mail-Adresse wird zum Anmeldeverfahren - ohne neuen Code, denn der Nachweis liegt schon vor.'),
     actor: t('Das Tool enroll-email im Orchestrator, ohne Eingabe.'),

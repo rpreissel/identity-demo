@@ -69,13 +69,14 @@ internal const val AUTH_TOTP_LOOKUP_TOOL_ID = "auth-totp-lookup"
 
 internal val TotpModule = toolModule(
     method = "totp",
+    name = Text("Einmalcode-App"),
     proves = factors(POSSESSION, upTo = AcrLevel.LOA1),
     stepData = TotpStepData,
 )
 
-internal val EnrollTotp = TotpModule.enroll(ENROLL_TOTP_TOOL_ID)
-internal val AuthTotp = TotpModule.login(AUTH_TOTP_TOOL_ID)
-internal val AuthTotpLookup = TotpModule.lookupLogin(AUTH_TOTP_LOOKUP_TOOL_ID)
+internal val EnrollTotp = TotpModule.enroll(ENROLL_TOTP_TOOL_ID, hint = Text("Authenticator-App einrichten"))
+internal val AuthTotp = TotpModule.login(AUTH_TOTP_TOOL_ID, hint = Text("Code aus der Authenticator-App"))
+internal val AuthTotpLookup = TotpModule.lookupLogin(AUTH_TOTP_LOOKUP_TOOL_ID, hint = Text("E-Mail-Adresse + Code aus der App"))
 
 @ApplicationModule(id = "auth_totp", allowedDependencies = ["tool_api", "texts"])
 @Configuration
@@ -87,7 +88,8 @@ internal class TotpToolModule {
 
 Eine Liste, in die man das Verfahren einträgt, gibt es nicht. Jedes `ToolModule`-Bean landet von
 selbst im Katalog (`ToolHandlerRegistry`), in `GET /tools/catalog` und in den Kandidatenlisten der
-Journeys, die nach Rolle auswählen.
+Journeys, die nach Rolle auswählen. Name und Hinweis stehen nur hier: App und Login-Seite lesen sie
+aus dem Katalog.
 
 | Datei | Inhalt | Abschreiben von |
 |---|---|---|
@@ -230,15 +232,18 @@ Von Hand:
   Formen sind kompatibel zu v1; `checkPublishedApiCompatibility` bleibt grün
   ([05-api.md](05-api.md) Abschnitt 1).
 - **Frontend.** Je Modul `frontend/src/tools/<name>/index.tsx` mit einem Eintrag je Tool
-  (`toolId`, `meta` mit Name und Hinweis, `explain`, `render`). Die Registry findet die Datei von
+  (`toolId`, `meta` mit dem Symbol, `explain`, `render`); Name und Hinweis kommen aus dem Katalog.
+  Neue Tools gehören auch in `tools/catalog.fixture.json`, den Katalog der Unit-Tests
+  (`ToolAvailabilityIntegrationTest` prüft ihn gegen den echten). Die Registry findet die Datei von
   selbst; einen Routing-Eintrag gibt es nicht. Vorbilder `tools/kobil/` und `tools/nect/`.
 - **Keycloak.** Je Tool, das im Web-Kanal laufen soll, ein `WebToolRendererFactory` in der
   Erweiterung, eingetragen in `META-INF/services`, mit Template für FreeMarker und Keycloakify
   ([ADR-41](adr/ADR-041-keycloakify-neben-freemarker.md)). Vorbilder `webtool/identnect/` und
-  `webtool/sms/`. Was keinen Renderer hat, bietet der Web-Kanal nie an.
+  `webtool/sms/`. Was keinen Renderer hat, bietet der Web-Kanal nie an. Titel und Hinweis der Seite
+  holt die Erweiterung aus dem Katalog (`OrchestratorToolCatalog`), der Renderer nennt sie nicht.
 - **Texte.** Nutzertexte als deutsche Vorlage im Code (`Text("…")`, `t("…")`), danach
   `/translate-texts` ([ADR-33](adr/ADR-033-texte-als-vorlage-im-code.md)). Name und
-  Hinweis eines Tools müssen in App und Login-Seite wörtlich gleich sein.
+  Hinweis eines Tools landen über die Moduldeklaration im Bündel `app`.
 
 ## 7) Was der Build erzwingt
 

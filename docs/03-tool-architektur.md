@@ -332,14 +332,15 @@ internal const val AUTH_KOBIL_TOOL_ID = "auth-kobil"
 
 internal val KobilModule = toolModule(
     method = "kobil",
+    name = Text("KOBIL"),
     proves = factors(POSSESSION, KNOWLEDGE, INHERENCE, upTo = AcrLevel.LOA2),
     demoOnly = "Die KOBIL-Gegenstelle ist simuliert (kobil); …",
     onePerDevice = true,
     stepData = KobilStepData,                  // in api/v1/KobilStepData.kt, neben den Formen
 )
 
-internal val EnrollKobil = KobilModule.enroll(ENROLL_KOBIL_TOOL_ID, startStep = "activate")
-internal val AuthKobil = KobilModule.login(AUTH_KOBIL_TOOL_ID, startStep = "unlock")
+internal val EnrollKobil = KobilModule.enroll(ENROLL_KOBIL_TOOL_ID, hint = Text("An das Gerät gebunden …"), startStep = "activate")
+internal val AuthKobil = KobilModule.login(AUTH_KOBIL_TOOL_ID, hint = Text("An das Gerät gebunden …"), startStep = "unlock")
 ```
 
 Die `toolId` steht als Konstante genau einmal im Modul: Die Deklaration nennt sie, und der
@@ -353,6 +354,7 @@ Was das **Modul** angibt, gilt für alle seine Tools:
 | Angabe | Bedeutung |
 |---|---|
 | `method` | z. B. `"sms"` – verbindet `enroll-sms`, `auth-sms` und `auth-sms-lookup` |
+| `name` | wie Nutzer das Verfahren nennen, z. B. `Text("SMS")`: die einzige Stelle; App und Login-Seite lesen ihn aus `GET /tools/catalog` |
 | `proves` | Faktortypen und Niveau, die ein Nachweis des Verfahrens höchstens erbringt (`factorTypes`, `maxAcr`) |
 | `onePerDevice` | ein Eintrag je Gerät, an dessen Schlüssel gebunden (Abschnitt 1) |
 | `demoOnly` | gesetzt, wenn das Verfahren nur in der Demo taugt (ADR-36) |
@@ -360,7 +362,9 @@ Was das **Modul** angibt, gilt für alle seine Tools:
 
 Jedes **Tool** entsteht über die Fabrik seiner Rolle, eine Funktion am Modul. Die Fabrik legt die
 Rolle fest, nimmt die `toolId` und nur die Angaben, die diese Rolle machen darf, und registriert das
-Tool sofort:
+Tool sofort. Jede Fabrik verlangt außerdem `hint`, ein paar Worte dazu, was das Tool tut
+(„Code an die hinterlegte Telefonnummer“), und nimmt optional `name`: ein eigener Name statt des
+Modulnamens, für ein Tool, das nach seinem Zweck heißt („Mit App anmelden“ für `auth-qr-lookup`).
 
 | Fabrik | Rolle | `toolId` | Eigene Angaben |
 |---|---|---|---|
@@ -377,7 +381,7 @@ macht die schon bestätigte Adresse beim Start sofort zum Anmeldeverfahren. Der 
 ein solches Tool nie von selbst, auch nicht als einzigen Kandidaten, sondern zeigt die Auswahl mit
 diesem Text, der sagt, was die Wahl bewirkt.
 
-Daraus ergeben sich die Felder eines `Tool`: `toolId`, `role`, `startStep` (sonst
+Daraus ergeben sich die Felder eines `Tool`: `toolId`, `role`, `name`, `hint`, `startStep` (sonst
 `role.defaultStartStep`), `claims` (eigene Claims nennen das Tool als Quelle), `requires`,
 `withoutUserStep`, und durchgereicht `method`, `factorTypes`, `maxAcr`, `demoOnly`.
 

@@ -30,6 +30,11 @@ value class ToolId(val value: String) {
 class ToolModule internal constructor(
     /** The method's name, e.g. `"sms"`. What an enrolled credential and an `amr` entry carry. */
     val method: String,
+    /**
+     * What users call the method, e.g. „SMS“ - the one place it is named: the catalog sends it to
+     * the app and the login pages (`GET /tools/catalog`), a credential of the method is listed by it.
+     */
+    val name: Text,
     /** The factor kinds a proof of this method provides at most. */
     val factorTypes: Set<FactorType>,
     /** The highest level a proof of this method can achieve, e.g. [AcrLevel.LOA2]. */
@@ -74,24 +79,28 @@ class ToolModule internal constructor(
      */
     fun identify(
         toolId: String,
+        hint: Text,
         also: Set<AttributeType> = emptySet(),
         vouchedBy: ClaimSource? = null,
         requires: Set<ClaimRequirement> = emptySet(),
         startStep: String? = null,
-    ): Tool = register(toolId, ToolRole.IDENTIFICATION, startStep, IDENTIFICATION_FINDABLE_BY + also, vouchedBy, requires)
+        name: Text? = null,
+    ): Tool = register(toolId, ToolRole.IDENTIFICATION, hint, name, startStep, IDENTIFICATION_FINDABLE_BY + also, vouchedBy, requires)
 
     /** `ident-<method>`: attaches an already attested identity to its register person (e.g. `ident-kvnr`, ADR-18). */
     fun correlate(
         toolId: String,
+        hint: Text,
         claims: Set<AttributeType>,
         vouchedBy: ClaimSource? = null,
         requires: Set<ClaimRequirement> = emptySet(),
         startStep: String? = null,
-    ): Tool = register(toolId, ToolRole.CORRELATION, startStep, claims, vouchedBy, requires)
+        name: Text? = null,
+    ): Tool = register(toolId, ToolRole.CORRELATION, hint, name, startStep, claims, vouchedBy, requires)
 
     /** `confirm-<method>`: attests [claims] the account owns, on this tool's own authority (e.g. `confirm-email`). */
-    fun confirm(toolId: String, claims: Set<AttributeType>, startStep: String? = null): Tool =
-        register(toolId, ToolRole.ATTESTATION, startStep, claims, provesNothing = true)
+    fun confirm(toolId: String, hint: Text, claims: Set<AttributeType>, startStep: String? = null, name: Text? = null): Tool =
+        register(toolId, ToolRole.ATTESTATION, hint, name, startStep, claims, provesNothing = true)
 
     /**
      * `enroll-<method>`: creates a credential. [claims] are asserted on this tool's own authority.
@@ -100,35 +109,41 @@ class ToolModule internal constructor(
      */
     fun enroll(
         toolId: String,
+        hint: Text,
         claims: Set<AttributeType> = emptySet(),
         requires: Set<ClaimRequirement> = emptySet(),
         startStep: String? = null,
         withoutUserStep: Text? = null,
         optInOnly: Boolean = false,
+        name: Text? = null,
     ): Tool = register(
-        toolId, ToolRole.ENROLLMENT, startStep, claims, requires = requires,
+        toolId, ToolRole.ENROLLMENT, hint, name, startStep, claims, requires = requires,
         withoutUserStep = withoutUserStep, provesNothing = optInOnly,
     )
 
     /** `auth-<method>`: proves a credential of the account the channel already knows. */
-    fun login(toolId: String, startStep: String? = null): Tool =
-        register(toolId, ToolRole.KNOWN_ACCOUNT_AUTH, startStep)
+    fun login(toolId: String, hint: Text, startStep: String? = null, name: Text? = null): Tool =
+        register(toolId, ToolRole.KNOWN_ACCOUNT_AUTH, hint, name, startStep)
 
     /** `auth-<method>-lookup`: proves a credential and finds the account (or invitation) from the input itself. */
-    fun lookupLogin(toolId: String, startStep: String? = null): Tool =
-        register(toolId, ToolRole.ACCOUNT_LOOKUP_AUTH, startStep)
+    fun lookupLogin(toolId: String, hint: Text, startStep: String? = null, name: Text? = null): Tool =
+        register(toolId, ToolRole.ACCOUNT_LOOKUP_AUTH, hint, name, startStep)
 
     /** `approve-<method>`: approves or declines a pending request from another channel (e.g. `approve-qr`). */
-    fun approve(toolId: String, startStep: String? = null): Tool =
-        register(toolId, ToolRole.PEER_APPROVAL, startStep, provesNothing = true)
+    fun approve(toolId: String, hint: Text, startStep: String? = null, name: Text? = null): Tool =
+        register(toolId, ToolRole.PEER_APPROVAL, hint, name, startStep, provesNothing = true)
 
     /**
      * Adds one tool. Its id must be the one its method and role give, and no id may come twice
-     * (identification and correlation share the prefix, so this also forbids having both).
+     * (identification and correlation share the prefix, so this also forbids having both). Every
+     * tool says in a few words what it does ([hint]); a [name] of its own is the exception, for a
+     * tool that is named for what it does rather than for its method („Mit App anmelden“).
      */
     private fun register(
         toolId: String,
         role: ToolRole,
+        hint: Text,
+        name: Text?,
         startStep: String?,
         claims: Set<AttributeType> = emptySet(),
         vouchedBy: ClaimSource? = null,
@@ -140,7 +155,7 @@ class ToolModule internal constructor(
         val expected = role.toolIdFor(method)
         require(toolId == expected.value) { "Tool '$toolId' in module '$method' must be called '$expected' ($role)" }
         require(registered.none { it.toolId == expected }) { "Module '$method' declares '$toolId' more than once" }
-        val tool = Tool(this, expected, role, startStep, claims, vouchedBy, requires, withoutUserStep, provesNothing)
+        val tool = Tool(this, expected, role, name ?: this.name, hint, startStep, claims, vouchedBy, requires, withoutUserStep, provesNothing)
         // Identity matching has no path for a KVNR a tool merely read: only the Personenverzeichnis vouches for one.
         require(tool.claims.none { it.attributeType == AttributeType.KVNR && it.source != ClaimSource.PERSON_DIRECTORY }) {
             "Only the Personenverzeichnis may vouch for a KVNR, but '$toolId' declares one from elsewhere"
@@ -173,6 +188,10 @@ class Tool internal constructor(
     val toolId: ToolId,
     /** The role this tool plays for [method]: fixed by the factory that declared it. See [ToolRole]. */
     val role: ToolRole,
+    /** What users call it: its module's [ToolModule.name] unless the tool names itself. */
+    val name: Text,
+    /** What it does, in a few words, under its name in a selection („Code an die hinterlegte Telefonnummer“). */
+    val hint: Text,
     startStep: String?,
     claims: Set<AttributeType>,
     vouchedBy: ClaimSource?,
@@ -270,12 +289,14 @@ fun factors(vararg factorTypes: FactorType, upTo: AcrLevel): Proves = Proves(fac
  */
 fun toolModule(
     method: String,
+    name: Text,
     proves: Proves,
     demoOnly: String? = null,
     onePerDevice: Boolean = false,
     stepData: Map<String, StepDataShape> = emptyMap(),
 ): ToolModule = ToolModule(
     method = method,
+    name = name,
     factorTypes = proves.factorTypes,
     maxAcr = proves.upTo,
     onePerDevice = onePerDevice,

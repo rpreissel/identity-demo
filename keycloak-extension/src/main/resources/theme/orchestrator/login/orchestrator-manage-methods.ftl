@@ -10,7 +10,7 @@
         <#else>
             <#list methods as m>
                 <div class="orchestrator-method-row">
-                    <span class="${properties.kcLabelClass!}">${m.label!m.method}</span>
+                    <span class="${properties.kcLabelClass!}">${m.label!m.methodName}</span>
                     <form action="${url.loginAction}" method="post">
                         <button class="${properties.kcButtonClass!} ${properties.kcButtonDefaultClass!}"
                                 type="submit" name="removeMethodInstanceId" value="${m.id}">${t.of("Entfernen")}</button>

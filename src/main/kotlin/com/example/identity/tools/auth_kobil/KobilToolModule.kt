@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_kobil
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_kobil.api.v1.KobilStepData
 import com.example.identity.contract.tool_api.FactorType.INHERENCE
 import com.example.identity.contract.tool_api.FactorType.KNOWLEDGE
@@ -25,14 +26,23 @@ internal const val AUTH_KOBIL_TOOL_ID = "auth-kobil"
  */
 internal val KobilModule = toolModule(
     method = "kobil",
+    name = Text("KOBIL"),
     proves = factors(POSSESSION, KNOWLEDGE, INHERENCE, upTo = AcrLevel.LOA2),
     demoOnly = "Die KOBIL-Gegenstelle ist simuliert (kobil); was ein echter KOBIL-Server zusagt, steht noch aus",
     onePerDevice = true,
     stepData = KobilStepData,
 )
 
-internal val EnrollKobil = KobilModule.enroll(ENROLL_KOBIL_TOOL_ID, startStep = "activate")
-internal val AuthKobil = KobilModule.login(AUTH_KOBIL_TOOL_ID, startStep = "unlock")
+internal val EnrollKobil = KobilModule.enroll(
+    ENROLL_KOBIL_TOOL_ID,
+    hint = Text("An das Gerät gebunden über KOBIL, entsperrt per Biometrie oder Passwort"),
+    startStep = "activate",
+)
+internal val AuthKobil = KobilModule.login(
+    AUTH_KOBIL_TOOL_ID,
+    hint = Text("An das Gerät gebunden über KOBIL, entsperrt per Biometrie oder Passwort"),
+    startStep = "unlock",
+)
 
 /**
  * A method module talks to the orchestrator through tool_api only (docs/03-tool-architektur.md #2).

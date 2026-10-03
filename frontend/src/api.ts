@@ -1,4 +1,5 @@
 import { ADMIN_PATH, adminAuthHeader, clearAdminCredentials } from './adminAuth'
+import type { ToolCatalogEntry } from './generated/models'
 import { createDpopProof, type DpopKeyPair } from './dpop'
 import type { ActiveMethodView, ChannelResponse, DeviceLinkResponse, ErrorResponse, IdTokenClaims, JourneyTraceResponse, TokenResponse } from './types'
 import { ErrorResponseErrorEnum } from './generated/models'
@@ -308,7 +309,7 @@ async function callPlain<T>(method: string, path: string, body?: unknown): Promi
   return (text === '' ? undefined : JSON.parse(text)) as T
 }
 
-export function fetchToolCatalog(): Promise<{ toolId: string; method: string; role: string }[]> {
+export function fetchToolCatalog(): Promise<ToolCatalogEntry[]> {
   return callPlain('GET', '/orchestrator/api/v1/tools/catalog')
 }
 

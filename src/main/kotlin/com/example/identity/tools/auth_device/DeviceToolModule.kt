@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_device
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.FactorType.INHERENCE
 import com.example.identity.contract.tool_api.FactorType.KNOWLEDGE
 import com.example.identity.contract.tool_api.FactorType.POSSESSION
@@ -23,13 +24,20 @@ internal const val AUTH_DEVICE_TOOL_ID = "auth-device"
  */
 internal val DeviceModule = toolModule(
     method = "device",
+    name = Text("Gerät"),
     proves = factors(POSSESSION, KNOWLEDGE, INHERENCE, upTo = AcrLevel.LOA2),
     demoOnly = "Die Nutzerverifikation (PIN/Biometrie) ist nur vom Client behauptet, ohne Plattform-Attestation",
     onePerDevice = true,
 )
 
-internal val EnrollDevice = DeviceModule.enroll(ENROLL_DEVICE_TOOL_ID)
-internal val AuthDevice = DeviceModule.login(AUTH_DEVICE_TOOL_ID)
+internal val EnrollDevice = DeviceModule.enroll(
+    ENROLL_DEVICE_TOOL_ID,
+    hint = Text("Geräteeigener Schlüssel + PIN/Biometrie"),
+)
+internal val AuthDevice = DeviceModule.login(
+    AUTH_DEVICE_TOOL_ID,
+    hint = Text("Geräteeigener Schlüssel + PIN/Biometrie"),
+)
 
 /**
  * A method module talks to the orchestrator through tool_api only, never to account or another

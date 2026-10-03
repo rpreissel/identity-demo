@@ -8,11 +8,10 @@ import { attemptError } from '../stepData'
 import { t } from '../../texts'
 
 const ICON = '📱'
-const LABEL = t('SMS')
 
 export const enrollSms: ToolModule = {
   toolId: 'enroll-sms',
-  meta: { icon: ICON, label: LABEL, hint: t('Code an eine Telefonnummer'), enrolls: 'sms' },
+  meta: { icon: ICON },
   explain: (step) =>
     step === 'tanInput'
       ? {
@@ -46,7 +45,7 @@ export const enrollSms: ToolModule = {
 
 export const authSms: ToolModule = {
   toolId: 'auth-sms',
-  meta: { icon: ICON, label: LABEL, hint: t('Code an die hinterlegte Telefonnummer') },
+  meta: { icon: ICON },
   explain: () => ({
     does: t('Ein Code geht per SMS an die hinterlegte Nummer. Wer ihn eingibt, hat das Handy.'),
     actor: t('Sie geben den Code ein, das Tool auth-sms prüft ihn.'),
@@ -61,7 +60,7 @@ export const authSms: ToolModule = {
 
 export const authSmsLookup: ToolModule = {
   toolId: 'auth-sms-lookup',
-  meta: { icon: ICON, label: LABEL, hint: t('E-Mail-Adresse + SMS-Code') },
+  meta: { icon: ICON },
   explain: (step) =>
     step === 'tanInput'
       ? {

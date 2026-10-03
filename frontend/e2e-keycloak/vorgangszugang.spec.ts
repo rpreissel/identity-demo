@@ -36,7 +36,7 @@ async function openInvitePage(page: Page, tile: 'invite' | 'secure' = 'invite') 
   await page.goto(`${ORCHESTRATOR}/web/`)
   const start = tile === 'invite' ? ui('Mit Einmalkennwort anmelden') : ui('Sicher anmelden')
   await page.getByRole('button', { name: start }).click()
-  await page.getByRole('button', { name: kc('Einmalkennwort'), exact: true }).click()
+  await page.getByRole('button', { name: ui('Einmalkennwort'), exact: true }).click()
   await expect(page.getByLabel(kc('Einmalkennwort'), { exact: true })).toBeVisible()
 }
 

@@ -26,17 +26,26 @@ internal const val AUTH_EMAIL_LOOKUP_TOOL_ID = "auth-email-lookup"
  */
 internal val EmailModule = toolModule(
     method = "email",
+    name = Text("E-Mail"),
     proves = factors(KNOWLEDGE, upTo = AcrLevel.LOA1),
 )
 
-internal val ConfirmEmail = EmailModule.confirm(CONFIRM_EMAIL_TOOL_ID, claims = setOf(AttributeType.EMAIL))
+internal val ConfirmEmail = EmailModule.confirm(
+    CONFIRM_EMAIL_TOOL_ID,
+    hint = Text("E-Mail-Adresse bestätigen"),
+    claims = setOf(AttributeType.EMAIL),
+)
 internal val EnrollEmail = EmailModule.enroll(
     ENROLL_EMAIL_TOOL_ID,
+    hint = Text("Ihre bestätigte E-Mail-Adresse, ohne Code"),
     requires = setOf(ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN)),
     withoutUserStep = Text("Ihre bereits bestätigte E-Mail-Adresse wird sofort zum Anmeldeverfahren. Einen Code brauchen Sie dafür nicht."),
 )
-internal val AuthEmail = EmailModule.login(AUTH_EMAIL_TOOL_ID)
-internal val AuthEmailLookup = EmailModule.lookupLogin(AUTH_EMAIL_LOOKUP_TOOL_ID)
+internal val AuthEmail = EmailModule.login(AUTH_EMAIL_TOOL_ID, hint = Text("Code an die bestätigte E-Mail-Adresse"))
+internal val AuthEmailLookup = EmailModule.lookupLogin(
+    AUTH_EMAIL_LOOKUP_TOOL_ID,
+    hint = Text("E-Mail-Adresse + Bestätigungscode"),
+)
 
 /**
  * The confirmed email is the account's identifier, not a swappable credential

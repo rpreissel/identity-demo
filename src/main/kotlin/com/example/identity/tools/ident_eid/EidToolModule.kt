@@ -1,5 +1,6 @@
 package com.example.identity.tools.ident_eid
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.FactorType.KNOWLEDGE
 import com.example.identity.contract.tool_api.FactorType.POSSESSION
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -33,12 +34,14 @@ internal const val IDENT_EID_TOOL_ID = "ident-eid"
  */
 internal val EidModule = toolModule(
     method = "eid",
+    name = Text("eID"),
     proves = factors(POSSESSION, KNOWLEDGE, upTo = AcrLevel.LOA3),
     demoOnly = "Die eID-Kartenlesung ist simuliert; ein echtes Ergebnis kommt serverseitig vom eID-Server",
 )
 
 internal val IdentEid = EidModule.identify(
     IDENT_EID_TOOL_ID,
+    hint = Text("Online-Ausweisfunktion (simuliert)"),
     also = setOf(AttributeType.STREET_ADDRESS, AttributeType.POSTAL_CODE, AttributeType.LOCALITY, EID_RESTRICTED_ID),
 )
 

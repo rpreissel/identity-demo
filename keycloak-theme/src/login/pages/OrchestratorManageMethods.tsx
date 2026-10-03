@@ -13,7 +13,7 @@ export function OrchestratorManageMethods({ kcContext }: { kcContext: PageContex
         <ul className="orc-methods">
           {methods.map((m) => (
             <li key={m.id}>
-              <span>{m.label ?? m.method}</span>
+              <span>{m.label ?? m.methodName}</span>
               <form action={url.loginAction} method="post">
                 <button className="orc-button" type="submit" name="removeMethodInstanceId" value={m.id}>
                   {t('Entfernen')}

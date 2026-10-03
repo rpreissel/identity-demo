@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_password
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.FactorType.KNOWLEDGE
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -36,16 +37,21 @@ internal const val AUTH_PASSWORD_LOOKUP_TOOL_ID = "auth-password-lookup"
  */
 internal val PasswordModule = toolModule(
     method = PasswordCredentialPort.METHOD,
+    name = Text("Passwort"),
     proves = factors(KNOWLEDGE, upTo = AcrLevel.LOA1),
 )
 
 internal val EnrollPassword = PasswordModule.enroll(
     ENROLL_PASSWORD_TOOL_ID,
+    hint = Text("Eigenes Passwort festlegen"),
     claims = setOf(PASSWORD_EXISTS),
     requires = setOf(ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN)),
 )
-internal val AuthPassword = PasswordModule.login(AUTH_PASSWORD_TOOL_ID)
-internal val AuthPasswordLookup = PasswordModule.lookupLogin(AUTH_PASSWORD_LOOKUP_TOOL_ID)
+internal val AuthPassword = PasswordModule.login(AUTH_PASSWORD_TOOL_ID, hint = Text("Mit dem hinterlegten Passwort"))
+internal val AuthPasswordLookup = PasswordModule.lookupLogin(
+    AUTH_PASSWORD_LOOKUP_TOOL_ID,
+    hint = Text("E-Mail-Adresse + Passwort"),
+)
 
 /**
  * A method module talks to the orchestrator through tool_api only, never to account or another

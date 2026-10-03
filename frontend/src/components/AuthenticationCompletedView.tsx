@@ -13,18 +13,10 @@ import { isBelowAcr } from '../acr'
 import { accountRole } from '../accountRole'
 import { enrollmentToolFor, metaFor } from '../tools/registry'
 
-/** Display name for a method with no user-chosen label (singleton methods - email/sms/password). */
-const DEFAULT_METHOD_LABELS: Record<string, string> = {
-  sms: t('SMS'),
-  email: t('E-Mail'),
-  password: t('Passwort'),
-  device: t('Gerät'),
-  qr: t('QR-Login'),
-  kobil: t('KOBIL'),
-}
-
+/** What the method is called: the name of the tool that sets it up, from the backend's catalog. */
 function kindLabel(method: ActiveMethodView): string {
-  return DEFAULT_METHOD_LABELS[method.method] ?? method.method
+  const toolId = enrollmentToolFor(method.method)
+  return toolId ? metaFor(toolId).label : method.method
 }
 
 function labelFor(method: ActiveMethodView): string {

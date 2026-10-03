@@ -1,6 +1,5 @@
 package com.example.identity.kcext.webtool.password;
 
-import com.example.identity.kcext.client.KcText;
 import com.example.identity.kcext.webtool.AbstractWebToolRendererFactory;
 import com.example.identity.kcext.webtool.WebToolRenderContext;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -15,16 +14,6 @@ public class PasswordEnrollRendererFactory extends AbstractWebToolRendererFactor
     @Override
     public String getId() {
         return PROVIDER_ID;
-    }
-
-    @Override
-    public KcText title() {
-        return KcText.t("Passwort");
-    }
-
-    @Override
-    public KcText hint() {
-        return KcText.t("Eigenes Passwort festlegen");
     }
 
     @Override

@@ -7,7 +7,7 @@ import { t } from '../../texts'
 
 export const identEid: ToolModule = {
   toolId: 'ident-eid',
-  meta: { icon: '🆔', label: t('eID'), hint: t('Online-Ausweisfunktion (simuliert)') },
+  meta: { icon: '🆔' },
   explain: () => ({
     does: t('Die Online-Ausweisfunktion weist Sie mit Ihrem Personalausweis aus: Erst wird der Ausweis ausgelesen, dann geben Sie ihn mit der PIN frei.'),
     actor: t('Sie, mit dem simulierten eID-Dienst anstelle der AusweisApp.'),

@@ -1,5 +1,6 @@
 package com.example.identity.tools.ident_nect
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.tools.ident_nect.api.v1.NectStepData
 import com.example.identity.contract.tool_api.FactorType.INHERENCE
 import com.example.identity.contract.tool_api.FactorType.KNOWLEDGE
@@ -35,6 +36,7 @@ internal const val IDENT_NECT_TOOL_ID = "ident-nect"
  */
 internal val NectModule = toolModule(
     method = "nect",
+    name = Text("Nect"),
     proves = factors(POSSESSION, KNOWLEDGE, INHERENCE, upTo = AcrLevel.LOA3),
     demoOnly = "Die Nect-Gegenstelle ist simuliert (nect); ein echtes Ergebnis kommt serverseitig von Nect",
     stepData = NectStepData,
@@ -42,6 +44,7 @@ internal val NectModule = toolModule(
 
 internal val IdentNect = NectModule.identify(
     IDENT_NECT_TOOL_ID,
+    hint = Text("Ausweis, Reisepass oder EUDI-Wallet bei Nect (simuliert)"),
     also = setOf(AttributeType.STREET_ADDRESS, AttributeType.POSTAL_CODE, AttributeType.LOCALITY, NECT_RESTRICTED_ID),
     startStep = "redirect",
 )

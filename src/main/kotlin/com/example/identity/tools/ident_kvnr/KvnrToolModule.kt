@@ -1,5 +1,6 @@
 package com.example.identity.tools.ident_kvnr
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimRequirement
@@ -24,11 +25,13 @@ internal const val IDENT_KVNR_TOOL_ID = "ident-kvnr"
  */
 internal val KvnrModule = toolModule(
     method = "kvnr",
+    name = Text("Versichertennummer"),
     proves = factors(upTo = AcrLevel.LOA2),
 )
 
 internal val IdentKvnr = KvnrModule.correlate(
     IDENT_KVNR_TOOL_ID,
+    hint = Text("Konto der eigenen Person im Personenverzeichnis zuordnen"),
     claims = setOf(AttributeType.PERSON_ID, AttributeType.KVNR, AttributeType.MEMBER_NUMBER),
     vouchedBy = ClaimSource.PERSON_DIRECTORY,
     requires = setOf(

@@ -1,6 +1,5 @@
 package com.example.identity.kcext.webtool.sms;
 
-import com.example.identity.kcext.client.KcText;
 import com.example.identity.kcext.webtool.AbstractWebToolRendererFactory;
 import com.example.identity.kcext.webtool.WebToolRenderContext;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,16 +17,6 @@ public class SmsLookupRendererFactory extends AbstractWebToolRendererFactory {
     @Override
     public String getId() {
         return PROVIDER_ID;
-    }
-
-    @Override
-    public KcText title() {
-        return KcText.t("SMS");
-    }
-
-    @Override
-    public KcText hint() {
-        return KcText.t("E-Mail-Adresse + SMS-Code");
     }
 
     @Override

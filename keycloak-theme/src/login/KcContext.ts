@@ -43,7 +43,8 @@ export type KcContextExtensionPerPage = {
   'tool-qr-wait.ftl': ToolPage &
     ({ step: 'waitForApp'; pairingCode: string; deepLink: string; qrDataUri: string; statusUrl: string } | { step: 'enterCode' })
   'orchestrator-manage-methods.ftl': {
-    methods: { id: string; method: string; label?: string }[]
+    // methodName: what the method is called (the orchestrator's tool catalog), for a method without a label of its own
+    methods: { id: string; method: string; label?: string; methodName: string }[]
   }
   'orchestrator-tool.ftl': {
     toolId: string

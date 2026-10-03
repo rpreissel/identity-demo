@@ -55,7 +55,7 @@ test('the website signs in with the app: pairing code into the app, confirmation
   // The website, in a browser of its own: the pairing code it waits with.
   const web = await (await browser.newContext({ ignoreHTTPSErrors: true, locale: 'de-DE' })).newPage()
   await web.goto(loginUrl())
-  await web.getByRole('button', { name: kc('Mit App anmelden'), exact: true }).click()
+  await web.getByRole('button', { name: ui('Mit App anmelden'), exact: true }).click()
   const pairingCode = ((await web.locator('.orchestrator-qr-code, .orc-qr-code').textContent()) ?? '').trim()
   expect(pairingCode).not.toBe('')
 
