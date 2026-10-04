@@ -12,7 +12,7 @@ import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.directory.normalizeKvnr
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.tools.auth_invite.internal.AuthInviteToolHandler
 import io.swagger.v3.oas.annotations.Operation
@@ -54,7 +54,7 @@ class AuthInviteToolController(
 
     override val tool = AuthInviteLookup
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_INVITE_LOOKUP_TOOL_ID")
+    @PostMapping("$TOOLS_API/$AUTH_INVITE_LOOKUP_TOOL_ID/v1")
     @Operation(
         summary = "Activate auth-invite-lookup",
         description = "No request body: toolId already carries kind and method.",
@@ -78,7 +78,7 @@ class AuthInviteToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$AUTH_INVITE_LOOKUP_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$AUTH_INVITE_LOOKUP_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Supply the number and the one-time password",
         description = "KVNR, or Partnernummer without a KVNR, together with the one-time password from the letter.",
@@ -112,7 +112,7 @@ class AuthInviteToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$AUTH_INVITE_LOOKUP_TOOL_ID")
+    @GetMapping("$TOOLS_API/$AUTH_INVITE_LOOKUP_TOOL_ID/v1/{toolSessionId}")
     @Operation(summary = "Read the current auth-invite-lookup state")
     fun read(
         context: ToolContext

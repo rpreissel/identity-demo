@@ -32,13 +32,13 @@ info:
   version: v1
 openapi: 3.1.0
 paths:
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-invite-lookup:
+  /tools/api/auth-invite-lookup/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
       operationId: activate
       parameters:
-      - in: path
-        name: channelSessionId
+      - in: query
+        name: channel
         required: true
         schema:
           format: uuid
@@ -73,7 +73,7 @@ paths:
       summary: Activate auth-invite-lookup
       tags:
       - 'Tool: Einmalkennwort'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-invite-lookup:
+  /tools/api/auth-invite-lookup/v1/{toolSessionId}:
     get:
       operationId: read
       parameters:

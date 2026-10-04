@@ -35,24 +35,31 @@ class ChangeLog(private val repository: ChangeLogRepository, private val clock: 
 
     /**
      * An identification run. Only the named references of the tool's report are kept: where to ask,
-     * which procedure and version, a hash of what was seen. Anything else is dropped, above all a
+     * which procedure and version, a hash of what was seen. [tool] is the tool in the version the
+     * client spoke (`ident-fsc@1`, ADR-51). Anything else is dropped, above all a
      * document number, which may not be kept (§ 20 PAuswG).
      */
     @Transactional(propagation = Propagation.MANDATORY)
     fun identified(
         accountId: AccountId, method: String, acr: String?, role: String?, report: Map<String, Any?>,
-        lookupKey: LookupKey?, personId: PartnerNumber?,
+        lookupKey: LookupKey?, personId: PartnerNumber?, tool: String?,
     ) =
         record(
             accountId, ChangeType.IDENTIFIED, subject = method, acr = acr,
-            details = mapOf("role" to role) + IDENTIFICATION_REFERENCE_KEYS.associateWith { report[it]?.toString() },
+            details = mapOf("role" to role, "tool" to tool) + IDENTIFICATION_REFERENCE_KEYS.associateWith { report[it]?.toString() },
             lookupKey = lookupKey?.value, lookupKeyId = lookupKey?.keyId, personId = personId,
         )
 
-    /** A method was added: under which proofs of the session (amr) and on which channel. */
+    /**
+     * A method was added: under which proofs of the session (amr), on which channel, and by which
+     * tool in which version (`enroll-sms@1`, ADR-51).
+     */
     @Transactional(propagation = Propagation.MANDATORY)
-    fun methodAdded(accountId: AccountId, method: String, acr: String?, amr: List<String>, channel: String?, at: Instant) =
-        record(accountId, ChangeType.METHOD_ADDED, subject = method, acr = acr, at = at, details = mapOf("amr" to amr, "channel" to channel))
+    fun methodAdded(accountId: AccountId, method: String, acr: String?, amr: List<String>, channel: String?, tool: String?, at: Instant) =
+        record(
+            accountId, ChangeType.METHOD_ADDED, subject = method, acr = acr, at = at,
+            details = mapOf("amr" to amr, "channel" to channel, "tool" to tool),
+        )
 
     @Transactional(propagation = Propagation.MANDATORY)
     fun methodDeactivated(accountId: AccountId, method: String?, reason: MethodDeactivationReason, at: Instant) =

@@ -31,7 +31,7 @@ class KvnrSourceRuleTest : BehaviorSpec({
         `when`("the tool is registered on its module") {
             val result = runCatching {
                 toolModule(method = "card-reader", name = Text("Test"), proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA2))
-                    .identify("ident-card-reader", hint = Text("Test"), also = setOf(AttributeType.KVNR))
+                    .identify("ident-card-reader", versions = setOf(1), hint = Text("Test"), also = setOf(AttributeType.KVNR))
             }
 
             then("it is refused") {
@@ -45,7 +45,7 @@ class KvnrSourceRuleTest : BehaviorSpec({
             then("it is accepted") {
                 shouldNotThrowAny {
                     toolModule(method = "register-lookup", name = Text("Test"), proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA2))
-                        .identify("ident-register-lookup", hint = Text("Test"), also = setOf(AttributeType.KVNR), vouchedBy = ClaimSource.PERSON_DIRECTORY)
+                        .identify("ident-register-lookup", versions = setOf(1), hint = Text("Test"), also = setOf(AttributeType.KVNR), vouchedBy = ClaimSource.PERSON_DIRECTORY)
                 }
             }
         }

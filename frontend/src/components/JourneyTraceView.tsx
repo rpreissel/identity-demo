@@ -391,7 +391,9 @@ function renderEntryTable(entries: JourneyTraceEntryView[]) {
         </thead>
         <tbody>
           {entries.map((entry, index) => {
-            const { toolId, ...rest } = entry.detail
+            // `tool` names the version the client spoke (`enroll-sms@1`, ADR-51); older entries have only toolId.
+            const { toolId, tool, ...rest } = entry.detail
+            const shownTool = typeof tool === 'string' ? tool : typeof toolId === 'string' ? toolId : '–'
             const chips = formatDetail(rest)
             return (
               <tr key={index}>
@@ -400,7 +402,7 @@ function renderEntryTable(entries: JourneyTraceEntryView[]) {
                 <td>
                   <span className="badge">{entry.eventType}</span>
                 </td>
-                <td className="journey-trace-tool">{typeof toolId === 'string' ? toolId : '–'}</td>
+                <td className="journey-trace-tool">{shownTool}</td>
                 <td>
                   {chips.length > 0 ? (
                     <ul className="journey-trace-detail-chips">

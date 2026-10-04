@@ -23,7 +23,7 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
 
         fun start(): Started {
             val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-            val activated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-nect")
+            val activated = post("/tools/api/ident-nect/v1?channel=$channelSessionId")
             activated.next() shouldBe mapOf("type" to "tool", "toolId" to "ident-nect", "step" to "redirect")
             val stepData = activated.stepData()
             stepData["kind"] shouldBe "nect-redirect"
@@ -43,11 +43,11 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
         }
 
         fun report(toolSessionId: String, caseId: String) =
-            patch("/orchestrator/api/v1/tools/$toolSessionId/ident-nect", """{"caseId":"$caseId"}""")
+            patch("/tools/api/ident-nect/v1/$toolSessionId", """{"caseId":"$caseId"}""")
 
         fun assignKvnr(channelSessionId: String) {
-            val kvnrSession = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-kvnr").nextRaw()["toolSessionId"] as String
-            patch("/orchestrator/api/v1/tools/$kvnrSession/ident-kvnr", """{"kvnr":"A123456789"}""")
+            val kvnrSession = post("/tools/api/ident-kvnr/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+            patch("/tools/api/ident-kvnr/v1/$kvnrSession", """{"kvnr":"A123456789"}""")
         }
 
         fun evidenceJsonOf(channelSessionId: String): String = jdbcTemplate.queryForObject(
@@ -127,12 +127,12 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
 
             `when`("the user finishes at Nect and Keycloak forwards the query") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val activated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-nect", """{"returnUri":"$actionUrl"}""")
+                val activated = post("/tools/api/ident-nect/v1?channel=$channelSessionId", """{"returnUri":"$actionUrl"}""")
                 val caseId = activated.stepData()["caseId"] as String
                 val toolSessionId = activated.nextRaw()["toolSessionId"] as String
                 val redirectUri = finishAtNect(caseId, "eudi", max)
                 // Keycloak hands the query on as it is: nectCaseId, not caseId.
-                val attested = patch("/orchestrator/api/v1/tools/$toolSessionId/ident-nect", """{"nectCaseId":"$caseId"}""")
+                val attested = patch("/tools/api/ident-nect/v1/$toolSessionId", """{"nectCaseId":"$caseId"}""")
 
                 then("Nect sends the user back there") {
                     redirectUri shouldBe "$actionUrl&nectCaseId=$caseId"
@@ -145,13 +145,13 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
 
             `when`("the case is cancelled at Nect and the user retries") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val activated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-nect", """{"returnUri":"$actionUrl"}""")
+                val activated = post("/tools/api/ident-nect/v1?channel=$channelSessionId", """{"returnUri":"$actionUrl"}""")
                 val caseId = activated.stepData()["caseId"] as String
                 val toolSessionId = activated.nextRaw()["toolSessionId"] as String
                 post("/mock-nect/cases/$caseId/cancellation")
-                val failed = patch("/orchestrator/api/v1/tools/$toolSessionId/ident-nect", """{"caseId":"$caseId"}""")
+                val failed = patch("/tools/api/ident-nect/v1/$toolSessionId", """{"caseId":"$caseId"}""")
                 // A Keycloak form posts strings; "true" must count as the flag.
-                val retried = patch("/orchestrator/api/v1/tools/$toolSessionId/ident-nect", """{"retry":"true"}""")
+                val retried = patch("/tools/api/ident-nect/v1/$toolSessionId", """{"retry":"true"}""")
                 val newCase = retried.stepData()["caseId"] as String
                 val redirectUri = finishAtNect(newCase, "eudi", max)
 
@@ -168,7 +168,7 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 val result = runCatching {
                     restTemplate.exchange(
-                        "http://localhost:$port/orchestrator/api/v1/channels/$channelSessionId/tools/ident-nect",
+                        "http://localhost:$port/tools/api/ident-nect/v1?channel=$channelSessionId",
                         HttpMethod.POST,
                         HttpEntity("""{"returnUri":"https://attacker.example/return"}""", headers()),
                         String::class.java
@@ -185,7 +185,7 @@ class IdentNectIntegrationTest : IntegrationTestSupport() {
         given("an activation of ident-nect whose body is no JSON") {
             `when`("it is posted") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val broken = runCatching { post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-nect", "{not json") }
+                val broken = runCatching { post("/tools/api/ident-nect/v1?channel=$channelSessionId", "{not json") }
                 val after = get("/orchestrator/api/v1/channels/$channelSessionId")
 
                 then("it is a bad request") {

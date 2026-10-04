@@ -57,8 +57,8 @@ class DeviceRebindIntegrationTest : IntegrationTestSupport() {
 
     private fun enrollDevice(channelSessionId: String): ECKey {
         val deviceKey = ECKeyGenerator(Curve.P_256).generate()
-        val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-device").nextRaw()["toolSessionId"] as String
-        val patchUrl = "/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-device"
+        val enrollToolSessionId = post("/tools/api/enroll-device/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+        val patchUrl = "/tools/api/enroll-device/v1/$enrollToolSessionId"
         patch(patchUrl, """{"deviceProof":"${signDeviceProof(deviceKey, "http://localhost:$port$patchUrl")}"}""")
         return deviceKey
     }
@@ -66,9 +66,9 @@ class DeviceRebindIntegrationTest : IntegrationTestSupport() {
     /** Registers as a second person (own KVNR) on the same physical device (channelKey). */
     private fun identifyAsSecondPerson(): String {
         val channelSessionId = post("/orchestrator/api/v1/app/channels", """{"intent":"register"}""").channel()["channelSessionId"] as String
-        val identToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
+        val identToolSessionId = post("/tools/api/ident-fsc/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
         patch(
-            "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
+            "/tools/api/ident-fsc/v1/$identToolSessionId",
             """{"kvnr":"B987654321","familyName":"Beispiel","givenNames":"Erika","birthDate":"1990-11-02","fsc":"ERIKA123"}"""
         )
         return channelSessionId

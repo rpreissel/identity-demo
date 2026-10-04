@@ -31,6 +31,7 @@ internal val KvnrModule = toolModule(
 
 internal val IdentKvnr = KvnrModule.correlate(
     IDENT_KVNR_TOOL_ID,
+    versions = setOf(1),
     hint = Text("Konto der eigenen Person im Personenverzeichnis zuordnen"),
     claims = setOf(AttributeType.PERSON_ID, AttributeType.KVNR, AttributeType.MEMBER_NUMBER),
     vouchedBy = ClaimSource.PERSON_DIRECTORY,

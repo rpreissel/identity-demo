@@ -45,14 +45,16 @@ internal val PasswordModule = toolModule(
 
 internal val EnrollPassword = PasswordModule.enroll(
     ENROLL_PASSWORD_TOOL_ID,
+    versions = setOf(1),
     hint = Text("Eigenes Passwort festlegen"),
     claims = setOf(PASSWORD_EXISTS),
     requires = setOf(ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN)),
     changeable = true,
 )
-internal val AuthPassword = PasswordModule.login(AUTH_PASSWORD_TOOL_ID, hint = Text("Mit dem hinterlegten Passwort"))
+internal val AuthPassword = PasswordModule.login(AUTH_PASSWORD_TOOL_ID, versions = setOf(1), hint = Text("Mit dem hinterlegten Passwort"))
 internal val AuthPasswordLookup = PasswordModule.lookupLogin(
     AUTH_PASSWORD_LOOKUP_TOOL_ID,
+    versions = setOf(1),
     hint = Text("E-Mail-Adresse + Passwort"),
 )
 

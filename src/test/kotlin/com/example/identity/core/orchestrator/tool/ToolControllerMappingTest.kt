@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.tool
 
 import com.example.identity.contract.tool_api.ToolController
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.BehaviorSpec
@@ -13,10 +14,11 @@ import org.springframework.util.ClassUtils
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping
 
 /**
- * A tool controller names its tool once ([ToolController.tool]); its paths name it again, as a
- * constant. This holds the two together against the real Spring context, checks that every tool
- * of the catalog has exactly one controller (ADR-1), and that the integration tests' pinned catalog
- * knows every module.
+ * A tool controller names its tool once ([ToolController.tool]); its paths name it again, with the
+ * version it serves (`/tools/api/<toolId>/v<N>`, ADR-51). This holds the two together against the
+ * real Spring context, checks that every version a tool declares has exactly one controller and no
+ * controller serves an undeclared one (ADR-1), and that the integration tests' pinned catalog knows
+ * every module.
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -26,10 +28,22 @@ class ToolControllerMappingTest(
     @Qualifier("requestMappingHandlerMapping") handlerMapping: RequestMappingHandlerMapping,
 ) : BehaviorSpec({
 
+    val pathsByController: Map<Class<*>, List<String>> = handlerMapping.handlerMethods.entries
+        .groupBy({ ClassUtils.getUserClass(it.value.beanType) }, { it.key.patternValues })
+        .mapValues { (_, patterns) -> patterns.flatten() }
+
     given("the tool controllers of the application") {
-        then("every tool of the catalog has exactly one") {
-            controllers.groupingBy { it.tool.toolId.value }.eachCount() shouldBe
-                toolRegistry.tools().associate { it.toolId.value to 1 }
+        then("every version a tool declares has exactly one, and none serves an undeclared version") {
+            val served = controllers.map { controller ->
+                val versions = pathsByController[ClassUtils.getUserClass(controller)].orEmpty()
+                    .mapNotNull { VERSION.find(it)?.groupValues?.get(1)?.toInt() }.distinct()
+                withClue("${controller::class.simpleName} must serve exactly one version, it serves $versions") {
+                    versions.size shouldBe 1
+                }
+                controller.tool.toolId.value to versions.single()
+            }
+            served.groupingBy { it }.eachCount() shouldBe
+                toolRegistry.tools().flatMap { tool -> tool.versions.map { tool.toolId.value to it } }.associateWith { 1 }
         }
         then("the integration tests pin every module, so a new one does not fail there as 'Unknown tool'") {
             val unpinned = toolRegistry.modules().map { it.method } - StrategyTestFixtures.modules.map { it.method }.toSet()
@@ -38,15 +52,18 @@ class ToolControllerMappingTest(
                     "that list (PinnedToolCatalogTestConfig), so adding one may change expected candidate lists there."
             ) { unpinned.shouldBeEmpty() }
         }
-        then("each of their paths names the controller's own tool") {
-            val toolByController = controllers.associate { ClassUtils.getUserClass(it) to it.tool.toolId.value }
-            val mismatched = handlerMapping.handlerMethods.mapNotNull { (info, method) ->
-                val toolId = toolByController[ClassUtils.getUserClass(method.beanType)] ?: return@mapNotNull null
-                info.patternValues.filterNot { toolId in it.split('/') }
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { "${method.beanType.simpleName}.${method.method.name} -> $it (tool $toolId)" }
+        then("each of their paths lies under the controller's own tool") {
+            val mismatched = controllers.flatMap { controller ->
+                val toolId = controller.tool.toolId.value
+                pathsByController[ClassUtils.getUserClass(controller)].orEmpty()
+                    .filterNot { it.startsWith("$TOOLS_API/$toolId/v") }
+                    .map { "${controller::class.simpleName} -> $it (tool $toolId)" }
             }
             mismatched.shouldBeEmpty()
         }
     }
-})
+}) {
+    private companion object {
+        val VERSION = Regex("^${Regex.escape(TOOLS_API)}/[^/]+/v([0-9]+)(/|$)")
+    }
+}

@@ -22,11 +22,11 @@ class SwitchBackIntegrationTest : IntegrationTestSupport() {
         given("a fresh channel with ident-fsc active") {
             `when`("going back from the ident-fsc tool, then using the old tool session and choosing ident-fsc again") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val identToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
+                val identToolSessionId = post("/tools/api/ident-fsc/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
 
-                val result = post("/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc/back")
-                val oldSession = runCatching { patch("/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc", """{"fsc":"VALIDCODE"}""") }
-                val chosenAgain = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc")
+                val result = post("/tools/api/ident-fsc/v1/$identToolSessionId/back")
+                val oldSession = runCatching { patch("/tools/api/ident-fsc/v1/$identToolSessionId", """{"fsc":"VALIDCODE"}""") }
+                val chosenAgain = post("/tools/api/ident-fsc/v1?channel=$channelSessionId")
 
                 then("the identification choice comes back with ident-fsc still on it") {
                     // "Zurück" is not "Anderes Verfahren": nothing is declined, so the choice the user
@@ -47,13 +47,13 @@ class SwitchBackIntegrationTest : IntegrationTestSupport() {
         given("an identified channel with enroll-sms active") {
             `when`("switching away from the enroll tool, then using the old tool session and re-activating enroll-sms") {
                 val channelSessionId = identifyAndConfirmEmail()
-                val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-sms").nextRaw()["toolSessionId"] as String
+                val enrollToolSessionId = post("/tools/api/enroll-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
 
-                val result = delete("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-sms")
+                val result = delete("/tools/api/enroll-sms/v1/$enrollToolSessionId")
                 val oldSession = runCatching {
-                    patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-sms", """{"phoneNumber":"+49 170 1234567"}""")
+                    patch("/tools/api/enroll-sms/v1/$enrollToolSessionId", """{"phoneNumber":"+49 170 1234567"}""")
                 }
-                val reactivated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-sms")
+                val reactivated = post("/tools/api/enroll-sms/v1?channel=$channelSessionId")
 
                 then("the enrollment candidates are re-offered on the selection page") {
                     // Four enrollment methods are offerable (enroll-password too, the address is confirmed).

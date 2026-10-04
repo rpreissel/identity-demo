@@ -59,14 +59,14 @@ info:
   version: v1
 openapi: 3.1.0
 paths:
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/ident-nect:
+  /tools/api/ident-nect/v1:
     post:
       description: Opens a Nect case; stepData carries the jump URL. The optional body names where Nect sends the user back
         to.
       operationId: activate
       parameters:
-      - in: path
-        name: channelSessionId
+      - in: query
+        name: channel
         required: true
         schema:
           format: uuid
@@ -110,7 +110,7 @@ paths:
       summary: Activate ident-nect
       tags:
       - 'Tool: Nect'
-  /orchestrator/api/v1/tools/{toolSessionId}/ident-nect:
+  /tools/api/ident-nect/v1/{toolSessionId}:
     get:
       operationId: read
       parameters:

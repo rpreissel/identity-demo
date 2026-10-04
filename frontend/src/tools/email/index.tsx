@@ -11,6 +11,7 @@ const ICON = '✉️'
 
 export const confirmEmailTool: ToolModule = {
   toolId: 'confirm-email',
+  version: 1,
   meta: { icon: ICON },
   explain: (step) =>
     step === 'codeInput'
@@ -49,6 +50,7 @@ export const confirmEmailTool: ToolModule = {
 
 export const authEmail: ToolModule = {
   toolId: 'auth-email',
+  version: 1,
   meta: { icon: ICON },
   explain: () => ({
     does: t('Ein Code geht an die bestätigte E-Mail-Adresse des Kontos. Wer ihn eingibt, hat Zugriff auf das Postfach.'),
@@ -64,6 +66,7 @@ export const authEmail: ToolModule = {
 
 export const authEmailLookup: ToolModule = {
   toolId: 'auth-email-lookup',
+  version: 1,
   meta: { icon: ICON },
   explain: (step) =>
     step === 'codeInput'
@@ -98,6 +101,7 @@ export const authEmailLookup: ToolModule = {
  */
 export const enrollEmailTool: ToolModule = {
   toolId: 'enroll-email',
+  version: 1,
   meta: { icon: ICON },
   explain: () => ({
     does: t('Die schon bestätigte E-Mail-Adresse wird zum Anmeldeverfahren - ohne neuen Code, denn der Nachweis liegt schon vor.'),

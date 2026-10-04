@@ -12,6 +12,7 @@ const ICON = '📱'
 
 export const enrollSms: ToolModule = {
   toolId: 'enroll-sms',
+  version: 1,
   meta: { icon: ICON },
   explain: (step) =>
     step === 'tanInput'
@@ -53,6 +54,7 @@ export const enrollSms: ToolModule = {
 
 export const authSms: ToolModule = {
   toolId: 'auth-sms',
+  version: 1,
   meta: { icon: ICON },
   explain: () => ({
     does: t('Ein Code geht per SMS an die hinterlegte Nummer. Wer ihn eingibt, hat das Handy.'),
@@ -68,6 +70,7 @@ export const authSms: ToolModule = {
 
 export const authSmsLookup: ToolModule = {
   toolId: 'auth-sms-lookup',
+  version: 1,
   meta: { icon: ICON },
   explain: (step) =>
     step === 'tanInput'

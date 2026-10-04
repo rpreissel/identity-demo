@@ -59,15 +59,17 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = loginAsSeededAccount()
                 val accountId = accountOf(channelSessionId)
 
-                then("the sign-in is logged with its level and proofs") {
+                then("the sign-in is logged with its level, proofs and the tools in the versions the app spoke") {
                     val signedIn = signInLog.of(accountId).single()
                     signedIn.signInType shouldBe "SIGNED_IN"
                     signedIn.channel shouldBe "APP"
                     signedIn.acr shouldBe "loa2"
                     @Suppress("UNCHECKED_CAST")
                     (signedIn.details["amr"] as List<String>) shouldContainAll listOf("sms", "password")
+                    @Suppress("UNCHECKED_CAST")
+                    (signedIn.details["tools"] as List<String>) shouldContainAll listOf("auth-sms@1", "auth-password@1")
                     signedIn.details["type"] shouldBe "SIGNED_IN"
-                    signedIn.details["version"] shouldBe 1
+                    signedIn.details["version"] shouldBe 2
                 }
             }
 
@@ -100,6 +102,8 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
                     steppedUp.channel shouldBe "APP"
                     @Suppress("UNCHECKED_CAST")
                     (steppedUp.details["amr"] as List<String>) shouldContainAll listOf("sms", "password")
+                    @Suppress("UNCHECKED_CAST")
+                    (steppedUp.details["tools"] as List<String>) shouldContainAll listOf("auth-sms@1", "auth-password@1")
                 }
             }
         }

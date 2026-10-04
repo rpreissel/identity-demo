@@ -35,9 +35,9 @@ class LoginFlowIntegrationTest : IntegrationTestSupport() {
     /** Runs auth-password-lookup on a fresh lookup channel; returns the channel and the tool's answer. */
     private fun passwordLookup(email: String, password: String): Pair<String, Map<String, Any?>> {
         val channelSessionId = lookupChannel()
-        val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password-lookup").nextRaw()["toolSessionId"] as String
+        val toolSessionId = post("/tools/api/auth-password-lookup/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
         return channelSessionId to patch(
-            "/orchestrator/api/v1/tools/$toolSessionId/auth-password-lookup",
+            "/tools/api/auth-password-lookup/v1/$toolSessionId",
             """{"email":"$email","password":"$password"}"""
         )
     }
@@ -80,17 +80,17 @@ class LoginFlowIntegrationTest : IntegrationTestSupport() {
                 seedRegisteredAccount()
                 // A double client request: each activation gets its own ToolSession and TAN.
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val firstActivation = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms")
-                val secondActivation = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms")
+                val firstActivation = post("/tools/api/auth-sms/v1?channel=$channelSessionId")
+                val secondActivation = post("/tools/api/auth-sms/v1?channel=$channelSessionId")
                 val firstToolSessionId = firstActivation.nextRaw()["toolSessionId"] as String
                 val secondToolSessionId = secondActivation.nextRaw()["toolSessionId"] as String
 
                 @Suppress("UNCHECKED_CAST")
                 val firstTan = (firstActivation["demo"] as Map<String, Any?>)["tan"] as String
-                val first = runCatching { patch("/orchestrator/api/v1/tools/$firstToolSessionId/auth-sms", """{"tan":"$firstTan"}""") }
+                val first = runCatching { patch("/tools/api/auth-sms/v1/$firstToolSessionId", """{"tan":"$firstTan"}""") }
                 @Suppress("UNCHECKED_CAST")
                 val secondTan = (secondActivation["demo"] as Map<String, Any?>)["tan"] as String
-                val authenticated = patch("/orchestrator/api/v1/tools/$secondToolSessionId/auth-sms", """{"tan":"$secondTan"}""")
+                val authenticated = patch("/tools/api/auth-sms/v1/$secondToolSessionId", """{"tan":"$secondTan"}""")
 
                 then("each activation gets its own tool session") {
                     secondToolSessionId shouldNotBe firstToolSessionId
@@ -130,11 +130,11 @@ class LoginFlowIntegrationTest : IntegrationTestSupport() {
                 reIdentifyViaFsc(channelSessionId)
                 // The address is confirmed before any enrollment is offered.
                 confirmEmailIfRequested(channelSessionId)
-                val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-sms").nextRaw()["toolSessionId"] as String
+                val enrollToolSessionId = post("/tools/api/enroll-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 val (tan, _) = captureMockTan {
-                    patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-sms", """{"phoneNumber":"+49 170 1234567"}""")
+                    patch("/tools/api/enroll-sms/v1/$enrollToolSessionId", """{"phoneNumber":"+49 170 1234567"}""")
                 }
-                val afterSms = patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-sms", """{"tan":"$tan"}""")
+                val afterSms = patch("/tools/api/enroll-sms/v1/$enrollToolSessionId", """{"tan":"$tan"}""")
 
                 // Abandon below the loa2 floor.
                 val newChannel = post("/orchestrator/api/v1/app/channels")
@@ -159,9 +159,9 @@ class LoginFlowIntegrationTest : IntegrationTestSupport() {
                 // intent=lookup_login forces lookup-based login although this device is already linked.
                 val loginStart = post("/orchestrator/api/v1/app/channels", """{"intent":"lookup_login"}""")
                 val channelSessionId = loginStart.channel()["channelSessionId"] as String
-                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password-lookup").nextRaw()["toolSessionId"] as String
+                val toolSessionId = post("/tools/api/auth-password-lookup/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 val authenticated = patch(
-                    "/orchestrator/api/v1/tools/$toolSessionId/auth-password-lookup",
+                    "/tools/api/auth-password-lookup/v1/$toolSessionId",
                     """{"email":"$email","password":"correct-horse-battery"}"""
                 )
                 val channel = get("/orchestrator/api/v1/channels/$channelSessionId").channel()
@@ -188,12 +188,12 @@ class LoginFlowIntegrationTest : IntegrationTestSupport() {
                 // A finished registration: only a registered account is found by a lookup (ADR-46).
                 val email = registerWithEmailAndPassword()
                 val channelSessionId = lookupChannel()
-                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms-lookup").nextRaw()["toolSessionId"] as String
+                val toolSessionId = post("/tools/api/auth-sms-lookup/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 val (loginTan, _) = captureMockTan {
-                    patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms-lookup", """{"email":"$email"}""")
+                    patch("/tools/api/auth-sms-lookup/v1/$toolSessionId", """{"email":"$email"}""")
                 }
 
-                val authenticated = patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms-lookup", """{"tan":"$loginTan"}""")
+                val authenticated = patch("/tools/api/auth-sms-lookup/v1/$toolSessionId", """{"tan":"$loginTan"}""")
                 val state = get("/orchestrator/api/v1/channels/$channelSessionId").channel()["state"]
 
                 then("it authenticates into the existing account, with no binding offer on its own device") {
@@ -206,12 +206,12 @@ class LoginFlowIntegrationTest : IntegrationTestSupport() {
                 // Confirming the address does not create the email method (ADR-17).
                 val email = registerWithEmailAndPassword(alsoEnrollEmailMethod = true)
                 val channelSessionId = lookupChannel()
-                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-email-lookup").nextRaw()["toolSessionId"] as String
+                val toolSessionId = post("/tools/api/auth-email-lookup/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 val (loginCode, _) = captureMockTan {
-                    patch("/orchestrator/api/v1/tools/$toolSessionId/auth-email-lookup", """{"email":"$email"}""")
+                    patch("/tools/api/auth-email-lookup/v1/$toolSessionId", """{"email":"$email"}""")
                 }
 
-                val authenticated = patch("/orchestrator/api/v1/tools/$toolSessionId/auth-email-lookup", """{"code":"$loginCode"}""")
+                val authenticated = patch("/tools/api/auth-email-lookup/v1/$toolSessionId", """{"code":"$loginCode"}""")
                 val channel = get("/orchestrator/api/v1/channels/$channelSessionId").channel()
 
                 then("it authenticates into the existing account, with no binding offer on its own device") {
@@ -261,8 +261,8 @@ class LoginFlowIntegrationTest : IntegrationTestSupport() {
 
                 fun submit(email: String): Map<String, Any?> {
                     val channelSessionId = lookupChannel()
-                    val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-email-lookup").nextRaw()["toolSessionId"] as String
-                    return patch("/orchestrator/api/v1/tools/$toolSessionId/auth-email-lookup", """{"email":"$email"}""").next()
+                    val toolSessionId = post("/tools/api/auth-email-lookup/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+                    return patch("/tools/api/auth-email-lookup/v1/$toolSessionId", """{"email":"$email"}""").next()
                 }
                 val unknownNext = submit("nobody@example.com")
                 val knownNext = submit(knownEmail)
@@ -281,9 +281,9 @@ class LoginFlowIntegrationTest : IntegrationTestSupport() {
 
                 currentBindingKeyRef = "binding-" + UUID.randomUUID()
                 val channelB = post("/orchestrator/api/v1/app/channels", """{"intent":"register","requiredAcr":"loa2"}""").channel()["channelSessionId"] as String
-                val identToolSessionId = post("/orchestrator/api/v1/channels/$channelB/tools/ident-fsc").nextRaw()["toolSessionId"] as String
+                val identToolSessionId = post("/tools/api/ident-fsc/v1?channel=$channelB").nextRaw()["toolSessionId"] as String
                 patch(
-                    "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
+                    "/tools/api/ident-fsc/v1/$identToolSessionId",
                     """{"kvnr":"B987654321","familyName":"Beispiel","givenNames":"Erika","birthDate":"1990-11-02","fsc":"ERIKA123"}"""
                 )
                 val emailB = confirmEmail(channelB)

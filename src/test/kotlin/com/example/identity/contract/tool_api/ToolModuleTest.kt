@@ -23,10 +23,10 @@ class ToolModuleTest : BehaviorSpec({
         name = Text("Test"),
         proves = factors(FactorType.POSSESSION, FactorType.KNOWLEDGE, upTo = AcrLevel.LOA2),
     )
-    qr.enroll("enroll-qr", hint = Text("Test"), optInOnly = true)
-    qr.login("auth-qr", hint = Text("Test"), startStep = "waitForApp")
-    qr.lookupLogin("auth-qr-lookup", hint = Text("Test"), startStep = "waitForApp")
-    qr.approve("approve-qr", hint = Text("Test"))
+    qr.enroll("enroll-qr", versions = setOf(1), hint = Text("Test"), optInOnly = true)
+    qr.login("auth-qr", versions = setOf(1), hint = Text("Test"), startStep = "waitForApp")
+    qr.lookupLogin("auth-qr-lookup", versions = setOf(1), hint = Text("Test"), startStep = "waitForApp")
+    qr.approve("approve-qr", versions = setOf(1), hint = Text("Test"))
     fun ToolModule.tool(role: ToolRole) = tools.single { it.role == role }
 
     given("a module with four roles") {
@@ -54,8 +54,8 @@ class ToolModuleTest : BehaviorSpec({
 
     given("a module and its tools' names") {
         val module = toolModule(method = "totp", name = Text("Einmalcode-App"), proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA1))
-        val enroll = module.enroll("enroll-totp", hint = Text("App einrichten"))
-        val lookup = module.lookupLogin("auth-totp-lookup", hint = Text("E-Mail-Adresse + Code"), name = Text("Mit Code anmelden"))
+        val enroll = module.enroll("enroll-totp", versions = setOf(1), hint = Text("App einrichten"))
+        val lookup = module.lookupLogin("auth-totp-lookup", versions = setOf(1), hint = Text("E-Mail-Adresse + Code"), name = Text("Mit Code anmelden"))
 
         then("a tool is called by its module's name, with its own hint") {
             enroll.name shouldBe module.name
@@ -72,7 +72,7 @@ class ToolModuleTest : BehaviorSpec({
             name = Text("Test"),
             proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA3),
         )
-        val ident = nect.identify("ident-nect", hint = Text("Test"), also = setOf(AttributeType.STREET_ADDRESS))
+        val ident = nect.identify("ident-nect", versions = setOf(1), hint = Text("Test"), also = setOf(AttributeType.STREET_ADDRESS))
 
         then("it always asserts name, given names and date of birth, so it can be found again (ADR-39)") {
             ident.claims.map { it.attributeType } shouldContainAll IDENTIFICATION_FINDABLE_BY + AttributeType.STREET_ADDRESS
@@ -87,28 +87,28 @@ class ToolModuleTest : BehaviorSpec({
         fun totp() = toolModule(method = "totp", name = Text("Test"), proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA1))
 
         then("an id of another method is refused") {
-            shouldThrow<IllegalArgumentException> { totp().enroll("enroll-sms", hint = Text("Test")) }.message shouldContain "must be called 'enroll-totp'"
+            shouldThrow<IllegalArgumentException> { totp().enroll("enroll-sms", versions = setOf(1), hint = Text("Test")) }.message shouldContain "must be called 'enroll-totp'"
         }
         then("an id of another role is refused") {
-            shouldThrow<IllegalArgumentException> { totp().login("auth-totp-lookup", hint = Text("Test")) }.message shouldContain "must be called 'auth-totp'"
+            shouldThrow<IllegalArgumentException> { totp().login("auth-totp-lookup", versions = setOf(1), hint = Text("Test")) }.message shouldContain "must be called 'auth-totp'"
         }
         then("a role declared twice is refused") {
-            val module = totp().apply { login("auth-totp", hint = Text("Test")) }
-            shouldThrow<IllegalArgumentException> { module.login("auth-totp", hint = Text("Test")) }.message shouldContain "more than once"
+            val module = totp().apply { login("auth-totp", versions = setOf(1), hint = Text("Test")) }
+            shouldThrow<IllegalArgumentException> { module.login("auth-totp", versions = setOf(1), hint = Text("Test")) }.message shouldContain "more than once"
         }
         then("an identification and a correlation together are refused: they share the id") {
-            val module = totp().apply { identify("ident-totp", hint = Text("Test")) }
-            shouldThrow<IllegalArgumentException> { module.correlate("ident-totp", hint = Text("Test"), claims = emptySet()) }.message shouldContain "more than once"
+            val module = totp().apply { identify("ident-totp", versions = setOf(1), hint = Text("Test")) }
+            shouldThrow<IllegalArgumentException> { module.correlate("ident-totp", versions = setOf(1), hint = Text("Test"), claims = emptySet()) }.message shouldContain "more than once"
         }
     }
 
     given("a module the catalog has already collected") {
         val module = toolModule(method = "totp", name = Text("Test"), proves = factors(FactorType.POSSESSION, upTo = AcrLevel.LOA1))
-        module.enroll("enroll-totp", hint = Text("Test"))
+        module.enroll("enroll-totp", versions = setOf(1), hint = Text("Test"))
         module.tools
 
         then("a tool registered afterwards is refused instead of silently missing from the catalog") {
-            shouldThrow<IllegalStateException> { module.login("auth-totp", hint = Text("Test")) }.message shouldContain "declare the tools of a module in its module file"
+            shouldThrow<IllegalStateException> { module.login("auth-totp", versions = setOf(1), hint = Text("Test")) }.message shouldContain "declare the tools of a module in its module file"
             module.tools.map { it.toolId.value } shouldContainExactly listOf("enroll-totp")
         }
     }

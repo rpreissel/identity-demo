@@ -3,6 +3,7 @@
     "toolId": "approve-qr",
     "method": "qr",
     "role": "PEER_APPROVAL",
+    "versions": [1],
     "name": "QR-Login",
     "hint": "Web-Login per QR bestätigen"
   },
@@ -10,6 +11,7 @@
     "toolId": "auth-device",
     "method": "device",
     "role": "KNOWN_ACCOUNT_AUTH",
+    "versions": [1],
     "name": "Gerät",
     "hint": "Geräteeigener Schlüssel + PIN/Biometrie"
   },
@@ -17,6 +19,7 @@
     "toolId": "auth-email",
     "method": "email",
     "role": "KNOWN_ACCOUNT_AUTH",
+    "versions": [1],
     "name": "E-Mail",
     "hint": "Code an die bestätigte E-Mail-Adresse"
   },
@@ -24,6 +27,7 @@
     "toolId": "auth-email-lookup",
     "method": "email",
     "role": "ACCOUNT_LOOKUP_AUTH",
+    "versions": [1],
     "name": "E-Mail",
     "hint": "E-Mail-Adresse + Bestätigungscode"
   },
@@ -31,6 +35,7 @@
     "toolId": "auth-invite-lookup",
     "method": "invite",
     "role": "ACCOUNT_LOOKUP_AUTH",
+    "versions": [1],
     "name": "Einmalkennwort",
     "hint": "Mit dem Einmalkennwort aus unserem Brief"
   },
@@ -38,6 +43,7 @@
     "toolId": "auth-kobil",
     "method": "kobil",
     "role": "KNOWN_ACCOUNT_AUTH",
+    "versions": [1],
     "name": "KOBIL",
     "hint": "An das Gerät gebunden über KOBIL, entsperrt per Biometrie oder Passwort"
   },
@@ -45,6 +51,7 @@
     "toolId": "auth-password",
     "method": "password",
     "role": "KNOWN_ACCOUNT_AUTH",
+    "versions": [1],
     "name": "Passwort",
     "hint": "Mit dem hinterlegten Passwort"
   },
@@ -52,6 +59,7 @@
     "toolId": "auth-password-lookup",
     "method": "password",
     "role": "ACCOUNT_LOOKUP_AUTH",
+    "versions": [1],
     "name": "Passwort",
     "hint": "E-Mail-Adresse + Passwort"
   },
@@ -59,6 +67,7 @@
     "toolId": "auth-qr",
     "method": "qr",
     "role": "KNOWN_ACCOUNT_AUTH",
+    "versions": [1],
     "name": "Mit App bestätigen",
     "hint": "QR-Code mit der App scannen oder Code manuell in der App eingeben"
   },
@@ -66,6 +75,7 @@
     "toolId": "auth-qr-lookup",
     "method": "qr",
     "role": "ACCOUNT_LOOKUP_AUTH",
+    "versions": [1],
     "name": "Mit App anmelden",
     "hint": "QR-Code mit einer bereits angemeldeten App scannen oder Code manuell eingeben"
   },
@@ -73,6 +83,7 @@
     "toolId": "auth-sms",
     "method": "sms",
     "role": "KNOWN_ACCOUNT_AUTH",
+    "versions": [1],
     "name": "SMS",
     "hint": "Code an die hinterlegte Telefonnummer"
   },
@@ -80,6 +91,7 @@
     "toolId": "auth-sms-lookup",
     "method": "sms",
     "role": "ACCOUNT_LOOKUP_AUTH",
+    "versions": [1],
     "name": "SMS",
     "hint": "E-Mail-Adresse + SMS-Code"
   },
@@ -87,6 +99,7 @@
     "toolId": "confirm-email",
     "method": "email",
     "role": "ATTESTATION",
+    "versions": [1],
     "name": "E-Mail",
     "hint": "E-Mail-Adresse bestätigen"
   },
@@ -94,6 +107,7 @@
     "toolId": "enroll-device",
     "method": "device",
     "role": "ENROLLMENT",
+    "versions": [1],
     "name": "Gerät",
     "hint": "Geräteeigener Schlüssel + PIN/Biometrie"
   },
@@ -101,6 +115,7 @@
     "toolId": "enroll-email",
     "method": "email",
     "role": "ENROLLMENT",
+    "versions": [1],
     "name": "E-Mail",
     "hint": "Ihre bestätigte E-Mail-Adresse, ohne Code"
   },
@@ -108,6 +123,7 @@
     "toolId": "enroll-kobil",
     "method": "kobil",
     "role": "ENROLLMENT",
+    "versions": [1],
     "name": "KOBIL",
     "hint": "An das Gerät gebunden über KOBIL, entsperrt per Biometrie oder Passwort"
   },
@@ -115,6 +131,7 @@
     "toolId": "enroll-password",
     "method": "password",
     "role": "ENROLLMENT",
+    "versions": [1],
     "name": "Passwort",
     "hint": "Eigenes Passwort festlegen"
   },
@@ -122,6 +139,7 @@
     "toolId": "enroll-qr",
     "method": "qr",
     "role": "ENROLLMENT",
+    "versions": [1],
     "name": "QR-Login",
     "hint": "Web-Login per QR-Code erlauben"
   },
@@ -129,6 +147,7 @@
     "toolId": "enroll-sms",
     "method": "sms",
     "role": "ENROLLMENT",
+    "versions": [1],
     "name": "SMS",
     "hint": "Code an eine Telefonnummer"
   },
@@ -136,6 +155,7 @@
     "toolId": "ident-eid",
     "method": "eid",
     "role": "IDENTIFICATION",
+    "versions": [1],
     "name": "eID",
     "hint": "Online-Ausweisfunktion (simuliert)"
   },
@@ -143,6 +163,7 @@
     "toolId": "ident-fsc",
     "method": "fsc",
     "role": "IDENTIFICATION",
+    "versions": [1],
     "name": "Freischaltcode",
     "hint": "Persönliche Daten und Freischaltcode"
   },
@@ -150,6 +171,7 @@
     "toolId": "ident-kvnr",
     "method": "kvnr",
     "role": "CORRELATION",
+    "versions": [1],
     "name": "Versichertennummer",
     "hint": "Konto der eigenen Person im Personenverzeichnis zuordnen"
   },
@@ -157,6 +179,7 @@
     "toolId": "ident-nect",
     "method": "nect",
     "role": "IDENTIFICATION",
+    "versions": [1],
     "name": "Nect",
     "hint": "Ausweis, Reisepass oder EUDI-Wallet bei Nect (simuliert)"
   }

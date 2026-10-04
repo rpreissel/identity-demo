@@ -91,8 +91,10 @@ gibt es dafür ein eigenes Protokoll, in derselben Form wie das Änderungsprotok
 `details` mit `type` und `version`, eine Schreibfunktion je Ereignis in `SignInLog`):
 
 - **`SIGNED_IN`**: Eine Einstiegs-Journey (`AuthIntent.isEntryIntent`) hat den Kanal angemeldet –
-  mit Niveau, Nachweisen (`amr`) und Intent. **`STEPPED_UP`**: ein Step-up, auch als Unter-Journey.
-- **`SIGN_IN_FAILED`**: ein falscher Nachweis für ein bekanntes Konto, mit Verfahren; aus der App wie
+  mit Niveau, Nachweisen (`amr`), den Tools dahinter in ihrer Fassung (`tools`, ADR-51) und Intent.
+  **`STEPPED_UP`**: ein Step-up, auch als Unter-Journey.
+- **`SIGN_IN_FAILED`**: ein falscher Nachweis für ein bekanntes Konto, mit Verfahren und Tool in
+  seiner Fassung (`tool`, fehlt bei Keycloaks eigener Prüfung); aus der App wie
   aus Keycloaks Passwortformular. **`LOCKED_OUT`**: der Fehlversuch, der die Sperre auslöste. Beides
   schreibt `AccountLockoutService`, durch das jeder solche Fehlversuch läuft.
 - **`SIGNED_OUT`**: ein gewollter Logout – in der App über den Orchestrator, im Web-Kanal von Keycloak

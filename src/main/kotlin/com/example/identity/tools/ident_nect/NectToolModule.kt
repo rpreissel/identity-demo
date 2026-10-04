@@ -44,6 +44,7 @@ internal val NectModule = toolModule(
 
 internal val IdentNect = NectModule.identify(
     IDENT_NECT_TOOL_ID,
+    versions = setOf(1),
     hint = Text("Ausweis, Reisepass oder EUDI-Wallet bei Nect (simuliert)"),
     also = setOf(AttributeType.STREET_ADDRESS, AttributeType.POSTAL_CODE, AttributeType.LOCALITY, NECT_RESTRICTED_ID),
     startStep = "redirect",

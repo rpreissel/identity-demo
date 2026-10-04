@@ -25,9 +25,9 @@ import java.time.Instant
  * so a reader years later knows which keys to expect. Raise it whenever [ChangeLog] changes them.
  */
 enum class ChangeType(val detailsVersion: Int) {
-    IDENTIFIED(1),
+    IDENTIFIED(2),
     ATTRIBUTE_RETRACTED(1),
-    METHOD_ADDED(1),
+    METHOD_ADDED(2),
     METHOD_DEACTIVATED(1),
     ACCOUNT_DELETED(1),
     ACCOUNT_ABSORBED(1),

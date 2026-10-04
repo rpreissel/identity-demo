@@ -38,7 +38,7 @@ class RequiredActionIntegrationTest : IntegrationTestSupport() {
             `when`("the person identifies and enrolls sms") {
                 val channelSessionId = post(
                     "/orchestrator/api/v1/app/channels",
-                    """{"availableTools":["ident-fsc","enroll-sms"]}"""
+                    """{"availableTools":["ident-fsc@1","enroll-sms@1"]}"""
                 ).channel()["channelSessionId"] as String
                 reIdentifyViaFsc(channelSessionId)
                 enrollSms(channelSessionId)

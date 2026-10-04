@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 /**
  * toolId=enroll-email. One controller per tool (docs/08-projektrahmen.md A11), but this one has no
@@ -38,7 +38,7 @@ class EnrollEmailToolController(
 
     override val tool = EnrollEmail
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_EMAIL_TOOL_ID")
+    @PostMapping("$TOOLS_API/$ENROLL_EMAIL_TOOL_ID/v1")
     @Operation(
         summary = "Activate enroll-email",
         description = "One shot: no request body, and the response already carries the completed outcome.",
@@ -62,7 +62,7 @@ class EnrollEmailToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$ENROLL_EMAIL_TOOL_ID")
+    @GetMapping("$TOOLS_API/$ENROLL_EMAIL_TOOL_ID/v1/{toolSessionId}")
     @Operation(summary = "Read the current enroll-email state")
     fun read(
         context: ToolContext

@@ -10,6 +10,7 @@ const ICON = '🛡️'
 
 export const enrollKobilTool: ToolModule = {
   toolId: 'enroll-kobil',
+  version: 1,
   meta: { icon: ICON },
   explain: () => ({
     does: t('Das KOBIL-SDK auf dem Gerät wird aktiviert und an Ihr Konto gebunden. Entsperrt wird es später per Biometrie oder Passwort.'),
@@ -34,6 +35,7 @@ export const enrollKobilTool: ToolModule = {
 
 export const authKobilTool: ToolModule = {
   toolId: 'auth-kobil',
+  version: 1,
   meta: { icon: ICON },
   explain: (step) =>
     step === 'otp'

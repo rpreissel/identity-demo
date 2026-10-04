@@ -32,18 +32,21 @@ internal val EmailModule = toolModule(
 
 internal val ConfirmEmail = EmailModule.confirm(
     CONFIRM_EMAIL_TOOL_ID,
+    versions = setOf(1),
     hint = Text("E-Mail-Adresse bestätigen"),
     claims = setOf(AttributeType.EMAIL),
 )
 internal val EnrollEmail = EmailModule.enroll(
     ENROLL_EMAIL_TOOL_ID,
+    versions = setOf(1),
     hint = Text("Ihre bestätigte E-Mail-Adresse, ohne Code"),
     requires = setOf(ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN)),
     withoutUserStep = Text("Ihre bereits bestätigte E-Mail-Adresse wird sofort zum Anmeldeverfahren. Einen Code brauchen Sie dafür nicht."),
 )
-internal val AuthEmail = EmailModule.login(AUTH_EMAIL_TOOL_ID, hint = Text("Code an die bestätigte E-Mail-Adresse"))
+internal val AuthEmail = EmailModule.login(AUTH_EMAIL_TOOL_ID, versions = setOf(1), hint = Text("Code an die bestätigte E-Mail-Adresse"))
 internal val AuthEmailLookup = EmailModule.lookupLogin(
     AUTH_EMAIL_LOOKUP_TOOL_ID,
+    versions = setOf(1),
     hint = Text("E-Mail-Adresse + Bestätigungscode"),
 )
 

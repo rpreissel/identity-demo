@@ -26,6 +26,7 @@ internal val FscModule = toolModule(
 
 internal val IdentFsc = FscModule.identify(
     IDENT_FSC_TOOL_ID,
+    versions = setOf(1),
     hint = Text("Persönliche Daten und Freischaltcode"),
     also = setOf(AttributeType.PERSON_ID, AttributeType.KVNR, AttributeType.MEMBER_NUMBER),
     vouchedBy = ClaimSource.PERSON_DIRECTORY,

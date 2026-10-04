@@ -34,10 +34,10 @@ class NoSecretsInLogIntegrationTest : IntegrationTestSupport() {
 
                     val lookup = post("/orchestrator/api/v1/app/channels", """{"intent":"lookup_login"}""")
                         .channel()["channelSessionId"] as String
-                    val toolSessionId = post("/orchestrator/api/v1/channels/$lookup/tools/auth-sms-lookup")
+                    val toolSessionId = post("/tools/api/auth-sms-lookup/v1?channel=$lookup")
                         .nextRaw()["toolSessionId"] as String
                     val rejected = runCatching {
-                        patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms-lookup", """{"email":"$mistyped"}""")
+                        patch("/tools/api/auth-sms-lookup/v1/$toolSessionId", """{"email":"$mistyped"}""")
                     }
                     email to rejected
                 } finally {

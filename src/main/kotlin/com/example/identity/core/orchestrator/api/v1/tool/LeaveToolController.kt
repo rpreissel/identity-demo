@@ -18,17 +18,20 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
+import com.example.identity.contract.tool_api.ToolId
+import com.example.identity.contract.tool_api.ToolVersion
 
 /**
  * Leaves the activated tool: declines it ([abandon]) or goes back to the selection ([back]). Never
  * starts another tool; the client activates that itself. The only generic, toolId-keyed tool
- * endpoint; every other tool operation has its own controller in its method module (ADR-1). It
+ * endpoint; every other tool operation has its own controller in its method module (ADR-1). Its
+ * form is the same in every tool and version, so it lives at the tool's own path (ADR-51). It
  * lives in the orchestrator, because what follows is decided by the journey's state, and
  * `tool_api` is a contract, not a web layer.
  */
 @RestController
-@RequestMapping("$API_V1/tools/{toolSessionId}/{toolId}")
+@RequestMapping("$TOOLS_API/{toolId}/v{version}/{toolSessionId}")
 @Tag(name = "Tools", description = "Leaving an activated tool: back to the selection, or declining it")
 @SecurityRequirement(name = "dpop")
 class LeaveToolController(private val toolJourney: ToolJourney) {
@@ -55,9 +58,10 @@ class LeaveToolController(private val toolJourney: ToolJourney) {
     fun abandon(
         @PathVariable toolSessionId: ToolSessionId,
         @PathVariable toolId: String,
+        @PathVariable version: Int,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, toolId)
+        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, ToolVersion(ToolId(toolId), version))
         return ResponseEntity.ok(toolJourney.abandon(context))
     }
 
@@ -84,9 +88,10 @@ class LeaveToolController(private val toolJourney: ToolJourney) {
     fun back(
         @PathVariable toolSessionId: ToolSessionId,
         @PathVariable toolId: String,
+        @PathVariable version: Int,
         @BindingKey bindingKeyRef: String
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, toolId)
+        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, ToolVersion(ToolId(toolId), version))
         return ResponseEntity.ok(toolJourney.back(context))
     }
 }

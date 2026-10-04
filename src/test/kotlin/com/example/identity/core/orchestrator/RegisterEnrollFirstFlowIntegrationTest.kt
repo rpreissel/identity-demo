@@ -47,9 +47,9 @@ class RegisterEnrollFirstFlowIntegrationTest : IntegrationTestSupport() {
     }
 
     private fun identifyAsMax(channelSessionId: String): Map<String, Any?> {
-        val identToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
+        val identToolSessionId = post("/tools/api/ident-fsc/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
         return patch(
-            "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
+            "/tools/api/ident-fsc/v1/$identToolSessionId",
             """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","fsc":"VALIDCODE"}"""
         )
     }
@@ -138,12 +138,12 @@ class RegisterEnrollFirstFlowIntegrationTest : IntegrationTestSupport() {
                 // A different device that only knows the same email address.
                 currentBindingKeyRef = "binding-" + UUID.randomUUID()
                 val secondChannelId = post("/orchestrator/api/v1/app/channels", """{"intent":"register"}""").channel()["channelSessionId"] as String
-                val confirmToolSessionId = post("/orchestrator/api/v1/channels/$secondChannelId/tools/confirm-email").nextRaw()["toolSessionId"] as String
+                val confirmToolSessionId = post("/tools/api/confirm-email/v1?channel=$secondChannelId").nextRaw()["toolSessionId"] as String
                 val (code, _) = captureMockTan {
-                    patch("/orchestrator/api/v1/tools/$confirmToolSessionId/confirm-email", """{"email":"$sharedEmail"}""")
+                    patch("/tools/api/confirm-email/v1/$confirmToolSessionId", """{"email":"$sharedEmail"}""")
                 }
 
-                val result = runCatching { patch("/orchestrator/api/v1/tools/$confirmToolSessionId/confirm-email", """{"code":"$code"}""") }
+                val result = runCatching { patch("/tools/api/confirm-email/v1/$confirmToolSessionId", """{"code":"$code"}""") }
 
                 then("it is rejected as a conflict, the second device never gets bound to the first account") {
                     shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT

@@ -409,7 +409,7 @@ export function AppChannelApp() {
       setActiveTool({ toolSessionId: next.toolSessionId, toolId: next.toolId })
     // The channel-level GET only reports a bare pointer. missingFields and demo hints come from
     // the tool's own responses and would be lost on resume, so fetch the tool's read-back
-    // (GET .../tools/{id}/{toolId}).
+    // (GET /tools/api/{toolId}/v{N}/{id}).
       const toolId = next.toolId
       const toolSessionId = next.toolSessionId
       activatingToolIdRef.current = toolId
@@ -781,7 +781,7 @@ export function AppChannelApp() {
       ? {
           step: next.step,
           toolId: next.toolId,
-          toolSessionId: next.toolSessionId ?? activeTool?.toolSessionId,
+          toolSessionId: next.toolSessionId ?? (activeTool?.toolId === next.toolId ? activeTool.toolSessionId : undefined),
           proof: { kind: 'dpop', dpop },
           stepData,
           message,
@@ -1063,7 +1063,8 @@ export function AppChannelApp() {
                   />
                 )}
 
-                {toolCtx && <InnerBackProvider value={innerBackRegistry}>{renderToolStep(toolCtx)}</InnerBackProvider>}
+                {/* Only once the tool runs: a form shown while its activation is in flight takes input it cannot send. */}
+                {toolCtx?.toolSessionId && <InnerBackProvider value={innerBackRegistry}>{renderToolStep(toolCtx)}</InnerBackProvider>}
 
                 {uiComponent === 'prompt' && confirmPrompt && (
                   <PromptView prompt={confirmPrompt} onAnswer={handleAnswer} />

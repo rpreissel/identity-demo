@@ -26,9 +26,9 @@ class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
             `when`("a fresh channel declines its only auth method and identifies via ident-fsc") {
                 val accountId = registerWithSmsOnly()
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val authToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms").nextRaw()["toolSessionId"] as String
+                val authToolSessionId = post("/tools/api/auth-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
 
-                val afterDecline = delete("/orchestrator/api/v1/tools/$authToolSessionId/auth-sms")
+                val afterDecline = delete("/tools/api/auth-sms/v1/$authToolSessionId")
                 val identified = reIdentifyViaFsc(channelSessionId)
 
                 then("declining is not a dead end: the chain falls through to identification") {
@@ -50,7 +50,7 @@ class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels", """{"intent":"lookup_login"}""")
                     .channel()["channelSessionId"] as String
 
-                val result = runCatching { post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc") }
+                val result = runCatching { post("/tools/api/ident-fsc/v1?channel=$channelSessionId") }
 
                 then("it is rejected at the boundary - no state of this intent offers an identification") {
                     // Instead of failing deeper with a 500.
@@ -61,12 +61,12 @@ class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
             `when`("two wrong TANs go to one tool session and a third to a fresh one") {
                 registerWithSmsOnly()
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val firstToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms").nextRaw()["toolSessionId"] as String
-                patch("/orchestrator/api/v1/tools/$firstToolSessionId/auth-sms", """{"tan":"000000"}""")
-                patch("/orchestrator/api/v1/tools/$firstToolSessionId/auth-sms", """{"tan":"000000"}""")
-                val secondToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms").nextRaw()["toolSessionId"] as String
+                val firstToolSessionId = post("/tools/api/auth-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+                patch("/tools/api/auth-sms/v1/$firstToolSessionId", """{"tan":"000000"}""")
+                patch("/tools/api/auth-sms/v1/$firstToolSessionId", """{"tan":"000000"}""")
+                val secondToolSessionId = post("/tools/api/auth-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
 
-                val result = runCatching { patch("/orchestrator/api/v1/tools/$secondToolSessionId/auth-sms", """{"tan":"000000"}""") }
+                val result = runCatching { patch("/tools/api/auth-sms/v1/$secondToolSessionId", """{"tan":"000000"}""") }
 
                 then("the attempt budget spans the whole journey, not a single tool: the process ends as 410") {
                     // A per-tool counter would start over at zero, and the journey would survive indefinitely.
@@ -77,12 +77,12 @@ class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
             `when`("three wrong TANs use up the budget and the right TAN follows on the same tool session") {
                 val accountId = registerWithSmsOnly()
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val (tan, started) = captureMockTan { post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms") }
+                val (tan, started) = captureMockTan { post("/tools/api/auth-sms/v1?channel=$channelSessionId") }
                 val toolSessionId = started.nextRaw()["toolSessionId"] as String
-                repeat(2) { patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"000000"}""") }
-                val third = runCatching { patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"000000"}""") }
+                repeat(2) { patch("/tools/api/auth-sms/v1/$toolSessionId", """{"tan":"000000"}""") }
+                val third = runCatching { patch("/tools/api/auth-sms/v1/$toolSessionId", """{"tan":"000000"}""") }
 
-                val withRightTan = runCatching { patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"$tan"}""") }
+                val withRightTan = runCatching { patch("/tools/api/auth-sms/v1/$toolSessionId", """{"tan":"$tan"}""") }
 
                 then("the third wrong TAN ends the process as 410") {
                     shouldThrow<HttpClientErrorException> { third.getOrThrow() }.statusCode shouldBe HttpStatus.GONE
@@ -107,8 +107,8 @@ class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
                 currentBindingKeyRef = "binding-" + UUID.randomUUID()
                 val channelSessionId = post("/orchestrator/api/v1/app/channels", """{"intent":"lookup_login"}""")
                     .channel()["channelSessionId"] as String
-                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms-lookup").nextRaw()["toolSessionId"] as String
-                delete("/orchestrator/api/v1/tools/$toolSessionId/auth-sms-lookup")
+                val toolSessionId = post("/tools/api/auth-sms-lookup/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+                delete("/tools/api/auth-sms-lookup/v1/$toolSessionId")
 
                 val afterCancel = delete("/orchestrator/api/v1/channels/$channelSessionId/journey")
 

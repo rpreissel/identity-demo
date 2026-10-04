@@ -70,8 +70,8 @@ class DeviceBindingIntegrationTest : IntegrationTestSupport() {
 
     private fun enrollDevice(channelSessionId: String, userVerification: String = "biometric"): ECKey {
         val deviceKey = ECKeyGenerator(Curve.P_256).generate()
-        val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-device").nextRaw()["toolSessionId"] as String
-        val patchUrl = "/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-device"
+        val enrollToolSessionId = post("/tools/api/enroll-device/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+        val patchUrl = "/tools/api/enroll-device/v1/$enrollToolSessionId"
         val proof = signDeviceProof(deviceKey, "http://localhost:$port$patchUrl", userVerification)
         patch(patchUrl, """{"deviceProof":"$proof"}""")
         return deviceKey
@@ -101,8 +101,8 @@ class DeviceBindingIntegrationTest : IntegrationTestSupport() {
             `when`("enroll-device gets a proof signed long ago") {
                 val channelSessionId = identifyAndConfirmEmail()
                 val deviceKey = ECKeyGenerator(Curve.P_256).generate()
-                val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-device").nextRaw()["toolSessionId"] as String
-                val patchUrl = "/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-device"
+                val enrollToolSessionId = post("/tools/api/enroll-device/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+                val patchUrl = "/tools/api/enroll-device/v1/$enrollToolSessionId"
                 val staleProof = signDeviceProof(
                     deviceKey, "http://localhost:$port$patchUrl", "pin",
                     issuedAt = Date.from(Instant.now().minusSeconds(600))
@@ -121,8 +121,8 @@ class DeviceBindingIntegrationTest : IntegrationTestSupport() {
                 // underneath as defense in depth.
                 val channelSessionId = identifyAndConfirmEmail()
                 val deviceKey = ECKeyGenerator(Curve.P_256).generate()
-                val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-device").nextRaw()["toolSessionId"] as String
-                val patchUrl = "/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-device"
+                val enrollToolSessionId = post("/tools/api/enroll-device/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+                val patchUrl = "/tools/api/enroll-device/v1/$enrollToolSessionId"
                 val proof = signDeviceProof(deviceKey, "http://localhost:$port$patchUrl", "pin")
                 patch(patchUrl, """{"deviceProof":"$proof"}""")
 
@@ -146,8 +146,8 @@ class DeviceBindingIntegrationTest : IntegrationTestSupport() {
                 // DeviceAccountLink.
                 val newChannel = post("/orchestrator/api/v1/app/channels")
                 val newChannelSessionId = newChannel.channel()["channelSessionId"] as String
-                val authToolSessionId = post("/orchestrator/api/v1/channels/$newChannelSessionId/tools/auth-device").nextRaw()["toolSessionId"] as String
-                val authPatchUrl = "/orchestrator/api/v1/tools/$authToolSessionId/auth-device"
+                val authToolSessionId = post("/tools/api/auth-device/v1?channel=$newChannelSessionId").nextRaw()["toolSessionId"] as String
+                val authPatchUrl = "/tools/api/auth-device/v1/$authToolSessionId"
                 val authenticated = patch(authPatchUrl, """{"deviceProof":"${signDeviceProof(deviceKey, "http://localhost:$port$authPatchUrl", "pin")}"}""")
                 val afterLogin = get("/orchestrator/api/v1/channels/$newChannelSessionId").channel()
 
@@ -170,8 +170,8 @@ class DeviceBindingIntegrationTest : IntegrationTestSupport() {
             `when`("a fresh channel presents a proof signed with a different key") {
                 enrollDevice(identifyAndConfirmEmail())
                 val newChannelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val authToolSessionId = post("/orchestrator/api/v1/channels/$newChannelSessionId/tools/auth-device").nextRaw()["toolSessionId"] as String
-                val authPatchUrl = "/orchestrator/api/v1/tools/$authToolSessionId/auth-device"
+                val authToolSessionId = post("/tools/api/auth-device/v1?channel=$newChannelSessionId").nextRaw()["toolSessionId"] as String
+                val authPatchUrl = "/tools/api/auth-device/v1/$authToolSessionId"
                 val wrongKey = ECKeyGenerator(Curve.P_256).generate()
 
                 val result = patch(authPatchUrl, """{"deviceProof":"${signDeviceProof(wrongKey, "http://localhost:$port$authPatchUrl", "pin")}"}""")
@@ -196,8 +196,8 @@ class DeviceBindingIntegrationTest : IntegrationTestSupport() {
 
                 val newChannel = post("/orchestrator/api/v1/app/channels")
                 val newChannelSessionId = newChannel.channel()["channelSessionId"] as String
-                val toolSessionId = post("/orchestrator/api/v1/channels/$newChannelSessionId/tools/auth-device").nextRaw()["toolSessionId"] as String
-                val afterDecline = delete("/orchestrator/api/v1/tools/$toolSessionId/auth-device")
+                val toolSessionId = post("/tools/api/auth-device/v1?channel=$newChannelSessionId").nextRaw()["toolSessionId"] as String
+                val afterDecline = delete("/tools/api/auth-device/v1/$toolSessionId")
                 val afterCancel = delete("/orchestrator/api/v1/channels/$newChannelSessionId/journey")
 
                 then("the fresh channel starts on the first state of the FAST fallback chain, the device method") {

@@ -32,10 +32,12 @@ internal val DeviceModule = toolModule(
 
 internal val EnrollDevice = DeviceModule.enroll(
     ENROLL_DEVICE_TOOL_ID,
+    versions = setOf(1),
     hint = Text("Geräteeigener Schlüssel + PIN/Biometrie"),
 )
 internal val AuthDevice = DeviceModule.login(
     AUTH_DEVICE_TOOL_ID,
+    versions = setOf(1),
     hint = Text("Geräteeigener Schlüssel + PIN/Biometrie"),
 )
 

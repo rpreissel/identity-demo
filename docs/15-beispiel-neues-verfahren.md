@@ -74,9 +74,9 @@ internal val TotpModule = toolModule(
     stepData = TotpStepData,
 )
 
-internal val EnrollTotp = TotpModule.enroll(ENROLL_TOTP_TOOL_ID, hint = Text("Authenticator-App einrichten"))
-internal val AuthTotp = TotpModule.login(AUTH_TOTP_TOOL_ID, hint = Text("Code aus der Authenticator-App"))
-internal val AuthTotpLookup = TotpModule.lookupLogin(AUTH_TOTP_LOOKUP_TOOL_ID, hint = Text("E-Mail-Adresse + Code aus der App"))
+internal val EnrollTotp = TotpModule.enroll(ENROLL_TOTP_TOOL_ID, versions = setOf(1), hint = Text("Authenticator-App einrichten"))
+internal val AuthTotp = TotpModule.login(AUTH_TOTP_TOOL_ID, versions = setOf(1), hint = Text("Code aus der Authenticator-App"))
+internal val AuthTotpLookup = TotpModule.lookupLogin(AUTH_TOTP_LOOKUP_TOOL_ID, versions = setOf(1), hint = Text("E-Mail-Adresse + Code aus der App"))
 
 @ApplicationModule(id = "auth_totp", allowedDependencies = ["tool_api", "texts"])
 @Configuration
@@ -109,9 +109,9 @@ Orchestrator aus dem Modul.
 Die Controller sind dünn. Jeder implementiert `ToolController` und zeigt auf sein Tool
 (`override val tool = AuthTotp`). Dann rufen sie `ToolJourney` und den Handler in fester Reihenfolge:
 
-- `POST .../channels/{id}/tools/<toolId>`: Parameter `context: ActivationToolContext`, dann
+- `POST /tools/api/<toolId>/v1?channel={channelSessionId}`: Parameter `context: ActivationToolContext`, dann
   `handler.start`, `activated` (bucht das Ergebnis und antwortet `201` mit `Location`).
-- `PATCH .../tools/{toolSessionId}/<toolId>`: Parameter `context: AuthorizedToolContext`, dann
+- `PATCH /tools/api/<toolId>/v1/{toolSessionId}`: Parameter `context: AuthorizedToolContext`, dann
   `handler.patch`, `applyOutcome`.
 - `GET`: Parameter `context: ToolContext`, dann `readResponse { handler.read(…) }`.
 - Hat eine Methode einen `@RequestBody`, steht er vor dem Kontext. Spring löst die Parameter der
@@ -227,17 +227,20 @@ Von Hand:
   Verfahren, keine Fremdschlüssel über Schemagrenzen. Für die Arbeitsdaten eines Durchlaufs braucht es
   keine Tabelle.
   Vorbild `auth_kobil/V12__auth_kobil.sql`.
-- **Vertrag.** `./gradlew updateOpenApiSnapshot` schreibt `api/openapi.yaml` und
-  `api/modules/<modul>.yaml`, danach `./gradlew generateFrontendApiTypes`. Neue Endpunkte und
-  Formen sind kompatibel zu v1; `checkPublishedApiCompatibility` bleibt grün
+- **Vertrag.** `./gradlew updateOpenApiSnapshot` schreibt `api/openapi.yaml`,
+  `api/modules/<modul>.yaml` und je Tool `api/contract/tools/<toolId>/v1.yaml`, danach
+  `./gradlew generateFrontendApiTypes`. Ein neues Tool ist kein Bruch;
+  `checkPublishedApiCompatibility` meldet es als Hinweis, bis `publishApiVersion` es einfriert
   ([05-api.md](05-api.md) Abschnitt 1).
 - **Frontend.** Je Modul `frontend/src/tools/<name>/index.tsx` mit einem Eintrag je Tool
-  (`toolId`, `meta` mit dem Symbol, `explain`, `render`); Name und Hinweis kommen aus dem Katalog.
+  (`toolId`, `version` als die eine Fassung, die das Frontend spricht, `meta` mit dem Symbol,
+  `explain`, `render`); Name und Hinweis kommen aus dem Katalog.
   Neue Tools gehören auch in `tools/catalog.fixture.json`, den Katalog der Unit-Tests
   (`ToolAvailabilityIntegrationTest` prüft ihn gegen den echten). Die Registry findet die Datei von
   selbst; einen Routing-Eintrag gibt es nicht. Vorbilder `tools/kobil/` und `tools/nect/`.
 - **Keycloak.** Je Tool, das im Web-Kanal laufen soll, ein `WebToolRendererFactory` in der
-  Erweiterung, eingetragen in `META-INF/services`, mit Template für FreeMarker und Keycloakify
+  Erweiterung (mit `version()`, der Fassung, die der Renderer spricht), eingetragen in
+  `META-INF/services`, mit Template für FreeMarker und Keycloakify
   ([ADR-41](adr/ADR-041-keycloakify-neben-freemarker.md)). Vorbilder `webtool/identnect/` und
   `webtool/sms/`. Was keinen Renderer hat, bietet der Web-Kanal nie an. Titel und Hinweis der Seite
   holt die Erweiterung aus dem Katalog (`OrchestratorToolCatalog`), der Renderer nennt sie nicht.
@@ -252,7 +255,7 @@ Diese Tests werden rot, wenn etwas fehlt. Man liest sie am besten als Checkliste
 | Test | Meldet |
 |---|---|
 | `ModulithStructureTest` | Modul falsch angelegt oder eine nicht erlaubte Abhängigkeit |
-| `ToolControllerMappingTest` | Tool ohne Controller, ein Pfad nennt ein anderes Tool als `ToolController.tool`, oder das Modul fehlt in `StrategyTestFixtures.modules` (mit Hinweis, was zu tun ist) |
+| `ToolControllerMappingTest` | deklarierte Fassung ohne Controller oder Controller für eine nicht deklarierte Fassung, ein Pfad liegt nicht unter `/tools/api/<toolId>/v<N>` des eigenen Tools, oder das Modul fehlt in `StrategyTestFixtures.modules` (mit Hinweis, was zu tun ist) |
 | Integrationstests (`IntegrationTestSupport.post`) | ein Tool beginnt bei der Aktivierung ohne Eingabe nicht mit seinem deklarierten `startStep` |
 | `ApiBoundaryArchitectureTest` | Controller-Methode ohne Tool-Kontext oder `@BindingKey`, Kontext vor dem Body, Simulation ohne `@DemoSurface` |
 | `SimulationBoundaryArchitectureTest` | Code außerhalb des Tools greift auf die Simulation zu |

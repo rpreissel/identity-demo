@@ -22,7 +22,7 @@ data class Next(
     val toolSessionId: ToolSessionId? = null
 ) {
     companion object {
-        /** Addresses a running tool: the client calls `/tools/{toolSessionId}/{toolId}` next. */
+        /** Addresses a running tool: the client calls `/tools/api/{toolId}/v{N}/{toolSessionId}` next, in the version it declared. */
         fun tool(toolId: String, step: String, toolSessionId: ToolSessionId? = null) =
             Next(type = "tool", toolId = toolId, step = step, toolSessionId = toolSessionId)
 

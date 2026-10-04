@@ -14,6 +14,12 @@ import java.util.function.Supplier;
 public interface WebToolRendererFactory extends ProviderFactory<WebToolRenderer> {
 
     /**
+     * The one version of the tool's contract this renderer speaks (ADR-51): declared as
+     * {@code <toolId>@<version>} and called under {@code /tools/api/<toolId>/v<version>}.
+     */
+    int version();
+
+    /**
      * The page this tool renders, known before rendering, so the page gets exactly the texts its
      * Keycloakify component uses (ADR-41). {@code null} for a tool that completes on activation.
      */
@@ -21,7 +27,7 @@ public interface WebToolRendererFactory extends ProviderFactory<WebToolRenderer>
 
     /**
      * What this tool needs to hear when it is activated, sent as the body of
-     * {@code POST .../tools/{toolId}}; nothing for most tools. {@code actionUrl} yields Keycloak's
+     * {@code POST /tools/api/{toolId}/v{version}}; nothing for most tools. {@code actionUrl} yields Keycloak's
      * action URL of the running step, evaluated only when asked for: a tool that sends the user
      * away names it as the address to come back to (docs/adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md).
      */

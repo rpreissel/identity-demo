@@ -20,6 +20,15 @@ public class EnrollQrRendererFactory extends AbstractWebToolRendererFactory {
     }
 
     @Override
+
+    public int version() {
+
+        return 1;
+
+    }
+
+
+    @Override
     public String template() {
         return "tool-qr-enroll.ftl";
     }

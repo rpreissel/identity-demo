@@ -154,13 +154,14 @@ components:
         call DELETE .../channels/{channelSessionId} before this.'
       properties:
         availableTools:
-          description: toolIds this client supports and has enabled (docs/03-tool-architektur.md, availability) - e.g. GET
-            /tools/catalog minus whatever the user turned off locally. Fixed for this channel's whole lifetime; a candidate
-            list never offers a toolId outside this set, and activating one directly fails too.
+          description: The tools this client supports and has enabled, each as <toolId>@<version> in the one version it speaks
+            (ADR-51, docs/03-tool-architektur.md, availability) - e.g. GET /tools/catalog minus whatever the user turned off
+            locally. Fixed for this channel's whole lifetime; a candidate list never offers a tool outside this set, and activating
+            one directly or in another version fails too. An entry without its version, or one tool in two versions, is rejected.
           example:
-          - ident-fsc
-          - enroll-sms
-          - auth-sms
+          - ident-fsc@1
+          - enroll-sms@1
+          - auth-sms@1
           items:
             type: string
           minItems: 1
@@ -670,12 +671,20 @@ components:
         toolId:
           example: auth-sms
           type: string
+        versions:
+          example:
+          - 1
+          items:
+            format: int32
+            type: integer
+          type: array
       required:
       - hint
       - method
       - name
       - role
       - toolId
+      - versions
       type: object
     ToolOrderPutRequest:
       properties:
@@ -2072,6 +2081,8 @@ paths:
                   key: freischaltcode-1b35c2
                 role: IDENTIFICATION
                 toolId: ident-fsc
+                versions:
+                - 1
               - hint:
                   key: code-an-eine-telefonnummer-a62b47
                 method: sms
@@ -2079,6 +2090,8 @@ paths:
                   key: sms-40b601
                 role: ENROLLMENT
                 toolId: enroll-sms
+                versions:
+                - 1
               - hint:
                   key: code-an-die-hinterlegte-telefonnummer-76a2d3
                 method: sms
@@ -2086,6 +2099,8 @@ paths:
                   key: sms-40b601
                 role: KNOWN_ACCOUNT_AUTH
                 toolId: auth-sms
+                versions:
+                - 1
               schema:
                 items:
                   $ref: '#/components/schemas/ToolCatalogEntry'
@@ -2100,111 +2115,6 @@ paths:
       summary: List every registered tool
       tags:
       - Tool catalog
-  /orchestrator/api/v1/tools/{toolSessionId}/{toolId}:
-    delete:
-      description: Moves the journey on according to the state it is standing on - to the next fallback option, back to the
-        selection step, or to the end of the journey if nothing else could be offered.
-      operationId: abandon
-      parameters:
-      - in: path
-        name: toolSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      - in: path
-        name: toolId
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa1
-                  state: STEP_UP_IN_PROGRESS
-                next:
-                  context: auth
-                  step: selectMethod
-                  type: orchestrator
-                stepData:
-                  kind: select-method
-                  options:
-                  - auth-password
-                  - auth-device
-              schema:
-                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
-          description: auth-sms abandoned during a fallback chain - offers the other loa2 candidates.
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Abandon this tool attempt
-      tags:
-      - Tools
-  /orchestrator/api/v1/tools/{toolSessionId}/{toolId}/back:
-    post:
-      description: 'Ends this tool attempt without declining it: the journey shows its selection page again, with every method
-        still on offer - this one included, and even when it is the only one. Where the journey has no selection page (a single
-        preferred method), this is the same as abandoning.'
-      operationId: back
-      parameters:
-      - in: path
-        name: toolSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      - in: path
-        name: toolId
-        required: true
-        schema:
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
-                next:
-                  context: registration
-                  step: selectIdentificationMethod
-                  type: orchestrator
-                stepData:
-                  kind: select-method
-                  options:
-                  - ident-fsc
-                  - ident-eid
-                  - ident-nect
-              schema:
-                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
-          description: Back from ident-fsc during registration - both identification methods are offered again.
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Go back from this tool to the selection
-      tags:
-      - Tools
   /orchestrator/demo/reset:
     post:
       description: 'Deletes every account, ends every session still live (also one without an account), clears the attempt
@@ -2270,6 +2180,123 @@ paths:
       summary: Live channels and open Keycloak sessions
       tags:
       - 'Demo: sessions and reset'
+  /tools/api/{toolId}/v{version}/{toolSessionId}:
+    delete:
+      description: Moves the journey on according to the state it is standing on - to the next fallback option, back to the
+        selection step, or to the end of the journey if nothing else could be offered.
+      operationId: abandon
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - in: path
+        name: toolId
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: version
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  context: auth
+                  step: selectMethod
+                  type: orchestrator
+                stepData:
+                  kind: select-method
+                  options:
+                  - auth-password
+                  - auth-device
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: auth-sms abandoned during a fallback chain - offers the other loa2 candidates.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Abandon this tool attempt
+      tags:
+      - Tools
+  /tools/api/{toolId}/v{version}/{toolSessionId}/back:
+    post:
+      description: 'Ends this tool attempt without declining it: the journey shows its selection page again, with every method
+        still on offer - this one included, and even when it is the only one. Where the journey has no selection page (a single
+        preferred method), this is the same as abandoning.'
+      operationId: back
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - in: path
+        name: toolId
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: version
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  context: registration
+                  step: selectIdentificationMethod
+                  type: orchestrator
+                stepData:
+                  kind: select-method
+                  options:
+                  - ident-fsc
+                  - ident-eid
+                  - ident-nect
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Back from ident-fsc during registration - both identification methods are offered again.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Go back from this tool to the selection
+      tags:
+      - Tools
 tags:
 - description: Toggle between ident-first and enroll-first REGISTER
   name: 'Admin: registration order'

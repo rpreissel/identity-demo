@@ -280,7 +280,8 @@ class JourneyService(
         // isCurrent rejects the other.
         codec.write(journey, state.withActive(ToolRef(tool.toolId, toolSessionId, tool.startStep)))
         journeyRepository.save(journey)
-        journeyTraceService.record(channel.forLog(), journey.forLog(), "TOOL_ACTIVATED", journeyState = state::class.simpleName, detail = mapOf("toolId" to tool.toolId))
+        journeyTraceService.record(channel.forLog(), journey.forLog(), "TOOL_ACTIVATED", journeyState = state::class.simpleName,
+            detail = mapOf("toolId" to tool.toolId, "tool" to channel.declaredVersionOf(tool.toolId.value)))
     }
 
     /** See [JourneyActionExecutor.matchesAttestedIdentity]. */
@@ -339,7 +340,8 @@ class JourneyService(
         codec.write(journey, cleared)
         journeyRepository.save(journey)
         journeyTraceService.record(channel.forLog(), journey.forLog(), "Back",
-            journeyState = state::class.simpleName, detail = mapOf("tool" to tool.toolId.value))
+            journeyState = state::class.simpleName,
+            detail = mapOf("toolId" to tool.toolId, "tool" to channel.declaredVersionOf(tool.toolId.value)))
         return routing.selectionFor(cleared, channel)
     }
 
@@ -401,7 +403,7 @@ class JourneyService(
                 // acrFloor is what this step was judged against. resolvedAcr is the combined level
                 // of all evidence; a Completed entry's achievedAcr shows only that one tool's
                 // ceiling, so two loa1 factors reaching loa2 would otherwise not show.
-                detail = journeyTraceDetails.eventDetail(event) +
+                detail = journeyTraceDetails.eventDetail(event, channel) +
                     journeyTraceDetails.transitionDetail(transition, journey, channel, state, availableTools) { target ->
                         routing.nextFor(target, availableTools)
                     } +
@@ -530,6 +532,7 @@ class JourneyService(
             journeyState = codec.read(journey)::class.simpleName,
             detail = mapOf(
                 "toolId" to tool.toolId,
+                "tool" to channel.declaredVersionOf(tool.toolId.value),
                 "reason" to outcome.reason,
                 "attemptedAccountId" to ((outcome as? ToolOutcome.Failed.AccountLookupAuth)?.attempted as? Attempted.Account)?.id,
                 "attemptedPersonId" to (outcome as? ToolOutcome.Failed.Identification)?.attemptedPersonId,

@@ -1,0 +1,153 @@
+components:
+  schemas:
+    AuthEmailPatchRequest:
+      properties:
+        code:
+          example: '123456'
+          type: string
+      type: object
+    ChannelResponse:
+      type: object
+    ErrorResponse:
+      type: object
+  securitySchemes:
+    dpop:
+      description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the
+        binding key is derived from it and is never supplied by the caller.
+      in: header
+      name: DPoP
+      type: apiKey
+info:
+  description: App-facing (orchestrator-first) API for the DPoP-bound registration and login demo. See docs/05-api.md for
+    the full contract; the Keycloak-facing Keycloak facade is out of scope for this build (docs/08-projektrahmen.md).
+  title: Identity-Demo Orchestrator API
+  version: v1
+openapi: 3.1.0
+paths:
+  /tools/api/auth-email/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_19
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  step: auth
+                  toolId: auth-email
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Activate auth-email
+      tags:
+      - 'Tool: E-Mail'
+  /tools/api/auth-email/v1/{toolSessionId}:
+    get:
+      operationId: read_18
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  step: auth
+                  toolId: auth-email
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Read the current auth-email state
+      tags:
+      - 'Tool: E-Mail'
+    patch:
+      operationId: patch_18
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthEmailPatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - password
+                  - email
+                  state: AUTHENTICATED
+                next:
+                  context: authentication
+                  step: authenticated
+                  type: orchestrator
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Confirm the code sent to the account's confirmed email address
+      tags:
+      - 'Tool: E-Mail'
+tags:
+- description: 'E-Mail: Bestaetigung der Adresse, Anmeldung und Login ohne DPoP'
+  name: 'Tool: E-Mail'

@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.core.orchestrator.journey.JourneyEndedException
+import com.example.identity.contract.tool_api.ToolVersion
 import com.example.identity.contract.tool_api.InvalidInputException
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
@@ -99,12 +100,16 @@ class ChannelService(
     }
 
     /**
-     * What a client declared it can render, cut to the catalog. Only a catalog tool is ever offered,
-     * so this changes nothing a client sees; it keeps arbitrary strings out of the stored list.
+     * What a client declared it can render, each tool in the one version it speaks (`enroll-sms@1`,
+     * ADR-51), cut to what the server serves. A tool in a version the server does not serve is
+     * left out like an unknown one: it is never offered. A name without its version, or one tool in
+     * two versions, is a client error.
      */
     fun catalogToolsOf(declared: Collection<String>): MutableSet<String> {
-        val known = toolRegistry.tools().mapTo(HashSet()) { it.toolId.value }
-        return declared.filterTo(mutableSetOf()) { it in known }
+        val versions = declared.map(ToolVersion::parse)
+        require(versions.distinctBy { it.toolId }.size == versions.size) { "A tool is declared in more than one version" }
+        val served = toolRegistry.tools().flatMapTo(HashSet()) { tool -> tool.versions.map { ToolVersion(tool.toolId, it) } }
+        return versions.filter { it in served }.mapTo(mutableSetOf()) { it.toString() }
     }
 
     /** The guaranteed resume entry point (docs/05-api.md #2): re-derives the currently due `next`. */

@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 data class AuthEmailLookupPatchRequest(
     @field:Schema(example = "max.mustermann@example.com") val email: String? = null,
@@ -51,7 +51,7 @@ class AuthEmailLookupToolController(
 
     override val tool = AuthEmailLookup
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_EMAIL_LOOKUP_TOOL_ID")
+    @PostMapping("$TOOLS_API/$AUTH_EMAIL_LOOKUP_TOOL_ID/v1")
     @Operation(
         summary = "Activate auth-email-lookup",
         description = "No request body: toolId already carries kind and method.",
@@ -75,7 +75,7 @@ class AuthEmailLookupToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$AUTH_EMAIL_LOOKUP_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$AUTH_EMAIL_LOOKUP_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Supply email, then code",
         description = "First call with email resolves the account and triggers the confirmation code send; a second call with code confirms it.",
@@ -121,7 +121,7 @@ class AuthEmailLookupToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$AUTH_EMAIL_LOOKUP_TOOL_ID")
+    @GetMapping("$TOOLS_API/$AUTH_EMAIL_LOOKUP_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Read the current auth-email-lookup state",
         responses = [

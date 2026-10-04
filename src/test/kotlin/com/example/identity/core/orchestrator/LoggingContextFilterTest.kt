@@ -15,10 +15,12 @@ class LoggingContextFilterTest : BehaviorSpec({
     val tool = "9c858901-8a57-4791-81fe-4c455b099bc9"
 
     given("request paths") {
-        then("a channel path names the channel, a tool path the tool session, others nothing") {
-            LoggingContextFilter.contextOf("/orchestrator/api/v1/app/channels/$channel/tools/enroll-sms") shouldBe
+        then("a channel path or a tool activation names the channel, a tool path the tool session, others nothing") {
+            LoggingContextFilter.contextOf("/orchestrator/api/v1/channels/$channel/step-ups") shouldBe
                 mapOf(LoggingContextFilter.CHANNEL_SESSION_ID to channel)
-            LoggingContextFilter.contextOf("/orchestrator/api/v1/tools/$tool/enroll-sms") shouldBe
+            LoggingContextFilter.contextOf("/tools/api/enroll-sms/v1?channel=$channel") shouldBe
+                mapOf(LoggingContextFilter.CHANNEL_SESSION_ID to channel)
+            LoggingContextFilter.contextOf("/tools/api/enroll-sms/v1/$tool") shouldBe
                 mapOf(LoggingContextFilter.TOOL_SESSION_ID to tool)
             LoggingContextFilter.contextOf("/orchestrator/demo/server-info").shouldBeEmpty()
         }

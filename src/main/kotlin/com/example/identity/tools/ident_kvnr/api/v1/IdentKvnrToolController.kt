@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 data class IdentKvnrPatchRequest(
     @field:Schema(example = "A123456789") val kvnr: String? = null,
@@ -50,7 +50,7 @@ class IdentKvnrToolController(
 
     override val tool = IdentKvnr
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$IDENT_KVNR_TOOL_ID")
+    @PostMapping("$TOOLS_API/$IDENT_KVNR_TOOL_ID/v1")
     @Operation(
         summary = "Activate ident-kvnr",
         description = "No request body: toolId already carries kind and method.",
@@ -74,7 +74,7 @@ class IdentKvnrToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$IDENT_KVNR_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$IDENT_KVNR_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Supply the Versichertennummer - or, without one, the Partnernummer",
         responses = [
@@ -106,7 +106,7 @@ class IdentKvnrToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$IDENT_KVNR_TOOL_ID")
+    @GetMapping("$TOOLS_API/$IDENT_KVNR_TOOL_ID/v1/{toolSessionId}")
     @Operation(summary = "Read the current ident-kvnr state")
     fun read(
         context: ToolContext

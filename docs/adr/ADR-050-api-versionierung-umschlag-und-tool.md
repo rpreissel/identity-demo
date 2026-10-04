@@ -1,6 +1,8 @@
 # ADR-50: API-Versionierung auf zwei Ebenen – Umschlag und Tool
 
-**Status:** umgesetzt 2026-10-04 (Issue `DPoP-demo-cszz`).
+**Status:** umgesetzt 2026-10-04 (Issue `DPoP-demo-cszz`). Pfade, Tool-Fassungen und Dateien der
+Tool-Teile sind seit [ADR-51](ADR-051-versionen-als-pfadsegment.md) anders; die Aufteilung in
+Umschlag, Tool und `/kc` gilt weiter.
 
 **Entscheidung.** Eingefroren und auf Brüche geprüft wird nicht mehr `api/openapi.yaml` als Ganzes,
 sondern ihre Teile:

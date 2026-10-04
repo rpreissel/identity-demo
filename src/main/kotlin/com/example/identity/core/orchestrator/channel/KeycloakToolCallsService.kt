@@ -44,7 +44,7 @@ class KeycloakToolCallsService(
         }
         val tool = checkNotNull(module.tools.firstOrNull { it.role == role }) { "${module.method} has no $role tool for ${outcome::class.simpleName}" }
         when (outcome) {
-            is ToolOutcome.Failed.KnownAccountAuth -> accountLockoutService.recordFailure(accountId, ChannelType.WEB.name, tool.method)
+            is ToolOutcome.Failed.KnownAccountAuth -> accountLockoutService.recordFailure(accountId, ChannelType.WEB.name, tool.method, tool = null)
             is ToolOutcome.Completed.Authenticated -> {
                 checkStaysWithin(tool, outcome)
                 accountLockoutService.recordSuccess(accountId)

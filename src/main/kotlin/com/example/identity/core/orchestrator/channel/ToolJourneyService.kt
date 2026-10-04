@@ -24,7 +24,8 @@ import com.example.identity.core.orchestrator.session.SessionManagementService
 import com.example.identity.core.orchestrator.tool.ToolAvailabilityService
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
 import com.example.identity.contract.texts.Text
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
+import com.example.identity.contract.tool_api.ToolVersion
 import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
@@ -71,6 +72,7 @@ class ToolJourneyService(
 ) : ToolJourney {
     data class Context(
         override val toolId: String,
+        override val version: Int,
         override val toolSessionId: ToolSessionId,
         val journeyId: JourneyId,
         val channelSessionId: ChannelSessionId,
@@ -90,22 +92,23 @@ class ToolJourneyService(
 
     override fun activationLocation(context: ToolContext, baseUri: URI): URI =
         UriComponentsBuilder.fromUri(baseUri)
-            .replacePath("$API_V1/tools/{toolSessionId}/{toolId}")
-            .buildAndExpand(context.toolSessionId, context.toolId)
+            .replacePath("$TOOLS_API/{toolId}/v{version}/{toolSessionId}")
+            .buildAndExpand(context.toolId, context.version, context.toolSessionId)
             .toUri()
 
     /**
-     * Mints the ToolSession and lets the journey decide whether [toolId] may run. The check is
+     * Mints the ToolSession and lets the journey decide whether [tool] may run. The check is
      * membership in the current offer, so a tool never offered cannot be activated by naming it.
      */
-    override fun beginActivation(channelSessionId: ChannelSessionId, bindingKeyRef: String, toolId: String): Activation {
+    override fun beginActivation(channelSessionId: ChannelSessionId, bindingKeyRef: String, tool: ToolVersion): Activation {
+        val toolId = tool.toolId.value
         val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
         val channel = live.session
         val journey = journeyService.findActive(channelSessionId)
             ?: throw OrchestratorException.invalidState(Text("No active journey for this channel"))
         val descriptor = toolRegistry.toolOf(ToolId(toolId))
 
-        validatePreconditions(toolId, channel)
+        validatePreconditions(tool, channel)
         // Only for a tool whose account the channel knows (KNOWN_ACCOUNT_AUTH). ACCOUNT_LOOKUP_AUTH and IDENT
         // tools are rate-limited where they resolve their subject ([Lockouts]) and
         // answer with their ordinary failure instead of this explicit 423.
@@ -117,6 +120,7 @@ class ToolJourneyService(
         journeyService.activate(journey, live, descriptor, toolSession.id)
         return Activation(Context(
             toolId = toolId,
+            version = tool.version,
             toolSessionId = toolSession.id,
             journeyId = journey.journeyId,
             channelSessionId = channel.id,
@@ -130,10 +134,12 @@ class ToolJourneyService(
      * Without this, a client could activate a gated tool (enroll-password needs a confirmed email)
      * directly.
      */
-    private fun validatePreconditions(toolId: String, channel: ChannelSession) {
+    private fun validatePreconditions(tool: ToolVersion, channel: ChannelSession) {
+        val toolId = tool.toolId.value
         // A direct activation is re-checked against both availability axes
         // (docs/03-tool-architektur.md), though the offer already excludes unavailable tools.
-        if (toolId !in channel.availableClientTools || !toolAvailabilityService.isEnabled(toolId, checkNotNull(channel.channel))) {
+        requireDeclaredVersion(tool, channel)
+        if (!toolAvailabilityService.isEnabled(toolId, checkNotNull(channel.channel))) {
             throw OrchestratorException.invalidState(Text("This tool is not available on this channel"), "toolId=${toolId}")
         }
 
@@ -152,25 +158,27 @@ class ToolJourneyService(
      * The write path: [loadContext] plus the authorization [applyOutcome]'s parameter type demands.
      * There is no other way to an [AuthorizedToolContext], so the check is structural.
      */
-    override fun loadCurrent(toolSessionId: ToolSessionId, bindingKeyRef: String, toolId: String): Context {
-        val context = loadContext(toolSessionId, bindingKeyRef, toolId)
+    override fun loadCurrent(toolSessionId: ToolSessionId, bindingKeyRef: String, tool: ToolVersion): Context {
+        val context = loadContext(toolSessionId, bindingKeyRef, tool)
         requireCurrentTool(context)
         // On every attempt, not only at activation: a session opened before the lock must not keep
         // guessing, nor sign in with the right password while the account is locked (07-betrieb #4).
-        if (toolRegistry.toolOf(ToolId(toolId)).role == ToolRole.KNOWN_ACCOUNT_AUTH) {
+        if (toolRegistry.toolOf(tool.toolId).role == ToolRole.KNOWN_ACCOUNT_AUTH) {
             context.accountId?.let { accountLockoutService.assertNotLocked(it) }
         }
         return context
     }
 
-    override fun loadContext(toolSessionId: ToolSessionId, bindingKeyRef: String, toolId: String): Context {
+    override fun loadContext(toolSessionId: ToolSessionId, bindingKeyRef: String, tool: ToolVersion): Context {
         val toolSession = sessionManagementService.findToolSessionById(toolSessionId)
             ?: throw OrchestratorException.notFound(Text("Tool session not found"), "toolSessionId=${toolSessionId}")
         val journey = journeyService.findRunning(toolSession.journeyId!!)
             ?: throw OrchestratorException.processGone(Text("Journey for this tool session is gone"))
         val channel = channelAccessGuard.requireChannel(journey.channelSessionId, bindingKeyRef)
+        requireDeclaredVersion(tool, channel)
         return Context(
-            toolId = toolId,
+            toolId = tool.toolId.value,
+            version = tool.version,
             toolSessionId = toolSessionId,
             journeyId = journey.journeyId,
             channelSessionId = channel.id,
@@ -191,6 +199,16 @@ class ToolJourneyService(
             else Text("Kein aktives Anmeldeverfahren dieser Art fuer dieses Konto"),
             "no active ${module.method} method",
         )
+    }
+
+    /**
+     * The channel speaks one version of each tool, the one it declared (ADR-51). A call in another
+     * version is refused like a tool the channel never declared.
+     */
+    private fun requireDeclaredVersion(tool: ToolVersion, channel: ChannelSession) {
+        if (tool.toString() !in channel.availableClientTools) {
+            throw OrchestratorException.invalidState(Text("This tool is not available on this channel"), "tool=${tool}")
+        }
     }
 
     private fun requireCurrentTool(context: ToolContext) {
@@ -244,7 +262,7 @@ class ToolJourneyService(
         val live = resolveChannel(ctx, journey)
         val channel = live.session
         val descriptor = toolRegistry.toolOf(ToolId(ctx.toolId))
-        chargeRateLimits(channel.accountId, channel.channel?.name, descriptor, outcome)
+        chargeRateLimits(channel.accountId, channel.channel?.name, descriptor, "${ctx.toolId}@${ctx.version}", outcome)
         // A completed tool is done for good, even while the journey still names it as active.
         if (outcome is ToolOutcome.Completed) sessionManagementService.endToolSession(ctx.toolSessionId, ToolSessionStatus.DONE)
 
@@ -271,7 +289,7 @@ class ToolJourneyService(
      * subject by its variant ([ToolOutcome.Failed]); a success resets the same counter. A lookup
      * login's subject comes from the outcome, since the channel's account is bound only later.
      */
-    private fun chargeRateLimits(channelAccountId: AccountId?, channelType: String?, descriptor: Tool, outcome: ToolOutcome) {
+    private fun chargeRateLimits(channelAccountId: AccountId?, channelType: String?, descriptor: Tool, toolVersion: String, outcome: ToolOutcome) {
         when (outcome) {
             is ToolOutcome.InProgress -> Unit
 
@@ -282,9 +300,9 @@ class ToolJourneyService(
                     "${descriptor.toolId} (${descriptor.role}) answered with ${outcome::class.simpleName}"
                 }
                 when (outcome) {
-                    is ToolOutcome.Failed.KnownAccountAuth -> channelAccountId?.let { accountLockoutService.recordFailure(it, channelType, descriptor.method) }
+                    is ToolOutcome.Failed.KnownAccountAuth -> channelAccountId?.let { accountLockoutService.recordFailure(it, channelType, descriptor.method, toolVersion) }
                     is ToolOutcome.Failed.AccountLookupAuth -> when (val attempted = outcome.attempted) {
-                        is Attempted.Account -> accountLockoutService.recordFailure(attempted.id, channelType, descriptor.method)
+                        is Attempted.Account -> accountLockoutService.recordFailure(attempted.id, channelType, descriptor.method, toolVersion)
                         // A one-time password belongs to a person, like a Freischaltcode.
                         is Attempted.Person -> personLockoutService.recordFailure(attempted.id)
                         null -> Unit

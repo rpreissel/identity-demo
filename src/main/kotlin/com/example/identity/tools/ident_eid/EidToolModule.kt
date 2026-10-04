@@ -41,6 +41,7 @@ internal val EidModule = toolModule(
 
 internal val IdentEid = EidModule.identify(
     IDENT_EID_TOOL_ID,
+    versions = setOf(1),
     hint = Text("Online-Ausweisfunktion (simuliert)"),
     also = setOf(AttributeType.STREET_ADDRESS, AttributeType.POSTAL_CODE, AttributeType.LOCALITY, EID_RESTRICTED_ID),
 )

@@ -555,9 +555,9 @@ Sie setzen keine Routing-Felder, unterscheiden nicht nach dem Intent und entsche
 Tool laufen darf. Ein `Step` ist `next` plus die Daten, die der Schritt zum Anzeigen braucht.
 
 Drei Aktionen muss der Client sauber auseinanderhalten: `back` verlässt das laufende **Tool** und
-zeigt die Auswahl des Zustands wieder, ohne etwas abzulehnen (`POST /tools/{toolSessionId}/{toolId}/back`).
+zeigt die Auswahl des Zustands wieder, ohne etwas abzulehnen (`POST /tools/api/{toolId}/v{N}/{toolSessionId}/back`).
 `abandon` lehnt das Tool im aktuellen **Zustand** ab und führt die Journey weiter
-(`DELETE /tools/{toolSessionId}/{toolId}`). `cancel` gibt die **Journey** auf und startet den
+(`DELETE /tools/api/{toolId}/v{N}/{toolSessionId}`). `cancel` gibt die **Journey** auf und startet den
 Einstiegs-Intent neu (`DELETE .../journey`, über `ChannelService`, nicht über einen Tool-Controller).
 
 ---

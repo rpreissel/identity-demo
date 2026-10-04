@@ -25,19 +25,19 @@ class AccountRateLimitIntegrationTest : IntegrationTestSupport() {
 
     /** A wrong password on a fresh auth-password tool - a failed attempt that sends nothing (the send rate limit has its own test below). */
     private fun failPassword(channelSessionId: String) {
-        val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password").nextRaw()["toolSessionId"] as String
-        patch("/orchestrator/api/v1/tools/$toolSessionId/auth-password", """{"password":"wrong-password-123"}""")
+        val toolSessionId = post("/tools/api/auth-password/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+        patch("/tools/api/auth-password/v1/$toolSessionId", """{"password":"wrong-password-123"}""")
     }
 
     init {
         given("an account with a password, and three password sessions opened before any failure") {
             `when`("five wrong passwords lock the account, then the right one goes to the third session") {
                 registerWithEmailAndPassword(password = "correct-horse-battery")
-                val (first, second, third) = List(3) { post("/orchestrator/api/v1/channels/${freshChannel()}/tools/auth-password").nextRaw()["toolSessionId"] as String }
-                repeat(3) { runCatching { patch("/orchestrator/api/v1/tools/$first/auth-password", """{"password":"wrong-password-123"}""") } }
-                repeat(2) { patch("/orchestrator/api/v1/tools/$second/auth-password", """{"password":"wrong-password-123"}""") }
+                val (first, second, third) = List(3) { post("/tools/api/auth-password/v1?channel=${freshChannel()}").nextRaw()["toolSessionId"] as String }
+                repeat(3) { runCatching { patch("/tools/api/auth-password/v1/$first", """{"password":"wrong-password-123"}""") } }
+                repeat(2) { patch("/tools/api/auth-password/v1/$second", """{"password":"wrong-password-123"}""") }
 
-                val rightPassword = runCatching { patch("/orchestrator/api/v1/tools/$third/auth-password", """{"password":"correct-horse-battery"}""") }
+                val rightPassword = runCatching { patch("/tools/api/auth-password/v1/$third", """{"password":"correct-horse-battery"}""") }
 
                 then("the lock holds for a session opened before it, the right password included: 423") {
                     shouldThrow<HttpClientErrorException> { rightPassword.getOrThrow() }.statusCode.value() shouldBe 423
@@ -48,13 +48,13 @@ class AccountRateLimitIntegrationTest : IntegrationTestSupport() {
         given("an account that requested three SMS codes within the window") {
             `when`("auth-sms is activated a fourth time, and then auth-password on the same channel") {
                 seedRegisteredAccount()
-                repeat(3) { post("/orchestrator/api/v1/channels/${freshChannel()}/tools/auth-sms") }
+                repeat(3) { post("/tools/api/auth-sms/v1?channel=${freshChannel()}") }
                 val sentBefore = smsGateway.outbox().size
                 val channelSessionId = freshChannel()
 
-                val refused = runCatching { post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms") }
+                val refused = runCatching { post("/tools/api/auth-sms/v1?channel=$channelSessionId") }
                 val sentAfter = smsGateway.outbox().size
-                val password = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password")
+                val password = post("/tools/api/auth-password/v1?channel=$channelSessionId")
 
                 then("the fourth is refused with 429 and no code is sent") {
                     shouldThrow<HttpClientErrorException> { refused.getOrThrow() }.statusCode.value() shouldBe 429
@@ -69,11 +69,11 @@ class AccountRateLimitIntegrationTest : IntegrationTestSupport() {
         given("an account that used its SMS budget and then signed in with the code") {
             `when`("it requests codes again right after") {
                 seedRegisteredAccount()
-                repeat(2) { post("/orchestrator/api/v1/channels/${freshChannel()}/tools/auth-sms") }
+                repeat(2) { post("/tools/api/auth-sms/v1?channel=${freshChannel()}") }
                 // The third send, and its TAN entered correctly.
                 authenticateViaSms(freshChannel())
 
-                val requests = List(3) { post("/orchestrator/api/v1/channels/${freshChannel()}/tools/auth-sms") }
+                val requests = List(3) { post("/tools/api/auth-sms/v1?channel=${freshChannel()}") }
 
                 then("the budget started over: each request gets a code to enter") {
                     requests.forEach { it.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-sms", "step" to "auth") }
@@ -85,14 +85,14 @@ class AccountRateLimitIntegrationTest : IntegrationTestSupport() {
             `when`("enroll-sms is sent each spelling in turn") {
                 val channelSessionId = identify()
                 confirmEmail(channelSessionId)
-                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-sms").nextRaw()["toolSessionId"] as String
+                val toolSessionId = post("/tools/api/enroll-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 val sentBefore = smsGateway.outbox().size
                 listOf("+49 170 7654321", "+49-170-7654321", "0049/170/7654321").forEach {
-                    patch("/orchestrator/api/v1/tools/$toolSessionId/enroll-sms", """{"phoneNumber":"$it"}""")
+                    patch("/tools/api/enroll-sms/v1/$toolSessionId", """{"phoneNumber":"$it"}""")
                 }
 
                 val fourth = runCatching {
-                    patch("/orchestrator/api/v1/tools/$toolSessionId/enroll-sms", """{"phoneNumber":"+49 (170) 765 43-21"}""")
+                    patch("/tools/api/enroll-sms/v1/$toolSessionId", """{"phoneNumber":"+49 (170) 765 43-21"}""")
                 }
 
                 then("the send throttle counts them as one - three codes go out, the fourth is refused with 429") {
@@ -110,7 +110,7 @@ class AccountRateLimitIntegrationTest : IntegrationTestSupport() {
                 // (docs/04-orchestrierung.md #7).
                 repeat(5) { failPassword(freshChannel()) }
 
-                val locked = runCatching { post("/orchestrator/api/v1/channels/${freshChannel()}/tools/auth-password") }
+                val locked = runCatching { post("/tools/api/auth-password/v1?channel=${freshChannel()}") }
 
                 then("the account-level throttle locks") {
                     shouldThrow<HttpClientErrorException> { locked.getOrThrow() }.statusCode.value() shouldBe 423
@@ -130,7 +130,7 @@ class AccountRateLimitIntegrationTest : IntegrationTestSupport() {
                 val authenticated = authenticateViaSms(freshChannel())
                 repeat(2) { failPassword(freshChannel()) }
 
-                val stillAllowed = post("/orchestrator/api/v1/channels/${freshChannel()}/tools/auth-password")
+                val stillAllowed = post("/tools/api/auth-password/v1?channel=${freshChannel()}")
 
                 then("the success authenticates") {
                     authenticated.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")

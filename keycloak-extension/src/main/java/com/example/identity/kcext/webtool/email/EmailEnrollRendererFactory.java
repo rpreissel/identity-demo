@@ -20,6 +20,11 @@ public class EmailEnrollRendererFactory extends AbstractWebToolRendererFactory {
 
     /** No page of its own. */
     @Override
+    public int version() {
+        return 1;
+    }
+
+    @Override
     public String template() {
         return null;
     }

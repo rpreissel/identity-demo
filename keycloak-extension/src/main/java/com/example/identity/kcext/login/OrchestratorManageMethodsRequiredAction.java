@@ -1,5 +1,6 @@
 package com.example.identity.kcext.login;
 
+import com.example.identity.kcext.webtool.WebToolAvailability;
 import com.example.identity.kcext.client.KcTexts;
 import com.example.identity.kcext.client.OrchestratorClient;
 import jakarta.ws.rs.core.MultivaluedMap;
@@ -112,7 +113,7 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
                     context.challenge(WebFormRenderer.errorForm(context.getSession(), context.form(), authSession, KcTexts.of(context.getSession(), "Bitte eine Methode auswählen.")));
                     return;
                 }
-                response = client.activateTool(channelSessionId, selectedToolId);
+                response = client.activateTool(channelSessionId, selectedToolId, WebToolAvailability.versionOf(context.getSession(), selectedToolId));
                 handleResponse(context, response, false, false);
                 return;
             } else if ("confirm".equals(pendingKind)) {
@@ -132,7 +133,8 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
                     return;
                 }
                 boolean toolAbandoned = "true".equals(form.getFirst("orchestrator_abandon"));
-                response = OrchestratorNextDispatch.dispatchToolAction(client, channelSessionId, toolId, toolSessionId, form);
+                response = OrchestratorNextDispatch.dispatchToolAction(client, channelSessionId, toolId,
+                        WebToolAvailability.versionOf(context.getSession(), toolId), toolSessionId, form);
                 handleResponse(context, response, false, toolAbandoned);
             }
         } catch (OrchestratorClient.OrchestratorApiException e) {
@@ -197,7 +199,8 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
             if (tool.autoActivate()) {
                 // Single-candidate auto-activation, as in OrchestratorAuthenticator.
                 try {
-                    OrchestratorClient.ChannelResponse activated = client.activateTool(channelSessionId, tool.next().toolId());
+                    OrchestratorClient.ChannelResponse activated = client.activateTool(channelSessionId, tool.next().toolId(),
+                            WebToolAvailability.versionOf(context.getSession(), tool.next().toolId()));
                     handleResponse(context, activated, false, false);
                 } catch (OrchestratorClient.OrchestratorApiException e) {
                     LOG.warnf("Auto-activation of '%s' failed: %s", tool.next().toolId(), e.getMessage());

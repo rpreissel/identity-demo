@@ -178,8 +178,10 @@ Die Entscheidungen dahinter:
   Rest. `enroll-password` schreibt dafür `PASSWORD_EXISTS`. Heute fragt das niemand ab, aber so
   ließe sich eine solche Abhängigkeit ausdrücken.
 - Die **Verfügbarkeit** wird auf zwei unabhängigen Ebenen bestimmt, beide als Mengen von
-  `toolId`s. Der Client gibt beim Anlegen des Kanals an, welche Tools er darstellen kann
-  (`availableTools`, fest für den ganzen Kanal). Der Betreiber kann zusätzlich jedes Tool **je
+  `toolId`s. Der Client gibt beim Anlegen des Kanals an, welche Tools er darstellen kann, jedes in
+  der einen Fassung, die er spricht (`availableTools` als `enroll-sms@1`, fest für den ganzen Kanal,
+  [ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)); für das Angebot zählt nur die `toolId`,
+  die Fassung bestimmt den Pfad der Aufrufe. Der Betreiber kann zusätzlich jedes Tool **je
   Kanaltyp** (App oder Web) zur Laufzeit sperren (`ToolAvailabilityService`, ADR-32). Bei jeder
   Anfrage zählt nur, was in beiden Mengen steht (`JourneyRouting.availableToolsOf`); das wird an
   drei Stellen geprüft. Bleibt nichts übrig, bricht die Journey genauso ab
@@ -339,15 +341,17 @@ internal val KobilModule = toolModule(
     stepData = KobilStepData,                  // in api/v1/KobilStepData.kt, neben den Formen
 )
 
-internal val EnrollKobil = KobilModule.enroll(ENROLL_KOBIL_TOOL_ID, hint = Text("An das Gerät gebunden …"), startStep = "activate")
-internal val AuthKobil = KobilModule.login(AUTH_KOBIL_TOOL_ID, hint = Text("An das Gerät gebunden …"), startStep = "unlock")
+internal val EnrollKobil = KobilModule.enroll(ENROLL_KOBIL_TOOL_ID, versions = setOf(1), hint = Text("An das Gerät gebunden …"), startStep = "activate")
+internal val AuthKobil = KobilModule.login(AUTH_KOBIL_TOOL_ID, versions = setOf(1), hint = Text("An das Gerät gebunden …"), startStep = "unlock")
 ```
 
 Die `toolId` steht als Konstante genau einmal im Modul: Die Deklaration nennt sie, und der
-Controller des Tools nimmt dieselbe Konstante für seine Pfade. Auf das Tool selbst zeigt der
+Controller des Tools nimmt dieselbe Konstante für seine Pfade. `versions` nennt die Fassungen, die
+der Server führt, ohne Vorgabewert; je Fassung gibt es einen Controller unter
+`/tools/api/<toolId>/v<N>` ([ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)). Auf das Tool selbst zeigt der
 Controller über `ToolController.tool` (`override val tool = AuthKobil`); seine Kontext-Parameter
 (`ActivationToolContext`, `AuthorizedToolContext`, `ToolContext`) werden für dieses Tool aufgelöst. Dass Pfad und Tool übereinstimmen und
-jedes Tool genau einen Controller hat, prüft `ToolControllerMappingTest`.
+jede deklarierte Fassung genau einen Controller hat, prüft `ToolControllerMappingTest`.
 
 Was das **Modul** angibt, gilt für alle seine Tools:
 
@@ -611,6 +615,6 @@ Ports liegen in Unterpaketen nach Thema ([Projektrahmen](08-projektrahmen.md) M8
 Beide Seiten zeigen auf dieselbe Schnittstelle, nie direkt aufeinander: Ein Tool-Modul ruft
 Methoden von `ToolJourney` auf, ohne `ToolJourneyService` oder den `orchestrator` zu kennen; der
 `orchestrator` liest nie einen Handler eines Tool-Moduls. Die HTTP-Pfade
-(`/orchestrator/api/v1/tools/...`) hängen nicht davon ab, in welchem Modul ein Controller liegt, denn Spring ordnet Anfragen nach
+(`/tools/api/<toolId>/v<N>/...`) hängen nicht davon ab, in welchem Modul ein Controller liegt, denn Spring ordnet Anfragen nach
 `@RequestMapping` zu, nicht nach dem Kotlin-Package. Details zur Modulliste und zur Richtung der
 Abhängigkeiten: [Projektrahmen](08-projektrahmen.md) Abschnitt 3.

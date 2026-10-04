@@ -54,8 +54,8 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
             Step.SIGN_IN_SMS -> signInSms(correct = true)
             Step.WRONG_TAN -> signInSms(correct = false)
             Step.SIGN_IN_PASSWORD -> channel?.let { ch ->
-                toolSessionOf(call(HttpMethod.POST, "/orchestrator/api/v1/channels/$ch/tools/auth-password").second)?.let { ts ->
-                    patchTool("/orchestrator/api/v1/tools/$ts/auth-password", """{"password":"correct-horse-battery"}""")
+                toolSessionOf(call(HttpMethod.POST, "/tools/api/auth-password/v1?channel=$ch").second)?.let { ts ->
+                    patchTool("/tools/api/auth-password/v1/$ts", """{"password":"correct-horse-battery"}""")
                 }
             }
             Step.REPLAY_LAST_PATCH -> lastPatch?.let { (url, body) -> serverError(call(HttpMethod.PATCH, url, body)) }
@@ -117,11 +117,11 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
         private fun signInSms(correct: Boolean): String? {
             val ch = channel ?: return null
             val before = smsGateway.outbox().firstOrNull()?.sequence ?: 0
-            val activated = call(HttpMethod.POST, "/orchestrator/api/v1/channels/$ch/tools/auth-sms")
+            val activated = call(HttpMethod.POST, "/tools/api/auth-sms/v1?channel=$ch")
             serverError(activated)?.let { return it }
             val ts = toolSessionOf(activated.second) ?: return null
             val tan = smsGateway.outbox().firstOrNull()?.takeIf { it.sequence > before }?.tan ?: return null
-            return patchTool("/orchestrator/api/v1/tools/$ts/auth-sms", """{"tan":"${if (correct) tan else wrongTan(tan)}"}""")
+            return patchTool("/tools/api/auth-sms/v1/$ts", """{"tan":"${if (correct) tan else wrongTan(tan)}"}""")
         }
 
         private fun patchTool(url: String, body: String): String? {

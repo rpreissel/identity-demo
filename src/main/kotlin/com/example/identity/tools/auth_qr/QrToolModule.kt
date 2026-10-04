@@ -34,22 +34,25 @@ internal val QrModule = toolModule(
 
 internal val EnrollQr = QrModule.enroll(
     ENROLL_QR_TOOL_ID,
+    versions = setOf(1),
     hint = Text("Web-Login per QR-Code erlauben"),
     optInOnly = true,
 )
 internal val AuthQr = QrModule.login(
     AUTH_QR_TOOL_ID,
+    versions = setOf(1),
     hint = Text("QR-Code mit der App scannen oder Code manuell in der App eingeben"),
     name = Text("Mit App bestätigen"),
     startStep = "waitForApp",
 )
 internal val AuthQrLookup = QrModule.lookupLogin(
     AUTH_QR_LOOKUP_TOOL_ID,
+    versions = setOf(1),
     hint = Text("QR-Code mit einer bereits angemeldeten App scannen oder Code manuell eingeben"),
     name = Text("Mit App anmelden"),
     startStep = "waitForApp",
 )
-internal val ApproveQr = QrModule.approve(APPROVE_QR_TOOL_ID, hint = Text("Web-Login per QR bestätigen"))
+internal val ApproveQr = QrModule.approve(APPROVE_QR_TOOL_ID, versions = setOf(1), hint = Text("Web-Login per QR bestätigen"))
 
 /** How long a pairing request stays open (docs/07-betrieb.md #5 - not further validated). */
 internal val QR_LOGIN_TTL: Duration = Duration.ofMinutes(5)

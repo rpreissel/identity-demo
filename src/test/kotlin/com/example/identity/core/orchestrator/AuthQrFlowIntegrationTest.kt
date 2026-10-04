@@ -73,8 +73,8 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
         )!!
 
         post("/orchestrator/api/v1/channels/$channelSessionId/enrollments")
-        val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-qr").nextRaw()["toolSessionId"] as String
-        val enrolled = patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-qr", "{}")
+        val enrollToolSessionId = post("/tools/api/enroll-qr/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+        val enrolled = patch("/tools/api/enroll-qr/v1/$enrollToolSessionId", "{}")
         enrolled.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
         if (agedMinutes > 0) ageProofs(UUID.fromString(channelSessionId), agedMinutes)
 
@@ -96,9 +96,9 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
         val webChannelSessionId = ChannelSessionId(UUID.randomUUID())
         stubAssertion(channelBinding = webChannelSessionId.toString())
         keycloakPatch(webChannelSessionId)
-        val webToolSessionId = keycloakPost("/orchestrator/api/v1/channels/$webChannelSessionId/tools/auth-qr-lookup")
+        val webToolSessionId = keycloakPost("/tools/api/auth-qr-lookup/v1?channel=$webChannelSessionId")
             .nextRaw()["toolSessionId"] as String
-        val waiting = keycloakPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
+        val waiting = keycloakPatchTool("/tools/api/auth-qr-lookup/v1/$webToolSessionId")
         val pairingCode = waiting.stepData()["pairingCode"] as String
         return webToolSessionId to pairingCode
     }
@@ -112,9 +112,9 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
         post("/orchestrator/api/v1/channels/$appChannelSessionId/peer-logins")
         resolveReconfirmation(appChannelSessionId)
         val confirmToolSessionId =
-            post("/orchestrator/api/v1/channels/$appChannelSessionId/tools/approve-qr").nextRaw()["toolSessionId"] as String
-        patch("/orchestrator/api/v1/tools/$confirmToolSessionId/approve-qr", """{"pairingCode":"$pairingCode"}""")
-        val shown = patch("/orchestrator/api/v1/tools/$confirmToolSessionId/approve-qr", """{"decision":"accept"}""")
+            post("/tools/api/approve-qr/v1?channel=$appChannelSessionId").nextRaw()["toolSessionId"] as String
+        patch("/tools/api/approve-qr/v1/$confirmToolSessionId", """{"pairingCode":"$pairingCode"}""")
+        val shown = patch("/tools/api/approve-qr/v1/$confirmToolSessionId", """{"decision":"accept"}""")
         shown.next() shouldBe mapOf("type" to "tool", "toolId" to "approve-qr", "step" to "showCode")
         return accountId to (shown.stepData()["confirmationCode"] as String)
     }
@@ -135,26 +135,26 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
             `when`("that same account confirms via approve-qr on its own authenticated channel and the browser enters the code") {
                 val (webToolSessionId, pairingCode) = startWebLookup()
                 val (appChannelSessionId, accountId) = registerWithQrOptIn()
-                val beforeApproval = keycloakGetTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
+                val beforeApproval = keycloakGetTool("/tools/api/auth-qr-lookup/v1/$webToolSessionId")
 
                 val started = post("/orchestrator/api/v1/channels/$appChannelSessionId/peer-logins")
                 resolveReconfirmation(appChannelSessionId)
                 val confirmToolSessionId =
-                    post("/orchestrator/api/v1/channels/$appChannelSessionId/tools/approve-qr").nextRaw()["toolSessionId"] as String
+                    post("/tools/api/approve-qr/v1?channel=$appChannelSessionId").nextRaw()["toolSessionId"] as String
                 val confirmStep = patch(
-                    "/orchestrator/api/v1/tools/$confirmToolSessionId/approve-qr",
+                    "/tools/api/approve-qr/v1/$confirmToolSessionId",
                     """{"pairingCode":"$pairingCode"}"""
                 )
-                val shown = patch("/orchestrator/api/v1/tools/$confirmToolSessionId/approve-qr", """{"decision":"accept"}""")
+                val shown = patch("/tools/api/approve-qr/v1/$confirmToolSessionId", """{"decision":"accept"}""")
                 val confirmationCode = shown.stepData()["confirmationCode"] as String
 
-                val afterApproval = keycloakGetTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
-                val asking = keycloakPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
+                val afterApproval = keycloakGetTool("/tools/api/auth-qr-lookup/v1/$webToolSessionId")
+                val asking = keycloakPatchTool("/tools/api/auth-qr-lookup/v1/$webToolSessionId")
                 val resolved = keycloakPatchTool(
-                    "/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup",
+                    "/tools/api/auth-qr-lookup/v1/$webToolSessionId",
                     """{"confirmationCode":"$confirmationCode"}"""
                 )
-                val done = patch("/orchestrator/api/v1/tools/$confirmToolSessionId/approve-qr", """{"decision":"done"}""")
+                val done = patch("/tools/api/approve-qr/v1/$confirmToolSessionId", """{"decision":"done"}""")
 
                 then("the browser waits for the app until the approval") {
                     beforeApproval.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-qr-lookup", "step" to "waitForApp")
@@ -188,10 +188,10 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
                 val wrong = if (confirmationCode == "000000") "000001" else "000000"
 
                 val guesses = List(2) {
-                    keycloakPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup", """{"confirmationCode":"$wrong"}""")
+                    keycloakPatchTool("/tools/api/auth-qr-lookup/v1/$webToolSessionId", """{"confirmationCode":"$wrong"}""")
                 }
                 val third = runCatching {
-                    keycloakPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup", """{"confirmationCode":"$wrong"}""")
+                    keycloakPatchTool("/tools/api/auth-qr-lookup/v1/$webToolSessionId", """{"confirmationCode":"$wrong"}""")
                 }
 
                 then("the first two fail without logging in") {
@@ -216,12 +216,12 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
                 post("/orchestrator/api/v1/channels/$appChannelSessionId/peer-logins")
                 resolveReconfirmation(appChannelSessionId)
                 val confirmToolSessionId =
-                    post("/orchestrator/api/v1/channels/$appChannelSessionId/tools/approve-qr").nextRaw()["toolSessionId"] as String
-                patch("/orchestrator/api/v1/tools/$confirmToolSessionId/approve-qr", """{"pairingCode":"$pairingCode"}""")
-                val declined = patch("/orchestrator/api/v1/tools/$confirmToolSessionId/approve-qr", """{"decision":"reject"}""")
+                    post("/tools/api/approve-qr/v1?channel=$appChannelSessionId").nextRaw()["toolSessionId"] as String
+                patch("/tools/api/approve-qr/v1/$confirmToolSessionId", """{"pairingCode":"$pairingCode"}""")
+                val declined = patch("/tools/api/approve-qr/v1/$confirmToolSessionId", """{"decision":"reject"}""")
 
-                val reads = List(2) { keycloakGetTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup") }
-                val poll = keycloakPatchTool("/orchestrator/api/v1/tools/$webToolSessionId/auth-qr-lookup")
+                val reads = List(2) { keycloakGetTool("/tools/api/auth-qr-lookup/v1/$webToolSessionId") }
+                val poll = keycloakPatchTool("/tools/api/auth-qr-lookup/v1/$webToolSessionId")
 
                 then("the app side reports the rejection") {
                     templateOf(declined.stepData()["error"]) shouldBe "Vom Nutzer abgelehnt"
@@ -240,7 +240,7 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
                 val (appChannelSessionId, _) = registerWithQrOptIn()
                 post("/orchestrator/api/v1/channels/$appChannelSessionId/peer-logins")
                 resolveReconfirmation(appChannelSessionId)
-                val broken = runCatching { post("/orchestrator/api/v1/channels/$appChannelSessionId/tools/approve-qr", "{not json") }
+                val broken = runCatching { post("/tools/api/approve-qr/v1?channel=$appChannelSessionId", "{not json") }
                 val after = get("/orchestrator/api/v1/channels/$appChannelSessionId")
 
                 then("it is a bad request") {

@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 /**
  * toolId=enroll-qr. One controller owns activation, PATCH and GET for this tool
@@ -39,7 +39,7 @@ class EnrollQrToolController(
 
     override val tool = EnrollQr
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_QR_TOOL_ID")
+    @PostMapping("$TOOLS_API/$ENROLL_QR_TOOL_ID/v1")
     @Operation(
         summary = "Activate enroll-qr",
         description = "No request body: toolId already carries kind and method.",
@@ -53,7 +53,7 @@ class EnrollQrToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$ENROLL_QR_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$ENROLL_QR_TOOL_ID/v1/{toolSessionId}")
     @Operation(summary = "Confirm the opt-in", description = "No request body - the call itself is the confirmation.")
     fun patch(
         context: AuthorizedToolContext
@@ -62,7 +62,7 @@ class EnrollQrToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$ENROLL_QR_TOOL_ID")
+    @GetMapping("$TOOLS_API/$ENROLL_QR_TOOL_ID/v1/{toolSessionId}")
     @Operation(summary = "Read the current enroll-qr state")
     fun read(
         context: ToolContext

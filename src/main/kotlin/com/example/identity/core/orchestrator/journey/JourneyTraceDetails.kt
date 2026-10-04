@@ -31,10 +31,14 @@ class JourneyTraceDetails(
     fun methodEvidenceDetail(methods: List<MethodEvidence>): List<Map<String, Any?>> =
         methods.map { mapOf("method" to it.method.value, "loa" to it.loa.value, "factorTypes" to it.factorTypes.map { t -> t.name }, "amrSourceId" to it.amrSourceId) }
 
-    /** Event-specific detail for the trace: the tool involved and how the outcome or answer read. */
-    fun eventDetail(event: JourneyEvent): Map<String, Any?> = when (event) {
-        is JourneyEvent.Completed -> mapOf("toolId" to event.tool.toolId, "method" to event.tool.method) + outcomeDetail(event.tool, event.outcome)
-        is JourneyEvent.Abandoned -> mapOf("toolId" to event.tool.toolId)
+    /**
+     * Event-specific detail for the trace: the tool involved, in the version [channel] declared
+     * (ADR-51), and how the outcome or answer read.
+     */
+    fun eventDetail(event: JourneyEvent, channel: ChannelSession): Map<String, Any?> = when (event) {
+        is JourneyEvent.Completed -> mapOf("toolId" to event.tool.toolId, "tool" to channel.declaredVersionOf(event.tool.toolId.value), "method" to event.tool.method) +
+            outcomeDetail(event.tool, event.outcome)
+        is JourneyEvent.Abandoned -> mapOf("toolId" to event.tool.toolId, "tool" to channel.declaredVersionOf(event.tool.toolId.value))
         is JourneyEvent.Answered -> mapOf("answer" to event.answer)
         is JourneyEvent.SubJourneyFinished -> mapOf("subIntent" to event.intent.name, "achievedAcr" to event.achievedAcr)
         is JourneyEvent.SubJourneyCancelled -> mapOf("subIntent" to event.intent.name)

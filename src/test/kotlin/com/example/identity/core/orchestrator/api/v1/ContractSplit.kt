@@ -1,13 +1,16 @@
 package com.example.identity.core.orchestrator.api.v1
 
 import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 /**
- * Splits the app contract into the parts that are versioned separately (ADR-50):
+ * Splits the app contract into the parts that are versioned separately (ADR-50, ADR-51):
  *
- * - the envelope: everything every client relies on. A break needs a new API version.
- * - one file per tool: its endpoints, their schemas and the step shapes its module declares. A
- *   client only ever meets a tool it named in `availableTools`, so a break reaches only those clients.
+ * - the envelope: everything under [API_V1], and leaving a tool, which has the same form in every
+ *   tool. A break needs a new orchestrator version.
+ * - one file per tool version (`/tools/api/<toolId>/v<N>`): its endpoints, their schemas and the
+ *   step shapes its module declares. A client only ever meets a tool in the version it named in
+ *   `availableTools`, so a break reaches only those clients and needs a new version of that tool.
  *
  * `/kc/...` is in neither: only the Keycloak extension calls it, and that ships with the server.
  * The peer-auth alternative on shared endpoints goes for the same reason.
@@ -45,8 +48,9 @@ class ContractSplit(
     fun envelope(): Map<*, *> =
         document(envelopePaths, envelopeSchemas.associateWith { schemaFor(it, envelopeKinds) })
 
-    fun tool(toolId: String): Map<*, *> {
-        val ownPaths = paths.filterKeys { toolOf(it) == toolId }
+    /** The part of [toolId] in [version]. */
+    fun tool(toolId: String, version: Int): Map<*, *> {
+        val ownPaths = paths.filterKeys { toolOf(it) == toolId to version }
         val kinds = tools.getValue(toolId)
         val roots = refsIn(ownPaths) + kinds.mapNotNull { mapping[it] }
         val own = reachable(roots, emptySet(), envelopeSchemas)
@@ -56,11 +60,10 @@ class ContractSplit(
         return document(ownPaths, own.associateWith { schemas[it] } + placeholders)
     }
 
-    /** The toolId a path belongs to, or null for the envelope. */
-    fun toolOf(path: String): String? {
-        val rest = path.removePrefix(API_V1)
-        val id = (CHANNEL_TOOL.find(rest) ?: SESSION_TOOL.find(rest))?.groupValues?.get(1)
-        return id?.takeIf { it in tools }
+    /** The tool and version a path belongs to, or null for the envelope. */
+    fun toolOf(path: String): Pair<String, Int>? {
+        val (id, version) = TOOL_PATH.find(path)?.destructured ?: return null
+        return (id to version.toInt()).takeIf { id in tools }
     }
 
     private fun document(paths: Map<String, Any?>, schemas: Map<String, Any?>): Map<*, *> {
@@ -148,7 +151,6 @@ class ContractSplit(
         const val STEP_DATA = "StepData"
         const val LOCAL_REF = "#/components/schemas/"
         const val PEER_AUTH = BindingKeyOpenApiConfig.PEER_AUTH_SCHEME
-        val CHANNEL_TOOL = Regex("^/channels/\\{[^}]+}/tools/([^/]+)")
-        val SESSION_TOOL = Regex("^/tools/\\{[^}]+}/([^/{]+)")
+        val TOOL_PATH = Regex("^${Regex.escape(TOOLS_API)}/([^/{]+)/v([0-9]+)(/|$)")
     }
 }

@@ -58,7 +58,7 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
                 toolAvailabilityService.disable("auth-sms", ChannelType.APP, "suspected compromise")
 
                 val afterDisable = get("/orchestrator/api/v1/channels/$channelSessionId")
-                val directActivation = runCatching { post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms") }
+                val directActivation = runCatching { post("/tools/api/auth-sms/v1?channel=$channelSessionId") }
                 val authenticated = authenticateViaPassword(channelSessionId)
 
                 then("the fresh channel offered both") {
@@ -99,18 +99,18 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
                 // them, so availability narrows the offers without breaking the journey.
                 val channelSessionId = post(
                     "/orchestrator/api/v1/app/channels",
-                    """{"availableTools":["ident-fsc","enroll-sms","confirm-email"]}"""
+                    """{"availableTools":["ident-fsc@1","enroll-sms@1","confirm-email@1"]}"""
                 ).channel()["channelSessionId"] as String
 
                 val identified = reIdentifyViaFsc(channelSessionId)
                 confirmEmail(channelSessionId)
                 val afterConfirm = get("/orchestrator/api/v1/channels/$channelSessionId")
 
-                val enrollSmsToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-sms").nextRaw()["toolSessionId"] as String
+                val enrollSmsToolSessionId = post("/tools/api/enroll-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 val (tan, _) = captureMockTan {
-                    patch("/orchestrator/api/v1/tools/$enrollSmsToolSessionId/enroll-sms", """{"phoneNumber":"+49 170 1234567"}""")
+                    patch("/tools/api/enroll-sms/v1/$enrollSmsToolSessionId", """{"phoneNumber":"+49 170 1234567"}""")
                 }
-                val afterSms = patch("/orchestrator/api/v1/tools/$enrollSmsToolSessionId/enroll-sms", """{"tan":"$tan"}""")
+                val afterSms = patch("/tools/api/enroll-sms/v1/$enrollSmsToolSessionId", """{"tan":"$tan"}""")
                 val final = get("/orchestrator/api/v1/channels/$channelSessionId")
 
                 then("the address comes before any enrollment") {
@@ -131,9 +131,9 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
         given("an account with sms and password, on a channel whose client declares only auth-sms") {
             `when`("the client starts auth-password directly") {
                 seedRegisteredAccount()
-                val created = post("/orchestrator/api/v1/app/channels", """{"availableTools":["auth-sms"]}""")
+                val created = post("/orchestrator/api/v1/app/channels", """{"availableTools":["auth-sms@1"]}""")
                 val channelSessionId = created.channel()["channelSessionId"] as String
-                val directStart = runCatching { post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password") }
+                val directStart = runCatching { post("/tools/api/auth-password/v1?channel=$channelSessionId") }
 
                 then("it is never offered") {
                     offeredToolIds(created) shouldNotContain "auth-password"
@@ -167,13 +167,13 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
                 then("the frontend's unit tests use this very catalog (frontend/src/tools/catalog.fixture.json)") {
                     val fixture = tools.jackson.module.kotlin.jacksonObjectMapper().readValue(
                         java.io.File("frontend/src/tools/catalog.fixture.json"),
-                        object : tools.jackson.core.type.TypeReference<List<Map<String, String>>>() {},
+                        object : tools.jackson.core.type.TypeReference<List<Map<String, Any?>>>() {},
                     )
                     val idOf = com.example.identity.contract.texts.Text::idOf
                     val asServed = catalogEntries.map { entry ->
-                        listOf(entry["toolId"], entry["method"], entry["role"], (entry["name"] as Map<*, *>)["key"], (entry["hint"] as Map<*, *>)["key"])
+                        listOf(entry["toolId"], entry["method"], entry["role"], entry["versions"], (entry["name"] as Map<*, *>)["key"], (entry["hint"] as Map<*, *>)["key"])
                     }
-                    val asFixture = fixture.map { listOf(it["toolId"], it["method"], it["role"], idOf(it["name"]!!), idOf(it["hint"]!!)) }
+                    val asFixture = fixture.map { listOf(it["toolId"], it["method"], it["role"], it["versions"], idOf(it["name"] as String), idOf(it["hint"] as String)) }
                     asFixture shouldContainExactlyInAnyOrder asServed
                 }
                 then("the admin view reflects the toggle for App and leaves Web untouched") {

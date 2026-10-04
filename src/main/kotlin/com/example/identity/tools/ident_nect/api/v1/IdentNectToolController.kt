@@ -3,7 +3,7 @@ package com.example.identity.tools.ident_nect.api.v1
 import com.example.identity.tools.ident_nect.IDENT_NECT_TOOL_ID
 import com.example.identity.tools.ident_nect.IdentNect
 import com.example.identity.tools.ident_nect.internal.IdentNectToolHandler
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.ToolJourney
@@ -67,7 +67,7 @@ class IdentNectToolController(
 
     override val tool = IdentNect
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$IDENT_NECT_TOOL_ID")
+    @PostMapping("$TOOLS_API/$IDENT_NECT_TOOL_ID/v1")
     @Operation(
         summary = "Activate ident-nect",
         description = "Opens a Nect case; stepData carries the jump URL. The optional body names where Nect sends the user back to.",
@@ -93,7 +93,7 @@ class IdentNectToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$IDENT_NECT_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$IDENT_NECT_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Report the returned Nect case, or open a new one",
         description = "The backend redeems the case's result from Nect itself - once, and only for the case this tool session opened.",
@@ -119,7 +119,7 @@ class IdentNectToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$IDENT_NECT_TOOL_ID")
+    @GetMapping("$TOOLS_API/$IDENT_NECT_TOOL_ID/v1/{toolSessionId}")
     @Operation(summary = "Read the current ident-nect state")
     fun read(
         context: ToolContext

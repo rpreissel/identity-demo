@@ -48,9 +48,9 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
 
     private fun identifyWith(kvnr: String, name: String, code: String): Map<String, Any?> {
         val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-        val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
+        val toolSessionId = post("/tools/api/ident-fsc/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
         return patch(
-            "/orchestrator/api/v1/tools/$toolSessionId/ident-fsc",
+            "/tools/api/ident-fsc/v1/$toolSessionId",
             """{"kvnr":"$kvnr","familyName":"$name","givenNames":"Rita","birthDate":"1970-01-01","fsc":"$code"}"""
         )
     }
@@ -193,9 +193,9 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                 val code = issue(PartnerNumber(personId))["code"] as String
 
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
+                val toolSessionId = post("/tools/api/ident-fsc/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 val response = patch(
-                    "/orchestrator/api/v1/tools/$toolSessionId/ident-fsc",
+                    "/tools/api/ident-fsc/v1/$toolSessionId",
                     """{"partnerNumber":"${personId.lowercase()}","familyName":"Partner","givenNames":"Paul","birthDate":"1960-06-06","fsc":"$code"}"""
                 )
 

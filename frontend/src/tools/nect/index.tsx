@@ -4,6 +4,7 @@ import { t } from '../../texts'
 
 export const identNect: ToolModule = {
   toolId: 'ident-nect',
+  version: 1,
   meta: { icon: '📲' },
   explain: () => ({
     does: t('Die App leitet zu Nect weiter. Dort weisen Sie sich mit Ausweis, Reisepass oder EUDI-Wallet aus, das Ergebnis geht zurück an das Tool.'),

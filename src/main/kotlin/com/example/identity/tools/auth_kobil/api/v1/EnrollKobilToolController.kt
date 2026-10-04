@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 data class EnrollKobilPatchRequest(
     /** The app confirming that the SDK's activation ran; the device identifier is asked of KOBIL, never of the client. */
@@ -57,7 +57,7 @@ class EnrollKobilToolController(
 
     override val tool = EnrollKobil
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_KOBIL_TOOL_ID")
+    @PostMapping("$TOOLS_API/$ENROLL_KOBIL_TOOL_ID/v1")
     @Operation(
         summary = "Activate enroll-kobil",
         description = "Provisions the KOBIL user and returns everything the app's SDK needs for its " +
@@ -83,7 +83,7 @@ class EnrollKobilToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$ENROLL_KOBIL_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$ENROLL_KOBIL_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Confirm the KOBIL activation",
         description = "Records the credential once KOBIL reports a bound device for this user.",
@@ -113,7 +113,7 @@ class EnrollKobilToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$ENROLL_KOBIL_TOOL_ID")
+    @GetMapping("$TOOLS_API/$ENROLL_KOBIL_TOOL_ID/v1/{toolSessionId}")
     @Operation(summary = "Read the current enroll-kobil state")
     fun read(
         context: ToolContext,

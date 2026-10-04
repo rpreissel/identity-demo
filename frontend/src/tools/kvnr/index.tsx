@@ -9,6 +9,7 @@ const SKIP_LABEL = t('Jetzt nicht')
 
 export const identKvnr: ToolModule = {
   toolId: 'ident-kvnr',
+  version: 1,
   meta: {
     icon: '🗂️',
     // Wer abbricht, registriert weiter - das Konto bleibt Interessent (ADR-10/ADR-18). Gesetzt

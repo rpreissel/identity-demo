@@ -401,21 +401,24 @@ abstract class CheckPublishedApiCompatibility @Inject constructor(
         }
 
         compare(publishedDir.resolve("v1/$envelope"), currentDir.resolve(envelope),
-            "Bruch am Umschlag (${currentDir.name}/$envelope): braucht eine neue API-Version.")
+            "Bruch am Umschlag (${currentDir.name}/$envelope): braucht eine neue Orchestrator-Version, ein Pflichtupdate (ADR-51).")
 
-        val publishedTools = publishedDir.resolve(tools).listFiles().orEmpty().filter { it.extension == "yaml" }
-        val currentTools = currentDir.resolve(tools).listFiles().orEmpty().filter { it.extension == "yaml" }
-        publishedTools.sortedBy { it.name }.forEach { old ->
-            val toolId = old.nameWithoutExtension
-            val new = currentDir.resolve("$tools/${old.name}")
-            if (!new.exists()) {
-                logger.lifecycle("Hinweis: Tool $toolId ist entfallen. Clients, die es nennen, bekommen es nicht mehr angeboten.")
+        // Je Tool und Fassung eine Datei: tools/<toolId>/v<N>.yaml (ADR-51).
+        fun versionsIn(dir: File): Map<String, File> =
+            dir.resolve(tools).walkTopDown().filter { it.isFile && it.extension == "yaml" }
+                .associateBy { "${it.parentFile.name}@${it.nameWithoutExtension.removePrefix("v")}" }
+        val publishedTools = versionsIn(publishedDir)
+        val currentTools = versionsIn(currentDir)
+        publishedTools.toSortedMap().forEach { (tool, old) ->
+            val new = currentTools[tool]
+            if (new == null) {
+                logger.lifecycle("Hinweis: $tool ist entfallen. Clients, die es nennen, bekommen das Tool nicht mehr angeboten.")
             } else {
-                compare(old, new, "Bruch an $toolId: additiv aendern; geht das nicht, braucht es eine Tool-Version (noch nicht vorgesehen, ADR-50).")
+                compare(old, new, "Bruch an $tool: additiv aendern; geht das nicht, braucht das Tool eine neue Fassung (ADR-51).")
             }
         }
-        val newTools = currentTools.map { it.nameWithoutExtension } - publishedTools.map { it.nameWithoutExtension }.toSet()
-        newTools.sorted().forEach { logger.lifecycle("Hinweis: Tool $it ist neu und noch nicht eingefroren (publishApiVersion).") }
+        (currentTools.keys - publishedTools.keys).sorted()
+            .forEach { logger.lifecycle("Hinweis: $it ist neu und noch nicht eingefroren (publishApiVersion).") }
 
         if (failures.isNotEmpty()) throw GradleException(failures.joinToString("\n\n"))
     }
@@ -423,7 +426,7 @@ abstract class CheckPublishedApiCompatibility @Inject constructor(
 
 tasks.register<CheckPublishedApiCompatibility>("checkPublishedApiCompatibility") {
     group = "verification"
-    description = "Prueft api/contract/ (Umschlag und je Tool) gegen den eingefrorenen Stand unter api/published/."
+    description = "Prueft api/contract/ (Umschlag und je Tool und Fassung) gegen den eingefrorenen Stand unter api/published/."
     diffClasspath.from(openapiDiff)
     published.set(layout.projectDirectory.dir("api/published"))
     current.set(layout.projectDirectory.dir("api/contract"))

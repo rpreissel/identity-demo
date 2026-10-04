@@ -42,7 +42,7 @@ classDiagram
     string changeType "IDENTIFIED, ..."
     string subject "Verfahren"
     string acr
-    Map details "type, version, Rolle, Anbieter, Vorgang, Version, Hash"
+    Map details "type, version, Rolle, Tool, Anbieter, Vorgang, Version, Hash"
     Instant occurredAt
   }
   class AccountAuthMethod {
@@ -83,7 +83,8 @@ Entscheidungen, die an diesem Modell hängen:
   Änderungen sperren nur die Kontozeile, indem sie deren Version erhöhen. Deaktivierte Einträge
   tragen `deactivated_at`; ein CHECK-Constraint hält `active` und `deactivated_at` stimmig.
 - **Welche Nachweise beim Einrichten vorlagen, steht nur im Änderungsprotokoll.** Das Ereignis
-  `METHOD_ADDED` trägt in `details` die Nachweise der Sitzung (`amr`) und den Kanal (`channel`),
+  `METHOD_ADDED` trägt in `details` die Nachweise der Sitzung (`amr`), den Kanal (`channel`) und
+  das einrichtende Tool in der Fassung, die der Client sprach (`tool`: `enroll-sms@1`, ADR-51),
   denn nur dort überdauern sie Deaktivierung und Kontolöschung (ADR-39). Auf die Auswahl der
   Kandidaten und die Berechnung des ACR wirken sie nicht; maßgeblich ist allein
   `enrolledUnderAcr`. `details` enthält nur, was das zuständige Modul selbst wieder liest
@@ -313,7 +314,7 @@ nachzuweisen, statt ein neues einzurichten.
 
 Zwischen beiden Schritten steht keine Ja/Nein-Frage: Nach der Bestätigung zeigt `next` direkt
 auf `ident-kvnr` (`RegisterState.Assigning`). Wer die Nummer nicht angeben will, bricht den Schritt
-ab (`DELETE /orchestrator/api/v1/tools/{toolSessionId}/ident-kvnr`, im Frontend „Jetzt nicht"). Der
+ab (`DELETE /tools/api/ident-kvnr/v1/{toolSessionId}`, im Frontend „Jetzt nicht"). Der
 Durchlauf geht dann normal weiter, und das Konto bleibt Interessent
 ([Orchestrierung](04-orchestrierung.md), ADR-10): mit vollständig bestätigter Identität, nur ohne
 Zuordnung zum Personenverzeichnis. Es ist ein Ausweichzustand, kein Pflichtzustand.

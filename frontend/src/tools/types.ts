@@ -45,7 +45,7 @@ export interface ToolModuleMeta {
   /**
    * Label for the abandon button when "Zurück" is the wrong word: an optional step rather than one
    * of several ways (ident-kvnr: "jetzt nicht", the run carries on without the register binding).
-   * Only wording; the button is the same abandon (DELETE .../tools/{id}/{toolId}).
+   * Only wording; the button is the same abandon (DELETE /tools/api/{toolId}/v{version}/{id}).
    */
   skipLabel?: string
 }
@@ -74,6 +74,11 @@ export interface StepExplanation {
 /** One toolId's registration: its display meta and its own step -> form rendering. */
 export interface ToolModule {
   toolId: string
+  /**
+   * The one version of the tool's contract this client speaks (ADR-51): declared in
+   * `availableTools` as `<toolId>@<version>` and called under `/tools/api/<toolId>/v<version>`.
+   */
+  version: number
   meta: ToolModuleMeta
   /** Required, so a new tool cannot leave the demo column silent about its steps. */
   explain(step: string): StepExplanation

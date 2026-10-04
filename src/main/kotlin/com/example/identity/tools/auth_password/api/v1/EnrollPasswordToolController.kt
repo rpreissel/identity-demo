@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 data class EnrollPasswordPatchRequest(
     @field:Schema(example = "Passwort!23") val password: String? = null
@@ -46,7 +46,7 @@ class EnrollPasswordToolController(
 
     override val tool = EnrollPassword
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_PASSWORD_TOOL_ID")
+    @PostMapping("$TOOLS_API/$ENROLL_PASSWORD_TOOL_ID/v1")
     @Operation(
         summary = "Activate enroll-password",
         description = "No request body: toolId already carries kind and method.",
@@ -70,7 +70,7 @@ class EnrollPasswordToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$ENROLL_PASSWORD_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$ENROLL_PASSWORD_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Supply the password",
         description = "The credential is self-verifying, no separate confirmation step.",
@@ -96,7 +96,7 @@ class EnrollPasswordToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$ENROLL_PASSWORD_TOOL_ID")
+    @GetMapping("$TOOLS_API/$ENROLL_PASSWORD_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Read the current enroll-password state",
         responses = [

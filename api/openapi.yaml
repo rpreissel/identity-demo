@@ -239,13 +239,14 @@ components:
         call DELETE .../channels/{channelSessionId} before this.'
       properties:
         availableTools:
-          description: toolIds this client supports and has enabled (docs/03-tool-architektur.md, availability) - e.g. GET
-            /tools/catalog minus whatever the user turned off locally. Fixed for this channel's whole lifetime; a candidate
-            list never offers a toolId outside this set, and activating one directly fails too.
+          description: The tools this client supports and has enabled, each as <toolId>@<version> in the one version it speaks
+            (ADR-51, docs/03-tool-architektur.md, availability) - e.g. GET /tools/catalog minus whatever the user turned off
+            locally. Fixed for this channel's whole lifetime; a candidate list never offers a tool outside this set, and activating
+            one directly or in another version fails too. An entry without its version, or one tool in two versions, is rejected.
           example:
-          - ident-fsc
-          - enroll-sms
-          - auth-sms
+          - ident-fsc@1
+          - enroll-sms@1
+          - auth-sms@1
           items:
             type: string
           minItems: 1
@@ -1110,12 +1111,20 @@ components:
         toolId:
           example: auth-sms
           type: string
+        versions:
+          example:
+          - 1
+          items:
+            format: int32
+            type: integer
+          type: array
       required:
       - hint
       - method
       - name
       - role
       - toolId
+      - versions
       type: object
   securitySchemes:
     dpop:
@@ -1902,963 +1911,6 @@ paths:
       summary: Get the mock Keycloak AccessToken
       tags:
       - Channels
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/approve-qr:
-    post:
-      description: 'Optional body: {pairingCode}, when already known (e.g. from a demo-link deep link) - skips the input step.'
-      operationId: activate_22
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ConfirmQrLoginActivateRequest'
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate approve-qr
-      tags:
-      - 'Tool: QR-Login'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-device:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_21
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
-                next:
-                  step: auth
-                  toolId: auth-device
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate auth-device
-      tags:
-      - 'Tool: Gerät'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-email:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_19
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa1
-                  state: STEP_UP_IN_PROGRESS
-                next:
-                  step: auth
-                  toolId: auth-email
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate auth-email
-      tags:
-      - 'Tool: E-Mail'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-email-lookup:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_20
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
-                next:
-                  step: auth
-                  toolId: auth-email-lookup
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate auth-email-lookup
-      tags:
-      - 'Tool: E-Mail'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-invite-lookup:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_18
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
-                next:
-                  step: input
-                  toolId: auth-invite-lookup
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate auth-invite-lookup
-      tags:
-      - 'Tool: Einmalkennwort'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-kobil:
-    post:
-      operationId: activate_17
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
-                next:
-                  step: unlock
-                  toolId: auth-kobil
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-                stepData:
-                  kind: kobil-unlock
-                  kobilUserId: kob-1a2b3c4d5e6f
-                  tenantId: identity-demo
-                  unlockOptions:
-                  - biometric
-                  - password
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate auth-kobil
-      tags:
-      - 'Tool: KOBIL'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-password:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_15
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa1
-                  state: STEP_UP_IN_PROGRESS
-                next:
-                  step: auth
-                  toolId: auth-password
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate auth-password
-      tags:
-      - 'Tool: Passwort'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-password-lookup:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_16
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
-                next:
-                  step: auth
-                  toolId: auth-password-lookup
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate auth-password-lookup
-      tags:
-      - 'Tool: Passwort'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-qr:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_13
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate auth-qr
-      tags:
-      - 'Tool: QR-Login'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-qr-lookup:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_14
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate auth-qr-lookup
-      tags:
-      - 'Tool: QR-Login'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-sms:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_11
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa1
-                  state: STEP_UP_IN_PROGRESS
-                next:
-                  step: auth
-                  toolId: auth-sms
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate auth-sms
-      tags:
-      - 'Tool: SMS'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-sms-lookup:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_12
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
-                next:
-                  step: auth
-                  toolId: auth-sms-lookup
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate auth-sms-lookup
-      tags:
-      - 'Tool: SMS'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/confirm-email:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_10
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: REGISTERING
-                next:
-                  step: input
-                  toolId: confirm-email
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate confirm-email
-      tags:
-      - 'Tool: E-Mail'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-device:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_9
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa1
-                  currentAmr:
-                  - password
-                  state: AUTHENTICATED
-                next:
-                  step: enroll
-                  toolId: enroll-device
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate enroll-device
-      tags:
-      - 'Tool: Gerät'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-email:
-    post:
-      description: 'One shot: no request body, and the response already carries the completed outcome.'
-      operationId: activate_8
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: AUTHENTICATED
-                next:
-                  context: authentication
-                  step: done
-                  type: orchestrator
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate enroll-email
-      tags:
-      - 'Tool: E-Mail-Login'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-kobil:
-    post:
-      description: Provisions the KOBIL user and returns everything the app's SDK needs for its activation call - including
-        the PIN, which this backend mints and keeps.
-      operationId: activate_7
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa2
-                  currentAmr:
-                  - fsc
-                  state: AUTHENTICATED
-                next:
-                  step: activate
-                  toolId: enroll-kobil
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-                stepData:
-                  activationCode: K7M2PQX9
-                  kind: kobil-activation
-                  kobilUserId: kob-1a2b3c4d5e6f
-                  missingFields:
-                  - activated
-                  - biometricConsent
-                  pin: '40318827'
-                  tenantId: identity-demo
-                  unlockSecret: xE1r...
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate enroll-kobil
-      tags:
-      - 'Tool: KOBIL'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-password:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_6
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: REGISTERING
-                next:
-                  step: enroll
-                  toolId: enroll-password
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate enroll-password
-      tags:
-      - 'Tool: Passwort'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-qr:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_5
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate enroll-qr
-      tags:
-      - 'Tool: QR-Login'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-sms:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_4
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: REGISTERING
-                next:
-                  step: enroll
-                  toolId: enroll-sms
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate enroll-sms
-      tags:
-      - 'Tool: SMS'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/ident-eid:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_3
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
-                next:
-                  step: input
-                  toolId: ident-eid
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-                stepData:
-                  kind: missing-fields
-                  missingFields:
-                  - familyName
-                  - givenNames
-                  - birthDate
-                  - streetAddress
-                  - postalCode
-                  - locality
-                  - restrictedId
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate ident-eid
-      tags:
-      - 'Tool: eID'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/ident-fsc:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_2
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
-                next:
-                  step: input
-                  toolId: ident-fsc
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate ident-fsc
-      tags:
-      - 'Tool: Freischaltcode'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/ident-kvnr:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_1
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
-                next:
-                  step: input
-                  toolId: ident-kvnr
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate ident-kvnr
-      tags:
-      - 'Tool: Versichertennummer'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/ident-nect:
-    post:
-      description: Opens a Nect case; stepData carries the jump URL. The optional body names where Nect sends the user back
-        to.
-      operationId: activate
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IdentNectActivateRequest'
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
-                next:
-                  step: redirect
-                  toolId: ident-nect
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-                stepData:
-                  caseId: 5b1c2d3e-0000-4000-8000-000000000001
-                  jumpUrl: /nect/?case=5b1c2d3e-0000-4000-8000-000000000001
-                  kind: nect-redirect
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate ident-nect
-      tags:
-      - 'Tool: Nect'
   /orchestrator/api/v1/kc/accounts:
     get:
       operationId: search
@@ -3248,6 +2300,8 @@ paths:
                   key: freischaltcode-1b35c2
                 role: IDENTIFICATION
                 toolId: ident-fsc
+                versions:
+                - 1
               - hint:
                   key: code-an-eine-telefonnummer-a62b47
                 method: sms
@@ -3255,6 +2309,8 @@ paths:
                   key: sms-40b601
                 role: ENROLLMENT
                 toolId: enroll-sms
+                versions:
+                - 1
               - hint:
                   key: code-an-die-hinterlegte-telefonnummer-76a2d3
                 method: sms
@@ -3262,6 +2318,8 @@ paths:
                   key: sms-40b601
                 role: KNOWN_ACCOUNT_AUTH
                 toolId: auth-sms
+                versions:
+                - 1
               schema:
                 items:
                   $ref: '#/components/schemas/ToolCatalogEntry'
@@ -3276,7 +2334,44 @@ paths:
       summary: List every registered tool
       tags:
       - Tool catalog
-  /orchestrator/api/v1/tools/{toolSessionId}/approve-qr:
+  /tools/api/approve-qr/v1:
+    post:
+      description: 'Optional body: {pairingCode}, when already known (e.g. from a demo-link deep link) - skips the input step.'
+      operationId: activate_22
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmQrLoginActivateRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate approve-qr
+      tags:
+      - 'Tool: QR-Login'
+  /tools/api/approve-qr/v1/{toolSessionId}:
     get:
       operationId: read_21
       parameters:
@@ -3343,7 +2438,48 @@ paths:
       summary: Supply the pairing code, then the accept/reject decision
       tags:
       - 'Tool: QR-Login'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-device:
+  /tools/api/auth-device/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_21
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: auth
+                  toolId: auth-device
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-device
+      tags:
+      - 'Tool: Gerät'
+  /tools/api/auth-device/v1/{toolSessionId}:
     get:
       operationId: read_20
       parameters:
@@ -3431,33 +2567,33 @@ paths:
       summary: Confirm device authentication
       tags:
       - 'Tool: Gerät'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-email:
-    get:
-      operationId: read_18
+  /tools/api/auth-email-lookup/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_20
       parameters:
-      - in: path
-        name: toolSessionId
+      - in: query
+        name: channel
         required: true
         schema:
           format: uuid
           type: string
       responses:
-        '200':
+        '201':
           content:
             application/json:
               example:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa1
-                  state: STEP_UP_IN_PROGRESS
+                  state: ANONYMOUS
                 next:
                   step: auth
-                  toolId: auth-email
+                  toolId: auth-email-lookup
                   toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
                   type: tool
               schema:
                 $ref: '#/components/schemas/ChannelResponse'
-          description: OK
+          description: Created
         default:
           content:
             application/json:
@@ -3469,57 +2605,10 @@ paths:
           ]
       - kc-peer-auth: [
           ]
-      summary: Read the current auth-email state
+      summary: Activate auth-email-lookup
       tags:
       - 'Tool: E-Mail'
-    patch:
-      operationId: patch_18
-      parameters:
-      - in: path
-        name: toolSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthEmailPatchRequest'
-      responses:
-        '200':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa2
-                  currentAmr:
-                  - password
-                  - email
-                  state: AUTHENTICATED
-                next:
-                  context: authentication
-                  step: authenticated
-                  type: orchestrator
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: OK
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Confirm the code sent to the account's confirmed email address
-      tags:
-      - 'Tool: E-Mail'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-email-lookup:
+  /tools/api/auth-email-lookup/v1/{toolSessionId}:
     get:
       operationId: read_19
       parameters:
@@ -3623,7 +2712,178 @@ paths:
       summary: Supply email, then code
       tags:
       - 'Tool: E-Mail'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-invite-lookup:
+  /tools/api/auth-email/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_19
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  step: auth
+                  toolId: auth-email
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-email
+      tags:
+      - 'Tool: E-Mail'
+  /tools/api/auth-email/v1/{toolSessionId}:
+    get:
+      operationId: read_18
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  step: auth
+                  toolId: auth-email
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current auth-email state
+      tags:
+      - 'Tool: E-Mail'
+    patch:
+      operationId: patch_18
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthEmailPatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - password
+                  - email
+                  state: AUTHENTICATED
+                next:
+                  context: authentication
+                  step: authenticated
+                  type: orchestrator
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Confirm the code sent to the account's confirmed email address
+      tags:
+      - 'Tool: E-Mail'
+  /tools/api/auth-invite-lookup/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_18
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: input
+                  toolId: auth-invite-lookup
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-invite-lookup
+      tags:
+      - 'Tool: Einmalkennwort'
+  /tools/api/auth-invite-lookup/v1/{toolSessionId}:
     get:
       operationId: read_17
       parameters:
@@ -3696,7 +2956,54 @@ paths:
       summary: Supply the number and the one-time password
       tags:
       - 'Tool: Einmalkennwort'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-kobil:
+  /tools/api/auth-kobil/v1:
+    post:
+      operationId: activate_17
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: unlock
+                  toolId: auth-kobil
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  kind: kobil-unlock
+                  kobilUserId: kob-1a2b3c4d5e6f
+                  tenantId: identity-demo
+                  unlockOptions:
+                  - biometric
+                  - password
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-kobil
+      tags:
+      - 'Tool: KOBIL'
+  /tools/api/auth-kobil/v1/{toolSessionId}:
     get:
       operationId: read_16
       parameters:
@@ -3776,7 +3083,7 @@ paths:
       summary: Redeem the one-time password
       tags:
       - 'Tool: KOBIL'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-kobil/pin-releases:
+  /tools/api/auth-kobil/v1/{toolSessionId}/pin-releases:
     post:
       description: The app presents either the locally stored unlock secret (guarded by its biometric prompt) or the account
         password. The PIN is in this response and nowhere else - a later GET will not return it again.
@@ -3837,7 +3144,176 @@ paths:
       summary: Release the backend-held PIN
       tags:
       - 'Tool: KOBIL'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-password:
+  /tools/api/auth-password-lookup/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_16
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: auth
+                  toolId: auth-password-lookup
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-password-lookup
+      tags:
+      - 'Tool: Passwort'
+  /tools/api/auth-password-lookup/v1/{toolSessionId}:
+    get:
+      operationId: read_15
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: auth
+                  toolId: auth-password-lookup
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current auth-password-lookup state
+      tags:
+      - 'Tool: Passwort'
+    patch:
+      operationId: patch_15
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthPasswordLookupPatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  currentAmr:
+                  - password
+                  state: AUTHENTICATED
+                next:
+                  context: authentication
+                  step: offerDeviceBinding
+                  type: orchestrator
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Correct email+password - logged in, offered the optional device-binding.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Supply email and password together (self-verifying, single call)
+      tags:
+      - 'Tool: Passwort'
+  /tools/api/auth-password/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_15
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  step: auth
+                  toolId: auth-password
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-password
+      tags:
+      - 'Tool: Passwort'
+  /tools/api/auth-password/v1/{toolSessionId}:
     get:
       operationId: read_14
       parameters:
@@ -3925,32 +3401,24 @@ paths:
       summary: Confirm the password against the account's enrolled credential
       tags:
       - 'Tool: Passwort'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-password-lookup:
-    get:
-      operationId: read_15
+  /tools/api/auth-qr-lookup/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_14
       parameters:
-      - in: path
-        name: toolSessionId
+      - in: query
+        name: channel
         required: true
         schema:
           format: uuid
           type: string
       responses:
-        '200':
+        '201':
           content:
             application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
-                next:
-                  step: auth
-                  toolId: auth-password-lookup
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
               schema:
                 $ref: '#/components/schemas/ChannelResponse'
-          description: OK
+          description: Created
         default:
           content:
             application/json:
@@ -3962,125 +3430,10 @@ paths:
           ]
       - kc-peer-auth: [
           ]
-      summary: Read the current auth-password-lookup state
-      tags:
-      - 'Tool: Passwort'
-    patch:
-      operationId: patch_15
-      parameters:
-      - in: path
-        name: toolSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthPasswordLookupPatchRequest'
-      responses:
-        '200':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa1
-                  currentAmr:
-                  - password
-                  state: AUTHENTICATED
-                next:
-                  context: authentication
-                  step: offerDeviceBinding
-                  type: orchestrator
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Correct email+password - logged in, offered the optional device-binding.
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Supply email and password together (self-verifying, single call)
-      tags:
-      - 'Tool: Passwort'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-qr:
-    get:
-      operationId: read_12
-      parameters:
-      - in: path
-        name: toolSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: OK
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Read the current auth-qr state
+      summary: Activate auth-qr-lookup
       tags:
       - 'Tool: QR-Login'
-    patch:
-      description: 'Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a confirmation
-        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md
-        #5).'
-      operationId: patch_12
-      parameters:
-      - in: path
-        name: toolSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/QrConfirmationCodeRequest'
-      responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: OK
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Poll for the APP side's decision, then submit the confirmation code the app shows
-      tags:
-      - 'Tool: QR-Login'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-qr-lookup:
+  /tools/api/auth-qr-lookup/v1/{toolSessionId}:
     get:
       operationId: read_13
       parameters:
@@ -4149,9 +3502,41 @@ paths:
       summary: Poll for the APP side's decision, then submit the confirmation code the app shows
       tags:
       - 'Tool: QR-Login'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-sms:
+  /tools/api/auth-qr/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_13
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-qr
+      tags:
+      - 'Tool: QR-Login'
+  /tools/api/auth-qr/v1/{toolSessionId}:
     get:
-      operationId: read_10
+      operationId: read_12
       parameters:
       - in: path
         name: toolSessionId
@@ -4162,17 +3547,7 @@ paths:
       responses:
         '200':
           content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa1
-                  state: STEP_UP_IN_PROGRESS
-                next:
-                  step: auth
-                  toolId: auth-sms
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
+            '*/*':
               schema:
                 $ref: '#/components/schemas/ChannelResponse'
           description: OK
@@ -4187,11 +3562,14 @@ paths:
           ]
       - kc-peer-auth: [
           ]
-      summary: Read the current auth-sms state
+      summary: Read the current auth-qr state
       tags:
-      - 'Tool: SMS'
+      - 'Tool: QR-Login'
     patch:
-      operationId: patch_10
+      description: 'Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a confirmation
+        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md
+        #5).'
+      operationId: patch_12
       parameters:
       - in: path
         name: toolSessionId
@@ -4203,26 +3581,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AuthSmsPatchRequest'
+              $ref: '#/components/schemas/QrConfirmationCodeRequest'
       responses:
         '200':
           content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa2
-                  currentAmr:
-                  - password
-                  - sms
-                  state: AUTHENTICATED
-                next:
-                  context: authentication
-                  step: authenticated
-                  type: orchestrator
+            '*/*':
               schema:
                 $ref: '#/components/schemas/ChannelResponse'
-          description: Correct TAN - the step-up is satisfied, channel settles into authenticated.
+          description: OK
         default:
           content:
             application/json:
@@ -4234,10 +3600,51 @@ paths:
           ]
       - kc-peer-auth: [
           ]
-      summary: Confirm the TAN sent to the account's enrolled phone number
+      summary: Poll for the APP side's decision, then submit the confirmation code the app shows
+      tags:
+      - 'Tool: QR-Login'
+  /tools/api/auth-sms-lookup/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_12
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: auth
+                  toolId: auth-sms-lookup
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-sms-lookup
       tags:
       - 'Tool: SMS'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-sms-lookup:
+  /tools/api/auth-sms-lookup/v1/{toolSessionId}:
     get:
       operationId: read_11
       parameters:
@@ -4340,7 +3747,178 @@ paths:
       summary: Supply email, then TAN
       tags:
       - 'Tool: SMS'
-  /orchestrator/api/v1/tools/{toolSessionId}/confirm-email:
+  /tools/api/auth-sms/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_11
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  step: auth
+                  toolId: auth-sms
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-sms
+      tags:
+      - 'Tool: SMS'
+  /tools/api/auth-sms/v1/{toolSessionId}:
+    get:
+      operationId: read_10
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  state: STEP_UP_IN_PROGRESS
+                next:
+                  step: auth
+                  toolId: auth-sms
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current auth-sms state
+      tags:
+      - 'Tool: SMS'
+    patch:
+      operationId: patch_10
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthSmsPatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - password
+                  - sms
+                  state: AUTHENTICATED
+                next:
+                  context: authentication
+                  step: authenticated
+                  type: orchestrator
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Correct TAN - the step-up is satisfied, channel settles into authenticated.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Confirm the TAN sent to the account's enrolled phone number
+      tags:
+      - 'Tool: SMS'
+  /tools/api/confirm-email/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_10
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  step: input
+                  toolId: confirm-email
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate confirm-email
+      tags:
+      - 'Tool: E-Mail'
+  /tools/api/confirm-email/v1/{toolSessionId}:
     get:
       operationId: read_9
       parameters:
@@ -4444,7 +4022,51 @@ paths:
       summary: Supply email, then the confirmation code
       tags:
       - 'Tool: E-Mail'
-  /orchestrator/api/v1/tools/{toolSessionId}/enroll-device:
+  /tools/api/enroll-device/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_9
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  currentAmr:
+                  - password
+                  state: AUTHENTICATED
+                next:
+                  step: enroll
+                  toolId: enroll-device
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-device
+      tags:
+      - 'Tool: Gerät'
+  /tools/api/enroll-device/v1/{toolSessionId}:
     get:
       operationId: read_8
       parameters:
@@ -4536,7 +4158,47 @@ paths:
       summary: Confirm device enrollment
       tags:
       - 'Tool: Gerät'
-  /orchestrator/api/v1/tools/{toolSessionId}/enroll-email:
+  /tools/api/enroll-email/v1:
+    post:
+      description: 'One shot: no request body, and the response already carries the completed outcome.'
+      operationId: activate_8
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: AUTHENTICATED
+                next:
+                  context: authentication
+                  step: done
+                  type: orchestrator
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-email
+      tags:
+      - 'Tool: E-Mail-Login'
+  /tools/api/enroll-email/v1/{toolSessionId}:
     get:
       operationId: read_22
       parameters:
@@ -4567,7 +4229,62 @@ paths:
       summary: Read the current enroll-email state
       tags:
       - 'Tool: E-Mail-Login'
-  /orchestrator/api/v1/tools/{toolSessionId}/enroll-kobil:
+  /tools/api/enroll-kobil/v1:
+    post:
+      description: Provisions the KOBIL user and returns everything the app's SDK needs for its activation call - including
+        the PIN, which this backend mints and keeps.
+      operationId: activate_7
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - fsc
+                  state: AUTHENTICATED
+                next:
+                  step: activate
+                  toolId: enroll-kobil
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  activationCode: K7M2PQX9
+                  kind: kobil-activation
+                  kobilUserId: kob-1a2b3c4d5e6f
+                  missingFields:
+                  - activated
+                  - biometricConsent
+                  pin: '40318827'
+                  tenantId: identity-demo
+                  unlockSecret: xE1r...
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-kobil
+      tags:
+      - 'Tool: KOBIL'
+  /tools/api/enroll-kobil/v1/{toolSessionId}:
     get:
       operationId: read_7
       parameters:
@@ -4647,7 +4364,48 @@ paths:
       summary: Confirm the KOBIL activation
       tags:
       - 'Tool: KOBIL'
-  /orchestrator/api/v1/tools/{toolSessionId}/enroll-password:
+  /tools/api/enroll-password/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_6
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  step: enroll
+                  toolId: enroll-password
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-password
+      tags:
+      - 'Tool: Passwort'
+  /tools/api/enroll-password/v1/{toolSessionId}:
     get:
       operationId: read_6
       parameters:
@@ -4735,7 +4493,39 @@ paths:
       summary: Supply the password
       tags:
       - 'Tool: Passwort'
-  /orchestrator/api/v1/tools/{toolSessionId}/enroll-qr:
+  /tools/api/enroll-qr/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_5
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-qr
+      tags:
+      - 'Tool: QR-Login'
+  /tools/api/enroll-qr/v1/{toolSessionId}:
     get:
       operationId: read_5
       parameters:
@@ -4797,7 +4587,48 @@ paths:
       summary: Confirm the opt-in
       tags:
       - 'Tool: QR-Login'
-  /orchestrator/api/v1/tools/{toolSessionId}/enroll-sms:
+  /tools/api/enroll-sms/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_4
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  step: enroll
+                  toolId: enroll-sms
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-sms
+      tags:
+      - 'Tool: SMS'
+  /tools/api/enroll-sms/v1/{toolSessionId}:
     get:
       operationId: read_4
       parameters:
@@ -4901,7 +4732,58 @@ paths:
       summary: Supply phone number, then TAN
       tags:
       - 'Tool: SMS'
-  /orchestrator/api/v1/tools/{toolSessionId}/ident-eid:
+  /tools/api/ident-eid/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_3
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: input
+                  toolId: ident-eid
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  kind: missing-fields
+                  missingFields:
+                  - familyName
+                  - givenNames
+                  - birthDate
+                  - streetAddress
+                  - postalCode
+                  - locality
+                  - restrictedId
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate ident-eid
+      tags:
+      - 'Tool: eID'
+  /tools/api/ident-eid/v1/{toolSessionId}:
     get:
       operationId: read_3
       parameters:
@@ -5009,7 +4891,48 @@ paths:
       summary: Supply the simulated card's Ausweisdaten, then the PIN
       tags:
       - 'Tool: eID'
-  /orchestrator/api/v1/tools/{toolSessionId}/ident-fsc:
+  /tools/api/ident-fsc/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_2
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: input
+                  toolId: ident-fsc
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate ident-fsc
+      tags:
+      - 'Tool: Freischaltcode'
+  /tools/api/ident-fsc/v1/{toolSessionId}:
     get:
       operationId: read_2
       parameters:
@@ -5098,7 +5021,48 @@ paths:
       summary: Supply KVNR/name/givenNames/birthDate/FSC
       tags:
       - 'Tool: Freischaltcode'
-  /orchestrator/api/v1/tools/{toolSessionId}/ident-kvnr:
+  /tools/api/ident-kvnr/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_1
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: input
+                  toolId: ident-kvnr
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate ident-kvnr
+      tags:
+      - 'Tool: Versichertennummer'
+  /tools/api/ident-kvnr/v1/{toolSessionId}:
     get:
       operationId: read_1
       parameters:
@@ -5175,7 +5139,58 @@ paths:
       summary: Supply the Versichertennummer - or, without one, the Partnernummer
       tags:
       - 'Tool: Versichertennummer'
-  /orchestrator/api/v1/tools/{toolSessionId}/ident-nect:
+  /tools/api/ident-nect/v1:
+    post:
+      description: Opens a Nect case; stepData carries the jump URL. The optional body names where Nect sends the user back
+        to.
+      operationId: activate
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentNectActivateRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: redirect
+                  toolId: ident-nect
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  caseId: 5b1c2d3e-0000-4000-8000-000000000001
+                  jumpUrl: /nect/?case=5b1c2d3e-0000-4000-8000-000000000001
+                  kind: nect-redirect
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate ident-nect
+      tags:
+      - 'Tool: Nect'
+  /tools/api/ident-nect/v1/{toolSessionId}:
     get:
       operationId: read
       parameters:
@@ -5259,7 +5274,7 @@ paths:
       summary: Report the returned Nect case, or open a new one
       tags:
       - 'Tool: Nect'
-  /orchestrator/api/v1/tools/{toolSessionId}/{toolId}:
+  /tools/api/{toolId}/v{version}/{toolSessionId}:
     delete:
       description: Moves the journey on according to the state it is standing on - to the next fallback option, back to the
         selection step, or to the end of the journey if nothing else could be offered.
@@ -5276,6 +5291,12 @@ paths:
         required: true
         schema:
           type: string
+      - in: path
+        name: version
+        required: true
+        schema:
+          format: int32
+          type: integer
       responses:
         '200':
           content:
@@ -5311,7 +5332,7 @@ paths:
       summary: Abandon this tool attempt
       tags:
       - Tools
-  /orchestrator/api/v1/tools/{toolSessionId}/{toolId}/back:
+  /tools/api/{toolId}/v{version}/{toolSessionId}/back:
     post:
       description: 'Ends this tool attempt without declining it: the journey shows its selection page again, with every method
         still on offer - this one included, and even when it is the only one. Where the journey has no selection page (a single
@@ -5329,6 +5350,12 @@ paths:
         required: true
         schema:
           type: string
+      - in: path
+        name: version
+        required: true
+        schema:
+          format: int32
+          type: integer
       responses:
         '200':
           content:

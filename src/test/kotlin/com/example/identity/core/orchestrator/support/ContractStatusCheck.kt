@@ -35,7 +35,7 @@ class ContractStatusCheck : ClientHttpRequestInterceptor {
     }
 
     private data class Operation(val method: HttpMethod, val path: String, val pattern: Regex, val successCodes: Set<Int>) {
-        /** More literal segments win: `/tools/{id}/auth-kobil/pin-releases` before `/tools/{id}/{x}/...`. */
+        /** More literal segments win: `/tools/api/auth-kobil/v1/{id}/pin-releases` before `/tools/api/{toolId}/v{version}/{id}/...`. */
         val variables = PATH_VARIABLE.findAll(path).count()
     }
 

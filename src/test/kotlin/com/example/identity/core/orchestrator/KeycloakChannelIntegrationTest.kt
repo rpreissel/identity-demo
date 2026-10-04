@@ -212,10 +212,10 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                 stubAssertion(channelBinding = channelSessionId.toString())
                 val initial = keycloakPatch(channelSessionId)
 
-                val toolSessionId = keycloakPost("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password-lookup")
+                val toolSessionId = keycloakPost("/tools/api/auth-password-lookup/v1?channel=$channelSessionId")
                     .nextRaw()["toolSessionId"] as String
                 val completed = keycloakPatchTool(
-                    "/orchestrator/api/v1/tools/$toolSessionId/auth-password-lookup",
+                    "/tools/api/auth-password-lookup/v1/$toolSessionId",
                     """{"email":"$email","password":"correct-horse-battery"}"""
                 )
 
@@ -289,31 +289,31 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                 stubAssertion(channelBinding = channelSessionId.toString())
                 keycloakPatch(channelSessionId, """{"intent":"register"}""")
 
-                val identToolSessionId = keycloakPost("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc")
+                val identToolSessionId = keycloakPost("/tools/api/ident-fsc/v1?channel=$channelSessionId")
                     .nextRaw()["toolSessionId"] as String
                 keycloakPatchTool(
-                    "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
+                    "/tools/api/ident-fsc/v1/$identToolSessionId",
                     """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","fsc":"VALIDCODE"}"""
                 )
 
-                val emailToolSessionId = keycloakPost("/orchestrator/api/v1/channels/$channelSessionId/tools/confirm-email")
+                val emailToolSessionId = keycloakPost("/tools/api/confirm-email/v1?channel=$channelSessionId")
                     .nextRaw()["toolSessionId"] as String
                 val (emailCode, _) = captureMockTan {
-                    keycloakPatchTool("/orchestrator/api/v1/tools/$emailToolSessionId/confirm-email", """{"email":"max@example.com"}""")
+                    keycloakPatchTool("/tools/api/confirm-email/v1/$emailToolSessionId", """{"email":"max@example.com"}""")
                 }
-                keycloakPatchTool("/orchestrator/api/v1/tools/$emailToolSessionId/confirm-email", """{"code":"$emailCode"}""")
+                keycloakPatchTool("/tools/api/confirm-email/v1/$emailToolSessionId", """{"code":"$emailCode"}""")
 
-                val smsToolSessionId = keycloakPost("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-sms")
+                val smsToolSessionId = keycloakPost("/tools/api/enroll-sms/v1?channel=$channelSessionId")
                     .nextRaw()["toolSessionId"] as String
                 val (smsTan, _) = captureMockTan {
-                    keycloakPatchTool("/orchestrator/api/v1/tools/$smsToolSessionId/enroll-sms", """{"phoneNumber":"+49 170 1234567"}""")
+                    keycloakPatchTool("/tools/api/enroll-sms/v1/$smsToolSessionId", """{"phoneNumber":"+49 170 1234567"}""")
                 }
-                keycloakPatchTool("/orchestrator/api/v1/tools/$smsToolSessionId/enroll-sms", """{"tan":"$smsTan"}""")
+                keycloakPatchTool("/tools/api/enroll-sms/v1/$smsToolSessionId", """{"tan":"$smsTan"}""")
 
-                val passwordToolSessionId = keycloakPost("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-password")
+                val passwordToolSessionId = keycloakPost("/tools/api/enroll-password/v1?channel=$channelSessionId")
                     .nextRaw()["toolSessionId"] as String
                 val finished = keycloakPatchTool(
-                    "/orchestrator/api/v1/tools/$passwordToolSessionId/enroll-password",
+                    "/tools/api/enroll-password/v1/$passwordToolSessionId",
                     """{"password":"correct-horse-battery"}"""
                 )
 

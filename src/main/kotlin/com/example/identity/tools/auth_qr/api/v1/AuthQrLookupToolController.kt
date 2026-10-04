@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 /**
  * toolId=auth-qr-lookup (docs/04-orchestrierung.md, lookup-based login). One controller owns
@@ -40,7 +40,7 @@ class AuthQrLookupToolController(
 
     override val tool = AuthQrLookup
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_QR_LOOKUP_TOOL_ID")
+    @PostMapping("$TOOLS_API/$AUTH_QR_LOOKUP_TOOL_ID/v1")
     @Operation(
         summary = "Activate auth-qr-lookup",
         description = "No request body: toolId already carries kind and method.",
@@ -54,7 +54,7 @@ class AuthQrLookupToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$AUTH_QR_LOOKUP_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$AUTH_QR_LOOKUP_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Poll for the APP side's decision, then submit the confirmation code the app shows",
         description = "Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a " +
@@ -69,7 +69,7 @@ class AuthQrLookupToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$AUTH_QR_LOOKUP_TOOL_ID")
+    @GetMapping("$TOOLS_API/$AUTH_QR_LOOKUP_TOOL_ID/v1/{toolSessionId}")
     @Operation(summary = "Read the current auth-qr-lookup state")
     fun read(
         context: ToolContext

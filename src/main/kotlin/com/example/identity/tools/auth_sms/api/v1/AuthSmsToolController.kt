@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 data class AuthSmsPatchRequest(@field:Schema(example = "123456") val tan: String? = null)
 
@@ -44,7 +44,7 @@ class AuthSmsToolController(
 
     override val tool = AuthSms
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_SMS_TOOL_ID")
+    @PostMapping("$TOOLS_API/$AUTH_SMS_TOOL_ID/v1")
     @Operation(
         summary = "Activate auth-sms",
         description = "No request body: toolId already carries kind and method.",
@@ -68,7 +68,7 @@ class AuthSmsToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$AUTH_SMS_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$AUTH_SMS_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Confirm the TAN sent to the account's enrolled phone number",
         responses = [
@@ -94,7 +94,7 @@ class AuthSmsToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$AUTH_SMS_TOOL_ID")
+    @GetMapping("$TOOLS_API/$AUTH_SMS_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Read the current auth-sms state",
         responses = [
