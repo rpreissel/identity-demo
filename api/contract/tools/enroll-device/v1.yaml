@@ -30,7 +30,7 @@ paths:
   /tools/api/enroll-device/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_9
+      operationId: activate_10
       parameters:
       - in: query
         name: channel
@@ -71,7 +71,7 @@ paths:
       - 'Tool: Gerät'
   /tools/api/enroll-device/v1/{toolSessionId}:
     get:
-      operationId: read_8
+      operationId: read_9
       parameters:
       - in: path
         name: toolSessionId
@@ -113,7 +113,7 @@ paths:
     patch:
       description: Body carries a self-signed device-proof JWT (typ=device-proof+jwt) over this exact URL, produced after
         the user confirms the mocked PIN/biometric prompt.
-      operationId: patch_8
+      operationId: patch_9
       parameters:
       - in: path
         name: toolSessionId

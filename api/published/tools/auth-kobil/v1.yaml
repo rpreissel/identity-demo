@@ -164,7 +164,7 @@ openapi: 3.1.0
 paths:
   /tools/api/auth-kobil/v1:
     post:
-      operationId: activate_17
+      operationId: activate_18
       parameters:
       - in: query
         name: channel
@@ -209,7 +209,7 @@ paths:
       - 'Tool: KOBIL'
   /tools/api/auth-kobil/v1/{toolSessionId}:
     get:
-      operationId: read_16
+      operationId: read_17
       parameters:
       - in: path
         name: toolSessionId
@@ -239,7 +239,7 @@ paths:
     patch:
       description: The backend fetches the assertion behind the OTP from KOBIL, compares the device identifier with the enrolled
         one and checks the reported risks.
-      operationId: patch_16
+      operationId: patch_17
       parameters:
       - in: path
         name: toolSessionId

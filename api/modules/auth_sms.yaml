@@ -44,6 +44,20 @@ components:
       - kind
       - missingFields
       - replaces
+    EnrollSmsV2PatchRequest:
+      properties:
+        consent:
+          description: Consent to storing the number and sending codes to it. Required with the phone number; without it no
+            code is sent and missingFields names it.
+          example: true
+          type: boolean
+        phoneNumber:
+          example: +49 170 1234567
+          type: string
+        tan:
+          example: '123456'
+          type: string
+      type: object
   securitySchemes:
     dpop:
       description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the
@@ -67,7 +81,7 @@ paths:
   /tools/api/auth-sms-lookup/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_2
+      operationId: activate_3
       parameters:
       - in: query
         name: channel
@@ -107,7 +121,7 @@ paths:
       - 'Tool: SMS'
   /tools/api/auth-sms-lookup/v1/{toolSessionId}:
     get:
-      operationId: read_2
+      operationId: read_3
       parameters:
       - in: path
         name: toolSessionId
@@ -147,7 +161,7 @@ paths:
       - 'Tool: SMS'
     patch:
       description: First call with email resolves the account and triggers the TAN send; a second call with tan confirms it.
-      operationId: patch_2
+      operationId: patch_3
       parameters:
       - in: path
         name: toolSessionId
@@ -211,7 +225,7 @@ paths:
   /tools/api/auth-sms/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_1
+      operationId: activate_2
       parameters:
       - in: query
         name: channel
@@ -252,7 +266,7 @@ paths:
       - 'Tool: SMS'
   /tools/api/auth-sms/v1/{toolSessionId}:
     get:
-      operationId: read_1
+      operationId: read_2
       parameters:
       - in: path
         name: toolSessionId
@@ -292,7 +306,7 @@ paths:
       tags:
       - 'Tool: SMS'
     patch:
-      operationId: patch_1
+      operationId: patch_2
       parameters:
       - in: path
         name: toolSessionId
@@ -341,7 +355,7 @@ paths:
   /tools/api/enroll-sms/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate
+      operationId: activate_1
       parameters:
       - in: query
         name: channel
@@ -381,7 +395,7 @@ paths:
       - 'Tool: SMS'
   /tools/api/enroll-sms/v1/{toolSessionId}:
     get:
-      operationId: read
+      operationId: read_1
       parameters:
       - in: path
         name: toolSessionId
@@ -421,7 +435,7 @@ paths:
       - 'Tool: SMS'
     patch:
       description: First call with phoneNumber triggers the TAN send; a second call with tan confirms it.
-      operationId: patch
+      operationId: patch_1
       parameters:
       - in: path
         name: toolSessionId
@@ -481,6 +495,161 @@ paths:
       - kc-peer-auth: [
           ]
       summary: Supply phone number, then TAN
+      tags:
+      - 'Tool: SMS'
+  /tools/api/enroll-sms/v2:
+    post:
+      description: 'No request body: toolId already carries kind and method. The first step asks for the number and the consent.'
+      operationId: activate
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  step: enroll
+                  toolId: enroll-sms
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  kind: enroll-sms
+                  missingFields:
+                  - phoneNumber
+                  - consent
+                  replaces: false
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-sms (version 2)
+      tags:
+      - 'Tool: SMS'
+  /tools/api/enroll-sms/v2/{toolSessionId}:
+    get:
+      operationId: read
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  step: tanInput
+                  toolId: enroll-sms
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current enroll-sms state (version 2)
+      tags:
+      - 'Tool: SMS'
+    patch:
+      description: First call with phoneNumber and consent=true triggers the TAN send; without consent nothing is sent and
+        missingFields names it. A second call with tan confirms the number.
+      operationId: patch
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollSmsV2PatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              examples:
+                After phoneNumber and consent - TAN sent:
+                  description: After phoneNumber and consent - TAN sent
+                  value:
+                    channel:
+                      channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      state: REGISTERING
+                    demo:
+                      tan: '123456'
+                    next:
+                      step: tanInput
+                      toolId: enroll-sms
+                      toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                      type: tool
+                phoneNumber without consent - nothing sent:
+                  description: phoneNumber without consent - nothing sent
+                  value:
+                    channel:
+                      channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      state: REGISTERING
+                    next:
+                      step: enroll
+                      toolId: enroll-sms
+                      toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                      type: tool
+                    stepData:
+                      kind: enroll-sms
+                      missingFields:
+                      - phoneNumber
+                      - consent
+                      replaces: false
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Supply phone number with consent, then TAN
       tags:
       - 'Tool: SMS'
 tags:

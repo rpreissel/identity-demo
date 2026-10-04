@@ -33,7 +33,7 @@ paths:
   /tools/api/auth-invite-lookup/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_18
+      operationId: activate_19
       parameters:
       - in: query
         name: channel
@@ -71,7 +71,7 @@ paths:
       - 'Tool: Einmalkennwort'
   /tools/api/auth-invite-lookup/v1/{toolSessionId}:
     get:
-      operationId: read_17
+      operationId: read_18
       parameters:
       - in: path
         name: toolSessionId
@@ -100,7 +100,7 @@ paths:
       - 'Tool: Einmalkennwort'
     patch:
       description: KVNR, or Partnernummer without a KVNR, together with the one-time password from the letter.
-      operationId: patch_17
+      operationId: patch_18
       parameters:
       - in: path
         name: toolSessionId

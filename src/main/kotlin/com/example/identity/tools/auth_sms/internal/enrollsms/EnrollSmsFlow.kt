@@ -11,6 +11,7 @@ private const val STEP_ENROLL = "enroll"
 private const val STEP_TAN_INPUT = "tanInput"
 private const val FIELD_PHONE_NUMBER = "phoneNumber"
 private const val FIELD_TAN = "tan"
+private const val FIELD_CONSENT = "consent"
 
 /**
  * Pure state of the enroll-sms flow (docs/03-tool-architektur.md #3). Persisted as
@@ -21,8 +22,12 @@ internal sealed interface EnrollSmsState {
     val step: String
     val missingFields: List<String>
 
-    /** Same derivation for start/patch/read - one place turns this state into `next.step`/`stepData`. */
-    fun describe(replaces: Boolean): Pair<String, StepData> = step to EnrollSmsStep(missingFields, replaces)
+    /**
+     * Same derivation for start/patch/read - one place turns this state into `next.step`/`stepData`.
+     * [needsConsent]: the consent still has to come with the number (version 2, ADR-51).
+     */
+    fun describe(replaces: Boolean, needsConsent: Boolean): Pair<String, StepData> =
+        step to EnrollSmsStep(if (needsConsent && this is AwaitingPhoneNumber) missingFields + FIELD_CONSENT else missingFields, replaces)
 
     data object AwaitingPhoneNumber : EnrollSmsState {
         override val step = STEP_ENROLL
@@ -47,8 +52,8 @@ internal sealed interface EnrollSmsState {
     }
 }
 
-/** What one PATCH submitted - both optional, exactly the API's "only the changed part" rule. */
-internal data class EnrollSmsInput(val phoneNumber: String? = null, val tan: String? = null)
+/** What one PATCH submitted - all optional, exactly the API's "only the changed part" rule. */
+internal data class EnrollSmsInput(val phoneNumber: String? = null, val tan: String? = null, val consent: Boolean? = null)
 
 /** What [EnrollSmsFlow.decide] concluded should happen. */
 internal sealed interface EnrollSmsDecision {
@@ -58,6 +63,8 @@ internal sealed interface EnrollSmsDecision {
      */
     data class SendTan(val phoneNumber: String) : EnrollSmsDecision
     data class InvalidPhoneNumber(val raw: String) : EnrollSmsDecision
+    /** A number came without the consent version 2 asks for: nothing is sent. */
+    data class ConsentMissing(val state: EnrollSmsState) : EnrollSmsDecision
     data class Complete(val phoneNumber: String) : EnrollSmsDecision
     data class WrongTan(val state: EnrollSmsState.AwaitingTan) : EnrollSmsDecision
     /** Nothing usable for the current state - describe it unchanged (start/read, or an empty PATCH). */
@@ -70,8 +77,10 @@ internal sealed interface EnrollSmsDecision {
  */
 internal object EnrollSmsFlow {
 
-    fun decide(state: EnrollSmsState, input: EnrollSmsInput, tanGenerator: TanGenerator): EnrollSmsDecision {
+    /** [needsConsent]: no TAN goes out before the consent (version 2, not yet given in this run). */
+    fun decide(state: EnrollSmsState, input: EnrollSmsInput, tanGenerator: TanGenerator, needsConsent: Boolean = false): EnrollSmsDecision {
         input.phoneNumber?.let { raw ->
+            if (needsConsent && input.consent != true) return EnrollSmsDecision.ConsentMissing(state)
             val number = PhoneNumber.parse(raw)
             return if (number != null) {
                 EnrollSmsDecision.SendTan(number.value)

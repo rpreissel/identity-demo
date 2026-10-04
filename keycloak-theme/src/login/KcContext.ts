@@ -32,7 +32,7 @@ export type KcContextExtensionPerPage = {
   'tool-email-auth.ftl': ToolPage & { demoTan?: string }
   'tool-email-lookup.ftl': ToolPage & WithPersons & { step: string; demoTan?: string; addressAgain?: boolean }
   'tool-sms-auth.ftl': ToolPage & { demoTan?: string }
-  'tool-sms-enroll.ftl': ToolPage & WithPersons & { step: string; demoTan?: string; replaces?: boolean }
+  'tool-sms-enroll.ftl': ToolPage & WithPersons & { step: string; demoTan?: string; replaces?: boolean; askConsent?: boolean }
   'tool-sms-lookup.ftl': ToolPage & WithPersons & { step: string; demoTan?: string }
   'tool-ident-eid.ftl': ToolPage & WithPersons & { cardPage: boolean }
   'tool-ident-fsc.ftl': ToolPage & WithPersons & { personalienPage: boolean }

@@ -25,7 +25,9 @@ import java.time.Clock
 
 /**
  * toolId=enroll-sms (docs/06-ablaeufe.md #4): registers a new phone number as a 2nd factor. This
- * class translates [EnrollSmsFlow]'s decisions into writes and the outward [ToolOutcome].
+ * class translates [EnrollSmsFlow]'s decisions into writes and the outward [ToolOutcome]. Serves
+ * both versions (ADR-51): version 2 asks for the consent with the number, version 1 cannot show
+ * it and goes without; its runs stand in the change log as `enroll-sms@1`.
  */
 @Component
 class EnrollSmsToolHandler(
@@ -37,11 +39,12 @@ class EnrollSmsToolHandler(
     private val clock: Clock
 ) {
 
-    /** Called directly by EnrollSmsToolController. [replaces]: the account already has a number. */
+    /** Called directly by the controllers. [replaces]: the account already has a number. */
     @Transactional
-    fun start(toolSessionId: ToolSessionId, replaces: Boolean = false): ToolOutcome {
-        sessions.save(toolSessionId, EnrollSmsToolSession(replaces = replaces))
-        return outcomeFor(EnrollSmsState.AwaitingPhoneNumber, replaces)
+    fun start(toolSessionId: ToolSessionId, version: Int, replaces: Boolean = false): ToolOutcome {
+        val data = EnrollSmsToolSession(replaces = replaces)
+        sessions.save(toolSessionId, data)
+        return outcomeFor(EnrollSmsState.AwaitingPhoneNumber, data, version)
     }
 
     /**
@@ -51,15 +54,18 @@ class EnrollSmsToolHandler(
      * journey, since nothing was guessed.
      */
     @Transactional
-    fun patch(toolSessionId: ToolSessionId, phoneNumber: String?, tan: String?): ToolOutcome {
+    fun patch(toolSessionId: ToolSessionId, version: Int, phoneNumber: String?, tan: String?, consent: Boolean? = null): ToolOutcome {
         val data = sessions.require<EnrollSmsToolSession>(toolSessionId)
+        val input = EnrollSmsInput(phoneNumber, tan, consent)
 
-        return when (val decision = EnrollSmsFlow.decide(data.toState(toolSessionId), EnrollSmsInput(phoneNumber, tan), tanGenerator)) {
+        return when (val decision = EnrollSmsFlow.decide(data.toState(toolSessionId), input, tanGenerator, needsConsent(data, version))) {
             is EnrollSmsDecision.InvalidPhoneNumber -> throw InvalidInputException(Text("Bitte eine Mobilnummer mit Ländervorwahl aus der EU oder dem EWR angeben, z. B. +49 170 1234567"))
 
             is EnrollSmsDecision.WrongTan -> ToolOutcome.Failed.NothingGuessed(Text("TAN ungueltig oder abgelaufen"))
 
-            is EnrollSmsDecision.Unchanged -> outcomeFor(decision.state, data.replaces)
+            is EnrollSmsDecision.Unchanged -> outcomeFor(decision.state, data, version)
+
+            is EnrollSmsDecision.ConsentMissing -> outcomeFor(decision.state, data, version)
 
             is EnrollSmsDecision.SendTan -> if (!sendLimit.trySend(decision.phoneNumber)) {
                 throw TooManyRequestsException(Text("Zu viele Codes angefordert. Bitte versuchen Sie es in einigen Minuten erneut."))
@@ -67,12 +73,15 @@ class EnrollSmsToolHandler(
                 val issued = tanGenerator.issue()
                 sessions.save(
                     toolSessionId,
-                    data.copy(phoneNumber = decision.phoneNumber, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt),
+                    data.copy(
+                        phoneNumber = decision.phoneNumber, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt,
+                        consented = data.consented || consent == true,
+                    ),
                 )
                 smsGateway.sendTan(decision.phoneNumber, issued.plainTan)
 
                 val state = EnrollSmsState.AwaitingTan(decision.phoneNumber, issued.hash, issued.expiresAt)
-                val (step, fields) = state.describe(data.replaces)
+                val (step, fields) = state.describe(data.replaces, needsConsent = false)
                 // demoTan: this is a demo, not a real SMS gateway - showing it in the UI means
                 // testers don't need server-log access (docs/06-ablaeufe.md #4).
                 ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plainTan))
@@ -97,15 +106,18 @@ class EnrollSmsToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+    fun read(toolSessionId: ToolSessionId, version: Int): ToolOutcome {
         val data = sessions.require<EnrollSmsToolSession>(toolSessionId)
-        return outcomeFor(data.toState(toolSessionId), data.replaces)
+        return outcomeFor(data.toState(toolSessionId), data, version)
     }
 
-    private fun outcomeFor(state: EnrollSmsState, replaces: Boolean): ToolOutcome.InProgress {
-        val (step, fields) = state.describe(replaces)
+    private fun outcomeFor(state: EnrollSmsState, data: EnrollSmsToolSession, version: Int): ToolOutcome.InProgress {
+        val (step, fields) = state.describe(data.replaces, needsConsent(data, version))
         return ToolOutcome.InProgress(nextStep = step, stepData = fields)
     }
+
+    /** Version 2 asks for the consent once per run; version 1 never (entfällt mit v1). */
+    private fun needsConsent(data: EnrollSmsToolSession, version: Int): Boolean = version >= 2 && !data.consented
 
     private fun EnrollSmsToolSession.toState(toolSessionId: ToolSessionId): EnrollSmsState = EnrollSmsState.of(
         toolSessionId = toolSessionId,

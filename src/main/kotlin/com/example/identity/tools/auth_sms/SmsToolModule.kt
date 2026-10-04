@@ -33,7 +33,8 @@ internal val SmsModule = toolModule(
 
 internal val EnrollSms = SmsModule.enroll(
     ENROLL_SMS_TOOL_ID,
-    versions = setOf(1),
+    // 2: the consent comes with the number (ADR-51). 1 stays for apps that cannot show it.
+    versions = setOf(1, 2),
     hint = Text("Code an eine Telefonnummer"),
     claims = setOf(PHONE_NUMBER),
     changeable = true,

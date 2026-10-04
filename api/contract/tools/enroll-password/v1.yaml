@@ -60,7 +60,7 @@ paths:
   /tools/api/enroll-password/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_6
+      operationId: activate_7
       parameters:
       - in: query
         name: channel
@@ -98,7 +98,7 @@ paths:
       - 'Tool: Passwort'
   /tools/api/enroll-password/v1/{toolSessionId}:
     get:
-      operationId: read_6
+      operationId: read_7
       parameters:
       - in: path
         name: toolSessionId
@@ -136,7 +136,7 @@ paths:
       - 'Tool: Passwort'
     patch:
       description: The credential is self-verifying, no separate confirmation step.
-      operationId: patch_6
+      operationId: patch_7
       parameters:
       - in: path
         name: toolSessionId

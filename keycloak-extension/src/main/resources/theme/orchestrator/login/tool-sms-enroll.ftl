@@ -28,6 +28,14 @@
                         <label for="phoneNumber" class="${properties.kcLabelClass!}">${t.of("Telefonnummer")}</label>
                         <input type="tel" id="phoneNumber" name="phoneNumber" class="${properties.kcInputClass!}" autocomplete="tel"/>
                     </div>
+                    <#if askConsent!false>
+                        <div class="${properties.kcFormGroupClass!}">
+                            <label for="consent" class="orchestrator-checkbox">
+                                <input type="checkbox" id="consent" name="consent" value="true"/>
+                                ${t.of("Ich willige ein, dass meine Telefonnummer gespeichert wird und ich Codes per SMS erhalte.")}
+                            </label>
+                        </div>
+                    </#if>
                 </#if>
                 <div class="orchestrator-actions">
                     <button class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!}" type="submit">${t.of("Weiter")}</button>

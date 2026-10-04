@@ -50,7 +50,7 @@ paths:
   /tools/api/enroll-qr/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_5
+      operationId: activate_6
       parameters:
       - in: query
         name: channel
@@ -79,7 +79,7 @@ paths:
       - 'Tool: QR-Login'
   /tools/api/enroll-qr/v1/{toolSessionId}:
     get:
-      operationId: read_5
+      operationId: read_6
       parameters:
       - in: path
         name: toolSessionId
@@ -108,7 +108,7 @@ paths:
       - 'Tool: QR-Login'
     patch:
       description: No request body - the call itself is the confirmation.
-      operationId: patch_5
+      operationId: patch_6
       parameters:
       - in: path
         name: toolSessionId

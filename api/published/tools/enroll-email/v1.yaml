@@ -21,7 +21,7 @@ paths:
   /tools/api/enroll-email/v1:
     post:
       description: 'One shot: no request body, and the response already carries the completed outcome.'
-      operationId: activate_8
+      operationId: activate_9
       parameters:
       - in: query
         name: channel
@@ -58,7 +58,7 @@ paths:
       - 'Tool: E-Mail-Login'
   /tools/api/enroll-email/v1/{toolSessionId}:
     get:
-      operationId: read_22
+      operationId: read_23
       parameters:
       - in: path
         name: toolSessionId

@@ -63,7 +63,7 @@ paths:
   /tools/api/auth-password-lookup/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_16
+      operationId: activate_17
       parameters:
       - in: query
         name: channel
@@ -101,7 +101,7 @@ paths:
       - 'Tool: Passwort'
   /tools/api/auth-password-lookup/v1/{toolSessionId}:
     get:
-      operationId: read_15
+      operationId: read_16
       parameters:
       - in: path
         name: toolSessionId
@@ -138,7 +138,7 @@ paths:
       tags:
       - 'Tool: Passwort'
     patch:
-      operationId: patch_15
+      operationId: patch_16
       parameters:
       - in: path
         name: toolSessionId

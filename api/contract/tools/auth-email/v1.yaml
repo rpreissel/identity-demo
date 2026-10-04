@@ -27,7 +27,7 @@ paths:
   /tools/api/auth-email/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_19
+      operationId: activate_20
       parameters:
       - in: query
         name: channel
@@ -66,7 +66,7 @@ paths:
       - 'Tool: E-Mail'
   /tools/api/auth-email/v1/{toolSessionId}:
     get:
-      operationId: read_18
+      operationId: read_19
       parameters:
       - in: path
         name: toolSessionId
@@ -104,7 +104,7 @@ paths:
       tags:
       - 'Tool: E-Mail'
     patch:
-      operationId: patch_18
+      operationId: patch_19
       parameters:
       - in: path
         name: toolSessionId
