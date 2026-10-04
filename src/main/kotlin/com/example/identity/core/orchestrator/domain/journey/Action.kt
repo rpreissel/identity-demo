@@ -37,11 +37,14 @@ sealed interface Action {
     /**
      * A new credential was enrolled. Whether this also links the device is not a field here; it
      * follows from [AuthIntent.bindsDeviceImplicitly] and, for a Web channel, from there being
-     * no device.
+     * no device. [admittedAt]: the session's level when the journey admitted this enrollment, for a
+     * change in place. The credential is then written under at least that level, even if the
+     * session's proofs aged while the user typed; a change never lowers a credential.
      */
     data class AdoptCredential(
         val tool: Tool,
-        val outcome: ToolOutcome.Completed.Enrolled
+        val outcome: ToolOutcome.Completed.Enrolled,
+        val admittedAt: AcrLevel? = null
     ) : Action
 
     /**

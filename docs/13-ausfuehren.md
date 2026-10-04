@@ -275,7 +275,10 @@ npm run test:e2e:keycloak     # Playwright gegen die Login-Seiten von Keycloak
   dahinter decken die Integrationstests ab: Registrierung, „Zurück“, Gerät zurücksetzen, Tokens,
   die Rückkehr von Nect in die App (`nect-return.spec.ts`), KOBIL mit dem im Browser abgelegten
   Entsperrgeheimnis (`kobil.spec.ts`), das Fortsetzen nach einem Neuladen ohne zweite SMS
-  (`resume.spec.ts`) und das Ändern der Telefonnummer (`change-method.spec.ts`).
+  (`resume.spec.ts`), das Ändern der Telefonnummer (`change-method.spec.ts`) und die erneute
+  Bestätigung vor dem Ändern, wenn der letzte Nachweis zu alt ist (`fresh-proof.spec.ts`). Für
+  diese Spec läuft der Orchestrator der Suite mit einer Frist von zehn Sekunden
+  (`identity.policy.self-service-max-age`, gesetzt in `playwright.config.ts`).
 - **`test:e2e:keycloak`** startet keinen Server. Vorher muss der ganze Stack laufen
   (`podman compose up -d`). Andere Adressen lassen sich über `ORCHESTRATOR_URL`, `KEYCLOAK_URL`,
   `ADMIN_USER` und `ADMIN_PASSWORD` setzen, für den lokalen OpenShift-Pod etwa
@@ -286,10 +289,22 @@ npm run test:e2e:keycloak     # Playwright gegen die Login-Seiten von Keycloak
   Sitzung, das Kennwort ist danach verbraucht, die Demo-Auswahl der Einladungen und die Abweisung
   einer Einladung unter dem verlangten Niveau
   ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). `qr-login.spec.ts` folgt der
-  QR-Anmeldung über beide Kanäle: Die Website zeigt den Kopplungscode, die App bestätigt einen
-  frischen Faktor, nimmt den Code und gibt frei, und der Bestätigungscode der App beendet die
+  QR-Anmeldung über beide Kanäle: Die Website zeigt den Kopplungscode, die frisch
+  angemeldete App nimmt den Code und gibt frei, und der Bestätigungscode der App beendet die
   Anmeldung auf der Website. `change-method.spec.ts` ändert das Passwort über die Required Action
   zur Verwaltung der Verfahren, in beiden Themes und mit einer einzigen Browser-Sitzung.
+  `fresh-proof.spec.ts` prüft dort die erneute Bestätigung bei einem zu alten Nachweis. Sie läuft nur
+  gegen einen Stack mit kurzer Frist und wird sonst übersprungen:
+  `SELF_SERVICE_MAX_AGE=PT10S podman compose up -d`, dann
+  `SELF_SERVICE_MAX_AGE_SECONDS=10 npm run test:e2e:keycloak`. Danach den Stack ohne die Variable
+  neu starten, sonst bleibt die Frist kurz.
+
+- **Uhr der Podman Machine.** Auf macOS bleibt die Uhr der VM stehen, während der Rechner schläft.
+  Danach geht sie nach, und der Orchestrator im Container lehnt jeden DPoP-Nachweis der App mit
+  `401` ab (der Nachweis liegt für ihn in der Zukunft, erlaubt sind 30 Sekunden Abweichung). In der
+  Keycloak-Suite fällt dann `qr-login.spec.ts` aus, weil die App keinen Kanal anlegen kann; die
+  Login-Seiten selbst laufen weiter. Prüfen und stellen:
+  `podman machine ssh date -u` und `podman machine ssh "sudo date -u -s @$(date -u +%s)"`.
 
 Beim ersten Mal braucht Playwright seinen Browser: `npx playwright install chromium`.
 

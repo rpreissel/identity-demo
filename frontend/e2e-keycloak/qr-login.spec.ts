@@ -35,8 +35,8 @@ test.afterAll(async ({ request }) => {
 
 /**
  * The whole QR sign-in across both channels, in two browsers (docs/03-tool-architektur.md,
- * auth-qr-lookup and approve-qr): the website shows a pairing code, the signed-in app confirms one
- * fresh factor, takes the code and approves, then shows a confirmation code that the website needs
+ * auth-qr-lookup and approve-qr): the website shows a pairing code, the freshly signed-in app
+ * takes the code and approves, then shows a confirmation code that the website needs
  * to finish. The waiting page itself is covered in login-theme.spec.ts; this follows the code through.
  */
 test('the website signs in with the app: pairing code into the app, confirmation code back', async ({ browser, page: app }) => {
@@ -59,10 +59,8 @@ test('the website signs in with the app: pairing code into the app, confirmation
   const pairingCode = ((await web.locator('.orchestrator-qr-code, .orc-qr-code').textContent()) ?? '').trim()
   expect(pairingCode).not.toBe('')
 
-  // The app approves: one fresh factor first (SMS, its TAN pre-filled in demo mode), then the code.
+  // The app approves. Its registration is moments old, so no further proof is asked for: the code comes next.
   await phone.getByRole('button', { name: new RegExp(`^${ui('Anmeldung im Browser bestätigen')}`) }).first().click()
-  await phone.getByRole('button', { name: uiPattern('SMS') }).first().click()
-  await phone.getByRole('button', { name: ui('TAN bestätigen'), exact: true }).click()
   await phone.locator('#pairingCode').fill(pairingCode)
   await phone.getByRole('button', { name: ui('Weiter'), exact: true }).click()
   await phone.getByRole('button', { name: ui('Bestätigen'), exact: true }).click()

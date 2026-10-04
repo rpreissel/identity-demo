@@ -644,15 +644,16 @@ Verfahren wieder angeboten wird. Wiederhergestellte Nachweise (`RestoreData`) be
 Zeitpunkt; ein Nachweis ohne Zeitpunkt gilt als beliebig alt. Ohne diese Regel hielte der
 Resume-Pfad ein einmal erreichtes `loa2` über jeden neuen Durchlauf bis zum Sitzungsende.
 
-### Ein frischer Nachweis für Verwaltung und Löschen
+### Ein frischer Nachweis für Verwaltung, Löschen und QR-Bestätigung
 
 Neben dem Niveau gibt es eine zweite, kürzere Frist: `AuthPolicy.hasFreshProof` sagt, ob der
 jüngste Nachweis der Sitzung jünger ist als `identity.policy.self-service-max-age` (5 Minuten). Das
 Niveau des Nachweises spielt dabei keine Rolle, ein Nachweis ohne Zeitpunkt ist nie frisch.
-`DELETE_ACCOUNT` und jeder Wunsch von `MANAGE_AUTH_METHODS` (hinzufügen, ändern, entfernen,
-Attribut zurücknehmen) handeln nur mit einem frischen Nachweis und verlangen sonst eine erneute Bestätigung
-([`DELETE_ACCOUNT`](journeys/delete-account.md),
-[`MANAGE_AUTH_METHODS`](journeys/manage-auth-methods.md)). Weil wiederhergestellte Nachweise
+`DELETE_ACCOUNT`, jeder Wunsch von `MANAGE_AUTH_METHODS` (hinzufügen, ändern, entfernen,
+Attribut zurücknehmen) und `CONFIRM_PEER_LOGIN` handeln nur mit einem frischen Nachweis und
+verlangen sonst eine erneute Bestätigung ([`DELETE_ACCOUNT`](journeys/delete-account.md),
+[`MANAGE_AUTH_METHODS`](journeys/manage-auth-methods.md),
+[`CONFIRM_PEER_LOGIN`](journeys/confirm-peer-login.md)). Weil wiederhergestellte Nachweise
 ihren Zeitpunkt behalten, macht ein neuer Durchlauf im Web einen alten Nachweis nicht wieder frisch.
 
 **Das `acr` im Token altert nicht.** Es hat Keycloaks Bedeutung: Es beschreibt die Anmeldung, nicht

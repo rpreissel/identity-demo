@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
+import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 
 /**
@@ -40,11 +41,13 @@ sealed interface ManageAuthMethodsState : JourneyState {
 
     /**
      * The one enrollment that replaces [methodInstanceId] is running. Backing out ends the wish;
-     * the old credential stays until the new one is adopted.
+     * the old credential stays until the new one is adopted. [admittedAt] is the session's level
+     * when the gate was cleared: what the new credential is written under at least.
      */
     data class Changing(
         override val offer: Offer,
-        val methodInstanceId: String
+        val methodInstanceId: String,
+        val admittedAt: AcrLevel
     ) : ManageAuthMethodsState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val selectionContext: String get() = "enrollment"

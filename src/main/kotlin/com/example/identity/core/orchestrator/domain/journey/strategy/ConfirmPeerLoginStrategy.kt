@@ -20,8 +20,9 @@ import com.example.identity.contract.tool_api.ToolOutcome
 /**
  * Approve or decline a Web-channel `auth-qr`/`auth-qr-lookup` pairing
  * (docs/journeys/confirm-peer-login.md). The session must prove loa2 before it may vouch for a login
- * elsewhere. As in [DeleteAccountStrategy], older loa2 evidence needs one fresh re-proof, while a
- * step-up from this journey counts as fresh. The re-proof is not recorded as `MethodEvidence`.
+ * elsewhere. As in [DeleteAccountStrategy], it also needs a recent proof: a step-up from this journey
+ * or any proof within the self-service limit counts, older evidence needs one fresh re-proof. That
+ * re-proof is not recorded as `MethodEvidence`.
  */
 class ConfirmPeerLoginStrategy : IntentStrategy<ConfirmPeerLoginState> {
 
@@ -39,8 +40,10 @@ class ConfirmPeerLoginStrategy : IntentStrategy<ConfirmPeerLoginState> {
                 // re-evaluates from scratch like every other event.
                 is JourneyEvent.SubJourneyFinished if event.intent == AuthIntent.STEP_UP && (event.achievedAcr ?: AcrLevel.NONE) >= REQUIRED_ACR ->
                     Transition.To(confirming(ctx, state.startedAuthenticated))
-                // gate() is null only when loa2 was already there; that case needs a fresh re-proof.
-                else -> gate(ctx, state.startedAuthenticated) ?: offerReconfirmation(ctx, state.startedAuthenticated)
+                // gate() is null only when loa2 was already there; that case needs a recent proof.
+                else -> gate(ctx, state.startedAuthenticated)
+                    ?: if (ctx.policy.hasFreshProof(ctx.evidence)) Transition.To(confirming(ctx, state.startedAuthenticated))
+                    else offerReconfirmation(ctx, state.startedAuthenticated)
             }
 
             is ConfirmPeerLoginState.ConfirmationRequired -> when (event) {

@@ -334,6 +334,7 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
                 val next = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<ManageAuthMethodsState.Changing>()
                 next.offered shouldBe listOf(ToolId("enroll-password"))
                 next.methodInstanceId shouldBe "password-instance"
+                next.admittedAt shouldBe AcrLevel.LOA2
             }
         }
 
@@ -402,7 +403,7 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
     }
 
     given("Changing the password") {
-        val state = ManageAuthMethodsState.Changing(Offer(listOf(ToolId("enroll-password"))), "password-instance")
+        val state = ManageAuthMethodsState.Changing(Offer(listOf(ToolId("enroll-password"))), "password-instance", admittedAt = AcrLevel.LOA2)
 
         `when`("the tool is abandoned") {
             val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("enroll-password")), ctx())
@@ -414,8 +415,8 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
         `when`("the new password is enrolled") {
             val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("password", "ref"))
             val transition = strategy.transition(state, JourneyEvent.Completed(tool("enroll-password"), outcome), ctx())
-            then("adopts the credential, which replaces the active one") {
-                transition shouldBe Transition.Perform(Action.AdoptCredential(tool("enroll-password"), outcome), resumeState = state)
+            then("adopts the credential under the level the change was admitted at, whatever the session carries by now") {
+                transition shouldBe Transition.Perform(Action.AdoptCredential(tool("enroll-password"), outcome, admittedAt = AcrLevel.LOA2), resumeState = state)
             }
         }
 

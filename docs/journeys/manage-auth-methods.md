@@ -64,7 +64,10 @@ die Journey, und der alte Eintrag gilt weiter. Ein anderes Verfahren wird nicht 
   wird mit `409` abgelehnt.
 - **Niveau.** Die Schwelle ist das höhere von `selfServiceAcrFloor` und dem `enrolledUnderAcr` des
   alten Eintrags. Ein Ändern stuft also nie herab: Reicht die Sitzung nicht, folgt der Step-up, und
-  wenn kein Verfahren das Niveau erreicht, dessen Angebot zur Re-Identifizierung.
+  wenn kein Verfahren das Niveau erreicht, dessen Angebot zur Re-Identifizierung. `Changing` hält
+  das Niveau fest, das die Sitzung bei dieser Prüfung hatte; der neue Eintrag wird mindestens
+  darunter geschrieben, auch wenn die Nachweise der Sitzung während der Eingabe altern
+  (`Action.AdoptCredential.admittedAt`).
 - **Was das Tool weiß.** Das Enroll-Tool kennt den Wunsch nicht. Es fragt beim Start, ob das Konto
   schon ein Credential seines Verfahrens hat (`ToolJourney.findEnrollment`), und meldet das in
   seinem `stepData` (`replaces`).

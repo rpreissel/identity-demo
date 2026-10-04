@@ -13,6 +13,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 // running there serves the file-based dev DB. Not 8090/8091 either: the local OpenShift test pod
 // (openshift/local-up.sh) publishes the orchestrator and Keycloak there.
 const E2E_PORT = 8095
+/** identity.policy.self-service-max-age of the suite's own backend; also read by fresh-proof.spec.ts. */
+export const SELF_SERVICE_MAX_AGE_SECONDS = 10
 
 export default defineConfig({
   testDir: './e2e',
@@ -30,7 +32,9 @@ export default defineConfig({
     // and a KVNR provisioned by an earlier run resolves to LOGIN instead of REGISTRATION.
     // Hence reuseExistingServer: false and a port of our own: reusing whatever listens would
     // silently ignore the SPRING_DATASOURCE_URL below and hit the dev file DB.
-    command: `./gradlew bootRun --args='--server.port=${E2E_PORT} --management.server.port=0'`,
+    // A short limit for the fresh proof, so fresh-proof.spec.ts can outwait it; every other spec
+    // acts within seconds of its registration and never meets it.
+    command: `./gradlew bootRun --args='--server.port=${E2E_PORT} --management.server.port=0 --identity.policy.self-service-max-age=PT${SELF_SERVICE_MAX_AGE_SECONDS}S'`,
     cwd: dirname(__dirname),
     url: `http://localhost:${E2E_PORT}`,
     reuseExistingServer: false,

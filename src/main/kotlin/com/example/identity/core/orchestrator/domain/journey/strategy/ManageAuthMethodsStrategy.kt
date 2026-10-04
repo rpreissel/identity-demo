@@ -55,7 +55,7 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
 
             is ManageAuthMethodsState.Changing -> when (event) {
                 is JourneyEvent.Abandoned -> Transition.Cancel
-                is JourneyEvent.Completed -> Transition.Perform(proofAction(event), resumeState = state)
+                is JourneyEvent.Completed -> Transition.Perform(proofAction(event, admittedAt = state.admittedAt), resumeState = state)
                 // The new credential was adopted and replaced the old one.
                 else -> Transition.Authenticated
             }
@@ -103,7 +103,7 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
         val tool = changeTarget(wish, ctx)?.let { ctx.catalog.changeToolOf(it.method) }
         val offered = listOfNotNull(tool?.toolId).filter { it in ctx.availableTools }
         return if (offered.isEmpty()) Transition.Abort(Text("Dieses Anmeldeverfahren lässt sich hier nicht ändern"))
-        else Transition.To(ManageAuthMethodsState.Changing(Offer(offered), wish.methodInstanceId))
+        else Transition.To(ManageAuthMethodsState.Changing(Offer(offered), wish.methodInstanceId, admittedAt = ctx.currentAcr))
     }
 
     /** Null once the session's latest proof is recent enough; else the re-confirmation, the wish in hand. */
@@ -119,8 +119,8 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
      * Voluntary enrollment on an authenticated channel. Binding the known device again is a
      * harmless no-op that keeps a new device credential reachable next time.
      */
-    private fun proofAction(event: JourneyEvent.Completed): Action = when (val outcome = event.outcome) {
-        is ToolOutcome.Completed.Enrolled -> Action.AdoptCredential(event.tool, outcome)
+    private fun proofAction(event: JourneyEvent.Completed, admittedAt: AcrLevel? = null): Action = when (val outcome = event.outcome) {
+        is ToolOutcome.Completed.Enrolled -> Action.AdoptCredential(event.tool, outcome, admittedAt)
         is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Authenticated, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
             event.notOffered("MANAGE")
     }

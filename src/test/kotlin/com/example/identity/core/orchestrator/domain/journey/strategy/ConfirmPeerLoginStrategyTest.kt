@@ -1,5 +1,8 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import java.time.Duration
+import com.example.identity.core.orchestrator.domain.policy.provenAt
+import com.example.identity.TEST_NOW
 import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.Action
@@ -87,14 +90,25 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
     given("Requested, the session already carries loa2") {
         // device is the only method that reaches loa2 alone, so it seeds loa2 evidence with one method.
         val acc = account(method("device", AcrLevel.LOA2, boundKeyRef = StrategyTestFixtures.BINDING_KEY))
-        val theCtx = ctx(account = acc, evidence = evidence(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE), account = acc), acrFloor = AcrLevel.LOA1)
-        `when`("the journey starts") {
+        val proven = evidence(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE), account = acc)
+
+        `when`("the journey starts and the proof is older than the self-service limit") {
+            val theCtx = ctx(account = acc, evidence = proven.provenAt(TEST_NOW.minus(Duration.ofMinutes(6))), acrFloor = AcrLevel.LOA1)
             val transition = strategy.transition(ConfirmPeerLoginState.Requested(true), JourneyEvent.Started, theCtx)
-            then("still demands one fresh re-proof of any active factor - evidence of unknown age is never enough on its own to vouch for a foreign login") {
+            then("demands one fresh re-proof of any active factor - the level alone is not enough to vouch for a foreign login") {
                 transition.shouldBeInstanceOf<Transition.To>()
                 val to = transition.state
                 to.shouldBeInstanceOf<ConfirmPeerLoginState.ConfirmationRequired>()
                 to.offered shouldContainExactlyInAnyOrder listOf(ToolId("auth-device"))
+                to.startedAuthenticated shouldBe true
+            }
+        }
+
+        `when`("the journey starts and the proof is recent") {
+            val theCtx = ctx(account = acc, evidence = proven.provenAt(TEST_NOW.minus(Duration.ofMinutes(4))), acrFloor = AcrLevel.LOA1)
+            val transition = strategy.transition(ConfirmPeerLoginState.Requested(true), JourneyEvent.Started, theCtx)
+            then("goes straight to the approval - the recent proof is the fresh one") {
+                val to = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<ConfirmPeerLoginState.Confirming>()
                 to.startedAuthenticated shouldBe true
             }
         }

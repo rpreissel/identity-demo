@@ -242,7 +242,8 @@ class JourneyActionExecutor(
         // established them, so revoking the method retracts exactly those (ADR-12).
         val methodInstanceId = UUID.randomUUID()
         // The level the session had before this completion (ADR-5, see levelToWriteUnder).
-        val enrolledUnderAcr = levelToWriteUnder(authPolicy.resolveAcr(coreEvidence, accountService.findAccount(accountId)))
+        val sessionAcr = authPolicy.resolveAcr(coreEvidence, accountService.findAccount(accountId))
+        val enrolledUnderAcr = levelToWriteUnder(action.admittedAt?.let { AcrLevel.max(it, sessionAcr) } ?: sessionAcr)
         // The claims are recorded under that level, since an anchor write is priced against it.
         // The order is safe: resolveAcr reads only the evidence, not the account.
         accountService.recordClaims(

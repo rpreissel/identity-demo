@@ -250,6 +250,23 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
                 }
             }
 
+            `when`("the session's proofs age past loa2 while the new password is typed") {
+                val channelSessionId = loginAsSeededAccount()
+                val before = methodsOf(channelSessionId).first { it["method"] == "password" }
+                changes(channelSessionId, before["id"] as String)
+                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-password").nextRaw()["toolSessionId"] as String
+                ageProofs(UUID.fromString(channelSessionId), minutes = 40)
+
+                patch("/orchestrator/api/v1/tools/$toolSessionId/enroll-password", """{"password":"another-correct-horse"}""")
+                val after = methodsOf(channelSessionId).first { it["method"] == "password" }
+
+                then("the new password is written under the level the change was admitted at, not the aged one") {
+                    before["enrolledUnderAcr"] shouldBe "loa2"
+                    after["enrolledUnderAcr"] shouldBe "loa2"
+                    after["id"] shouldNotBe before["id"]
+                }
+            }
+
             `when`("the change is abandoned in the tool") {
                 val channelSessionId = loginAsSeededAccount()
                 val before = methodsOf(channelSessionId)

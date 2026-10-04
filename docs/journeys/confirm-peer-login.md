@@ -28,7 +28,8 @@ stateDiagram-v2
   STEP_UP --> Requested: SubJourneyFinished, loa2 nicht erreicht -> erneut prüfen
   STEP_UP --> Confirming: SubJourneyFinished, loa2 erreicht - zählt als der geforderte neue Nachweis
   STEP_UP --> [*]: SubJourneyCancelled -> Cancel
-  Requested --> ConfirmationRequired: loa2 bereits erreicht (unabhängig von dieser Journey)
+  Requested --> ConfirmationRequired: loa2 bereits erreicht, letzter Nachweis älter als die Frist
+  Requested --> Confirming: loa2 bereits erreicht, letzter Nachweis jung genug
   ConfirmationRequired --> ConfirmationRequired: ein Tool abgelehnt, weitere übrig
   ConfirmationRequired --> [*]: alle abgelehnt -> Cancel
   ConfirmationRequired --> Confirming: Nachweis erbracht
@@ -54,10 +55,11 @@ dieselben Schritte:
    Schwelle nicht gesenkt. Der Nachweis aus dem Step-up zählt bereits als der neue Nachweis, den
    Punkt 3 verlangt (im Diagramm `STEP_UP --> Confirming`; geprüft wird das über
    `SubJourneyFinished.achievedAcr`).
-3. **Der Kanal steht bereits auf `loa2` oder höher** (unabhängig von dieser Journey). Dann geht es
-   **nicht** direkt weiter. Wie bei `DELETE_ACCOUNT` muss der Nutzer in jedem Fall neu nachweisen,
-   dass er es ist, mit einem beliebigen aktiven Verfahren auf beliebigem Niveau
-   (`CandidateTools.forReconfirmation`). Erst danach wird `approve-qr` angeboten
+3. **Der Kanal steht bereits auf `loa2` oder höher** (unabhängig von dieser Journey). Dann gilt
+   dieselbe Frist wie bei `DELETE_ACCOUNT` und `MANAGE_AUTH_METHODS`: Ist der jüngste Nachweis der
+   Sitzung höchstens fünf Minuten alt (`AuthPolicy.hasFreshProof`), geht es direkt weiter. Sonst
+   weist der Nutzer neu nach, dass er es ist, mit einem beliebigen aktiven Verfahren auf beliebigem
+   Niveau (`CandidateTools.forReconfirmation`). Erst danach wird `approve-qr` angeboten
    (`ConfirmationRequired`). Dieser Nachweis wird nicht als `MethodEvidence` gespeichert; er erlaubt
    nur diese eine Bestätigung.
 4. Danach wird `approve-qr` gestartet (`Confirming`, der einzige Kandidat). Geht der Nutzer

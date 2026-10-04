@@ -61,8 +61,12 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
         restTemplate.exchange("http://localhost:$port$url", HttpMethod.GET, HttpEntity<Unit>(keycloakHeaders()), mapType)
             .let { it.statusCode shouldBe HttpStatus.OK; it.body!! }
 
-    /** Registers+authenticates on the APP channel, then enrolls the qr opt-in on the same, still-AUTHENTICATED channel. */
-    private fun registerWithQrOptIn(): Pair<String, Long> {
+    /**
+     * Registers+authenticates on the APP channel, then enrolls the qr opt-in on the same,
+     * still-AUTHENTICATED channel. By default the proofs are then [agedMinutes] old, so the peer
+     * login asks for a fresh one; 0 leaves them as recent as the login.
+     */
+    private fun registerWithQrOptIn(agedMinutes: Long = 10): Pair<String, Long> {
         val channelSessionId = loginAsSeededAccount()
         val accountId = jdbcTemplate.queryForObject(
             "SELECT id FROM account.account ORDER BY id DESC LIMIT 1", Long::class.java
@@ -72,13 +76,15 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
         val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-qr").nextRaw()["toolSessionId"] as String
         val enrolled = patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-qr", "{}")
         enrolled.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
+        if (agedMinutes > 0) ageProofs(UUID.fromString(channelSessionId), agedMinutes)
 
         return channelSessionId to accountId
     }
 
     /**
-     * CONFIRM_PEER_LOGIN demands one fresh factor before `approve-qr`, even though the
-     * channel already reaches loa2 (docs/04-orchestrierung.md). Resolved via auth-sms.
+     * CONFIRM_PEER_LOGIN demands one fresh factor before `approve-qr` when the channel's proofs
+     * are older than the self-service limit, even though it reaches loa2
+     * (docs/04-orchestrierung.md). Resolved via auth-sms.
      */
     private fun resolveReconfirmation(appChannelSessionId: String) {
         val resolved = authenticateViaSms(appChannelSessionId)
@@ -114,6 +120,17 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
     }
 
     init {
+        given("an account with the qr opt-in whose login is only moments old") {
+            `when`("it starts confirming a browser login") {
+                val (appChannelSessionId, _) = registerWithQrOptIn(agedMinutes = 0)
+                val started = post("/orchestrator/api/v1/channels/$appChannelSessionId/peer-logins")
+
+                then("approve-qr comes at once, the login is the fresh proof") {
+                    started.next() shouldBe mapOf("type" to "tool", "toolId" to "approve-qr", "step" to "input")
+                }
+            }
+        }
+
         given("an account with the qr opt-in, and a WEB channel waiting on auth-qr-lookup") {
             `when`("that same account confirms via approve-qr on its own authenticated channel and the browser enters the code") {
                 val (webToolSessionId, pairingCode) = startWebLookup()

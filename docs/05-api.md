@@ -749,10 +749,10 @@ Beide durchlaufen dieselbe Prüfung:
    wird nie auf Identifizierung oder Registrierung ausgewichen.
 2. Das aktuelle Niveau liegt unter `loa2`: Es folgt ein Step-up-Schritt; danach ruft der Client den
    Einstiegs-Endpunkt erneut auf.
-3. Das Niveau ist schon `loa2`, wurde aber unabhängig von diesem Durchlauf erreicht (der Nachweis
-   ist also unbekannt alt): Die Antwort verlangt einen frischen Nachweis über ein beliebiges aktives
-   `auth-*`-Verfahren, wie beim Löschen des Kontos in Schritt 3 oben, hier aber ohne die Frist von
-   fünf Minuten (`next={"context":"auth","step":"selectMethod"}` bei mehreren Kandidaten). **Ausnahme**: Musste
+3. Das Niveau ist schon `loa2`, und der jüngste Nachweis der Sitzung ist älter als fünf Minuten:
+   Die Antwort verlangt einen frischen Nachweis über ein beliebiges aktives `auth-*`-Verfahren, wie
+   beim Löschen des Kontos in Schritt 3 oben (`next={"context":"auth","step":"selectMethod"}` bei
+   mehreren Kandidaten). Ist der Nachweis jünger, folgt sofort Schritt 4. **Ausnahme**: Musste
    in Schritt 2 erst ein Step-up stattfinden, zählt dessen Nachweis bereits als der geforderte.
 4. `approve-qr` starten:
    - `POST .../tools/approve-qr` (ohne Inhalt) →
