@@ -308,7 +308,13 @@ npm run test:e2e:keycloak     # Playwright gegen die Login-Seiten von Keycloak
 
 Beim ersten Mal braucht Playwright seinen Browser: `npx playwright install chromium`.
 
-## 8) Das Demo-Video neu aufnehmen
+## 8) Die Videos neu bauen
+
+Es gibt zwei Videos mit getrennten Aufgaben: Das **Erklärvideo** erklärt Konzepte, Stand und
+Bewertung und zeigt die Demo nur in kurzen Ausschnitten; das **Demo-Video** zeigt die Bedienung
+und verweist für das Warum auf das Erklärvideo. Was eines erklärt, wiederholt das andere nicht.
+
+### Das Demo-Video
 
 `docs/media/demo.mp4` (Git LFS) entsteht aus `frontend/e2e-video/demo.record.ts`: ein Playwright-Lauf,
 der die Aufgaben der Willkommensseite im Browser durchspielt und Titelkarten und Untertitel als
@@ -327,6 +333,25 @@ cd frontend && ./record-demo-video.sh
 
 Die Texte der Karten und Untertitel stehen im Spec. Sie beschreiben nur, was die Doku belegt
 ([01-ueberblick.md](01-ueberblick.md), [ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
+
+### Das Erklärvideo
+
+`docs/media/erklaervideo.mp4` (Git LFS) entsteht aus `frontend/erklaervideo/`: animierte Folien
+als HTML, Bild für Bild mit Playwright gerendert, dazu eine Sprecherstimme aus Piper (lokales TTS,
+Stimme „thorsten“) und kurze Ausschnitte aus `demo.mp4`. Jedes Element einer Folie erscheint mit
+dem Satz, der es nennt; `scenes.mjs` hält dafür je Szene das Layout und die Sätze. Die Untertitel
+stecken als Spur im Video. Es braucht `uv`, Playwright und ffmpeg und dauert etwa fünf Minuten:
+
+```bash
+cd frontend/erklaervideo
+./setup.sh                      # einmalig: Piper und die Stimme nach out/ (etwa 120 MB)
+node build.mjs --preview        # ein Standbild je Szene in out/, zum Prüfen des Layouts
+node build.mjs                  # das Video
+```
+
+Die Zeitmarken der Ausschnitte (`clip.from`, `clip.to`) beziehen sich auf `demo.mp4`; nach einer
+neuen Aufnahme des Demo-Videos sind sie nachzuziehen. Die Inhalte folgen
+[01-ueberblick.md](01-ueberblick.md) und [14-stand-und-weg-zur-produktion.md](14-stand-und-weg-zur-produktion.md).
 
 ## 9) Die Doku als Website
 

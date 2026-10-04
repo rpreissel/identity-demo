@@ -9,12 +9,12 @@ Die Doku gibt es auch als Website mit Suche: <https://rpreissel.github.io/identi
 
 ---
 
-## Demo-Video
+## Videos
 
-Knapp sieben Minuten, mit Untertiteln: registrieren, per QR-Code anmelden, Sitzungen in Keycloak,
-Namensänderung, Journey-Trace und das Löschen des Kontos.
-
-[Demo-Video ansehen (mp4)](media/demo.mp4)
+- [Erklärvideo](media/erklaervideo.mp4): Gut fünf Minuten, gesprochen: Konzepte,
+  Sicherheitsniveaus, Aufbau des Codes, Umsetzungsstand, Vor- und Nachteile.
+- [Demo-Video](media/demo.mp4): Knapp sechs Minuten, mit Untertiteln: registrieren, per QR-Code
+  anmelden, Sitzungen in Keycloak, Namensänderung, Journey-Trace und das Löschen des Kontos.
 
 ## Einstieg
 

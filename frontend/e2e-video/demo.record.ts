@@ -33,90 +33,9 @@ const DEMO_CSS = `
   #demo-title svg .box { fill: #1f2033; stroke: #7c8bd6; stroke-width: 2; rx: 10; }
   #demo-title svg .core { fill: #232447; stroke: #9fb4ff; stroke-width: 3; rx: 12; }
   #demo-title svg .sim { fill: #1a1a26; stroke: #8d8fa3; stroke-width: 2; stroke-dasharray: 8 6; rx: 10; }
-  #demo-title svg .chip { fill: #2c2e55; stroke: none; rx: 8; }
   #demo-title svg .name { font-size: 22px; font-weight: 600; }
   #demo-title svg .sub { font-size: 15px; fill: #c7cbe0; }
-  #demo-title svg .chipText { font-size: 15px; }
-  #demo-title svg .edge { stroke: #9fb4ff; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
   #demo-title svg .edgeLabel { font-size: 15px; fill: #9fb4ff; }`
-
-/** The parties of the demo (docs/01-ueberblick.md Abschnitt 2), drawn once for the intro and the ending. */
-const DIAGRAM = `
-<svg viewBox="0 0 1200 620" xmlns="http://www.w3.org/2000/svg">
-  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-    <path d="M 0 0 L 10 5 L 0 10 z" fill="#9fb4ff"/></marker></defs>
-
-  <rect class="box" x="40" y="20" width="300" height="96"/>
-  <text class="name" x="190" y="50" text-anchor="middle">App (Smartphone)</text>
-  <text class="sub" x="190" y="76" text-anchor="middle">Spricht mit dem Orchestrator.</text>
-  <text class="sub" x="190" y="98" text-anchor="middle">Anmelden mit dem Geräteschlüssel (DPoP).</text>
-
-  <rect class="box" x="860" y="20" width="300" height="96"/>
-  <text class="name" x="1010" y="50" text-anchor="middle">Website (Browser)</text>
-  <text class="sub" x="1010" y="76" text-anchor="middle">Meldet sich bei Keycloak an.</text>
-  <text class="sub" x="1010" y="98" text-anchor="middle">Spricht nie direkt mit dem Orchestrator.</text>
-
-  <rect class="core" x="40" y="170" width="720" height="330"/>
-  <text class="name" x="400" y="204" text-anchor="middle">Orchestrator</text>
-  <text class="sub" x="400" y="230" text-anchor="middle">Bestimmt den nächsten Schritt. Führt die Konten. Prüft die Nachweise.</text>
-
-  <rect class="box" x="70" y="256" width="330" height="110"/>
-  <text class="sub" x="235" y="282" text-anchor="middle">Identifizieren</text>
-  <rect class="chip" x="84" y="300" width="118" height="34"/><text class="chipText" x="143" y="322" text-anchor="middle">Freischaltcode</text>
-  <rect class="chip" x="210" y="300" width="124" height="34"/><text class="chipText" x="272" y="322" text-anchor="middle">Online-Ausweis</text>
-  <rect class="chip" x="342" y="300" width="50" height="34"/><text class="chipText" x="367" y="322" text-anchor="middle">Nect</text>
-
-  <rect class="box" x="415" y="256" width="315" height="110"/>
-  <text class="sub" x="572" y="282" text-anchor="middle">Anmeldeverfahren</text>
-  <rect class="chip" x="429" y="298" width="66" height="30"/><text class="chipText" x="462" y="318" text-anchor="middle">SMS</text>
-  <rect class="chip" x="503" y="298" width="76" height="30"/><text class="chipText" x="541" y="318" text-anchor="middle">E-Mail</text>
-  <rect class="chip" x="429" y="334" width="86" height="26"/><text class="chipText" x="472" y="352" text-anchor="middle">QR-Code</text>
-  <rect class="chip" x="523" y="334" width="66" height="26"/><text class="chipText" x="556" y="352" text-anchor="middle">Gerät</text>
-  <rect class="chip" x="597" y="334" width="70" height="26"/><text class="chipText" x="632" y="352" text-anchor="middle">KOBIL</text>
-
-  <rect class="box" x="70" y="386" width="330" height="90"/>
-  <text class="sub" x="235" y="414" text-anchor="middle">Konten und Journeys</text>
-  <text class="sub" x="235" y="440" text-anchor="middle">Registrieren, Anmelden, Step-up,</text>
-  <text class="sub" x="235" y="460" text-anchor="middle">Anmeldung im Browser bestätigen</text>
-
-  <rect class="box" x="415" y="386" width="315" height="90"/>
-  <text class="sub" x="572" y="414" text-anchor="middle">Admin-Seite</text>
-  <text class="sub" x="572" y="440" text-anchor="middle">Journey-Trace:</text>
-  <text class="sub" x="572" y="460" text-anchor="middle">jeder Schritt jeder Journey</text>
-
-  <rect class="box" x="860" y="170" width="300" height="150"/>
-  <text class="name" x="1010" y="204" text-anchor="middle">Keycloak</text>
-  <text class="sub" x="1010" y="232" text-anchor="middle">Echt, läuft im Container.</text>
-  <text class="sub" x="1010" y="258" text-anchor="middle">Stellt die Tokens aus.</text>
-  <text class="sub" x="1010" y="280" text-anchor="middle">Führt die Sitzungen von App und Website.</text>
-  <text class="sub" x="1010" y="302" text-anchor="middle">Seine Erweiterung fragt den Orchestrator.</text>
-
-  <rect class="sim" x="40" y="540" width="200" height="60"/>
-  <text class="sub" x="140" y="566" text-anchor="middle">Personenverzeichnis</text>
-  <text class="sub" x="140" y="588" text-anchor="middle" font-size="13">simuliert</text>
-  <rect class="sim" x="260" y="540" width="200" height="60"/>
-  <text class="sub" x="360" y="566" text-anchor="middle">SMS- und E-Mail-Versand</text>
-  <text class="sub" x="360" y="588" text-anchor="middle" font-size="13">simuliert</text>
-  <rect class="sim" x="480" y="540" width="130" height="60"/>
-  <text class="sub" x="545" y="566" text-anchor="middle">Nect</text>
-  <text class="sub" x="545" y="588" text-anchor="middle" font-size="13">simuliert</text>
-  <rect class="sim" x="630" y="540" width="130" height="60"/>
-  <text class="sub" x="695" y="566" text-anchor="middle">KOBIL</text>
-  <text class="sub" x="695" y="588" text-anchor="middle" font-size="13">simuliert</text>
-  <rect class="sim" x="780" y="540" width="150" height="60"/>
-  <text class="sub" x="855" y="566" text-anchor="middle">Online-Ausweis</text>
-  <text class="sub" x="855" y="588" text-anchor="middle" font-size="13">simuliert</text>
-
-  <path class="edge" d="M 190 116 L 190 170"/>
-  <text class="edgeLabel" x="200" y="148">DPoP</text>
-  <path class="edge" d="M 1010 116 L 1010 170"/>
-  <text class="edgeLabel" x="1020" y="148">OIDC</text>
-  <path class="edge" d="M 860 215 L 760 215"/>
-  <text class="edgeLabel" x="770" y="207">fragt nach</text>
-  <path class="edge" d="M 760 275 L 860 275"/>
-  <text class="edgeLabel" x="768" y="268">Sitzung, Token</text>
-  <path class="edge" d="M 400 500 L 400 540"/>
-</svg>`
 
 /** Where a name comes from (docs/07-betrieb.md Abschnitt 3a, ADR-38): one source, read on demand. */
 const FLOW = `
@@ -150,7 +69,6 @@ const FLOW = `
 </svg>`
 
 const TITLE_MS = 10_000
-const LONG_TITLE_MS = 16_000
 const PAUSE_MS = 2_500
 
 let current = ''
@@ -208,7 +126,7 @@ function installer(css: string) {
 
 type CardOptions = {
   holdMs?: number
-  diagram?: 'parties' | 'flow'
+  diagram?: 'flow'
   /** Caption for the page behind the card, set while the card still covers it. */
   next?: string
   /** Leave the card up and the video hidden: the next step navigates or shows another card. */
@@ -226,7 +144,7 @@ async function card(page: Page, kicker: string, title: string, bodyHtml: string,
     ;(el.querySelector('.title') as HTMLElement).textContent = t
     ;(el.querySelector('.steps') as HTMLElement).innerHTML = b
     document.body.appendChild(el)
-  }, [kicker, title, bodyHtml, options.diagram === 'parties' ? DIAGRAM : options.diagram === 'flow' ? FLOW : ''])
+  }, [kicker, title, bodyHtml, options.diagram === 'flow' ? FLOW : ''])
   if (!calibration) calibration = clock()
   await page.waitForTimeout(400)
   reveal()
@@ -312,14 +230,11 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
     await expect(welcome()).toBeVisible({ timeout: 15_000 })
   }
 
-  // Einführung: worum es geht, wer beteiligt ist, was gleich kommt
+  // Einführung: was gleich kommt; Konzepte und Bewertung erklärt das Erklärvideo
   await open(page, '/', () => page.getByRole('link', { name: ui('In der App registrieren') }).waitFor(), '', true)
-  await card(page, 'Identity-Demo', 'Registrieren und Anmelden für App und Website',
-    '<p class="center">Ein Orchestrator bestimmt jeden Schritt.<br>App und Website zeigen nur an, was er vorgibt.</p>',
+  await card(page, 'Identity-Demo', 'Die Demo im Browser',
+    '<p class="center">Sieben Aufgaben zum Selbst-Ausprobieren.<br>Was dahintersteckt, erklärt das Erklärvideo.</p>',
     { stay: true })
-  await card(page, 'Wer beteiligt ist', 'App, Website, Orchestrator, Keycloak',
-    '<p class="center">Gestrichelt: simulierte Fremdsysteme.</p>',
-    { holdMs: LONG_TITLE_MS, diagram: 'parties', stay: true })
   await card(page, 'Was gleich zu sehen ist', 'Sieben Aufgaben',
     '<p>1. In der App registrieren<br>2. QR-Code-Anmeldung aktivieren<br>3. Auf der Website anmelden, die App gibt frei<br>'
     + '4. Die Sitzungen in Keycloak ansehen<br>5. Den Vornamen ändern<br>6. Den Journey-Trace ansehen<br>7. Das Konto löschen</p>',
@@ -400,9 +315,9 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
     '<p class="center">Echtes Keycloak. Die App gibt die Anmeldung frei.</p>',
     { next: 'Die Website. „Anmelden“ führt zu Keycloak, dem Anmeldedienst der Website.' })
   await page.waitForTimeout(5000)
-  const withApp = () => page.getByRole('button', { name: kc('Mit App anmelden'), exact: true })
+  const withApp = () => page.getByRole('button', { name: ui('Mit App anmelden'), exact: true })
   await leave(page, () => webLogin().click(), () => withApp().waitFor({ timeout: 20_000 }),
-    'Die Anmeldeseite von Keycloak zeigt die Verfahren des Kontos. Wir wählen „Mit App anmelden“.')
+    'Die Anmeldeseite von Keycloak zeigt die Verfahren des Kontos. Wir wählen „Mit der App anmelden“.')
   await page.waitForTimeout(6000)
   const pairing = page.locator('.orchestrator-qr-code, .orc-qr-code')
   await leave(page, () => withApp().click(), () => pairing.waitFor({ timeout: 20_000 }),
@@ -415,16 +330,20 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   const app = await context.newPage()
   await app.goto(`/app/?intent=confirm_peer_login&pairingCode=${encodeURIComponent(pairingCode)}`)
   await app.evaluate(() => document.getElementById('demo-caption')?.remove())
-  // The app opens on the fresh proof: unlock the device, then confirm, then the code.
-  await app.getByRole('button', { name: biometrics, exact: true }).waitFor({ timeout: 20_000 })
+  // The app opens on the fresh proof (unlock the device, then confirm) unless the last login is fresh
+  // enough; then it asks for the confirmation right away. Then the code.
+  const unlock = () => app.getByRole('button', { name: biometrics, exact: true })
+  const approve = () => app.getByRole('button', { name: ui('Bestätigen'), exact: true })
+  await unlock().or(approve()).first().waitFor({ timeout: 20_000 })
   await app.waitForTimeout(800)
   const appStartedAt = clock()
-  await caption(page, 'Oben rechts die App. Sie hat den QR-Code gelesen. Vor der Freigabe verlangt sie einen neuen Nachweis: das Gerät entsperren.', 5000)
+  await caption(page, (await unlock().isVisible())
+    ? 'Oben rechts die App. Sie hat den QR-Code gelesen. Vor der Freigabe verlangt sie einen neuen Nachweis: das Gerät entsperren.'
+    : 'Oben rechts die App. Sie hat den QR-Code gelesen. Die letzte Anmeldung ist frisch genug, sie fragt gleich: Anmeldung im Browser bestätigen?', 5000)
   const codeShown = () => app.getByRole('heading', { name: ui('Code im Browser eingeben') })
   const confirmCaptions = new Map<string, [string, number]>([
     [biometrics, ['Nachweis erbracht. Die App fragt: Anmeldung im Browser bestätigen?', 4500]],
   ])
-  const approve = () => app.getByRole('button', { name: ui('Bestätigen'), exact: true })
   for (let step = 0; step < 12 && !(await codeShown().isVisible()); step++) {
     await app.waitForTimeout(800)
     if (await codeShown().isVisible()) break
@@ -549,20 +468,11 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   await expect(gone()).toBeVisible({ timeout: 15_000 })
   await caption(page, 'Das Konto ist gelöscht. Das Gerät kennt kein Konto mehr. Die Demo beginnt von vorn.', 7000)
 
-  // Ausklang: Aufgabenverteilung und die Vorteile
+  // Ausklang: Verweis auf das Erklärvideo
   hide()
-  await card(page, 'Aufgabenverteilung', 'Wer macht was',
-    '<p class="center">Die App zeigt an. Der Orchestrator entscheidet. Keycloak stellt die Tokens aus.</p>',
-    { holdMs: LONG_TITLE_MS, diagram: 'parties', stay: true })
-  await card(page, 'Die Vorteile', 'Kurz gesagt',
-    '<ul><li><b>Regeln im Backend:</b> Reihenfolge und Verfahren ändern, ohne App-Update.</li>'
-    + '<li><b>Gerät als Schlüssel:</b> Anmelden mit DPoP, der Server erkennt das Gerät.</li>'
-    + '<li><b>Freigabe per App:</b> Die App gibt die Anmeldung auf der Website frei.</li>'
-    + '<li><b>Standard-Keycloak:</b> OIDC für die Website, keine Kopie der Konten.</li>'
-    + '<li><b>Nachvollziehbar:</b> Jeder Schritt steht im Journey-Trace.</li></ul>',
-    { holdMs: LONG_TITLE_MS, stay: true })
-  await card(page, 'Was ist Demo, was ist echt', 'Der Kern ist echt',
-    '<p class="center"><b>Echt:</b> Orchestrator und Keycloak.<br><b>Simuliert:</b> Smartphone, Personenverzeichnis und Versand.</p>',
+  await card(page, 'Wie es weitergeht', 'Hintergründe im Erklärvideo',
+    '<p class="center">Konzepte, Sicherheitsniveaus, Architektur, Stand, Vor- und Nachteile:<br>'
+    + '<b>docs/media/erklaervideo.mp4</b></p>',
     { holdMs: TITLE_MS, stay: true })
   // The last frame is the card; nothing after it is kept.
 
