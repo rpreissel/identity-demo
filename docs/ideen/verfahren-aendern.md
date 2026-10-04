@@ -70,9 +70,17 @@ entscheidet für Verwaltung und Löschen, ob ein Nachweis frisch genug ist.
 - Änderbar ist ein Verfahren, wenn es nur eine Instanz erlaubt (`allowsMultipleInstances ==
   false`) und sein Modul ein Enroll-Tool hat. Bei Verfahren je Gerät (KOBIL, Geräteschlüssel)
   bleibt es bei Entfernen und Hinzufügen.
+- Das Verfahren `email` ist nicht änderbar. Es hat kein eigenes Credential, seine Referenz ist der
+  EMAIL-Anker (`EMAIL_ANCHOR_ENROLLMENT`), und den schreibt `confirm-email`. Ein erneutes
+  `enroll-email` hätte nichts zu ersetzen.
 - Vorbedingung ist das höhere von `selfServiceAcrFloor` und dem `enrolledUnderAcr` des alten
   Eintrags.
 - Keine Aussperr-Prüfung: Der alte Eintrag fällt erst mit dem Erfolg weg.
+- Passwort und SMS schreiben keinen Anker; ihre Angaben (`PASSWORD_EXISTS`, `PHONE_NUMBER`)
+  gehören dem Modul und wechseln mit dem Eintrag. Schreibt ein Enroll-Tool künftig einen Anker,
+  gelten dessen Regeln für das Ersetzen (`AnchorRegistry.bind`: Niveau, Eindeutigkeit über alle
+  Konten). Wird der Anker abgewiesen, scheitert die Änderung als Ganzes, und der alte Eintrag
+  bleibt samt seinem Anker bestehen.
 - Bricht der Nutzer ab oder lehnt das Tool ab, endet die Journey; ein anderes Verfahren wird
   nicht angeboten.
 - `ToolJourney` bekommt eine Abfrage nach der vorhandenen Instanz eines Moduls, die ohne Instanz
