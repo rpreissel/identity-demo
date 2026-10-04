@@ -100,7 +100,10 @@ muss also nebenher laufen.
 - **Personenverzeichnis** (simuliertes Fremdsystem): <http://localhost:8080/personenverzeichnis/>
 - **Briefkasten** (Briefe, SMS und E-Mails an Testpersonen, nur im Demomodus):
   <http://localhost:8080/briefkasten/>
-- **H2-Konsole**: <http://localhost:8080/h2-console>, nur bei Start auf dem Rechner
+- **H2-Konsole**: <http://localhost:8080/h2-console>, nur bei Start auf dem Rechner. Verlinkt im
+  Server-Status der Startseite (Abschnitt „Entwickler-Werkzeuge“), dort auch die Zugangsdaten.
+- **API-Doku** (Swagger UI, nur im Demomodus): <http://localhost:8080/swagger-ui/index.html>,
+  ebenfalls im Server-Status verlinkt. Nur zum Nachlesen: Aufrufe brauchen einen DPoP-Nachweis.
 - **Health und Kennzahlen**: eigener Port 9080 (`MANAGEMENT_PORT`), siehe
   [07-betrieb.md](07-betrieb.md) Abschnitt 7
 - **Keycloak**: <https://localhost:8543>. Die Admin-Konsole nutzt `admin` / `admin`
