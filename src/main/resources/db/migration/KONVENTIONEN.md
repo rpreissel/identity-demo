@@ -64,3 +64,9 @@ und dessen Version erhöhen, wenn sie sich ändern. Historie wird nur angehängt
 - **Indizes und Constraints** sind schemagebundene Objekte und tragen deshalb ebenfalls kein
   Modulpräfix: `ux_<tabelle>_<spalten>` (unique), `ix_<tabelle>_<spalten>`. Jeder Aufräumlauf hat
   einen Index auf seiner Stichtagsspalte.
+- **CHECK ohne Wertemenge.** Erlaubte Werte stehen einzeln da: `CASE x WHEN 'a' THEN TRUE WHEN 'b'
+  THEN TRUE ELSE FALSE END`, ausgeschlossene als `x <> 'a' AND x <> 'b'`. Nie `x IN ('a', 'b')` und
+  auch nicht `x = 'a' OR x = 'b'`, das H2 zur selben Menge zusammenfasst: Diese Menge vergleicht über
+  die Sitzung, die die Constraint übersetzt hat, also die Pool-Verbindung der Migration. Hat Hikari sie
+  ersetzt (nach `max-lifetime`), scheitert jede Prüfung mit „The database has been closed“.
+  `CheckConstraintConnectionTest` lehnt jede solche Constraint ab.
