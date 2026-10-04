@@ -22,10 +22,14 @@ import org.aopalliance.intercept.MethodInterceptor
 import org.hibernate.exception.ConstraintViolationException
 import org.springframework.aop.framework.Advised
 import com.example.identity.contract.tool_api.EnrollmentRef
+import com.example.identity.core.orchestrator.domain.ErrorCode
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.http.HttpStatus
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
+import java.sql.Timestamp
+import java.time.Instant
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -558,6 +562,33 @@ class AccountServiceDbTest(
                 ) shouldBe 1
             }
         }
+
+        `when`("it is absorbed after one of its claims was retracted") {
+            clearAccounts()
+            val eid = ClaimSource("ident-eid")
+            val disposable = accountService.createAccountInSetup()
+            accountService.recordClaims(disposable.accountId, listOf(
+                Claim(AttributeType.FAMILY_NAME, "Muster", eid, AcrLevel.LOA3),
+                Claim(AttributeType.GIVEN_NAMES, "Max", eid, AcrLevel.LOA3)
+            ), provenAcr = AcrLevel.LOA2)
+            jdbcTemplate.update(
+                """INSERT INTO account.retraction (account_id, attribute_type, normalized_value, claim_source, retracted_at)
+                   VALUES (?, 'family_name', 'muster', 'OPERATOR', CURRENT_TIMESTAMP)""",
+                disposable.accountId.value
+            )
+            val target = accountService.createAccountInSetup()
+
+            accountService.absorbDisposableAccount(disposable.accountId, target.accountId)
+
+            then("the retracted claim is not carried over, the others are (ADR-20)") {
+                accountService.establishedClaimValues(target.accountId, setOf(AttributeType.FAMILY_NAME, AttributeType.GIVEN_NAMES)) shouldBe
+                    mapOf(AttributeType.GIVEN_NAMES to "Max")
+                jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM account.claim WHERE account_id = ? AND attribute_type = 'family_name'",
+                    Int::class.java, target.accountId.value
+                ) shouldBe 0
+            }
+        }
     }
 
     // The mirror image ("Enrollment zuerst"): the durable account is in hand, and resolution finds the
@@ -667,6 +698,111 @@ class AccountServiceDbTest(
                 jdbcTemplate.queryForObject(
                     "SELECT established_acr FROM account.claim WHERE account_id = ?", String::class.java, account.accountId.value
                 ) shouldBe "loa1"
+            }
+        }
+    }
+
+    fun versionOf(accountId: AccountId): Long =
+        checkNotNull(jdbcTemplate.queryForObject("SELECT version FROM account.account WHERE id = ?", Long::class.java, accountId.value))
+
+    // ADR-14: the account row is the lock for every change to the account's current state.
+    given("two writers changing the same account at once") {
+        `when`("both add a device and commit together") {
+            clearAccounts()
+            val account = accountService.createAccountInSetup().accountId
+            val versionBefore = versionOf(account)
+            val commitBarrier = CyclicBarrier(2)
+            val executor = Executors.newFixedThreadPool(2)
+            val results = try {
+                (1..2).map { index ->
+                    executor.submit<Result<Unit>> {
+                        runCatching {
+                            TransactionTemplate(transactionManager).executeWithoutResult {
+                                accountService.addAuthenticationMethod(
+                                    account, "device", EnrollmentRef("auth_device", "d-$index"), "loa2", allowsMultipleInstances = true
+                                )
+                                // The version check runs at commit: both must have read the same version first.
+                                commitBarrier.await(10, TimeUnit.SECONDS)
+                            }
+                        }
+                    }
+                }.map { it.get(30, TimeUnit.SECONDS) }
+            } finally {
+                executor.shutdownNow()
+                check(executor.awaitTermination(10, TimeUnit.SECONDS)) { "Concurrent writer tasks did not terminate" }
+            }
+
+            then("one commits, the second gets 409 CONCURRENT_MODIFICATION and leaves nothing behind") {
+                results.count { it.isSuccess } shouldBe 1
+                val failure = checkNotNull(results.single { it.isFailure }.exceptionOrNull())
+                val conflict = generateSequence(failure) { it.cause }.filterIsInstance<ObjectOptimisticLockingFailureException>().first()
+                val response = OrchestratorExceptionHandler().handleConcurrentModification(conflict)
+                response.statusCode shouldBe HttpStatus.CONFLICT
+                response.body?.error shouldBe ErrorCode.CONCURRENT_MODIFICATION
+                versionOf(account) shouldBe versionBefore + 1
+                jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM account.auth_method WHERE account_id = ?", Int::class.java, account.value
+                ) shouldBe 1
+            }
+        }
+    }
+
+    given("an account bound to a person_id") {
+        `when`("only history is appended: a register claim and an identification") {
+            clearAccounts()
+            val account = accountService.createAccountInSetup().accountId
+            val versionBefore = versionOf(account)
+            accountService.recordClaim(account, Claim(AttributeType.PERSON_ID, "P000000777", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
+            val versionAfterAnchor = versionOf(account)
+
+            accountService.recordClaim(account, Claim(AttributeType.FAMILY_NAME, "Muster", ClaimSource.PERSON_DIRECTORY), provenAcr = AcrLevel.LOA2)
+            accountService.addIdentification(account, "eid", "loa3", role = "IDENTIFICATION")
+
+            then("the anchor write raised the version, the claim log and the change log did not (ADR-14)") {
+                versionAfterAnchor shouldBe versionBefore + 1
+                versionOf(account) shouldBe versionAfterAnchor
+                jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM account.claim WHERE account_id = ? AND attribute_type = 'family_name'", Int::class.java, account.value
+                ) shouldBe 1
+                changeLogRepository.findByAccountIdAndChangeTypeOrderByOccurredAt(account, ChangeType.IDENTIFIED).size shouldBe 1
+            }
+        }
+    }
+
+    // docs/02-domaenenmodell.md Abschnitt 6: with several values of one attribute, trust decides first,
+    // time second. The times are written explicitly, so the order does not depend on the clock.
+    given("an account with several values of one attribute") {
+        fun insertClaim(accountId: AccountId, value: String, source: ClaimSource, establishedAt: Instant) = jdbcTemplate.update(
+            """INSERT INTO account.claim (account_id, attribute_type, claim_value, normalized_value, claim_source, established_acr, established_at)
+               VALUES (?, 'family_name', ?, ?, ?, 'loa2', ?)""",
+            accountId.value, value, value.lowercase(), source.value, Timestamp.from(establishedAt)
+        )
+        val earlier = Instant.parse("2026-01-01T10:00:00Z")
+        val later = Instant.parse("2026-02-01T10:00:00Z")
+
+        `when`("a register value is followed by a newer self-reported one") {
+            clearAccounts()
+            val account = accountService.createAccountInSetup().accountId
+            insertClaim(account, "Muster", ClaimSource.PERSON_DIRECTORY, earlier)
+            insertClaim(account, "Mustermann", ClaimSource.SELF_REPORTED, later)
+
+            val values = accountService.establishedClaimValues(account, setOf(AttributeType.FAMILY_NAME))
+
+            then("the higher trust wins although it is older") {
+                values shouldBe mapOf(AttributeType.FAMILY_NAME to "Muster")
+            }
+        }
+
+        `when`("two proven values of the same trust follow each other") {
+            clearAccounts()
+            val account = accountService.createAccountInSetup().accountId
+            insertClaim(account, "Muster", ClaimSource("ident-eid"), later)
+            insertClaim(account, "Mustermann", ClaimSource("ident-nect"), earlier)
+
+            val values = accountService.establishedClaimValues(account, setOf(AttributeType.FAMILY_NAME))
+
+            then("the newer one wins") {
+                values shouldBe mapOf(AttributeType.FAMILY_NAME to "Muster")
             }
         }
     }

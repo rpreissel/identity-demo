@@ -18,6 +18,10 @@ class PasswordHasherTest : BehaviorSpec({
                 PasswordHasher.needsRehash(hash) shouldBe false
             }
 
+            then("today's parameters are the OWASP values: 19 MiB memory, 2 iterations, 1 lane") {
+                hash.split("\$")[3] shouldBe "m=19456,t=2,p=1"
+            }
+
             then("it verifies this password and no other") {
                 PasswordHasher.matches("correct-horse-battery", hash) shouldBe true
                 PasswordHasher.matches("wrong-horse-battery", hash) shouldBe false

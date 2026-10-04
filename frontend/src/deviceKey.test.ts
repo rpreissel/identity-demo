@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { computeJwkThumbprint } from './dpop.ts'
-import { createDeviceProof } from './deviceKey.ts'
+import { createDeviceProof, getOrCreateDeviceKeyPair } from './deviceKey.ts'
 
 /**
- * IndexedDB persistence (getOrCreateDeviceKeyPair) isn't covered: jsdom here has no IndexedDB
- * polyfill. The proof JWT this module builds is testable, since real WebCrypto is available.
+ * jsdom here has no IndexedDB, so persistence itself isn't covered; a minimal empty store stands
+ * in where a key has to be generated. The proof JWT is testable with the real WebCrypto.
  */
 describe('createDeviceProof', () => {
   async function generateKeyPair(): Promise<CryptoKeyPair> {
@@ -68,5 +68,58 @@ describe('createDeviceProof', () => {
     })
 
     expect(thumbprint).toBe('cn-I_WNMClehiVp51i_0VpOENW1upEerA8sEam5hn-s')
+  })
+})
+
+/** An IndexedDB with one empty store: every read misses, every write succeeds. */
+function emptyIndexedDb(): IDBFactory {
+  const stored = new Map<IDBValidKey, unknown>()
+  const db = {
+    objectStoreNames: { contains: () => true },
+    transaction: () => {
+      const tx: { oncomplete?: () => void; objectStore: () => unknown } = {
+        objectStore: () => ({
+          get: (key: IDBValidKey) => {
+            const request: { result?: unknown; onsuccess?: () => void } = {}
+            queueMicrotask(() => {
+              request.result = stored.get(key)
+              request.onsuccess?.()
+            })
+            return request
+          },
+          put: (value: unknown, key: IDBValidKey) => {
+            stored.set(key, value)
+            queueMicrotask(() => tx.oncomplete?.())
+          },
+        }),
+      }
+      return tx
+    },
+  }
+  return {
+    open: () => {
+      const request: { result: unknown; onsuccess?: () => void } = { result: db }
+      queueMicrotask(() => request.onsuccess?.())
+      return request
+    },
+  } as unknown as IDBFactory
+}
+
+describe('getOrCreateDeviceKeyPair', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('generates the device key with extractable=false, so no script can read the private key (09-dpop D-3)', async () => {
+    vi.stubGlobal('indexedDB', emptyIndexedDb())
+    const generateKey = vi.spyOn(crypto.subtle, 'generateKey')
+
+    const { keyPair, publicJwk } = await getOrCreateDeviceKeyPair()
+
+    expect(generateKey).toHaveBeenCalledTimes(1)
+    expect(generateKey.mock.calls[0][1]).toBe(false)
+    expect(keyPair.privateKey.extractable).toBe(false)
+    expect(publicJwk).toMatchObject({ kty: 'EC', crv: 'P-256' })
   })
 })

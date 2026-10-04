@@ -19,7 +19,9 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
 import io.mockk.slot
+import io.mockk.unmockkObject
 import io.mockk.verify
 import java.util.Optional
 
@@ -32,6 +34,8 @@ private const val CURRENT_PASSWORD = "correct-horse-battery"
  * is `KeycloakToolCallsServiceTest`'s.
  */
 class MgmtPasswordControllerTest : BehaviorSpec({
+
+    afterSpec { unmockkObject(PasswordHasher) }
 
     val accountId = AccountId(7L)
 
@@ -60,6 +64,7 @@ class MgmtPasswordControllerTest : BehaviorSpec({
     given("an account with an enrolled password that is locked after failed attempts") {
         `when`("the correct password is verified") {
             val fixture = MgmtPasswordFixture(accountId, enrolled = true, locked = true)
+            mockkObject(PasswordHasher)
             val response = fixture.controller.verify(accountId, "kc:7", MgmtPasswordVerifyRequest(CURRENT_PASSWORD))
 
             then("even the correct password is refused until the lock expires - the app's lockout, shared") {
@@ -68,6 +73,10 @@ class MgmtPasswordControllerTest : BehaviorSpec({
 
             then("nothing is booked, so the attempt neither counts nor resets the lock") {
                 verify(exactly = 0) { fixture.keycloakToolCalls.apply(any(), any(), any()) }
+            }
+
+            then("the password is still checked against the stored Argon2id hash, the same work as unlocked") {
+                verify(exactly = 1) { PasswordHasher.matches(CURRENT_PASSWORD, matchNullable { it?.startsWith("\$argon2id\$") == true }) }
             }
         }
     }
