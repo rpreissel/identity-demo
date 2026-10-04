@@ -18,7 +18,6 @@ import { AdminLoginThemeView } from '../../components/AdminLoginThemeView'
 import { AdminRegistrationOrderView } from '../../components/AdminRegistrationOrderView'
 import { AdminToolAvailabilityView } from '../../components/AdminToolAvailabilityView'
 import { ChannelNav, type NavTab } from '../../components/ChannelNav'
-import { DeveloperToolsCard } from '../../components/DeveloperToolsCard'
 import { JourneyTraceView } from '../../components/JourneyTraceView'
 import { useHashTab } from '../../useHashTab'
 import { t } from '../../texts'
@@ -75,7 +74,6 @@ export function AdminApp() {
             <AdminRegistrationOrderView />
             <AdminLoginThemeView />
             <AdminLoa1LoginView />
-            <DeveloperToolsCard />
           </>
         )}
         {tab === 'journeytrace' && (

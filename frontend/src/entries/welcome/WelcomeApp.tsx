@@ -10,6 +10,7 @@ import {
   type ServerInfo,
 } from '../../api'
 import { ActiveSessionsView } from '../../components/ActiveSessionsView'
+import { DeveloperTools } from '../../components/DeveloperTools'
 import { Disclosure } from '../../components/Disclosure'
 import { markAsStartWindow } from '../../startWindow'
 import { t } from '../../texts'
@@ -506,6 +507,7 @@ function ServerStatus() {
           <span className="value">{info.demoMode ? t('an (TANs, Testpersonen, Vorbelegung)') : t('aus')}</span>
         </li>
       </ul>
+      <DeveloperTools demoMode={info.demoMode} />
       {info.operations && <OperationsStatus operations={info.operations} />}
     </div>
   )
