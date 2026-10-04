@@ -1,6 +1,8 @@
 # Synthesizes narration with Piper; the model is loaded once.
 #   tts_piper.py <model.onnx> <length_scale> <jobs.json>   jobs.json: [{"text": "...", "out": "file.wav"}, ...]
 #   tts_piper.py <model.onnx> <length_scale> --serve       one job as JSON per stdin line, "ok" per line back
+#   tts_piper.py <model.onnx> <length_scale> --phonemes    per stdin line the phonemes the voice reads (IPA),
+#                                                          to check a pronunciation without listening
 import json
 import sys
 import wave
@@ -16,7 +18,10 @@ def synthesize(job):
         voice.synthesize_wav(job["text"], out, syn_config=config)
 
 
-if sys.argv[3] == "--serve":
+if sys.argv[3] == "--phonemes":
+    for line in sys.stdin:
+        print(f"{line.strip()}  ->  {''.join(''.join(p) for p in voice.phonemize(line.strip()))}")
+elif sys.argv[3] == "--serve":
     for line in sys.stdin:
         synthesize(json.loads(line))
         print("ok", flush=True)

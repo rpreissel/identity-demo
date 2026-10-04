@@ -341,7 +341,16 @@ Die Texte der Karten und Untertitel stehen im Spec. Sie beschreiben nur, was die
 ([01-ueberblick.md](01-ueberblick.md), [ADR-38](adr/ADR-038-keycloak-liest-konten.md),
 [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Die Aufgaben folgen der
 Willkommensseite; ändert sich eine, ändern sich beide. Wie die Stimme Fachbegriffe ausspricht, regelt
-`frontend/erklaervideo/spoken.mjs` für beide Videos.
+`frontend/erklaervideo/spoken.mjs` für beide Videos. Was die Stimme aus einem Wort macht, zeigt seine
+Lautschrift, ohne dass man hinhören muss:
+
+```bash
+cd frontend/erklaervideo
+echo "Kieklohk" | out/piper-venv/bin/python tts_piper.py out/voices/de_DE-thorsten-high.onnx 1.05 --phonemes
+```
+
+Englische Wörter liest sie deutsch, ein `sp` oder `st` am Wortanfang immer als „schp“ oder „scht“; solche
+Wörter schreibt `spoken.mjs` lautlich um oder lässt sie im gesprochenen Satz weg.
 
 ### Das Erklärvideo
 
