@@ -9,13 +9,21 @@ interface PasswordEnrollFormProps {
   error?: string
   /** Demo-only: the fixed password used everywhere in this demo, prefilled for testers. */
   demoPassword?: string
+  /** The account already has a password: this run changes it (stepData.replaces). */
+  replaces?: boolean
 }
 
 /**
  * toolId=enroll-password / step=enroll: registers a password credential. Requires a confirmed
- * account email first (requiresConfirmedEmail).
+ * account email first (requiresConfirmedEmail). A failed attempt carries no `replaces`; the form
+ * then keeps what it last heard.
  */
-export function PasswordEnrollForm({ onSubmit, error, demoPassword }: PasswordEnrollFormProps) {
+export function PasswordEnrollForm({ onSubmit, error, demoPassword, replaces }: PasswordEnrollFormProps) {
+  const [changing, setChanging] = useState(replaces ?? false)
+  useEffect(() => {
+    if (replaces !== undefined) setChanging(replaces)
+  }, [replaces])
+
   const [password, setPassword] = useState(demoPassword ?? '')
   const [passwordConfirm, setPasswordConfirm] = useState(demoPassword ?? '')
   const [validationError, setValidationError] = useState('')
@@ -39,15 +47,19 @@ export function PasswordEnrollForm({ onSubmit, error, demoPassword }: PasswordEn
 
   return (
     <div className="card">
-      <h2>{t('Passwort einrichten')}</h2>
-      <p>{t('Legen Sie ein Passwort als weiteren Faktor an. Ihre bestätigte E-Mail-Adresse dient dabei als Anmeldename.')}</p>
+      <h2>{changing ? t('Passwort ändern') : t('Passwort einrichten')}</h2>
+      <p>
+        {changing
+          ? t('Legen Sie ein neues Passwort fest. Es ersetzt Ihr bisheriges, sobald Sie fertig sind.')
+          : t('Legen Sie ein Passwort als weiteren Faktor an. Ihre bestätigte E-Mail-Adresse dient dabei als Anmeldename.')}
+      </p>
       <DemoNote>
         <Tx text="Demo-Modus: Passwort ist bereits vorbelegt: {passwort}" passwort={<code>{password}</code>} />
       </DemoNote>
       {(validationError || error) && <div className="hint">{validationError || error}</div>}
       <form id="password-enroll" onSubmit={handleSubmit} className="form-grid" style={{ marginTop: '1rem' }}>
         <div className="form-group">
-          <label htmlFor="password">{t('Passwort')}</label>
+          <label htmlFor="password">{changing ? t('Neues Passwort') : t('Passwort')}</label>
           <input
             id="password"
             type="password"
@@ -70,7 +82,7 @@ export function PasswordEnrollForm({ onSubmit, error, demoPassword }: PasswordEn
           />
         </div>
         <StepActions>
-          <button type="submit" form="password-enroll">{t('Einrichten')}</button>
+          <button type="submit" form="password-enroll">{changing ? t('Ändern') : t('Einrichten')}</button>
         </StepActions>
       </form>
     </div>

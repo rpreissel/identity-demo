@@ -27,6 +27,8 @@ public class PasswordEnrollRendererFactory extends AbstractWebToolRendererFactor
         JsonNode demoPassword = ctx.demo().get("password");
         return form
                 .setAttribute("demoPassword", demoPassword != null ? demoPassword.asText() : null)
+                // The account already has a password: this run changes it.
+                .setAttribute("replaces", ctx.stepData().containsKey("replaces") && ctx.stepData().get("replaces").asBoolean(false))
                 .createForm(template());
     }
 }

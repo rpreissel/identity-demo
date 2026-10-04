@@ -25,6 +25,7 @@ import {
   onApiCall,
   raiseRequiredAcr,
   startAccountDeletion,
+  changeMethod,
   startManageMethods,
   startPeerLogin,
 } from '../../api.ts'
@@ -114,6 +115,10 @@ export function AppChannelApp() {
   // The orchestrator's `message` step, kept across auto-activating the one tool it announces -
   // that tool's own response replaces stepData and would otherwise swallow it.
   const [carriedMessage, setCarriedMessage] = useState<string | undefined>()
+  // What to say once a self-service journey this app started has run through, e.g. a changed
+  // method. Dropped when the user backs out; shown on the screen the journey returns to.
+  const pendingOutcomeNoticeRef = useRef<string | undefined>(undefined)
+  const [outcomeNotice, setOutcomeNotice] = useState<string | undefined>()
   const [demo, setDemo] = useState<DemoInfo | undefined>()
   const [activeTool, setActiveTool] = useState<ActiveTool | null>(null)
   // Set from the WEB channel's demo link (?pairingCode=..., docs/07-betrieb.md #5), which points
@@ -225,6 +230,9 @@ export function AppChannelApp() {
     setNext(response.next)
     setStepData(response.stepData)
     setCarriedMessage(undefined)
+    const journeyOver = response.next?.type === 'orchestrator' && response.next.context === 'authentication' && response.next.step === 'authenticated'
+    setOutcomeNotice(journeyOver ? pendingOutcomeNoticeRef.current : undefined)
+    if (journeyOver) pendingOutcomeNoticeRef.current = undefined
     setDemo(response.demo)
     const offered = stepDataOf(response.stepData, 'select-method')?.options
     if (offered && response.next?.type === 'orchestrator' && response.next.context === 'enrollment') {
@@ -592,6 +600,8 @@ export function AppChannelApp() {
     if (!dpop || !channelSessionId) return
     try {
       setError('')
+      // A declined question on the way (e.g. the re-identification) ends the wish.
+      if (!accept) pendingOutcomeNoticeRef.current = undefined
       const response = await answerPrompt(dpop, channelSessionId, accept)
       applyResponse(response)
     } catch (err) {
@@ -637,6 +647,19 @@ export function AppChannelApp() {
     }
   }
 
+  /** Starts changing a method in place; step-up, re-confirmation and the enrollment follow via next/stepData. */
+  async function handleChangeMethod(methodInstanceId: string) {
+    if (!dpop || !channelSessionId) return
+    try {
+      setError('')
+      const response = await changeMethod(dpop, channelSessionId, methodInstanceId)
+      pendingOutcomeNoticeRef.current = t('Anmeldeverfahren geändert.')
+      applyResponse(response)
+    } catch (err) {
+      setError(describeError(t('Ändern fehlgeschlagen'), err))
+    }
+  }
+
   /** Starts the account-deletion journey; confirmation and re-authentication follow via next/stepData. */
   async function handleDeleteAccount() {
     if (!dpop || !channelSessionId) return
@@ -659,6 +682,7 @@ export function AppChannelApp() {
     if (!dpop || !activeTool) return
     try {
       setError('')
+      pendingOutcomeNoticeRef.current = undefined
       const response = await abandonTool(dpop, activeTool.toolSessionId, activeTool.toolId)
       applyResponse(response)
     } catch (err) {
@@ -687,6 +711,7 @@ export function AppChannelApp() {
   async function handleCancel() {
     if (!dpop || !channelSessionId) return
     try {
+      pendingOutcomeNoticeRef.current = undefined
       const response = await cancelJourney(dpop, channelSessionId)
       applyResponse(response)
     } catch (err) {
@@ -749,7 +774,7 @@ export function AppChannelApp() {
   const enrollmentRows = enrollmentChoiceRows(enrollmentOrder, selection?.options ?? [], setUpMethods)
   const confirmPrompt = confirmPromptOf(stepDataOf(stepData, 'confirm')?.prompt)
   const stepMessage = stepDataOf(stepData, 'message')?.message
-  const message = stepMessage ? resolveText(stepMessage) : carriedMessage
+  const message = stepMessage ? resolveText(stepMessage) : (carriedMessage ?? outcomeNotice)
 
   const toolCtx: ToolRenderContext | undefined =
     dpop && next?.type === 'tool' && next.toolId
@@ -1056,6 +1081,7 @@ export function AppChannelApp() {
                     onNavigate={setAccountView}
                     onAddMethod={handleAddMethod}
                     onDeactivateMethod={handleDeactivateMethod}
+                    onChangeMethod={handleChangeMethod}
                     onDeleteAccount={handleDeleteAccount}
                     onStepUp={handleStepUp}
                     onPeerLogin={handlePeerLogin}

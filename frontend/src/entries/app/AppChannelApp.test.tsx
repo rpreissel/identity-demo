@@ -11,6 +11,7 @@ vi.mock('../../dpop.ts', () => ({
 }))
 
 const api = vi.hoisted(() => ({
+  changeMethod: vi.fn(),
   createChannel: vi.fn(),
   getChannel: vi.fn(),
   raiseRequiredAcr: vi.fn(),
@@ -137,6 +138,65 @@ describe('security-summary backfill (docs/05-api.md #2: on-demand, not part of t
       await user.click(screen.getByRole('button', { name: /^SMS/ }))
 
       expect(screen.getByRole('button', { name: 'Deaktivieren' })).toBeInTheDocument()
+      // Not marked changeable by the backend: no way to change it in place.
+      expect(screen.queryByRole('button', { name: 'Ändern' })).toBeNull()
+    })
+
+    it('offers "Ändern" for a method the backend marks changeable and starts the change', async () => {
+      api.getChannel.mockResolvedValue(
+        channelResponse({
+          channel: channel('AUTHENTICATED', {
+            currentAcr: 'loa1',
+            currentAmr: ['sms'],
+            activeMethods: [{ id: 'method-1', method: 'sms', changeable: true }],
+          }),
+          next: AUTHENTICATED_NEXT,
+        }),
+      )
+      api.changeMethod.mockResolvedValue(channelResponse({ channel: channel('AUTHENTICATED'), next: toolNext('enroll-sms', 'enroll') }))
+      render(<AppChannelApp />)
+      const user = userEvent.setup()
+      await startSmsRegistration(user)
+      await user.click(await screen.findByRole('button', { name: /^Sicherheit/ }))
+      await user.click(await screen.findByRole('button', { name: /^Anmeldeverfahren/ }))
+      await user.click(screen.getByRole('button', { name: /^SMS/ }))
+
+      await user.click(screen.getByRole('button', { name: 'Ändern' }))
+
+      expect(api.changeMethod).toHaveBeenCalledWith(expect.anything(), expect.any(String), 'method-1')
+    })
+
+    it('says that the method was changed once the change has run through', async () => {
+      const changeable = channel('AUTHENTICATED', {
+        currentAcr: 'loa1',
+        currentAmr: ['sms'],
+        activeMethods: [{ id: 'method-1', method: 'sms', changeable: true }],
+      })
+      api.getChannel.mockResolvedValue(channelResponse({ channel: changeable, next: AUTHENTICATED_NEXT }))
+      const enrolling = channelResponse({ channel: channel('AUTHENTICATED'), next: toolNext('enroll-sms', 'enroll') })
+      api.changeMethod.mockResolvedValue(enrolling)
+      render(<AppChannelApp />)
+      const user = userEvent.setup()
+      await startSmsRegistration(user)
+      await user.click(await screen.findByRole('button', { name: /^Sicherheit/ }))
+      await user.click(await screen.findByRole('button', { name: /^Anmeldeverfahren/ }))
+      await user.click(screen.getByRole('button', { name: /^SMS/ }))
+      api.getTool.mockResolvedValue(enrolling)
+      api.activateTool.mockResolvedValue(enrolling)
+      await user.click(screen.getByRole('button', { name: 'Ändern' }))
+
+      // The new entry has a new id, so the app shows the list, with the notice.
+      api.getChannel.mockResolvedValue(
+        channelResponse({
+          channel: channel('AUTHENTICATED', { currentAcr: 'loa1', currentAmr: ['sms'], activeMethods: [{ id: 'method-2', method: 'sms', changeable: true }] }),
+          next: AUTHENTICATED_NEXT,
+        }),
+      )
+      // The mocked step carries no stepData, so the form shows its plain label.
+      await user.type(await screen.findByLabelText('Telefonnummer'), '+491700000099')
+      await user.click(screen.getByRole('button', { name: 'Code senden' }))
+
+      expect(await screen.findByText('Anmeldeverfahren geändert.')).toBeInTheDocument()
     })
   })
 

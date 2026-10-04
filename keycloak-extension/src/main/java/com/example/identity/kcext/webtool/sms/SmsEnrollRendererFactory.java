@@ -32,6 +32,8 @@ public class SmsEnrollRendererFactory extends AbstractWebToolRendererFactory {
                 .setAttribute("step", ctx.step())
                 .setAttribute("demoTan", demoTan != null ? demoTan.asText() : null)
                 .setAttribute("demoPersonsJson", demoPersonsJson(ctx))
+                // The account already has a number: this run changes it.
+                .setAttribute("replaces", ctx.stepData().containsKey("replaces") && ctx.stepData().get("replaces").asBoolean(false))
                 .createForm(template());
     }
 }

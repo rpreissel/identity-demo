@@ -9,6 +9,9 @@
         <#if hint??>
             <p class="orchestrator-subtitle">${hint}</p>
         </#if>
+        <#if replaces!false>
+            <p class="orchestrator-hint">${t.of("Die neue Telefonnummer ersetzt Ihre bisherige, sobald Sie den Code bestätigt haben.")}</p>
+        </#if>
         <div id="sms-tan-page">
             <form id="kc-orchestrator-tool-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
                 <#if step == "tanInput">

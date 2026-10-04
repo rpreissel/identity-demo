@@ -176,6 +176,14 @@ export function deactivateMethod(dpop: DpopKeyPair, channelSessionId: string, me
 }
 
 /**
+ * Changes an active method in place (`changeable` in the methods list): its enrollment runs again
+ * and the new credential replaces this instance once it is complete.
+ */
+export function changeMethod(dpop: DpopKeyPair, channelSessionId: string, methodInstanceId: string): Promise<ChannelResponse> {
+  return call(dpop, 'POST', `/orchestrator/api/v1/channels/${channelSessionId}/methods/${methodInstanceId}/changes`)
+}
+
+/**
  * Starts the account-deletion journey on an AUTHENTICATED channel: a yes/no confirmation
  * (PromptView), then a fresh proof of an active factor.
  */

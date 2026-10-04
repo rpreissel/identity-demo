@@ -149,6 +149,16 @@ public final class OrchestratorClient {
         return ChannelResponse.from(send("DELETE", path, channelSessionId, null));
     }
 
+    /**
+     * POST .../channels/{channelSessionId}/methods/{methodInstanceId}/changes: changes one method in
+     * place by running its enrollment again. Like removing, it may first ask for a step-up or a
+     * fresh confirmation.
+     */
+    public ChannelResponse changeMethod(String channelSessionId, String methodInstanceId) throws IOException, InterruptedException {
+        String path = "/orchestrator/api/v1/channels/" + segment(channelSessionId) + "/methods/" + segment(methodInstanceId) + "/changes";
+        return ChannelResponse.from(send("POST", path, channelSessionId, null));
+    }
+
     /** Same facade-neutral tool endpoints the App channel uses (docs/05-api.md Abschnitt 3). */
     public ChannelResponse activateTool(String channelSessionId, String toolId) throws IOException, InterruptedException {
         return activateTool(channelSessionId, toolId, Map.of());
@@ -391,13 +401,15 @@ public final class OrchestratorClient {
     }
 
     /** Mirrors ActiveMethodView (tool_api/Envelope.kt) - id/method/label, nothing more. */
-    public record MethodView(String id, String method, String label) {
+    /** {@code changeable}: the orchestrator says this method can be changed in place. */
+    public record MethodView(String id, String method, String label, boolean changeable) {
         public static MethodView from(JsonNode json) {
             JsonNode labelNode = json.get("label");
             return new MethodView(
                     json.path("id").asText(null),
                     json.path("method").asText(null),
-                    labelNode != null && labelNode.isTextual() ? labelNode.asText() : null
+                    labelNode != null && labelNode.isTextual() ? labelNode.asText() : null,
+                    json.path("changeable").asBoolean(false)
             );
         }
     }

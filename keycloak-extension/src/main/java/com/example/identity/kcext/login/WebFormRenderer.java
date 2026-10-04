@@ -147,13 +147,14 @@ final class WebFormRenderer {
      */
     static Response methodsListForm(KeycloakSession session, LoginFormsProvider form, AuthenticationSessionModel authSession,
             List<OrchestratorClient.MethodView> methods, String notice) {
-        List<Map<String, String>> rows = new java.util.ArrayList<>();
+        List<Map<String, Object>> rows = new java.util.ArrayList<>();
         for (OrchestratorClient.MethodView m : methods) {
-            Map<String, String> row = new LinkedHashMap<>();
+            Map<String, Object> row = new LinkedHashMap<>();
             row.put("id", m.id());
             row.put("method", m.method());
             row.put("label", m.label());
             row.put("methodName", OrchestratorToolCatalog.methodName(session, m.method()));
+            row.put("changeable", m.changeable());
             rows.add(row);
         }
         var built = withTexts(session, form, MANAGE_METHODS_PAGE)

@@ -2,7 +2,7 @@ import type { PageContext } from '../KcContext'
 import { Layout } from '../Layout'
 import { t } from '../../texts'
 
-/** `orchestrator-manage-methods.ftl`: the account's active sign-in methods, each removable; add one, or done. */
+/** `orchestrator-manage-methods.ftl`: the account's active sign-in methods, each removable, some changeable; add one, or done. */
 export function OrchestratorManageMethods({ kcContext }: { kcContext: PageContext<'orchestrator-manage-methods.ftl'> }) {
   const { url, methods } = kcContext
   return (
@@ -15,6 +15,11 @@ export function OrchestratorManageMethods({ kcContext }: { kcContext: PageContex
             <li key={m.id}>
               <span>{m.label ?? m.methodName}</span>
               <form action={url.loginAction} method="post">
+                {m.changeable && (
+                  <button className="orc-button" type="submit" name="changeMethodInstanceId" value={m.id}>
+                    {t('Ändern')}
+                  </button>
+                )}
                 <button className="orc-button" type="submit" name="removeMethodInstanceId" value={m.id}>
                   {t('Entfernen')}
                 </button>

@@ -1,9 +1,10 @@
 # Idee: Anmeldeverfahren ändern und frischer Nachweis in der Verwaltung
 
-Status: **im Backend umgesetzt** (Stand 2026-10-04): die Frische-Regel und der Wunsch „Ändern“
-samt Endpunkt, maßgeblich sind [`MANAGE_AUTH_METHODS`](../journeys/manage-auth-methods.md) und
-[`DELETE_ACCOUNT`](../journeys/delete-account.md). Offen ist Abschnitt 4, „Ändern“ in App und
-Web.
+Status: **umgesetzt** (Stand 2026-10-04), in Backend, App und Web. Maßgeblich sind jetzt
+[`MANAGE_AUTH_METHODS`](../journeys/manage-auth-methods.md),
+[`DELETE_ACCOUNT`](../journeys/delete-account.md) und [API](../05-api.md), „Verfahren verwalten“.
+Abweichend vom Text unten kennzeichnet nicht die Regel „nur eine Instanz und ein Enroll-Tool“ ein
+Verfahren als änderbar, sondern das Enroll-Tool selbst (`changeable`).
 
 Das Dokument beschreibt zwei zusammengehörige Erweiterungen von `MANAGE_AUTH_METHODS`: ein eingerichtetes Verfahren ändern
 (neues Passwort, neue Telefonnummer) und einen frischen Nachweis verlangen, wenn der letzte

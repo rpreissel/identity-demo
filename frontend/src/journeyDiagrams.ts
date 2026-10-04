@@ -93,12 +93,14 @@ export const JOURNEY_DIAGRAMS: Record<
   },
   manageMethods: {
     title: t('Anmeldeverfahren verwalten'),
-    steps: [t('Niveau ausreichend?'), t('Verfahren wählen'), t('Eingerichtet')],
+    // Every wish (add, change, remove) clears the level first, then needs a proof of the last five
+    // minutes (ManageAuthMethodsStrategy). A step-up on the "Nein" branch already is that proof.
+    steps: [t('Niveau ausreichend?'), t('Nachweis frisch? Sonst bestätigen'), t('Einrichten, ändern oder entfernen'), t('Fertig')],
     branch: {
       atIndex: 0,
       mainLabel: t('Ja'),
       label: t('Nein'),
-      steps: [t('Step-up (Faktor bestätigen)'), t('Verfahren wählen'), t('Eingerichtet')],
+      steps: [t('Step-up (Faktor bestätigen)'), t('Einrichten, ändern oder entfernen'), t('Fertig')],
     },
   },
   reIdentify: {
@@ -160,7 +162,7 @@ export const JOURNEY_DIAGRAMS: Record<
 /**
  * Which diagram box a running journey's `stateType` (JourneyDebugStep.stateType) corresponds to.
  * Matched by hand against the shape above, so several real states can point at the same box (e.g.
- * AddRequested/RemoveRequested in manageMethods). States without an entry get no highlight.
+ * the wishes in manageMethods). States without an entry get no highlight.
  */
 export const CURRENT_STEP_BY_STATE_TYPE: Partial<Record<keyof typeof JOURNEY_DIAGRAMS, Record<string, JourneyDiagramCurrentStep>>> = {
   auto: {
@@ -198,8 +200,12 @@ export const CURRENT_STEP_BY_STATE_TYPE: Partial<Record<keyof typeof JOURNEY_DIA
   },
   manageMethods: {
     AddRequested: { index: 0 },
+    ChangeRequested: { index: 0 },
     RemoveRequested: { index: 0 },
-    Enrolling: { index: 1 },
+    RetractAttributeRequested: { index: 0 },
+    ConfirmationRequired: { index: 1 },
+    Enrolling: { index: 2 },
+    Changing: { index: 2 },
   },
   confirmPeerLogin: {
     Requested: { index: 0 },

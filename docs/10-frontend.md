@@ -292,7 +292,11 @@ Die Startseite nach der Anmeldung führt über Zeilen mit Winkel zu den Untersei
 eine Übersicht: das Sicherheitsniveau, eine Zeile „Anmeldeverfahren“ mit der Anzahl und eine Zeile
 „Konto löschen“, die die Löschung beginnt (die Rückfrage stellt das Backend). „Anmeldeverfahren“
 listet alle Verfahren des Kontos (FE-17) und hat „Weiteres Verfahren hinzufügen“ in der Leiste. Ein
-Verfahren öffnet eine eigene Seite mit „Deaktivieren“. Die Werte, die nur die Demo braucht (`amr`
+Verfahren öffnet eine eigene Seite mit „Deaktivieren“ und, wenn das Backend es als änderbar meldet
+(`ActiveMethodView.changeable`), mit „Ändern“ (`POST .../methods/{id}/changes`). Beim Ändern läuft
+das Formular des Enroll-Tools; aus `stepData.replaces` weiß es, dass es ersetzt, und betitelt sich
+entsprechend („Passwort ändern“, „Telefonnummer ändern“). Danach zeigt die App die Liste mit der Meldung
+„Anmeldeverfahren geändert“: Der Eintrag hat eine neue Id. Die Werte, die nur die Demo braucht (`amr`
 dieser Sitzung, Verfahren mit Sicherheitsniveau und Art), stehen in der Demo-Spalte.
 
 ### Anmeldeverfahren verwalten und Step-up (`AuthIntent.MANAGE_AUTH_METHODS`)

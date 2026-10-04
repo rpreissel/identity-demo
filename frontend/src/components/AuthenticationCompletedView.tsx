@@ -89,6 +89,8 @@ interface AuthenticationCompletedViewProps {
   onNavigate: (view: AccountView) => void
   onAddMethod: () => void
   onDeactivateMethod: (methodInstanceId: string) => void
+  /** Only called for a method the backend marks `changeable`. */
+  onChangeMethod: (methodInstanceId: string) => void
   onStepUp: (requiredAcr: string) => void
   onDeleteAccount: () => void
   onPeerLogin: () => void
@@ -158,6 +160,7 @@ export function AuthenticationCompletedView({
   onNavigate,
   onAddMethod,
   onDeactivateMethod,
+  onChangeMethod,
   onStepUp,
   onDeleteAccount,
   onPeerLogin,
@@ -358,8 +361,10 @@ export function AuthenticationCompletedView({
       <ul className="status-list">
         <StatusRow label={t('Verfahren')} value={kindLabel(selected)} />
       </ul>
+      {selected.changeable && <p>{t('Beim Ändern richten Sie das Verfahren neu ein. Der bisherige Eintrag gilt, bis der neue fertig ist.')}</p>}
       <p>{t('Nach dem Deaktivieren können Sie sich mit diesem Verfahren nicht mehr anmelden.')}</p>
       <StepActions>
+        {selected.changeable && <button onClick={() => onChangeMethod(selected.id)}>{t('Ändern')}</button>}
         <button className="destructive" onClick={() => onDeactivateMethod(selected.id)}>
           {t('Deaktivieren')}
         </button>

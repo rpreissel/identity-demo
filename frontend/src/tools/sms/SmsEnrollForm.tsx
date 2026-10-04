@@ -9,6 +9,8 @@ interface SmsEnrollFormProps {
   error?: string
   /** Demo-only: every register person, offered as a picker that fills the number; the first is prefilled. */
   demoPersons?: DemoPerson[]
+  /** The account already has a number: this run changes it (stepData.replaces). */
+  replaces?: boolean
 }
 
 // FE-9: client-side pre-validation; the backend still rejects malformed numbers with 400.
@@ -19,7 +21,7 @@ function isValidPhoneNumber(value: string): boolean {
 }
 
 /** toolId=enroll-sms / step=enroll (docs/06-ablaeufe.md #4): registers a new phone number. */
-export function SmsEnrollForm({ onSubmit, error, demoPersons }: SmsEnrollFormProps) {
+export function SmsEnrollForm({ onSubmit, error, demoPersons, replaces }: SmsEnrollFormProps) {
   const [phoneNumber, setPhoneNumber] = useState(demoPersons?.[0]?.phoneNumber ?? '')
   const [validationError, setValidationError] = useState('')
 
@@ -35,12 +37,16 @@ export function SmsEnrollForm({ onSubmit, error, demoPersons }: SmsEnrollFormPro
 
   return (
     <div className="card">
-      <h2>{t('SMS als zweiten Faktor einrichten')}</h2>
-      <p>{t('Geben Sie Ihre Telefonnummer ein, um einen Verifizierungscode zu erhalten.')}</p>
+      <h2>{replaces ? t('Telefonnummer ändern') : t('SMS als zweiten Faktor einrichten')}</h2>
+      <p>
+        {replaces
+          ? t('Geben Sie Ihre neue Telefonnummer ein. Sie ersetzt die bisherige, sobald Sie den Code bestätigt haben.')
+          : t('Geben Sie Ihre Telefonnummer ein, um einen Verifizierungscode zu erhalten.')}
+      </p>
       <form id="sms-enroll" onSubmit={handleSubmit} className="form-grid" style={{ marginTop: '1rem' }}>
         <DemoPersonPicker demoPersons={demoPersons} onSelect={(person) => setPhoneNumber(person.phoneNumber ?? '')} />
         <div className="form-group">
-          <label htmlFor="phoneNumber">{t('Telefonnummer')}</label>
+          <label htmlFor="phoneNumber">{replaces ? t('Neue Telefonnummer') : t('Telefonnummer')}</label>
           <input
             id="phoneNumber"
             type="tel"

@@ -8,6 +8,9 @@
         <#if hint??>
             <p class="orchestrator-subtitle">${hint}</p>
         </#if>
+        <#if replaces!false>
+            <p class="orchestrator-hint">${t.of("Das neue Passwort ersetzt Ihr bisheriges, sobald Sie fertig sind.")}</p>
+        </#if>
         <form id="kc-orchestrator-tool-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
             <div class="${properties.kcFormGroupClass!}">
                 <label for="password" class="${properties.kcLabelClass!}">${t.of("Neues Passwort")}</label>

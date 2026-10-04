@@ -26,6 +26,13 @@ describe('SmsEnrollForm', () => {
     expect(onSubmit).toHaveBeenCalledWith('+49 170 0000002')
   })
 
+  it('says that the number is changed when the step replaces an active one', () => {
+    render(<SmsEnrollForm onSubmit={vi.fn()} replaces />)
+
+    expect(screen.getByRole('heading', { name: 'Telefonnummer ändern' })).toBeInTheDocument()
+    expect(field('Neue Telefonnummer').value).toBe('')
+  })
+
   it('starts empty without demo values (ADR-28)', () => {
     render(<SmsEnrollForm onSubmit={vi.fn()} />)
 

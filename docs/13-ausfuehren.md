@@ -274,8 +274,8 @@ npm run test:e2e:keycloak     # Playwright gegen die Login-Seiten von Keycloak
   8090/8091 stören also nicht. Die Suite prüft nur, was allein im Browser sichtbar wird; die Logik
   dahinter decken die Integrationstests ab: Registrierung, „Zurück“, Gerät zurücksetzen, Tokens,
   die Rückkehr von Nect in die App (`nect-return.spec.ts`), KOBIL mit dem im Browser abgelegten
-  Entsperrgeheimnis (`kobil.spec.ts`) und das Fortsetzen nach einem Neuladen ohne zweite SMS
-  (`resume.spec.ts`).
+  Entsperrgeheimnis (`kobil.spec.ts`), das Fortsetzen nach einem Neuladen ohne zweite SMS
+  (`resume.spec.ts`) und das Ändern der Telefonnummer (`change-method.spec.ts`).
 - **`test:e2e:keycloak`** startet keinen Server. Vorher muss der ganze Stack laufen
   (`podman compose up -d`). Andere Adressen lassen sich über `ORCHESTRATOR_URL`, `KEYCLOAK_URL`,
   `ADMIN_USER` und `ADMIN_PASSWORD` setzen, für den lokalen OpenShift-Pod etwa
@@ -288,7 +288,8 @@ npm run test:e2e:keycloak     # Playwright gegen die Login-Seiten von Keycloak
   ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). `qr-login.spec.ts` folgt der
   QR-Anmeldung über beide Kanäle: Die Website zeigt den Kopplungscode, die App bestätigt einen
   frischen Faktor, nimmt den Code und gibt frei, und der Bestätigungscode der App beendet die
-  Anmeldung auf der Website.
+  Anmeldung auf der Website. `change-method.spec.ts` ändert das Passwort über die Required Action
+  zur Verwaltung der Verfahren, in beiden Themes und mit einer einzigen Browser-Sitzung.
 
 Beim ersten Mal braucht Playwright seinen Browser: `npx playwright install chromium`.
 

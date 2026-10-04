@@ -26,12 +26,13 @@ type WithPersons = { demoPersonsJson?: string }
 
 export type KcContextExtensionPerPage = {
   'tool-password-auth.ftl': ToolPage & { demoPassword?: string }
-  'tool-password-enroll.ftl': ToolPage & { demoPassword?: string }
+  /** replaces: the account already has a password, this run changes it. */
+  'tool-password-enroll.ftl': ToolPage & { demoPassword?: string; replaces?: boolean }
   'tool-password-lookup.ftl': ToolPage & WithPersons & { demoPassword?: string }
   'tool-email-auth.ftl': ToolPage & { demoTan?: string }
   'tool-email-lookup.ftl': ToolPage & WithPersons & { step: string; demoTan?: string; addressAgain?: boolean }
   'tool-sms-auth.ftl': ToolPage & { demoTan?: string }
-  'tool-sms-enroll.ftl': ToolPage & WithPersons & { step: string; demoTan?: string }
+  'tool-sms-enroll.ftl': ToolPage & WithPersons & { step: string; demoTan?: string; replaces?: boolean }
   'tool-sms-lookup.ftl': ToolPage & WithPersons & { step: string; demoTan?: string }
   'tool-ident-eid.ftl': ToolPage & WithPersons & { cardPage: boolean }
   'tool-ident-fsc.ftl': ToolPage & WithPersons & { personalienPage: boolean }
@@ -44,7 +45,8 @@ export type KcContextExtensionPerPage = {
     ({ step: 'waitForApp'; pairingCode: string; deepLink: string; qrDataUri: string; statusUrl: string } | { step: 'enterCode' })
   'orchestrator-manage-methods.ftl': {
     // methodName: what the method is called (the orchestrator's tool catalog), for a method without a label of its own
-    methods: { id: string; method: string; label?: string; methodName: string }[]
+    // changeable: the orchestrator says this method can be changed in place
+    methods: { id: string; method: string; label?: string; methodName: string; changeable?: boolean }[]
   }
   'orchestrator-tool.ftl': {
     toolId: string

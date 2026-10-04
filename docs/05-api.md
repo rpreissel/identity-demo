@@ -920,8 +920,11 @@ Ein zweiter Login wird nicht erzwungen. Der vorangehende Durchlauf von `orchestr
 nutzt das bestehende SSO-Cookie von Keycloak, und `OrchestratorResumeAuthenticator` bringt den
 neuen Kanal im Orchestrator über `restoreData` auf `AUTHENTICATED`, sofern die Nachweise reichen.
 Sonst greift der normale Weg über Login und Step-up. Wiederhergestellte Nachweise behalten ihren
-Zeitpunkt: Die Liste erscheint ohne Nachfrage, „Hinzufügen" und „Entfernen" verlangen aber die
-erneute Bestätigung, sobald der letzte Nachweis älter als fünf Minuten ist. Endet der Ablauf erfolgreich, ruft die Required
+Zeitpunkt: Die Liste erscheint ohne Nachfrage, „Hinzufügen", „Ändern" und „Entfernen" verlangen aber
+die erneute Bestätigung, sobald der letzte Nachweis älter als fünf Minuten ist. „Ändern" steht nur
+an Einträgen mit `changeable` und ruft `POST .../methods/{id}/changes` auf; die Seiten von
+`enroll-password` und `enroll-sms` nennen aus `stepData.replaces`, dass der bisherige Eintrag
+ersetzt wird. Beide Themes zeigen dasselbe. Endet der Ablauf erfolgreich, ruft die Required
 Action `startEnrollments(...)` auf dem frischen Kanal auf und zeigt `next` über dieselbe Zuordnung
 zu den `WebToolRenderer`n an. Frontend: `redirectToManageMethods()` (`webOidc.ts`) baut dieselbe
 `/auth`-URL wie `redirectToLogin`; zurück geht es über den bestehenden Weg

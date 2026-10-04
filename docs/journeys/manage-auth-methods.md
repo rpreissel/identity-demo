@@ -54,7 +54,8 @@ den Step-up ab, endet die Journey (`Cancel`); derselbe Step-up wird nicht erneut
 **Ändern ist erneutes Einrichten.** `ChangeRequested` nennt den Eintrag, der ersetzt werden soll.
 `Changing` bietet genau ein Tool an: das `enroll-*`-Tool dieses Verfahrens. Der neue Eintrag
 ersetzt den alten erst, wenn er fertig ist (`Action.AdoptCredential`); bricht der Nutzer ab, endet
-die Journey, und der alte Eintrag gilt weiter. Ein anderes Verfahren wird nicht angeboten.
+die Journey, und der alte Eintrag gilt weiter. Ein anderes Verfahren wird nicht angeboten;
+„Zurück“ im Tool zeigt deshalb eine Auswahl mit diesem einen Verfahren und „Abbrechen“.
 
 - **Änderbar** ist ein Verfahren, dessen Enroll-Tool das sagt (`enroll(…, changeable = true)`):
   `sms` und `password`. Verfahren mit einem Credential je Gerät (`device`, `kobil`) werden

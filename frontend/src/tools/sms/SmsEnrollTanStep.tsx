@@ -15,12 +15,14 @@ export function SmsEnrollTanStep({
   error,
   demoTan,
   demoPersons,
+  replaces,
 }: {
   onSubmitTan: (tan: string) => void
   onSubmitNumber: (phoneNumber: string) => void
   error?: string
   demoTan?: string
   demoPersons?: DemoPerson[]
+  replaces?: boolean
 }) {
   const [editingNumber, setEditingNumber] = useState(false)
   useInnerBack(editingNumber ? null : () => setEditingNumber(true))
@@ -29,7 +31,7 @@ export function SmsEnrollTanStep({
   useEffect(() => setEditingNumber(false), [demoTan])
 
   return editingNumber ? (
-    <SmsEnrollForm onSubmit={onSubmitNumber} error={error} demoPersons={demoPersons} />
+    <SmsEnrollForm onSubmit={onSubmitNumber} error={error} demoPersons={demoPersons} replaces={replaces} />
   ) : (
     <TanInputForm onSubmit={onSubmitTan} error={error} demoTan={demoTan} />
   )

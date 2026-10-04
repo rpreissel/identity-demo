@@ -15,7 +15,7 @@ import java.util.List;
  * Web-Kanal-Selbstbedienung "Anmeldeverfahren verwalten" (docs/05-api.md, "Anmeldeverfahren
  * verwalten im Web-Kanal"), reached via {@code kc_action=orchestrator-manage-methods} after the
  * login flow; Resume already brought the channel to {@code AUTHENTICATED}. Shows the active-methods
- * list with add and remove, and returns to it with a status line after each action. Has its own
+ * list with add, change and remove, and returns to it with a status line after each action. Has its own
  * small dispatch loop, because {@link RequiredActionContext} differs too much from
  * {@code AuthenticationFlowContext}; only {@link WebFormRenderer} is shared.
  */
@@ -23,7 +23,7 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
 
     static final String PROVIDER_ID = "orchestrator-manage-methods";
 
-    /** "add" or "remove": which action the current sub-journey serves, for the status line. */
+    /** "add", "remove" or "change": which action the current sub-journey serves, for the status line. */
     private static final String PENDING_ACTION = "orchestrator_manage_pending_action";
 
     private static final Logger LOG = Logger.getLogger(OrchestratorManageMethodsRequiredAction.class);
@@ -79,6 +79,12 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
                 if ("add".equals(form.getFirst("action"))) {
                     authSession.setAuthNote(PENDING_ACTION, "add");
                     handleResponse(context, client.startEnrollments(channelSessionId), true, false);
+                    return;
+                }
+                String changeInstanceId = form.getFirst("changeMethodInstanceId");
+                if (changeInstanceId != null && !changeInstanceId.isBlank()) {
+                    authSession.setAuthNote(PENDING_ACTION, "change");
+                    handleResponse(context, client.changeMethod(channelSessionId, changeInstanceId), true, false);
                     return;
                 }
                 String methodInstanceId = form.getFirst("removeMethodInstanceId");
@@ -169,7 +175,8 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
                     ? KcTexts.of(context.getSession(), "Abgebrochen.")
                     : "add".equals(action)
                         ? (firstCall ? KcTexts.of(context.getSession(), "Keine weiteren Anmeldeverfahren verfügbar.") : KcTexts.of(context.getSession(), "Anmeldeverfahren hinzugefügt."))
-                        : "remove".equals(action) ? KcTexts.of(context.getSession(), "Anmeldeverfahren entfernt.") : null;
+                        : "remove".equals(action) ? KcTexts.of(context.getSession(), "Anmeldeverfahren entfernt.")
+                        : "change".equals(action) ? KcTexts.of(context.getSession(), "Anmeldeverfahren geändert.") : null;
             renderList(context, channelSessionId, notice);
             return;
         }

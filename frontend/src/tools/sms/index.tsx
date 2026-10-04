@@ -5,6 +5,7 @@ import { SmsEnrollForm } from './SmsEnrollForm'
 import { SmsEnrollTanStep } from './SmsEnrollTanStep'
 import { TanInputForm } from './TanInputForm'
 import { attemptError } from '../stepData'
+import { stepDataOf } from '../../types'
 import { t } from '../../texts'
 
 const ICON = '📱'
@@ -23,9 +24,15 @@ export const enrollSms: ToolModule = {
           actor: t('Sie in der App, danach das Tool enroll-sms im Orchestrator.'),
         },
   render(ctx) {
+    const replaces = stepDataOf(ctx.stepData, 'enroll-sms')?.replaces
     if (ctx.step === 'enroll') {
       return (
-        <SmsEnrollForm onSubmit={(phoneNumber) => enrollSmsNumber(ctx, phoneNumber)} error={attemptError(ctx)} demoPersons={ctx.demo?.persons} />
+        <SmsEnrollForm
+          onSubmit={(phoneNumber) => enrollSmsNumber(ctx, phoneNumber)}
+          error={attemptError(ctx)}
+          demoPersons={ctx.demo?.persons}
+          replaces={replaces}
+        />
       )
     }
     if (ctx.step === 'tanInput') {
@@ -36,6 +43,7 @@ export const enrollSms: ToolModule = {
           error={attemptError(ctx)}
           demoTan={ctx.demo?.tan}
           demoPersons={ctx.demo?.persons}
+          replaces={replaces}
         />
       )
     }

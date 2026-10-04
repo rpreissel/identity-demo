@@ -4,6 +4,7 @@ import { EmailPasswordLookupForm } from './EmailPasswordLookupForm'
 import { PasswordEnrollForm } from './PasswordEnrollForm'
 import { PasswordLoginForm } from './PasswordLoginForm'
 import { attemptError } from '../stepData'
+import { stepDataOf } from '../../types'
 import { t } from '../../texts'
 
 const ICON = '🔑'
@@ -17,7 +18,14 @@ export const enrollPasswordTool: ToolModule = {
   }),
   render(ctx) {
     if (ctx.step === 'enroll') {
-      return <PasswordEnrollForm onSubmit={(fields) => enrollPassword(ctx, fields)} error={attemptError(ctx)} demoPassword={ctx.demo?.password} />
+      return (
+        <PasswordEnrollForm
+          onSubmit={(fields) => enrollPassword(ctx, fields)}
+          error={attemptError(ctx)}
+          demoPassword={ctx.demo?.password}
+          replaces={stepDataOf(ctx.stepData, 'enroll-password')?.replaces}
+        />
+      )
     }
     return null
   },
