@@ -107,6 +107,7 @@ class JourneyRecorder(
             tool.levelOf(outcome).value,
             role = tool.role.name,
             report = outcome.auditDetails.orEmpty(),
+            tool = channel.declaredVersionOf(tool.toolId.value),
         )
     }
 
@@ -116,14 +117,20 @@ class JourneyRecorder(
      */
     fun recordSignIn(journey: AuthJourney, channel: ChannelSession, acr: AcrLevel) {
         val intent = journey.intent ?: return
-        val amr = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }?.currentAmr.orEmpty()
+        val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
+        val amr = evidence?.currentAmr.orEmpty()
+        // The orchestrator tools behind it, in the version this client spoke (ADR-51).
+        val tools = evidence?.methods.orEmpty()
+            .filter { it.source == AmrSource.ORCHESTRATOR }
+            .mapNotNull { it.amrSourceId?.let(channel::declaredVersionOf) }
+            .distinct()
         when (val subject = channel.subject ?: return) {
             is Subject.Account -> when {
-                intent == AuthIntent.STEP_UP -> signInLog.steppedUp(subject.id, channel.channel?.name, acr.value, amr)
-                intent.isEntryIntent -> signInLog.signedIn(subject.id, channel.channel?.name, acr.value, amr, intent.name)
+                intent == AuthIntent.STEP_UP -> signInLog.steppedUp(subject.id, channel.channel?.name, acr.value, amr, tools)
+                intent.isEntryIntent -> signInLog.signedIn(subject.id, channel.channel?.name, acr.value, amr, tools, intent.name)
             }
             // A process access has one proof and no step-up (ADR-48).
-            is Subject.Invitation -> signInLog.invitationSignedIn(subject.id, channel.channel?.name, acr.value, amr)
+            is Subject.Invitation -> signInLog.invitationSignedIn(subject.id, channel.channel?.name, acr.value, amr, tools)
         }
     }
 

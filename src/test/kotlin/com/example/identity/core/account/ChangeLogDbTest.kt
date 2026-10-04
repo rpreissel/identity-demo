@@ -40,10 +40,10 @@ class ChangeLogDbTest(
 
     fun livedThrough(accountId: AccountId) {
         accountService.addIdentification(accountId, "ident-fsc", "loa2", role = "IDENTIFICATION",
-            report = mapOf("provider" to "fsc-service", "providerTxId" to "FSC-1", "documentNumber" to "C01X00T47"))
+            report = mapOf("provider" to "fsc-service", "providerTxId" to "FSC-1", "documentNumber" to "C01X00T47"), tool = "ident-fsc@1")
         val method = accountService.addAuthenticationMethod(
             accountId, "sms", EnrollmentRef("auth_sms.enrollment", "1"), enrolledUnderAcr = "loa1",
-            enrolledUnderAmr = listOf("email", "password"), channel = "WEB"
+            enrolledUnderAmr = listOf("email", "password"), channel = "WEB", tool = "enroll-sms@1"
         ).activeAuthenticationMethods.single()
         accountService.deactivateAuthenticationMethod(accountId, method.id)
         accountService.deleteAccount(accountId)
@@ -64,9 +64,12 @@ class ChangeLogDbTest(
                 trail[0].subject shouldBe "ident-fsc"
                 trail[0].acr shouldBe "loa2"
                 // Every row names its own type and version, so it explains itself without this code.
-                trail.forEach { it.details!!["type"] shouldBe it.changeType.name; it.details!!["version"] shouldBe 1 }
+                trail.forEach { it.details!!["type"] shouldBe it.changeType.name; it.details!!["version"] shouldBe it.changeType.detailsVersion }
                 // The references are kept, the document number the tool reported is not (§ 20 PAuswG).
                 trail[0].details!!["providerTxId"] shouldBe "FSC-1"
+                // Which tool in which version the client spoke (ADR-51).
+                trail[0].details!!["tool"] shouldBe "ident-fsc@1"
+                trail[1].details!!["tool"] shouldBe "enroll-sms@1"
                 trail[0].details!!.containsKey("documentNumber") shouldBe false
                 // How the method was added outlives it: the session's proofs and the channel.
                 trail[1].details!!["amr"] shouldBe listOf("email", "password")

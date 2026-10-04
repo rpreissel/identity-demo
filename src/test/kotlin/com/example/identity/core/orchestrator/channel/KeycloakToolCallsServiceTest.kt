@@ -67,14 +67,14 @@ class KeycloakToolCallsServiceTest : BehaviorSpec({
 
     given("a failed auth-password call") {
         val lockout = mockk<AccountLockoutService>()
-        justRun { lockout.recordFailure(accountId, "WEB", tool("auth-password").method) }
+        justRun { lockout.recordFailure(accountId, "WEB", tool("auth-password").method, null) }
         val service = KeycloakToolCallsService(lockout, mockk())
 
         `when`("it is applied") {
             service.apply(accountId, tool("auth-password").module, ToolOutcome.Failed.KnownAccountAuth(Text("Passwort falsch")))
 
             then("it charges the account's counter on the WEB channel") {
-                verify(exactly = 1) { lockout.recordFailure(accountId, "WEB", "password") }
+                verify(exactly = 1) { lockout.recordFailure(accountId, "WEB", "password", null) }
             }
         }
     }

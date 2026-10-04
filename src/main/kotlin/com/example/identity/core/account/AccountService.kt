@@ -216,13 +216,17 @@ class AccountService(
      * Called after the run's claims are recorded, so they are part of it.
      */
     @Transactional
-    fun addIdentification(accountId: AccountId, method: String, loa: String?, role: String? = null, report: Map<String, Any?> = emptyMap()) {
+    fun addIdentification(
+        accountId: AccountId, method: String, loa: String?, role: String? = null, report: Map<String, Any?> = emptyMap(),
+        /** The tool in the version the client spoke (`ident-fsc@1`). */
+        tool: String? = null,
+    ) {
         val verified = claimLedger.provenValues(accountId, PERSON_LOOKUP_ATTRIBUTES)
         val lookupKey = personLookupKey.of(
             verified[AttributeType.FAMILY_NAME], verified[AttributeType.GIVEN_NAMES], verified[AttributeType.BIRTH_DATE]?.let(LocalDate::parse)
         )
         val personId = anchorRegistry.valueOf(accountId, AttributeType.PERSON_ID)
-        changeLog.identified(accountId, method, loa, role, report, lookupKey, personId?.let(::PartnerNumber))
+        changeLog.identified(accountId, method, loa, role, report, lookupKey, personId?.let(::PartnerNumber), tool)
     }
 
     /**
@@ -246,6 +250,8 @@ class AccountService(
          */
         enrolledUnderAmr: List<String> = emptyList(),
         channel: String? = null,
+        /** The enrolling tool in the version the client spoke (`enroll-sms@1`), for the same event. */
+        tool: String? = null,
         allowsMultipleInstances: Boolean = false,
         label: String? = null,
         /** Given by the enrollment path up front, so its claims can point at this instance (ADR-12). */
@@ -271,7 +277,7 @@ class AccountService(
             // (docs/09-dpop.md). A second row would match every future lookup alike.
             return getProfileOrThrow(accountId)
         }
-        changeLog.methodAdded(accountId, method, enrolledUnderAcr, enrolledUnderAmr, channel, now)
+        changeLog.methodAdded(accountId, method, enrolledUnderAcr, enrolledUnderAmr, channel, tool, now)
         accountAuthMethodRepository.save(
             AccountAuthMethod(
                 accountId = accountId,

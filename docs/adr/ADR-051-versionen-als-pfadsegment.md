@@ -35,6 +35,12 @@ Segment im Pfad, und jede Version zählt für sich.
 - **Eine neue Orchestrator-Version ist ein Pflichtupdate.** Der Server führt genau eine; jedes Tool
   antwortet im Umschlag dieser Version. Der Kanal merkt sich keine Orchestrator-Version, und kein
   Tool gibt zwei Umschlag-Formen aus. Der Umschlag ändert sich deshalb möglichst nur additiv.
+- **Das Audit nennt die Fassung.** Wo ein Protokoll ein Tool nennt, steht es in derselben
+  Schreibweise wie in `availableTools`: `change_log` bei `IDENTIFIED` und `METHOD_ADDED`
+  (`tool`), `sign_in_log` bei `SIGNED_IN` und `STEPPED_UP` (`tools`) und bei `SIGN_IN_FAILED`
+  (`tool`), `journey_trace` bei Abschluss und Abbruch eines Tools. `detailsVersion` dieser
+  Ereignisse ist dafür auf 2 gestiegen (ADR-39). Die Herkunft eines Werts (`claim_source`) bleibt
+  die reine toolId: Sie ist fachlich das Tool, und ihre Vergleiche rechnen damit.
 - **Vertragsdateien je Fassung:** `api/contract/tools/<toolId>/v<N>.yaml`, eingefroren unter
   `api/published/tools/<toolId>/v<N>.yaml`. `checkPublishedApiCompatibility` meldet einen Bruch an
   `<toolId>@<N>`; die Abhilfe ist eine additive Änderung oder eine neue Fassung.

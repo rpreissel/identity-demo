@@ -42,7 +42,7 @@ classDiagram
     string changeType "IDENTIFIED, ..."
     string subject "Verfahren"
     string acr
-    Map details "type, version, Rolle, Anbieter, Vorgang, Version, Hash"
+    Map details "type, version, Rolle, Tool, Anbieter, Vorgang, Version, Hash"
     Instant occurredAt
   }
   class AccountAuthMethod {
@@ -83,7 +83,8 @@ Entscheidungen, die an diesem Modell hängen:
   Änderungen sperren nur die Kontozeile, indem sie deren Version erhöhen. Deaktivierte Einträge
   tragen `deactivated_at`; ein CHECK-Constraint hält `active` und `deactivated_at` stimmig.
 - **Welche Nachweise beim Einrichten vorlagen, steht nur im Änderungsprotokoll.** Das Ereignis
-  `METHOD_ADDED` trägt in `details` die Nachweise der Sitzung (`amr`) und den Kanal (`channel`),
+  `METHOD_ADDED` trägt in `details` die Nachweise der Sitzung (`amr`), den Kanal (`channel`) und
+  das einrichtende Tool in der Fassung, die der Client sprach (`tool`: `enroll-sms@1`, ADR-51),
   denn nur dort überdauern sie Deaktivierung und Kontolöschung (ADR-39). Auf die Auswahl der
   Kandidaten und die Berechnung des ACR wirken sie nicht; maßgeblich ist allein
   `enrolledUnderAcr`. `details` enthält nur, was das zuständige Modul selbst wieder liest

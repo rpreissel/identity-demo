@@ -21,13 +21,13 @@ import java.time.Instant
 /** What happened to a sign-in (ADR-39, addendum). [detailsVersion] works like [ChangeType.detailsVersion]. */
 enum class SignInType(val detailsVersion: Int) {
     /** An entry journey (logging in, registering, a peer login) left the channel authenticated. */
-    SIGNED_IN(1),
+    SIGNED_IN(2),
 
     /** A STEP_UP journey raised an authenticated channel's level. */
-    STEPPED_UP(1),
+    STEPPED_UP(2),
 
     /** One proof of an existing account failed - a wrong password, TAN, OTP. */
-    SIGN_IN_FAILED(1),
+    SIGN_IN_FAILED(2),
 
     /** That failure tripped the account's brute-force lock. */
     LOCKED_OUT(1),

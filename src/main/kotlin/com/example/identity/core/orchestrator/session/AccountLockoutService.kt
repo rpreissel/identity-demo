@@ -37,12 +37,13 @@ class AccountLockoutService(
 
     /**
      * One failed proof: counted and written to the sign-in log, with the lockout if this failure
-     * tripped it (ADR-39). Every such failure passes here, whatever the channel.
+     * tripped it (ADR-39). Every such failure passes here, whatever the channel. [tool]: the tool in
+     * the version the client spoke, `null` for a check Keycloak asked for.
      */
-    fun recordFailure(accountId: AccountId, channel: String?, method: String) {
+    fun recordFailure(accountId: AccountId, channel: String?, method: String, tool: String?) {
         val lockedBefore = counter.lockedUntil(RateLimitScope.ACCOUNT, key(accountId))
         counter.recordFailure(RateLimitScope.ACCOUNT, key(accountId), MAX_FAILURES, LOCKOUT_DURATION)
-        signInLog.signInFailed(accountId, channel, method)
+        signInLog.signInFailed(accountId, channel, method, tool)
         val lockedNow = counter.lockedUntil(RateLimitScope.ACCOUNT, key(accountId))
         if (lockedNow != null && lockedNow != lockedBefore && clock.instant().isBefore(lockedNow)) {
             signInLog.lockedOut(accountId, channel, lockedNow)

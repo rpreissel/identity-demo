@@ -70,14 +70,14 @@ class AccountLockoutServiceTest : BehaviorSpec({
         val service = AccountLockoutService(counter, signInLog, clock = TEST_CLOCK)
 
         `when`("a failure is recorded") {
-            service.recordFailure(accountId, "APP", "sms")
+            service.recordFailure(accountId, "APP", "sms", "auth-sms@1")
 
             then("it counts the failure with the service's limit and lockout duration") {
                 verify(exactly = 1) { counter.recordFailure(RateLimitScope.ACCOUNT, key, 5, Duration.ofMinutes(15)) }
             }
 
             then("it logs the failed sign-in") {
-                verify(exactly = 1) { signInLog.signInFailed(accountId, "APP", "sms") }
+                verify(exactly = 1) { signInLog.signInFailed(accountId, "APP", "sms", "auth-sms@1") }
             }
 
             then("it logs the lockout this failure caused") {
@@ -95,10 +95,10 @@ class AccountLockoutServiceTest : BehaviorSpec({
         val service = AccountLockoutService(counter, signInLog, clock = TEST_CLOCK)
 
         `when`("a failure is recorded") {
-            service.recordFailure(accountId, "WEB", "password")
+            service.recordFailure(accountId, "WEB", "password", "auth-password@1")
 
             then("it logs the failed sign-in but no second lockout") {
-                verify(exactly = 1) { signInLog.signInFailed(accountId, "WEB", "password") }
+                verify(exactly = 1) { signInLog.signInFailed(accountId, "WEB", "password", "auth-password@1") }
                 verify(exactly = 0) { signInLog.lockedOut(any(), any(), any()) }
             }
         }
@@ -112,10 +112,10 @@ class AccountLockoutServiceTest : BehaviorSpec({
         val service = AccountLockoutService(counter, signInLog, clock = TEST_CLOCK)
 
         `when`("a failure is recorded") {
-            service.recordFailure(accountId, "APP", "sms")
+            service.recordFailure(accountId, "APP", "sms", "auth-sms@1")
 
             then("it logs the failed sign-in and no lockout") {
-                verify(exactly = 1) { signInLog.signInFailed(accountId, "APP", "sms") }
+                verify(exactly = 1) { signInLog.signInFailed(accountId, "APP", "sms", "auth-sms@1") }
                 verify(exactly = 0) { signInLog.lockedOut(any(), any(), any()) }
             }
         }

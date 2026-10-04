@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.ToolVersion
 import com.example.identity.core.orchestrator.domain.SessionEvidenceId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ids.AccountId
@@ -125,6 +126,13 @@ class ChannelSession(
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "available_tools")
     var availableClientTools: MutableSet<String> = mutableSetOf()
+
+    /**
+     * [toolId] in the version this channel declared, in its wire form (`enroll-sms@1`): what the
+     * audit records about a run (ADR-51). `null` if the channel declared no such tool.
+     */
+    fun declaredVersionOf(toolId: String): String? =
+        availableClientTools.map(ToolVersion::parse).firstOrNull { it.toolId.value == toolId }?.toString()
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant? = now

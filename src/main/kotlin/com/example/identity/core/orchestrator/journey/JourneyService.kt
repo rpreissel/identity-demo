@@ -401,7 +401,7 @@ class JourneyService(
                 // acrFloor is what this step was judged against. resolvedAcr is the combined level
                 // of all evidence; a Completed entry's achievedAcr shows only that one tool's
                 // ceiling, so two loa1 factors reaching loa2 would otherwise not show.
-                detail = journeyTraceDetails.eventDetail(event) +
+                detail = journeyTraceDetails.eventDetail(event, channel) +
                     journeyTraceDetails.transitionDetail(transition, journey, channel, state, availableTools) { target ->
                         routing.nextFor(target, availableTools)
                     } +

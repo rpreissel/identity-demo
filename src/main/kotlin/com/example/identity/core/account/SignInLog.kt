@@ -41,20 +41,27 @@ class SignInLog(
     private val clock: Clock,
 ) {
 
-    /** An entry journey (logging in, registering, a peer login) left the channel authenticated. */
+    /**
+     * An entry journey (logging in, registering, a peer login) left the channel authenticated.
+     * [tools]: the orchestrator tools behind [amr], each in the version the client spoke
+     * (`auth-sms@1`, ADR-51); proofs Keycloak made itself have none.
+     */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun signedIn(accountId: AccountId, channel: String?, acr: String?, amr: List<String>, intent: String) =
-        record(accountId, SignInType.SIGNED_IN, channel, acr, mapOf("amr" to amr, "intent" to intent))
+    fun signedIn(accountId: AccountId, channel: String?, acr: String?, amr: List<String>, tools: List<String>, intent: String) =
+        record(accountId, SignInType.SIGNED_IN, channel, acr, mapOf("amr" to amr, "tools" to tools, "intent" to intent))
 
-    /** A STEP_UP journey raised the level of an authenticated channel. */
+    /** A STEP_UP journey raised the level of an authenticated channel. [tools] as in [signedIn]. */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun steppedUp(accountId: AccountId, channel: String?, acr: String?, amr: List<String>) =
-        record(accountId, SignInType.STEPPED_UP, channel, acr, mapOf("amr" to amr))
+    fun steppedUp(accountId: AccountId, channel: String?, acr: String?, amr: List<String>, tools: List<String>) =
+        record(accountId, SignInType.STEPPED_UP, channel, acr, mapOf("amr" to amr, "tools" to tools))
 
-    /** One proof of [accountId] failed with [method] - the account was known, the proof was wrong. */
+    /**
+     * One proof of [accountId] failed with [method] - the account was known, the proof was wrong.
+     * [tool] is the tool in the version the client spoke, `null` for a check Keycloak asked for.
+     */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun signInFailed(accountId: AccountId, channel: String?, method: String) =
-        record(accountId, SignInType.SIGN_IN_FAILED, channel, details = mapOf("method" to method))
+    fun signInFailed(accountId: AccountId, channel: String?, method: String, tool: String?) =
+        record(accountId, SignInType.SIGN_IN_FAILED, channel, details = mapOf("method" to method, "tool" to tool))
 
     /** That failure locked the account until [lockedUntil]. */
     @Transactional(propagation = Propagation.REQUIRED)
@@ -66,11 +73,11 @@ class SignInLog(
     fun signedOut(accountId: AccountId, channel: String?, endedBy: String) =
         record(accountId, SignInType.SIGNED_OUT, channel, details = mapOf("endedBy" to endedBy))
 
-    /** A process access (ADR-48) left a Web channel signed in as [invitation]. */
+    /** A process access (ADR-48) left a Web channel signed in as [invitation]. [tools] as in [signedIn]. */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun invitationSignedIn(invitation: InvitationId, channel: String?, acr: String?, amr: List<String>) =
+    fun invitationSignedIn(invitation: InvitationId, channel: String?, acr: String?, amr: List<String>, tools: List<String>) =
         save(SignInLogEntry(invitation = invitation, signInType = SignInType.SIGNED_IN, channel = channel, acr = acr,
-            details = details(SignInType.SIGNED_IN, mapOf("amr" to amr)), occurredAt = clock.instant()))
+            details = details(SignInType.SIGNED_IN, mapOf("amr" to amr, "tools" to tools)), occurredAt = clock.instant()))
 
     /** A session of [invitation] ended on purpose; [endedBy] as in [signedOut]. */
     @Transactional(propagation = Propagation.REQUIRED)

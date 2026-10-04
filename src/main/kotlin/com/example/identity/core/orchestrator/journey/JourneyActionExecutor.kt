@@ -274,6 +274,7 @@ class JourneyActionExecutor(
             reference = enrolled.reference,
             enrolledUnderAmr = evidence.currentAmr,
             channel = channel.channel?.name,
+            tool = channel.declaredVersionOf(action.tool.toolId.value),
             allowsMultipleInstances = action.tool.allowsMultipleInstances,
             label = label,
             instanceId = methodInstanceId
