@@ -550,9 +550,58 @@ einen Cluster gespielt.
 
 **Offen**
 
-- Zweiter Durchgang für Journey, Policy und Identität (Abschnitt 7).
 - SA-25 NetworkPolicy für OpenShift.
 - Passwortwechsel (`DPoP-demo-164n.27`): `enroll-password` wird bei aktivem Passwort nicht angeboten;
   ein Wechsel geht heute nur über Entfernen und neu Einrichten. Zu entscheiden: Ersetzen anbieten,
   darauf eine Required Action `orchestrator-change-password` und der Anstoß durch den Admin per
   `execute-actions-email`.
+
+## 10. Zweiter Durchgang: Journey, Policy, Identität (2026-10-04)
+
+Der erste Bericht zu diesem Bereich war abgebrochen (Abschnitt 7). Dieser Durchgang hat die
+zentralen Klassen selbst gelesen: `DefaultAuthPolicy`, `CredentialRules`, `AccountRules`,
+`ManageAuthMethodsStrategy`, die schreibenden Teile von `JourneyService` und
+`JourneyActionExecutor`, `ToolJourneyService`, `ChannelService`, `AccountLockoutService`,
+`PersonLockoutService`, `AccountDeletionService`, `AnchorDecision`, `IdentityMatchingService`,
+`RetentionJob`. Die fünf verlorenen Befunde des ersten Berichts lassen sich nicht wiederherstellen;
+was hier steht, ist neu gefunden.
+
+**Befunde**
+
+- ~~SA-26 (mittel) Die Kontosperre galt für Verfahren mit bekanntem Konto nur beim Aktivieren.~~
+  `ToolJourneyService.beginActivation` prüfte `assertNotLocked`, jede spätere Eingabe in derselben
+  Tool-Sitzung nicht. Belegt mit einem Testlauf: drei Passwort-Sitzungen geöffnet, fünf Fehlversuche
+  sperren das Konto (`locked_until` gesetzt), danach meldet die dritte Sitzung mit dem richtigen
+  Passwort `AUTHENTICATED`. Damit galt weder „gesperrt auch für das richtige Passwort“ (07 §3c, §4)
+  noch die Grenze von fünf Versuchen: Jede vorher geöffnete Sitzung brachte drei weitere.
+  Erledigt: `ToolJourneyService.loadCurrent` prüft die Sperre bei jedem schreibenden Aufruf eines
+  `KNOWN_ACCOUNT_AUTH`-Tools. Test: `AccountRateLimitIntegrationTest`. Folge: Auch „Zurück“ und
+  „Abbrechen“ in einer solchen Sitzung antworten während der Sperre mit `423`.
+- **SA-27 (niedrig) Die Kontosperre ist „prüfen, dann zählen“.** Lookup-Tools fragen
+  `Lockouts.isLockedOut` im Controller, gezählt wird erst in `applyOutcome`; bei bekanntem Konto
+  ebenso. Parallele Versuche über mehrere Kanäle passieren alle die Prüfung, bevor der fünfte zählt.
+  07 §4 schließt dieses Muster für alle Zähler aus. Fix: den Versuch vor der Prüfung in einem
+  `UPDATE` buchen, wie jetzt beim Admin-Login (SA-6). `DPoP-demo-164n.29`.
+- **Hinweis** Ein in der Verfahrensverwaltung angebotenes Einrichten wird bei Abschluss nicht erneut
+  gegen `loa2` geprüft (`ManageAuthMethodsStrategy`, Zustand `Enrolling`). Altert der Nachweis
+  währenddessen, wird das neue Verfahren unter dem dann gültigen Niveau eingetragen
+  (`levelToWriteUnder`), also eher zu niedrig als zu hoch; kein Weg zu mehr Niveau.
+- **Hinweis** A-5 der vierten Bewertung besteht weiter: Ein erfolgreicher Vorgangszugang setzt den
+  Personenzähler nicht zurück.
+
+**Geprüft und in Ordnung**
+
+- Niveau: Alterung über `recent`, MFA je Achse (Identität und Anmeldung mischen sich nie),
+  NIST-Grenze `loa2` für Kombinationen, Deckel `enrolledUnderAcr`, `proofLevel` nimmt bei mehreren
+  Instanzen den niedrigsten Deckel.
+- Verfahren entfernen und Angaben zurücknehmen: Schutz gegen Selbstaussperrung über
+  `MethodDependencies` samt abhängiger Verfahren; das Gate `loa2` in derselben Transition.
+- Konto löschen: Niveau unmittelbar vor dem Löschen neu geprüft; Kanäle abgemeldet; nur
+  Konto-Zähler zurückgesetzt, nicht die der Person.
+- Kontozuordnung: fremder Anker ist Konflikt, nie Übernahme; widersprüchliche Anker sind Konflikt;
+  Korrelation und Adresswechsel verlangen passende Identität; Platzhalter seit SA-9 ebenso.
+- Tool-Sitzungen: Nur `RUNNING` und nicht abgelaufen ist verwendbar
+  (`SessionManagementService.findToolSessionById`), nur die aktuelle schreibt (`isCurrent`).
+- Gerät: Neuverknüpfung nur nach Rückfrage, widerruft die Credentials des früheren Kontos auf
+  diesem Schlüssel.
+- Aufbewahrung: Reihenfolge von innen nach außen, Zähler mit laufender Sperre bleiben.

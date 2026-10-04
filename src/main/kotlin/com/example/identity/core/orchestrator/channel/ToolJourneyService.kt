@@ -155,6 +155,11 @@ class ToolJourneyService(
     override fun loadCurrent(toolSessionId: ToolSessionId, bindingKeyRef: String, toolId: String): Context {
         val context = loadContext(toolSessionId, bindingKeyRef, toolId)
         requireCurrentTool(context)
+        // On every attempt, not only at activation: a session opened before the lock must not keep
+        // guessing, nor sign in with the right password while the account is locked (07-betrieb #4).
+        if (toolRegistry.toolOf(ToolId(toolId)).role == ToolRole.KNOWN_ACCOUNT_AUTH) {
+            context.accountId?.let { accountLockoutService.assertNotLocked(it) }
+        }
         return context
     }
 

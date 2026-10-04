@@ -564,6 +564,9 @@ in seinem eigenen Namensraum. Jeder Zähler ist ein einziges `UPDATE`.
 
 - **Niedrig** Ein erfolgreicher Vorgangszugang setzt den Personenzähler nicht zurück (A-5, kein
   Issue).
+- **Niedrig** Die Kontosperre ist „prüfen, dann zählen“: Parallele Versuche über mehrere Kanäle
+  passieren die Prüfung, bevor der fünfte zählt (SA-27 im
+  [Sicherheitsaudit](review-2026-10-03-sicherheitsaudit.md)).
 - **Niedrig** Fehlgeschlagene QR-Suchen haben keinen eigenen Zähler
   ([07-betrieb.md](07-betrieb.md) Abschnitt 5).
 
