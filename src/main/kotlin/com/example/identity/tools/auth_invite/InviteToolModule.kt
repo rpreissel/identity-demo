@@ -25,6 +25,7 @@ internal val InviteModule = toolModule(
 
 internal val AuthInviteLookup = InviteModule.lookupLogin(
     AUTH_INVITE_LOOKUP_TOOL_ID,
+    versions = setOf(1),
     hint = Text("Mit dem Einmalkennwort aus unserem Brief"),
 )
 

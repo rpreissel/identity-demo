@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 data class IdentFscPatchRequest(
     @field:Schema(example = "A123456789") val kvnr: String? = null,
@@ -57,7 +57,7 @@ class IdentFscToolController(
 
     override val tool = IdentFsc
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$IDENT_FSC_TOOL_ID")
+    @PostMapping("$TOOLS_API/$IDENT_FSC_TOOL_ID/v1")
     @Operation(
         summary = "Activate ident-fsc",
         description = "No request body: toolId already carries kind and method.",
@@ -81,7 +81,7 @@ class IdentFscToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$IDENT_FSC_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$IDENT_FSC_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Supply KVNR/name/givenNames/birthDate/FSC",
         description = "Only the fields being supplied or corrected need to be sent; all five together also resolves in one call.",
@@ -118,7 +118,7 @@ class IdentFscToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$IDENT_FSC_TOOL_ID")
+    @GetMapping("$TOOLS_API/$IDENT_FSC_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Read the current ident-fsc state",
         responses = [

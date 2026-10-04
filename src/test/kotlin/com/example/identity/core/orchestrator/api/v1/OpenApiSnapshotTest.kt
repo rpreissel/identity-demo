@@ -100,20 +100,25 @@ class OpenApiSnapshotTest : SharedSpringContext() {
     }
 
     /**
-     * The envelope and one file per tool, the units `checkPublishedApiCompatibility` compares
-     * against their published state (ADR-50). Generated here from the same contract as above.
+     * The envelope and one file per tool version (`tools/<toolId>/v<N>.yaml`), the units
+     * `checkPublishedApiCompatibility` compares against their published state (ADR-50, ADR-51).
+     * Generated here from the same contract as above.
      */
     private fun versionedParts(contract: Map<*, *>): List<Pair<Path, String>> {
-        val tools = toolModules.flatMap { module -> module.tools.map { it.toolId.value to module.stepData.keys } }.toMap()
-        val split = ContractSplit(contract, tools)
+        val allTools = toolModules.flatMap { it.tools }.sortedBy { it.toolId.value }
+        val split = ContractSplit(contract, allTools.associate { it.toolId.value to it.module.stepData.keys })
         return listOf(CONTRACT_PARTS.resolve("envelope.yaml") to render(split.envelope())) +
-            tools.keys.sorted().map { toolId -> CONTRACT_PARTS.resolve("tools").resolve("$toolId.yaml") to render(split.tool(toolId)) }
+            allTools.flatMap { tool ->
+                tool.versions.map { version ->
+                    CONTRACT_PARTS.resolve("tools").resolve(tool.toolId.value).resolve("v$version.yaml") to render(split.tool(tool.toolId.value, version))
+                }
+            }
     }
 
     private fun staleToolFiles(written: Set<Path>): List<Path> {
         val dir = CONTRACT_PARTS.resolve("tools")
         if (!Files.isDirectory(dir)) return emptyList()
-        return Files.list(dir).use { files -> files.filter { it !in written }.sorted().toList() }
+        return Files.walk(dir).use { files -> files.filter { Files.isRegularFile(it) && it !in written }.sorted().toList() }
     }
 
     /** The registered groups, read from the beans, so this test knows no modules (`ModuleApiGroups`). */

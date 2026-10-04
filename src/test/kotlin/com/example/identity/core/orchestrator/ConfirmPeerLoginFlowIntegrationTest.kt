@@ -60,11 +60,11 @@ class ConfirmPeerLoginFlowIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels", """{"intent":"confirm_peer_login"}""")
                     .channel()["channelSessionId"] as String
                 val (tan, activation) = captureMockTan {
-                    post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms")
+                    post("/tools/api/auth-sms/v1?channel=$channelSessionId")
                 }
                 val authToolSessionId = activation.nextRaw()["toolSessionId"] as String
 
-                val result = runCatching { patch("/orchestrator/api/v1/tools/$authToolSessionId/auth-sms", """{"tan":"$tan"}""") }
+                val result = runCatching { patch("/tools/api/auth-sms/v1/$authToolSessionId", """{"tan":"$tan"}""") }
 
                 then("it aborts (410) instead of falling back to RE_IDENTIFY - a peer approval must never trigger identification") {
                     val gone = shouldThrow<HttpClientErrorException> { result.getOrThrow() }

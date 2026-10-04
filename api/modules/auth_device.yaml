@@ -29,13 +29,13 @@ info:
   version: v1
 openapi: 3.1.0
 paths:
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-device:
+  /tools/api/auth-device/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
       operationId: activate_1
       parameters:
-      - in: path
-        name: channelSessionId
+      - in: query
+        name: channel
         required: true
         schema:
           format: uuid
@@ -70,51 +70,7 @@ paths:
       summary: Activate auth-device
       tags:
       - 'Tool: Gerät'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-device:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa1
-                  currentAmr:
-                  - password
-                  state: AUTHENTICATED
-                next:
-                  step: enroll
-                  toolId: enroll-device
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-              schema:
-                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate enroll-device
-      tags:
-      - 'Tool: Gerät'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-device:
+  /tools/api/auth-device/v1/{toolSessionId}:
     get:
       operationId: read_1
       parameters:
@@ -202,7 +158,51 @@ paths:
       summary: Confirm device authentication
       tags:
       - 'Tool: Gerät'
-  /orchestrator/api/v1/tools/{toolSessionId}/enroll-device:
+  /tools/api/enroll-device/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa1
+                  currentAmr:
+                  - password
+                  state: AUTHENTICATED
+                next:
+                  step: enroll
+                  toolId: enroll-device
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-device
+      tags:
+      - 'Tool: Gerät'
+  /tools/api/enroll-device/v1/{toolSessionId}:
     get:
       operationId: read
       parameters:

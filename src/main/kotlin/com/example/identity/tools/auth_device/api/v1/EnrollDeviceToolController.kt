@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 data class DeviceProofPatchRequest(
     @field:Schema(example = "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRwb3Arand0In0.eyJodG0iOiJQQVRDSCIsImh0dSI6Ii4uLiJ9.MEUCIQ")
@@ -53,7 +53,7 @@ class EnrollDeviceToolController(
 
     override val tool = EnrollDevice
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_DEVICE_TOOL_ID")
+    @PostMapping("$TOOLS_API/$ENROLL_DEVICE_TOOL_ID/v1")
     @Operation(
         summary = "Activate enroll-device",
         description = "No request body: toolId already carries kind and method.",
@@ -77,7 +77,7 @@ class EnrollDeviceToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$ENROLL_DEVICE_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$ENROLL_DEVICE_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Confirm device enrollment",
         description = "Body carries a self-signed device-proof JWT (typ=device-proof+jwt) over this exact URL, produced after the user confirms the mocked PIN/biometric prompt.",
@@ -104,7 +104,7 @@ class EnrollDeviceToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$ENROLL_DEVICE_TOOL_ID")
+    @GetMapping("$TOOLS_API/$ENROLL_DEVICE_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Read the current enroll-device state",
         responses = [

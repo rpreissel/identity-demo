@@ -185,12 +185,13 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
 
     /**
      * `availableTools` is required on channel creation (docs/03-tool-architektur.md). Unless a test
-     * declares its own set, it gets the full catalog: the neutral default for flows not about
+     * declares its own set, it gets the full catalog, each tool in its newest version: the neutral
+     * default for flows not about
      * availability. [KeycloakChannelIntegrationTest] uses it for its own PATCH bodies.
      */
     protected fun withDefaultAvailableTools(body: String): String {
         if (body.contains("availableTools")) return body
-        val allToolIds = toolRegistry.tools().joinToString(",", "[", "]") { "\"${it.toolId}\"" }
+        val allToolIds = toolRegistry.tools().joinToString(",", "[", "]") { "\"${it.toolId}@${it.versions.last()}\"" }
         return if (body.isBlank() || body.trim() == "{}") {
             """{"availableTools":$allToolIds}"""
         } else {
@@ -280,7 +281,8 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
         val options = buildList {
             requiredAcr?.let { add(""""requiredAcr":"$it"""") }
             intent?.let { add(""""intent":"$it"""") }
-            availableTools?.let { tools -> add(""""availableTools":[${tools.joinToString(",") { "\"$it\"" }}]""") }
+            // Plain toolIds here: every tool serves version 1, the version is not what these flows are about.
+            availableTools?.let { tools -> add(""""availableTools":[${tools.joinToString(",") { "\"$it@1\"" }}]""") }
         }
         val body = options.takeIf { it.isNotEmpty() }?.joinToString(",", "{", "}")
         val channelSessionId = (
@@ -320,9 +322,9 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
      * `next`, so it is independent of how many identification methods the catalog offers.
      */
     protected fun reIdentifyViaFsc(channelSessionId: String): Map<String, Any?> {
-        val identToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
+        val identToolSessionId = post("/tools/api/ident-fsc/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
         return patch(
-            "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
+            "/tools/api/ident-fsc/v1/$identToolSessionId",
             """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","fsc":"VALIDCODE"}"""
         )
     }
@@ -346,11 +348,11 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
         val email = "max.mustermann+${UUID.randomUUID()}@example.com"
         val current = get("/orchestrator/api/v1/channels/$channelSessionId").nextRaw()
         val confirmToolSessionId = (current["toolSessionId"] as? String)?.takeIf { current["toolId"] == "confirm-email" }
-            ?: post("/orchestrator/api/v1/channels/$channelSessionId/tools/confirm-email").nextRaw()["toolSessionId"] as String
+            ?: post("/tools/api/confirm-email/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
         val (code, _) = captureMockTan {
-            patch("/orchestrator/api/v1/tools/$confirmToolSessionId/confirm-email", """{"email":"$email"}""")
+            patch("/tools/api/confirm-email/v1/$confirmToolSessionId", """{"email":"$email"}""")
         }
-        patch("/orchestrator/api/v1/tools/$confirmToolSessionId/confirm-email", """{"code":"$code"}""")
+        patch("/tools/api/confirm-email/v1/$confirmToolSessionId", """{"code":"$code"}""")
         return email
     }
 
@@ -359,22 +361,22 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
      * over the address. Separate from [confirmEmail]: confirming is account infrastructure.
      */
     protected fun enrollEmailMethod(channelSessionId: String) {
-        post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-email")
+        post("/tools/api/enroll-email/v1?channel=$channelSessionId")
     }
 
     /** Runs enroll-password through to Completed; it discharges the factor-kind obligation after sms. */
     protected fun enrollPassword(channelSessionId: String, password: String = "correct-horse-battery") {
-        val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-password").nextRaw()["toolSessionId"] as String
-        patch("/orchestrator/api/v1/tools/$toolSessionId/enroll-password", """{"password":"$password"}""")
+        val toolSessionId = post("/tools/api/enroll-password/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+        patch("/tools/api/enroll-password/v1/$toolSessionId", """{"password":"$password"}""")
     }
 
     /** Runs enroll-sms through to Completed on the given channel. */
     protected fun enrollSms(channelSessionId: String) {
-        val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-sms").nextRaw()["toolSessionId"] as String
+        val enrollToolSessionId = post("/tools/api/enroll-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
         val (tan, _) = captureMockTan {
-            patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-sms", """{"phoneNumber":"+49 170 1234567"}""")
+            patch("/tools/api/enroll-sms/v1/$enrollToolSessionId", """{"phoneNumber":"+49 170 1234567"}""")
         }
-        patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-sms", """{"tan":"$tan"}""")
+        patch("/tools/api/enroll-sms/v1/$enrollToolSessionId", """{"tan":"$tan"}""")
     }
 
     /**
@@ -391,10 +393,10 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
     /** Runs auth-sms through to Completed on the given channel and returns the final response. */
     protected fun authenticateViaSms(channelSessionId: String): Map<String, Any?> {
         val (tan, activation) = captureMockTan {
-            post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms")
+            post("/tools/api/auth-sms/v1?channel=$channelSessionId")
         }
         val authToolSessionId = activation.nextRaw()["toolSessionId"] as String
-        return patch("/orchestrator/api/v1/tools/$authToolSessionId/auth-sms", """{"tan":"$tan"}""")
+        return patch("/tools/api/auth-sms/v1/$authToolSessionId", """{"tan":"$tan"}""")
     }
 
     /** Runs auth-password through to Completed on the given channel and returns the final response. */
@@ -402,9 +404,9 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
         channelSessionId: String,
         password: String = "correct-horse-battery"
     ): Map<String, Any?> {
-        val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password")
+        val toolSessionId = post("/tools/api/auth-password/v1?channel=$channelSessionId")
             .nextRaw()["toolSessionId"] as String
-        return patch("/orchestrator/api/v1/tools/$toolSessionId/auth-password", """{"password":"$password"}""")
+        return patch("/tools/api/auth-password/v1/$toolSessionId", """{"password":"$password"}""")
     }
 
     /**
@@ -470,5 +472,5 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
     }
 }
 
-/** `POST …/channels/{channelSessionId}/tools/{toolId}`: activating a tool. */
-private val ACTIVATION = Regex("/orchestrator/api/v1/channels/[^/]+/tools/([a-z-]+)")
+/** `POST /tools/api/{toolId}/v{N}?channel={channelSessionId}`: activating a tool. */
+private val ACTIVATION = Regex("/tools/api/([a-z-]+)/v[0-9]+\\?channel=[^&]+")

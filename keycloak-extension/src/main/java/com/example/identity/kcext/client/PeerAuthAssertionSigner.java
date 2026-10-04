@@ -21,7 +21,7 @@ import java.util.UUID;
  * {@code channelSessionId}, so two tabs stepping up the same SSO session never share a binding.
  * {@code htu} binds the URL with its query, {@code body_sha256} the body, so nobody on the hop can
  * swap either under a valid assertion; the binding also covers endpoints without a channelSessionId
- * in the path ({@code /tools/{toolSessionId}/...}).
+ * in the path ({@code /tools/api/{toolId}/v{N}/{toolSessionId}/...}).
  */
 final class PeerAuthAssertionSigner {
 

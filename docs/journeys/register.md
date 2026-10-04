@@ -29,7 +29,7 @@ Ausweisdokument trägt keine KVNR (ADR-18). Die Journey geht deshalb direkt nach
 (ADR-34). Eine Ja/Nein-Frage davor gibt es bewusst nicht. „Darf ich nach der Nummer fragen?“ und
 das Formular, das nach ihr fragt, wären dieselbe Frage zweimal, und das Formular erklärt selbst,
 wofür die Nummer gebraucht wird. Wer nicht zuordnen will, bricht den Schritt ganz normal ab
-(`DELETE .../tools/{toolSessionId}/ident-kvnr`, im Frontend beschriftet mit „Jetzt nicht“). Die
+(`DELETE /tools/api/ident-kvnr/v1/{toolSessionId}`, im Frontend beschriftet mit „Jetzt nicht“). Die
 Registrierung läuft dann weiter. Das Konto bleibt **Interessent** (ADR-10): Die Identität ist voll
 bestätigt, aber keiner Person im Personenverzeichnis zugeordnet. `Assigning` ist damit ein
 Ausweich-, kein Pflichtzustand. Nach `ident-fsc` wird er nie erreicht, denn dort steht das

@@ -20,6 +20,15 @@ public class SmsEnrollRendererFactory extends AbstractWebToolRendererFactory {
     }
 
     @Override
+
+    public int version() {
+
+        return 1;
+
+    }
+
+
+    @Override
     public String template() {
         return "tool-sms-enroll.ftl";
     }

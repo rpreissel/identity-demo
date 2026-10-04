@@ -64,7 +64,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
             withDefaultAvailableTools("""{"targetAcr":"$targetAcr"}""")).body!!
         @Suppress("UNCHECKED_CAST")
         (initial.stepData()["options"] as List<String>) shouldContain "auth-invite-lookup"
-        val toolSessionId = keycloakCall(HttpMethod.POST, "/orchestrator/api/v1/channels/$channelSessionId/tools/auth-invite-lookup")
+        val toolSessionId = keycloakCall(HttpMethod.POST, "/tools/api/auth-invite-lookup/v1?channel=$channelSessionId")
             .body!!.nextRaw()["toolSessionId"] as String
         return channelSessionId to toolSessionId
     }
@@ -96,7 +96,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
             fun signedInAsInvitation(): Pair<ChannelSessionId, InvitationId> {
                 val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val (channelSessionId, toolSessionId) = openInviteTool("loa1")
-                keycloakCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite-lookup",
+                keycloakCall(HttpMethod.PATCH, "/tools/api/auth-invite-lookup/v1/$toolSessionId",
                     """{"kvnr":"A123456789","code":"${issued.code}"}""")
                 return channelSessionId to issued.invitation
             }
@@ -175,7 +175,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
             `when`("Keycloak reports the logout of that session") {
                 val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val (channelSessionId, toolSessionId) = openInviteTool("loa1")
-                keycloakCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite-lookup",
+                keycloakCall(HttpMethod.PATCH, "/tools/api/auth-invite-lookup/v1/$toolSessionId",
                     """{"kvnr":"A123456789","code":"${issued.code}"}""")
                 // The end of the flow run tells the channel its durable Keycloak session.
                 keycloakCall(HttpMethod.GET, "/orchestrator/api/v1/kc/channels/$channelSessionId/restore-data?kcSessionId=kc-invite-session")
@@ -217,7 +217,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
 
                 // Separators and case do not count.
                 val typed = issued.code.lowercase().replace("-", " ")
-                val completed = keycloakCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite-lookup",
+                val completed = keycloakCall(HttpMethod.PATCH, "/tools/api/auth-invite-lookup/v1/$toolSessionId",
                     """{"kvnr":"A123456789","code":"$typed"}""").body!!
 
                 then("the channel is signed in as the invitation, with no account") {
@@ -235,7 +235,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
             `when`("Keycloak ends the flow run and asks for restore data") {
                 val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val (channelSessionId, toolSessionId) = openInviteTool("loa1")
-                keycloakCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite-lookup",
+                keycloakCall(HttpMethod.PATCH, "/tools/api/auth-invite-lookup/v1/$toolSessionId",
                     """{"kvnr":"A123456789","code":"${issued.code}"}""")
 
                 val restore = keycloakCall(HttpMethod.GET,
@@ -251,7 +251,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 val (channelSessionId, toolSessionId) = openInviteTool("loa2")
 
                 val result = runCatching {
-                    keycloakCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite-lookup",
+                    keycloakCall(HttpMethod.PATCH, "/tools/api/auth-invite-lookup/v1/$toolSessionId",
                         """{"kvnr":"A123456789","code":"${issued.code}"}""")
                 }
 
@@ -267,7 +267,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val (_, toolSessionId) = openInviteTool("loa1")
 
-                val failed = keycloakCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite-lookup",
+                val failed = keycloakCall(HttpMethod.PATCH, "/tools/api/auth-invite-lookup/v1/$toolSessionId",
                     """{"kvnr":"B987654321","code":"${issued.code}"}""")
 
                 then("it fails like a wrong password and charges that person's counter") {
@@ -286,7 +286,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 complete(issued.invitation)
                 val (_, toolSessionId) = openInviteTool("loa1")
 
-                val failed = keycloakCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite-lookup",
+                val failed = keycloakCall(HttpMethod.PATCH, "/tools/api/auth-invite-lookup/v1/$toolSessionId",
                     """{"kvnr":"A123456789","code":"${issued.code}"}""")
 
                 then("its password no longer signs in: the step stays, with an error") {
@@ -302,7 +302,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
             fun signedInAsPaula(): ChannelSessionId {
                 val issued = issue(PartnerNumber("P000000004"), "loa2")
                 val (channelSessionId, toolSessionId) = openInviteTool("loa2")
-                keycloakCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite-lookup",
+                keycloakCall(HttpMethod.PATCH, "/tools/api/auth-invite-lookup/v1/$toolSessionId",
                     """{"partnerNumber":"P000000004","code":"${issued.code}"}""")
                 return channelSessionId
             }
@@ -311,7 +311,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 val issued = issue(PartnerNumber("P000000004"), "loa2")
                 val (_, toolSessionId) = openInviteTool("loa2")
 
-                val completed = keycloakCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite-lookup",
+                val completed = keycloakCall(HttpMethod.PATCH, "/tools/api/auth-invite-lookup/v1/$toolSessionId",
                     """{"partnerNumber":"P000000004","code":"${issued.code}"}""").body!!
 
                 then("the channel is signed in at the invitation's level") {
@@ -353,7 +353,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                     HttpMethod.DELETE, HttpEntity<Void>(HttpHeaders()), Void::class.java).statusCode
                 val (_, toolSessionId) = openInviteTool("loa1")
 
-                val failed = keycloakCall(HttpMethod.PATCH, "/orchestrator/api/v1/tools/$toolSessionId/auth-invite-lookup",
+                val failed = keycloakCall(HttpMethod.PATCH, "/tools/api/auth-invite-lookup/v1/$toolSessionId",
                     """{"kvnr":"A123456789","code":"${issued.code}"}""").body!!
 
                 then("a revoked password no longer signs in: the step stays, with an error") {
@@ -370,10 +370,10 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val start = post("/orchestrator/api/v1/app/channels", """{"intent":"lookup_login"}""")
                 val appChannel = start.channel()["channelSessionId"] as String
-                val toolSessionId = post("/orchestrator/api/v1/channels/$appChannel/tools/auth-invite-lookup").nextRaw()["toolSessionId"] as String
+                val toolSessionId = post("/tools/api/auth-invite-lookup/v1?channel=$appChannel").nextRaw()["toolSessionId"] as String
 
                 val result = runCatching {
-                    patch("/orchestrator/api/v1/tools/$toolSessionId/auth-invite-lookup", """{"kvnr":"A123456789","code":"${issued.code}"}""")
+                    patch("/tools/api/auth-invite-lookup/v1/$toolSessionId", """{"kvnr":"A123456789","code":"${issued.code}"}""")
                 }
 
                 then("it is refused, not bound: process access is for the website only") {

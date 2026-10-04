@@ -378,7 +378,7 @@ export interface ChannelBlock {
  */
 export interface ChannelCreateRequest {
     /**
-     * toolIds this client supports and has enabled (docs/03-tool-architektur.md, availability) - e.g. GET /tools/catalog minus whatever the user turned off locally. Fixed for this channel's whole lifetime; a candidate list never offers a toolId outside this set, and activating one directly fails too.
+     * The tools this client supports and has enabled, each as <toolId>@<version> in the one version it speaks (ADR-51, docs/03-tool-architektur.md, availability) - e.g. GET /tools/catalog minus whatever the user turned off locally. Fixed for this channel's whole lifetime; a candidate list never offers a tool outside this set, and activating one directly or in another version fails too. An entry without its version, or one tool in two versions, is rejected.
      * @type {Array<string>}
      * @memberof ChannelCreateRequest
      */
@@ -1832,4 +1832,10 @@ export interface ToolCatalogEntry {
      * @memberof ToolCatalogEntry
      */
     toolId: string;
+    /**
+     * 
+     * @type {Array<number>}
+     * @memberof ToolCatalogEntry
+     */
+    versions: Array<number>;
 }

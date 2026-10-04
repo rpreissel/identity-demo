@@ -65,7 +65,7 @@ public class OrchestratorResumeAuthenticator implements AuthenticationFlowCallba
                 // the journey below it. No native amr yet: this runs before any native authenticator.
                 OrchestratorClient.ChannelResponse response = client.upsertChannel(
                         newChannelSessionId, subject, OrchestratorNotes.requestedAcr(context), List.of(), restoreData, existingUserSession.getId(),
-                        WebToolAvailability.renderableToolIds(context.getSession()), null
+                        WebToolAvailability.renderableTools(context.getSession()), null
                 );
                 OrchestratorNotes.applyAuthData(authSession, response);
             }

@@ -13,6 +13,7 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.StepData
 import com.example.identity.contract.tool_api.envelope.Next
 import com.example.identity.contract.tool_api.ToolId
+import com.example.identity.contract.tool_api.ToolVersion
 import org.springframework.stereotype.Component
 
 /**
@@ -41,9 +42,12 @@ class JourneyRouting(
      * What the client declared it can render, minus what the operator switched off for this
      * channel type. Live, not cached: a disable applies to the next step of a running journey.
      */
-    fun availableToolsOf(channel: ChannelSession): Set<ToolId> =
-        (channel.availableClientTools - toolAvailabilityService.disabledToolIds(channelTypeOf(channel)))
-            .mapTo(mutableSetOf()) { ToolId(it) }
+    fun availableToolsOf(channel: ChannelSession): Set<ToolId> {
+        val disabled = toolAvailabilityService.disabledToolIds(channelTypeOf(channel))
+        // The version matters only to the client's calls; what is offered is the tool (ADR-51).
+        return channel.availableClientTools.map { ToolVersion.parse(it).toolId }
+            .filterTo(mutableSetOf()) { it.value !in disabled }
+    }
 
     /**
      * `next` as a pure function of the state (docs/04-orchestrierung.md #4). [JourneyState.activatable]

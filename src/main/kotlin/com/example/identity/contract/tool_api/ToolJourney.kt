@@ -19,8 +19,11 @@ import java.net.URI
  *   reading, where a superseded session gets a clean answer instead of a 409 ([ToolJourney.loadContext]).
  * - [AuthorizedToolContext]: the same, verified to be the journey's current tool - for changing it
  *   ([ToolJourney.loadCurrent]).
- * - [ActivationToolContext]: the tool just activated on the channel in the path
- *   (`{channelSessionId}`), its session created by this request ([ToolJourney.beginActivation]).
+ * - [ActivationToolContext]: the tool just activated on the channel the query names
+ *   (`?channel=`), its session created by this request ([ToolJourney.beginActivation]).
+ *
+ * The version comes from the path (`/tools/api/<toolId>/v<N>`) and must be the one the channel
+ * declared for the tool (ADR-51).
  *
  * Parameters are resolved in order, so a `@RequestBody` comes first: an unreadable body then
  * activates nothing (enforced by `ApiBoundaryArchitectureTest`).
@@ -28,6 +31,8 @@ import java.net.URI
 interface ToolContext {
     /** The toolId this context was obtained for. */
     val toolId: String
+    /** The version of the tool's contract the client speaks, as its path names it (ADR-51). */
+    val version: Int
     val toolSessionId: ToolSessionId
     /** The caller's resolved binding key (see [BindingKey]), already checked against the channel. */
     val bindingKeyRef: String
@@ -60,21 +65,22 @@ interface ActivationToolContext : AuthorizedToolContext
  */
 interface ToolJourney {
     /**
-     * Activates [toolId] on the channel: creates a new tool session and advances the journey to it.
+     * Activates [tool] on the channel: creates a new tool session and advances the journey to it.
      *
      * @param bindingKeyRef the caller's resolved DPoP binding key (see [BindingKey]).
-     * @throws RuntimeException if the channel or binding is invalid, or the journey does not offer [toolId].
+     * @throws RuntimeException if the channel or binding is invalid, the channel declared another
+     * version of the tool, or the journey does not offer it.
      */
-    fun beginActivation(channelSessionId: ChannelSessionId, bindingKeyRef: String, toolId: String): ActivationToolContext
+    fun beginActivation(channelSessionId: ChannelSessionId, bindingKeyRef: String, tool: ToolVersion): ActivationToolContext
 
     /**
      * Loads the context of an existing tool session for the read path. Whether it is still the
      * current tool, [isCurrentTool] tells.
      *
-     * @throws RuntimeException if the tool session does not exist or the binding key does not
-     * match its channel.
+     * @throws RuntimeException if the tool session does not exist, the binding key does not match
+     * its channel, or the channel declared another version of the tool.
      */
-    fun loadContext(toolSessionId: ToolSessionId, bindingKeyRef: String, toolId: String): ToolContext
+    fun loadContext(toolSessionId: ToolSessionId, bindingKeyRef: String, tool: ToolVersion): ToolContext
 
     /**
      * The `Location` header value for a just-created tool resource.
@@ -89,7 +95,7 @@ interface ToolJourney {
      *
      * @throws RuntimeException if it is not the journey's current tool.
      */
-    fun loadCurrent(toolSessionId: ToolSessionId, bindingKeyRef: String, toolId: String): AuthorizedToolContext
+    fun loadCurrent(toolSessionId: ToolSessionId, bindingKeyRef: String, tool: ToolVersion): AuthorizedToolContext
 
     /**
      * The credential of [module]'s method this caller may prove: the account's active one, or for a

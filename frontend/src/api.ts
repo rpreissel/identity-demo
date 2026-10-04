@@ -4,6 +4,7 @@ import { createDpopProof, type DpopKeyPair } from './dpop'
 import type { ActiveMethodView, ChannelResponse, DeviceLinkResponse, ErrorResponse, IdTokenClaims, JourneyTraceResponse, TokenResponse } from './types'
 import { ErrorResponseErrorEnum } from './generated/models'
 import { resolveText, t } from './texts'
+import { toolVersionOf } from './tools/registry'
 
 /**
  * Reads an error body. The shape is the contract's `ErrorResponse`; anything else (a proxy's HTML
@@ -112,7 +113,8 @@ export function createChannel(
   intent?: string,
   availableTools?: string[],
 ): Promise<ChannelResponse> {
-  const body: Record<string, unknown> = { availableTools }
+  // Each tool in the one version this client speaks (ADR-51).
+  const body: Record<string, unknown> = { availableTools: availableTools?.map((toolId) => `${toolId}@${toolVersionOf(toolId)}`) }
   if (requiredAcr) body.requiredAcr = requiredAcr
   if (intent) body.intent = intent
   return call(dpop, 'POST', '/orchestrator/api/v1/app/channels', body)
@@ -211,12 +213,22 @@ export function answerPrompt(dpop: DpopKeyPair, channelSessionId: string, accept
   return call(dpop, 'POST', `/orchestrator/api/v1/channels/${channelSessionId}/answer`, { answer: accept ? 'accept' : 'decline' })
 }
 
+/** Where `toolId` lives in the one version this client speaks (ADR-51). */
+function toolPath(toolId: string): string {
+  return `/tools/api/${toolId}/v${toolVersionOf(toolId)}`
+}
+
+/** One run of a tool: the path its calls go to, and what a device proof names as `htu`. */
+export function toolSessionPath(toolSessionId: string, toolId: string): string {
+  return `${toolPath(toolId)}/${toolSessionId}`
+}
+
 /**
  * Declines the currently running tool without giving up the journey (docs/04-orchestrierung.md):
  * on a fallback state the chain moves on, on a mandatory one the full choice comes back.
  */
 export function abandonTool(dpop: DpopKeyPair, toolSessionId: string, toolId: string): Promise<ChannelResponse> {
-  return call(dpop, 'DELETE', `/orchestrator/api/v1/tools/${toolSessionId}/${toolId}`)
+  return call(dpop, 'DELETE', toolSessionPath(toolSessionId, toolId))
 }
 
 /**
@@ -224,7 +236,7 @@ export function abandonTool(dpop: DpopKeyPair, toolSessionId: string, toolId: st
  * with this tool still among the options. Where there is no selection, the same as [abandonTool].
  */
 export function backFromTool(dpop: DpopKeyPair, toolSessionId: string, toolId: string): Promise<ChannelResponse> {
-  return call(dpop, 'POST', `/orchestrator/api/v1/tools/${toolSessionId}/${toolId}/back`)
+  return call(dpop, 'POST', `${toolSessionPath(toolSessionId, toolId)}/back`)
 }
 
 /**
@@ -238,7 +250,7 @@ export function activateTool(
   toolId: string,
   body?: Record<string, unknown>
 ): Promise<ChannelResponse> {
-  return call(dpop, 'POST', `/orchestrator/api/v1/channels/${channelSessionId}/tools/${toolId}`, body)
+  return call(dpop, 'POST', `${toolPath(toolId)}?channel=${channelSessionId}`, body)
 }
 
 export function patchTool(
@@ -247,17 +259,17 @@ export function patchTool(
   toolId: string,
   body: Record<string, unknown>
 ): Promise<ChannelResponse> {
-  return call(dpop, 'PATCH', `/orchestrator/api/v1/tools/${toolSessionId}/${toolId}`, body)
+  return call(dpop, 'PATCH', toolSessionPath(toolSessionId, toolId), body)
 }
 
 export function getTool(dpop: DpopKeyPair, toolSessionId: string, toolId: string): Promise<ChannelResponse> {
-  return call(dpop, 'GET', `/orchestrator/api/v1/tools/${toolSessionId}/${toolId}`)
+  return call(dpop, 'GET', toolSessionPath(toolSessionId, toolId))
 }
 
 /**
  * A POST to a resource a tool defines under its own URL namespace (docs/05-api.md: everything
- * below `/tools/{toolSessionId}/{toolId}` is the tool's own design). The sub-path belongs to the
- * tool's api.ts; this client only signs and reads a ChannelResponse back.
+ * below `/tools/api/{toolId}/v{version}/{toolSessionId}` is the tool's own design). The sub-path
+ * belongs to the tool's api.ts; this client only signs and reads a ChannelResponse back.
  */
 export function postToolSubResource(
   dpop: DpopKeyPair,
@@ -266,7 +278,7 @@ export function postToolSubResource(
   subPath: string,
   body: Record<string, unknown>
 ): Promise<ChannelResponse> {
-  return call(dpop, 'POST', `/orchestrator/api/v1/tools/${toolSessionId}/${toolId}/${subPath}`, body)
+  return call(dpop, 'POST', `${toolSessionPath(toolSessionId, toolId)}/${subPath}`, body)
 }
 
 export type ToolRole =

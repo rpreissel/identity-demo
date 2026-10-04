@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 data class ConfirmEmailPatchRequest(
     @field:Schema(example = "max.mustermann@example.com") val email: String? = null,
@@ -46,7 +46,7 @@ class ConfirmEmailToolController(
 
     override val tool = ConfirmEmail
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$CONFIRM_EMAIL_TOOL_ID")
+    @PostMapping("$TOOLS_API/$CONFIRM_EMAIL_TOOL_ID/v1")
     @Operation(
         summary = "Activate confirm-email",
         description = "No request body: toolId already carries kind and method.",
@@ -70,7 +70,7 @@ class ConfirmEmailToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$CONFIRM_EMAIL_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$CONFIRM_EMAIL_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Supply email, then the confirmation code",
         description = "First call with email triggers the code send; a second call with code confirms it.",
@@ -106,7 +106,7 @@ class ConfirmEmailToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$CONFIRM_EMAIL_TOOL_ID")
+    @GetMapping("$TOOLS_API/$CONFIRM_EMAIL_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Read the current confirm-email state",
         responses = [

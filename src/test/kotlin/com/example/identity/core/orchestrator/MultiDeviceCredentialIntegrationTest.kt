@@ -61,8 +61,8 @@ class MultiDeviceCredentialIntegrationTest : IntegrationTestSupport() {
         return signedJWT.serialize()
     }
     private fun enrollDevice(channelSessionId: String, deviceKey: ECKey, label: String): Map<String, Any?> {
-        val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-device").nextRaw()["toolSessionId"] as String
-        val patchUrl = "/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-device"
+        val enrollToolSessionId = post("/tools/api/enroll-device/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+        val patchUrl = "/tools/api/enroll-device/v1/$enrollToolSessionId"
         val proof = signDeviceProof(deviceKey, "http://localhost:$port$patchUrl", "biometric")
         return patch(patchUrl, """{"deviceProof":"$proof","label":"$label"}""")
     }

@@ -60,7 +60,7 @@ public class OrchestratorAuthenticator implements Authenticator {
             // they happen. Sending them again would only repeat a no-op evidence merge.
             OrchestratorClient.ChannelResponse response = client.upsertChannel(
                     channelSessionId, subject, targetAcr, List.of(), null, null,
-                    WebToolAvailability.renderableToolIds(context.getSession()), intent
+                    WebToolAvailability.renderableTools(context.getSession()), intent
             );
             handleResponse(context, response, null);
         } catch (OrchestratorClient.OrchestratorApiException e) {
@@ -120,7 +120,8 @@ public class OrchestratorAuthenticator implements Authenticator {
                     factory.actionFields(form::getFirst, () -> context.getActionUrl(context.generateAccessCode()).toString())
                             .forEach(form::putSingle);
                 }
-                response = OrchestratorNextDispatch.dispatchToolAction(client, channelSessionId, toolId, toolSessionId, form);
+                response = OrchestratorNextDispatch.dispatchToolAction(client, channelSessionId, toolId,
+                        WebToolAvailability.versionOf(context.getSession(), toolId), toolSessionId, form);
             }
             handleResponse(context, response, form);
         } catch (OrchestratorClient.OrchestratorApiException e) {
@@ -266,7 +267,8 @@ public class OrchestratorAuthenticator implements Authenticator {
         WebToolRendererFactory factory = WebFormRenderer.rendererFactoryFor(context.getSession(), toolId);
         Map<String, String> fields = factory == null ? Map.of()
                 : factory.activationFields(() -> context.getActionUrl(context.generateAccessCode()).toString());
-        return client.activateTool(OrchestratorNotes.channelSessionId(context), toolId, fields);
+        return client.activateTool(OrchestratorNotes.channelSessionId(context), toolId,
+                WebToolAvailability.versionOf(context.getSession(), toolId), fields);
     }
 
     private Response toolForm(AuthenticationFlowContext context, OrchestratorClient.Next next, OrchestratorClient.ChannelResponse response, String error) {

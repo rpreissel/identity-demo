@@ -36,7 +36,7 @@ class DeviceProofValidatorTest : BehaviorSpec({
         clock = TEST_CLOCK
     )
 
-    val url = "https://example.test/orchestrator/api/v1/tools/${UUID.randomUUID()}/enroll-device"
+    val url = "https://example.test/tools/api/enroll-device/v1/${UUID.randomUUID()}"
     /** The request the proof must name: same method and target as [url]. */
     val request = MockHttpServletRequest("PATCH", URI(url).path).apply {
         scheme = "https"

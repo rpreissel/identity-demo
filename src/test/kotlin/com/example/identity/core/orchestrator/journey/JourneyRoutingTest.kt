@@ -31,7 +31,7 @@ class JourneyRoutingTest : BehaviorSpec({
     }
     val routing = JourneyRouting(catalogOf("enroll-email", "enroll-sms"), availability)
     val webChannel = ChannelSession(channel = ChannelType.WEB, now = Instant.now()).apply {
-        availableClientTools = mutableSetOf("enroll-email", "enroll-sms")
+        availableClientTools = mutableSetOf("enroll-email@1", "enroll-sms@1")
     }
 
     fun adding(vararg tools: String) = ManageAuthMethodsState.Enrolling(Offer(tools.map { ToolId(it) }))

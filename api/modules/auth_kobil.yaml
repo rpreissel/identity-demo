@@ -159,12 +159,12 @@ info:
   version: v1
 openapi: 3.1.0
 paths:
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-kobil:
+  /tools/api/auth-kobil/v1:
     post:
       operationId: activate_1
       parameters:
-      - in: path
-        name: channelSessionId
+      - in: query
+        name: channel
         required: true
         schema:
           format: uuid
@@ -206,62 +206,7 @@ paths:
       summary: Activate auth-kobil
       tags:
       - 'Tool: KOBIL'
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-kobil:
-    post:
-      description: Provisions the KOBIL user and returns everything the app's SDK needs for its activation call - including
-        the PIN, which this backend mints and keeps.
-      operationId: activate
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              example:
-                channel:
-                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  currentAcr: loa2
-                  currentAmr:
-                  - fsc
-                  state: AUTHENTICATED
-                next:
-                  step: activate
-                  toolId: enroll-kobil
-                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
-                  type: tool
-                stepData:
-                  activationCode: K7M2PQX9
-                  kind: kobil-activation
-                  kobilUserId: kob-1a2b3c4d5e6f
-                  missingFields:
-                  - activated
-                  - biometricConsent
-                  pin: '40318827'
-                  tenantId: identity-demo
-                  unlockSecret: xE1r...
-              schema:
-                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate enroll-kobil
-      tags:
-      - 'Tool: KOBIL'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-kobil:
+  /tools/api/auth-kobil/v1/{toolSessionId}:
     get:
       operationId: read_1
       parameters:
@@ -341,7 +286,7 @@ paths:
       summary: Redeem the one-time password
       tags:
       - 'Tool: KOBIL'
-  /orchestrator/api/v1/tools/{toolSessionId}/auth-kobil/pin-releases:
+  /tools/api/auth-kobil/v1/{toolSessionId}/pin-releases:
     post:
       description: The app presents either the locally stored unlock secret (guarded by its biometric prompt) or the account
         password. The PIN is in this response and nowhere else - a later GET will not return it again.
@@ -402,7 +347,62 @@ paths:
       summary: Release the backend-held PIN
       tags:
       - 'Tool: KOBIL'
-  /orchestrator/api/v1/tools/{toolSessionId}/enroll-kobil:
+  /tools/api/enroll-kobil/v1:
+    post:
+      description: Provisions the KOBIL user and returns everything the app's SDK needs for its activation call - including
+        the PIN, which this backend mints and keeps.
+      operationId: activate
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - fsc
+                  state: AUTHENTICATED
+                next:
+                  step: activate
+                  toolId: enroll-kobil
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  activationCode: K7M2PQX9
+                  kind: kobil-activation
+                  kobilUserId: kob-1a2b3c4d5e6f
+                  missingFields:
+                  - activated
+                  - biometricConsent
+                  pin: '40318827'
+                  tenantId: identity-demo
+                  unlockSecret: xE1r...
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-kobil
+      tags:
+      - 'Tool: KOBIL'
+  /tools/api/enroll-kobil/v1/{toolSessionId}:
     get:
       operationId: read
       parameters:

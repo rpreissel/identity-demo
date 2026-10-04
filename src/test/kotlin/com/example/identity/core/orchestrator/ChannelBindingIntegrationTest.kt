@@ -34,18 +34,18 @@ class ChannelBindingIntegrationTest : IntegrationTestSupport() {
         given("a channel with a running ident-fsc tool session") {
             `when`("another DPoP key calls each of its endpoints") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc")
+                val toolSessionId = post("/tools/api/ident-fsc/v1?channel=$channelSessionId")
                     .nextRaw()["toolSessionId"] as String
 
                 val readChannel = asAnotherKey { get("/orchestrator/api/v1/channels/$channelSessionId") }
-                val startTool = asAnotherKey { post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc") }
-                val readTool = asAnotherKey { get("/orchestrator/api/v1/tools/$toolSessionId/ident-fsc") }
-                val patchTool = asAnotherKey { patch("/orchestrator/api/v1/tools/$toolSessionId/ident-fsc", personalData) }
+                val startTool = asAnotherKey { post("/tools/api/ident-fsc/v1?channel=$channelSessionId") }
+                val readTool = asAnotherKey { get("/tools/api/ident-fsc/v1/$toolSessionId") }
+                val patchTool = asAnotherKey { patch("/tools/api/ident-fsc/v1/$toolSessionId", personalData) }
                 val cancel = asAnotherKey { delete("/orchestrator/api/v1/channels/$channelSessionId/journey") }
                 val logout = asAnotherKey { deleteNoContent("/orchestrator/api/v1/channels/$channelSessionId") }
 
-                val ownRead = get("/orchestrator/api/v1/tools/$toolSessionId/ident-fsc")
-                val ownPatch = patch("/orchestrator/api/v1/tools/$toolSessionId/ident-fsc", personalData)
+                val ownRead = get("/tools/api/ident-fsc/v1/$toolSessionId")
+                val ownPatch = patch("/tools/api/ident-fsc/v1/$toolSessionId", personalData)
 
                 then("reading the channel is forbidden") {
                     readChannel.status() shouldBe HttpStatus.FORBIDDEN
@@ -75,10 +75,10 @@ class ChannelBindingIntegrationTest : IntegrationTestSupport() {
 
         given("a tool session id in the path that is no UUID or belongs to nobody") {
             `when`("the tool endpoints are called with it") {
-                val malformedRead = runCatching { get("/orchestrator/api/v1/tools/not-a-uuid/ident-fsc") }
-                val malformedPatch = runCatching { patch("/orchestrator/api/v1/tools/not-a-uuid/ident-fsc", personalData) }
+                val malformedRead = runCatching { get("/tools/api/ident-fsc/v1/not-a-uuid") }
+                val malformedPatch = runCatching { patch("/tools/api/ident-fsc/v1/not-a-uuid", personalData) }
                 val unknownPatch = runCatching {
-                    patch("/orchestrator/api/v1/tools/00000000-0000-0000-0000-000000000000/ident-fsc", personalData)
+                    patch("/tools/api/ident-fsc/v1/00000000-0000-0000-0000-000000000000", personalData)
                 }
 
                 then("a malformed id is a bad request, on the read and the write path") {

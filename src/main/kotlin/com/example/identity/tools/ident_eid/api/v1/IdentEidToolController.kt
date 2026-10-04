@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 data class IdentEidPatchRequest(
     @field:Schema(example = "Muster") val familyName: String? = null,
@@ -55,7 +55,7 @@ class IdentEidToolController(
 
     override val tool = IdentEid
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$IDENT_EID_TOOL_ID")
+    @PostMapping("$TOOLS_API/$IDENT_EID_TOOL_ID/v1")
     @Operation(
         summary = "Activate ident-eid",
         description = "No request body: toolId already carries kind and method.",
@@ -80,7 +80,7 @@ class IdentEidToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$IDENT_EID_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$IDENT_EID_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Supply the simulated card's Ausweisdaten, then the PIN",
         description = "Only the fields being supplied or corrected need to be sent; all of them together also completes in one call. " +
@@ -126,7 +126,7 @@ class IdentEidToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$IDENT_EID_TOOL_ID")
+    @GetMapping("$TOOLS_API/$IDENT_EID_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Read the current ident-eid state",
         responses = [

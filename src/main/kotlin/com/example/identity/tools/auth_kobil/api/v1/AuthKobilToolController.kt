@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 /** Body of `POST .../auth-kobil/pin-releases`. */
 data class KobilPinReleaseRequest(val unlock: KobilUnlockCredential)
@@ -58,7 +58,7 @@ class AuthKobilToolController(
 
     override val tool = AuthKobil
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_KOBIL_TOOL_ID")
+    @PostMapping("$TOOLS_API/$AUTH_KOBIL_TOOL_ID/v1")
     @Operation(
         summary = "Activate auth-kobil",
         responses = [
@@ -83,7 +83,7 @@ class AuthKobilToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PostMapping("$API_V1/tools/{toolSessionId}/$AUTH_KOBIL_TOOL_ID/pin-releases")
+    @PostMapping("$TOOLS_API/$AUTH_KOBIL_TOOL_ID/v1/{toolSessionId}/pin-releases")
     @Operation(
         summary = "Release the backend-held PIN",
         description = "The app presents either the locally stored unlock secret (guarded by its " +
@@ -121,7 +121,7 @@ class AuthKobilToolController(
         return ResponseEntity.status(status).body(response)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$AUTH_KOBIL_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$AUTH_KOBIL_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Redeem the one-time password",
         description = "The backend fetches the assertion behind the OTP from KOBIL, compares the " +
@@ -155,7 +155,7 @@ class AuthKobilToolController(
 
     private fun passwordAvailable(accountId: AccountId?) = passwordEnrollmentOf(accountId) != null
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$AUTH_KOBIL_TOOL_ID")
+    @GetMapping("$TOOLS_API/$AUTH_KOBIL_TOOL_ID/v1/{toolSessionId}")
     @Operation(summary = "Read the current auth-kobil state")
     fun read(
         context: ToolContext,

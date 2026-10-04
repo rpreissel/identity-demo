@@ -66,9 +66,9 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
         given("a tool run that fails once") {
             `when`("reading the journey trace afterwards") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                val identToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
+                val identToolSessionId = post("/tools/api/ident-fsc/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 patch(
-                    "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
+                    "/tools/api/ident-fsc/v1/$identToolSessionId",
                     """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","fsc":"WRONGCODE"}"""
                 )
 

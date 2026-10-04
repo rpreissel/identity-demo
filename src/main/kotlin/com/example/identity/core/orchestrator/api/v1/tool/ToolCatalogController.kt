@@ -18,6 +18,8 @@ data class ToolCatalogEntry(
     @field:Schema(example = "auth-sms") val toolId: String,
     @field:Schema(example = "sms") val method: String,
     @field:Schema(example = "KNOWN_ACCOUNT_AUTH") val role: String,
+    /** The versions of the tool's contract the server serves, ascending (ADR-51). A client names one in `availableTools`. */
+    @field:Schema(example = "[1]") val versions: List<Int>,
     /** What users call the tool - its method's name unless the tool names itself. */
     val name: Text,
     /** What it does, in a few words, under its name in a selection. */
@@ -25,10 +27,10 @@ data class ToolCatalogEntry(
 )
 
 /**
- * The public, read-only tool catalog: which toolIds a client may declare as `availableTools`, what
- * the admin UI can toggle, and what each tool is called. The app and the login pages take names and
- * hints from here (as text references in the app bundle), so a tool is named in one place: its
- * module (docs/03-tool-architektur.md #2).
+ * The public, read-only tool catalog: which tools in which versions a client may declare as
+ * `availableTools`, what the admin UI can toggle, and what each tool is called. The app and the
+ * login pages take names and hints from here (as text references in the app bundle), so a tool is
+ * named in one place: its module (docs/03-tool-architektur.md #2).
  */
 @RestController
 @RequestMapping("$API_V1/tools")
@@ -44,14 +46,14 @@ class ToolCatalogController(private val toolRegistry: ToolHandlerRegistry) {
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", array = ArraySchema(schema = Schema(implementation = ToolCatalogEntry::class)), examples = [ExampleObject(value = """
                     [
-                      {"toolId": "ident-fsc", "method": "fsc", "role": "IDENTIFICATION", "name": {"key": "freischaltcode-1b35c2"}, "hint": {"key": "persoenliche-daten-und-freischaltcode-8a654d"}},
-                      {"toolId": "enroll-sms", "method": "sms", "role": "ENROLLMENT", "name": {"key": "sms-40b601"}, "hint": {"key": "code-an-eine-telefonnummer-a62b47"}},
-                      {"toolId": "auth-sms", "method": "sms", "role": "KNOWN_ACCOUNT_AUTH", "name": {"key": "sms-40b601"}, "hint": {"key": "code-an-die-hinterlegte-telefonnummer-76a2d3"}}
+                      {"toolId": "ident-fsc", "method": "fsc", "role": "IDENTIFICATION", "versions": [1], "name": {"key": "freischaltcode-1b35c2"}, "hint": {"key": "persoenliche-daten-und-freischaltcode-8a654d"}},
+                      {"toolId": "enroll-sms", "method": "sms", "role": "ENROLLMENT", "versions": [1], "name": {"key": "sms-40b601"}, "hint": {"key": "code-an-eine-telefonnummer-a62b47"}},
+                      {"toolId": "auth-sms", "method": "sms", "role": "KNOWN_ACCOUNT_AUTH", "versions": [1], "name": {"key": "sms-40b601"}, "hint": {"key": "code-an-die-hinterlegte-telefonnummer-76a2d3"}}
                     ]
                 """)])]
             )
         ]
     )
     fun catalog(): List<ToolCatalogEntry> =
-        toolRegistry.tools().map { ToolCatalogEntry(it.toolId.value, it.method, it.role.name, it.name, it.hint) }
+        toolRegistry.tools().map { ToolCatalogEntry(it.toolId.value, it.method, it.role.name, it.versions.toList(), it.name, it.hint) }
 }

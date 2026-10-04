@@ -1,0 +1,204 @@
+components:
+  schemas:
+    ChannelResponse:
+      properties:
+        stepData:
+          $ref: '#/components/schemas/StepData'
+          description: Whatever the current step needs to render. `kind` names the shape - see StepData.
+      type: object
+    ErrorResponse:
+      type: object
+    IdentNectActivateRequest:
+      properties:
+        returnUri:
+          description: Where Nect sends the user back to; without it the app channel's /app/. The web channel names Keycloak's
+            action URL of the running step. Only an address under a configured prefix is accepted (400 otherwise).
+          type: string
+      type: object
+    IdentNectPatchRequest:
+      properties:
+        caseId:
+          description: The case id Nect sent the user back with (?nectCaseId=...); also accepted as nectCaseId.
+          format: uuid
+          type: string
+        retry:
+          description: true opens a fresh Nect case instead of reporting one.
+          type: boolean
+        returnUri:
+          description: 'With retry: where Nect sends the user back to this time, checked like on activation. The web channel
+            names a fresh action URL, because Keycloak''s action code is single-use; without it the address from the activation
+            stays.'
+          type: string
+      type: object
+    NectRedirectStep:
+      description: The user leaves for Nect's jump page; the app comes back with ?nectCaseId=... and reports it.
+      properties:
+        caseId:
+          format: uuid
+          type: string
+        jumpUrl:
+          example: /nect/?case=5b1c2d3e-0000-4000-8000-000000000001
+          type: string
+        kind:
+          enum:
+          - nect-redirect
+          type: string
+      required:
+      - caseId
+      - jumpUrl
+      - kind
+    StepData:
+      description: What the current step needs to render. `kind` names the shape; see the mapping on this schema for the ones
+        this deployment can produce.
+      discriminator:
+        mapping:
+          nect-redirect: '#/components/schemas/NectRedirectStep'
+        propertyName: kind
+      oneOf:
+      - $ref: '#/components/schemas/NectRedirectStep'
+  securitySchemes:
+    dpop:
+      description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the
+        binding key is derived from it and is never supplied by the caller.
+      in: header
+      name: DPoP
+      type: apiKey
+info:
+  description: App-facing (orchestrator-first) API for the DPoP-bound registration and login demo. See docs/05-api.md for
+    the full contract; the Keycloak-facing Keycloak facade is out of scope for this build (docs/08-projektrahmen.md).
+  title: Identity-Demo Orchestrator API
+  version: v1
+openapi: 3.1.0
+paths:
+  /tools/api/ident-nect/v1:
+    post:
+      description: Opens a Nect case; stepData carries the jump URL. The optional body names where Nect sends the user back
+        to.
+      operationId: activate
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentNectActivateRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: redirect
+                  toolId: ident-nect
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  caseId: 5b1c2d3e-0000-4000-8000-000000000001
+                  jumpUrl: /nect/?case=5b1c2d3e-0000-4000-8000-000000000001
+                  kind: nect-redirect
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Activate ident-nect
+      tags:
+      - 'Tool: Nect'
+  /tools/api/ident-nect/v1/{toolSessionId}:
+    get:
+      operationId: read
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Read the current ident-nect state
+      tags:
+      - 'Tool: Nect'
+    patch:
+      description: The backend redeems the case's result from Nect itself - once, and only for the case this tool session
+        opened.
+      operationId: patch
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentNectPatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              examples:
+                Attested, the assignment question follows:
+                  description: Attested, the assignment question follows
+                  value:
+                    channel:
+                      channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      state: REGISTERING
+                    next:
+                      context: prompt
+                      step: confirm
+                      type: orchestrator
+                    stepData:
+                      kind: confirm
+                      prompt:
+                        kind: Confirm
+                        title: Konto Ihrer Versichertennummer zuordnen?
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Report the returned Nect case, or open a new one
+      tags:
+      - 'Tool: Nect'
+tags:
+- description: Identification at Nect (eID, passport or EUDI wallet) via jump page and return
+  name: 'Tool: Nect'

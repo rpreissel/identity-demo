@@ -33,12 +33,13 @@ internal val SmsModule = toolModule(
 
 internal val EnrollSms = SmsModule.enroll(
     ENROLL_SMS_TOOL_ID,
+    versions = setOf(1),
     hint = Text("Code an eine Telefonnummer"),
     claims = setOf(PHONE_NUMBER),
     changeable = true,
 )
-internal val AuthSms = SmsModule.login(AUTH_SMS_TOOL_ID, hint = Text("Code an die hinterlegte Telefonnummer"))
-internal val AuthSmsLookup = SmsModule.lookupLogin(AUTH_SMS_LOOKUP_TOOL_ID, hint = Text("E-Mail-Adresse + SMS-Code"))
+internal val AuthSms = SmsModule.login(AUTH_SMS_TOOL_ID, versions = setOf(1), hint = Text("Code an die hinterlegte Telefonnummer"))
+internal val AuthSmsLookup = SmsModule.lookupLogin(AUTH_SMS_LOOKUP_TOOL_ID, versions = setOf(1), hint = Text("E-Mail-Adresse + SMS-Code"))
 
 /**
  * A method module talks to the orchestrator through tool_api only, never to account or another

@@ -41,9 +41,9 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
     /** Runs ident-fsc to Identified on a fresh channel; returns the channel and the finished tool session. */
     private fun identifiedChannel(): Pair<String, String> {
         val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-        val identToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
+        val identToolSessionId = post("/tools/api/ident-fsc/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
         patch(
-            "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
+            "/tools/api/ident-fsc/v1/$identToolSessionId",
             """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","fsc":"VALIDCODE"}"""
         )
         return channelSessionId to identToolSessionId
@@ -70,7 +70,7 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
                 val (channelSessionId, identToolSessionId) = identifiedChannel()
 
                 val cancelled = delete("/orchestrator/api/v1/channels/$channelSessionId/journey")
-                val reused = runCatching { patch("/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc", """{"fsc":"VALIDCODE"}""") }
+                val reused = runCatching { patch("/tools/api/ident-fsc/v1/$identToolSessionId", """{"fsc":"VALIDCODE"}""") }
 
                 then("the account being set up goes with the cancel, as a whole (ADR-46)") {
                     cancelled.channel()["state"] shouldBe "ANONYMOUS"
@@ -92,7 +92,7 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
 
                 // Direct DELETE logs out without confirmation (non-authenticated channel).
                 val logout = deleteNoContent("/orchestrator/api/v1/channels/$channelSessionId")
-                val reused = runCatching { patch("/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc", """{"fsc":"VALIDCODE"}""") }
+                val reused = runCatching { patch("/tools/api/ident-fsc/v1/$identToolSessionId", """{"fsc":"VALIDCODE"}""") }
                 val newChannel = post("/orchestrator/api/v1/app/channels")
 
                 then("the logout goes through") {
@@ -112,7 +112,7 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
             `when`("a login is cancelled mid-way") {
                 seedRegisteredAccount()
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-                post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms")
+                post("/tools/api/auth-sms/v1?channel=$channelSessionId")
 
                 val cancelled = delete("/orchestrator/api/v1/channels/$channelSessionId/journey")
 
@@ -207,12 +207,12 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
         // move, whichever way the channel ended, so all endpoints run against LOGGED_OUT and one
         // against EXPIRED. ModelBasedJourneyTest checks I-1 across random sequences.
         val allMoves = listOf(
-            "a step-up" to ("step-ups" to """{"requiredAcr":"loa3"}"""),
-            "method management" to ("enrollments" to "{}"),
-            "a peer login" to ("peer-logins" to "{}"),
-            "an account deletion" to ("account-deletions" to "{}"),
-            "a logout" to ("logouts" to "{}"),
-            "a tool" to ("tools/auth-sms" to "{}"),
+            "a step-up" to ({ id: String -> "/orchestrator/api/v1/channels/$id/step-ups" } to """{"requiredAcr":"loa3"}"""),
+            "method management" to ({ id: String -> "/orchestrator/api/v1/channels/$id/enrollments" } to "{}"),
+            "a peer login" to ({ id: String -> "/orchestrator/api/v1/channels/$id/peer-logins" } to "{}"),
+            "an account deletion" to ({ id: String -> "/orchestrator/api/v1/channels/$id/account-deletions" } to "{}"),
+            "a logout" to ({ id: String -> "/orchestrator/api/v1/channels/$id/logouts" } to "{}"),
+            "a tool" to ({ id: String -> "/tools/api/auth-sms/v1?channel=$id" } to "{}"),
         )
         mapOf("LOGGED_OUT" to allMoves, "EXPIRED" to allMoves.takeLast(1)).forEach { (finalState, moves) ->
             given("a channel that has ended as $finalState") {
@@ -228,11 +228,11 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
                 }
 
                 moves.forEach { (move, request) ->
-                    val (path, body) = request
+                    val (urlOf, body) = request
                     `when`("$move is requested") {
                         val channelSessionId = endedChannel(finalState)
 
-                        val result = runCatching { post("/orchestrator/api/v1/channels/$channelSessionId/$path", body) }
+                        val result = runCatching { post(urlOf(channelSessionId), body) }
 
                         then("it is refused and the channel stays $finalState, with no journey running") {
                             shouldThrow<HttpClientErrorException> { result.getOrThrow() }
@@ -252,12 +252,12 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
                 registerWithSmsOnly()
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 val (tan, activation) = captureMockTan {
-                    post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms")
+                    post("/tools/api/auth-sms/v1?channel=$channelSessionId")
                 }
                 val toolSessionId = activation.nextRaw()["toolSessionId"] as String
-                patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"$tan"}""")
+                patch("/tools/api/auth-sms/v1/$toolSessionId", """{"tan":"$tan"}""")
 
-                val replay = runCatching { patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"$tan"}""") }
+                val replay = runCatching { patch("/tools/api/auth-sms/v1/$toolSessionId", """{"tan":"$tan"}""") }
 
                 then("the finished tool session is no longer usable") {
                     shouldThrow<HttpClientErrorException> { replay.getOrThrow() }.statusCode shouldBe HttpStatus.NOT_FOUND

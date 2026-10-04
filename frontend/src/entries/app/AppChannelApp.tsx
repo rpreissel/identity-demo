@@ -409,7 +409,7 @@ export function AppChannelApp() {
       setActiveTool({ toolSessionId: next.toolSessionId, toolId: next.toolId })
     // The channel-level GET only reports a bare pointer. missingFields and demo hints come from
     // the tool's own responses and would be lost on resume, so fetch the tool's read-back
-    // (GET .../tools/{id}/{toolId}).
+    // (GET /tools/api/{toolId}/v{N}/{id}).
       const toolId = next.toolId
       const toolSessionId = next.toolSessionId
       activatingToolIdRef.current = toolId

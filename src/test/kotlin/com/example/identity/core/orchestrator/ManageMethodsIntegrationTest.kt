@@ -66,7 +66,7 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
                 val started = startManage(channelSessionId)
                 // One shot: the address was confirmed during registration, so activating the tool
                 // completes it - there is nothing left to prove.
-                val enrolled = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-email")
+                val enrolled = post("/tools/api/enroll-email/v1?channel=$channelSessionId")
                 val channel = get("/orchestrator/api/v1/channels/$channelSessionId").channel()
 
                 then("a selection page offers what is not active yet") {
@@ -95,10 +95,10 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
             `when`("starting MANAGE once sms, password, email and qr are all active") {
                 val channelSessionId = loginAsSeededAccount()
                 startManage(channelSessionId)
-                post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-email")
+                post("/tools/api/enroll-email/v1?channel=$channelSessionId")
                 startManage(channelSessionId)
-                val enrollQrToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-qr").nextRaw()["toolSessionId"] as String
-                patch("/orchestrator/api/v1/tools/$enrollQrToolSessionId/enroll-qr", "{}")
+                val enrollQrToolSessionId = post("/tools/api/enroll-qr/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
+                patch("/tools/api/enroll-qr/v1/$enrollQrToolSessionId", "{}")
 
                 // kobil cannot be enrolled here (its activation needs a real SDK run, see
                 // KobilBindingIntegrationTest). Switched off so this case stays about the
@@ -224,10 +224,10 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
                 val passwordId = before.first { it["method"] == "password" }["id"] as String
 
                 val started = changes(channelSessionId, passwordId)
-                val activated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-password")
+                val activated = post("/tools/api/enroll-password/v1?channel=$channelSessionId")
                 val untilDone = methodsOf(channelSessionId)
                 val toolSessionId = activated.nextRaw()["toolSessionId"] as String
-                val completed = patch("/orchestrator/api/v1/tools/$toolSessionId/enroll-password", """{"password":"another-correct-horse"}""")
+                val completed = patch("/tools/api/enroll-password/v1/$toolSessionId", """{"password":"another-correct-horse"}""")
                 val after = methodsOf(channelSessionId)
 
                 then("the list says which methods can be changed") {
@@ -254,10 +254,10 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = loginAsSeededAccount()
                 val before = methodsOf(channelSessionId).first { it["method"] == "password" }
                 changes(channelSessionId, before["id"] as String)
-                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-password").nextRaw()["toolSessionId"] as String
+                val toolSessionId = post("/tools/api/enroll-password/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 ageProofs(UUID.fromString(channelSessionId), minutes = 40)
 
-                patch("/orchestrator/api/v1/tools/$toolSessionId/enroll-password", """{"password":"another-correct-horse"}""")
+                patch("/tools/api/enroll-password/v1/$toolSessionId", """{"password":"another-correct-horse"}""")
                 val after = methodsOf(channelSessionId).first { it["method"] == "password" }
 
                 then("the new password is written under the level the change was admitted at, not the aged one") {
@@ -272,7 +272,7 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
                 val before = methodsOf(channelSessionId)
                 val passwordId = before.first { it["method"] == "password" }["id"] as String
                 changes(channelSessionId, passwordId)
-                post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-password")
+                post("/tools/api/enroll-password/v1?channel=$channelSessionId")
 
                 val abandoned = delete("/orchestrator/api/v1/channels/$channelSessionId/journey")
                 val after = methodsOf(channelSessionId)
@@ -295,7 +295,7 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
             `when`("the method cannot be changed (email has no credential of its own)") {
                 val channelSessionId = loginAsSeededAccount()
                 startManage(channelSessionId)
-                post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-email")
+                post("/tools/api/enroll-email/v1?channel=$channelSessionId")
                 val email = methodsOf(channelSessionId).first { it["method"] == "email" }
                 val result = runCatching { changes(channelSessionId, email["id"] as String) }
 

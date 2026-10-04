@@ -7,6 +7,7 @@ import { t } from '../../texts'
 
 export const identFsc: ToolModule = {
   toolId: 'ident-fsc',
+  version: 1,
   meta: { icon: '🪪' },
   explain: () => ({
     does: t('Ihre Angaben werden im Personenverzeichnis gesucht. Der Freischaltcode aus dem Brief bestätigt, dass Sie diese Person sind.'),

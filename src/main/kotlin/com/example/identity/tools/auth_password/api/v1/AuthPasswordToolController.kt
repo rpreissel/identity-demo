@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 data class AuthPasswordPatchRequest(
     @field:Schema(example = "Passwort!23") val password: String? = null
@@ -46,7 +46,7 @@ class AuthPasswordToolController(
 
     override val tool = AuthPassword
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$AUTH_PASSWORD_TOOL_ID")
+    @PostMapping("$TOOLS_API/$AUTH_PASSWORD_TOOL_ID/v1")
     @Operation(
         summary = "Activate auth-password",
         description = "No request body: toolId already carries kind and method.",
@@ -70,7 +70,7 @@ class AuthPasswordToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$AUTH_PASSWORD_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$AUTH_PASSWORD_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Confirm the password against the account's enrolled credential",
         responses = [
@@ -95,7 +95,7 @@ class AuthPasswordToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$AUTH_PASSWORD_TOOL_ID")
+    @GetMapping("$TOOLS_API/$AUTH_PASSWORD_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Read the current auth-password state",
         responses = [

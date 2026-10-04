@@ -45,9 +45,9 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         proves = Proves(factorTypes, maxAcr),
         onePerDevice = onePerDevice,
     ).apply {
-        if (ToolRole.IDENTIFICATION in roles) identify("ident-$method", hint = Text("Test"))
-        if (ToolRole.ENROLLMENT in roles) enroll("enroll-$method", hint = Text("Test"), optInOnly = optInEnrollment)
-        if (ToolRole.KNOWN_ACCOUNT_AUTH in roles) login("auth-$method", hint = Text("Test"))
+        if (ToolRole.IDENTIFICATION in roles) identify("ident-$method", versions = setOf(1), hint = Text("Test"))
+        if (ToolRole.ENROLLMENT in roles) enroll("enroll-$method", versions = setOf(1), hint = Text("Test"), optInOnly = optInEnrollment)
+        if (ToolRole.KNOWN_ACCOUNT_AUTH in roles) login("auth-$method", versions = setOf(1), hint = Text("Test"))
     }
     fun ToolModule.tool(role: ToolRole): Tool = tools.single { it.role == role }
     /** A catalog of the modules behind [tools]. */

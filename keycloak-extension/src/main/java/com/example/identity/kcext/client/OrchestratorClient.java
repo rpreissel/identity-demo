@@ -159,14 +159,21 @@ public final class OrchestratorClient {
         return ChannelResponse.from(send("POST", path, channelSessionId, null));
     }
 
-    /** Same facade-neutral tool endpoints the App channel uses (docs/05-api.md Abschnitt 3). */
-    public ChannelResponse activateTool(String channelSessionId, String toolId) throws IOException, InterruptedException {
-        return activateTool(channelSessionId, toolId, Map.of());
+    /**
+     * Where {@code toolId} lives in {@code version} (ADR-51). Same facade-neutral tool endpoints the
+     * App channel uses (docs/05-api.md Abschnitt 3).
+     */
+    private static String toolPath(String toolId, int version) {
+        return "/tools/api/" + segment(toolId) + "/v" + version;
+    }
+
+    public ChannelResponse activateTool(String channelSessionId, String toolId, int version) throws IOException, InterruptedException {
+        return activateTool(channelSessionId, toolId, version, Map.of());
     }
 
     /** With what the tool's renderer asks to send along ({@code WebToolRendererFactory.activationFields}). */
-    public ChannelResponse activateTool(String channelSessionId, String toolId, Map<String, String> fields) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/channels/" + segment(channelSessionId) + "/tools/" + segment(toolId);
+    public ChannelResponse activateTool(String channelSessionId, String toolId, int version, Map<String, String> fields) throws IOException, InterruptedException {
+        String path = toolPath(toolId, version) + "?channel=" + segment(channelSessionId);
         ObjectNode body = MAPPER.createObjectNode();
         fields.forEach(body::put);
         return ChannelResponse.from(send("POST", path, channelSessionId, body));
@@ -177,31 +184,31 @@ public final class OrchestratorClient {
      * {@code htu} to bind, and toolSessionId is not self-authorizing (docs/02-domaenenmodell.md
      * Abschnitt 1), so the binding claim alone ties this call to the right channel.
      */
-    public ChannelResponse patchTool(String channelSessionId, String toolSessionId, String toolId, Map<String, String> fields) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/tools/" + segment(toolSessionId) + "/" + segment(toolId);
+    public ChannelResponse patchTool(String channelSessionId, String toolSessionId, String toolId, int version, Map<String, String> fields) throws IOException, InterruptedException {
+        String path = toolPath(toolId, version) + "/" + segment(toolSessionId);
         ObjectNode body = MAPPER.createObjectNode();
         fields.forEach(body::put);
         return ChannelResponse.from(send("PATCH", path, channelSessionId, body));
     }
 
     /**
-     * GET .../tools/{toolSessionId}/{toolId}: the tool's current step, read only. Same binding
-     * convention as {@link #patchTool}.
+     * GET /tools/api/{toolId}/v{version}/{toolSessionId}: the tool's current step, read only. Same
+     * binding convention as {@link #patchTool}.
      */
-    public ChannelResponse readTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/tools/" + segment(toolSessionId) + "/" + segment(toolId);
+    public ChannelResponse readTool(String channelSessionId, String toolSessionId, String toolId, int version) throws IOException, InterruptedException {
+        String path = toolPath(toolId, version) + "/" + segment(toolSessionId);
         return ChannelResponse.from(send("GET", path, channelSessionId, null));
     }
 
-    /** DELETE .../tools/{toolSessionId}/{toolId} - declines the running tool ("Abbrechen"). */
-    public ChannelResponse abandonTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/tools/" + segment(toolSessionId) + "/" + segment(toolId);
+    /** DELETE /tools/api/{toolId}/v{version}/{toolSessionId} - declines the running tool ("Abbrechen"). */
+    public ChannelResponse abandonTool(String channelSessionId, String toolSessionId, String toolId, int version) throws IOException, InterruptedException {
+        String path = toolPath(toolId, version) + "/" + segment(toolSessionId);
         return ChannelResponse.from(send("DELETE", path, channelSessionId, null));
     }
 
-    /** POST .../tools/{toolSessionId}/{toolId}/back - leaves the running tool without declining it ("Zurück"). */
-    public ChannelResponse backFromTool(String channelSessionId, String toolSessionId, String toolId) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/tools/" + segment(toolSessionId) + "/" + segment(toolId) + "/back";
+    /** POST .../back - leaves the running tool without declining it ("Zurück"). */
+    public ChannelResponse backFromTool(String channelSessionId, String toolSessionId, String toolId, int version) throws IOException, InterruptedException {
+        String path = toolPath(toolId, version) + "/" + segment(toolSessionId) + "/back";
         return ChannelResponse.from(send("POST", path, channelSessionId, MAPPER.createObjectNode()));
     }
 

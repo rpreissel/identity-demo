@@ -32,6 +32,10 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/tools/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
       '/mock-personenverzeichnis': {
         target: 'http://localhost:8080',
         changeOrigin: true,

@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 data class ConfirmQrLoginPatchRequest(
     @field:Schema(example = "ABCD-1234") val pairingCode: String? = null,
@@ -52,7 +52,7 @@ class ConfirmQrLoginToolController(
 
     override val tool = ApproveQr
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$APPROVE_QR_TOOL_ID")
+    @PostMapping("$TOOLS_API/$APPROVE_QR_TOOL_ID/v1")
     @Operation(
         summary = "Activate approve-qr",
         description = "Optional body: {pairingCode}, when already known (e.g. from a demo-link deep link) - skips the input step.",
@@ -67,7 +67,7 @@ class ConfirmQrLoginToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$APPROVE_QR_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$APPROVE_QR_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Supply the pairing code, then the accept/reject decision",
         description = "First call: {pairingCode}. Once resolved: {decision: accept|reject}."
@@ -86,7 +86,7 @@ class ConfirmQrLoginToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$APPROVE_QR_TOOL_ID")
+    @GetMapping("$TOOLS_API/$APPROVE_QR_TOOL_ID/v1/{toolSessionId}")
     @Operation(summary = "Read the current approve-qr state")
     fun read(
         context: ToolContext

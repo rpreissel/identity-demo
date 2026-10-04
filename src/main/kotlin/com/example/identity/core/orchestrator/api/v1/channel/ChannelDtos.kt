@@ -24,10 +24,12 @@ data class ChannelCreateRequest(
     val intent: String? = null,
     @field:NotEmpty
     @field:Schema(
-        description = "toolIds this client supports and has enabled (docs/03-tool-architektur.md, availability) - " +
-            "e.g. GET /tools/catalog minus whatever the user turned off locally. Fixed for this channel's whole " +
-            "lifetime; a candidate list never offers a toolId outside this set, and activating one directly fails too.",
-        example = "[\"ident-fsc\", \"enroll-sms\", \"auth-sms\"]"
+        description = "The tools this client supports and has enabled, each as <toolId>@<version> in the one " +
+            "version it speaks (ADR-51, docs/03-tool-architektur.md, availability) - e.g. GET /tools/catalog minus " +
+            "whatever the user turned off locally. Fixed for this channel's whole lifetime; a candidate list never " +
+            "offers a tool outside this set, and activating one directly or in another version fails too. An entry " +
+            "without its version, or one tool in two versions, is rejected.",
+        example = "[\"ident-fsc@1\", \"enroll-sms@1\", \"auth-sms@1\"]"
     )
     val availableTools: List<String>
 )

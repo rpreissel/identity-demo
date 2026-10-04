@@ -35,22 +35,22 @@ class RegistrationFlowIntegrationTest : IntegrationTestSupport() {
                 val channelResponse = post("/orchestrator/api/v1/app/channels")
                 val channelSessionId = channelResponse.channel()["channelSessionId"] as String
 
-                val identActivation = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc")
+                val identActivation = post("/tools/api/ident-fsc/v1?channel=$channelSessionId")
                 val identToolSessionId = identActivation.nextRaw()["toolSessionId"] as String
                 patch(
-                    "/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc",
+                    "/tools/api/ident-fsc/v1/$identToolSessionId",
                     """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15"}"""
                 )
-                val identified = patch("/orchestrator/api/v1/tools/$identToolSessionId/ident-fsc", """{"fsc":"VALIDCODE"}""")
+                val identified = patch("/tools/api/ident-fsc/v1/$identToolSessionId", """{"fsc":"VALIDCODE"}""")
 
                 confirmEmail(channelSessionId)
                 val afterEmail = get("/orchestrator/api/v1/channels/$channelSessionId")
 
-                val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-sms").nextRaw()["toolSessionId"] as String
+                val enrollToolSessionId = post("/tools/api/enroll-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 val (enrollTan, afterPhone) = captureMockTan {
-                    patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-sms", """{"phoneNumber":"+49 170 1234567"}""")
+                    patch("/tools/api/enroll-sms/v1/$enrollToolSessionId", """{"phoneNumber":"+49 170 1234567"}""")
                 }
-                val enrolled = patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-sms", """{"tan":"$enrollTan"}""")
+                val enrolled = patch("/tools/api/enroll-sms/v1/$enrollToolSessionId", """{"tan":"$enrollTan"}""")
                 val afterSms = get("/orchestrator/api/v1/channels/$channelSessionId")
 
                 enrollPassword(channelSessionId)
@@ -132,7 +132,7 @@ class RegistrationFlowIntegrationTest : IntegrationTestSupport() {
             `when`("creating a channel") {
                 val response = restTemplate.exchange(
                     "http://localhost:$port/orchestrator/api/v1/app/channels", HttpMethod.POST,
-                    HttpEntity("""{"availableTools":["ident-fsc"]}""", headers()), mapType
+                    HttpEntity("""{"availableTools":["ident-fsc@1"]}""", headers()), mapType
                 )
 
                 then("the response is 201 with a Location header pointing at it") {
@@ -163,23 +163,23 @@ class RegistrationFlowIntegrationTest : IntegrationTestSupport() {
             `when`("activating a tool") {
                 val channelSessionId = identifyAndConfirmEmail()
                 val response = restTemplate.exchange(
-                    "http://localhost:$port/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-sms",
+                    "http://localhost:$port/tools/api/enroll-sms/v1?channel=$channelSessionId",
                     HttpMethod.POST, HttpEntity("{}", headers()), mapType
                 )
 
                 then("the response is 201 with a Location header pointing at the tool resource") {
                     response.statusCode shouldBe HttpStatus.CREATED
                     val toolSessionId = response.body!!.nextRaw()["toolSessionId"] as String
-                    response.headers.location.toString() shouldBe "http://localhost:$port/orchestrator/api/v1/tools/$toolSessionId/enroll-sms"
+                    response.headers.location.toString() shouldBe "http://localhost:$port/tools/api/enroll-sms/v1/$toolSessionId"
                 }
             }
 
             `when`("submitting an invalid phone number to enroll-sms") {
                 val channelSessionId = identifyAndConfirmEmail()
-                val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-sms").nextRaw()["toolSessionId"] as String
+                val enrollToolSessionId = post("/tools/api/enroll-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
 
                 val result = runCatching {
-                    patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-sms", """{"phoneNumber":"not-a-number"}""")
+                    patch("/tools/api/enroll-sms/v1/$enrollToolSessionId", """{"phoneNumber":"not-a-number"}""")
                 }
 
                 then("bad tool input is rejected as bad request") {
@@ -190,13 +190,13 @@ class RegistrationFlowIntegrationTest : IntegrationTestSupport() {
             `when`("the client resumes mid enroll-sms via GET and then submits the TAN sent before") {
                 // Stop right after phoneNumber was submitted, with the TAN already sent.
                 val channelSessionId = identifyAndConfirmEmail()
-                val enrollToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-sms").nextRaw()["toolSessionId"] as String
+                val enrollToolSessionId = post("/tools/api/enroll-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 val (enrollTan, _) = captureMockTan {
-                    patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-sms", """{"phoneNumber":"+49 170 1234567"}""")
+                    patch("/tools/api/enroll-sms/v1/$enrollToolSessionId", """{"phoneNumber":"+49 170 1234567"}""")
                 }
                 // Resume via GET, not reactivation (docs/05-api.md #2).
                 val resumed = get("/orchestrator/api/v1/channels/$channelSessionId")
-                val enrolled = patch("/orchestrator/api/v1/tools/$enrollToolSessionId/enroll-sms", """{"tan":"$enrollTan"}""")
+                val enrolled = patch("/tools/api/enroll-sms/v1/$enrollToolSessionId", """{"tan":"$enrollTan"}""")
 
                 then("the resume returns the running tool session that already awaits the TAN") {
                     resumed.nextRaw() shouldBe
@@ -215,7 +215,7 @@ class RegistrationFlowIntegrationTest : IntegrationTestSupport() {
                 // so ToolJourneyService must enforce the requires precondition itself.
                 val channelSessionId = identify()
 
-                val result = runCatching { post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-password") }
+                val result = runCatching { post("/tools/api/enroll-password/v1?channel=$channelSessionId") }
 
                 then("it is rejected as conflict") {
                     shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
@@ -251,14 +251,14 @@ class RegistrationFlowIntegrationTest : IntegrationTestSupport() {
 
                 val channelSessionId = post("/orchestrator/api/v1/app/channels", """{"intent":"register"}""").channel()["channelSessionId"] as String
                 val afterFirstIdent = reIdentifyViaFsc(channelSessionId)
-                val authSmsToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms").nextRaw()["toolSessionId"] as String
+                val authSmsToolSessionId = post("/tools/api/auth-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 // Declining leads back to identification, with Max's account already bound to the journey.
-                val afterDecline = delete("/orchestrator/api/v1/tools/$authSmsToolSessionId/auth-sms")
-                val secondIdentToolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc").nextRaw()["toolSessionId"] as String
+                val afterDecline = delete("/tools/api/auth-sms/v1/$authSmsToolSessionId")
+                val secondIdentToolSessionId = post("/tools/api/ident-fsc/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
 
                 val result = runCatching {
                     patch(
-                        "/orchestrator/api/v1/tools/$secondIdentToolSessionId/ident-fsc",
+                        "/tools/api/ident-fsc/v1/$secondIdentToolSessionId",
                         """{"kvnr":"B987654321","familyName":"Beispiel","givenNames":"Erika","birthDate":"1990-11-02","fsc":"ERIKA123"}"""
                     )
                 }

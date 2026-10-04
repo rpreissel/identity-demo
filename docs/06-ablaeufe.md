@@ -313,7 +313,7 @@ nachzuweisen, statt ein neues einzurichten.
 
 Zwischen beiden Schritten steht keine Ja/Nein-Frage: Nach der Bestätigung zeigt `next` direkt
 auf `ident-kvnr` (`RegisterState.Assigning`). Wer die Nummer nicht angeben will, bricht den Schritt
-ab (`DELETE /orchestrator/api/v1/tools/{toolSessionId}/ident-kvnr`, im Frontend „Jetzt nicht"). Der
+ab (`DELETE /tools/api/ident-kvnr/v1/{toolSessionId}`, im Frontend „Jetzt nicht"). Der
 Durchlauf geht dann normal weiter, und das Konto bleibt Interessent
 ([Orchestrierung](04-orchestrierung.md), ADR-10): mit vollständig bestätigter Identität, nur ohne
 Zuordnung zum Personenverzeichnis. Es ist ein Ausweichzustand, kein Pflichtzustand.

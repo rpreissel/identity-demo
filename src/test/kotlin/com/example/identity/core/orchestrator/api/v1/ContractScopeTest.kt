@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.api.v1
 
 import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -19,21 +20,21 @@ import java.nio.file.Path
 class ContractScopeTest : BehaviorSpec({
 
     given("api/openapi.yaml") {
-        then("every path lies under $API_V1") {
+        then("every path lies under $API_V1 or $TOOLS_API") {
             val paths = pathsOf(CONTRACT)
             paths.shouldNotBeEmpty()
-            paths.filterNot { it.startsWith("$API_V1/") }.shouldBeEmpty()
+            paths.filterNot { it.startsWith("$API_V1/") || it.startsWith("$TOOLS_API/") }.shouldBeEmpty()
         }
     }
 
     listOf(PARTS, PUBLISHED).forEach { dir ->
         given(PARTS.parent.relativize(dir).toString()) {
-            then("every part's path lies under $API_V1, none under /kc") {
+            then("every part's path lies under $API_V1 or $TOOLS_API, none under /kc") {
                 val files = Files.walk(dir).use { walk -> walk.filter { it.toString().endsWith(".yaml") }.toList() }
                 files.shouldNotBeEmpty()
                 files.forEach { file ->
                     val paths = pathsOf(file)
-                    paths.filterNot { it.startsWith("$API_V1/") && !it.startsWith("$API_V1/kc/") }.shouldBeEmpty()
+                    paths.filterNot { (it.startsWith("$API_V1/") && !it.startsWith("$API_V1/kc/")) || it.startsWith("$TOOLS_API/") }.shouldBeEmpty()
                 }
             }
         }

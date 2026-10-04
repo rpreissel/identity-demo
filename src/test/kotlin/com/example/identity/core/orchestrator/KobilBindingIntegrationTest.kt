@@ -22,7 +22,7 @@ class KobilBindingIntegrationTest : IntegrationTestSupport() {
     private data class EnrolledDevice(val tenantId: String, val kobilUserId: String, val unlockSecret: String)
 
     private fun enrollKobil(channelSessionId: String): EnrolledDevice {
-        val activated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-kobil")
+        val activated = post("/tools/api/enroll-kobil/v1?channel=$channelSessionId")
         val toolSessionId = activated.nextRaw()["toolSessionId"] as String
         val stepData = activated.stepData()
 
@@ -39,20 +39,20 @@ class KobilBindingIntegrationTest : IntegrationTestSupport() {
         )
 
         patch(
-            "/orchestrator/api/v1/tools/$toolSessionId/enroll-kobil",
+            "/tools/api/enroll-kobil/v1/$toolSessionId",
             """{"activated":true,"biometricConsent":true,"label":"Testhandy"}"""
         )
         return device
     }
 
     private fun startAuth(channelSessionId: String): String {
-        val started = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-kobil")
+        val started = post("/tools/api/auth-kobil/v1?channel=$channelSessionId")
         started.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-kobil", "step" to "unlock")
         return started.nextRaw()["toolSessionId"] as String
     }
 
     private fun releasePin(toolSessionId: String, unlock: String): Map<String, Any?> =
-        post("/orchestrator/api/v1/tools/$toolSessionId/auth-kobil/pin-releases", """{"unlock":$unlock}""")
+        post("/tools/api/auth-kobil/v1/$toolSessionId/pin-releases", """{"unlock":$unlock}""")
 
     private fun biometric(device: EnrolledDevice) = """{"kind":"biometric","unlockSecret":"${device.unlockSecret}"}"""
 
@@ -63,7 +63,7 @@ class KobilBindingIntegrationTest : IntegrationTestSupport() {
     )["otp"] as String
 
     private fun redeem(toolSessionId: String, otp: String): Map<String, Any?> =
-        patch("/orchestrator/api/v1/tools/$toolSessionId/auth-kobil", """{"otp":"$otp"}""")
+        patch("/tools/api/auth-kobil/v1/$toolSessionId", """{"otp":"$otp"}""")
 
     /** The methods whose key-bound credential lives on this device, as device-link lists them. */
     @Suppress("UNCHECKED_CAST")
@@ -145,7 +145,7 @@ class KobilBindingIntegrationTest : IntegrationTestSupport() {
                 val (device, loginChannel) = enrolledDeviceOnFreshChannel()
                 val toolSessionId = startAuth(loginChannel)
                 val released = releasePin(toolSessionId, biometric(device))
-                val reread = get("/orchestrator/api/v1/tools/$toolSessionId/auth-kobil")
+                val reread = get("/tools/api/auth-kobil/v1/$toolSessionId")
 
                 then("the release response carries the PIN") {
                     released.stepData().keys shouldContain "kobilPin"

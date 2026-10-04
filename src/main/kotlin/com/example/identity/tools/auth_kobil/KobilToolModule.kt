@@ -35,11 +35,13 @@ internal val KobilModule = toolModule(
 
 internal val EnrollKobil = KobilModule.enroll(
     ENROLL_KOBIL_TOOL_ID,
+    versions = setOf(1),
     hint = Text("An das Gerät gebunden über KOBIL, entsperrt per Biometrie oder Passwort"),
     startStep = "activate",
 )
 internal val AuthKobil = KobilModule.login(
     AUTH_KOBIL_TOOL_ID,
+    versions = setOf(1),
     hint = Text("An das Gerät gebunden über KOBIL, entsperrt per Biometrie oder Passwort"),
     startStep = "unlock",
 )

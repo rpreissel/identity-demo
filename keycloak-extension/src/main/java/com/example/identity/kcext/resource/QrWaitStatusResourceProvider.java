@@ -1,5 +1,6 @@
 package com.example.identity.kcext.resource;
 
+import com.example.identity.kcext.webtool.WebToolAvailability;
 import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.client.OrchestratorSettings;
 import com.example.identity.kcext.login.OrchestratorNotes;
@@ -76,7 +77,8 @@ public class QrWaitStatusResourceProvider implements RealmResourceProvider {
         AuthenticationSessionModel authSession = currentAuthSession(realm, clientId, tabId, (client, tab) ->
                 new AuthenticationSessionManager(session).getCurrentAuthenticationSession(realm, client, tab));
         return toResponse(answer(authSession, (channel, toolSession, tool) ->
-                OrchestratorSettings.of(session).newClient().readTool(channel, toolSession, tool).next()));
+                OrchestratorSettings.of(session).newClient()
+                        .readTool(channel, toolSession, tool, WebToolAvailability.versionOf(session, tool)).next()));
     }
 
     /**

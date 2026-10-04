@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.contract.tool_api.envelope.API_V1
+import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 data class EnrollSmsPatchRequest(
     @field:Schema(example = "+49 170 1234567") val phoneNumber: String? = null,
@@ -47,7 +47,7 @@ class EnrollSmsToolController(
 
     override val tool = EnrollSms
 
-    @PostMapping("$API_V1/channels/{channelSessionId}/tools/$ENROLL_SMS_TOOL_ID")
+    @PostMapping("$TOOLS_API/$ENROLL_SMS_TOOL_ID/v1")
     @Operation(
         summary = "Activate enroll-sms",
         description = "No request body: toolId already carries kind and method.",
@@ -71,7 +71,7 @@ class EnrollSmsToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$API_V1/tools/{toolSessionId}/$ENROLL_SMS_TOOL_ID")
+    @PatchMapping("$TOOLS_API/$ENROLL_SMS_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Supply phone number, then TAN",
         description = "First call with phoneNumber triggers the TAN send; a second call with tan confirms it.",
@@ -107,7 +107,7 @@ class EnrollSmsToolController(
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$API_V1/tools/{toolSessionId}/$ENROLL_SMS_TOOL_ID")
+    @GetMapping("$TOOLS_API/$ENROLL_SMS_TOOL_ID/v1/{toolSessionId}")
     @Operation(
         summary = "Read the current enroll-sms state",
         responses = [

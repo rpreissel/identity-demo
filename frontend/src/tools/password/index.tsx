@@ -11,6 +11,7 @@ const ICON = '🔑'
 
 export const enrollPasswordTool: ToolModule = {
   toolId: 'enroll-password',
+  version: 1,
   meta: { icon: ICON },
   explain: () => ({
     does: t('Sie legen ein Passwort fest. Das Tool speichert davon nur einen Hash, nie das Passwort selbst.'),
@@ -33,6 +34,7 @@ export const enrollPasswordTool: ToolModule = {
 
 export const authPassword: ToolModule = {
   toolId: 'auth-password',
+  version: 1,
   meta: { icon: ICON },
   explain: () => ({
     does: t('Das Passwort wird mit dem gespeicherten Hash verglichen.'),
@@ -48,6 +50,7 @@ export const authPassword: ToolModule = {
 
 export const authPasswordLookup: ToolModule = {
   toolId: 'auth-password-lookup',
+  version: 1,
   meta: { icon: ICON },
   explain: () => ({
     does: t('Die E-Mail-Adresse sucht das Konto, das Passwort beweist, dass es Ihres ist - beides in einem Aufruf. Die Antwort verrät nicht, ob es die Adresse gibt.'),

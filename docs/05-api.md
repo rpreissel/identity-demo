@@ -1,7 +1,7 @@
 # API-Spezifikation
 
-Die öffentliche API unter `/orchestrator/api/v1`, getrennt nach App-Kanal (der Orchestrator führt)
-und Web-Kanal (Keycloak führt).
+Die öffentliche API unter `/orchestrator/api/v1` und `/tools/api`, getrennt nach App-Kanal (der
+Orchestrator führt) und Web-Kanal (Keycloak führt).
 
 Was die Antworten fachlich bedeuten – insbesondere `next` –, ergibt sich aus
 [04-orchestrierung.md](04-orchestrierung.md).
@@ -10,11 +10,14 @@ Was die Antworten fachlich bedeuten – insbesondere `next` –, ergibt sich aus
 
 ## 1) API-Grundsätze
 
-- Die öffentliche API ist unter `/orchestrator/api/v1` versioniert.
+- Orchestrator und Tools sind getrennt versioniert, beide per Pfadsegment: der Orchestrator unter
+  `/orchestrator/api/v1`, jedes Tool unter `/tools/api/<toolId>/v<N>`
+  ([ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)).
 - Verschiedene Verfahren und Modi haben jeweils eigene, konkrete Endpunkte. Die URL bestimmt die
   Operation, nicht der Inhalt der Anfrage.
-- Vorbereitende Schritte arbeiten mit Tool-Ressourcen: Ein `POST` auf den Kanal legt das Tool an;
-  danach gestaltet das Tool seinen eigenen URL-Bereich selbst (Abschnitt 2).
+- Vorbereitende Schritte arbeiten mit Tool-Ressourcen: Ein `POST` auf das Tool mit dem Kanal in der
+  Query legt eine Tool-Sitzung an; danach gestaltet das Tool seinen eigenen URL-Bereich selbst
+  (Abschnitt 2).
 - Ein `PATCH` enthält nur das, was nachgeliefert oder geändert wird; vorhandene Felder dürfen
   gezielt überschrieben werden.
 - HTTP-Fehlercodes sind gestörten Abläufen vorbehalten. Fehlende Pflichtdaten und fehlgeschlagene
@@ -36,15 +39,16 @@ zugleich ankommt.
 
 | Datei | Inhalt | Wofür |
 |---|---|---|
-| `api/openapi.yaml` | der App-Vertrag: alles unter `/orchestrator/api/v1` | Eingabe für beide Generatoren |
-| `api/contract/envelope.yaml`, `api/contract/tools/<toolId>.yaml` | die versionierten Teile des App-Vertrags: Umschlag und je Tool eine Datei, ohne `/kc` | was `checkPublishedApiCompatibility` vergleicht |
-| `api/published/v1/envelope.yaml`, `api/published/tools/` | der veröffentlichte Stand dieser Teile | Vergleichsbasis für `checkPublishedApiCompatibility` |
+| `api/openapi.yaml` | der App-Vertrag: alles unter `/orchestrator/api/v1` und `/tools/api` | Eingabe für beide Generatoren |
+| `api/contract/envelope.yaml`, `api/contract/tools/<toolId>/v<N>.yaml` | die versionierten Teile des App-Vertrags: Umschlag und je Tool und Fassung eine Datei, ohne `/kc` | was `checkPublishedApiCompatibility` vergleicht |
+| `api/published/v1/envelope.yaml`, `api/published/tools/<toolId>/v<N>.yaml` | der veröffentlichte Stand dieser Teile | Vergleichsbasis für `checkPublishedApiCompatibility` |
 | `api/modules/<modul>.yaml` | alle Endpunkte und eigenen DTOs dieses Moduls; gemeinsame Schemas per `$ref` auf `../openapi.yaml` | zum Lesen und für Reviews |
 | `frontend/src/generated/` | die daraus erzeugten TypeScript-Typen | vom Frontend importiert, eingecheckt |
 | `keycloak-extension/build/generated/` | die daraus erzeugten Java-Modelle | von `OrchestratorClient` benutzt, nicht eingecheckt |
 
 **Was zum App-Vertrag gehört, entscheidet der Pfad.** `api/openapi.yaml` enthält genau die
-Endpunkte unter `API_V1`; das ergibt sich aus der Konstante, nicht aus einer Ausschlussliste. Drei
+Endpunkte unter `API_V1` und `TOOLS_API`; das ergibt sich aus den Konstanten, nicht aus einer
+Ausschlussliste. Drei
 Arten von Endpunkten liegen bewusst woanders:
 
 - Betriebsendpunkte unter `/orchestrator/admin` (Tool-Sperre, Reihenfolge der Registrierung,
@@ -84,20 +88,27 @@ Auf keinen dieser Endpunkte darf sich ein App-Client verlassen. Stünden sie im 
 würde der Kompatibilitätsvergleich ihr späteres Entfernen als Bruch des App-Vertrags melden.
 Beschrieben sind sie trotzdem, in der Datei ihres Moduls unter `api/modules/`.
 
-**Versionierung** ([ADR-50](adr/ADR-050-api-versionierung-umschlag-und-tool.md)). Versioniert
-wird auf zwei Ebenen. Der **Umschlag** (`ChannelResponse`, die Kanal-Endpunkte, `tools/catalog`,
-`texts`, die gemeinsamen `StepData`-Formen) steckt in jeder Antwort; ein Bruch daran trifft alle
-Clients und braucht eine neue API-Version. Ein **Tool** (seine Pfade, Schemas und die Formen seines
-Moduls) sieht nur ein Client, der es in `availableTools` nennt; ein Bruch daran trifft nur diese
-Clients. Man ändert das Tool dann additiv; geht das nicht, bräuchte es eine Tool-Version, die das
-Modell noch nicht vorsieht (ADR-50). Was nur Keycloak aufruft, liegt unter `/kc/`
-und wird nicht eingefroren: Die Erweiterung wird mit dem Server ausgeliefert. Die meisten
-Änderungen fügen nur etwas hinzu und brauchen nichts davon.
+**Versionierung** ([ADR-50](adr/ADR-050-api-versionierung-umschlag-und-tool.md),
+[ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)). Versioniert wird auf zwei Ebenen, beide per
+Pfadsegment und unabhängig voneinander:
+
+- Der **Umschlag** (`ChannelResponse`, die Kanal-Endpunkte, `tools/catalog`, `texts`, die
+  gemeinsamen `StepData`-Formen, Verlassen und Zurück eines Tools) steckt in jeder Antwort. Seine
+  Version steht in `/orchestrator/api/v<N>`. Ein Bruch daran trifft alle Clients; eine neue Version
+  ist ein Pflichtupdate, weil der Server nur eine führt.
+- Ein **Tool** (seine Pfade, Schemas und die Formen seines Moduls) liegt unter
+  `/tools/api/<toolId>/v<N>`. Seine Fassungen deklariert es im Modul (`versions = setOf(1)`). Ein
+  Client spricht je Tool genau eine Fassung und nennt sie in `availableTools`; ein Bruch an einer
+  Fassung trifft nur diese Clients. Man ändert das Tool dann additiv; geht das nicht, bekommt es eine
+  neue Fassung, und die alte läuft daneben weiter.
+
+Was nur Keycloak aufruft, liegt unter `/kc/` und wird nicht eingefroren: Die Erweiterung wird mit
+dem Server ausgeliefert. Die meisten Änderungen fügen nur etwas hinzu und brauchen nichts davon.
 
 `OpenApiSnapshotTest` zerlegt den Vertrag dafür in `api/contract/` (`ContractSplit`).
 `checkPublishedApiCompatibility` vergleicht in der CI jeden Teil mit seinem eingefrorenen Stand unter
 `api/published/` (openapi-diff) und schlägt bei einem Bruch fehl; die Meldung nennt den Umschlag oder
-die toolId. Ein neues oder entfallenes Tool ist nur ein Hinweis. Einen bewusst neuen Stand übernimmt
+Tool und Fassung (`enroll-sms@1`). Eine neue oder entfallene Fassung ist nur ein Hinweis. Einen bewusst neuen Stand übernimmt
 man mit `./gradlew publishApiVersion`; der Diff unter `api/published/` im PR zeigt, dass ein
 veröffentlichter Stand geändert wird. openapi-diff hält ein entfallenes optionales Feld einer
 Anfrage für kompatibel; eine solche Umbenennung bleibt Sache des Reviews.
@@ -188,14 +199,15 @@ Alle Anfragen enthalten den Header `DPoP: <proof>`.
   - Seite des Orchestrators (Auswahl, Bestätigung, Abschluss):
     `{ "type": "orchestrator", "context": "...", "step": "..." }`
 
-  `toolSessionId` adressiert die Tool-Ressource vollständig (`/tools/{toolSessionId}/{toolId}`). Sie
+  `toolSessionId` adressiert die Tool-Ressource zusammen mit der `toolId` und der Fassung, die der
+  Client für dieses Tool spricht (`/tools/api/{toolId}/v{N}/{toolSessionId}`). Sie
   ist gesetzt, sobald es für diesen Schritt eine `ToolSession` gibt – auch beim Fortsetzen
   (`GET /channels/{channelSessionId}`) mitten in einem laufenden Tool.
 - **Ein Antwortformat für alle Endpunkte** (`ChannelResponse`):
   `{ "channel": {channelSessionId, channelType, state, hasProvenFactor, currentAcr, currentAmr, activeMethods}, "next": {...}, "stepData": {...}, "demo": {...} }`.
   `channelSessionId`, `channelType`, `state` und `hasProvenFactor` stehen in jeder Antwort.
-  `currentAcr`, `currentAmr` und `activeMethods` stehen dagegen NIE in Antworten eines Tools (`POST .../tools/{toolId}` sowie
-  `PATCH`/`GET`/`DELETE` auf `/tools/...`), sondern nur bei den Endpunkten des Kanals
+  `currentAcr`, `currentAmr` und `activeMethods` stehen dagegen NIE in Antworten eines Tools (`POST /tools/api/{toolId}/v{N}` sowie
+  `PATCH`/`GET`/`DELETE` auf `/tools/api/...`), sondern nur bei den Endpunkten des Kanals
   (`GET`/`POST /channels`, `step-ups`, `enrollments`, `DELETE .../methods/{methodInstanceId}`).
 - **Werte von `channel.state`** – alles, was der Client aus `state` ablesen kann, ohne einen
   Endpunkt aufzurufen:
@@ -255,23 +267,25 @@ Pfade:
   Inhalt)
 - Rückfrage beantworten: `POST .../{channelSessionId}/answer` mit `{"answer": "accept"|"decline"}` –
   der gemeinsame Endpunkt für jeden `Prompt` (siehe unten)
-- Tool über den Kanal anlegen: `POST .../{channelSessionId}/tools/{toolId}` – `201` mit
-  `Location: .../tools/{toolSessionId}/{toolId}` (Anfrage ohne Inhalt, die `toolId` trägt Art und
-  Verfahren zusammen; die Antwort ist wie jede andere `channel`, `next`, `stepData`)
-- Tool fortschreiben und lesen: im Regelfall `PATCH`/`GET /orchestrator/api/v1/tools/{toolSessionId}/{toolId}`
-- Zurück zur Auswahl: `POST /orchestrator/api/v1/tools/{toolSessionId}/{toolId}/back`
-- Tool-Versuch verwerfen (Verfahren ablehnen): `DELETE /orchestrator/api/v1/tools/{toolSessionId}/{toolId}`
+- Tool am Kanal anlegen: `POST /tools/api/{toolId}/v{N}?channel={channelSessionId}` – `201` mit
+  `Location: /tools/api/{toolId}/v{N}/{toolSessionId}` (Anfrage meist ohne Inhalt, die `toolId`
+  trägt Art und Verfahren zusammen; die Antwort ist wie jede andere `channel`, `next`, `stepData`).
+  `{N}` ist die Fassung, die der Kanal für dieses Tool deklariert hat; eine andere wird mit `409`
+  abgelehnt.
+- Tool fortschreiben und lesen: im Regelfall `PATCH`/`GET /tools/api/{toolId}/v{N}/{toolSessionId}`
+- Zurück zur Auswahl: `POST /tools/api/{toolId}/v{N}/{toolSessionId}/back`
+- Tool-Versuch verwerfen (Verfahren ablehnen): `DELETE /tools/api/{toolId}/v{N}/{toolSessionId}`
 - Tool-Katalog: `GET /orchestrator/api/v1/tools/catalog` (ohne DPoP, ohne Kanal) –
-  `{toolId, method, role}` je Tool; daraus bildet der Client seine `availableTools`.
+  `{toolId, method, role, versions}` je Tool; daraus bildet der Client seine `availableTools`.
 
 URL-Bereich der Tools:
 
-- Das Anlegen eines Tools bleibt Sache des Orchestrators und ist für alle Tools gleich; nur dort
-  entsteht die `toolSessionId`.
-- Alles unterhalb von `/tools/{toolSessionId}/{toolId}` gestaltet das Tool selbst: eigene
+- Das Anlegen einer Tool-Sitzung bleibt Sache des Orchestrators und ist für alle Tools gleich; nur
+  dort entsteht die `toolSessionId`.
+- Alles unterhalb von `/tools/api/{toolId}/v{N}/{toolSessionId}` gestaltet das Tool selbst: eigene
   Unterressourcen und frei gewählte HTTP-Methoden. `PATCH`/`GET` sind der Regelfall, keine Pflicht
   – nicht jedes Verfahren passt zu „Felder nachliefern" (WebAuthn, eID).
-- Genau ein Tool nutzt das: `POST .../tools/{toolSessionId}/auth-kobil/pin-releases` gibt den
+- Genau ein Tool nutzt das: `POST /tools/api/auth-kobil/v1/{toolSessionId}/pin-releases` gibt den
   vom Backend verwahrten KOBIL-PIN heraus ([Abläufe](06-ablaeufe.md) Abschnitt 7). Warum das kein
   zusätzliches Feld im `PATCH` ist:
   - Der PIN darf **nicht erneut abrufbar** sein, und `stepData` wird bei jedem `GET` auf eine noch
@@ -531,7 +545,7 @@ einem von zwei Wegen (`LeaveToolController`). In beiden Fällen ist die `toolSes
 ungültig. Ein anderes Tool startet keiner der beiden Wege; das aktiviert der Client selbst, sobald
 `next` darauf zeigt.
 
-- **Zurück** (`POST /tools/{toolSessionId}/{toolId}/back`): Das Tool endet, ohne abgelehnt zu
+- **Zurück** (`POST /tools/api/{toolId}/v{N}/{toolSessionId}/back`): Das Tool endet, ohne abgelehnt zu
   werden. Die Journey zeigt ihre Auswahlseite wieder, mit allen Verfahren, die sie gerade anbietet
   – das verlassene eingeschlossen, und auch dann, wenn nur eines übrig ist: Wer zurückgeht, will
   wählen, nicht sofort wieder im selben Tool landen. Die Strategie wird nicht gefragt, es ist nichts
@@ -539,7 +553,7 @@ ungültig. Ein anderes Tool startet keiner der beiden Wege; das aktiviert der Cl
   Verfahren, eine überspringbare Zuordnung), ist Zurück dasselbe wie Ablehnen. Im Web-Kanal ist das
   jeder „Zurück“-Knopf einer Tool-Seite (`orchestrator_back`), in der App der „Zurück“-Knopf der
   Fußleiste.
-- **Ablehnen** (`DELETE /tools/{toolSessionId}/{toolId}`): Das Verfahren gilt in diesem Zustand
+- **Ablehnen** (`DELETE /tools/api/{toolId}/v{N}/{toolSessionId}`): Das Verfahren gilt in diesem Zustand
   als abgelehnt. Die Journey ermittelt die Kandidaten erneut, genau wie nach dem letzten
   `Completed`: In einem Ausweichzustand geht es zum nächsten Weg, bleibt dabei nur ein Verfahren,
   zeigt `next` direkt darauf; in einem Pflichtzustand kommt die volle Auswahl zurück. Im Web-Kanal ist
@@ -553,7 +567,7 @@ entscheidet das Backend.
 
 Registrierung mit `ident-fsc` -> `enroll-sms`:
 
-1. `POST /app/channels` (`{"requiredAcr": "loa2", "availableTools": ["ident-fsc", "enroll-sms", ...]}`;
+1. `POST /app/channels` (`{"requiredAcr": "loa2", "availableTools": ["ident-fsc@1", "enroll-sms@1", ...]}`;
    ohne `intent` gilt `fast_access`; `availableTools` ist Pflicht, siehe unten) liefert eine neue
    `channelSessionId` und gleich den ersten Schritt:
    `next={"type":"tool","toolId":"ident-fsc","step":"input"}`. Es gibt nur ein
@@ -565,7 +579,7 @@ Registrierung mit `ident-fsc` -> `enroll-sms`:
    `stepData={"kind":"missing-fields","missingFields":["kvnr","familyName","givenNames","birthDate"]}`
    und gesetzter `next.toolSessionId`. Nach `fsc` fragt das Tool erst, wenn diese Angaben zum
    Personenverzeichnis passen.
-3. `PATCH /tools/{toolSessionId}/ident-fsc` mit den Feldern, zuletzt dem Freischaltcode. Solange
+3. `PATCH /tools/api/ident-fsc/v1/{toolSessionId}` mit den Feldern, zuletzt dem Freischaltcode. Solange
    Felder fehlen, kommt `200` mit aktualisiertem `stepData.missingFields`, und `next` zeigt weiter
    auf `ident-fsc`. Nach erfolgreicher Prüfung:
    `stepData={"kind":"select-method","options":["enroll-sms"]}`,
@@ -625,9 +639,12 @@ Gerät erkennt:
 `requiredAcr` (optional) erspart den Umweg über ein niedriges Einstiegsniveau mit anschließendem
 Step-up. Das Backend rechnet mit `max(Policy-Anforderung, Client-Wunsch)`.
 
-`availableTools` (Pflicht) gibt an, welche `toolId`s dieser Client starten kann. Die Menge ist für
-die Lebensdauer des Kanals fest; gespeichert wird nur, was der Katalog kennt. Ein Tool außerhalb dieser Menge wird nie angeboten und auch bei
-direktem Aufruf abgelehnt (`docs/03-tool-architektur.md`, Verfügbarkeit). Zusätzlich kann der
+`availableTools` (Pflicht) gibt an, welche Tools dieser Client starten kann, jedes in der einen
+Fassung, die er spricht: `["ident-fsc@1", "enroll-sms@1"]` (ADR-51). Ein Eintrag ohne Fassung oder
+ein Tool in zwei Fassungen wird mit `400` abgelehnt. Die Menge ist für die Lebensdauer des Kanals
+fest; gespeichert wird nur, was der Server führt, ein unbekanntes Tool oder eine nicht geführte
+Fassung fällt weg. Ein Tool außerhalb dieser Menge wird nie angeboten und auch bei direktem Aufruf
+abgelehnt, ebenso ein Aufruf in einer anderen Fassung (`docs/03-tool-architektur.md`, Verfügbarkeit). Zusätzlich kann der
 Betreiber jedes Tool je Kanaltyp zur Laufzeit sperren und die Reihenfolge der Angebote je Kanaltyp
 festlegen (`GET /orchestrator/admin/tools/availability`,
 `PUT .../tools/{toolId}/availability/{APP|WEB}`, `PUT .../tools/order/{APP|WEB}`). Das
@@ -823,8 +840,8 @@ Danach läuft **alles** über dieselben Endpunkte wie im App-Zugang, ohne das Pr
 
 - `GET .../channels/{channelSessionId}`, `.../step-ups`, `.../journey`, `.../methods`,
   `.../enrollments`, `.../token`, `.../idclaims` (Abschnitt 2)
-- `POST .../channels/{channelSessionId}/tools/{toolId}` (Anlegen), danach `PATCH`/`GET
-  /tools/{toolSessionId}/{toolId}` – genau wie im App-Zugang
+- `POST /tools/api/{toolId}/v{N}?channel={channelSessionId}` (Anlegen), danach `PATCH`/`GET
+  /tools/api/{toolId}/v{N}/{toolSessionId}` – genau wie im App-Zugang
 
 Statt mit einem DPoP-Proof weist sich Keycloak mit einer signierten Peer-Auth-Assertion im Header
 `Authorization` aus (kein mTLS, ADR-7). Das ist ein JWT je Anfrage mit:
@@ -886,7 +903,7 @@ lauffähig hält, deckt auch diesen Fall ab.
 
 `ident-nect` schickt den Nutzer zu Nect und muss ihn zurückbekommen, ohne dass der Browser je mit dem
 Orchestrator spricht. Die Erweiterung gibt dafür beim Aktivieren die **Action-URL des laufenden
-Schritts** als `returnUri` mit (`POST .../tools/ident-nect`, `WebToolRendererFactory.activationFields`),
+Schritts** als `returnUri` mit (`POST /tools/api/ident-nect/v1?channel=…`, `WebToolRendererFactory.activationFields`),
 also dieselbe Adresse, an die die Seite ihr Formular schicken würde: `login-actions/authenticate` mit
 `session_code`, `execution`, `client_id` und `tab_id`. Nect hängt `nectCaseId` an. Ein GET auf diese
 Adresse mit gültigem Code behandelt Keycloak wie den Formularversand des Schritts, und die Erweiterung
@@ -908,7 +925,7 @@ auch sie liegt in Keycloak, nicht im Orchestrator
   Keycloak findet den Durchlauf daraus wie für seine eigenen Seiten. Fehlt etwas davon, kommt `404`
   ohne Inhalt. CORS-Header gibt es nicht.
 - **Antwort:** `{"state":"waiting"}` oder `{"state":"ready"}`, mit `Cache-Control: no-store`.
-  `waiting` heißt, der Orchestrator nennt beim `GET .../tools/{toolSessionId}/{toolId}` genau diese
+  `waiting` heißt, der Orchestrator nennt beim `GET /tools/api/{toolId}/v{N}/{toolSessionId}` genau diese
   Tool-Sitzung im Schritt `waitForApp`. Alles andere, auch ein Fehler beim Lesen, ist `ready`: Die
   Seite schickt ihr Formular dann einmal ab, und Keycloak zeigt, wie es weitergeht.
 - **Nur lesen:** Der Endpunkt ändert weder den Anmeldeablauf noch die Journey.
@@ -1001,5 +1018,5 @@ Keycloak nutzen für Eingabe- und Prüfschritte dieselben kanalneutralen Tool-UR
 
 Für Keycloak sind `auth-sms`, `auth-password` und `auth-email` (Login und Step-up) der einzige
 Fall, den der App-Zugang nicht schon abdeckt. Anlegen, `PATCH` und `GET` laufen aber genau wie in
-der App: `POST .../channels/{channelSessionId}/tools/auth-sms`, danach
-`PATCH`/`GET /tools/{toolSessionId}/auth-sms` (Abschnitt 3).
+der App: `POST /tools/api/auth-sms/v1?channel={channelSessionId}`, danach
+`PATCH`/`GET /tools/api/auth-sms/v1/{toolSessionId}` (Abschnitt 3).

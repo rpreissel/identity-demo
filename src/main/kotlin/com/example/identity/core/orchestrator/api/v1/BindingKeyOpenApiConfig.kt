@@ -4,7 +4,9 @@ import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import io.swagger.v3.oas.models.media.StringSchema
+import io.swagger.v3.oas.models.parameters.Parameter
 import io.swagger.v3.oas.models.parameters.PathParameter
+import io.swagger.v3.oas.models.parameters.QueryParameter
 import io.swagger.v3.oas.models.security.SecurityRequirement
 import org.springdoc.core.customizers.OperationCustomizer
 import org.springdoc.core.utils.SpringDocUtils
@@ -27,7 +29,7 @@ class BindingKeyOpenApiConfig {
      */
     init {
         SpringDocUtils.getConfig().addAnnotationsToIgnore(BindingKey::class.java)
-        // Resolved by ToolContextResolver from the path and the proof, never sent by the client.
+        // Resolved by ToolContextResolver from the path or query and the proof, never sent as a body.
         SpringDocUtils.getConfig().addRequestWrapperToIgnore(ToolContext::class.java)
     }
 
@@ -39,12 +41,10 @@ class BindingKeyOpenApiConfig {
     @Bean
     fun bindingKeySecurityCustomizer(): OperationCustomizer = OperationCustomizer { operation, handlerMethod ->
         val bindingKey = bindingKeyOf(handlerMethod)
-        val pathVariable = toolContextPathVariable(handlerMethod)
-        if (pathVariable != null) {
-            // A tool context takes its session or channel from the path and the key from the proof.
-            operation.parameters = listOf(
-                PathParameter().name(pathVariable).required(true).schema(StringSchema().format("uuid"))
-            ) + operation.parameters.orEmpty()
+        val idParameter = toolContextParameter(handlerMethod)
+        if (idParameter != null) {
+            // A tool context takes its session from the path, its channel from the query, the key from the proof.
+            operation.parameters = listOf(idParameter.required(true).schema(StringSchema().format("uuid"))) + operation.parameters.orEmpty()
             operation.security = listOf(SecurityRequirement().addList(DPOP_SCHEME), SecurityRequirement().addList(PEER_AUTH_SCHEME))
         } else if (bindingKey != null) {
             operation.security = when {
@@ -56,9 +56,11 @@ class BindingKeyOpenApiConfig {
         operation
     }
 
-    private fun toolContextPathVariable(handlerMethod: HandlerMethod): String? = when {
-        handlerMethod.methodParameters.any { ActivationToolContext::class.java.isAssignableFrom(it.parameterType) } -> ToolContextResolver.CHANNEL_PATH_VARIABLE
-        handlerMethod.methodParameters.any { ToolContext::class.java.isAssignableFrom(it.parameterType) } -> ToolContextResolver.PATH_VARIABLE
+    private fun toolContextParameter(handlerMethod: HandlerMethod): Parameter? = when {
+        handlerMethod.methodParameters.any { ActivationToolContext::class.java.isAssignableFrom(it.parameterType) } ->
+            QueryParameter().name(ToolContextResolver.CHANNEL_QUERY_PARAMETER)
+        handlerMethod.methodParameters.any { ToolContext::class.java.isAssignableFrom(it.parameterType) } ->
+            PathParameter().name(ToolContextResolver.PATH_VARIABLE)
         else -> null
     }
 

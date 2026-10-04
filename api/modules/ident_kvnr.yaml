@@ -29,13 +29,13 @@ info:
   version: v1
 openapi: 3.1.0
 paths:
-  /orchestrator/api/v1/channels/{channelSessionId}/tools/ident-kvnr:
+  /tools/api/ident-kvnr/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
       operationId: activate
       parameters:
-      - in: path
-        name: channelSessionId
+      - in: query
+        name: channel
         required: true
         schema:
           format: uuid
@@ -70,7 +70,7 @@ paths:
       summary: Activate ident-kvnr
       tags:
       - 'Tool: Versichertennummer'
-  /orchestrator/api/v1/tools/{toolSessionId}/ident-kvnr:
+  /tools/api/ident-kvnr/v1/{toolSessionId}:
     get:
       operationId: read
       parameters:

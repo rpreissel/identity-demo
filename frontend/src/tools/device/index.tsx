@@ -9,6 +9,7 @@ const ICON = '📲'
 
 export const enrollDeviceTool: ToolModule = {
   toolId: 'enroll-device',
+  version: 1,
   meta: { icon: ICON },
   explain: () => ({
     does: t('Die App erzeugt einen Schlüssel, der das Gerät nie verlässt. Das Tool bindet dessen öffentlichen Teil an Ihr Konto - danach erkennt der Orchestrator dieses Gerät wieder.'),
@@ -33,6 +34,7 @@ export const enrollDeviceTool: ToolModule = {
 
 export const authDeviceTool: ToolModule = {
   toolId: 'auth-device',
+  version: 1,
   meta: { icon: ICON },
   explain: () => ({
     does: t('Die App beweist mit dem Schlüssel dieses Geräts, dass es das an das Konto gebundene Gerät ist. Eine Eingabe braucht es dafür nicht.'),

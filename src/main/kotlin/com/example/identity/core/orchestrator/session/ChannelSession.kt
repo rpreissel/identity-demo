@@ -118,8 +118,8 @@ class ChannelSession(
     var entryIntent: AuthIntent = AuthIntent.FAST_ACCESS
 
     /**
-     * The toolIds this client declared at channel creation, fixed for the channel's lifetime
-     * (docs/03-tool-architektur.md). The other axis of availability is ToolAvailabilityService.
+     * The tools this client declared at channel creation, each as `<toolId>@<version>` in the one
+     * version it speaks (ADR-51), fixed for the channel's lifetime (docs/03-tool-architektur.md). The other axis of availability is ToolAvailabilityService.
      * A JSON column, not an element-collection table, to avoid a join on the hottest path.
      */
     @JdbcTypeCode(SqlTypes.JSON)

@@ -23,38 +23,38 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
 
         /** Card read plus PIN - the whole tool, with nothing typed to look anybody up first. */
         fun attestViaEid(channelSessionId: String): Map<String, Any?> {
-            val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-eid")
+            val toolSessionId = post("/tools/api/ident-eid/v1?channel=$channelSessionId")
                 .nextRaw()["toolSessionId"] as String
             patch(
-                "/orchestrator/api/v1/tools/$toolSessionId/ident-eid",
+                "/tools/api/ident-eid/v1/$toolSessionId",
                 """{"familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","streetAddress":"Musterstraße 1","postalCode":"12345","locality":"Musterstadt","restrictedId":"T0103005K1D5S0V8T9W6UM2RTX"}"""
             )
-            return patch("/orchestrator/api/v1/tools/$toolSessionId/ident-eid", """{"pin":"123456"}""")
+            return patch("/tools/api/ident-eid/v1/$toolSessionId", """{"pin":"123456"}""")
         }
 
         /** The second demo person's card - used where a test needs a persona Max's fixtures don't already own. */
         fun attestAsErika(channelSessionId: String): Map<String, Any?> {
-            val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-eid")
+            val toolSessionId = post("/tools/api/ident-eid/v1?channel=$channelSessionId")
                 .nextRaw()["toolSessionId"] as String
             patch(
-                "/orchestrator/api/v1/tools/$toolSessionId/ident-eid",
+                "/tools/api/ident-eid/v1/$toolSessionId",
                 """{"familyName":"Beispiel","givenNames":"Erika","birthDate":"1990-11-02","streetAddress":"Beispielweg 42","postalCode":"54321","locality":"Beispielhausen","restrictedId":"T0208011X7Y2Q4M6B3LT0T28WJ"}"""
             )
-            return patch("/orchestrator/api/v1/tools/$toolSessionId/ident-eid", """{"pin":"123456"}""")
+            return patch("/tools/api/ident-eid/v1/$toolSessionId", """{"pin":"123456"}""")
         }
 
         /** Activates the correlation step the attestation left `next` pointing at. */
         fun activateAssignment(channelSessionId: String): String =
-            post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-kvnr").nextRaw()["toolSessionId"] as String
+            post("/tools/api/ident-kvnr/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
 
         /** Runs confirm-email to completion for one specific address on an already-running journey. */
         fun confirmAddress(channelSessionId: String, email: String): Map<String, Any?> {
-            val confirmSession = post("/orchestrator/api/v1/channels/$channelSessionId/tools/confirm-email")
+            val confirmSession = post("/tools/api/confirm-email/v1?channel=$channelSessionId")
                 .nextRaw()["toolSessionId"] as String
             val (code, _) = captureMockTan {
-                patch("/orchestrator/api/v1/tools/$confirmSession/confirm-email", """{"email":"$email"}""")
+                patch("/tools/api/confirm-email/v1/$confirmSession", """{"email":"$email"}""")
             }
-            return patch("/orchestrator/api/v1/tools/$confirmSession/confirm-email", """{"code":"$code"}""")
+            return patch("/tools/api/confirm-email/v1/$confirmSession", """{"code":"$code"}""")
         }
 
         /** How many PERSON_ID anchors the channel's account has - 0 for a prospect, 1 once bound. */
@@ -137,7 +137,7 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 attestAsErika(channelSessionId)
                 val disposable = checkNotNull(accountIdOf(channelSessionId)) { "the attestation created no account" }
-                delete("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr")
+                delete("/tools/api/ident-kvnr/v1/${activateAssignment(channelSessionId)}")
 
                 confirmAddress(channelSessionId, "erika.beispiel@example.com")
 
@@ -162,7 +162,7 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 // Max's card, Erika's address.
                 attestViaEid(channelSessionId)
                 val disposable = checkNotNull(accountIdOf(channelSessionId)) { "the attestation created no account" }
-                delete("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr")
+                delete("/tools/api/ident-kvnr/v1/${activateAssignment(channelSessionId)}")
 
                 val result = runCatching { confirmAddress(channelSessionId, "erika.beispiel@example.com") }
 
@@ -183,7 +183,7 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 attestViaEid(channelSessionId)
                 val disposable = checkNotNull(accountIdOf(channelSessionId)) { "the attestation created no account" }
 
-                val assigned = patch("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr", """{"kvnr":"A123456789"}""")
+                val assigned = patch("/tools/api/ident-kvnr/v1/${activateAssignment(channelSessionId)}", """{"kvnr":"A123456789"}""")
 
                 then("the attestation had created a disposable account of its own") {
                     disposable shouldNotBe existing
@@ -211,7 +211,7 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
             `when`("the assignment step is abandoned - the 'jetzt nicht' of this flow") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 val attested = attestViaEid(channelSessionId)
-                val skipped = delete("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr")
+                val skipped = delete("/tools/api/ident-kvnr/v1/${activateAssignment(channelSessionId)}")
 
                 then("the attestation points straight at the correlation tool, no prompt in between") {
                     attested.next() shouldBe mapOf("type" to "tool", "toolId" to "ident-kvnr", "step" to "input")
@@ -227,7 +227,7 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
             `when`("a matching KVNR is supplied") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 attestViaEid(channelSessionId)
-                patch("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr", """{"kvnr":"A123456789"}""")
+                patch("/tools/api/ident-kvnr/v1/${activateAssignment(channelSessionId)}", """{"kvnr":"A123456789"}""")
 
                 then("it binds the register's person to the very same account") {
                     personAnchorsOf(channelSessionId) shouldBe 1
@@ -265,7 +265,7 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
             `when`("a person is bound and the correlation step is requested a second time") {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 attestViaEid(channelSessionId)
-                patch("/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr", """{"kvnr":"A123456789"}""")
+                patch("/tools/api/ident-kvnr/v1/${activateAssignment(channelSessionId)}", """{"kvnr":"A123456789"}""")
 
                 val result = runCatching { activateAssignment(channelSessionId) }
 
@@ -280,13 +280,13 @@ class IdentEidAssignmentIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 attestViaEid(channelSessionId)
                 val foreign = patch(
-                    "/orchestrator/api/v1/tools/${activateAssignment(channelSessionId)}/ident-kvnr",
+                    "/tools/api/ident-kvnr/v1/${activateAssignment(channelSessionId)}",
                     """{"kvnr":"B987654321"}"""
                 )
                 val otherChannel = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 attestViaEid(otherChannel)
                 val unknown = patch(
-                    "/orchestrator/api/v1/tools/${activateAssignment(otherChannel)}/ident-kvnr",
+                    "/tools/api/ident-kvnr/v1/${activateAssignment(otherChannel)}",
                     """{"kvnr":"X999999999"}"""
                 )
 

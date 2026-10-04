@@ -15,10 +15,17 @@ const TOOL_MODULES: ToolModule[] = Object.values(discovered).flatMap((mod) => mo
 const BY_ID: Record<string, ToolModule> = Object.fromEntries(TOOL_MODULES.map((module) => [module.toolId, module]))
 
 /**
- * The toolIds this client can render, what it can honestly declare as `availableTools`
- * (docs/03-tool-architektur.md, availability).
+ * The toolIds this client can render, what it can honestly declare as `availableTools`, each in
+ * its module's version (docs/03-tool-architektur.md, availability).
  */
 export const knownToolIds: string[] = TOOL_MODULES.map((module) => module.toolId)
+
+/** The one version of `toolId` this client speaks (ADR-51). Only a known tool is ever declared or called. */
+export function toolVersionOf(toolId: string): number {
+  const module = BY_ID[toolId]
+  if (!module) throw new Error(`Unknown tool ${toolId}`)
+  return module.version
+}
 
 /**
  * A tool as the app shows it: its symbol from its own module, name and hint from the backend's

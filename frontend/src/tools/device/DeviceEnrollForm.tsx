@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createDeviceProof, getOrCreateDeviceKeyPair } from '../../deviceKey.ts'
 import { DeviceAccessGate } from './DeviceAccessGate'
 import { t } from '../../texts'
+import { toolSessionPath } from '../../api'
 import { StepActions } from '../../components/PhoneFrame'
 
 interface DeviceEnrollFormProps {
@@ -31,7 +32,7 @@ export function DeviceEnrollForm({ toolSessionId, toolId, onSubmit, error }: Dev
     setBusy(true)
     try {
       const { keyPair } = await getOrCreateDeviceKeyPair()
-      const htu = `${window.location.origin}/orchestrator/api/v1/tools/${toolSessionId}/${toolId}`
+      const htu = `${window.location.origin}${toolSessionPath(toolSessionId, toolId)}`
       const deviceProof = await createDeviceProof(keyPair, 'PATCH', htu, userVerification)
       onSubmit({ deviceProof, label: label.trim() || t('Mein Gerät') })
     } finally {

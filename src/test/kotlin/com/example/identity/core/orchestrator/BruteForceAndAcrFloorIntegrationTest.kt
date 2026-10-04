@@ -32,11 +32,11 @@ class BruteForceAndAcrFloorIntegrationTest : IntegrationTestSupport() {
                     "/orchestrator/api/v1/app/channels",
                     """{"intent":"lookup_login","requiredAcr":"loa2"}"""
                 ).channel()["channelSessionId"] as String
-                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password-lookup")
+                val toolSessionId = post("/tools/api/auth-password-lookup/v1?channel=$channelSessionId")
                     .nextRaw()["toolSessionId"] as String
 
                 val afterPassword = patch(
-                    "/orchestrator/api/v1/tools/$toolSessionId/auth-password-lookup",
+                    "/tools/api/auth-password-lookup/v1/$toolSessionId",
                     """{"email":"$email","password":"$password"}"""
                 )
 
@@ -68,11 +68,11 @@ class BruteForceAndAcrFloorIntegrationTest : IntegrationTestSupport() {
                     """{"intent":"lookup_login","requiredAcr":"loa2"}"""
                 ).channel()["channelSessionId"] as String
                 post("/orchestrator/api/v1/channels/$channelSessionId/step-ups", """{"requiredAcr":"loa1"}""")
-                val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password-lookup")
+                val toolSessionId = post("/tools/api/auth-password-lookup/v1?channel=$channelSessionId")
                     .nextRaw()["toolSessionId"] as String
 
                 val afterPassword = patch(
-                    "/orchestrator/api/v1/tools/$toolSessionId/auth-password-lookup",
+                    "/tools/api/auth-password-lookup/v1/$toolSessionId",
                     """{"email":"$email","password":"$password"}"""
                 )
 
@@ -157,10 +157,10 @@ class BruteForceAndAcrFloorIntegrationTest : IntegrationTestSupport() {
     private fun submitLookupPassword(email: String, password: String): Map<String, Any?> {
         val channelSessionId = post("/orchestrator/api/v1/app/channels", """{"intent":"lookup_login"}""")
             .channel()["channelSessionId"] as String
-        val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-password-lookup")
+        val toolSessionId = post("/tools/api/auth-password-lookup/v1?channel=$channelSessionId")
             .nextRaw()["toolSessionId"] as String
         return patch(
-            "/orchestrator/api/v1/tools/$toolSessionId/auth-password-lookup",
+            "/tools/api/auth-password-lookup/v1/$toolSessionId",
             """{"email":"$email","password":"$password"}"""
         )
     }
@@ -169,10 +169,10 @@ class BruteForceAndAcrFloorIntegrationTest : IntegrationTestSupport() {
     private fun submitFsc(fsc: String): Map<String, Any?> {
         currentBindingKeyRef = "binding-" + UUID.randomUUID()
         val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
-        val toolSessionId = post("/orchestrator/api/v1/channels/$channelSessionId/tools/ident-fsc")
+        val toolSessionId = post("/tools/api/ident-fsc/v1?channel=$channelSessionId")
             .nextRaw()["toolSessionId"] as String
         return patch(
-            "/orchestrator/api/v1/tools/$toolSessionId/ident-fsc",
+            "/tools/api/ident-fsc/v1/$toolSessionId",
             """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","fsc":"$fsc"}"""
         )
     }
