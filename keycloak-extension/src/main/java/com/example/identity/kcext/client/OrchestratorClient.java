@@ -233,7 +233,7 @@ public final class OrchestratorClient {
      * {@code MgmtPasswordController} checks both match.
      */
     public boolean verifyPassword(long accountId, String password) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/tools/auth-password/mgmt/" + accountId;
+        String path = "/orchestrator/api/v1/kc/accounts/" + accountId + "/password-checks";
         ObjectNode body = MAPPER.createObjectNode();
         body.put("password", password);
         JsonNode response = send("POST", path, String.valueOf(accountId), body);

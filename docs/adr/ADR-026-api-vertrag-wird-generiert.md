@@ -11,7 +11,8 @@ Die Quelle des API-Vertrags ist der Code. Alles andere wird daraus erzeugt:
   in der CI, dass sie dazu passt. Jede gewollte Vertragsänderung wird so im Review als Diff sichtbar.
 - **`api/modules/<modul>.yaml`** entsteht im selben Lauf, damit man Änderungen je Modul prüfen kann.
   Gemeinsame Schemas verweisen dort auf `../openapi.yaml#/components/schemas/…`, statt sie zu kopieren.
-- **`api/published/v1.yaml`** ist der eingefrorene Stand von v1. `checkPublishedApiCompatibility`
+- **`api/published/`** ist der eingefrorene Stand, seit [ADR-50](ADR-050-api-versionierung-umschlag-und-tool.md)
+  zerlegt in Umschlag und je Tool eine Datei. `checkPublishedApiCompatibility`
   (openapi-diff) prüft in der CI jede Änderung dagegen; `publishApiVersion` hebt einen bewusst
   gewollten neuen Stand an.
 - **Clients werden generiert:** das Frontend mit dem OpenAPI Generator

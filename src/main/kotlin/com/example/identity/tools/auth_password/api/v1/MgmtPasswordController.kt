@@ -7,7 +7,6 @@ import com.example.identity.contract.tool_api.KeycloakToolCalls
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.tools.auth_password.PasswordModule
-import com.example.identity.tools.auth_password.AUTH_PASSWORD_TOOL_ID
 import com.example.identity.contract.tool_api.credentials.PasswordCredentialPort
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.envelope.API_V1
@@ -45,7 +44,8 @@ class MgmtPasswordController(
 
     // The Authorization header carries the assertion; the @BindingKey resolver reads it, the
     // @Parameter keeps it in the published contract.
-    @PostMapping("$API_V1/tools/$AUTH_PASSWORD_TOOL_ID/mgmt/{accountId}")
+    // Under /kc like every endpoint only Keycloak calls: not part of the frozen app contract (ADR-50).
+    @PostMapping("$API_V1/kc/accounts/{accountId}/password-checks")
     @Operation(summary = "Verify a candidate password against the account's stored credential")
     @Parameter(name = "Authorization", `in` = ParameterIn.HEADER, required = false, schema = Schema(type = "string"))
     fun verify(

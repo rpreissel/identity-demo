@@ -86,8 +86,8 @@ jobs:
         run: ./gradlew checkOpenApiSnapshot
 
       # Und der Vertrag darf die bereits veroeffentlichte Version nicht brechen. Reihenfolge ist
-      # wichtig: erst muss der Snapshot zum Code passen, dann wird er gegen api/published/v1.yaml
-      # gehalten. Der Snapshot-Test macht jede Aenderung sichtbar, diese Pruefung sagt, ob sie
+      # wichtig: erst muss der Snapshot zum Code passen, dann werden seine Teile (Umschlag, je Tool
+      # eine Datei, ADR-50) gegen api/published/ gehalten. Der Snapshot-Test macht jede Aenderung sichtbar, diese Pruefung sagt, ob sie
       # brechend ist.
       - name: Veroeffentlichte API-Version nicht gebrochen
         run: ./gradlew checkPublishedApiCompatibility

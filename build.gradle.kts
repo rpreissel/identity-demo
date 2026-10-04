@@ -1,5 +1,8 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.gradle.api.tasks.Delete
+import org.gradle.process.ExecOperations
+import java.io.ByteArrayOutputStream
+import javax.inject.Inject
 
 plugins {
     kotlin("jvm") version "2.4.20"
@@ -339,12 +342,17 @@ tasks.register<JavaExec>("exportTexts") {
     args(layout.buildDirectory.dir("texts").get().asFile.absolutePath)
 }
 
-// Der Wachposten fuer bereits veroeffentlichte Versionen (docs/05-api.md).
+// Der Wachposten fuer bereits veroeffentlichte Versionen (docs/05-api.md, ADR-50).
 //
-// api/published/v1.yaml ist der Vertrag zum Zeitpunkt der Veroeffentlichung und wird NICHT neu
-// erzeugt. OpenApiSnapshotTest sichert "Code passt zu api/openapi.yaml"; dieser Vergleich sichert
-// "api/openapi.yaml bricht v1 nicht". Der Snapshot-Test macht jede Aenderung sichtbar, sagt aber
-// nichts darueber, ob sie brechend ist - und der gewohnte Weg ist dann, den Snapshot nachzuziehen.
+// Eingefroren ist nicht api/openapi.yaml als Ganzes, sondern ihre Teile, die OpenApiSnapshotTest
+// unter api/contract/ erzeugt: der Umschlag (envelope.yaml) und je Tool eine Datei. Ein Bruch am
+// Umschlag braucht eine neue API-Version. Ein Bruch an einem Tool trifft nur Clients, die es in
+// availableTools nennen; man aendert es additiv (eine Tool-Version sieht das Modell noch nicht vor). /kc/** ist in keinem Teil: das ruft
+// nur die Keycloak-Erweiterung, die mit dem Server ausgeliefert wird.
+//
+// api/published/ ist der Stand zum Zeitpunkt der Veroeffentlichung und wird NICHT neu erzeugt.
+// OpenApiSnapshotTest sichert "Code passt zu api/contract/"; dieser Vergleich sichert "api/contract/
+// bricht nichts Veroeffentlichtes".
 //
 // Eigene Konfiguration statt testImplementation: openapi-diff bringt swagger-parser mit, das mit
 // dem swagger-core von springdoc kollidiert, und jcl-over-slf4j, das mit Boots Logging kollidiert.
@@ -354,30 +362,85 @@ dependencies {
     openapiDiff(variantOf(libs.openapi.diff.cli) { classifier("all") })
 }
 
-tasks.register<JavaExec>("checkPublishedApiCompatibility") {
+/**
+ * Vergleicht jeden eingefrorenen Teil mit seinem aktuellen Gegenstueck. Ein neues Tool hat noch
+ * keinen eingefrorenen Stand und ist kein Bruch; ein entferntes Tool auch nicht - Clients, die es
+ * nennen, bekommen es nur nicht mehr angeboten. Beides meldet der Task als Hinweis.
+ */
+abstract class CheckPublishedApiCompatibility @Inject constructor(
+    private val exec: ExecOperations
+) : DefaultTask() {
+    @get:Classpath
+    abstract val diffClasspath: ConfigurableFileCollection
+
+    @get:InputDirectory
+    abstract val published: DirectoryProperty
+
+    @get:InputDirectory
+    abstract val current: DirectoryProperty
+
+    @TaskAction
+    fun check() {
+        val publishedDir = published.get().asFile
+        val currentDir = current.get().asFile
+        val envelope = "envelope.yaml"
+        val tools = "tools"
+        val failures = mutableListOf<String>()
+
+        fun compare(old: File, new: File, onBreak: String) {
+            val output = ByteArrayOutputStream()
+            val result = exec.javaexec {
+                classpath = diffClasspath
+                mainClass.set("org.openapitools.openapidiff.cli.Main")
+                args(old.absolutePath, new.absolutePath, "--fail-on-incompatible")
+                standardOutput = output
+                errorOutput = output
+                isIgnoreExitValue = true
+            }
+            if (result.exitValue != 0) failures += "$onBreak\n${output.toString(Charsets.UTF_8).trim()}"
+        }
+
+        compare(publishedDir.resolve("v1/$envelope"), currentDir.resolve(envelope),
+            "Bruch am Umschlag (${currentDir.name}/$envelope): braucht eine neue API-Version.")
+
+        val publishedTools = publishedDir.resolve(tools).listFiles().orEmpty().filter { it.extension == "yaml" }
+        val currentTools = currentDir.resolve(tools).listFiles().orEmpty().filter { it.extension == "yaml" }
+        publishedTools.sortedBy { it.name }.forEach { old ->
+            val toolId = old.nameWithoutExtension
+            val new = currentDir.resolve("$tools/${old.name}")
+            if (!new.exists()) {
+                logger.lifecycle("Hinweis: Tool $toolId ist entfallen. Clients, die es nennen, bekommen es nicht mehr angeboten.")
+            } else {
+                compare(old, new, "Bruch an $toolId: additiv aendern; geht das nicht, braucht es eine Tool-Version (noch nicht vorgesehen, ADR-50).")
+            }
+        }
+        val newTools = currentTools.map { it.nameWithoutExtension } - publishedTools.map { it.nameWithoutExtension }.toSet()
+        newTools.sorted().forEach { logger.lifecycle("Hinweis: Tool $it ist neu und noch nicht eingefroren (publishApiVersion).") }
+
+        if (failures.isNotEmpty()) throw GradleException(failures.joinToString("\n\n"))
+    }
+}
+
+tasks.register<CheckPublishedApiCompatibility>("checkPublishedApiCompatibility") {
     group = "verification"
-    description = "Prueft api/openapi.yaml gegen die eingefrorene api/published/v1.yaml."
-    classpath = openapiDiff
-    mainClass.set("org.openapitools.openapidiff.cli.Main")
-    args(
-        layout.projectDirectory.file("api/published/v1.yaml").asFile.absolutePath,
-        layout.projectDirectory.file("api/openapi.yaml").asFile.absolutePath,
-        "--fail-on-incompatible"
-    )
-    inputs.file(layout.projectDirectory.file("api/published/v1.yaml"))
-    inputs.file(layout.projectDirectory.file("api/openapi.yaml"))
+    description = "Prueft api/contract/ (Umschlag und je Tool) gegen den eingefrorenen Stand unter api/published/."
+    diffClasspath.from(openapiDiff)
+    published.set(layout.projectDirectory.dir("api/published"))
+    current.set(layout.projectDirectory.dir("api/contract"))
+    mustRunAfter("publishApiVersion")
     // Wie bei checkOpenApiSnapshot: ein Vertragsbruch darf nie als "up to date" durchgehen.
     outputs.upToDateWhen { false }
 }
 
 // Der einzige legitime Weg, die eingefrorene Fassung zu aendern. Ihr Diff in einem PR ist das
-// Signal "hier wird eine veroeffentlichte Version angefasst".
-tasks.register<Copy>("publishApiVersion") {
+// Signal "hier wird eine veroeffentlichte Version angefasst". Sync statt Copy: ein entferntes
+// Tool verschwindet auch aus dem eingefrorenen Stand.
+tasks.register<Sync>("publishApiVersion") {
     group = "verification"
-    description = "Hebt den aktuellen Vertrag zur veroeffentlichten Fassung von v1."
-    from(layout.projectDirectory.file("api/openapi.yaml"))
+    description = "Hebt api/contract/ zur veroeffentlichten Fassung unter api/published/."
+    from(layout.projectDirectory.file("api/contract/envelope.yaml")) { into("v1") }
+    from(layout.projectDirectory.dir("api/contract/tools")) { into("tools") }
     into(layout.projectDirectory.dir("api/published"))
-    rename { "v1.yaml" }
 }
 
 // Die dritte Seite des Vertrags: die Frontend-Typen werden aus demselben Snapshot erzeugt, statt

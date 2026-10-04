@@ -423,7 +423,7 @@ freigegeben, und jeder, der ihn erreicht, bekäme vollen Lese- und Schreibzugrif
 - `ToolSessionCoverageTest` prüft gegen das tatsächliche Schema, dass ein Aufräumlauf jede `*_tool_session`-Tabelle leert ([Betrieb](07-betrieb.md) Abschnitt 3).
 - `EventPublicationRegistryTest` prüft, dass ein fehlschlagender `@ApplicationModuleListener` eine offene Zeile hinterlässt ([Betrieb](07-betrieb.md) Abschnitt 3a).
 - `checkOpenApiSnapshot` und `generateFrontendApiTypes` halten den API-Vertrag und die daraus erzeugten Frontend-Typen deckungsgleich ([API](05-api.md) Abschnitt 1).
-- `checkPublishedApiCompatibility` vergleicht den Vertrag mit dem veröffentlichten Stand `api/published/v1.yaml` und schlägt bei einem Bruch fehl; `ContractScopeTest`, `StepDataExamplesTest` und `DiscriminatorMappingTest` prüfen Umfang, Beispiele und Diskriminatoren des Vertrags ([API](05-api.md) Abschnitt 1).
+- `checkPublishedApiCompatibility` vergleicht Umschlag und Tools des Vertrags mit ihrem veröffentlichten Stand unter `api/published/` und schlägt bei einem Bruch fehl (ADR-50); `ContractScopeTest`, `StepDataExamplesTest` und `DiscriminatorMappingTest` prüfen Umfang, Beispiele und Diskriminatoren des Vertrags ([API](05-api.md) Abschnitt 1).
 - Die CI führt zusätzlich `tsc -b` aus (vitest prüft keine Typen), dazu `oxlint`, `npm audit` und die
   Playwright-Tests; ein eigener Workflow prüft den Code mit CodeQL.
 

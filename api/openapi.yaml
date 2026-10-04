@@ -2931,6 +2931,44 @@ paths:
       summary: The account as Keycloak shows it, by account id
       tags:
       - Keycloak account lookup
+  /orchestrator/api/v1/kc/accounts/{accountId}/password-checks:
+    post:
+      operationId: verify
+      parameters:
+      - in: path
+        name: accountId
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - in: header
+        name: Authorization
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MgmtPasswordVerifyRequest'
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/MgmtPasswordVerifyResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - kc-peer-auth: [
+          ]
+      summary: Verify a candidate password against the account's stored credential
+      tags:
+      - Keycloak password management
   /orchestrator/api/v1/kc/accounts/{accountId}/sign-outs:
     post:
       operationId: signedOut
@@ -3194,44 +3232,6 @@ paths:
       summary: Wordings of all text references in one language
       tags:
       - Texts
-  /orchestrator/api/v1/tools/auth-password/mgmt/{accountId}:
-    post:
-      operationId: verify
-      parameters:
-      - in: path
-        name: accountId
-        required: true
-        schema:
-          format: int64
-          type: integer
-      - in: header
-        name: Authorization
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MgmtPasswordVerifyRequest'
-      responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/MgmtPasswordVerifyResponse'
-          description: OK
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - kc-peer-auth: [
-          ]
-      summary: Verify a candidate password against the account's stored credential
-      tags:
-      - Keycloak password management
   /orchestrator/api/v1/tools/catalog:
     get:
       description: No auth, no channel required - purely descriptive.

@@ -1,0 +1,90 @@
+components:
+  schemas:
+    ChannelResponse:
+      type: object
+    ErrorResponse:
+      type: object
+  securitySchemes:
+    dpop:
+      description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the
+        binding key is derived from it and is never supplied by the caller.
+      in: header
+      name: DPoP
+      type: apiKey
+info:
+  description: App-facing (orchestrator-first) API for the DPoP-bound registration and login demo. See docs/05-api.md for
+    the full contract; the Keycloak-facing Keycloak facade is out of scope for this build (docs/08-projektrahmen.md).
+  title: Identity-Demo Orchestrator API
+  version: v1
+openapi: 3.1.0
+paths:
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/enroll-email:
+    post:
+      description: 'One shot: no request body, and the response already carries the completed outcome.'
+      operationId: activate_8
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: AUTHENTICATED
+                next:
+                  context: authentication
+                  step: done
+                  type: orchestrator
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Activate enroll-email
+      tags:
+      - 'Tool: E-Mail-Login'
+  /orchestrator/api/v1/tools/{toolSessionId}/enroll-email:
+    get:
+      operationId: read_22
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Read the current enroll-email state
+      tags:
+      - 'Tool: E-Mail-Login'
+tags:
+- description: Activates the account's confirmed address as an authentication method
+  name: 'Tool: E-Mail-Login'

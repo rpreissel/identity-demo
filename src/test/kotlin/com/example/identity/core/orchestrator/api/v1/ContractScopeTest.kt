@@ -10,27 +10,42 @@ import java.nio.file.Path
 
 /**
  * Der App-Vertrag enthaelt genau das, was unter [API_V1] liegt, im eingecheckten und im
- * veroeffentlichten Stand.
+ * veroeffentlichten Stand; die versionierten Teile zudem nichts unter `/kc/` (ADR-50).
  *
- * `ModuleApiGroups` sorgt dafuer beim Erzeugen. Dieser Test prueft das Ergebnis, denn ein
- * Betriebs- oder Mock-Endpunkt, der einmal in `api/published/v1.yaml` steht, laesst sich nur noch
- * als Bruch des App-Vertrags wieder entfernen.
+ * `ModuleApiGroups` und `ContractSplit` sorgen dafuer beim Erzeugen. Dieser Test prueft das
+ * Ergebnis, denn ein Betriebs-, Mock- oder Keycloak-Endpunkt, der einmal unter `api/published/`
+ * steht, laesst sich nur noch als Bruch wieder entfernen.
  */
 class ContractScopeTest : BehaviorSpec({
 
-    listOf(CONTRACT, PUBLISHED).forEach { file ->
-        given(file.fileName.toString()) {
-            then("every path lies under $API_V1") {
-                @Suppress("UNCHECKED_CAST")
-                val paths = (Yaml().load<Map<String, Any?>>(Files.readString(file))["paths"] as Map<String, Any?>).keys
-                paths.shouldNotBeEmpty()
-                paths.filterNot { it.startsWith("$API_V1/") }.shouldBeEmpty()
+    given("api/openapi.yaml") {
+        then("every path lies under $API_V1") {
+            val paths = pathsOf(CONTRACT)
+            paths.shouldNotBeEmpty()
+            paths.filterNot { it.startsWith("$API_V1/") }.shouldBeEmpty()
+        }
+    }
+
+    listOf(PARTS, PUBLISHED).forEach { dir ->
+        given(PARTS.parent.relativize(dir).toString()) {
+            then("every part's path lies under $API_V1, none under /kc") {
+                val files = Files.walk(dir).use { walk -> walk.filter { it.toString().endsWith(".yaml") }.toList() }
+                files.shouldNotBeEmpty()
+                files.forEach { file ->
+                    val paths = pathsOf(file)
+                    paths.filterNot { it.startsWith("$API_V1/") && !it.startsWith("$API_V1/kc/") }.shouldBeEmpty()
+                }
             }
         }
     }
 }) {
     private companion object {
         private val CONTRACT: Path = Path.of("api", "openapi.yaml").toAbsolutePath()
-        private val PUBLISHED: Path = Path.of("api", "published", "v1.yaml").toAbsolutePath()
+        private val PARTS: Path = Path.of("api", "contract").toAbsolutePath()
+        private val PUBLISHED: Path = Path.of("api", "published").toAbsolutePath()
+
+        @Suppress("UNCHECKED_CAST")
+        fun pathsOf(file: Path): Set<String> =
+            ((Yaml().load<Map<String, Any?>>(Files.readString(file))["paths"] as? Map<String, Any?>).orEmpty()).keys
     }
 }

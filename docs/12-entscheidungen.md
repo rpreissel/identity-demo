@@ -57,6 +57,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/).
 | [ADR-47](adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md) | Ein Tool, das die Anmeldung verlässt, kehrt im Web-Kanal auf die Action-URL des laufenden Schritts zurück |
 | [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md) | Vorgangszugang mit Einmalkennwort – die Einladung ist ein Keycloak-Nutzer eigener Art, nie ein Konto |
 | [ADR-49](adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md) | Die Arbeitsdaten der Tools liegen als JSON an der Tool-Sitzung des Orchestrators |
+| [ADR-50](adr/ADR-050-api-versionierung-umschlag-und-tool.md) | API-Versionierung auf zwei Ebenen: ein Bruch am Umschlag braucht eine neue Version, ein Bruch an einem Tool trifft nur Clients, die es nennen; `/kc` wird nicht eingefroren |
 
 ADR-4, 13, 23 und 30 sind in anderen Entscheidungen aufgegangen (4 in 14 und 16, 13 in
 `db/migration/KONVENTIONEN.md`, 23 in 21, 30 in 16).

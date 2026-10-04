@@ -1,0 +1,143 @@
+components:
+  schemas:
+    AuthInvitePatchRequest:
+      properties:
+        code:
+          example: ABCD-EFGH-JKMN
+          type: string
+        kvnr:
+          example: A123456789
+          type: string
+        partnerNumber:
+          example: P000000004
+          type: string
+      type: object
+    ChannelResponse:
+      type: object
+    ErrorResponse:
+      type: object
+  securitySchemes:
+    dpop:
+      description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the
+        binding key is derived from it and is never supplied by the caller.
+      in: header
+      name: DPoP
+      type: apiKey
+info:
+  description: App-facing (orchestrator-first) API for the DPoP-bound registration and login demo. See docs/05-api.md for
+    the full contract; the Keycloak-facing Keycloak facade is out of scope for this build (docs/08-projektrahmen.md).
+  title: Identity-Demo Orchestrator API
+  version: v1
+openapi: 3.1.0
+paths:
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/auth-invite-lookup:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_18
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: input
+                  toolId: auth-invite-lookup
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Activate auth-invite-lookup
+      tags:
+      - 'Tool: Einmalkennwort'
+  /orchestrator/api/v1/tools/{toolSessionId}/auth-invite-lookup:
+    get:
+      operationId: read_17
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Read the current auth-invite-lookup state
+      tags:
+      - 'Tool: Einmalkennwort'
+    patch:
+      description: KVNR, or Partnernummer without a KVNR, together with the one-time password from the letter.
+      operationId: patch_17
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthInvitePatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: AUTHENTICATED
+                next:
+                  type: authenticated
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Accepted - the channel is signed in for the invitation's process.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Supply the number and the one-time password
+      tags:
+      - 'Tool: Einmalkennwort'
+tags:
+- description: KVNR or Partnernummer plus a one-time password for one process
+  name: 'Tool: Einmalkennwort'

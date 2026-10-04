@@ -37,7 +37,8 @@ zugleich ankommt.
 | Datei | Inhalt | Wofür |
 |---|---|---|
 | `api/openapi.yaml` | der App-Vertrag: alles unter `/orchestrator/api/v1` | Eingabe für beide Generatoren |
-| `api/published/v1.yaml` | der veröffentlichte Stand von v1 | Vergleichsbasis für `checkPublishedApiCompatibility` |
+| `api/contract/envelope.yaml`, `api/contract/tools/<toolId>.yaml` | die versionierten Teile des App-Vertrags: Umschlag und je Tool eine Datei, ohne `/kc` | was `checkPublishedApiCompatibility` vergleicht |
+| `api/published/v1/envelope.yaml`, `api/published/tools/` | der veröffentlichte Stand dieser Teile | Vergleichsbasis für `checkPublishedApiCompatibility` |
 | `api/modules/<modul>.yaml` | alle Endpunkte und eigenen DTOs dieses Moduls; gemeinsame Schemas per `$ref` auf `../openapi.yaml` | zum Lesen und für Reviews |
 | `frontend/src/generated/` | die daraus erzeugten TypeScript-Typen | vom Frontend importiert, eingecheckt |
 | `keycloak-extension/build/generated/` | die daraus erzeugten Java-Modelle | von `OrchestratorClient` benutzt, nicht eingecheckt |
@@ -83,13 +84,23 @@ Auf keinen dieser Endpunkte darf sich ein App-Client verlassen. Stünden sie im 
 würde der Kompatibilitätsvergleich ihr späteres Entfernen als Bruch des App-Vertrags melden.
 Beschrieben sind sie trotzdem, in der Datei ihres Moduls unter `api/modules/`.
 
-**Versionierung.** Es gibt eine gemeinsame Version für alles, weil das Antwortformat
-`ChannelResponse` in jeder Antwort jedes Moduls steckt; eine inkompatible Änderung daran trifft alle
-Endpunkte zugleich. Die meisten Änderungen fügen nur etwas hinzu und brauchen keine neue Version.
-Dafür prüft `checkPublishedApiCompatibility` in der CI jede Änderung gegen `api/published/v1.yaml`
-(openapi-diff) und schlägt bei einem Bruch fehl. Einen bewusst neuen Stand übernimmt man mit
-`./gradlew publishApiVersion`; der Diff dieser Datei im PR zeigt, dass eine veröffentlichte Version
-geändert wird.
+**Versionierung** ([ADR-50](adr/ADR-050-api-versionierung-umschlag-und-tool.md)). Versioniert
+wird auf zwei Ebenen. Der **Umschlag** (`ChannelResponse`, die Kanal-Endpunkte, `tools/catalog`,
+`texts`, die gemeinsamen `StepData`-Formen) steckt in jeder Antwort; ein Bruch daran trifft alle
+Clients und braucht eine neue API-Version. Ein **Tool** (seine Pfade, Schemas und die Formen seines
+Moduls) sieht nur ein Client, der es in `availableTools` nennt; ein Bruch daran trifft nur diese
+Clients. Man ändert das Tool dann additiv; geht das nicht, bräuchte es eine Tool-Version, die das
+Modell noch nicht vorsieht (ADR-50). Was nur Keycloak aufruft, liegt unter `/kc/`
+und wird nicht eingefroren: Die Erweiterung wird mit dem Server ausgeliefert. Die meisten
+Änderungen fügen nur etwas hinzu und brauchen nichts davon.
+
+`OpenApiSnapshotTest` zerlegt den Vertrag dafür in `api/contract/` (`ContractSplit`).
+`checkPublishedApiCompatibility` vergleicht in der CI jeden Teil mit seinem eingefrorenen Stand unter
+`api/published/` (openapi-diff) und schlägt bei einem Bruch fehl; die Meldung nennt den Umschlag oder
+die toolId. Ein neues oder entfallenes Tool ist nur ein Hinweis. Einen bewusst neuen Stand übernimmt
+man mit `./gradlew publishApiVersion`; der Diff unter `api/published/` im PR zeigt, dass ein
+veröffentlichter Stand geändert wird. openapi-diff hält ein entfallenes optionales Feld einer
+Anfrage für kompatibel; eine solche Umbenennung bleibt Sache des Reviews.
 
 Beide YAML-Dateien entstehen im selben Testlauf aus derselben laufenden Anwendung
 (`OpenApiSnapshotTest`) und können deshalb nicht auseinanderlaufen. Die Moduldateien sind keine
@@ -948,7 +959,8 @@ Nutzerattribut `orchestratorAccountId` kennt. Keycloak weist sich dabei mit ders
 `channel_binding` hier für einen anderen Zweck genutzt: Der Claim trägt die `accountId` und wird
 gegen den Pfadparameter geprüft.
 
-Die Endpunkte gehören dem Modul `auth_password`, wie jedes andere Tool. Sie nehmen nur Keycloaks
+Die Endpunkte gehören dem Modul `auth_password`, liegen aber wie alles, was nur Keycloak aufruft,
+unter `/kc/` und damit außerhalb des eingefrorenen Vertrags (ADR-50). Sie nehmen nur Keycloaks
 Assertion an (`@BindingKey(keycloakOnly = true)`); ein DPoP-Beweis bekommt `401`. Das Ergebnis bucht
 der Orchestrator über den Port `KeycloakToolCalls`: eine Prüfung auf die Kontosperre wie in einer
 Journey. Ein Passwort ändert Keycloak nie: Das geht nur über die Verwaltung der Verfahren, hinter
@@ -956,7 +968,7 @@ deren Niveauprüfung. Die Erweiterung lehnt Keycloaks „Passwort ändern“ und
 ab, statt das Passwort bei sich zu speichern, und das Realm schaltet Keycloaks eigene Required
 Actions ab (`V7__locked_down_defaults`).
 
-- `POST /orchestrator/api/v1/tools/auth-password/mgmt/{accountId}` – prüft `{"password": "..."}`
+- `POST /orchestrator/api/v1/kc/accounts/{accountId}/password-checks` – prüft `{"password": "..."}`
   gegen das gespeicherte Credential; Antwort `{"valid": true|false}`. Jeder Fehlversuch zählt auf
   dieselbe Kontosperre wie `auth-password` im App-Kanal ([Betrieb](07-betrieb.md) Abschnitt 4);
   gesperrt ist die Antwort `false`, auch für das richtige Passwort, bei gleichem Zeitaufwand.

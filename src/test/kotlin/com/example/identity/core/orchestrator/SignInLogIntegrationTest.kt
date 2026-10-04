@@ -108,7 +108,7 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
             `when`("a wrong password is entered there") {
                 val accountId = seedRegisteredAccount()
                 stubAssertion(accountId.toString())
-                keycloakPost("/orchestrator/api/v1/tools/auth-password/mgmt/$accountId", """{"password":"wrong-password-123"}""")
+                keycloakPost("/orchestrator/api/v1/kc/accounts/$accountId/password-checks", """{"password":"wrong-password-123"}""")
 
                 then("it is a failed sign-in on the Web channel") {
                     val failed = signInLog.of(accountId).single()

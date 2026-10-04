@@ -56,7 +56,7 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
 
                 val result = runCatching {
                     restTemplate.exchange(
-                        "http://localhost:$port/orchestrator/api/v1/tools/auth-password/mgmt/$accountId",
+                        "http://localhost:$port/orchestrator/api/v1/kc/accounts/$accountId/password-checks",
                         HttpMethod.POST,
                         HttpEntity("""{"password":"correct-horse-battery"}""", headers()),
                         mapType
@@ -76,7 +76,7 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
                 stubAssertion(accountBinding = "some-other-binding")
 
                 val result = runCatching {
-                    mgmtPost("/orchestrator/api/v1/tools/auth-password/mgmt/$accountId", """{"password":"correct-horse-battery"}""")
+                    mgmtPost("/orchestrator/api/v1/kc/accounts/$accountId/password-checks", """{"password":"correct-horse-battery"}""")
                 }
 
                 then("it is rejected as unauthorized (same contract as a missing/invalid peer-auth assertion)") {

@@ -1,0 +1,205 @@
+components:
+  schemas:
+    ChannelResponse:
+      type: object
+    ErrorResponse:
+      type: object
+    IdentEidPatchRequest:
+      properties:
+        birthDate:
+          example: '1985-03-12'
+          format: date
+          type: string
+        familyName:
+          example: Muster
+          type: string
+        givenNames:
+          example: Max
+          type: string
+        locality:
+          example: Berlin
+          type: string
+        pin:
+          example: '123456'
+          type: string
+        postalCode:
+          example: '10117'
+          type: string
+        restrictedId:
+          example: T0103005T4UY6CQ1B3LN0T28WJ
+          type: string
+        streetAddress:
+          description: Straße und Hausnummer in einer Zeile, wie die Karte sie liefert
+          example: Musterstraße 1
+          type: string
+      type: object
+  securitySchemes:
+    dpop:
+      description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the
+        binding key is derived from it and is never supplied by the caller.
+      in: header
+      name: DPoP
+      type: apiKey
+info:
+  description: App-facing (orchestrator-first) API for the DPoP-bound registration and login demo. See docs/05-api.md for
+    the full contract; the Keycloak-facing Keycloak facade is out of scope for this build (docs/08-projektrahmen.md).
+  title: Identity-Demo Orchestrator API
+  version: v1
+openapi: 3.1.0
+paths:
+  /orchestrator/api/v1/channels/{channelSessionId}/tools/ident-eid:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_3
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: input
+                  toolId: ident-eid
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  kind: missing-fields
+                  missingFields:
+                  - familyName
+                  - givenNames
+                  - birthDate
+                  - streetAddress
+                  - postalCode
+                  - locality
+                  - restrictedId
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Activate ident-eid
+      tags:
+      - 'Tool: eID'
+  /orchestrator/api/v1/tools/{toolSessionId}/ident-eid:
+    get:
+      operationId: read_3
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: ANONYMOUS
+                next:
+                  step: input
+                  toolId: ident-eid
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  kind: missing-fields
+                  missingFields:
+                  - pin
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Read the current ident-eid state
+      tags:
+      - 'Tool: eID'
+    patch:
+      description: Only the fields being supplied or corrected need to be sent; all of them together also completes in one
+        call. The card data is checked for format and completeness as soon as it is complete, and only then is the PIN asked
+        for.
+      operationId: patch_3
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentEidPatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              examples:
+                After card data - the PIN is missing:
+                  description: After card data - the PIN is missing
+                  value:
+                    channel:
+                      channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      state: ANONYMOUS
+                    next:
+                      step: input
+                      toolId: ident-eid
+                      toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                      type: tool
+                    stepData:
+                      kind: missing-fields
+                      missingFields:
+                      - pin
+                After pin - attested, the assignment step follows:
+                  description: After pin - attested, the assignment step follows
+                  value:
+                    channel:
+                      channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      state: ANONYMOUS
+                    next:
+                      step: input
+                      toolId: ident-kvnr
+                      type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      summary: Supply the simulated card's Ausweisdaten, then the PIN
+      tags:
+      - 'Tool: eID'
+tags:
+- description: Simulated eID card read, then PIN - attests what the card shows
+  name: 'Tool: eID'

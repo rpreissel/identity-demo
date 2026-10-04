@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.api.v1
 
+import com.example.identity.contract.tool_api.ToolModule
 import com.example.identity.core.orchestrator.SharedSpringContext
 import org.springdoc.core.models.GroupedOpenApi
 import org.springframework.beans.factory.annotation.Autowired
@@ -16,7 +17,8 @@ import java.util.concurrent.Executors
 /**
  * Keeps `api/openapi.yaml`, the one written-down API contract, in step with the running code. A
  * changed controller or DTO fails here, in the diff of a checked-in file, not silently in a client.
- * The frontend types and the extension's Java models are generated from the same snapshot.
+ * The frontend types and the extension's Java models are generated from the same snapshot; the
+ * versioned parts under `api/contract/` are split from it here as well ([ContractSplit]).
  *
  * To accept an intended change: `./gradlew updateOpenApiSnapshot`, then
  * `./gradlew generateFrontendApiTypes`, and review both diffs (docs/adr/ADR-026).
@@ -29,6 +31,9 @@ class OpenApiSnapshotTest : SharedSpringContext() {
     @Autowired
     private lateinit var groupedApis: List<GroupedOpenApi>
 
+    @Autowired
+    private lateinit var toolModules: List<ToolModule>
+
     init {
         given("the running application's springdoc endpoint") {
             then("every group matches its checked-in snapshot under api/") {
@@ -37,17 +42,23 @@ class OpenApiSnapshotTest : SharedSpringContext() {
                 val specs = fetchAll(groups())
                 val shared = sharedSchemas(specs)
 
-                specs.forEach { (group, spec) ->
-                    val live = render(if (group == CONTRACT_GROUP) spec else referenceShared(spec, shared))
-                    val file = snapshotFor(group)
+                val snapshots = specs.map { (group, spec) ->
+                    snapshotFor(group) to render(if (group == CONTRACT_GROUP) spec else referenceShared(spec, shared))
+                } + versionedParts(specs.getValue(CONTRACT_GROUP))
 
+                snapshots.forEach { (file, live) ->
                     if (update) {
                         Files.createDirectories(file.parent)
                         Files.writeString(file, live)
                         return@forEach
                     }
                     val stored = if (Files.exists(file)) Files.readString(file) else ""
-                    if (live != stored) outdated += "$group -> $file"
+                    if (live != stored) outdated += SNAPSHOT.parent.relativize(file).toString()
+                }
+                // A removed tool leaves its file behind; it must go with the tool.
+                val written = snapshots.map { it.first }.toSet()
+                staleToolFiles(written).forEach { file ->
+                    if (update) Files.delete(file) else outdated += "${SNAPSHOT.parent.relativize(file)} (Tool gibt es nicht mehr)"
                 }
 
                 if (update) {
@@ -86,6 +97,23 @@ class OpenApiSnapshotTest : SharedSpringContext() {
                 }
             }
         }
+    }
+
+    /**
+     * The envelope and one file per tool, the units `checkPublishedApiCompatibility` compares
+     * against their published state (ADR-50). Generated here from the same contract as above.
+     */
+    private fun versionedParts(contract: Map<*, *>): List<Pair<Path, String>> {
+        val tools = toolModules.flatMap { module -> module.tools.map { it.toolId.value to module.stepData.keys } }.toMap()
+        val split = ContractSplit(contract, tools)
+        return listOf(CONTRACT_PARTS.resolve("envelope.yaml") to render(split.envelope())) +
+            tools.keys.sorted().map { toolId -> CONTRACT_PARTS.resolve("tools").resolve("$toolId.yaml") to render(split.tool(toolId)) }
+    }
+
+    private fun staleToolFiles(written: Set<Path>): List<Path> {
+        val dir = CONTRACT_PARTS.resolve("tools")
+        if (!Files.isDirectory(dir)) return emptyList()
+        return Files.list(dir).use { files -> files.filter { it !in written }.sorted().toList() }
     }
 
     /** The registered groups, read from the beans, so this test knows no modules (`ModuleApiGroups`). */
@@ -192,5 +220,8 @@ class OpenApiSnapshotTest : SharedSpringContext() {
 
         /** Under `api/`, not `docs/`: it is generated, and docs/ stays hand-written (AGENTS.md). */
         private val SNAPSHOT: Path = Path.of("api", "openapi.yaml").toAbsolutePath()
+
+        /** The versioned parts of the contract; their frozen copies live under `api/published/`. */
+        private val CONTRACT_PARTS: Path = SNAPSHOT.parent.resolve("contract")
     }
 }
