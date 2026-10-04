@@ -38,7 +38,7 @@ keycloak-admin-client = "26.0.12"
 # Folgt der Keycloak-Version: resteasy.version in keycloak-parent.
 resteasy = "6.2.19.Final"
 jakarta-ws-rs = "3.1.0"
-zxing = "3.5.3"
+zxing = "3.5.4"
 jsr305 = "3.0.2"
 junit = "6.0.3"
 
