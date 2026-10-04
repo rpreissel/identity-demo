@@ -105,6 +105,26 @@ Pfadsegment und unabhängig voneinander:
 Was nur Keycloak aufruft, liegt unter `/kc/` und wird nicht eingefroren: Die Erweiterung wird mit
 dem Server ausgeliefert. Die meisten Änderungen fügen nur etwas hinzu und brauchen nichts davon.
 
+**Wann ein Tool eine neue Fassung braucht.** Nur wenn der Server wissen muss, was der Client
+kann; die meisten Änderungen brauchen keine:
+
+| Änderung | Neue Fassung? |
+|---|---|
+| Neues optionales Feld in Anfrage oder Antwort | nein |
+| Neuer Aufruf, den alte Clients nicht brauchen (z. B. „Code erneut senden“) | nein |
+| Neues **Pflichtfeld** in einer Anfrage (z. B. `consent` in `enroll-sms@2`) | ja |
+| Neuer Aufruf oder Schritt, ohne den der Ablauf nicht endet | ja |
+| Neue oder geänderte `StepData`-Form, die der Client darstellen muss | ja |
+| Umbenanntes oder entfallenes Feld | ja |
+| Neue Voraussetzung am Konto (`requires`, z. B. bestätigte E-Mail) | nein |
+
+Eine neue Voraussetzung am Konto ändert den Vertrag nicht: Das Tool wird nur nicht angeboten,
+solange das Konto sie nicht erfüllt, und das trifft alle Clients gleich. Zu jeder neuen Fassung
+gehört die Entscheidung, was die alte ohne das Neue tut (einen Ersatzwert setzen, weniger liefern
+oder abgeschaltet werden, [ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)). Bis zum ersten Release wird statt einer neuen Fassung neu eingefroren
+(`publishApiVersion`). Wie man eine Fassung baut, zeigt
+[15-beispiel-neues-verfahren.md](15-beispiel-neues-verfahren.md) Abschnitt 9.
+
 `OpenApiSnapshotTest` zerlegt den Vertrag dafür in `api/contract/` (`ContractSplit`).
 `checkPublishedApiCompatibility` vergleicht in der CI jeden Teil mit seinem eingefrorenen Stand unter
 `api/published/` (openapi-diff) und schlägt bei einem Bruch fehl; die Meldung nennt den Umschlag oder
@@ -645,10 +665,12 @@ ein Tool in zwei Fassungen wird mit `400` abgelehnt. Die Menge ist für die Lebe
 fest; gespeichert wird nur, was der Server führt, ein unbekanntes Tool oder eine nicht geführte
 Fassung fällt weg. Ein Tool außerhalb dieser Menge wird nie angeboten und auch bei direktem Aufruf
 abgelehnt, ebenso ein Aufruf in einer anderen Fassung (`docs/03-tool-architektur.md`, Verfügbarkeit). Zusätzlich kann der
-Betreiber jedes Tool je Kanaltyp zur Laufzeit sperren und die Reihenfolge der Angebote je Kanaltyp
-festlegen (`GET /orchestrator/admin/tools/availability`,
-`PUT .../tools/{toolId}/availability/{APP|WEB}`, `PUT .../tools/order/{APP|WEB}`). Das
-sind Betriebsendpunkte, nicht Teil des App-Vertrags (ADR-32).
+Betreiber jede Fassung eines Tools je Kanaltyp zur Laufzeit sperren und die Reihenfolge der
+Angebote je Kanaltyp festlegen, diese je Tool für alle Fassungen (`GET /orchestrator/admin/tools/availability`,
+`PUT .../tools/{tool}/availability/{APP|WEB}` mit `{tool}` wie `enroll-sms@2`,
+`PUT .../tools/order/{APP|WEB}`). Ein Kanal, der die gesperrte Fassung deklariert hat, bekommt das
+Tool nicht mehr angeboten; ein Kanal mit einer anderen Fassung desselben Tools schon. Das sind
+Betriebsendpunkte, nicht Teil des App-Vertrags (ADR-32, ADR-51).
 
 ### `GET /channels/{channelSessionId}`
 

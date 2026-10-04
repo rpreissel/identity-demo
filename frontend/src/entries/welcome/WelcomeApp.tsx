@@ -495,7 +495,7 @@ function ServerStatus() {
                     {g.channel === 'APP' ? t('App') : t('Web')}
                     {g.reason ? ` · ${g.reason}` : ''}
                   </span>
-                  <span className="value">{g.toolIds.join(', ')}</span>
+                  <span className="value">{g.tools.join(', ')}</span>
                 </li>
               ))}
             </ul>
@@ -573,12 +573,12 @@ function metricLabel(name: string, tags: Record<string, string>): string {
   }
 }
 
-function disabledGroups(tools: { toolId: string; channel: string; reason?: string | null }[]) {
-  const groups = new Map<string, { channel: string; reason: string; toolIds: string[] }>()
+function disabledGroups(tools: { tool: string; channel: string; reason?: string | null }[]) {
+  const groups = new Map<string, { channel: string; reason: string; tools: string[] }>()
   for (const d of tools) {
     const key = `${d.channel}|${d.reason ?? ''}`
-    const group = groups.get(key) ?? { channel: d.channel, reason: d.reason ?? '', toolIds: [] }
-    group.toolIds.push(d.toolId)
+    const group = groups.get(key) ?? { channel: d.channel, reason: d.reason ?? '', tools: [] }
+    group.tools.push(d.tool)
     groups.set(key, group)
   }
   return [...groups.values()]

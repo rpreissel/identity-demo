@@ -132,7 +132,10 @@ class ChannelSession(
      * audit records about a run (ADR-51). `null` if the channel declared no such tool.
      */
     fun declaredVersionOf(toolId: String): String? =
-        availableClientTools.map(ToolVersion::parse).firstOrNull { it.toolId.value == toolId }?.toString()
+        declaredTools().firstOrNull { it.toolId.value == toolId }?.toString()
+
+    /** [availableClientTools] read as what they are. */
+    fun declaredTools(): Set<ToolVersion> = availableClientTools.mapTo(mutableSetOf(), ToolVersion::parse)
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant? = now

@@ -10,7 +10,13 @@ vi.mock('../api.ts', () => api)
 
 import { AdminToolAvailabilityView } from './AdminToolAvailabilityView'
 
-const tool = (toolId: string, enabled = true) => ({ toolId, method: toolId.split('-')[1], role: 'KNOWN_ACCOUNT_AUTH', enabled })
+const version = (toolId: string, v: number, enabled = true) => ({ tool: `${toolId}@${v}`, version: v, enabled, reason: null })
+const tool = (toolId: string, enabled = true, role = 'KNOWN_ACCOUNT_AUTH', versions = [version(toolId, 1, enabled)]) => ({
+  toolId,
+  method: toolId.split('-')[1],
+  role,
+  versions,
+})
 
 describe('AdminToolAvailabilityView', () => {
   beforeEach(() => {
@@ -32,12 +38,25 @@ describe('AdminToolAvailabilityView', () => {
     expect(api.setToolOrder).toHaveBeenCalledWith('APP', ['auth-password', 'auth-sms'])
   })
 
-  it('frees a tool locked for the Web channel for that channel only', async () => {
+  it('frees a tool version locked for the Web channel for that channel only', async () => {
     render(<AdminToolAvailabilityView />)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Freigeben' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'auth-sms@1 freigeben' }))
 
-    expect(api.setToolAvailability).toHaveBeenCalledWith('auth-sms', 'WEB', true)
+    expect(api.setToolAvailability).toHaveBeenCalledWith('auth-sms@1', 'WEB', true)
+  })
+
+  it('locks one version of a tool served in two, leaving the other on', async () => {
+    api.fetchToolAvailability.mockResolvedValue([
+      { channel: 'APP', tools: [tool('enroll-sms', true, 'ENROLLMENT', [version('enroll-sms', 1), version('enroll-sms', 2)])] },
+    ])
+    render(<AdminToolAvailabilityView />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'enroll-sms@1 sperren' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sperren' }))
+
+    expect(api.setToolAvailability).toHaveBeenCalledWith('enroll-sms@1', 'APP', false, 'manuell gesperrt')
+    expect(screen.getByRole('button', { name: 'enroll-sms@2 sperren' })).toBeInTheDocument()
   })
 
   describe('with tools of two roles in one channel', () => {
@@ -45,7 +64,7 @@ describe('AdminToolAvailabilityView', () => {
       api.fetchToolAvailability.mockResolvedValue([
         {
           channel: 'APP',
-          tools: [tool('auth-sms'), { toolId: 'ident-fsc', method: 'fsc', role: 'IDENTIFICATION', enabled: true }, { toolId: 'ident-eid', method: 'eid', role: 'IDENTIFICATION', enabled: true }],
+          tools: [tool('auth-sms'), tool('ident-fsc', true, 'IDENTIFICATION'), tool('ident-eid', true, 'IDENTIFICATION')],
         },
       ])
     })

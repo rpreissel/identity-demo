@@ -103,7 +103,7 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
                 // kobil cannot be enrolled here (its activation needs a real SDK run, see
                 // KobilBindingIntegrationTest). Switched off so this case stays about the
                 // single-candidate skip.
-                put("/orchestrator/admin/tools/enroll-kobil/availability/APP", """{"enabled":false,"reason":"single-candidate case"}""")
+                put("/orchestrator/admin/tools/enroll-kobil@1/availability/APP", """{"enabled":false,"reason":"single-candidate case"}""")
 
                 val started = startManage(channelSessionId)
 

@@ -565,6 +565,6 @@ langlebige `<modul>.enrollment`; seine Tabellen stehen in seiner Migration unter
 
 Nicht im Diagramm, weil ohne Beziehungen: `orchestrator.journey_trace` (die Sitzungs-IDs dort sind historische Werte, keine Verweise; die
 Aufzeichnung überlebt die Sitzungen), `orchestrator.rate_limit`,
-`orchestrator.dpop_proof_replay`, `orchestrator.tool_availability`, `orchestrator.feature_flag`,
+`orchestrator.dpop_proof_replay`, `orchestrator.tool_availability`, `orchestrator.tool_order`, `orchestrator.feature_flag`,
 `orchestrator.node_signing_key` und `orchestrator.event_publication`
 (die Event-Publication-Registry von Spring Modulith, ADR-29).

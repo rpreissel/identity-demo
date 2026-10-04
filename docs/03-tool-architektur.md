@@ -181,8 +181,9 @@ Die Entscheidungen dahinter:
   `toolId`s. Der Client gibt beim Anlegen des Kanals an, welche Tools er darstellen kann, jedes in
   der einen Fassung, die er spricht (`availableTools` als `enroll-sms@1`, fest für den ganzen Kanal,
   [ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)); für das Angebot zählt nur die `toolId`,
-  die Fassung bestimmt den Pfad der Aufrufe. Der Betreiber kann zusätzlich jedes Tool **je
-  Kanaltyp** (App oder Web) zur Laufzeit sperren (`ToolAvailabilityService`, ADR-32). Bei jeder
+  die Fassung bestimmt den Pfad der Aufrufe. Der Betreiber kann zusätzlich jede Fassung eines
+  Tools **je Kanaltyp** (App oder Web) zur Laufzeit sperren (`ToolAvailabilityService`, ADR-32);
+  gesperrt ist dann jeder Kanal, der genau diese Fassung deklariert hat. Bei jeder
   Anfrage zählt nur, was in beiden Mengen steht (`JourneyRouting.availableToolsOf`); das wird an
   drei Stellen geprüft. Bleibt nichts übrig, bricht die Journey genauso ab
   (`exhausted`/Cancel), als hätte der Nutzer alle Kandidaten abgelehnt.
