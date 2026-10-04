@@ -11,7 +11,7 @@ cd "$(dirname "$0")/.."
 . openshift/env.sh
 
 podman build -t localhost/identity-demo-keycloak:latest \
-  --build-arg KEYCLOAK_BASE_IMAGE="${KEYCLOAK_BASE_IMAGE:-quay.io/keycloak/keycloak:26.6.4}" \
+  --build-arg KEYCLOAK_BASE_IMAGE="${KEYCLOAK_BASE_IMAGE:-quay.io/keycloak/keycloak:26.7.5}" \
   build/podman/keycloak
 podman build -t localhost/identity-demo-orchestrator:latest \
   --build-arg RUNTIME_BASE_IMAGE="${ORCHESTRATOR_RUNTIME_BASE_IMAGE:-registry.access.redhat.com/ubi9/openjdk-21-runtime:latest}" \

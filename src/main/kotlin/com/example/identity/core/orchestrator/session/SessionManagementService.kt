@@ -147,6 +147,10 @@ class SessionManagementService(
         check(status != ToolSessionStatus.RUNNING) { "endToolSession needs a final status" }
         toolSessionRepository.findByToolSessionId(toolSessionId)?.let { session ->
             session.status = status
+            // A finished run needs its working data no more; some of it is personal (ident-fsc), so
+            // it goes now rather than with the retention sweep a day later (ADR-49).
+            session.data = null
+            session.dataType = null
             toolSessionRepository.save(session)
         }
     }

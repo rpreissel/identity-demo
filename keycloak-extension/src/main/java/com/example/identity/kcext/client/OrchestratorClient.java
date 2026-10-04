@@ -217,7 +217,7 @@ public final class OrchestratorClient {
     }
 
     /**
-     * Stateless password verify/set for Keycloak's native password credential. There is no channel
+     * Stateless password check for Keycloak's native password credential. There is no channel
      * here: the account id goes into the URL path, which {@code htu} binds, and the assertion's
      * {@code channel_binding} claim carries the same account id. The orchestrator's
      * {@code MgmtPasswordController} checks both match.
@@ -239,14 +239,6 @@ public final class OrchestratorClient {
         String collection = subject.kind() == KcSubject.Kind.ACCOUNT ? "accounts" : "invitations";
         String path = "/orchestrator/api/v1/kc/" + collection + "/" + urlEncode(subject.id()) + "/sign-outs?kcSessionId=" + urlEncode(kcSessionId);
         send("POST", path, subject.id(), null);
-    }
-
-    /** See {@link #verifyPassword(long, String)} - same binding convention. */
-    public void setPassword(long accountId, String newPassword) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/tools/enroll-password/mgmt/" + accountId;
-        ObjectNode body = MAPPER.createObjectNode();
-        body.put("newPassword", newPassword);
-        send("POST", path, String.valueOf(accountId), body);
     }
 
     /**
@@ -302,13 +294,13 @@ public final class OrchestratorClient {
      */
     TextsAnswer texts(String language, String etag) throws IOException, InterruptedException {
         String url = baseUrl + "/orchestrator/api/v1/texts/" + urlEncode(language);
-        String assertion = signer.sign("GET", url, TEXTS_BINDING);
+        String assertion = signer.sign("GET", url, TEXTS_BINDING, new byte[0]);
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
                 .timeout(TIMEOUT)
                 .header("Authorization", "Bearer " + assertion)
                 .GET();
         if (etag != null) builder.header("If-None-Match", etag);
-        HttpResponse<byte[]> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
+        Answer response = exchange(builder.build());
         verifier.verify(
                 response.headers().firstValue(OrchestratorResponseVerifier.HEADER).orElse(null),
                 PeerAuthAssertionSigner.jtiOf(assertion),
@@ -330,20 +322,41 @@ public final class OrchestratorClient {
 
     private static final String TOOL_CATALOG_BINDING = "tool-catalog";
 
+    /** Upper bound for an orchestrator answer, read before its signature is checked. */
+    static final int MAX_RESPONSE_BYTES = 1 << 20;
+
+    private record Answer(int statusCode, java.net.http.HttpHeaders headers, byte[] body) {
+    }
+
+    /** Reads at most {@link #MAX_RESPONSE_BYTES}; a longer answer is an error, not a heap to fill. */
+    private Answer exchange(HttpRequest request) throws IOException, InterruptedException {
+        HttpResponse<java.io.InputStream> response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        byte[] body;
+        try (java.io.InputStream in = response.body()) {
+            body = in.readNBytes(MAX_RESPONSE_BYTES + 1);
+        }
+        if (body.length > MAX_RESPONSE_BYTES) {
+            throw new IOException("Orchestrator answer exceeds " + MAX_RESPONSE_BYTES + " bytes");
+        }
+        return new Answer(response.statusCode(), response.headers(), body);
+    }
+
     private JsonNode send(String method, String path, String channelSessionId, JsonNode body) throws IOException, InterruptedException {
         String url = baseUrl + path;
-        String assertion = signer.sign(method, url, channelSessionId);
+        byte[] payload = body == null ? new byte[0] : body.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        String assertion = signer.sign(method, url, channelSessionId, payload);
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(TIMEOUT)
                 .header("Authorization", "Bearer " + assertion)
                 .header("Content-Type", "application/json");
+        // The very bytes body_sha256 was computed over.
         HttpRequest.BodyPublisher publisher = body == null
                 ? HttpRequest.BodyPublishers.noBody()
-                : HttpRequest.BodyPublishers.ofString(body.toString());
+                : HttpRequest.BodyPublishers.ofByteArray(payload);
         builder.method(method, publisher);
 
-        HttpResponse<byte[]> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
+        Answer response = exchange(builder.build());
         // Before anything in the answer is believed - error or not.
         verifier.verify(
                 response.headers().firstValue(OrchestratorResponseVerifier.HEADER).orElse(null),

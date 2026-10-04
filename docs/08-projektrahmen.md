@@ -333,6 +333,11 @@ Orchestrator über die Portweiterleitung `8080:8080` mit der Adresse des Contain
 das eine Verbindung von außen, und H2 lehnt sie ab mit *„remote connections ('webAllowOthers') are
 disabled on this server“*. Der Schutz wirkt also wie vorgesehen.
 
+**Auf OpenShift ist die Konsole aus** (`SPRING_H2_CONSOLE_ENABLED=false` im Manifest). Dort erkennt
+Spring Boot die Plattform und wertet `X-Forwarded-For` aus; Tomcat vertraut dabei jedem privaten
+Netz als Proxy. Ein Client aus einem privaten Netz könnte sich so als `127.0.0.1` ausgeben, und die
+Prüfung von H2 ließe ihn durch.
+
 Wer in die Datenbank sehen will, startet deshalb den Orchestrator direkt auf dem Rechner und lässt
 nur Keycloak über Compose laufen. Die Variante `host` (Voreinstellung von `KEYCLOAK_SETUP_VARIANT`)
 richtet Keycloak dafür bereits auf `host.containers.internal:8080` aus. Wer die Daten eines Laufs im

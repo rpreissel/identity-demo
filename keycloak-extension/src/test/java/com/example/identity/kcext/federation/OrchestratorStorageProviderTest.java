@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.ModelException;
 import org.keycloak.models.UserCredentialModel;
+import org.keycloak.storage.ReadOnlyException;
 
 import java.util.Map;
 
@@ -32,6 +33,15 @@ class OrchestratorStorageProviderTest {
     @Test
     void anUnreachableOrchestratorIsAnErrorNotAnUnknownUser() {
         assertThrows(ModelException.class, () -> provider.getUserByUsername(null, "max@example.com"));
+    }
+
+    /**
+     * Returning false would let Keycloak store the password locally, next to the orchestrator's
+     * (docs/review-2026-10-03-sicherheitsaudit.md SA-2).
+     */
+    @Test
+    void aPasswordIsNeverChangedThroughKeycloak() {
+        assertThrows(ReadOnlyException.class, () -> provider.updateCredential(null, user, UserCredentialModel.password("neu")));
     }
 
     @Test

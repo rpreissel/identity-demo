@@ -68,6 +68,43 @@ class AdminIntegrationTest : IntegrationTestSupport() {
             }
         }
 
+        given("Basic credentials in a spelling Spring accepts but a naive parser does not") {
+            // Spring's parser checks only for "Basic" and skips the sixth character, whatever it is.
+            fun oddHeader(user: String, password: String) = HttpHeaders().apply {
+                set(HttpHeaders.AUTHORIZATION, "BasicX" + java.util.Base64.getEncoder().encodeToString("$user:$password".toByteArray()))
+            }
+
+            `when`("a user name is guessed six times in that spelling, then the right password follows in it") {
+                val guesses = List(6) { runCatching { adminGet("/orchestrator/admin/registration-order", oddHeader("admin", "falsch")) } }
+                val rightPassword = runCatching { adminGet("/orchestrator/admin/registration-order", oddHeader("admin", "admin")) }
+
+                then("the lock counts them like any other spelling: five 401, then 429") {
+                    guesses.map { shouldThrow<HttpClientErrorException> { it.getOrThrow() }.statusCode } shouldBe
+                        List(5) { HttpStatus.UNAUTHORIZED } + HttpStatus.TOO_MANY_REQUESTS
+                }
+                then("the right password is locked out too, so the lock reveals nothing") {
+                    shouldThrow<HttpClientErrorException> { rightPassword.getOrThrow() }.statusCode shouldBe HttpStatus.TOO_MANY_REQUESTS
+                }
+            }
+
+            `when`("twenty wrong guesses arrive at once") {
+                val pool = java.util.concurrent.Executors.newFixedThreadPool(20)
+                val statuses = try {
+                    List(20) { pool.submit<HttpStatus> {
+                        runCatching { adminGet("/orchestrator/admin/registration-order", oddHeader("racer", "falsch")) }
+                            .fold({ HttpStatus.OK }, { (it as HttpClientErrorException).statusCode as HttpStatus })
+                    } }.map { it.get() }
+                } finally {
+                    pool.shutdown()
+                }
+
+                then("at most five reach the password check") {
+                    statuses.count { it == HttpStatus.UNAUTHORIZED } shouldBe 5
+                    statuses.count { it == HttpStatus.TOO_MANY_REQUESTS } shouldBe 15
+                }
+            }
+        }
+
         given("an account created by a registration") {
             `when`("the operator reads the log and the account list") {
                 identifyAndConfirmEmail()

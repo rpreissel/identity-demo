@@ -1,6 +1,8 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.core.account.ChangeLogLookupKeys
+import com.example.identity.core.orchestrator.session.MockTokenProvider
+import com.example.identity.core.orchestrator.session.TokenProvider
 import com.example.identity.demo.demo_mode.DemoMode
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -23,6 +25,7 @@ class ProductionModeCheck(
     @Value("\${keycloak-migrate.base-url:}") private val keycloakBaseUrl: String,
     @Value("\${keycloak-setup.orchestrator-base-url:}") private val orchestratorBaseUrlForKeycloak: String,
     @Value("\${springdoc.api-docs.enabled:true}") private val apiDocs: Boolean,
+    private val tokenProvider: TokenProvider,
 ) {
     init {
         if (demoMode.on) {
@@ -41,8 +44,12 @@ class ProductionModeCheck(
     fun violations(): List<String> = buildList {
         if (adminPassword.isBlank() || adminPassword == DEMO_ADMIN_PASSWORD) {
             add("demo.admin.password ist leer oder der Demo-Wert. Ein eigenes setzen (DEMO_ADMIN_PASSWORD).")
-        } else if (!adminPassword.startsWith("{")) {
-            add("demo.admin.password steht im Klartext. Als Hash angeben, z. B. {bcrypt}... oder {argon2}...")
+        } else if (HASH_ENCODERS.none { adminPassword.startsWith(it) }) {
+            add("demo.admin.password ist kein Hash. Angeben als {bcrypt}..., {argon2}..., {scrypt}... oder {pbkdf2}..., nicht im Klartext oder als {noop}.")
+        }
+        // Ohne das Profil keycloak stellt der Mock-TokenService unsignierte Tokens aus, die jeder faelschen kann.
+        if (tokenProvider is MockTokenProvider) {
+            add("Das Profil keycloak ist nicht aktiv - der App-Kanal gaebe unsignierte Mock-Tokens aus (SPRING_PROFILES_ACTIVE=keycloak).")
         }
         if (h2Console) add("spring.h2.console.enabled ist an - die Konsole liest und schreibt die ganze Datenbank. Abschalten.")
         if (apiDocs) add("springdoc.api-docs.enabled ist an - /v3/api-docs nennt jedem ohne Anmeldung alle Endpunkte. Abschalten.")
@@ -72,6 +79,9 @@ class ProductionModeCheck(
 
     private companion object {
         const val DEMO_ADMIN_PASSWORD = "admin"
+
+        /** Spring's ids for real password hashes; `{noop}` is plain text in disguise. */
+        val HASH_ENCODERS = listOf("{bcrypt}", "{argon2}", "{argon2@SpringSecurity_v5_8}", "{scrypt}", "{scrypt@SpringSecurity_v5_8}", "{pbkdf2}", "{pbkdf2@SpringSecurity_v5_8}")
 
         /** 32 characters: 256 bits for a random hex or base64 value, the size of the HMAC key. */
         const val MIN_SECRET_LENGTH = 32

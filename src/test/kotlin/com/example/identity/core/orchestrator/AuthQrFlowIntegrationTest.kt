@@ -27,7 +27,7 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
     }
 
     private fun stubAssertion(channelBinding: String) {
-        every { peerAuthValidator.validate(any(), any(), any()) } returns PeerAuthAssertion(
+        every { peerAuthValidator.validate(any(), any(), any(), any()) } returns PeerAuthAssertion(
             jti = UUID.randomUUID().toString(),
             issuedAt = Instant.now(),
             channelBinding = channelBinding,

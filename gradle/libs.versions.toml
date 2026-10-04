@@ -1,7 +1,13 @@
 [versions]
 java = "21"
 kotlin = "2.4.20"
-spring-boot = "4.1.0"
+spring-boot = "4.1.1"
+# Ueber Spring Boots Stand hinaus angehoben, bis ein Boot-Patch sie mitbringt: Tomcat und Jackson
+# tragen in Boots Versionen bekannte Sicherheitsmeldungen (docs/review-2026-10-03-sicherheitsaudit.md
+# Abschnitt 4). Beim naechsten Boot-Patch pruefen und entfernen, was Boot selbst erreicht.
+tomcat = "11.0.26"
+jackson3 = "3.1.7"
+jackson2-boot = "2.21.7"
 spring-modulith = "2.1.1"
 dependency-management = "1.1.7"
 springdoc-openapi = "3.1.1"
@@ -17,18 +23,18 @@ openapi-diff = "2.1.7"
 # Orchestrator (PeerAuthValidator) prueft - derselbe JOSE-Dialekt, nicht nur dieselbe Bibliothek.
 nimbus-jose-jwt = "10.10"
 # Jackson 2 nur fuer keycloak-extension (der Orchestrator laeuft auf Jackson 3 / tools.jackson).
-jackson2 = "2.19.0"
+jackson2 = "2.21.7"
 shadow = "9.2.2"
 # Argon2id fuer Passwoerter (Spring Securitys Argon2PasswordEncoder braucht die Implementierung).
-bouncycastle = "1.81"
+bouncycastle = "1.85.2"
 # Keycloak-Server, gegen den keycloak-extension baut. Die Image-Tags in compose.yml,
 # keycloak-extension/Dockerfile und openshift/local-up.sh muessen dazu passen.
-keycloak = "26.6.4"
+keycloak = "26.7.5"
 # keycloak-admin-client wird unabhaengig vom Server released; 26.0.12 ist die letzte Version auf
 # Maven Central. Das REST-API ist innerhalb von Keycloak 26.x stabil.
 keycloak-admin-client = "26.0.12"
 # Folgt der Keycloak-Version: resteasy.version in keycloak-parent.
-resteasy = "6.2.16.Final"
+resteasy = "6.2.19.Final"
 jakarta-ws-rs = "3.1.0"
 zxing = "3.5.3"
 jsr305 = "3.0.2"

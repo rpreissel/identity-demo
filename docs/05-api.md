@@ -929,20 +929,17 @@ gegen den Pfadparameter geprüft.
 
 Die Endpunkte gehören dem Modul `auth_password`, wie jedes andere Tool. Sie nehmen nur Keycloaks
 Assertion an (`@BindingKey(keycloakOnly = true)`); ein DPoP-Beweis bekommt `401`. Das Ergebnis bucht
-der Orchestrator über den Port `KeycloakToolCalls`: eine Prüfung auf die Kontosperre, ein neues
-Passwort als Claim und Verfahrensinstanz wie in einer Journey. Weil es keine Sitzung gibt, trägt die
-Instanz kein `enrolledUnderAcr` ([Tool-Architektur](03-tool-architektur.md) Abschnitt 4).
+der Orchestrator über den Port `KeycloakToolCalls`: eine Prüfung auf die Kontosperre wie in einer
+Journey. Ein Passwort ändert Keycloak nie: Das geht nur über die Verwaltung der Verfahren, hinter
+deren Niveauprüfung. Die Erweiterung lehnt Keycloaks „Passwort ändern“ und „Passwort zurücksetzen“
+ab, statt das Passwort bei sich zu speichern, und das Realm schaltet Keycloaks eigene Required
+Actions ab (`V7__locked_down_defaults`).
 
 - `POST /orchestrator/api/v1/tools/auth-password/mgmt/{accountId}` – prüft `{"password": "..."}`
   gegen das gespeicherte Credential; Antwort `{"valid": true|false}`. Jeder Fehlversuch zählt auf
   dieselbe Kontosperre wie `auth-password` im App-Kanal ([Betrieb](07-betrieb.md) Abschnitt 4);
   gesperrt ist die Antwort `false`, auch für das richtige Passwort, bei gleichem Zeitaufwand.
   Zusätzlich hat das Realm Keycloaks eigenen Schutz gegen Passwort-Raten eingeschaltet.
-- `POST /orchestrator/api/v1/tools/enroll-password/mgmt/{accountId}` – `{"newPassword": "..."}`
-  **ersetzt** das Passwort: Es setzt ein neues Credential und deaktiviert das bisherige
-  `password`-Verfahren des Kontos, `204`. Hat das Konto noch kein Passwort, antwortet es `409` – ein
-  erstes Passwort richtet nur `enroll-password` hinter der Prüfung der Verwaltung der Verfahren ein, nicht
-  Keycloaks Admin-Funktion „Passwort zurücksetzen“.
 - `POST /orchestrator/api/v1/kc/accounts/{accountId}/sign-outs?kcSessionId=…` – Keycloak meldet einen
   Logout für das Anmeldeprotokoll (ADR-39, Nachtrag), `204`. Den Logout im Web-Kanal macht Keycloak
   allein; sein Event-Listener `orchestrator-sign-in-log` ruft das nach dem Commit auf und wartet auf

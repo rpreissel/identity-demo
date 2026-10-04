@@ -1386,19 +1386,6 @@ export interface MethodsResponse {
 /**
  * 
  * @export
- * @interface MgmtPasswordSetRequest
- */
-export interface MgmtPasswordSetRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof MgmtPasswordSetRequest
-     */
-    newPassword?: string;
-}
-/**
- * 
- * @export
  * @interface MgmtPasswordVerifyRequest
  */
 export interface MgmtPasswordVerifyRequest {

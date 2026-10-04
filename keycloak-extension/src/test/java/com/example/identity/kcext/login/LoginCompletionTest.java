@@ -52,6 +52,18 @@ class LoginCompletionTest {
     }
 
     @Test
+    void loa3SatisfiesALoa2Subflow() {
+        assertInstanceOf(LoginCompletion.Complete.class,
+                LoginCompletion.judge(authenticated().subject(ACCOUNT_7).acr("loa3").build(), ACCOUNT_7, "loa2"));
+    }
+
+    @Test
+    void anUnknownTargetLevelLetsNothingPass() {
+        assertInstanceOf(LoginCompletion.Refuse.class,
+                LoginCompletion.judge(authenticated().subject(ACCOUNT_7).acr("loa2").build(), ACCOUNT_7, "loa-2"));
+    }
+
+    @Test
     void doneWithoutASubjectIsRefused() {
         assertInstanceOf(LoginCompletion.Refuse.class, LoginCompletion.judge(authenticated().acr("loa2").build(), null, null));
     }

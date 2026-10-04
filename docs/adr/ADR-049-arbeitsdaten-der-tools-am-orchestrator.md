@@ -23,7 +23,11 @@ Dateien und einer Migration.
 **Folgen.**
 
 - **Aufräumen** fällt mit der Zeile: `RetentionJob` löscht `orchestrator.tool_session` nach
-  `tool-session.retention`. Module räumen nur noch eigene kurzlebige Daten auf, die keine
+  `tool-session.retention`. Die Arbeitsdaten selbst leert schon der Abschluss (`DONE`, `ABANDONED`,
+  `SessionManagementService.endToolSession`), denn manche sind Personendaten (`ident-fsc`: KVNR,
+  Partnernummer, Name, Geburtsdatum). Bis dahin liegen sie unverschlüsselt in
+  `orchestrator.tool_session.data` (`DPoP-demo-bo1w`); eine Sitzung, die nicht abgeschlossen wird,
+  behält sie bis zur Aufbewahrungsfrist. Module räumen nur noch eigene kurzlebige Daten auf, die keine
   Tool-Sitzung sind (`auth_qr.login_request`, `ToolSessionSweeper`).
 - **Gleichzeitige Schreiber:** Die `@Version` der Zeile gilt auch für die Daten. Zwei parallele
   PATCHes derselben Sitzung enden für den zweiten mit `409`, statt dass der letzte still gewinnt.

@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.api.v1.keycloak
 
+import com.example.identity.core.orchestrator.keycloak.peerAuthBodySha256
+import com.example.identity.core.orchestrator.keycloak.peerAuthTarget
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.core.orchestrator.channel.KeycloakChannelService
@@ -8,7 +10,6 @@ import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
 import com.example.identity.core.orchestrator.keycloak.PeerAuthValidationException
 import com.example.identity.core.orchestrator.keycloak.PeerAuthValidator
 import com.example.identity.contract.tool_api.envelope.API_V1
-import com.example.identity.core.orchestrator.dpop.buildRequestUrl
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -76,6 +77,6 @@ class KeycloakSignOutController(
     private fun validate(authorization: String?, httpRequest: HttpServletRequest): PeerAuthAssertion {
         val token = authorization?.trim()?.let { if (it.startsWith("Bearer ", ignoreCase = true)) it.substring(7).trim() else it }
             ?: throw PeerAuthValidationException("Missing Authorization header")
-        return peerAuthValidator.validate(token, httpRequest.method, buildRequestUrl(httpRequest))
+        return peerAuthValidator.validate(token, httpRequest.method, peerAuthTarget(httpRequest), peerAuthBodySha256(httpRequest))
     }
 }

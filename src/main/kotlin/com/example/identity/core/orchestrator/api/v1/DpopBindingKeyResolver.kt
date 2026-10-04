@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.api.v1
 
+import com.example.identity.core.orchestrator.keycloak.peerAuthBodySha256
+import com.example.identity.core.orchestrator.keycloak.peerAuthTarget
 import com.example.identity.core.orchestrator.channel.DeviceChannelAccessGuard
 import com.example.identity.core.orchestrator.dpop.DpopProof
 import com.example.identity.core.orchestrator.dpop.DpopFailure
@@ -44,18 +46,19 @@ class DpopBindingKeyResolver(
         val request = checkNotNull(webRequest.getNativeRequest(HttpServletRequest::class.java)) {
             "@BindingKey resolution requires a servlet request"
         }
-        val keycloakOnly = parameter.getParameterAnnotation(BindingKey::class.java)?.keycloakOnly == true
-        return bindingKeyOf(request, keycloakOnly)
+        val annotation = parameter.getParameterAnnotation(BindingKey::class.java)
+        return bindingKeyOf(request, keycloakOnly = annotation?.keycloakOnly == true, dpopOnly = annotation?.dpopOnly == true)
     }
 
     /** The caller's binding key from the request's DPoP proof or peer-auth assertion. */
-    fun bindingKeyOf(request: HttpServletRequest, keycloakOnly: Boolean = false): String {
+    fun bindingKeyOf(request: HttpServletRequest, keycloakOnly: Boolean = false, dpopOnly: Boolean = false): String {
         val dpopProof = request.getHeader("DPoP")
         if (dpopProof != null) {
             if (keycloakOnly) throw PeerAuthValidationException("Only Keycloak's peer-auth assertion is accepted here")
             val proof = dpopValidator.validate(dpopProof, request.method, buildRequestUrl(request))
             return jwkThumbprintService.computeThumbprint(proof.publicKey)
         }
+        if (dpopOnly) throw DpopValidationException(DpopFailure.MISSING)
 
         val authorization = request.getHeader("Authorization")
             ?: throw DpopValidationException(DpopFailure.MISSING)
@@ -64,7 +67,7 @@ class DpopBindingKeyResolver(
         } else {
             authorization.trim()
         }
-        val assertion = peerAuthValidator.validate(token, request.method, buildRequestUrl(request))
+        val assertion = peerAuthValidator.validate(token, request.method, peerAuthTarget(request), peerAuthBodySha256(request))
         return "${DeviceChannelAccessGuard.KEYCLOAK_BINDING_PREFIX}${assertion.channelBinding}"
     }
 }

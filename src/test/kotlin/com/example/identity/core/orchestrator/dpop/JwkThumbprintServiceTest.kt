@@ -22,4 +22,19 @@ class JwkThumbprintServiceTest : BehaviorSpec({
             }
         }
     }
+
+    given("the same key with its coordinates spelled differently") {
+        // Nimbus' Base64url decoder skips characters it does not know, here a trailing '='.
+        val respelled = JWK.parse(
+            """{"kty":"EC","crv":"P-256","x":"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4=","y":"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM="}"""
+        )
+
+        `when`("its thumbprint is computed") {
+            val thumbprint = JwkThumbprintService().computeThumbprint(respelled)
+
+            then("it is the thumbprint of the key, not of the spelling") {
+                thumbprint shouldBe "cn-I_WNMClehiVp51i_0VpOENW1upEerA8sEam5hn-s"
+            }
+        }
+    }
 })

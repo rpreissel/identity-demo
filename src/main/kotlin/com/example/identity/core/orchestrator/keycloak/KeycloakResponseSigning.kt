@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.keycloak
 
 import com.example.identity.contract.tool_api.envelope.API_V1
-import com.example.identity.core.orchestrator.dpop.buildRequestUrl
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
@@ -96,7 +95,7 @@ class KeycloakResponseSigningFilter(
 
     /** Die Claims einer gueltigen Peer-Auth-Assertion, sonst `null`. Die Einmaligkeit prueft der Endpunkt. */
     private fun peerAuthClaims(request: HttpServletRequest): JWTClaimsSet? =
-        runCatching { peerAuthValidator.verify(bearerToken(request), request.method, buildRequestUrl(request)) }.getOrNull()
+        runCatching { peerAuthValidator.verify(bearerToken(request), request.method, peerAuthTarget(request), peerAuthBodySha256(request)) }.getOrNull()
 
     private fun bearerToken(request: HttpServletRequest): String? =
         request.getHeader("Authorization")?.takeIf { it.startsWith("Bearer ") }?.removePrefix("Bearer ")?.trim()

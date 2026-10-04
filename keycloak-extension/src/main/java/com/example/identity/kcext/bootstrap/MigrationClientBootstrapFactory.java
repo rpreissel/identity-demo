@@ -15,6 +15,9 @@ import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.services.managers.ClientManager;
 import org.keycloak.services.managers.RealmManager;
 
+import java.net.URI;
+import java.util.Locale;
+
 /**
  * Legt im Master-Realm den Client {@code orchestrator-migration} an, mit dem der Orchestrator seine
  * Keycloak-Migrationen ausfuehrt: angemeldet per {@code private_key_jwt} gegen das JWKS des
@@ -27,6 +30,7 @@ public class MigrationClientBootstrapFactory implements OrchestratorBootstrapFac
     public static final String ID = "migration-client";
     public static final String CLIENT_ID = "orchestrator-migration";
     static final String JWKS_URL = "jwks-url";
+    static final String ALLOW_HTTP = "jwks-url-allow-http";
 
     private static final Logger log = Logger.getLogger(MigrationClientBootstrapFactory.class);
 
@@ -51,6 +55,27 @@ public class MigrationClientBootstrapFactory implements OrchestratorBootstrapFac
             throw new IllegalStateException("SPI-Option spi-orchestrator-bootstrap--" + ID + "--" + JWKS_URL
                     + " fehlt - ohne sie kann sich die Migration des Orchestrators nicht anmelden");
         }
+        requireTrustedJwksUrl(jwksUrl, config.getBoolean(ALLOW_HTTP, false));
+    }
+
+    /**
+     * Wer unter der jwks.url antwortet, meldet sich als Client mit {@code create-realm} an. Ueber http
+     * koennte das jeder auf dem Weg; erlaubt ist es nur im selben Rechner oder Pod (Loopback) oder
+     * mit ausdruecklicher Option fuer die lokale Entwicklung ({@code jwks-url-allow-http}).
+     */
+    static void requireTrustedJwksUrl(String url, boolean allowHttp) {
+        URI uri = URI.create(url);
+        String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+        if (scheme.equals("https")) return;
+        if (scheme.equals("http") && (isLoopback(uri.getHost()) || allowHttp)) {
+            if (allowHttp && !isLoopback(uri.getHost())) log.warnf("jwks-url %s ohne TLS (%s=true) - nur fuer die lokale Entwicklung", url, ALLOW_HTTP);
+            return;
+        }
+        throw new IllegalStateException("SPI-Option " + JWKS_URL + " muss https sein (http nur fuer Loopback oder mit " + ALLOW_HTTP + "=true): " + url);
+    }
+
+    private static boolean isLoopback(String host) {
+        return host != null && (host.equals("localhost") || host.equals("127.0.0.1") || host.equals("[::1]") || host.equals("::1"));
     }
 
     @Override

@@ -193,8 +193,8 @@ Zusätzlicher Fehlerfall zum allgemeinen Vertrag: ungültige Telefonnummer (Form
 - **Gleicher Aufwand ohne Passwort:** Hat das Konto kein Passwort, rechnet `matches` trotzdem einmal
   Argon2id gegen einen Platzhalter-Hash. Sonst verriete die Antwortzeit, ob es zu einer Adresse ein
   Passwort gibt.
-- **Regeln für ein neues Passwort** (`PasswordPolicy`, gleich für `enroll-password` und den
-  Passwortwechsel über Keycloak): mindestens 8, höchstens 128 Zeichen und keines aus der Liste der
+- **Regeln für ein neues Passwort** (`PasswordPolicy`, für `enroll-password`; über Keycloak lässt
+  sich kein Passwort setzen): mindestens 8, höchstens 128 Zeichen und keines aus der Liste der
   gängigsten Passwörter (`auth_password/common-passwords.txt`, ohne Beachtung von
   Groß-/Kleinschreibung). Verstöße sind `400` mit einem Text, der die Regel nennt.
 

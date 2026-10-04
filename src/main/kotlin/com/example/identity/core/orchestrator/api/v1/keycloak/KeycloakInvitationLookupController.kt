@@ -1,8 +1,9 @@
 package com.example.identity.core.orchestrator.api.v1.keycloak
 
+import com.example.identity.core.orchestrator.keycloak.peerAuthBodySha256
+import com.example.identity.core.orchestrator.keycloak.peerAuthTarget
 import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.contract.tool_api.envelope.API_V1
-import com.example.identity.core.orchestrator.dpop.buildRequestUrl
 import com.example.identity.core.orchestrator.keycloak.KeycloakInvitationView
 import com.example.identity.core.orchestrator.keycloak.KeycloakInvitationViews
 import com.example.identity.core.orchestrator.keycloak.PeerAuthValidationException
@@ -39,7 +40,7 @@ class KeycloakInvitationLookupController(
     ): ResponseEntity<KeycloakInvitationView> {
         val token = authorization?.trim()?.let { if (it.startsWith("Bearer ", ignoreCase = true)) it.substring(7).trim() else it }
             ?: throw PeerAuthValidationException("Missing Authorization header")
-        val assertion = peerAuthValidator.validate(token, httpRequest.method, buildRequestUrl(httpRequest))
+        val assertion = peerAuthValidator.validate(token, httpRequest.method, peerAuthTarget(httpRequest), peerAuthBodySha256(httpRequest))
         if (assertion.channelBinding != invitation.value) {
             throw PeerAuthValidationException("Peer-auth channel_binding does not match this lookup")
         }

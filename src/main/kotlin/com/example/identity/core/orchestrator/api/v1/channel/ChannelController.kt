@@ -49,7 +49,7 @@ class ChannelCreationController(
             "proof every other App-facade call already needs. Lets the entry screen show whose device this is " +
             "before the user picks how to start."
     )
-    fun getDeviceLink(@BindingKey bindingKeyRef: String): DeviceLinkResponse =
+    fun getDeviceLink(@BindingKey(dpopOnly = true) bindingKeyRef: String): DeviceLinkResponse =
         channelService.findDeviceLink(bindingKeyRef)
 
     @PostMapping
@@ -74,7 +74,7 @@ class ChannelCreationController(
         ]
     )
     fun createChannel(
-        @BindingKey bindingKeyRef: String,
+        @BindingKey(dpopOnly = true) bindingKeyRef: String,
         @Valid @RequestBody request: ChannelCreateRequest,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {

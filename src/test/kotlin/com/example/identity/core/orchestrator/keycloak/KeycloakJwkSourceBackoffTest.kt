@@ -9,6 +9,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainOnlyNulls
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -43,6 +44,31 @@ class KeycloakJwkSourceBackoffTest : BehaviorSpec({
             }
 
             then("the whole burst costs one fetch") {
+                fetches.get() shouldBe 1
+            }
+        }
+    }
+
+    given("a JWKS endpoint that fails and counts its fetches") {
+        val fetches = AtomicInteger()
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
+            createContext("/jwks") { exchange ->
+                fetches.incrementAndGet()
+                exchange.sendResponseHeaders(503, -1)
+                exchange.close()
+            }
+            start()
+        }
+        afterSpec { server.stop(0) }
+        val source = KeycloakJwkSource("http://127.0.0.1:${server.address.port}/jwks", cacheTtlSeconds = 600, clock = TEST_CLOCK)
+
+        `when`("a burst of 20 lookups arrives") {
+            val results = (1..20).map { runCatching { source.find("any") } }
+
+            then("each is rejected as an assertion that cannot be checked, not as a 500") {
+                results.forEach { it.exceptionOrNull().shouldBeInstanceOf<PeerAuthValidationException>() }
+            }
+            then("the burst costs one fetch, not one per request") {
                 fetches.get() shouldBe 1
             }
         }

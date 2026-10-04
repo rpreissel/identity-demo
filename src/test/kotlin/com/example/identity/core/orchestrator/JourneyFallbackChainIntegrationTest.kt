@@ -3,6 +3,7 @@ package com.example.identity.core.orchestrator
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import java.util.UUID
@@ -70,6 +71,34 @@ class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
                 then("the attempt budget spans the whole journey, not a single tool: the process ends as 410") {
                     // A per-tool counter would start over at zero, and the journey would survive indefinitely.
                     shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.GONE
+                }
+            }
+
+            `when`("three wrong TANs use up the budget and the right TAN follows on the same tool session") {
+                val accountId = registerWithSmsOnly()
+                val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                val (tan, started) = captureMockTan { post("/orchestrator/api/v1/channels/$channelSessionId/tools/auth-sms") }
+                val toolSessionId = started.nextRaw()["toolSessionId"] as String
+                repeat(2) { patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"000000"}""") }
+                val third = runCatching { patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"000000"}""") }
+
+                val withRightTan = runCatching { patch("/orchestrator/api/v1/tools/$toolSessionId/auth-sms", """{"tan":"$tan"}""") }
+
+                then("the third wrong TAN ends the process as 410") {
+                    shouldThrow<HttpClientErrorException> { third.getOrThrow() }.statusCode shouldBe HttpStatus.GONE
+                }
+                then("the ending is committed: the journey is FAILED and all three failures are counted (I-2)") {
+                    jdbcTemplate.queryForObject("SELECT lifecycle FROM orchestrator.auth_journey", String::class.java) shouldBe "FAILED"
+                    jdbcTemplate.queryForObject(
+                        "SELECT failed_count FROM orchestrator.rate_limit WHERE scope = 'ACCOUNT' AND subject = ?",
+                        Int::class.java, accountId.value.toString()
+                    ) shouldBe 3
+                }
+                then("the right TAN afterwards is refused and does not log the channel in") {
+                    shouldThrow<HttpClientErrorException> { withRightTan.getOrThrow() }.statusCode.is4xxClientError shouldBe true
+                    jdbcTemplate.queryForObject(
+                        "SELECT state FROM orchestrator.channel_session WHERE id = ?", String::class.java, UUID.fromString(channelSessionId)
+                    ) shouldNotBe "AUTHENTICATED"
                 }
             }
 

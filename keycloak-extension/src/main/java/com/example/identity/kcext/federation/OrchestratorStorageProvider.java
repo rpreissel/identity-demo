@@ -2,7 +2,6 @@ package com.example.identity.kcext.federation;
 
 import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.login.OrchestratorNotes;
-import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialInputUpdater;
@@ -13,6 +12,7 @@ import org.keycloak.models.ModelException;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.storage.ReadOnlyException;
 import org.keycloak.storage.StorageId;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.user.UserLookupProvider;
@@ -26,14 +26,13 @@ import java.util.stream.Stream;
 /**
  * The orchestrator's accounts are Keycloak's users, read through on demand and never copied (ADR-38).
  * Every lookup asks the orchestrator and wraps the answer as an {@link OrchestratorUser}; Keycloak
- * caches it briefly. The password credential is delegated the same way, nothing is stored here.
+ * caches it briefly. The password is checked by the orchestrator and never changed or stored here.
  * Searches return at most one user by exact username, email or account id: nobody pages through
  * millions of users, and no login needs to.
  */
 public class OrchestratorStorageProvider implements UserStorageProvider, UserRegistrationProvider,
         UserLookupProvider, UserQueryMethodsProvider, CredentialInputValidator, CredentialInputUpdater {
 
-    private static final Logger LOG = Logger.getLogger(OrchestratorStorageProvider.class);
 
     private final KeycloakSession session;
     private final ComponentModel model;
@@ -157,18 +156,15 @@ public class OrchestratorStorageProvider implements UserStorageProvider, UserReg
         }
     }
 
+    /**
+     * A password is changed only through the orchestrator's method management, behind its level
+     * check (docs/review-2026-10-03-sicherheitsaudit.md SA-2). Throwing instead of returning false
+     * keeps Keycloak from storing the password locally, next to the orchestrator's.
+     */
     @Override
     public boolean updateCredential(RealmModel realm, UserModel user, CredentialInput input) {
         if (!supportsCredentialType(input.getType())) return false;
-        Long accountId = OrchestratorNotes.accountId(user);
-        if (accountId == null) return false;
-        try {
-            client.setPassword(accountId, input.getChallengeResponse());
-            return true;
-        } catch (IOException | InterruptedException e) {
-            LOG.warnf(e, "Failed to set password for account %d", accountId);
-            return false;
-        }
+        throw new ReadOnlyException("Passwords are changed in the orchestrator, not in Keycloak");
     }
 
     @Override

@@ -138,6 +138,10 @@ spec:
             - {name: SPRING_PROFILES_ACTIVE, value: keycloak}
             - {name: SPRING_DATASOURCE_URL, value: 'jdbc:h2:file:/data/identitydb'}
             - {name: KEYCLOAK_SETUP_VARIANT, value: openshift}
+            # Hinter dem Router wertet Tomcat X-Forwarded-For aus; ein Client aus einem privaten Netz
+            # gaebe sich damit als 127.0.0.1 aus, und H2s Pruefung auf localhost liesse ihn in die
+            # Konsole (docs/08-projektrahmen.md, "H2-Konsole: nur beim Host-Start").
+            - {name: SPRING_H2_CONSOLE_ENABLED, value: 'false'}
             # Strukturierte Logs (ECS-JSON) mit Anfrage- und Sitzungs-Id (docs/07-betrieb.md Abschnitt 7).
             - {name: LOGGING_STRUCTURED_FORMAT_CONSOLE, value: ecs}
             - name: PUBLIC_ORCHESTRATOR_URL

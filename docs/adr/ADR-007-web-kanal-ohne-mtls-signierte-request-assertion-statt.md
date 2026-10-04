@@ -55,7 +55,8 @@ erreicht, bleibt die Angriffsfläche auf die eine Verbindung zwischen den beiden
 **Folgen und Kosten**: Die Sicherheit dieser Verbindung hängt ganz an der Prüfung der Signaturen in
 der Anwendung – in beide Richtungen. **Verschlüsselt ist der Hop nicht:** Er läuft heute über `http://`;
 wer mitliest, sieht Anfragen und Antworten (etwa E-Mail-Adressen), kann sie aber weder fälschen
-noch einer anderen Anfrage unterschieben. TLS auf dem Hop ist Sache der Umgebung (ADR-35, Bereich 3);
+noch einer anderen Anfrage unterschieben. Dafür bindet die Assertion die ganze Anfrage: Methode,
+Adresse samt Query (`htu`) und den Body (`body_sha256`), spiegelbildlich zur Antwortsignatur. TLS auf dem Hop ist Sache der Umgebung (ADR-35, Bereich 3);
 im OpenShift-Pod läuft er ohnehin über `localhost`. Mit mTLS wären Identität und Verschlüsselung schon
 beim Verbindungsaufbau erzwungen. Ein übernommenes Keycloak kann jeden Nutzer nachahmen. Das liegt aber
 schon daran, dass Keycloak hier an erster Stelle steht; auch mTLS würde daran nichts ändern.

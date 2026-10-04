@@ -64,7 +64,8 @@ import com.example.identity.core.orchestrator.session.forLog
  */
 @Service
 // A channel ended because its Keycloak session did must stay ended (ADR-43).
-@Transactional(noRollbackFor = [ChannelSessionEndedException::class])
+// An exhausted or aborted journey must stay FAILED (I-2).
+@Transactional(noRollbackFor = [ChannelSessionEndedException::class, JourneyEndedException::class])
 class JourneyService(
     private val journeyRepository: AuthJourneyRepository,
     private val codec: JourneyStateCodec,
@@ -426,7 +427,7 @@ class JourneyService(
         is Transition.Abort -> {
             journey.fail()
             journeyRepository.save(journey)
-            throw OrchestratorException.processAborted(transition.reason)
+            throw JourneyEndedException(transition.reason)
         }
     }
 
@@ -538,7 +539,7 @@ class JourneyService(
         if (journey.attemptBudget <= 0) {
             journey.fail()
             journeyRepository.save(journey)
-            throw OrchestratorException.processAborted(Text("Retry-Limit erreicht: {reason}", "reason" to outcome.reason))
+            throw JourneyEndedException(Text("Retry-Limit erreicht: {reason}", "reason" to outcome.reason))
         }
         journeyRepository.save(journey)
         return Step(nextOf(journey, channel), FailedAttemptStep(outcome.reason))

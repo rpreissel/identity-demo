@@ -122,6 +122,11 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
+// Ueberschreibt Spring Boots verwaltete Versionen (libs.versions.toml, Kommentar bei tomcat).
+extra["tomcat.version"] = libs.versions.tomcat.get()
+extra["jackson-bom.version"] = libs.versions.jackson3.get()
+extra["jackson-2-bom.version"] = libs.versions.jackson2.boot.get()
+
 dependencyManagement {
     imports {
         mavenBom(libs.spring.modulith.bom.get().toString())

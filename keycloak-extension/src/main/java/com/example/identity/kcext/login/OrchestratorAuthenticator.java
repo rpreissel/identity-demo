@@ -9,7 +9,6 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowContext;
-import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.Authenticator;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
@@ -71,7 +70,7 @@ public class OrchestratorAuthenticator implements Authenticator {
             context.challenge(errorForm(context, message != null ? message : KcTexts.of(context.getSession(), "Anmeldung derzeit nicht möglich.")));
         } catch (Exception e) {
             LOG.error("OrchestratorAuthenticator.authenticate failed", e);
-            context.failure(AuthenticationFlowError.INTERNAL_ERROR);
+            unavailable(context);
         }
     }
 
@@ -111,7 +110,7 @@ public class OrchestratorAuthenticator implements Authenticator {
                 String toolId = authSession.getAuthNote(OrchestratorNotes.PENDING_TOOL_ID);
                 String toolSessionId = authSession.getAuthNote(OrchestratorNotes.PENDING_TOOL_SESSION_ID);
                 if (toolId == null || toolSessionId == null) {
-                    context.failure(AuthenticationFlowError.INTERNAL_ERROR);
+                    unavailable(context);
                     return;
                 }
                 // A return from outside is a GET on the action URL: its query is the tool's input.
@@ -135,7 +134,7 @@ public class OrchestratorAuthenticator implements Authenticator {
             }
         } catch (Exception e) {
             LOG.error("OrchestratorAuthenticator.action failed", e);
-            context.failure(AuthenticationFlowError.INTERNAL_ERROR);
+            unavailable(context);
         }
     }
 
@@ -149,7 +148,7 @@ public class OrchestratorAuthenticator implements Authenticator {
                 // The orchestrator just named this subject - not finding it is an inconsistency,
                 // never a reason to invent a user (Keycloak creates no users).
                 LOG.errorf("Orchestrator named %s, but its federation does not know it", response.authDataSubject());
-                context.failure(AuthenticationFlowError.INTERNAL_ERROR);
+                unavailable(context);
                 return;
             }
             context.setUser(user);
@@ -160,7 +159,7 @@ public class OrchestratorAuthenticator implements Authenticator {
         LoginCompletion.Verdict verdict = LoginCompletion.judge(response, knownSubject, certifiedAcr);
         if (verdict instanceof LoginCompletion.Refuse refuse) {
             LOG.errorf("Orchestrator answer refused for channel %s: %s", response.channelSessionId(), refuse.reason());
-            context.failure(AuthenticationFlowError.INTERNAL_ERROR);
+            unavailable(context);
             return;
         }
         OrchestratorNotes.applyAuthData(authSession, response);
@@ -189,7 +188,7 @@ public class OrchestratorAuthenticator implements Authenticator {
                     return;
                 } catch (Exception e) {
                     LOG.error("Static tool pre-selection '" + staticToolId + "' failed", e);
-                    context.failure(AuthenticationFlowError.INTERNAL_ERROR);
+                    unavailable(context);
                     return;
                 }
             }
@@ -215,7 +214,7 @@ public class OrchestratorAuthenticator implements Authenticator {
                     context.challenge(errorForm(context, KcTexts.of(context.getSession(), "Anmeldung derzeit nicht möglich.")));
                 } catch (Exception e) {
                     LOG.error("Auto-activation of '" + tool.next().toolId() + "' failed", e);
-                    context.failure(AuthenticationFlowError.INTERNAL_ERROR);
+                    unavailable(context);
                 }
                 return;
             }
@@ -235,7 +234,7 @@ public class OrchestratorAuthenticator implements Authenticator {
 
         OrchestratorNextDispatch.Unhandled unhandled = (OrchestratorNextDispatch.Unhandled) outcome;
         LOG.warnf("Unhandled orchestrator next: type=%s step=%s", unhandled.next().type(), unhandled.next().step());
-        context.failure(AuthenticationFlowError.INTERNAL_ERROR);
+        unavailable(context);
     }
 
     /**
@@ -272,6 +271,15 @@ public class OrchestratorAuthenticator implements Authenticator {
 
     private Response toolForm(AuthenticationFlowContext context, OrchestratorClient.Next next, OrchestratorClient.ChannelResponse response, String error) {
         return WebFormRenderer.toolForm(context.getSession(), context.form(), context.getAuthenticationSession(), next, response, error);
+    }
+
+    /**
+     * Whatever went wrong between Keycloak and the orchestrator, it is not the user's failed attempt.
+     * failure() would be: Keycloak books it on the authenticated user for its brute-force protection.
+     * The orchestrator counts real attempts itself (docs/adr/ADR-044).
+     */
+    private void unavailable(AuthenticationFlowContext context) {
+        context.challenge(errorForm(context, KcTexts.of(context.getSession(), "Anmeldung derzeit nicht möglich.")));
     }
 
     private Response errorForm(AuthenticationFlowContext context, String message) {

@@ -74,7 +74,7 @@ class AccountRulesTest : BehaviorSpec({
     // Two accounts meeting in one run (ADR-20).
     given("a disposable account in hand") {
         `when`("it meets an identified account") {
-            val merge = AccountMerge.decide(disposable) { identified }
+            val merge = AccountMerge.decide(disposable, { true }) { identified }
 
             then("the one in hand moves into the resolved one") {
                 merge shouldBe AccountMerge.MoveInto(from = AccountId(1), into = AccountId(3))
@@ -82,7 +82,7 @@ class AccountRulesTest : BehaviorSpec({
         }
 
         `when`("it meets another disposable account") {
-            val merge = AccountMerge.decide(disposable) { account(4) }
+            val merge = AccountMerge.decide(disposable, { true }) { account(4) }
 
             then("the one in hand moves into the resolved one all the same") {
                 merge shouldBe AccountMerge.MoveInto(from = AccountId(1), into = AccountId(4))
@@ -92,15 +92,23 @@ class AccountRulesTest : BehaviorSpec({
 
     given("a real account in hand") {
         `when`("it meets a disposable account") {
-            val merge = AccountMerge.decide(interessent) { account(5) }
+            val merge = AccountMerge.decide(interessent, { true }) { account(5) }
 
             then("the disposable one is absorbed into the one in hand") {
                 merge shouldBe AccountMerge.AbsorbResolved(resolved = AccountId(5), into = AccountId(2))
             }
         }
 
+        `when`("it meets a disposable account whose attested identity is another person's") {
+            val result = runCatching { AccountMerge.decide(interessent, { false }) { account(5) } }
+
+            then("nothing is absorbed - a second person would move into the account") {
+                shouldThrow<IdentityConflictException> { result.getOrThrow() }
+            }
+        }
+
         `when`("it meets another real account") {
-            val result = runCatching { AccountMerge.decide(interessent) { identified } }
+            val result = runCatching { AccountMerge.decide(interessent, { true }) { identified } }
 
             then("they are never merged by an identification") {
                 shouldThrow<IdentityConflictException> { result.getOrThrow() }

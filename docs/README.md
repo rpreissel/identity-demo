@@ -63,6 +63,8 @@ Namensänderung, Journey-Trace und das Löschen des Kontos.
 - **[Vierte Bewertung (2026-09-29)](review-2026-09-29-vierte-bewertung.md)**: Wo steht der Kern
   heute? Befunde zu Sicherheit, Keycloak, Architektur und Codequalität mit Gegenmaßnahmen und
   Reihenfolge.
+- **[Sicherheitsaudit (2026-10-03)](review-2026-10-03-sicherheitsaudit.md)**: Was hält, was nicht?
+  Befunde nur zur Sicherheit, über Kern, Keycloak-Anbindung, Deployment und Abhängigkeiten.
 
 ## Nachschlagen
 

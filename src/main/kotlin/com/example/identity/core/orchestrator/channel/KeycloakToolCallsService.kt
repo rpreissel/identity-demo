@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.core.orchestrator.journey.JourneyEndedException
+import com.example.identity.core.orchestrator.session.ChannelSessionEndedException
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.KeycloakToolCalls
 import com.example.identity.contract.tool_api.ToolModule
@@ -21,7 +23,8 @@ import java.util.UUID
  * under the default level, as for any native Keycloak credential.
  */
 @Service
-@Transactional
+// ADR-43, I-2, see JourneyService
+@Transactional(noRollbackFor = [ChannelSessionEndedException::class, JourneyEndedException::class])
 class KeycloakToolCallsService(
     private val accountLockoutService: AccountLockoutService,
     private val accountService: AccountService,

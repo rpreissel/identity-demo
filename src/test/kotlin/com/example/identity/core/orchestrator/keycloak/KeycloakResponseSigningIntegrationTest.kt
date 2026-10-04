@@ -44,7 +44,7 @@ class KeycloakResponseSigningIntegrationTest : IntegrationTestSupport() {
 
     /** The throwaway key is unknown to the JWKS; the filter takes the assertion as Keycloak's anyway. */
     private fun acceptAssertionsAsVerified() {
-        every { peerAuthValidator.verify(any(), any(), any()) } answers { SignedJWT.parse(firstArg<String>()).jwtClaimsSet }
+        every { peerAuthValidator.verify(any(), any(), any(), any()) } answers { SignedJWT.parse(firstArg<String>()).jwtClaimsSet }
     }
 
     private fun sha256(body: String): String =
@@ -55,7 +55,7 @@ class KeycloakResponseSigningIntegrationTest : IntegrationTestSupport() {
             `when`("the orchestrator answers it") {
                 val channelSessionId = ChannelSessionId(UUID.randomUUID())
                 val jti = UUID.randomUUID().toString()
-                every { peerAuthValidator.validate(any(), any(), any()) } returns PeerAuthAssertion(
+                every { peerAuthValidator.validate(any(), any(), any(), any()) } returns PeerAuthAssertion(
                     jti = jti, issuedAt = Instant.now(), channelBinding = channelSessionId.toString(), subject = null
                 )
                 acceptAssertionsAsVerified()

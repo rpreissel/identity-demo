@@ -211,8 +211,10 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
 **Code im Orchestrator:**
 
 - [`PeerAuthValidator.validate`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/PeerAuthValidator.kt#L36):
-  `typ=peer-auth+jwt`, nur ES256, `kid` aus Keycloaks JWKS, `iss`, `aud`, `htm`, `htu`, `iat`,
-  `jti` mit Replay-Schutz, `channel_binding` Pflicht.
+  `typ=peer-auth+jwt`, nur ES256, `kid` aus Keycloaks JWKS, `iss`, `aud`, `htm`, `htu` samt Query,
+  `body_sha256`, `iat`, `jti` mit Replay-Schutz, `channel_binding` Pflicht. Den Body liest
+  [`PeerAuthBodyCaptureFilter`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/PeerAuthRequestBinding.kt)
+  einmal mit, bevor etwas ihn parst.
 - [`KeycloakJwkSource.find`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/KeycloakJwkSource.kt#L31):
   Größenlimit, Zeitlimits; ohne `jwks-uri` wird jede Assertion abgelehnt (fail-closed).
 - [`KeycloakChannelAccessGuard`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ChannelAccessGuard.kt#L72):
@@ -296,7 +298,7 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
   ([`AcrLevels.HIGHEST`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L146));
   Keycloak ist hier vertrauenswürdig.
 - **Umgebung** Keycloak ↔ Orchestrator läuft in compose über http (`DPoP-demo-ai4x`). Integrität
-  tragen die Signaturen, Vertraulichkeit nicht.
+  tragen die Signaturen in beide Richtungen, Body und Query eingeschlossen; Vertraulichkeit nicht.
 
 ---
 
@@ -349,6 +351,9 @@ I-32.
 - **Hinweis** Ein abgebrochener Step-up lässt den Kanal auf dem bisherigen Niveau angemeldet. Das
   ist richtig, schützt aber nur, wenn die anfragende Anwendung `acr` gegen ihre Anforderung prüft
   (`DPoP-demo-mea0`).
+- **Bewusst** Das `acr` im Token altert nicht; es beschreibt wie bei Keycloak die Anmeldung. Wer ein
+  frisches `loa2` braucht, fragt mit `acr_values` neu an oder prüft `auth_time` (04 §8, SA-5 im
+  [Sicherheitsaudit](review-2026-10-03-sicherheitsaudit.md)).
 - **Offen (Entscheidung)** `loa3` im Web-Realm (`DPoP-demo-wzcm`); Aufwerten eines Verfahrens nach
   erneuter Identifizierung (`DPoP-demo-wyp3`).
 
@@ -648,6 +653,9 @@ exportierbar, liegen aber in den Daten des Browsers, nicht in Hardware.
 
 - **Offen (Entscheidung)** Aufbewahrungsfristen sind Richtwerte, mit Datenschutz festzulegen.
 - **Niedrig** Nect-Fälle werden nie geräumt (S-2).
+- **Hinweis** Arbeitsdaten einer Tool-Sitzung liegen unverschlüsselt in
+  `orchestrator.tool_session.data`, bei `ident-fsc` mit Personendaten. Der Abschluss leert sie; eine
+  nicht abgeschlossene Sitzung behält sie bis `tool-session.retention` (ADR-49, `DPoP-demo-bo1w`).
 
 ---
 
@@ -671,6 +679,9 @@ Start bricht ab, solange eine Demo-Voreinstellung übrig ist.
   https mit geprüftem Zertifikat, keine API-Beschreibung (`springdoc.api-docs.enabled`).
 - [`WithheldDemoDisclosure`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/DemoDisclosure.kt#L65):
   außerhalb des Demomodus gibt es keinen Baustein, der Demo-Werte in Antworten schreibt.
+  Eine gewollte Ausnahme ist der KOBIL-PIN: Er steht in `stepData`, nicht im Demo-Block, weil die
+  App ihn ans SDK weiterreicht (ADR-21, ADR-22); er kommt nur nach der Entsperrung auf dem
+  verknüpften Gerät.
 
 **Härtungen:** `ProductionModeCheckTest`, `DemoModeSwitchTest`.
 

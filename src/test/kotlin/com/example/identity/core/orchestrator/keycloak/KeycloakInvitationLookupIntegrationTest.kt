@@ -32,7 +32,7 @@ class KeycloakInvitationLookupIntegrationTest : IntegrationTestSupport() {
     private lateinit var clock: Clock
 
     private fun binding(value: String) {
-        every { peerAuthValidator.validate(any(), any(), any()) } returns
+        every { peerAuthValidator.validate(any(), any(), any(), any()) } returns
             PeerAuthAssertion(jti = UUID.randomUUID().toString(), issuedAt = Instant.now(), channelBinding = value, subject = null)
     }
 

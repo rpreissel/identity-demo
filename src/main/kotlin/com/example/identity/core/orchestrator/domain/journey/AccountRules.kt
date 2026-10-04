@@ -73,12 +73,17 @@ sealed interface AccountMerge {
         /**
          * Neither disposable is refused: two real accounts would merge, which is a decision for an
          * explicit account merge, not a side effect of identification. [resolved] is only looked up
-         * when the account in hand is not disposable.
+         * when the account in hand is not disposable. A placeholder is absorbed only when the
+         * account in hand may take its attested identity ([attestationFits], as for an unresolved
+         * one in [IdentificationTarget]); otherwise a second person would move in.
          */
-        fun decide(inHand: AccountProfile, resolved: () -> AccountProfile): AccountMerge {
+        fun decide(inHand: AccountProfile, attestationFits: () -> Boolean, resolved: () -> AccountProfile): AccountMerge {
             if (inHand.isDisposable) return MoveInto(from = inHand.accountId, into = resolved().accountId)
             val other = resolved()
-            if (other.isDisposable) return AbsorbResolved(resolved = other.accountId, into = inHand.accountId)
+            if (other.isDisposable) {
+                if (!attestationFits()) throw IdentityConflictException(Text("Die bezeugte Identitaet gehoert nicht zu dem Konto dieser Sitzung"))
+                return AbsorbResolved(resolved = other.accountId, into = inHand.accountId)
+            }
             throw IdentityConflictException(Text("Identification claims resolve to a different account"))
         }
     }

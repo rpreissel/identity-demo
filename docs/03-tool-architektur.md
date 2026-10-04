@@ -570,8 +570,8 @@ Ports liegen in Unterpaketen nach Thema ([Projektrahmen](08-projektrahmen.md) M8
   Claims und Verfahrensinstanz. Implementiert von `KeycloakToolCallsService` (`orchestrator`). Ein
   Modul, das eine Anfrage wegen des Kontozustands ablehnt, wirft `InvalidStateException` (`409`).
 - **`PasswordCredentialPort`** – prüft oder ersetzt das Passwort hinter einer `EnrollmentRef` für
-  Aufrufer ohne Kanal und Tool-Sitzung: das Entsperren per Passwort in `auth_kobil` und das
-  Passwortformular von Keycloak (`MgmtPasswordController`); implementiert in `auth_password`.
+  Aufrufer ohne Kanal und Tool-Sitzung: das Entsperren per Passwort in `auth_kobil` und die Prüfung
+  im Passwortformular von Keycloak (`MgmtPasswordController`); implementiert in `auth_password`.
 - **`RateLimit`** / **`RateLimits`** – das Zählwerk des Orchestrators, geliehen an die
   Module ([ADR-44](adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)). Ein Modul
   leitet je Mengenbegrenzung eine Klasse von `RateLimit` ab und legt dort Grenze und Zeitfenster fest;

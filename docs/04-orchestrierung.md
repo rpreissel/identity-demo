@@ -638,11 +638,17 @@ Clients.
 Jeder Nachweis trägt den Zeitpunkt, zu dem er erbracht wurde (`MethodEvidence.provenAt`). Für ein
 Niveau über `loa1` zählen nur Nachweise, die jünger sind als `identity.policy.loa2-max-age`
 (30 Minuten, gleich dem `loa-max-age` des LoA-2-Subflows in Keycloak); ältere tragen weiter `loa1`.
-Die Regel steht in der `AuthPolicy`, gilt also für beide Kanäle: Nach 30 Minuten meldet ein
-App-Kanal `loa1`, und ein Ziel ab `loa2` verlangt einen neuen Nachweis, bei dem auch das schon
-benutzte Verfahren wieder angeboten wird. Wiederhergestellte Nachweise (`RestoreData`) behalten
-ihren Zeitpunkt; ein Nachweis ohne Zeitpunkt gilt als beliebig alt. Ohne diese Regel hielte der
+Die Regel steht in der `AuthPolicy`, gilt also für beide Kanäle: Nach 30 Minuten meldet der Kanal
+`loa1`, und ein Ziel ab `loa2` verlangt einen neuen Nachweis, bei dem auch das schon benutzte
+Verfahren wieder angeboten wird. Wiederhergestellte Nachweise (`RestoreData`) behalten ihren
+Zeitpunkt; ein Nachweis ohne Zeitpunkt gilt als beliebig alt. Ohne diese Regel hielte der
 Resume-Pfad ein einmal erreichtes `loa2` über jeden neuen Durchlauf bis zum Sitzungsende.
+
+**Das `acr` im Token altert nicht.** Es hat Keycloaks Bedeutung: Es beschreibt die Anmeldung, nicht
+das laufend aktuelle Niveau. Keycloak schreibt beim Erneuern eines Tokens dasselbe `acr` wieder
+hinein, und `loa-max-age` wirkt erst beim nächsten Anmeldedurchlauf. Ein Token kann deshalb noch
+`loa2` tragen, während der Kanal schon `loa1` meldet. Eine Anwendung, die ein frisches `loa2`
+braucht, fragt mit `acr_values=2` neu an (dann greift die Frist) oder prüft `auth_time`.
 
 ### IAL und AAL: zwei Fragen, ein `acr`-Wert
 

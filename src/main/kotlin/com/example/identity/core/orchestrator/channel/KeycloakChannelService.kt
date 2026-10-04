@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.core.orchestrator.journey.JourneyEndedException
+import com.example.identity.core.orchestrator.session.ChannelSessionEndedException
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.session.id
@@ -39,7 +41,8 @@ import org.springframework.transaction.annotation.Transactional
  * [ChannelService.resumeChannel] like the App channel, so "which tool comes next" is decided once.
  */
 @Service
-@Transactional
+// ADR-43, I-2, see JourneyService
+@Transactional(noRollbackFor = [ChannelSessionEndedException::class, JourneyEndedException::class])
 class KeycloakChannelService(
     private val sessionManagementService: SessionManagementService,
     private val keycloakChannelAccessGuard: KeycloakChannelAccessGuard,

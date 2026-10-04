@@ -1,16 +1,11 @@
 package com.example.identity.tools.auth_password.api.v1
 
 import com.example.identity.TEST_CLOCK
-import com.example.identity.tools.auth_password.PASSWORD_EXISTS
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.EnrollmentRef
-import com.example.identity.contract.tool_api.InvalidStateException
 import com.example.identity.contract.tool_api.KeycloakToolCalls
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolOutcome
-import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.tools.auth_password.PASSWORD_EXISTS_MARKER
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.tools.auth_password.internal.PASSWORD_ENROLLMENT_TYPE
@@ -19,7 +14,6 @@ import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollment
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
 import com.example.identity.tools.auth_password.internal.PasswordCredentialPortImpl
 import com.example.identity.tools.auth_password.internal.PasswordHasher
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -30,7 +24,6 @@ import io.mockk.verify
 import java.util.Optional
 
 private const val CURRENT_PASSWORD = "correct-horse-battery"
-private const val NEW_PASSWORD = "brand-new-secret"
 
 /**
  * Unit test of [MgmtPasswordController]'s branches for Keycloak's native password credential: the
@@ -62,19 +55,6 @@ class MgmtPasswordControllerTest : BehaviorSpec({
                 fixture.booked.captured.shouldBeInstanceOf<ToolOutcome.Failed.KnownAccountAuth>()
             }
         }
-
-        `when`("Keycloak's 'reset password' sets a new one") {
-            val fixture = MgmtPasswordFixture(accountId, enrolled = true)
-            fixture.controller.set(accountId, "kc:7", MgmtPasswordSetRequest(NEW_PASSWORD))
-
-            then("a new instance is booked, carrying its own 'has a password' claim like one set up in the app") {
-                val enrolled = fixture.booked.captured.shouldBeInstanceOf<ToolOutcome.Completed.Enrolled>()
-                enrolled.enrollmentRef.type shouldBe PASSWORD_ENROLLMENT_TYPE
-                enrolled.claims.single().attributeType shouldBe PASSWORD_EXISTS
-                enrolled.claims.single().value shouldBe PASSWORD_EXISTS_MARKER
-                verify { fixture.keycloakToolCalls.apply(accountId, PasswordModule, any()) }
-            }
-        }
     }
 
     given("an account with an enrolled password that is locked after failed attempts") {
@@ -100,17 +80,6 @@ class MgmtPasswordControllerTest : BehaviorSpec({
             then("it is invalid without throwing (constant shape, no enumeration oracle)") {
                 response.body!!.valid shouldBe false
                 verify { fixture.keycloakToolCalls.apply(accountId, PasswordModule, any()) }
-            }
-        }
-
-        `when`("'reset password' tries to give it a password it never had") {
-            val fixture = MgmtPasswordFixture(accountId, enrolled = false)
-            val result = runCatching { fixture.controller.set(accountId, "kc:7", MgmtPasswordSetRequest(NEW_PASSWORD)) }
-
-            then("it is refused - set only replaces, enroll-password is the way to add one") {
-                shouldThrow<InvalidStateException> { result.getOrThrow() }
-                verify(exactly = 0) { fixture.enrollmentRepository.save(any()) }
-                verify(exactly = 0) { fixture.keycloakToolCalls.apply(any(), any(), any()) }
             }
         }
     }

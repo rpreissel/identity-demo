@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.core.orchestrator.journey.JourneyEndedException
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
@@ -55,7 +56,7 @@ import org.springframework.web.util.UriComponentsBuilder
  * may run when is not decided here but by [JourneyService].
  */
 @Service
-@Transactional(noRollbackFor = [ChannelSessionEndedException::class]) // ADR-43, see JourneyService
+@Transactional(noRollbackFor = [ChannelSessionEndedException::class, JourneyEndedException::class]) // ADR-43, I-2, see JourneyService
 class ToolJourneyService(
     private val sessionManagementService: SessionManagementService,
     private val channelAccessGuard: ChannelAccessGuard,
