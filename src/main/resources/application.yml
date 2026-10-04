@@ -195,6 +195,9 @@ identity:
     # Wie lange ein Nachweis ueber loa1 traegt; danach zaehlt er nur noch fuer loa1
     # (docs/04-orchestrierung.md #8). Gleich dem loa-max-age des LoA-2-Subflows (Keycloak V5).
     loa2-max-age: PT30M
+    # Wie alt der juengste Nachweis sein darf, bevor das Loeschen des Kontos einen neuen verlangt
+    # (docs/04-orchestrierung.md #8).
+    self-service-max-age: PT5M
   secrets:
     # Pepper for the short-lived SMS/e-mail OTP hashes and the hashed keys of the modules' send
     # budgets (ADR-44). A six-digit code has only 10^6 possible preimages, and phone numbers/

@@ -20,8 +20,9 @@ import com.example.identity.contract.tool_api.ToolOutcome
 /**
  * Delete the account of an already authenticated channel (docs/journeys/delete-account.md). The
  * yes/no question comes first; only after "yes" does the gate at [Action.DeleteAccount.requiredAcr]
- * apply. A step-up counts as the fresh proof; otherwise one active factor is re-proven. That
- * re-proof authorizes only this one action, so it is not recorded as `MethodEvidence`.
+ * apply. A step-up or any other recent proof of the session counts as the fresh proof; otherwise
+ * one active factor is re-proven. That re-proof authorizes only this one action, so it is not
+ * recorded as `MethodEvidence`.
  */
 class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
 
@@ -34,7 +35,7 @@ class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
             is DeleteAccountState.ConfirmPending -> when (event) {
                 is JourneyEvent.Answered -> when (event.answer) {
                     // The gate applies only after "yes".
-                    ANSWER_ACCEPT -> gate(ctx) ?: offerReconfirmation(ctx)
+                    ANSWER_ACCEPT -> gate(ctx) ?: confirmFreshness(state, ctx)
                     ANSWER_DECLINE -> Transition.Cancel
                     else -> event.notUnderstood("ConfirmPending")
                 }
@@ -78,6 +79,11 @@ class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
             resumeWith = DeleteAccountState.ConfirmPending
         )
     }
+
+    /** Deletes at once on a recent proof, else asks for one. */
+    private fun confirmFreshness(state: DeleteAccountState, ctx: JourneyContext): Transition =
+        if (ctx.policy.hasFreshProof(ctx.evidence)) Transition.Perform(Action.DeleteAccount, resumeState = state)
+        else offerReconfirmation(ctx)
 
     private fun offerReconfirmation(ctx: JourneyContext): Transition {
         val candidates = CandidateTools.forReconfirmation(ctx.requireAccount(), ctx)

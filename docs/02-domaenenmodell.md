@@ -177,8 +177,8 @@ wechselt direkt auf `CONSUMED`, und ob sie abgelaufen ist, wird nur über `expir
   Abschnitt 1). `DELETE_ACCOUNT` und `MANAGE_AUTH_METHODS` setzen einen Kanal voraus, der schon
   `AUTHENTICATED` ist. `DELETE_ACCOUNT` verlangt zuerst in jedem Fall die Ja/Nein-Bestätigung
   (`Prompt`, [API](05-api.md) Abschnitt "Das `Prompt`-Objekt"). Danach muss die Sitzung die Schwelle `selfServiceAcrFloor` erreichen
-  (loa2, für ein nie identifiziertes Konto nur loa1), und ein aktiver Faktor muss frisch
-  nachgewiesen sein.
+  (loa2, für ein nie identifiziertes Konto nur loa1), und der jüngste Nachweis der Sitzung darf
+  höchstens fünf Minuten alt sein; sonst wird ein aktiver Faktor erneut nachgewiesen.
 - `JourneyLifecycle`: `STARTED`, `SUSPENDED`, `SUCCEEDED`, `FAILED`, `CANCELLED`, `EXPIRED`,
   `CONSUMED`
 - `ToolRole`: `IDENTIFICATION`, `CORRELATION`, `ENROLLMENT`, `KNOWN_ACCOUNT_AUTH`,

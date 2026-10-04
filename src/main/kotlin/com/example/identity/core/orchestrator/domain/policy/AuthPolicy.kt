@@ -40,6 +40,12 @@ interface AuthPolicy {
     /** Which ENROLL tools would close the gap toward requiredAcr? */
     fun enrollmentCandidates(ctx: CandidateContext): List<ToolId>
 
+    /**
+     * Has this session proven anything recently enough to act on the account without asking again
+     * (docs/04-orchestrierung.md #8)? Any proof counts, at any level; one of unknown age does not.
+     */
+    fun hasFreshProof(evidence: SessionEvidence): Boolean
+
     /** Level implied by the given evidence (IAL and AAL, docs/04-orchestrierung.md #8). */
     fun resolveAcr(evidence: SessionEvidence, account: AccountProfile?): AcrLevel
 }

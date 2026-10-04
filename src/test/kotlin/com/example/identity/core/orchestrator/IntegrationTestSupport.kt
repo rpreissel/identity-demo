@@ -114,6 +114,23 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
         ).forEach { jdbcTemplate.update("DELETE FROM $it") }
     }
 
+    /** Moves every proof of [channelSessionId] back by [minutes], as if made that long ago. */
+    protected fun ageProofs(channelSessionId: UUID, minutes: Long) {
+        val evidenceId = jdbcTemplate.queryForObject(
+            "SELECT session_evidence_id FROM orchestrator.channel_session WHERE id = ?", UUID::class.java, channelSessionId
+        )
+        val json = jdbcTemplate.queryForObject(
+            "SELECT CAST(methods AS VARCHAR) FROM orchestrator.session_evidence WHERE id = ?", String::class.java, evidenceId
+        )!!
+        val then = Instant.now().minusSeconds(minutes * 60)
+        val aged = Regex("\"provenAt\":(\"[^\"]*\"|[0-9.eE+-]+)").replace(json) { match ->
+            val stamp = if (match.groupValues[1].startsWith("\"")) "\"$then\"" else "${then.epochSecond}.${"%09d".format(then.nano)}"
+            "\"provenAt\":$stamp"
+        }
+        check(aged != json) { "no proof to age in channel $channelSessionId" }
+        jdbcTemplate.update("UPDATE orchestrator.session_evidence SET methods = ? FORMAT JSON WHERE id = ?", aged, evidenceId)
+    }
+
     /**
      * Stubs DpopValidator to return a fake JWK that [jwkThumbprintService] maps to a fresh
      * [currentBindingKeyRef]. Call from a subclass's `beforeEach`. Device-binding tests do not use

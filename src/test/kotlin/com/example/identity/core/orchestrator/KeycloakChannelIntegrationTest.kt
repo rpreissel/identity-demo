@@ -355,23 +355,6 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                 return channelSessionId to token
             }
 
-            /** Moves every proof of [channelSessionId] back by [minutes], as if made that long ago. */
-            fun ageProofs(channelSessionId: ChannelSessionId, minutes: Long) {
-                val evidenceId = jdbcTemplate.queryForObject(
-                    "SELECT session_evidence_id FROM orchestrator.channel_session WHERE id = ?", UUID::class.java, channelSessionId.value
-                )
-                val json = jdbcTemplate.queryForObject(
-                    "SELECT CAST(methods AS VARCHAR) FROM orchestrator.session_evidence WHERE id = ?", String::class.java, evidenceId
-                )!!
-                val then = Instant.now().minusSeconds(minutes * 60)
-                val aged = Regex("\"provenAt\":(\"[^\"]*\"|[0-9.eE+-]+)").replace(json) { match ->
-                    val stamp = if (match.groupValues[1].startsWith("\"")) "\"$then\"" else "${then.epochSecond}.${"%09d".format(then.nano)}"
-                    "\"provenAt\":$stamp"
-                }
-                aged shouldNotBe json
-                jdbcTemplate.update("UPDATE orchestrator.session_evidence SET methods = ? FORMAT JSON WHERE id = ?", aged, evidenceId)
-            }
-
             fun resume(accountId: AccountId, token: String): Map<String, Any?> {
                 val channelSessionId = ChannelSessionId(UUID.randomUUID())
                 stubAssertion(channelBinding = channelSessionId.toString())
@@ -392,7 +375,7 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
             `when`("the next flow run asks for loa2 after the proofs are older than 30 minutes") {
                 val accountId = accountService.createAccountInSetup().accountId
                 val (first, _) = loginAtLoa2(accountId)
-                ageProofs(first, minutes = 31)
+                ageProofs(first.value, minutes = 31)
                 val token = restTemplate.exchange(
                     "http://localhost:$port/orchestrator/api/v1/kc/channels/$first/restore-data?kcSessionId=kc-aged",
                     HttpMethod.GET, HttpEntity<Void>(keycloakHeaders().also { stubAssertion(channelBinding = first.toString()) }), mapType

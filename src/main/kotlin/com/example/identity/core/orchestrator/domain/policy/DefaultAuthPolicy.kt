@@ -20,13 +20,20 @@ import java.time.Duration
  * that an identification never combines with an unrelated auth factor into a false MFA bump.
  *
  * A level above loa1 ages: only proofs younger than [loa2MaxAge] count toward it, older ones
- * still carry loa1 (docs/04-orchestrierung.md #8, like Keycloak's `loa-max-age`).
+ * still carry loa1 (docs/04-orchestrierung.md #8, like Keycloak's `loa-max-age`). Self-service on
+ * the account asks for a proof younger than [selfServiceMaxAge], whatever its level.
  */
 class DefaultAuthPolicy(
     private val toolRegistry: ToolCatalog,
     private val clock: Clock,
     private val loa2MaxAge: Duration = DEFAULT_LOA2_MAX_AGE,
+    private val selfServiceMaxAge: Duration = DEFAULT_SELF_SERVICE_MAX_AGE,
 ) : AuthPolicy {
+
+    override fun hasFreshProof(evidence: SessionEvidence): Boolean {
+        val since = clock.instant().minus(selfServiceMaxAge)
+        return evidence.methods.any { it.provenAt?.isBefore(since) == false }
+    }
 
     override fun resolveAcr(evidence: SessionEvidence, account: AccountProfile?): AcrLevel =
         AcrLevel.max(AcrLevel.min(levelOf(evidence), AGELESS_CEILING), levelOf(recent(evidence)))
@@ -201,6 +208,9 @@ class DefaultAuthPolicy(
     companion object {
         /** Keycloak's `loa-max-age` for LoA 2 (keycloak-migrations V5). */
         val DEFAULT_LOA2_MAX_AGE: Duration = Duration.ofMinutes(30)
+
+        /** How old the latest proof may be before self-service asks for a new one. */
+        val DEFAULT_SELF_SERVICE_MAX_AGE: Duration = Duration.ofMinutes(5)
 
         /** The highest level an aged proof still carries. */
         private val AGELESS_CEILING = AcrLevel.LOA1

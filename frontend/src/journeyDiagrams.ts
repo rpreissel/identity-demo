@@ -130,7 +130,8 @@ export const JOURNEY_DIAGRAMS: Record<
   deleteAccount: {
     title: t('Konto löschen'),
     // The yes/no confirmation always comes first; the loa2 gate applies only once accepted
-    // (DeleteAccountStrategy). A step-up there already is the fresh proof of a factor.
+    // (DeleteAccountStrategy). A step-up there already is the fresh proof of a factor, and so is
+    // any proof of the last five minutes: the re-confirmation step is then skipped.
     steps: [t('Löschen bestätigen'), t('Niveau ausreichend?'), t('Faktor erneut bestätigen'), t('Gelöscht')],
     branch: {
       atIndex: 1,

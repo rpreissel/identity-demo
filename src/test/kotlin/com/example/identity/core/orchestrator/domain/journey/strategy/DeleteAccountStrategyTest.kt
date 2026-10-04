@@ -1,5 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import java.time.Duration
+import com.example.identity.core.orchestrator.domain.policy.provenAt
+import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
+import com.example.identity.TEST_NOW
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
@@ -29,7 +33,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 /**
  * Pure unit coverage of [DeleteAccountStrategy] - self-service account deletion
  * (docs/04-orchestrierung.md #3, docs/05-api.md "Account löschen"). No Spring context, no HTTP.
- * The givens follow the journey: confirmation, loa2 gate, re-confirmation, delete.
+ * The givens follow the journey: confirmation, loa2 gate, freshness, re-confirmation, delete.
  */
 class DeleteAccountStrategyTest : BehaviorSpec({
 
@@ -86,13 +90,23 @@ class DeleteAccountStrategyTest : BehaviorSpec({
 
     given("ConfirmPending, the account was never identified (personId == null) and the session only carries loa1") {
         val acc = account(method("sms", AcrLevel.LOA1), personId = null)
-        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
-        `when`("the confirmation is accepted") {
+        val proven = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc)
+
+        `when`("the confirmation is accepted and the proof is older than the self-service limit") {
+            val theCtx = ctx(account = acc, evidence = proven.provenAt(TEST_NOW.minus(Duration.ofMinutes(6))))
             val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
             then("loa1 already satisfies the gate - straight to the re-confirmation step, no STEP_UP to loa2 demanded") {
                 val to = transition.shouldBeInstanceOf<Transition.To>().state
                 to.shouldBeInstanceOf<DeleteAccountState.ConfirmationRequired>()
                 to.offered shouldContainExactlyInAnyOrder listOf(ToolId("auth-sms"))
+            }
+        }
+
+        `when`("the confirmation is accepted and the proof is recent") {
+            val theCtx = ctx(account = acc, evidence = proven.provenAt(TEST_NOW.minus(Duration.ofMinutes(4))))
+            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
+            then("deletes right away - the recent proof is the fresh one") {
+                transition shouldBe Transition.Perform(Action.DeleteAccount, resumeState = DeleteAccountState.ConfirmPending)
             }
         }
     }
@@ -101,13 +115,33 @@ class DeleteAccountStrategyTest : BehaviorSpec({
         // device is the only tool whose own maxAcr reaches loa2 alone (sms/password/email cap
         // at loa1) - so this is the only single-method way to seed "already at loa2" evidence.
         val acc = account(method("device", AcrLevel.LOA2, boundKeyRef = StrategyTestFixtures.BINDING_KEY))
-        val theCtx = ctx(account = acc, evidence = evidence(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE), account = acc), acrFloor = AcrLevel.LOA1)
-        `when`("the confirmation is accepted") {
+        val proven = evidence(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE), account = acc)
+
+        `when`("the confirmation is accepted and the proof is older than the self-service limit") {
+            val theCtx = ctx(account = acc, evidence = proven.provenAt(TEST_NOW.minus(Duration.ofMinutes(6))), acrFloor = AcrLevel.LOA1)
             val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
-            then("still demands a fresh re-confirmation of any active factor - unlike STEP_UP, evidence of unknown age is never enough on its own") {
+            then("demands a fresh re-confirmation of any active factor - the level alone is not enough") {
                 val to = transition.shouldBeInstanceOf<Transition.To>().state
                 to.shouldBeInstanceOf<DeleteAccountState.ConfirmationRequired>()
                 to.offered shouldContainExactlyInAnyOrder listOf(ToolId("auth-device"))
+            }
+        }
+
+        `when`("the confirmation is accepted and the proof is of unknown age") {
+            val ageless = SessionEvidence(proven.methods.map { it.copy(provenAt = null) })
+            val neverIdentified = acc.copy(personId = null)
+            val theCtx = ctx(account = neverIdentified, evidence = ageless, acrFloor = AcrLevel.LOA1)
+            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
+            then("demands the re-confirmation - an undated proof is never fresh") {
+                transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<DeleteAccountState.ConfirmationRequired>()
+            }
+        }
+
+        `when`("the confirmation is accepted and the proof is recent") {
+            val theCtx = ctx(account = acc, evidence = proven.provenAt(TEST_NOW.minus(Duration.ofMinutes(4))), acrFloor = AcrLevel.LOA1)
+            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
+            then("deletes right away - no second proof within the limit") {
+                transition shouldBe Transition.Perform(Action.DeleteAccount, resumeState = DeleteAccountState.ConfirmPending)
             }
         }
     }

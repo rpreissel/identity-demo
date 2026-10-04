@@ -160,6 +160,48 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
     }
 
+    // Freshness for self-service --------------------------------------------------------------------
+
+    given("two proofs, the younger one four minutes old") {
+        val evidence = SessionEvidence(
+            smsAtLoa2.provenAt(TEST_NOW.minus(Duration.ofMinutes(20))).methods +
+                smsAtLoa2.provenAt(TEST_NOW.minus(Duration.ofMinutes(4))).methods
+        )
+
+        `when`("freshness is checked") {
+            val fresh = policy.hasFreshProof(evidence)
+
+            then("the youngest proof decides: it is fresh") {
+                fresh shouldBe true
+            }
+        }
+    }
+
+    given("a proof six minutes old") {
+        val evidence = smsAtLoa2.provenAt(TEST_NOW.minus(Duration.ofMinutes(6)))
+
+        `when`("freshness is checked") {
+            val fresh = policy.hasFreshProof(evidence)
+
+            then("it is not fresh, though it still carries loa2") {
+                fresh shouldBe false
+                policy.resolveAcr(evidence, account = null) shouldBe AcrLevel.LOA2
+            }
+        }
+    }
+
+    given("a proof of unknown age, and no proof at all") {
+        val ageless = SessionEvidence(smsAtLoa2.methods.map { it.copy(provenAt = null) })
+
+        `when`("freshness is checked") {
+            val fresh = listOf(policy.hasFreshProof(ageless), policy.hasFreshProof(nothingProven))
+
+            then("neither is fresh") {
+                fresh shouldBe listOf(false, false)
+            }
+        }
+    }
+
     // Level and MFA of the proven evidence ---------------------------------------------------------
 
     given("nothing proven yet") {

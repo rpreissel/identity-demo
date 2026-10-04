@@ -10,7 +10,8 @@ wird nie hinter einem Step-up versteckt.
 stateDiagram-v2
   [*] --> ConfirmPending
   ConfirmPending --> [*]: abgelehnt -> Cancel
-  ConfirmPending --> ConfirmationRequired: gefordertes Niveau bereits erreicht
+  ConfirmPending --> ConfirmationRequired: Niveau erreicht, letzter Nachweis älter als die Frist
+  ConfirmPending --> Finished: Niveau erreicht, letzter Nachweis jung genug -> Konto gelöscht, Abmeldung
   ConfirmPending --> STEP_UP: gefordertes Niveau noch nicht erreicht
   STEP_UP --> ConfirmPending: SubJourneyFinished mit ausreichendem Niveau -> sofort Perform(DeleteAccount)
   STEP_UP --> [*]: SubJourneyFinished unter dem geforderten Niveau -> Cancel
@@ -26,9 +27,11 @@ stateDiagram-v2
 [`MANAGE_AUTH_METHODS`](manage-auth-methods.md): `Action.DeleteAccount.requiredAcr` ruft dieselbe
 Funktion `selfServiceAcrFloor` auf.
 
-Zum Schluss muss der Nutzer immer noch einmal ein Verfahren nachweisen (ein beliebiges aktives, auf
-beliebigem Niveau). So wird ein Konto nie unbemerkt gelöscht. Musste vorher ein Step-up laufen,
-zählt dessen Nachweis bereits.
+Gelöscht wird nur mit einem frischen Nachweis: Der jüngste Nachweis der Sitzung darf höchstens
+fünf Minuten alt sein (`AuthPolicy.hasFreshProof`, `identity.policy.self-service-max-age`). Ist er
+älter, weist der Nutzer noch einmal ein Verfahren nach (ein beliebiges aktives, auf beliebigem
+Niveau). So wird ein Konto nie aus einer länger offenen Sitzung heraus gelöscht. Musste vorher ein
+Step-up laufen, zählt dessen Nachweis bereits.
 
 Der letzte Übergang ist `Transition.Perform(Action.DeleteAccount, resumeState = ConfirmPending)`.
 Wird die Journey danach mit `ActionCompleted` fortgesetzt, wird daraus `Transition.Logout`: Das Konto

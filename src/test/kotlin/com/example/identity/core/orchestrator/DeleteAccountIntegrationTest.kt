@@ -1,12 +1,14 @@
 package com.example.identity.core.orchestrator
 
+import java.util.UUID
 import io.kotest.matchers.shouldBe
 
 /**
  * Account deletion's ACR gate (docs/04-orchestrierung.md, DeleteAccountStrategy): the yes/no
  * confirmation comes first, then a step-up if the session lacks the level, falling back to
  * RE_IDENTIFY when no active method reaches it. loa2 for an identified account, loa1 for one never
- * identified (`Action.DeleteAccount.requiredAcr`).
+ * identified (`Action.DeleteAccount.requiredAcr`). A proof of the last five minutes then deletes at
+ * once; an older one asks for a fresh reconfirmation first.
  */
 class DeleteAccountIntegrationTest : IntegrationTestSupport() {
 
@@ -16,6 +18,9 @@ class DeleteAccountIntegrationTest : IntegrationTestSupport() {
 
     private fun accountCount(accountId: Any): Int =
         jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.account WHERE id = ?", Int::class.java, accountId)!!
+
+    private fun accountOf(channelSessionId: String): Long =
+        jdbcTemplate.queryForObject("SELECT account_id FROM orchestrator.channel_session WHERE id = ?", Long::class.java, channelSessionId)!!
 
     private fun startDeletion(channelSessionId: String): Map<String, Any?> =
         post("/orchestrator/api/v1/channels/$channelSessionId/account-deletions")
@@ -73,9 +78,24 @@ class DeleteAccountIntegrationTest : IntegrationTestSupport() {
             }
         }
 
-        given("an authenticated account deleting itself after fresh reconfirmation") {
+        given("an authenticated account whose login is only moments old") {
             `when`("the user confirms the deletion") {
                 val channelSessionId = loginAsSeededAccount()
+                val accountId = accountOf(channelSessionId)
+                startDeletion(channelSessionId)
+                val accepted = answer(channelSessionId, "accept")
+
+                then("the account is deleted at once, the login is the fresh proof") {
+                    accepted.channel()["state"] shouldBe "LOGGED_OUT"
+                    accountCount(accountId) shouldBe 0
+                }
+            }
+        }
+
+        given("an authenticated account whose login is ten minutes old") {
+            `when`("the user confirms the deletion") {
+                val channelSessionId = loginAsSeededAccount()
+                ageProofs(UUID.fromString(channelSessionId), minutes = 10)
                 startDeletion(channelSessionId)
                 val accepted = answer(channelSessionId, "accept")
 
@@ -86,11 +106,8 @@ class DeleteAccountIntegrationTest : IntegrationTestSupport() {
 
             `when`("the user reconfirms with the password") {
                 val channelSessionId = loginAsSeededAccount()
-                val accountId = jdbcTemplate.queryForObject(
-                    "SELECT account_id FROM orchestrator.channel_session WHERE id = ?",
-                    Long::class.java,
-                    channelSessionId
-                )!!
+                val accountId = accountOf(channelSessionId)
+                ageProofs(UUID.fromString(channelSessionId), minutes = 10)
                 startDeletion(channelSessionId)
                 answer(channelSessionId, "accept")
                 val completed = authenticateViaPassword(channelSessionId)

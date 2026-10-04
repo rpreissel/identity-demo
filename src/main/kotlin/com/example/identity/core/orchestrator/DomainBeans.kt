@@ -36,7 +36,8 @@ class DomainBeans {
         catalog: ToolCatalog,
         clock: Clock,
         @Value("\${identity.policy.loa2-max-age:PT30M}") loa2MaxAge: Duration,
-    ): AuthPolicy = DefaultAuthPolicy(catalog, clock, loa2MaxAge)
+        @Value("\${identity.policy.self-service-max-age:PT5M}") selfServiceMaxAge: Duration,
+    ): AuthPolicy = DefaultAuthPolicy(catalog, clock, loa2MaxAge, selfServiceMaxAge)
 
     @Bean
     fun confirmPeerLoginStrategy(): IntentStrategy<*> = ConfirmPeerLoginStrategy()

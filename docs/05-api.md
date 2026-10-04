@@ -481,11 +481,13 @@ identifiziertes Konto nur loa1, [Orchestrierung](04-orchestrierung.md) Abschnitt
    zurück auf `AUTHENTICATED` ab.) Erst jetzt wird die Schwelle geprüft: Reicht das aktuelle
    Niveau nicht, liefert die Antwort einen Step-up-Schritt; danach ruft der Client
    `account-deletions` erneut auf.
-3. Reichte das Niveau schon vorher (der Nachweis ist also unbekannt alt), folgt ein frischer
-   Nachweis über ein **beliebiges** aktives `auth-*`-Verfahren des Kontos, unabhängig davon, welches
-   Niveau es erreicht. Auch ein gerade erst nachgewiesener Faktor zählt dabei erneut – anders als
-   bei `STEP_UP`. Genau ein Verfahren genügt; bei mehreren kommt dieselbe Auswahlseite
-   `next={"context":"auth","step":"selectMethod"}`. **Ausnahme**: Musste in Schritt 2 erst ein
+3. Reichte das Niveau schon vorher und ist der jüngste Nachweis der Sitzung älter als fünf Minuten
+   (`identity.policy.self-service-max-age`), folgt ein frischer Nachweis über ein **beliebiges**
+   aktives `auth-*`-Verfahren des Kontos, unabhängig davon, welches Niveau es erreicht. Auch ein
+   schon nachgewiesener Faktor zählt dabei erneut – anders als bei `STEP_UP`. Genau ein Verfahren
+   genügt; bei mehreren kommt dieselbe Auswahlseite
+   `next={"context":"auth","step":"selectMethod"}`. Ist der jüngste Nachweis jünger, wird sofort
+   gelöscht. **Ausnahme**: Musste in Schritt 2 erst ein
    Step-up stattfinden, zählt dessen Nachweis bereits als der hier geforderte.
 4. Nach erfolgreichem Nachweis wird das Konto mit allem, was nur ihm gehört, unwiderruflich
    gelöscht: alle Credential-Datensätze der Tool-Module, auf die seine Verfahren verweisen
@@ -724,8 +726,8 @@ Beide durchlaufen dieselbe Prüfung:
    Einstiegs-Endpunkt erneut auf.
 3. Das Niveau ist schon `loa2`, wurde aber unabhängig von diesem Durchlauf erreicht (der Nachweis
    ist also unbekannt alt): Die Antwort verlangt einen frischen Nachweis über ein beliebiges aktives
-   `auth-*`-Verfahren, genau wie beim Löschen des Kontos in Schritt 3 oben
-   (`next={"context":"auth","step":"selectMethod"}` bei mehreren Kandidaten). **Ausnahme**: Musste
+   `auth-*`-Verfahren, wie beim Löschen des Kontos in Schritt 3 oben, hier aber ohne die Frist von
+   fünf Minuten (`next={"context":"auth","step":"selectMethod"}` bei mehreren Kandidaten). **Ausnahme**: Musste
    in Schritt 2 erst ein Step-up stattfinden, zählt dessen Nachweis bereits als der geforderte.
 4. `approve-qr` starten:
    - `POST .../tools/approve-qr` (ohne Inhalt) →
