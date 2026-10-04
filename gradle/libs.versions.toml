@@ -25,6 +25,8 @@ nimbus-jose-jwt = "10.10"
 # Jackson 2 nur fuer keycloak-extension (der Orchestrator laeuft auf Jackson 3 / tools.jackson).
 jackson2 = "2.21.7"
 shadow = "9.2.2"
+# SBOM fuer die Pruefung der Abhaengigkeiten gegen OSV in der CI.
+cyclonedx = "3.4.1"
 # Argon2id fuer Passwoerter (Spring Securitys Argon2PasswordEncoder braucht die Implementierung).
 bouncycastle = "1.85.2"
 # Keycloak-Server, gegen den keycloak-extension baut. Die Image-Tags in compose.yml,
@@ -49,6 +51,7 @@ kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 openapi-generator = { id = "org.openapi.generator", version.ref = "openapi-generator" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+cyclonedx = { id = "org.cyclonedx.bom", version.ref = "cyclonedx" }
 
 [libraries]
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }

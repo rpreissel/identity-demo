@@ -64,6 +64,21 @@ jobs:
         working-directory: frontend
         run: npm audit --audit-level=high --omit=dev
 
+      # Dasselbe fuer das Backend und die Keycloak-Erweiterung: ein SBOM je ausgeliefertem Artefakt
+      # (nur runtimeClasspath, build.gradle.kts), geprueft gegen OSV. Das Binary ist ueber seine
+      # Pruefsumme festgelegt. Keycloak selbst steckt nicht darin; seine Version steht im
+      # Versionskatalog und in den Image-Tags.
+      - name: Backend-Abhaengigkeiten ohne bekannte Luecken
+        env:
+          OSV_VERSION: v2.6.0
+          OSV_SHA256: ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108
+        run: |
+          ./gradlew cyclonedxDirectBom :keycloak-extension:cyclonedxDirectBom
+          curl -sSfL -o osv-scanner "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SHA256}  osv-scanner" | sha256sum -c -
+          chmod +x osv-scanner
+          ./osv-scanner scan source -L build/reports/cyclonedx-direct/bom.json -L keycloak-extension/build/reports/cyclonedx-direct/bom.json
+
       # api/openapi.yaml und api/modules/*.yaml sind die einzige geschriebene Fassung des
       # API-Vertrags (docs/05-api.md). Weicht sie vom Code ab, soll das hier auffallen und nicht
       # erst zur Laufzeit in einem der drei Clients, die den Vertrag lesen.

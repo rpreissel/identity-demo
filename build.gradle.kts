@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.dependency.management)
     alias(libs.plugins.kover)
     alias(libs.plugins.openapi.generator)
+    alias(libs.plugins.cyclonedx)
 }
 
 group = "com.example"
@@ -120,6 +121,13 @@ dependencies {
     testImplementation(libs.asm.tree)
     testImplementation(libs.asm.analysis)
     testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+// SBOM nur aus dem, was ausgeliefert wird: Testbibliotheken pruefen wir nicht gegen OSV (CI, ci.yml).
+allprojects {
+    tasks.withType<org.cyclonedx.gradle.CyclonedxDirectTask>().configureEach {
+        includeConfigs.set(listOf("runtimeClasspath"))
+    }
 }
 
 // Ueberschreibt Spring Boots verwaltete Versionen (libs.versions.toml, Kommentar bei tomcat).

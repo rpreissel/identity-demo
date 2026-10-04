@@ -538,10 +538,15 @@ aus, als einzige Required Action `orchestrator-manage-methods`, `account`/`accou
 
 **Teilweise**
 
-- SA-21: Antworten an die Erweiterung sind auf 1 MB begrenzt. Offen: Test des Signierfilters mit
-  echtem Validator; Redirect-URIs ohne Wildcard (ändert das Realm-Setup und damit einen Neuaufbau).
-- SA-24: Actions per SHA, `permissions` in `ci.yml`, Prüfsumme der Gradle-Distribution, Dependabot
-  für `keycloak-theme`, `site` und Docker. Offen: CVE-Tor für Gradle, `init-local`.
+- SA-21: Antworten an die Erweiterung sind auf 1 MB begrenzt; der Signierfilter ist mit echtem
+  `PeerAuthValidator` getestet (`KeycloakResponseSigningFilterTest`: echte Assertion signiert,
+  gefälschte und getauschter Body nicht). Offen: Redirect-URIs ohne Wildcard (ändert das
+  Realm-Setup und damit einen Neuaufbau; erst die Pfade der SPA klären).
+- ~~SA-24~~ Actions per SHA, `permissions` in `ci.yml`, Prüfsumme der Gradle-Distribution,
+  Dependabot für `keycloak-theme`, `site` und Docker; CVE-Tor für Gradle: ein CycloneDX-SBOM je
+  ausgeliefertem Artefakt (nur `runtimeClasspath`), in der CI von OSV-Scanner geprüft (Binary über
+  Prüfsumme festgelegt; lokal gegengeprüft: der heutige Stand ist sauber, Tomcat 11.0.22 wird
+  gemeldet). `init-local` nimmt nur Hostname und `https`-Adressen ohne Sonderzeichen ins Init-Skript.
 
 **Nach Entscheidung des Inhabers (2026-10-04) erledigt**
 
