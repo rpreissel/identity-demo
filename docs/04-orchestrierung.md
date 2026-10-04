@@ -86,7 +86,7 @@ flowchart LR
 ```
 
 Verfahren verwalten und Konto löschen verlangen `loa2`; für ein nie identifiziertes Konto reicht
-`loa1` (`selfServiceAcrFloor`). Konto löschen verlangt zusätzlich einen frischen Nachweis (höchstens
+`loa1` (`selfServiceAcrFloor`). Beide verlangen zusätzlich einen frischen Nachweis (höchstens
 fünf Minuten alt, Abschnitt 8), aber nicht `loa3`. Festgelegt ist das genau an der Stelle im Modell, an der der jeweilige Intent beschrieben
 ist. Eine fachliche Entscheidung wie „Die QR-Bestätigung braucht künftig einen frischen Nachweis,
 kein altes Niveau" ist damit eine gezielte, nachvollziehbare Änderung an der Beschreibung dieses
@@ -644,13 +644,15 @@ Verfahren wieder angeboten wird. Wiederhergestellte Nachweise (`RestoreData`) be
 Zeitpunkt; ein Nachweis ohne Zeitpunkt gilt als beliebig alt. Ohne diese Regel hielte der
 Resume-Pfad ein einmal erreichtes `loa2` über jeden neuen Durchlauf bis zum Sitzungsende.
 
-### Ein frischer Nachweis für das Löschen des Kontos
+### Ein frischer Nachweis für Verwaltung und Löschen
 
 Neben dem Niveau gibt es eine zweite, kürzere Frist: `AuthPolicy.hasFreshProof` sagt, ob der
 jüngste Nachweis der Sitzung jünger ist als `identity.policy.self-service-max-age` (5 Minuten). Das
 Niveau des Nachweises spielt dabei keine Rolle, ein Nachweis ohne Zeitpunkt ist nie frisch.
-`DELETE_ACCOUNT` löscht nur mit einem frischen Nachweis und verlangt sonst eine erneute
-Bestätigung ([`DELETE_ACCOUNT`](journeys/delete-account.md)). Weil wiederhergestellte Nachweise
+`DELETE_ACCOUNT` und jeder Wunsch von `MANAGE_AUTH_METHODS` (hinzufügen, entfernen, Attribut
+zurücknehmen) handeln nur mit einem frischen Nachweis und verlangen sonst eine erneute Bestätigung
+([`DELETE_ACCOUNT`](journeys/delete-account.md),
+[`MANAGE_AUTH_METHODS`](journeys/manage-auth-methods.md)). Weil wiederhergestellte Nachweise
 ihren Zeitpunkt behalten, macht ein neuer Durchlauf im Web einen alten Nachweis nicht wieder frisch.
 
 **Das `acr` im Token altert nicht.** Es hat Keycloaks Bedeutung: Es beschreibt die Anmeldung, nicht

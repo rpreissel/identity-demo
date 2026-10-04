@@ -9,16 +9,19 @@ import com.example.identity.contract.tool_api.claims.AttributeType
  */
 sealed interface ManageAuthMethodsState : JourneyState {
 
+    /** What the user asked for; kept through a step-up and through [ConfirmationRequired]. */
+    sealed interface Wish : ManageAuthMethodsState
+
     /**
      * The user's wish before the loa2 gate, and the state the journey is parked in while a step-up
      * runs. So the wish survives the detour: after proving loa2 the user need not act again.
      * [com.example.identity.core.orchestrator.domain.journey.JourneyLifecycle.SUSPENDED] says it is waiting.
      */
-    data object AddRequested : ManageAuthMethodsState, ToolFreeState {
+    data object AddRequested : Wish, ToolFreeState {
         override val selectionContext: String get() = "enrollment"
     }
 
-    data class RemoveRequested(val methodInstanceId: String) : ManageAuthMethodsState, ToolFreeState {
+    data class RemoveRequested(val methodInstanceId: String) : Wish, ToolFreeState {
         override val selectionContext: String get() = "enrollment"
     }
 
@@ -26,8 +29,23 @@ sealed interface ManageAuthMethodsState : JourneyState {
      * The wish to withdraw an account attribute (a confirmed address), gated like [RemoveRequested]:
      * it is destructive self-service too and can take credentials with it.
      */
-    data class RetractAttributeRequested(val attributeType: AttributeType) : ManageAuthMethodsState, ToolFreeState {
+    data class RetractAttributeRequested(val attributeType: AttributeType) : Wish, ToolFreeState {
         override val selectionContext: String get() = "enrollment"
+    }
+
+    /**
+     * The session's latest proof is too old for [wish]: re-prove any one active factor first
+     * ([com.example.identity.core.orchestrator.domain.journey.CandidateTools.forReconfirmation]).
+     */
+    data class ConfirmationRequired(
+        override val offer: Offer,
+        val wish: Wish
+    ) : ManageAuthMethodsState, OfferingState {
+        override fun withOffer(offer: Offer) = copy(offer = offer)
+        // selectionContext names the kind of offer, not the intent.
+        override val selectionContext: String get() = "auth"
+        override val selectionTitle: Text get() = Text("Anmeldeverfahren verwalten – Anmeldeverfahren bestätigen")
+        override val selectionDescription: Text get() = Text("Ihr letzter Nachweis liegt länger zurück. Bitte bestätigen Sie zuerst eines Ihrer Anmeldeverfahren.")
     }
 
     data class Enrolling(

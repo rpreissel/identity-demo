@@ -1,5 +1,8 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import java.time.Duration
+import com.example.identity.core.orchestrator.domain.policy.provenAt
+import com.example.identity.TEST_NOW
 import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.Action
@@ -208,6 +211,114 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("finishes") {
                 transition shouldBe Transition.Authenticated
+            }
+        }
+    }
+
+    given("the session carries loa2, but its proof is six minutes old") {
+        val acc = account(method("sms", AcrLevel.LOA2), method("password", AcrLevel.LOA2))
+        val aged = loa2Evidence.provenAt(TEST_NOW.minus(Duration.ofMinutes(6)))
+        val theCtx = ctx(account = acc, evidence = aged, acrFloor = AcrLevel.LOA1)
+        val reconfirmation = listOf(ToolId("auth-sms"), ToolId("auth-password"))
+
+        `when`("AddRequested is started") {
+            val transition = strategy.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.Started, theCtx)
+            then("asks for a fresh proof of any active factor first, the wish in hand") {
+                val next = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<ManageAuthMethodsState.ConfirmationRequired>()
+                next.offered shouldContainExactlyInAnyOrder reconfirmation
+                next.wish shouldBe ManageAuthMethodsState.AddRequested
+            }
+        }
+
+        `when`("RemoveRequested is started") {
+            val wish = ManageAuthMethodsState.RemoveRequested("sms-instance")
+            val transition = strategy.transition(wish, JourneyEvent.Started, theCtx)
+            then("asks for a fresh proof first and removes nothing yet") {
+                transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<ManageAuthMethodsState.ConfirmationRequired>().wish shouldBe wish
+            }
+        }
+
+        `when`("RetractAttributeRequested is started") {
+            val wish = ManageAuthMethodsState.RetractAttributeRequested(AttributeType.EMAIL)
+            val transition = strategy.transition(wish, JourneyEvent.Started, theCtx)
+            then("asks for a fresh proof first and withdraws nothing yet") {
+                transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<ManageAuthMethodsState.ConfirmationRequired>().wish shouldBe wish
+            }
+        }
+    }
+
+    given("an aged session with nothing left to enroll") {
+        val acc = account(
+            method("sms", AcrLevel.LOA2), method("password", AcrLevel.LOA2), method("email", AcrLevel.LOA2),
+            method("device", AcrLevel.LOA2), method("kobil", AcrLevel.LOA2), method("qr", AcrLevel.LOA2)
+        )
+        val theCtx = ctx(
+            account = acc, evidence = loa2Evidence.provenAt(TEST_NOW.minus(Duration.ofMinutes(6))), acrFloor = AcrLevel.LOA1,
+            availableTools = StrategyTestFixtures.allToolIds - ToolId("enroll-device") - ToolId("enroll-kobil")
+        )
+
+        `when`("AddRequested is started") {
+            val transition = strategy.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.Started, theCtx)
+            then("finishes without asking for a proof - there is nothing to authorize") {
+                transition shouldBe Transition.Authenticated
+            }
+        }
+    }
+
+    given("ConfirmationRequired") {
+        val acc = account(method("sms", AcrLevel.LOA2), method("password", AcrLevel.LOA2))
+        val theCtx = ctx(account = acc, evidence = loa2Evidence.provenAt(TEST_NOW.minus(Duration.ofMinutes(6))), acrFloor = AcrLevel.LOA1)
+        val offer = Offer(listOf(ToolId("auth-sms"), ToolId("auth-password")))
+        val reproven = JourneyEvent.Completed(tool("auth-sms"), ToolOutcome.Completed.Authenticated(amr = listOf("sms")))
+
+        `when`("a factor is re-proven for the wish to add") {
+            val state = ManageAuthMethodsState.ConfirmationRequired(offer, ManageAuthMethodsState.AddRequested)
+            val transition = strategy.transition(state, reproven, theCtx)
+            then("goes on to the enrollment offer, the proof itself is not recorded") {
+                transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<ManageAuthMethodsState.Enrolling>()
+            }
+        }
+
+        `when`("a factor is re-proven for the wish to remove") {
+            val wish = ManageAuthMethodsState.RemoveRequested("sms-instance")
+            val transition = strategy.transition(ManageAuthMethodsState.ConfirmationRequired(offer, wish), reproven, theCtx)
+            then("removes the method and resumes in the wish, which then finishes") {
+                transition shouldBe Transition.Perform(Action.RevokeAuthMethod("sms-instance"), resumeState = wish)
+            }
+        }
+
+        `when`("a factor is re-proven for the wish to withdraw the address") {
+            val wish = ManageAuthMethodsState.RetractAttributeRequested(AttributeType.EMAIL)
+            val transition = strategy.transition(ManageAuthMethodsState.ConfirmationRequired(offer, wish), reproven, theCtx)
+            then("withdraws it") {
+                transition shouldBe Transition.Perform(Action.RetractAttribute(AttributeType.EMAIL), resumeState = wish)
+            }
+        }
+
+        `when`("one of two tools is abandoned") {
+            val state = ManageAuthMethodsState.ConfirmationRequired(offer, ManageAuthMethodsState.AddRequested)
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), theCtx)
+            then("the other one stays on offer, the wish kept") {
+                val next = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<ManageAuthMethodsState.ConfirmationRequired>()
+                next.declined shouldBe setOf(ToolId("auth-sms"))
+                next.wish shouldBe ManageAuthMethodsState.AddRequested
+            }
+        }
+
+        `when`("the last tool is abandoned") {
+            val state = ManageAuthMethodsState.ConfirmationRequired(Offer(listOf(ToolId("auth-sms"))), ManageAuthMethodsState.RemoveRequested("sms-instance"))
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), theCtx)
+            then("cancels - nothing is changed") {
+                transition shouldBe Transition.Cancel
+            }
+        }
+
+        `when`("a tool completes Enrolled") {
+            val state = ManageAuthMethodsState.ConfirmationRequired(offer, ManageAuthMethodsState.AddRequested)
+            val event = JourneyEvent.Completed(tool("enroll-sms"), ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref")))
+            val result = runCatching { strategy.transition(state, event, theCtx) }
+            then("an enrollment is no re-proof") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
     }

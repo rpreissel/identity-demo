@@ -43,6 +43,7 @@ class OfferingStateContractTest : BehaviorSpec({
         String::class -> "probe"
         Long::class -> 1L
         UUID::class -> UUID.randomUUID()
+        ManageAuthMethodsState.Wish::class -> ManageAuthMethodsState.AddRequested
         else -> null
     }
 

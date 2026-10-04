@@ -8,6 +8,7 @@ import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import org.springframework.http.HttpStatus
+import java.util.UUID
 import org.springframework.web.client.HttpClientErrorException
 
 /**
@@ -208,6 +209,59 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
 
                 then("there is no confirmed address left, so it is not found") {
                     shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.NOT_FOUND
+                }
+            }
+        }
+
+        given("an authenticated account whose proofs are ten minutes old") {
+            `when`("deactivating sms") {
+                val channelSessionId = registerAndAuthenticate()
+                val smsInstanceId = methodsOf(channelSessionId).first { it["method"] == "sms" }["id"] as String
+                ageProofs(UUID.fromString(channelSessionId), minutes = 10)
+
+                val asked = delete("/orchestrator/api/v1/channels/$channelSessionId/methods/$smsInstanceId")
+                val stillActive = methodsOf(channelSessionId).methodNames()
+                val confirmed = authenticateViaPassword(channelSessionId)
+                val activeAfterwards = methodsOf(channelSessionId).methodNames()
+
+                then("a fresh confirmation of any active method is asked for first, nothing is removed yet") {
+                    asked.next() shouldBe mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
+                    asked.options() shouldContainExactlyInAnyOrder listOf("auth-sms", "auth-password")
+                    stillActive shouldContain "sms"
+                }
+                then("the confirmation carries out the removal, without a second call") {
+                    confirmed.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
+                    activeAfterwards shouldNotContain "sms"
+                }
+            }
+
+            `when`("adding a method") {
+                val channelSessionId = registerAndAuthenticate()
+                ageProofs(UUID.fromString(channelSessionId), minutes = 10)
+
+                val asked = startManage(channelSessionId)
+                val confirmed = authenticateViaPassword(channelSessionId)
+
+                then("a fresh confirmation is asked for first") {
+                    asked.next() shouldBe mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
+                }
+                then("the confirmation leads on to the enrollment offer") {
+                    confirmed.next() shouldBe mapOf("type" to "orchestrator", "context" to "enrollment", "step" to "selectMethod")
+                }
+            }
+
+            `when`("the confirmation is abandoned") {
+                val channelSessionId = registerAndAuthenticate()
+                val smsInstanceId = methodsOf(channelSessionId).first { it["method"] == "sms" }["id"] as String
+                ageProofs(UUID.fromString(channelSessionId), minutes = 10)
+                delete("/orchestrator/api/v1/channels/$channelSessionId/methods/$smsInstanceId")
+
+                val abandoned = delete("/orchestrator/api/v1/channels/$channelSessionId/journey")
+                val activeAfterwards = methodsOf(channelSessionId).methodNames()
+
+                then("the channel is back at AUTHENTICATED and sms is still active") {
+                    abandoned.channel()["state"] shouldBe "AUTHENTICATED"
+                    activeAfterwards shouldContain "sms"
                 }
             }
         }

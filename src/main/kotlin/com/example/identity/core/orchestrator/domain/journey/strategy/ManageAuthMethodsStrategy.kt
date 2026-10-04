@@ -1,6 +1,8 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Action
+import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -16,8 +18,9 @@ import com.example.identity.contract.tool_api.ToolOutcome
 /**
  * Add or remove authentication methods on an already authenticated channel
  * (docs/journeys/manage-auth-methods.md). Every operation first requires the session to clear
- * [selfServiceAcrFloor]. The wish stays parked in its state while the step-up runs; re-evaluating
- * that state re-checks the gate and then carries out the wish.
+ * [selfServiceAcrFloor] and to hold a recent proof. The wish stays parked in its state while the
+ * step-up runs; re-evaluating that state re-checks the gate and then carries out the wish. A
+ * re-proof for freshness authorizes only this one wish, so it is not recorded as `MethodEvidence`.
  */
 class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
 
@@ -29,10 +32,28 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
         when (state) {
             // After a declined step-up, gate() would re-request it forever, so cancel instead.
             is ManageAuthMethodsState.AddRequested ->
-                if (event is JourneyEvent.SubJourneyCancelled) Transition.Cancel else gate(state, ctx) ?: offerEnrollment(ctx)
+                if (event is JourneyEvent.SubJourneyCancelled) Transition.Cancel
+                // Nothing to add needs no fresh proof either.
+                else gate(state, ctx) ?: offerEnrollment(ctx).let { offer ->
+                    if (offer is Transition.Authenticated) offer else freshness(state, ctx) ?: offer
+                }
 
-            is ManageAuthMethodsState.RemoveRequested -> gateThenAct(state, event, ctx) { Action.RevokeAuthMethod(state.methodInstanceId) }
-            is ManageAuthMethodsState.RetractAttributeRequested -> gateThenAct(state, event, ctx) { Action.RetractAttribute(state.attributeType) }
+            is ManageAuthMethodsState.RemoveRequested, is ManageAuthMethodsState.RetractAttributeRequested -> when (event) {
+                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
+                is JourneyEvent.ActionCompleted -> Transition.Authenticated
+                else -> gate(state, ctx) ?: freshness(state as ManageAuthMethodsState.Wish, ctx) ?: carryOut(state, ctx)
+            }
+
+            is ManageAuthMethodsState.ConfirmationRequired -> when (event) {
+                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
+                // Any active factor suffices; straight to the wish, without Action.AcceptProof.
+                is JourneyEvent.Completed -> when (event.outcome) {
+                    is ToolOutcome.Completed.Authenticated -> carryOut(state.wish, ctx)
+                    is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
+                        event.notOffered("MANAGE")
+                }
+                else -> error("ConfirmationRequired does not understand $event")
+            }
 
             is ManageAuthMethodsState.Enrolling -> when (event) {
                 // Backing out means picking a different method; the full choice comes back.
@@ -44,13 +65,21 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
             }
         }
 
-    /** A parked removal: gate first, then act, then finish once the action ran. */
-    private inline fun gateThenAct(requested: ManageAuthMethodsState, event: JourneyEvent, ctx: JourneyContext, action: () -> Action): Transition =
-        when (event) {
-            is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
-            is JourneyEvent.ActionCompleted -> Transition.Authenticated
-            else -> gate(requested, ctx) ?: Transition.Perform(action(), resumeState = requested)
-        }
+    /** What [wish] asked for, once gate and freshness are cleared. A removal resumes in its wish, which then finishes. */
+    private fun carryOut(wish: ManageAuthMethodsState.Wish, ctx: JourneyContext): Transition = when (wish) {
+        ManageAuthMethodsState.AddRequested -> offerEnrollment(ctx)
+        is ManageAuthMethodsState.RemoveRequested -> Transition.Perform(Action.RevokeAuthMethod(wish.methodInstanceId), resumeState = wish)
+        is ManageAuthMethodsState.RetractAttributeRequested -> Transition.Perform(Action.RetractAttribute(wish.attributeType), resumeState = wish)
+    }
+
+    /** Null once the session's latest proof is recent enough; else the re-confirmation, the wish in hand. */
+    private fun freshness(wish: ManageAuthMethodsState.Wish, ctx: JourneyContext): Transition? {
+        if (ctx.policy.hasFreshProof(ctx.evidence)) return null
+        val candidates = CandidateTools.forReconfirmation(ctx.requireAccount(), ctx)
+        // Unreachable on an authenticated channel; abort rather than act silently.
+        return if (candidates.isEmpty()) Transition.Abort(Text("Kein aktiver Faktor zur erneuten Bestaetigung verfuegbar"))
+        else Transition.To(ManageAuthMethodsState.ConfirmationRequired(Offer(candidates), wish))
+    }
 
     /**
      * Voluntary enrollment on an authenticated channel. Binding the known device again is a

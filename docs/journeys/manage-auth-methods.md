@@ -13,10 +13,18 @@ stateDiagram-v2
   RemoveRequested --> RemoveRequested: Step-up nötig, danach erneut geprüft
   RetractAttributeRequested --> RetractAttributeRequested: Step-up nötig, danach erneut geprüft
 
-  AddRequested --> Enrolling: selfServiceAcrFloor erreicht
+  AddRequested --> Enrolling: selfServiceAcrFloor erreicht, Nachweis frisch
   AddRequested --> Finished: selfServiceAcrFloor erreicht, aber nichts mehr einzurichten
-  RemoveRequested --> Finished: selfServiceAcrFloor erreicht, Verfahren samt abhängiger Verfahren widerrufen
-  RetractAttributeRequested --> Finished: selfServiceAcrFloor erreicht, Attribut zurückgenommen, abhängige Verfahren entfallen mit
+  RemoveRequested --> Finished: selfServiceAcrFloor erreicht, Nachweis frisch, Verfahren samt abhängiger Verfahren widerrufen
+  RetractAttributeRequested --> Finished: selfServiceAcrFloor erreicht, Nachweis frisch, Attribut zurückgenommen, abhängige Verfahren entfallen mit
+
+  AddRequested --> ConfirmationRequired: letzter Nachweis älter als die Frist
+  RemoveRequested --> ConfirmationRequired: letzter Nachweis älter als die Frist
+  RetractAttributeRequested --> ConfirmationRequired: letzter Nachweis älter als die Frist
+  ConfirmationRequired --> ConfirmationRequired: ein Tool abgelehnt, weitere übrig
+  ConfirmationRequired --> [*]: alle abgelehnt -> Cancel
+  ConfirmationRequired --> Enrolling: Nachweis erbracht, Wunsch war Hinzufügen
+  ConfirmationRequired --> Finished: Nachweis erbracht, Verfahren widerrufen bzw. Attribut zurückgenommen
   Enrolling --> Enrolling: anderes Tool gewählt
   Enrolling --> Finished: ein Verfahren eingerichtet
   Finished --> [*]
@@ -34,6 +42,15 @@ stateDiagram-v2
 Prüfung gegen `selfServiceAcrFloor` und während eines Step-ups, auf den er wartet. Lehnt der Nutzer
 den Step-up ab, endet die Journey (`Cancel`); derselbe Step-up wird nicht erneut angeboten.
 `Enrolling` enthält das Angebot und die bisherigen Ablehnungen.
+
+**Frischer Nachweis.** Nach der Schwelle prüft jeder Wunsch, ob der jüngste Nachweis der Sitzung
+höchstens fünf Minuten alt ist (`AuthPolicy.hasFreshProof`, wie bei
+[`DELETE_ACCOUNT`](delete-account.md)). Ist er älter, hält `ConfirmationRequired` den Wunsch fest
+und bietet jedes aktive Verfahren zur erneuten Bestätigung an, auf beliebigem Niveau. Ein Step-up,
+der gerade lief, ist schon frisch. Der Nachweis in `ConfirmationRequired` erlaubt genau diesen einen
+Wunsch und wird nie zu einem Nachweis der Sitzung; lehnt der Nutzer alle Verfahren ab, endet die
+Journey, und nichts ist geändert. Gibt es nichts mehr einzurichten, endet das Hinzufügen ohne
+Nachfrage.
 
 `MANAGE_AUTH_METHODS` ist der einzige Intent ohne Zielniveau in der Richtlinie: Die Journey endet, sobald
 **ein** Verfahren erfolgreich eingerichtet ist, unabhängig vom erreichten Niveau. Für ein zweites

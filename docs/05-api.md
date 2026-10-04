@@ -446,6 +446,12 @@ unabhängig von `REGISTER` und `STEP_UP` ([Orchestrierung](04-orchestrierung.md)
   `selfServiceAcrFloor` erreicht hat (loa2, für ein nie identifiziertes Konto loa1). Reicht das
   nicht, enthält die Antwort statt der Aktion einen Step-up-Schritt; danach ruft der Client den
   Endpunkt erneut auf.
+- Dieselben drei Aufrufe verlangen einen frischen Nachweis: Ist der jüngste Nachweis der Sitzung
+  älter als fünf Minuten (`identity.policy.self-service-max-age`), enthält die Antwort statt der
+  Aktion die erneute Bestätigung über ein **beliebiges** aktives `auth-*`-Verfahren, bei mehreren
+  mit `next={"context":"auth","step":"selectMethod"}`. Mit dem Nachweis wird die verlangte Aktion
+  ausgeführt; ein erneuter Aufruf ist nicht nötig. Der Nachweis gilt nur für diese eine Aktion.
+  `POST .../enrollments` fragt nicht nach, wenn es nichts mehr einzurichten gibt.
 
 ### Das `Prompt`-Objekt
 
@@ -905,7 +911,9 @@ Login, ergänzt um `kc_action=orchestrator-manage-methods`.
 Ein zweiter Login wird nicht erzwungen. Der vorangehende Durchlauf von `orchestrator-browser`
 nutzt das bestehende SSO-Cookie von Keycloak, und `OrchestratorResumeAuthenticator` bringt den
 neuen Kanal im Orchestrator über `restoreData` auf `AUTHENTICATED`, sofern die Nachweise reichen.
-Sonst greift der normale Weg über Login und Step-up. Endet der Ablauf erfolgreich, ruft die Required
+Sonst greift der normale Weg über Login und Step-up. Wiederhergestellte Nachweise behalten ihren
+Zeitpunkt: Die Liste erscheint ohne Nachfrage, „Hinzufügen" und „Entfernen" verlangen aber die
+erneute Bestätigung, sobald der letzte Nachweis älter als fünf Minuten ist. Endet der Ablauf erfolgreich, ruft die Required
 Action `startEnrollments(...)` auf dem frischen Kanal auf und zeigt `next` über dieselbe Zuordnung
 zu den `WebToolRenderer`n an. Frontend: `redirectToManageMethods()` (`webOidc.ts`) baut dieselbe
 `/auth`-URL wie `redirectToLogin`; zurück geht es über den bestehenden Weg

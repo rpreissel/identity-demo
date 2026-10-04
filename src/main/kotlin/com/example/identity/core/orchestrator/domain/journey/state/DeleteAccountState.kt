@@ -5,8 +5,8 @@ import com.example.identity.contract.texts.Text
 /**
  * States of DELETE_ACCOUNT (docs/journeys/delete-account.md). [ConfirmPending] always comes first.
  * The re-proof in [ConfirmationRequired] is not skipped because the channel already has loa2: a
- * hijacked session must not delete the account on its own say-so. Only a step-up proven just now
- * counts as fresh.
+ * hijacked session must not delete the account on its own say-so. Only a recent proof counts as
+ * fresh.
  */
 sealed interface DeleteAccountState : JourneyState {
 

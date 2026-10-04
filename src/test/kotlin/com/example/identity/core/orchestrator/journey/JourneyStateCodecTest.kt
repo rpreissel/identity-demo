@@ -33,7 +33,7 @@ class JourneyStateCodecTest : BehaviorSpec({
         LookupLoginState::class to setOf("Start", "Credential", "AdditionalFactor", "OfferBinding", "ConfirmDeviceRebind"),
         WebSelectMethodState::class to setOf("SelectMethod"),
         StepUpState::class to setOf("Start", "AuthChoice"),
-        ManageAuthMethodsState::class to setOf("AddRequested", "RemoveRequested", "Enrolling", "RetractAttributeRequested"),
+        ManageAuthMethodsState::class to setOf("AddRequested", "RemoveRequested", "Enrolling", "RetractAttributeRequested", "ConfirmationRequired"),
         ConfirmPeerLoginState::class to setOf("Requested", "ConfirmationRequired", "Confirming", "OfferLogout"),
         DeleteAccountState::class to setOf("ConfirmPending", "ConfirmationRequired"),
         LogoutState::class to setOf("ConfirmPending"),

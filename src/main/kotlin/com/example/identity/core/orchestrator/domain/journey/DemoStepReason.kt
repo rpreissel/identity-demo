@@ -85,6 +85,7 @@ internal object DemoStepReason {
         ManageAuthMethodsState.AddRequested -> Text("Sie wollen ein Verfahren hinzufügen - das verlangt Sicherheitsniveau 2 in dieser Sitzung.")
         is ManageAuthMethodsState.RemoveRequested -> Text("Sie wollen ein Verfahren entfernen - das verlangt Sicherheitsniveau 2 in dieser Sitzung.")
         is ManageAuthMethodsState.RetractAttributeRequested -> Text("Sie wollen eine bestätigte Angabe zurücknehmen - das verlangt Sicherheitsniveau 2 in dieser Sitzung.")
+        is ManageAuthMethodsState.ConfirmationRequired -> Text("Der letzte Nachweis dieser Sitzung ist älter als fünf Minuten - vor der Änderung muss ein Verfahren frisch bestätigt werden.")
         is ManageAuthMethodsState.Enrolling -> Text("Sicherheitsniveau 2 ist erreicht - jetzt wird das neue Verfahren eingerichtet.")
 
         DeleteAccountState.ConfirmPending -> Text("Löschen ist endgültig - deshalb zuerst eine Rückfrage.")
