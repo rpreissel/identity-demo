@@ -87,7 +87,11 @@ export async function confirmEmailAndSetPassword(page: Page) {
 
 /** A password is one kind of method; for loa2 the registration asks for another kind, on the web SMS. */
 export async function sendSmsCode(page: Page) {
-  await page.getByLabel(kc('Telefonnummer')).fill('+49 170 1234567')
+  // Exact: the consent's label mentions the phone number too.
+  await page.getByLabel(kc('Telefonnummer'), { exact: true }).fill('+49 170 1234567')
+  // enroll-sms@2 asks for consent first; an earlier version has no such box.
+  const consent = page.getByRole('checkbox', { name: kc('Ich willige ein, dass meine Telefonnummer gespeichert wird und ich Codes per SMS erhalte.') })
+  if (await consent.isVisible()) await consent.check()
   await visibleButton(page, kc('Weiter')).click()
 }
 

@@ -129,7 +129,7 @@ for (const theme of THEMES) {
 
     await test.step('SMS code: back to the number, within the page, and on again', async () => {
       await visibleButton(page, kc('Zurück')).click()
-      await expect(page.getByLabel(kc('Telefonnummer')).filter({ visible: true })).toBeVisible()
+      await expect(page.getByLabel(kc('Telefonnummer'), { exact: true }).filter({ visible: true })).toBeVisible()
       await visibleButton(page, kc('Zurück')).click()
       await expect(page.getByLabel(kc('SMS-Code'))).toBeVisible()
     })
