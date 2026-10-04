@@ -564,9 +564,10 @@ in seinem eigenen Namensraum. Jeder Zähler ist ein einziges `UPDATE`.
 
 - **Niedrig** Ein erfolgreicher Vorgangszugang setzt den Personenzähler nicht zurück (A-5, kein
   Issue).
-- **Niedrig** Die Kontosperre ist „prüfen, dann zählen“: Parallele Versuche über mehrere Kanäle
-  passieren die Prüfung, bevor der fünfte zählt (SA-27 im
-  [Sicherheitsaudit](review-2026-10-03-sicherheitsaudit.md)).
+- **Niedrig, bewusst** Die Kontosperre ist „prüfen, dann zählen“: Parallele Versuche über mehrere
+  Kanäle passieren die Prüfung, bevor der fünfte zählt. Restrisiko vor einer produktiven
+  Passwortanmeldung per Lookup ([07-betrieb.md](07-betrieb.md) Abschnitt 4, SA-27 im
+  [Sicherheitsaudit](review-2026-10-03-sicherheitsaudit.md), `DPoP-demo-164n.29`).
 - **Niedrig** Fehlgeschlagene QR-Suchen haben keinen eigenen Zähler
   ([07-betrieb.md](07-betrieb.md) Abschnitt 5).
 
@@ -726,6 +727,7 @@ Start bricht ab, solange eine Demo-Voreinstellung übrig ist.
 | Lookup-Orakel über Demo-TAN und Versandlatenz | niedrig | 7 | `DPoP-demo-36xz` |
 | Nect-`retry` ohne Budget, Fälle ohne Aufbewahrung (S-2) | niedrig | 8, 12 | – |
 | Personenzähler nach erfolgreichem Vorgangszugang (A-5) | niedrig | 9 | – |
+| Kontosperre prüft vor, zählt nach dem Versuch (SA-27) | bewusst | 9 | `DPoP-demo-164n.29` |
 | CSP, Refresh-Token und `state` im Frontend | niedrig | 11 | `DPoP-demo-dm2j` |
 | Web-Kanal-Id aus der Tab-Id abgeleitet | Hinweis | 4 | `DPoP-demo-gxis` |
 | Peer-Auth-Fenster 300 s im Profil | Hinweis | 4 | `DPoP-demo-9ppv.13` |

@@ -585,8 +585,11 @@ was hier steht, ist neu gefunden.
 - **SA-27 (niedrig) Die Kontosperre ist „prüfen, dann zählen“.** Lookup-Tools fragen
   `Lockouts.isLockedOut` im Controller, gezählt wird erst in `applyOutcome`; bei bekanntem Konto
   ebenso. Parallele Versuche über mehrere Kanäle passieren alle die Prüfung, bevor der fünfte zählt.
-  07 §4 schließt dieses Muster für alle Zähler aus. Fix: den Versuch vor der Prüfung in einem
-  `UPDATE` buchen, wie jetzt beim Admin-Login (SA-6). `DPoP-demo-164n.29`.
+  07 §4 schließt dieses Muster für alle Zähler aus. Entscheidung des Inhabers (2026-10-04): als
+  Restrisiko geführt (07 §4, 14 §5). Den Versuch vorab zu buchen änderte den Port `Lockouts` und
+  brächte ein Verfügbarkeitsrisiko beim Zurückbuchen; praktisch betroffen ist nur das Raten von
+  Passwörtern, die `PasswordPolicy` und Argon2 schützen. Vor einer produktiven Passwortanmeldung per
+  Lookup nachzuholen. `DPoP-demo-164n.29`.
 - **Hinweis** Ein in der Verfahrensverwaltung angebotenes Einrichten wird bei Abschluss nicht erneut
   gegen `loa2` geprüft (`ManageAuthMethodsStrategy`, Zustand `Enrolling`). Altert der Nachweis
   währenddessen, wird das neue Verfahren unter dem dann gültigen Niveau eingetragen

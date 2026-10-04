@@ -159,7 +159,9 @@ außerhalb des Demomodus der einzige Weg zu einer Identifizierung ist.
 übrigen der vierten (dort Abschnitt 4, Phasen R bis T; noch ohne Issue), die Lücke im Web-Kanal zu
 I-23 (`DPoP-demo-oe06`), der fehlende Fremdschlüssel zu I-14 (`DPoP-demo-hwc6`), das Lookup-Orakel
 (`DPoP-demo-36xz`) und der eigene Zähler für fehlgeschlagene QR-Suchen
-([07-betrieb.md](07-betrieb.md), Abschnitt 5).
+([07-betrieb.md](07-betrieb.md), Abschnitt 5). Vor einer produktiven Passwortanmeldung per Lookup:
+die Konto- und Personensperre bucht einen Versuch vor der Prüfung statt danach
+([07-betrieb.md](07-betrieb.md) Abschnitt 4, „Restrisiko: parallele Versuche“, `DPoP-demo-164n.29`).
 
 ---
 
