@@ -265,11 +265,11 @@ components:
           type: string
         reason:
           type: string
-        toolId:
+        tool:
           type: string
       required:
       - channel
-      - toolId
+      - tool
       type: object
     HealthComponentView:
       properties:
@@ -616,14 +616,8 @@ components:
       type: object
     ToolAvailabilityEntry:
       properties:
-        enabled:
-          example: true
-          type: boolean
         method:
           example: sms
-          type: string
-        reason:
-          example: Wartungsfenster bis 18 Uhr
           type: string
         role:
           enum:
@@ -639,11 +633,15 @@ components:
         toolId:
           example: auth-sms
           type: string
+        versions:
+          items:
+            $ref: '#/components/schemas/ToolVersionAvailability'
+          type: array
       required:
-      - enabled
       - method
       - role
       - toolId
+      - versions
       type: object
     ToolAvailabilityPutRequest:
       properties:
@@ -697,6 +695,26 @@ components:
           type: array
       required:
       - toolIds
+      type: object
+    ToolVersionAvailability:
+      properties:
+        enabled:
+          example: true
+          type: boolean
+        reason:
+          example: Wartungsfenster bis 18 Uhr
+          type: string
+        tool:
+          example: auth-sms@1
+          type: string
+        version:
+          example: 1
+          format: int32
+          type: integer
+      required:
+      - enabled
+      - tool
+      - version
       type: object
   securitySchemes:
     dpop:
@@ -894,7 +912,7 @@ paths:
               schema:
                 $ref: ../openapi.yaml#/components/schemas/ErrorResponse
           description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      summary: Every catalog tool per channel type, in that channel's order, with its enabled state
+      summary: Every catalog tool per channel type, in that channel's order, with the switch of each version
       tags:
       - 'Admin: tool availability'
   /orchestrator/admin/tools/order/{channel}:
@@ -929,13 +947,14 @@ paths:
       summary: Set the order a channel type offers its tools in
       tags:
       - 'Admin: tool availability'
-  /orchestrator/admin/tools/{toolId}/availability/{channel}:
+  /orchestrator/admin/tools/{tool}/availability/{channel}:
     put:
-      description: Takes effect on the next step computed for any channel of that type - no restart needed.
+      description: '{tool} is the version''s wire form, e.g. enroll-sms@2. Takes effect on the next step computed for any
+        channel of that type - no restart needed. A version the server does not serve is a 400.'
       operationId: put
       parameters:
       - in: path
-        name: toolId
+        name: tool
         required: true
         schema:
           type: string
@@ -962,7 +981,7 @@ paths:
               schema:
                 $ref: ../openapi.yaml#/components/schemas/ErrorResponse
           description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      summary: Enable or disable a tool for one channel type
+      summary: Enable or disable one tool version for one channel type
       tags:
       - 'Admin: tool availability'
   /orchestrator/api/v1/app/channels:

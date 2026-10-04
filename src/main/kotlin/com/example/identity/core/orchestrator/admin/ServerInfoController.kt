@@ -22,7 +22,8 @@ import org.springframework.web.bind.annotation.RestController
 import java.util.concurrent.TimeUnit
 
 /** [channel]: APP or WEB - a lock applies to one channel type. */
-data class DisabledToolView(val toolId: String, val channel: String, val reason: String?)
+/** A tool version switched off for one channel type; [tool] in its wire form, `enroll-sms@2` (ADR-51). */
+data class DisabledToolView(val tool: String, val channel: String, val reason: String?)
 
 /**
  * Keycloak as the browser sees it: what the Web channel's OIDC client needs. Derived from the
@@ -97,7 +98,7 @@ class ServerInfoController(
         return ServerInfo(
             keycloak = if (environment.acceptsProfiles(Profiles.of("keycloak"))) keycloakInfo() else null,
             registrationEnrollFirst = featureFlagService.isEnabled(JourneyFeatureFlag.REGISTER_ENROLL_FIRST.key),
-            disabledTools = toolAvailabilityService.disabledEntries().map { DisabledToolView(it.toolId!!, it.channel!!.name, it.reason) },
+            disabledTools = toolAvailabilityService.disabledEntries().map { DisabledToolView(it.tool.toString(), it.channel!!.name, it.reason) },
             demoMode = demoMode.on,
             operations = if (demoMode.on) operations() else null,
         )

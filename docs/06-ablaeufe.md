@@ -184,6 +184,18 @@ an, einschließlich `enrolledUnderAcr` aus dem aktuellen Nachweis der Sitzung (`
 
 Zusätzlicher Fehlerfall zum allgemeinen Vertrag: ungültige Telefonnummer (Formatfehler) -> `400`.
 
+**Zwei Fassungen** ([ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)): `enroll-sms` ist das
+erste Tool mit zweiter Fassung. In **Fassung 2** kommt mit der Telefonnummer die Einwilligung
+(`consent`), dass die Nummer gespeichert und für SMS-Codes genutzt wird. Ohne sie geht keine SMS
+hinaus, und `missingFields` nennt `consent` neben `phoneNumber`. Eine Korrektur der Nummer im
+TAN-Schritt braucht sie nicht noch einmal: Die Tool-Sitzung merkt sich, dass sie vorliegt.
+**Fassung 1** kennt die Einwilligung nicht und läuft unverändert, weil eine App, die die Checkbox
+nicht anzeigen kann, sonst keine Nummer mehr einrichten könnte. Gespeichert wird die Einwilligung
+nicht eigens: Das Ereignis `METHOD_ADDED` im Änderungsprotokoll nennt die Fassung
+(`enroll-sms@1` oder `@2`), und daraus folgt, ob sie vorlag. Ein Handler bedient beide Fassungen
+(`EnrollSmsToolHandler`, Zweig nach `ToolContext.version`), je Fassung gibt es einen Controller.
+Die App spricht Fassung 1, der Web-Kanal Fassung 2 (Checkbox auf der Einrichtungsseite).
+
 **Passwort speichern und prüfen** (`auth_password`):
 
 - **Nur als Hash:** Argon2id mit den OWASP-Werten (19 MiB Speicher, 2 Durchläufe, 1 Spur;

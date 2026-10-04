@@ -30,7 +30,7 @@ paths:
   /tools/api/confirm-email/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_10
+      operationId: activate_11
       parameters:
       - in: query
         name: channel
@@ -68,7 +68,7 @@ paths:
       - 'Tool: E-Mail'
   /tools/api/confirm-email/v1/{toolSessionId}:
     get:
-      operationId: read_9
+      operationId: read_10
       parameters:
       - in: path
         name: toolSessionId
@@ -106,7 +106,7 @@ paths:
       - 'Tool: E-Mail'
     patch:
       description: First call with email triggers the code send; a second call with code confirms it.
-      operationId: patch_9
+      operationId: patch_10
       parameters:
       - in: path
         name: toolSessionId

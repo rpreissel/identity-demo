@@ -288,3 +288,43 @@ Mindestens:
 - [08-projektrahmen.md](08-projektrahmen.md): die neuen Module in Liste und Diagramm.
 - Glossar: `ident-bank`, `totp` und der Unterschied zu Keycloaks `otp`.
 - Eine eigene ADR, wenn eine Entscheidung fällt, etwa „eigenes TOTP statt Keycloaks OTP“.
+
+## 9) Eine neue Fassung eines Tools einführen
+
+Später, wenn das Verfahren läuft und Clients ausgeliefert sind, ändert sich ein Tool so, dass alte
+Clients es nicht mehr bedienen könnten. Ob das eine neue Fassung braucht, sagt die Tabelle in
+[05-api.md](05-api.md) Abschnitt 1; die Entscheidungen dahinter stehen in
+[ADR-51](adr/ADR-051-versionen-als-pfadsegment.md). Vorbild ist `enroll-sms@2` (Einwilligung als
+Pflichtfeld, [06-ablaeufe.md](06-ablaeufe.md) Abschnitt 4). Für `enroll-totp` sähe das so aus:
+
+1. **Entscheiden, was die alte Fassung ohne das Neue tut:** einen Ersatzwert setzen, weniger liefern
+   oder abgeschaltet werden. Das ist eine fachliche Entscheidung, keine technische; sie kommt in den
+   Abschnitt des Verfahrens in [06-ablaeufe.md](06-ablaeufe.md).
+2. **Fassung deklarieren:** `versions = setOf(1, 2)` an der Deklaration im Modul, mit einem Satz,
+   was Fassung 2 ausmacht.
+3. **Ein Handler, Zweig nach Fassung.** Der Handler bekommt `ToolContext.version` vom Controller
+   und verzweigt nur dort, wo sich das Verhalten unterscheidet. Jede solche Stelle ist mit
+   „entfällt mit v1“ markiert, damit sie beim Ausbau alle gefunden werden. Arbeitsdaten, die nur
+   Fassung 2 braucht, kommen mit Vorgabewert in die Tool-Sitzung.
+4. **Ein Controller je Fassung,** im Paket `api.v2` des Moduls, mit eigenen DTOs und Pfaden unter
+   `/tools/api/<toolId>/v2`. Der Controller von Fassung 1 bleibt unverändert, bis auf die Übergabe
+   der Fassung an den Handler. Ändert sich eine `StepData`-Form, bekommt sie eine neue `kind`; ein
+   neues Feld in `missingFields` braucht keine.
+5. **Vertrag:** `./gradlew updateOpenApiSnapshot` schreibt `api/contract/tools/<toolId>/v2.yaml`;
+   `v1.yaml` darf sich dabei inhaltlich nicht ändern. `checkPublishedApiCompatibility` meldet die
+   neue Fassung als Hinweis, `publishApiVersion` friert sie ein. Danach `generateFrontendApiTypes`.
+6. **Clients:** Jeder Client spricht genau eine Fassung. Im Frontend steht sie als `version` am
+   Tool-Modul, in der Keycloak-Erweiterung als `version()` an der Renderer-Fabrik. Umgestellt wird
+   der Client, der das Neue zeigen kann; die anderen bleiben bei ihrer Fassung.
+7. **Tests:**
+   - Unit-Tests für den Zweig im `*FlowTest` und `*ToolHandlerTest`.
+   - Ein Integrationstest, der beide Fassungen nebeneinander durchspielt
+     (`EnrollSmsVersionsIntegrationTest`): ein Kanal mit `@2` und einer mit `@1`, ein Aufruf in der
+     anderen Fassung gibt `409`, das Audit nennt die Fassung.
+   - `ToolControllerMappingTest` verlangt den Controller der neuen Fassung von selbst. Die
+     Integrationstests deklarieren standardmäßig Fassung 1 und laufen unverändert weiter.
+   - Die Katalog-Vorlage der Frontend-Tests (`tools/catalog.fixture.json`) nennt die neue Fassung.
+8. **Doku:** den Abschnitt des Verfahrens in [06-ablaeufe.md](06-ablaeufe.md) um beide Fassungen
+   ergänzen.
+
+Ausgerollt wird erst der Server mit beiden Fassungen, dann der Client mit der neuen.

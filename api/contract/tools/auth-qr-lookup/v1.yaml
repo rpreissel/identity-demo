@@ -56,7 +56,7 @@ paths:
   /tools/api/auth-qr-lookup/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_14
+      operationId: activate_15
       parameters:
       - in: query
         name: channel
@@ -85,7 +85,7 @@ paths:
       - 'Tool: QR-Login'
   /tools/api/auth-qr-lookup/v1/{toolSessionId}:
     get:
-      operationId: read_13
+      operationId: read_14
       parameters:
       - in: path
         name: toolSessionId
@@ -116,7 +116,7 @@ paths:
       description: 'Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a confirmation
         code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md
         #5).'
-      operationId: patch_13
+      operationId: patch_14
       parameters:
       - in: path
         name: toolSessionId

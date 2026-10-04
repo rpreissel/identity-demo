@@ -1,7 +1,7 @@
 import { t } from '../texts'
 import { useEffect, useState } from 'react'
 import { fetchServerInfo, type ChannelType, type ServerInfo } from '../api.ts'
-import { knownToolIds } from '../tools/registry'
+import { knownToolIds, toolVersionOf } from '../tools/registry'
 
 interface UnavailableToolsProps {
   /** Whose operator locks count - a lock for the Web channel does not affect the App, and vice versa. */
@@ -29,12 +29,15 @@ export function UnavailableTools({ channel, availableTools }: UnavailableToolsPr
       .catch(() => setLocks([]))
   }, [channel])
 
-  const candidates = availableTools ? knownToolIds : locks.map((l) => l.toolId)
+  // A lock holds for one version (`enroll-sms@2`, ADR-51). With availableTools this page is the
+  // App, which speaks one version per tool; otherwise every locked version is listed.
+  const candidates = availableTools ? knownToolIds.map((toolId) => `${toolId}@${toolVersionOf(toolId)}`) : locks.map((l) => l.tool)
   const rows = candidates
-    .map((toolId) => {
+    .map((tool) => {
+      const toolId = tool.split('@')[0]
       const clientDisabled = availableTools ? !availableTools.includes(toolId) : false
-      const lock = locks.find((e) => e.toolId === toolId)
-      return { toolId, clientDisabled, lock }
+      const lock = locks.find((e) => e.tool === tool)
+      return { toolId: availableTools ? toolId : tool, clientDisabled, lock }
     })
     .filter((row) => row.clientDisabled || row.lock)
 

@@ -17,13 +17,9 @@ public class PasswordLookupRendererFactory extends AbstractWebToolRendererFactor
     }
 
     @Override
-
     public int version() {
-
         return 1;
-
     }
-
 
     @Override
     public String template() {

@@ -147,7 +147,7 @@
     "toolId": "enroll-sms",
     "method": "sms",
     "role": "ENROLLMENT",
-    "versions": [1],
+    "versions": [1, 2],
     "name": "SMS",
     "hint": "Code an eine Telefonnummer"
   },

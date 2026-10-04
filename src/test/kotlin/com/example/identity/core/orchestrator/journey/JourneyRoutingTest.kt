@@ -26,7 +26,7 @@ import java.time.Instant
 class JourneyRoutingTest : BehaviorSpec({
 
     val availability = mockk<ToolAvailabilityService> {
-        every { disabledToolIds(any()) } returns emptySet()
+        every { disabledTools(any()) } returns emptySet()
         every { ordered(any(), any()) } answers { secondArg<Collection<ToolId>>().toList() }
     }
     val routing = JourneyRouting(catalogOf("enroll-email", "enroll-sms"), availability)

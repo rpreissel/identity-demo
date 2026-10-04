@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.ToolVersion
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.tool.ToolAvailabilityService
 import io.kotest.assertions.throwables.shouldThrow
@@ -42,8 +43,10 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
         return options + listOfNotNull(response.nextRaw()["toolId"] as? String)
     }
 
-    private fun smsEnabledIn(channel: String): Boolean? = adminAvailability()
-        .first { it["channel"] == channel }.tools().first { it["toolId"] == "auth-sms" }["enabled"] as Boolean?
+    @Suppress("UNCHECKED_CAST")
+    private fun smsEnabledIn(channel: String): Boolean? = (adminAvailability()
+        .first { it["channel"] == channel }.tools().first { it["toolId"] == "auth-sms" }["versions"] as List<Map<String, Any?>>)
+        .single { it["tool"] == "auth-sms@1" }["enabled"] as Boolean?
 
     init {
         given("an account with two active auth methods (sms + password) on a fresh channel") {
@@ -55,7 +58,7 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = created.channel()["channelSessionId"] as String
 
                 // The stored state is untouched; activatable() filters live.
-                toolAvailabilityService.disable("auth-sms", ChannelType.APP, "suspected compromise")
+                toolAvailabilityService.disable(ToolVersion.parse("auth-sms@1"), ChannelType.APP, "suspected compromise")
 
                 val afterDisable = get("/orchestrator/api/v1/channels/$channelSessionId")
                 val directActivation = runCatching { post("/tools/api/auth-sms/v1?channel=$channelSessionId") }
@@ -81,8 +84,8 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
         given("an account whose only active auth methods are both backend-disabled") {
             `when`("a fresh entry journey computes its first offer") {
                 seedRegisteredAccount()
-                toolAvailabilityService.disable("auth-sms", ChannelType.APP, "maintenance")
-                toolAvailabilityService.disable("auth-password", ChannelType.APP, "maintenance")
+                toolAvailabilityService.disable(ToolVersion.parse("auth-sms@1"), ChannelType.APP, "maintenance")
+                toolAvailabilityService.disable(ToolVersion.parse("auth-password@1"), ChannelType.APP, "maintenance")
 
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 val next = get("/orchestrator/api/v1/channels/$channelSessionId").next()
@@ -153,7 +156,7 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
                     object : org.springframework.core.ParameterizedTypeReference<List<Map<String, Any?>>>() {}
                 ).body!!
                 val appEnabledBefore = smsEnabledIn("APP")
-                val toggled = put("/orchestrator/admin/tools/auth-sms/availability/APP", """{"enabled":false,"reason":"test"}""")
+                val toggled = put("/orchestrator/admin/tools/auth-sms@1/availability/APP", """{"enabled":false,"reason":"test"}""")
                 val appEnabledAfter = smsEnabledIn("APP")
                 val webEnabledAfter = smsEnabledIn("WEB")
 

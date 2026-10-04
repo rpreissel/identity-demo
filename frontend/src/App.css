@@ -1270,8 +1270,28 @@ button.small,
 
 .tool-order-name {
   flex: 1;
+}
+
+/* The versions of one tool, each with its own switch (ADR-51); the order stays with the tool. */
+.tool-versions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.tool-order-list .tool-versions li {
+  border-bottom: none;
+  padding: 0;
+  gap: 0.4rem;
+}
+
+.tool-versions li.tool-locked > code {
+  text-decoration: line-through;
+  opacity: 0.6;
 }
 
 .tool-order-reason {
@@ -1279,7 +1299,7 @@ button.small,
   color: var(--text);
 }
 
-.tool-order-list li.tool-locked .tool-order-name code {
+.tool-order-list li.tool-locked > .tool-order-name {
   text-decoration: line-through;
   opacity: 0.6;
 }

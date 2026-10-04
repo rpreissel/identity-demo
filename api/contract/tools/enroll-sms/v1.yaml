@@ -63,7 +63,7 @@ paths:
   /tools/api/enroll-sms/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_4
+      operationId: activate_5
       parameters:
       - in: query
         name: channel
@@ -101,7 +101,7 @@ paths:
       - 'Tool: SMS'
   /tools/api/enroll-sms/v1/{toolSessionId}:
     get:
-      operationId: read_4
+      operationId: read_5
       parameters:
       - in: path
         name: toolSessionId
@@ -139,7 +139,7 @@ paths:
       - 'Tool: SMS'
     patch:
       description: First call with phoneNumber triggers the TAN send; a second call with tan confirms it.
-      operationId: patch_4
+      operationId: patch_5
       parameters:
       - in: path
         name: toolSessionId

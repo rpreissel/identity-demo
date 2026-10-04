@@ -139,7 +139,7 @@ class ToolJourneyService(
         // A direct activation is re-checked against both availability axes
         // (docs/03-tool-architektur.md), though the offer already excludes unavailable tools.
         requireDeclaredVersion(tool, channel)
-        if (!toolAvailabilityService.isEnabled(toolId, checkNotNull(channel.channel))) {
+        if (!toolAvailabilityService.isEnabled(tool, checkNotNull(channel.channel))) {
             throw OrchestratorException.invalidState(Text("This tool is not available on this channel"), "toolId=${toolId}")
         }
 

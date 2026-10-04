@@ -126,7 +126,7 @@ paths:
     post:
       description: Provisions the KOBIL user and returns everything the app's SDK needs for its activation call - including
         the PIN, which this backend mints and keeps.
-      operationId: activate_7
+      operationId: activate_8
       parameters:
       - in: query
         name: channel
@@ -177,7 +177,7 @@ paths:
       - 'Tool: KOBIL'
   /tools/api/enroll-kobil/v1/{toolSessionId}:
     get:
-      operationId: read_7
+      operationId: read_8
       parameters:
       - in: path
         name: toolSessionId
@@ -206,7 +206,7 @@ paths:
       - 'Tool: KOBIL'
     patch:
       description: Records the credential once KOBIL reports a bound device for this user.
-      operationId: patch_7
+      operationId: patch_8
       parameters:
       - in: path
         name: toolSessionId

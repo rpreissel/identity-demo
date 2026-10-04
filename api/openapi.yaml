@@ -490,6 +490,20 @@ components:
       - kind
       - missingFields
       - replaces
+    EnrollSmsV2PatchRequest:
+      properties:
+        consent:
+          description: Consent to storing the number and sending codes to it. Required with the phone number; without it no
+            code is sent and missingFields names it.
+          example: true
+          type: boolean
+        phoneNumber:
+          example: +49 170 1234567
+          type: string
+        tan:
+          example: '123456'
+          type: string
+      type: object
     ErrorResponse:
       description: |-
         Every error response has this shape. The HTTP status is fixed per `error` code:
@@ -2337,7 +2351,7 @@ paths:
   /tools/api/approve-qr/v1:
     post:
       description: 'Optional body: {pairingCode}, when already known (e.g. from a demo-link deep link) - skips the input step.'
-      operationId: activate_22
+      operationId: activate_23
       parameters:
       - in: query
         name: channel
@@ -2373,7 +2387,7 @@ paths:
       - 'Tool: QR-Login'
   /tools/api/approve-qr/v1/{toolSessionId}:
     get:
-      operationId: read_21
+      operationId: read_22
       parameters:
       - in: path
         name: toolSessionId
@@ -2404,7 +2418,7 @@ paths:
       - 'Tool: QR-Login'
     patch:
       description: 'First call: {pairingCode}. Once resolved: {decision: accept|reject}.'
-      operationId: patch_21
+      operationId: patch_22
       parameters:
       - in: path
         name: toolSessionId
@@ -2441,7 +2455,7 @@ paths:
   /tools/api/auth-device/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_21
+      operationId: activate_22
       parameters:
       - in: query
         name: channel
@@ -2481,7 +2495,7 @@ paths:
       - 'Tool: Gerät'
   /tools/api/auth-device/v1/{toolSessionId}:
     get:
-      operationId: read_20
+      operationId: read_21
       parameters:
       - in: path
         name: toolSessionId
@@ -2522,7 +2536,7 @@ paths:
     patch:
       description: Body carries a self-signed device-proof JWT (typ=device-proof+jwt) over this exact URL, produced after
         the user confirms the mocked PIN/biometric prompt.
-      operationId: patch_20
+      operationId: patch_21
       parameters:
       - in: path
         name: toolSessionId
@@ -2570,7 +2584,7 @@ paths:
   /tools/api/auth-email-lookup/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_20
+      operationId: activate_21
       parameters:
       - in: query
         name: channel
@@ -2610,7 +2624,7 @@ paths:
       - 'Tool: E-Mail'
   /tools/api/auth-email-lookup/v1/{toolSessionId}:
     get:
-      operationId: read_19
+      operationId: read_20
       parameters:
       - in: path
         name: toolSessionId
@@ -2651,7 +2665,7 @@ paths:
     patch:
       description: First call with email resolves the account and triggers the confirmation code send; a second call with
         code confirms it.
-      operationId: patch_19
+      operationId: patch_20
       parameters:
       - in: path
         name: toolSessionId
@@ -2715,7 +2729,7 @@ paths:
   /tools/api/auth-email/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_19
+      operationId: activate_20
       parameters:
       - in: query
         name: channel
@@ -2756,7 +2770,7 @@ paths:
       - 'Tool: E-Mail'
   /tools/api/auth-email/v1/{toolSessionId}:
     get:
-      operationId: read_18
+      operationId: read_19
       parameters:
       - in: path
         name: toolSessionId
@@ -2796,7 +2810,7 @@ paths:
       tags:
       - 'Tool: E-Mail'
     patch:
-      operationId: patch_18
+      operationId: patch_19
       parameters:
       - in: path
         name: toolSessionId
@@ -2845,7 +2859,7 @@ paths:
   /tools/api/auth-invite-lookup/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_18
+      operationId: activate_19
       parameters:
       - in: query
         name: channel
@@ -2885,7 +2899,7 @@ paths:
       - 'Tool: Einmalkennwort'
   /tools/api/auth-invite-lookup/v1/{toolSessionId}:
     get:
-      operationId: read_17
+      operationId: read_18
       parameters:
       - in: path
         name: toolSessionId
@@ -2916,7 +2930,7 @@ paths:
       - 'Tool: Einmalkennwort'
     patch:
       description: KVNR, or Partnernummer without a KVNR, together with the one-time password from the letter.
-      operationId: patch_17
+      operationId: patch_18
       parameters:
       - in: path
         name: toolSessionId
@@ -2958,7 +2972,7 @@ paths:
       - 'Tool: Einmalkennwort'
   /tools/api/auth-kobil/v1:
     post:
-      operationId: activate_17
+      operationId: activate_18
       parameters:
       - in: query
         name: channel
@@ -3005,7 +3019,7 @@ paths:
       - 'Tool: KOBIL'
   /tools/api/auth-kobil/v1/{toolSessionId}:
     get:
-      operationId: read_16
+      operationId: read_17
       parameters:
       - in: path
         name: toolSessionId
@@ -3037,7 +3051,7 @@ paths:
     patch:
       description: The backend fetches the assertion behind the OTP from KOBIL, compares the device identifier with the enrolled
         one and checks the reported risks.
-      operationId: patch_16
+      operationId: patch_17
       parameters:
       - in: path
         name: toolSessionId
@@ -3147,7 +3161,7 @@ paths:
   /tools/api/auth-password-lookup/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_16
+      operationId: activate_17
       parameters:
       - in: query
         name: channel
@@ -3187,7 +3201,7 @@ paths:
       - 'Tool: Passwort'
   /tools/api/auth-password-lookup/v1/{toolSessionId}:
     get:
-      operationId: read_15
+      operationId: read_16
       parameters:
       - in: path
         name: toolSessionId
@@ -3226,7 +3240,7 @@ paths:
       tags:
       - 'Tool: Passwort'
     patch:
-      operationId: patch_15
+      operationId: patch_16
       parameters:
       - in: path
         name: toolSessionId
@@ -3274,7 +3288,7 @@ paths:
   /tools/api/auth-password/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_15
+      operationId: activate_16
       parameters:
       - in: query
         name: channel
@@ -3315,7 +3329,7 @@ paths:
       - 'Tool: Passwort'
   /tools/api/auth-password/v1/{toolSessionId}:
     get:
-      operationId: read_14
+      operationId: read_15
       parameters:
       - in: path
         name: toolSessionId
@@ -3355,7 +3369,7 @@ paths:
       tags:
       - 'Tool: Passwort'
     patch:
-      operationId: patch_14
+      operationId: patch_15
       parameters:
       - in: path
         name: toolSessionId
@@ -3404,7 +3418,7 @@ paths:
   /tools/api/auth-qr-lookup/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_14
+      operationId: activate_15
       parameters:
       - in: query
         name: channel
@@ -3435,7 +3449,7 @@ paths:
       - 'Tool: QR-Login'
   /tools/api/auth-qr-lookup/v1/{toolSessionId}:
     get:
-      operationId: read_13
+      operationId: read_14
       parameters:
       - in: path
         name: toolSessionId
@@ -3462,6 +3476,107 @@ paths:
       - kc-peer-auth: [
           ]
       summary: Read the current auth-qr-lookup state
+      tags:
+      - 'Tool: QR-Login'
+    patch:
+      description: 'Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a confirmation
+        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md
+        #5).'
+      operationId: patch_14
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QrConfirmationCodeRequest'
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Poll for the APP side's decision, then submit the confirmation code the app shows
+      tags:
+      - 'Tool: QR-Login'
+  /tools/api/auth-qr/v1:
+    post:
+      description: 'No request body: toolId already carries kind and method.'
+      operationId: activate_14
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate auth-qr
+      tags:
+      - 'Tool: QR-Login'
+  /tools/api/auth-qr/v1/{toolSessionId}:
+    get:
+      operationId: read_13
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current auth-qr state
       tags:
       - 'Tool: QR-Login'
     patch:
@@ -3502,111 +3617,10 @@ paths:
       summary: Poll for the APP side's decision, then submit the confirmation code the app shows
       tags:
       - 'Tool: QR-Login'
-  /tools/api/auth-qr/v1:
-    post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_13
-      parameters:
-      - in: query
-        name: channel
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Created
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Activate auth-qr
-      tags:
-      - 'Tool: QR-Login'
-  /tools/api/auth-qr/v1/{toolSessionId}:
-    get:
-      operationId: read_12
-      parameters:
-      - in: path
-        name: toolSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: OK
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Read the current auth-qr state
-      tags:
-      - 'Tool: QR-Login'
-    patch:
-      description: 'Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a confirmation
-        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md
-        #5).'
-      operationId: patch_12
-      parameters:
-      - in: path
-        name: toolSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/QrConfirmationCodeRequest'
-      responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: OK
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Poll for the APP side's decision, then submit the confirmation code the app shows
-      tags:
-      - 'Tool: QR-Login'
   /tools/api/auth-sms-lookup/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_12
+      operationId: activate_13
       parameters:
       - in: query
         name: channel
@@ -3646,7 +3660,7 @@ paths:
       - 'Tool: SMS'
   /tools/api/auth-sms-lookup/v1/{toolSessionId}:
     get:
-      operationId: read_11
+      operationId: read_12
       parameters:
       - in: path
         name: toolSessionId
@@ -3686,7 +3700,7 @@ paths:
       - 'Tool: SMS'
     patch:
       description: First call with email resolves the account and triggers the TAN send; a second call with tan confirms it.
-      operationId: patch_11
+      operationId: patch_12
       parameters:
       - in: path
         name: toolSessionId
@@ -3750,7 +3764,7 @@ paths:
   /tools/api/auth-sms/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_11
+      operationId: activate_12
       parameters:
       - in: query
         name: channel
@@ -3791,7 +3805,7 @@ paths:
       - 'Tool: SMS'
   /tools/api/auth-sms/v1/{toolSessionId}:
     get:
-      operationId: read_10
+      operationId: read_11
       parameters:
       - in: path
         name: toolSessionId
@@ -3831,7 +3845,7 @@ paths:
       tags:
       - 'Tool: SMS'
     patch:
-      operationId: patch_10
+      operationId: patch_11
       parameters:
       - in: path
         name: toolSessionId
@@ -3880,7 +3894,7 @@ paths:
   /tools/api/confirm-email/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_10
+      operationId: activate_11
       parameters:
       - in: query
         name: channel
@@ -3920,7 +3934,7 @@ paths:
       - 'Tool: E-Mail'
   /tools/api/confirm-email/v1/{toolSessionId}:
     get:
-      operationId: read_9
+      operationId: read_10
       parameters:
       - in: path
         name: toolSessionId
@@ -3960,7 +3974,7 @@ paths:
       - 'Tool: E-Mail'
     patch:
       description: First call with email triggers the code send; a second call with code confirms it.
-      operationId: patch_9
+      operationId: patch_10
       parameters:
       - in: path
         name: toolSessionId
@@ -4025,7 +4039,7 @@ paths:
   /tools/api/enroll-device/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_9
+      operationId: activate_10
       parameters:
       - in: query
         name: channel
@@ -4068,7 +4082,7 @@ paths:
       - 'Tool: Gerät'
   /tools/api/enroll-device/v1/{toolSessionId}:
     get:
-      operationId: read_8
+      operationId: read_9
       parameters:
       - in: path
         name: toolSessionId
@@ -4112,7 +4126,7 @@ paths:
     patch:
       description: Body carries a self-signed device-proof JWT (typ=device-proof+jwt) over this exact URL, produced after
         the user confirms the mocked PIN/biometric prompt.
-      operationId: patch_8
+      operationId: patch_9
       parameters:
       - in: path
         name: toolSessionId
@@ -4161,7 +4175,7 @@ paths:
   /tools/api/enroll-email/v1:
     post:
       description: 'One shot: no request body, and the response already carries the completed outcome.'
-      operationId: activate_8
+      operationId: activate_9
       parameters:
       - in: query
         name: channel
@@ -4200,7 +4214,7 @@ paths:
       - 'Tool: E-Mail-Login'
   /tools/api/enroll-email/v1/{toolSessionId}:
     get:
-      operationId: read_22
+      operationId: read_23
       parameters:
       - in: path
         name: toolSessionId
@@ -4233,7 +4247,7 @@ paths:
     post:
       description: Provisions the KOBIL user and returns everything the app's SDK needs for its activation call - including
         the PIN, which this backend mints and keeps.
-      operationId: activate_7
+      operationId: activate_8
       parameters:
       - in: query
         name: channel
@@ -4286,7 +4300,7 @@ paths:
       - 'Tool: KOBIL'
   /tools/api/enroll-kobil/v1/{toolSessionId}:
     get:
-      operationId: read_7
+      operationId: read_8
       parameters:
       - in: path
         name: toolSessionId
@@ -4317,7 +4331,7 @@ paths:
       - 'Tool: KOBIL'
     patch:
       description: Records the credential once KOBIL reports a bound device for this user.
-      operationId: patch_7
+      operationId: patch_8
       parameters:
       - in: path
         name: toolSessionId
@@ -4367,7 +4381,7 @@ paths:
   /tools/api/enroll-password/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_6
+      operationId: activate_7
       parameters:
       - in: query
         name: channel
@@ -4407,7 +4421,7 @@ paths:
       - 'Tool: Passwort'
   /tools/api/enroll-password/v1/{toolSessionId}:
     get:
-      operationId: read_6
+      operationId: read_7
       parameters:
       - in: path
         name: toolSessionId
@@ -4447,7 +4461,7 @@ paths:
       - 'Tool: Passwort'
     patch:
       description: The credential is self-verifying, no separate confirmation step.
-      operationId: patch_6
+      operationId: patch_7
       parameters:
       - in: path
         name: toolSessionId
@@ -4496,7 +4510,7 @@ paths:
   /tools/api/enroll-qr/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_5
+      operationId: activate_6
       parameters:
       - in: query
         name: channel
@@ -4527,7 +4541,7 @@ paths:
       - 'Tool: QR-Login'
   /tools/api/enroll-qr/v1/{toolSessionId}:
     get:
-      operationId: read_5
+      operationId: read_6
       parameters:
       - in: path
         name: toolSessionId
@@ -4558,7 +4572,7 @@ paths:
       - 'Tool: QR-Login'
     patch:
       description: No request body - the call itself is the confirmation.
-      operationId: patch_5
+      operationId: patch_6
       parameters:
       - in: path
         name: toolSessionId
@@ -4590,7 +4604,7 @@ paths:
   /tools/api/enroll-sms/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_4
+      operationId: activate_5
       parameters:
       - in: query
         name: channel
@@ -4630,7 +4644,7 @@ paths:
       - 'Tool: SMS'
   /tools/api/enroll-sms/v1/{toolSessionId}:
     get:
-      operationId: read_4
+      operationId: read_5
       parameters:
       - in: path
         name: toolSessionId
@@ -4670,7 +4684,7 @@ paths:
       - 'Tool: SMS'
     patch:
       description: First call with phoneNumber triggers the TAN send; a second call with tan confirms it.
-      operationId: patch_4
+      operationId: patch_5
       parameters:
       - in: path
         name: toolSessionId
@@ -4730,6 +4744,161 @@ paths:
       - kc-peer-auth: [
           ]
       summary: Supply phone number, then TAN
+      tags:
+      - 'Tool: SMS'
+  /tools/api/enroll-sms/v2:
+    post:
+      description: 'No request body: toolId already carries kind and method. The first step asks for the number and the consent.'
+      operationId: activate_4
+      parameters:
+      - in: query
+        name: channel
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  step: enroll
+                  toolId: enroll-sms
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+                stepData:
+                  kind: enroll-sms
+                  missingFields:
+                  - phoneNumber
+                  - consent
+                  replaces: false
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: Created
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Activate enroll-sms (version 2)
+      tags:
+      - 'Tool: SMS'
+  /tools/api/enroll-sms/v2/{toolSessionId}:
+    get:
+      operationId: read_4
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  state: REGISTERING
+                next:
+                  step: tanInput
+                  toolId: enroll-sms
+                  toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Read the current enroll-sms state (version 2)
+      tags:
+      - 'Tool: SMS'
+    patch:
+      description: First call with phoneNumber and consent=true triggers the TAN send; without consent nothing is sent and
+        missingFields names it. A second call with tan confirms the number.
+      operationId: patch_4
+      parameters:
+      - in: path
+        name: toolSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollSmsV2PatchRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              examples:
+                After phoneNumber and consent - TAN sent:
+                  description: After phoneNumber and consent - TAN sent
+                  value:
+                    channel:
+                      channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      state: REGISTERING
+                    demo:
+                      tan: '123456'
+                    next:
+                      step: tanInput
+                      toolId: enroll-sms
+                      toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                      type: tool
+                phoneNumber without consent - nothing sent:
+                  description: phoneNumber without consent - nothing sent
+                  value:
+                    channel:
+                      channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                      state: REGISTERING
+                    next:
+                      step: enroll
+                      toolId: enroll-sms
+                      toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                      type: tool
+                    stepData:
+                      kind: enroll-sms
+                      missingFields:
+                      - phoneNumber
+                      - consent
+                      replaces: false
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Supply phone number with consent, then TAN
       tags:
       - 'Tool: SMS'
   /tools/api/ident-eid/v1:

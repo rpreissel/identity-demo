@@ -2,6 +2,7 @@ package com.example.identity.tools.auth_sms.internal.enrollsms
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.tools.auth_sms.internal.TanGenerator
+import com.example.identity.tools.auth_sms.api.v1.EnrollSmsStep
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -50,6 +51,34 @@ class EnrollSmsFlowTest : BehaviorSpec({
 
             then("the phone number wins - there is no pending TAN yet for any tan to be checked against") {
                 decision shouldBe EnrollSmsDecision.SendTan("+491701234567")
+            }
+        }
+    }
+
+    given("a session awaiting the phone number, in version 2 without consent yet (ADR-51)") {
+        val state = EnrollSmsState.AwaitingPhoneNumber
+
+        `when`("a valid phone number comes without the consent") {
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "+49 170 1234567"), tanGenerator, needsConsent = true)
+
+            then("nothing is sent: the consent is missing") {
+                decision shouldBe EnrollSmsDecision.ConsentMissing(state)
+            }
+        }
+
+        `when`("a valid phone number comes with the consent") {
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "+49 170 1234567", consent = true), tanGenerator, needsConsent = true)
+
+            then("a TAN is sent") {
+                decision shouldBe EnrollSmsDecision.SendTan("+491701234567")
+            }
+        }
+
+        `when`("the step is described") {
+            val (_, stepData) = state.describe(replaces = false, needsConsent = true)
+
+            then("it names the consent beside the number") {
+                stepData shouldBe EnrollSmsStep(listOf("phoneNumber", "consent"), replaces = false)
             }
         }
     }

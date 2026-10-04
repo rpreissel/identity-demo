@@ -65,7 +65,7 @@ paths:
   /tools/api/approve-qr/v1:
     post:
       description: 'Optional body: {pairingCode}, when already known (e.g. from a demo-link deep link) - skips the input step.'
-      operationId: activate_22
+      operationId: activate_23
       parameters:
       - in: query
         name: channel
@@ -99,7 +99,7 @@ paths:
       - 'Tool: QR-Login'
   /tools/api/approve-qr/v1/{toolSessionId}:
     get:
-      operationId: read_21
+      operationId: read_22
       parameters:
       - in: path
         name: toolSessionId
@@ -128,7 +128,7 @@ paths:
       - 'Tool: QR-Login'
     patch:
       description: 'First call: {pairingCode}. Once resolved: {decision: accept|reject}.'
-      operationId: patch_21
+      operationId: patch_22
       parameters:
       - in: path
         name: toolSessionId

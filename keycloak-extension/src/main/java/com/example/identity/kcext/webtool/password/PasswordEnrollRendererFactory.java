@@ -17,13 +17,9 @@ public class PasswordEnrollRendererFactory extends AbstractWebToolRendererFactor
     }
 
     @Override
-
     public int version() {
-
         return 1;
-
     }
-
 
     @Override
     public String template() {

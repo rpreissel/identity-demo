@@ -199,6 +199,14 @@ h1#kc-page-title {
     color: var(--orc-color-text-muted);
 }
 
+/* A consent the step asks for (enroll-sms, version 2): box and text on one line. */
+.orchestrator-checkbox {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    font-size: var(--orc-font-size-small);
+}
+
 /* Two fields that belong together (e.g. street/house number, zip/city) sit
    side by side once the card is wide enough. */
 .orchestrator-grid-2 {

@@ -1,6 +1,6 @@
-# ADR-51: Orchestrator und Tools einzeln versioniert, beide per Pfadsegment
+# ADR-51: Versionierung – Orchestrator und Tools einzeln, beide per Pfadsegment
 
-**Status:** umgesetzt 2026-10-04 (Issue `DPoP-demo-7luc`). Baut auf
+**Status:** umgesetzt 2026-10-04 (Issues `DPoP-demo-7luc`, `DPoP-demo-wnd0`). Baut auf
 [ADR-50](ADR-050-api-versionierung-umschlag-und-tool.md) auf und ersetzt dort die Aussage, dass es
 keine Tool-Version gibt.
 
@@ -42,9 +42,39 @@ Segment im Pfad, und jede Version zählt für sich.
   (die Trace-Ansicht zeigt es in der Spalte „Tool“). `detailsVersion` der betroffenen Ereignisse
   in `change_log` und `sign_in_log` ist dafür auf 2 gestiegen (ADR-39). Die Herkunft eines Werts (`claim_source`) bleibt
   die reine toolId: Sie ist fachlich das Tool, und ihre Vergleiche rechnen damit.
+- **Der Betreiber sperrt je Fassung.** Die Sperre aus ADR-32 gilt für eine Fassung und einen
+  Kanaltyp (`PUT /orchestrator/admin/tools/enroll-sms@1/availability/APP`); die Reihenfolge bleibt je
+  Tool. So lässt sich eine alte Fassung erst abschalten und beobachten, bevor sie ausgebaut wird.
+  Eine Voreinstellung ohne Fassung (`demo.tool-defaults`: `auth-qr`) sperrt alle Fassungen.
 - **Vertragsdateien je Fassung:** `api/contract/tools/<toolId>/v<N>.yaml`, eingefroren unter
   `api/published/tools/<toolId>/v<N>.yaml`. `checkPublishedApiCompatibility` meldet einen Bruch an
   `<toolId>@<N>`; die Abhilfe ist eine additive Änderung oder eine neue Fassung.
+
+**Wann ein Tool eine neue Fassung bekommt.** Nur wenn der Server wissen muss, was der Client kann:
+bei einem neuen Pflichtfeld, einem unverzichtbaren neuen Aufruf oder Schritt, einer neuen
+Schritt-Form oder einem umbenannten Feld. Eine additive Änderung ist immer der erste Weg. Die
+vollständige Regel steht in [05-api.md](../05-api.md) Abschnitt 1.
+
+**Was die alte Fassung ohne das Neue tut,** wird mit jeder neuen Fassung fachlich entschieden. Es
+gibt drei Antworten: Sie setzt einen **Ersatzwert** und läuft weiter, sie liefert ein **geringeres
+Ergebnis** (ein niedrigeres Niveau, eine Angabe weniger), oder sie **darf nicht mehr laufen** und wird
+abgeschaltet. Die Antwort steht im Abschnitt des Verfahrens in [06-ablaeufe.md](../06-ablaeufe.md).
+
+**Eine neue Fassung bauen.** Ein Handler bedient alle Fassungen und verzweigt nach
+`ToolContext.version` nur, wo sich das Verhalten unterscheidet; jede solche Stelle ist mit
+„entfällt mit v1“ markiert. Je Fassung gibt es einen Controller im Paket `api.v<N>` des Moduls mit
+eigenen DTOs, der alte bleibt unverändert. Ein neues Feld in `missingFields` braucht keine neue
+Schritt-Form; eine geänderte Form bekommt eine neue `kind`. Ausgerollt wird erst der Server mit
+beiden Fassungen, dann der Client mit der neuen; danach kann der Server nicht mehr hinter diese
+Fassung zurück. Schritt für Schritt: [15-beispiel-neues-verfahren.md](../15-beispiel-neues-verfahren.md)
+Abschnitt 9.
+
+**Beispiel `enroll-sms@2`.** Fassung 2 verlangt mit der Telefonnummer die Einwilligung (`consent`),
+dass die Nummer gespeichert und für SMS-Codes genutzt wird. Fassung 1 setzt den Ersatzwert „keine
+Einwilligung“ und läuft weiter, damit eine App, die die Checkbox nicht zeigen kann, weiter Nummern
+einrichten kann. Die Einwilligung wird nicht eigens gespeichert: `METHOD_ADDED` im Änderungsprotokoll
+nennt die Fassung, und daraus folgt, ob sie vorlag. Die App spricht Fassung 1, der Web-Kanal
+Fassung 2 ([06-ablaeufe.md](../06-ablaeufe.md) Abschnitt 4).
 
 **Warum.** Ein Client wird getrennt vom Server ausgeliefert, alte App-Versionen bleiben im Einsatz,
 und jede beherrscht je Tool eine Fassung. Ein Tool muss sich deshalb brechend ändern können, ohne
@@ -67,7 +97,8 @@ zu verstehen als zwei, und die erste Fassung ist kein Sonderfall.
 
 - Der neue Pfadraum `/tools/api` braucht einen eigenen Eintrag im Vite-Proxy. Compose und die
   OpenShift-Route leiten den ganzen Host weiter und brauchen nichts.
-- Eine zweite Fassung eines Tools, das Abschalten einer Fassung und der Hinweis „App veraltet“
-  sind noch nicht gebaut: [ideen/tool-versionen.md](../ideen/tool-versionen.md).
+- **Noch nicht gebaut:** der Hinweis „App veraltet“ an Clients mit einer gesperrten oder
+  ausgebauten Fassung (`DPoP-demo-kkod`) und die feste Antwort eines abgelösten Orchestrator-Pfads
+  (`DPoP-demo-gd85`).
 - Bis zum ersten Release wird statt einer neuen Fassung neu eingefroren (`publishApiVersion`), wie in
   ADR-50.

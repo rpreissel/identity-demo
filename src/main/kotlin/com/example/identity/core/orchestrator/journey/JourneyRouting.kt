@@ -39,14 +39,13 @@ class JourneyRouting(
     private val toolAvailabilityService: ToolAvailabilityService
 ) {
     /**
-     * What the client declared it can render, minus what the operator switched off for this
-     * channel type. Live, not cached: a disable applies to the next step of a running journey.
+     * What the client declared it can render, minus the versions the operator switched off for
+     * this channel type. Live, not cached: a disable applies to the next step of a running journey.
      */
     fun availableToolsOf(channel: ChannelSession): Set<ToolId> {
-        val disabled = toolAvailabilityService.disabledToolIds(channelTypeOf(channel))
-        // The version matters only to the client's calls; what is offered is the tool (ADR-51).
-        return channel.availableClientTools.map { ToolVersion.parse(it).toolId }
-            .filterTo(mutableSetOf()) { it.value !in disabled }
+        val disabled = toolAvailabilityService.disabledTools(channelTypeOf(channel))
+        // The switch holds per version; what is offered is the tool (ADR-51).
+        return (channel.declaredTools() - disabled).mapTo(mutableSetOf()) { it.toolId }
     }
 
     /**

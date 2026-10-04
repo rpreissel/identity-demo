@@ -6,7 +6,10 @@ import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.stereotype.Component
 
-/** One channel type's preset: its tool order and the tools switched off in it. */
+/**
+ * One channel type's preset: its tool order and the tools switched off in it. A switched-off entry
+ * names one version (`auth-qr@1`) or, without one, every version of the tool.
+ */
 data class ChannelToolDefaults(
     val order: List<String> = emptyList(),
     val disabled: List<String> = emptyList()

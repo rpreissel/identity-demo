@@ -290,13 +290,22 @@ export type ToolRole =
   | 'ATTESTATION'
   | 'PEER_APPROVAL'
 
+/** One version of a tool and its switch for the channel (ADR-51). */
+export interface ToolVersionAvailability {
+  /** The version's wire form, `enroll-sms@2`: how the switch is addressed. */
+  tool: string
+  version: number
+  enabled: boolean
+  reason?: string | null
+}
+
+/** One tool in a channel's order; the order is per tool, the switch per version. */
 export interface ToolAvailabilityEntry {
   toolId: string
   method: string
   /** Which kind of selection list the tool appears in - the order only matters within one role. */
   role: ToolRole
-  enabled: boolean
-  reason?: string
+  versions: ToolVersionAvailability[]
 }
 
 /** APP = App-Kanal, WEB = Web-Kanal. */
@@ -337,8 +346,9 @@ export function fetchToolAvailability(): Promise<ChannelToolAvailability[]> {
   return callPlain('GET', `${ADMIN_PATH}/tools/availability`)
 }
 
-export function setToolAvailability(toolId: string, channel: ChannelType, enabled: boolean, reason?: string): Promise<void> {
-  return callPlain('PUT', `${ADMIN_PATH}/tools/${toolId}/availability/${channel}`, { enabled, reason })
+/** Switches one tool version (`enroll-sms@2`) on or off for one channel type. */
+export function setToolAvailability(tool: string, channel: ChannelType, enabled: boolean, reason?: string): Promise<void> {
+  return callPlain('PUT', `${ADMIN_PATH}/tools/${tool}/availability/${channel}`, { enabled, reason })
 }
 
 /** First entry is offered first; applies to every selection screen of that channel type. */
@@ -510,7 +520,8 @@ export interface ServerInfo {
   /** null/absent without the `keycloak` profile - then there is no Web channel. */
   keycloak?: KeycloakInfo | null
   registrationEnrollFirst: boolean
-  disabledTools: { toolId: string; channel: ChannelType; reason?: string | null }[]
+  /** Switched-off tool versions, `tool` in its wire form (`enroll-sms@2`). */
+  disabledTools: { tool: string; channel: ChannelType; reason?: string | null }[]
   /** Demo mode - among other things, responses carry the demo values (TANs, personas). */
   demoMode: boolean
   /** Health and metrics of the actuator (management port), read by the backend; null outside demo mode. */

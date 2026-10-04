@@ -1,10 +1,13 @@
 # ADR-32: Tool-Sperre und Reihenfolge je Kanaltyp
 
-**Status:** umgesetzt.
+**Status:** umgesetzt; die Sperre gilt seit [ADR-51](ADR-051-versionen-als-pfadsegment.md) je
+Fassung.
 
 **Entscheidung**: Der Betreiber sperrt Tools nicht mehr für alle Kanäle zugleich,
-sondern je Kanaltyp (App, Web), und legt je Kanaltyp eine Rangfolge der Tools fest. Beides liegt in
-`orchestrator.tool_availability` mit dem Schlüssel `(tool_id, channel)`; eine Sperre für alle
+sondern je Kanaltyp (App, Web), und legt je Kanaltyp eine Rangfolge der Tools fest. Die Sperre
+liegt in `orchestrator.tool_availability` mit dem Schlüssel `(tool, channel)`, wobei `tool` eine
+Fassung ist (`enroll-sms@2`); die Rangfolge liegt je Tool in `orchestrator.tool_order`, für alle
+Fassungen gleich, weil ein Kanal jedes Tool nur in einer Fassung anbietet. Eine Sperre für alle
 Kanäle bedeutet „in beiden Kanälen gesperrt“.
 
 ## Warum eine Ebene statt zwei

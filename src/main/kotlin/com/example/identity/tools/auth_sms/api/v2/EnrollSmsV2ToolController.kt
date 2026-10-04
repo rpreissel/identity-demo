@@ -1,4 +1,4 @@
-package com.example.identity.tools.auth_sms.api.v1
+package com.example.identity.tools.auth_sms.api.v2
 
 import com.example.identity.tools.auth_sms.ENROLL_SMS_TOOL_ID
 import com.example.identity.tools.auth_sms.EnrollSms
@@ -28,36 +28,43 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
-data class EnrollSmsPatchRequest(
+data class EnrollSmsV2PatchRequest(
     @field:Schema(example = "+49 170 1234567") val phoneNumber: String? = null,
-    @field:Schema(example = "123456") val tan: String? = null
+    @field:Schema(
+        description = "Consent to storing the number and sending codes to it. Required with the phone number; " +
+            "without it no code is sent and missingFields names it.",
+        example = "true",
+    )
+    val consent: Boolean? = null,
+    @field:Schema(example = "123456") val tan: String? = null,
 )
 
 /**
- * toolId=enroll-sms (docs/06-ablaeufe.md #4). One controller owns activation, PATCH and GET
- * for this tool (docs/08-projektrahmen.md A11) - no generic toolId dispatch anywhere.
+ * toolId=enroll-sms in version 2 (ADR-51): like version 1, but the phone number needs the consent
+ * that comes with it. One handler serves both versions; this controller only has its own contract.
  */
 @RestController
 @Tag(name = "Tool: SMS")
 @SecurityRequirement(name = "dpop")
-class EnrollSmsToolController(
+class EnrollSmsV2ToolController(
     private val handler: EnrollSmsToolHandler,
     private val toolJourney: ToolJourney
 ) : ToolController {
 
     override val tool = EnrollSms
 
-    @PostMapping("$TOOLS_API/$ENROLL_SMS_TOOL_ID/v1")
+    @PostMapping("$TOOLS_API/$ENROLL_SMS_TOOL_ID/v2")
     @Operation(
-        summary = "Activate enroll-sms",
-        description = "No request body: toolId already carries kind and method.",
+        summary = "Activate enroll-sms (version 2)",
+        description = "No request body: toolId already carries kind and method. The first step asks for the number and the consent.",
         responses = [
             ApiResponse(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
                       "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
-                      "next": {"type": "tool", "toolId": "enroll-sms", "step": "enroll", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "next": {"type": "tool", "toolId": "enroll-sms", "step": "enroll", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                      "stepData": {"kind": "enroll-sms", "missingFields": ["phoneNumber", "consent"], "replaces": false}
                     }
                 """)])]
             )
@@ -71,26 +78,27 @@ class EnrollSmsToolController(
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 
-    @PatchMapping("$TOOLS_API/$ENROLL_SMS_TOOL_ID/v1/{toolSessionId}")
+    @PatchMapping("$TOOLS_API/$ENROLL_SMS_TOOL_ID/v2/{toolSessionId}")
     @Operation(
-        summary = "Supply phone number, then TAN",
-        description = "First call with phoneNumber triggers the TAN send; a second call with tan confirms it.",
+        summary = "Supply phone number with consent, then TAN",
+        description = "First call with phoneNumber and consent=true triggers the TAN send; without consent nothing is " +
+            "sent and missingFields names it. A second call with tan confirms the number.",
         responses = [
             ApiResponse(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [
-                    ExampleObject(name = "After phoneNumber - TAN sent", value = """
+                    ExampleObject(name = "phoneNumber without consent - nothing sent", value = """
+                        {
+                          "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
+                          "next": {"type": "tool", "toolId": "enroll-sms", "step": "enroll", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                          "stepData": {"kind": "enroll-sms", "missingFields": ["phoneNumber", "consent"], "replaces": false}
+                        }
+                    """),
+                    ExampleObject(name = "After phoneNumber and consent - TAN sent", value = """
                         {
                           "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
                           "next": {"type": "tool", "toolId": "enroll-sms", "step": "tanInput", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
                           "demo": {"tan": "123456"}
-                        }
-                    """),
-                    ExampleObject(name = "After tan - enrolled, chain continues", value = """
-                        {
-                          "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
-                          "next": {"type": "orchestrator", "context": "enrollment", "step": "selectMethod"},
-                          "stepData": {"kind": "select-method", "options": ["confirm-email"]}
                         }
                     """)
                 ])]
@@ -98,18 +106,17 @@ class EnrollSmsToolController(
         ]
     )
     fun patch(
-        @RequestBody(required = false) request: EnrollSmsPatchRequest?,
+        @RequestBody(required = false) request: EnrollSmsV2PatchRequest?,
         context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
-        val body = request ?: EnrollSmsPatchRequest()
-        val outcome = handler.patch(context.toolSessionId, context.version, body.phoneNumber, body.tan)
-
+        val body = request ?: EnrollSmsV2PatchRequest()
+        val outcome = handler.patch(context.toolSessionId, context.version, body.phoneNumber, body.tan, body.consent)
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 
-    @GetMapping("$TOOLS_API/$ENROLL_SMS_TOOL_ID/v1/{toolSessionId}")
+    @GetMapping("$TOOLS_API/$ENROLL_SMS_TOOL_ID/v2/{toolSessionId}")
     @Operation(
-        summary = "Read the current enroll-sms state",
+        summary = "Read the current enroll-sms state (version 2)",
         responses = [
             ApiResponse(
                 responseCode = "200",

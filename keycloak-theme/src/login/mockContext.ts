@@ -37,7 +37,7 @@ const { getKcContextMock } = createGetKcContextMock({
     'tool-email-lookup.ftl': { toolId: 'confirm-email', pageTitle: 'E-Mail', hint: 'E-Mail-Adresse + Bestätigungscode', step: 'codeInput', demoTan: '482913', addressAgain: true, demoPersonsJson: PERSONS },
     'tool-qr-enroll.ftl': { toolId: 'enroll-qr', pageTitle: 'QR-Login', hint: 'Web-Login per QR-Code erlauben' },
     'tool-ident-kvnr.ftl': { toolId: 'ident-kvnr', pageTitle: 'Versichertennummer', hint: 'Konto der eigenen Person im Personenverzeichnis zuordnen', demoPersonsJson: PERSONS },
-    'tool-sms-enroll.ftl': { toolId: 'enroll-sms', pageTitle: 'SMS', hint: 'Code per SMS', step: 'enroll', demoTan: '123456', demoPersonsJson: PERSONS },
+    'tool-sms-enroll.ftl': { toolId: 'enroll-sms', pageTitle: 'SMS', hint: 'Code per SMS', step: 'enroll', demoTan: '123456', demoPersonsJson: PERSONS, askConsent: true },
     'tool-ident-fsc.ftl': { toolId: 'ident-fsc', pageTitle: 'Freischaltcode', personalienPage: true, demoPersonsJson: PERSONS },
     'tool-auth-invite.ftl': { toolId: 'auth-invite-lookup', pageTitle: 'Einmalkennwort' },
     'tool-ident-eid.ftl': { toolId: 'ident-eid', pageTitle: 'Online-Ausweis', hint: 'Mit dem Personalausweis', cardPage: true, demoPersonsJson: PERSONS },

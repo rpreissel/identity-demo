@@ -1,14 +1,5 @@
 components:
   schemas:
-    AuthSmsLookupPatchRequest:
-      properties:
-        email:
-          example: max.mustermann@example.com
-          type: string
-        tan:
-          example: '123456'
-          type: string
-      type: object
     ChannelResponse:
       properties:
         stepData:
@@ -35,6 +26,20 @@ components:
       - kind
       - missingFields
       - replaces
+    EnrollSmsV2PatchRequest:
+      properties:
+        consent:
+          description: Consent to storing the number and sending codes to it. Required with the phone number; without it no
+            code is sent and missingFields names it.
+          example: true
+          type: boolean
+        phoneNumber:
+          example: +49 170 1234567
+          type: string
+        tan:
+          example: '123456'
+          type: string
+      type: object
     ErrorResponse:
       type: object
     StepData:
@@ -60,10 +65,10 @@ info:
   version: v1
 openapi: 3.1.0
 paths:
-  /tools/api/auth-sms-lookup/v1:
+  /tools/api/enroll-sms/v2:
     post:
-      description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_13
+      description: 'No request body: toolId already carries kind and method. The first step asks for the number and the consent.'
+      operationId: activate_4
       parameters:
       - in: query
         name: channel
@@ -78,12 +83,18 @@ paths:
               example:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
+                  state: REGISTERING
                 next:
-                  step: auth
-                  toolId: auth-sms-lookup
+                  step: enroll
+                  toolId: enroll-sms
                   toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
                   type: tool
+                stepData:
+                  kind: enroll-sms
+                  missingFields:
+                  - phoneNumber
+                  - consent
+                  replaces: false
               schema:
                 $ref: '#/components/schemas/ChannelResponse'
           description: Created
@@ -96,12 +107,12 @@ paths:
       security:
       - dpop: [
           ]
-      summary: Activate auth-sms-lookup
+      summary: Activate enroll-sms (version 2)
       tags:
       - 'Tool: SMS'
-  /tools/api/auth-sms-lookup/v1/{toolSessionId}:
+  /tools/api/enroll-sms/v2/{toolSessionId}:
     get:
-      operationId: read_12
+      operationId: read_4
       parameters:
       - in: path
         name: toolSessionId
@@ -116,10 +127,10 @@ paths:
               example:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                  state: ANONYMOUS
+                  state: REGISTERING
                 next:
                   step: tanInput
-                  toolId: auth-sms-lookup
+                  toolId: enroll-sms
                   toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
                   type: tool
               schema:
@@ -134,12 +145,13 @@ paths:
       security:
       - dpop: [
           ]
-      summary: Read the current auth-sms-lookup state
+      summary: Read the current enroll-sms state (version 2)
       tags:
       - 'Tool: SMS'
     patch:
-      description: First call with email resolves the account and triggers the TAN send; a second call with tan confirms it.
-      operationId: patch_12
+      description: First call with phoneNumber and consent=true triggers the TAN send; without consent nothing is sent and
+        missingFields names it. A second call with tan confirms the number.
+      operationId: patch_4
       parameters:
       - in: path
         name: toolSessionId
@@ -151,38 +163,42 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AuthSmsLookupPatchRequest'
+              $ref: '#/components/schemas/EnrollSmsV2PatchRequest'
       responses:
         '200':
           content:
             application/json:
               examples:
-                After email - TAN sent:
-                  description: After email - TAN sent
+                After phoneNumber and consent - TAN sent:
+                  description: After phoneNumber and consent - TAN sent
                   value:
                     channel:
                       channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                      state: ANONYMOUS
+                      state: REGISTERING
                     demo:
                       tan: '123456'
                     next:
                       step: tanInput
-                      toolId: auth-sms-lookup
+                      toolId: enroll-sms
                       toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
                       type: tool
-                After tan - logged in, device-binding offer:
-                  description: After tan - logged in, device-binding offer
+                phoneNumber without consent - nothing sent:
+                  description: phoneNumber without consent - nothing sent
                   value:
                     channel:
                       channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
-                      currentAcr: loa1
-                      currentAmr:
-                      - sms
-                      state: AUTHENTICATED
+                      state: REGISTERING
                     next:
-                      context: authentication
-                      step: offerDeviceBinding
-                      type: orchestrator
+                      step: enroll
+                      toolId: enroll-sms
+                      toolSessionId: 9c858901-8a57-4791-81fe-4c455b099bc9
+                      type: tool
+                    stepData:
+                      kind: enroll-sms
+                      missingFields:
+                      - phoneNumber
+                      - consent
+                      replaces: false
               schema:
                 $ref: '#/components/schemas/ChannelResponse'
           description: OK
@@ -195,7 +211,7 @@ paths:
       security:
       - dpop: [
           ]
-      summary: Supply email, then TAN
+      summary: Supply phone number with consent, then TAN
       tags:
       - 'Tool: SMS'
 tags:

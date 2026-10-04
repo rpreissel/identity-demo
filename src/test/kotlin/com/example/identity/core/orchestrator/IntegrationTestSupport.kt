@@ -185,13 +185,13 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
 
     /**
      * `availableTools` is required on channel creation (docs/03-tool-architektur.md). Unless a test
-     * declares its own set, it gets the full catalog, each tool in its newest version: the neutral
-     * default for flows not about
-     * availability. [KeycloakChannelIntegrationTest] uses it for its own PATCH bodies.
+     * declares its own set, it gets the full catalog, each tool in version 1 - the version every tool
+     * serves and the paths of these tests name: the neutral default for flows not about availability
+     * or versions. [KeycloakChannelIntegrationTest] uses it for its own PATCH bodies.
      */
     protected fun withDefaultAvailableTools(body: String): String {
         if (body.contains("availableTools")) return body
-        val allToolIds = toolRegistry.tools().joinToString(",", "[", "]") { "\"${it.toolId}@${it.versions.last()}\"" }
+        val allToolIds = toolRegistry.tools().joinToString(",", "[", "]") { "\"${it.toolId}@${it.versions.first()}\"" }
         return if (body.isBlank() || body.trim() == "{}") {
             """{"availableTools":$allToolIds}"""
         } else {
@@ -281,8 +281,8 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
         val options = buildList {
             requiredAcr?.let { add(""""requiredAcr":"$it"""") }
             intent?.let { add(""""intent":"$it"""") }
-            // Plain toolIds here: every tool serves version 1, the version is not what these flows are about.
-            availableTools?.let { tools -> add(""""availableTools":[${tools.joinToString(",") { "\"$it@1\"" }}]""") }
+            // A plain toolId means version 1, which every tool serves; a test about versions names its own.
+            availableTools?.let { tools -> add(""""availableTools":[${tools.joinToString(",") { "\"${if ('@' in it) it else "$it@1"}\"" }}]""") }
         }
         val body = options.takeIf { it.isNotEmpty() }?.joinToString(",", "{", "}")
         val channelSessionId = (

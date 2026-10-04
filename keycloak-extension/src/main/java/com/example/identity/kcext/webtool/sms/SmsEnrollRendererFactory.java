@@ -8,7 +8,10 @@ import org.keycloak.forms.login.LoginFormsProvider;
 
 import java.util.Set;
 
-/** Web-channel counterpart to the two-step enroll-sms tool. */
+/**
+ * Web-channel counterpart to the two-step enroll-sms tool, in version 2 (ADR-51): the number comes
+ * with the consent, asked for while {@code missingFields} names it.
+ */
 public class SmsEnrollRendererFactory extends AbstractWebToolRendererFactory {
 
     public static final String PROVIDER_ID = "enroll-sms";
@@ -20,13 +23,9 @@ public class SmsEnrollRendererFactory extends AbstractWebToolRendererFactory {
     }
 
     @Override
-
     public int version() {
-
-        return 1;
-
+        return 2;
     }
-
 
     @Override
     public String template() {
@@ -43,6 +42,16 @@ public class SmsEnrollRendererFactory extends AbstractWebToolRendererFactory {
                 .setAttribute("demoPersonsJson", demoPersonsJson(ctx))
                 // The account already has a number: this run changes it.
                 .setAttribute("replaces", ctx.stepData().containsKey("replaces") && ctx.stepData().get("replaces").asBoolean(false))
+                .setAttribute("askConsent", asksConsent(ctx))
                 .createForm(template());
+    }
+
+    private static boolean asksConsent(WebToolRenderContext ctx) {
+        JsonNode missing = ctx.stepData().get("missingFields");
+        if (missing == null || !missing.isArray()) return false;
+        for (JsonNode field : missing) {
+            if ("consent".equals(field.asText())) return true;
+        }
+        return false;
     }
 }

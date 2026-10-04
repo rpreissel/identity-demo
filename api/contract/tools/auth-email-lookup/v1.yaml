@@ -30,7 +30,7 @@ paths:
   /tools/api/auth-email-lookup/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_20
+      operationId: activate_21
       parameters:
       - in: query
         name: channel
@@ -68,7 +68,7 @@ paths:
       - 'Tool: E-Mail'
   /tools/api/auth-email-lookup/v1/{toolSessionId}:
     get:
-      operationId: read_19
+      operationId: read_20
       parameters:
       - in: path
         name: toolSessionId
@@ -107,7 +107,7 @@ paths:
     patch:
       description: First call with email resolves the account and triggers the confirmation code send; a second call with
         code confirms it.
-      operationId: patch_19
+      operationId: patch_20
       parameters:
       - in: path
         name: toolSessionId

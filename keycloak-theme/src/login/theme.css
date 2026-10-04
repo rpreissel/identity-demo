@@ -296,6 +296,15 @@ p.orc-hint {
   margin: 0 0 1.25rem;
 }
 
+/* A consent the step asks for (enroll-sms, version 2): box and text on one line. */
+.orc-checkbox {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  font-size: var(--orc-font-size-small);
+}
+
 .orc-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;

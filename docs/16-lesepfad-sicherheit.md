@@ -406,7 +406,8 @@ Zustand anbietet, schreibt nur in den gerade aktiven Schritt, und ein Ergebnis z
   [`applyOutcome`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L233)
   (ToolSession danach `DONE`).
 - [`ToolAvailabilityService`](../src/main/kotlin/com/example/identity/core/orchestrator/tool/ToolAvailabilityService.kt#L21):
-  Sperre und Reihenfolge je Kanal; `demoOnly`-Tools gibt es außerhalb des Demomodus nicht.
+  Sperre je Fassung und Reihenfolge je Tool, beides je Kanal; `demoOnly`-Tools gibt es außerhalb des
+  Demomodus in keiner Fassung.
 - [`RunningJourney`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/RunningJourney.kt#L16):
   nur eine gestartete, nicht abgelaufene Journey ist verwendbar.
 

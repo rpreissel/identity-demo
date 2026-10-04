@@ -60,7 +60,7 @@ paths:
   /tools/api/auth-sms/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_11
+      operationId: activate_12
       parameters:
       - in: query
         name: channel
@@ -99,7 +99,7 @@ paths:
       - 'Tool: SMS'
   /tools/api/auth-sms/v1/{toolSessionId}:
     get:
-      operationId: read_10
+      operationId: read_11
       parameters:
       - in: path
         name: toolSessionId
@@ -137,7 +137,7 @@ paths:
       tags:
       - 'Tool: SMS'
     patch:
-      operationId: patch_10
+      operationId: patch_11
       parameters:
       - in: path
         name: toolSessionId

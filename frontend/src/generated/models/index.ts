@@ -799,6 +799,31 @@ export const EnrollSmsStepKindEnum = {
 export type EnrollSmsStepKindEnum = typeof EnrollSmsStepKindEnum[keyof typeof EnrollSmsStepKindEnum];
 
 /**
+ * 
+ * @export
+ * @interface EnrollSmsV2PatchRequest
+ */
+export interface EnrollSmsV2PatchRequest {
+    /**
+     * Consent to storing the number and sending codes to it. Required with the phone number; without it no code is sent and missingFields names it.
+     * @type {boolean}
+     * @memberof EnrollSmsV2PatchRequest
+     */
+    consent?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof EnrollSmsV2PatchRequest
+     */
+    phoneNumber?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof EnrollSmsV2PatchRequest
+     */
+    tan?: string;
+}
+/**
  * Every error response has this shape. The HTTP status is fixed per `error` code:
  * 
  * - `BAD_REQUEST`: 400

@@ -127,7 +127,7 @@ class ActiveSessionsIntegrationTest : IntegrationTestSupport() {
                 jdbcTemplate.update(
                     "insert into orchestrator.rate_limit (scope, subject, failed_count, updated_at) values ('ACCOUNT', 'x', 5, current_timestamp)"
                 )
-                put("/orchestrator/admin/tools/auth-sms/availability/APP", """{"enabled":false,"reason":"test"}""") shouldBe HttpStatus.OK
+                put("/orchestrator/admin/tools/auth-sms@1/availability/APP", """{"enabled":false,"reason":"test"}""") shouldBe HttpStatus.OK
                 put("/orchestrator/admin/registration-order", """{"enrollFirst":true}""") shouldBe HttpStatus.OK
                 return registering
             }
@@ -166,11 +166,11 @@ class ActiveSessionsIntegrationTest : IntegrationTestSupport() {
                 then("every setting is back to its preset") {
                     enrollFirst shouldBe false
                     @Suppress("UNCHECKED_CAST")
-                    val locks = (info["disabledTools"] as List<Map<String, Any?>>).map { it["toolId"] to it["channel"] }
+                    val locks = (info["disabledTools"] as List<Map<String, Any?>>).map { it["tool"] to it["channel"] }
                     // The ad-hoc lock is gone, the preset ones (demo.tool-defaults) are back.
-                    locks shouldNotContain ("auth-sms" to "APP")
-                    locks shouldContain ("auth-email" to "APP")
-                    locks shouldContain ("auth-device" to "WEB")
+                    locks shouldNotContain ("auth-sms@1" to "APP")
+                    locks shouldContain ("auth-email@1" to "APP")
+                    locks shouldContain ("auth-device@1" to "WEB")
                 }
             }
 

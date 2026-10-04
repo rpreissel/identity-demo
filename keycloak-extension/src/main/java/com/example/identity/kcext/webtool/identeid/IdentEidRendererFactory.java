@@ -28,13 +28,9 @@ public class IdentEidRendererFactory extends AbstractWebToolRendererFactory {
     }
 
     @Override
-
     public int version() {
-
         return 1;
-
     }
-
 
     @Override
     public String template() {

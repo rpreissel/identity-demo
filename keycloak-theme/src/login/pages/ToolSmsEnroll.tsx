@@ -6,11 +6,11 @@ import { ToolForm } from '../components/ToolForm'
 import { t } from '../../texts'
 
 /**
- * `tool-sms-enroll.ftl`: the phone number, then (step tanInput) the code sent to it. "Zurück" on the
- * code shows the number again - a pure screen change.
+ * `tool-sms-enroll.ftl`: the phone number with the consent version 2 asks for, then (step tanInput)
+ * the code sent to it. "Zurück" on the code shows the number again - a pure screen change.
  */
 export function ToolSmsEnroll({ kcContext }: { kcContext: PageContext<'tool-sms-enroll.ftl'> }) {
-  const { pageTitle: title, hint, step, demoTan, demoPersonsJson, replaces } = kcContext
+  const { pageTitle: title, hint, step, demoTan, demoPersonsJson, replaces, askConsent } = kcContext
   const [editingNumber, setEditingNumber] = useState(false)
   const tanInput = step === 'tanInput' && !editingNumber
   const onBack = step === 'tanInput' ? () => setEditingNumber(!editingNumber) : undefined
@@ -23,6 +23,12 @@ export function ToolSmsEnroll({ kcContext }: { kcContext: PageContext<'tool-sms-
         <>
           <DemoPersonPicker personsJson={demoPersonsJson} fields={{ phoneNumber: 'phoneNumber' }} />
           <Field id="phoneNumber" type="tel" label={t('Telefonnummer')} autoComplete="tel" />
+          {askConsent && (
+            <label htmlFor="consent" className="orc-checkbox">
+              <input type="checkbox" id="consent" name="consent" value="true" />
+              {t('Ich willige ein, dass meine Telefonnummer gespeichert wird und ich Codes per SMS erhalte.')}
+            </label>
+          )}
         </>
       )}
     </ToolForm>

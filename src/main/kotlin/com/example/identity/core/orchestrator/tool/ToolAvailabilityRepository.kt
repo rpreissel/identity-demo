@@ -8,3 +8,8 @@ import org.springframework.stereotype.Repository
 interface ToolAvailabilityRepository : JpaRepository<ToolAvailability, ToolAvailabilityKey> {
     fun findByChannel(channel: ChannelType): List<ToolAvailability>
 }
+
+@Repository
+interface ToolOrderRepository : JpaRepository<ToolOrder, ToolOrderKey> {
+    fun findByChannel(channel: ChannelType): List<ToolOrder>
+}

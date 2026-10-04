@@ -63,7 +63,7 @@ paths:
   /tools/api/auth-sms-lookup/v1:
     post:
       description: 'No request body: toolId already carries kind and method.'
-      operationId: activate_12
+      operationId: activate_13
       parameters:
       - in: query
         name: channel
@@ -101,7 +101,7 @@ paths:
       - 'Tool: SMS'
   /tools/api/auth-sms-lookup/v1/{toolSessionId}:
     get:
-      operationId: read_11
+      operationId: read_12
       parameters:
       - in: path
         name: toolSessionId
@@ -139,7 +139,7 @@ paths:
       - 'Tool: SMS'
     patch:
       description: First call with email resolves the account and triggers the TAN send; a second call with tan confirms it.
-      operationId: patch_11
+      operationId: patch_12
       parameters:
       - in: path
         name: toolSessionId
