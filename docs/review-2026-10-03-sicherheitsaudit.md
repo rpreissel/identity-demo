@@ -491,8 +491,13 @@ ADR-7; 04 §8; 07 §4.
 ## 9. Stand der Umsetzung (2026-10-03)
 
 Issues unter dem Epic `DPoP-demo-164n`, je Befund eines. `./gradlew test` und
-`./gradlew :keycloak-extension:test` laufen grün; nichts davon ist gegen ein laufendes Keycloak oder
-einen Cluster gespielt.
+`./gradlew :keycloak-extension:test` laufen grün. Gegen den compose-Stack (Keycloak 26.7.5) geprüft
+am 2026-10-04: `e2e-keycloak` 16 von 16 grün (beide Themes, QR, Vorgangszugang, also auch
+`body_sha256` und das neue Template); V7 lief durch, und die Admin-API zeigt `browserFlow`
+`orchestrator-browser`, `directGrantFlow` mit `deny-access-authenticator`, `resetPasswordAllowed`
+aus, als einzige Required Action `orchestrator-manage-methods`, `account`/`account-console` aus,
+`admin-cli` ohne Direct Grant (ein Passwort-Grant antwortet `unauthorized_client`) und kein
+`offline_access` an den drei Projekt-Clients. Gegen einen Cluster ist nichts gespielt.
 
 **Erledigt**
 
