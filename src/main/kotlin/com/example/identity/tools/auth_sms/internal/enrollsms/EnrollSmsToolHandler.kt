@@ -37,11 +37,11 @@ class EnrollSmsToolHandler(
     private val clock: Clock
 ) {
 
-    /** Called directly by EnrollSmsToolController; nothing needs resolving before this can start. */
+    /** Called directly by EnrollSmsToolController. [replaces]: the account already has a number. */
     @Transactional
-    fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        sessions.save(toolSessionId, EnrollSmsToolSession())
-        return outcomeFor(EnrollSmsState.AwaitingPhoneNumber)
+    fun start(toolSessionId: ToolSessionId, replaces: Boolean = false): ToolOutcome {
+        sessions.save(toolSessionId, EnrollSmsToolSession(replaces = replaces))
+        return outcomeFor(EnrollSmsState.AwaitingPhoneNumber, replaces)
     }
 
     /**
@@ -59,7 +59,7 @@ class EnrollSmsToolHandler(
 
             is EnrollSmsDecision.WrongTan -> ToolOutcome.Failed.NothingGuessed(Text("TAN ungueltig oder abgelaufen"))
 
-            is EnrollSmsDecision.Unchanged -> outcomeFor(decision.state)
+            is EnrollSmsDecision.Unchanged -> outcomeFor(decision.state, data.replaces)
 
             is EnrollSmsDecision.SendTan -> if (!sendLimit.trySend(decision.phoneNumber)) {
                 throw TooManyRequestsException(Text("Zu viele Codes angefordert. Bitte versuchen Sie es in einigen Minuten erneut."))
@@ -72,7 +72,7 @@ class EnrollSmsToolHandler(
                 smsGateway.sendTan(decision.phoneNumber, issued.plainTan)
 
                 val state = EnrollSmsState.AwaitingTan(decision.phoneNumber, issued.hash, issued.expiresAt)
-                val (step, fields) = state.describe()
+                val (step, fields) = state.describe(data.replaces)
                 // demoTan: this is a demo, not a real SMS gateway - showing it in the UI means
                 // testers don't need server-log access (docs/06-ablaeufe.md #4).
                 ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plainTan))
@@ -98,11 +98,12 @@ class EnrollSmsToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        return outcomeFor(sessions.require<EnrollSmsToolSession>(toolSessionId).toState(toolSessionId))
+        val data = sessions.require<EnrollSmsToolSession>(toolSessionId)
+        return outcomeFor(data.toState(toolSessionId), data.replaces)
     }
 
-    private fun outcomeFor(state: EnrollSmsState): ToolOutcome.InProgress {
-        val (step, fields) = state.describe()
+    private fun outcomeFor(state: EnrollSmsState, replaces: Boolean): ToolOutcome.InProgress {
+        val (step, fields) = state.describe(replaces)
         return ToolOutcome.InProgress(nextStep = step, stepData = fields)
     }
 

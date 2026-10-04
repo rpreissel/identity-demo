@@ -179,12 +179,14 @@ class ToolJourneyService(
         )
     }
 
-    override fun requireEnrollment(context: ToolContext, module: ToolModule): EnrollmentRef {
-        val enrollmentRef = context.accountId?.let { accountId ->
+    override fun findEnrollment(context: ToolContext, module: ToolModule): EnrollmentRef? =
+        context.accountId?.let { accountId ->
             if (module.onePerDevice) accountService.activeInstanceEnrollment(accountId, module.method, context.bindingKeyRef)
             else accountService.activeEnrollment(accountId, module.method)
         }
-        return enrollmentRef ?: throw UnresolvableReferenceException(
+
+    override fun requireEnrollment(context: ToolContext, module: ToolModule): EnrollmentRef {
+        return findEnrollment(context, module) ?: throw UnresolvableReferenceException(
             if (module.onePerDevice) Text("Dieses Anmeldeverfahren ist auf diesem Gerät nicht eingerichtet")
             else Text("Kein aktives Anmeldeverfahren dieser Art fuer dieses Konto"),
             "no active ${module.method} method",

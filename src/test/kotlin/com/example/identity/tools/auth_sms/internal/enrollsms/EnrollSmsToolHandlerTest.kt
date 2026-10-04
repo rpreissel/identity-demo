@@ -15,7 +15,7 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.EnrollmentRef
-import com.example.identity.contract.tool_api.MissingFields
+import com.example.identity.tools.auth_sms.api.v1.EnrollSmsStep
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.assertClaimsCovered
 import com.example.identity.contract.tool_api.TooManyRequestsException
@@ -71,7 +71,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
             val outcome = f.handler.start(f.toolSessionId)
 
             then("it asks for the phone number at step enroll") {
-                outcome shouldBe ToolOutcome.InProgress(nextStep = "enroll", stepData = MissingFields(listOf("phoneNumber")))
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "enroll", stepData = EnrollSmsStep(listOf("phoneNumber"), replaces = false))
             }
         }
     }
@@ -86,7 +86,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
 
             then("it texts a TAN to the normalized number and asks for it at step tanInput, revealing it as the demo value") {
                 sms.phoneNumber shouldBe PHONE
-                outcome shouldBe ToolOutcome.InProgress(nextStep = "tanInput", stepData = MissingFields(listOf("tan")), demo = mapOf("tan" to sms.tan))
+                outcome shouldBe ToolOutcome.InProgress(nextStep = "tanInput", stepData = EnrollSmsStep(listOf("tan"), replaces = false), demo = mapOf("tan" to sms.tan))
             }
 
             then("it persists the normalized number and the hash of the texted TAN") {

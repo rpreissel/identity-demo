@@ -33,5 +33,8 @@ interface ToolCatalog {
      * tools proves it. All tools of a method share their module, so the answer does not depend on
      * which tool is asked.
      */
+    /** The enrollment that changes an active credential of [method], if the method has one. */
+    fun changeToolOf(method: String): Tool? = toolOf(method, ToolRole.ENROLLMENT)?.takeIf { it.changeable }
+
     fun moduleOf(method: String): ToolModule? = modules().firstOrNull { it.method == method }
 }

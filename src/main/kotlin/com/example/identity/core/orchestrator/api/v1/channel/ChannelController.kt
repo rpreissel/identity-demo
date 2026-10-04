@@ -384,6 +384,35 @@ class ChannelController(
         return ResponseEntity.ok(channelService.deactivateMethod(channelSessionId, bindingKeyRef, methodInstanceId))
     }
 
+    @PostMapping("/{channelSessionId}/methods/{methodInstanceId}/changes")
+    @Operation(
+        summary = "Change an authentication method in place",
+        description = "Channel must already be AUTHENTICATED and the instance active and `changeable` (GET " +
+            ".../methods). Runs the method's own enroll-* tool again; the new credential replaces this instance " +
+            "once it is complete, until then the old one stays. Same gate as adding or removing a method, and " +
+            "never below the level the instance was enrolled under. 404 for an instance that is not active, " +
+            "409 for a method that cannot be changed (one credential per device, or none of its own).",
+        responses = [
+            ApiResponse(
+                responseCode = "200",
+                description = "The password is about to be changed - its enrollment is the one tool on offer.",
+                content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
+                    {
+                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["sms", "password"]},
+                      "next": {"type": "tool", "toolId": "enroll-password", "step": "enroll"}
+                    }
+                """)])]
+            )
+        ]
+    )
+    fun changeMethod(
+        @PathVariable channelSessionId: ChannelSessionId,
+        @PathVariable methodInstanceId: String,
+        @BindingKey bindingKeyRef: String
+    ): ResponseEntity<ChannelResponse> {
+        return ResponseEntity.ok(channelService.changeMethod(channelSessionId, bindingKeyRef, methodInstanceId))
+    }
+
     @DeleteMapping("/{channelSessionId}/attributes/{attribute}")
     @Operation(
         summary = "Withdraw a confirmed account attribute",

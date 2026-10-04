@@ -32,20 +32,21 @@ class EnrollPasswordToolHandler(
     private val clock: Clock
 ) {
 
-    /** Called directly by EnrollPasswordToolController; nothing needs resolving before this can start. */
+    /** Called directly by EnrollPasswordToolController. [replaces]: the account already has a password. */
     @Transactional
-    fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        sessions.save(toolSessionId, EnrollPasswordToolSession())
-        return outcomeFor()
+    fun start(toolSessionId: ToolSessionId, replaces: Boolean = false): ToolOutcome {
+        val data = EnrollPasswordToolSession(replaces = replaces)
+        sessions.save(toolSessionId, data)
+        return outcomeFor(data)
     }
 
     /** Called directly by EnrollPasswordToolController (docs/08-projektrahmen.md A11). */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, password: String?): ToolOutcome {
-        sessions.require<EnrollPasswordToolSession>(toolSessionId)
+        val data = sessions.require<EnrollPasswordToolSession>(toolSessionId)
 
         return when (val decision = EnrollPasswordFlow.decide(EnrollPasswordInput(password))) {
-            EnrollPasswordDecision.Unchanged -> outcomeFor()
+            EnrollPasswordDecision.Unchanged -> outcomeFor(data)
             is EnrollPasswordDecision.Rejected ->
                 PasswordPolicy.reject(decision.rejection)
 
@@ -70,12 +71,11 @@ class EnrollPasswordToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        sessions.require<EnrollPasswordToolSession>(toolSessionId)
-        return outcomeFor()
+        return outcomeFor(sessions.require<EnrollPasswordToolSession>(toolSessionId))
     }
 
-    private fun outcomeFor(): ToolOutcome.InProgress {
-        val (step, fields) = EnrollPasswordFlow.describe()
+    private fun outcomeFor(data: EnrollPasswordToolSession): ToolOutcome.InProgress {
+        val (step, fields) = EnrollPasswordFlow.describe(data.replaces)
         return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = EnrollPasswordFlow.demo())
     }
 }

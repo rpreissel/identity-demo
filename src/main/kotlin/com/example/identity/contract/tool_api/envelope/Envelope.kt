@@ -39,7 +39,9 @@ data class ActiveMethodView(
     @field:Schema(example = "loa1", description = "The level the session had already proven at the moment this method was enrolled (ADR-5) - caps effectiveAcr below maxAcr if lower.")
     val enrolledUnderAcr: String? = null,
     @field:Schema(example = "loa1", description = "min(enrolledUnderAcr, maxAcr) - what this method actually contributes today.")
-    val effectiveAcr: String? = null
+    val effectiveAcr: String? = null,
+    @field:Schema(description = "Whether the credential can be changed in place (POST .../methods/{id}/changes): a new password, a new number.")
+    val changeable: Boolean = false
 )
 
 @JsonInclude(JsonInclude.Include.NON_NULL)

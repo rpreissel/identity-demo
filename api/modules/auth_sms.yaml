@@ -24,6 +24,26 @@ components:
           example: '123456'
           type: string
       type: object
+    EnrollSmsStep:
+      description: Waiting for the phone number or its TAN; `replaces` says the account already has a number.
+      properties:
+        kind:
+          enum:
+          - enroll-sms
+          type: string
+        missingFields:
+          example:
+          - phoneNumber
+          items:
+            type: string
+          type: array
+        replaces:
+          example: false
+          type: boolean
+      required:
+      - kind
+      - missingFields
+      - replaces
   securitySchemes:
     dpop:
       description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the

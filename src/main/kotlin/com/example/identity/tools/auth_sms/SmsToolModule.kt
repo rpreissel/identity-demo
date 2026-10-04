@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_sms
 
+import com.example.identity.tools.auth_sms.api.v1.SmsStepData
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.FactorType.POSSESSION
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -27,12 +28,14 @@ internal val SmsModule = toolModule(
     method = "sms",
     name = Text("SMS"),
     proves = factors(POSSESSION, upTo = AcrLevel.LOA1),
+    stepData = SmsStepData,
 )
 
 internal val EnrollSms = SmsModule.enroll(
     ENROLL_SMS_TOOL_ID,
     hint = Text("Code an eine Telefonnummer"),
     claims = setOf(PHONE_NUMBER),
+    changeable = true,
 )
 internal val AuthSms = SmsModule.login(AUTH_SMS_TOOL_ID, hint = Text("Code an die hinterlegte Telefonnummer"))
 internal val AuthSmsLookup = SmsModule.lookupLogin(AUTH_SMS_LOOKUP_TOOL_ID, hint = Text("E-Mail-Adresse + SMS-Code"))

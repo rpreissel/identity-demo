@@ -3,7 +3,7 @@ package com.example.identity.tools.auth_password.internal.enrollpassword
 import com.example.identity.tools.auth_password.internal.PasswordPolicy
 
 import com.example.identity.tools.auth_password.DEMO_PASSWORD
-import com.example.identity.contract.tool_api.MissingFields
+import com.example.identity.tools.auth_password.api.v1.EnrollPasswordStep
 import com.example.identity.contract.tool_api.StepData
 
 /**
@@ -29,7 +29,7 @@ internal object EnrollPasswordFlow {
     }
 
     /** Same derivation for start/patch/read - one place turns the state into `next.step`/`stepData`. */
-    fun describe(): Pair<String, StepData> = "enroll" to MissingFields(listOf("password"))
+    fun describe(replaces: Boolean): Pair<String, StepData> = "enroll" to EnrollPasswordStep(listOf("password"), replaces)
 
     /** The fixed demo password, so a tester never has to remember one - never part of the step. */
     fun demo(): Map<String, Any?> = mapOf("password" to DEMO_PASSWORD)

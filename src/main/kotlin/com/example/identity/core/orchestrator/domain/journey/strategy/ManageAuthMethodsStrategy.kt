@@ -14,6 +14,8 @@ import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.contract.tool_api.claims.AcrLevel
+import com.example.identity.core.account.AuthMethodView
 
 /**
  * Add or remove authentication methods on an already authenticated channel
@@ -44,6 +46,20 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
                 else -> gate(state, ctx) ?: freshness(state as ManageAuthMethodsState.Wish, ctx) ?: carryOut(state, ctx)
             }
 
+            is ManageAuthMethodsState.ChangeRequested ->
+                if (event is JourneyEvent.SubJourneyCancelled) Transition.Cancel
+                else changeTarget(state, ctx).let { target ->
+                    if (target == null) Transition.Abort(Text("Dieses Anmeldeverfahren lässt sich nicht ändern"))
+                    else gate(state, ctx, changeFloor(target, ctx)) ?: freshness(state, ctx) ?: carryOut(state, ctx)
+                }
+
+            is ManageAuthMethodsState.Changing -> when (event) {
+                is JourneyEvent.Abandoned -> Transition.Cancel
+                is JourneyEvent.Completed -> Transition.Perform(proofAction(event), resumeState = state)
+                // The new credential was adopted and replaced the old one.
+                else -> Transition.Authenticated
+            }
+
             is ManageAuthMethodsState.ConfirmationRequired -> when (event) {
                 is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
                 // Any active factor suffices; straight to the wish, without Action.AcceptProof.
@@ -70,6 +86,24 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
         ManageAuthMethodsState.AddRequested -> offerEnrollment(ctx)
         is ManageAuthMethodsState.RemoveRequested -> Transition.Perform(Action.RevokeAuthMethod(wish.methodInstanceId), resumeState = wish)
         is ManageAuthMethodsState.RetractAttributeRequested -> Transition.Perform(Action.RetractAttribute(wish.attributeType), resumeState = wish)
+        is ManageAuthMethodsState.ChangeRequested -> offerChange(wish, ctx)
+    }
+
+    /** The active instance [wish] names, if its method can be changed in place. */
+    private fun changeTarget(wish: ManageAuthMethodsState.ChangeRequested, ctx: JourneyContext): AuthMethodView? =
+        ctx.requireAccount().activeAuthenticationMethods
+            .firstOrNull { it.id == wish.methodInstanceId }
+            ?.takeIf { ctx.catalog.changeToolOf(it.method) != null }
+
+    /** A change never lowers the credential: the session must hold what the old one was enrolled under. */
+    private fun changeFloor(target: AuthMethodView, ctx: JourneyContext): AcrLevel =
+        AcrLevel.max(selfServiceAcrFloor(ctx.requireAccount()), AcrLevel.parse(target.enrolledUnderAcr) ?: AcrLevel.NONE)
+
+    private fun offerChange(wish: ManageAuthMethodsState.ChangeRequested, ctx: JourneyContext): Transition {
+        val tool = changeTarget(wish, ctx)?.let { ctx.catalog.changeToolOf(it.method) }
+        val offered = listOfNotNull(tool?.toolId).filter { it in ctx.availableTools }
+        return if (offered.isEmpty()) Transition.Abort(Text("Dieses Anmeldeverfahren lässt sich hier nicht ändern"))
+        else Transition.To(ManageAuthMethodsState.Changing(Offer(offered), wish.methodInstanceId))
     }
 
     /** Null once the session's latest proof is recent enough; else the re-confirmation, the wish in hand. */
@@ -92,9 +126,12 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
     }
 
     /** Null once the session already carries [selfServiceAcrFloor] and the caller may proceed. */
-    private fun gate(requested: ManageAuthMethodsState, ctx: JourneyContext): Transition? {
+    private fun gate(
+        requested: ManageAuthMethodsState,
+        ctx: JourneyContext,
+        requiredAcr: AcrLevel = selfServiceAcrFloor(ctx.requireAccount())
+    ): Transition? {
         val account = ctx.requireAccount()
-        val requiredAcr = selfServiceAcrFloor(account)
         if (ctx.policy.isSatisfied(ctx.evidence, requiredAcr, account)) return null
         return Transition.RequireSubJourney(
             AuthIntent.STEP_UP,

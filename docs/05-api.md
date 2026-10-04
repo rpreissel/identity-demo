@@ -429,6 +429,12 @@ unabhängig von `REGISTER` und `STEP_UP` ([Orchestrierung](04-orchestrierung.md)
   (`docs/03-tool-architektur.md`, `allowsMultipleInstances`). Die Antwort ist `409`, wenn das Konto
   danach das `requiredAcr` des Kanals nicht mehr erreichen könnte – sonst könnte sich jemand selbst
   aussperren. Das Widerrufen ist nicht auf Einträge des aufrufenden Geräts beschränkt.
+- `POST .../methods/{methodInstanceId}/changes` ändert einen aktiven Eintrag an Ort und Stelle: Das
+  `enroll-*`-Tool des Verfahrens läuft noch einmal, und der neue Eintrag ersetzt den alten, sobald
+  er fertig ist (neue `id`). Bis dahin gilt der alte weiter, auch nach einem Abbruch. Möglich ist
+  das nur für Einträge mit `changeable: true` in `GET .../methods` (`sms`, `password`); für andere
+  ist die Antwort `409`, für einen nicht aktiven Eintrag `404`. Das Tool nennt in `stepData`, dass
+  es ersetzt (`{"kind":"enroll-password","missingFields":["password"],"replaces":true}`).
 - `DELETE .../attributes/{attribute}` nimmt ein **Attribut des Kontos** zurück statt eines
   Credentials; das ist nur die bestätigte E-Mail-Adresse (`email`). Welches Attribut der Inhaber
   selbst zurücknehmen darf, sagt `AnchorRule.retractableByHolder`; Identitätsanker (`person_id`,
@@ -441,12 +447,14 @@ unabhängig von `REGISTER` und `STEP_UP` ([Orchestrierung](04-orchestrierung.md)
   das `requiredAcr` des Kanals drücken würden; die Meldung nennt, was dabei mitfallen würde.
   Zurücknehmen lassen sich nur Attribute, die dem Konto selbst gehören: Ein Stammdatenfeld gehört
   nicht uns, und ein Attribut eines Verfahrens verschwindet mit diesem Verfahren.
-- `POST .../enrollments`, `DELETE .../methods/{methodInstanceId}` und
+- `POST .../enrollments`, `POST .../methods/{methodInstanceId}/changes`,
+  `DELETE .../methods/{methodInstanceId}` und
   `DELETE .../attributes/{attribute}` verlangen zusätzlich, dass die aktuelle Sitzung die Schwelle
-  `selfServiceAcrFloor` erreicht hat (loa2, für ein nie identifiziertes Konto loa1). Reicht das
+  `selfServiceAcrFloor` erreicht hat (loa2, für ein nie identifiziertes Konto loa1). Das Ändern
+  verlangt außerdem mindestens das Niveau, unter dem der Eintrag eingerichtet wurde. Reicht das
   nicht, enthält die Antwort statt der Aktion einen Step-up-Schritt; danach ruft der Client den
   Endpunkt erneut auf.
-- Dieselben drei Aufrufe verlangen einen frischen Nachweis: Ist der jüngste Nachweis der Sitzung
+- Dieselben vier Aufrufe verlangen einen frischen Nachweis: Ist der jüngste Nachweis der Sitzung
   älter als fünf Minuten (`identity.policy.self-service-max-age`), enthält die Antwort statt der
   Aktion die erneute Bestätigung über ein **beliebiges** aktives `auth-*`-Verfahren, bei mehreren
   mit `next={"context":"auth","step":"selectMethod"}`. Mit dem Nachweis wird die verlangte Aktion

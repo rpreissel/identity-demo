@@ -4,7 +4,7 @@ import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.values.PhoneNumber
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import java.time.Instant
-import com.example.identity.contract.tool_api.MissingFields
+import com.example.identity.tools.auth_sms.api.v1.EnrollSmsStep
 import com.example.identity.contract.tool_api.StepData
 
 private const val STEP_ENROLL = "enroll"
@@ -22,7 +22,7 @@ internal sealed interface EnrollSmsState {
     val missingFields: List<String>
 
     /** Same derivation for start/patch/read - one place turns this state into `next.step`/`stepData`. */
-    fun describe(): Pair<String, StepData> = step to MissingFields(missingFields)
+    fun describe(replaces: Boolean): Pair<String, StepData> = step to EnrollSmsStep(missingFields, replaces)
 
     data object AwaitingPhoneNumber : EnrollSmsState {
         override val step = STEP_ENROLL

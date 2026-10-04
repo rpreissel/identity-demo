@@ -105,7 +105,7 @@ class ToolModule internal constructor(
     /**
      * `enroll-<method>`: creates a credential. [claims] are asserted on this tool's own authority.
      * [withoutUserStep]: see [Tool.withoutUserStep]. [optInOnly]: the credential is a consent
-     * without secret (e.g. `enroll-qr`) and proves nothing itself.
+     * without secret (e.g. `enroll-qr`) and proves nothing itself. [changeable]: see [Tool.changeable].
      */
     fun enroll(
         toolId: String,
@@ -115,10 +115,11 @@ class ToolModule internal constructor(
         startStep: String? = null,
         withoutUserStep: Text? = null,
         optInOnly: Boolean = false,
+        changeable: Boolean = false,
         name: Text? = null,
     ): Tool = register(
         toolId, ToolRole.ENROLLMENT, hint, name, startStep, claims, requires = requires,
-        withoutUserStep = withoutUserStep, provesNothing = optInOnly,
+        withoutUserStep = withoutUserStep, provesNothing = optInOnly, changeable = changeable,
     )
 
     /** `auth-<method>`: proves a credential of the account the channel already knows. */
@@ -150,12 +151,14 @@ class ToolModule internal constructor(
         requires: Set<ClaimRequirement> = emptySet(),
         withoutUserStep: Text? = null,
         provesNothing: Boolean = false,
+        changeable: Boolean = false,
     ): Tool = synchronized(registered) {
         check(!frozen) { "Tool '$toolId' registered after the catalog collected '$method': declare the tools of a module in its module file" }
         val expected = role.toolIdFor(method)
         require(toolId == expected.value) { "Tool '$toolId' in module '$method' must be called '$expected' ($role)" }
         require(registered.none { it.toolId == expected }) { "Module '$method' declares '$toolId' more than once" }
-        val tool = Tool(this, expected, role, name ?: this.name, hint, startStep, claims, vouchedBy, requires, withoutUserStep, provesNothing)
+        require(!changeable || !onePerDevice) { "'$toolId' cannot be changeable: a method with one credential per device adds an instance instead" }
+        val tool = Tool(this, expected, role, name ?: this.name, hint, startStep, claims, vouchedBy, requires, withoutUserStep, provesNothing, changeable)
         // Identity matching has no path for a KVNR a tool merely read: only the Personenverzeichnis vouches for one.
         require(tool.claims.none { it.attributeType == AttributeType.KVNR && it.source != ClaimSource.PERSON_DIRECTORY }) {
             "Only the Personenverzeichnis may vouch for a KVNR, but '$toolId' declares one from elsewhere"
@@ -214,6 +217,11 @@ class Tool internal constructor(
      * provides no factor and reports no `amr`.
      */
     private val provesNothing: Boolean,
+    /**
+     * Whether running this enrollment again is how the user changes the credential (a new
+     * password, a new number): the new instance then replaces the active one.
+     */
+    val changeable: Boolean = false,
 ) {
     /** The method's name, e.g. `"sms"`. */
     val method: String get() = module.method

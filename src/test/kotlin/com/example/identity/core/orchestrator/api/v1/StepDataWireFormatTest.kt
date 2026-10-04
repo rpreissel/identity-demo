@@ -24,6 +24,7 @@ class StepDataWireFormatTest : BehaviorSpec({
             kinds.keys shouldContainExactlyInAnyOrder listOf(
                 "missing-fields", "select-method", "message", "confirm", "failed-attempt",
                 "nect-redirect", "qr-pairing", "kobil-unlock", "kobil-otp", "kobil-activation",
+                "enroll-sms", "enroll-password",
             )
         }
     }

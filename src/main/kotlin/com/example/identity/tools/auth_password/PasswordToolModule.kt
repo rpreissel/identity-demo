@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_password
 
+import com.example.identity.tools.auth_password.api.v1.PasswordStepData
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.FactorType.KNOWLEDGE
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -39,6 +40,7 @@ internal val PasswordModule = toolModule(
     method = PasswordCredentialPort.METHOD,
     name = Text("Passwort"),
     proves = factors(KNOWLEDGE, upTo = AcrLevel.LOA1),
+    stepData = PasswordStepData,
 )
 
 internal val EnrollPassword = PasswordModule.enroll(
@@ -46,6 +48,7 @@ internal val EnrollPassword = PasswordModule.enroll(
     hint = Text("Eigenes Passwort festlegen"),
     claims = setOf(PASSWORD_EXISTS),
     requires = setOf(ClaimRequirement(AttributeType.EMAIL, ClaimTrust.PROVEN)),
+    changeable = true,
 )
 internal val AuthPassword = PasswordModule.login(AUTH_PASSWORD_TOOL_ID, hint = Text("Mit dem hinterlegten Passwort"))
 internal val AuthPasswordLookup = PasswordModule.lookupLogin(

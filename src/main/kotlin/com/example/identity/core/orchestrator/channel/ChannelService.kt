@@ -290,6 +290,23 @@ class ChannelService(
         startManage(channelSessionId, bindingKeyRef, ManageAuthMethodsState.RemoveRequested(methodInstanceId))
 
     /**
+     * Change an active credential in place: its enrollment runs again and the new instance replaces
+     * [methodInstanceId]. Only for a method whose enrollment is [com.example.identity.contract.tool_api.Tool.changeable];
+     * anything else is refused here, not inside the journey.
+     */
+    fun changeMethod(channelSessionId: ChannelSessionId, bindingKeyRef: String, methodInstanceId: String): ChannelResponse {
+        val channel = channelAccessGuard.requireChannel(channelSessionId, bindingKeyRef)
+        val target = channel.accountId?.let { accountService.findAccount(it) }?.activeAuthenticationMethods?.firstOrNull { it.id == methodInstanceId }
+            ?: throw OrchestratorException.notFound(Text("Dieses Anmeldeverfahren ist nicht aktiv"))
+        if (toolRegistry.changeToolOf(target.method) == null) {
+            throw OrchestratorException.invalidState(
+                Text("Das Verfahren '{method}' lässt sich nicht ändern; entfernen Sie es und richten Sie es neu ein", "method" to target.method)
+            )
+        }
+        return startManage(channelSessionId, bindingKeyRef, ManageAuthMethodsState.ChangeRequested(methodInstanceId))
+    }
+
+    /**
      * Withdraws an account-owned attribute through the same journey and gate as removing a method,
      * since it can take credentials with it. Only local anchors the holder may give up
      * (`AnchorRule.retractableByHolder`) qualify; an identity anchor does not. An unknown wire name

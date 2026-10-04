@@ -9,6 +9,10 @@ components:
         method can actually contribute right now, which can be lower than the tool''s own declared `maxAcr` if it was enrolled
         while the session had proven less.'
       properties:
+        changeable:
+          description: 'Whether the credential can be changed in place (POST .../methods/{id}/changes): a new password, a
+            new number.'
+          type: boolean
         effectiveAcr:
           description: min(enrolledUnderAcr, maxAcr) - what this method actually contributes today.
           example: loa1
@@ -436,6 +440,26 @@ components:
           example: Passwort!23
           type: string
       type: object
+    EnrollPasswordStep:
+      description: Waiting for the password to set; `replaces` says the account already has one.
+      properties:
+        kind:
+          enum:
+          - enroll-password
+          type: string
+        missingFields:
+          example:
+          - password
+          items:
+            type: string
+          type: array
+        replaces:
+          example: false
+          type: boolean
+      required:
+      - kind
+      - missingFields
+      - replaces
     EnrollSmsPatchRequest:
       properties:
         phoneNumber:
@@ -445,6 +469,26 @@ components:
           example: '123456'
           type: string
       type: object
+    EnrollSmsStep:
+      description: Waiting for the phone number or its TAN; `replaces` says the account already has a number.
+      properties:
+        kind:
+          enum:
+          - enroll-sms
+          type: string
+        missingFields:
+          example:
+          - phoneNumber
+          items:
+            type: string
+          type: array
+        replaces:
+          example: false
+          type: boolean
+      required:
+      - kind
+      - missingFields
+      - replaces
     ErrorResponse:
       description: |-
         Every error response has this shape. The HTTP status is fixed per `error` code:
@@ -980,6 +1024,8 @@ components:
       discriminator:
         mapping:
           confirm: '#/components/schemas/ConfirmStep'
+          enroll-password: '#/components/schemas/EnrollPasswordStep'
+          enroll-sms: '#/components/schemas/EnrollSmsStep'
           failed-attempt: '#/components/schemas/FailedAttemptStep'
           kobil-activation: '#/components/schemas/KobilActivationStep'
           kobil-otp: '#/components/schemas/KobilOtpStep'
@@ -992,6 +1038,8 @@ components:
         propertyName: kind
       oneOf:
       - $ref: '#/components/schemas/ConfirmStep'
+      - $ref: '#/components/schemas/EnrollPasswordStep'
+      - $ref: '#/components/schemas/EnrollSmsStep'
       - $ref: '#/components/schemas/FailedAttemptStep'
       - $ref: '#/components/schemas/KobilActivationStep'
       - $ref: '#/components/schemas/KobilOtpStep'
@@ -1656,6 +1704,59 @@ paths:
       - kc-peer-auth: [
           ]
       summary: Deactivate an authentication method instance
+      tags:
+      - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/methods/{methodInstanceId}/changes:
+    post:
+      description: Channel must already be AUTHENTICATED and the instance active and `changeable` (GET .../methods). Runs
+        the method's own enroll-* tool again; the new credential replaces this instance once it is complete, until then the
+        old one stays. Same gate as adding or removing a method, and never below the level the instance was enrolled under.
+        404 for an instance that is not active, 409 for a method that cannot be changed (one credential per device, or none
+        of its own).
+      operationId: changeMethod
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - in: path
+        name: methodInstanceId
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - sms
+                  - password
+                  state: AUTHENTICATED
+                next:
+                  step: enroll
+                  toolId: enroll-password
+                  type: tool
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+          description: The password is about to be changed - its enrollment is the one tool on offer.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Change an authentication method in place
       tags:
       - Channels
   /orchestrator/api/v1/channels/{channelSessionId}/peer-logins:

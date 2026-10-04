@@ -1,7 +1,11 @@
 # Idee: Anmeldeverfahren ändern und frischer Nachweis in der Verwaltung
 
-Status: **Konzept, nicht umgesetzt** (Stand 2026-10-04). Das Dokument beschreibt zwei
-zusammengehörige Erweiterungen von `MANAGE_AUTH_METHODS`: ein eingerichtetes Verfahren ändern
+Status: **im Backend umgesetzt** (Stand 2026-10-04): die Frische-Regel und der Wunsch „Ändern“
+samt Endpunkt, maßgeblich sind [`MANAGE_AUTH_METHODS`](../journeys/manage-auth-methods.md) und
+[`DELETE_ACCOUNT`](../journeys/delete-account.md). Offen ist Abschnitt 4, „Ändern“ in App und
+Web.
+
+Das Dokument beschreibt zwei zusammengehörige Erweiterungen von `MANAGE_AUTH_METHODS`: ein eingerichtetes Verfahren ändern
 (neues Passwort, neue Telefonnummer) und einen frischen Nachweis verlangen, wenn der letzte
 Nachweis der Sitzung älter als fünf Minuten ist. Dieselbe Frist gilt für `DELETE_ACCOUNT`.
 

@@ -10,7 +10,7 @@ import com.example.identity.tools.auth_password.internal.PasswordHasher
 
 import com.example.identity.tools.auth_password.DEMO_PASSWORD
 import com.example.identity.contract.tool_api.EnrollmentRef
-import com.example.identity.contract.tool_api.MissingFields
+import com.example.identity.tools.auth_password.api.v1.EnrollPasswordStep
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
@@ -50,9 +50,24 @@ class EnrollPasswordToolHandlerTest : BehaviorSpec({
             then("it asks for the password at step enroll, offering the demo password") {
                 outcome shouldBe ToolOutcome.InProgress(
                     nextStep = "enroll",
-                    stepData = MissingFields(listOf("password")),
+                    stepData = EnrollPasswordStep(listOf("password"), replaces = false),
                     demo = mapOf("password" to DEMO_PASSWORD),
                 )
+            }
+        }
+    }
+
+    given("an account that already has a password") {
+        val f = Fixture()
+        val toolSessionId = ToolSessionId(UUID.randomUUID())
+
+        `when`("a tool session starts and is read again") {
+            val started = f.handler.start(toolSessionId, replaces = true)
+            val read = f.handler.read(toolSessionId)
+
+            then("both say that the new password replaces the old one") {
+                (started as ToolOutcome.InProgress).stepData shouldBe EnrollPasswordStep(listOf("password"), replaces = true)
+                (read as ToolOutcome.InProgress).stepData shouldBe EnrollPasswordStep(listOf("password"), replaces = true)
             }
         }
     }

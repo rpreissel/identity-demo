@@ -2,6 +2,7 @@ package com.example.identity.tools.auth_password.api.v1
 
 import com.example.identity.tools.auth_password.ENROLL_PASSWORD_TOOL_ID
 import com.example.identity.tools.auth_password.EnrollPassword
+import com.example.identity.tools.auth_password.PasswordModule
 import com.example.identity.tools.auth_password.internal.enrollpassword.EnrollPasswordToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolController
@@ -65,7 +66,7 @@ class EnrollPasswordToolController(
         context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val outcome = handler.start(context.toolSessionId)
+        val outcome = handler.start(context.toolSessionId, replaces = toolJourney.findEnrollment(context, PasswordModule) != null)
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 

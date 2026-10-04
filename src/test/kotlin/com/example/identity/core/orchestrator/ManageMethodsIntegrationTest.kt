@@ -7,6 +7,7 @@ import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import org.springframework.http.HttpStatus
 import java.util.UUID
 import org.springframework.web.client.HttpClientErrorException
@@ -209,6 +210,81 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
 
                 then("there is no confirmed address left, so it is not found") {
                     shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.NOT_FOUND
+                }
+            }
+        }
+
+        given("an authenticated account changing a method in place") {
+            fun changes(channelSessionId: String, methodInstanceId: String) =
+                post("/orchestrator/api/v1/channels/$channelSessionId/methods/$methodInstanceId/changes")
+
+            `when`("changing the password") {
+                val channelSessionId = loginAsSeededAccount()
+                val before = methodsOf(channelSessionId)
+                val passwordId = before.first { it["method"] == "password" }["id"] as String
+
+                val started = changes(channelSessionId, passwordId)
+                val activated = post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-password")
+                val untilDone = methodsOf(channelSessionId)
+                val toolSessionId = activated.nextRaw()["toolSessionId"] as String
+                val completed = patch("/orchestrator/api/v1/tools/$toolSessionId/enroll-password", """{"password":"another-correct-horse"}""")
+                val after = methodsOf(channelSessionId)
+
+                then("the list says which methods can be changed") {
+                    before.associate { it["method"] to it["changeable"] } shouldBe mapOf("sms" to true, "password" to true)
+                }
+                then("the password enrollment is the one tool on offer, though the method is active") {
+                    started.next() shouldBe mapOf("type" to "tool", "toolId" to "enroll-password", "step" to "enroll")
+                }
+                then("the tool says that it replaces the active password") {
+                    activated.stepData()["kind"] shouldBe "enroll-password"
+                    activated.stepData()["replaces"] shouldBe true
+                }
+                then("the old entry stays until the new one is complete") {
+                    untilDone shouldBe before
+                }
+                then("the new password replaces it: one active entry, a new id") {
+                    completed.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
+                    after.methodNames() shouldContainExactlyInAnyOrder listOf("sms", "password")
+                    after.first { it["method"] == "password" }["id"] shouldNotBe passwordId
+                }
+            }
+
+            `when`("the change is abandoned in the tool") {
+                val channelSessionId = loginAsSeededAccount()
+                val before = methodsOf(channelSessionId)
+                val passwordId = before.first { it["method"] == "password" }["id"] as String
+                changes(channelSessionId, passwordId)
+                post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-password")
+
+                val abandoned = delete("/orchestrator/api/v1/channels/$channelSessionId/journey")
+                val after = methodsOf(channelSessionId)
+
+                then("the channel is back at AUTHENTICATED and the old password is still the active one") {
+                    abandoned.channel()["state"] shouldBe "AUTHENTICATED"
+                    after shouldBe before
+                }
+            }
+
+            `when`("the instance is not active") {
+                val channelSessionId = loginAsSeededAccount()
+                val result = runCatching { changes(channelSessionId, UUID.randomUUID().toString()) }
+
+                then("it is not found") {
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.NOT_FOUND
+                }
+            }
+
+            `when`("the method cannot be changed (email has no credential of its own)") {
+                val channelSessionId = loginAsSeededAccount()
+                startManage(channelSessionId)
+                post("/orchestrator/api/v1/channels/$channelSessionId/tools/enroll-email")
+                val email = methodsOf(channelSessionId).first { it["method"] == "email" }
+                val result = runCatching { changes(channelSessionId, email["id"] as String) }
+
+                then("the list says so and the call is refused") {
+                    email["changeable"] shouldBe false
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
                 }
             }
         }

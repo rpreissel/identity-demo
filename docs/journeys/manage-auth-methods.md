@@ -8,8 +8,10 @@ stateDiagram-v2
   [*] --> AddRequested: Verfahren hinzufügen
   [*] --> RemoveRequested: Verfahren entfernen
   [*] --> RetractAttributeRequested: Attribut zurücknehmen (DELETE .../attributes/email)
+  [*] --> ChangeRequested: Verfahren ändern (POST .../methods/{id}/changes)
 
   AddRequested --> AddRequested: Step-up nötig, danach erneut geprüft
+  ChangeRequested --> ChangeRequested: Step-up nötig, danach erneut geprüft
   RemoveRequested --> RemoveRequested: Step-up nötig, danach erneut geprüft
   RetractAttributeRequested --> RetractAttributeRequested: Step-up nötig, danach erneut geprüft
 
@@ -21,6 +23,11 @@ stateDiagram-v2
   AddRequested --> ConfirmationRequired: letzter Nachweis älter als die Frist
   RemoveRequested --> ConfirmationRequired: letzter Nachweis älter als die Frist
   RetractAttributeRequested --> ConfirmationRequired: letzter Nachweis älter als die Frist
+  ChangeRequested --> ConfirmationRequired: letzter Nachweis älter als die Frist
+  ChangeRequested --> Changing: Niveau des alten Eintrags erreicht, Nachweis frisch
+  ConfirmationRequired --> Changing: Nachweis erbracht, Wunsch war Ändern
+  Changing --> [*]: Tool abgebrochen -> Cancel, der alte Eintrag bleibt
+  Changing --> Finished: neu eingerichtet, der neue Eintrag ersetzt den alten
   ConfirmationRequired --> ConfirmationRequired: ein Tool abgelehnt, weitere übrig
   ConfirmationRequired --> [*]: alle abgelehnt -> Cancel
   ConfirmationRequired --> Enrolling: Nachweis erbracht, Wunsch war Hinzufügen
@@ -36,12 +43,30 @@ stateDiagram-v2
   end note
 ```
 
-**Wunsch und Wartezustand zugleich.** `AddRequested`, `RemoveRequested` und
-`RetractAttributeRequested` halten den Wunsch des Nutzers fest. `RemoveRequested` enthält dafür die
-`methodInstanceId`, `RetractAttributeRequested` den `attributeType`. Derselbe Zustand gilt vor der
+**Wunsch und Wartezustand zugleich.** `AddRequested`, `ChangeRequested`, `RemoveRequested` und
+`RetractAttributeRequested` halten den Wunsch des Nutzers fest. `ChangeRequested` und
+`RemoveRequested` enthalten dafür die `methodInstanceId`, `RetractAttributeRequested` den
+`attributeType`. Derselbe Zustand gilt vor der
 Prüfung gegen `selfServiceAcrFloor` und während eines Step-ups, auf den er wartet. Lehnt der Nutzer
 den Step-up ab, endet die Journey (`Cancel`); derselbe Step-up wird nicht erneut angeboten.
 `Enrolling` enthält das Angebot und die bisherigen Ablehnungen.
+
+**Ändern ist erneutes Einrichten.** `ChangeRequested` nennt den Eintrag, der ersetzt werden soll.
+`Changing` bietet genau ein Tool an: das `enroll-*`-Tool dieses Verfahrens. Der neue Eintrag
+ersetzt den alten erst, wenn er fertig ist (`Action.AdoptCredential`); bricht der Nutzer ab, endet
+die Journey, und der alte Eintrag gilt weiter. Ein anderes Verfahren wird nicht angeboten.
+
+- **Änderbar** ist ein Verfahren, dessen Enroll-Tool das sagt (`enroll(…, changeable = true)`):
+  `sms` und `password`. Verfahren mit einem Credential je Gerät (`device`, `kobil`) werden
+  hinzugefügt oder entfernt; `email` und `qr` haben nichts, was ein neuer Lauf ersetzen könnte. Die
+  Liste der Verfahren trägt das Kennzeichen (`changeable`), ein Aufruf für ein anderes Verfahren
+  wird mit `409` abgelehnt.
+- **Niveau.** Die Schwelle ist das höhere von `selfServiceAcrFloor` und dem `enrolledUnderAcr` des
+  alten Eintrags. Ein Ändern stuft also nie herab: Reicht die Sitzung nicht, folgt der Step-up, und
+  wenn kein Verfahren das Niveau erreicht, dessen Angebot zur Re-Identifizierung.
+- **Was das Tool weiß.** Das Enroll-Tool kennt den Wunsch nicht. Es fragt beim Start, ob das Konto
+  schon ein Credential seines Verfahrens hat (`ToolJourney.findEnrollment`), und meldet das in
+  seinem `stepData` (`replaces`).
 
 **Frischer Nachweis.** Nach der Schwelle prüft jeder Wunsch, ob der jüngste Nachweis der Sitzung
 höchstens fünf Minuten alt ist (`AuthPolicy.hasFreshProof`, wie bei

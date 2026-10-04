@@ -101,6 +101,12 @@ interface ToolJourney {
      */
     fun requireEnrollment(context: ToolContext, module: ToolModule): EnrollmentRef
 
+    /**
+     * [requireEnrollment] without the refusal: `null` when the account in hand has no such
+     * credential, or nobody is known yet. Lets an enrollment say that it replaces one.
+     */
+    fun findEnrollment(context: ToolContext, module: ToolModule): EnrollmentRef?
+
     /** @return whether [context]'s toolId is still the journey's current tool. */
     fun isCurrentTool(context: ToolContext): Boolean
 

@@ -33,6 +33,25 @@ sealed interface ManageAuthMethodsState : JourneyState {
         override val selectionContext: String get() = "enrollment"
     }
 
+    /** The wish to change one credential in place (a new password, a new number), gated like the others. */
+    data class ChangeRequested(val methodInstanceId: String) : Wish, ToolFreeState {
+        override val selectionContext: String get() = "enrollment"
+    }
+
+    /**
+     * The one enrollment that replaces [methodInstanceId] is running. Backing out ends the wish;
+     * the old credential stays until the new one is adopted.
+     */
+    data class Changing(
+        override val offer: Offer,
+        val methodInstanceId: String
+    ) : ManageAuthMethodsState, OfferingState {
+        override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val selectionContext: String get() = "enrollment"
+        override val selectionTitle: Text get() = Text("Anmeldeverfahren ändern")
+        override val selectionDescription: Text get() = Text("Sie richten dieses Verfahren neu ein. Der bisherige Eintrag wird mit dem Abschluss ersetzt.")
+    }
+
     /**
      * The session's latest proof is too old for [wish]: re-prove any one active factor first
      * ([com.example.identity.core.orchestrator.domain.journey.CandidateTools.forReconfirmation]).

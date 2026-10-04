@@ -323,6 +323,110 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
         }
     }
 
+    given("ChangeRequested for the password, the session carries loa2 with a recent proof") {
+        val acc = account(method("sms", AcrLevel.LOA2), method("password", AcrLevel.LOA2), method("device", AcrLevel.LOA2))
+        val theCtx = ctx(account = acc, evidence = loa2Evidence, acrFloor = AcrLevel.LOA1)
+        val wish = ManageAuthMethodsState.ChangeRequested("password-instance")
+
+        `when`("started") {
+            val transition = strategy.transition(wish, JourneyEvent.Started, theCtx)
+            then("offers exactly the password enrollment, though the method is already active") {
+                val next = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<ManageAuthMethodsState.Changing>()
+                next.offered shouldBe listOf(ToolId("enroll-password"))
+                next.methodInstanceId shouldBe "password-instance"
+            }
+        }
+
+        `when`("the wish names a device instance") {
+            val transition = strategy.transition(ManageAuthMethodsState.ChangeRequested("device-instance"), JourneyEvent.Started, theCtx)
+            then("aborts - a method with one credential per device is added or removed, never changed") {
+                transition.shouldBeInstanceOf<Transition.Abort>()
+            }
+        }
+
+        `when`("the wish names an instance that is not active") {
+            val transition = strategy.transition(ManageAuthMethodsState.ChangeRequested("gone"), JourneyEvent.Started, theCtx)
+            then("aborts") {
+                transition.shouldBeInstanceOf<Transition.Abort>()
+            }
+        }
+
+        `when`("resumed after the gate's own STEP_UP was declined (SubJourneyCancelled)") {
+            val transition = strategy.transition(wish, JourneyEvent.SubJourneyCancelled(AuthIntent.STEP_UP), theCtx)
+            then("gives up on the wish") {
+                transition shouldBe Transition.Cancel
+            }
+        }
+    }
+
+    given("ChangeRequested for a password enrolled under loa2, a never-identified account sitting at loa1") {
+        val acc = account(method("sms", AcrLevel.LOA1), method("password", AcrLevel.LOA2), personId = null)
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
+        val wish = ManageAuthMethodsState.ChangeRequested("password-instance")
+
+        `when`("started") {
+            val transition = strategy.transition(wish, JourneyEvent.Started, theCtx)
+            then("demands the level the old password was enrolled under - a change never lowers it") {
+                transition shouldBe
+                    Transition.RequireSubJourney(
+                        AuthIntent.STEP_UP,
+                        seedWith = StepUpState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1),
+                        resumeWith = wish
+                    )
+            }
+        }
+    }
+
+    given("ChangeRequested, the session carries loa2 but its proof is six minutes old") {
+        val acc = account(method("sms", AcrLevel.LOA2), method("password", AcrLevel.LOA2))
+        val theCtx = ctx(account = acc, evidence = loa2Evidence.provenAt(TEST_NOW.minus(Duration.ofMinutes(6))), acrFloor = AcrLevel.LOA1)
+        val wish = ManageAuthMethodsState.ChangeRequested("password-instance")
+
+        `when`("started") {
+            val transition = strategy.transition(wish, JourneyEvent.Started, theCtx)
+            then("asks for a fresh proof first - the password to be replaced is one way to give it") {
+                val next = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<ManageAuthMethodsState.ConfirmationRequired>()
+                next.offered shouldContainExactlyInAnyOrder listOf(ToolId("auth-sms"), ToolId("auth-password"))
+                next.wish shouldBe wish
+            }
+        }
+
+        `when`("a factor is re-proven") {
+            val state = ManageAuthMethodsState.ConfirmationRequired(Offer(listOf(ToolId("auth-password"))), wish)
+            val event = JourneyEvent.Completed(tool("auth-password"), ToolOutcome.Completed.Authenticated(amr = listOf("password")))
+            val transition = strategy.transition(state, event, theCtx)
+            then("goes on to the change") {
+                transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<ManageAuthMethodsState.Changing>()
+            }
+        }
+    }
+
+    given("Changing the password") {
+        val state = ManageAuthMethodsState.Changing(Offer(listOf(ToolId("enroll-password"))), "password-instance")
+
+        `when`("the tool is abandoned") {
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("enroll-password")), ctx())
+            then("cancels - nothing else is offered, the old password stays") {
+                transition shouldBe Transition.Cancel
+            }
+        }
+
+        `when`("the new password is enrolled") {
+            val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("password", "ref"))
+            val transition = strategy.transition(state, JourneyEvent.Completed(tool("enroll-password"), outcome), ctx())
+            then("adopts the credential, which replaces the active one") {
+                transition shouldBe Transition.Perform(Action.AdoptCredential(tool("enroll-password"), outcome), resumeState = state)
+            }
+        }
+
+        `when`("resumed after adopting (ActionCompleted)") {
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, ctx())
+            then("finishes") {
+                transition shouldBe Transition.Authenticated
+            }
+        }
+    }
+
     given("Enrolling, several candidates offered") {
         val state = ManageAuthMethodsState.Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))))
 

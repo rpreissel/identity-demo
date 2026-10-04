@@ -2,6 +2,7 @@ package com.example.identity.tools.auth_sms.api.v1
 
 import com.example.identity.tools.auth_sms.ENROLL_SMS_TOOL_ID
 import com.example.identity.tools.auth_sms.EnrollSms
+import com.example.identity.tools.auth_sms.SmsModule
 import com.example.identity.tools.auth_sms.internal.enrollsms.EnrollSmsToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolController
@@ -66,7 +67,7 @@ class EnrollSmsToolController(
         context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val outcome = handler.start(context.toolSessionId)
+        val outcome = handler.start(context.toolSessionId, replaces = toolJourney.findEnrollment(context, SmsModule) != null)
         return toolJourney.activated(context, outcome, uriBuilder)
     }
 

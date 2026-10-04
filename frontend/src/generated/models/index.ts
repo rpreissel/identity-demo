@@ -7,6 +7,12 @@
  */
 export interface ActiveMethodView {
     /**
+     * Whether the credential can be changed in place (POST .../methods/{id}/changes): a new password, a new number.
+     * @type {boolean}
+     * @memberof ActiveMethodView
+     */
+    changeable?: boolean;
+    /**
      * min(enrolledUnderAcr, maxAcr) - what this method actually contributes today.
      * @type {string}
      * @memberof ActiveMethodView
@@ -704,6 +710,41 @@ export interface EnrollPasswordPatchRequest {
     password?: string;
 }
 /**
+ * Waiting for the password to set; `replaces` says the account already has one.
+ * @export
+ * @interface EnrollPasswordStep
+ */
+export interface EnrollPasswordStep {
+    /**
+     * 
+     * @type {string}
+     * @memberof EnrollPasswordStep
+     */
+    kind: EnrollPasswordStepKindEnum;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof EnrollPasswordStep
+     */
+    missingFields: Array<string>;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof EnrollPasswordStep
+     */
+    replaces: boolean;
+}
+
+
+/**
+ * @export
+ */
+export const EnrollPasswordStepKindEnum = {
+    enroll_password: 'enroll-password'
+} as const;
+export type EnrollPasswordStepKindEnum = typeof EnrollPasswordStepKindEnum[keyof typeof EnrollPasswordStepKindEnum];
+
+/**
  * 
  * @export
  * @interface EnrollSmsPatchRequest
@@ -722,6 +763,41 @@ export interface EnrollSmsPatchRequest {
      */
     tan?: string;
 }
+/**
+ * Waiting for the phone number or its TAN; `replaces` says the account already has a number.
+ * @export
+ * @interface EnrollSmsStep
+ */
+export interface EnrollSmsStep {
+    /**
+     * 
+     * @type {string}
+     * @memberof EnrollSmsStep
+     */
+    kind: EnrollSmsStepKindEnum;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof EnrollSmsStep
+     */
+    missingFields: Array<string>;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof EnrollSmsStep
+     */
+    replaces: boolean;
+}
+
+
+/**
+ * @export
+ */
+export const EnrollSmsStepKindEnum = {
+    enroll_sms: 'enroll-sms'
+} as const;
+export type EnrollSmsStepKindEnum = typeof EnrollSmsStepKindEnum[keyof typeof EnrollSmsStepKindEnum];
+
 /**
  * Every error response has this shape. The HTTP status is fixed per `error` code:
  * 
@@ -1657,7 +1733,7 @@ export type SelectMethodStepKindEnum = typeof SelectMethodStepKindEnum[keyof typ
  * What the current step needs to render. `kind` names the shape; see the mapping on this schema for the ones this deployment can produce.
  * @export
  */
-export type StepData = { kind: 'confirm' } & ConfirmStep | { kind: 'failed-attempt' } & FailedAttemptStep | { kind: 'kobil-activation' } & KobilActivationStep | { kind: 'kobil-otp' } & KobilOtpStep | { kind: 'kobil-unlock' } & KobilUnlockStep | { kind: 'message' } & MessageStep | { kind: 'missing-fields' } & MissingFields | { kind: 'nect-redirect' } & NectRedirectStep | { kind: 'qr-pairing' } & QrPairingStep | { kind: 'select-method' } & SelectMethodStep;
+export type StepData = { kind: 'confirm' } & ConfirmStep | { kind: 'enroll-password' } & EnrollPasswordStep | { kind: 'enroll-sms' } & EnrollSmsStep | { kind: 'failed-attempt' } & FailedAttemptStep | { kind: 'kobil-activation' } & KobilActivationStep | { kind: 'kobil-otp' } & KobilOtpStep | { kind: 'kobil-unlock' } & KobilUnlockStep | { kind: 'message' } & MessageStep | { kind: 'missing-fields' } & MissingFields | { kind: 'nect-redirect' } & NectRedirectStep | { kind: 'qr-pairing' } & QrPairingStep | { kind: 'select-method' } & SelectMethodStep;
 /**
  * A text reference: look `key` up in the texts bundle (GET .../texts/{lang}), fill `{name}` placeholders from `args` (as is) or `texts` (resolved the same way, several joined with ", ").
  * @export

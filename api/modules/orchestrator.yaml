@@ -1525,6 +1525,59 @@ paths:
       summary: Deactivate an authentication method instance
       tags:
       - Channels
+  /orchestrator/api/v1/channels/{channelSessionId}/methods/{methodInstanceId}/changes:
+    post:
+      description: Channel must already be AUTHENTICATED and the instance active and `changeable` (GET .../methods). Runs
+        the method's own enroll-* tool again; the new credential replaces this instance once it is complete, until then the
+        old one stays. Same gate as adding or removing a method, and never below the level the instance was enrolled under.
+        404 for an instance that is not active, 409 for a method that cannot be changed (one credential per device, or none
+        of its own).
+      operationId: changeMethod
+      parameters:
+      - in: path
+        name: channelSessionId
+        required: true
+        schema:
+          format: uuid
+          type: string
+      - in: path
+        name: methodInstanceId
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                channel:
+                  channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  currentAcr: loa2
+                  currentAmr:
+                  - sms
+                  - password
+                  state: AUTHENTICATED
+                next:
+                  step: enroll
+                  toolId: enroll-password
+                  type: tool
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
+          description: The password is about to be changed - its enrollment is the one tool on offer.
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      security:
+      - dpop: [
+          ]
+      - kc-peer-auth: [
+          ]
+      summary: Change an authentication method in place
+      tags:
+      - Channels
   /orchestrator/api/v1/channels/{channelSessionId}/peer-logins:
     post:
       description: Channel must already be AUTHENTICATED (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN). Same AuthIntent.CONFIRM_PEER_LOGIN

@@ -649,8 +649,8 @@ Resume-Pfad ein einmal erreichtes `loa2` über jeden neuen Durchlauf bis zum Sit
 Neben dem Niveau gibt es eine zweite, kürzere Frist: `AuthPolicy.hasFreshProof` sagt, ob der
 jüngste Nachweis der Sitzung jünger ist als `identity.policy.self-service-max-age` (5 Minuten). Das
 Niveau des Nachweises spielt dabei keine Rolle, ein Nachweis ohne Zeitpunkt ist nie frisch.
-`DELETE_ACCOUNT` und jeder Wunsch von `MANAGE_AUTH_METHODS` (hinzufügen, entfernen, Attribut
-zurücknehmen) handeln nur mit einem frischen Nachweis und verlangen sonst eine erneute Bestätigung
+`DELETE_ACCOUNT` und jeder Wunsch von `MANAGE_AUTH_METHODS` (hinzufügen, ändern, entfernen,
+Attribut zurücknehmen) handeln nur mit einem frischen Nachweis und verlangen sonst eine erneute Bestätigung
 ([`DELETE_ACCOUNT`](journeys/delete-account.md),
 [`MANAGE_AUTH_METHODS`](journeys/manage-auth-methods.md)). Weil wiederhergestellte Nachweise
 ihren Zeitpunkt behalten, macht ein neuer Durchlauf im Web einen alten Nachweis nicht wieder frisch.
