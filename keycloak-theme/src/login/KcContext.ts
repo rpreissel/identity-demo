@@ -57,6 +57,7 @@ export type KcContextExtensionPerPage = {
   }
   'orchestrator-confirm.ftl': {
     pageTitle?: string
+    description?: string
     confirmLabel?: string
     cancelLabel?: string
   }

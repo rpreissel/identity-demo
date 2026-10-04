@@ -3,9 +3,9 @@ package com.example.identity.core.orchestrator.domain.journey.state
 import com.example.identity.contract.texts.Text
 
 /**
- * The single state of `WEB_SELECT_METHOD` (docs/04-orchestrierung.md Abschnitt 3): offers every
- * Keycloak-usable tool as one `selectMethod` step, narrowed by [declined] until a proof closes the gap or
- * nothing is left.
+ * The states of `WEB_SELECT_METHOD` (docs/journeys/web-select-method.md): [SelectMethod] offers every
+ * Keycloak-usable tool as one `selectMethod` step, narrowed by its declined tools until a proof closes
+ * the gap or nothing is left; [AfterIdentification] is where a step-up returns from `RE_IDENTIFY`.
  */
 sealed interface WebSelectMethodState : JourneyState {
 
@@ -33,5 +33,16 @@ sealed interface WebSelectMethodState : JourneyState {
                 Text("Wählen Sie, wie Sie sich anmelden möchten.")
             }
         override val logDetail: Map<String, Any?> get() = mapOf("accountAlreadyKnown" to accountAlreadyKnown)
+    }
+
+    /**
+     * Where a step-up resumes after `RE_IDENTIFY` (docs/journeys/web-select-method.md): no offer of
+     * its own, because the fresh identification may already close the gap and the offer has to be
+     * built anew.
+     */
+    data class AfterIdentification(
+        override val accountAlreadyKnown: Boolean
+    ) : WebSelectMethodState, ToolFreeState {
+        override val selectionContext: String get() = "auth"
     }
 }

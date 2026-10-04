@@ -101,6 +101,7 @@ internal object DemoStepReason {
         ConfirmPeerLoginState.OfferLogout -> Text("Der Browser ist freigegeben. Diese Sitzung wurde nur dafür eröffnet - deshalb die Frage, ob sie offen bleiben soll.")
 
         is WebSelectMethodState.SelectMethod -> Text("Die Anmeldeseite verlangt einen Nachweis - angeboten wird jedes Verfahren, das im Browser geht.")
+        is WebSelectMethodState.AfterIdentification -> Text("Zurück von der erneuten Identifizierung: Reicht sie für das verlangte Niveau, ist die Anmeldung fertig, sonst wird neu angeboten.")
 
         // AnswerableState is not sealed, so the compiler asks for this case; it only catches a
         // yes/no state added without a purpose of its own.

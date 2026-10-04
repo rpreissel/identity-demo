@@ -7,12 +7,14 @@ Die erneute Identifizierung ist eine gemeinsam genutzte Sub-Journey. Sie wird vo
 angefordert:
 
 - [`FAST_ACCESS`](fast-access.md), [`LOOKUP_LOGIN`](lookup-login.md) und [`STEP_UP`](step-up.md);
+- [`WEB_SELECT_METHOD`](web-select-method.md) beim Step-up im Web-Kanal, wenn kein Verfahren des Kontos
+  die Lücke schließen kann;
 - [`REGISTER`](register.md), und zwar über `AuthEnrollCore.offerEnrollment`, wenn ein neues
   Verfahren erst nach einer erneuten Identifizierung eingerichtet werden darf;
 - dem Experiment „Erst Anmeldeverfahren einrichten“ (`RegisterEnrollFirstStrategy`, siehe
   [`REGISTER`](register.md)).
 
-Es gibt nur diese eine Umsetzung statt fünf fast gleicher. `RE_IDENTIFY` ist nie der Einstieg einer
+Es gibt nur diese eine Umsetzung statt sechs fast gleicher. `RE_IDENTIFY` ist nie der Einstieg einer
 Journey; man erreicht sie nur über `Transition.RequireSubJourney`.
 
 ```mermaid
@@ -33,9 +35,9 @@ erneute Identifizierung beginnt also nie unbemerkt. `Identifying` enthält `targ
 Niveau `loa2`, `ident-eid` und `ident-nect` erreichen `loa3`.
 
 **Eigener Text für das Experiment.** Der Standardtext („Sicherheitsniveau mit den vorhandenen
-Anmeldeverfahren nicht erreichbar“) passt nur für `FAST_ACCESS`, `LOOKUP_LOGIN` und `STEP_UP`. Für
-das abschließende Angebot von `RegisterEnrollFirstStrategy` ist er falsch. Deshalb hat
-`ReIdentifyState` ein optionales Feld `wording` vom Typ `Wording` (heute nur
+Anmeldeverfahren nicht erreichbar“) passt nur für `FAST_ACCESS`, `LOOKUP_LOGIN`, `STEP_UP` und
+`WEB_SELECT_METHOD`. Für das abschließende Angebot von `RegisterEnrollFirstStrategy` ist er falsch.
+Deshalb hat `ReIdentifyState` ein optionales Feld `wording` vom Typ `Wording` (heute nur
 `OPTIONAL_IDENTIFICATION`). Es wählt Titel, Beschreibung und Knopftexte von `OfferReIdent` und
 `Identifying`. Gesetzt wird es über `forSubJourney(targetAcr, startingAcr, wording)`, und nur
 dieser eine Aufrufer belegt es. Bleibt es `null`, gilt der Standardtext. Das

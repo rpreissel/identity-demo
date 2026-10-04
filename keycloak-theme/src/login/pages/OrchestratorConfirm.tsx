@@ -3,13 +3,14 @@ import { Layout } from '../Layout'
 import { t } from '../../texts'
 
 /**
- * `orchestrator-confirm.ftl`: the generic yes/no prompt of every AnswerableState - title and labels
- * come resolved from the orchestrator's prompt, the defaults only when it sent none.
+ * `orchestrator-confirm.ftl`: the generic yes/no prompt of every AnswerableState - title, description
+ * and labels come resolved from the orchestrator's prompt, the defaults only when it sent none.
  */
 export function OrchestratorConfirm({ kcContext }: { kcContext: PageContext<'orchestrator-confirm.ftl'> }) {
-  const { url, pageTitle: title, confirmLabel, cancelLabel } = kcContext
+  const { url, pageTitle: title, description, confirmLabel, cancelLabel } = kcContext
   return (
     <Layout kcContext={kcContext} title={title ?? t('Bestätigung erforderlich')}>
+      {description && <p className="orc-subtitle">{description}</p>}
       <form id="kc-orchestrator-confirm-form" action={url.loginAction} method="post">
         <div className="orc-actions">
           <button className="orc-button orc-button-primary" type="submit" name="orchestrator_answer" value="accept">

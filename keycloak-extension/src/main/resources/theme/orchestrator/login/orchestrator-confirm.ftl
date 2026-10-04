@@ -5,6 +5,9 @@
         ${pageTitle!t.of("Bestätigung erforderlich")}
     <#elseif section = "form">
         <@pageNotes.notes/>
+        <#if description??>
+            <p class="orchestrator-subtitle">${description}</p>
+        </#if>
         <form id="kc-orchestrator-confirm-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
             <div class="orchestrator-actions">
                 <button class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!}"

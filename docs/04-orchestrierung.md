@@ -256,7 +256,7 @@ flowchart LR
 | `FAST_ACCESS` | So schnell wie möglich auf diesem Gerät angemeldet sein, und so, dass es auch künftig klappt | `POST /app/channels` (Standard) |
 | `REGISTER` | Sich bewusst frisch identifizieren, auch auf einem schon verknüpften Gerät | `POST /app/channels` mit `intent=register` (App) bzw. `PATCH /kc/channels/{id}` mit `intent=register` (Web, siehe unten) |
 | `LOOKUP_LOGIN` | Ein bestehendes Konto ohne Geräteverknüpfung anmelden (klassischer Web-Login) | `POST /app/channels` mit `intent=lookup_login` |
-| `WEB_SELECT_METHOD` | Alle im Web-Kanal nutzbaren Tools in einem Auswahlschritt (`selectMethod`) anbieten; um das Ausweichen auf andere Verfahren kümmert sich Keycloak selbst | Standard-Einstieg des `WEB`-Kanals ([05-api.md](05-api.md) Abschnitt 3) |
+| `WEB_SELECT_METHOD` | Alle im Web-Kanal nutzbaren Tools in einem Auswahlschritt (`selectMethod`) anbieten; um das Ausweichen auf andere Verfahren kümmert sich Keycloak selbst, beim Step-up ohne passendes Verfahren bietet die Journey die erneute Identifizierung an (`RE_IDENTIFY`) | Standard-Einstieg des `WEB`-Kanals ([05-api.md](05-api.md) Abschnitt 3) |
 | `STEP_UP` | Das Niveau anheben | nur auf einem Kanal, der `AUTHENTICATED` ist |
 | `MANAGE_AUTH_METHODS` | Verfahren hinzufügen oder entfernen | nur auf einem Kanal, der `AUTHENTICATED` ist |
 | `CONFIRM_PEER_LOGIN` | Einen wartenden Web-Login per `auth-qr`/`auth-qr-lookup` bestätigen oder ablehnen | `POST /app/channels` mit `intent=confirm_peer_login` **oder** `POST /channels/{id}/peer-logins` auf einem Kanal, der `AUTHENTICATED` ist – beide mit derselben Prüfung |
@@ -536,7 +536,8 @@ Regel und schreibt.
 
 Ein als Voraussetzung mitgelieferter Nachweis ([05-api.md](05-api.md) Abschnitt 3, RestoreData im
 Web-Kanal) ist keine fachliche Entscheidung einer Strategie, sondern nur eine Information des
-Aufrufers. Er läuft deshalb als **erster Übergang** des Automaten (in Statecharts der Übergang vom
+Aufrufers. Dasselbe gilt für das, was Keycloaks eigene Formulare im laufenden Durchlauf schon
+nachgewiesen haben (`amr`), wenn der Aufruf den Kanal erst anlegt; beides kommt nie zusammen. Er läuft deshalb als **erster Übergang** des Automaten (in Statecharts der Übergang vom
 Startpunkt zum ersten Zustand): mechanisch, ohne Bedingung und zu keinem Zustand gehörig.
 
 Genau dafür gibt es den Parameter `seedAction` von `JourneyService.start()`:
@@ -544,7 +545,9 @@ Genau dafür gibt es den Parameter `seedAction` von `JourneyService.start()`:
 kein `JourneyEvent`, sondern ein protokollierter Übergang namens `"Entry"`, den `JourneyService`
 selbst ausführt. Weil der Nachweis schon vor dem ersten Angebot vorliegen kann, darf `Started` das
 erste Angebot nicht einfach bauen. Eine Strategie wie `WebSelectMethodStrategy` prüft bei `Started`
-genauso wie bei jedem anderen Nachweis, ob das Vorhandene schon reicht.
+genauso wie bei jedem anderen Nachweis, ob das Vorhandene schon reicht. Ohne die Nachweise schon im
+ersten Übergang würde sie einen Ausweg anbieten, den sie gar nicht braucht, beim Step-up etwa die
+erneute Identifizierung.
 
 ### Was Tool-Controller sehen
 

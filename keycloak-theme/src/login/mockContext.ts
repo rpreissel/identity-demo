@@ -25,6 +25,7 @@ const { getKcContextMock } = createGetKcContextMock({
     },
     'orchestrator-confirm.ftl': {
       pageTitle: 'Konto wirklich löschen?',
+      description: 'Das Konto und alle Anmeldeverfahren werden endgültig gelöscht.',
       confirmLabel: 'Ja, löschen',
       cancelLabel: 'Nein, behalten',
     },

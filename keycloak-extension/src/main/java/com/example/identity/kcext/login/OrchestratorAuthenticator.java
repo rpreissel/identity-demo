@@ -194,8 +194,12 @@ public class OrchestratorAuthenticator implements Authenticator {
                 }
             }
             if (options.isEmpty()) {
+                // A step-up without any way out ends at the orchestrator with its reason (Abort), so
+                // an empty selection means the setup offers nothing here: tell the admin, not the user.
+                LOG.warnf("Orchestrator offered no method for channel %s; check the tool locks and the LoA execution's toolId",
+                        response.channelSessionId());
                 context.challenge(errorForm(context,
-                        KcTexts.of(context.getSession(), "Kein Anmeldeverfahren verfügbar. Prüfen Sie die Tool-ID der LoA-Execution.")));
+                        KcTexts.of(context.getSession(), "Für diese Anmeldung steht gerade kein Verfahren zur Verfügung. Bitte versuchen Sie es später noch einmal.")));
                 return;
             }
             authSession.setAuthNote(OrchestratorNotes.PENDING_KIND, "select");

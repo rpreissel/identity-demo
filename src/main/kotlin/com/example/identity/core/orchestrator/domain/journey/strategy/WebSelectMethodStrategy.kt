@@ -9,7 +9,9 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
+import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
+import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.Subject
@@ -20,7 +22,8 @@ import com.example.identity.contract.tool_api.ToolOutcome
  * Keycloak-usable tool. Keycloak's flow decides whether the reached level is enough; this strategy only
  * answers "what could still prove something here". Without an account it offers lookup-login
  * tools and the one-time password of a process access (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md);
- * with one (a step-up, docs/05-api.md Abschnitt 3) auth tools for that account.
+ * with one (a step-up, docs/05-api.md Abschnitt 3) auth tools for that account. When none of them can
+ * close the gap, the step-up falls back to `RE_IDENTIFY`, as STEP_UP does in the app.
  */
 class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
 
@@ -32,10 +35,19 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
         when (state) {
             is WebSelectMethodState.SelectMethod -> when (event) {
                 is JourneyEvent.Completed -> completed(state, event, ctx)
-                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
+                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) {
+                    ctx.account?.let { reIdentifyOr(ctx, whenNone = Transition.Cancel) } ?: Transition.Cancel
+                }
                 // Started re-checks like any other proof: restored evidence may already satisfy the
                 // floor (docs/04-orchestrierung.md, "RestoreData als erster Übergang"). So do
                 // EvidenceReported and ActionCompleted.
+                else -> afterProof(ctx)
+            }
+
+            is WebSelectMethodState.AfterIdentification -> when (event) {
+                // Without new evidence, offering RE_IDENTIFY again would only ask the same question.
+                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
+                // The identification may already close the gap; otherwise the offer is built anew.
                 else -> afterProof(ctx)
             }
         }
@@ -74,15 +86,31 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
         }
         val account = ctx.account
         if (account != null && ctx.policy.isSatisfied(ctx.evidence, ctx.acrFloor, account)) return Transition.Authenticated
-        return Transition.To(selectMethod(ctx))
+        val next = selectMethod(ctx)
+        if (account == null || next.offer.offered.isNotEmpty()) return Transition.To(next)
+        // No method of this account can close the gap here: identifying again can, as in STEP_UP.
+        // Failing that, say why instead of handing Keycloak an empty selection.
+        return reIdentifyOr(ctx, whenNone = Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage()))
     }
+
+    /** `RE_IDENTIFY` when an identification can reach the floor on this channel, [whenNone] otherwise. */
+    private fun reIdentifyOr(ctx: JourneyContext, whenNone: Transition): Transition =
+        if (CandidateTools.forReIdentification(ctx.acrFloor, ctx).isNotEmpty()) {
+            Transition.RequireSubJourney(
+                AuthIntent.RE_IDENTIFY,
+                seedWith = ReIdentifyState.forSubJourney(ctx.acrFloor, ctx.currentAcr),
+                resumeWith = WebSelectMethodState.AfterIdentification(accountAlreadyKnown = true)
+            )
+        } else {
+            whenNone
+        }
 
     private fun selectMethod(ctx: JourneyContext) =
         WebSelectMethodState.SelectMethod(Offer(candidatesFor(ctx)), accountAlreadyKnown = ctx.account != null)
 
     /**
-     * Never identification and never enrollment (docs/04-orchestrierung.md Abschnitt 3): the Web
-     * channel only proves an existing identity. Fresh identification exists only in the app.
+     * Never enrollment, and identification only as the step-up's way out (`RE_IDENTIFY`, see
+     * [afterProof]), never as a first login: without an account there is nobody to identify.
      */
     private fun candidatesFor(ctx: JourneyContext): List<ToolId> {
         val account = ctx.account

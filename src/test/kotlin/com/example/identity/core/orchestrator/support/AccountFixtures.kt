@@ -155,7 +155,10 @@ class AccountFixtures(
             )
 
             is Method.Device -> {
-                val enrollment = deviceEnrollmentRepository.save(DeviceEnrollment(thumbprint = method.thumbprint, createdAt = Instant.now()))
+                // The public key's parts are required columns; a seeded device is never verified, so any EC values do.
+                val enrollment = deviceEnrollmentRepository.save(
+                    DeviceEnrollment(kty = "EC", crv = "P-256", x = "seeded-x", y = "seeded-y", thumbprint = method.thumbprint, createdAt = Instant.now())
+                )
                 accountService.addAuthenticationMethod(
                     accountId, "device",
                     EnrollmentRef("auth_device.enrollment", enrollment.id.toString()),

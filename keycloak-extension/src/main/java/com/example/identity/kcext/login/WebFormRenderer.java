@@ -116,18 +116,21 @@ final class WebFormRenderer {
     }
 
     /**
-     * The generic yes/no prompt (next.context=prompt, next.step=confirm, stepData.prompt).
-     * {@code prompt} is null on a retry path, as in {@link #toolForm}.
+     * The generic yes/no prompt (next.context=prompt, next.step=confirm, stepData.prompt): title,
+     * description and the two labels. {@code prompt} is null on a retry path, as in {@link #toolForm}.
      */
     static Response confirmForm(KeycloakSession session, LoginFormsProvider form, AuthenticationSessionModel authSession, JsonNode prompt, String error) {
         String title = orDefault(prompt != null ? OrchestratorTexts.resolve(session, prompt.get("title")) : null, KcTexts.of(session, "Bestätigung erforderlich"));
         String confirmLabel = orDefault(prompt != null ? OrchestratorTexts.resolve(session, prompt.get("confirmLabel")) : null, KcTexts.of(session, "Ja"));
         String cancelLabel = orDefault(prompt != null ? OrchestratorTexts.resolve(session, prompt.get("cancelLabel")) : null, KcTexts.of(session, "Nein"));
+        // What the question is about; a yes/no without it leaves the user guessing.
+        String description = prompt != null ? OrchestratorTexts.resolve(session, prompt.get("description")) : null;
         var built = withTexts(session, form, CONFIRM_PAGE)
                 .setAuthenticationSession(authSession)
                 .setAttribute(PAGE_TITLE, title)
                 .setAttribute("confirmLabel", confirmLabel)
                 .setAttribute("cancelLabel", cancelLabel);
+        if (description != null) built.setAttribute("description", description);
         if (error != null) built.setError(error);
         return built.createForm(CONFIRM_PAGE);
     }

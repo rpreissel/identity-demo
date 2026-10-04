@@ -203,21 +203,26 @@ class KeycloakChannelService(
 
         targetFloor?.let { sessionManagementService.raiseChannelAcrFloor(channelSessionId, it.value) }
 
-        // Restored methods come only with a channel this call created. They are applied as the
-        // entry journey's first transition (docs/04-orchestrierung.md #5, "RestoreData als erster
-        // Übergang"), so its first decision already sees them.
-        var response = if (isFreshChannel && restoredFactors.isNotEmpty()) {
+        // On a channel this call created, the entry journey's first decision already sees what
+        // Keycloak vouches for: restored methods (docs/04-orchestrierung.md #5, "RestoreData als
+        // erster Übergang") or, never together with them, what its own authenticators proved in this
+        // run. Deciding without them would offer a way out (a step-up's RE_IDENTIFY) the proofs
+        // already in hand make needless.
+        val liveFactorsSeeded = isFreshChannel && restoredFactors.isEmpty() && liveFactors.isNotEmpty()
+        val seedFactors = if (isFreshChannel) restoredFactors.ifEmpty { liveFactors } else emptyList()
+        var response = if (seedFactors.isNotEmpty()) {
             channelService.resumeChannel(
                 sessionManagementService.reloadChannelSession(channelSessionId),
-                Action.ApplyRestoredEvidence(AmrSource.KEYCLOAK, restoredFactors)
+                Action.ApplyRestoredEvidence(AmrSource.KEYCLOAK, seedFactors)
             )
         } else {
             channelService.resumeChannel(sessionManagementService.reloadChannelSession(channelSessionId))
         }
 
         // What a native Keycloak authenticator established in this run (docs/05-api.md Abschnitt 3,
-        // ADR-8), merged into the same evidence as a tool proof. There is always a journey by now.
-        if (liveFactors.isNotEmpty()) {
+        // ADR-8) on a channel that existed before, merged into the same evidence as a tool proof.
+        // There is always a journey by now.
+        if (liveFactors.isNotEmpty() && !liveFactorsSeeded) {
             val journey = journeyService.findActive(channelSessionId)
             val channel = LiveChannel.of(sessionManagementService.reloadChannelSession(channelSessionId))
             if (journey != null && channel != null) {

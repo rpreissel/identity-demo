@@ -4,6 +4,7 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
+import com.example.identity.core.orchestrator.support.AccountFixtures
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -268,6 +269,42 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
             }
         }
 
+        given("a Web step-up to loa2 whose account has no further method usable on the Web") {
+            // Like an account registered in the app: the device works only there, and sms is
+            // already proven by Keycloak's own form. Nothing of the account can close the gap here.
+            `when`("the step-up starts, the user agrees to identify again and does so with the Freischaltcode") {
+                val accountId = accountFixtures.seedAccount(
+                    methods = listOf(AccountFixtures.Method.Sms(), AccountFixtures.Method.Device(thumbprint = "key-of-the-app"))
+                )
+                val channelSessionId = ChannelSessionId(UUID.randomUUID())
+                stubAssertion(channelBinding = channelSessionId.toString())
+                val started = keycloakPatch(
+                    channelSessionId,
+                    """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2","amr":[{"nativeToolId":"kc-sms-form","amrSourceId":"kc-sms-form-exec-1"}]}"""
+                )
+                val offered = keycloakPost("/orchestrator/api/v1/channels/$channelSessionId/answer", """{"answer":"accept"}""")
+                val identToolSessionId = keycloakPost("/tools/api/ident-fsc/v1?channel=$channelSessionId")
+                    .nextRaw()["toolSessionId"] as String
+                val finished = keycloakPatchTool(
+                    "/tools/api/ident-fsc/v1/$identToolSessionId",
+                    """{"kvnr":"A123456789","familyName":"Muster","givenNames":"Max","birthDate":"1985-06-15","fsc":"VALIDCODE"}"""
+                )
+
+                then("it first asks whether to identify again, instead of an empty selection") {
+                    started.next()["step"] shouldBe "confirm"
+                }
+                then("after the answer it offers identification") {
+                    @Suppress("UNCHECKED_CAST")
+                    val options = offered.stepData()["options"] as List<String>
+                    options shouldContainAll listOf("ident-fsc")
+                }
+                then("the identification closes the gap: authenticated at loa2") {
+                    finished.channel()["state"] shouldBe "AUTHENTICATED"
+                    (finished["authData"] as Map<*, *>)["acr"] shouldBe "loa2"
+                }
+            }
+        }
+
         given("a fresh Web channel opened with intent=register") {
             `when`("PATCH is called with intent=register") {
                 val channelSessionId = ChannelSessionId(UUID.randomUUID())
@@ -384,7 +421,9 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
 
                 then("they carry only loa1, and a new proof is asked for") {
                     resumed.channel()["state"] shouldNotBe "AUTHENTICATED"
-                    resumed.next()["step"] shouldBe "selectMethod"
+                    // The account has no method of its own, only Keycloak's native proofs: the
+                    // step-up's way out is identifying again, asked for first (WEB_SELECT_METHOD).
+                    resumed.next()["step"] shouldBe "confirm"
                     (resumed["authData"] as Map<*, *>)["acr"] shouldBe "loa1"
                 }
             }
