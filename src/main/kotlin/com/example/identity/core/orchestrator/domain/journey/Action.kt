@@ -70,7 +70,7 @@ sealed interface Action {
         val source: String,
         /**
          * The complete current set from [source], not a delta: every caller re-reports everything
-         * it knows on every call (docs/05-api.md Abschnitt 3).
+         * it knows on every call (docs/05-api.md Abschnitt 3b).
          */
         val methods: List<MethodEvidence>
     ) : Action

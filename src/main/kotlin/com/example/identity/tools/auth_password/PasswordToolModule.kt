@@ -30,7 +30,7 @@ internal const val AUTH_PASSWORD_LOOKUP_TOOL_ID = "auth-password-lookup"
 
 /**
  * The password procedure: `enroll-password`, `auth-password`, `auth-password-lookup`
- * (docs/03-tool-architektur.md #1). No identifier field: the account's confirmed email is the
+ * (docs/verfahren/password.md). No identifier field: the account's confirmed email is the
  * identifier, so enrolling only asks for the password itself, and only once that email is proven.
  * The enrollment states that the account has a password (`password_exists`), so another method can
  * depend on it via `requires` (ADR-24); revoking the password retracts the claim, and whatever
@@ -60,8 +60,8 @@ internal val AuthPasswordLookup = PasswordModule.lookupLogin(
 
 /**
  * A method module talks to the orchestrator through tool_api only, never to account or another
- * method module (docs/03-tool-architektur.md #2). Its controllers (`auth_password.api.v1`) reach the
- * orchestrator through `tool_api` alone (docs/04-orchestrierung.md #5).
+ * method module (docs/03-tool-architektur.md #7). Its controllers (`auth_password.api.v1`) reach the
+ * orchestrator through `tool_api` alone (docs/04-orchestrierung.md #8).
  */
 @ApplicationModule(id = "auth_password", allowedDependencies = ["tool_api", "texts"])
 @Configuration

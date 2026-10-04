@@ -254,7 +254,7 @@ class ToolJourneyService(
 
     /**
      * Turns an outcome into a journey transition and the common response envelope (docs/05-api.md
-     * #2). The context carries ids only; entities are resolved fresh in this transaction.
+     * #1). The context carries ids only; entities are resolved fresh in this transaction.
      */
     override fun applyOutcome(context: AuthorizedToolContext, outcome: ToolOutcome): ChannelResponse {
         val ctx = context.data()
@@ -268,7 +268,7 @@ class ToolJourneyService(
 
         val step = journeyService.applyOutcome(journey, live, descriptor, outcome)
 
-        // step.demo is a field of its own and never mixes with stepData (docs/05-api.md #2).
+        // step.demo is a field of its own and never mixes with stepData (docs/05-api.md #1).
         return ChannelResponse(
             channel = responseAssembler.buildChannelBlock(channel),
             next = step.next,

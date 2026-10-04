@@ -54,7 +54,7 @@ class AuthQrToolHandler(
 
     /**
      * Rebuilds the current step without deciding anything. A declined or expired request reads as
-     * `closed`: only the next PATCH reports that outcome to the journey (docs/05-api.md).
+     * `closed`: only the next PATCH reports that outcome to the journey (docs/verfahren/qr.md).
      */
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {

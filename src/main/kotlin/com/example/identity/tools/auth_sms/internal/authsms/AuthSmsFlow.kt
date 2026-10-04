@@ -10,7 +10,7 @@ private const val STEP_AUTH = "auth"
 private const val FIELD_TAN = "tan"
 
 /**
- * Pure state of the auth-sms flow (docs/03-tool-architektur.md #3). One shape only: the account is
+ * Pure state of the auth-sms flow (docs/03-tool-architektur.md #6). One shape only: the account is
  * known via the channel, so there is no earlier phase to model.
  */
 internal data class AuthSmsState(val issuedTanHash: String, val tanExpiresAt: Instant) {

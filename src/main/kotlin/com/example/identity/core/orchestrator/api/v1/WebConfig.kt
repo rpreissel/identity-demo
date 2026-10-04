@@ -18,7 +18,7 @@ class WebConfig(
 
     /**
      * Spring Boot's default static-resource welcome page only resolves `index.html` for the root
-     * `/` - the other apps (docs/10-frontend.md #0) live at their own subpaths, which need the
+     * `/` - the other apps (docs/10-frontend.md #5) live at their own subpaths, which need the
      * same forwarding spelled out explicitly.
      */
     override fun addViewControllers(registry: ViewControllerRegistry) {

@@ -4,7 +4,7 @@ import com.example.identity.contract.tool_api.device.UserVerification
 import com.example.identity.contract.tool_api.StepData
 
 /**
- * Single-shot flow (docs/03-tool-architektur.md #3): the proof arrives already verified, so the only
+ * Single-shot flow (docs/03-tool-architektur.md #6): the proof arrives already verified, so the only
  * decision is whether the presented key matches the enrolled one.
  */
 internal data object AuthDeviceState {

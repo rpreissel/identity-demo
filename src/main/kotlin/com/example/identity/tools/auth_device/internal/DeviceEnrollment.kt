@@ -12,7 +12,7 @@ internal const val DEVICE_ENROLLMENT_TYPE = "auth_device.enrollment"
 
 /**
  * Long-lived, account-bound device credential: the public half of a non-extractable device key pair
- * (docs/03-tool-architektur.md, enroll-device). Each attempt is verified against a proof only the
+ * (docs/verfahren/device.md). Each attempt is verified against a proof only the
  * matching private key could have signed.
  */
 @Entity

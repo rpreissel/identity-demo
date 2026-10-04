@@ -28,7 +28,7 @@ data class MgmtPasswordVerifyResponse(val valid: Boolean)
 
 /**
  * Keycloak's native password form, checked for an account it already knows, with no channel and
- * no journey (docs/05-api.md Abschnitt 3). Keycloak never changes a password: that runs through the
+ * no journey (docs/05-api.md Abschnitt 3b). Keycloak never changes a password: that runs through the
  * orchestrator's method management, behind its level check. The caller is Keycloak's peer-auth assertion
  * for the path's account; the result is booked by the orchestrator ([KeycloakToolCalls]).
  */

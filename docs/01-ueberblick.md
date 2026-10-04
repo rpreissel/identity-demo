@@ -1,7 +1,7 @@
 # Überblick
 
-Die Einführung in dieses Projekt: worum es geht, wer beteiligt ist, die wichtigsten Begriffe und
-die tragenden Ideen in Kurzform. Jeder Abschnitt verweist auf das Kapitel, das ihn ausführt. Am
+Die Einführung in dieses Projekt: worum es geht, das Zielbild mit seinen Komponenten, die
+wichtigsten Begriffe und die tragenden Ideen in Kurzform. Jeder Abschnitt verweist auf das Kapitel, das ihn ausführt. Am
 Ende steht, was Sie je nach Rolle als Nächstes lesen.
 
 ---
@@ -41,36 +41,106 @@ Löschung –, erzählt [11-beispiel-story.md](11-beispiel-story.md).
 
 ---
 
-## 2) Wer beteiligt ist
+## 2) Das Zielbild: Komponenten und Zusammenspiel
 
 ```mermaid
 flowchart LR
-  App["App"] -- "DPoP" --> O["Orchestrator"]
-  Web["Website (Browser)"] --> KC["Keycloak"]
-  KC -- "von Server zu Server" --> O
-  O -->|"Sitzung öffnen, Token"| KC
-  O --> PV["Personenverzeichnis<br/>(simuliert)"]
-  O --> EXT["Nect, KOBIL, Online-Ausweis,<br/>SMS- und Mail-Versand (simuliert)"]
+  App["App<br/>(DPoP-Schlüssel)"] -- "DPoP" --> O["Orchestrator<br/>Kanäle, Journeys, AuthPolicy"]
+  Web["Website (Browser)"] -- "OIDC" --> KC["Keycloak<br/>Erweiterung, Login-Theme,<br/>Nutzer-Federation"]
+  KC -- "Peer-Auth-Assertion,<br/>von Server zu Server" --> O
+  O -- "eigener Grant,<br/>private_key_jwt" --> KC
+  O --- ACC["Konto (account)"]
+  O -- "tool_api" --- TM["Verfahrens-Module"]
+  O -- "Ports" --> EXT["Personenverzeichnis, eID-Server,<br/>Nect, KOBIL, SMS- und Mail-Zustellung"]
+  App -- "AccessToken" --> F["Fachdienste"]
+  Web -- "AccessToken" --> F
 ```
 
-- **App**: spricht direkt mit dem Orchestrator. Jede Anfrage trägt einen DPoP-Beweis, sodass der
-  Orchestrator das Gerät an seinem Schlüssel wiedererkennt ([09-dpop.md](09-dpop.md)). In der Demo
-  eine React-Oberfläche im Browser.
-- **Website**: der Browser meldet sich bei **Keycloak** an und spricht nie direkt mit dem
-  Orchestrator.
-- **Keycloak**: stellt die Tokens aus und führt die Anmeldung auf der Website. Welche Verfahren
-  angeboten werden und ob ein Nachweis reicht, fragt eine eigene Keycloak-Erweiterung beim
-  Orchestrator nach. Echt, läuft als Container.
-- **Orchestrator**: der Kern dieses Projekts. Er entscheidet, welche Schritte ein Nutzer
-  durchläuft, führt die Konten und bewertet die Nachweise.
-- **Personenverzeichnis**: die Stammdaten der Versicherung (Personen, Mitgliedsnummer, KVNR);
-  stellt die Freischaltcodes und die Einladungen mit Einmalkennwort aus. Simuliert.
-- **Externe Dienste**: Nect (Identifizierung per Ausweis, Reisepass, EUDI-Wallet), KOBIL
-  (Gerätebindung), der Online-Ausweis (eID) sowie der Versand von SMS und E-Mail. Alle simuliert.
-  Was ein echtes System zusagen müsste, steht in [port-vertraege.md](port-vertraege.md).
+**Die Komponenten und ihre Aufgabe**
 
-Verfahren, deren Niveau nur auf einer Simulation beruht, laufen ausschließlich im **Demomodus**
-([ADR-36](adr/ADR-036-niveaus-und-ihre-nachweise.md)).
+- **App**: spricht direkt mit dem Orchestrator. Sie erzeugt einen eigenen Schlüssel, und jede
+  Anfrage trägt einen DPoP-Beweis damit; so erkennt der Orchestrator das Gerät wieder
+  ([09-dpop.md](09-dpop.md)). Sie folgt `next` und entscheidet nichts selbst.
+- **Website (Browser)**: meldet sich bei **Keycloak** an und spricht nie direkt mit dem
+  Orchestrator.
+- **Keycloak**: stellt die Tokens aus und führt die Anmeldung auf der Website. Dazu bringt das
+  Projekt drei Teile mit: eine **Erweiterung** (`keycloak-extension/`), die beim Orchestrator
+  nachfragt, welche Verfahren angeboten werden und ob ein Nachweis reicht; ein **Login-Theme**
+  (`keycloak-theme/`), das die Schritte der Verfahren darstellt; und eine **Nutzer-Federation**, über
+  die Keycloak die Konten beim Orchestrator nachliest, statt sie zu kopieren
+  ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
+- **Orchestrator**: der Kern dieses Projekts. Er führt die **Kanäle** (App und Web), entscheidet
+  über **Intents** und **Journeys**, welche Schritte ein Nutzer durchläuft, und bewertet die
+  Nachweise mit der **`AuthPolicy`** ([04-orchestrierung.md](04-orchestrierung.md)).
+- **Konto** (Modul `account`): Konten, Anker, Angaben und eingerichtete Anmeldeverfahren.
+- **Verfahrens-Module**: je Verfahren ein Modul mit eigenen Tool-Endpunkten (`ident_*`, `auth_*`).
+  Sie erreichen den Orchestrator nur über den Vertrag `tool_api`
+  ([03-tool-architektur.md](03-tool-architektur.md)).
+- **Fremdsysteme hinter Ports**: das **Personenverzeichnis** mit den Stammdaten der Versicherung
+  (Personen, Partnernummer, Mitgliedsnummer, KVNR), das Freischaltcodes und Einladungen mit
+  Einmalkennwort ausstellt; der **eID-Server** für den Online-Ausweis; **Nect** (Identifizierung per
+  Ausweis, Reisepass, EUDI-Wallet); **KOBIL** (Gerätebindung); die Zustellung von **SMS** und
+  **E-Mail**. Was jedes davon zusagen muss, steht in [port-vertraege.md](port-vertraege.md).
+- **Fachdienste**: die Dienste der Versicherung. App und Website rufen sie mit dem `AccessToken`
+  direkt auf, ohne Orchestrator.
+
+**Vertrauensgrenzen**
+
+- **App → Orchestrator:** DPoP-Proof je Anfrage; der Kanal ist an den Schlüssel des Geräts gebunden
+  ([09-dpop.md](09-dpop.md)).
+- **Keycloak → Orchestrator:** eine signierte Peer-Auth-Assertion je Anfrage statt DPoP, die
+  Antwort des Orchestrators ist ebenfalls signiert
+  ([ADR-7](adr/ADR-007-web-kanal-ohne-mtls-signierte-request-assertion-statt.md),
+  [05-api.md](05-api.md) Abschnitt 3b).
+- **Orchestrator → Keycloak:** `private_key_jwt` je Client und ein eigener Grant, den nur der
+  Orchestrator aufrufen darf
+  ([ADR-9](adr/ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md)).
+- **Orchestrator → Fremdsysteme:** nur über Ports; der Kern vertraut einem System nur mit dem, was
+  sein Port-Vertrag zusagt.
+
+Alle Grenzen samt den Stellen im Code zeigt [16-lesepfad-sicherheit.md](16-lesepfad-sicherheit.md)
+Abschnitt 0.
+
+**Wem welche Daten gehören**
+
+- **Konto, Anker und Angaben** führt der Orchestrator im Modul `account`; Kanäle, Journeys und
+  Nachweise der Sitzungen das Modul `orchestrator`.
+- **Stammdaten** einer Person führt das Personenverzeichnis. Der Orchestrator liest sie bei Bedarf
+  über einen Port und hält im Konto nur die Historie der Angaben.
+- **Credentials** (Telefonnummer, Passwort-Hash, Geräteschlüssel) gehören dem jeweiligen
+  Verfahrens-Modul, in seinem eigenen Schema.
+- **Keycloak liest nur nach.** Es hält keine Kopie der Konten, sondern nur, was zu seiner eigenen
+  Aufgabe gehört: Sitzungen, Fehlversuche und Zustimmungen.
+
+**Drei Abläufe**
+
+- **App:** Die App öffnet mit DPoP einen Kanal beim Orchestrator. Der startet eine Journey,
+  meist `FAST_ACCESS`, und bietet die Verfahren an, die ihr Zustand zulässt; die App folgt `next`
+  zu den Tool-Endpunkten. Reicht der Nachweis, öffnet der Orchestrator über seinen eigenen Grant
+  eine Keycloak-Sitzung und hält die Tokens; die App holt das `AccessToken` mit DPoP ab und ruft
+  damit die Fachdienste auf.
+- **Web:** Der Browser beginnt eine OIDC-Anmeldung bei Keycloak. Dessen Erweiterung fragt den
+  Orchestrator von Server zu Server, der die Journey `WEB_SELECT_METHOD` startet; das Login-Theme
+  zeigt das passende Formular, und Keycloak reicht die Eingaben an dieselben Tool-Endpunkte weiter.
+  Nach Erfolg übernimmt Keycloak Konto, `acr` und `amr` in seine Sitzung, liest das Konto über die
+  Federation und stellt das Token aus.
+- **Vorgangszugang mit Einladung:** Das Personenverzeichnis lädt eine Person per Brief mit einem
+  Einmalkennwort zu einem Vorgang ein. Auf der Website gibt sie KVNR oder Partnernummer und das
+  Kennwort ein (`auth-invite-lookup`), auch ohne Konto; der Kanal gehört dann der Einladung, nicht
+  einem Konto. Keycloak liest die Einladung als eigenen Nutzer, und die Tokens tragen den Vorgang
+  (`process`) und gelten nur für ihn, bis zur Frist oder bis der Vorgang abgeschlossen ist
+  ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).
+
+**In dieser Demo**
+
+Alle Fremdsysteme sind simuliert (Modulgruppe `simulation/`), ebenso die Kartenlesung des
+Online-Ausweises. Verfahren, deren Niveau nur auf einer Simulation beruht, laufen ausschließlich im
+**Demomodus** ([ADR-36](adr/ADR-036-niveaus-und-ihre-nachweise.md)). Die App ist eine
+React-Oberfläche im Browser, ihre Schlüssel liegen in IndexedDB. Dazu kommen eine Willkommens- und
+eine Admin-Seite und Testpersonen, mit denen man sich registrieren kann. Keycloak ist echt und läuft
+als Container. Was Demo ist und was ein echtes System zusagen muss, steht in
+[14-stand-und-weg-zur-produktion.md](14-stand-und-weg-zur-produktion.md) Abschnitt 4 und
+[port-vertraege.md](port-vertraege.md).
 
 ---
 
@@ -78,24 +148,15 @@ Verfahren, deren Niveau nur auf einer Simulation beruht, laufen ausschließlich 
 
 Die Doku ist deutsch, der Code englisch. Hinter jedem Begriff steht in Klammern sein Name im Code.
 
-**Sitzungen und Abläufe**
-
 - **Kanal** (`ChannelSession`): die Verbindung eines Clients, App oder Website, zum Orchestrator.
   Bewusst kurzlebig ([ADR-3](adr/ADR-003-channelsession-bewusst-kurzlebig-geraete-identitaet-in-deviceaccountlink.md)).
 - **Intent** (`AuthIntent`): was der Nutzer erreichen will, samt dem Weg dorthin, etwa `FAST_ACCESS`,
   `REGISTER` oder `STEP_UP`. Die Liste steht in [04-orchestrierung.md](04-orchestrierung.md)
   Abschnitt 2.
 - **Journey** (`AuthJourney`): ein laufender Durchlauf zu einem Intent; er nutzt ein oder mehrere
-  Tools.
-- **Zustand** (`JourneyState`): wo die Journey gerade steht, samt der Angaben dazu. Jeder Intent hat
-  seine eigene, abgeschlossene Menge von Zuständen.
+  Tools. Wo sie gerade steht, sagt ihr **Zustand** (`JourneyState`).
 - **Tool** (`toolId`, z. B. `enroll-sms`): ein einzelner Schritt zum Identifizieren, Einrichten
   oder Anmelden.
-- **Tool-Durchlauf** (`ToolSession`, `toolSessionId`): ein gestartetes Tool, z. B. eine
-  TAN-Eingabe. Seine Kennung ist eine UUID, nicht zu verwechseln mit der `toolId`.
-
-**Konto und Nachweise**
-
 - **Anmeldeverfahren** (`AccountAuthMethod`, im Code „Methode“): was im Konto eingerichtet ist und
   eine Anmeldung ermöglicht, etwa Passwort oder SMS. Zu einem Verfahren gehören meist zwei Tools,
   eines zum Einrichten (`enroll-…`), eines zum Anmelden (`auth-…`).
@@ -105,58 +166,33 @@ Die Doku ist deutsch, der Code englisch. Hinter jedem Begriff steht in Klammern 
   Anmeldung vertraut wird.
 - **Nachweis** (`SessionEvidence`, daraus `acr` und `amr`): was in der laufenden Sitzung bewiesen
   wurde.
-- **Tokens der App** (`AppTokenSession`): die Tokens des App-Kanals, gekoppelt an dessen Nachweis.
 - **Angabe** (`AccountClaim`, Tabelle `account.claim`): ein Eintrag im Konto, dass ein Attribut einen
   bestimmten Wert hat, mit der Quelle, die dafür einsteht, und einer Stufe: *belegt*, *nachgewiesen*
   oder *behauptet* (`ClaimTrust`).
-- **Bestätigen** (`attest`, `ToolOutcome.Completed.Attested`): ein Attribut als geprüft melden,
-  etwa die E-Mail-Adresse.
-- **Widerruf** (`AccountRetraction`, Tabelle `account.retraction`): eine Angabe
-  zurücknehmen.
 - **Anker** (`AccountAnchor`, Tabelle `account.anchor`): ein Attribut, über das ein Konto
   eindeutig wiedergefunden wird, etwa die Partnernummer oder die bestätigte E-Mail-Adresse.
-- **Rolle** (nicht gespeichert, abgeleitet aus den Ankern): ein Konto ohne zugeordnete Person ist
-  ein **Interessent**, mit Partnernummer ein **Partner**, mit Mitgliedsnummer (auch
-  Versicherungsnummer genannt) ein **Versicherter** ([ADR-34](adr/ADR-034-personenverzeichnis-meldet-aenderungen.md)).
-- **Mindestniveau für einen Anker** (`AnchorRule.acrFloor`): welches Niveau nötig ist, um einen
-  Anker zu schreiben.
-- **Obergrenze eines Verfahrens** (`maxAcr`, `enrolledUnderAcr`): das höchste Niveau, das ein
-  Verfahren technisch hergibt bzw. unter dem es eingerichtet wurde.
-- **Einladung** und **Einmalkennwort** (`auth-invite-lookup`, [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)):
-  Das Personenverzeichnis lädt eine Person per Brief zu einem **Vorgang** ein. Mit Mitglieds-
-  oder Partnernummer und dem Einmalkennwort meldet sie sich auf der Website an, auch ohne Konto; die
-  Tokens tragen den Vorgang (`process`) und gelten nur für ihn. Das Kennwort gilt bis zur Frist oder
-  bis der Vorgang abgeschlossen ist.
-- **Subjekt** (`Subject`): wem ein angemeldeter Kanal gehört, einem Konto oder einer Einladung; nie
-  beidem.
-- **Geräteverknüpfung** (`DeviceAccountLink`, `binding_key_ref`): welches Gerät zu welchem Konto
-  gehört, erkannt am DPoP-Schlüssel. Sie zählt nicht als Anmeldung.
 
-Alle Begriffe des Projekts, auch die hier nicht genannten, stehen im [Glossar](glossar/glossar.md).
-Das [externe Glossar](glossar/externes-glossar.md) ist ein fremdes Nachschlagewerk; wie seine
-Begriffe hier heißen, zeigt der [Abgleich](glossar/abgleich-externes-glossar.md).
+Alle weiteren Begriffe stehen im [Glossar](glossar/glossar.md), unter anderem Tool-Durchlauf,
+Tokens der App, Bestätigen, Widerruf, die Rollen Interessent, Partner und Versicherter, Mindestniveau
+für einen Anker, Obergrenzen eines Verfahrens, Einladung und Einmalkennwort, Subjekt und
+Geräteverknüpfung. Das [externe Glossar](glossar/externes-glossar.md) ist ein fremdes
+Nachschlagewerk; wie seine Begriffe hier heißen, zeigt der
+[Abgleich](glossar/abgleich-externes-glossar.md).
 
 ---
 
 ## 4) Drei Sitzungsebenen
 
-Die Sitzungen sind ineinander geschachtelt, von lang- zu kurzlebig:
-
-- **`ChannelSession`**: der Kanal. Er überdauert einzelne Journeys, ist aber kurzlebig; dauerhaft
-  bleibt nur die Geräteverknüpfung. Mit der Anmeldung öffnet er genau eine Keycloak-Sitzung und
-  lebt von da an nicht länger als sie; wie lange, bestimmt Keycloak
-  ([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)).
-- **`AuthJourney`**: ein Durchlauf zu einem Intent, solange er läuft.
-- **`ToolSession`**: ein einzelnes Tool, oft nur Minuten. Sie hält nur den Lebenszyklus; die
-  Fachdaten (TAN, Freischaltcode) bleiben im Modul des Tools.
+Die Sitzungen sind ineinander geschachtelt, von lang- zu kurzlebig: der **Kanal**
+(`ChannelSession`), darin höchstens eine laufende **Journey** (`AuthJourney`), darin nacheinander
+die **Tool-Durchläufe** (`ToolSession`). Dauerhaft bleibt nur die Geräteverknüpfung. Wie lange jede
+Ebene lebt und was sie hält, steht in [02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 1.
 
 Eine Registrierung läuft zum Beispiel so: `ident-fsc` -> `confirm-email` -> `enroll-sms` ->
 `enroll-password`. Nach dem Identifizieren bestätigt der Nutzer seine E-Mail-Adresse und richtet so
 lange Verfahren ein, bis das verlangte Niveau erreicht ist. SMS allein reicht nur für `loa1`,
 deshalb folgt ein Verfahren anderer Art, hier das Passwort; in der App stünde auch die Bindung an das
 Gerät zur Wahl.
-
-Details: [02-domaenenmodell.md](02-domaenenmodell.md)
 
 ---
 
@@ -225,7 +261,7 @@ Details: [04-orchestrierung.md](04-orchestrierung.md)
 
 Nur der Einstieg unterscheidet sich; danach nutzen beide Kanäle dieselben Tool-Endpunkte.
 
-Details: [05-api.md](05-api.md) Abschnitte 2 und 3
+Details: [05-api.md](05-api.md) Abschnitte 2 und 3 (3a App-Kanal, 3b Web-Kanal)
 
 ---
 
@@ -245,7 +281,7 @@ mehr, als es technisch hergibt, und nie mehr, als die Sitzung bei seiner Einrich
 hatte. So kann niemand in einer schwach gesicherten Sitzung ein Verfahren einrichten und sich
 damit dauerhaft ein höheres Niveau verschaffen.
 
-Details: [04-orchestrierung.md](04-orchestrierung.md) Abschnitt 8
+Details: [04-orchestrierung.md](04-orchestrierung.md) Abschnitt 4
 
 ---
 
@@ -298,7 +334,8 @@ Die Nummern der Kapitel geben keine Leserichtung vor. Je nach Rolle:
   [journeys/](journeys/) -> [12-entscheidungen.md](12-entscheidungen.md) für das Warum.
 - **Backend-Entwickler**: [03-tool-architektur.md](03-tool-architektur.md) „Einstieg:
   Zusammenspiel an einem Schritt“ -> [02-domaenenmodell.md](02-domaenenmodell.md) ->
-  [04-orchestrierung.md](04-orchestrierung.md) -> [06-ablaeufe.md](06-ablaeufe.md) ->
+  [04-orchestrierung.md](04-orchestrierung.md) -> [06-ablaeufe.md](06-ablaeufe.md) und
+  [verfahren/](verfahren/README.md) ->
   [09-dpop.md](09-dpop.md) -> [08-projektrahmen.md](08-projektrahmen.md); vor Änderungen am Kern
   [invarianten.md](invarianten.md).
 - **Frontend-Entwickler**: [10-frontend.md](10-frontend.md) „Einstieg: Wie `next` die App

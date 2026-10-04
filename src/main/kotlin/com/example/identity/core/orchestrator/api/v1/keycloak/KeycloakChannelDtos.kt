@@ -71,7 +71,7 @@ data class KeycloakChannelUpsertRequest(
     val intent: String? = null
 )
 
-/** Wire wrapper for `GET .../restore-data` (docs/05-api.md Abschnitt 3), a JSON object like every other answer. */
+/** Wire wrapper for `GET .../restore-data` (docs/05-api.md Abschnitt 3b), a JSON object like every other answer. */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "The channel's current RestoreData, signed - null if there is nothing worth restoring yet.")
 data class RestoreDataResponse(val restoreData: String? = null)

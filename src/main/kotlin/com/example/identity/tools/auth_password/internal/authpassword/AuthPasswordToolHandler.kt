@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
 /**
- * toolId=auth-password, device-linked case (docs/06-ablaeufe.md #3). [start]'s [enrollmentRef] is
+ * toolId=auth-password, device-linked case (docs/verfahren/password.md). [start]'s [enrollmentRef] is
  * resolved by the controller, since this module never reads `account`. Only the password is asked
  * for. The input decision lives in [AuthPasswordFlow].
  */

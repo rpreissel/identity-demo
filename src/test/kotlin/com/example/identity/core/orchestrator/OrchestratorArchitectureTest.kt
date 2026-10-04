@@ -140,7 +140,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
         }
     }
 
-    given("IntentStrategy implementations (docs/04-orchestrierung.md #4, Decision: \"Die Strategie bekommt nie Services, nur einen lesenden JourneyContext ... Sie entscheidet, sie wirkt nicht.\")") {
+    given("IntentStrategy implementations (docs/04-orchestrierung.md #8, Decision: \"Die Strategie bekommt nie Services, nur einen lesenden JourneyContext ... Sie entscheidet, sie wirkt nicht.\")") {
         then("they never depend on a @Service or @Repository - only on the read-only JourneyContext handed to next()/interpret()") {
             val isServiceOrRepository = DescribedPredicate.describe<JavaClass>("annotated with @Service or @Repository") { clazz ->
                 clazz.isAnnotatedWith(Service::class.java) || clazz.isAnnotatedWith(Repository::class.java)
@@ -158,7 +158,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
         }
     }
 
-    given("the acting phase (JourneyActionExecutor, docs/04-orchestrierung.md #4, \"Die vier Phasen eines Uebergangs\")") {
+    given("the acting phase (JourneyActionExecutor, docs/04-orchestrierung.md #8, \"Die vier Phasen eines Uebergangs\")") {
         then("it never depends on the driving phase (JourneyService) or on a concrete IntentStrategy") {
             noClasses()
                 .that().haveFullyQualifiedName("com.example.identity.core.orchestrator.journey.JourneyActionExecutor")
@@ -180,7 +180,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
                 .should().dependOnClassesThat().haveFullyQualifiedName("com.example.identity.core.orchestrator.journey.AuthJourneyRepository")
                 .orShould().dependOnClassesThat().haveFullyQualifiedName("com.example.identity.core.orchestrator.journey.AuthJourney")
                 .because(
-                    "\"next is a pure function of the state\" (docs/04-orchestrierung.md #4) is only checkable by " +
+                    "\"next is a pure function of the state\" (docs/04-orchestrierung.md #6) is only checkable by " +
                         "reading one small class as long as that class cannot reach the journey itself"
                 )
                 .check(classes)

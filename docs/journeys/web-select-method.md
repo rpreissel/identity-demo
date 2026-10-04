@@ -4,7 +4,7 @@
 # `WEB_SELECT_METHOD`
 
 Mit diesem Intent beginnt im `WEB`-Kanal jede Anmeldung und jeder Step-up, wenn nichts anderes
-angegeben ist ([05-api.md](../05-api.md) Abschnitt 3, ADR-8 in
+angegeben ist ([05-api.md](../05-api.md) Abschnitt 3b, ADR-8 in
 [12-entscheidungen.md](../12-entscheidungen.md)). Der zweite mögliche Einstieg im Web-Kanal ist
 [`REGISTER`](register.md).
 

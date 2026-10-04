@@ -23,8 +23,8 @@ import org.springframework.web.method.support.ModelAndViewContainer
 
 /**
  * Resolves any `@BindingKey` controller parameter before the method body runs, so proof
- * validation lives in one place (docs/04-orchestrierung.md #5). The tool endpoints serve both
- * channels (docs/05-api.md Abschnitt 3): a DPoP proof yields the key thumbprint, a Keycloak
+ * validation lives in one place (docs/04-orchestrierung.md #8). The tool endpoints serve both
+ * channels (docs/05-api.md Abschnitt 3b): a DPoP proof yields the key thumbprint, a Keycloak
  * peer-auth assertion a `"kc:"`-prefixed binding. The comparison with the channel happens later.
  */
 @Component

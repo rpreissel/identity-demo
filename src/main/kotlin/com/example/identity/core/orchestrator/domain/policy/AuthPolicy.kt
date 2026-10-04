@@ -6,7 +6,7 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
 
-/** The only place that knows what a *combination* of evidence means (docs/04-orchestrierung.md #8). */
+/** The only place that knows what a *combination* of evidence means (docs/04-orchestrierung.md #4). */
 interface AuthPolicy {
     /**
      * Does what this session has proven so far satisfy [requiredAcr]? Pass [account] null only when
@@ -42,11 +42,11 @@ interface AuthPolicy {
 
     /**
      * Has this session proven anything recently enough to act on the account without asking again
-     * (docs/04-orchestrierung.md #8)? Any proof counts, at any level; one of unknown age does not.
+     * (docs/04-orchestrierung.md #4)? Any proof counts, at any level; one of unknown age does not.
      */
     fun hasFreshProof(evidence: SessionEvidence): Boolean
 
-    /** Level implied by the given evidence (IAL and AAL, docs/04-orchestrierung.md #8). */
+    /** Level implied by the given evidence (IAL and AAL, docs/04-orchestrierung.md #4). */
     fun resolveAcr(evidence: SessionEvidence, account: AccountProfile?): AcrLevel
 }
 

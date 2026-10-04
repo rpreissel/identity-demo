@@ -12,7 +12,7 @@ internal const val QR_OPTIN_ENROLLMENT_TYPE = "auth_qr.enrollment"
 
 /**
  * The long-lived row `enroll-qr` creates: a pure opt-in marker ("this account allows QR login"),
- * never a secret (docs/03-tool-architektur.md). Its only content is its existence.
+ * never a secret (docs/verfahren/qr.md). Its only content is its existence.
  */
 @Entity
 @Table(schema = "auth_qr", name = "enrollment")

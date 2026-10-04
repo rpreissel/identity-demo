@@ -3,7 +3,7 @@ package com.example.identity.tools.auth_kobil.internal.enrollkobil
 import com.example.identity.contract.tool_api.device.UserVerification
 
 /**
- * What the client still owes at the `activate` step (docs/03-tool-architektur.md #3): only the
+ * What the client still owes at the `activate` step (docs/03-tool-architektur.md #6): only the
  * confirmation that the SDK ran and the biometric consent. Everything it needs was handed out at start.
  */
 internal data object EnrollKobilState {

@@ -17,7 +17,7 @@ enum class QrLoginStatus { PENDING, APPROVED, COMPLETED, DENIED, EXPIRED }
 
 /**
  * Connects a WEB `auth-qr`/`auth-qr-lookup` activation to an APP `approve-qr` decision.
- * [pairingCode] is the primary key and the lookup capability (docs/07-betrieb.md #5).
+ * [pairingCode] is the primary key and the lookup capability (docs/verfahren/qr.md).
  * [confirmationCodeHash] is the code in the other direction, typed into the browser;
  * [confirmationAttempts] bounds guessing it. [expectedAccountId] is set only by `auth-qr`, and the
  * approval must match it, so a different account can never take over.

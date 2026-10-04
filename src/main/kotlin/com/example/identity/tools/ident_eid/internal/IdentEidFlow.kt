@@ -7,7 +7,7 @@ import com.example.identity.contract.tool_api.StepData
 import com.example.identity.contract.tool_api.MissingFields
 
 /**
- * Pure state of the ident-eid flow (docs/03-tool-architektur.md #3): one step whose
+ * Pure state of the ident-eid flow (docs/03-tool-architektur.md #6): one step whose
  * [IdentEidFlow.missingFields] come staged, card data first, then the PIN. Only what the simulated
  * card carries: no KVNR and no person reference (ADR-18). The card's restricted identifier is
  * attested as the recognition anchor (ADR-19).

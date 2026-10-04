@@ -12,7 +12,7 @@ interface SelectMethodViewProps {
 }
 
 /**
- * Generic selection page for `type=flow` steps with `stepData.options` (docs/10-frontend.md #3).
+ * Generic selection page for `type=flow` steps with `stepData.options` (docs/10-frontend.md #2).
  * Entries are complete toolId values; the client picks one and never builds one. `title` and
  * `description` come from the backend (docs/05-api.md): the same `context`/`step` address serves
  * intents that ask different things (log in vs. confirm an account deletion).

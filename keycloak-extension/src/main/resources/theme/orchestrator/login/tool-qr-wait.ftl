@@ -11,7 +11,7 @@
 
         <#if step == "enterCode">
             <#-- The app approved and shows a confirmation code; only typing it here logs this browser
-                 in (docs/07-betrieb.md #5). No polling on this step. -->
+                 in (docs/verfahren/qr.md). No polling on this step. -->
             <form id="kc-orchestrator-tool-form" class="${properties.kcFormClass!}" action="${url.loginAction}" method="post">
                 <div class="${properties.kcFormGroupClass!}">
                     <label for="confirmationCode" class="${properties.kcLabelClass!}">${t.of("Code aus der App")}</label>
@@ -44,7 +44,7 @@
 
         <div class="${properties.kcFormGroupClass!} orchestrator-qr-center">
             <#-- Named target, so a click does not navigate this waiting screen away. Across origins
-                 Chrome opens a fresh tab each time (docs/10-frontend.md #0); intent=confirm_peer_login
+                 Chrome opens a fresh tab each time (docs/10-frontend.md #6); intent=confirm_peer_login
                  lands correctly in any tab. -->
             <a href="${deepLink}" target="identity-demo-app-kanal">${deepLink}</a>
             <p class="orchestrator-hint">

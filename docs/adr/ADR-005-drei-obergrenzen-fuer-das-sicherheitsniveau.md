@@ -16,7 +16,7 @@ jedes Verfahren in einer Sitzung mit niedrigem Niveau ein, und genau dieses Nive
 `enrolledUnderAcr`. Eine eigene, kontoweite Grenze aus der Identifizierung gibt es nicht.
 
 Wie das sichtbare Niveau (`acr`) aus dem Nachweis einer Sitzung entsteht, beschreibt
-[Orchestrierung](../04-orchestrierung.md) Abschnitt 8: `DefaultAuthPolicy.resolveAcr` trennt dort die
+[Orchestrierung](../04-orchestrierung.md) Abschnitt 4: `DefaultAuthPolicy.resolveAcr` trennt dort die
 Stärke der Identifizierung (IAL) von der Stärke der Anmeldung (AAL). Das IAL zählt nur den
 Identitätsnachweis der **laufenden** Sitzung, weil die Identität in jeder Sitzung neu bewiesen wird.
 

@@ -29,7 +29,7 @@ data class Next(
         /** Addresses an orchestrator-served page (a selection or completion screen), which has no tool session yet. */
         fun orchestrator(context: String, step: String) = Next(type = "orchestrator", context = context, step = step)
 
-        /** The `next` of every AUTHENTICATED channel with no journey pending (docs/05-api.md #2). */
+        /** The `next` of every AUTHENTICATED channel with no journey pending (docs/05-api.md #3a). */
         val AUTHENTICATED = orchestrator("authentication", "authenticated")
     }
 }

@@ -40,7 +40,7 @@ class ManageMethodsIntegrationTest : IntegrationTestSupport() {
                 val freshChannelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
                 val methods = methodsOf(freshChannelSessionId)
 
-                then("it answers an empty collection, not an error (docs/05-api.md #2)") {
+                then("it answers an empty collection, not an error (docs/05-api.md #3a)") {
                     methods.shouldBeEmpty()
                 }
             }

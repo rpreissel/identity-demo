@@ -93,11 +93,11 @@ echten Systems nicht nach. Was ein echtes System zusagen muss, steht in
 
 | System | Heute | Was ein echtes System zusagen muss | `demoOnly` |
 |---|---|---|---|
-| **Personenverzeichnis** | simuliert, mit ungeschützter Verwaltungs-API | Suche nur über Kennungen; Freischaltcode nur vom Verzeichnis, per Post, gehasht, mit Ablauf ([ADR-31](adr/ADR-031-freischaltcode-liegt-im-fremdsystem.md)); Änderungen mindestens einmal und je Person geordnet ([ADR-34](adr/ADR-034-personenverzeichnis-meldet-aenderungen.md)) | nein – der wichtigste Vertrag |
-| **KOBIL** | simuliert; PIN und Aktivierungsgeheimnis im Klartext ([ADR-22](adr/ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md)) | Ergebnis vom Server, Einmalkennwort genau einmal, signierte Nutzerprüfung auf dem Gerät | ja |
-| **Nect** | simuliert | serverseitiges Einlösen, genau einmal, an den Vorgang gebunden | ja |
-| **eID-Server** | simulierte Kartenlesung | Ergebnis serverseitig vom eID-Server, Anker ist die `restricted_id` ([ADR-19](adr/ADR-019-aufloesung-nur-ueber-anker-die-eid-restricted-id.md)) | ja |
-| **SMS und E-Mail** | Postausgang im „Briefkasten“ | Zustellung; ein abgelehnter Versand wird gemeldet | nein – der Kern prüft den Code selbst |
+| **Personenverzeichnis** | simuliert, mit ungeschützter Verwaltungs-API | [Port-Vertrag](port-vertraege.md#personenverzeichnis-persondirectory-personmasterdata-activationcodes-invitations) | nein – der wichtigste Vertrag |
+| **KOBIL** | simuliert; PIN und Aktivierungsgeheimnis im Klartext ([ADR-22](adr/ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md)) | [Port-Vertrag](port-vertraege.md#kobil-kobilkobilssms--demoonly) | ja |
+| **Nect** | simuliert | [Port-Vertrag](port-vertraege.md#nect-nectnectident--demoonly) | ja |
+| **eID-Server** | simulierte Kartenlesung | [Port-Vertrag](port-vertraege.md#eid-server-in-ident_eid-simuliert--demoonly) | ja |
+| **SMS und E-Mail** | Postausgang im „Briefkasten“ | [Port-Vertrag](port-vertraege.md#zustellung-von-tan-und-code-sms-mail) | nein – der Kern prüft den Code selbst |
 
 Auch der **Gerätefaktor** ist `demoOnly`, obwohl er kein Fremdsystem ist: Die Nutzerprüfung auf dem
 Gerät behauptet nur ein JWT, das die App selbst signiert.
@@ -107,7 +107,7 @@ Gerät behauptet nur ein JWT, das die App selbst signiert.
 `demo.mode` (Umgebungsvariable `DEMO_MODE`) ist standardmäßig an. Nur im Demomodus gibt es die
 Demo-Oberflächen (Briefkasten, Mock-Postausgänge, Zurücksetzen), die `demoOnly`-Verfahren,
 Demo-Werte in den Antworten ([ADR-28](adr/ADR-028-demo-werte-abschaltbar.md)), die Demo-Personen und
-das Zurücksetzen der Datenbank ([07-betrieb.md](07-betrieb.md), Abschnitt 6).
+das Zurücksetzen der Datenbank ([07-betrieb.md](07-betrieb.md), Abschnitt 8).
 
 ### Frontends und Umgebung
 
@@ -147,7 +147,7 @@ Die Liste ist nach Bereichen geordnet. Die Kennungen `DPoP-demo-…` sind Issues
 - Sicherung und Wiederherstellung beschreiben und üben (`DPoP-demo-prnl`).
 - Mehr als eine Instanz: gemeinsame Sperre für geplante Aufgaben, fester Pepper
   (`DPoP-demo-g7np`); die Replay-Tabelle für DPoP skaliert so nicht
-  ([12-entscheidungen.md](12-entscheidungen.md), „Erkannte, bewusst zurückgestellte
+  ([offene-befunde.md](offene-befunde.md) Abschnitt 8, „Erkannte, bewusst zurückgestellte
   Verbesserungen“).
 - Dashboards und Alarme; heute gibt es Kennzahlen, aber keine Auswertung.
 

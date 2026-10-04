@@ -23,7 +23,7 @@ import com.example.identity.contract.tool_api.ToolId
 /**
  * Demo-only reasoning for why the innermost journey's current step looks the way it does: why a tool
  * became the automatic choice, or why a selection is shown. Kept out of the production [JourneyState]
- * hierarchy (docs/05-api.md #2: `demo` is the one non-production channel). It does not repeat the
+ * hierarchy (docs/05-api.md #1: `demo` is the one non-production channel). It does not repeat the
  * screen's own text (`OfferingState.selectionTitle`, `Prompt`). Once a tool is [JourneyState.active]
  * the wording switches to past tense, since [OfferingState.activatable] ignores `active`.
  */

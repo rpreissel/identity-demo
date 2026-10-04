@@ -18,7 +18,7 @@ internal const val AUTH_EMAIL_TOOL_ID = "auth-email"
 internal const val AUTH_EMAIL_LOOKUP_TOOL_ID = "auth-email-lookup"
 
 /**
- * The email procedure (docs/03-tool-architektur.md #1). Two tools rather than one (ADR-17):
+ * The email procedure (docs/verfahren/email.md). Two tools rather than one (ADR-17):
  * `confirm-email` proves the subject controls an address and nothing else, so the account keeps it
  * as its EMAIL anchor and no method appears; a confirmed address is no factor and reports no `amr`.
  * `enroll-email` turns an already confirmed address into a login method, one shot without a code;
@@ -55,7 +55,7 @@ internal val AuthEmailLookup = EmailModule.lookupLogin(
  * (docs/02-domaenenmodell.md #6). It is recorded as an EMAIL claim, which consolidates the
  * `account.anchor` row; lookups by email go through `AccountDirectory` without this module.
  * Like every method module it reaches the orchestrator through tool_api only
- * (docs/03-tool-architektur.md #2, docs/04-orchestrierung.md #5).
+ * (docs/03-tool-architektur.md #7, docs/04-orchestrierung.md #8).
  */
 @ApplicationModule(id = "auth_email", allowedDependencies = ["tool_api", "texts", "mail"])
 @Configuration

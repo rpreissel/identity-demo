@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 
 /**
- * The browser's half of a QR login, shared by `auth-qr` and `auth-qr-lookup` (docs/07-betrieb.md #5):
+ * The browser's half of a QR login, shared by `auth-qr` and `auth-qr-lookup` (docs/verfahren/qr.md):
  * `waitForApp` shows the pairing code, `enterCode` takes the confirmation code the app shows. The
  * second step is the point: a victim approving an attacker's pairing from a link would otherwise
  * hand over the account; this way they would also have to type into the attacker's browser.

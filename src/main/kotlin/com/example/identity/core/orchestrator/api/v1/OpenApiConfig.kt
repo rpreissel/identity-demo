@@ -64,7 +64,7 @@ class OpenApiConfig {
                         .scheme("bearer")
                         .bearerFormat("JWT")
                         .description(
-                            "Signed peer-auth assertion (docs/05-api.md Abschnitt 3, ADR-7). The " +
+                            "Signed peer-auth assertion (docs/05-api.md Abschnitt 3b, ADR-7). The " +
                                 "Web channel's proof: Keycloak calls server-to-server, and the " +
                                 "channel binding comes out of the assertion."
                         )

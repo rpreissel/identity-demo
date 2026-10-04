@@ -8,7 +8,7 @@ interface EnrollQrFormProps {
 
 /**
  * `enroll-qr`'s only step - a pure opt-in, no credential to enter
- * (docs/03-tool-architektur.md): the click itself is the confirmation.
+ * (docs/verfahren/qr.md): the click itself is the confirmation.
  */
 export function EnrollQrForm({ onConfirm, error }: EnrollQrFormProps) {
   return (

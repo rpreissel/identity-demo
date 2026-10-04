@@ -48,7 +48,7 @@ Konto. Die Kennungen und die drei Rollen im Einzelnen beschreibt
    ein Abgleich die Änderung nach Keycloak, aber nur, wenn sie Werte betraf, die Keycloak als Kopie
    hielt. Heute liest Keycloak das Konto bei Bedarf nach. Für ein Konto, das einer Person zugeordnet
    ist, zeigt es nur die Werte des Verzeichnisses; ein dort geleertes Feld bleibt so leer, statt aus
-   alten Claims wieder aufzutauchen ([07-betrieb.md](../07-betrieb.md) Abschnitt 3a).
+   alten Claims wieder aufzutauchen ([05-api.md](../05-api.md) Abschnitt 3b).
 
 Name, Vorname, Geburtsdatum und Adresse werden weiter **bei jeder Abfrage** aus dem Verzeichnis gelesen
 (`PersonDirectory`). Das Konto speichert davon keinen aktuellen Wert; eine Änderung braucht dort also

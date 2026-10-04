@@ -18,7 +18,7 @@ export interface EidFields extends EidCard {
   pin: string
 }
 
-/** Any subset: the backend merges each PATCH onto what it already has (docs/06-ablaeufe.md #6). */
+/** Any subset: the backend merges each PATCH onto what it already has (docs/verfahren/eid.md). */
 export function submitEid(ctx: ToolRenderContext, fields: Partial<EidFields>) {
   return submitViaPatch(ctx, fields)
 }

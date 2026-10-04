@@ -73,7 +73,7 @@ podman compose up keycloak
 `bootRunKc` ist `bootRun` mit dem Profil `keycloak` (`application-keycloak.yml`). Es spricht Keycloak
 unter `https://localhost:8543` an. Ein einfaches `bootRun` bliebe im Standardprofil und würde das
 Keycloak aus Compose gar nicht nutzen. Anders als im Container funktioniert hier, wie bei `bootRun`,
-auch die H2-Konsole (Begründung in [08-projektrahmen.md](08-projektrahmen.md), Abschnitt „H2-Konsole: nur beim
+auch die H2-Konsole (Begründung in Abschnitt 3, „H2-Konsole: nur beim
 Host-Start“).
 
 ### Frontend mit Neuladen beim Speichern
@@ -100,8 +100,9 @@ muss also nebenher laufen.
 - **Personenverzeichnis** (simuliertes Fremdsystem): <http://localhost:8080/personenverzeichnis/>
 - **Briefkasten** (Briefe, SMS und E-Mails an Testpersonen, nur im Demomodus):
   <http://localhost:8080/briefkasten/>
-- **H2-Konsole**: <http://localhost:8080/h2-console>, nur bei Start auf dem Rechner. Verlinkt im
-  Server-Status der Startseite (Abschnitt „Entwickler-Werkzeuge“), dort auch die Zugangsdaten.
+- **H2-Konsole**: <http://localhost:8080/h2-console>, nur bei Start auf dem Rechner (unten,
+  „H2-Konsole: nur beim Host-Start“). Verlinkt im Server-Status der Startseite (Abschnitt
+  „Entwickler-Werkzeuge“), dort auch die Zugangsdaten.
 - **API-Doku** (Swagger UI, nur im Demomodus): <http://localhost:8080/swagger-ui/index.html>,
   ebenfalls im Server-Status verlinkt. Nur zum Nachlesen: Aufrufe brauchen einen DPoP-Nachweis.
 - **Health und Kennzahlen**: eigener Port 9080 (`MANAGEMENT_PORT`), siehe
@@ -114,6 +115,31 @@ Die Datenbank liegt beim Start auf dem Rechner unter `./data/identitydb`, im Con
 `orchestrator-data`. Testpersonen und gültige Freischaltcodes spielt eine Flyway-Migration beim
 Start ein. Konten legt sie nicht an: Jede Testperson registriert sich selbst, in der App oder auf
 der Website.
+
+### H2-Konsole: nur beim Host-Start
+
+Die H2-Konsole unter `/h2-console` ist bewusst eingeschaltet, aber `web-allow-others` bleibt
+`false` (Begründung im Kommentar in `application.yml`). Spring Security schützt nur
+`/orchestrator/admin/**` (`AdminSecurityConfig`), dieser Pfad bleibt offen. Ihn schützt deshalb allein die Prüfung von H2, ob die Anfrage vom eigenen Rechner kommt, und
+dahinter liegen Passwort-Hashes, Geräteschlüssel und alle Sitzungen.
+
+Diese Prüfung vergleicht die Absenderadresse. Bei `./gradlew bootRun` ist das `127.0.0.1`, und die
+Konsole funktioniert. **Im Container (`compose.yml`) geht sie nicht:** Dort erreicht die Anfrage den
+Orchestrator über die Portweiterleitung `8080:8080` mit der Adresse des Container-Netzes. Für H2 ist
+das eine Verbindung von außen, und H2 lehnt sie ab mit *„remote connections ('webAllowOthers') are
+disabled on this server“*. Der Schutz wirkt also wie vorgesehen.
+
+**Auf OpenShift ist die Konsole aus** (`SPRING_H2_CONSOLE_ENABLED=false` im Manifest). Dort erkennt
+Spring Boot die Plattform und wertet `X-Forwarded-For` aus; Tomcat vertraut dabei jedem privaten
+Netz als Proxy. Ein Client aus einem privaten Netz könnte sich so als `127.0.0.1` ausgeben, und die
+Prüfung von H2 ließe ihn durch.
+
+Wer in die Datenbank sehen will, startet deshalb den Orchestrator direkt auf dem Rechner und lässt
+nur Keycloak über Compose laufen. Die Variante `host` (Voreinstellung von `KEYCLOAK_SETUP_VARIANT`)
+richtet Keycloak dafür bereits auf `host.containers.internal:8080` aus. Wer die Daten eines Laufs im
+Container braucht, kopiert die Datei aus dem gestoppten Volume `orchestrator-data` heraus.
+`web-allow-others` einzuschalten kommt nicht in Frage: Der Port ist auf dem Rechner nach außen
+freigegeben, und jeder, der ihn erreicht, bekäme vollen Lese- und Schreibzugriff.
 
 ---
 

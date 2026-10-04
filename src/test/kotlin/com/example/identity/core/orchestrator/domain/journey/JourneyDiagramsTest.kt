@@ -71,7 +71,7 @@ class JourneyDiagramsTest : BehaviorSpec({
         val DIAGRAMS = listOf(
             Diagram(FastAccessState::class, "fast-access"),
             Diagram(RegisterState::class, "register"),
-            Diagram(RegisterEnrollFirstState::class, "register"),
+            Diagram(RegisterEnrollFirstState::class, "register-enroll-first"),
             Diagram(LookupLoginState::class, "lookup-login"),
             Diagram(WebSelectMethodState::class, "web-select-method"),
             Diagram(StepUpState::class, "step-up"),

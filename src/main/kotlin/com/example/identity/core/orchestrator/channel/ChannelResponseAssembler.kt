@@ -29,7 +29,7 @@ import com.example.identity.contract.tool_api.StepData
 import org.springframework.stereotype.Component
 
 /**
- * Builds the response envelope (docs/05-api.md #2) from a channel's current state: channel block,
+ * Builds the response envelope (docs/05-api.md #1) from a channel's current state: channel block,
  * next step, demo block and WEB auth data. It decides nothing, for [ChannelService] and
  * `ToolJourneyService` alike.
  */
@@ -64,7 +64,7 @@ class ChannelResponseAssembler(
     }
 
     /**
-     * WEB only (docs/05-api.md Abschnitt 3), `null` for APP. Every WEB response carries
+     * WEB only (docs/05-api.md Abschnitt 3b), `null` for APP. Every WEB response carries
      * it, including tool responses from `ToolJourneyService`.
      */
     fun authDataFor(channel: ChannelSession): AuthData? {
@@ -108,7 +108,7 @@ class ChannelResponseAssembler(
     }
 
     /**
-     * The channel block shared by every response (docs/05-api.md #2), public so tool controllers
+     * The channel block shared by every response (docs/05-api.md #1), public so tool controllers
      * can attach it. [includeAccountFields] gates `currentAcr`/`currentAmr`/`activeMethods`; only
      * the on-demand security summary needs them. They appear only after
      * [ChannelSession.hasProvenFactor], so a recognized device does not leak the account's methods.

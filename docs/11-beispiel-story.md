@@ -16,7 +16,7 @@ gebunden (`binding_key_ref`). Noch ist der Kanal `ANONYMOUS`, denn es gibt kein 
 Gerät gehört.
 
 Dieser Schlüssel ist noch **kein Anmeldeverfahren**. Er beweist, dass zwei Anfragen vom selben Gerät
-kommen, aber nicht, wer Mara ist. Ihr Gerät als Anmeldeverfahren richtet sie erst in Kapitel 6 ein,
+kommen, aber nicht, wer Mara ist. Ihr Gerät als Anmeldeverfahren richtet sie erst in Abschnitt 6 ein,
 und das ist ein anderer Vorgang.
 
 *Konzepte: [`ChannelSession`](02-domaenenmodell.md), [DPoP-Proof](09-dpop.md).*
@@ -62,8 +62,8 @@ Niemand soll sich selbst höher einstufen). Hätte Mara statt Passwort und SMS g
 eingerichtet, wäre der Schritt mit dem Passwort entfallen: `enroll-device` bringt Besitz und Wissen
 (oder Biometrie) schon allein mit.
 
-*Konzepte: [`AuthIntent`/Journey](04-orchestrierung.md) Abschnitt 1, [Tool-Vertrag](03-tool-architektur.md),
-[`next`/`stepData`](05-api.md), [Registrierung im Detail](06-ablaeufe.md),
+*Konzepte: [`AuthIntent`/Journey](04-orchestrierung.md) Abschnitte 2 und 3, [Tool-Vertrag](03-tool-architektur.md),
+[`next`/`stepData`](05-api.md), [Registrierung im Detail](verfahren/README.md),
 [Adresse ≠ Anmeldeverfahren, ADR-17](12-entscheidungen.md).*
 
 ## 3) Mara bekommt ihr AccessToken
@@ -124,17 +124,17 @@ Jetzt, auf `loa2`, richtet Mara zwei Dinge ein.
 
 **`enroll-device`**: Die App erzeugt einen zweiten Schlüssel, nur für dieses Konto, im sicheren
 Speicher des Geräts, und Mara schaltet ihn mit Face ID frei. Gespeichert wird nur der öffentliche
-Teil; der private verlässt das Gerät nie. Anders als die Wiedererkennung des Geräts aus Kapitel 4 ist
+Teil; der private verlässt das Gerät nie. Anders als die Wiedererkennung des Geräts aus Abschnitt 4 ist
 das ein echtes Anmeldeverfahren: Es weist Besitz **und** Wissen bzw. Biometrie nach und erreicht
 damit allein `loa2`. Ab jetzt bietet `FAST_ACCESS` ihr genau dieses Verfahren zuerst an: Gerät in die
 Hand, ein Blick, fertig, ohne SMS und ohne Passwort.
 
 **`enroll-qr`**: eine reine Zustimmung ohne Geheimnis (`factorTypes = {}`). Sie sagt nur: „Dieses
 Konto darf Anmeldungen auf anderen Geräten per QR-Code bestätigen.“ Geprüft wird sie dort, wo es
-darauf ankommt, nämlich beim Bestätigen in Kapitel 7. Ohne sie bestätigt die App nichts.
+darauf ankommt, nämlich beim Bestätigen in Abschnitt 7. Ohne sie bestätigt die App nichts.
 
 *Konzepte: [`MANAGE_AUTH_METHODS`](journeys/manage-auth-methods.md),
-[`factorTypes`/Tool-Katalog](03-tool-architektur.md), [Verfahren einrichten](06-ablaeufe.md).*
+[`factorTypes`/Tool-Katalog](03-tool-architektur.md), [Verfahren einrichten](verfahren/README.md).*
 
 ## 7) Mara meldet sich am Laptop an, mit dem Handy
 
@@ -152,7 +152,7 @@ zweierlei von der Sitzung in der **App**:
 
 1. Die Sitzung muss selbst `loa2` erreichen. Eine Sitzung auf `loa1` darf nicht für eine Anmeldung
    anderswo einstehen. Mara erledigt das mit einem Blick in die Kamera, denn ihr Geräteverfahren aus
-   Kapitel 6 erreicht `loa2`.
+   Abschnitt 6 erreicht `loa2`.
 2. Sie muss **neu** beweisen, dass gerade jetzt Mara am Gerät sitzt. Ein alter Nachweis von heute
    Morgen darf die Zustimmung nicht geben.
 
@@ -162,7 +162,7 @@ auf `loa2`, ohne dass dort je ein Passwort eingegeben wurde. Geschenkt ist das N
 Anmeldung per QR-Code gibt nur weiter, was in der App schon bewiesen wurde.
 
 *Konzepte: [`CONFIRM_PEER_LOGIN`](journeys/confirm-peer-login.md),
-[Web-Zugang über Keycloak](05-api.md) Abschnitt 3, [`PEER_APPROVAL` als eigene Rolle](03-tool-architektur.md).*
+[Web-Zugang über Keycloak](05-api.md) Abschnitt 3b, [`PEER_APPROVAL` als eigene Rolle](03-tool-architektur.md).*
 
 ## 8) Maras Vater beantwortet einen Brief
 
@@ -174,7 +174,7 @@ Orchestrator, und zwar für genau diesen einen Vorgang
 Vorgang“: Das Kennwort gilt, bis seine Frist abläuft oder die Kasse den Vorgang abschließt. Wird er
 heute nicht fertig, kann er morgen wiederkommen.
 
-Er setzt sich an Maras Laptop. Dort ist Mara aus Kapitel 7 noch angemeldet, und das ist kein
+Er setzt sich an Maras Laptop. Dort ist Mara aus Abschnitt 7 noch angemeldet, und das ist kein
 Nebendetail: In einem Browser gehört eine Keycloak-Sitzung genau einer Person. Würde er jetzt die
 Vorgangsseite öffnen, bekäme sie still Maras Token, ohne Hinweis auf den Vorgang. Mara meldet sich
 deshalb zuerst ab. Ein Wechsel zwischen Konto und Vorgangszugang geht in beiden Richtungen nur über
@@ -199,7 +199,7 @@ Die App kann das noch nicht: Einen Vorgangszugang gibt es vorerst nur im Web-Kan
 
 *Konzepte: [Vorgangszugang, ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md),
 [Freischaltcode im Fremdsystem, ADR-31](adr/ADR-031-freischaltcode-liegt-im-fremdsystem.md),
-[Web-Zugang über Keycloak](05-api.md) Abschnitt 3.*
+[Web-Zugang über Keycloak](05-api.md) Abschnitt 3b.*
 
 ## 9) Mara löscht ihr Konto
 
@@ -223,15 +223,15 @@ Konto gab und wann es gelöscht wurde
 
 | Verfahren | Faktortyp | Erreicht allein | Kam ins Spiel |
 |---|---|---|---|
-| `ident-fsc` (Freischaltcode per Brief) | Identifizierung, kein Anmeldeverfahren | `loa2` | Kapitel 2, erneut in 5 |
-| bestätigte Adresse | keine – gehört zur Grundausstattung des Kontos | — | Kapitel 2 |
-| `sms` | Besitz | `loa1` | Kapitel 2 |
-| `password` | Wissen | `loa1` | Kapitel 2 |
-| `sms` + `password` zusammen | Besitz + Wissen | `loa2` | Kapitel 5 |
-| `device` | Besitz + Wissen/Biometrie | `loa2` | Kapitel 6 |
-| `qr` | Besitz + Wissen (aus der App übernommen) | `loa2` | Kapitel 6/7 |
-| `auth-invite-lookup` (Einmalkennwort per Brief, ihr Vater) | Besitz, kein Konto | das Niveau der Einladung (`loa1` oder `loa2`) | Kapitel 8 |
-| DPoP-Schlüssel / `DeviceAccountLink` | keine – nur Wiedererkennung | — | Kapitel 1/4 |
+| `ident-fsc` (Freischaltcode per Brief) | Identifizierung, kein Anmeldeverfahren | `loa2` | Abschnitt 2, erneut in 5 |
+| bestätigte Adresse | keine – gehört zur Grundausstattung des Kontos | — | Abschnitt 2 |
+| `sms` | Besitz | `loa1` | Abschnitt 2 |
+| `password` | Wissen | `loa1` | Abschnitt 2 |
+| `sms` + `password` zusammen | Besitz + Wissen | `loa2` | Abschnitt 5 |
+| `device` | Besitz + Wissen/Biometrie | `loa2` | Abschnitt 6 |
+| `qr` | Besitz + Wissen (aus der App übernommen) | `loa2` | Abschnitt 6/7 |
+| `auth-invite-lookup` (Einmalkennwort per Brief, ihr Vater) | Besitz, kein Konto | das Niveau der Einladung (`loa1` oder `loa2`) | Abschnitt 8 |
+| DPoP-Schlüssel / `DeviceAccountLink` | keine – nur Wiedererkennung | — | Abschnitt 1/4 |
 
 ## Welche Begriffe das Beispiel verbindet
 
@@ -249,5 +249,5 @@ Konto gab und wann es gelöscht wurde
 
 Jeder dieser Schritte funktioniert für Maras App-Kanal genauso wie für eine Anmeldung im Browser über
 Keycloak. Zwischen den beiden Kanälen unterscheidet sich nur, *wer die Oberfläche zeigt* und *wie die
-Anfrage abgesichert ist* ([05-api.md](05-api.md)). Kapitel 7 zeigt beide zugleich: dieselbe Nutzerin,
+Anfrage abgesichert ist* ([05-api.md](05-api.md)). Abschnitt 7 zeigt beide zugleich: dieselbe Nutzerin,
 zwei Kanäle, und der eine steht für den anderen ein.

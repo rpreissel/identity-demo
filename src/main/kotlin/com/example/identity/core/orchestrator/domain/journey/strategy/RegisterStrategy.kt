@@ -144,7 +144,7 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
     private fun continueAfterAssignment(ctx: JourneyContext): Transition {
         val account = ctx.requireAccount()
         // After the AuthChoice branch: the email obligation belongs to a genuine registration,
-        // not to a rediscovered account logging in (docs/04-orchestrierung.md #8).
+        // not to a rediscovered account logging in (docs/04-orchestrierung.md #5).
         // emailObligation stays true: without an attesting tool confirmEmail yields nothing, and
         // the obligation is retried after enrollment.
         return AuthEnrollCore.confirmEmail(account, ctx)

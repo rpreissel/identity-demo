@@ -27,7 +27,7 @@ stateDiagram-v2
 
 Jeder Zustand enthält `targetAcr`, `startingAcr`, `allowReIdentification` und `reason`.
 `targetAcr` ist das Ziel dieses einen Laufs, nicht die dauerhafte Untergrenze des Kanals
-(Orchestrierung, Abschnitt 8). `reason` sagt, warum ein Aufrufer den Step-up braucht (heute nur
+(Orchestrierung, Abschnitt 4). `reason` sagt, warum ein Aufrufer den Step-up braucht (heute nur
 `PEER_LOGIN`); ohne ihn gilt der allgemeine Text. `AuthChoice` enthält außerdem das Angebot, die
 bisherigen Ablehnungen und `additionalFactorRound`. Liegt auf dem Kanal schon der Nachweis eines
 Anmeldeverfahrens vor, sagt der Text, dass jetzt ein Verfahren anderer Art nötig ist.

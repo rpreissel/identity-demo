@@ -8,7 +8,7 @@ import { Tx } from '../../Tx'
 
 /**
  * What each document can deliver at all. Mirrors NectProcedure.deliverable on the backend
- * (docs/03-tool-architektur.md, "Was `ident-nect` von Nect bekommt"): the eID card by access right,
+ * (docs/verfahren/nect.md, "Was `ident-nect` von Nect bekommt"): the eID card by access right,
  * the passport chip's MRZ data as a whole, the wallet's PID by selective disclosure.
  */
 const PROCEDURES: { key: NectProcedure; label: string; hint: string; deliverable: NectRequestable[] }[] = [
@@ -93,7 +93,7 @@ function pseudonym(prefix: string, p: PersonFields): string {
 }
 
 /**
- * Nect's jump page, simulated (docs/03-tool-architektur.md, ident-nect). The user is on the identification
+ * Nect's jump page, simulated (docs/verfahren/nect.md). The user is on the identification
  * service's own site here: this page talks to /mock-nect only, and hands the browser back to the
  * relying party with nothing but the case id - the result is fetched by our backend, not carried
  * by the browser.

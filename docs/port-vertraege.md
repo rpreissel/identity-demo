@@ -45,7 +45,9 @@ wichtigste.
 - **Nur in der Demo:** Der eigene Port `DemoPersonDirectory` liefert alle Personen samt E-Mail-Adresse,
   Mobilnummer und Klartext des jüngsten gültigen Freischaltcodes für die Auswahl „Testperson
   übernehmen“ (ADR-28), dazu die offenen Einladungen mit ihrem Kennwort für die Auswahl „Einladung
-  übernehmen“. Ein echtes System muss ihn nicht anbieten.
+  übernehmen“. Mit diesen Werten füllt die Demo nur Formulare vor; ins Konto gelangen E-Mail-Adresse
+  und Mobilnummer erst durch Bestätigen per Code bzw. TAN. Ein echtes System muss den Port nicht
+  anbieten.
 
 ## KOBIL (`kobil.KobilSsms`) – `demoOnly`
 

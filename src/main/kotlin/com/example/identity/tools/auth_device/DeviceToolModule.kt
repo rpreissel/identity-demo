@@ -15,7 +15,7 @@ internal const val ENROLL_DEVICE_TOOL_ID = "enroll-device"
 internal const val AUTH_DEVICE_TOOL_ID = "auth-device"
 
 /**
- * The device procedure: `enroll-device`, `auth-device` (docs/03-tool-architektur.md #1). The
+ * The device procedure: `enroll-device`, `auth-device` (docs/verfahren/device.md). The
  * credential is a non-extractable key on one device: it only works there and is revoked once the
  * key is rebound to another account (docs/09-dpop.md). One run combines possession of the key with
  * the access means (pin = KNOWLEDGE, biometric = INHERENCE), hence loa2. The server only sees a
@@ -43,8 +43,8 @@ internal val AuthDevice = DeviceModule.login(
 
 /**
  * A method module talks to the orchestrator through tool_api only, never to account or another
- * method module (docs/03-tool-architektur.md #2). Its controllers (`auth_device.api.v1`) reach the
- * orchestrator through `tool_api` alone (docs/04-orchestrierung.md #5).
+ * method module (docs/03-tool-architektur.md #7). Its controllers (`auth_device.api.v1`) reach the
+ * orchestrator through `tool_api` alone (docs/04-orchestrierung.md #8).
  */
 @ApplicationModule(id = "auth_device", allowedDependencies = ["tool_api", "texts"])
 @Configuration

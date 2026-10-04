@@ -212,7 +212,7 @@ Anfrage, Status und Body gebunden. Keycloak schließt eine Anmeldung nur mit dem
 Niveau ab, die der Orchestrator nennt.
 
 **Doku:** [ADR-7](adr/ADR-007-web-kanal-ohne-mtls-signierte-request-assertion-statt.md);
-[05-api.md](05-api.md) (Keycloak-Endpunkte); [04-orchestrierung.md](04-orchestrierung.md)
+[05-api.md](05-api.md) Abschnitt 3b (Keycloak-Endpunkte); [04-orchestrierung.md](04-orchestrierung.md)
 Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten.md) I-15, I-16, I-31.
 
 **Code im Orchestrator:**
@@ -331,7 +331,7 @@ berechnet. Drei Obergrenzen verhindern, dass sich ein Verfahren selbst aufwertet
 kann (`maxAcr`), unter welchem Niveau es eingerichtet wurde (`enrolledUnderAcr`) und die
 NIST-Grenze für kombinierte Faktoren.
 
-**Doku:** [04-orchestrierung.md](04-orchestrierung.md) Abschnitt 8;
+**Doku:** [04-orchestrierung.md](04-orchestrierung.md) Abschnitt 4;
 [ADR-5](adr/ADR-005-drei-obergrenzen-fuer-das-sicherheitsniveau.md);
 [ADR-36](adr/ADR-036-niveaus-und-ihre-nachweise.md); [invarianten.md](invarianten.md) I-4, I-21,
 I-32.
@@ -374,7 +374,7 @@ I-32.
   ist richtig, schützt aber nur, wenn die anfragende Anwendung `acr` gegen ihre Anforderung prüft
   (`DPoP-demo-mea0`).
 - **Bewusst** Das `acr` im Token altert nicht; es beschreibt wie bei Keycloak die Anmeldung. Wer ein
-  frisches `loa2` braucht, fragt mit `acr_values` neu an oder prüft `auth_time` (04 §8, [offene Befunde](offene-befunde.md) Abschnitt 6).
+  frisches `loa2` braucht, fragt mit `acr_values` neu an oder prüft `auth_time` (04 §4, [offene Befunde](offene-befunde.md) Abschnitt 6).
 - **Offen (Entscheidung)** `loa3` im Web-Realm (`DPoP-demo-wzcm`); Aufwerten eines Verfahrens nach
   erneuter Identifizierung (`DPoP-demo-wyp3`).
 
@@ -414,7 +414,7 @@ Zustand anbietet, schreibt nur in den gerade aktiven Schritt, und ein Ergebnis z
 **Härtungen:**
 
 - Ein Angebot darf veralten, die Ausführung prüft aktuell
-  ([04-orchestrierung.md](04-orchestrierung.md) Abschnitt 5).
+  ([04-orchestrierung.md](04-orchestrierung.md) Abschnitt 8).
 - Ein Ergebnis muss zur Rolle des Tools passen (`chargeRateLimits`, `applyOutcome`).
 - Nach drei Fehlversuchen ist die Journey `FAILED` und nimmt nichts mehr an (I-2). Das Ende wird
   festgeschrieben, nicht mit der Antwort `410` zurückgerollt (`JourneyEndedException`, SA-1,
@@ -478,7 +478,8 @@ nie eine Zusammenführung. Nur ein vorläufiges Konto geht im gefundenen auf.
 
 ## 8) Die Verfahren im Einzelnen
 
-**Doku:** [06-ablaeufe.md](06-ablaeufe.md); [07-betrieb.md](07-betrieb.md) Abschnitt 5 (QR);
+**Doku:** [06-ablaeufe.md](06-ablaeufe.md) und je Verfahren eine Seite unter
+[verfahren/](verfahren/README.md); [verfahren/qr.md](verfahren/qr.md), „Sicherheit des Pairing-Codes“;
 [port-vertraege.md](port-vertraege.md).
 
 **Passwort** ([`PasswordHasher.matches`](../src/main/kotlin/com/example/identity/tools/auth_password/internal/PasswordHasher.kt#L26)):
@@ -596,7 +597,7 @@ in seinem eigenen Namensraum. Jeder Zähler ist ein einziges `UPDATE`.
   Kanäle passieren die Prüfung, bevor der fünfte zählt. Restrisiko vor einer produktiven
   Passwortanmeldung per Lookup ([07-betrieb.md](07-betrieb.md) Abschnitt 4, SA-27, `DPoP-demo-164n.29`).
 - **Niedrig** Fehlgeschlagene QR-Suchen haben keinen eigenen Zähler
-  ([07-betrieb.md](07-betrieb.md) Abschnitt 5).
+  ([verfahren/qr.md](verfahren/qr.md), „Sicherheit des Pairing-Codes“).
 
 ---
 
@@ -722,7 +723,7 @@ Start bricht ab, solange eine Demo-Voreinstellung übrig ist.
   `{scrypt}`, `{pbkdf2}`, kein `{noop}`) und startet nicht ohne das Profil `keycloak`, das sonst
   unsignierte Mock-Tokens ausgäbe (SA-13, SA-15).
 - Auf OpenShift ist die H2-Konsole aus (SA-14,
-  [08-projektrahmen.md](08-projektrahmen.md), „H2-Konsole: nur beim Host-Start“).
+  [13-ausfuehren.md](13-ausfuehren.md) Abschnitt 3, „H2-Konsole: nur beim Host-Start“).
 - `ProductionModeCheckTest`, `DemoModeSwitchTest`.
 
 **Offene Flanken:**

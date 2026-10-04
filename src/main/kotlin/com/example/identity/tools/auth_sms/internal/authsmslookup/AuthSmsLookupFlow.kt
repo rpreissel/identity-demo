@@ -13,7 +13,7 @@ private const val FIELD_EMAIL = "email"
 private const val FIELD_TAN = "tan"
 
 /**
- * Pure state of the auth-sms-lookup flow (docs/03-tool-architektur.md #3). The controller resolves
+ * Pure state of the auth-sms-lookup flow (docs/03-tool-architektur.md #6). The controller resolves
  * the email; this only models what the result means for the flow's position.
  */
 internal sealed interface AuthSmsLookupState {

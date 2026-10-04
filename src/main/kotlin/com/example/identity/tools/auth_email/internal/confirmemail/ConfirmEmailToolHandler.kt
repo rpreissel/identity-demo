@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional
 
 /**
  * toolId=confirm-email, role=ATTESTATION: proves control of an address with a code exchange like
- * enroll-sms (docs/06-ablaeufe.md #4). The confirmed value is the account's EMAIL anchor, asserted
+ * enroll-sms (docs/verfahren/email.md). The confirmed value is the account's EMAIL anchor, asserted
  * as an EMAIL claim on `Completed.Attested`; no method instance or device binding is created
  * (docs/02-domaenenmodell.md #6). This class translates [ConfirmEmailFlow]'s decisions into writes.
  */
@@ -70,7 +70,7 @@ class ConfirmEmailToolHandler(
 
                     val state = ConfirmEmailState.AwaitingCode(decision.email, issued.hash, issued.expiresAt)
                     val (step, fields) = state.describe()
-                    // demoTan: reuses the existing demo-value plumbing (docs/05-api.md #2's `demo`
+                    // demoTan: reuses the existing demo-value plumbing (docs/05-api.md #1's `demo`
                     // object) - this is a demo, not a real mail gateway, and a second field for
                     // "the other kind of demo code" would be unnecessary special-casing.
                     ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plainCode))

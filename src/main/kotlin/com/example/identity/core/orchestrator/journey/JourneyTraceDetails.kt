@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component
 /**
  * Fills the JourneyTrace's `detail` column by shaping what a [JourneyEvent], [Transition] or
  * [Action] already determined. It never decides anything. The `next` it logs is passed in by
- * [JourneyService], so the log cannot disagree with routing (docs/04-orchestrierung.md #4).
+ * [JourneyService], so the log cannot disagree with routing (docs/04-orchestrierung.md #6).
  */
 @Component
 class JourneyTraceDetails(

@@ -10,7 +10,7 @@ private const val STEP_AUTH = "auth"
 private const val FIELD_CODE = "code"
 
 /**
- * Pure state of the auth-email flow (docs/03-tool-architektur.md #3). The address is resolved once
+ * Pure state of the auth-email flow (docs/03-tool-architektur.md #6). The address is resolved once
  * at `start`, so there is only this one shape.
  */
 internal data class AuthEmailState(val issuedCodeHash: String, val codeExpiresAt: Instant) {

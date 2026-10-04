@@ -7,7 +7,7 @@ import com.example.identity.contract.tool_api.MissingFields
 import java.time.LocalDate
 
 /**
- * Pure state of the ident-fsc flow (docs/03-tool-architektur.md #3). One flat shape: five
+ * Pure state of the ident-fsc flow (docs/03-tool-architektur.md #6). One flat shape: five
  * independently suppliable fields have no named positions, so [missingFields] derives what is needed.
  */
 internal data class IdentFscState(

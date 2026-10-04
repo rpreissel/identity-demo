@@ -254,7 +254,7 @@ class JourneyActionExecutor(
             authMethodId = methodInstanceId
         )
         // Demo transparency for the ADR-5 cap: the new credential is weaker than its catalog entry.
-        // Shown now, not only later as a puzzling STEP_UP rejection (docs/04-orchestrierung.md #8).
+        // Shown now, not only later as a puzzling STEP_UP rejection (docs/04-orchestrierung.md #4).
         val demoNotice =
             if (AcrLevel.rank(enrolledUnderAcr) < AcrLevel.rank(action.tool.maxAcr)) {
                 mapOf(

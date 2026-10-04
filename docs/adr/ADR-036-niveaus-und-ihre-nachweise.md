@@ -46,7 +46,7 @@ Personen läuft mit `demo.mode=false`.
 
 - **loa1:** ein Faktor, den der Server selbst prüft – eine SMS-TAN (Besitz der Nummer), ein Passwort
   oder ein Code an die E-Mail-Adresse (Wissen). Die Policy hebt zwei verschiedene Faktorarten
-  zusammen auf loa2 (docs/04-orchestrierung.md #8).
+  zusammen auf loa2 (docs/04-orchestrierung.md #4).
 - **loa2 aus einem Verfahren:**
   - `ident-fsc`: Besitz eines per Post an die Person gesandten Codes; Einmaligkeit und Ablauf sagt
     das Personenverzeichnis über seinen Port zu ([ADR-31](ADR-031-freischaltcode-liegt-im-fremdsystem.md)).

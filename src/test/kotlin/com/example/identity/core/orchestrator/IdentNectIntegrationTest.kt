@@ -10,7 +10,7 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 
 /**
- * ident-nect end to end (docs/03-tool-architektur.md, ident-nect): jump URL, identification on
+ * ident-nect end to end (docs/verfahren/nect.md): jump URL, identification on
  * Nect's page (here `/mock-nect`), return with the case id, and the backend redeems the result.
  * Like ident-eid it attests and resolves nobody; ident-kvnr binds the person afterwards (ADR-18).
  */

@@ -1,7 +1,9 @@
-# Fehler, Konsistenz und Lebenszyklus
+# Betrieb
 
-Dieses Kapitel beschreibt den Fehlervertrag, was transaktional zugesagt ist und wie lange welche
-Daten aufbewahrt werden.
+Dieses Kapitel beschreibt den Fehlervertrag, was transaktional zugesagt ist, wie lange welche Daten
+aufbewahrt werden, was außerhalb des Demomodus gesetzt sein muss, die Sperren und
+Mengenbegrenzungen und wie man den Zustand des Systems beobachtet. Was es nur im Demomodus gibt,
+steht am Ende (Abschnitt 8).
 
 > **Einschränkung ([ADR-35](adr/ADR-035-betriebsanspruch-backend-kern-produktionsreif.md)):**
 > Produktionsreif ist der Backend-Kern. Frontends und Ausführungsumgebung (`compose.yml`,
@@ -107,14 +109,6 @@ gelesen. Deshalb werden sie aktiv gelöscht und nicht aufbewahrt.
 
 Richtwerte (als Voreinstellung gedacht, nicht als Vorgabe für Compliance):
 
-- **`kobil.*` (Fremdsystem)**
-  - *Frist beginnt mit:* —
-  - *Richtwert:* **kein** Aufräumen durch uns
-  - *Grund:* `kobil` simuliert KOBIL und unterliegt nicht unseren Aufbewahrungsregeln. Dass es seine Daten überhaupt speichert, ist nötig und keine Bequemlichkeit: Sonst würde nach jedem Neustart jede `auth_kobil.enrollment`-Zeile auf einen Nutzer zeigen, den es beim Anbieter nicht mehr gibt
-- **`nect.*`, `personenverzeichnis.*` (Fremdsysteme)**
-  - *Frist beginnt mit:* —
-  - *Richtwert:* **kein** Aufräumen durch uns
-  - *Grund:* simulierte Fremdsysteme wie `kobil`. Auch die Briefe des Personenverzeichnisses mit den Freischaltcodes im Klartext bleiben dort, wie Papier beim Empfänger
 - **`QrLoginRequest`**
   - *Frist beginnt mit:* `expiresAt`
   - *Richtwert:* 24 h
@@ -172,6 +166,14 @@ Richtwerte (als Voreinstellung gedacht, nicht als Vorgabe für Compliance):
   - *Frist beginnt mit:* letzte Änderung des Zählers
   - *Richtwert:* 7 Tage
   - *Grund:* weit länger als das längste Zählfenster und die längste Sperre (15 Min.); ein Aufräumlauf löscht nie eine Zeile, deren Sperre noch läuft. Gilt für die Zähler aller Bereiche (`ACCOUNT`/`PERSON`/`BINDING_KEY`/`ADMIN` und die Versandlimits der Module, Abschnitt 4)
+- **`kobil.*` (Fremdsystem)**
+  - *Frist beginnt mit:* —
+  - *Richtwert:* **kein** Aufräumen durch uns
+  - *Grund:* `kobil` simuliert KOBIL und unterliegt nicht unseren Aufbewahrungsregeln. Dass es seine Daten überhaupt speichert, ist nötig und keine Bequemlichkeit: Sonst würde nach jedem Neustart jede `auth_kobil.enrollment`-Zeile auf einen Nutzer zeigen, den es beim Anbieter nicht mehr gibt
+- **`nect.*`, `personenverzeichnis.*` (Fremdsysteme)**
+  - *Frist beginnt mit:* —
+  - *Richtwert:* **kein** Aufräumen durch uns
+  - *Grund:* simulierte Fremdsysteme wie `kobil`. Auch die Briefe des Personenverzeichnisses mit den Freischaltcodes im Klartext bleiben dort, wie Papier beim Empfänger
 
 Wie mit den Verweisen zwischen den Tabellen umgegangen wird:
 
@@ -209,18 +211,14 @@ Wie mit den Verweisen zwischen den Tabellen umgegangen wird:
   `AccountDeletionService.deleteAccount` erledigt das ausdrücklich und unabhängig von den Fristen
   oben.
 - **`WEB`-Kanäle haben dieselbe Aufbewahrungsfrist wie alle anderen.** Die Abmeldung im
-  Web-Kanal gehört Keycloak ([05-api.md](05-api.md) Abschnitt 3); Keycloak meldet sie dem
+  Web-Kanal gehört Keycloak ([05-api.md](05-api.md) Abschnitt 3b); Keycloak meldet sie dem
   Orchestrator (`SignInLogEventListener` → `KeycloakChannelService.signedOutAtKeycloak`), und das beendet
   die noch laufenden Kanäle dieser Sitzung sofort, Web- wie App-Kanal; für einen Vorgangszugang
   (ADR-48) die Web-Kanäle der Einladung. Der Orchestrator fragt
   Keycloak dafür nicht ab.
 - **Die Lebensdauer eines angemeldeten Kanals ist die seiner Keycloak-Sitzung**
-  ([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)). Die festen Fristen
-  (App 24 Stunden, Web 30 Minuten je Anmeldedurchlauf) gelten nur bis `AUTHENTICATED`. Danach ist
-  `expiresAt` das Sitzungsfenster, das Keycloak meldet (SSO idle und SSO max des Realms); im App-Kanal
-  schiebt jede Erneuerung des Tokens es weiter, auch die bei einer Journey-Interaktion. Wer die
-  Sitzungsdauer ändern will, ändert sie im Realm, nicht im Orchestrator. Die Aufbewahrungsfrist oben
-  beginnt entsprechend früher.
+  ([02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 3, „Lebensdauer“). Die
+  Aufbewahrungsfrist oben beginnt entsprechend früher.
 - **Die Fristen des Realms stehen in der Migration**, nicht in Keycloaks Voreinstellungen
   (keycloak-migrations, `V5__realm_lifetimes.kc.kts`): AccessToken 5 Minuten, SSO idle 30 Minuten,
   SSO max 10 Stunden, `sslRequired=external`. Die ersten beiden gleichen den Fristen von
@@ -228,45 +226,14 @@ Wie mit den Verweisen zwischen den Tabellen umgegangen wird:
   LoA-2-Subflows); danach übernimmt Keycloak es nicht mehr aus der SSO-Sitzung, und eine Anfrage
   mit `acr_values=2` verlangt einen frischen Nachweis. loa1 trägt die ganze Sitzung. Für Nachweise
   der Orchestrator-Tools gilt dieselbe Frist im Orchestrator selbst
-  (`identity.policy.loa2-max-age`, 04 §8 „Ein Nachweis über loa1 altert“); beide Werte
+  (`identity.policy.loa2-max-age`, 04 §4 „Ein Nachweis über loa1 altert“); beide Werte
   werden zusammen geändert.
 
-Im Demomodus gilt beim Start außerdem: Hat der Orchestrator kein einziges Konto, etwa nach einem
-frischen Volume oder einer neu aufgesetzten Datenbank, gehört jede Sitzung in Keycloak zu einem Konto,
-das es nicht mehr gibt. Er meldet dann in Keycloak alle ab (`KeycloakOrphanSessionsAtStart`).
+## 3a) Keycloak-Federation: Aufräumen nach einer Löschung
 
-## 3a) Keycloak liest die Konten – keine Spiegelung
-
-Keycloak hält keine Kopie der Konten. Seine Nutzer-Federation (`OrchestratorStorageProvider`, ohne
-Import) liest ein Konto bei Bedarf beim Orchestrator nach (`KeycloakAccountLookupController`): nach
-Konto-Id, exakter E-Mail-Adresse oder Benutzername, jeweils ein einzelner Zugriff über Primärschlüssel
-oder den eindeutigen E-Mail-Anker. Eine Liste aller Konten gibt es nicht; die Suche der Admin-Konsole
-findet nur exakte Treffer ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
-
-- **Was Keycloak zeigt:** Benutzername (die bestätigte E-Mail, sonst `account-<id>`), E-Mail, Vor- und
-  Nachname und die Attribute hinter den Token-Claims (`personId`, `kvnr`, `versnr`, `birthDate`,
-  `streetAddress`, `postalCode`, `locality`; im Token `birth_date`, `street_address`, `postal_code`, `locality`). Für ein Konto mit Person gelten nur die Werte des Personenverzeichnisses,
-  für einen Interessenten der stärkste bestätigte Wert aus dem Konto; ein Konto ohne beides zeigt
-  Platzhalternamen. Alles davon ist in Keycloak schreibgeschützt.
-- **Frische:** Keycloak cacht einen föderierten Nutzer höchstens 60 Sekunden (Migration V2). Eine
-  geänderte Adresse oder ein geänderter Name ist spätestens dann sichtbar.
-- **Nutzer-Id und `sub`:** `f:<UUID>:<accountId>`. Die Komponenten-Id ist eine feste UUID
-  (`USER_STORAGE_COMPONENT_ID`); eine neu gewürfelte Id würde jedes `sub` ändern.
-- **Was Keycloak selbst hält:** Sitzungen, Fehlversuche (Brute-Force-Schutz), Zustimmungen und
-  sonstige föderierte Daten eines Nutzers.
-- **Konto gelöscht:** `KeycloakAccountRemovalListener` räumt genau diese Keycloak-eigenen Daten ab
-  (`DELETE /admin/realms/{realm}/orchestrator-accounts/{accountId}`, `AccountRemoval`). Das ist das
-  einzige Ereignis eines Kontos, das Keycloak erreicht; eine Änderung am Konto braucht keinen Aufruf.
-- **Einladungen** ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)): Eine zweite
-  Nutzer-Federation (`InvitationStorageProvider`, feste UUID `INVITATION_STORAGE_COMPONENT_ID`, Migration
-  V6) liest Einladungen des Personenverzeichnisses als eigene Nutzer, nur per Id
-  (`KeycloakInvitationLookupController`), Cache ebenfalls 60 Sekunden. Nutzer-Id und `sub` sind
-  `f:<UUID der Einladungs-Federation>:<Id der Einladung>`. Der Nutzer trägt die Stammdaten der Person und die Attribute
-  `orchestratorInvitation` und `orchestratorProcess` (Claims `invitation` und `process`); er ist nur
-  aktiviert, solange die Einladung offen ist. Meldet das Verzeichnis ein Ende (`InvitationEnded`),
-  meldet `KeycloakInvitationLogoutListener` den Nutzer ab
-  (`POST /admin/realms/{realm}/users/{id}/logout`), über dieselbe Registry wie die Löschung. Ein
-  Einladungs-Nutzer hat keine Keycloak-Daten, die aufzuräumen wären, außer seinen Sitzungen.
+Keycloak hält keine Kopie der Konten, sondern liest sie beim Orchestrator nach; nur eine Löschung
+und das Ende einer Einladung erreichen Keycloak ([05-api.md](05-api.md) Abschnitt 3b, „Keycloak
+liest die Konten – keine Spiegelung“).
 
 Das Abräumen nach einer Löschung läuft über die **Event Publication Registry** von Spring Modulith
 ([ADR-29](adr/ADR-029-event-publication-registry-statt-eigener-outbox.md)), damit ein fehlgeschlagener
@@ -353,12 +320,18 @@ ein fest gesetzter Pepper), ist diese Prüfung die Stelle, an der man sie locker
 `ProductionModeCheck` bricht dann den Start ab, solange eine Demo-Voreinstellung übrig ist, und nennt
 alle auf einmal:
 
-- `demo.admin.password` gesetzt, nicht `admin`, und als Hash (`{bcrypt}…`, `{argon2}…`), nicht im Klartext.
+- `demo.admin.password` gesetzt, nicht `admin`, und als Hash (`{bcrypt}…`, `{argon2}…`, `{scrypt}…`
+  oder `{pbkdf2}…`), nicht im Klartext und nicht als `{noop}`.
+- Das Profil `keycloak` ist aktiv (`SPRING_PROFILES_ACTIVE=keycloak`). Ohne es gäbe der App-Kanal
+  unsignierte Mock-Tokens aus, die jeder fälschen kann.
 - `spring.h2.console.enabled=false`.
 - `springdoc.api-docs.enabled=false`. Die Voreinstellung folgt `demo.mode`; Swagger-UI und
   `/v3/api-docs` nennten sonst jedem ohne Anmeldung alle Endpunkte. Der Vertrag liegt in `api/`.
-- `identity.secrets.otp-pepper` und `account.change-log.lookup-secret` mit mindestens 32 Zeichen.
-- Keycloak über https mit geprüftem Zertifikat (kein `trustSelfSignedCertificate`).
+- `identity.secrets.otp-pepper` und `account.change-log.lookup-secret` mit mindestens 32 Zeichen;
+  das zweite ist nicht der öffentliche Demo-Wert, und für jede Id eines Suchschlüssels im
+  Änderungsprotokoll ist ein Geheimnis konfiguriert (Abschnitt 3, `account.change_log`).
+- Keycloak über https (`keycloak-migrate.base-url`) mit geprüftem Zertifikat (kein
+  `trustSelfSignedCertificate`).
 - Keycloak erreicht den Orchestrator über https (`orchestratorBaseUrl` der Keycloak-Einrichtung):
   Über diesen Weg holt Keycloak die Schlüssel, mit denen sich der Orchestrator anmeldet (auch als
   Master-Realm-Client der Migration) und seine Antworten signiert. Das Zertifikat muss Keycloak
@@ -422,7 +395,7 @@ Absender am Eingang (Proxy oder WAF) die Bursts (`DPoP-demo-164n.29`).
 
 Etwas anderes sind die **Mengenbegrenzungen** der Tool-Module: Sie begrenzen keinen Rateversuch, sondern den
 Versand. Die Module zählen über den Port `RateLimits` (`tool_api.ratelimit`) in ihrem eigenen
-Namensraum ([Tool-Architektur](03-tool-architektur.md) Abschnitt 4):
+Namensraum ([Tool-Architektur](03-tool-architektur.md) Abschnitt 7):
 
 - **`SmsSendLimit`** (`auth_sms`) und **`EmailSendLimit`** (`auth_email`)
   - *Zählt:* **Versendete** TANs und Codes je Mobilnummer bzw. je E-Mail-Adresse, über alle Tools
@@ -467,82 +440,31 @@ Namensraum ([Tool-Architektur](03-tool-architektur.md) Abschnitt 4):
   Zeitfenster.
 - Aufbewahrung: siehe die Tabelle in Abschnitt 3.
 
-## 5) QR-Login (`auth_qr`): Sicherheit des Pairing-Codes
+## 5) QR-Login: Sicherheit des Pairing-Codes
 
-Der Schritt `input` von `approve-qr` nimmt einen `pairingCode` entgegen, den der Nutzer
-eingibt oder den ein Deep-Link vorausfüllt ([`CONFIRM_PEER_LOGIN`](journeys/confirm-peer-login.md)):
+Wie Pairing-Code und Bestätigungscode gegen das Bestätigen eines fremden QR-Codes, gegen Raten und
+gegen doppeltes Anmelden schützen, steht beim Verfahren:
+[verfahren/qr.md](verfahren/qr.md), „Sicherheit des Pairing-Codes“.
 
-- **Schutz davor, einen fremden QR-Code zu bestätigen – Code in Gegenrichtung:** Die Freigabe in
-  der App meldet den Browser noch nicht an. Sie erzeugt einen sechsstelligen **Bestätigungscode**,
-  den nur die App anzeigt und den der Nutzer in den wartenden Browser tippt; erst dann ist der
-  Browser angemeldet (`QrLoginBrowserSide`). Ein Angreifer, der dem Opfer seinen eigenen
-  Pairing-Code schickt (per Link oder als QR-Bild), bekommt damit nichts: Das Opfer müsste den Code
-  in den Browser des Angreifers tippen oder ihn ausdrücklich weitergeben; die App warnt davor.
-  Ein Vergleichscode, den beide Seiten nur anzeigen und den man mit dem Auge vergleicht, reicht
-  dafür nicht: Den kann der Angreifer einfach mit in seine Nachricht schreiben.
-  **Nicht** geschützt ist gegen ein Opfer, das den Bestätigungscode auf Nachfrage selbst herausgibt.
-- **Bestätigungscode:** gespeichert nur als Hash, im Klartext genau einmal an die App ausgeliefert.
-  Nach der Freigabe hat der Browser zwei Minuten Zeit; nach drei falschen Codes ist die Anfrage
-  verbrannt (`EXPIRED`, `countWrongConfirmation`). Das Versuchsbudget der Journey (3) greift
-  zusätzlich.
-- **Unteilbare Zustandswechsel:** Freigabe, Ablehnung und Abschluss schreiben nur unter einer
-  Bedingung (`approveIfPending`/`denyIfPending`: `status = 'PENDING'` und nicht abgelaufen;
-  `completeIfConfirmed`: `status = 'APPROVED'`, richtiger Hash, nicht abgelaufen). Wird keine Zeile
-  getroffen, war die Anfrage bereits entschieden, abgelaufen oder der Code falsch. So können nie
-  zwei Konten gleichzeitig als `resolvingAccountId` eingetragen werden, und ein Code meldet nie zwei
-  Browser an.
-- **Zufallsgehalt des `pairingCode`:** 8 Zeichen aus einem Alphabet mit wenig Verwechslungsgefahr
-  (ähnlich Crockford-Base32, ohne `I`, `L`, `O` und `U`), etwa 40 Bit. Das ist bewusst weniger als
-  bei einem reinen API-Token, weil ein Mensch den Code fehlerfrei abschreiben können muss.
-
-**Noch offen:** Weil die Eingabe von Hand ein regulärer Weg ist, bräuchte der Schritt `input` einen
-eigenen Zähler für fehlgeschlagene Suchen nach einem `pairingCode`, etwa je IP-Adresse oder ohne
-Bezug auf ein Konto. `RateLimitRecord` (Abschnitt 4) hilft hier nicht, weil noch kein Konto bekannt
-ist. Das ist derzeit **nicht umgesetzt**.
-
-`QrLoginRequest.expiresAt` (5 Minuten, `QR_LOGIN_TTL`) orientiert sich an den Laufzeiten der
-TANs (`enroll-sms`/`auth-sms`). Abgelaufene Zeilen sind beim Lesen wirkungslos, und
-`AuthQrRetentionJob` räumt sie auf (Abschnitt 3).
-
-## 6) Datenbankschema: Konventionen
+## 6) Datenbankschema
 
 Das Schema liegt in `src/main/resources/db/migration/<modul>/`, ein Ordner je Modul. Die Regeln
-stehen in `db/migration/KONVENTIONEN.md` und gelten für jede Tabelle
-([12-entscheidungen.md](12-entscheidungen.md) ADR-14/ADR-16). Ein Diagramm der wichtigsten
-Tabellen zeigt [02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 7.
+für Schema und Migrationen stehen in
+[`db/migration/KONVENTIONEN.md`](../src/main/resources/db/migration/KONVENTIONEN.md)
+([12-entscheidungen.md](12-entscheidungen.md) ADR-14/ADR-16), die Persistenz insgesamt in
+[08-projektrahmen.md](08-projektrahmen.md) Abschnitt 4, ein Diagramm der wichtigsten Tabellen in
+[02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 7.
 
-- **Besitz ist im Aufbau verankert:** Jedes Modul hat ein eigenes Datenbankschema, und jede Tabelle
-  liegt im Schema ihres Moduls (`account.anchor`, `auth_sms.enrollment`). Die Tabellennamen bleiben
-  kurz, weil das Schema den Modulnamen schon enthält.
-- **Fremdschlüssel** gibt es nur innerhalb eines Schemas. Bezüge über Modulgrenzen hinweg (z. B.
-  `account_id` in Tabellen des Orchestrators) sind Spalten mit Index und werden über die
-  Schnittstellen der Module aufgeräumt.
-- **Namen:** Dauerhafte Credentials heißen `<modul>.enrollment`, und dieser vollständige Name ist
-  `EnrollmentRef.type`. Die Arbeitsdaten eines Tool-Durchlaufs haben keine eigene Tabelle; sie liegen
-  als JSON an `orchestrator.tool_session` (ADR-49). Die Primärschlüsselspalte heißt immer `id`,
-  Verweise heißen `<tabelle>_id`. Indizes und Constraints tragen kein Modulpräfix
-  (`ux_anchor_value`).
-- **Typen:** Zeitpunkte `TIMESTAMP WITH TIME ZONE`, Enum-Werte `VARCHAR(32)`, ACR-Werte
-  `VARCHAR(16)`, Tool-IDs, Verfahren, Attributtypen und Quellen `VARCHAR(50)`, Hashes `VARCHAR(64)`.
-- **Anker:** Jeder Schreibvorgang auf `account.anchor` verlangt ein Mindestniveau nach
-  `AnchorRule.acrFloor` (für das erste Binden und das Ersetzen getrennt). `established_acr` hält das
-  tatsächlich nachgewiesene, nach ADR-5 begrenzte Niveau fest ([Domänenmodell](02-domaenenmodell.md)
-  Abschnitt 6).
-- **Konto:** Änderungen werden über `account.account` gesperrt. Der aktuelle Zustand steht in
-  eigenen Zeilen; die Historie wird nur ergänzt, nie geändert ([Domänenmodell](02-domaenenmodell.md)
-  Abschnitt 6).
+Für den Betrieb gilt außerdem:
+
+- **Ein Migrationsfehler bricht den Start ab.** Außerhalb des Demomodus ist die H2-Datei die
+  Betriebsdatenbank, und ein Migrationsfehler darf nie Konten und Änderungsprotokoll löschen; Flyway
+  bricht den Start deshalb ab, wie es soll. Das Zurücksetzen im Demomodus steht in Abschnitt 8.
+- **Migrationen sind eine Ausgangsbasis ohne Produktivdaten.** Ab dem ersten produktiven Einsatz
+  sind sie nur noch additiv, und Tabellen mit 10 Millionen Zeilen oder mehr werden in wiederholbaren
+  Portionen umgestellt.
 - **Aufbewahrung:** Jede Aufräumabfrage ist eine einzige SQL-Anweisung über viele Zeilen und hat
   einen Index auf ihrer Stichtagsspalte.
-- **Migrationen:** ein Ordner je Modul unter `db/migration/<modul>/`, darin eine oder mehrere
-  Dateien; die Versionsnummern laufen über alle Ordner fort
-  ([ADR-16](adr/ADR-016-ein-datenbankschema-je-modul-statt-namenspraefix.md)). Die Migrationen sind eine Ausgangsbasis
-  ohne Produktivdaten. **Nur im Demomodus** gilt: Passt eine lokale H2-Datei nicht mehr zu den
-  Migrationen, löscht `orchestrator.schema.FlywayResetConfig` sie beim Start und baut sie neu auf;
-  `rm -rf data/` von Hand ist nicht nötig. Außerhalb des Demomodus gibt es die Klasse gar nicht,
-  und Flyway bricht den Start ab, wie es soll: Die H2-Datei ist dann die Betriebsdatenbank, und ein
-  Migrationsfehler darf nie Konten und Änderungsprotokoll löschen. Die Demo-Personen
-  (`demo_seed`) werden außerhalb des Demomodus nicht migriert. Ab dem ersten produktiven Einsatz sind Migrationen nur noch additiv, und Tabellen
-  mit 10 Millionen Zeilen oder mehr werden in wiederholbaren Portionen umgestellt.
 
 ## 7) Zustand und Kennzahlen (Actuator)
 
@@ -568,13 +490,27 @@ Health und Kennzahlen liegen auf einem **eigenen Management-Port** (`MANAGEMENT_
     Listener scheitert an jedem Ereignis, z. B. das Aufräumen in Keycloak nach einer Kontolöschung.
   - **`http.client.requests`** (je `client.name`): Dauer und Ergebnis jedes Aufrufs an Keycloak.
 
-Im Demomodus zeigt die Willkommensseite unter „Server-Status“ denselben Zustand und dieselben
-Kennzahlen (`GET /orchestrator/demo/server-info`, Block `operations`); der Browser erreicht den
-Management-Port nicht, deshalb liest das Backend sie aus. Außerhalb des Demomodus fehlt der Block:
-Der Endpunkt hat keine Anmeldung, und der Management-Port ist mit Absicht nicht geroutet.
-
 **Logs.** Jede Zeile, die während einer Anfrage geschrieben wird, trägt eine Anfrage-Id und – wenn
 der Pfad sie nennt – die `channelSessionId` bzw. `toolSessionId` (`LoggingContextFilter`, MDC).
 Nur Ids aus der URL, nichts Persönliches. Lokal stehen sie in eckigen Klammern vor der Meldung; im
 Betrieb schreibt der Orchestrator strukturiert als ECS-JSON (`LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs`,
 in `openshift/identity-demo.yaml` gesetzt), mit den Ids als eigenen Feldern.
+
+## 8) Im Demomodus
+
+Was hier steht, gilt nur mit `demo.mode=true` ([ADR-36](adr/ADR-036-niveaus-und-ihre-nachweise.md));
+was außerhalb des Demomodus verlangt wird, steht in Abschnitt 3c.
+
+- **Verwaiste Keycloak-Sitzungen beim Start.** Hat der Orchestrator kein einziges Konto, etwa nach
+  einem frischen Volume oder einer neu aufgesetzten Datenbank, gehört jede Sitzung in Keycloak zu
+  einem Konto, das es nicht mehr gibt. Er meldet dann in Keycloak alle ab
+  (`KeycloakOrphanSessionsAtStart`).
+- **Datenbank zurücksetzen.** Passt eine lokale H2-Datei nicht mehr zu den Migrationen, löscht
+  `orchestrator.schema.FlywayResetConfig` sie beim Start und baut sie neu auf; `rm -rf data/` von
+  Hand ist nicht nötig. Außerhalb des Demomodus gibt es die Klasse gar nicht (Abschnitt 6). Die
+  Demo-Personen (`demo_seed`) werden außerhalb des Demomodus nicht migriert.
+- **Server-Status.** Die Willkommensseite zeigt unter „Server-Status“ denselben Zustand und dieselben
+  Kennzahlen wie Abschnitt 7 (`GET /orchestrator/demo/server-info`, Block `operations`); der Browser
+  erreicht den Management-Port nicht, deshalb liest das Backend sie aus. Außerhalb des Demomodus
+  fehlt der Block: Der Endpunkt hat keine Anmeldung, und der Management-Port ist mit Absicht nicht
+  geroutet.

@@ -14,7 +14,7 @@ private const val FIELD_TAN = "tan"
 private const val FIELD_CONSENT = "consent"
 
 /**
- * Pure state of the enroll-sms flow (docs/03-tool-architektur.md #3). Persisted as
+ * Pure state of the enroll-sms flow (docs/03-tool-architektur.md #6). Persisted as
  * [EnrollSmsToolSession]'s nullable columns; [Companion.of] turns them back into this type.
  */
 internal sealed interface EnrollSmsState {

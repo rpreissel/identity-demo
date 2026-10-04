@@ -21,7 +21,7 @@ import java.util.UUID
 import com.example.identity.core.orchestrator.domain.AuthIntent
 
 /**
- * One run of one [AuthIntent]: a guided path with a goal (docs/04-orchestrierung.md #1). Belongs
+ * One run of one [AuthIntent]: a guided path with a goal (docs/04-orchestrierung.md #3). Belongs
  * to one ChannelSession and lives shorter than it; at most one journey per channel is
  * [JourneyLifecycle.STARTED]. Pure data: the behaviour needs services, so it lives in an
  * [IntentStrategy] per intent (ADR-2). `next` is derived from [state], never stored.

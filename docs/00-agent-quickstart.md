@@ -23,7 +23,7 @@ an ihm.
 
 ## 3) Wo man was findet
 
-- **Einstieg und Begriffe:** [01-ueberblick.md](01-ueberblick.md).
+- **Einstieg, Zielbild und Begriffe:** [01-ueberblick.md](01-ueberblick.md) (Zielbild: Abschnitt 2).
 - **Karte aller Kapitel und Lesepfade je Rolle:** [README.md](README.md).
 - **Bauen, starten, testen:** [13-ausfuehren.md](13-ausfuehren.md).
 - **Ein einzelner Ablauf:** `journeys/<intent>.md` statt des ganzen Kapitels 04.
@@ -52,7 +52,7 @@ Einzelheiten: [13-ausfuehren.md](13-ausfuehren.md) Abschnitt 7.
   den Code, `InvariantRegisterTest` liest [invarianten.md](invarianten.md). Wer dort etwas ändert,
   lässt die Tests laufen.
 - **API-Vertrag.** Ändert sich eine Route oder ein DTO, zuerst `./gradlew updateOpenApiSnapshot`,
-  danach `./gradlew generateFrontendApiTypes` ([05-api.md](05-api.md) Abschnitt 1).
+  danach `./gradlew generateFrontendApiTypes` ([05-api.md](05-api.md) Abschnitt 4).
   `checkPublishedApiCompatibility` schlägt fehl, wenn der Vertrag den veröffentlichten Stand bricht.
 - **Nutzertexte.** Die deutsche Vorlage steht im Code (`Text("…")`, im Frontend `t("…")`); die
   ausgelieferten Sprachdateien schreibt `/translate-texts` (ADR-33). Ist `TextTranslationsTest`

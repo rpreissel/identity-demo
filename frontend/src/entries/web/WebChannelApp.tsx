@@ -7,7 +7,7 @@ import { t } from '../../texts'
 import { Tx } from '../../Tx'
 
 /**
- * The WEB channel's own app (docs/10-frontend.md #0): a real browser client against a real
+ * The WEB channel's own app (docs/10-frontend.md #1): a real browser client against a real
  * Keycloak - no orchestrator round-trip, no dpop key, entirely independent of AppChannelApp's
  * state. It exists only with the `keycloak` Spring profile; without it there is no Keycloak to log
  * in at, so the page says so instead of offering a login that cannot work.

@@ -25,7 +25,7 @@ interface IdentFscFormProps {
 type Page = 'personalDetails' | 'code'
 
 /**
- * toolId=ident-fsc / step=input (docs/06-ablaeufe.md #2). The backend keeps one step; the two
+ * toolId=ident-fsc / step=input (docs/verfahren/fsc.md). The backend keeps one step; the two
  * pages here (personal data first, then the code) are this form's choice
  * (docs/10-frontend.md). The backend checks the personal data the moment it is complete and only
  * then asks for `fsc`, so `missingFields` says which page is due.

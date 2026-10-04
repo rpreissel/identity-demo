@@ -12,7 +12,7 @@ angefordert:
 - [`REGISTER`](register.md), und zwar über `AuthEnrollCore.offerEnrollment`, wenn ein neues
   Verfahren erst nach einer erneuten Identifizierung eingerichtet werden darf;
 - dem Experiment „Erst Anmeldeverfahren einrichten“ (`RegisterEnrollFirstStrategy`, siehe
-  [`REGISTER`](register.md)).
+  [register-enroll-first.md](register-enroll-first.md)).
 
 Es gibt nur diese eine Umsetzung statt sechs fast gleicher. `RE_IDENTIFY` ist nie der Einstieg einer
 Journey; man erreicht sie nur über `Transition.RequireSubJourney`.

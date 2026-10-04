@@ -112,7 +112,7 @@ export interface AuthData {
      */
     acr?: string;
     /**
-     * Method -> who proved it: "orchestrator" for a completed orchestrator tool, "kc" for evidence a native Keycloak authenticator already established (docs/05-api.md Abschnitt 3). Informational only - the orchestrator alone still resolves the combined acr above, regardless of source.
+     * Method -> who proved it: "orchestrator" for a completed orchestrator tool, "kc" for evidence a native Keycloak authenticator already established (docs/05-api.md Abschnitt 3b). Informational only - the orchestrator alone still resolves the combined acr above, regardless of source.
      * @type {{ [key: string]: string; }}
      * @memberof AuthData
      */
@@ -429,7 +429,7 @@ export interface ChannelPatchRequest {
  */
 export interface ChannelResponse {
     /**
-     * WEB channels only (docs/05-api.md Abschnitt 3) - never present for APP.
+     * WEB channels only (docs/05-api.md Abschnitt 3b) - never present for APP.
      * @type {AuthData}
      * @memberof ChannelResponse
      */
@@ -1472,7 +1472,7 @@ export const MessageStepKindEnum = {
 export type MessageStepKindEnum = typeof MessageStepKindEnum[keyof typeof MessageStepKindEnum];
 
 /**
- * The account's active authentication methods (docs/05-api.md #2). Never contains fsc.
+ * The account's active authentication methods (docs/05-api.md #3a). Never contains fsc.
  * @export
  * @interface MethodsResponse
  */

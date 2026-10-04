@@ -5,7 +5,7 @@ import com.example.identity.contract.tool_api.device.UserVerification
 import com.example.identity.contract.tool_api.StepData
 
 /**
- * Single-shot flow (docs/03-tool-architektur.md #3): the device proof arrives already verified, so
+ * Single-shot flow (docs/03-tool-architektur.md #6): the device proof arrives already verified, so
  * [decide] always enrolls. A type without fields, so it has the same `describe()` as other states.
  */
 internal data object EnrollDeviceState {

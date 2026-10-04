@@ -22,7 +22,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
  * Keycloak-usable tool. Keycloak's flow decides whether the reached level is enough; this strategy only
  * answers "what could still prove something here". Without an account it offers lookup-login
  * tools and the one-time password of a process access (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md);
- * with one (a step-up, docs/05-api.md Abschnitt 3) auth tools for that account. When none of them can
+ * with one (a step-up, docs/05-api.md Abschnitt 3b) auth tools for that account. When none of them can
  * close the gap, the step-up falls back to `RE_IDENTIFY`, as STEP_UP does in the app.
  */
 class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {

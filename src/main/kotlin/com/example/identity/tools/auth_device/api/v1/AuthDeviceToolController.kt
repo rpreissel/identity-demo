@@ -31,7 +31,7 @@ import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.envelope.TOOLS_API
 
 /**
- * toolId=auth-device (docs/03-tool-architektur.md). One controller owns activation, PATCH and
+ * toolId=auth-device (docs/verfahren/device.md). One controller owns activation, PATCH and
  * GET for this tool (docs/08-projektrahmen.md A11) - no generic toolId dispatch anywhere.
  */
 @RestController

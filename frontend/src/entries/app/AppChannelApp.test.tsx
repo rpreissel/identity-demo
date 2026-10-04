@@ -76,7 +76,7 @@ beforeEach(() => {
   api.getDeviceLink.mockResolvedValue({ linked: false })
 })
 
-describe('resume mid-tool (docs/05-api.md #2: next.toolSessionId)', () => {
+describe('resume mid-tool (docs/05-api.md #1: next.toolSessionId)', () => {
   it('reuses the running ToolSession instead of reactivating the tool', async () => {
     rememberChannel()
     const resumedNext = toolNext('enroll-sms', 'tanInput', 'ts-resumed')
@@ -97,7 +97,7 @@ describe('resume mid-tool (docs/05-api.md #2: next.toolSessionId)', () => {
   })
 })
 
-describe('security-summary backfill (docs/05-api.md #2: on-demand, not part of tool responses)', () => {
+describe('security-summary backfill (docs/05-api.md #1: on-demand, not part of tool responses)', () => {
   describe('after a registration that settles into authenticated', () => {
     beforeEach(() => {
       const enrolling = channelResponse({ channel: channel('REGISTERING'), next: toolNext('enroll-sms', 'enroll') })
@@ -228,7 +228,7 @@ describe('security-summary backfill (docs/05-api.md #2: on-demand, not part of t
   })
 })
 
-describe('entry by URL intent (docs/10-frontend.md #1)', () => {
+describe('entry by URL intent (docs/10-frontend.md #6, FE-18)', () => {
   it('starts confirm_peer_login on its own and clears the URL', async () => {
     window.history.replaceState(null, '', '/?intent=confirm_peer_login&pairingCode=AB3D-7KQ2')
     const stepUp = channelResponse({ channel: channel('STEP_UP_IN_PROGRESS'), next: toolNext('auth-device', 'auth') })
@@ -256,7 +256,7 @@ describe('entry by URL intent (docs/10-frontend.md #1)', () => {
   })
 })
 
-describe('browser back up to the start choice (docs/10-frontend.md #1)', () => {
+describe('browser back up to the start choice (docs/10-frontend.md #6, FE-18)', () => {
   it('leaves a running journey locally, without a backend call', async () => {
     const identifying = channelResponse({ channel: channel('REGISTERING'), next: toolNext('ident-fsc', 'input') })
     api.createChannel.mockResolvedValue(identifying)

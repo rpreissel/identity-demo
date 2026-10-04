@@ -53,7 +53,7 @@ function WaitForApp({ kcContext }: { kcContext: Extract<PageContext<'tool-qr-wai
           {t('Pairing-Code')}: <strong className="orc-qr-code">{pairingCode}</strong>
         </p>
         <p className="orc-hint">{t('Nach der Freigabe zeigt Ihre App einen Code, den Sie hier eingeben.')}</p>
-        {/* Named target: a click must not navigate this waiting page away (docs/10-frontend.md #0). */}
+        {/* Named target: a click must not navigate this waiting page away (docs/10-frontend.md #6). */}
         <a href={deepLink} target="identity-demo-app-kanal">
           {deepLink}
         </a>

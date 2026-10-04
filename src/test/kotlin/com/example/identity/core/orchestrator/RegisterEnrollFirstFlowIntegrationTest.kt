@@ -16,7 +16,7 @@ import org.springframework.web.client.HttpClientErrorException
 import java.util.UUID
 
 /**
- * The REGISTER "Enrollment zuerst" experiment (docs/04-orchestrierung.md, `RegisterEnrollFirstStrategy`):
+ * The REGISTER "Enrollment zuerst" experiment (docs/journeys/register-enroll-first.md, `RegisterEnrollFirstStrategy`):
  * enrollment runs against an account with no person behind it, identification is an optional
  * closing offer. Switched on per test via the admin endpoint; `IntegrationTestSupport` resets
  * `orchestrator.feature_flag`, so it does not leak into ident-first tests.

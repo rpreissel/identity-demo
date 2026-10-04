@@ -1,4 +1,4 @@
-# Profile fuer den echten Web-/Keycloak-Kanal (docs/05-api.md Abschnitt 3), gegen das per
+# Profile fuer den echten Web-/Keycloak-Kanal (docs/05-api.md Abschnitt 3b), gegen das per
 # podman-compose gestartete Keycloak. Ohne dieses Profil gibt es keinen Web-Kanal.
 # Start: `podman-compose up --build` (compose.yml) fuer Keycloak, parallel dazu
 # `./gradlew bootRunKc` (bootRun mit aktivem Profil keycloak) fuer den Orchestrator selbst.

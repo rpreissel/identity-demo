@@ -12,7 +12,7 @@ samt Strategie, nie eine Beschreibung dessen, was aus einem Durchlauf geworden i
 Journey ist für beide Ausgänge gleich aufgebaut; nur die Suche nach dem Konto unterscheidet sich.
 Die Behandlung von `Action.RecordIdentification` deckt den Fall `personId == null` schon heute als
 Verzweigung innerhalb der bestehenden Journey ab (bei `REGISTER` im Experiment „Erst
-Anmeldeverfahren einrichten“, [Orchestrierung](../04-orchestrierung.md) Abschnitt 2). Ein eigener
+Anmeldeverfahren einrichten“, [register-enroll-first.md](../journeys/register-enroll-first.md)). Ein eigener
 Intent müsste außerdem jede künftige Verzweigung doppelt führen (`STEP_UP` und `RE_IDENTIFY` für
 Konten von Interessenten).
 

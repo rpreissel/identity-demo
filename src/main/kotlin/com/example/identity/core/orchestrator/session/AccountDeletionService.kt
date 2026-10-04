@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 /**
- * Hard-deletes an account and everything it exclusively owns (docs/05-api.md #2, "Konto löschen").
+ * Hard-deletes an account and everything it exclusively owns (docs/05-api.md #3a, "Konto löschen").
  * The external register (`personenverzeichnis.person`) is only referenced and stays. The
  * account module's child tables cascade; the change log survives (ADR-39). What hangs off no such
  * key is named in [deleteAccount]. Credentials are cleaned up through [EnrollmentCleanup], so no
@@ -43,7 +43,7 @@ class AccountDeletionService(
         deviceAccountLinkRepository.deleteByAccountId(accountId)
 
         // Every channel session of this account is logged out, on every device (docs/05-api.md
-        // #2). ChannelSession holds only the ids, so nothing reaches the rows deleted below.
+        // #3a). ChannelSession holds only the ids, so nothing reaches the rows deleted below.
         val channelSessions = channelSessionRepository.findByAccountId(accountId)
         channelSessions.forEach { session ->
             session.state = ChannelState.LOGGED_OUT

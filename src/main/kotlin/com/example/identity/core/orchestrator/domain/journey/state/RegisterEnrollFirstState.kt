@@ -3,7 +3,7 @@ package com.example.identity.core.orchestrator.domain.journey.state
 import com.example.identity.contract.texts.Text
 
 /**
- * The "Enrollment zuerst" variant of REGISTER (docs/journeys/register.md), switched by a feature
+ * The "Enrollment zuerst" variant of REGISTER (docs/journeys/register-enroll-first.md), switched by a feature
  * flag: enroll first, identify optionally later. It shares no states with [RegisterState], so both
  * journeys stay readable on their own. The `EnrollFirst*` prefix keeps `AuthJourney.stateType`
  * (plain `simpleName`) from colliding with [RegisterState] names. The account is created with

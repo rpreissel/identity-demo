@@ -148,7 +148,7 @@ export function logoutChannel(dpop: DpopKeyPair, channelSessionId: string): Prom
   return call(dpop, 'DELETE', `/orchestrator/api/v1/channels/${channelSessionId}`)
 }
 
-/** The account's active authentication methods, addressable as their own resource (docs/05-api.md #2). */
+/** The account's active authentication methods, addressable as their own resource (docs/05-api.md #3a). */
 export function getMethods(dpop: DpopKeyPair, channelSessionId: string): Promise<{ methods: ActiveMethodView[] }> {
   return call(dpop, 'GET', `/orchestrator/api/v1/channels/${channelSessionId}/methods`)
 }
@@ -194,7 +194,7 @@ export function startAccountDeletion(dpop: DpopKeyPair, channelSessionId: string
 }
 
 /**
- * Covers both first issuance and refresh (docs/05-api.md #2) - call again whenever a fresh token
+ * Covers both first issuance and refresh (docs/05-api.md #3a) - call again whenever a fresh token
  * might be needed. minValiditySeconds is the caller's tolerance; the backend alone decides
  * whether the current AccessToken still qualifies or a new one gets minted.
  */

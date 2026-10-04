@@ -36,7 +36,7 @@ class JourneyRecorder(
     /** Merges [source]'s complete current evidence set into the channel. */
     fun mergeEvidence(journey: AuthJourney, channel: ChannelSession, source: String, updates: List<MethodEvidence>) {
         // [source]'s set before the update. Callers resend their complete set on every call
-        // (docs/05-api.md Abschnitt 3), so only a real change is logged.
+        // (docs/05-api.md Abschnitt 3b), so only a real change is logged.
         val before = channel.sessionEvidenceId
             ?.let { sessionEvidenceService.getSessionEvidence(it) }?.methods.orEmpty()
             .filter { it.source == source }

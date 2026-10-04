@@ -12,7 +12,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 
 /**
- * How [SessionEvidenceRecord] merges the proofs of its two sources (docs/05-api.md Abschnitt 3):
+ * How [SessionEvidenceRecord] merges the proofs of its two sources (docs/05-api.md Abschnitt 3b):
  * Keycloak reports its complete currently valid set each time, the orchestrator adds single proofs,
  * and a verified orchestrator proof is never downgraded to Keycloak's unverified report (ADR-7).
  */

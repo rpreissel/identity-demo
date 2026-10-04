@@ -16,12 +16,12 @@ internal const val ENROLL_KOBIL_TOOL_ID = "enroll-kobil"
 internal const val AUTH_KOBIL_TOOL_ID = "auth-kobil"
 
 /**
- * The KOBIL procedure: `enroll-kobil`, `auth-kobil` (docs/03-tool-architektur.md #1). The credential
+ * The KOBIL procedure: `enroll-kobil`, `auth-kobil` (docs/verfahren/kobil.md). The credential
  * lives on one phone: the KOBIL activation and the local unlock secret belong to that installation,
  * so it is offered only there, like `device`. One run combines possession of the KOBIL-bound device
  * with the access means (pin = KNOWLEDGE, biometric = INHERENCE); possession is fetched from KOBIL
  * itself, not signed by the client. The access means no server can see; counted under the same
- * reservation as `device` (ADR-21, docs/04-orchestrierung.md #8). `enroll-kobil` starts on the SDK's
+ * reservation as `device` (ADR-21, docs/04-orchestrierung.md #4). `enroll-kobil` starts on the SDK's
  * activation, `auth-kobil` on releasing the PIN.
  */
 internal val KobilModule = toolModule(
@@ -47,7 +47,7 @@ internal val AuthKobil = KobilModule.login(
 )
 
 /**
- * A method module talks to the orchestrator through tool_api only (docs/03-tool-architektur.md #2).
+ * A method module talks to the orchestrator through tool_api only (docs/03-tool-architektur.md #7).
  * The extra edge to `kobil` is the point of the module: a KOBIL credential is not verified here,
  * KOBIL asserts it and we redeem it. The declared dependency makes that visible in the module graph.
  */

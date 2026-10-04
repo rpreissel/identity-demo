@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController
 import com.example.identity.contract.tool_api.envelope.API_V1
 
 /**
- * The Keycloak facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3) - everything
+ * The Keycloak facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3b) - everything
  * afterwards runs over the same facade-neutral tool endpoints the App channel uses. Proof-of-caller
  * is a signed Keycloak peer-auth assertion in `Authorization`, never DPoP.
  */
@@ -48,7 +48,7 @@ class KeycloakChannelController(
     @PatchMapping("/{channelSessionId}")
     @Operation(
         summary = "Upsert a Web channel and advance its journey",
-        description = "Upsert semantics (docs/05-api.md Abschnitt 3): creates the channel " +
+        description = "Upsert semantics (docs/05-api.md Abschnitt 3b): creates the channel " +
             "on first call under this Keycloak-chosen id, just resumes it on every later one - " +
             "idempotent by construction, no separate create-then-resume round trip. " +
             "accountId/targetAcr are only meaningful on step-up.",
@@ -107,7 +107,7 @@ class KeycloakChannelController(
     @Operation(
         summary = "Fetch this channel's signed RestoreData",
         description = "For the Authenticator's end-of-flow lifecycle hook only (docs/ideen/" +
-            "docs/05-api.md Abschnitt 3) - reads back what this channel accumulated, to stash in a " +
+            "docs/05-api.md Abschnitt 3b) - reads back what this channel accumulated, to stash in a " +
             "Keycloak UserSessionModel note and resubmit at a later flow's start. kcSessionId is " +
             "passed explicitly (not read off the channel's own binding) because the returned token " +
             "must remain valid across the flow-run boundary the channel itself does not survive - " +

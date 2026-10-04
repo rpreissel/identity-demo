@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The kc facade's Keycloak-side driver (docs/05-api.md Abschnitt 3). Handles initial login and
+ * The kc facade's Keycloak-side driver (docs/05-api.md Abschnitt 3b). Handles initial login and
  * step-up alike and renders whatever the orchestrator names as {@code next}. Config properties:
  * {@code toolId} (static pre-selection of an account-independent tool), {@code targetAcr} (this
  * execution's LoA as orchestrator ACR) and {@code intent} (entry intent of a fresh channel, empty

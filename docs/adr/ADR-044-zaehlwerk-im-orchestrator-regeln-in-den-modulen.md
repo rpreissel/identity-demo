@@ -100,7 +100,7 @@ SMS-Anmeldung zehn Minuten lang aufhalten. Das ging vorher über `auth-sms-looku
 - **Bestätigungscode des QR-Logins** (`auth_qr`, `countWrongConfirmation`): liegt schon im Modul,
   als Zähler an der Anfrage selbst. Er lebt nur so lange wie die Anfrage und braucht kein
   Zeitfenster über Anfragen hinweg, also auch den Port nicht. Die offene Mengenbegrenzung für die Suche nach
-  einem `pairingCode` ([07-betrieb.md](../07-betrieb.md) Abschnitt 5) wäre eine Mengenbegrenzung von
+  einem `pairingCode` ([verfahren/qr.md](../verfahren/qr.md), „Sicherheit des Pairing-Codes“) wäre eine Mengenbegrenzung von
   `auth_qr` auf diesem Port.
 - **PIN und Freigabe bei KOBIL:** Ein Fehlversuch zählt als fehlgeschlagene Anmeldung am Konto
   ([ADR-21](ADR-021-der-kobil-pin-liegt-im-backend-und-das.md)), also bei `AccountLockoutService`.

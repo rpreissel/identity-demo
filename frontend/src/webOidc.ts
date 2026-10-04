@@ -3,7 +3,7 @@ import type { KeycloakInfo } from './api'
 import { t } from './texts'
 
 /**
- * The Web-Kanal demo UI's own OIDC client (docs/05-api.md Abschnitt 3): a real browser redirect to
+ * The Web-Kanal demo UI's own OIDC client (docs/05-api.md Abschnitt 3b): a real browser redirect to
  * the real Keycloak, authorization_code + PKCE (S256), token exchange here in the frontend. The
  * `identity-demo-web` client is public (keycloak-migrations, V1__realm.kc.kts), so no client secret ships in the
  * bundle; PKCE makes the code safe to redeem. Keycloak talks to the orchestrator server-to-server.

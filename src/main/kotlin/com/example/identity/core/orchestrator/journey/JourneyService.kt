@@ -49,7 +49,7 @@ import com.example.identity.core.orchestrator.session.forLog
  * decides in pure values. Everything with side effects happens once, for every intent alike, so no
  * intent can forget the ACR cap or skip the change log.
  *
- * Each transition passes four phases (docs/04-orchestrierung.md #5, "Die vier Phasen"):
+ * Each transition passes four phases (docs/04-orchestrierung.md #8, "Die vier Phasen"):
  *
  * | Phase | Who | What |
  * |---|---|---|
@@ -95,7 +95,7 @@ class JourneyService(
      * Starts a journey and produces its first offer. [seed] names the concrete wish (a step-up
      * target, a method to remove); without it [IntentStrategy.initialState] applies. [seedAction]
      * is a logged entry transition that runs before `initialState()`, so the strategy already sees
-     * its effect (docs/04-orchestrierung.md #5, "RestoreData als erster Übergang").
+     * its effect (docs/04-orchestrierung.md #8, "RestoreData als erster Übergang").
      * Only on a [LiveChannel]: an ended channel never gets a journey again (docs/invarianten.md I-1).
      */
     fun start(
@@ -250,7 +250,7 @@ class JourneyService(
     // Routing -----------------------------------------------------------------
 
     /**
-     * `next` as a pure function of the state (docs/04-orchestrierung.md #4). [JourneyState.activatable]
+     * `next` as a pure function of the state (docs/04-orchestrierung.md #6). [JourneyState.activatable]
      * decides both what may be activated and where the client goes, so the two cannot disagree.
      */
     fun nextOf(journey: RunningJourney, channel: ChannelSession): Next = nextOf(journey.entity, channel)
@@ -372,7 +372,7 @@ class JourneyService(
     }
 
     /**
-     * Syncs [source]'s evidence into a running journey (docs/05-api.md Abschnitt 3). This is no tool
+     * Syncs [source]'s evidence into a running journey (docs/05-api.md Abschnitt 3b). This is no tool
      * outcome and knows nothing about Keycloak; the caller names [source]. [updates] is the complete
      * currently valid set: a method missing here has expired and is dropped. So this runs on every
      * report. Restored evidence on a fresh channel goes through [start]'s `seedAction` instead.
@@ -392,7 +392,7 @@ class JourneyService(
         val ctx = contextFactory.contextFor(journey, channel)
         val transition = strategy.transitionErased(state, event, ctx)
         // EvidenceReported fires on every upsertChannel, also for a pure re-send of the full set
-        // (docs/05-api.md Abschnitt 3). Logging it each time would repeat the same entry on every
+        // (docs/05-api.md Abschnitt 3b). Logging it each time would repeat the same entry on every
         // poll. A real proof always leads to a different state, so nothing real is suppressed.
         val isNoOpEvidenceUpdate = event is JourneyEvent.EvidenceReported && transition is Transition.To && transition.state == state
         if (!isNoOpEvidenceUpdate) {

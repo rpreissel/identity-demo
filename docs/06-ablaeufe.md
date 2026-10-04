@@ -1,24 +1,14 @@
-# Konkrete Abläufe
+# Verfahren: Datenmodell und Übersicht
 
-Wie die einzelnen Tools, von `ident-fsc` und `auth-sms` bis `auth-kobil`, `auth-qr` und
-`auth-invite-lookup`, die Bausteine aus [03-tool-architektur.md](03-tool-architektur.md) und
-[04-orchestrierung.md](04-orchestrierung.md) konkret nutzen – mit dem Schwerpunkt auf dem
-Datenmodell und den Entscheidungen dahinter. Ein durchgehendes Beispiel mit allen Aufrufen steht in
-[05-api.md](05-api.md).
-
-Ein drittes Identifizierungsverfahren, `ident-nect`, hat hier keinen eigenen Abschnitt. App oder
-Keycloak-Seite schicken den Nutzer auf die Sprungseite des simulierten Dienstes Nect (`/nect/`); dort
-wählt er Online-Ausweis, Reisepass oder EUDI-Wallet. Zurück kommt er dorthin, wo der Kanal den Fall
-hinbestellt hat: in die App oder auf die Action-URL des laufenden Keycloak-Schritts (ADR-47). Das
-Ergebnis holt der Server danach einmalig selbst bei Nect ab (`NectIdent.redeem`), nie über den
-Client. Die gelieferten Angaben bestätigt er wie bei `ident-eid` auf eigene Verantwortung
-(`ClaimSource("ident-nect")`, bis `loa3`, `amr` `nect-<verfahren>`). Die Zuordnung zu einer
-Person folgt wie bei `ident-eid` über `ident-kvnr`. Details und was noch offen ist stehen in
-[03-tool-architektur.md](03-tool-architektur.md), Abschnitt 1.
+Wie die Tools die Bausteine aus [03-tool-architektur.md](03-tool-architektur.md) und
+[04-orchestrierung.md](04-orchestrierung.md) konkret nutzen. Dieses Kapitel beschreibt das
+Datenmodell, das allen Verfahren gemeinsam ist, und die Entscheidungen dahinter. Ablauf, Aufrufe und
+Fehlerfälle jedes einzelnen Verfahrens stehen auf seiner eigenen Seite (Abschnitt 2). Ein
+durchgehendes Beispiel mit allen Aufrufen steht in [05-api.md](05-api.md) Abschnitt 2.
 
 ---
 
-## 1) Datenmodell für `auth-sms` und `enroll-sms`
+## 1) Datenmodell der Verfahren
 
 ```mermaid
 classDiagram
@@ -54,23 +44,21 @@ classDiagram
     string enrollmentId
     json details
   }
-  class AuthSmsEnrollment {
-    long id
-    string phoneNumber
-  }
 
   Account "1" --> "0..*" AccountAnchor : aktueller Wert je Ankertyp
   Account "1" --> "0..*" AccountClaim : Protokoll der Claims (nur anfügen)
   Account "1" --> "0..*" ChangeLogEntry : Änderungsprotokoll (nur anfügen, überlebt das Konto)
   Account "1" --> "0..*" AccountAuthMethod : eingerichtete Verfahren
-  AccountAuthMethod --> AuthSmsEnrollment : EnrollmentRef (type=auth_sms.enrollment, id)
 ```
+
+`AccountAuthMethod` verweist über die `EnrollmentRef` (`enrollmentType`, `enrollmentId`) auf das
+Credential im Schema des Moduls, etwa `auth_sms.enrollment` ([Verfahren `sms`](verfahren/sms.md)).
 
 Entscheidungen, die an diesem Modell hängen:
 
 - **`enrolledUnderAcr` ist ein eigenes Feld, nicht nur ein Eintrag fürs Protokoll.** Das
   tatsächlich erreichte `achievedAcr` eines `auth-*`-Tools wird durch das `enrolledUnderAcr` des
-  verwendeten Verfahrens begrenzt ([Orchestrierung](04-orchestrierung.md) Abschnitt 5). Ohne diese
+  verwendeten Verfahrens begrenzt ([Orchestrierung](04-orchestrierung.md) Abschnitt 8). Ohne diese
   Regel käme man schleichend nach oben: Ein in einer schwach gesicherten Sitzung eingerichtetes
   Verfahren würde dauerhaft ein höheres Niveau erzeugen, als je nachgewiesen wurde. Den Wert kennt
   nur der Orchestrator, nie das Modul.
@@ -94,15 +82,8 @@ Entscheidungen, die an diesem Modell hängen:
   wird sie per `confirm-email`. Danach dient dieselbe Adresse sowohl als Anmeldeverfahren
   (`enroll-email`/`auth-email`, `EnrollmentRef` = `EMAIL_ANCHOR_ENROLLMENT`) als auch zum Finden
   des Kontos bei der Anmeldung über die E-Mail-Adresse. `UNIQUE(attribute_type, normalized_value)`
-  verhindert, dass dieselbe Adresse in irgendeiner Schreibweise zweimal vergeben wird.
-- **`enroll-password`/`auth-password` haben kein eigenes Feld für einen Benutzernamen.** Diese
-  Aufgabe übernimmt der EMAIL-Anker, erzwungen über
-  `enroll("enroll-password", requires = setOf(ClaimRequirement(EMAIL, PROVEN)))`
-  ([Tool-Architektur](03-tool-architektur.md) Abschnitt 2).
-- **Die TAN steht nicht im Enrollment.** Sie ist ein Einmalgeheimnis für genau einen Versuch und
-  liegt als Hash mit Ablaufzeit in der Tabelle der Tool-Sitzung; sonst würden sich zwei
-  gleichzeitige Versuche gegenseitig überschreiben. Die eingegebene TAN wird nie gespeichert, nur
-  mit dem Hash verglichen.
+  verhindert, dass dieselbe Adresse in irgendeiner Schreibweise zweimal vergeben wird
+  ([Verfahren `email`](verfahren/email.md)).
 - **Der Orchestrator liest keine Moduldaten.** Die Arbeitsdaten eines Tools (bei SMS Nummer, TAN-Hash
   und Ablaufzeit) legt er zwar als JSON an seiner Tool-Sitzung ab (`orchestrator.tool_session.data`,
   [ADR-49](adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)), aber nur das Modul kennt ihre Form
@@ -126,409 +107,17 @@ Verfahren, das dieses Niveau allein erreicht hat. Zeilen desselben Durchlaufs ha
 
 ---
 
-## 2) `ident-fsc`
-
-`ident_fsc` prüft `kvnr`, `familyName`, `givenNames`, `birthDate` und `fsc` gegen das Personenverzeichnis:
-Name und Geburtsdatum gegen die dort geführte Person, den Code gegen die dort ausgestellten
-Freischaltcodes. Ein Partner ohne KVNR gibt statt `kvnr` seine Partnernummer `partnerNumber` an
-(ADR-34). Der Client fragt zuerst nach der KVNR; kommen beide Nummern, zählt die KVNR, und das Tool
-merkt sich immer nur eine von beiden. `kvnr` in `missingFields` steht deshalb für „KVNR oder
-Partnernummer“. Dabei stellt das Tool fest, um welche Person es sich handelt – genau das ist die
-fachliche Leistung des Moduls. Das Modul `account` kennt `ident_fsc` nicht; die Verbindung stellt erst
-der Orchestrator her, wenn er `Completed.Identified` verarbeitet
-([Orchestrierung](04-orchestrierung.md)).
-
-Was hier vom allgemeinen Muster in [05-api.md](05-api.md) abweicht:
-
-- Die `missingFields` kommen gestaffelt in einem einzigen Schritt `input`: zuerst
-  `kvnr`/`familyName`/`givenNames`/`birthDate`, danach `fsc`.
-- Die Personendaten werden geprüft, sobald sie vollständig sind. Erst wenn sie zum
-  Personenverzeichnis passen, fragt das Tool nach dem Freischaltcode.
-- Abgelehnte Personendaten werden verworfen; danach fehlen wieder alle vier. Bei einem abgelehnten
-  Code wird nur der Code verworfen.
-- Beide Ablehnungen zählen als Fehlversuch. Die Sperre für die Person (`isIdentLockedOut`) greift
-  beim Code, denn nur er ist ein Geheimnis, das man erraten könnte.
-- Wird die Eingabe der Personendaten abgelehnt, erfährt man nie, welches Feld nicht passte oder
-  ob es die KVNR gibt.
-- Wie viele Bildschirme ein Client daraus macht, entscheidet er selbst ([Frontend](10-frontend.md)).
-  App und Keycloak zeigen zuerst die Personendaten, dann den Code, und bleiben nach einem
-  Fehlversuch auf der Seite, von der aus abgeschickt wurde.
-- `GET` baut `stepData` bei jedem Aufruf neu aus den Daten des Moduls auf. Ist das Tool schon
-  abgeschlossen, zeigt die Antwort bereits auf das nächste Tool (Fortsetzen nach Unterbrechung).
-
----
-
-## 3) `auth-sms` (`auth-password` und `auth-email` entsprechend)
-
-Der Orchestrator liest die aktive Enrollment-Referenz des Kontos
-(`AccountDirectory.activeEnrollment`) und übergibt sie an den Handler. `auth_sms` greift also nicht
-selbst auf `account` zu, sondern bekommt eine undurchsichtige `EnrollmentRef` übergeben (Grenze des
-Moduliths, [Projektrahmen](08-projektrahmen.md)). Auch `auth_email` nutzt nur `tool_api`:
-Konto-IDs und Ankerwerte liest es über `AccountDirectory`, Attribute werden über Claims
-übernommen ([Tool-Architektur](03-tool-architektur.md) Abschnitt 2). `auth_sms` löst die Referenz
-auf ein bestehendes Enrollment auf, erzeugt, versendet und prüft die TAN, verändert das Enrollment
-aber nie.
-
-Zusätzlicher Fehlerfall zum allgemeinen Vertrag ([Betrieb](07-betrieb.md)): unbekannte
-`enrollmentRef` oder fehlendes Enrollment -> `422`.
-
----
-
-## 4) `enroll-sms` (`enroll-password` und `confirm-email` entsprechend)
-
-Wie `auth-sms`, nur entsteht der Datensatz `AuthSmsEnrollment` hier neu – und zwar erst **nach**
-erfolgreicher Prüfung der TAN, nie schon beim ersten `PATCH` mit der Telefonnummer (die ist zu
-diesem Zeitpunkt ja noch nicht bestätigt). Nach dem Abschluss legt der Orchestrator, wie in
-[Orchestrierung](04-orchestrierung.md) Abschnitt 5 beschrieben, den Eintrag in `account.auth_method`
-an, einschließlich `enrolledUnderAcr` aus dem aktuellen Nachweis der Sitzung (`SessionEvidence`).
-
-Zusätzlicher Fehlerfall zum allgemeinen Vertrag: ungültige Telefonnummer (Formatfehler) -> `400`.
-
-**Zwei Fassungen** ([ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)): `enroll-sms` ist das
-erste Tool mit zweiter Fassung. In **Fassung 2** kommt mit der Telefonnummer die Einwilligung
-(`consent`), dass die Nummer gespeichert und für SMS-Codes genutzt wird. Ohne sie geht keine SMS
-hinaus, und `missingFields` nennt `consent` neben `phoneNumber`. Eine Korrektur der Nummer im
-TAN-Schritt braucht sie nicht noch einmal: Die Tool-Sitzung merkt sich, dass sie vorliegt.
-**Fassung 1** kennt die Einwilligung nicht und läuft unverändert, weil eine App, die die Checkbox
-nicht anzeigen kann, sonst keine Nummer mehr einrichten könnte. Gespeichert wird die Einwilligung
-nicht eigens: Das Ereignis `METHOD_ADDED` im Änderungsprotokoll nennt die Fassung
-(`enroll-sms@1` oder `@2`), und daraus folgt, ob sie vorlag. Ein Handler bedient beide Fassungen
-(`EnrollSmsToolHandler`, Zweig nach `ToolContext.version`), je Fassung gibt es einen Controller.
-Die App spricht Fassung 1, der Web-Kanal Fassung 2 (Checkbox auf der Einrichtungsseite).
-
-**Passwort speichern und prüfen** (`auth_password`):
-
-- **Nur als Hash:** Argon2id mit den OWASP-Werten (19 MiB Speicher, 2 Durchläufe, 1 Spur;
-  `PasswordHasher`). Ein anderes Hash-Format gibt es nicht.
-- **Umhashen bei der Anmeldung:** Werden die Werte später angehoben, erkennt `needsRehash` einen
-  schwächeren Hash. Nach einer **erfolgreichen** Prüfung schreibt `PasswordHasher.upgrade` den neuen
-  Hash in derselben Transaktion. Niemand muss dafür sein Passwort neu setzen.
-- **Gleicher Aufwand ohne Passwort:** Hat das Konto kein Passwort, rechnet `matches` trotzdem einmal
-  Argon2id gegen einen Platzhalter-Hash. Sonst verriete die Antwortzeit, ob es zu einer Adresse ein
-  Passwort gibt.
-- **Regeln für ein neues Passwort** (`PasswordPolicy`, für `enroll-password`; über Keycloak lässt
-  sich kein Passwort setzen): mindestens 8, höchstens 128 Zeichen und keines aus der Liste der
-  gängigsten Passwörter (`auth_password/common-passwords.txt`, ohne Beachtung von
-  Groß-/Kleinschreibung). Verstöße sind `400` mit einem Text, der die Regel nennt.
-
----
-
-## 5) `enroll-device` / `auth-device`
-
-Anders als bei `sms`, `email` und `password` gibt es hier kein Geheimnis, das der Server ausstellt.
-Das Credential *ist* ein auf dem Gerät erzeugtes, nicht exportierbares Schlüsselpaar (ECDSA P-256),
-unabhängig vom DPoP-Schlüssel des Kanals; `enroll-device` lehnt einen Geräteschlüssel ab, der der
-DPoP-Schlüssel ist. Der Client weist den Besitz mit einem selbst signierten
-`device-proof+jwt` nach. Der ist genauso aufgebaut wie ein DPoP-Proof (`jwk` im Header,
-`htm`/`htu`/`iat`/`jti`), hat aber einen eigenen `typ` und zusätzlich den Claim `userVerification`
-(`pin` oder `biometric`). Welcher Wert darin steht, bestimmt bei jedem Versuch die
-Sicherheitsabfrage des Systems (in der Demo simuliert). Weil der Server diesen Wert nur als Behauptung
-der App sieht, sind beide Tools nur im Demomodus verfügbar
-([ADR-36](adr/ADR-036-niveaus-und-ihre-nachweise.md)). `DeviceProofValidator` prüft den Geräte-Proof
-eigenständig; `DpopValidator` ist dafür bewusst nicht erweitert
-([Projektrahmen](08-projektrahmen.md) A11). Er nutzt aber dieselben Bausteine
-(`JwkThumbprintService`, Schutz gegen Wiederholung per Thumbprint und `jti`).
-
-Eine Nonce vom Server ist nicht nötig: `htu` bindet den Nachweis bereits an die URL mit der
-einmaligen `toolSessionId`.
-
-- **`enroll-device`**: Der Controller prüft den Nachweis und gibt nur die bestätigten Felder des
-  öffentlichen Schlüssels (`DevicePublicKey`: `kty`/`crv`/`x`/`y`/`thumbprint`) an den Handler
-  weiter. Das Modul bekommt also nie ein Krypto-Objekt, nur Zeichenketten
-  ([Tool-Architektur](03-tool-architektur.md) Abschnitt 2). Es legt einen Datensatz in
-  `auth_device.enrollment` an; die Referenz ist `EnrollmentRef(type="auth_device.enrollment", id=...)`.
-- **`auth-device`**: Löst die aktive Enrollment-Referenz auf (wie `auth-sms`) und vergleicht den
-  Thumbprint des vorgelegten Schlüssels mit dem gespeicherten. Weichen sie ab, meldet es
-  `Failed("Geraet nicht erkannt")`, ohne zu verraten, welches Gerät erwartet wurde.
-- **loa2 in einem Schritt**: `maxAcr=loa2`, `factorTypes={possession,knowledge,inherence}` – Besitz
-  des Schlüssels plus Wissen (PIN) oder Inhärenz (Biometrie) aus einem einzigen Durchlauf
-  ([03-tool-architektur.md](03-tool-architektur.md) Abschnitt 1). Dass das Gerät nie mehr liefert,
-  als die Sitzung beim Einrichten nachgewiesen hatte, sichern die allgemeinen Prüfungen ab, kein
-  eigener Code: `enrolledUnderAcr` begrenzt es (ADR-5). Nach einer Identifizierung steht die Sitzung
-  schon auf `loa2`, und vor jedem späteren Einrichten verlangt
-  `AuthIntent.MANAGE_AUTH_METHODS` über die Schwelle `selfServiceAcrFloor` denselben Nachweis (für
-  ein nie identifiziertes Konto nur loa1).
-
-Zusätzliche Fehlerfälle zum allgemeinen Vertrag: fehlender oder ungültiger `deviceProof` (Signatur,
-Wiederholung, `htm`/`htu`/`iat`) -> `401`, auf demselben Weg (`DpopValidationException`) wie bei
-DPoP-Proofs. Ein falscher Schlüssel bei `auth-device` -> `Failed`, kein Fehlerstatus; das ist ein
-gewöhnlicher Fehlversuch wie eine falsche TAN.
-
----
-
-## 6) `ident-eid` und `ident-kvnr`
-
-`ident_eid` ist das zweite `IDENTIFICATION`-Tool neben `ident-fsc`: eine simulierte
-Online-Ausweisfunktion statt eines Freischaltcodes. Anders als `ident-fsc` erbringt es zwei
-Faktortypen in einem Durchlauf (`factorTypes={possession,knowledge}`, `maxAcr=loa3`): den Besitz der
-(simulierten) eID-Karte und das Wissen um die PIN.
-
-Wie `ident-fsc` hat es einen einzigen Schritt `input` mit gestaffelten `missingFields`:
-
-1. **Kartendaten**: Die simulierte eID-Karte liefert ihre vollständigen Ausweisdaten auf einmal:
-   `familyName`, `givenNames`, `birthDate`, `streetAddress` (Straße **und** Hausnummer in einer Zeile,
-   wie im Kartenfeld `Street`), `postalCode`, `locality` und `restrictedId`. Vorher wird **nichts** eingetippt: Eine
-   Karte trägt weder KVNR noch PersonId, also gibt es auch keinen Suchschritt davor. Die
-   `restrictedId` ist das an die Karte gebundene Pseudonym (in der Demo ein Platzhalter für den
-   echten Restricted Identifier). Im Kartenformular lässt sie sich ändern, obwohl eine echte Karte
-   sie fest mitbringt. Nur so lässt sich in der Demo eine zweite Karte derselben Person
-   durchspielen (neuer Wert, gleiches Konto, ADR-19) oder dieselbe Karte ein zweites Mal auflegen
-   (Wiedererkennung).
-2. **`pin`**: die eID-PIN (Testwert `123456`, entsprechend dem `VALIDCODE` bei `ident-fsc`).
-
-Dabei gilt:
-
-- Die Kartendaten werden geprüft, sobald sie vollständig sind; erst danach fragt das Tool nach der
-  PIN. Geprüft werden nur Form und Vollständigkeit, kein Abgleich mit dem Personenverzeichnis, denn
-  die Karte steht für ihre Daten selbst ein (siehe unten): Das Geburtsdatum liegt nicht in der
-  Zukunft, die Postleitzahl hat fünf Ziffern, die `restrictedId` besteht aus 16 bis 64 Buchstaben
-  und Ziffern.
-- Abgelehnte Kartendaten werden samt PIN verworfen; danach fehlen wieder alle Kartenfelder. Bei
-  einer abgelehnten PIN wird nur die PIN verworfen.
-- Beide Ablehnungen zählen als Fehlversuch der Journey. Die Antwort nennt nie, welches Feld nicht
-  passte.
-- Alle Felder lassen sich auch zusammen in einem einzigen `PATCH` schicken. Wer einzelne
-  Kartenfelder später ändert, löst eine neue Prüfung der Kartendaten aus.
-- Wie viele Bildschirme ein Client daraus macht, entscheidet er selbst ([Frontend](10-frontend.md)).
-  App und Keycloak zeigen zuerst die Karte, dann die PIN, und bleiben nach einem Fehlversuch auf der
-  Seite, von der aus abgeschickt wurde. Von der PIN führt „Angaben ändern“ (in Keycloak „Zurück“)
-  zur Karte zurück.
-
-Der eigentliche Unterschied zu `ident-fsc` liegt darin, wer für die Daten einsteht. Bei
-`ident-fsc` ist das Personenverzeichnis die Quelle und das Tool nur der Weg dorthin
-(`ClaimSource.PERSON_DIRECTORY`); der Freischaltcode belegt das Verfahren. `ident-eid` bestätigt
-dagegen auf **eigene** Verantwortung (`ClaimSource(toolId.value)`), was die Karte zeigt: Name,
-Vorname, Geburtsdatum und Adresse als Claims, dazu als siebten Claim die `restrictedId`. Sie ist
-ein lokaler Anker, über den ein Interessent wiedererkannt wird (ADR-19: Eine neue Karte ersetzt den
-Wert an derselben Stelle, ein fremdes Konto hält ihn nie). Eine PersonId behauptet `ident-eid` nicht
-(ADR-18).
-
-**`ident-kvnr`** ist der zweite Schritt: ein eigenes Tool mit nur einem Schritt (`input`, Feld
-`kvnr` – oder ohne KVNR `partnerNumber`, ADR-34). Es löst die Versichertennummer über
-`PersonDirectory.findPersonIdByKvnr` auf, die Partnernummer über `findPersonIdByPartnerNumber`; kommen
-beide, zählt die KVNR. Das geschieht im Controller, nicht im Handler, denn `ident_kvnr` darf
-`personenverzeichnis` nicht direkt kennen ([Projektrahmen](08-projektrahmen.md) Abschnitt 3).
-Danach behauptet das Tool unter `PERSON_DIRECTORY` die `PERSON_ID`, bei angegebener KVNR auch die
-`KVNR` und bei Versicherten die `MEMBER_NUMBER` (ADR-34). Es hat die Rolle `CORRELATION`
-(ADR-18). Das sagt ausdrücklich, dass eine eingetippte Nummer für sich nichts beweist;
-`factorTypes={}` folgt daraus, definiert es aber nicht. Sicher wird der Schritt durch zwei Dinge:
-`requires` (die bestätigten Identitätsattribute müssen im Konto vorliegen, sonst lässt sich das
-Tool gar nicht starten) und `IdentityResolver.attestedIdentityMatches`. Das prüft, bevor der Anker
-geschrieben wird, ob die Stammdaten hinter der Nummer zur bestätigten Identität passen.
-
-Gehört die Nummer zu einem Konto, das es schon gibt, ist das kein Fehler des Nutzers, sondern eine
-Folge der Reihenfolge: Die Bestätigung brauchte ein Konto, bevor die Zuordnung laufen konnte. Das
-verwerfbare Konto geht dann im gefundenen auf, samt Bestätigung, Ankern und Protokoll der
-Identifizierung ([12-entscheidungen.md](12-entscheidungen.md) ADR-20). Danach steht die
-Registrierung da, wo jeder andere Weg zu einem bestehenden Konto auch stünde: bei der Frage, ob
-dieses Gerät mit einem anderen Konto verknüpft ist, und beim Angebot, ein vorhandenes Verfahren
-nachzuweisen, statt ein neues einzurichten.
-
-Zwischen beiden Schritten steht keine Ja/Nein-Frage: Nach der Bestätigung zeigt `next` direkt
-auf `ident-kvnr` (`RegisterState.Assigning`). Wer die Nummer nicht angeben will, bricht den Schritt
-ab (`DELETE /tools/api/ident-kvnr/v1/{toolSessionId}`, im Frontend „Jetzt nicht"). Der
-Durchlauf geht dann normal weiter, und das Konto bleibt Interessent
-([Orchestrierung](04-orchestrierung.md), ADR-10): mit vollständig bestätigter Identität, nur ohne
-Zuordnung zum Personenverzeichnis. Es ist ein Ausweichzustand, kein Pflichtzustand.
-
-Zusätzliche Fehlerfälle zum allgemeinen Vertrag: falsche PIN -> `Failed("eID-PIN ungueltig")`;
-unbekannte Versichertennummer -> `Failed("Versichertennummer konnte nicht zugeordnet werden")`;
-unbekannte Partnernummer -> `Failed("Partnernummer konnte nicht zugeordnet werden")`. Bei beiden
-Nummern kommt bewusst dieselbe Antwort, egal ob die Nummer gar nicht existiert oder zu jemand
-anderem gehört; sonst ließe sich daraus ablesen, ob es eine Nummer gibt. Passt die Nummer zu einer
-anderen Person als der bestätigten, ist das ein Konflikt (`409`), kein Fehlschlag des Tools.
-
-
----
-
-## 7) `enroll-kobil` / `auth-kobil`
-
-Gerätebindung über den externen Dienstleister **KOBIL** – das erste Verfahren, dessen Nachweis
-nicht über den Client läuft. Der Client überbringt nur eine Einmalkennung (OTP); die Bestätigung
-des Geräts holt sich das Backend selbst beim Anbieter. Ein manipulierter Client kann eine Kennung
-zurückhalten oder wiederholen, aber kein Ergebnis vortäuschen.
-
-Eine zweite Abweichung ist bewusst anders als der übliche Weg bei KOBIL: **Der PIN liegt im
-Backend des Tools**, nicht beim Nutzer. Er wird dort erzeugt und bei jeder Anmeldung herausgegeben,
-nachdem sich der Client lokal entsperrt hat (ADR-21, ADR-22).
-
-Die **Biometrie ist freiwillig**: Nur wenn der Nutzer zustimmt, entsteht überhaupt ein
-Gerätegeheimnis, und nur dann speichert der Server dessen Hash. Welche Wege zum Entsperren ein
-bestimmtes Credential später hat, berechnet der Server daraus – siehe „Nutzung" unten.
-
-Der Anbieter ist simuliert: Das Modul `kobil` hat ein eigenes Schema, eine eigene
-HTTP-Schnittstelle für die App (`/mock-kobil/*`, das Gegenstück zum MC SDK) und die Schnittstelle
-`KobilSsms` für unser Backend. Es gibt kein Spring-Profil und keine zweite Implementierung: Die
-Simulation *ist* KOBIL. Ihre Operationen heißen nach dem, was SSMS tut (Nutzer anlegen,
-Aktivierungscode ausstellen, PIN setzen, Geräte eines Nutzers abfragen, OTP am Services-Knoten
-prüfen), nicht nach unserem Ablauf. Die echten Nachrichtenformate spielen für die Demo keine
-Rolle.
-
-### Vier Geheimnisse, vier verschiedene Aussagen
-
-| Was | Wo es liegt | Was es dem Server beweist |
-|---|---|---|
-| KOBIL-PIN | im Backend des Tools, je Durchlauf herausgegeben | **Nichts über den Nutzer** – er kennt ihn nicht |
-| Lokales Gerätegeheimnis mit Biometrie-Schutz | nur im Client | Den Weg zum Entsperren des Credentials |
-| Passwort des Kontos | `auth_password.enrollment` | Einen zweiten Weg zum Entsperren |
-| Bestätigung + Gerätekennung | bei KOBIL, vom Server per OTP eingelöst | **Echten Besitz** – der Server prüft selbst, statt zu glauben |
-
-### Einrichtung (`enroll-kobil`, Schritt `activate`)
-
-1. Start des Tools: Das Backend legt bei KOBIL einen Nutzer an, lässt einen Aktivierungscode
-   ausstellen, erzeugt den PIN und setzt ihn dort. `stepData` enthält `tenantId`, `kobilUserId`,
-   `activationCode`, `pin` und ein frisch erzeugtes `unlockSecret`.
-2. Der Client ruft damit direkt KOBIL auf (SDK-`ActivateEvent`). Dabei entsteht bei KOBIL die
-   **Gerätekennung**. Das `unlockSecret` legt der Client nur bei Zustimmung lokal hinter seiner
-   Biometrie ab; andernfalls verwirft er es.
-3. `PATCH {activated, biometricConsent, label}`: Das Backend fragt die Kennung bei KOBIL ab – nie
-   beim Client, denn mit ihr wird jede spätere Anmeldung verglichen. Dann schreibt es das
-   Credential: Kennung, PIN, DPoP-`bindingKeyRef` und **nur bei Zustimmung** den Hash des
-   `unlockSecret`. Das Ergebnis ist `Completed.Enrolled` mit `amr = [kobil, pin|biometric]`. Der
-   Weg zum Entsperren ergibt sich dabei aus der Zustimmung; es ist keine zweite Eingabe.
-
-`biometricConsent` hat keinen Standardwert: Eine Zustimmung, die man nicht gegeben hat, gibt es
-nicht. Ohne sie bleibt `unlock_secret_hash` NULL. „Biometrie erlaubt" ist damit kein Schalter neben
-einem Geheimnis, sondern bedeutet schlicht, dass es das Geheimnis gibt.
-
-Ein `activated` ohne Gerät bei KOBIL ist **kein** Fehlschlag, sondern `Unchanged`: Wer die Seite neu
-geladen hat, hat nichts geraten, also wird auch kein Versuchsbudget verbraucht. Deshalb gibt der
-Schritt seine Werte bei jedem Lesen erneut heraus: Solange die Einrichtung läuft, muss der Client
-sie noch abholen können.
-
-Sobald das Credential geschrieben ist, löscht das Backend die Aktivierungswerte aus der
-Tool-Sitzung: Aktivierungscode, PIN und `unlockSecret` werden sofort geleert
-(`EnrollKobilToolHandler.patch`), nicht erst beim Aufräumen der Tool-Sitzungen bis zu 24 Stunden
-später. Der PIN lebt danach nur noch im Credential, das `unlockSecret` nur als Hash. Auch KOBIL
-selbst nimmt einen Aktivierungscode nur einmal an und vergisst ihn danach (`KobilSsms.activate`).
-
-### Nutzung (`auth-kobil`, Schritte `unlock` und `otp`)
-
-| Schritt | Wer | Was |
-|---|---|---|
-| `unlock` | Client | Entsperrt lokal: `POST .../auth-kobil/pin-releases` mit dem Gerätegeheimnis **oder** dem Passwort des Kontos. Angeboten wird nur, was es wirklich gibt (`stepData.unlockOptions`) |
-| – | Backend | Prüft und gibt den PIN heraus – nur in **dieser einen Antwort**; der Schritt wechselt auf `otp` |
-| `otp` | Client | Meldet sich mit dem PIN per SDK-`LoginEvent` bei KOBIL an und erhält ein OTP zurück |
-| – | Client | `PATCH {otp}` |
-| – | Backend | Löst das OTP bei KOBIL ein, vergleicht die Kennung und bewertet gemeldete Risiken |
-
-Die Herausgabe des PIN ist eine **eigene Unterressource**, nicht Teil des `PATCH`. Es ist das einzige
-Tool, das den eigenen URL-Bereich tatsächlich nutzt, den [API](05-api.md) Abschnitt 1 jedem Tool
-zusagt. Dafür gibt es drei Gründe, alle im Aufbau begründet:
-
-- Der PIN darf nicht erneut abrufbar sein. `buildReadResponse` baut `stepData` bei jedem `GET` neu
-  auf, also darf er dort nicht stehen.
-- Eine Herausgabe erzeugt etwas Neues, sie ändert nichts Bestehendes: Sie ist einmalig, befristet
-  und nicht wiederholbar mit gleichem Ergebnis.
-- Zwei verschiedene Vorgänge lassen sich besser durch die URL unterscheiden als durch die Frage,
-  welche optionalen Felder gerade gesetzt sind.
-
-Der Anfrageinhalt ist ein echtes Entweder-oder (`sealed interface KobilUnlockCredential`): Beides
-zugleich oder keines von beiden lässt sich gar nicht bilden. Damit folgt der gemeldete Faktortyp
-aus dem Typ statt aus einem Schalter.
-
-Das Passwort des Kontos ist auf diesem Weg der Schlüssel zum KOBIL-Credential, kein eigener
-Anmeldeschritt. Geprüft wird es über `PasswordCredentialPort`, gemeldet wird `pin` – nie
-`password`, denn das würde dem Durchlauf das echte Passwort-Verfahren anhängen und es doppelt
-zählen. Eine wiederholte Herausgabe ist erlaubt: Wessen Zeitfenster abgelaufen ist, entsperrt
-einfach erneut.
-
-### Was geprüft wird und was bei Abweichungen passiert
-
-- Kein gültiges Zeitfenster für die Herausgabe -> `Failed("Entsperren erforderlich")`, zurück zu
-  `unlock`.
-- OTP unbekannt oder schon verbraucht -> `Failed("Bestaetigung nicht erkannt")`. Unbekannt,
-  verbraucht und fremd sind bei KOBIL bewusst dieselbe Antwort.
-- Die Kennung weicht ab -> `Failed("Geraet nicht erkannt")`. Das ist derselbe Wortlaut wie bei
-  `auth-device` und verrät nicht, welches Gerät erwartet wurde.
-- Ein gemeldetes Risiko gehört zur eingestellten Sperrliste (`identity.kobil.blocking-risks`) ->
-  `Failed("Geraet als unsicher gemeldet")`. Das ist bewusst ein eigener Grund: Es ist kein
-  Tippfehler des Nutzers, sondern eine Aussage über das Gerät; in einem „nicht erkannt" ginge ein
-  echter Befund verloren. Geprüft wird gegen eine benannte Liste, nicht gegen einen Punktwert: Ein
-  Punktwert wäre erfunden und läse sich trotzdem wie eine Messung. Da beide Seiten abgeschlossene
-  Enums sind, lässt sich ein unbekanntes Signal gar nicht bilden; es ist also auch kein Fall, den
-  man prüfen müsste.
-- Falsches Gerätegeheimnis, falsches Passwort und gar kein Passwort-Credential -> immer derselbe
-  Wortlaut (`Failed("Entsperren fehlgeschlagen")`). So lässt sich daraus nicht ablesen, ob das Konto
-  ein Passwort hat.
-
-Alle Fehlschläge sind gewöhnliche Fehlversuche (`200` mit `stepData.error`, Versuchsbudget der
-Journey), kein Fehlerstatus. Über `chargeRateLimits` belasten sie den
-`AccountLockoutService`, auch die Ablehnung wegen eines Risikos. Ein gerootetes Telefon kann seinen
-Besitzer also aussperren. Das wird bewusst in Kauf genommen, statt eine Sonderbehandlung
-einzuführen.
-
-### Welche Wege zum Entsperren es gibt, entscheidet nicht der Client
-
-`unlockOptions` wird abgeleitet, es ist nicht fest: `biometric` genau dann, wenn es einen
-`unlock_secret_hash` gibt (also jemand zugestimmt hat), `password` genau dann, wenn das Konto noch
-ein Passwort hat. Einen Weg anzubieten, den es nicht gibt, könnte nur zu einem führen: einem
-Fehlversuch, der die Login-Sperre belastet.
-
-Der Preis dafür: Die Antwort verrät dem Aufrufer, ob das Konto ein Passwort hat. Das ist hier
-vertretbar, weil `auth-kobil` überhaupt nur für einen Aufrufer läuft, dessen Schlüssel schon zu
-einem eingetragenen Credential **dieses** Kontos passt (`AuthMethodView.boundKeyRef`). Außerdem sieht derselbe
-Aufrufer `activeMethods`, sobald er fertig ist.
-
-Eine leere Liste ist möglich und wird auch so angezeigt: Ein Credential ohne Zustimmung zur
-Biometrie auf einem Konto, das sein Passwort verloren hat, ist nicht mehr nutzbar. Der Client sagt
-das, statt eine Schaltfläche anzubieten, die nicht funktionieren kann.
-
-Nicht gebaut sind eine `-lookup`-Variante (das Credential ist an einen Schlüssel gebunden) und ein
-`WebToolRenderer` für den Web-Kanal (ein SDK für Telefone lässt sich aus einer Anmeldeseite
-im Browser nicht ansprechen) – siehe [API](05-api.md) Abschnitt 3.
-
----
-
-## 8) `auth-qr` / `auth-qr-lookup`: die Warteseite im Browser
-
-Der Browser zeigt QR-Code und Pairing-Code und wartet, bis die App entscheidet
-(`approve-qr`, [API](05-api.md) „Peer-Login bestätigen“). Der Ablauf auf der Seite:
-
-1. Keycloak zeigt `tool-qr-wait` im Schritt `waitForApp`, mit `statusUrl` als Seitenattribut.
-2. Die Seite fragt alle zwei Sekunden `statusUrl` ab. Keycloak findet über das Cookie der
-   Anmeldung die laufende Tool-Sitzung und liest sie beim Orchestrator mit `GET`. Solange die
-   Antwort `waiting` ist, bleibt die Seite unverändert stehen.
-3. Die App gibt frei oder lehnt ab, oder die Anfrage läuft nach fünf Minuten ab. Der `GET` meldet
-   jetzt `enterCode` bzw. `closed`, der Endpunkt antwortet `ready`.
-4. Die Seite schickt ihr leeres Formular einmal ab. Erst dieser `PATCH` wertet das Ergebnis aus:
-   Nach einer Freigabe folgt das Feld für den Bestätigungscode, nach Ablehnung oder Ablauf ein
-   Fehlschlag, und die Journey entscheidet, wie es weitergeht.
-
-„Abbrechen“ beendet das Fragen und lehnt das Tool ab (`orchestrator_abandon`). Warum die Seite
-nicht mehr per Formular fragt und welche Regeln die Abfrage hat, steht in
-[ADR-45](adr/ADR-045-qr-warteseite-fragt-im-hintergrund.md).
-
-## 9) `auth-invite-lookup`: Vorgangszugang mit Einmalkennwort
-
-Eine Person ohne Konto erledigt genau einen Vorgang, zu dem das Personenverzeichnis sie per Brief
-eingeladen hat ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Zunächst nur im
-Web-Kanal.
-
-1. **Einladen.** Das Personenverzeichnis stellt für eine Person eine Einladung aus: Vorgang, Niveau
-   (`loa1` oder `loa2`), Frist. Es erzeugt ein Einmalkennwort mit zwölf Zeichen in Vierergruppen,
-   speichert nur die Id (SHA-256 über `personId:KENNWORT:vorgang`) und schickt den Klartext per
-   Brief. In der Demo geschieht das auf der Seite „Einladungen“ von `/personenverzeichnis/`; der Brief
-   liegt im Briefkasten. Auf der Anmeldeseite bietet die Demo eine Auswahl der offenen Einladungen an,
-   die Nummer und Kennwort einträgt (`invitations` im Demo-Block, ADR-28).
-2. **Anmelden.** Die Website startet eine gewöhnliche Anmeldung über den Browser-Client. Ohne Konto
-   bietet die Auswahl `auth-invite-lookup` an. Die Person gibt KVNR oder Partnernummer und das
-   Kennwort ein. Der Controller löst die Nummer zur Person auf; das Tool fragt das Verzeichnis, ob das
-   Kennwort eine offene Einladung genau dieser Person öffnet (`Invitations.redeem`). Ein Fehlversuch
-   zählt gegen die Person (Personen-Mengenbegrenzung wie beim Freischaltcode) und sieht für jede
-   Ursache gleich aus.
-3. **Binden.** Bei Erfolg wird die Einladung Subjekt des Kanals, kein Konto wird gesucht oder
-   angelegt. Liegt das Niveau der Einladung unter dem verlangten, bricht die Journey vorher ab.
-   Keycloak setzt den Nutzer aus der Einladungs-Federation (`f:<UUID>:<Id>`); seine Tokens tragen
-   die Stammdaten der Person und die Claims `process` und `invitation`, aber kein `orchestrator_account_id`.
-4. **Wiederkommen.** Bis zur Frist oder zum Abschluss kann sich die Person beliebig oft wieder
-   anmelden, wie beim Freischaltcode.
-5. **Beenden.** Das Fachsystem meldet den Vorgang beim Personenverzeichnis ab, mit der Id der
-   Einladung, die es selbst bilden kann. Das Verzeichnis meldet `InvitationEnded`; der Orchestrator
-   meldet den Einladungs-Nutzer in Keycloak ab, und jeder weitere Refresh scheitert, weil Keycloak den
-   Nutzer nun deaktiviert liest. Ein Widerruf läuft genauso, eine abgelaufene Frist wirkt von selbst.
-
-Ein Einladungs-Kanal kann keine Kontofunktion aufrufen (Verfahren verwalten, Konto löschen,
-QR-Bestätigung), gibt keine Evidenz an einen späteren Flow-Durchlauf weiter und kann nicht per Step-up
-über das Niveau der Einladung steigen. Konto und Einladung teilen sich nie eine Keycloak-Sitzung;
-gewechselt wird über die Abmeldung.
+## 2) Die Verfahren
+
+Je Verfahren eine Seite, mit Tools, Ablauf, Datenmodell, Aufrufen und Fehlerfällen
+([Übersicht](verfahren/README.md)):
+
+- **Identifizieren und zuordnen:** [`fsc`](verfahren/fsc.md) (Freischaltcode),
+  [`eid`](verfahren/eid.md) (Online-Ausweis), [`nect`](verfahren/nect.md) (Identifizierungsdienst
+  Nect), [`kvnr`](verfahren/kvnr.md) (Zuordnung über KVNR oder Partnernummer).
+- **Anmelden mit Wissen oder Code:** [`sms`](verfahren/sms.md), [`password`](verfahren/password.md),
+  [`email`](verfahren/email.md) (auch die bestätigte Adresse selbst).
+- **Anmelden mit einem Gerät:** [`device`](verfahren/device.md) (Geräteschlüssel),
+  [`kobil`](verfahren/kobil.md) (Gerätebindung über KOBIL), [`qr`](verfahren/qr.md) (Web-Login,
+  im Handy bestätigt).
+- **Vorgangszugang:** [`invite`](verfahren/invite.md) (Einmalkennwort aus einer Einladung).

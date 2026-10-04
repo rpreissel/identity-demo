@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
 /**
- * toolId=auth-device (docs/03-tool-architektur.md). [start]'s [enrollmentRef] is resolved by the
+ * toolId=auth-device (docs/verfahren/device.md). [start]'s [enrollmentRef] is resolved by the
  * controller. No server-issued challenge: the proof's htu binds it to this single-use tool session
  * URL, and DeviceProofValidator's replay protection covers the rest, like ordinary DPoP proofs.
  */

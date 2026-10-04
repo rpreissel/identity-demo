@@ -72,7 +72,7 @@ class BindingKeyOpenApiConfig {
         const val DPOP_SCHEME = "dpop"
 
         /**
-         * The Web channel's signed peer-auth assertion (docs/05-api.md Abschnitt 3, ADR-7). Must
+         * The Web channel's signed peer-auth assertion (docs/05-api.md Abschnitt 3b, ADR-7). Must
          * match the `@SecurityRequirement(name = "kc-peer-auth")` on the kc controllers, or the
          * spec is invalid.
          */

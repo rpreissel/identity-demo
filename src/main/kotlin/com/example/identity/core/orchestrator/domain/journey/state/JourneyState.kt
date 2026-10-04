@@ -6,7 +6,7 @@ import com.example.identity.contract.tool_api.ToolId
 
 /**
  * The position on the path, together with the attributes that hold at this position
- * (docs/04-orchestrierung.md #1), e.g. which methods were offered and which were declined. Every
+ * (docs/04-orchestrierung.md #3), e.g. which methods were offered and which were declined. Every
  * intent owns its own sealed set, so a forgotten position is a compile error in a `when`.
  * [activatable] answers both "which tool may the client activate now?" and "where next?"
  * ([JourneyService.nextOf]).

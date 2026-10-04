@@ -19,7 +19,7 @@ internal const val AUTH_SMS_TOOL_ID = "auth-sms"
 internal const val AUTH_SMS_LOOKUP_TOOL_ID = "auth-sms-lookup"
 
 /**
- * The SMS procedure: `enroll-sms`, `auth-sms`, `auth-sms-lookup` (docs/03-tool-architektur.md #1).
+ * The SMS procedure: `enroll-sms`, `auth-sms`, `auth-sms-lookup` (docs/verfahren/sms.md).
  * A confirmed TAN proves the subject holds this number, so enrolling puts it into the claim log. No
  * anchor and no uniqueness: several accounts may share one number (a family phone), and
  * `auth-sms-lookup` never resolves by number.
@@ -44,8 +44,8 @@ internal val AuthSmsLookup = SmsModule.lookupLogin(AUTH_SMS_LOOKUP_TOOL_ID, vers
 
 /**
  * A method module talks to the orchestrator through tool_api only, never to account or another
- * method module (docs/03-tool-architektur.md #2). Its controllers (`auth_sms.api.v1`) reach the
- * orchestrator through `tool_api` alone (docs/04-orchestrierung.md #5).
+ * method module (docs/03-tool-architektur.md #7). Its controllers (`auth_sms.api.v1`) reach the
+ * orchestrator through `tool_api` alone (docs/04-orchestrierung.md #8).
  */
 @ApplicationModule(id = "auth_sms", allowedDependencies = ["tool_api", "texts", "sms"])
 @Configuration

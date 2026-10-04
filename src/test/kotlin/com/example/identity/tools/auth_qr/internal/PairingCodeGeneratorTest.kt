@@ -7,7 +7,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
 
 /**
- * The pairing code a human copies by hand (docs/07-betrieb.md #5): 8 characters from a
+ * The pairing code a human copies by hand (docs/verfahren/qr.md): 8 characters from a
  * Crockford-like alphabet without `I`, `L`, `O` and `U`.
  */
 class PairingCodeGeneratorTest : BehaviorSpec({

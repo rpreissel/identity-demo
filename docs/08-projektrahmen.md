@@ -15,42 +15,49 @@ Anmeldung mit DPoP abgesichert werden. Das System besteht aus:
   durchsetzt (Richtlinie, Wiederholungen, DPoP-Bindung), ohne die Tool-Module zu kennen.
 - Mehreren fachlichen Modulen (`ident_fsc`, `ident_eid`, `ident_nect`, `ident_kvnr`, `auth_sms`, `auth_password`, `auth_email`, `auth_device`, `auth_qr`, `auth_kobil`, `auth_invite`),
   die ihre eigenen Tool-Endpunkte mitbringen und den Orchestrator ausschließlich über
-  `tool_api` erreichen ([Tool-Architektur](03-tool-architektur.md) Abschnitt 4).
+  `tool_api` erreichen ([Tool-Architektur](03-tool-architektur.md) Abschnitt 7).
 - Zwei Datenmodulen (`account`, `personenverzeichnis`), die Konto- bzw. Personendaten halten und
   ebenfalls Teile von `tool_api` implementieren.
 - Einer H2-Datenbank, deren Schema Flyway-Migrationen aufbauen.
+
+Welche Komponenten das Zielbild hat und wie sie zusammenspielen, beschreibt der
+[Überblick](01-ueberblick.md) Abschnitt 2; dieses Kapitel beschreibt, wie die Anwendung darin gebaut
+ist.
 
 ### Qualitätsziele
 
 | Priorität | Ziel | Beschreibung |
 |-----------|------|--------------|
-| 1 | Modularität | Klare fachliche Module mit definierten Abhängigkeiten |
-| 2 | Verifizierbarkeit | Architektur- und Modulstruktur automatisiert prüfbar |
-| 3 | Aktualität | Verwendung aktueller Versionen des Spring-Ökosystems |
-| 4 | Entwicklerfreundlichkeit | Sofort ausführbar über den Gradle Wrapper |
+| 1 | Sicherheit | Jede Sicherheitszusage des Backend-Kerns gilt ohne unbenannte Annahme an die Umgebung; Invarianten sind per Typ, Constraint oder Test erzwungen ([ADR-35](adr/ADR-035-betriebsanspruch-backend-kern-produktionsreif.md), [invarianten.md](invarianten.md)) |
+| 2 | Nachvollziehbarkeit | Jede fachliche Regel steht an einer Stelle; jeder Schritt einer Journey steht im Journey-Trace, jede Identifizierung im Änderungsprotokoll des Kontos ([04-orchestrierung.md](04-orchestrierung.md), [ADR-39](adr/ADR-039-was-eine-kontoloeschung-ueberlebt.md)) |
+| 3 | Modularität | Klare fachliche Module mit definierten Abhängigkeiten |
+| 4 | Verifizierbarkeit | Architektur- und Modulstruktur automatisiert prüfbar |
+| 5 | Aktualität | Verwendung aktueller Versionen des Spring-Ökosystems |
+| 6 | Entwicklerfreundlichkeit | Sofort ausführbar über den Gradle Wrapper |
 
 ---
 
 ## 2) Kontextabgrenzung (C4 System Context)
 
-```
-┌─────────────────────────────────────────────┐
-│              Externe Nutzer /               │
-│              Klienten-Systeme               │
-└───────────────────┬─────────────────────────┘
-                    │ HTTP / REST
-                    ▼
-┌─────────────────────────────────────────────┐
-│           Identity-Demo Applikation         │
-│  (Spring Boot Modulith, Port 8080)          │
-└─────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+  App["App<br/>(Smartphone)"] -- "HTTPS, DPoP" --> ID["identity-demo<br/>(Orchestrator, Spring Boot Modulith)"]
+  B["Browser<br/>(Website)"] -- "OIDC" --> KC["Keycloak<br/>(mit keycloak-extension<br/>und Login-Theme)"]
+  KC -- "/kc/…, Peer-Auth-Assertion" --> ID
+  ID -- "Admin-API, eigener Grant" --> KC
+  ID -- "Ports" --> EXT["Fremdsysteme:<br/>Personenverzeichnis, eID-Server,<br/>Nect, KOBIL, SMS, Mail"]
+  App -- "AccessToken" --> F["Fachdienste"]
+  B -- "AccessToken" --> F
 ```
 
 - **Name**: `identity-demo`
 - **Typ**: Spring Boot Webanwendung
-- **Schnittstelle nach außen**: HTTP/REST (Tomcat auf Port 8080)
-
----
+- **Schnittstelle nach außen**: HTTP/REST (Tomcat auf Port 8080); Health und Kennzahlen auf einem
+  eigenen Management-Port ([07-betrieb.md](07-betrieb.md) Abschnitt 7)
+- **Keycloak** läuft als eigener Dienst; die Keycloak-Erweiterung wird als Jar in Keycloak geladen
+  (Abschnitt 3, „Außerhalb der Anwendung“).
+- **Fremdsysteme** erreicht die Anwendung nur über Ports; in dieser Instanz sind sie als Module der
+  Gruppe `simulation` nachgebildet (Abschnitt 3). Die Fachdienste ruft die Anwendung nicht auf.
 
 ## 3) Module
 
@@ -82,7 +89,7 @@ com.example.identity
 
 ### Verträge (`contract`)
 
-- **M8** `tool_api` — Der Vertrag zwischen Orchestrator und Tool-Modulen, einzige Abhängigkeit `texts`, als Modulith-Modul `OPEN`. In der Wurzel der Tool-Lebenszyklus: die Selbstbeschreibung (`ToolModule` mit seinen `Tool`s, `ToolOutcome`, `StepData`) und die Journey aus Sicht des Tools (`ToolJourney`, `Lockouts`). Darunter nach Thema: `claims` (Claims, `AcrLevel`, Ankerregeln), `values` (E-Mail, Mobilnummer, KVNR, Mitgliedsnummer, Partnernummer), `directory` (Ports zu Konto und Person), `credentials` (Ports, die ein Tool-Modul anbietet), `device` (Geräte-Proof), `envelope` (Antwortformen `ChannelResponse`, `Next`), `ratelimit` und `retention` (Zählwerk und Aufbewahrung des Orchestrators). Enthält keine Bean und keinen Controller: ein Vertrag, keine Web-Schicht ([Tool-Architektur](03-tool-architektur.md) Abschnitt 4)
+- **M8** `tool_api` — Der Vertrag zwischen Orchestrator und Tool-Modulen, einzige Abhängigkeit `texts`, als Modulith-Modul `OPEN`. In der Wurzel der Tool-Lebenszyklus: die Selbstbeschreibung (`ToolModule` mit seinen `Tool`s, `ToolOutcome`, `StepData`) und die Journey aus Sicht des Tools (`ToolJourney`, `Lockouts`). Darunter nach Thema: `claims` (Claims, `AcrLevel`, Ankerregeln), `values` (E-Mail, Mobilnummer, KVNR, Mitgliedsnummer, Partnernummer), `directory` (Ports zu Konto und Person), `credentials` (Ports, die ein Tool-Modul anbietet), `device` (Geräte-Proof), `envelope` (Antwortformen `ChannelResponse`, `Next`), `ratelimit` und `retention` (Zählwerk und Aufbewahrung des Orchestrators). Enthält keine Bean und keinen Controller: ein Vertrag, keine Web-Schicht ([Tool-Architektur](03-tool-architektur.md) Abschnitt 7)
 - **M18** `texts` — Bibliothek für mehrsprachige Nutzertexte (ADR-33): `Text` (deutsche Vorlage im Code, ausgeliefert als Referenz) und `TextBundle` (Sprachdateien per ETag). `allowedDependencies = []`; jedes Modul mit Nutzertexten deklariert diese Abhängigkeit, auch die simulierten Fremdsysteme
 
 ### Verfahren (`tools`)
@@ -99,7 +106,7 @@ Je ein Modul mit eigenen Tool-Endpunkten; es erreicht den Orchestrator nur über
 - **M11** `auth_qr` — Anmeldung per QR-Code auf der Website, bestätigt in der App (Tools `enroll-qr`, `auth-qr`, `auth-qr-lookup`, `approve-qr`, [`CONFIRM_PEER_LOGIN`](journeys/confirm-peer-login.md)); speichert `QrLoginRequest` selbst, kein Zugriff auf `account`; eigene `@RestController`
 - **M23** `auth_invite` — Anmeldung mit Einmalkennwort für einen Vorgang (Tool `auth-invite-lookup`, [ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)): KVNR oder Partnernummer und das Kennwort aus dem Brief. Fragt die Einladungen des Personenverzeichnisses über den Port `Invitations`; meldet die Einladung als Subjekt, nie ein Konto. Eigener `@RestController`, Abhängigkeiten nur `tool_api` und `texts`
 - **M12** `auth_device` — Geräteschlüssel als eigenes Anmeldeverfahren (Tools `enroll-device`, `auth-device`); eigene `@RestController`, keine Abhängigkeit von `account`
-- **M14** `auth_kobil` — Gerätebindung über den externen Dienstleister KOBIL (Tools `enroll-kobil`, `auth-kobil`, [Abläufe](06-ablaeufe.md) Abschnitt 7); im Backend verwahrter PIN (ADR-21/ADR-22), PIN-Freigabe als eigene Unterressource; eigene `@RestController`, keine `account`-Abhängigkeit — aber eine ausdrücklich erlaubte Abhängigkeit zum Fremdsystem `kobil` (wie `ident_nect`)
+- **M14** `auth_kobil` — Gerätebindung über den externen Dienstleister KOBIL (Tools `enroll-kobil`, `auth-kobil`, [Verfahren `kobil`](verfahren/kobil.md)); im Backend verwahrter PIN (ADR-21/ADR-22), PIN-Freigabe als eigene Unterressource; eigene `@RestController`, keine `account`-Abhängigkeit — aber eine ausdrücklich erlaubte Abhängigkeit zum Fremdsystem `kobil` (wie `ident_nect`)
 
 ### Simulierte Fremdsysteme (`simulation`)
 
@@ -113,10 +120,65 @@ nur entlang einer benannten Kante, das Personenverzeichnis nur über Ports
 - **M19** `sms` — Simulierter **SMS-Anbieter** mit Postausgang (`SmsGateway`) für `auth_sms`; im Demomodus liest die Seite `/briefkasten/` ihn über `/mock-sms/outbox`. Einzige Abhängigkeit `demo_mode`, kein eigenes Schema
 - **M20** `mail` — Simulierter **Mailserver** mit Postausgang (`MailServer`) für `auth_email`; im Demomodus liest die Seite `/briefkasten/` ihn über `/mock-mail/outbox`. Einzige Abhängigkeit `demo_mode`, kein eigenes Schema
 
+#### Die Tabellen des simulierten Personenverzeichnisses
+
+Das Modul `personenverzeichnis` hat eine `Person`-Entität mit `id` (die Partnernummer), `versnr`
+(eindeutig, nur Versicherte), `kvnr` (eindeutig, nur zusammen mit `versnr`), `name`, `vorname`,
+`strasse`, `hausnummer`, `plz`, `ort`, `geburtsdatum`. Dazu `freischaltcode` (nur Hash, Ablauf,
+Widerruf), `einladung` (ADR-48) und `brief` (der simulierte Brief mit dem Klartext, ADR-31).
+
+```mermaid
+erDiagram
+  personenverzeichnis.person ||--o{ personenverzeichnis.freischaltcode : "stellt aus"
+  personenverzeichnis.person ||--o{ personenverzeichnis.brief : "verschickt"
+  personenverzeichnis.person ||--o{ personenverzeichnis.einladung : "lädt ein (ADR-48)"
+  personenverzeichnis.einladung ||--o| personenverzeichnis.brief : "Einmalkennwort im Brief"
+
+  personenverzeichnis.person {
+    varchar id PK "Partnernummer"
+    varchar versnr UK "nur Versicherte"
+    varchar kvnr UK "nur mit versnr"
+  }
+  personenverzeichnis.freischaltcode {
+    bigint id PK
+    varchar person_id FK
+    varchar code_hash "nur der Prüfwert"
+  }
+  personenverzeichnis.brief {
+    bigint id PK
+    varchar person_id FK
+    bigint freischaltcode_id FK "ck: genau einer von beiden"
+    varchar einladung_id FK "ck: genau einer von beiden"
+    varchar code "Klartext, wie auf Papier"
+  }
+  personenverzeichnis.einladung {
+    varchar id PK "SHA-256 über Person, Kennwort und Vorgang"
+    varchar person_id FK
+    varchar vorgang
+    varchar niveau "loa1 oder loa2"
+    timestamp gueltig_bis
+    timestamp abgeschlossen_am "vom Fachsystem gemeldet"
+    timestamp widerrufen_am
+  }
+```
+
+Wie das Konto auf eine Person verweist, zeigt [02-domaenenmodell.md](02-domaenenmodell.md)
+Abschnitt 7.
+
+- **P-3** — Auf Personen wird über Spring Data JPA zugegriffen.
+  - *Kriterium:* `PersonRepository extends JpaRepository`
+- **P-4** — Die Adresse einer Person ist in einzelne Attribute aufgeteilt.
+  - *Kriterium:* Entität enthält `strasse`, `hausnummer`, `plz`, `ort`. Bestätigt wird die Straße dagegen als **eine** Zeile mit Hausnummer (`AttributeType.STREET_ADDRESS`), so wie eID und PID sie liefern; das Personenverzeichnis setzt `strassenzeile` an seiner Schnittstelle zusammen
+
 ### Nur für die Demo (`demo`)
 
 - **M21** `demo_mode` — Der eine Schalter `demo.mode` (ADR-36): als Bean `DemoMode`, als Bedingungen `OnlyInDemoMode`/`OutsideDemoMode` und als Markierung `DemoSurface` für die unauthentifizierten Oberflächen der simulierten Fremdsysteme. Nur hier wird die Property gelesen (`DemoModeSwitchTest`), also mit einer Voreinstellung für alle
 - **M13** `demo_seed` — Nur für die Demo, und nur Daten: die Testpersonen mit ihren Freischaltcodes und Briefen (`db/migration/demo_seed/V16__testdata.sql`), außerhalb des Demomodus nicht migriert. Konten legt es nicht an. Eine Testperson registriert sich wie jeder andere, in der App oder auf der Website; erst danach hat sie ein Konto. Ohne Code und ohne Abhängigkeiten; `DemoSeedModule` hält nur die Modulgrenze fest
+
+- **P-5** — Testdaten werden beim Start eingespielt.
+  - *Kriterium:* Im Demomodus spielt beim Start eine Flyway-Migration die Testpersonen ein (`demo_seed`)
+- **P-6** — Freischaltcodes zum Testen stehen beim Start zur Verfügung.
+  - *Kriterium:* Eine Flyway-Migration legt gültige Freischaltcodes für die Testpersonen an
 
 ### Außerhalb der Anwendung
 
@@ -162,7 +224,7 @@ nur entlang einer benannten Kante, das Personenverzeichnis nur über Ports
 - Kein Tool-Modul verweist auf den `orchestrator` und umgekehrt (`core/orchestrator/OrchestratorModule.kt`: `allowedDependencies = ["tool_api", "account", "texts", "demo_mode"]`). Die einzige gemeinsame Abhängigkeit ist `tool_api` — ein Tool-Modul kennt nur dessen Interfaces, nie eine konkrete Klasse des Orchestrators.
 - Die HTTP-Pfade (`/tools/api/<toolId>/v<N>/...`) sind unabhängig vom Kotlin-Paket des jeweiligen `@RestController` (`ident_fsc.api.v1`, `ident_eid.api.v1`, `ident_kvnr.api.v1`, `auth_sms.api.v1`, `auth_password.api.v1`, `auth_email.api.v1`, `auth_device.api.v1`, `auth_qr.api.v1`, `auth_kobil.api.v1`, `auth_invite.api.v1`, `ident_nect.api.v1`) — Spring leitet nach `@RequestMapping` weiter, nicht nach Paket. Ausnahmen: `kobil.api.v1`, `nect.api.v1`, `personenverzeichnis.api.v1`, `sms.api.v1` und `mail.api.v1` liegen bewusst NICHT unter `/orchestrator/api`, sondern unter `/mock-kobil`, `/mock-nect`, `/mock-personenverzeichnis`, `/mock-sms` bzw. `/mock-mail` — sie sind die Fremdsysteme, nicht diese Anwendung.
 - Die Tool-Module sind voneinander und von `account` entkoppelt, einschließlich `auth_email`. Abhängigkeiten zu simulierten Fremdsystemen sind ausdrücklich erlaubt, nicht nur geduldet: `auth_kobil → kobil`, `ident_nect → nect` (nur `NectIdent`); das Personenverzeichnis nur über Ports (ADR-31, Nachtrag). Konten werden über `tool_api.AccountDirectory` nachgeschlagen. Geschrieben wird nur über Claims im `ToolOutcome`, die die Journey übernimmt. Hilfsfunktionen, die ein Konto über die E-Mail-Adresse suchen, sind Kotlin-Erweiterungsfunktionen des Ports.
-- `auth_sms` versteckt seine internen Datenbank-IDs hinter einer undurchsichtigen `EnrollmentRef` ([06-ablaeufe.md](06-ablaeufe.md)).
+- `auth_sms` versteckt seine internen Datenbank-IDs hinter einer undurchsichtigen `EnrollmentRef` ([06-ablaeufe.md](06-ablaeufe.md) Abschnitt 1).
 - Die Grenzen zwischen den Paketen sichert `@ApplicationModule(allowedDependencies = ...)` je Modul ab, und `ModulithStructureTest` prüft sie („each module depends only on what it declares“); eine unerlaubte Abhängigkeit lässt den Build scheitern. Da Kotlin keine Annotationen an Paketen kennt, trägt je Modul eine nach ihm benannte Klasse die Deklaration (`@ApplicationModule` ist `@Target({PACKAGE, TYPE})`); ein `package-info.java` ist nicht nötig.
 - Das Frontend kommuniziert ausschließlich über HTTP mit der Applikation als Ganzes; welches Modul einen Endpunkt implementiert, ist für es nicht sichtbar.
 
@@ -243,7 +305,7 @@ Modulen:
 
 - Im Orchestrator treibt `JourneyService` jeden Übergang durch vier Phasen: lesen
   (`JourneyContextFactory`), entscheiden (`IntentStrategy`), ausführen (`JourneyActionExecutor`),
-  `next` ableiten (`JourneyRouting`) ([Orchestrierung](04-orchestrierung.md) Abschnitt 5, „Die vier
+  `next` ableiten (`JourneyRouting`) ([Orchestrierung](04-orchestrierung.md) Abschnitt 8, „Die vier
   Phasen eines Übergangs“). Eine Strategie bekommt nur den lesenden `JourneyContext` und gibt eine
   `Transition` zurück; sie wirkt nie selbst. `JourneyActionExecutor` liest Konto und Kanal, fragt
   `AccountRules.kt` und `CredentialRules.kt` (etwa `IdentificationTarget.forUnresolved`,
@@ -308,55 +370,26 @@ an einer Stelle und ist dort begründet:
 - Das Schema wird mit **Flyway**-Migrationen aufgebaut, der Zugriff erfolgt über **Spring Data JPA**.
 - **Ein Datenbankschema je Modul** (`account`, `orchestrator`, `auth_sms`, …): Jede Tabelle liegt im
   Schema ihres Moduls, Fremdschlüssel nur innerhalb eines Schemas
-  ([12-entscheidungen.md](12-entscheidungen.md) ADR-16). Der Flyway-Verlauf bleibt in `PUBLIC`.
+  ([12-entscheidungen.md](12-entscheidungen.md) ADR-16). Der Flyway-Verlauf bleibt in `PUBLIC`. Die
+  Regeln für Schema und Migrationen stehen in
+  [`db/migration/KONVENTIONEN.md`](../src/main/resources/db/migration/KONVENTIONEN.md).
 - Auch `kobil` hat ein eigenes Schema, obwohl es kein Modul dieser Anwendung ist, sondern ein
   simuliertes Fremdsystem. Gerade deshalb ist die Trennung wichtig: Läge es im Schema von
   `auth_kobil`, könnte das Tool an der Schnittstelle vorbei nachsehen, und die Demo würde den echten
   Ablauf nicht mehr zeigen.
-- Im Modul `personenverzeichnis` existiert eine `Person`-Entität mit `id` (die Partnernummer), `versnr` (eindeutig, nur Versicherte), `kvnr` (eindeutig, nur zusammen mit `versnr`), `name`, `vorname`, `strasse`, `hausnummer`, `plz`, `ort`, `geburtsdatum`. Dazu `freischaltcode` (nur Hash, Ablauf, Widerruf) und `brief` (der simulierte Brief mit dem Klartext, ADR-31).
-- Im Demomodus spielt beim Start eine Flyway-Migration Testpersonen und gültige Freischaltcodes ein
-  (`demo_seed`).
 
 Die Session- und Tool-Entitäten beschreibt [02-domaenenmodell.md](02-domaenenmodell.md) (Tabellenmodell
-in Abschnitt 7), Aufbewahrung und Löschung [07-betrieb.md](07-betrieb.md).
-
-### H2-Konsole: nur beim Host-Start
-
-Die H2-Konsole unter `/h2-console` ist bewusst eingeschaltet, aber `web-allow-others` bleibt
-`false` (Begründung im Kommentar in `application.yml`). Spring Security schützt nur
-`/orchestrator/admin/**` (`AdminSecurityConfig`), dieser Pfad bleibt offen. Ihn schützt deshalb allein die Prüfung von H2, ob die Anfrage vom eigenen Rechner kommt, und
-dahinter liegen Passwort-Hashes, Geräteschlüssel und alle Sitzungen.
-
-Diese Prüfung vergleicht die Absenderadresse. Bei `./gradlew bootRun` ist das `127.0.0.1`, und die
-Konsole funktioniert. **Im Container (`compose.yml`) geht sie nicht:** Dort erreicht die Anfrage den
-Orchestrator über die Portweiterleitung `8080:8080` mit der Adresse des Container-Netzes. Für H2 ist
-das eine Verbindung von außen, und H2 lehnt sie ab mit *„remote connections ('webAllowOthers') are
-disabled on this server“*. Der Schutz wirkt also wie vorgesehen.
-
-**Auf OpenShift ist die Konsole aus** (`SPRING_H2_CONSOLE_ENABLED=false` im Manifest). Dort erkennt
-Spring Boot die Plattform und wertet `X-Forwarded-For` aus; Tomcat vertraut dabei jedem privaten
-Netz als Proxy. Ein Client aus einem privaten Netz könnte sich so als `127.0.0.1` ausgeben, und die
-Prüfung von H2 ließe ihn durch.
-
-Wer in die Datenbank sehen will, startet deshalb den Orchestrator direkt auf dem Rechner und lässt
-nur Keycloak über Compose laufen. Die Variante `host` (Voreinstellung von `KEYCLOAK_SETUP_VARIANT`)
-richtet Keycloak dafür bereits auf `host.containers.internal:8080` aus. Wer die Daten eines Laufs im
-Container braucht, kopiert die Datei aus dem gestoppten Volume `orchestrator-data` heraus.
-`web-allow-others` einzuschalten kommt nicht in Frage: Der Port ist auf dem Rechner nach außen
-freigegeben, und jeder, der ihn erreicht, bekäme vollen Lese- und Schreibzugriff.
+in Abschnitt 7), die Tabellen des simulierten Personenverzeichnisses Abschnitt 3, Aufbewahrung und
+Löschung [07-betrieb.md](07-betrieb.md). Wie man in die Datenbank sieht (H2-Konsole), steht in
+[13-ausfuehren.md](13-ausfuehren.md) Abschnitt 3.
 
 - **P-1** — H2 als Datei im Betrieb und im Arbeitsspeicher für Tests.
   - *Kriterium:* `application.yml` und `application-test.yml` entsprechend konfiguriert
 - **P-2** — Das Schema baut Flyway auf, mit einem Migrationsordner je Modul.
   - *Kriterium:* `src/main/resources/db/migration/<modul>/`; `ModuleMigrationLocations` findet die Ordner selbst
-- **P-3** — Auf Personen wird über Spring Data JPA zugegriffen.
-  - *Kriterium:* `PersonRepository extends JpaRepository`
-- **P-4** — Die Adresse einer Person ist in einzelne Attribute aufgeteilt.
-  - *Kriterium:* Entität enthält `strasse`, `hausnummer`, `plz`, `ort`. Bestätigt wird die Straße dagegen als **eine** Zeile mit Hausnummer (`AttributeType.STREET_ADDRESS`), so wie eID und PID sie liefern; das Personenverzeichnis setzt `strassenzeile` an seiner Schnittstelle zusammen
-- **P-5** — Testdaten werden beim Start eingespielt.
-  - *Kriterium:* Flyway-Migration oder Initialisierungsroutine vorhanden
-- **P-6** — Freischaltcodes zum Testen stehen beim Start zur Verfügung.
-  - *Kriterium:* Eine Flyway-Migration legt gültige Freischaltcodes für die Testpersonen an
+
+P-3 und P-4 betreffen das simulierte Personenverzeichnis, P-5 und P-6 die Demo-Daten; sie stehen in
+Abschnitt 3 bei den jeweiligen Modulen.
 
 ---
 
@@ -366,7 +399,7 @@ freigegeben, und jeder, der ihn erreicht, bekäme vollen Lese- und Schreibzugrif
 |----|--------------|------------|
 | A1 | Build-Tool: Gradle mit Kotlin-DSL | Einheitliche, typsichere Build-Konfiguration |
 | A2 | Gradle Wrapper muss enthalten sein | Reproduzierbarkeit ohne lokale Gradle-Installation |
-| A3 | JVM-Version 21 (Ziel des Bytecodes), Kotlin 2.4.20 | Voraussetzung für Spring Boot 4.x; Kotlin als Implementierungssprache |
+| A3 | JVM-Version 21 (Ziel des Bytecodes), Kotlin (Version in `gradle/libs.versions.toml`) | Voraussetzung für Spring Boot 4.x; Kotlin als Implementierungssprache |
 | A4 | Aktuelle Spring Boot-Version verwenden | Sicherheit und Aktualität |
 | A5 | Versionen zentral in `gradle/libs.versions.toml` pflegen | Zentrale Versionsverwaltung, konsistente Abhängigkeiten |
 | A6 | Frontend-Build ist in den Gradle-Build integriert | Einheitlicher Build-Prozess für Backend und Frontend |
@@ -390,20 +423,11 @@ freigegeben, und jeder, der ihn erreicht, bekäme vollen Lese- und Schreibzugrif
 - **Frontend-Integration**: Vite-Build schreibt in `src/main/resources/static`; Gradle führt `npm install` und `npm run build` aus
 - **Test**: Kotest auf der JUnit-Plattform mit Spring Boot Test, MockK und Spring Modulith Test-Starter
 
-| Komponente | Version |
-|------------|---------|
-| Spring Boot | `4.1.0` |
-| Spring Modulith | `2.1.1` |
-| Dependency Management Plugin | `1.1.7` |
-| Gradle (Wrapper) | `9.7.0` |
-| Kotlin | `2.4.0` |
-| JVM Target | `21` |
-| React | `19.3.0` |
-| React DOM | `19.3.0` |
-| TypeScript | `7.0.2` |
-| Vite | `8.3.0` |
-| H2 | (von Spring Boot verwaltet) |
-| Flyway | (von Spring Boot verwaltet) |
+Die Versionen stehen an einer Stelle und werden dort gepflegt (A5): Backend, Plugins und
+Bibliotheken in [`gradle/libs.versions.toml`](../gradle/libs.versions.toml), Gradle selbst in
+[`gradle/wrapper/gradle-wrapper.properties`](../gradle/wrapper/gradle-wrapper.properties), das
+Frontend in [`frontend/package.json`](../frontend/package.json). H2 und Flyway verwaltet Spring Boot.
+Das Ziel des Bytecodes ist JVM 21.
 
 ---
 
@@ -420,10 +444,10 @@ freigegeben, und jeder, der ihn erreicht, bekäme vollen Lese- und Schreibzugrif
   - Nichts außerhalb von `api` hängt an `api.v1`. Dort stehen nur Routen, Request-DTOs, Parameterbindung und die OpenAPI-Beschreibung. Die Kanal-Services, die Zugriffsprüfungen (`ChannelAccessGuard`), `DemoDisclosure` und die Antwortformen liegen darunter in `orchestrator/channel`. Die Antwortformen sind wie `ChannelResponse` in `tool_api` unversioniert: Der Server führt genau eine Orchestrator-Version, eine neue ist ein Pflichtupdate ([ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)).
   - Nur `DemoDisclosure` erzeugt ein `DemoInfo`. Damit entfernt `demo.mode=false` die Klartext-TANs aus jeder Antwort, statt sie an einer von mehreren Stellen zu filtern ([ADR-28](adr/ADR-028-demo-werte-abschaltbar.md)).
 - `ClockArchitectureTest` prüft, dass außer `ClockConfig` keine Klasse der Anwendung die Systemuhr selbst liest (`Instant.now()`, `LocalDate.now()`, `System.currentTimeMillis()`, `Clock.system*()`, `Date()`), siehe Abschnitt 3, [Fachkern und Technik](#fachkern-und-technik).
-- `ToolSessionCoverageTest` prüft gegen das tatsächliche Schema, dass ein Aufräumlauf jede `*_tool_session`-Tabelle leert ([Betrieb](07-betrieb.md) Abschnitt 3).
+- `ToolSessionCoverageTest` prüft gegen das tatsächliche Schema, dass es als Tool-Sitzungstabelle nur `orchestrator.tool_session` gibt und kein Modul eine eigene `*_tool_session`-Tabelle mitbringt, die niemand aufräumen würde ([Betrieb](07-betrieb.md) Abschnitt 3).
 - `EventPublicationRegistryTest` prüft, dass ein fehlschlagender `@ApplicationModuleListener` eine offene Zeile hinterlässt ([Betrieb](07-betrieb.md) Abschnitt 3a).
-- `checkOpenApiSnapshot` und `generateFrontendApiTypes` halten den API-Vertrag und die daraus erzeugten Frontend-Typen deckungsgleich ([API](05-api.md) Abschnitt 1).
-- `checkPublishedApiCompatibility` vergleicht Umschlag und Tools je Fassung mit ihrem veröffentlichten Stand unter `api/published/` und schlägt bei einem Bruch fehl (ADR-50, ADR-51); `ContractScopeTest`, `StepDataExamplesTest` und `DiscriminatorMappingTest` prüfen Umfang, Beispiele und Diskriminatoren des Vertrags ([API](05-api.md) Abschnitt 1).
+- `checkOpenApiSnapshot` und `generateFrontendApiTypes` halten den API-Vertrag und die daraus erzeugten Frontend-Typen deckungsgleich ([API](05-api.md) Abschnitt 4).
+- `checkPublishedApiCompatibility` vergleicht Umschlag und Tools je Fassung mit ihrem veröffentlichten Stand unter `api/published/` und schlägt bei einem Bruch fehl (ADR-50, ADR-51); `ContractScopeTest`, `StepDataExamplesTest` und `DiscriminatorMappingTest` prüfen Umfang, Beispiele und Diskriminatoren des Vertrags ([API](05-api.md) Abschnitt 4).
 - Die CI führt zusätzlich `tsc -b` aus (vitest prüft keine Typen), dazu `oxlint`, `npm audit` und die
   Playwright-Tests; ein eigener Workflow prüft den Code mit CodeQL.
 

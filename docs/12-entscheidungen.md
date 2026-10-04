@@ -63,31 +63,5 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/).
 ADR-4, 13, 23 und 30 sind in anderen Entscheidungen aufgegangen (4 in 14 und 16, 13 in
 `db/migration/KONVENTIONEN.md`, 23 in 21, 30 in 16).
 
-## Erkannte, bewusst zurückgestellte Verbesserungen
-
-Diese bekannten Punkte sind bewusst **nicht** vollständig umgesetzt. Jeder davon verlangt eine
-Entscheidung über Architektur oder Infrastruktur und lässt sich nicht mit einer Korrektur an einer
-einzigen Stelle erledigen:
-
-- **Skalierung von `orchestrator.dpop_proof_replay`** (siehe auch [09-dpop.md](09-dpop.md)
-  Abschnitt 2): Der Schlüssel ist seit ADR-14 ein SHA-256-Hash fester Länge. Offen bleibt, die
-  Tabelle nach Zeit zu partitionieren oder durch einen eigenen, dauerhaften Schlüssel-Wert-Speicher
-  zu ersetzen. Das ist eine Entscheidung für die Produktivumgebung.
-- **Lebenszyklus eines Kontos und Zusammenführen von Konten**: `Account` hat weder einen Status noch
-  ein Feld `merged_into`. ADR-11 weist einen Konflikt um eine `person_id` bewusst ab, statt die Konten
-  zusammenzuführen. Über die angestrebte Lebensdauer wird ein Zusammenführen aber zwangsläufig nötig,
-  und ohne `merged_into` gibt es dann keinen Weg dorthin ohne Datenverlust.
-- **Sehr viele Konten** (Größenordnung 10 Millionen, `account.claim` dann 20 bis 80 Millionen
-  Zeilen). Die Demo erreicht das nie; für den Fall, dass das Modell so groß wird, gilt:
-  - Die häufigen Abfragen lesen weiter gezielt einzelne Zeilen über schmale, indizierte Spalten
-    (`account` über den Primärschlüssel, `account.anchor` über `(attribute_type, normalized_value)`,
-    `orchestrator.device_account_link` über `binding_key_ref`), nie über Attribut-Wert-Paare.
-  - Gesucht wird nur über normalisierte Werte (`normalizeAnchorValue`); `account.claim` braucht
-    keinen Index für die Suche vom Wert zum Konto.
-  - Bestehende Daten stellt man in wiederholbaren Portionen um, nicht in einer einzigen Transaktion.
-  - Keycloak liest ein Konto bei Bedarf einzeln, über den Primärschlüssel oder den E-Mail-Anker
-    ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)); einen Abgleich aller Konten gibt es nicht.
-
-  Das Claims-Modell dahinter beschreibt [Domänenmodell](02-domaenenmodell.md), Abschnitt 6.
-
-Alle drei verdienen eine eigene, sorgfältig geplante Überarbeitung, vor der der Entwurf entschieden wird.
+Erkannte, bewusst zurückgestellte Verbesserungen stehen in
+[offene-befunde.md](offene-befunde.md) Abschnitt 8.

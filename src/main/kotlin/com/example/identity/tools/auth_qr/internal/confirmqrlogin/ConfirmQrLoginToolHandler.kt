@@ -19,7 +19,7 @@ import com.example.identity.tools.auth_qr.api.v1.QrPairingStep
 import com.example.identity.contract.tool_api.MissingFields
 
 /**
- * toolId=approve-qr: approve or decline a pending QR pairing (docs/07-betrieb.md #5). `input`
+ * toolId=approve-qr: approve or decline a pending QR pairing (docs/verfahren/qr.md). `input`
  * resolves the pairing code, `confirm` takes the decision, `showCode` shows the confirmation code
  * for the browser. Approving alone logs no browser in.
  */
@@ -47,7 +47,7 @@ class ConfirmQrLoginToolHandler(
 
     /**
      * [hasQrEnrollment] is resolved by the controller. Without an active `enroll-qr` opt-in no
-     * pairing may be approved for the account (docs/03-tool-architektur.md).
+     * pairing may be approved for the account (docs/verfahren/qr.md).
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, pairingCode: String?, decision: String?, accountId: AccountId, hasQrEnrollment: Boolean): ToolOutcome {
@@ -106,7 +106,7 @@ class ConfirmQrLoginToolHandler(
         val request = qrLoginRequestRepository.findByIdOrNull(pairingCode)
         if (request == null || request.status != QrLoginStatus.PENDING || clock.instant().isAfter(request.expiresAt)) {
             // Stays on `input` - an unknown/expired/already-decided code is retryable, not a
-            // dead end (docs/05-api.md, Peer-Login bestätigen).
+            // dead end (docs/verfahren/qr.md).
             return ToolOutcome.Failed.NothingGuessed(Text("Anfrage nicht gefunden oder abgelaufen"))
         }
         sessions.save(toolSessionId, data.copy(pairingCode = pairingCode))

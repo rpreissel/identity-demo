@@ -13,14 +13,14 @@ import java.time.Clock
 import java.time.Duration
 
 /**
- * Default policy (docs/04-orchestrierung.md #8). Each tool's maxAcr gives its own level. Two AUTH
+ * Default policy (docs/04-orchestrierung.md #4). Each tool's maxAcr gives its own level. Two AUTH
  * methods of different factor types, proven together, earn one tier more, capped by the highest
  * level either was enrolled under (ADR-5). Otherwise a low-trust session could add two weak factors
  * and escalate past anything ever proven. `resolveAcr` is `max(IAL, AAL)`, computed separately so
  * that an identification never combines with an unrelated auth factor into a false MFA bump.
  *
  * A level above loa1 ages: only proofs younger than [loa2MaxAge] count toward it, older ones
- * still carry loa1 (docs/04-orchestrierung.md #8, like Keycloak's `loa-max-age`). Self-service on
+ * still carry loa1 (docs/04-orchestrierung.md #4, like Keycloak's `loa-max-age`). Self-service on
  * the account asks for a proof younger than [selfServiceMaxAge], whatever its level.
  */
 class DefaultAuthPolicy(
@@ -179,7 +179,7 @@ class DefaultAuthPolicy(
      * The MFA bump over one session's evidence, capped by the highest [MethodEvidence.enrolledUnderAcr]
      * among it. Does not filter by axis: the caller must pass authenticator evidence only, or an
      * identification could buy MFA credit it already priced into its own loa. A method without
-     * `enrolledUnderAcr` adds nothing to the cap (docs/05-api.md Abschnitt 3).
+     * `enrolledUnderAcr` adds nothing to the cap (docs/05-api.md Abschnitt 3b).
      */
     private fun applyMfaBump(base: AcrLevel, evidence: SessionEvidence): AcrLevel {
         val distinctMethods = evidence.methods.map { it.method }.distinct().size

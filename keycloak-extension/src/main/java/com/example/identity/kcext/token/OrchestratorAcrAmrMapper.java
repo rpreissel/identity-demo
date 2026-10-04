@@ -19,7 +19,7 @@ import java.util.List;
 
 /**
  * Copies the orchestrator's acr/amr from the user-session notes into the token (docs/05-api.md
- * Abschnitt 3). Overwrites Keycloak's own acr instead of merging: on the Web channel the orchestrator
+ * Abschnitt 3b). Overwrites Keycloak's own acr instead of merging: on the Web channel the orchestrator
  * alone combines ACR/AMR for the flow run.
  */
 public class OrchestratorAcrAmrMapper extends AbstractOIDCProtocolMapper implements OIDCAccessTokenMapper, OIDCIDTokenMapper {
@@ -52,7 +52,7 @@ public class OrchestratorAcrAmrMapper extends AbstractOIDCProtocolMapper impleme
 
     @Override
     public String getHelpText() {
-        return "Writes the orchestrator's combined acr/amr (docs/05-api.md Abschnitt 3) into "
+        return "Writes the orchestrator's combined acr/amr (docs/05-api.md Abschnitt 3b) into "
                 + "the token, read from the UserSessionModel notes OrchestratorAuthenticator wrote.";
     }
 

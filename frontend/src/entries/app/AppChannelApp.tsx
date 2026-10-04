@@ -121,7 +121,7 @@ export function AppChannelApp() {
   const [outcomeNotice, setOutcomeNotice] = useState<string | undefined>()
   const [demo, setDemo] = useState<DemoInfo | undefined>()
   const [activeTool, setActiveTool] = useState<ActiveTool | null>(null)
-  // Set from the WEB channel's demo link (?pairingCode=..., docs/07-betrieb.md #5), which points
+  // Set from the WEB channel's demo link (?pairingCode=..., docs/verfahren/qr.md), which points
   // straight at this app's /app/ entry. Shown as a banner near the entry choice and drives the
   // auto-start effect below.
   const [pendingPairingCode, setPendingPairingCode] = useState<string | undefined>()
@@ -199,7 +199,7 @@ export function AppChannelApp() {
   }
 
   /**
-   * The apply-function for every endpoint's response (docs/05-api.md #2: unified envelope).
+   * The apply-function for every endpoint's response (docs/05-api.md #1: unified envelope).
    * `currentAcr`/`currentAmr`/`activeMethods` are the exception: tool responses never carry them,
    * the effect below fetches them when the security-summary screen is reached.
    *
@@ -290,7 +290,7 @@ export function AppChannelApp() {
   }, [dpop, channelSessionId])
 
   /**
-   * URL entry point (docs/10-frontend.md #1, #QR): reads `intent` (AuthIntent's wire vocabulary)
+   * URL entry point (docs/10-frontend.md #6, FE-18): reads `intent` (AuthIntent's wire vocabulary)
    * and `pairingCode` once `dpop` is ready, then strips both from the URL. A ref guards against
    * StrictMode's double invocation.
    *
@@ -367,7 +367,7 @@ export function AppChannelApp() {
 
   /**
    * Back-button support: leave the running process and land on the start choice (docs/
-   * 10-frontend.md #1). Not a step-by-step undo; the `next` chain is forward-only.
+   * 10-frontend.md #6). Not a step-by-step undo; the `next` chain is forward-only.
    * `channelActiveRef` mirrors `channelSessionId` so the popstate listener reads the current value.
    */
   const channelActiveRef = useRef(false)
@@ -400,7 +400,7 @@ export function AppChannelApp() {
     if (activeTool?.toolId === next.toolId) return
     if (activatingToolIdRef.current === next.toolId) return
 
-    // A resumed process already has a running ToolSession for this step (docs/05-api.md #2:
+    // A resumed process already has a running ToolSession for this step (docs/05-api.md #1:
     // next.toolSessionId). Activating again would start a new attempt, e.g. a second TAN.
     if (next.toolSessionId) {
       // Resuming: whether alternatives existed is lost, but abandoning is always a safe backend
@@ -446,7 +446,7 @@ export function AppChannelApp() {
 
   /**
    * Fetches currentAcr/currentAmr/activeMethods when the security-summary screen is reached; tool
-   * responses never carry them (docs/05-api.md #2). applyResponse clears `currentAcr` on every tool
+   * responses never carry them (docs/05-api.md #1). applyResponse clears `currentAcr` on every tool
    * response, so `undefined` reliably means "not yet loaded for the current state".
    * loadingSecurityDetailsRef guards against StrictMode's double invocation, whose concurrent
    * getChannel() could fail with CONCURRENT_MODIFICATION.

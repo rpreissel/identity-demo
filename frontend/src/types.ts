@@ -83,7 +83,7 @@ export interface DemoPerson {
 }
 
 /**
- * Demo-only values, never part of the production contract (docs/05-api.md #2). The generated type
+ * Demo-only values, never part of the production contract (docs/05-api.md #1). The generated type
  * carries `accountId`/`personId`/`journeys` plus an open index signature: the backend flattens
  * whatever the tool that just ran attached (@JsonAnyGetter) onto this same object. The named
  * extras below are the ones the UI actually reads, typed so a rename is noticed.
@@ -98,7 +98,7 @@ export type DemoInfo = Wire.DemoInfo & {
 }
 
 /**
- * The one response envelope for every endpoint, channel- and tool-level alike (docs/05-api.md #2).
+ * The one response envelope for every endpoint, channel- and tool-level alike (docs/05-api.md #1).
  * Only `stepData` and `demo` are re-typed: `stepData` widened by [UnknownStepData], `demo` by
  * the named extras above.
  */
@@ -131,7 +131,7 @@ export interface JourneyTraceEntryView {
 export type JourneyTraceResponse = { entries: JourneyTraceEntryView[] }
 
 /**
- * App-Kanal AccessToken (docs/05-api.md #2): je nach Backend-Profil ein unsecured JWT (alg=none)
+ * App-Kanal AccessToken (docs/05-api.md #3a): je nach Backend-Profil ein unsecured JWT (alg=none)
  * oder ein echtes, von Keycloak signiertes Token; hier nur zum Anzeigen geparst, nie verifiziert.
  * refreshToken is not part of this shape: it is a credential and never leaves the backend, only
  * its expiry does.

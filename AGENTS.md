@@ -11,7 +11,7 @@
 Immer zuerst [docs/00-agent-quickstart.md](docs/00-agent-quickstart.md) lesen. Von dort führen
 Verweise weiter; die Inhalte stehen jeweils nur an einer Stelle:
 
-- [docs/01-ueberblick.md](docs/01-ueberblick.md): Einstieg und Begriffe.
+- [docs/01-ueberblick.md](docs/01-ueberblick.md): Einstieg, Zielbild mit seinen Komponenten, Begriffe.
 - [docs/README.md](docs/README.md): Karte der Doku, Lesepfade je Rolle.
 - [docs/13-ausfuehren.md](docs/13-ausfuehren.md): bauen, starten, testen.
 - [docs/08-projektrahmen.md](docs/08-projektrahmen.md) Abschnitt 3: Modulgrenzen, Fachkern und Technik.

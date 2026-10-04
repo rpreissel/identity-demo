@@ -91,7 +91,7 @@ derselbe Zustand erneut ausgewertet. Er prüft die Vorbedingung noch einmal und 
 ursprünglich verlangt war.
 
 **Welches Niveau verlangt wird.** Die Vorbedingung folgt derselben Überlegung wie die Begrenzung
-durch `enrolledUnderAcr` (Orchestrierung, Abschnitt 8): Niemand soll sich aus eigener Kraft mehr
+durch `enrolledUnderAcr` (Orchestrierung, Abschnitt 4): Niemand soll sich aus eigener Kraft mehr
 Rechte verschaffen. Wer eine Sitzung übernommen hat, darf deshalb keine Verfahren hinzufügen oder
 entfernen. Das geforderte Niveau liefert die gemeinsam genutzte Funktion `selfServiceAcrFloor`
 (`orchestrator/domain/journey/IntentStrategy.kt`; `DeleteAccountStrategy` nutzt sie auch):

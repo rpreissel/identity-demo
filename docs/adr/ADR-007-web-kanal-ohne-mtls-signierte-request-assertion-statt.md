@@ -4,7 +4,7 @@
 
 **Entscheidung**: Die Verbindung von Keycloak zum Orchestrator im Web-Kanal, also von Server zu
 Server, wird **ohne mTLS** abgesichert. Keycloak legt jeder Anfrage eine signierte Assertion bei, und
-der Orchestrator prüft sie (`PeerAuthValidator`, [05-api.md](../05-api.md) Abschnitt 3). Der Browser
+der Orchestrator prüft sie (`PeerAuthValidator`, [05-api.md](../05-api.md) Abschnitt 3b). Der Browser
 erreicht den Orchestrator nirgends direkt.
 
 **Die Antwort ist ebenso signiert** (seit 2026-09-25, Review M-9): Die Assertion sichert nur die

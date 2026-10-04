@@ -172,7 +172,7 @@ springdoc:
 
 keycloak:
   peer-auth:
-    # docs/05-api.md Abschnitt 3 / docs/12-entscheidungen.md ADR-7: one signed JWT per Keycloak facade request.
+    # docs/05-api.md Abschnitt 3b / docs/12-entscheidungen.md ADR-7: one signed JWT per Keycloak facade request.
     # Ohne Profil `keycloak` gibt es keinen Aussteller: issuer und jwks-uri bleiben leer, die
     # Keycloak-Fassade weist damit jede Assertion ab (KeycloakJwkSource kennt keinen Schluessel) - der
     # Web-Kanal existiert nur mit echtem Keycloak. Im Profil `keycloak` setzt
@@ -193,10 +193,10 @@ dpop:
 identity:
   policy:
     # Wie lange ein Nachweis ueber loa1 traegt; danach zaehlt er nur noch fuer loa1
-    # (docs/04-orchestrierung.md #8). Gleich dem loa-max-age des LoA-2-Subflows (Keycloak V5).
+    # (docs/04-orchestrierung.md #4). Gleich dem loa-max-age des LoA-2-Subflows (Keycloak V5).
     loa2-max-age: PT30M
     # Wie alt der juengste Nachweis sein darf, bevor Verwalten, Loeschen und QR-Bestaetigung einen neuen verlangen
-    # (docs/04-orchestrierung.md #8).
+    # (docs/04-orchestrierung.md #4).
     self-service-max-age: PT5M
   secrets:
     # Pepper for the short-lived SMS/e-mail OTP hashes and the hashed keys of the modules' send

@@ -7,7 +7,7 @@ import io.kotest.matchers.ints.shouldBeGreaterThan
 private const val CORE = "src/main/kotlin/com/example/identity/core"
 
 /**
- * The core knows no tool by name (docs/03-tool-architektur.md #4, docs/04-orchestrierung.md): an
+ * The core knows no tool by name (docs/03-tool-architektur.md #7, docs/04-orchestrierung.md): an
  * offer comes from a role, a descriptor from `(method, role)`. A `ToolId("…")` literal in the core
  * would name one - ArchUnit sees calls, not string literals, so this reads the sources.
  */

@@ -4,6 +4,9 @@ Alle Befunde aus den Bewertungen, die noch offen sind, an einer Stelle: aus der 
 (2026-09-27), der vierten Bewertung (2026-09-29) und dem Sicherheitsaudit (2026-10-03). Geprüft gegen
 den Code am 2026-10-04. Was erledigt ist, steht hier nicht mehr; es lebt in der Git-Historie und in
 den geschlossenen Issues (Epics `DPoP-demo-9ppv`, `DPoP-demo-updm`, `DPoP-demo-164n`).
+Am Ende stehen die erkannten, bewusst zurückgestellten Verbesserungen (Abschnitt 8): Sie sind keine
+Befunde einer Bewertung, sondern Entscheidungen über Architektur oder Infrastruktur, die noch
+ausstehen.
 
 So ist die Liste zu lesen:
 
@@ -144,7 +147,7 @@ Umgebung.
 - **S-8 Keycloaks Action-URL samt Aktionscode liegt am Nect-Fall und geht an das Fremdsystem**
   (ADR-47). Option: eigene Rücksprungadresse am Orchestrator.
 - **Das `acr` im Token altert nicht** (SA-5): Es beschreibt wie bei Keycloak die Anmeldung
-  ([04-orchestrierung.md](04-orchestrierung.md) Abschnitt 8). Anwendungen prüfen `acr` und, wenn
+  ([04-orchestrierung.md](04-orchestrierung.md) Abschnitt 4). Anwendungen prüfen `acr` und, wenn
   sie Frische brauchen, `auth_time` (`DPoP-demo-mea0`).
 - Weitere bewusste Punkte (DPoP ohne Nonce, Tokens nicht an DPoP gebunden, KOBIL-PIN im Klartext)
   führt der [Lesepfad Sicherheit](16-lesepfad-sicherheit.md) in seinem Abschnitt 15.
@@ -160,3 +163,32 @@ Umgebung.
   (`DPoP-demo-bo1w`), **Aufwerten nach erneuter Identifizierung** (`DPoP-demo-wyp3`), **`loa3` im
   Web-Realm** (`DPoP-demo-wzcm`).
 - **Echte Fremdsysteme:** Nect (`DPoP-demo-v033`, `DPoP-demo-z90h`).
+
+## 8. Erkannte, bewusst zurückgestellte Verbesserungen
+
+Diese bekannten Punkte sind bewusst **nicht** vollständig umgesetzt. Jeder davon verlangt eine
+Entscheidung über Architektur oder Infrastruktur und lässt sich nicht mit einer Korrektur an einer
+einzigen Stelle erledigen:
+
+- **Skalierung von `orchestrator.dpop_proof_replay`** (siehe auch [09-dpop.md](09-dpop.md)
+  Abschnitt 2): Der Schlüssel ist seit ADR-14 ein SHA-256-Hash fester Länge. Offen bleibt, die
+  Tabelle nach Zeit zu partitionieren oder durch einen eigenen, dauerhaften Schlüssel-Wert-Speicher
+  zu ersetzen. Das ist eine Entscheidung für die Produktivumgebung.
+- **Lebenszyklus eines Kontos und Zusammenführen von Konten**: `Account` hat weder einen Status noch
+  ein Feld `merged_into`. ADR-11 weist einen Konflikt um eine `person_id` bewusst ab, statt die Konten
+  zusammenzuführen. Über die angestrebte Lebensdauer wird ein Zusammenführen aber zwangsläufig nötig,
+  und ohne `merged_into` gibt es dann keinen Weg dorthin ohne Datenverlust.
+- **Sehr viele Konten** (Größenordnung 10 Millionen, `account.claim` dann 20 bis 80 Millionen
+  Zeilen). Die Demo erreicht das nie; für den Fall, dass das Modell so groß wird, gilt:
+  - Die häufigen Abfragen lesen weiter gezielt einzelne Zeilen über schmale, indizierte Spalten
+    (`account` über den Primärschlüssel, `account.anchor` über `(attribute_type, normalized_value)`,
+    `orchestrator.device_account_link` über `binding_key_ref`), nie über Attribut-Wert-Paare.
+  - Gesucht wird nur über normalisierte Werte (`normalizeAnchorValue`); `account.claim` braucht
+    keinen Index für die Suche vom Wert zum Konto.
+  - Bestehende Daten stellt man in wiederholbaren Portionen um, nicht in einer einzigen Transaktion.
+  - Keycloak liest ein Konto bei Bedarf einzeln, über den Primärschlüssel oder den E-Mail-Anker
+    ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)); einen Abgleich aller Konten gibt es nicht.
+
+  Das Claims-Modell dahinter beschreibt [Domänenmodell](02-domaenenmodell.md), Abschnitt 6.
+
+Alle drei verdienen eine eigene, sorgfältig geplante Überarbeitung, vor der der Entwurf entschieden wird.

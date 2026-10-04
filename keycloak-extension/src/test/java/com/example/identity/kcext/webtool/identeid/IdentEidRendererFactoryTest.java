@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * ident-eid keeps one step "input" (docs/06-ablaeufe.md #6); which of the two pages the renderer
+ * ident-eid keeps one step "input" (docs/verfahren/eid.md); which of the two pages the renderer
  * shows follows {@code missingFields}, and after a failed attempt the page the form came from.
  */
 class IdentEidRendererFactoryTest {

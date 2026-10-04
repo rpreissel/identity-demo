@@ -6,7 +6,7 @@ import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 
 /**
- * Registration's Required Actions (docs/04-orchestrierung.md #2, Keycloak's "Required Action"
+ * Registration's Required Actions (docs/04-orchestrierung.md #5, Keycloak's "Required Action"
  * concept) where the channel cannot discharge them: an account without a confirmed email still logs
  * in and manages its methods. The full registration with the address is in
  * RegistrationFlowIntegrationTest.

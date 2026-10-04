@@ -1,13 +1,30 @@
 # Dokumentation – Übersicht
 
-Neu hier? Beginnen Sie mit dem [Überblick](01-ueberblick.md). Er erklärt, worum es geht, wer
-beteiligt ist und die wichtigsten Begriffe, und nennt Lesepfade je Rolle.
+Neu hier? Beginnen Sie mit dem [Überblick](01-ueberblick.md). Er erklärt, worum es geht, das
+Zielbild mit seinen Komponenten und die wichtigsten Begriffe, und nennt Lesepfade je Rolle.
 
 Die Doku beschreibt das Zielbild. Weichen Code und Doku voneinander ab, gilt die Doku.
 
 Die Doku gibt es auch als Website mit Suche: <https://rpreissel.github.io/identity-demo/>.
 
 ---
+
+## Einstieg
+
+- **[Überblick](01-ueberblick.md)**: Worum geht es, was bedeuten die Begriffe, und was lese ich als
+  Nächstes?
+- **[Das Zielbild](01-ueberblick.md#2-das-zielbild-komponenten-und-zusammenspiel)**: Welche
+  Komponenten gibt es, wo liegen die Vertrauensgrenzen, wem gehören welche Daten, und wie laufen
+  App, Website und Vorgangszugang ab?
+- **[Beispiel-Story](11-beispiel-story.md)**: Wie sieht das für eine einzelne Person aus, von der
+  Registrierung über Login, Step-up und QR-Login bis zur Löschung?
+- **[Beispiel für Backend-Entwickler](15-beispiel-neues-verfahren-backend.md)**: Was berührt ein
+  neues Verfahren im Server und im Web-Kanal? Ein Bank-Ident und eine Einmalcode-App werden
+  angebunden: Tools, Keycloak-Erweiterung, Login-Theme, Tests.
+- **[Beispiel für App-Entwickler](17-beispiel-neues-verfahren-app.md)**: Dieselben zwei Verfahren in
+  der App: Schritte darstellen, Weiterleitung, Fassungen, Tests.
+- **[Schnelleinstieg für Agents](00-agent-quickstart.md)**: Was muss ein KI-Agent wissen, bevor er
+  gezielt einzelne Kapitel öffnet?
 
 ## Videos
 
@@ -23,31 +40,24 @@ erledigen, der Journey-Trace und das Löschen des Kontos.
 
 [Demo-Video (mp4)](media/demo.mp4)
 
-## Einstieg
-
-- **[Überblick](01-ueberblick.md)**: Worum geht es, wer ist beteiligt, was bedeuten die Begriffe,
-  und was lese ich als Nächstes?
-- **[Beispiel-Story](11-beispiel-story.md)**: Wie sieht das für eine einzelne Person aus, von der
-  Registrierung über Login, Step-up und QR-Login bis zur Löschung?
-- **[Beispiel für Entwickler](15-beispiel-neues-verfahren.md)**: Was berührt ein neues Verfahren?
-  Ein Bank-Ident und eine Einmalcode-App werden angebunden, vom Descriptor bis zu den Tests.
-- **[Schnelleinstieg für Agents](00-agent-quickstart.md)**: Was muss ein KI-Agent wissen, bevor er
-  gezielt einzelne Kapitel öffnet?
-
 ## Fachliches Modell
 
 - **[Domänenmodell](02-domaenenmodell.md)**: Welche Entitäten, Zustände und Tabellen gibt es, und
   nach welchen Regeln wird gespeichert?
 - **[Orchestrierung und Policy](04-orchestrierung.md)**: Wer entscheidet, wie es weitergeht?
   Intents, Journeys, `AuthPolicy`, Sicherheitsniveaus.
-- **[Konkrete Abläufe](06-ablaeufe.md)**: Wie laufen die einzelnen Verfahren Schritt für Schritt ab
-  (Freischaltcode, SMS, Passwort, E-Mail, Gerät, eID/KVNR, KOBIL, QR-Code, Einmalkennwort)?
+- **[Verfahren: Datenmodell und Übersicht](06-ablaeufe.md)**: Welches Datenmodell teilen alle
+  Verfahren (Konto, Anker, Claims, Änderungsprotokoll, eingerichtete Verfahren)?
+- **[Die Verfahren](verfahren/README.md)**: Wie läuft jedes einzelne Verfahren Schritt für Schritt
+  ab? Je Verfahren eine Seite: Freischaltcode, eID, Nect, KVNR, SMS, Passwort, E-Mail, Gerät, KOBIL,
+  QR-Code, Einmalkennwort.
 
 ## Technik
 
 - **[Tool-Architektur](03-tool-architektur.md)**: Wie bindet man ein neues Verfahren an?
-  Tool-Katalog, Selbstbeschreibung, `ToolOutcome`, Modulgrenzen.
-- **[API](05-api.md)**: Wie sprechen App und Keycloak mit dem Orchestrator?
+  Selbstbeschreibung, `ToolOutcome`, Rollen, Angebot, Modulgrenzen, Tool-Katalog.
+- **[API](05-api.md)**: Wie sprechen App und Keycloak mit dem Orchestrator? Erst die allgemeinen
+  Mechanismen, dann für Tool-Entwickler, dann für Orchestrator-Entwickler (App- und Web-Kanal).
 - **[DPoP-Bindung](09-dpop.md)**: Wie wird ein Kanal an den Schlüssel des Geräts gebunden?
 - **[Frontend](10-frontend.md)**: Was muss die Oberfläche leisten, und wie folgt sie `next`?
 - **[Projektrahmen](08-projektrahmen.md)**: Welche Module gibt es, wie hängen sie zusammen, welche
@@ -58,7 +68,8 @@ erledigen, der Journey-Trace und das Löschen des Kontos.
 - **[Ausführen und bauen](13-ausfuehren.md)**: Wie baue, starte und teste ich das System, auch in
   Containern?
 - **[Betrieb](07-betrieb.md)**: Welche Fehler meldet das System, was ist transaktional zugesagt, wie
-  lange werden Daten aufbewahrt, was muss außerhalb des Demomodus gesetzt sein?
+  lange werden Daten aufbewahrt, was muss außerhalb des Demomodus gesetzt sein, und wie beobachtet
+  man den Zustand?
 
 ## Entscheidungen
 

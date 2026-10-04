@@ -52,8 +52,8 @@ Diese Wörter des Projekts kommen im Folgenden vor:
 
 ## 2) Welche Wörter einander entsprechen
 
-Die Doku benutzt die Wörter des Projekts. Das [Glossar des Projekts](glossar.md) und das Kapitel
-[Orchestrierung](../04-orchestrierung.md), Abschnitt 1 „Begriffe“, legen diese Entsprechungen fest:
+Die Doku benutzt die Wörter des Projekts. Das [Glossar des Projekts](glossar.md) und diese Seite
+legen diese Entsprechungen fest:
 
 - **Authentisierungsmittel** heißt im Projekt Anmeldeverfahren.
 - **Identifizierungsmittel** heißt Identifizierungsverfahren.
@@ -95,8 +95,8 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   ebenso.
   Im Code: `frontend/src/deviceKey.ts`;
   `tools/auth_device/internal/authdevice/AuthDeviceToolHandler.kt`;
-  `tools/auth_kobil/internal/KobilFactors.kt`. In der Doku: [Abläufe](../06-ablaeufe.md),
-  Abschnitte 5 und 7.
+  `tools/auth_kobil/internal/KobilFactors.kt`. In der Doku: [Verfahren `device`](../verfahren/device.md)
+  und [`kobil`](../verfahren/kobil.md).
 - **Faktortyp Besitz: ein nicht kopierbarer Schlüssel erkennt das Gerät, solange er existiert.**
   Jedes Gerät spricht mit einem Schlüssel, der die Anwendung nicht verlassen kann. Das Konto merkt
   sich dessen Fingerabdruck. Wird ein Gerät einem anderen Konto zugeordnet, werden alle an diesen
@@ -109,7 +109,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   vorauszusetzen. Weil der Server die Freigabe nicht nachprüfen kann, gibt es den Geräteschlüssel
   nur im Demomodus. Dasselbe gilt für KOBIL, solange der Anbieter simuliert ist.
   Im Code: `contract/tool_api/device/DeviceProofs.kt`; `ToolModule.demoOnly`.
-  In der Doku: [Orchestrierung](../04-orchestrierung.md), Abschnitt 8; ADR-21 und ADR-36 in den
+  In der Doku: [Orchestrierung](../04-orchestrierung.md), Abschnitt 4; ADR-21 und ADR-36 in den
   [Entscheidungen](../12-entscheidungen.md).
 - **Bescheinigte und unbescheinigte Attribute bleiben unterscheidbar.** Jede Angabe speichert ihre
   Quelle, und daraus folgt ihre Stufe: *belegt* durch das Personenverzeichnis, *nachgewiesen*
@@ -144,7 +144,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   KVNR diese Person im Personenverzeichnis zu. Ein Konto, das zuerst nur ein Anmeldeverfahren
   einrichtet und sich später ausweist, folgt demselben Muster. Das entspricht dem Beispiel mit
   Bahnticket und Personalausweis.
-  In der Doku: [Abläufe](../06-ablaeufe.md), Abschnitt 6. ADR-18.
+  In der Doku: [Verfahren `eid`](../verfahren/eid.md) und [`kvnr`](../verfahren/kvnr.md). ADR-18.
 - **Biometrie am Beispiel des Ausweisfotos.** Nect mit Reisepass liest den Chip und vergleicht das
   Lichtbild mit dem Gesicht. Das ergibt Besitz und Biometrie. Weil das den Inhaber schwächer bindet
   als die PIN des Ausweises, reicht es nur für `loa2`. Der Dienstleister ist simuliert.
@@ -159,7 +159,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
 - **Mehrstufige Authentifizierung gegenüber 2FA.** SMS und Passwort sind zwei einzeln geprüfte
   Verfahren. Sie erreichen zusammen `loa2` und heißen in der Doku mehrstufige Authentifizierung.
   NIST SP 800-63B stellt sie für AAL2 der MFA gleich, daher dasselbe Niveau.
-  In der Doku: [Orchestrierung](../04-orchestrierung.md), Abschnitt 8, „IAL und AAL“.
+  In der Doku: [Orchestrierung](../04-orchestrierung.md), Abschnitt 4, „IAL und AAL“.
 
 ## 4) Wo das Projekt dem Glossar nur mit Einschränkung folgt
 
@@ -168,7 +168,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   einmalige Kennung) und gegen Wiederholung geschützt. Bei KOBIL fragt der Server die Bestätigung
   selbst beim Anbieter ab. Beides erfüllt den Zweck, ist aber kein Challenge-Response im engeren
   Sinn.
-  In der Doku: [Abläufe](../06-ablaeufe.md), Abschnitt 5; [DPoP-Bindung](../09-dpop.md),
+  In der Doku: [Verfahren `device`](../verfahren/device.md); [DPoP-Bindung](../09-dpop.md),
   Abschnitt 2. ADR-21.
 - **Sicherer Speicher.** Die Schlüssel liegen im Browser, über die Web Crypto API als nicht
   exportierbar erzeugt. Ihr Wert lässt sich über keine Programmierschnittstelle auslesen. Das kommt
@@ -195,7 +195,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   Online-Ausweis `loa3`.
   Im Code: `tools/ident_fsc/internal/IdentFscToolHandler.kt`;
   `simulation/personenverzeichnis/Freischaltcodes.kt`.
-  In der Doku: [Abläufe](../06-ablaeufe.md), Abschnitt 2.
+  In der Doku: [Verfahren `fsc`](../verfahren/fsc.md).
 - **SIM-Karte mit Telefonnummer als Identifizierungsmittel.** Die SMS dient nur als Anmeldeverfahren
   mit dem Faktor Besitz. Die Telefonnummer wird festgehalten, dient aber nie dazu, eine Person zu
   erkennen: Sie ist kein Anker, sondern gehört dem Modul des Verfahrens. Das Projekt nutzt die

@@ -34,7 +34,7 @@ data class EnrollSmsPatchRequest(
 )
 
 /**
- * toolId=enroll-sms (docs/06-ablaeufe.md #4). One controller owns activation, PATCH and GET
+ * toolId=enroll-sms (docs/verfahren/sms.md). One controller owns activation, PATCH and GET
  * for this tool (docs/08-projektrahmen.md A11) - no generic toolId dispatch anywhere.
  */
 @RestController

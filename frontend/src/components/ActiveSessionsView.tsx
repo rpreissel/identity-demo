@@ -3,7 +3,7 @@ import { shorten } from '../format'
 import { language, t } from '../texts'
 
 /**
- * Who is using the demo right now (docs/10-frontend.md #0): the orchestrator's live channels and
+ * Who is using the demo right now (docs/10-frontend.md #6): the orchestrator's live channels and
  * Keycloak's open sessions. Shown on the admin page and before the welcome page's reset; it only
  * renders a report, loading it is the caller's business.
  */

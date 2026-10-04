@@ -66,7 +66,7 @@ class AuthEmailToolController(
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         // Only the accountId is resolved here, so the handler never sees a nullable parameter
-        // (docs/03-tool-architektur.md #2); the confirmed address itself is the handler's own
+        // (docs/verfahren/email.md); the confirmed address itself is the handler's own
         // lookup, same 422 either way.
         val accountId = context.accountId
             ?: throw UnresolvableReferenceException(Text("Kein Konto fuer diesen Kanal"))

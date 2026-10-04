@@ -13,7 +13,7 @@ private const val FIELD_EMAIL = "email"
 private const val FIELD_CODE = "code"
 
 /**
- * Pure state of the auth-email-lookup flow (docs/03-tool-architektur.md #3, the optional Flow
+ * Pure state of the auth-email-lookup flow (docs/03-tool-architektur.md #6, the optional Flow
  * pattern) - never leaves this file. Mirrors `auth_sms`'s `AuthSmsLookupFlow`.
  */
 internal sealed interface AuthEmailLookupState {

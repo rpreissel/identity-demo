@@ -11,7 +11,7 @@ import java.time.Instant
 internal const val SMS_ENROLLMENT_TYPE = "auth_sms.enrollment"
 
 /**
- * Long-lived, confirmed SMS enrollment (docs/06-ablaeufe.md #1). Exists only after a
+ * Long-lived, confirmed SMS enrollment (docs/verfahren/sms.md). Exists only after a
  * successful TAN check, so it is valid by definition - no `validated` flag, no `updatedAt`.
  */
 @Entity

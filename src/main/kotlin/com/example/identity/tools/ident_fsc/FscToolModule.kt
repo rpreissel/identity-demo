@@ -14,7 +14,7 @@ import org.springframework.modulith.ApplicationModule
 internal const val IDENT_FSC_TOOL_ID = "ident-fsc"
 
 /**
- * `ident-fsc` (docs/03-tool-architektur.md #1): identification with the Freischaltcode the
+ * `ident-fsc` (docs/verfahren/fsc.md): identification with the Freischaltcode the
  * Personenverzeichnis sent by letter. Every value is checked against the register, which is the
  * source; this tool is only its channel.
  */
@@ -34,8 +34,8 @@ internal val IdentFsc = FscModule.identify(
 
 /**
  * A method module talks to the orchestrator through tool_api only, never to account or another
- * method module (docs/03-tool-architektur.md #2). Its controllers (`ident_fsc.api.v1`) reach the
- * orchestrator through `tool_api` alone (docs/04-orchestrierung.md #5).
+ * method module (docs/03-tool-architektur.md #7). Its controllers (`ident_fsc.api.v1`) reach the
+ * orchestrator through `tool_api` alone (docs/04-orchestrierung.md #8).
  *
  * The register is reached over ports only ([com.example.identity.contract.tool_api.directory.PersonDirectory],
  * [com.example.identity.contract.tool_api.directory.ActivationCodes], ADR-31). Its own classes speak its language.

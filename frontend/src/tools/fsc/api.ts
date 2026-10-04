@@ -12,7 +12,7 @@ export interface FscFields {
   fsc: string
 }
 
-/** Any subset: the backend merges each PATCH onto what it already has (docs/06-ablaeufe.md #2). */
+/** Any subset: the backend merges each PATCH onto what it already has (docs/verfahren/fsc.md). */
 export function submitFsc(ctx: ToolRenderContext, fields: Partial<FscFields>) {
   return submitViaPatch(ctx, fields)
 }

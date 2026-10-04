@@ -74,7 +74,7 @@ data class ActiveSessionsView(
 
 /**
  * Who is using the demo right now: the orchestrator's live channels and Keycloak's open sessions
- * (docs/05-api.md Abschnitt 1). Read before a reset, which ends the sessions of every account.
+ * (docs/05-api.md Abschnitt 4). Read before a reset, which ends the sessions of every account.
  * Not transactional: the Keycloak part is a network round trip.
  */
 @Service

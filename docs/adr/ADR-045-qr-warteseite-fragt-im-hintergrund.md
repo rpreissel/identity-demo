@@ -60,7 +60,7 @@ Die FreeMarker-Vorlage hat die Regeln als kleines Skript, das Keycloakify-Theme 
 - **Weiter per Formular fragen, nur seltener.** Verworfen: Das Flackern bliebe, nur seltener, und
   die Freigabe käme später an.
 - **Den Browser direkt beim Orchestrator fragen lassen.** Verworfen: Im Web-Zugang spricht der
-  Browser nie mit dem Orchestrator ([05-api.md](../05-api.md) Abschnitt 3). Er bräuchte dafür eine
+  Browser nie mit dem Orchestrator ([05-api.md](../05-api.md) Abschnitt 3b). Er bräuchte dafür eine
   eigene Berechtigung und eine CORS-Freigabe.
 - **Server-Sent Events oder WebSocket statt Abfragen.** Verworfen: Keycloak müsste Verbindungen
   offen halten, und für eine Entscheidung in einigen Sekunden reicht eine Frage alle zwei Sekunden.

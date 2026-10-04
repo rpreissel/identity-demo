@@ -56,7 +56,7 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
         restTemplate.exchange("http://localhost:$port$url", HttpMethod.PATCH, HttpEntity(body, keycloakHeaders()), mapType)
             .let { it.statusCode shouldBe HttpStatus.OK; it.body!! }
 
-    /** The read-only GET the waiting page's status check uses (docs/05-api.md, Peer-Login bestätigen). */
+    /** The read-only GET the waiting page's status check uses (docs/verfahren/qr.md). */
     private fun keycloakGetTool(url: String): Map<String, Any?> =
         restTemplate.exchange("http://localhost:$port$url", HttpMethod.GET, HttpEntity<Unit>(keycloakHeaders()), mapType)
             .let { it.statusCode shouldBe HttpStatus.OK; it.body!! }

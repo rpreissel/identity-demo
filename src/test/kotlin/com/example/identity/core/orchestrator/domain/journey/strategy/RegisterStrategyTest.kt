@@ -435,7 +435,7 @@ class RegisterStrategyTest : BehaviorSpec({
         }
     }
 
-    // The third obligation (docs/04-orchestrierung.md #8): a registration must leave the account
+    // The third obligation (docs/04-orchestrierung.md #5): a registration must leave the account
     // able to reach loa2, so a single factor kind gets a method of another kind added.
     given("Enrolling on the WEB channel, sufficient, email already confirmed, sms only") {
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = true)
@@ -466,7 +466,7 @@ class RegisterStrategyTest : BehaviorSpec({
             channel = ChannelType.WEB,
             availableTools = StrategyTestFixtures.webTools
         )
-        // enroll-password is no candidate without a confirmed email (docs/03-tool-architektur.md #1).
+        // enroll-password is no candidate without a confirmed email (docs/03-tool-architektur.md #5).
         val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = true)
 
         `when`("resumed after adopting the credential (ActionCompleted)") {

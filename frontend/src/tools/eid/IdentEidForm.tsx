@@ -33,7 +33,7 @@ function cardOf(person?: DemoPerson): EidCard {
 }
 
 /**
- * toolId=ident-eid / step=input (docs/06-ablaeufe.md #6). The backend keeps one step; the two pages
+ * toolId=ident-eid / step=input (docs/verfahren/eid.md). The backend keeps one step; the two pages
  * here (the card read, then the PIN) are this form's choice (docs/10-frontend.md). The backend
  * checks the card data the moment it is complete and only then asks for `pin`, so `missingFields`
  * says which page is due. A failed attempt carries no `missingFields`; the form then stays on the
