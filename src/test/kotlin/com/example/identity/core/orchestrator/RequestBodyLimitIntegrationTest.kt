@@ -12,7 +12,7 @@ import java.util.UUID
 
 /**
  * A body is capped before anything parses it: Spring reads it before a handler checks the caller,
- * and a DPoP key costs nothing (RequestBodyLimitFilter, docs/review-2026-10-03-sicherheitsaudit.md SA-10).
+ * and a DPoP key costs nothing (RequestBodyLimitFilter).
  */
 class RequestBodyLimitIntegrationTest : IntegrationTestSupport() {
 

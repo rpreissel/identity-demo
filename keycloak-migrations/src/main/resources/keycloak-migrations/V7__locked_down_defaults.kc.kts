@@ -1,8 +1,8 @@
 // ===================== V7__locked_down_defaults =====================
 
 // Keycloak legt jedes Realm mit Anmeldewegen, Aktionen und Scopes an, die am Orchestrator
-// vorbeiführen. Dieses Skript schließt sie (docs/review-2026-10-03-sicherheitsaudit.md SA-2, SA-3,
-// SA-7): Anmeldung, Niveau und Verfahren entscheidet allein der Orchestrator (ADR-8, ADR-38).
+// vorbeiführen. Dieses Skript schließt sie: Anmeldung, Niveau und Verfahren entscheidet allein der
+// Orchestrator (ADR-8, ADR-38; docs/16-lesepfad-sicherheit.md Station 4).
 
 val OWN_REQUIRED_ACTION = "orchestrator-manage-methods"
 val DENY_FLOW = "orchestrator-deny-direct-grant"

@@ -158,7 +158,7 @@ public class OrchestratorStorageProvider implements UserStorageProvider, UserReg
 
     /**
      * A password is changed only through the orchestrator's method management, behind its level
-     * check (docs/review-2026-10-03-sicherheitsaudit.md SA-2). Throwing instead of returning false
+     * check (ADR-38, Nachtrag 2026-10-03). Throwing instead of returning false
      * keeps Keycloak from storing the password locally, next to the orchestrator's.
      */
     @Override

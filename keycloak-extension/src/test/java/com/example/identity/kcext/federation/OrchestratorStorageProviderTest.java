@@ -37,7 +37,7 @@ class OrchestratorStorageProviderTest {
 
     /**
      * Returning false would let Keycloak store the password locally, next to the orchestrator's
-     * (docs/review-2026-10-03-sicherheitsaudit.md SA-2).
+     * (ADR-38, Nachtrag 2026-10-03).
      */
     @Test
     void aPasswordIsNeverChangedThroughKeycloak() {

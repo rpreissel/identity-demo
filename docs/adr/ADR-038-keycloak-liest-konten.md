@@ -17,7 +17,7 @@ Löst die Spiegelung ab, die [ADR-9](ADR-009-profilabhaengiges-token-retrieval-a
 > Federation lehnt deshalb jede Änderung ab (`ReadOnlyException`), das Realm schaltet Keycloaks
 > eigene Required Actions ab (`V7__locked_down_defaults`), und ein Passwort ändert nur die
 > Verwaltung der Verfahren im Orchestrator. Damit entfällt auch „Passwort zurücksetzen“ in der
-> Admin-Konsole ([Sicherheitsaudit](../review-2026-10-03-sicherheitsaudit.md) SA-2).
+> Admin-Konsole.
 
 **Entscheidung**: Die Konten des Orchestrators *sind* die Nutzer von Keycloak. Die Nutzer-Federation
 der Extension (`OrchestratorStorageProvider`) liest ein Konto bei Bedarf nach, ohne Import. Keycloak

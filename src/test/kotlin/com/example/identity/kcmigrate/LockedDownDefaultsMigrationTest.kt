@@ -19,7 +19,7 @@ import org.keycloak.representations.idm.RequiredActionProviderRepresentation
 /**
  * Keycloaks Voreinstellungen führen am Orchestrator vorbei: eigene Required Actions, der Browser-Flow
  * des Realms, Direct Grants, die Account-Konsole und Offline-Tokens. V7 schließt sie
- * (docs/review-2026-10-03-sicherheitsaudit.md SA-2, SA-3, SA-7).
+ * (ADR-38; docs/16-lesepfad-sicherheit.md Station 4).
  */
 class LockedDownDefaultsMigrationTest : BehaviorSpec({
 

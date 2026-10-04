@@ -3,8 +3,8 @@ java = "21"
 kotlin = "2.4.20"
 spring-boot = "4.1.1"
 # Ueber Spring Boots Stand hinaus angehoben, bis ein Boot-Patch sie mitbringt: Tomcat und Jackson
-# tragen in Boots Versionen bekannte Sicherheitsmeldungen (docs/review-2026-10-03-sicherheitsaudit.md
-# Abschnitt 4). Beim naechsten Boot-Patch pruefen und entfernen, was Boot selbst erreicht.
+# tragen in Boots Versionen bekannte Sicherheitsmeldungen (OSV; die CI prueft per OSV-Scanner).
+# Beim naechsten Boot-Patch pruefen und entfernen, was Boot selbst erreicht.
 tomcat = "11.0.26"
 jackson3 = "3.1.7"
 jackson2-boot = "2.21.7"
