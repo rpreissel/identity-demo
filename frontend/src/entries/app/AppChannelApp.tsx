@@ -781,7 +781,7 @@ export function AppChannelApp() {
       ? {
           step: next.step,
           toolId: next.toolId,
-          toolSessionId: next.toolSessionId ?? activeTool?.toolSessionId,
+          toolSessionId: next.toolSessionId ?? (activeTool?.toolId === next.toolId ? activeTool.toolSessionId : undefined),
           proof: { kind: 'dpop', dpop },
           stepData,
           message,
@@ -1063,7 +1063,8 @@ export function AppChannelApp() {
                   />
                 )}
 
-                {toolCtx && <InnerBackProvider value={innerBackRegistry}>{renderToolStep(toolCtx)}</InnerBackProvider>}
+                {/* Only once the tool runs: a form shown while its activation is in flight takes input it cannot send. */}
+                {toolCtx?.toolSessionId && <InnerBackProvider value={innerBackRegistry}>{renderToolStep(toolCtx)}</InnerBackProvider>}
 
                 {uiComponent === 'prompt' && confirmPrompt && (
                   <PromptView prompt={confirmPrompt} onAnswer={handleAnswer} />
