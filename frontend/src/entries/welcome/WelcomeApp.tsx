@@ -128,10 +128,13 @@ function GetStarted({ keycloak }: { keycloak: boolean | null }) {
               keycloak === false ? webMissing : <OpenLink href="/web/" target={WEB_TAB} label={t('Website öffnen')} />
             }
           >
-            {t('Auf der Website anmelden, „Mit der App anmelden“ wählen und die Anmeldung in der App bestätigen.')}
+            {t('Auf der Website mit dem Passwort anmelden und die Gesundheitsdaten öffnen: Dafür bestätigen Sie die Anmeldung in der App.')}
           </Task>
           <Task action={<OpenLink href="/personenverzeichnis/" target={REGISTER_TAB} label={t('Personenverzeichnis öffnen')} />}>
             {t('Im Personenverzeichnis Ihren Namen ändern und sehen, dass die App ihn übernimmt.')}
+          </Task>
+          <Task action={<OpenLink href="/personenverzeichnis/#einladungen" target={REGISTER_TAB} label={t('Einladung ausstellen')} />}>
+            {t('Im Personenverzeichnis einen Brief mit Einmalkennwort verschicken und damit auf der Website einen Vorgang erledigen, ganz ohne Konto.')}
           </Task>
           <Task action={<OpenLink href="/admin/#journeytrace" target={ADMIN_TAB} label={t('Admin-Seite öffnen')} />}>
             {t('Auf der Admin-Seite verfolgen, welche Schritte Ihre Journey durchlaufen hat.')}
@@ -389,14 +392,15 @@ function Glossary() {
         <h2>{t('Weiterlesen')}</h2>
         <ul className="task-list">
           <li className="task-row">
-            <span>
-              {t(
-                'Ein Video von knapp sieben Minuten zeigt die Aufgaben dieser Seite im Browser, mit Untertiteln. Am Ende ' +
-                  'stehen die Vorteile und was echt ist.',
-              )}
-            </span>
+            <span>{t('Ein gesprochenes Video spielt die Aufgaben dieser Seite einmal durch.')}</span>
             <a className="button secondary" href={`${REPO}/blob/main/docs/media/demo.mp4`} target="_blank" rel="noreferrer">
-              {t('Video ansehen')}
+              {t('Demo-Video ansehen')}
+            </a>
+          </li>
+          <li className="task-row">
+            <span>{t('Ein Erklärvideo von gut fünf Minuten zeigt Konzepte, Stand und die Vor- und Nachteile des Ansatzes.')}</span>
+            <a className="button secondary" href={`${REPO}/blob/main/docs/media/erklaervideo.mp4`} target="_blank" rel="noreferrer">
+              {t('Erklärvideo ansehen')}
             </a>
           </li>
           <li className="task-row">

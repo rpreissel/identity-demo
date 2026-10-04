@@ -16,11 +16,11 @@ Die Dokumentation lässt sich hier in [docs/](docs/README.md) lesen oder als Web
   die Konzepte (Intent, Journey, Tool, `next`), die Sicherheitsniveaus, der Aufbau des Codes, der
   Umsetzungsstand und die Vor- und Nachteile. Für Fachexperten und Reviewer, die den Ansatz
   bewerten wollen.
-- **[Demo-Video](docs/media/demo.mp4)** (knapp sechs Minuten, mit Untertiteln): die Aufgaben der
-  Willkommensseite im Browser, mit echtem Keycloak: in der App registrieren, die Anmeldung per
-  QR-Code aktivieren, auf der Website anmelden und in der App freigeben, die Sitzungen in Keycloak,
-  eine Namensänderung, die App und Keycloak übernehmen, den Journey-Trace und das Löschen des
-  Kontos. Für alle, die die Demo selbst bedienen oder vorführen.
+- **[Demo-Video](docs/media/demo.mp4)** (knapp acht Minuten, gesprochen und mit Untertiteln): die
+  Aufgaben der Willkommensseite im Browser, mit echtem Keycloak: in der App registrieren, QR-Code-Anmeldung
+  und Passwort einrichten, auf der Website mit Passwort anmelden und für die Gesundheitsdaten mit der App
+  bestätigen, eine Namensänderung, die die App übernimmt, ein Vorgang mit Einmalkennwort ohne Konto, der
+  Journey-Trace und das Löschen des Kontos. Für alle, die die Demo selbst bedienen oder vorführen.
 
 Die Videos liegen in Git LFS. Auf GitHub lassen sie sich direkt abspielen; zum Auschecken braucht es
 `git lfs`.

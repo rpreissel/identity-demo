@@ -2,6 +2,9 @@
 // sentence or two each). An element with data-b="n" appears when beat n starts; data-d delays it in seconds.
 // Clip timestamps (clip.from/to) refer to docs/media/demo.mp4 and must follow when it is recorded again.
 
+/** The part of demo.mp4 a clip shows: above its caption bar (up to two lines), in the boxes' aspect ratio. */
+const CROP = '1492:970:54:0'
+
 export const CHAPTERS = ['Ausgangslage', 'Konzepte', 'Sicherheit', 'Architektur', 'Stand', 'Bewertung']
 
 const phone = `<svg viewBox="0 0 24 24" class="ico"><rect x="6" y="2" width="12" height="20" rx="2.5"/><line x1="10" y1="18.5" x2="14" y2="18.5"/></svg>`
@@ -130,7 +133,7 @@ export const SCENES = [
   },
   {
     id: 's05-clip-app', chapter: 1, kicker: 'In der Demo', title: 'Registrieren in der App',
-    clip: { from: 35, to: 83, box: [360, 196, 1200, 780] },
+    clip: { from: 36, to: 84, box: [360, 196, 1200, 780], crop: CROP },
     html: `<div class="abs bezel" style="left:352px;top:188px;width:1216px;height:796px"></div>`,
     beats: [
       { t: 'So sieht das in der Demo aus. Links das Smartphone mit der App, rechts erklärt die Demo, was hinter den Kulissen passiert.' },
@@ -189,7 +192,7 @@ export const SCENES = [
   },
   {
     id: 's08-web', chapter: 2, kicker: 'Auf der Website', title: 'Keycloak führt, der Orchestrator entscheidet',
-    clip: { from: 141, to: 169, box: [760, 210, 1040, 676] },
+    clip: { from: 188, to: 222, box: [760, 210, 1040, 676], crop: CROP },
     html: `
     <div class="abs bezel" style="left:752px;top:202px;width:1056px;height:692px"></div>
     <ul class="abs bullets" style="left:150px;top:250px;width:560px">
@@ -240,7 +243,7 @@ export const SCENES = [
   },
   {
     id: 's10-clip-trace', chapter: 3, kicker: 'Nachvollziehbar', title: 'Der Journey-Trace',
-    clip: { from: 294, to: 302, box: [360, 196, 1200, 780], crop: "1538:1000:31:0" },
+    clip: { from: 416, to: 424, box: [360, 196, 1200, 780], crop: CROP },
     html: `<div class="abs bezel" style="left:352px;top:188px;width:1216px;height:796px"></div>`,
     beats: [
       { t: 'Nachvollziehbar wird das im Journey-Trace: jeder Schritt mit Zeit, Zustand, Tool und Entscheidung, mitgeschrieben vom Orchestrator selbst.' },
@@ -341,38 +344,4 @@ export const SCENES = [
       { t: 'Der beste Einstieg ist die Beispiel-Story von Mara, danach die Orchestrierung, die Journey-Diagramme und die Entscheidungen. Alles steht in der Doku, auch als Website.' },
     ],
   },
-]
-
-// Pronunciation hints for the voice: applied to the spoken text only, the subtitles keep the real spelling.
-export const SPOKEN = [
-  [/\bDPoP\b/g, 'D-Pop'],
-  [/Keycloak-Update/g, 'Kie-klouk-Apdäit'],
-  [/App-Update/g, 'Äpp-Apdäit'],
-  [/Keycloak/g, 'Kie-klouk'],
-  [/Journey-Trace/g, 'Dschörni-Träiss'],
-  [/Journey-Diagramme/g, 'Dschörni-Diagramme'],
-  [/\bJourneys\b/g, 'Dschörnis'],
-  [/\bJourney\b/g, 'Dschörni'],
-  [/\bTrace\b/g, 'Träiss'],
-  [/Tool-Endpunkte/g, 'Tuhl-Endpunkte'],
-  [/\bTools?\b/g, (m) => (m === 'Tools' ? 'Tuhls' : 'Tuhl')],
-  [/Access-Token/g, 'Äxess-Tohken'],
-  [/\bTokens\b/g, 'Tohkens'],
-  [/Step-up/g, 'Stepp-app'],
-  [/\bWebsite\b/g, 'Websaid'],
-  [/Spring-Boot-Modulith/g, 'Spring-Buht-Modulieth'],
-  [/React-Frontend/g, 'Riäkt-Front-End'],
-  [/Frontends/g, 'Front-Ends'],
-  [/Backend-Kern/g, 'Bäckend-Kern'],
-  [/\bBackend\b/g, 'Bäckend'],
-  [/\bPolicy\b/g, 'Pollissi'],
-  [/\bNect\b/g, 'Neckt'],
-  [/\bKOBIL\b/g, 'Kobil'],
-  [/QR-Code/g, 'Kuh-Er-Code'],
-  [/\bdomain\b/g, 'Domäin'],
-  [/„next“/g, 'Next'],
-  [/Demo-Oberfläche/g, 'Demo-Oberfläche'],
-  [/\bIdentity Demo\b/g, 'Ei-Dentitie Demo'],
-  [/\bIntent\b/g, 'Intent'],
-  [/\bPorts\b/g, 'Ports'],
 ]

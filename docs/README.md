@@ -11,10 +11,17 @@ Die Doku gibt es auch als Website mit Suche: <https://rpreissel.github.io/identi
 
 ## Videos
 
-- [Erklärvideo](media/erklaervideo.mp4): Gut fünf Minuten, gesprochen: Konzepte,
-  Sicherheitsniveaus, Aufbau des Codes, Umsetzungsstand, Vor- und Nachteile.
-- [Demo-Video](media/demo.mp4): Knapp sechs Minuten, mit Untertiteln: registrieren, per QR-Code
-  anmelden, Sitzungen in Keycloak, Namensänderung, Journey-Trace und das Löschen des Kontos.
+Das **Erklärvideo**, gut fünf Minuten, gesprochen: Konzepte, Sicherheitsniveaus, Aufbau des Codes,
+Umsetzungsstand, Vor- und Nachteile.
+
+[Erklärvideo (mp4)](media/erklaervideo.mp4)
+
+Das **Demo-Video**, knapp acht Minuten, gesprochen und mit Untertiteln: die Aufgaben der
+Willkommensseite im Browser. Registrieren, QR-Code und Passwort einrichten, auf der Website anmelden und
+für die Gesundheitsdaten mit der App bestätigen, den Namen ändern, einen Vorgang mit Einmalkennwort
+erledigen, der Journey-Trace und das Löschen des Kontos.
+
+[Demo-Video (mp4)](media/demo.mp4)
 
 ## Einstieg
 

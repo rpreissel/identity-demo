@@ -1,0 +1,41 @@
+// Shared by the explainer video (build.mjs) and the narration of the demo video (e2e-video/narrator.ts).
+// Pronunciation hints for the voice: applied to the spoken text only, the subtitles keep the real spelling.
+export const SPOKEN = [
+  [/\bDPoP\b/g, 'D-Pop'],
+  [/Keycloak-Update/g, 'Kie-klouk-Apdäit'],
+  [/App-Update/g, 'Äpp-Apdäit'],
+  [/Keycloak/g, 'Kie-klouk'],
+  [/Journey-Trace/g, 'Dschörni-Träiss'],
+  [/Journey-Diagramme/g, 'Dschörni-Diagramme'],
+  [/\bJourneys\b/g, 'Dschörnis'],
+  [/\bJourney\b/g, 'Dschörni'],
+  [/\bTrace\b/g, 'Träiss'],
+  [/Tool-Endpunkte/g, 'Tuhl-Endpunkte'],
+  [/\bTools?\b/g, (m) => (m === 'Tools' ? 'Tuhls' : 'Tuhl')],
+  [/Access-Token/g, 'Äxess-Tohken'],
+  [/\bTokens\b/g, 'Tohkens'],
+  [/Step-up/g, 'Stepp-app'],
+  [/\bWebsite\b/g, 'Websaid'],
+  [/Spring-Boot-Modulith/g, 'Spring-Buht-Modulieth'],
+  [/React-Frontend/g, 'Riäkt-Front-End'],
+  [/Frontends/g, 'Front-Ends'],
+  [/Backend-Kern/g, 'Bäckend-Kern'],
+  [/\bBackend\b/g, 'Bäckend'],
+  [/\bPolicy\b/g, 'Pollissi'],
+  [/\bNect\b/g, 'Neckt'],
+  [/\bKOBIL\b/g, 'Kobil'],
+  [/QR-Code/g, 'Kuh-Er-Code'],
+  [/\bdomain\b/g, 'Domäin'],
+  [/„next“/g, 'Next'],
+  [/Demo-Oberfläche/g, 'Demo-Oberfläche'],
+  [/\bIdentity Demo\b/g, 'Ei-Dentitie Demo'],
+  [/\bIntent\b/g, 'Intent'],
+  [/\bPorts\b/g, 'Ports'],
+  [/Admin-Seite/g, 'Äddmin-Seite'],
+  [/\bHash\b/g, 'Häsch'],
+  [/\bPIN\b/g, 'Pin'],
+  [/\bloa(\d)\b/g, 'Niveau $1'],
+]
+
+/** The text as the voice should read it. */
+export const spoken = (text) => SPOKEN.reduce((s, [re, r]) => s.replace(re, r), text)

@@ -1,13 +1,16 @@
 import { expect, test, type Page } from '@playwright/test'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ui, uiPattern, welcomeHeading } from '../e2e/texts'
+import { pv, ui, uiPattern, welcomeHeading } from '../e2e/texts'
 import { kc } from '../e2e-keycloak/texts'
+import { narration, stopNarrator } from './narrator'
 
 /**
  * Every page is zoomed to 125 % (1600x1100 px show 1280x880 CSS px), keeps 90 px free at the bottom for the
  * caption bar, and can show a full-screen card. All of it is DOM, so it lands in the recording. Page loads are
  * marked as hidden and cut out afterwards (record-demo-video.sh), so the video never shows a half-built page.
+ * Every caption is also spoken (narrator.ts): the page stays as it is while the sentence lasts, and the
+ * cut script lays the sentences under the video at the times logged here.
  */
 const DEMO_CSS = `
   html { zoom: 1.25; }
@@ -68,8 +71,8 @@ const FLOW = `
   <text class="sub" x="600" y="280" text-anchor="middle" font-size="18">Der Name steht nur an einer Stelle. Alle anderen lesen ihn nach. So gibt es keine Widersprüche.</text>
 </svg>`
 
-const TITLE_MS = 10_000
-const PAUSE_MS = 2_500
+const TITLE_MS = 6_000
+const PAUSE_MS = 2_000
 
 let current = ''
 let startedAt = 0
@@ -77,6 +80,8 @@ let startedAt = 0
 const clock = () => (Date.now() - startedAt) / 1000
 /** Stretches to cut: page loads, spinners, anything half-built. Open while the last one has no end. */
 const hidden: { from: number; to?: number }[] = []
+/** What is said when, on the spec's clock; the cut script mixes it into the video. */
+const spokenAt: { at: number; wav: string }[] = []
 let calibration = 0
 
 function hide() {
@@ -89,10 +94,18 @@ function reveal() {
   if (last && last.to === undefined) last.to = clock()
 }
 
-async function caption(page: Page, text: string, holdMs = 4000) {
+/** Says [text] now and waits until the sentence is over, at least [minMs]. The screen must be visible. */
+async function speak(page: Page, text: string, minMs = 0) {
+  const voice = await narration(text)
+  spokenAt.push({ at: clock(), wav: voice.wav })
+  await page.waitForTimeout(Math.max(minMs, voice.seconds * 1000 + 600))
+}
+
+/** Shows [text] in the caption bar and says it. */
+async function caption(page: Page, text: string, minMs = 0) {
   current = text
   await apply(page)
-  await page.waitForTimeout(holdMs)
+  await speak(page, text, minMs)
 }
 
 async function apply(page: Page) {
@@ -127,14 +140,14 @@ function installer(css: string) {
 type CardOptions = {
   holdMs?: number
   diagram?: 'flow'
-  /** Caption for the page behind the card, set while the card still covers it. */
+  /** Caption for the page behind the card, said once the card is gone. */
   next?: string
   /** Leave the card up and the video hidden: the next step navigates or shows another card. */
   stay?: boolean
 }
 
-/** A full-screen card: kicker, title, optional diagram, and body HTML (own markup only, no user data). */
-async function card(page: Page, kicker: string, title: string, bodyHtml: string, options: CardOptions = {}) {
+/** A full-screen card: kicker, title, optional diagram, and body HTML (own markup only, no user data); [say] is spoken. */
+async function card(page: Page, kicker: string, title: string, bodyHtml: string, say: string, options: CardOptions = {}) {
   await page.evaluate(([k, t, b, d]) => {
     document.getElementById('demo-title')?.remove()
     const el = document.createElement('div')
@@ -148,7 +161,7 @@ async function card(page: Page, kicker: string, title: string, bodyHtml: string,
   if (!calibration) calibration = clock()
   await page.waitForTimeout(400)
   reveal()
-  await page.waitForTimeout(options.holdMs ?? TITLE_MS)
+  await speak(page, say, options.holdMs ?? TITLE_MS)
   if (options.stay) {
     hide()
     return
@@ -156,9 +169,10 @@ async function card(page: Page, kicker: string, title: string, bodyHtml: string,
   current = options.next ?? ''
   await apply(page)
   await page.evaluate(() => document.getElementById('demo-title')?.remove())
+  if (options.next) await speak(page, options.next)
 }
 
-/** Navigates with the video hidden; [ready] waits for the finished page. Stays hidden when a card follows. */
+/** Navigates with the video hidden; [ready] waits for the finished page, then [text] is said. Stays hidden when a card follows. */
 async function open(page: Page, url: string, ready: () => Promise<unknown>, text = '', keepHidden = false) {
   hide()
   current = text
@@ -166,7 +180,9 @@ async function open(page: Page, url: string, ready: () => Promise<unknown>, text
   await ready()
   await page.waitForTimeout(800)
   await apply(page)
-  if (!keepHidden) reveal()
+  if (keepHidden) return
+  reveal()
+  if (text) await speak(page, text)
 }
 
 /** A click that leaves the page (form post, redirect): hidden until [ready], then the caption for the new page. */
@@ -178,12 +194,13 @@ async function leave(page: Page, click: () => Promise<unknown>, ready: () => Pro
   await page.waitForTimeout(800)
   await apply(page)
   reveal()
+  await speak(page, text)
 }
 
 const phone = (page: Page) => page.locator('.phone')
 
 /** Clicks the first visible button among [names], returns which; [captions] replace the pause for known steps. */
-async function clickFirst(page: Page, names: (string | RegExp)[], captions: Map<string, [string, number]> = new Map(), captionPage: Page = page): Promise<string | null> {
+async function clickFirst(page: Page, names: (string | RegExp)[], captions: Map<string, string> = new Map(), captionPage: Page = page): Promise<string | null> {
   for (const name of names) {
     const button = page.getByRole('button', typeof name === 'string' ? { name, exact: true } : { name }).first()
     if (await button.isVisible()) {
@@ -192,7 +209,7 @@ async function clickFirst(page: Page, names: (string | RegExp)[], captions: Map<
       if (text) {
         // The screen changes within a moment; the caption follows at once, not after a pause.
         await page.waitForTimeout(600)
-        await caption(captionPage, text[0], text[1])
+        await caption(captionPage, text)
       } else {
         await page.waitForTimeout(PAUSE_MS)
       }
@@ -213,6 +230,36 @@ async function adminLogin(page: Page) {
   await page.waitForTimeout(2500)
 }
 
+/** The confirmation of a web login in the app (a second tab, overlaid later as picture-in-picture): the code it shows. */
+async function confirmInApp(page: Page, app: Page, pairingCode: string, biometrics: string): Promise<{ code: string; shownAt: number }> {
+  await app.goto(`/app/?intent=confirm_peer_login&pairingCode=${encodeURIComponent(pairingCode)}`)
+  await app.evaluate(() => document.getElementById('demo-caption')?.remove())
+  // The app asks for a fresh proof (unlock the device) unless the last one is recent; then it asks right away.
+  const unlock = () => app.getByRole('button', { name: biometrics, exact: true })
+  const approve = () => app.getByRole('button', { name: ui('Bestätigen'), exact: true })
+  await unlock().or(approve()).first().waitFor({ timeout: 20_000 })
+  await app.waitForTimeout(800)
+  const shownAt = clock()
+  await caption(page, (await unlock().isVisible())
+    ? 'Oben rechts die App. Sie hat den QR-Code gelesen. Bevor sie etwas freigibt, verlangt sie einen frischen Nachweis: Wir entsperren das Gerät.'
+    : 'Oben rechts die App. Sie hat den QR-Code gelesen und fragt, ob wir diese Anmeldung im Browser selbst begonnen haben.')
+  const codeShown = () => app.getByRole('heading', { name: ui('Code im Browser eingeben') })
+  const confirmCaptions = new Map<string, string>([
+    [biometrics, 'Nachweis erbracht. Jetzt fragt die App, ob wir die Anmeldung im Browser bestätigen.'],
+  ])
+  for (let step = 0; step < 12 && !(await codeShown().isVisible()); step++) {
+    await app.waitForTimeout(800)
+    if (await codeShown().isVisible()) break
+    // "Bestätigen" makes Keycloak load its code page in the main tab: hidden until that page is there.
+    if (await approve().isVisible()) hide()
+    await clickFirst(app, [biometrics, ui('Bestätigen'), ui('Weiter')], confirmCaptions, page)
+  }
+  await expect(codeShown()).toBeVisible({ timeout: 20_000 })
+  // Only the digits: the app groups the code for reading, and the demo column shows codes of its own.
+  const code = ((await app.locator('.phone .code-display__value').first().textContent()) ?? '').replace(/\D/g, '')
+  return { code, shownAt }
+}
+
 test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   startedAt = Date.now()
   hidden.push({ from: 0 })
@@ -221,7 +268,7 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   const welcome = () => page.getByRole('heading', { name: welcomeHeading })
   const biometrics = ui('Mit Biometrie bestätigen')
   const loginLoop = async () => {
-    await caption(page, 'Anmelden mit diesem Gerät. Der Nachweis ist der Geräteschlüssel, entsperrt mit Biometrie.', 3000)
+    await caption(page, 'Wir melden uns mit diesem Gerät an. Der Nachweis ist der Geräteschlüssel, entsperrt mit Biometrie.')
     await clickFirst(page, [ui('Mit diesem Gerät anmelden')])
     for (let step = 0; step < 10 && !(await welcome().isVisible()); step++) {
       await page.waitForTimeout(800)
@@ -234,37 +281,42 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   await open(page, '/', () => page.getByRole('link', { name: ui('In der App registrieren') }).waitFor(), '', true)
   await card(page, 'Identity-Demo', 'Die Demo im Browser',
     '<p class="center">Sieben Aufgaben zum Selbst-Ausprobieren.<br>Was dahintersteckt, erklärt das Erklärvideo.</p>',
+    'Willkommen zur Demo. Wir spielen die Aufgaben der Willkommensseite einmal durch, mit echtem Keycloak. '
+    + 'Warum das System so gebaut ist, erklärt das Erklärvideo.',
     { stay: true })
   await card(page, 'Was gleich zu sehen ist', 'Sieben Aufgaben',
-    '<p>1. In der App registrieren<br>2. QR-Code-Anmeldung aktivieren<br>3. Auf der Website anmelden, die App gibt frei<br>'
-    + '4. Die Sitzungen in Keycloak ansehen<br>5. Den Vornamen ändern<br>6. Den Journey-Trace ansehen<br>7. Das Konto löschen</p>',
-    { holdMs: TITLE_MS + 2000, next: 'Die Willkommensseite der Demo.' })
-  await page.waitForTimeout(4000)
+    '<p>1. In der App registrieren<br>2. QR-Code-Anmeldung und Passwort einrichten<br>'
+    + '3. Auf der Website anmelden, für die Gesundheitsdaten bestätigt die App<br>4. Den Vornamen ändern<br>'
+    + '5. Einen Vorgang mit Einmalkennwort erledigen<br>6. Den Journey-Trace ansehen<br>7. Das Konto löschen</p>',
+    'Sieben Aufgaben: registrieren, weitere Verfahren einrichten, auf der Website anmelden und das Sicherheitsniveau anheben, '
+    + 'einen Namen ändern, einen Vorgang mit Einmalkennwort, der Journey-Trace und zum Schluss das Konto löschen.',
+    { next: 'Das ist die Willkommensseite der Demo. Sie führt durch dieselben Aufgaben.' })
 
   // 1) Registrierung in der App
   await open(page, '/app/?intent=register', () => phone(page).getByRole('button', { name: uiPattern('Freischaltcode') }).waitFor(), '', true)
   await card(page, 'Aufgabe 1', 'In der App registrieren',
-    '<p class="center">Ausweisen, E-Mail bestätigen, das Gerät als Anmeldeverfahren einrichten.</p>',
-    { next: 'Links die App, rechts die Erklärung der Demo. Zuerst weisen wir uns aus, mit dem Freischaltcode.' })
-  await page.waitForTimeout(5000)
+    '<p class="center">Identifizieren, E-Mail bestätigen, das Gerät als Anmeldeverfahren einrichten.</p>',
+    'Aufgabe eins: Wir registrieren uns in der App. Dabei identifizieren wir uns, bestätigen die E-Mail-Adresse und richten das Gerät als Anmeldeverfahren ein.',
+    { next: 'Links die App, so wie sie auf einem Smartphone liefe. Rechts erklärt die Demo, was im Hintergrund passiert. '
+      + 'Zuerst identifizieren wir uns, hier mit dem Freischaltcode aus einem Brief der Versicherung.' })
   await page.getByRole('button', { name: uiPattern('Freischaltcode') }).click()
   await page.waitForTimeout(600)
-  await caption(page, 'Die Demo füllt die Angaben der Testperson aus.', 4000)
+  await caption(page, 'Die Demo füllt die Angaben der Testperson aus: Name, Geburtsdatum und Versichertennummer.')
   await page.getByRole('button', { name: ui('Weiter zur Freischaltcode-Eingabe') }).click()
   await page.waitForTimeout(600)
-  await caption(page, 'Der Freischaltcode kommt per Brief. Die Demo hat ihn schon eingetragen.', 5000)
+  await caption(page, 'Den Freischaltcode schickt das Personenverzeichnis per Brief. Die Demo hat ihn schon eingetragen.')
   await page.getByRole('button', { name: ui('Identifizieren') }).click()
   await page.getByRole('button', { name: ui('Code senden') }).waitFor({ timeout: 15_000 })
   await page.waitForTimeout(600)
-  await caption(page, 'Ausgewiesen. Jetzt bestätigen wir die E-Mail-Adresse.', 5000)
+  await caption(page, 'Identifiziert. Der Orchestrator legt das Konto an. Als Nächstes bestätigen wir die E-Mail-Adresse.')
 
   const deviceChoice = new RegExp(`^${ui('Gerät')} `)
-  const registrationCaptions = new Map<string, [string, number]>([
-    [ui('Code senden'), ['Der Code kommt per E-Mail. Die Demo trägt ihn ein.', 4000]],
-    [ui('Code bestätigen'), ['Adresse bestätigt. Jetzt das erste Anmeldeverfahren. Wir wählen „Gerät“: ein Schlüssel auf dem Gerät, geschützt mit PIN oder Biometrie.', 6000]],
-    [String(deviceChoice), ['Das Gerät bekommt einen Namen.', 3000]],
-    [ui('Weiter'), ['Das Gerät wird entsperrt, hier mit Biometrie.', 3000]],
-    [biometrics, ['Das Gerät ist eingerichtet. Damit ist die Registrierung fertig.', 4000]],
+  const registrationCaptions = new Map<string, string>([
+    [ui('Code senden'), 'Der Bestätigungscode kommt per E-Mail. In der Demo landet sie im Briefkasten, und die Demo trägt den Code ein.'],
+    [ui('Code bestätigen'), 'Adresse bestätigt. Jetzt das erste Anmeldeverfahren. Wir wählen „Gerät“: einen Schlüssel, der das Gerät nie verlässt, geschützt mit PIN oder Biometrie.'],
+    [String(deviceChoice), 'Das Gerät bekommt einen Namen, damit man es später wiedererkennt.'],
+    [ui('Weiter'), 'Zum Einrichten wird das Gerät entsperrt, hier mit Biometrie.'],
+    [biometrics, 'Das Gerät ist eingerichtet. Damit ist die Registrierung fertig.'],
   ])
   for (let step = 0; step < 16 && !(await welcome().isVisible()); step++) {
     await page.waitForTimeout(800)
@@ -272,33 +324,35 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
     await clickFirst(page, [ui('Code senden'), ui('Code bestätigen'), deviceChoice, ui('Weiter'), biometrics], registrationCaptions)
   }
   await expect(welcome()).toBeVisible({ timeout: 15_000 })
-  await caption(page, 'Registriert und angemeldet. Dieses Gerät ist mit dem Konto verknüpft.', 5000)
+  await caption(page, 'Registriert und angemeldet, auf Sicherheitsniveau zwei: Identifizierung und Gerät. Rechts oben stehen Niveau und Verfahren dieser Sitzung.')
 
-  // 2) Sicherheit: QR-Login aktivieren (direkt nach der Registrierung, die Sitzung steht auf loa2)
+  // 2) Sicherheit: QR-Login und Passwort (direkt nach der Registrierung, die Sitzung steht auf loa2)
   hide()
-  await card(page, 'Aufgabe 2', 'QR-Code-Anmeldung aktivieren',
-    '<p class="center">Unter „Sicherheit“ ein Verfahren hinzufügen.</p>', { stay: true })
+  await card(page, 'Aufgabe 2', 'QR-Code-Anmeldung und Passwort einrichten',
+    '<p class="center">Unter „Sicherheit“ weitere Verfahren hinzufügen.</p>',
+    'Aufgabe zwei: Wir richten zwei weitere Verfahren ein. Die Anmeldung per QR-Code, mit der die App eine Anmeldung im Browser freigibt, und ein Passwort.',
+    { stay: true })
   // Behind the card: open "Sicherheit", then take the card away.
   await phone(page).getByRole('button', { name: uiPattern('Sicherheit') }).first().click()
   await page.waitForTimeout(1200)
-  current = 'Die Seite „Sicherheit“ zeigt das Sicherheitsniveau und die Anmeldeverfahren.'
+  current = 'Die Seite „Sicherheit“ zeigt das Sicherheitsniveau und die eingerichteten Anmeldeverfahren.'
   await apply(page)
   await page.evaluate(() => document.getElementById('demo-title')?.remove())
   reveal()
-  await page.waitForTimeout(4500)
+  await speak(page, current)
   await phone(page).getByRole('button', { name: uiPattern('Anmeldeverfahren') }).first().click()
   await page.waitForTimeout(600)
-  await caption(page, 'Eingerichtet ist bisher nur das Gerät.', 3500)
+  await caption(page, 'Eingerichtet ist bisher nur das Gerät.')
+  const freshProof = new Map([[biometrics, 'Wer Verfahren ändert, braucht einen frischen Nachweis. Die App lässt das Gerät noch einmal entsperren.']])
   await phone(page).getByRole('button', { name: ui('Weiteres Verfahren hinzufügen') }).click()
   await page.waitForTimeout(600)
   const qrChoice = () => page.getByRole('button', { name: uiPattern('QR-Code') }).first()
   for (let step = 0; step < 6 && !(await qrChoice().isVisible()); step++) {
-    await clickFirst(page, [biometrics, ui('Weiter')], new Map([[biometrics, ['Dafür verlangt die App einen frischen Nachweis.', 3000]]]))
+    await clickFirst(page, [biometrics, ui('Weiter')], freshProof)
   }
-  await caption(page, 'Zur Wahl stehen die Verfahren, die das Konto noch nicht hat.', 4000)
+  await caption(page, 'Zur Wahl stehen die Verfahren, die das Konto noch nicht hat. Wir aktivieren die Anmeldung per QR-Code.')
   await qrChoice().click()
   await page.waitForTimeout(600)
-  await caption(page, 'Wir aktivieren die Anmeldung per QR-Code.', 3500)
   await page.getByRole('button', { name: ui('Aktivieren'), exact: true }).click()
   const qrActive = () => phone(page).getByRole('button', { name: uiPattern('QR-Code') })
   for (let step = 0; step < 6 && !(await qrActive().isVisible()); step++) {
@@ -306,93 +360,82 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   }
   await expect(qrActive()).toBeVisible({ timeout: 15_000 })
   await page.waitForTimeout(600)
-  await caption(page, 'Aktiv. Auf der Website kann man sich jetzt mit der App anmelden.', 5000)
+  await caption(page, 'Aktiv. Jetzt noch das Passwort.')
+  await phone(page).getByRole('button', { name: ui('Weiteres Verfahren hinzufügen') }).click()
+  await page.waitForTimeout(600)
+  // "Passwort" exactly: KOBIL's description mentions a password, too.
+  const passwordChoice = () => page.getByRole('button', { name: new RegExp(`^${ui('Passwort')} `) }).first()
+  for (let step = 0; step < 6 && !(await passwordChoice().isVisible()); step++) {
+    await clickFirst(page, [biometrics, ui('Weiter')], freshProof)
+  }
+  await passwordChoice().click()
+  await page.waitForTimeout(600)
+  await caption(page, 'Benutzername ist die bestätigte E-Mail-Adresse. Die Demo schlägt ein Passwort vor.')
+  await page.getByRole('button', { name: ui('Einrichten'), exact: true }).click()
+  const passwordActive = () => phone(page).getByRole('button', { name: new RegExp(`^${ui('Passwort')}`) })
+  for (let step = 0; step < 6 && !(await passwordActive().isVisible()); step++) {
+    await page.waitForTimeout(800)
+    await clickFirst(page, [biometrics, ui('Weiter')])
+  }
+  await expect(passwordActive()).toBeVisible({ timeout: 15_000 })
+  await page.waitForTimeout(600)
+  await caption(page, 'Drei Verfahren sind eingerichtet: das Gerät, die Anmeldung per QR-Code und das Passwort.')
 
-  // 3) Website: Anmeldung mit der App bestätigen (echtes Keycloak)
+  // 3) Website: mit Passwort auf loa1, Step-up für die Gesundheitsdaten mit der App (echtes Keycloak)
   const webLogin = () => page.getByRole('button', { name: ui('Anmelden'), exact: true })
   await open(page, '/web/', () => webLogin().waitFor(), '', true)
-  await card(page, 'Aufgabe 3', 'Auf der Website anmelden, die App gibt frei',
-    '<p class="center">Echtes Keycloak. Die App gibt die Anmeldung frei.</p>',
-    { next: 'Die Website. „Anmelden“ führt zu Keycloak, dem Anmeldedienst der Website.' })
-  await page.waitForTimeout(5000)
-  const withApp = () => page.getByRole('button', { name: ui('Mit App anmelden'), exact: true })
-  await leave(page, () => webLogin().click(), () => withApp().waitFor({ timeout: 20_000 }),
-    'Die Anmeldeseite von Keycloak zeigt die Verfahren des Kontos. Wir wählen „Mit der App anmelden“.')
-  await page.waitForTimeout(6000)
+  await card(page, 'Aufgabe 3', 'Auf der Website anmelden, für die Gesundheitsdaten bestätigt die App',
+    '<p class="center">Mit dem Passwort auf Niveau 1, für die Gesundheitsdaten Niveau 2.</p>',
+    'Aufgabe drei: die Website. Hier meldet echtes Keycloak an. Wir melden uns mit dem Passwort an, das ist Sicherheitsniveau eins. '
+    + 'Für die Gesundheitsdaten reicht das nicht. Dann bestätigt die App.',
+    { next: 'Das Kundenportal der Versicherung. „Anmelden“ leitet zu Keycloak weiter, dem Anmeldedienst der Website.' })
+  const passwordMethod = () => page.getByRole('button', { name: ui('Passwort'), exact: true })
+  await leave(page, () => webLogin().click(), () => passwordMethod().waitFor({ timeout: 20_000 }),
+    'Keycloak zeigt die Verfahren, die der Orchestrator anbietet. Wir wählen das Passwort.')
+  const passwordField = page.getByRole('textbox', { name: kc('Passwort') })
+  await leave(page, () => passwordMethod().click(), () => passwordField.waitFor({ timeout: 20_000 }),
+    'E-Mail-Adresse und Passwort. Die Demo hat die Adresse schon eingetragen, wir tippen das Passwort.')
+  await passwordField.pressSequentially('Demo1234!', { delay: 120 })
+  await page.waitForTimeout(800)
+  const healthTile = () => page.getByRole('button', { name: new RegExp(`^${ui('Gesundheitsdaten')} `) }).first()
+  await leave(page, () => page.getByRole('button', { name: kc('Weiter'), exact: true }).click(), () => healthTile().waitFor({ timeout: 30_000 }),
+    'Angemeldet, auf Sicherheitsniveau eins: ein einzelnes Verfahren. Die Gesundheitsdaten verlangen mehr.')
+  await healthTile().click()
+  const secure = () => page.getByRole('button', { name: ui('Sicher anmelden') }).first()
+  await secure().waitFor({ timeout: 15_000 })
+  await page.waitForTimeout(600)
+  await caption(page, 'Für die Gesundheitsdaten braucht es Sicherheitsniveau zwei. „Sicher anmelden“ startet einen Step-up.')
   const pairing = page.locator('.orchestrator-qr-code, .orc-qr-code')
-  await leave(page, () => withApp().click(), () => pairing.waitFor({ timeout: 20_000 }),
-    'Die Website zeigt einen QR-Code und einen Pairing-Code. Sie wartet auf die App.')
-  await page.waitForTimeout(6000)
+  await leave(page, () => secure().click(), () => pairing.waitFor({ timeout: 20_000 }),
+    'Keycloak verlangt einen zweiten Nachweis anderer Art. Es bietet an, mit der App zu bestätigen, und zeigt dafür einen QR-Code.')
   const pairingCode = (await pairing.textContent())?.trim() ?? ''
 
-  // The app confirms in a second tab (its own video, overlaid later): the timing is written down.
   const appCreatedAt = clock()
   const app = await context.newPage()
-  await app.goto(`/app/?intent=confirm_peer_login&pairingCode=${encodeURIComponent(pairingCode)}`)
-  await app.evaluate(() => document.getElementById('demo-caption')?.remove())
-  // The app opens on the fresh proof (unlock the device, then confirm) unless the last login is fresh
-  // enough; then it asks for the confirmation right away. Then the code.
-  const unlock = () => app.getByRole('button', { name: biometrics, exact: true })
-  const approve = () => app.getByRole('button', { name: ui('Bestätigen'), exact: true })
-  await unlock().or(approve()).first().waitFor({ timeout: 20_000 })
-  await app.waitForTimeout(800)
-  const appStartedAt = clock()
-  await caption(page, (await unlock().isVisible())
-    ? 'Oben rechts die App. Sie hat den QR-Code gelesen. Vor der Freigabe verlangt sie einen neuen Nachweis: das Gerät entsperren.'
-    : 'Oben rechts die App. Sie hat den QR-Code gelesen. Die letzte Anmeldung ist frisch genug, sie fragt gleich: Anmeldung im Browser bestätigen?', 5000)
-  const codeShown = () => app.getByRole('heading', { name: ui('Code im Browser eingeben') })
-  const confirmCaptions = new Map<string, [string, number]>([
-    [biometrics, ['Nachweis erbracht. Die App fragt: Anmeldung im Browser bestätigen?', 4500]],
-  ])
-  for (let step = 0; step < 12 && !(await codeShown().isVisible()); step++) {
-    await app.waitForTimeout(800)
-    if (await codeShown().isVisible()) break
-    // "Bestätigen" makes Keycloak load its code page in the main tab: hidden until that page is there.
-    if (await approve().isVisible()) hide()
-    await clickFirst(app, [biometrics, ui('Bestätigen'), ui('Weiter')], confirmCaptions, page)
-  }
-  await expect(codeShown()).toBeVisible({ timeout: 20_000 })
-  // Only the digits: the app groups the code for reading, and the demo column shows codes of its own.
-  const confirmationCode = ((await app.locator('.phone .code-display__value').first().textContent()) ?? '').replace(/\D/g, '')
+  const { code: confirmationCode, shownAt: appStartedAt } = await confirmInApp(page, app, pairingCode, biometrics)
   const codeInput = page.locator('#confirmationCode')
   await codeInput.waitFor({ timeout: 20_000 })
   await page.waitForTimeout(800)
-  current = `Die App zeigt den Code ${confirmationCode}. Wir geben ihn im Browser ein.`
+  current = `Die App zeigt den Code ${confirmationCode}. Wir geben ihn im Browser ein. So ist sicher, dass App und Browser zusammengehören.`
   await apply(page)
   reveal()
-  await page.waitForTimeout(5000)
+  await speak(page, 'Die App zeigt einen Code. Wir geben ihn im Browser ein. So ist sicher, dass App und Browser zusammengehören.')
   await codeInput.pressSequentially(confirmationCode, { delay: 250 })
-  await page.waitForTimeout(1500)
-  const loggedIn = () => page.getByRole('button', { name: ui('Abmelden'), exact: true })
-  await leave(page, () => page.getByRole('button', { name: kc('Weiter'), exact: true }).click(), () => loggedIn().waitFor({ timeout: 30_000 }),
-    'Angemeldet auf der Website. Die App hat die Anmeldung freigegeben.')
-  await page.waitForTimeout(6000)
+  await page.waitForTimeout(1200)
+  await leave(page, () => page.getByRole('button', { name: kc('Weiter'), exact: true }).click(),
+    () => page.getByRole('heading', { name: ui('Gesundheitsdaten') }).waitFor({ timeout: 30_000 }),
+    'Jetzt auf Sicherheitsniveau zwei: Passwort und App, zwei Verfahren verschiedener Art. Die Gesundheitsdaten sind offen.')
   const appEndedAt = clock()
   await app.close()
 
-  // 4) Sitzungen: Keycloak-Konsole und Admin-Seite
-  const kcUser = page.locator('#username')
-  await open(page, 'https://localhost:8543/admin/master/console/#/Demo/sessions', () => kcUser.waitFor({ timeout: 30_000 }), '', true)
-  await card(page, 'Aufgabe 4', 'Die Sitzungen in Keycloak ansehen',
-    '<p class="center">Keycloak führt die Sitzungen von App und Website.</p>',
-    { next: 'Die Admin-Konsole von Keycloak. Wir melden uns als Administrator an.' })
-  await page.waitForTimeout(2000)
-  await kcUser.pressSequentially('admin', { delay: 150 })
-  await page.locator('#password').pressSequentially('admin', { delay: 150 })
-  await page.waitForTimeout(800)
-  await leave(page, () => page.locator('#kc-login').click(), async () => {
-    await page.getByRole('heading', { name: 'Sessions', level: 1 }).waitFor({ timeout: 30_000 })
-    await page.getByRole('link', { name: 'identity-demo-web' }).first().waitFor({ timeout: 20_000 })
-    await page.waitForTimeout(1000)
-  }, 'Realm „Demo“, Menü „Sessions“. Zwei Sitzungen: die der Website und die der App. Die Sitzung der App hat der Orchestrator geöffnet.')
-  await page.waitForTimeout(9000)
-  // 5) Personenverzeichnis: Namen ändern
-  await open(page, '/personenverzeichnis/', () => page.getByRole('button', { name: ui('Bearbeiten') }).first().waitFor(), '', true)
-  await card(page, 'Aufgabe 5', 'Im Personenverzeichnis den Vornamen ändern',
-    '<p class="center">Danach zeigen App und Keycloak den neuen Namen.</p>',
-    { next: 'Das Personenverzeichnis, ein simuliertes Fremdsystem. Wir bearbeiten die Testperson.' })
-  await page.waitForTimeout(5000)
-  await page.getByRole('button', { name: ui('Bearbeiten') }).first().click()
+  // 4) Personenverzeichnis: Namen ändern
+  await open(page, '/personenverzeichnis/', () => page.getByRole('button', { name: pv('Bearbeiten') }).first().waitFor(), '', true)
+  await card(page, 'Aufgabe 4', 'Im Personenverzeichnis den Vornamen ändern',
+    '<p class="center">Danach zeigt die App den neuen Namen.</p>',
+    'Aufgabe vier: Die Stammdaten der Versicherten liegen im Personenverzeichnis, einem simulierten Fremdsystem. '
+    + 'Wir ändern dort den Vornamen und sehen, wie er in der App ankommt.',
+    { next: 'Das Personenverzeichnis. Wir bearbeiten unsere Testperson Max Muster.' })
+  await page.getByRole('button', { name: pv('Bearbeiten') }).first().click()
   await page.waitForTimeout(1500)
   const vorname = page.locator('#ext-vorname')
   // The field sits at the lower edge; lift it above the caption bar before typing.
@@ -400,39 +443,66 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   await page.waitForTimeout(1000)
   await vorname.fill('')
   await vorname.pressSequentially('Maximilian', { delay: 150 })
-  await caption(page, 'Neuer Vorname: Maximilian. Das Verzeichnis meldet die Änderung an das Konto.', 4000)
-  await page.getByRole('button', { name: ui('Speichern') }).click()
-  await page.waitForTimeout(3000)
+  await caption(page, 'Neuer Vorname: Maximilian. Beim Speichern meldet das Verzeichnis die Änderung an das Konto.')
+  await page.getByRole('button', { name: pv('Speichern') }).click()
+  await page.waitForTimeout(2000)
   await open(page, '/app/', () => phone(page).getByRole('button', { name: ui('Mit diesem Gerät anmelden') }).waitFor(),
     'In der App erscheint der neue Name bei der nächsten Anmeldung.')
-  await page.waitForTimeout(4000)
   await loginLoop()
   await expect(page.getByRole('heading', { name: /Maximilian/ })).toBeVisible({ timeout: 15_000 })
-  await caption(page, 'Die App zeigt den Namen aus dem Personenverzeichnis.', 6000)
+  await caption(page, 'Die App zeigt den neuen Namen, so wie er im Personenverzeichnis steht.')
   hide()
-  await card(page, 'So kommt der Name an', 'Eine Quelle, alle lesen nach', '', { holdMs: TITLE_MS, diagram: 'flow', stay: true })
-  const kcSearch = page.getByRole('textbox', { name: /search/i }).first()
-  await open(page, 'https://localhost:8543/admin/master/console/#/Demo/users', async () => {
-    await page.getByRole('heading', { name: 'Users', level: 1 }).waitFor({ timeout: 30_000 })
-    await kcSearch.waitFor({ timeout: 20_000 })
-    await page.waitForTimeout(800)
-  }, 'Die Nutzer in Keycloak. Die Suche findet ein Konto über seine E-Mail-Adresse.')
-  await page.waitForTimeout(4000)
-  await kcSearch.pressSequentially('max.mustermann@example.com', { delay: 60 })
-  await kcSearch.press('Enter')
-  const kcUserLink = page.getByRole('link', { name: 'max.mustermann@example.com' }).first()
-  await kcUserLink.waitFor({ timeout: 20_000 })
-  await page.waitForTimeout(600)
-  await caption(page, 'Keycloak zeigt schon den neuen Vornamen. Es hat ihn gerade beim Orchestrator gelesen.', 6000)
-  const firstName = page.getByRole('textbox', { name: 'First name' })
-  await leave(page, () => kcUserLink.click(), async () => {
-    await firstName.waitFor({ timeout: 20_000 })
-    await page.waitForTimeout(1000)
-  }, 'Die Nutzerdaten in Keycloak. Der Federation-Link zeigt auf den Orchestrator.')
-  await page.waitForTimeout(4000)
-  await page.getByRole('textbox', { name: 'Last name' }).evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'smooth' }))
-  await page.waitForTimeout(1000)
-  await caption(page, 'Vorname, Nachname, E-Mail und die Claims: alles beim Orchestrator gelesen, nichts in Keycloak gespeichert.', 8000)
+  await card(page, 'So kommt der Name an', 'Eine Quelle, alle lesen nach', '',
+    'So kommt der Name an: Das Personenverzeichnis meldet die Änderung an den Orchestrator. App und Keycloak lesen dort nach. '
+    + 'Keycloak hält keine eigene Kopie der Konten.',
+    { diagram: 'flow', stay: true })
+
+  // 5) Vorgang mit Einmalkennwort: Einladung, Brief, Anmeldung ohne Konto
+  const invitePerson = page.locator('#inv-person')
+  await open(page, '/personenverzeichnis/#einladungen', () => invitePerson.waitFor(), '', true)
+  await card(page, 'Aufgabe 5', 'Einen Vorgang mit Einmalkennwort erledigen',
+    '<p class="center">Ohne Konto: Ein Brief mit Einmalkennwort genügt für genau diesen Vorgang.</p>',
+    'Aufgabe fünf: Nicht jeder hat ein Konto. Für einzelne Vorgänge schickt die Versicherung einen Brief mit einem Einmalkennwort. '
+    + 'Damit meldet man sich auf der Website an, aber nur für diesen einen Vorgang.',
+    { next: 'Im Personenverzeichnis stellt die Versicherung eine Einladung aus. Diesmal für Erika Beispiel, die kein Konto hat.' })
+  const erika = (await invitePerson.locator('option', { hasText: 'Erika Beispiel' }).first().textContent()) ?? ''
+  await invitePerson.selectOption({ label: erika })
+  await page.waitForTimeout(800)
+  const issue = page.getByRole('button', { name: pv('Ausstellen und Brief versenden') })
+  await issue.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+  await page.waitForTimeout(800)
+  await caption(page, 'Der Vorgang ist eine Beitragsrückerstattung, auf Sicherheitsniveau eins.')
+  await issue.click()
+  await page.waitForTimeout(1200)
+  await caption(page, 'Ausgestellt. Das Verzeichnis speichert nur einen Hash. Das Einmalkennwort im Klartext steht allein im Brief.')
+  await open(page, '/briefkasten/', () => page.getByRole('cell', { name: 'Erika Beispiel' }).first().waitFor(),
+    'Der Briefkasten der Demo, hier landet alles, was an Testpersonen verschickt wird. Ganz oben der Brief an Erika mit dem Einmalkennwort.')
+  const inviteTile = () => page.getByRole('button', { name: ui('Mit Einmalkennwort anmelden') })
+  const webLogout = () => page.getByRole('button', { name: ui('Abmelden'), exact: true }).first()
+  await open(page, '/web/', () => webLogout().or(inviteTile()).first().waitFor(), '', true)
+  reveal()
+  // Max's web session from task 3 may have run out by now; then the portal is already signed out.
+  if (await webLogout().isVisible()) {
+    await caption(page, 'Auf der Website ist noch Max angemeldet. Wir melden ihn ab, denn eine Keycloak-Sitzung gehört genau einer Person.')
+    await leave(page, () => webLogout().click(), () => inviteTile().waitFor({ timeout: 30_000 }),
+      'Abgemeldet. Im Portal gibt es den Weg „Mit Einmalkennwort anmelden“.')
+  } else {
+    await caption(page, 'Das Kundenportal. Hier gibt es den Weg „Mit Einmalkennwort anmelden“.')
+  }
+  const inviteMethod = () => page.getByRole('button', { name: ui('Einmalkennwort'), exact: true })
+  await leave(page, () => inviteTile().click(), () => inviteMethod().waitFor({ timeout: 20_000 }),
+    'Keycloak bietet wieder die Verfahren an. Wir wählen „Einmalkennwort“.')
+  await leave(page, () => inviteMethod().click(), () => page.getByLabel(kc('Einmalkennwort'), { exact: true }).waitFor({ timeout: 20_000 }),
+    'Versichertennummer und Einmalkennwort aus dem Brief. Die Demo übernimmt beides aus der offenen Einladung.')
+  const processHeading = ui('Vorgang: {vorgang}').replace('{vorgang}', 'Beitragsrückerstattung')
+  await leave(page, () => page.getByRole('button', { name: kc('Anmelden'), exact: true }).click(),
+    () => page.getByRole('heading', { name: processHeading }).waitFor({ timeout: 30_000 }),
+    'Angemeldet als Erika Beispiel, auf Sicherheitsniveau eins, aber nur für diesen Vorgang. Ein Konto gibt es dafür nicht.')
+  await page.getByRole('button', { name: ui('Vorgang beenden') }).evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+  await page.waitForTimeout(800)
+  await caption(page, 'Ist der Vorgang erledigt, meldet das Fachsystem ihn beim Personenverzeichnis ab. Hier spielt die Seite das Fachsystem.')
+  await leave(page, () => page.getByRole('button', { name: ui('Vorgang beenden') }).click(), () => inviteTile().waitFor({ timeout: 30_000 }),
+    'Der Vorgang ist abgeschlossen. Das Einmalkennwort gilt nicht mehr, und Keycloak hat die Sitzung beendet.')
 
   // 6) Admin: Journey-Trace
   await open(page, '/admin/#journeytrace', async () => {
@@ -443,43 +513,47 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   }, '', true)
   await card(page, 'Aufgabe 6', 'Im Journey-Trace den Verlauf ansehen',
     '<p class="center">Jeder Schritt, vom Orchestrator selbst mitgeschrieben.</p>',
-    { next: 'Der Journey-Trace. Jeder Schritt mit Zeitpunkt, Kanal und Ergebnis. Alles schreibt der Orchestrator selbst mit. Die App meldet nichts.' })
-  await page.waitForTimeout(9000)
+    'Aufgabe sechs: der Journey-Trace auf der Admin-Seite.',
+    { next: 'Hier steht jeder Schritt jeder Journey: Zeitpunkt, Zustand, Tool und die Entscheidung des Orchestrators. '
+      + 'Die App meldet nichts davon, der Orchestrator schreibt alles selbst mit.' })
+  await page.waitForTimeout(2000)
 
   // 7) Konto löschen
   await open(page, '/app/', () => phone(page).getByRole('button', { name: ui('Mit diesem Gerät anmelden') }).waitFor(), '', true)
   await card(page, 'Aufgabe 7', 'Das Konto löschen',
-    '<p class="center">Unter „Sicherheit“. Danach kennt das Gerät kein Konto mehr.</p>')
+    '<p class="center">Unter „Sicherheit“. Danach kennt das Gerät kein Konto mehr.</p>',
+    'Aufgabe sieben: Wir löschen das Konto wieder. Das geht in der App unter „Sicherheit“.')
   await loginLoop()
   await phone(page).getByRole('button', { name: uiPattern('Sicherheit') }).first().click()
   await page.waitForTimeout(600)
-  await caption(page, 'Unter „Sicherheit“ steht ganz unten „Konto löschen“.', 3500)
+  await caption(page, 'Unter „Sicherheit“ steht ganz unten „Konto löschen“.')
   await phone(page).getByRole('button', { name: uiPattern('Konto löschen') }).first().click()
   await page.waitForTimeout(600)
-  await caption(page, 'Die App fragt nach und verlangt noch einmal einen Nachweis.', 4000)
+  await caption(page, 'Die App fragt nach und verlangt noch einmal einen Nachweis.')
   const gone = () => phone(page).getByRole('button', { name: ui('Neues Konto anlegen') })
-  const deleteCaptions = new Map<string, [string, number]>([
-    [biometrics, ['Nachweis erbracht. Das Konto wird gelöscht.', 3000]],
-  ])
+  const deleteCaptions = new Map<string, string>([[biometrics, 'Nachweis erbracht. Das Konto wird gelöscht.']])
   for (let step = 0; step < 14 && !(await gone().isVisible()); step++) {
     await page.waitForTimeout(800)
     await clickFirst(page, [ui('Konto löschen'), biometrics, ui('Weiter')], deleteCaptions)
   }
   await expect(gone()).toBeVisible({ timeout: 15_000 })
-  await caption(page, 'Das Konto ist gelöscht. Das Gerät kennt kein Konto mehr. Die Demo beginnt von vorn.', 7000)
+  await caption(page, 'Das Konto ist gelöscht. Das Gerät kennt kein Konto mehr, und die Demo beginnt von vorn.', 3000)
 
   // Ausklang: Verweis auf das Erklärvideo
   hide()
   await card(page, 'Wie es weitergeht', 'Hintergründe im Erklärvideo',
     '<p class="center">Konzepte, Sicherheitsniveaus, Architektur, Stand, Vor- und Nachteile:<br>'
     + '<b>docs/media/erklaervideo.mp4</b></p>',
-    { holdMs: TITLE_MS, stay: true })
+    'Das waren die Aufgaben der Demo. Warum das System so gebaut ist, welche Sicherheitsniveaus es gibt und wie weit es ist, zeigt das Erklärvideo.',
+    { stay: true })
   // The last frame is the card; nothing after it is kept.
+  stopNarrator()
 
   mkdirSync(test.info().outputDir, { recursive: true })
   writeFileSync(join(test.info().outputDir, 'timing.json'), JSON.stringify({
     calibration,
     app: { created: appCreatedAt, from: appStartedAt, to: appEndedAt },
     hidden: hidden.map((h) => ({ from: h.from, to: h.to ?? null })),
+    narration: spokenAt,
   }, null, 2))
 })

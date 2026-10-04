@@ -9,7 +9,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
-import { SCENES, CHAPTERS, SPOKEN } from './scenes.mjs'
+import { SCENES, CHAPTERS } from './scenes.mjs'
+import { spoken } from './spoken.mjs'
 
 const DIR = new URL('.', import.meta.url).pathname
 const OUT = join(DIR, 'out'); const TTS = join(OUT, 'tts'); const FR = join(OUT, 'frames'); const SC = join(OUT, 'scenes')
@@ -23,7 +24,6 @@ for (const d of [OUT, TTS, FR, SC]) mkdirSync(d, { recursive: true })
 
 const sh = (cmd, a) => execFileSync(cmd, a, { stdio: ['ignore', 'pipe', 'pipe'] }).toString()
 const dur = (f) => parseFloat(sh('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f]))
-const spoken = (t) => SPOKEN.reduce((s, [re, r]) => s.replace(re, r), t)
 
 // 1) Narration (Piper, voice thorsten) and timeline: each beat starts after the previous one plus GAP
 const PY = join(OUT, 'piper-venv/bin/python'), MODEL = join(OUT, 'voices/de_DE-thorsten-high.onnx')

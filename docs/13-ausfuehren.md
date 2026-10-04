@@ -322,8 +322,14 @@ Teil der Seite einblendet. Das Skript `frontend/record-demo-video.sh` setzt den 
 leeren Volumes neu auf und nimmt auf (`playwright.video.config.ts`, 1600×1100, verlangsamt).
 `frontend/cut-demo-video.mjs` schneidet danach mit ffmpeg: Der Rekorder markiert jeden Seitenwechsel
 als verborgen, und diese Stellen fallen heraus, sodass nie eine halb geladene Seite zu sehen ist.
-Der App-Tab erscheint als Bild im Bild über der Website-Anmeldung. Es braucht Podman, den
-Playwright-Browser und ffmpeg und dauert etwa 15 Minuten. Das Skript baut die Images nicht neu
+Der App-Tab erscheint als Bild im Bild über der Website-Anmeldung.
+
+Jeder Untertitel wird auch gesprochen, mit derselben Stimme wie im Erklärvideo
+(`frontend/e2e-video/narrator.ts`): Der Rekorder lässt die Seite stehen, solange der Satz dauert, und
+schreibt mit, wann er fiel; das Schnittskript legt die Sätze dorthin, wo sie nach dem Schnitt liegen.
+Die Stimme richtet das Skript beim ersten Lauf selbst ein (`frontend/erklaervideo/setup.sh`), die Sätze
+liegen danach im Cache unter `frontend/erklaervideo/out/narration`. Es braucht Podman, den
+Playwright-Browser, ffmpeg und `uv` und dauert etwa 15 Minuten. Das Skript baut die Images nicht neu
 (`podman compose up -d` ohne `--build`); nach einer Codeänderung vorher bauen:
 
 ```bash
@@ -332,7 +338,10 @@ cd frontend && ./record-demo-video.sh
 ```
 
 Die Texte der Karten und Untertitel stehen im Spec. Sie beschreiben nur, was die Doku belegt
-([01-ueberblick.md](01-ueberblick.md), [ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
+([01-ueberblick.md](01-ueberblick.md), [ADR-38](adr/ADR-038-keycloak-liest-konten.md),
+[ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Die Aufgaben folgen der
+Willkommensseite; ändert sich eine, ändern sich beide. Wie die Stimme Fachbegriffe ausspricht, regelt
+`frontend/erklaervideo/spoken.mjs` für beide Videos.
 
 ### Das Erklärvideo
 

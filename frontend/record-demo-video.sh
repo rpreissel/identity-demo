@@ -1,13 +1,16 @@
 #!/usr/bin/env sh
 # Records docs/media/demo.mp4: resets the compose stack to empty volumes, plays the demo tasks in a
-# browser (e2e-video/demo.record.ts, captions included) and cuts it (cut-demo-video.mjs): page loads out,
-# the app tab as picture-in-picture.
-# Needs podman compose, the Playwright browsers (npx playwright install chromium) and ffmpeg.
+# browser (e2e-video/demo.record.ts, captions and narration included) and cuts it (cut-demo-video.mjs):
+# page loads out, the app tab as picture-in-picture, the narration under the video.
+# Needs podman compose, the Playwright browsers (npx playwright install chromium), ffmpeg and uv (the voice).
 set -eu
 cd "$(dirname "$0")"
 ROOT=$(cd .. && pwd)
 OUT="$ROOT/docs/media/demo.mp4"
 RESULT=test-results-video/demo.record.ts-Aufgaben-der-Demo-im-Browser
+
+echo "Stimme bereitstellen ..."
+./erklaervideo/setup.sh
 
 echo "Stack neu aufsetzen (leere Volumes) ..."
 (cd "$ROOT" && podman compose down -v)
