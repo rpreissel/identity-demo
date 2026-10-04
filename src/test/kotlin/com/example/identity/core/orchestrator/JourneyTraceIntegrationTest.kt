@@ -47,6 +47,8 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
                 then("the journey's start, the tool's activation and its completion are recorded") {
                     entries.any { it["eventType"] == "Started" } shouldBe true
                     entries.any { it["eventType"] == "TOOL_ACTIVATED" && it.detail()["toolId"] == "ident-fsc" } shouldBe true
+                    // In the version the client declared (ADR-51).
+                    entries.any { it["eventType"] == "TOOL_ACTIVATED" && it.detail()["tool"] == "ident-fsc@1" } shouldBe true
                     entries.any { it["eventType"] == "Completed" && it.detail()["toolId"] == "ident-fsc" } shouldBe true
                 }
                 then("journeyState is a first-class field (like eventType), not tucked into detail") {

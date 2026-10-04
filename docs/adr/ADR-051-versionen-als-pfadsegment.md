@@ -38,8 +38,9 @@ Segment im Pfad, und jede Version zählt für sich.
 - **Das Audit nennt die Fassung.** Wo ein Protokoll ein Tool nennt, steht es in derselben
   Schreibweise wie in `availableTools`: `change_log` bei `IDENTIFIED` und `METHOD_ADDED`
   (`tool`), `sign_in_log` bei `SIGNED_IN` und `STEPPED_UP` (`tools`) und bei `SIGN_IN_FAILED`
-  (`tool`), `journey_trace` bei Abschluss und Abbruch eines Tools. `detailsVersion` dieser
-  Ereignisse ist dafür auf 2 gestiegen (ADR-39). Die Herkunft eines Werts (`claim_source`) bleibt
+  (`tool`), `journey_trace` bei Aktivierung, Fehlversuch, Zurück, Abschluss und Abbruch eines Tools
+  (die Trace-Ansicht zeigt es in der Spalte „Tool“). `detailsVersion` der betroffenen Ereignisse
+  in `change_log` und `sign_in_log` ist dafür auf 2 gestiegen (ADR-39). Die Herkunft eines Werts (`claim_source`) bleibt
   die reine toolId: Sie ist fachlich das Tool, und ihre Vergleiche rechnen damit.
 - **Vertragsdateien je Fassung:** `api/contract/tools/<toolId>/v<N>.yaml`, eingefroren unter
   `api/published/tools/<toolId>/v<N>.yaml`. `checkPublishedApiCompatibility` meldet einen Bruch an
