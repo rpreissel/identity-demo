@@ -54,11 +54,15 @@ class KeycloakHttp(
     fun restClient(baseUrl: String): RestClient =
         RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory).observationRegistry(observationRegistry).build()
 
-    /** GETs [url] as text, with this setup's certificate policy - for the JWKS fetch. */
-    fun getText(url: String): String =
+    /** GETs [url] as text, with this setup's certificate policy - for the JWKS fetch. Longer than [maxBytes] is an error. */
+    fun getText(url: String, maxBytes: Int): String =
         RestClient.builder().requestFactory(requestFactory).observationRegistry(observationRegistry).build()
-            .get().uri(url).retrieve().body<String>()
-            ?: error("Empty response from $url")
+            .get().uri(url).exchange { _, response ->
+                check(response.statusCode.is2xxSuccessful) { "$url answered ${response.statusCode}" }
+                val bytes = response.body.readNBytes(maxBytes + 1)
+                check(bytes.size <= maxBytes) { "$url answered more than $maxBytes bytes" }
+                String(bytes, Charsets.UTF_8)
+            }
 
     /** Per-connection trust exception - never touches the JVM defaults. */
     private class TrustingRequestFactory(private val socketFactory: SSLSocketFactory) : SimpleClientHttpRequestFactory() {

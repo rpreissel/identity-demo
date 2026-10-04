@@ -53,6 +53,23 @@ class OrchestratorExceptionHandlerTest : BehaviorSpec({
             }
         }
 
+        `when`("a proof and an assertion carry line breaks in alg and kid, and both are rejected") {
+            val appender = ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>().apply { start() }
+            val logger = org.slf4j.LoggerFactory.getLogger(OrchestratorExceptionHandler::class.java) as ch.qos.logback.classic.Logger
+            logger.addAppender(appender)
+            try {
+                handler.handleDpopValidation(DpopValidationException(DpopFailure.UNSUPPORTED_ALGORITHM, "alg x\n2026-10-03 ERROR forged"))
+                handler.handlePeerAuthValidation(PeerAuthValidationException("Unknown peer-auth key id: x\r\n2026-10-03 ERROR forged"))
+            } finally {
+                logger.detachAppender(appender)
+            }
+
+            then("the log gets them without control characters, so no line can be forged (I-19)") {
+                appender.list.size shouldBe 2
+                appender.list.forEach { it.formattedMessage shouldNotContain "\n"; it.formattedMessage shouldNotContain "\r" }
+            }
+        }
+
         `when`("a domain binding conflict is handled") {
             val response = handler.handleIdentityConflict(IdentityConflictException(Text("Person binding cannot change")))
 

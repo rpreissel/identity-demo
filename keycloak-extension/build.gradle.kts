@@ -2,6 +2,7 @@ plugins {
     java
     alias(libs.plugins.shadow)
     alias(libs.plugins.openapi.generator)
+    alias(libs.plugins.cyclonedx)
 }
 
 group = "com.example.identity"

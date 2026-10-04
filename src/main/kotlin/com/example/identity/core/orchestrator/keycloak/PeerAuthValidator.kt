@@ -33,8 +33,8 @@ class PeerAuthValidator(
     @Value("\${keycloak.peer-auth.max-age-seconds:30}") private val maxAssertionAgeSeconds: Long
 ) {
 
-    fun validate(assertion: String?, httpMethod: String, httpUrl: String): PeerAuthAssertion {
-        val (kid, claims) = verified(assertion, httpMethod, httpUrl)
+    fun validate(assertion: String?, httpMethod: String, httpUrl: String, bodySha256: String): PeerAuthAssertion {
+        val (kid, claims) = verified(assertion, httpMethod, httpUrl, bodySha256)
         val issuedAt = claims.issueTime.toInstant()
         val replayKeyExpiresAt = issuedAt.plus(maxAssertionAgeSeconds + maxClockSkewSeconds, ChronoUnit.SECONDS)
         try {
@@ -51,10 +51,10 @@ class PeerAuthValidator(
      * Everything [validate] checks except single use, so it may run more than once per request.
      * The response signing filter uses it: the orchestrator signs answers to Keycloak only.
      */
-    fun verify(assertion: String?, httpMethod: String, httpUrl: String): JWTClaimsSet =
-        verified(assertion, httpMethod, httpUrl).second
+    fun verify(assertion: String?, httpMethod: String, httpUrl: String, bodySha256: String): JWTClaimsSet =
+        verified(assertion, httpMethod, httpUrl, bodySha256).second
 
-    private fun verified(assertion: String?, httpMethod: String, httpUrl: String): Pair<String, JWTClaimsSet> {
+    private fun verified(assertion: String?, httpMethod: String, httpUrl: String, bodySha256: String): Pair<String, JWTClaimsSet> {
         if (assertion.isNullOrBlank()) {
             throw PeerAuthValidationException("Missing peer-auth assertion")
         }
@@ -85,6 +85,10 @@ class PeerAuthValidator(
         val jwk = jwkSource.find(kid) ?: throw PeerAuthValidationException("Unknown peer-auth key id: $kid")
         validateSignature(signedJWT, jwk)
         validateClaims(claims, httpMethod, httpUrl)
+        // Method and address alone would let a body or query be swapped under a valid assertion (ADR-7).
+        if (claims.getStringClaim("body_sha256") != bodySha256) {
+            throw PeerAuthValidationException("Peer-auth body_sha256 does not match the request body")
+        }
 
         if (claims.getStringClaim("channel_binding").isNullOrBlank()) {
             throw PeerAuthValidationException("Peer-auth assertion is missing channel_binding")
@@ -122,7 +126,7 @@ class PeerAuthValidator(
             throw PeerAuthValidationException("Peer-auth htm claim does not match request method")
         }
         val htu = claims.getStringClaim("htu")
-        if (htu == null || !htuMatches(htu, httpUrl)) {
+        if (htu == null || !htuMatches(htu, httpUrl) || rawQueryOf(htu) != rawQueryOf(httpUrl)) {
             throw PeerAuthValidationException("Peer-auth htu claim does not match request URL")
         }
 
@@ -137,6 +141,9 @@ class PeerAuthValidator(
         }
     }
 
+
+    /** The query exactly as sent; an empty one is none. Unlike DPoP (RFC 9449), the query counts here. */
+    private fun rawQueryOf(url: String): String = url.substringBefore('#').substringAfter('?', "")
 
     companion object {
         private val SUPPORTED_ALGORITHMS: Set<JWSAlgorithm> = setOf(JWSAlgorithm.ES256)

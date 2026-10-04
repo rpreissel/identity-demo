@@ -5,19 +5,23 @@ import com.example.identity.core.orchestrator.session.RateLimitScope
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.AuthenticationException
+import org.springframework.security.web.authentication.www.BasicAuthenticationConverter
 import org.springframework.web.filter.OncePerRequestFilter
 import java.time.Duration
-import java.util.Base64
 
 /**
- * The operator login is guessed like any other password: after [MAX_FAILURES] wrong passwords for
- * one user name, requests under that name are refused with 429 for [LOCKOUT] - the right password
- * included, so the lock reveals nothing about it. Keyed by the name as sent, known or not; a
- * success resets the counter. Runs before HTTP Basic in the admin chain only.
+ * The operator login is guessed like any other password: after [MAX_ATTEMPTS] attempts within
+ * [WINDOW] for one user name, requests under that name are refused with 429 - the right password
+ * included, so the lock reveals nothing about it. Each attempt is booked in one `UPDATE` before the
+ * password is checked, so parallel guesses cannot pass the lock together (docs/07-betrieb.md #4). The
+ * user name is read by Spring's own parser, the one that authenticates, so no spelling of the
+ * header escapes the count. A success resets the counter. Runs before HTTP Basic in the admin chain.
  */
 class AdminLoginRateLimitFilter(private val counter: RateLimitCounter) : OncePerRequestFilter() {
+
+    private val basicParser = BasicAuthenticationConverter()
 
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
         val user = basicUserOf(request)
@@ -25,26 +29,24 @@ class AdminLoginRateLimitFilter(private val counter: RateLimitCounter) : OncePer
             chain.doFilter(request, response)
             return
         }
-        if (counter.isLocked(RateLimitScope.ADMIN, user)) {
+        if (!counter.recordWindowedAttempt(RateLimitScope.ADMIN, user, MAX_ATTEMPTS, WINDOW)) {
             response.status = HttpStatus.TOO_MANY_REQUESTS.value()
             return
         }
         chain.doFilter(request, response)
-        when (response.status) {
-            HttpStatus.UNAUTHORIZED.value() -> counter.recordFailure(RateLimitScope.ADMIN, user, MAX_FAILURES, LOCKOUT)
-            in 200..399 -> counter.reset(RateLimitScope.ADMIN, user)
-        }
+        if (response.status in 200..399) counter.reset(RateLimitScope.ADMIN, user)
     }
 
-    private fun basicUserOf(request: HttpServletRequest): String? {
-        val header = request.getHeader(HttpHeaders.AUTHORIZATION) ?: return null
-        if (!header.startsWith("Basic ", ignoreCase = true)) return null
-        val decoded = runCatching { String(Base64.getDecoder().decode(header.substring(6).trim())) }.getOrNull() ?: return null
-        return decoded.substringBefore(':').trim().lowercase().take(128).ifEmpty { null }
-    }
+    /** Null when Spring finds no Basic credentials; a header it cannot parse never authenticates either. */
+    private fun basicUserOf(request: HttpServletRequest): String? =
+        try {
+            basicParser.convert(request)?.name?.lowercase()?.take(128)?.ifEmpty { null }
+        } catch (_: AuthenticationException) {
+            null
+        }
 
     private companion object {
-        const val MAX_FAILURES = 5
-        val LOCKOUT: Duration = Duration.ofMinutes(15)
+        const val MAX_ATTEMPTS = 5
+        val WINDOW: Duration = Duration.ofMinutes(15)
     }
 }

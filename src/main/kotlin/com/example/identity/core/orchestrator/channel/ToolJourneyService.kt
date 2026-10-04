@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.core.orchestrator.journey.JourneyEndedException
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
@@ -55,7 +56,7 @@ import org.springframework.web.util.UriComponentsBuilder
  * may run when is not decided here but by [JourneyService].
  */
 @Service
-@Transactional(noRollbackFor = [ChannelSessionEndedException::class]) // ADR-43, see JourneyService
+@Transactional(noRollbackFor = [ChannelSessionEndedException::class, JourneyEndedException::class]) // ADR-43, I-2, see JourneyService
 class ToolJourneyService(
     private val sessionManagementService: SessionManagementService,
     private val channelAccessGuard: ChannelAccessGuard,
@@ -154,6 +155,11 @@ class ToolJourneyService(
     override fun loadCurrent(toolSessionId: ToolSessionId, bindingKeyRef: String, toolId: String): Context {
         val context = loadContext(toolSessionId, bindingKeyRef, toolId)
         requireCurrentTool(context)
+        // On every attempt, not only at activation: a session opened before the lock must not keep
+        // guessing, nor sign in with the right password while the account is locked (07-betrieb #4).
+        if (toolRegistry.toolOf(ToolId(toolId)).role == ToolRole.KNOWN_ACCOUNT_AUTH) {
+            context.accountId?.let { accountLockoutService.assertNotLocked(it) }
+        }
         return context
     }
 

@@ -41,6 +41,13 @@ MIRROR_HOST="$(value MIRROR_HOST)"
 MIRROR_URL="$(value MIRROR_URL)"
 DISTRIBUTION_URL="$(value DISTRIBUTION_URL)"
 
+# Die Werte landen als Code im Init-Skript, das jeder Gradle-Build ausfuehrt: nur Hostname und
+# https-Adressen ohne Zeichen, die einen Kotlin-String oder die Ersetzung beenden koennten.
+[[ "$MIRROR_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "✘ MIRROR_HOST ist kein Hostname." >&2; exit 1; }
+for url in "$MIRROR_URL" "${DISTRIBUTION_URL//\\:/:}"; do
+  [[ "$url" =~ ^https://[A-Za-z0-9.:/_~%+=-]+$ ]] || { echo "✘ Unerwartete Adresse in $ENC: nur https ohne Sonderzeichen." >&2; exit 1; }
+done
+
 # Backslashes verdoppeln: sed nimmt sie in der Ersetzung sonst weg, die Properties brauchen "\:".
 sed -i.bak "s|^distributionUrl=.*|distributionUrl=${DISTRIBUTION_URL//\\/\\\\}|" "$PROPS"
 rm -f "$PROPS.bak"

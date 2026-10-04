@@ -308,7 +308,7 @@ Die Nummern der Kapitel geben keine Leserichtung vor. Je nach Rolle:
   wird.
 - **Sicherheitsexperte**: [16-lesepfad-sicherheit.md](16-lesepfad-sicherheit.md), von außen nach
   innen mit Links auf den Code, danach [invarianten.md](invarianten.md) und die
-  [vierte Bewertung](review-2026-09-29-vierte-bewertung.md).
+  [offenen Befunde](offene-befunde.md).
 - **KI-Agent**: [00-agent-quickstart.md](00-agent-quickstart.md), danach nur die Kapitel, die die
   Aufgabe braucht.
 

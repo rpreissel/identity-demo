@@ -192,9 +192,11 @@ public final class OrchestratorNotes {
     // V1__realm.kc.kts. Needed here because it must be readable before the owning subflow runs.
     private static final Map<Integer, String> LOA_TO_ACR = Map.of(1, "loa1", 2, "loa2");
 
+    private static final Map<String, Integer> ACR_RANK = Map.of("loa1", 1, "loa2", 2, "loa3", 3);
+
     /** The level's rank, {@code -1} for an unknown or missing one, so it never satisfies a floor. */
     static int acrRank(String acr) {
-        return LOA_TO_ACR.entrySet().stream().filter(e -> e.getValue().equals(acr)).mapToInt(Map.Entry::getKey).findFirst().orElse(-1);
+        return acr == null ? -1 : ACR_RANK.getOrDefault(acr, -1);
     }
 
     // Every level the orchestrator can certify. More than the browser flow can ask for

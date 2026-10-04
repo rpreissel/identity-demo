@@ -60,9 +60,8 @@ Namensänderung, Journey-Trace und das Löschen des Kontos.
 - **[ADR](adr/)**: Eine Datei je Entscheidung, mit erwogener Alternative und ihrem Preis.
 - **[Lesepfad Sicherheit](16-lesepfad-sicherheit.md)**: Wo greife ich an? Ein Weg durch Doku und
   Code mit Links auf die kritischen Stellen, die Härtungen und die offenen Flanken.
-- **[Vierte Bewertung (2026-09-29)](review-2026-09-29-vierte-bewertung.md)**: Wo steht der Kern
-  heute? Befunde zu Sicherheit, Keycloak, Architektur und Codequalität mit Gegenmaßnahmen und
-  Reihenfolge.
+- **[Offene Befunde](offene-befunde.md)**: Was ist aus den Bewertungen noch offen? Befunde zu
+  Sicherheit, Keycloak, Architektur und Codequalität, Restrisiken und offene Entscheidungen.
 
 ## Nachschlagen
 

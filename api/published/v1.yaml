@@ -755,7 +755,6 @@ components:
           example:
           - otp
           items:
-            example: '["otp"]'
             type: string
           type: array
         tenantId:
@@ -807,7 +806,6 @@ components:
           - biometric
           - password
           items:
-            example: '["biometric","password"]'
             type: string
           type: array
       required:
@@ -837,11 +835,6 @@ components:
       required:
       - methods
       type: object
-    MgmtPasswordSetRequest:
-      properties:
-        newPassword:
-          type: string
-      type: object
     MgmtPasswordVerifyRequest:
       properties:
         password:
@@ -865,7 +858,6 @@ components:
           example:
           - tan
           items:
-            example: '["tan"]'
             type: string
           type: array
       required:
@@ -975,7 +967,6 @@ components:
           - auth-password
           - auth-device
           items:
-            example: '["auth-password","auth-device"]'
             type: string
           type: array
         title:
@@ -1058,9 +1049,13 @@ components:
       type: object
     ToolCatalogEntry:
       properties:
+        hint:
+          $ref: '#/components/schemas/TextRef'
         method:
           example: sms
           type: string
+        name:
+          $ref: '#/components/schemas/TextRef'
         role:
           example: KNOWN_ACCOUNT_AUTH
           type: string
@@ -1068,7 +1063,9 @@ components:
           example: auth-sms
           type: string
       required:
+      - hint
       - method
+      - name
       - role
       - toolId
       type: object
@@ -3147,18 +3144,27 @@ paths:
           content:
             application/json:
               example:
-              - method: fsc
+              - hint:
+                  key: persoenliche-daten-und-freischaltcode-8a654d
+                method: fsc
+                name:
+                  key: freischaltcode-1b35c2
                 role: IDENTIFICATION
                 toolId: ident-fsc
-              - method: sms
+              - hint:
+                  key: code-an-eine-telefonnummer-a62b47
+                method: sms
+                name:
+                  key: sms-40b601
                 role: ENROLLMENT
                 toolId: enroll-sms
-              - method: sms
+              - hint:
+                  key: code-an-die-hinterlegte-telefonnummer-76a2d3
+                method: sms
+                name:
+                  key: sms-40b601
                 role: KNOWN_ACCOUNT_AUTH
                 toolId: auth-sms
-              - method: sms
-                role: ACCOUNT_LOOKUP_AUTH
-                toolId: auth-sms-lookup
               schema:
                 items:
                   $ref: '#/components/schemas/ToolCatalogEntry'
@@ -3173,41 +3179,6 @@ paths:
       summary: List every registered tool
       tags:
       - Tool catalog
-  /orchestrator/api/v1/tools/enroll-password/mgmt/{accountId}:
-    post:
-      operationId: set
-      parameters:
-      - in: path
-        name: accountId
-        required: true
-        schema:
-          format: int64
-          type: integer
-      - in: header
-        name: Authorization
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MgmtPasswordSetRequest'
-        required: true
-      responses:
-        '204':
-          description: Replaced - no body.
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - kc-peer-auth: [
-          ]
-      summary: Replace the account's password credential with a new one
-      tags:
-      - Keycloak password management
   /orchestrator/api/v1/tools/{toolSessionId}/approve-qr:
     get:
       operationId: read_21
@@ -5315,8 +5286,6 @@ tags:
   name: Tool catalog
 - description: Identification at Nect (eID, passport or EUDI wallet) via jump page and return
   name: 'Tool: Nect'
-- description: Stateless password verify/set for Keycloak's native credential
-  name: Keycloak password management
 - description: 'QR-Pairing: Freigabe eines Web-Kanals aus einer bereits angemeldeten App'
   name: 'Tool: QR-Login'
 - description: KVNR/name/givenNames/birthDate/FSC identification
@@ -5331,6 +5300,8 @@ tags:
   name: 'Tool: eID'
 - description: 'Passwort: Einrichtung als Wissensfaktor, Anmeldung und Login ohne DPoP'
   name: 'Tool: Passwort'
+- description: Stateless password verification for Keycloak's native credential
+  name: Keycloak password management
 - description: The App facade's own endpoints - channel creation and the device-link read
   name: App channels
 - description: Oeffentlicher Schluessel, gegen den Keycloak die Antworten des Orchestrators prueft

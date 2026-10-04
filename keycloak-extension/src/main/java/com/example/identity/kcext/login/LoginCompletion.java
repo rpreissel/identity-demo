@@ -47,6 +47,10 @@ final class LoginCompletion {
         if (knownSubject != null && !Objects.equals(knownSubject, response.authDataSubject())) {
             return new Refuse(response.authDataSubject() + " instead of " + knownSubject);
         }
+        // A misconfigured target would compare -1 with -1 and let every answer pass.
+        if (certifiedAcr != null && OrchestratorNotes.acrRank(certifiedAcr) < 0) {
+            return new Refuse("unknown target level " + certifiedAcr);
+        }
         if (certifiedAcr != null && OrchestratorNotes.acrRank(response.authDataAcr()) < OrchestratorNotes.acrRank(certifiedAcr)) {
             return new Refuse("level " + response.authDataAcr() + " below " + certifiedAcr);
         }

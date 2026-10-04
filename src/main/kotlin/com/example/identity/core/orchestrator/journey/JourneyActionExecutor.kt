@@ -36,6 +36,7 @@ import com.example.identity.contract.tool_api.directory.IdentityResolver
 import com.example.identity.contract.tool_api.directory.Resolution
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
+import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.claims.assertClaimsCovered
@@ -120,7 +121,7 @@ class JourneyActionExecutor(
             // With an account in hand this always goes through [accountOf], never a bespoke
             // comparison. That gate refuses a silent merge of two credentialed accounts.
             is Resolution.ExistingAccount ->
-                if (inHand == null) resolution.accountId else accountOf(journey, channel, inHand, resolution.accountId)
+                if (inHand == null) resolution.accountId else accountOf(journey, channel, inHand, resolution.accountId, action.outcome.claims)
             // Nothing resolved, the attested subject has no account yet: IdentificationTarget decides.
             Resolution.Unresolved -> {
                 val inHandAccount = inHand?.let { accountService.findAccount(it) }
@@ -142,9 +143,10 @@ class JourneyActionExecutor(
     }
 
     /** Which account a confirmed identification writes to, see [AccountMerge] (ADR-20). */
-    private fun accountOf(journey: AuthJourney, channel: ChannelSession, inHand: AccountId, resolved: AccountId?): AccountId {
+    private fun accountOf(journey: AuthJourney, channel: ChannelSession, inHand: AccountId, resolved: AccountId?, claims: List<Claim>): AccountId {
         if (resolved == null || resolved == inHand) return inHand
-        return when (val merge = AccountMerge.decide(loadAccount(inHand)) { loadAccount(resolved) }) {
+        val fits = { identityResolver.attestationFits(inHand, claims.toSet()) }
+        return when (val merge = AccountMerge.decide(loadAccount(inHand), fits) { loadAccount(resolved) }) {
             is AccountMerge.MoveInto -> {
                 rebindAccount(journey, channel, from = merge.from, to = merge.into)
                 accountService.absorbDisposableAccount(merge.from, merge.into)
@@ -219,7 +221,7 @@ class JourneyActionExecutor(
         checkAttestationMove(evidence, accountService.findAccount(resolved)?.personId) { personId ->
             identityResolver.attestedIdentityMatches(inHand, personId)
         }
-        return accountOf(journey, channel, inHand, resolved)
+        return accountOf(journey, channel, inHand, resolved, action.outcome.claims)
     }
 
     private fun performAdoptCredential(journey: AuthJourney, channel: ChannelSession, action: Action.AdoptCredential): Map<String, Any?>? {

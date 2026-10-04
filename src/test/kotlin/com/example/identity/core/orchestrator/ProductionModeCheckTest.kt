@@ -1,5 +1,8 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.core.orchestrator.session.KeycloakTokenProvider
+import com.example.identity.core.orchestrator.session.MockTokenProvider
+import com.example.identity.core.orchestrator.session.TokenProvider
 import com.example.identity.core.account.ChangeLogLookupKeys
 import com.example.identity.demo.demo_mode.DemoMode
 import io.kotest.assertions.throwables.shouldNotThrowAny
@@ -31,13 +34,15 @@ class ProductionModeCheckTest : BehaviorSpec({
         usesDemoLookupSecret: Boolean = false,
         orphanedLookupKeyIds: Set<String> = emptySet(),
         apiDocs: Boolean = false,
+        tokenProvider: TokenProvider = mockk<KeycloakTokenProvider>(),
     ) = ProductionModeCheck(
         DemoMode(demoMode),
         mockk<ChangeLogLookupKeys> {
             every { usesDemoSecret() } returns usesDemoLookupSecret
             every { orphanedKeyIds() } returns orphanedLookupKeyIds
         },
-        adminPassword, h2Console, otpPepper, lookupSecret, trustSelfSigned, keycloakBaseUrl, orchestratorBaseUrlForKeycloak, apiDocs
+        adminPassword, h2Console, otpPepper, lookupSecret, trustSelfSigned, keycloakBaseUrl, orchestratorBaseUrlForKeycloak, apiDocs,
+        tokenProvider
     )
 
     given("demo mode with every demo default in place") {
@@ -91,6 +96,30 @@ class ProductionModeCheckTest : BehaviorSpec({
 
             then("it is refused anyway - the login needs a hash") {
                 violations.single() shouldContain "Klartext"
+            }
+        }
+    }
+
+    given("an admin password marked {noop}") {
+        val check = check(demoMode = true, adminPassword = "{noop}correct-horse-battery-staple")
+
+        `when`("listing the violations") {
+            val violations = check.violations()
+
+            then("it is refused - {noop} is plain text in disguise") {
+                violations.single() shouldContain "{noop}"
+            }
+        }
+    }
+
+    given("demo mode off without the keycloak profile") {
+        val check = check(demoMode = true, tokenProvider = mockk<MockTokenProvider>())
+
+        `when`("listing the violations") {
+            val violations = check.violations()
+
+            then("it is refused - the App channel would hand out unsigned mock tokens") {
+                violations.single() shouldContain "Profil keycloak"
             }
         }
     }

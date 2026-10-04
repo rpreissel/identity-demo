@@ -158,7 +158,7 @@ Podman Compose liest von sich aus nur `.env`, nicht `.env.local`; eine andere Da
 Die Variablen:
 
 - **`KEYCLOAK_BASE_IMAGE`**: Laufzeit-Image von Keycloak in `keycloak-extension/Dockerfile`.
-  Standard `quay.io/keycloak/keycloak:26.6.4`.
+  Standard `quay.io/keycloak/keycloak:26.7.5`.
 - **`ORCHESTRATOR_RUNTIME_BASE_IMAGE`**: Laufzeit-Image in `Dockerfile`. Standard
   `registry.access.redhat.com/ubi9/openjdk-21-runtime:latest`.
 - **`KEYCLOAK_SETUP_VARIANT`**: welche Keycloak-Umgebung aufgebaut und angesprochen wird (Abschnitt
@@ -182,7 +182,7 @@ ORCHESTRATOR_RUNTIME_BASE_IMAGE=registry.redhat.io/ubi9/openjdk-21-runtime:lates
 
 Dafür braucht es vorher `podman login registry.redhat.io` mit gültigen Zugangsdaten; anonym
 scheitert der Download mit 403. `rhbk/keycloak-rhel9` zählt seine Versionen unabhängig vom
-Community-Keycloak (derzeit etwa 26.2/26.4 statt 26.6.4).
+Community-Keycloak (derzeit etwa 26.2/26.4 statt 26.7.5).
 
 Für den Gradle-Lauf auf dem Rechner gelten diese Variablen nicht; dort hilft bei Bedarf `./init-local`
 (Abschnitt 1).

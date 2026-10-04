@@ -67,6 +67,7 @@ class PeerAuthRoundTripTest : BehaviorSpec() {
             .claim("htm", htm)
             .claim("htu", htu)
             .claim("channel_binding", channelBinding)
+            .claim("body_sha256", PeerAuthBodyCaptureFilter.sha256(ByteArray(0)))
             .jwtID(jti)
             .issueTime(Date.from(TEST_NOW))
             .build()
@@ -98,7 +99,7 @@ class PeerAuthRoundTripTest : BehaviorSpec() {
                 val jti = UUID.randomUUID().toString()
                 val token = sign(TEST_PEER_AUTH_KEY, "PATCH", htu, binding, jti)
 
-                val assertion = validator.validate(token, "PATCH", htu)
+                val assertion = validator.validate(token, "PATCH", htu, PeerAuthBodyCaptureFilter.sha256(ByteArray(0)))
 
                 then("it verifies via the real sign -> fetch -> verify round trip and hands on what was signed") {
                     assertion.channelBinding shouldBe binding

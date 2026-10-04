@@ -998,8 +998,6 @@ paths:
       security:
       - dpop: [
           ]
-      - kc-peer-auth: [
-          ]
       summary: Create a new App channel
       tags:
       - App channels
@@ -1024,8 +1022,6 @@ paths:
           description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
       security:
       - dpop: [
-          ]
-      - kc-peer-auth: [
           ]
       summary: Whether this device is already linked to an account
       tags:

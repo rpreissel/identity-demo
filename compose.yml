@@ -25,7 +25,7 @@ services:
         # KEYCLOAK_BASE_IMAGE beim oeffentlichen Image bleibt. Das Dockerfile baut nichts mehr mit
         # Gradle selbst (siehe `./gradlew stagePodmanArtifacts`), deshalb gibt es hier keine
         # Builder-/Gradle-Distribution-Args mehr.
-        KEYCLOAK_BASE_IMAGE: ${KEYCLOAK_BASE_IMAGE:-quay.io/keycloak/keycloak:26.6.4}
+        KEYCLOAK_BASE_IMAGE: ${KEYCLOAK_BASE_IMAGE:-quay.io/keycloak/keycloak:26.7.5}
     environment:
       # HTTP komplett aus - nur noch HTTPS, auch fuer Server-zu-Server-Aufrufe (Orchestrator ->
       # Keycloak Admin-API/JWKS). Cookie-basierte SSO-Wiedererkennung (auth-cookie,
@@ -55,6 +55,8 @@ services:
       # ueberschreibbar. Nur interne Adressen: wer unter dieser URL antwortet, kann Tokens dieses
       # Clients ausstellen.
       KC_SPI_ORCHESTRATOR_BOOTSTRAP_MIGRATION_CLIENT_JWKS_URL: ${ORCHESTRATOR_CLIENT_JWKS_URL:-http://host.containers.internal:8080/orchestrator/api/v1/kc/client-jwks/orchestrator-migration/.well-known/jwks.json}
+      # http zu einem anderen Rechner verlangt diese ausdrueckliche Freigabe; nur fuer die lokale Demo.
+      KC_SPI_ORCHESTRATOR_BOOTSTRAP_MIGRATION_CLIENT_JWKS_URL_ALLOW_HTTP: "true"
       # Hier stehen bewusst KEINE ORCHESTRATOR_*-Variablen mehr: wohin die Extension den
       # Orchestrator anspricht, welchen iss/aud sie signiert und welchen Origin der QR-Deep-Link
       # traegt, sind Config-Properties der "orchestrator"-Komponente IM REALM

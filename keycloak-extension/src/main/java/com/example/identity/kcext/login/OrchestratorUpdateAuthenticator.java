@@ -1,11 +1,11 @@
 package com.example.identity.kcext.login;
 
+import com.example.identity.kcext.client.KcTexts;
 import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.federation.KcSubject;
 import com.example.identity.kcext.webtool.WebToolAvailability;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowContext;
-import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.Authenticator;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
@@ -62,7 +62,9 @@ public class OrchestratorUpdateAuthenticator implements Authenticator {
             context.success();
         } catch (Exception e) {
             LOG.error("OrchestratorUpdateAuthenticator failed", e);
-            context.failure(AuthenticationFlowError.INTERNAL_ERROR);
+            // Not failure(): Keycloak would book it on the user as a failed attempt.
+            context.challenge(WebFormRenderer.errorForm(context.getSession(), context.form(), context.getAuthenticationSession(),
+                    KcTexts.of(context.getSession(), "Anmeldung derzeit nicht möglich.")));
         }
     }
 

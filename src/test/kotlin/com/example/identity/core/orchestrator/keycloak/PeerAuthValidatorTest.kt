@@ -39,6 +39,8 @@ class PeerAuthValidatorTest : BehaviorSpec({
     val method = "PATCH"
     val url = "https://example.test/orchestrator/api/v1/kc/channels/abc"
     val kid = "test-key"
+    /** The hash of an empty body, what a GET carries. */
+    val EMPTY_BODY = PeerAuthBodyCaptureFilter.sha256(ByteArray(0))
 
     fun validator(jwkSource: KeycloakJwkSource) = PeerAuthValidator(
         jwkSource = jwkSource,
@@ -64,6 +66,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         iss: String? = issuer,
         aud: String? = audience,
         channelBinding: String? = "channel-binding-1",
+        bodySha256: String? = EMPTY_BODY,
         subject: String? = null,
         type: JOSEObjectType? = PeerAuthValidator.ASSERTION_TYPE,
         keyId: String? = kid,
@@ -79,6 +82,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         iss?.let { claimsBuilder.issuer(it) }
         aud?.let { claimsBuilder.audience(it) }
         channelBinding?.let { claimsBuilder.claim("channel_binding", it) }
+        bodySha256?.let { claimsBuilder.claim("body_sha256", it) }
         subject?.let { claimsBuilder.subject(it) }
         return SignedJWT(header, claimsBuilder.build()).apply { sign(signer) }.serialize()
     }
@@ -93,7 +97,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         val validator = validator(jwkSourceReturning(key))
 
         `when`("validating it") {
-            val result = validator.validate(assertion, method, url)
+            val result = validator.validate(assertion, method, url, EMPTY_BODY)
 
             then("it reports the assertion's jti, channel binding and subject") {
                 result.jti shouldBe jti
@@ -103,7 +107,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         }
 
         `when`("validating that same assertion a second time") {
-            val result = runCatching { validator.validate(assertion, method, url) }
+            val result = runCatching { validator.validate(assertion, method, url, EMPTY_BODY) }
 
             then("it is rejected as a replay") {
                 rejection(result).message shouldContain "replay"
@@ -113,7 +117,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
 
     given("no assertion at all") {
         `when`("validating a null assertion") {
-            val result = runCatching { validator(mockk()).validate(null, method, url) }
+            val result = runCatching { validator(mockk()).validate(null, method, url, EMPTY_BODY) }
 
             then("it is rejected as missing") {
                 rejection(result).message shouldContain "Missing"
@@ -121,7 +125,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         }
 
         `when`("validating a blank assertion") {
-            val result = runCatching { validator(mockk()).validate("   ", method, url) }
+            val result = runCatching { validator(mockk()).validate("   ", method, url, EMPTY_BODY) }
 
             then("it is rejected as missing") {
                 rejection(result).message shouldContain "Missing"
@@ -131,7 +135,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
 
     given("an assertion that isn't a well-formed JWT at all") {
         `when`("validating it") {
-            val result = runCatching { validator(mockk()).validate("not-a-jwt", method, url) }
+            val result = runCatching { validator(mockk()).validate("not-a-jwt", method, url, EMPTY_BODY) }
 
             then("it is rejected as an invalid format") {
                 rejection(result).message shouldContain "format"
@@ -145,7 +149,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         `when`("it is RSA-signed with the right typ") {
             val rsaKey = RSAKeyGenerator(2048).keyID(kid).generate()
             val assertion = signAssertion(key, algorithm = JWSAlgorithm.RS256, signer = RSASSASigner(rsaKey.toPrivateKey()))
-            val result = runCatching { validator(mockk()).validate(assertion, method, url) }
+            val result = runCatching { validator(mockk()).validate(assertion, method, url, EMPTY_BODY) }
 
             then("it is refused before any JWKS lookup - the extension signs with ES256 only") {
                 rejection(result).message shouldContain "algorithm"
@@ -153,7 +157,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         }
 
         `when`("it carries no typ=peer-auth+jwt") {
-            val result = runCatching { validator(mockk()).validate(signAssertion(key, type = null), method, url) }
+            val result = runCatching { validator(mockk()).validate(signAssertion(key, type = null), method, url, EMPTY_BODY) }
 
             then("it is refused before any JWKS lookup - a JWT of another purpose is never read as one") {
                 rejection(result).message shouldContain "typ"
@@ -161,7 +165,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         }
 
         `when`("it carries no kid") {
-            val result = runCatching { validator(mockk()).validate(signAssertion(key, keyId = null), method, url) }
+            val result = runCatching { validator(mockk()).validate(signAssertion(key, keyId = null), method, url, EMPTY_BODY) }
 
             then("it is refused before any JWKS lookup") {
                 rejection(result).message shouldContain "kid"
@@ -174,7 +178,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         val jwkSource = mockk<KeycloakJwkSource> { every { find(kid) } returns null }
 
         `when`("validating it") {
-            val result = runCatching { validator(jwkSource).validate(assertion, method, url) }
+            val result = runCatching { validator(jwkSource).validate(assertion, method, url, EMPTY_BODY) }
 
             then("it is rejected for the unknown key") {
                 rejection(result).message shouldContain "Unknown peer-auth key id"
@@ -187,7 +191,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         val otherKey = ECKeyGenerator(Curve.P_256).generate()
 
         `when`("validating it") {
-            val result = runCatching { validator(jwkSourceReturning(otherKey)).validate(assertion, method, url) }
+            val result = runCatching { validator(jwkSourceReturning(otherKey)).validate(assertion, method, url, EMPTY_BODY) }
 
             then("the signature check fails") {
                 rejection(result).message shouldContain "signature"
@@ -199,7 +203,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         val key = ECKeyGenerator(Curve.P_256).generate()
 
         `when`("it names another issuer") {
-            val result = runCatching { validator(jwkSourceReturning(key)).validate(signAssertion(key, iss = "someone-else"), method, url) }
+            val result = runCatching { validator(jwkSourceReturning(key)).validate(signAssertion(key, iss = "someone-else"), method, url, EMPTY_BODY) }
 
             then("it is rejected for the issuer") {
                 rejection(result).message shouldContain "issuer"
@@ -207,7 +211,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         }
 
         `when`("it names another audience") {
-            val result = runCatching { validator(jwkSourceReturning(key)).validate(signAssertion(key, aud = "some-other-service"), method, url) }
+            val result = runCatching { validator(jwkSourceReturning(key)).validate(signAssertion(key, aud = "some-other-service"), method, url, EMPTY_BODY) }
 
             then("it is rejected for the audience") {
                 rejection(result).message shouldContain "audience"
@@ -215,7 +219,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         }
 
         `when`("it names a different HTTP method than the request") {
-            val result = runCatching { validator(jwkSourceReturning(key)).validate(signAssertion(key, htm = "GET"), method, url) }
+            val result = runCatching { validator(jwkSourceReturning(key)).validate(signAssertion(key, htm = "GET"), method, url, EMPTY_BODY) }
 
             then("it is rejected for the method") {
                 rejection(result).message shouldContain "htm"
@@ -224,7 +228,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
 
         `when`("it names a different URL than the request") {
             val assertion = signAssertion(key, htu = "https://example.test/somewhere-else")
-            val result = runCatching { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
+            val result = runCatching { validator(jwkSourceReturning(key)).validate(assertion, method, url, EMPTY_BODY) }
 
             then("it is rejected for the URL") {
                 rejection(result).message shouldContain "htu"
@@ -232,7 +236,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         }
 
         `when`("it carries no channel_binding") {
-            val result = runCatching { validator(jwkSourceReturning(key)).validate(signAssertion(key, channelBinding = null), method, url) }
+            val result = runCatching { validator(jwkSourceReturning(key)).validate(signAssertion(key, channelBinding = null), method, url, EMPTY_BODY) }
 
             then("it is rejected for the missing binding") {
                 rejection(result).message shouldContain "channel_binding"
@@ -240,7 +244,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
         }
 
         `when`("it carries no jti") {
-            val result = runCatching { validator(jwkSourceReturning(key)).validate(signAssertion(key, jti = null), method, url) }
+            val result = runCatching { validator(jwkSourceReturning(key)).validate(signAssertion(key, jti = null), method, url, EMPTY_BODY) }
 
             then("it is rejected for the missing jti") {
                 rejection(result).message shouldContain "jti"
@@ -253,7 +257,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
 
         `when`("it was issued beyond the clock-skew allowance in the future") {
             val assertion = signAssertion(key, issuedAt = Date.from(TEST_NOW.plusSeconds(600)))
-            val result = runCatching { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
+            val result = runCatching { validator(jwkSourceReturning(key)).validate(assertion, method, url, EMPTY_BODY) }
 
             then("it is rejected as issued in the future") {
                 rejection(result).message shouldContain "future"
@@ -262,7 +266,7 @@ class PeerAuthValidatorTest : BehaviorSpec({
 
         `when`("it is older than maxAssertionAgeSeconds") {
             val assertion = signAssertion(key, issuedAt = Date.from(TEST_NOW.minusSeconds(600)))
-            val result = runCatching { validator(jwkSourceReturning(key)).validate(assertion, method, url) }
+            val result = runCatching { validator(jwkSourceReturning(key)).validate(assertion, method, url, EMPTY_BODY) }
 
             then("it is rejected as too old") {
                 rejection(result).message shouldContain "too old"
@@ -276,10 +280,58 @@ class PeerAuthValidatorTest : BehaviorSpec({
         val assertion = signAssertion(key, issuedAt = Date.from(issuedAt))
 
         `when`("validating it") {
-            val result = validator(jwkSourceReturning(key)).validate(assertion, method, url)
+            val result = validator(jwkSourceReturning(key)).validate(assertion, method, url, EMPTY_BODY)
 
             then("it is accepted with its own iat") {
                 result.issuedAt shouldBe issuedAt
+            }
+        }
+    }
+
+    given("a valid assertion for one body") {
+        val key = ECKeyGenerator(Curve.P_256).generate()
+        val assertion = signAssertion(key, bodySha256 = PeerAuthBodyCaptureFilter.sha256("""{"subject":null}""".toByteArray()))
+
+        `when`("it arrives with another body") {
+            val swapped = PeerAuthBodyCaptureFilter.sha256("""{"subject":{"type":"account","id":"42"}}""".toByteArray())
+            val result = runCatching { validator(jwkSourceReturning(key)).validate(assertion, method, url, swapped) }
+
+            then("it is rejected - nobody on the hop swaps a body under a valid assertion") {
+                rejection(result).message shouldContain "body_sha256"
+            }
+        }
+    }
+
+    given("a valid assertion for one query") {
+        val key = ECKeyGenerator(Curve.P_256).generate()
+        val assertion = signAssertion(key, htu = "$url?kcSessionId=mine")
+
+        `when`("it arrives with another query") {
+            val result = runCatching { validator(jwkSourceReturning(key)).validate(assertion, method, "$url?kcSessionId=yours", EMPTY_BODY) }
+
+            then("it is rejected - the query belongs to the signed address") {
+                rejection(result).message shouldContain "htu"
+            }
+        }
+
+        `when`("it arrives without a query") {
+            val result = runCatching { validator(jwkSourceReturning(key)).validate(assertion, method, url, EMPTY_BODY) }
+
+            then("it is rejected as well") {
+                rejection(result).message shouldContain "htu"
+            }
+        }
+    }
+
+    given("an assertion without body_sha256") {
+        val key = ECKeyGenerator(Curve.P_256).generate()
+        val assertion = signAssertion(key, bodySha256 = null)
+
+        `when`("validating it") {
+            val result = runCatching { validator(jwkSourceReturning(key)).validate(assertion, method, url, EMPTY_BODY) }
+
+            then("it is rejected - a missing binding is no binding") {
+                rejection(result).message shouldContain "body_sha256"
             }
         }
     }

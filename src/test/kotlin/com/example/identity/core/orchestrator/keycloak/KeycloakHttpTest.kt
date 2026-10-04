@@ -44,7 +44,7 @@ class KeycloakHttpTest : BehaviorSpec({
 
         `when`("the orchestrator calls it") {
             val started = System.nanoTime()
-            val result = runCatching { http.getText("http://localhost:${silent.localPort}/jwks") }
+            val result = runCatching { http.getText("http://localhost:${silent.localPort}/jwks", 65_536) }
             val waited = Duration.ofNanos(System.nanoTime() - started)
 
             then("the call gives up after the read timeout instead of holding on") {

@@ -77,9 +77,9 @@ Invarianten sind per Typ, Constraint oder Test erzwungen, nicht per Kommentar. B
 - **Prüfungen im Build:** Modulgrenzen, Architekturregeln, OpenAPI-Snapshot und
   Kompatibilität der veröffentlichten API, Tests, Lint, `npm audit`, CodeQL und Playwright laufen in
   der CI ([08-projektrahmen.md](08-projektrahmen.md), Abschnitt 7).
-- **Unabhängige Bewertung:** Die vierte Bewertung fand keinen hohen Befund; alle mittleren sind
-  bearbeitet ([review-2026-09-29-vierte-bewertung.md](review-2026-09-29-vierte-bewertung.md),
-  Abschnitte 1 und 8).
+- **Unabhängige Bewertung:** Drei Bewertungen und ein Sicherheitsaudit (2026-10-03, zwei hohe
+  Befunde). Alle hohen und mittleren Befunde sind bearbeitet; was offen ist, steht in
+  [offene-befunde.md](offene-befunde.md).
 
 ---
 
@@ -155,18 +155,17 @@ Die Liste ist nach Bereichen geordnet. Die Kennungen `DPoP-demo-…` sind Issues
 (`DPoP-demo-v033`, `DPoP-demo-z90h`); das Personenverzeichnis ist der wichtigste Vertrag, weil es
 außerhalb des Demomodus der einzige Weg zu einer Identifizierung ist.
 
-**Offene Befunde im Kern:** die niedrigen Befunde der dritten Bewertung (Epic `DPoP-demo-9ppv`), die
-übrigen der vierten (dort Abschnitt 4, Phasen R bis T; noch ohne Issue), die Lücke im Web-Kanal zu
-I-23 (`DPoP-demo-oe06`), der fehlende Fremdschlüssel zu I-14 (`DPoP-demo-hwc6`), das Lookup-Orakel
-(`DPoP-demo-36xz`) und der eigene Zähler für fehlgeschlagene QR-Suchen
-([07-betrieb.md](07-betrieb.md), Abschnitt 5).
+**Offene Befunde im Kern:** gesammelt in [offene-befunde.md](offene-befunde.md), dort auch die
+Restrisiken. Vor einer produktiven Passwortanmeldung per Lookup: die Konto- und Personensperre bucht
+einen Versuch vor der Prüfung statt danach ([07-betrieb.md](07-betrieb.md) Abschnitt 4,
+„Restrisiko: parallele Versuche“, `DPoP-demo-164n.29`).
 
 ---
 
 ## 6) Wie es weitergeht
 
-Ein Vorschlag für die Reihenfolge, abgeleitet aus ADR-35 und der
-[vierten Bewertung](review-2026-09-29-vierte-bewertung.md), Abschnitt 4. Er ist nicht entschieden.
+Ein Vorschlag für die Reihenfolge, abgeleitet aus ADR-35 und den
+[offenen Befunden](offene-befunde.md). Er ist nicht entschieden.
 
 Am wichtigsten sind die ersten beiden Schritte. Die Doku beschreibt ein Zielbild, das bisher im
 Projekt entstanden ist; bevor weiter gehärtet und angebunden wird, müssen die, die es fachlich und
@@ -182,8 +181,8 @@ technisch tragen sollen, es mit abgestimmt haben.
    [Tool-Architektur](03-tool-architektur.md), [Architekturentscheidungen](12-entscheidungen.md))?
    Welche Anforderungen fehlen noch, etwa an Schnittstellen zu Fachdiensten, Mandanten, Last oder
    Barrierefreiheit? Offene Konzepte stehen unter [Ideen](ideen/).
-3. **Den Kern abschließen.** Die offenen Befunde der vierten Bewertung nach deren Reihenfolge
-   (Phasen R bis T), die niedrigen Befunde der dritten und die offenen Invarianten. Der Kern bleibt
+3. **Den Kern abschließen.** Die [offenen Befunde](offene-befunde.md), zuerst Sicherheit und
+   Keycloak (Abschnitte 1 und 2), und die offenen Invarianten. Der Kern bleibt
    das Argument; er muss jeder genauen Prüfung standhalten.
 4. **Grundsatzentscheidungen treffen.** Schlüsselverwaltung (`DPoP-demo-61kp`),
    Verschlüsselung gespeicherter Daten (`DPoP-demo-bo1w`), Zieldatenbank (`DPoP-demo-pi55`) und ob

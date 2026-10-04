@@ -1,21 +1,13 @@
 package com.example.identity.tools.auth_password.api.v1
 
 import com.example.identity.contract.tool_api.ids.AccountId
-import com.example.identity.tools.auth_password.PASSWORD_EXISTS
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.BindingKey
-import com.example.identity.contract.tool_api.EnrollmentRef
-import com.example.identity.contract.tool_api.InvalidStateException
 import com.example.identity.contract.tool_api.KeycloakToolCalls
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolOutcome
-import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.tools.auth_password.PasswordModule
 import com.example.identity.tools.auth_password.AUTH_PASSWORD_TOOL_ID
-import com.example.identity.tools.auth_password.ENROLL_PASSWORD_TOOL_ID
-import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.contract.tool_api.claims.Claim
-import com.example.identity.tools.auth_password.PASSWORD_EXISTS_MARKER
 import com.example.identity.contract.tool_api.credentials.PasswordCredentialPort
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.envelope.API_V1
@@ -34,15 +26,15 @@ import org.springframework.web.bind.annotation.RestController
 
 data class MgmtPasswordVerifyRequest(val password: String? = null)
 data class MgmtPasswordVerifyResponse(val valid: Boolean)
-data class MgmtPasswordSetRequest(val newPassword: String? = null)
 
 /**
- * Keycloak's native password form, checked and replaced for an account it already knows, with no
- * channel and no journey (docs/05-api.md Abschnitt 3). The caller is Keycloak's peer-auth assertion
+ * Keycloak's native password form, checked for an account it already knows, with no channel and
+ * no journey (docs/05-api.md Abschnitt 3). Keycloak never changes a password: that runs through the
+ * orchestrator's method management, behind its level check. The caller is Keycloak's peer-auth assertion
  * for the path's account; the result is booked by the orchestrator ([KeycloakToolCalls]).
  */
 @RestController
-@Tag(name = "Keycloak password management", description = "Stateless password verify/set for Keycloak's native credential")
+@Tag(name = "Keycloak password management", description = "Stateless password verification for Keycloak's native credential")
 @SecurityRequirement(name = "kc-peer-auth")
 class MgmtPasswordController(
     private val keycloakToolCalls: KeycloakToolCalls,
@@ -75,34 +67,5 @@ class MgmtPasswordController(
             )
         }
         return ResponseEntity.ok(MgmtPasswordVerifyResponse(matches && !locked))
-    }
-
-    @PostMapping("$API_V1/tools/$ENROLL_PASSWORD_TOOL_ID/mgmt/{accountId}")
-    @Operation(
-        summary = "Replace the account's password credential with a new one",
-        responses = [ApiResponse(responseCode = "204", description = "Replaced - no body.")]
-    )
-    @Parameter(name = "Authorization", `in` = ParameterIn.HEADER, required = false, schema = Schema(type = "string"))
-    fun set(
-        @PathVariable accountId: AccountId,
-        @BindingKey(keycloakOnly = true) bindingKeyRef: String,
-        @RequestBody request: MgmtPasswordSetRequest,
-    ): ResponseEntity<Void> {
-        keycloakToolCalls.requireKeycloakFor(accountId, bindingKeyRef)
-        // Only replaces an existing password. Keycloak's admin reset must not give an account a new
-        // method; that is enroll-password's job behind the MANAGE check.
-        if (accountDirectory.activeEnrollment(accountId, PasswordModule.method) == null) {
-            throw InvalidStateException(Text("Für dieses Konto ist kein Passwort eingerichtet"))
-        }
-        val newPassword = requireNotNull(request.newPassword) { "newPassword is required" }
-        val enrollmentRef: EnrollmentRef = passwordCredentialPort.setNew(newPassword)
-        keycloakToolCalls.apply(
-            accountId, PasswordModule,
-            ToolOutcome.Completed.Enrolled(
-                enrollmentRef = enrollmentRef,
-                claims = listOf(Claim(PASSWORD_EXISTS, PASSWORD_EXISTS_MARKER, PasswordModule.source(ToolRole.ENROLLMENT))),
-            )
-        )
-        return ResponseEntity.noContent().build()
     }
 }

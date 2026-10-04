@@ -39,7 +39,7 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
     private fun typesOf(accountId: AccountId) = signInLog.of(accountId).map { it.signInType }
 
     private fun stubAssertion(binding: String) {
-        every { peerAuthValidator.validate(any(), any(), any()) } returns
+        every { peerAuthValidator.validate(any(), any(), any(), any()) } returns
             PeerAuthAssertion(jti = UUID.randomUUID().toString(), issuedAt = Instant.now(), channelBinding = binding, subject = null)
     }
 

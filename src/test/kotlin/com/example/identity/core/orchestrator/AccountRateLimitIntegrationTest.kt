@@ -30,6 +30,21 @@ class AccountRateLimitIntegrationTest : IntegrationTestSupport() {
     }
 
     init {
+        given("an account with a password, and three password sessions opened before any failure") {
+            `when`("five wrong passwords lock the account, then the right one goes to the third session") {
+                registerWithEmailAndPassword(password = "correct-horse-battery")
+                val (first, second, third) = List(3) { post("/orchestrator/api/v1/channels/${freshChannel()}/tools/auth-password").nextRaw()["toolSessionId"] as String }
+                repeat(3) { runCatching { patch("/orchestrator/api/v1/tools/$first/auth-password", """{"password":"wrong-password-123"}""") } }
+                repeat(2) { patch("/orchestrator/api/v1/tools/$second/auth-password", """{"password":"wrong-password-123"}""") }
+
+                val rightPassword = runCatching { patch("/orchestrator/api/v1/tools/$third/auth-password", """{"password":"correct-horse-battery"}""") }
+
+                then("the lock holds for a session opened before it, the right password included: 423") {
+                    shouldThrow<HttpClientErrorException> { rightPassword.getOrThrow() }.statusCode.value() shouldBe 423
+                }
+            }
+        }
+
         given("an account that requested three SMS codes within the window") {
             `when`("auth-sms is activated a fourth time, and then auth-password on the same channel") {
                 seedRegisteredAccount()

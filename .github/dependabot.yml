@@ -29,6 +29,37 @@ updates:
         patterns: ["*"]
         update-types: ["minor", "patch"]
 
+  # Login-Seiten (Keycloakify) und Doku-Website: eigene Lockfiles, eigene Meldungen.
+  - package-ecosystem: npm
+    directory: /keycloak-theme
+    schedule:
+      interval: weekly
+    groups:
+      keycloak-theme:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: npm
+    directory: /site
+    schedule:
+      interval: weekly
+    groups:
+      site:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Basis-Images von Orchestrator und Keycloak.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /keycloak-extension
+    schedule:
+      interval: weekly
+
+  # Mit SHA eingebundene Actions halten ihren Tag als Kommentar; Dependabot hebt beides.
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -1,12 +1,13 @@
 package com.example.identity.core.orchestrator.api.v1.keycloak
 
+import com.example.identity.core.orchestrator.keycloak.peerAuthBodySha256
+import com.example.identity.core.orchestrator.keycloak.peerAuthTarget
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.keycloak.KeycloakAccountView
 import com.example.identity.core.orchestrator.keycloak.KeycloakAccountViews
 import com.example.identity.core.orchestrator.keycloak.PeerAuthValidationException
 import com.example.identity.core.orchestrator.keycloak.PeerAuthValidator
 import com.example.identity.contract.tool_api.envelope.API_V1
-import com.example.identity.core.orchestrator.dpop.buildRequestUrl
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -66,7 +67,7 @@ class KeycloakAccountLookupController(
     private fun validatePeerAuth(authorization: String?, httpRequest: HttpServletRequest, expectedBinding: String) {
         val token = authorization?.trim()?.let { if (it.startsWith("Bearer ", ignoreCase = true)) it.substring(7).trim() else it }
             ?: throw PeerAuthValidationException("Missing Authorization header")
-        val assertion = peerAuthValidator.validate(token, httpRequest.method, buildRequestUrl(httpRequest))
+        val assertion = peerAuthValidator.validate(token, httpRequest.method, peerAuthTarget(httpRequest), peerAuthBodySha256(httpRequest))
         if (assertion.channelBinding != expectedBinding) {
             throw PeerAuthValidationException("Peer-auth channel_binding does not match this lookup")
         }

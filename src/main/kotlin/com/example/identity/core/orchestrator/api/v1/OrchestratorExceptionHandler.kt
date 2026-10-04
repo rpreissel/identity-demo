@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.api.v1
 
+import com.example.identity.core.orchestrator.journey.JourneyEndedException
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.dpop.DpopFailure
 import com.example.identity.core.orchestrator.dpop.DpopValidationException
@@ -33,7 +34,7 @@ class OrchestratorExceptionHandler {
      */
     @ExceptionHandler(DpopValidationException::class)
     fun handleDpopValidation(e: DpopValidationException): ResponseEntity<ErrorResponse> {
-        log.info("DPoP rejected: {}", e.message)
+        log.info("DPoP rejected: {}", OrchestratorException.loggable(e.message.orEmpty()))
         return respond(ErrorCode.UNAUTHORIZED, Text("Die Anfrage konnte nicht authentifiziert werden ({detail}).", "detail" to e.failure.name))
     }
 
@@ -43,7 +44,7 @@ class OrchestratorExceptionHandler {
      */
     @ExceptionHandler(PeerAuthValidationException::class)
     fun handlePeerAuthValidation(e: PeerAuthValidationException): ResponseEntity<ErrorResponse> {
-        log.info("Peer-auth rejected: {}", e.message)
+        log.info("Peer-auth rejected: {}", OrchestratorException.loggable(e.message.orEmpty()))
         return respond(ErrorCode.UNAUTHORIZED, Text("Die Anfrage konnte nicht authentifiziert werden."))
     }
 
@@ -52,6 +53,13 @@ class OrchestratorExceptionHandler {
     fun handleChannelSessionEnded(e: ChannelSessionEndedException): ResponseEntity<ErrorResponse> {
         log.info("{}", e.message)
         return respond(ErrorCode.PROCESS_GONE, Text("Die Anmeldung ist abgelaufen. Bitte melden Sie sich neu an."))
+    }
+
+    /** The journey ended as FAILED (I-2): 410, like any aborted process. */
+    @ExceptionHandler(JourneyEndedException::class)
+    fun handleJourneyEnded(e: JourneyEndedException): ResponseEntity<ErrorResponse> {
+        log.info("{}: {}", ErrorCode.PROCESS_ABORTED, e.message)
+        return respond(ErrorCode.PROCESS_ABORTED, e.text)
     }
 
     @ExceptionHandler(OrchestratorException::class)

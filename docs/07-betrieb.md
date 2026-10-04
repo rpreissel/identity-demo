@@ -409,6 +409,17 @@ werden nur durch einen Erfolg zurückgesetzt. Tools, die ihr Subjekt selbst aufl
 Identifizierung), lesen sie über den Port `Lockouts`; schreiben kann sie nur der Orchestrator, aus
 dem `Failed`-Ergebnis des Tools.
 
+**Restrisiko: parallele Versuche.** `ACCOUNT` und `PERSON` werden vor einem Versuch nur gelesen und
+erst nach dem Ergebnis gezählt. Versuche, die gleichzeitig über mehrere Kanäle eintreffen, kommen
+deshalb alle durch die Prüfung, bevor der fünfte Fehlversuch zählt; die Grenze von fünf je
+15 Minuten gilt dann nur ungefähr. Praktisch betrifft das das Raten von Passwörtern: Codes begrenzen
+Journey-Budget und Versandlimit, Freischaltcode und Einmalkennwort sind zu lang zum Raten. Ein
+Passwort ist durch `PasswordPolicy` und die Kosten von Argon2 geschützt. Bewusst so gelassen: Den
+Versuch vorab zu buchen änderte den Port `Lockouts` und brauchte ein Zurückbuchen für Zwischenschritte
+ohne Prüfung. Vor dem produktiven Einsatz einer Passwortanmeldung per Lookup gehört das gebucht
+([14](14-stand-und-weg-zur-produktion.md) Abschnitt 5), bis dahin begrenzt eine Ratenbegrenzung je
+Absender am Eingang (Proxy oder WAF) die Bursts (`DPoP-demo-164n.29`).
+
 Etwas anderes sind die **Mengenbegrenzungen** der Tool-Module: Sie begrenzen keinen Rateversuch, sondern den
 Versand. Die Module zählen über den Port `RateLimits` (`tool_api.ratelimit`) in ihrem eigenen
 Namensraum ([Tool-Architektur](03-tool-architektur.md) Abschnitt 4):

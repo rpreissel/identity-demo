@@ -23,7 +23,7 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
     }
 
     private fun stubAssertion(accountBinding: String) {
-        every { peerAuthValidator.validate(any(), any(), any()) } returns PeerAuthAssertion(
+        every { peerAuthValidator.validate(any(), any(), any(), any()) } returns PeerAuthAssertion(
             jti = UUID.randomUUID().toString(),
             issuedAt = Instant.now(),
             channelBinding = accountBinding,
@@ -65,33 +65,6 @@ class MgmtPasswordIntegrationTest : IntegrationTestSupport() {
 
                 then("the endpoint refuses it with 401, whatever account it names") {
                     shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.UNAUTHORIZED
-                }
-            }
-        }
-
-        given("an account with an enrolled password") {
-            `when`("mgmt-set is called with a new password") {
-                val email = registerWithEmailAndPassword(password = "correct-horse-battery")
-                val accountId = accountIdFor(email)
-                stubAssertion(accountBinding = accountId.toString())
-
-                mgmtPost("/orchestrator/api/v1/tools/enroll-password/mgmt/$accountId", """{"newPassword":"brand-new-secret"}""")
-
-                stubAssertion(accountBinding = accountId.toString())
-                val acceptsNew = mgmtPost(
-                    "/orchestrator/api/v1/tools/auth-password/mgmt/$accountId",
-                    """{"password":"brand-new-secret"}"""
-                )
-
-                stubAssertion(accountBinding = accountId.toString())
-                val rejectsOld = mgmtPost(
-                    "/orchestrator/api/v1/tools/auth-password/mgmt/$accountId",
-                    """{"password":"correct-horse-battery"}"""
-                )
-
-                then("a later mgmt-verify accepts the new password and rejects the old one") {
-                    acceptsNew.body!!["valid"] shouldBe true
-                    rejectsOld.body!!["valid"] shouldBe false
                 }
             }
         }

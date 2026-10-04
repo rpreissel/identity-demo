@@ -11,6 +11,14 @@ Löst die Spiegelung ab, die [ADR-9](ADR-009-profilabhaengiges-token-retrieval-a
 > Parameter und nur vom vertraulichen Client `orchestrator-app-token` an. Die Festlegung zum Public Key
 > unten ist entsprechend angepasst.
 
+> **Nachtrag 2026-10-03:** Keycloak prüft ein Passwort, ändert es aber nie. Keycloaks „Passwort
+> ändern“ fragte das alte Passwort nicht ab und hätte aus einer `loa1`-Sitzung den zweiten Faktor
+> für `loa2` beschafft; bei einer Ablehnung hätte Keycloak das Passwort lokal gespeichert. Die
+> Federation lehnt deshalb jede Änderung ab (`ReadOnlyException`), das Realm schaltet Keycloaks
+> eigene Required Actions ab (`V7__locked_down_defaults`), und ein Passwort ändert nur die
+> Verwaltung der Verfahren im Orchestrator. Damit entfällt auch „Passwort zurücksetzen“ in der
+> Admin-Konsole.
+
 **Entscheidung**: Die Konten des Orchestrators *sind* die Nutzer von Keycloak. Die Nutzer-Federation
 der Extension (`OrchestratorStorageProvider`) liest ein Konto bei Bedarf nach, ohne Import. Keycloak
 hält keine Kopie von Identität, E-Mail, Namen oder Stammdaten; nur was Keycloak für sich selbst

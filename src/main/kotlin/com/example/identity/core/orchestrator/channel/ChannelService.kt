@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.core.orchestrator.journey.JourneyEndedException
 import com.example.identity.contract.tool_api.InvalidInputException
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
@@ -44,7 +45,7 @@ import com.example.identity.core.orchestrator.session.forLog
  * this class decides which intent a request means and returns the response envelope.
  */
 @Service
-@Transactional(noRollbackFor = [ChannelSessionEndedException::class]) // ADR-43, see JourneyService
+@Transactional(noRollbackFor = [ChannelSessionEndedException::class, JourneyEndedException::class]) // ADR-43, I-2, see JourneyService
 class ChannelService(
     private val sessionManagementService: SessionManagementService,
     private val accountService: AccountService,

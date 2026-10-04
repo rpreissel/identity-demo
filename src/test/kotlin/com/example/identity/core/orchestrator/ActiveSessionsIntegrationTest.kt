@@ -156,7 +156,8 @@ class ActiveSessionsIntegrationTest : IntegrationTestSupport() {
                 }
                 then("the accounts, the send limits and the live sessions are gone") {
                     jdbcTemplate.queryForObject("select count(*) from account.account", Int::class.java) shouldBe 0
-                    jdbcTemplate.queryForObject("select count(*) from orchestrator.rate_limit", Int::class.java) shouldBe 0
+                    // The admin read after the reset books its own login attempt (AdminLoginRateLimitFilter).
+                    jdbcTemplate.queryForObject("select count(*) from orchestrator.rate_limit where scope <> 'ADMIN'", Int::class.java) shouldBe 0
                     activeSessions.report().channels.total shouldBe 0
                 }
                 then("the running registration is cancelled and its session ended") {

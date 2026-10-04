@@ -10,8 +10,8 @@ So ist das Dokument zu lesen:
   genannte Name (Klasse, Funktion).
 - **Härtungen** sind umgesetzt und, wo angegeben, per Test oder Invariante gesichert.
 - **Offene Flanken** tragen eine Schwere (mittel, niedrig, Hinweis), „bewusst“, wenn eine ADR sie
-  in Kauf nimmt, und das Issue (`bd show <id>`). Herkunft der Kürzel S-, K-, A-: die
-  [vierte Bewertung](review-2026-09-29-vierte-bewertung.md).
+  in Kauf nimmt, und das Issue (`bd show <id>`). Die Kürzel (S-, K-, A-, SA-) stammen aus den
+  Bewertungen; was davon offen ist, steht mit Herkunft in [offene-befunde.md](offene-befunde.md).
 - Die Gesamtliste aller offenen Flanken steht am Ende ([Abschnitt 15](#15-offene-flanken-auf-einen-blick)).
 
 Der Maßstab ist [ADR-35](adr/ADR-035-betriebsanspruch-backend-kern-produktionsreif.md): Der
@@ -31,8 +31,8 @@ und die Ausführungsumgebung haben einen geringeren Anspruch
    bis I-25, I-30 bis I-32.
 3. [14-stand-und-weg-zur-produktion.md](14-stand-und-weg-zur-produktion.md) Abschnitte 4 und 5:
    was Demo ist und was vor echten Personendaten fehlt.
-4. [review-2026-09-29-vierte-bewertung.md](review-2026-09-29-vierte-bewertung.md): die letzte
-   Sicherheitsbewertung mit Befunden und Stand der Umsetzung (Abschnitt 8).
+4. [offene-befunde.md](offene-befunde.md): alle noch offenen Befunde der Bewertungen, die
+   Restrisiken und die offenen Entscheidungen.
 
 ### Vertrauensgrenzen
 
@@ -62,10 +62,15 @@ Admin-Pfade; alles andere ist dort offen und wird in den Handlern geprüft.
   [`openChain`](../src/main/kotlin/com/example/identity/core/orchestrator/admin/AdminSecurityConfig.kt#L48)
   `permitAll` für den Rest; [`adminUsers`](../src/main/kotlin/com/example/identity/core/orchestrator/admin/AdminSecurityConfig.kt#L56).
 - [`AdminLoginRateLimitFilter`](../src/main/kotlin/com/example/identity/core/orchestrator/admin/AdminLoginRateLimitFilter.kt#L20):
-  fünf Fehlversuche je Benutzername sperren 15 Minuten, auch für das richtige Passwort.
+  fünf Versuche je Benutzername und 15 Minuten, danach `429`, auch für das richtige Passwort. Den
+  Namen liest Springs eigener Parser, jeder Versuch wird vor der Prüfung in einem `UPDATE` gebucht
+  (SA-6, `AdminIntegrationTest`).
+- [`RequestBodyLimitFilter`](../src/main/kotlin/com/example/identity/core/orchestrator/RequestBodyLimitFilter.kt):
+  höchstens 64 KB je Anfrage, bevor etwas den Body liest (SA-10, `RequestBodyLimitIntegrationTest`).
 - [`DpopBindingKeyResolver.bindingKeyOf`](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/DpopBindingKeyResolver.kt#L52):
   DPoP-Header → Thumbprint; sonst Peer-Auth-Assertion → `kc:<channel_binding>`;
-  `keycloakOnly` lehnt DPoP ab.
+  `keycloakOnly` lehnt DPoP ab, `dpopOnly` (App-Kanal anlegen, Geräteverknüpfung) eine Assertion
+  (SA-19, `DpopBindingKeyResolverTest`).
 - [`ToolContextResolver.resolveArgument`](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/ToolContextResolver.kt#L45):
   die `toolId` kommt aus dem Controller, nie vom Client.
 - [`ReadinessGateFilter`](../src/main/kotlin/com/example/identity/core/orchestrator/ReadinessGateFilter.kt#L16):
@@ -134,6 +139,8 @@ seines Schlüssels (`binding_key_ref`) bindet den Kanal; ein Proof gilt genau ei
   statt `save` (`DpopReplayProtectionDbTest`, nacheinander und gleichzeitig).
 - Ein Geräte-Credential darf nicht der DPoP-Schlüssel des Kanals sein
   ([`EnrollDeviceFlow`](../src/main/kotlin/com/example/identity/tools/auth_device/internal/enrolldevice/EnrollDeviceFlow.kt#L30)).
+- Der Thumbprint wird über den neu kodierten Schlüssel berechnet, nicht über die Schreibweise des
+  Clients: Ein Schlüssel hat genau einen Thumbprint (SA-18, `JwkThumbprintServiceTest`).
 
 **Offene Flanken:**
 
@@ -211,8 +218,10 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
 **Code im Orchestrator:**
 
 - [`PeerAuthValidator.validate`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/PeerAuthValidator.kt#L36):
-  `typ=peer-auth+jwt`, nur ES256, `kid` aus Keycloaks JWKS, `iss`, `aud`, `htm`, `htu`, `iat`,
-  `jti` mit Replay-Schutz, `channel_binding` Pflicht.
+  `typ=peer-auth+jwt`, nur ES256, `kid` aus Keycloaks JWKS, `iss`, `aud`, `htm`, `htu` samt Query,
+  `body_sha256`, `iat`, `jti` mit Replay-Schutz, `channel_binding` Pflicht. Den Body liest
+  [`PeerAuthBodyCaptureFilter`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/PeerAuthRequestBinding.kt)
+  einmal mit, bevor etwas ihn parst.
 - [`KeycloakJwkSource.find`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/KeycloakJwkSource.kt#L31):
   Größenlimit, Zeitlimits; ohne `jwks-uri` wird jede Assertion abgelehnt (fail-closed).
 - [`KeycloakChannelAccessGuard`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ChannelAccessGuard.kt#L72):
@@ -260,13 +269,28 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
   Auswertung (`OrchestratorResponseVerifierTest`, `PeerAuthRoundTripTest`).
 - Jeder Keycloak-Client des Orchestrators hat seinen eigenen Schlüssel (I-16); das Vertrauen in
   ein selbstsigniertes Zertifikat gilt nie JVM-weit (I-17, `KeycloakHttp`).
-- Orchestrator-Fehler zählen nicht als Fehlversuch für Keycloaks Brute-Force-Schutz (K-1,
-  erledigt; `ApiFailureTest`).
+- Orchestrator-Fehler zählen nicht als Fehlversuch für Keycloaks Brute-Force-Schutz, auch
+  Ausfälle und unsignierte Antworten nicht: Die Authenticatoren rufen nie `failure()` (K-1, SA-12;
+  `ApiFailureTest`, `NoBruteForceBookingTest`).
+- `LoginCompletion` kennt `loa3`, und ein unbekanntes Ziel-Niveau lässt nichts durch (SA-16,
+  `LoginCompletionTest`).
+- Das Realm schließt Keycloaks eigene Wege
+  ([`V7__locked_down_defaults`](../keycloak-migrations/src/main/resources/keycloak-migrations/V7__locked_down_defaults.kc.kts),
+  SA-2, SA-3, SA-7): nur die eigene Required Action, kein „Passwort ändern“ oder „Passwort
+  vergessen“; der Browser-Flow des Realms ist der des Orchestrators, Direct Grants lehnt ein eigener
+  Flow ab, `admin-cli` ohne Passwort-Grant, Account-Konsole aus, kein `offline_access` an den
+  Projekt-Clients (`LockedDownDefaultsMigrationTest`, gegen compose geprüft). Die Federation lehnt
+  jede Passwortänderung ab, statt sie Keycloak lokal speichern zu lassen
+  (`OrchestratorStorageProviderTest`, ADR-38 Nachtrag).
+- Der Bootstrap-Client mit `create-realm` holt seine `jwks-url` nur über https oder Loopback
+  (SA-20, `MigrationClientJwksUrlTest`).
 - Ein Nachweis über `loa1` altert nach 30 Minuten, auch über den Resume-Pfad (S-1, erledigt;
   I-32).
-- Zeitlimits 3 s/10 s beidseitig, JWKS mit Größenlimit.
-- Kein Signatur-Orakel: Eine gefälschte Assertion bekommt eine unsignierte Antwort
-  (`KeycloakResponseSigningIntegrationTest`).
+- Zeitlimits 3 s/10 s beidseitig; JWKS mit Größenlimit auch über `KeycloakHttp`, höchstens ein Abruf
+  je 30 s auch bei Fehlern, der letzte gute Satz bleibt (SA-17, `KeycloakJwkSourceBackoffTest`).
+  Antworten an die Erweiterung liest diese höchstens bis 1 MB.
+- Kein Signatur-Orakel: Eine gefälschte Assertion oder ein getauschter Body bekommt eine
+  unsignierte Antwort (`KeycloakResponseSigningFilterTest` mit echtem Validator).
 - Ein unbekanntes `targetAcr` ist `400`, bevor sich am Kanal etwas ändert, nie still `none`
   (`KeycloakChannelIntegrationTest`).
 - `availableTools` wird gegen den Katalog geschnitten
@@ -296,7 +320,7 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
   ([`AcrLevels.HIGHEST`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L146));
   Keycloak ist hier vertrauenswürdig.
 - **Umgebung** Keycloak ↔ Orchestrator läuft in compose über http (`DPoP-demo-ai4x`). Integrität
-  tragen die Signaturen, Vertraulichkeit nicht.
+  tragen die Signaturen in beide Richtungen, Body und Query eingeschlossen; Vertraulichkeit nicht.
 
 ---
 
@@ -349,6 +373,8 @@ I-32.
 - **Hinweis** Ein abgebrochener Step-up lässt den Kanal auf dem bisherigen Niveau angemeldet. Das
   ist richtig, schützt aber nur, wenn die anfragende Anwendung `acr` gegen ihre Anforderung prüft
   (`DPoP-demo-mea0`).
+- **Bewusst** Das `acr` im Token altert nicht; es beschreibt wie bei Keycloak die Anmeldung. Wer ein
+  frisches `loa2` braucht, fragt mit `acr_values` neu an oder prüft `auth_time` (04 §8, [offene Befunde](offene-befunde.md) Abschnitt 6).
 - **Offen (Entscheidung)** `loa3` im Web-Realm (`DPoP-demo-wzcm`); Aufwerten eines Verfahrens nach
   erneuter Identifizierung (`DPoP-demo-wyp3`).
 
@@ -389,7 +415,9 @@ Zustand anbietet, schreibt nur in den gerade aktiven Schritt, und ein Ergebnis z
 - Ein Angebot darf veralten, die Ausführung prüft aktuell
   ([04-orchestrierung.md](04-orchestrierung.md) Abschnitt 5).
 - Ein Ergebnis muss zur Rolle des Tools passen (`chargeRateLimits`, `applyOutcome`).
-- Nach drei Fehlversuchen ist die Journey `FAILED` und nimmt nichts mehr an (I-2). Damit hat
+- Nach drei Fehlversuchen ist die Journey `FAILED` und nimmt nichts mehr an (I-2). Das Ende wird
+  festgeschrieben, nicht mit der Antwort `410` zurückgerollt (`JourneyEndedException`, SA-1,
+  `JourneyFallbackChainIntegrationTest`). Damit hat
   jeder ausgegebene Code (TAN, E-Mail-Code, eID-PIN, Bestätigungscode) höchstens drei
   Rateversuche.
 
@@ -551,6 +579,10 @@ in seinem eigenen Namensraum. Jeder Zähler ist ein einziges `UPDATE`.
 **Härtungen:**
 
 - Lookup-Tools falten die Sperre in ihre gewöhnliche Ablehnung: Eine Sperre verrät kein Konto.
+- Bei bekanntem Konto prüft der Orchestrator die Sperre bei jedem Versuch, nicht nur beim Aktivieren:
+  Eine vorher geöffnete Sitzung rät nicht weiter und meldet auch mit dem richtigen Passwort nicht an
+  ([`ToolJourneyService.loadCurrent`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt),
+  SA-26, `AccountRateLimitIntegrationTest`).
 - Eine Kontolöschung setzt nur die Konto-Zähler zurück, nicht die der Person: Löschen ist kein
   Weg, ein Budget zu erneuern.
 - `RateLimitArchitectureTest`, `AttemptLockoutExpiryDbTest`, `AccountRateLimitIntegrationTest`.
@@ -559,6 +591,9 @@ in seinem eigenen Namensraum. Jeder Zähler ist ein einziges `UPDATE`.
 
 - **Niedrig** Ein erfolgreicher Vorgangszugang setzt den Personenzähler nicht zurück (A-5, kein
   Issue).
+- **Niedrig, bewusst** Die Kontosperre ist „prüfen, dann zählen“: Parallele Versuche über mehrere
+  Kanäle passieren die Prüfung, bevor der fünfte zählt. Restrisiko vor einer produktiven
+  Passwortanmeldung per Lookup ([07-betrieb.md](07-betrieb.md) Abschnitt 4, SA-27, `DPoP-demo-164n.29`).
 - **Niedrig** Fehlgeschlagene QR-Suchen haben keinen eigenen Zähler
   ([07-betrieb.md](07-betrieb.md) Abschnitt 5).
 
@@ -585,6 +620,8 @@ in seinem eigenen Namensraum. Jeder Zähler ist ein einziges `UPDATE`.
 - Kein Code und kein Empfänger im Log (I-19, `NoSecretsInLogIntegrationTest`); Wertobjekte
   melden abgelehnte Werte ohne Rohwert.
 - Kein `println`/`System.out` (ArchUnit).
+- Abgelehnte DPoP-Proofs und Peer-Auth-Assertions erreichen das Log ebenso gefiltert, auch `alg`
+  und `kid` aus dem Header (SA-11, `OrchestratorExceptionHandlerTest`).
 - Was ein Client in Pfad oder Query schickt (`intent`, `toolId`, `nativeToolId`), erreicht das Log
   nur ohne Steuer- und Zeilentrennzeichen und auf 200 Zeichen begrenzt
   ([`OrchestratorException.loggable`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/OrchestratorException.kt#L22),
@@ -648,6 +685,9 @@ exportierbar, liegen aber in den Daten des Browsers, nicht in Hardware.
 
 - **Offen (Entscheidung)** Aufbewahrungsfristen sind Richtwerte, mit Datenschutz festzulegen.
 - **Niedrig** Nect-Fälle werden nie geräumt (S-2).
+- **Hinweis** Arbeitsdaten einer Tool-Sitzung liegen unverschlüsselt in
+  `orchestrator.tool_session.data`, bei `ident-fsc` mit Personendaten. Der Abschluss leert sie; eine
+  nicht abgeschlossene Sitzung behält sie bis `tool-session.retention` (ADR-49, `DPoP-demo-bo1w`).
 
 ---
 
@@ -671,8 +711,18 @@ Start bricht ab, solange eine Demo-Voreinstellung übrig ist.
   https mit geprüftem Zertifikat, keine API-Beschreibung (`springdoc.api-docs.enabled`).
 - [`WithheldDemoDisclosure`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/DemoDisclosure.kt#L65):
   außerhalb des Demomodus gibt es keinen Baustein, der Demo-Werte in Antworten schreibt.
+  Eine gewollte Ausnahme ist der KOBIL-PIN: Er steht in `stepData`, nicht im Demo-Block, weil die
+  App ihn ans SDK weiterreicht (ADR-21, ADR-22); er kommt nur nach der Entsperrung auf dem
+  verknüpften Gerät.
 
-**Härtungen:** `ProductionModeCheckTest`, `DemoModeSwitchTest`.
+**Härtungen:**
+
+- `ProductionModeCheck` nimmt als Admin-Passwort nur echte Hashes (`{bcrypt}`, `{argon2}`,
+  `{scrypt}`, `{pbkdf2}`, kein `{noop}`) und startet nicht ohne das Profil `keycloak`, das sonst
+  unsignierte Mock-Tokens ausgäbe (SA-13, SA-15).
+- Auf OpenShift ist die H2-Konsole aus (SA-14,
+  [08-projektrahmen.md](08-projektrahmen.md), „H2-Konsole: nur beim Host-Start“).
+- `ProductionModeCheckTest`, `DemoModeSwitchTest`.
 
 **Offene Flanken:**
 
@@ -683,7 +733,8 @@ Start bricht ab, solange eine Demo-Voreinstellung übrig ist.
   (`DPoP-demo-9ppv.3`); Keycloak läuft mit `start-dev` (`DPoP-demo-9msv`); Admin-Geheimnis auf
   OpenShift (`DPoP-demo-x25a`).
 - **Betrieb** H2 statt PostgreSQL (`DPoP-demo-pi55`); Laufzeit-Image nicht gepinnt
-  (`DPoP-demo-9ppv.5`); Abhängigkeiten nicht gegen einen CVE-Feed geprüft (S-9).
+  (`DPoP-demo-9ppv.5`). Die Abhängigkeiten prüft die CI gegen OSV (Abschnitt 14); Keycloak selbst
+  nicht, seine Version steht im Versionskatalog und in den Image-Tags.
 
 ---
 
@@ -696,7 +747,9 @@ Start bricht ab, solange eine Demo-Voreinstellung übrig ist.
 - Architekturregeln: `ApiBoundaryArchitectureTest` (I-6), `RateLimitArchitectureTest` (I-25),
   `DemoModeSwitchTest`, `InvariantRegisterTest` (jede Invariante hat ihren Mechanismus).
 - `./gradlew :keycloak-extension:test`: `LoginCompletionTest`, `OrchestratorResponseVerifierTest`.
-- CI: CodeQL über alle drei Module, `npm audit`.
+- CI: CodeQL über alle drei Module, `npm audit`, OSV-Scanner über ein SBOM je ausgeliefertem
+  Artefakt (Orchestrator, Keycloak-Erweiterung; nur Laufzeit-Abhängigkeiten); Actions per SHA.
+- Gegen den compose-Stack: `npm run test:e2e:keycloak` (nicht in der CI).
 - Ausführen und eigene Angriffe: [13-ausfuehren.md](13-ausfuehren.md).
 
 ---
@@ -712,6 +765,7 @@ Start bricht ab, solange eine Demo-Voreinstellung übrig ist.
 | Lookup-Orakel über Demo-TAN und Versandlatenz | niedrig | 7 | `DPoP-demo-36xz` |
 | Nect-`retry` ohne Budget, Fälle ohne Aufbewahrung (S-2) | niedrig | 8, 12 | – |
 | Personenzähler nach erfolgreichem Vorgangszugang (A-5) | niedrig | 9 | – |
+| Kontosperre prüft vor, zählt nach dem Versuch (SA-27) | bewusst | 9 | `DPoP-demo-164n.29` |
 | CSP, Refresh-Token und `state` im Frontend | niedrig | 11 | `DPoP-demo-dm2j` |
 | Web-Kanal-Id aus der Tab-Id abgeleitet | Hinweis | 4 | `DPoP-demo-gxis` |
 | Peer-Auth-Fenster 300 s im Profil | Hinweis | 4 | `DPoP-demo-9ppv.13` |
