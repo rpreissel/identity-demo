@@ -4,7 +4,7 @@ import com.example.identity.contract.tool_api.FactorType
 import org.springframework.stereotype.Component
 
 /**
- * Fixed metadata per native Keycloak authenticator type (docs/05-api.md Abschnitt 3), the kc
+ * Fixed metadata per native Keycloak authenticator type (docs/05-api.md Abschnitt 3b), the kc
  * facade's mirror of `Tool`. Looked up by [nativeToolId], the stable config id, not the
  * per-proof `amrSourceId`. So an `AmrEntry` sends only the two ids; method, ceiling and factor
  * types come from here.

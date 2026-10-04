@@ -10,7 +10,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Shared rendering for {@code auth-qr}/{@code auth-qr-lookup} (docs/05-api.md, Peer-Login
+ * Shared rendering for {@code auth-qr}/{@code auth-qr-lookup} (docs/verfahren/qr.md, Peer-Login
  * bestätigen): {@code waitForApp} shows QR and pairing code until the app decides; {@code enterCode}
  * takes the confirmation code the app shows, and only then is this browser logged in. While waiting,
  * the page asks {@code statusUrl} in the background and submits only once something changed (ADR-45).
@@ -39,7 +39,7 @@ abstract class QrWaitRendererFactory extends AbstractWebToolRendererFactory {
         String pairingCode = pairingCodeNode.asText();
 
         // /app/ (not /?...) so the link lands directly in the App-Kanal's own app instead of the
-        // Willkommen page (docs/10-frontend.md #1); intent=confirm_peer_login is the same wire
+        // Willkommen page (docs/10-frontend.md #6); intent=confirm_peer_login is the same wire
         // vocabulary AuthIntent.fromRequest already accepts on POST /app/channels, just carried via
         // the URL instead of a request body (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN).
         String deepLink = ctx.settings().publicOrchestratorBaseUrl() + "/app/?intent=confirm_peer_login&pairingCode="

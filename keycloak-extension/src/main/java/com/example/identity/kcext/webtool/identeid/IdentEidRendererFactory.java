@@ -10,7 +10,7 @@ import java.util.Set;
 
 /**
  * Web-channel counterpart to ident-eid, whose single "input" step never changes
- * (docs/06-ablaeufe.md #6). The two pages are this renderer's choice, as in the React form: the
+ * (docs/verfahren/eid.md). The two pages are this renderer's choice, as in the React form: the
  * card data while {@code missingFields} names any of it, then the PIN. A failed attempt shows its
  * page again. Assigning the identity to a register person is ident-kvnr (ADR-18).
  */

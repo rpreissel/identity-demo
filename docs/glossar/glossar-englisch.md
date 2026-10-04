@@ -268,7 +268,7 @@ Eintrags führt zum Buchstaben dort.
 
 Das Präfix sagt, was ein Tool tut: `ident-` identifiziert, `enroll-` richtet ein Verfahren ein,
 `auth-` meldet an, `confirm-` bestätigt. `…-lookup` meldet an, ohne dass das Konto vorher bekannt
-ist. Ausführlich: [03-tool-architektur](../03-tool-architektur.md) Abschnitt 1.
+ist. Ausführlich: [03-tool-architektur](../03-tool-architektur.md) Abschnitte 1 und 2.
 
 - **`auth-device`**, **`enroll-device`** → **Gerätebindung**: Anmeldung mit dem Schlüssel eines Geräts.
 - **`auth-email`**, **`auth-email-lookup`**, **`enroll-email`** → Anmeldung per Code an die

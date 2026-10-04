@@ -25,7 +25,7 @@ internal val EID_RESTRICTED_ID = AttributeType.anchor(
 internal const val IDENT_EID_TOOL_ID = "ident-eid"
 
 /**
- * `ident-eid` (docs/03-tool-architektur.md #1). Mock eID: reads a simulated card (possession) plus a
+ * `ident-eid` (docs/verfahren/eid.md). Mock eID: reads a simulated card (possession) plus a
  * PIN (knowledge) in one run, hence loa3 and both factor types. It resolves nobody: binding the
  * attested identity to a register person is `ident-kvnr`'s separate act (ADR-18). It asserts exactly
  * what the card carries, on its own authority: no PERSON_ID and no KVNR, which a real eID card holds
@@ -48,8 +48,8 @@ internal val IdentEid = EidModule.identify(
 
 /**
  * A method module talks to the orchestrator through tool_api only, never to account or another
- * method module (docs/03-tool-architektur.md #2). Its controllers (`ident_eid.api.v1`) reach the
- * orchestrator through `tool_api` alone (docs/04-orchestrierung.md #5).
+ * method module (docs/03-tool-architektur.md #7). Its controllers (`ident_eid.api.v1`) reach the
+ * orchestrator through `tool_api` alone (docs/04-orchestrierung.md #8).
  */
 @ApplicationModule(id = "ident_eid", allowedDependencies = ["tool_api", "texts"])
 @Configuration

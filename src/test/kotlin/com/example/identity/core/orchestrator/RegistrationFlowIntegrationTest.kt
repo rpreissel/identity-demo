@@ -86,7 +86,7 @@ class RegistrationFlowIntegrationTest : IntegrationTestSupport() {
                     afterPhone.next() shouldBe mapOf("type" to "tool", "toolId" to "enroll-sms", "step" to "tanInput")
                     @Suppress("UNCHECKED_CAST")
                     (afterPhone["demo"] as Map<String, Any?>)["tan"] shouldBe enrollTan
-                    // docs/05-api.md #2
+                    // docs/05-api.md #1
                     afterPhone.channel().shouldNotContainKeys("currentAcr", "currentAmr", "activeMethods")
                     enrolled.channel().shouldNotContainKeys("currentAcr", "currentAmr", "activeMethods")
                 }

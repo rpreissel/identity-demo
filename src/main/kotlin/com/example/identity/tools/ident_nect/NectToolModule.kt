@@ -27,7 +27,7 @@ internal val NECT_RESTRICTED_ID = AttributeType.anchor(
 internal const val IDENT_NECT_TOOL_ID = "ident-nect"
 
 /**
- * `ident-nect` (docs/03-tool-architektur.md #1). The user picks a document at Nect (eID, ePass or
+ * `ident-nect` (docs/verfahren/nect.md). The user picks a document at Nect (eID, ePass or
  * EUDI wallet), so level, factors and claims are the union over all three; each run reports what its
  * document proved. Like `ident-eid` it attests and resolves nobody (ADR-18). Nothing is typed here:
  * the run opens on "go to Nect". eID via Nect yields Nect's own card pseudonym, never the one
@@ -51,7 +51,7 @@ internal val IdentNect = NectModule.identify(
 )
 
 /**
- * Identification through Nect (docs/03-tool-architektur.md, ident-nect). Besides tool_api it
+ * Identification through Nect (docs/verfahren/nect.md). Besides tool_api it
  * declares one edge to the identification service itself (`nect.NectIdent`), like
  * `auth_kobil -> kobil` (ADR-31). Swapping in the real service changes that edge, not the tool.
  */

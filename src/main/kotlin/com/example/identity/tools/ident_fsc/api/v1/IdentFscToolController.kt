@@ -42,7 +42,7 @@ data class IdentFscPatchRequest(
 )
 
 /**
- * toolId=ident-fsc (docs/06-ablaeufe.md #2). One controller owns activation, PATCH and GET for
+ * toolId=ident-fsc (docs/verfahren/fsc.md). One controller owns activation, PATCH and GET for
  * this tool (docs/08-projektrahmen.md A11) - no generic toolId dispatch anywhere.
  */
 @RestController

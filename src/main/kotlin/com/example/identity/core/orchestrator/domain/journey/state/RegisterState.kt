@@ -70,7 +70,7 @@ sealed interface RegisterState : JourneyState {
 
     /**
      * First mandatory step, before any enrollment: a confirmed address is account infrastructure,
-     * and `enroll-password` requires it (docs/03-tool-architektur.md #1). Skipped when no attesting
+     * and `enroll-password` requires it (docs/03-tool-architektur.md #5). Skipped when no attesting
      * tool is available; the obligation is then retried after enrollment.
      */
     data class ConfirmingEmail(
@@ -83,7 +83,7 @@ sealed interface RegisterState : JourneyState {
     }
 
     /**
-     * Third obligation, on every channel (docs/04-orchestrierung.md #8): a REGISTER run must not end
+     * Third obligation, on every channel (docs/04-orchestrierung.md #5): a REGISTER run must not end
      * below the level its own method management needs (loa2). If the active methods cover only one
      * factor kind, every enrollment adding another kind is offered, e.g. a password or a device
      * binding. It comes after [ConfirmingEmail], because `enroll-password` requires a confirmed email.

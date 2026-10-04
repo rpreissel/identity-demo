@@ -5,7 +5,7 @@ import kotlin.reflect.KClass
 
 /**
  * What one step needs the client to show. Every shape is a declared type that names itself
- * through `kind` (docs/05-api.md #2). The shape belongs to the step, not the endpoint: a tool's
+ * through `kind` (docs/05-api.md #1). The shape belongs to the step, not the endpoint: a tool's
  * response often carries the next step's data, and `Step` pairs it with its `next`.
  *
  * A shape is a plain data class. The module that produces it declares it in a map: its `kind` as

@@ -11,7 +11,7 @@ interface QrLoginRequestRepository : JpaRepository<QrLoginRequest, String> {
 
     /**
      * The app's approval, atomic and conditional so two concurrent decisions cannot both win
-     * (docs/07-betrieb.md #5). [newExpiresAt] gives the browser a fresh window to type the code.
+     * (docs/verfahren/qr.md). [newExpiresAt] gives the browser a fresh window to type the code.
      * Returns the rows changed: `0` means no longer pending, or expired.
      */
     @Modifying

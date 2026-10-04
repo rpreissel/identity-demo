@@ -849,7 +849,7 @@ a.method-choice:active {
   margin-bottom: 0.5rem;
 }
 
-/* Sub-journeys (docs/04-orchestrierung.md #6) are nested (see renderJourneyNode) with an accent
+/* Sub-journeys (docs/04-orchestrierung.md #7) are nested (see renderJourneyNode) with an accent
    border back to their parent, so a step-up's re-identification reads as part of the flow. */
 .journey-trace-journey--nested {
   border-left: 3px solid var(--accent-border);

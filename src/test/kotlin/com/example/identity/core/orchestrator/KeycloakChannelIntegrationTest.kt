@@ -20,7 +20,7 @@ import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 
-/** Covers the Keycloak facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). */
+/** Covers the Keycloak facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3b). */
 class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
 
     @Autowired
@@ -56,7 +56,7 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
     private fun keycloakPatch(channelSessionId: ChannelSessionId, body: String = "{}"): Map<String, Any?> =
         keycloakPatchRaw(channelSessionId, body).let { it.statusCode shouldBe HttpStatus.OK; it.body!! }
 
-    /** Same peer-auth-bearing headers, for the facade-neutral tool endpoints (docs/05-api.md Abschnitt 3). */
+    /** Same peer-auth-bearing headers, for the facade-neutral tool endpoints (docs/05-api.md Abschnitt 3b). */
     private fun keycloakHeaders(): HttpHeaders = HttpHeaders().apply {
         set("Authorization", "Bearer mock-peer-auth-token")
         set("Content-Type", "application/json")
@@ -161,7 +161,7 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                     @Suppress("UNCHECKED_CAST")
                     val options = response.stepData()["options"] as List<String>
                     // A known account gets auth candidates only, never identification
-                    // (docs/05-api.md Abschnitt 3).
+                    // (docs/05-api.md Abschnitt 3b).
                     options shouldNotContain "ident-fsc"
                     // Candidates are limited to this account's own active methods, not the whole catalog.
                     options shouldContainExactlyInAnyOrder listOf("auth-sms", "auth-password")
@@ -246,7 +246,7 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                 )
                 // A second native factor type (password, KNOWLEDGE) reaches loa2 like two
                 // orchestrator factors would. `amr` is the complete currently valid kc set
-                // (docs/05-api.md Abschnitt 3), so "sms" is resent. Omitting it would mean it expired.
+                // (docs/05-api.md Abschnitt 3b), so "sms" is resent. Omitting it would mean it expired.
                 val authenticated = keycloakPatch(
                     keycloakChannelSessionId,
                     """{"subject":{"type":"account","id":"$accountId"},"amr":[{"nativeToolId":"kc-sms-form","amrSourceId":"kc-sms-form-exec-1"},{"nativeToolId":"kc-password-form","amrSourceId":"kc-password-form-exec-1"}]}"""
@@ -254,7 +254,7 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
 
                 then("the merged evidence is reflected in authData and, once sufficient, authenticates") {
                     (partial["authData"] as Map<*, *>)["acr"] shouldBe "loa1"
-                    // amr maps method -> source (docs/05-api.md Abschnitt 3). "sms" came from a native
+                    // amr maps method -> source (docs/05-api.md Abschnitt 3b). "sms" came from a native
                     // authenticator, not a tool.
                     @Suppress("UNCHECKED_CAST")
                     val partialAmr = (partial["authData"] as Map<String, Any?>)["amr"] as Map<String, String>
@@ -339,7 +339,7 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
             }
         }
 
-        given("a Web login at loa2 whose proofs are restored in a later flow run (docs/04-orchestrierung.md #8)") {
+        given("a Web login at loa2 whose proofs are restored in a later flow run (docs/04-orchestrierung.md #4)") {
             val natives = """[{"nativeToolId":"kc-password-form","amrSourceId":"pw-1"},{"nativeToolId":"kc-otp-form","amrSourceId":"otp-1"}]"""
 
             /** A login at loa2 on a fresh Web channel, and the RestoreData its flow run ends with. */

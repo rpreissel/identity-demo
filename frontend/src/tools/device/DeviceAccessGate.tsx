@@ -11,7 +11,7 @@ interface DeviceAccessGateProps {
 /**
  * Mocks the system PIN/biometric prompt that gates use of the device's private key (a platform
  * authenticator's user verification). Biometric first with a PIN fallback, like Face ID/Touch ID.
- * Which one was used is decided here, per attempt, not at enrollment (docs/03-tool-architektur.md):
+ * Which one was used is decided here, per attempt, not at enrollment (docs/verfahren/device.md):
  * WebAuthn never tells the relying party the modality either.
  */
 export function DeviceAccessGate({ onConfirm, busy }: DeviceAccessGateProps) {

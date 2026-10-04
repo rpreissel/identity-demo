@@ -67,7 +67,7 @@ class SessionEvidenceRecord(
     var sessionEvidenceId: SessionEvidenceId? = null
 
     /**
-     * One record per method proven in this channel (docs/04-orchestrierung.md #1). One JSON column
+     * One record per method proven in this channel (docs/04-orchestrierung.md #4). One JSON column
      * of records rather than parallel Method->X columns, so a method cannot appear in one but not
      * another. The properties below are derived views over it.
      */
@@ -80,13 +80,13 @@ class SessionEvidenceRecord(
 
     /**
      * Who proved each entry in [currentAmr]: [AmrSource.ORCHESTRATOR] or [AmrSource.KEYCLOAK]
-     * (docs/05-api.md Abschnitt 3). Exposed via `AuthData.amr` on WEB channels for
+     * (docs/05-api.md Abschnitt 3b). Exposed via `AuthData.amr` on WEB channels for
      * information only; the orchestrator alone resolves the combined `acr`.
      */
     val currentAmrSource: Map<String, String> get() = methods.associate { it.method to it.source }
 
     /**
-     * Each entry's loa (docs/05-api.md Abschnitt 3), the only figure `AuthPolicy.resolveAcr` prices
+     * Each entry's loa (docs/05-api.md Abschnitt 3b), the only figure `AuthPolicy.resolveAcr` prices
      * from, whether it came from an orchestrator tool or a native Keycloak authenticator.
      */
     val methodAcr: Map<String, String> get() = methods.associate { it.method to it.loa }
@@ -139,7 +139,7 @@ class SessionEvidenceRecord(
 
     /**
      * Sync, not merge: [updates] is the caller's complete currently valid set for [source]
-     * (docs/05-api.md Abschnitt 3). A record owned by [source] whose method is missing has expired
+     * (docs/05-api.md Abschnitt 3b). A record owned by [source] whose method is missing has expired
      * and is dropped. Records owned by another source stay, so Keycloak never downgrades an
      * orchestrator proof. The rest is upserted as in [addAmr].
      */

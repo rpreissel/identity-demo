@@ -3,8 +3,9 @@
 
 # `DELETE_ACCOUNT`
 
-Mit dieser Journey löscht ein Nutzer sein eigenes Konto. Die Bestätigung kommt immer zuerst und
-wird nie hinter einem Step-up versteckt.
+Mit dieser Journey löscht ein Nutzer sein eigenes Konto. Sie setzt einen Kanal voraus, der schon
+`AUTHENTICATED` ist. Die Ja/Nein-Bestätigung (`Prompt`, [05-api.md](../05-api.md) „Das
+`Prompt`-Objekt“) kommt in jedem Fall zuerst und wird nie hinter einem Step-up versteckt.
 
 ```mermaid
 stateDiagram-v2
@@ -25,7 +26,7 @@ stateDiagram-v2
 `ConfirmPending` ist ein `AnswerableState`; seine Frage ist als folgenschwer markiert
 (`destructive: true`). Nach der Zustimmung gilt dieselbe Schwelle wie bei
 [`MANAGE_AUTH_METHODS`](manage-auth-methods.md): `Action.DeleteAccount.requiredAcr` ruft dieselbe
-Funktion `selfServiceAcrFloor` auf.
+Funktion `selfServiceAcrFloor` auf: `loa2`, für ein nie identifiziertes Konto nur `loa1`.
 
 Gelöscht wird nur mit einem frischen Nachweis: Der jüngste Nachweis der Sitzung darf höchstens
 fünf Minuten alt sein (`AuthPolicy.hasFreshProof`, `identity.policy.self-service-max-age`). Ist er
@@ -41,4 +42,4 @@ Nutzer aussperren würde.
 
 Der Nachweis in `ConfirmationRequired` führt direkt zu `Action.DeleteAccount` und nie über
 `Action.AcceptProof`. Er erlaubt genau diese eine Löschung und wird nie zu einem dauerhaften
-Nachweis der Sitzung (`MethodEvidence`, Orchestrierung, Abschnitt 5).
+Nachweis der Sitzung (`MethodEvidence`, Orchestrierung, Abschnitt 8).

@@ -30,7 +30,7 @@ import io.kotest.matchers.shouldBe
 /**
  * Unit tests against a small synthetic catalog (ident-fsc/enroll-sms/auth-sms plus a hypothetical
  * passkey pair). The passkey covers two factor types, which exercises the MFA and capping rules of
- * docs/04-orchestrierung.md #2 beyond what the real catalog offers. Each given is one evidence or
+ * docs/04-orchestrierung.md #4 beyond what the real catalog offers. Each given is one evidence or
  * account state, each when one policy call.
  */
 class DefaultAuthPolicyTest : BehaviorSpec({
@@ -646,7 +646,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
     }
 
-    // loa2 as this project's label for NIST 800-63B AAL2 (docs/04-orchestrierung.md #8): "a
+    // loa2 as this project's label for NIST 800-63B AAL2 (docs/04-orchestrierung.md #4): "a
     // multi-factor authenticator, or a combination of two single-factor authenticators". Both paths
     // reach loa2, and so does an identification.
 

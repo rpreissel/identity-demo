@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * A {@link AuthenticationFlowCallbackFactory}, so {@link OrchestratorResumeAuthenticator#onTopFlowSuccess}
- * fires at the end of the top-level flow (RestoreData hook, docs/05-api.md Abschnitt 3). This needs
+ * fires at the end of the top-level flow (RestoreData hook, docs/05-api.md Abschnitt 3b). This needs
  * the execution wrapped in its own subflow in the realm config.
  */
 public class OrchestratorResumeAuthenticatorFactory implements AuthenticationFlowCallbackFactory {

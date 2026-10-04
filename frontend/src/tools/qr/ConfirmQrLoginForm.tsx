@@ -8,7 +8,7 @@ interface ConfirmQrLoginFormProps {
 }
 
 /**
- * `approve-qr`'s `confirm` step (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md #5).
+ * `approve-qr`'s `confirm` step (docs/verfahren/qr.md).
  * Approving does not log the browser in by itself: the app then shows a code that has to be typed
  * into the browser - so approving a request you did not start yourself hands nothing over.
  */

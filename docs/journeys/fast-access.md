@@ -62,7 +62,7 @@ stateDiagram-v2
 `Enrolling` enthalten das Angebot und die bisherigen Ablehnungen. Sie werden mit `RegisterState`
 gemeinsam genutzt (siehe [`REGISTER`](register.md)). `Enrolling` hat zusätzlich das Feld
 `emailObligation`. `FAST_ACCESS` setzt es nie (es bleibt `false`); die E-Mail-Pflicht gibt es nur,
-wenn die Journey über `RegisterState.Identifying` gelaufen ist (Orchestrierung, Abschnitt 8).
+wenn die Journey über `RegisterState.Identifying` gelaufen ist (Orchestrierung, Abschnitt 5).
 
 `FAST_ACCESS` identifiziert nie selbst:
 

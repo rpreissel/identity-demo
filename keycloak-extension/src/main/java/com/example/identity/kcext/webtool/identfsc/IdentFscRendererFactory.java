@@ -10,7 +10,7 @@ import java.util.Set;
 
 /**
  * Web-channel counterpart to ident-fsc, whose single "input" step never changes
- * (docs/06-ablaeufe.md #2). The two pages are this renderer's choice, as in the React form: personal
+ * (docs/verfahren/fsc.md). The two pages are this renderer's choice, as in the React form: personal
  * data while {@code missingFields} names any of it, then the code. A failed attempt shows its page
  * again.
  */

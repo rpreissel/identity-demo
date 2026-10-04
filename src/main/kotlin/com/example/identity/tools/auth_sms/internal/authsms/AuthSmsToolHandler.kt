@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
 /**
- * toolId=auth-sms (docs/06-ablaeufe.md #3). [start]'s [enrollmentRef] is resolved by the
+ * toolId=auth-sms (docs/verfahren/sms.md). [start]'s [enrollmentRef] is resolved by the
  * controller, since this module never reads `account`. The tan-vs-state decision lives in [AuthSmsFlow].
  */
 @Component
@@ -52,7 +52,7 @@ class AuthSmsToolHandler(
         smsGateway.sendTan(enrollment.phoneNumber.orEmpty(), issued.plainTan)
 
         // demoTan: this is a demo, not a real SMS gateway - showing it in the UI means testers
-        // don't need server-log access (docs/06-ablaeufe.md #3).
+        // don't need server-log access (docs/verfahren/sms.md).
         val (step, fields) = AuthSmsState(issued.hash, issued.expiresAt).describe()
         return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plainTan))
     }

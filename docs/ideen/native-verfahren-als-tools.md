@@ -84,7 +84,7 @@ Verfügbarkeit je Kanal gibt es schon (`ToolAvailabilityService`).
 | Passkey | Keycloak | Tool, delegiert an Keycloaks WebAuthn-Schritt | nicht angeboten |
 
 - **OTP in beiden Kanälen** bleibt ein eigenes Tool mit dem Geheimnis im Orchestrator
-  ([Beispiel neues Verfahren](../15-beispiel-neues-verfahren.md)). Die Delegation lohnt nur, wenn
+  ([Beispiel neues Verfahren](../15-beispiel-neues-verfahren-backend.md)). Die Delegation lohnt nur, wenn
   das Web allein genügt.
 - **Passkey ohne Benutzernamen** braucht ein Lookup-Tool (`auth-passkey-lookup`), das das Konto
   aus dem Passkey auflöst.

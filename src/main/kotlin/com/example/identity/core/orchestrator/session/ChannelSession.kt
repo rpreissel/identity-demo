@@ -55,7 +55,7 @@ class ChannelSession(
 
     /**
      * Self-assigned, so the Keycloak facade can set its client-chosen id before the first save for
-     * idempotent upserts (docs/05-api.md Abschnitt 3). APP callers get a random id.
+     * idempotent upserts (docs/05-api.md Abschnitt 3b). APP callers get a random id.
      */
     @Id
     @Column(name = "id", nullable = false)
@@ -87,11 +87,11 @@ class ChannelSession(
     @Column(name = "state", nullable = false, length = 32)
     var state: ChannelState? = null
 
-    /** APP only (docs/05-api.md Abschnitt 3): the WEB channel has no App-style tokens to bind. */
+    /** APP only (docs/05-api.md Abschnitt 3b): the WEB channel has no App-style tokens to bind. */
     @Column(name = "app_token_session_id")
     var appTokenSessionId: UUID? = null
 
-    /** Both channel types (docs/05-api.md Abschnitt 3): the evidence itself. */
+    /** Both channel types (docs/05-api.md Abschnitt 3b): the evidence itself. */
     @Column(name = "session_evidence_id")
     var sessionEvidenceId: SessionEvidenceId? = null
 
@@ -105,7 +105,7 @@ class ChannelSession(
 
     /**
      * The channel's durable lower bound; survives individual journeys. A step-up run's target lives
-     * in that run's state (docs/04-orchestrierung.md #8).
+     * in that run's state (docs/04-orchestrierung.md #4).
      */
     @Column(name = "acr_floor", length = 16)
     var acrFloor: String? = null

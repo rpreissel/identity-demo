@@ -22,7 +22,7 @@ Die Quelle des API-Vertrags ist der Code. Alles andere wird daraus erzeugt:
 - **Pflichtfelder** legt die Quelle fest: `KotlinRequiredModelConverter` macht eine Property, die in
   Kotlin nicht `null` sein kann und keinen Standardwert hat, zu `required`.
 
-Einzelheiten: [05-api.md](../05-api.md), Abschnitt 1.
+Einzelheiten: [05-api.md](../05-api.md), Abschnitte 1 und 4.
 
 ## Begründung
 

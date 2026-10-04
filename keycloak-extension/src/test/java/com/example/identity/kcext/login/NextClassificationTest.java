@@ -10,10 +10,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * {@link OrchestratorClient.Next} classifies the orchestrator's {@code next} (docs/05-api.md #2)
+ * {@link OrchestratorClient.Next} classifies the orchestrator's {@code next} (docs/05-api.md #1)
  * into what {@code OrchestratorAuthenticator.handleResponse} branches on. REGISTER's identification
  * choice reports {@code step="selectIdentificationMethod"}, not {@code "selectMethod"}, and must still
- * count as a selection (docs/04-orchestrierung.md #4).
+ * count as a selection (docs/04-orchestrierung.md #6).
  */
 class NextClassificationTest {
 

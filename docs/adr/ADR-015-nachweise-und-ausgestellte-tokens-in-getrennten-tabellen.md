@@ -17,7 +17,7 @@ derselben Zeile, so wie es vor dem Keycloak-Zugang (`07e7156`) war.
 zugeordnet sind.
 
 1. **Nicht jeder Kanal hat Tokens, aber jeder hat Nachweise.** Der Web-Kanal legt nie eine
-   `AppTokenSession` an ([API](../05-api.md) Abschnitt 3); in einer
+   `AppTokenSession` an ([API](../05-api.md) Abschnitt 3a); in einer
    gemeinsamen Tabelle hätte jede Zeile des Web-Kanals vier dauerhaft leere Spalten für Tokens.
 2. **Das eine ist die maßgebliche Angabe, das andere nur ein Zwischenspeicher.** Darauf beruht
    `SessionEvidenceService.invalidateCachedTokens`: Ein Step-up setzt Access- und RefreshToken auf

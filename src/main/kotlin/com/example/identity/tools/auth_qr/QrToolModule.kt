@@ -18,7 +18,7 @@ internal const val AUTH_QR_LOOKUP_TOOL_ID = "auth-qr-lookup"
 internal const val APPROVE_QR_TOOL_ID = "approve-qr"
 
 /**
- * QR-Login (docs/03-tool-architektur.md #1). `enroll-qr` is a pure opt-in marker without secret:
+ * QR-Login (docs/verfahren/qr.md). `enroll-qr` is a pure opt-in marker without secret:
  * without it `auth-qr` is not offered and `approve-qr` may not approve a pairing for the account.
  * `auth-qr` (account known) and `auth-qr-lookup` (account unknown until the app's approval reveals
  * it) wait on the APP side; the approving app must first pass its own loa2 check, so the proof
@@ -54,7 +54,7 @@ internal val AuthQrLookup = QrModule.lookupLogin(
 )
 internal val ApproveQr = QrModule.approve(APPROVE_QR_TOOL_ID, versions = setOf(1), hint = Text("Web-Login per QR bestätigen"))
 
-/** How long a pairing request stays open (docs/07-betrieb.md #5 - not further validated). */
+/** How long a pairing request stays open (docs/verfahren/qr.md - not further validated). */
 internal val QR_LOGIN_TTL: Duration = Duration.ofMinutes(5)
 
 /**
@@ -62,7 +62,7 @@ internal val QR_LOGIN_TTL: Duration = Duration.ofMinutes(5)
  * already-authenticated APP channel approves or declines it (`approve-qr`), both sides of the same
  * `qr` procedure living in one module like every other pair (docs/08-projektrahmen.md M11). Talks
  * to the orchestrator through `tool_api` only, exactly like every other method module
- * (docs/03-tool-architektur.md #2).
+ * (docs/03-tool-architektur.md #7).
  */
 @ApplicationModule(id = "auth_qr", allowedDependencies = ["tool_api", "texts"])
 @Configuration

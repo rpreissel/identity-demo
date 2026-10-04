@@ -7,7 +7,7 @@ import org.springframework.modulith.ApplicationModule
  * `AccountService` and `AccountProfile` are what other modules see; `domain` holds the rules,
  * `application` the services applying them, `infrastructure` entities and repositories (ADR-40).
  * `AccountService` implements `tool_api.AccountDirectory`, so a tool controller never depends on
- * `account` itself (docs/04-orchestrierung.md #5).
+ * `account` itself (docs/04-orchestrierung.md #8).
  */
 @ApplicationModule(id = "account", allowedDependencies = ["tool_api", "texts"])
 internal class AccountModule

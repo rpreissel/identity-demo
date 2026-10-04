@@ -12,7 +12,7 @@ import java.time.Instant
  * bodies and binding stay in `api.v1`.
  */
 
-@Schema(description = "The account's active authentication methods (docs/05-api.md #2). Never contains fsc.")
+@Schema(description = "The account's active authentication methods (docs/05-api.md #3a). Never contains fsc.")
 data class MethodsResponse(
     val methods: List<ActiveMethodView>
 )
@@ -59,7 +59,7 @@ data class DeviceLinkResponse(
 )
 
 /**
- * One method a native Keycloak authenticator proved in this flow run (docs/05-api.md Abschnitt 3,
+ * One method a native Keycloak authenticator proved in this flow run (docs/05-api.md Abschnitt 3b,
  * ADR-8). Only two ids: method, loa and factor types are fixed per authenticator type and come from
  * [NativeAuthenticatorDescriptor] via [nativeToolId]. [amrSourceId] names this proof instance and
  * stays the same on refreshes, so a refresh is not taken for a new proof.
@@ -71,7 +71,7 @@ data class AmrEntry(
 )
 
 /**
- * What a new Web channel may resume from without re-proving it (docs/05-api.md Abschnitt 3).
+ * What a new Web channel may resume from without re-proving it (docs/05-api.md Abschnitt 3b).
  * [evidence] is the real `SessionEvidence`, not a lossy copy. Fetched from its own endpoint by the
  * authenticator's end-of-flow hook only. On the wire it is always signed by [RestoreDataCodec] and
  * bound to its UserSession, so a leaked note cannot hand evidence to another session.

@@ -53,12 +53,12 @@ Segment im Pfad, und jede Version zählt für sich.
 **Wann ein Tool eine neue Fassung bekommt.** Nur wenn der Server wissen muss, was der Client kann:
 bei einem neuen Pflichtfeld, einem unverzichtbaren neuen Aufruf oder Schritt, einer neuen
 Schritt-Form oder einem umbenannten Feld. Eine additive Änderung ist immer der erste Weg. Die
-vollständige Regel steht in [05-api.md](../05-api.md) Abschnitt 1.
+vollständige Regel steht in [05-api.md](../05-api.md) Abschnitt 2, „Fassungen eines Tools“.
 
 **Was die alte Fassung ohne das Neue tut,** wird mit jeder neuen Fassung fachlich entschieden. Es
 gibt drei Antworten: Sie setzt einen **Ersatzwert** und läuft weiter, sie liefert ein **geringeres
 Ergebnis** (ein niedrigeres Niveau, eine Angabe weniger), oder sie **darf nicht mehr laufen** und wird
-abgeschaltet. Die Antwort steht im Abschnitt des Verfahrens in [06-ablaeufe.md](../06-ablaeufe.md).
+abgeschaltet. Die Antwort steht auf der Seite des Verfahrens unter [verfahren/](../verfahren/README.md).
 
 **Eine neue Fassung bauen.** Ein Handler bedient alle Fassungen und verzweigt nach
 `ToolContext.version` nur, wo sich das Verhalten unterscheidet; jede solche Stelle ist mit
@@ -66,15 +66,15 @@ abgeschaltet. Die Antwort steht im Abschnitt des Verfahrens in [06-ablaeufe.md](
 eigenen DTOs, der alte bleibt unverändert. Ein neues Feld in `missingFields` braucht keine neue
 Schritt-Form; eine geänderte Form bekommt eine neue `kind`. Ausgerollt wird erst der Server mit
 beiden Fassungen, dann der Client mit der neuen; danach kann der Server nicht mehr hinter diese
-Fassung zurück. Schritt für Schritt: [15-beispiel-neues-verfahren.md](../15-beispiel-neues-verfahren.md)
-Abschnitt 9.
+Fassung zurück. Schritt für Schritt: [15-beispiel-neues-verfahren-backend.md](../15-beispiel-neues-verfahren-backend.md)
+Abschnitt 10.
 
 **Beispiel `enroll-sms@2`.** Fassung 2 verlangt mit der Telefonnummer die Einwilligung (`consent`),
 dass die Nummer gespeichert und für SMS-Codes genutzt wird. Fassung 1 setzt den Ersatzwert „keine
 Einwilligung“ und läuft weiter, damit eine App, die die Checkbox nicht zeigen kann, weiter Nummern
 einrichten kann. Die Einwilligung wird nicht eigens gespeichert: `METHOD_ADDED` im Änderungsprotokoll
 nennt die Fassung, und daraus folgt, ob sie vorlag. Die App spricht Fassung 1, der Web-Kanal
-Fassung 2 ([06-ablaeufe.md](../06-ablaeufe.md) Abschnitt 4).
+Fassung 2 ([Verfahren `sms`](../verfahren/sms.md)).
 
 **Warum.** Ein Client wird getrennt vom Server ausgeliefert, alte App-Versionen bleiben im Einsatz,
 und jede beherrscht je Tool eine Fassung. Ein Tool muss sich deshalb brechend ändern können, ohne

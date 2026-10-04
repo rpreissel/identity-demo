@@ -9,7 +9,7 @@ interface PairingCodeInputFormProps {
 }
 
 /**
- * `approve-qr`'s `input` step (docs/05-api.md, Peer-Login bestätigen): the pairing code is
+ * `approve-qr`'s `input` step (docs/verfahren/qr.md): the pairing code is
  * scanned or typed here, or pre-filled from the WEB channel's demo link (session.ts). Forgotten
  * once submitted, so a later approve-qr run never reuses a stale code. A code known at
  * activation skips this step server-side (AppChannelApp.tsx).
@@ -20,7 +20,7 @@ export function PairingCodeInputForm({ onSubmit, error }: PairingCodeInputFormPr
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     forgetPendingPairingCode()
-    // The stored/displayed form may include a grouping dash (docs/07-betrieb.md #5,
+    // The stored/displayed form may include a grouping dash (docs/verfahren/qr.md,
     // "XXXX-XXXX") - the actual pairingCode value never contains one.
     onSubmit(pairingCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())
   }

@@ -15,7 +15,7 @@ Schritte auf, die er selbst nicht kann. Dafür gibt es drei Wege:
   [`WEB_SELECT_METHOD`](../journeys/web-select-method.md), bei einer Registrierung `REGISTER`
   (`KeycloakChannelService.entryIntentFor`). Solange eine solche Journey läuft, bestimmt allein der
   Orchestrator ACR und AMR und fasst die Nachweise mehrerer Tools zusammen
-  ([05-api.md](../05-api.md) Abschnitt 3).
+  ([05-api.md](../05-api.md) Abschnitt 3b).
 - **Als Required Action** mit eigener Journey: Das Verwalten der Anmeldeverfahren
   (`MANAGE_AUTH_METHODS`) läuft über `OrchestratorManageMethodsRequiredAction`.
 - **Zustandslos, ohne Kanal und Journey**, nur für die Prüfung des Passworts:

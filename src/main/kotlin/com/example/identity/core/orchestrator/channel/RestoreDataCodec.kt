@@ -21,7 +21,7 @@ import java.time.Duration
 import java.util.Date
 
 /**
- * Signs and verifies [RestoreData] as a compact JWT (docs/05-api.md Abschnitt 3). Keycloak only
+ * Signs and verifies [RestoreData] as a compact JWT (docs/05-api.md Abschnitt 3b). Keycloak only
  * stores an opaque token it cannot forge. `sub` is the `kcSessionId` it was minted for, and
  * [decode] refuses any other session. HS256 with a key of its own, not shared with peer-auth, and
  * fresh per boot: a restart invalidates tokens in flight, acceptable for a one-session value.
@@ -77,7 +77,7 @@ class RestoreDataCodec(private val clock: Clock, private val ttl: Duration = TTL
         // of degrading it to a Keycloak self-report.
         put("source", source)
         put("amrSourceId", amrSourceId)
-        // Restoring a proof must not make it young again (docs/04-orchestrierung.md #8).
+        // Restoring a proof must not make it young again (docs/04-orchestrierung.md #4).
         provenAt?.let { put("provenAt", it.epochSecond) }
     }
 

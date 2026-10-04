@@ -50,7 +50,7 @@ public class OrchestratorAuthenticatorFactory implements AuthenticatorFactory {
 
     @Override
     public String getHelpText() {
-        return "Drives the orchestrator's kc-facade (docs/05-api.md Abschnitt 3) - offers "
+        return "Drives the orchestrator's kc-facade (docs/05-api.md Abschnitt 3b) - offers "
                 + "every orchestrator tool this account can use, or (with 'Static tool id' set) always "
                 + "activates one directly instead of showing a selection.";
     }

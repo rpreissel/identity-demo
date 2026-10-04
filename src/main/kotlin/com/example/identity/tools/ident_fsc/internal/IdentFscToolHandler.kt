@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 
 /**
- * toolId=ident-fsc (docs/06-ablaeufe.md #2). Resolves KVNR (or Partnernummer, ADR-34), name, date of
+ * toolId=ident-fsc (docs/verfahren/fsc.md). Resolves KVNR (or Partnernummer, ADR-34), name, date of
  * birth and FSC into a person. [patch]'s [personId] arrives resolved by the controller over
  * [PersonDirectory]. The register issued the code, so it checks it too ([ActivationCodes], ADR-31).
  */

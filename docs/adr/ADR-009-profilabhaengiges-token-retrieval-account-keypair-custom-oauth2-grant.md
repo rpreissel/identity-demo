@@ -34,10 +34,10 @@ sonst könnte, wer ihn kontrolliert, eigene Schlüssel unterschieben und sich al
 `ProductionModeCheck` verweigert andernfalls den Start ([07-betrieb.md](../07-betrieb.md) Abschnitt 3c).
 
 Wann der Endpunkt `GET .../token` ein simuliertes und wann ein echtes Token liefert, wann erneuert und
-wann neu ausgestellt wird, beschreibt [05-api.md](../05-api.md) Abschnitt 2 („AccessToken“). Dass ein
+wann neu ausgestellt wird, beschreibt [05-api.md](../05-api.md) Abschnitt 3a („AccessToken“). Dass ein
 Step-up die zwischengespeicherten Tokens verwirft, regelt
 [ADR-15](ADR-015-nachweise-und-ausgestellte-tokens-in-getrennten-tabellen.md). Welche Werte
-Keycloak aus dem Konto liest, steht in [07-betrieb.md](../07-betrieb.md) Abschnitt 3a.
+Keycloak aus dem Konto liest, steht in [05-api.md](../05-api.md) Abschnitt 3b, „Keycloak liest die Konten – keine Spiegelung“.
 
 **Erwogene Alternativen**:
 

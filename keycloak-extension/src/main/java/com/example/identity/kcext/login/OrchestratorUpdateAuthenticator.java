@@ -15,7 +15,7 @@ import org.keycloak.sessions.AuthenticationSessionModel;
 /**
  * Placed directly after a native step that proves something itself; reports that proof to the
  * orchestrator at once and renders no form. Config: {@code nativeToolId} names the native method
- * (docs/05-api.md Abschnitt 3). {@code amrSourceId} defaults to the execution id, which stays stable
+ * (docs/05-api.md Abschnitt 3b). {@code amrSourceId} defaults to the execution id, which stays stable
  * across a browser retry: a refresh, not a new proof.
  */
 public class OrchestratorUpdateAuthenticator implements Authenticator {
@@ -48,7 +48,7 @@ public class OrchestratorUpdateAuthenticator implements Authenticator {
 
             String channelSessionId = OrchestratorNotes.channelSessionId(context);
             // The user can already be known here: a native authenticator ahead of this one may
-            // have resolved it (docs/05-api.md Abschnitt 3).
+            // have resolved it (docs/05-api.md Abschnitt 3b).
             KcSubject subject = KcSubject.of(context.getUser());
             // The floor must reach Keycloak's full requested level, not just loa1; otherwise this
             // password report finishes the entry journey before LoA-2 can raise it (see requestedAcr).

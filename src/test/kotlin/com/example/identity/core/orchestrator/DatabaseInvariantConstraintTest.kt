@@ -249,7 +249,7 @@ class DatabaseInvariantConstraintTest : IntegrationTestSupport() {
         }
 
         // The register's seed data stays between scenarios, so the `when` removes its person again.
-        given("a person in the register with a Freischaltcode (docs/02-domaenenmodell.md Abschnitt 7)") {
+        given("a person in the register with a Freischaltcode (docs/08-projektrahmen.md Abschnitt 3)") {
             val person = "P999999990"
             fun insertInvitation(id: String, niveau: String) = jdbcTemplate.update(
                 """INSERT INTO personenverzeichnis.einladung (id, person_id, vorgang, niveau, gueltig_bis, ausgestellt_am)

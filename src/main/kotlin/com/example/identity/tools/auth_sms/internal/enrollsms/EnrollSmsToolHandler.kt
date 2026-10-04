@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 
 /**
- * toolId=enroll-sms (docs/06-ablaeufe.md #4): registers a new phone number as a 2nd factor. This
+ * toolId=enroll-sms (docs/verfahren/sms.md): registers a new phone number as a 2nd factor. This
  * class translates [EnrollSmsFlow]'s decisions into writes and the outward [ToolOutcome]. Serves
  * both versions (ADR-51): version 2 asks for the consent with the number, version 1 cannot show
  * it and goes without; its runs stand in the change log as `enroll-sms@1`.
@@ -83,7 +83,7 @@ class EnrollSmsToolHandler(
                 val state = EnrollSmsState.AwaitingTan(decision.phoneNumber, issued.hash, issued.expiresAt)
                 val (step, fields) = state.describe(data.replaces, needsConsent = false)
                 // demoTan: this is a demo, not a real SMS gateway - showing it in the UI means
-                // testers don't need server-log access (docs/06-ablaeufe.md #4).
+                // testers don't need server-log access (docs/verfahren/sms.md).
                 ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plainTan))
             }
 

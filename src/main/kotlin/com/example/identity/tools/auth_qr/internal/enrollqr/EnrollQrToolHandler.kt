@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 
 /**
- * toolId=enroll-qr: a pure opt-in without credential handshake (docs/03-tool-architektur.md). The
+ * toolId=enroll-qr: a pure opt-in without credential handshake (docs/verfahren/qr.md). The
  * PATCH call itself is the confirmation.
  */
 @Component

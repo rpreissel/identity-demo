@@ -114,8 +114,7 @@ paths:
       - 'Tool: QR-Login'
     patch:
       description: 'Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a confirmation
-        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md
-        #5).'
+        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/verfahren/qr.md).'
       operationId: patch_14
       parameters:
       - in: path

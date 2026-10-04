@@ -4,7 +4,7 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 
 /**
  * The ACR decisions only the orchestrator makes: the session floor, the "no ceiling" value and the
- * MFA bump (docs/04-orchestrierung.md #8). Level names and their ordering are [AcrLevel] in
+ * MFA bump (docs/04-orchestrierung.md #4). Level names and their ordering are [AcrLevel] in
  * tool_api. What earns a level is decided by the policy, not here.
  */
 object AcrLevels {

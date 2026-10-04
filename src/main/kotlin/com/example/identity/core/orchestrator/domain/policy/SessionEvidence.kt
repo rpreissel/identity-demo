@@ -9,7 +9,7 @@ import java.time.Instant
 
 /**
  * An auth method identifier ("sms", "password", "eid", ...). Not an enum: every module declares its
- * own methods (docs/03-tool-architektur.md #1). A distinct type so it cannot be mixed up with an
+ * own methods (docs/03-tool-architektur.md #2). A distinct type so it cannot be mixed up with an
  * [AcrLevel] or other string.
  */
 @JvmInline
@@ -21,7 +21,7 @@ value class MethodName(val value: String) {
  * Which trust question a [MethodEvidence] entry answers: IAL ("who is this?", identification) or
  * AAL ("is this the same person, proven again right now?", enrollment and auth). An identification
  * is a one-time event, not a factor presented at login, so it never joins an MFA bump
- * (docs/04-orchestrierung.md #8).
+ * (docs/04-orchestrierung.md #4).
  */
 enum class EvidenceAxis {
     IDENTITY,
@@ -59,7 +59,7 @@ data class MethodEvidence(
     /**
      * This method's ceiling for an MFA combination (docs/06-ablaeufe.md #1), from its enrollment
      * record. For a method Keycloak reported natively the caller supplies it (docs/05-api.md
-     * Abschnitt 3). Null contributes nothing to the cap.
+     * Abschnitt 3b). Null contributes nothing to the cap.
      */
     val enrolledUnderAcr: AcrLevel? = null,
     /** The factor kinds this method contributes. */
@@ -72,7 +72,7 @@ data class MethodEvidence(
     val source: String,
     /**
      * What produced this proof: an orchestrator tool's `toolId`, Keycloak's authenticator id
-     * (docs/05-api.md Abschnitt 3), or `"simulation"` for a candidate the policy projects.
+     * (docs/05-api.md Abschnitt 3b), or `"simulation"` for a candidate the policy projects.
      */
     val amrSourceId: String,
     /** Which trust question this entry answers; only an identification sets [EvidenceAxis.IDENTITY]. */
@@ -85,8 +85,8 @@ data class MethodEvidence(
 )
 
 /**
- * What this session has already proven (docs/04-orchestrierung.md #8). Source-agnostic: whether an
- * orchestrator tool or Keycloak proved a method (docs/05-api.md Abschnitt 3) does not matter to
+ * What this session has already proven (docs/04-orchestrierung.md #4). Source-agnostic: whether an
+ * orchestrator tool or Keycloak proved a method (docs/05-api.md Abschnitt 3b) does not matter to
  * [AuthPolicy]. The caller has already resolved each method's loa and factor types.
  */
 data class SessionEvidence(

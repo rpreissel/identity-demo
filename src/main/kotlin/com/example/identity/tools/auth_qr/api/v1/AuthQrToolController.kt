@@ -72,7 +72,7 @@ class AuthQrToolController(
         summary = "Poll for the APP side's decision, then submit the confirmation code the app shows",
         description = "Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a " +
             "confirmation code; the browser is logged in only once it submits that code (docs/05-api.md, " +
-            "Peer-Login bestätigen; docs/07-betrieb.md #5)."
+            "Peer-Login bestätigen; docs/verfahren/qr.md)."
     )
     fun patch(
         @RequestBody(required = false) request: QrConfirmationCodeRequest?,

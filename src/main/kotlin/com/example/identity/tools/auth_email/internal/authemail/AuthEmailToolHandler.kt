@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
 /**
- * toolId=auth-email, device-linked case (docs/03-tool-architektur.md). No EnrollmentRef: the
+ * toolId=auth-email, device-linked case (docs/verfahren/email.md). No EnrollmentRef: the
  * confirmed address is the account's EMAIL anchor, so [start] reads it through `anchorValue`.
  * The code-vs-state decision lives in [AuthEmailFlow].
  */

@@ -19,19 +19,19 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   SMS. IAL fragt: Wer ist diese Person wirklich? Das beantwortet eine Identifizierung, etwa mit dem
   Online-Ausweis. Beide Antworten werden getrennt bewertet; eine Identifizierung und ein Passwort
   zählen deshalb nie zusammen als zwei Faktoren.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 4.
 - **Ablehnen**: Der Nutzer verwirft ein angebotenes Tool, oder das Tool scheitert endgültig. Was
   danach passiert, hängt vom Zustand ab; siehe Ausweichzustand und Pflichten.
 - **Aktion**: Was ein Übergang an Daten ändern will, etwa ein Konto anlegen, eine Angabe schreiben
   oder ein Gerät verknüpfen. Die Strategie beschreibt die Aktion nur; ausgeführt wird sie an einer
   einzigen Stelle, damit Änderungen am Konto nicht über den Code verstreut sind.
   *Im Code:* `Action`, ausgeführt vom `JourneyActionExecutor`.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 5.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
 - **`amr`**: Die Liste der Verfahren, mit denen sich ein Nutzer in der laufenden Sitzung angemeldet
   hat, etwa „sms, password“. Sie steht neben dem Niveau (`acr`) im Token, damit ein Fachdienst sehen
   kann, wie die Anmeldung zustande kam.
   *Im Code:* „Authentication Methods References“ nach RFC 8176; `SessionEvidence.amr`.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 4.
 - **Änderungsprotokoll**: Hält fest, welche Angabe eines Kontos wann und von wem geändert wurde, ohne
   die Werte selbst. Es bleibt zehn Jahre erhalten, auch wenn das Konto gelöscht wird, damit sich
   eine Änderung später noch nachweisen lässt.
@@ -68,7 +68,8 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   *Im Code:* `AccountAuthMethod`, im Code oft kurz „Methode“ (`method`, etwa `sms`, `password`,
   `device`, `kobil`). Zu einem Verfahren gehören meist zwei Tools: `enroll-…` zum Einrichten,
   `auth-…` zum Anmelden.
-  *Mehr dazu:* [03-tool-architektur](../03-tool-architektur.md) Abschnitt 1.
+  *Mehr dazu:* [03-tool-architektur](../03-tool-architektur.md) Abschnitt 1, je Verfahren eine
+  Seite unter [verfahren/](../verfahren/README.md).
 - **Anmeldung**: Ein Nutzer mit Konto beweist, dass er es ist, und erreicht dabei ein Niveau. In der
   App meldet er sich meist über sein verknüpftes Gerät an (Schnellzugang), auf der Website über
   Keycloak. Wer kein verknüpftes Gerät hat, meldet sich über seine E-Mail-Adresse an.
@@ -78,7 +79,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   einem Schlüssel aus, der das Gerät nie verlässt (DPoP), und bekommt ihre Tokens vom Orchestrator.
   Das Gegenstück ist der Web-Kanal.
   *Im Code:* `ChannelType.APP`.
-  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 2.
+  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3a.
 - **Auswahlseite**: Die Seite, auf der der Nutzer zwischen mehreren angebotenen Tools wählt, etwa
   „SMS oder Passwort“. Gibt es nur ein Tool im Angebot, entfällt sie.
   *Im Code:* Schritt `selectMethod`.
@@ -88,17 +89,17 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   bequemsten Weg bis zum aufwendigsten. So ist der Schnellzugang aufgebaut: erst das Gerät, dann
   andere Verfahren, zuletzt eine neue Identifizierung. Das Gegenstück ist der Pflichtzustand (siehe
   Pflichten).
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 1.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 3.
 - **Authentisierung und Authentifizierung**: Das externe Glossar trennt beides: Der Nutzer
   *authentisiert* sich, indem er einen Beweis liefert; der Server *authentifiziert* ihn, indem er den
   Beweis prüft. Dieses Projekt sagt für beides „Authentifizierung“ oder einfach „Anmeldung“. Das ist
   eine bewusste Vereinfachung.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 1.
+  *Mehr dazu:* [Abgleich mit dem externen Glossar](abgleich-externes-glossar.md).
 - **AuthPolicy**: Die Regeln, nach denen der Orchestrator aus den Nachweisen einer Sitzung das
   Sicherheitsniveau berechnet: welches Verfahren wie viel zählt, wann zwei Verfahren zusammen mehr
   ergeben und welche Verfahren als nächstes helfen würden. Nur hier wird das Niveau berechnet.
   *Im Code:* `AuthPolicy`, `DefaultAuthPolicy`.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 4.
 
 ## B
 
@@ -112,7 +113,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
 - **Bestätigungscode**: Beim QR-Login zeigt die App nach der Freigabe einen kurzen Code, den der
   Nutzer im Browser eintippt. Erst damit ist der Browser angemeldet; so kann niemand einen fremden
   Browser freigeben, ohne vor ihm zu sitzen.
-  *Mehr dazu:* [06-ablaeufe](../06-ablaeufe.md) Abschnitt 8.
+  *Mehr dazu:* [Verfahren `qr`](../verfahren/qr.md).
 - **Bindungsschlüssel**: Das Merkmal, an dem der Orchestrator erkennt, zu welchem Kanal eine Anfrage
   gehört. In der App ist es der Fingerabdruck des DPoP-Schlüssels, im Web-Kanal die Kanalbindung,
   die Keycloak in seine signierte Anfrage schreibt.
@@ -148,7 +149,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   Orchestrator merkt sich nur ihre Kennung.
   *Im Code:* `Invitation`, Tool `auth-invite-lookup`.
   *Mehr dazu:* [ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
-- **Einmalkennwort**: Das Kennwort im Einladungsbrief. Zusammen mit der Mitglieds- oder
+- **Einmalkennwort**: Das Kennwort im Einladungsbrief. Zusammen mit der KVNR oder der
   Partnernummer öffnet es den Zugang zu genau einem Vorgang. Trotz des Namens lässt es sich mehrmals
   benutzen, bis die Frist abläuft oder der Vorgang abgeschlossen ist; „einmal“ heißt hier „für einen
   Vorgang“. Gespeichert wird nie das Kennwort, nur ein daraus berechneter Wert.
@@ -168,7 +169,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   (Smartphone), oder etwas, das man ist (Fingerabdruck). Für das Niveau `loa2` braucht es zwei
   verschiedene Arten; zwei Verfahren derselben Art reichen nicht.
   *Im Code:* `FactorType` mit `KNOWLEDGE`, `POSSESSION`, `INHERENCE`.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 4.
 - **Feature-Flag**: Ein Schalter, mit dem der Betreiber zur Laufzeit ein Verhalten umstellt, ohne neu
   zu starten. Beispiele: ob die Registrierung mit dem Einrichten eines Verfahrens beginnt statt mit der
   Identifizierung, welches Aussehen die Keycloak-Anmeldeseite hat, und ob Keycloak für `loa1` selbst
@@ -194,7 +195,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
 - **Geräte-Proof**: Der Beleg, mit dem die App bei der Anmeldung per Gerät zeigt, dass sie den
   Geräteschlüssel besitzt. Wie der DPoP-Proof gilt er nur für eine einzelne Anfrage.
   *Im Code:* `device-proof+jwt`, `DeviceProofs`, Tool `auth-device`.
-  *Mehr dazu:* [06-ablaeufe](../06-ablaeufe.md) Abschnitt 5.
+  *Mehr dazu:* [Verfahren `device`](../verfahren/device.md).
 - **Gerätebindung**: Ein Anmeldeverfahren, das fest an ein bestimmtes Smartphone gebunden ist. Beim
   Einrichten erzeugt das Gerät einen Schlüssel, der es nie verlässt; wer sich später anmeldet, beweist
   damit, dass er dieses Gerät in der Hand hat. Meist entsperrt der Nutzer den Schlüssel mit PIN oder
@@ -204,8 +205,8 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   *Im Code:* Verfahren `device` (Tools `enroll-device`, `auth-device`) und `kobil` (`enroll-kobil`,
   `auth-kobil`); ob ein solches Verfahren auf dem anfragenden Gerät nutzbar ist, prüft
   `Tool.usableByCaller`.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 1,
-  [06-ablaeufe](../06-ablaeufe.md) Abschnitte 5 und 7, [ADR-21](../adr/ADR-021-der-kobil-pin-liegt-im-backend-und-das.md).
+  *Mehr dazu:* [09-dpop](../09-dpop.md) Abschnitt 3,
+  [Verfahren `device`](../verfahren/device.md) und [`kobil`](../verfahren/kobil.md), [ADR-21](../adr/ADR-021-der-kobil-pin-liegt-im-backend-und-das.md).
 - **Geräteverknüpfung**: Merkt sich, welches Smartphone zu welchem Konto gehört, erkannt an seinem
   DPoP-Schlüssel. So erkennt die App ihren Nutzer beim nächsten Start wieder. Die Verknüpfung
   allein ist keine Anmeldung; anmelden muss sich der Nutzer trotzdem. Nicht zu verwechseln mit der
@@ -222,7 +223,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   ein solches Verfahren „Identifizierungsmittel“.
   *Im Code:* Tool-Rolle `IDENTIFICATION`, Tools `ident-fsc`, `ident-eid`, `ident-nect`.
   *Mehr dazu:* [03-tool-architektur](../03-tool-architektur.md) Abschnitt 1,
-  [04-orchestrierung](../04-orchestrierung.md) Abschnitt 1.
+  [Abgleich mit dem externen Glossar](abgleich-externes-glossar.md).
 - **Identifizierungsverfahren**: siehe Identifizierung.
 - **Intent**: Das Anliegen, mit dem ein Nutzer kommt, etwa sich registrieren, sich anmelden oder
   sein Niveau erhöhen. Zu jedem Intent gehört ein fester Ablauf, den der Orchestrator steuert. Mit
@@ -254,7 +255,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   abgelehnt wurde und welches Niveau am Ende erreicht war. Damit lässt sich später beantworten, warum
   ein Nutzer einen bestimmten Weg genommen hat.
   *Im Code:* `JourneyTraceEntry`, in der Oberfläche „Journey-Trace“.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 1.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 3.
 
 ## K
 
@@ -277,11 +278,11 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
 - **Kartendaten**: Beim Online-Ausweis die Daten, die die Karte selbst liefert: Name, Geburtsdatum,
   Anschrift und ein an die Karte gebundenes Pseudonym. Der Nutzer tippt sie nicht ein; erst danach
   fragt das Tool nach der PIN.
-  *Mehr dazu:* [06-ablaeufe](../06-ablaeufe.md) Abschnitt 6.
+  *Mehr dazu:* [Verfahren `eid`](../verfahren/eid.md).
 - **Keycloak**: Das Produkt, das auf der Website die Anmeldung führt und die Tokens ausstellt. Welche
   Schritte nötig sind, fragt Keycloak den Orchestrator. Keycloak hält keine Kopie der Konten, sondern
   liest sie bei Bedarf beim Orchestrator nach.
-  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3,
+  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3b,
   [ADR-38](../adr/ADR-038-keycloak-liest-konten.md).
 - **Keycloak-Sitzung**: Die Sitzung, die Keycloak für einen angemeldeten Nutzer führt. Sie endet nach
   30 Minuten ohne Aktivität, spätestens nach 10 Stunden. Auch die Anmeldung in der App hat eine
@@ -293,7 +294,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   diesem Projekt ist er simuliert. Die PIN für das KOBIL-Verfahren verwahrt der Orchestrator selbst;
   der Nutzer gibt sie nie ein.
   *Im Code:* Tools `enroll-kobil`, `auth-kobil`.
-  *Mehr dazu:* [06-ablaeufe](../06-ablaeufe.md) Abschnitt 7,
+  *Mehr dazu:* [Verfahren `kobil`](../verfahren/kobil.md),
   [ADR-21](../adr/ADR-021-der-kobil-pin-liegt-im-backend-und-das.md).
 - **Konto**: Das, worin sich ein Nutzer anmeldet. Es hält seine Anmeldeverfahren, seine Angaben und
   seine Anker, aber keine eigenen Stammdaten; die liegen im Personenverzeichnis. Ein Konto kann einer
@@ -328,7 +329,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   verknüpften Faktoren, etwa ein Geräteschlüssel, der mit PIN entsperrt wird. Beides kann `loa2`
   erreichen.
   *Mehr dazu:* [Abgleich](abgleich-externes-glossar.md),
-  [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
+  [04-orchestrierung](../04-orchestrierung.md) Abschnitt 4.
 - **Mengenbegrenzung**: Legt fest, wie oft etwas in einem Zeitraum passieren darf, etwa wie viele
   SMS an dieselbe Nummer gehen. Sie bremst Missbrauch und Kosten. Anders als eine Sperre trifft sie
   nicht das Raten eines Passworts, sondern die Menge; wer sie überschreitet, bekommt die Antwort
@@ -366,12 +367,12 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   Ein Nachweis veraltet: Für ein Niveau über `loa1` zählen nur Beweise der letzten 30 Minuten.
   *Im Code:* `SessionEvidence` mit je einem `MethodEvidence` pro Verfahren in `methods`; gespeichert als
   `SessionEvidenceRecord`. Die Frist heißt `identity.policy.loa2-max-age`.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 4.
 - **Nect**: Ein externer Dienst, der Personen anhand von Personalausweis, Reisepass oder EUDI-Wallet
   identifiziert; geprüft wird dabei auch ein Selfie gegen das Passbild. Der Nutzer wird dafür zu Nect
   weitergeleitet und kommt danach zurück. In diesem Projekt ist Nect simuliert.
   *Im Code:* Tool `ident-nect`.
-  *Mehr dazu:* [03-tool-architektur](../03-tool-architektur.md) Abschnitt 1,
+  *Mehr dazu:* [Verfahren `nect`](../verfahren/nect.md),
   [ADR-47](../adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md).
 - **`next`**: In jeder Antwort sagt der Orchestrator dem Client, welcher Schritt als nächstes kommt.
   Der Client folgt dieser Angabe und entscheidet selbst nichts; so steckt die ganze Ablauflogik an
@@ -401,7 +402,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   und führt zu `loa3`; sonst erreicht das nur Nect mit Personalausweis oder EUDI-Wallet. In diesem
   Projekt ist sie simuliert.
   *Im Code:* Tool `ident-eid`.
-  *Mehr dazu:* [06-ablaeufe](../06-ablaeufe.md) Abschnitt 6.
+  *Mehr dazu:* [Verfahren `eid`](../verfahren/eid.md).
 - **Orchestrator**: Der Server dieses Projekts. Er entscheidet, welche Schritte ein Nutzer bei
   Registrierung und Anmeldung durchläuft, und berechnet als einzige Stelle das Sicherheitsniveau. Die
   einzelnen Verfahren sind eigene Module, die er über eine feste Schnittstelle einbindet.
@@ -412,7 +413,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
 
 - **Pairing-Code**: Beim QR-Login die kurze Zeichenfolge, die der Browser neben dem QR-Code zeigt. Wer
   den QR-Code nicht scannen kann, tippt ihn in der App ein.
-  *Mehr dazu:* [06-ablaeufe](../06-ablaeufe.md) Abschnitt 8.
+  *Mehr dazu:* [Verfahren `qr`](../verfahren/qr.md).
 - **Partnernummer**: Die Nummer, unter der eine Person im Personenverzeichnis geführt wird: `P` und
   neun Ziffern. Jede Person hat eine, und sie ändert sich nie.
   *Im Code:* `PartnerNumber` für das Format; als Anker `PERSON_ID`, in Feldern und Tokens `personId`,
@@ -451,7 +452,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   den Bestätigungscode im Browser ein.
   *Im Code:* Tools `auth-qr`, `auth-qr-lookup`; die Freigabe in der App `approve-qr`, Intent
   `CONFIRM_PEER_LOGIN`.
-  *Mehr dazu:* [06-ablaeufe](../06-ablaeufe.md) Abschnitt 8.
+  *Mehr dazu:* [Verfahren `qr`](../verfahren/qr.md).
 - **Quelle**: Wer für eine Angabe einsteht: das Personenverzeichnis, ein Prüfverfahren wie der
   Online-Ausweis oder der Nutzer selbst. Aus der Quelle folgt, wie verlässlich die Angabe ist. Auch
   ein Widerruf nennt seine Quelle, etwa „vom Personenverzeichnis gemeldet“. Nicht zu verwechseln mit
@@ -464,7 +465,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   Ein Nachweis des Orchestrators wiegt nie weniger als eine Meldung von Keycloak. Nicht zu
   verwechseln mit der Quelle einer Angabe.
   *Im Code:* `AmrSource` mit `orchestrator` und `kc`.
-  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3.
+  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3b.
 
 ## R
 
@@ -483,7 +484,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   früheren Anmeldevorgang derselben Sitzung schon bewiesen hat. Beim nächsten Vorgang gibt Keycloak
   ihn zurück, damit der Nutzer nicht alles noch einmal beweisen muss. Der Zettel sagt auch, wann der
   Beweis war; ältere Beweise zählen nur noch für `loa1`.
-  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3.
+  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3b.
 
 ## S
 
@@ -513,7 +514,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
 - **Strategie**: Die Regeln eines Intents: Sie bekommt den Zustand und das, was gerade passiert ist,
   und entscheidet, wie es weitergeht. Sie ändert selbst nichts, sondern beschreibt nur den Übergang.
   *Im Code:* `IntentStrategy`, etwa `RegisterStrategy`.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 5.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
 - **Stufe einer Angabe**: Wie verlässlich eine Angabe ist, in drei Stufen: *belegt* stammt aus den
   Stammdaten der Versicherung, *nachgewiesen* hat ein Verfahren geprüft, *behauptet* hat nur der
   Nutzer selbst eingegeben. Gibt es mehrere Werte, gilt der verlässlichste, bei Gleichstand der
@@ -525,7 +526,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   Wer seine Anmeldeverfahren verwalten will, muss zwischendurch einen Step-up machen; danach geht es
   an derselben Stelle weiter.
   *Im Code:* `Transition.RequireSubJourney`; die unterbrochene Journey ist solange `SUSPENDED`.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 6.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 7.
 - **Subjekt**: Wem ein angemeldeter Kanal gehört: einem Konto oder, beim Vorgangszugang, einer
   Einladung. Nie beidem, und nie wechselt es unbemerkt.
   *Im Code:* `Subject`; im Austausch mit Keycloak `authData.subject`.
@@ -536,7 +537,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
 - **Token**: Ein signierter Ausweis, den ein Nutzer nach der Anmeldung bei Fachdiensten vorzeigt. Er
   nennt das Konto oder die Einladung, das Niveau (`acr`) und die Verfahren (`amr`) und gilt nur
   kurz; ein Refresh-Token holt einen neuen, solange die Sitzung läuft.
-  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 2,
+  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3a,
   [ADR-9](../adr/ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md).
 - **Tokens der App**: Die Zugangsschlüssel, mit denen die angemeldete App andere Dienste aufrufen
   kann. Sie hängen an dem, was der Nutzer bewiesen hat, und an seiner Sitzung in Keycloak.
@@ -551,7 +552,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   *Mehr dazu:* [03-tool-architektur](../03-tool-architektur.md) Abschnitte 1 und 2.
 - **Tool-Beschreibung**: siehe Tool.
 - **Tool-Durchlauf**: Ein einmal gestartetes Tool, das oft nur wenige Minuten lebt, etwa das Warten
-  auf eine eingegebene TAN. Seine Kennung ist eine andere als die des Tools selbst.
+  auf eine eingegebene TAN. Seine Kennung ist eine UUID, eine andere als die des Tools selbst.
   *Im Code:* `ToolSession`, `toolSessionId` (nicht `toolId`).
   *Mehr dazu:* [02-domaenenmodell](../02-domaenenmodell.md) Abschnitt 1.
 - **Tool-Rolle**: Was ein Tool fachlich tut: identifizieren, zuordnen, ein Verfahren einrichten, ein
@@ -560,7 +561,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   das Sicherheitsniveau erhöht.
   *Im Code:* `ToolRole` mit `IDENTIFICATION`, `CORRELATION`, `ENROLLMENT`, `KNOWN_ACCOUNT_AUTH`,
   `ACCOUNT_LOOKUP_AUTH`, `PEER_APPROVAL`, `ATTESTATION`.
-  *Mehr dazu:* [03-tool-architektur](../03-tool-architektur.md) Abschnitt 2.
+  *Mehr dazu:* [03-tool-architektur](../03-tool-architektur.md) Abschnitte 1 und 4.
 - **Tool-Sperre**: Der Betreiber kann ein Tool für den App-Kanal oder den Web-Kanal abschalten und
   die Reihenfolge festlegen, in der Tools angeboten werden. Ein gesperrtes Tool erscheint in keinem
   Angebot.
@@ -573,12 +574,12 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   etwa „Tool abgeschlossen“. Ein Übergang kann weiterführen, eine Aktion verlangen, eine Sub-Journey
   starten, die Anmeldung abschließen oder abbrechen.
   *Im Code:* `Transition`, ausgelöst durch ein `JourneyEvent`.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 5.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
 - **Untergrenze des Kanals** und **Ziel eines Durchlaufs**: Die Untergrenze ist das Niveau, unter das
   ein Kanal nie fallen darf, solange er besteht. Das Ziel ist das Niveau, das ein einzelner Step-up
   erreichen soll. Gerechnet wird immer mit dem höheren der beiden Werte.
   *Im Code:* `ChannelSession.acrFloor`, `targetAcr`.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 4.
 
 ## V
 
@@ -609,7 +610,7 @@ wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnitt 3.
   App-Kanal.
   *Im Code:* `ChannelType.WEB`. Die Anbindung an Keycloak heißt nach der Technik: Klassen `Keycloak…`
   (etwa `KeycloakChannelService`), Pfade `/kc/…`.
-  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3,
+  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3b,
   [ADR-8](../adr/ADR-008-keycloak-fuehrt-seine-eigenen-nativen-schritte-selbst-statt.md).
 - **Widerruf**: Nimmt eine Angabe zurück, etwa wenn das Personenverzeichnis meldet, dass eine
   Mitgliedsnummer nicht mehr gilt. Die alte Angabe wird dabei nicht gelöscht; der Widerruf ist ein

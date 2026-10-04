@@ -31,7 +31,7 @@ data class Step(
  * The routing phase of a transition: turns a [JourneyState] into the client's `next` plus the data
  * the step needs. A pure function of state and available tools; it reads no journey and writes
  * nothing. One small class keeps "next is a pure function of the state" checkable
- * (docs/04-orchestrierung.md #4).
+ * (docs/04-orchestrierung.md #6).
  */
 @Component
 class JourneyRouting(
@@ -49,7 +49,7 @@ class JourneyRouting(
     }
 
     /**
-     * `next` as a pure function of the state (docs/04-orchestrierung.md #4). [JourneyState.activatable]
+     * `next` as a pure function of the state (docs/04-orchestrierung.md #6). [JourneyState.activatable]
      * decides both what may be activated and where the client goes, so the two cannot disagree.
      */
     fun nextFor(state: JourneyState, availableTools: Set<ToolId>): Next {

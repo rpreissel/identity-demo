@@ -39,7 +39,7 @@ public final class OrchestratorNotes {
     public static final String PENDING_KIND = "orchestrator_pending_kind";
     public static final String PENDING_TOOL_ID = "orchestrator_pending_tool_id";
     public static final String PENDING_TOOL_SESSION_ID = "orchestrator_pending_tool_session_id";
-    /** JSON array of {nativeToolId, amrSourceId} - the full, current set (docs/05-api.md Abschnitt 3: no delta). */
+    /** JSON array of {nativeToolId, amrSourceId} - the full, current set (docs/05-api.md Abschnitt 3b: no delta). */
     static final String NATIVE_AMR = "orchestrator_native_amr";
     /** Set once restoreData was already submitted this flow run, so a later resume doesn't resend it. */
     static final String RESTORE_SUBMITTED = "orchestrator_restore_submitted";
@@ -61,7 +61,7 @@ public final class OrchestratorNotes {
     }
 
     /**
-     * The same value for the whole flow run (docs/05-api.md Abschnitt 3: "immer insert, nie find").
+     * The same value for the whole flow run (docs/05-api.md Abschnitt 3b: "immer insert, nie find").
      * Keyed on the tab id, not the parent session id: Keycloak reuses the root authentication session
      * across requests of an SSO'd browser, so a step-up right after a login would collide with that
      * login's kc binding (BINDING_MISMATCH). The tab id is fresh per authorization request.
@@ -145,7 +145,7 @@ public final class OrchestratorNotes {
     }
 
     /**
-     * The end-of-flow RestoreData hook (docs/05-api.md Abschnitt 3), called from
+     * The end-of-flow RestoreData hook (docs/05-api.md Abschnitt 3b), called from
      * {@link OrchestratorResumeAuthenticator#onTopFlowSuccess} once the whole top-level flow is done.
      * On a first login no UserSessionModel exists yet; Keycloak copies user-session notes onto it
      * when it is created, so writing the note here is enough.
@@ -164,7 +164,7 @@ public final class OrchestratorNotes {
             }
         } catch (Exception e) {
             // Best-effort: a missed RestoreData write only means a later step-up starts without a
-            // running start (docs/05-api.md Abschnitt 3), never a broken login.
+            // running start (docs/05-api.md Abschnitt 3b), never a broken login.
             log.warnf(e, "Failed to fetch/stash RestoreData for channel %s", channelSessionId);
         }
     }

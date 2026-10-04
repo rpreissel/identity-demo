@@ -36,7 +36,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 /**
- * Service behind the Keycloak facade's own endpoint (docs/05-api.md Abschnitt 3): an upsert on a
+ * Service behind the Keycloak facade's own endpoint (docs/05-api.md Abschnitt 3b): an upsert on a
  * Keycloak-chosen [UUID] that resumes or creates the channel, then delegates to
  * [ChannelService.resumeChannel] like the App channel, so "which tool comes next" is decided once.
  */
@@ -115,7 +115,7 @@ class KeycloakChannelService(
     ): ChannelResponse {
         // Checked before anything changes, so a rejected level leaves the channel as it was.
         val targetFloor = targetAcr?.let(::requestedAcr)
-        // restoreDataToken carries an earlier flow run's state (docs/05-api.md Abschnitt 3). decode()
+        // restoreDataToken carries an earlier flow run's state (docs/05-api.md Abschnitt 3b). decode()
         // checks it is bound to [restoreDataKeycloakSessionId], Keycloak's durable UserSessionModel id,
         // which differs from assertion.channelBinding. A wrong, tampered or expired token yields null,
         // like "nothing to restore". Restored methods keep their original `source`. It never comes
@@ -142,7 +142,7 @@ class KeycloakChannelService(
             MethodEvidence(
                 MethodName(descriptor.method),
                 AcrLevel.parse(descriptor.maxAcr) ?: AcrLevel.NONE,
-                // Uncapped (docs/05-api.md Abschnitt 3). The enrolledUnderAcr cap stops an
+                // Uncapped (docs/05-api.md Abschnitt 3b). The enrolledUnderAcr cap stops an
                 // orchestrator combination from escalating past the enrollment history. Keycloak's
                 // native report is trusted as a whole already, so a cap would only break the rule
                 // that two distinct factor types earn one tier above either alone.
@@ -183,7 +183,7 @@ class KeycloakChannelService(
             // A guessed channelSessionId is not enough: the assertion must carry this channel's
             // binding (docs/02-domaenenmodell.md Abschnitt 1).
             val channel = keycloakChannelAccessGuard.requireChannel(channelSessionId, assertion)
-            // Step-up (docs/05-api.md Abschnitt 3): binds the channel to the account Keycloak knows,
+            // Step-up (docs/05-api.md Abschnitt 3b): binds the channel to the account Keycloak knows,
             // once. A request naming another subject - another account, or an account where an
             // invitation signed in, or the reverse - is a mismatch, not a rebind (I-5).
             val bound = channel.subject
@@ -204,7 +204,7 @@ class KeycloakChannelService(
         targetFloor?.let { sessionManagementService.raiseChannelAcrFloor(channelSessionId, it.value) }
 
         // Restored methods come only with a channel this call created. They are applied as the
-        // entry journey's first transition (docs/04-orchestrierung.md #5, "RestoreData als erster
+        // entry journey's first transition (docs/04-orchestrierung.md #8, "RestoreData als erster
         // Übergang"), so its first decision already sees them.
         var response = if (isFreshChannel && restoredFactors.isNotEmpty()) {
             channelService.resumeChannel(
@@ -215,7 +215,7 @@ class KeycloakChannelService(
             channelService.resumeChannel(sessionManagementService.reloadChannelSession(channelSessionId))
         }
 
-        // What a native Keycloak authenticator established in this run (docs/05-api.md Abschnitt 3,
+        // What a native Keycloak authenticator established in this run (docs/05-api.md Abschnitt 3b,
         // ADR-8), merged into the same evidence as a tool proof. There is always a journey by now.
         if (liveFactors.isNotEmpty()) {
             val journey = journeyService.findActive(channelSessionId)
@@ -235,7 +235,7 @@ class KeycloakChannelService(
     )
 
     /**
-     * Called once by the authenticator's end-of-flow hook (docs/05-api.md Abschnitt 3), see
+     * Called once by the authenticator's end-of-flow hook (docs/05-api.md Abschnitt 3b), see
      * [RestoreData]. The token is bound to [kcSessionId], the fresh UserSessionModel id only the
      * caller knows ([RestoreDataCodec]). `null` for a channel with nothing worth restoring.
      */

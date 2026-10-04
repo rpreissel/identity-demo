@@ -55,7 +55,7 @@ final class WebFormRenderer {
             WebToolRendererFactory factory = rendererFactoryFor(session, option);
             if (factory != null) optionLabels.put(option, OrchestratorToolCatalog.name(session, option));
         }
-        // The backend names each selection screen (docs/04-orchestrierung.md #4); these are
+        // The backend names each selection screen (docs/04-orchestrierung.md #6); these are
         // different screens and must not collapse into one generic heading.
         String backendTitle = response != null ? OrchestratorTexts.resolve(session, response.stepData().get("title")) : null;
         String title = backendTitle != null ? backendTitle : KcTexts.of(session, "Anmeldemethode wählen");

@@ -11,7 +11,7 @@ export default defineConfig({
     outDir: resolve(frontendDir, '../src/main/resources/static'),
     emptyOutDir: true,
     rollupOptions: {
-      // Six separate apps (docs/10-frontend.md #0), sharing components/tools/api.ts as plain
+      // Seven separate apps (docs/10-frontend.md #5), sharing components/tools/api.ts as plain
       // imports but each with its own HTML entry and React root. Navigation between them is real
       // browser navigation, not client-side routing.
       input: {

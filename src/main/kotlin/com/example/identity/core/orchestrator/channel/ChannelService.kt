@@ -112,7 +112,7 @@ class ChannelService(
         return versions.filter { it in served }.mapTo(mutableSetOf()) { it.toString() }
     }
 
-    /** The guaranteed resume entry point (docs/05-api.md #2): re-derives the currently due `next`. */
+    /** The guaranteed resume entry point (docs/05-api.md #3a): re-derives the currently due `next`. */
     fun getChannel(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse =
         resumeChannel(channelAccessGuard.requireChannel(channelSessionId, bindingKeyRef))
 
@@ -131,7 +131,7 @@ class ChannelService(
     }
 
     /**
-     * The active methods as their own resource (docs/05-api.md #2). Empty, not an error, until a
+     * The active methods as their own resource (docs/05-api.md #3a). Empty, not an error, until a
      * factor was proven here ([ChannelSession.hasProvenFactor]); a recognized device is not enough.
      */
     fun getMethods(channelSessionId: ChannelSessionId, bindingKeyRef: String): MethodsResponse {
@@ -192,7 +192,7 @@ class ChannelService(
 
     /**
      * Resumes the channel and its active journey. [KeycloakChannelService] reuses it for the Keycloak facade's
-     * upsert (docs/05-api.md Abschnitt 3). [seedAction] matters only when a fresh journey starts
+     * upsert (docs/05-api.md Abschnitt 3b). [seedAction] matters only when a fresh journey starts
      * (see [JourneyService.start]).
      */
     internal fun resumeChannel(channel: ChannelSession, seedAction: Action? = null): ChannelResponse {
@@ -357,7 +357,7 @@ class ChannelService(
 
     /**
      * Starts account deletion: a yes/no confirmation, then a fresh re-proof of an active factor,
-     * then the deletion (docs/05-api.md #2, "Konto löschen").
+     * then the deletion (docs/05-api.md #3a, "Konto löschen").
      */
     fun startDeleteAccount(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
         val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)

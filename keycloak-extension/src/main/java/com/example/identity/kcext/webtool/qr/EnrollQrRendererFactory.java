@@ -7,7 +7,7 @@ import org.keycloak.forms.login.LoginFormsProvider;
 
 /**
  * Web-channel counterpart to {@code EnrollQrForm.tsx}: a pure opt-in with a single confirm button
- * (docs/03-tool-architektur.md). Registering this factory is also what lets the orchestrator offer
+ * (docs/verfahren/qr.md). Registering this factory is also what lets the orchestrator offer
  * {@code enroll-qr} in the Web channel.
  */
 public class EnrollQrRendererFactory extends AbstractWebToolRendererFactory {

@@ -5,7 +5,7 @@ import kotlin.reflect.KClass
 
 /**
  * The working data of a tool session, kept by the orchestrator next to the session itself
- * (docs/03-tool-architektur.md #2, ADR-49). A tool keeps its state as a plain data class and
+ * (docs/03-tool-architektur.md #1, ADR-49). A tool keeps its state as a plain data class and
  * replaces it whole: [save] after every change, nothing is tracked behind its back. The data
  * lives and ends with its tool session; a module brings no table and no cleanup of its own.
  *

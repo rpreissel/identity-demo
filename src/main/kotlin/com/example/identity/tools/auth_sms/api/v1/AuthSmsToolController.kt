@@ -31,7 +31,7 @@ import com.example.identity.contract.tool_api.envelope.TOOLS_API
 data class AuthSmsPatchRequest(@field:Schema(example = "123456") val tan: String? = null)
 
 /**
- * toolId=auth-sms (docs/06-ablaeufe.md #3). One controller owns activation, PATCH and GET for
+ * toolId=auth-sms (docs/verfahren/sms.md). One controller owns activation, PATCH and GET for
  * this tool (docs/08-projektrahmen.md A11) - no generic toolId dispatch anywhere.
  */
 @RestController

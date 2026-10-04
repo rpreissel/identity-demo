@@ -11,7 +11,7 @@ import java.time.Instant
 internal const val PASSWORD_ENROLLMENT_TYPE = "auth_password.enrollment"
 
 /**
- * Long-lived password credential (docs/06-ablaeufe.md #1). A chosen password is self-verifying, so
+ * Long-lived password credential (docs/verfahren/password.md). A chosen password is self-verifying, so
  * there is no unconfirmed interim record. No identifier field: the account's confirmed email is the
  * identifier, and enroll-password requires it.
  */

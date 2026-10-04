@@ -14,7 +14,7 @@ import io.kotest.matchers.string.shouldContain
 
 /**
  * What a [ToolModule] derives for its tools, so no tool states it again (docs/03-tool-architektur.md
- * #1). No Spring: the modules are plain values.
+ * #2). No Spring: the modules are plain values.
  */
 class ToolModuleTest : BehaviorSpec({
 

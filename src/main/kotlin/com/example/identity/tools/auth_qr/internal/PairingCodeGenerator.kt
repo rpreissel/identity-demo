@@ -3,7 +3,7 @@ package com.example.identity.tools.auth_qr.internal
 import java.security.SecureRandom
 
 /**
- * The two codes of a QR login (docs/07-betrieb.md #5): [pairingCode] finds the waiting browser
+ * The two codes of a QR login (docs/verfahren/qr.md): [pairingCode] finds the waiting browser
  * request from the app (must resist guessing on its own), [confirmationCode] travels back from the
  * app to the browser (short enough to type; guessing is bounded by the request's attempt limit).
  */

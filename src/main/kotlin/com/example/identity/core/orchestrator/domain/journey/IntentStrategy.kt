@@ -17,7 +17,7 @@ fun selfServiceAcrFloor(account: AccountProfile?): AcrLevel =
     if (account?.personId == null) AcrLevels.DEFAULT_REQUIRED_ACR else AcrLevel.LOA2
 
 /**
- * The SPI each intent implements (docs/04-orchestrierung.md #5). A strategy decides, it never acts:
+ * The SPI each intent implements (docs/04-orchestrierung.md #8). A strategy decides, it never acts:
  * it reads a [JourneyContext] and names an [Action]; every side effect is executed centrally by
  * `JourneyService`. [transition] is the one place a strategy answers "what happens next"; every
  * trigger is a [JourneyEvent].

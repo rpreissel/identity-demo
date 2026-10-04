@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration
  * `stepData` on the wire belongs to a tool.
  */
 
-/** Several candidates are open, so the client shows a choice (docs/04-orchestrierung.md #4). */
+/** Several candidates are open, so the client shows a choice (docs/04-orchestrierung.md #6). */
 data class SelectMethodStep(
     val options: List<String>,
     val title: Text?,

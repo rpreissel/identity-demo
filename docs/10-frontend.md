@@ -1,7 +1,11 @@
 # Frontend
 
-Dieses Kapitel beschreibt die Anforderungen an die Oberfläche der Demo und die Regel, nach der sie
-von Schritt zu Schritt navigiert.
+Dieses Kapitel beschreibt die Anforderungen an die Oberfläche und die Regel, nach der sie von
+Schritt zu Schritt navigiert. Im Mittelpunkt stehen die beiden Kanäle: der Client des App-Kanals
+(`/app/`) und die Website im Web-Kanal (`/web/`). Für sie gelten die Regeln der Abschnitte 1 bis 4;
+ein echter Client müsste sie genauso erfüllen. Wie das Frontend gebaut und ausgeliefert wird, steht in
+Abschnitt 5. Was es nur für die Demo gibt (Startseite, Admin, simulierte Fremdsysteme, Demo-Spalte,
+Testpersonen), steht gesammelt in Abschnitt 6.
 
 Die zugrunde liegende API beschreibt [05-api.md](05-api.md), die Erzeugung der Schlüssel
 [09-dpop.md](09-dpop.md).
@@ -52,9 +56,11 @@ Ablaufsteuerung in der App startet ein Tool nur darüber und übergibt dann an d
 
 Ein Tool wird dabei nur angeboten, wenn **beide** Seiten es erlauben: Die App muss es überhaupt
 anzeigen können (sie meldet das beim Einstieg in den Kanal in `availableTools`), und das Backend darf
-es nicht gesperrt haben. Einen Abgleich von Versionen gibt es nicht, nur diese eine Liste. So bleiben
-alte Versionen der App funktionsfähig: Ein Tool, das eine App nicht kennt, wird ihr einfach nie
-angeboten, statt einen Fehler auszulösen.
+es nicht gesperrt haben. In dieser Liste nennt die App jedes Tool mit der einen Fassung, die sie
+spricht (`enroll-sms@1`, [ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)); ein Tool in einer
+Fassung, die der Server nicht führt, fällt weg wie ein unbekanntes. So bleiben alte Versionen der App
+funktionsfähig: Ein Tool, das eine App nicht kennt, wird ihr einfach nie angeboten, statt einen
+Fehler auszulösen.
 
 Zwei Ergänzungen aus der Praxis:
 
@@ -83,162 +89,96 @@ Daraus folgt für Sie als Frontend-Entwickler:
 
 ---
 
-## 0) Sieben eigenständige Apps
+## 1) Die beiden Kanäle
 
-Das Frontend ist **keine** einzelne Single-Page-App, sondern besteht aus sieben eigenen React-Apps, jede
-mit eigener HTML-Einstiegsseite und eigener URL. Gemeinsam nutzen sie nur Code wie eine Bibliothek
-(Komponenten, Tools, `api.ts`, …). Jede App hat ein eigenes Farbschema (`index.css`), damit man ohne
-zu lesen sieht, wo man ist:
-
-- **Willkommen** (`/`): ohne Kanal und ohne DPoP-Schlüssel. Sie hat drei Reiter:
-  - *Loslegen* lädt zum Ausprobieren ein: ein großer Knopf „In der App registrieren“
-    (`/app/?intent=register`, FE-18), darunter eine kurze Liste von Aufgaben, je mit einem Knopf, der
-    den passenden Tab öffnet, die Kacheln zu allen anderen Apps und zugeklappt „Was ist echt, was
-    simuliert?“. Am Ende steht „Demo zurücksetzen“, ohne Admin-Anmeldung
-    (`POST /orchestrator/demo/reset`). Der Knopf setzt noch nicht zurück: Er lädt erst die aktiven
-    Sitzungen (`GET /orchestrator/demo/sessions`) und fragt direkt auf der Seite nach, nicht per
-    Browser-Dialog. Sind Sitzungen aktiv, warnt er, dass das Zurücksetzen sie beendet, und listet
-    sie auf. Erst „Jetzt zurücksetzen“ löscht; danach steht das Ergebnis in einer Zeile.
-  - *Begriffe* erklärt mit je einem Satz die Wörter, die die Oberfläche benutzt, und verlinkt den
-    Quellcode, den Einstieg in die Doku ([01-ueberblick.md](01-ueberblick.md)) und die
-    [Beispiel-Story](11-beispiel-story.md).
-  - *Server-Status* liest nur das öffentliche `GET /orchestrator/demo/server-info`:
-    Keycloak-Profil, Reihenfolge der Registrierung, gesperrte Tools; im Demomodus dazu Zustand und
-    Kennzahlen.
-- **App-Kanal** (`/app/`): der an DPoP gebundene Ablauf des Orchestrators, ohne Reiter. Was nur diesen
-  Client betrifft (Startniveau, unterstützte Verfahren), steht unter „Erweitert“. Welche Verfahren
-  er darstellen kann, gibt der Client selbst an; sperren und ordnen kann sie der Betreiber je Kanal
-  auf der Admin-Seite.
+- **App-Kanal** (`/app/`): der an DPoP gebundene Ablauf des Orchestrators, ohne Reiter. Er steht für
+  eine App auf dem Smartphone. Welche Verfahren er darstellen kann, gibt der Client selbst an;
+  sperren und ordnen kann sie der Betreiber je Kanal auf der Admin-Seite.
 - **Web-Kanal** (`/web/`): der echte Ablauf mit Keycloak im Browser, ohne Reiter. Es gibt ihn nur mit
   dem Spring-Profil `keycloak`. Ohne dieses Profil zeigt `/web/` einen Hinweis statt einer Anmeldung,
   und die Kachel auf der Startseite ist ausgeschaltet. Beides liest `server-info.keycloak`, das ohne
   Profil `null` ist. Derselbe Block sagt dem Browser auch, wo Keycloak zu finden ist: öffentliche
   Adresse, Realm und die Client-ID. Sie stammen aus dem Parametersatz der Keycloak-Einrichtung
   (`keycloak-setup`); `webOidc.ts` hat dafür keine eigenen Konstanten. Einen simulierten
-  Keycloak gibt es nicht. In der Demo-Spalte wählt man, womit die Anmeldung beginnt: gleich alle
-  Verfahren zur Wahl (Standard) oder erst das Passwort ([ADR-42](adr/ADR-042-loa1-anmeldung-umschalten.md)).
-  Konten gibt es anfangs keine; eine Testperson registriert sich über „Registrieren“ auf der
-  Anmeldeseite, wie in der App. Die Kachel „Vorgang mit Einmalkennwort“ meldet eine Person ohne Konto
-  für einen Vorgang an ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Trägt das
-  Access Token den Claim `process`, zeigt die Seite nur die Vorgangsansicht: Name, Nummern, Niveau,
-  „Vorgang beenden“ und „Abmelden“. „Vorgang beenden“ spielt das Fachsystem und meldet den Vorgang beim
+  Keycloak gibt es nicht.
+
+  Die Kachel „Vorgang mit Einmalkennwort“ meldet eine Person ohne Konto für einen Vorgang an
+  ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)). Trägt das Access Token den Claim
+  `process`, zeigt die Seite nur die Vorgangsansicht: Name, Nummern, Niveau, „Vorgang beenden“ und
+  „Abmelden“. „Vorgang beenden“ spielt das Fachsystem und meldet den Vorgang beim
   Personenverzeichnis ab (`POST /mock-personenverzeichnis/einladungen/{id}/abschluss`, Id aus dem Claim
   `invitation`). Keycloak erfährt das Ende kurz danach über das Ereignis des Verzeichnisses; die Seite
   erneuert deshalb bis zu fünfmal im Sekundenabstand, bis Keycloak die Erneuerung ablehnt, und zeigt
-  dann die beendete Sitzung. Die
-  Demo-Spalte zeigt unter den Token-Details die Vorgangs-Marker. Mit Konto zeigt die Ansicht „Vorgang“,
-  dass das Token keinen Marker trägt.
-- **Admin** (`/admin/`): die Sicht des Betreibers, hinter der Admin-Anmeldung (HTTP Basic auf
-  `/orchestrator/admin/**`, `AdminSecurityConfig`). Reiter: *Einstellungen* (Verfahren je Kanal
-  sperren und ordnen, Reihenfolge der Registrierung, Oberfläche der Keycloak-Anmeldeseiten, Beginn
-  der Anmeldung auf `loa1`, Links für Entwickler),
-  *Journey-Trace* über alle Konten und Geräte (mit laufender Aktualisierung), *Sitzungen* und
-  *Konten* (löschen, Demo zurücksetzen). *Sitzungen* zeigt die aktiven Sitzungen, gelesen beim
-  Öffnen und auf „Aktualisieren“: je Kanal die Anzahl, die zehn neuesten Sitzungen des
-  Orchestrators und, mit Keycloak, dessen offene Sitzungen getrennt nach Website und App, jeweils
-  mit der Sitzung des Orchestrators, zu der sie gehören. Dieselbe Ansicht (`ActiveSessionsView`)
-  zeigt die Startseite vor dem Zurücksetzen.
-- **Personenverzeichnis** (`/personenverzeichnis/`): das simulierte **Fremdsystem** (ADR-31) mit
-  Personen, Freischaltcodes und Einladungen mit Einmalkennwort (ausstellen, Vorgang abschließen,
-  widerrufen). Fachlich spricht sie nur `/mock-personenverzeichnis/*` an. Von
-  `/orchestrator` lädt sie nur die Texte der gemeinsamen Komponenten.
-- **Briefkasten** (`/briefkasten/`): die simulierte Seite der Empfänger. Briefe, SMS und E-Mails an
-  Testpersonen stehen in einer Liste, neueste zuerst, mit den Codes im Klartext. Ein Brief mit
-  Einmalkennwort nennt darunter in einer kleinen Zeile den Vorgang. Sie liest die
-  Postausgänge der Simulationen (`/mock-personenverzeichnis/briefe`, `/mock-sms/outbox`,
-  `/mock-mail/outbox`), die es nur im Demomodus gibt, und lädt alle drei Sekunden nach.
-- **Nect-Sprungseite** (`/nect/`): der simulierte Identifizierungsdienst Nect (Online-Ausweis,
-  Reisepass, EUDI-Wallet), zu dem `ident-nect` weiterleitet. Fachlich spricht sie nur `/mock-nect/*`
-  an.
+  dann die beendete Sitzung.
 
 Die Kanäle zeigen nur, was ein Nutzer dieses Kanals sehen würde. Der Journey-Trace und alles, was die
-ganze Instanz umstellt, liegt auf der Admin-Seite, und zwar über alle Konten, Geräte und Kanäle
-hinweg.
-
-Zwischen den Apps navigiert man mit **echter Browser-Navigation**, nicht über Routing im Client. Vor
-und Zurück funktionieren deshalb ohne eigenen Code. Die Links der Willkommensseite zu den Kanälen
-öffnen einen **benannten** Tab (`target="identity-demo-app-kanal"` bzw. `target="identity-demo-web-kanal"`)
-statt `_blank`. So wird ein bereits offener Tab derselben Herkunft wiederverwendet. Bewusst fehlt
-`rel="noopener"`, denn das würde die Wiederverwendung verhindern.
-
-Der QR-Code bzw. Demo-Link im Web-Kanal (Abschnitt „Anmeldung im Browser per QR-Code bestätigen“ unten)
-verwendet denselben Namen `identity-demo-app-kanal`. **In der Praxis wird der Tab dort aber nicht
-wiederverwendet:** Der Klick kommt dann von `https://localhost:8543` (echtes Keycloak), also von einer
-anderen Herkunft als der Tab des App-Kanals (`http://localhost:8080/app/`), und Chrome öffnet (so
-getestet) einen neuen Tab. Das ist beim Testen am Desktop etwas unbequem, schränkt aber nichts ein.
+ganze Instanz umstellt, liegt auf der Admin-Seite (Abschnitt 6), und zwar über alle Konten, Geräte
+und Kanäle hinweg. Was neben dem Smartphone bzw. neben der Website nur der Demo dient, steht in
+einer eigenen Demo-Spalte (Abschnitt 6).
 
 ---
 
-## 1) Technische Anforderungen
+## 2) Navigation ausschließlich über `next`
 
-- **FE-1** — Das Frontend basiert auf React (aktuelle Version) und TypeScript.
-  - *Kriterium:* siehe Versionstabelle in [08-projektrahmen.md](08-projektrahmen.md)
-- **FE-2** — Das Frontend kann allein betrieben werden.
-  - *Kriterium:* `npm run dev` startet den Entwicklungsserver von Vite; alle sieben Einstiegsseiten sind erreichbar (`/`, `/app/`, `/web/`, `/admin/`, `/personenverzeichnis/`, `/nect/`, `/briefkasten/`)
-- **FE-3** — Das Frontend kann über Spring Boot ausgeliefert werden.
-  - *Kriterium:* Ein Vite-Build mit sieben HTML-Einstiegsseiten landet in `src/main/resources/static`; `./gradlew bootRun` liefert es aus. `/app/`, `/web/`, `/admin/`, `/personenverzeichnis/`, `/nect/` und `/briefkasten/` werden über ausdrückliche Weiterleitungen in einem `WebMvcConfigurer` ([WebConfig.kt](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/WebConfig.kt)) auf ihre `index.html` aufgelöst; die Standardauslieferung von Spring löst nur die Startseite auf
-- **FE-4** — Im Entwicklungsmodus werden Anfragen an die API weitergeleitet.
-  - *Kriterium:* Der Entwicklungsserver von Vite leitet `/orchestrator`, `/mock-personenverzeichnis`, `/mock-nect`, `/mock-kobil`, `/mock-sms` und `/mock-mail` an `http://localhost:8080` weiter, für alle Apps gleich
-- **FE-5** — Das Frontend spricht ausschließlich mit dem `orchestrator`.
-  - *Kriterium:* Keine direkten Aufrufe an fachliche Module. **Eine benannte Ausnahme:** `src/kobilSdk.ts` ruft den Fremddienst KOBIL (`/mock-kobil/*`) direkt auf. Auf einem echten Telefon wäre das Code des nativen SDK. Liefe der Aufruf über unser Backend, würde aus dem Fremddienst unbemerkt ein interner Aufruf, und genau diese Trennung macht das Verfahren aus ([Abläufe](06-ablaeufe.md) Abschnitt 7). Dasselbe gilt für die Seiten `/personenverzeichnis/`, `/nect/` und `/briefkasten/`, die die simulierten Fremdsysteme (`/mock-personenverzeichnis/*`, `/mock-nect/*`, `/mock-sms/*`, `/mock-mail/*`) direkt ansprechen (ADR-31)
+Das Frontend nutzt eine **feste Zuordnung im Client**: eine Routing-Tabelle für die Bildschirme des
+Orchestrators und eine Tool-Registry für die Schritte der Tools. Welche Oberfläche es zeigt,
+entscheidet es ausschließlich anhand von `next`, nie anhand von URLs, Namen von Aktionen oder eigenen
+Schlüssen aus dem Zustand der Sitzung.
+
+- **Das Backend liefert** `next.type` (`tool` oder `orchestrator`: wem der nächste Bildschirm gehört
+  und welchen Endpunkt der Client aufruft), dazu `next.toolId` bzw. `next.context` und `next.step`.
+  Auswahlmöglichkeiten stehen in `stepData.options`, fehlende Felder in `stepData.missingFields`.
+- **Das Frontend entscheidet** über die Bildschirme des Orchestrators mit der Tabelle in `routing.ts`
+  (Schlüssel `(context, step)`). Über die Schritte der Tools entscheidet `tools/registry.ts`: Jedes
+  Tool bringt in `tools/<name>/index.tsx` sein `render(ctx)` für jeden `step` mit, und die Registry
+  findet es über `import.meta.glob`. Ein Muster in der URL spielt nie eine Rolle.
+- **Jedes Tool-Modul nennt seine Fassung** (`version`). Die Registry meldet die Tools in
+  `availableTools` als `<toolId>@<version>`, und die App ruft ein Tool unter
+  `/tools/api/<toolId>/v<version>` auf ([ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)). Im
+  Web-Kanal meldet die Keycloak-Erweiterung die Fassung ihrer Renderer.
+- Der Client baut eine `toolId` **nie** selbst zusammen. Sie kommt entweder aus `next.toolId` oder
+  als gewählter Eintrag aus `stepData.options`.
+
+Die Bildschirme des Orchestrators (`routing.ts`, vollständig):
+
+```
+registration   / selectIdentificationMethod -> select-method
+enrollment     / selectMethod               -> select-method
+auth           / selectMethod               -> select-method
+authentication / authenticated              -> authentication-completed
+prompt         / confirm                    -> prompt
+```
+
+Beispiel für den Schritt eines Tools: `tools/fsc/index.tsx` zeigt für `ident-fsc` bei `step = input`
+das Formular `IdentFscForm`.
+
+Auf einer Auswahlseite (`selectMethod`) füllt das Frontend die Auswahl aus `stepData.options`; die
+Einträge sind vollständige `toolId`-Werte. `SelectMethodView` macht daraus Auswahlkarten und holt
+dafür über `metaFor` das Symbol aus dem `meta` des Tool-Moduls, Kurzname und Erklärung aus dem
+Tool-Katalog des Backends (`GET /tools/catalog`, `toolCatalog.ts`). Der Katalog wird wie die Texte
+vor dem Code der App geladen (`main.tsx`); Name und Hinweis stehen nur in der Moduldeklaration im
+Backend. Die gewählte `toolId` geht unverändert weiter.
+
+Ein `next.step` benennt eine fachliche Phase, keinen Bildschirm. Wie viele Bildschirme ein Tool
+daraus macht, entscheidet das Frontend anhand von `stepData.missingFields` und `PATCH`-Anfragen mit
+einem Teil der Felder. Ein zusätzlicher Bildschirm, der dieselben Daten braucht, erfordert deshalb
+keine Änderung im Backend. Beispiel `ident-fsc`: Es hat einen Schritt `input`, im Frontend aber zwei
+Bildschirme (erst die Personendaten, dann der Freischaltcode). `ident-eid` hält es genauso: ein
+Schritt `input`, zwei Bildschirme (erst die Karte, dann die PIN).
+
+Die Folgen: Alle URLs des Backends bleiben ein Detail der Umsetzung. Ein neues Tool braucht nur einen
+eigenen Ordner `tools/<name>/`; die Registry findet es selbst, ein Tabelleneintrag ist nicht nötig.
+Auch die eigenen Endpunkte eines Tools ([API](05-api.md), Bereich der Tools) findet der Client über
+`(toolId, step)`.
+
+Zwei Ausnahmen verletzen diese Regel **nicht**, weil sie nur eine Aktion auslösen und nie
+entscheiden, welche Komponente angezeigt wird: Der Wechsel zwischen den Apps (Abschnitt 5) ist echte
+Browser-Navigation. Und der URL-Parameter `intent` beim Einstieg in den App-Kanal (FE-18, Abschnitt 6)
+wird einmal in einen Aufruf von `handleStart` übersetzt.
 
 ---
 
-## 2) Anforderungen an die Oberfläche
-
-- **FE-6** — Übersichtliches Layout mit Karten, einheitlichem Farbschema und dunkler Darstellung.
-  - *Kriterium:* Gestaltung als Karten
-- **FE-7** — Formulare sind mit Testdaten vorausgefüllt.
-  - *Kriterium:* Jede Seite, die Angaben einer Person abfragt (Name, Geburtsdatum, Anschrift, KVNR oder Partnernummer, Freischaltcode, E-Mail-Adresse, Mobilnummer), bietet die Auswahl „Testperson übernehmen“ an; die erste Person ist beim Öffnen vorbelegt. Die Personen kommen live aus dem Personenverzeichnis über `demo.persons`, den Freischaltcode liest es aus dem Briefkasten. Was nicht zur Person gehört (TAN, Code, Demo-Passwort), kommt einzeln über das Objekt `demo` ([API](05-api.md)). Ohne Demo-Werte (ADR-28) bleiben die Felder leer. Fest im Client steht nur die simulierte eID-PIN
-- **FE-8** — Der aktuelle Stand und der nächste Schritt werden angezeigt.
-  - *Kriterium:* Anzeige aus `next` und `stepData`
-- **FE-9** — Telefonnummern werden schon im Client geprüft.
-  - *Kriterium:* Formatprüfung vor dem Absenden; das Backend lehnt ungültige Nummern mit `400` ab
-- **FE-10** — Die Identität des Geräts und der Kanal lassen sich unabhängig voneinander zurücksetzen.
-  - *Kriterium:* „Geräte-Kennung neu erzeugen“ (Demo-Spalte, „Aktionen der Demo“, ohne aktiven Kanal) tauscht den DPoP-Schlüssel und vergisst dabei die gemerkte `channelSessionId`, startet aber keinen Kanal. „Sitzung vergessen“ (ebenda) vergisst nur die lokal gemerkte `channelSessionId`, ohne das Backend aufzurufen. „Abmelden“ beendet den Kanal auf dem Server ([API](05-api.md), Abmelden) und legt **keinen** neuen Kanal automatisch an; der Knopf ist nur sichtbar, wenn der Kanal `AUTHENTICATED` ist
-- **FE-11** — Nach erfolgreicher Anmeldung werden `accountId` und `personId` angezeigt.
-  - *Kriterium:* Die Werte stammen aus dem Objekt `demo` der Antwort
-- **FE-12** — Das Frontend merkt sich die `channelSessionId` dauerhaft und getrennt vom DPoP-Schlüssel, tut damit aber nichts von selbst.
-  - *Kriterium:* Beim Start lädt oder erzeugt die App **nur** den DPoP-Schlüssel. Ohne aktiven Kanal wählt der Nutzer ausdrücklich: „Mit diesem Gerät anmelden“ (nur auf einem verknüpften Gerät, `fast_access`), „Mit E-Mail-Adresse anmelden“ (`lookup_login`), „Neues Konto anlegen“ bzw. „Anderes Konto benutzen“ (`register`) oder, mit einem übernommenen Pairing-Code, „Anmeldung bestätigen“ (`confirm_peer_login`); je ein `POST` mit passendem `intent`. „Sitzung fortsetzen“ (`GET`) steht in der Demo-Spalte
-- **FE-13** — Beim Anlegen eines Kanals lässt sich `requiredAcr` wählen.
-  - *Kriterium:* Sonst wäre `enroll-password` in der Demo kaum erreichbar: Die Registrierung endet von selbst, sobald ein einzelnes `loa1`-Verfahren die voreingestellte Untergrenze erfüllt
-- **FE-14** — Die Identität des Geräts (JWK-Thumbprint) ist sichtbar und lässt sich unabhängig vom Kanal neu erzeugen.
-  - *Kriterium:* Ein eigener Abschnitt „Diese App auf diesem Gerät“ im Hintergrund der Demo-Spalte, immer vorhanden, auch ohne aktiven Kanal. Darunter steht eine Zeile je weiterer Bindung dieses Geräts, allgemein aus `deviceLink.boundCredentials` erzeugt: Jedes Verfahren entscheidet selbst, was es zeigt, und die Karte gibt es nur aus. Ein neues an den Schlüssel gebundenes Verfahren braucht hier keine Änderung
-- **FE-15** — Ein angemeldeter Kanal lässt sich gezielt auf ein höheres Sicherheitsniveau bringen (Step-up).
-  - *Kriterium:* Der Knopf „Sicherheitsniveau 2 anfordern“ im Profil ruft `POST /channels/{channelSessionId}/step-ups` auf ([API](05-api.md)) und erscheint nur, solange `loa2` fehlt. Die API kann auch ein höheres Ziel anfordern; `ident-eid` ist das vorhandene Tool, das `loa3` erreicht
-- **FE-16** — Solange ein Tool Eingaben erwartet oder der Nutzer zwischen mehreren Tools wählt, bleibt nur eine naheliegende Aktion übrig.
-  - *Kriterium:* Nur „Abbrechen“ bleibt sichtbar. „Abmelden“ und die Links zum Umsteigen stehen gesammelt auf der Karte mit dem Sitzungsstatus; „Abmelden“ zusätzlich nur bei `AUTHENTICATED`
-  - *Kriterium:* Ist der Kanal nicht angemeldet, zeigt das Telefon auf jedem Bildschirm, auch bei einer Rückfrage, einen Weg zur Startseite: „Zurück“, solange weder ein Tool läuft noch etwas nachgewiesen ist (`hasProvenFactor`), sonst „Abbrechen“; nach einem Nachweis in der Registrierung „Registrierung verwerfen“ mit Rückfrage. Ein Abbruch allein würde nur denselben Einstieg neu beginnen ([Orchestrierung](04-orchestrierung.md)); neu beginnen bietet die Demo-Spalte. Angemeldet führt „Abbrechen“ zur Übersicht, von dort „Abmelden“ zur Startseite
-- **FE-17** — Die Liste „Anmeldeverfahren“ unter „Sicherheit“ zeigt alle Verfahren des Kontos, nicht nur die, die diese Sitzung selbst nachgewiesen hat.
-  - *Kriterium:* Sie kommt aus `activeMethods` ([API](05-api.md)), nicht aus `currentAmr`. Sonst wäre ein aktives, in dieser Sitzung nicht geprüftes Verfahren weder sichtbar noch zu verwalten. Jede Zeile nennt neben dem Namen auch das **Verfahren** selbst (`kobil`, `device`, …). Ein selbst vergebener Gerätename („Mein Handy“) sagt sonst nicht, um welches Verfahren es geht, und es gibt zwei an ein Gerät gebundene (`device`, `kobil`)
-- **FE-20** — Verliert dieses Gerät seine KOBIL-Bindung, verschwinden auch die lokalen Daten dazu.
-  - *Kriterium:* Die Aktualisierung von `device-link` reicht `boundCredentials` an `tools/kobil/localData.ts` weiter. Die Regel gehört dem Modul; der Rahmen der App weiß nur, dass sich Bindungen geändert haben. Das ist nötig, weil das lokale Gerätegeheimnis anders als der `device`-Schlüssel ein **Geheimnis** ist: Auf dem Server wird es wertlos, im Browser bliebe es aber liegen ([09-dpop.md](09-dpop.md) Abschnitt 3)
-- **FE-19** — Beim KOBIL-Verfahren sieht der Nutzer den PIN nie, und der Schritt zum Entsperren sagt, warum.
-  - *Kriterium:* Eigener Ordner `src/tools/kobil/`. `KobilEnrollForm` fragt nach einem Namen und dann „Biometrie erlauben?“; es ruft `kobilSdk.activate` auf und legt das Entsperrgeheimnis **nur bei Zustimmung** lokal ab, sonst bleibt auf beiden Seiten nichts zurück. `KobilUnlockGate` zeigt beide Wege zum Entsperren: den mit Passwort immer, den mit Biometrie nur nach Zustimmung, sonst ist der Knopf ausgeschaltet. `KobilOtpStep` läuft von selbst los und hält den freigegebenen PIN nur für die Dauer eines SDK-Aufrufs in einer lokalen Variable, nie im Zustand der App oder im Speicher des Browsers. `KobilAuthStep` enthält die einzige Entscheidung, die der Client selbst trifft: „Diese Freigabe nützt mir nichts mehr, ich entsperre erneut.“
-- **FE-18** — Über einen URL-Parameter `intent` (dieselben Werte wie im Feld `intent` von `createChannel`) steigt der App-Kanal direkt in einen bestimmten Ablauf ein, auf Wunsch mit `pairingCode`. Der Zurück-Knopf des Browsers verlässt einen laufenden Vorgang und führt zur Startauswahl.
-  - *Kriterium:* `AppChannelApp.tsx` liest `intent` und `pairingCode` einmal aus der URL und entfernt sie; `intent` startet den passenden Aufruf von `handleStart`. Ist ein Kanal aktiv, ruft ein `popstate`-Listener `handleClearChannel()` auf (nur lokal, ohne Backend). Ein schrittweises Rückgängigmachen gibt es nicht, weil der Server den Ablauf vorantreibt (Modell mit `next`)
-
-### Die Demo-Spalte neben dem Smartphone
-
-Die Spalte rechts vom Smartphone (`DemoArea`) zeigt nur, was es allein für die Demo gibt. Sie ist
-nach der Frage des Besuchers geordnet:
-
-1. **Sitzung**: eine Zeile, wer angemeldet ist und mit welchem Niveau (`SessionSummary`).
-2. **Zu diesem Schritt**: welche Journey läuft, in einem Satz, warum der Schritt dran ist, darunter
-   die Demo-Hilfen des Schritts (Testperson, vorbelegter Code, Token). Was der Schritt tut und wer
-   dran ist, steht zugeklappt darunter. Die Hilfen schreibt jedes Formular selbst in `<Demo>`.
-3. **Aktionen der Demo**: je eine Zeile mit Satz und Knopf, etwa „Sitzung fortsetzen“, „Sitzung
-   vergessen“, „Journey neu starten“ oder „Gerätekennung neu erzeugen“.
-4. **Hintergrund**, alles zugeklappt: die Einführung („Dieser Tab ist Ihr Smartphone“, nur beim
-   ersten Besuch in diesem Browser offen, gemerkt im `localStorage`), die Abläufe hinter den Knöpfen
-   (`<Demo background>`), die Angaben zu diesem Gerät, die Einstellungen für den nächsten Start, der
-   Aufbau aus Channel, Journey und Tool und das Protokoll der Anfragen.
-
-Die Spalte hat eine feste Formensprache: eine Kartenart ohne Karten in Karten, zwei Schriftgrößen
-(Titel und Text) und Fett als einzige Auszeichnung, keine gesperrten Großbuchstaben, ein
-Aufklapper mit demselben Winkel wie die Listen im Smartphone, ein Info-Symbol für Diagramme
-(`DiagramTrigger`) und eine Knopfart. Festbreitenschrift steht nur für echte Kennungen. Die
-Web-Seite nutzt dieselbe Spalte.
+## 3) Bildschirme und Abläufe in den Kanälen
 
 ### Aufbau eines Bildschirms im Smartphone
 
@@ -338,66 +278,172 @@ Beide Wege führen zum selben `next` ([`CONFIRM_PEER_LOGIN`](journeys/confirm-pe
   beliebigen aktiven Verfahren erneut nachweisen, dass er es ist. Allein aufgrund vorhandener
   Nachweise wird nie automatisch bestätigt.
 
-Der Demo-Link der Web-Seite zeigt auf `/app/?intent=confirm_peer_login&pairingCode=...`, also direkt
-auf den App-Kanal. `intent` hat dieselben Werte wie das Feld `intent` von `createChannel`
-(`AuthIntent.fromRequest`, Groß- und Kleinschreibung egal). Beide Parameter werden beim Laden aus der
-URL gelesen und sofort entfernt. `intent=confirm_peer_login` startet denselben Ablauf wie der Knopf
-„Anmeldung bestätigen“. Ein bekannter Kanal wird dabei zuerst geladen; ist er
-`AUTHENTICATED`, läuft die Bestätigung über ihn. Den `pairingCode` merkt sich die App lokal
-(`pendingPairingCode`), damit der Schritt `input` von `approve-qr` ihn vorausfüllt.
+In der Demo gelangt der Pairing-Code über den Demo-Link der Web-Seite in die App (Abschnitt 6).
 
 ---
 
-## 3) Navigation ausschließlich über `next`
+## 4) Anforderungen an die Kanäle
 
-Das Frontend nutzt eine **feste Zuordnung im Client**: eine Routing-Tabelle für die Bildschirme des
-Orchestrators und eine Tool-Registry für die Schritte der Tools. Welche Oberfläche es zeigt,
-entscheidet es ausschließlich anhand von `next`, nie anhand von URLs, Namen von Aktionen oder eigenen
-Schlüssen aus dem Zustand der Sitzung.
+Diese Anforderungen gelten für die Oberfläche des App-Kanals und, soweit sie passen, der Website;
+ein echter Client müsste sie genauso erfüllen. Die Anforderungen, die nur der Demo dienen, stehen in
+Abschnitt 6, die an Bau und Auslieferung in Abschnitt 5. Die Nummern sind fest, weil Code und andere
+Kapitel sie zitieren.
 
-- **Das Backend liefert** `next.type` (`tool` oder `orchestrator`: wem der nächste Bildschirm gehört
-  und welchen Endpunkt der Client aufruft), dazu `next.toolId` bzw. `next.context` und `next.step`.
-  Auswahlmöglichkeiten stehen in `stepData.options`, fehlende Felder in `stepData.missingFields`.
-- **Das Frontend entscheidet** über die Bildschirme des Orchestrators mit der Tabelle in `routing.ts`
-  (Schlüssel `(context, step)`). Über die Schritte der Tools entscheidet `tools/registry.ts`: Jedes
-  Tool bringt in `tools/<name>/index.tsx` sein `render(ctx)` für jeden `step` mit, und die Registry
-  findet es über `import.meta.glob`. Ein Muster in der URL spielt nie eine Rolle.
-- Der Client baut eine `toolId` **nie** selbst zusammen. Sie kommt entweder aus `next.toolId` oder
-  als gewählter Eintrag aus `stepData.options`.
+- **FE-8** — Der aktuelle Stand und der nächste Schritt werden angezeigt.
+  - *Kriterium:* Anzeige aus `next` und `stepData`
+- **FE-9** — Telefonnummern werden schon im Client geprüft.
+  - *Kriterium:* Formatprüfung vor dem Absenden; das Backend lehnt ungültige Nummern mit `400` ab
+- **FE-12** — Das Frontend merkt sich die `channelSessionId` dauerhaft und getrennt vom DPoP-Schlüssel, tut damit aber nichts von selbst.
+  - *Kriterium:* Beim Start lädt oder erzeugt die App **nur** den DPoP-Schlüssel. Ohne aktiven Kanal wählt der Nutzer ausdrücklich: „Mit diesem Gerät anmelden“ (nur auf einem verknüpften Gerät, `fast_access`), „Mit E-Mail-Adresse anmelden“ (`lookup_login`), „Neues Konto anlegen“ bzw. „Anderes Konto benutzen“ (`register`) oder, mit einem übernommenen Pairing-Code, „Anmeldung bestätigen“ (`confirm_peer_login`); je ein `POST` mit passendem `intent`. „Sitzung fortsetzen“ (`GET`) steht in der Demo-Spalte
+- **FE-15** — Ein angemeldeter Kanal lässt sich gezielt auf ein höheres Sicherheitsniveau bringen (Step-up).
+  - *Kriterium:* Der Knopf „Sicherheitsniveau 2 anfordern“ im Profil ruft `POST /channels/{channelSessionId}/step-ups` auf ([API](05-api.md)) und erscheint nur, solange `loa2` fehlt. Die API kann auch ein höheres Ziel anfordern; `ident-eid` ist das vorhandene Tool, das `loa3` erreicht
+- **FE-16** — Solange ein Tool Eingaben erwartet oder der Nutzer zwischen mehreren Tools wählt, bleibt nur eine naheliegende Aktion übrig.
+  - *Kriterium:* Nur „Abbrechen“ bleibt sichtbar. „Abmelden“ und die Links zum Umsteigen stehen gesammelt auf der Karte mit dem Sitzungsstatus; „Abmelden“ zusätzlich nur bei `AUTHENTICATED`
+  - *Kriterium:* Ist der Kanal nicht angemeldet, zeigt das Telefon auf jedem Bildschirm, auch bei einer Rückfrage, einen Weg zur Startseite: „Zurück“, solange weder ein Tool läuft noch etwas nachgewiesen ist (`hasProvenFactor`), sonst „Abbrechen“; nach einem Nachweis in der Registrierung „Registrierung verwerfen“ mit Rückfrage. Ein Abbruch allein würde nur denselben Einstieg neu beginnen ([Orchestrierung](04-orchestrierung.md)); neu beginnen bietet die Demo-Spalte. Angemeldet führt „Abbrechen“ zur Übersicht, von dort „Abmelden“ zur Startseite
+- **FE-17** — Die Liste „Anmeldeverfahren“ unter „Sicherheit“ zeigt alle Verfahren des Kontos, nicht nur die, die diese Sitzung selbst nachgewiesen hat.
+  - *Kriterium:* Sie kommt aus `activeMethods` ([API](05-api.md)), nicht aus `currentAmr`. Sonst wäre ein aktives, in dieser Sitzung nicht geprüftes Verfahren weder sichtbar noch zu verwalten. Jede Zeile nennt neben dem Namen auch das **Verfahren** selbst (`kobil`, `device`, …). Ein selbst vergebener Gerätename („Mein Handy“) sagt sonst nicht, um welches Verfahren es geht, und es gibt zwei an ein Gerät gebundene (`device`, `kobil`)
+- **FE-19** — Beim KOBIL-Verfahren sieht der Nutzer den PIN nie, und der Schritt zum Entsperren sagt, warum.
+  - *Kriterium:* Eigener Ordner `src/tools/kobil/`. `KobilEnrollForm` fragt nach einem Namen und dann „Biometrie erlauben?“; es ruft `kobilSdk.activate` auf und legt das Entsperrgeheimnis **nur bei Zustimmung** lokal ab, sonst bleibt auf beiden Seiten nichts zurück. `KobilUnlockGate` zeigt beide Wege zum Entsperren: den mit Passwort immer, den mit Biometrie nur nach Zustimmung, sonst ist der Knopf ausgeschaltet. `KobilOtpStep` läuft von selbst los und hält den freigegebenen PIN nur für die Dauer eines SDK-Aufrufs in einer lokalen Variable, nie im Zustand der App oder im Speicher des Browsers. `KobilAuthStep` enthält die einzige Entscheidung, die der Client selbst trifft: „Diese Freigabe nützt mir nichts mehr, ich entsperre erneut.“
+- **FE-20** — Verliert dieses Gerät seine KOBIL-Bindung, verschwinden auch die lokalen Daten dazu.
+  - *Kriterium:* Die Aktualisierung von `device-link` reicht `boundCredentials` an `tools/kobil/localData.ts` weiter. Die Regel gehört dem Modul; der Rahmen der App weiß nur, dass sich Bindungen geändert haben. Das ist nötig, weil das lokale Gerätegeheimnis anders als der `device`-Schlüssel ein **Geheimnis** ist: Auf dem Server wird es wertlos, im Browser bliebe es aber liegen ([09-dpop.md](09-dpop.md) Abschnitt 3)
 
-Die Bildschirme des Orchestrators (`routing.ts`, vollständig):
+---
 
-```
-registration   / selectIdentificationMethod -> select-method
-enrollment     / selectMethod               -> select-method
-auth           / selectMethod               -> select-method
-authentication / authenticated              -> authentication-completed
-prompt         / confirm                    -> prompt
-```
+## 5) Aufbau und Technik des Frontends
 
-Beispiel für den Schritt eines Tools: `tools/fsc/index.tsx` zeigt für `ident-fsc` bei `step = input`
-das Formular `IdentFscForm`.
+Das Frontend ist **keine** einzelne Single-Page-App, sondern besteht aus sieben eigenen React-Apps, jede
+mit eigener HTML-Einstiegsseite und eigener URL: den beiden Kanälen (`/app/`, `/web/`, Abschnitt 1)
+und fünf Seiten der Demo (`/`, `/admin/`, `/personenverzeichnis/`, `/briefkasten/`, `/nect/`,
+Abschnitt 6). Gemeinsam nutzen sie nur Code wie eine Bibliothek (Komponenten, Tools, `api.ts`, …).
+Jede App hat ein eigenes Farbschema (`index.css`), damit man ohne zu lesen sieht, wo man ist.
 
-Auf einer Auswahlseite (`selectMethod`) füllt das Frontend die Auswahl aus `stepData.options`; die
-Einträge sind vollständige `toolId`-Werte. `SelectMethodView` macht daraus Auswahlkarten und holt
-dafür über `metaFor` das Symbol aus dem `meta` des Tool-Moduls, Kurzname und Erklärung aus dem
-Tool-Katalog des Backends (`GET /tools/catalog`, `toolCatalog.ts`). Der Katalog wird wie die Texte
-vor dem Code der App geladen (`main.tsx`); Name und Hinweis stehen nur in der Moduldeklaration im
-Backend. Die gewählte `toolId` geht unverändert weiter.
+Zwischen den Apps navigiert man mit **echter Browser-Navigation**, nicht über Routing im Client. Vor
+und Zurück funktionieren deshalb ohne eigenen Code. Die Links der Willkommensseite zu den Kanälen
+öffnen einen **benannten** Tab (`target="identity-demo-app-kanal"` bzw. `target="identity-demo-web-kanal"`)
+statt `_blank`. So wird ein bereits offener Tab derselben Herkunft wiederverwendet. Bewusst fehlt
+`rel="noopener"`, denn das würde die Wiederverwendung verhindern.
 
-Ein `next.step` benennt eine fachliche Phase, keinen Bildschirm. Wie viele Bildschirme ein Tool
-daraus macht, entscheidet das Frontend anhand von `stepData.missingFields` und `PATCH`-Anfragen mit
-einem Teil der Felder. Ein zusätzlicher Bildschirm, der dieselben Daten braucht, erfordert deshalb
-keine Änderung im Backend. Beispiel `ident-fsc`: Es hat einen Schritt `input`, im Frontend aber zwei
-Bildschirme (erst die Personendaten, dann der Freischaltcode). `ident-eid` hält es genauso: ein
-Schritt `input`, zwei Bildschirme (erst die Karte, dann die PIN).
+Anforderungen an alle Apps:
 
-Die Folgen: Alle URLs des Backends bleiben ein Detail der Umsetzung. Ein neues Tool braucht nur einen
-eigenen Ordner `tools/<name>/`; die Registry findet es selbst, ein Tabelleneintrag ist nicht nötig.
-Auch die eigenen Endpunkte eines Tools ([API](05-api.md), Bereich der Tools) findet der Client über
-`(toolId, step)`.
+- **FE-1** — Das Frontend basiert auf React (aktuelle Version) und TypeScript.
+  - *Kriterium:* siehe Versionstabelle in [08-projektrahmen.md](08-projektrahmen.md)
+- **FE-2** — Das Frontend kann allein betrieben werden.
+  - *Kriterium:* `npm run dev` startet den Entwicklungsserver von Vite; alle sieben Einstiegsseiten sind erreichbar (`/`, `/app/`, `/web/`, `/admin/`, `/personenverzeichnis/`, `/nect/`, `/briefkasten/`)
+- **FE-3** — Das Frontend kann über Spring Boot ausgeliefert werden.
+  - *Kriterium:* Ein Vite-Build mit sieben HTML-Einstiegsseiten landet in `src/main/resources/static`; `./gradlew bootRun` liefert es aus. `/app/`, `/web/`, `/admin/`, `/personenverzeichnis/`, `/nect/` und `/briefkasten/` werden über ausdrückliche Weiterleitungen in einem `WebMvcConfigurer` ([WebConfig.kt](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/WebConfig.kt)) auf ihre `index.html` aufgelöst; die Standardauslieferung von Spring löst nur die Startseite auf
+- **FE-4** — Im Entwicklungsmodus werden Anfragen an die API weitergeleitet.
+  - *Kriterium:* Der Entwicklungsserver von Vite leitet `/orchestrator`, `/tools/api`, `/mock-personenverzeichnis`, `/mock-nect`, `/mock-kobil`, `/mock-sms` und `/mock-mail` an `http://localhost:8080` weiter, für alle Apps gleich
+- **FE-5** — Das Frontend spricht ausschließlich mit dem `orchestrator`.
+  - *Kriterium:* Keine direkten Aufrufe an fachliche Module. **Eine benannte Ausnahme:** `src/kobilSdk.ts` ruft den Fremddienst KOBIL (`/mock-kobil/*`) direkt auf. Auf einem echten Telefon wäre das Code des nativen SDK. Liefe der Aufruf über unser Backend, würde aus dem Fremddienst unbemerkt ein interner Aufruf, und genau diese Trennung macht das Verfahren aus ([KOBIL](verfahren/kobil.md)). Dasselbe gilt für die Seiten `/personenverzeichnis/`, `/nect/` und `/briefkasten/`, die die simulierten Fremdsysteme (`/mock-personenverzeichnis/*`, `/mock-nect/*`, `/mock-sms/*`, `/mock-mail/*`) direkt ansprechen (ADR-31)
+- **FE-6** — Übersichtliches Layout mit Karten, einheitlichem Farbschema und dunkler Darstellung.
+  - *Kriterium:* Gestaltung als Karten
 
-Zwei Ausnahmen verletzen diese Regel **nicht**, weil sie nur eine Aktion auslösen und nie
-entscheiden, welche Komponente angezeigt wird: Der Wechsel zwischen den Apps (Abschnitt 0) ist echte
-Browser-Navigation. Und der URL-Parameter `intent` beim Einstieg in den App-Kanal (FE-18) wird einmal
-in einen Aufruf von `handleStart` übersetzt.
+---
+
+## 6) Was es nur für die Demo gibt
+
+### Die Seiten der Demo
+
+Fünf der sieben Apps bedienen die Demo oder simulieren Fremdsysteme:
+
+- **Willkommen** (`/`): ohne Kanal und ohne DPoP-Schlüssel. Sie hat drei Reiter:
+  - *Loslegen* lädt zum Ausprobieren ein: ein großer Knopf „In der App registrieren“
+    (`/app/?intent=register`, FE-18), darunter eine kurze Liste von Aufgaben, je mit einem Knopf, der
+    den passenden Tab öffnet, die Kacheln zu allen anderen Apps und zugeklappt „Was ist echt, was
+    simuliert?“. Am Ende steht „Demo zurücksetzen“, ohne Admin-Anmeldung
+    (`POST /orchestrator/demo/reset`). Der Knopf setzt noch nicht zurück: Er lädt erst die aktiven
+    Sitzungen (`GET /orchestrator/demo/sessions`) und fragt direkt auf der Seite nach, nicht per
+    Browser-Dialog. Sind Sitzungen aktiv, warnt er, dass das Zurücksetzen sie beendet, und listet
+    sie auf. Erst „Jetzt zurücksetzen“ löscht; danach steht das Ergebnis in einer Zeile.
+  - *Begriffe* erklärt mit je einem Satz die Wörter, die die Oberfläche benutzt, und verlinkt den
+    Quellcode, den Einstieg in die Doku ([01-ueberblick.md](01-ueberblick.md)) und die
+    [Beispiel-Story](11-beispiel-story.md).
+  - *Server-Status* liest nur das öffentliche `GET /orchestrator/demo/server-info`:
+    Keycloak-Profil, Reihenfolge der Registrierung, gesperrte Tools; im Demomodus dazu Zustand und
+    Kennzahlen. Darunter stehen die Werkzeuge für Entwickler: die Swagger-UI (nur im Demomodus) und
+    die H2-Konsole.
+- **Admin** (`/admin/`): die Sicht des Betreibers, hinter der Admin-Anmeldung (HTTP Basic auf
+  `/orchestrator/admin/**`, `AdminSecurityConfig`). Reiter: *Einstellungen* (Verfahren je Kanal
+  sperren, je Fassung, und ordnen, je Tool; Reihenfolge der Registrierung, Oberfläche der
+  Keycloak-Anmeldeseiten, Beginn der Anmeldung auf `loa1`),
+  *Journey-Trace* über alle Konten und Geräte (mit laufender Aktualisierung), *Sitzungen* und
+  *Konten* (löschen, Demo zurücksetzen). *Sitzungen* zeigt die aktiven Sitzungen, gelesen beim
+  Öffnen und auf „Aktualisieren“: je Kanal die Anzahl, die zehn neuesten Sitzungen des
+  Orchestrators und, mit Keycloak, dessen offene Sitzungen getrennt nach Website und App, jeweils
+  mit der Sitzung des Orchestrators, zu der sie gehören. Dieselbe Ansicht (`ActiveSessionsView`)
+  zeigt die Startseite vor dem Zurücksetzen.
+- **Personenverzeichnis** (`/personenverzeichnis/`): das simulierte **Fremdsystem** (ADR-31) mit
+  Personen, Freischaltcodes und Einladungen mit Einmalkennwort (ausstellen, Vorgang abschließen,
+  widerrufen). Fachlich spricht sie nur `/mock-personenverzeichnis/*` an. Von
+  `/orchestrator` lädt sie nur die Texte der gemeinsamen Komponenten.
+- **Briefkasten** (`/briefkasten/`): die simulierte Seite der Empfänger. Briefe, SMS und E-Mails an
+  Testpersonen stehen in einer Liste, neueste zuerst, mit den Codes im Klartext. Ein Brief mit
+  Einmalkennwort nennt darunter in einer kleinen Zeile den Vorgang. Sie liest die
+  Postausgänge der Simulationen (`/mock-personenverzeichnis/briefe`, `/mock-sms/outbox`,
+  `/mock-mail/outbox`), die es nur im Demomodus gibt, und lädt alle drei Sekunden nach.
+- **Nect-Sprungseite** (`/nect/`): der simulierte Identifizierungsdienst Nect (Online-Ausweis,
+  Reisepass, EUDI-Wallet), zu dem `ident-nect` weiterleitet. Fachlich spricht sie nur `/mock-nect/*`
+  an.
+
+### Die Demo-Spalte neben dem Smartphone
+
+Die Spalte rechts vom Smartphone (`DemoArea`) zeigt nur, was es allein für die Demo gibt. Sie ist
+nach der Frage des Besuchers geordnet:
+
+1. **Sitzung**: eine Zeile, wer angemeldet ist und mit welchem Niveau (`SessionSummary`).
+2. **Zu diesem Schritt**: welche Journey läuft, in einem Satz, warum der Schritt dran ist, darunter
+   die Demo-Hilfen des Schritts (Testperson, vorbelegter Code, Token). Was der Schritt tut und wer
+   dran ist, steht zugeklappt darunter. Die Hilfen schreibt jedes Formular selbst in `<Demo>`.
+3. **Aktionen der Demo**: je eine Zeile mit Satz und Knopf, etwa „Sitzung fortsetzen“, „Sitzung
+   vergessen“, „Journey neu starten“ oder „Gerätekennung neu erzeugen“.
+4. **Hintergrund**, alles zugeklappt: die Einführung („Dieser Tab ist Ihr Smartphone“, nur beim
+   ersten Besuch in diesem Browser offen, gemerkt im `localStorage`), die Abläufe hinter den Knöpfen
+   (`<Demo background>`), die Angaben zu diesem Gerät, die Einstellungen für den nächsten Start, der
+   Aufbau aus Channel, Journey und Tool und das Protokoll der Anfragen.
+
+Die Spalte hat eine feste Formensprache: eine Kartenart ohne Karten in Karten, zwei Schriftgrößen
+(Titel und Text) und Fett als einzige Auszeichnung, keine gesperrten Großbuchstaben, ein
+Aufklapper mit demselben Winkel wie die Listen im Smartphone, ein Info-Symbol für Diagramme
+(`DiagramTrigger`) und eine Knopfart. Festbreitenschrift steht nur für echte Kennungen. Die
+Web-Seite nutzt dieselbe Spalte.
+
+Was nur den Client des App-Kanals betrifft (Startniveau, unterstützte Verfahren), steht dort im
+Hintergrund unter „Einstellungen für den nächsten Start“.
+
+Im Web-Kanal wählt man in der Demo-Spalte, womit die Anmeldung beginnt: gleich alle Verfahren zur
+Wahl (Standard) oder erst das Passwort ([ADR-42](adr/ADR-042-loa1-anmeldung-umschalten.md)). Konten
+gibt es anfangs keine; eine Testperson registriert sich über „Registrieren“ auf der Anmeldeseite,
+wie in der App. Bei einem Vorgang (Abschnitt 1) zeigt die Demo-Spalte unter den Token-Details die
+Vorgangs-Marker. Mit Konto zeigt die Ansicht „Vorgang“, dass das Token keinen Marker trägt.
+
+### Demo-Hilfen in den Kanälen
+
+- **FE-7** — Formulare sind mit Testdaten vorausgefüllt.
+  - *Kriterium:* Jede Seite, die Angaben einer Person abfragt (Name, Geburtsdatum, Anschrift, KVNR oder Partnernummer, Freischaltcode, E-Mail-Adresse, Mobilnummer), bietet die Auswahl „Testperson übernehmen“ an; die erste Person ist beim Öffnen vorbelegt. Die Personen kommen live aus dem Personenverzeichnis über `demo.persons`, den Freischaltcode liest es aus dem Briefkasten. Was nicht zur Person gehört (TAN, Code, Demo-Passwort), kommt einzeln über das Objekt `demo` ([API](05-api.md)). Ohne Demo-Werte (ADR-28) bleiben die Felder leer. Fest im Client steht nur die simulierte eID-PIN
+- **FE-10** — Die Identität des Geräts und der Kanal lassen sich unabhängig voneinander zurücksetzen.
+  - *Kriterium:* „Geräte-Kennung neu erzeugen“ (Demo-Spalte, „Aktionen der Demo“, ohne aktiven Kanal) tauscht den DPoP-Schlüssel und vergisst dabei die gemerkte `channelSessionId`, startet aber keinen Kanal. „Sitzung vergessen“ (ebenda) vergisst nur die lokal gemerkte `channelSessionId`, ohne das Backend aufzurufen. „Abmelden“ beendet den Kanal auf dem Server ([API](05-api.md), Abmelden) und legt **keinen** neuen Kanal automatisch an; der Knopf ist nur sichtbar, wenn der Kanal `AUTHENTICATED` ist
+- **FE-11** — Nach erfolgreicher Anmeldung werden `accountId` und `personId` angezeigt.
+  - *Kriterium:* Die Werte stammen aus dem Objekt `demo` der Antwort
+- **FE-13** — Beim Anlegen eines Kanals lässt sich `requiredAcr` wählen.
+  - *Kriterium:* Sonst wäre `enroll-password` in der Demo kaum erreichbar: Die Registrierung endet von selbst, sobald ein einzelnes `loa1`-Verfahren die voreingestellte Untergrenze erfüllt
+- **FE-14** — Die Identität des Geräts (JWK-Thumbprint) ist sichtbar und lässt sich unabhängig vom Kanal neu erzeugen.
+  - *Kriterium:* Ein eigener Abschnitt „Diese App auf diesem Gerät“ im Hintergrund der Demo-Spalte, immer vorhanden, auch ohne aktiven Kanal. Darunter steht eine Zeile je weiterer Bindung dieses Geräts, allgemein aus `deviceLink.boundCredentials` erzeugt: Jedes Verfahren entscheidet selbst, was es zeigt, und die Karte gibt es nur aus. Ein neues an den Schlüssel gebundenes Verfahren braucht hier keine Änderung
+- **FE-18** — Über einen URL-Parameter `intent` (dieselben Werte wie im Feld `intent` von `createChannel`) steigt der App-Kanal direkt in einen bestimmten Ablauf ein, auf Wunsch mit `pairingCode`. Der Zurück-Knopf des Browsers verlässt einen laufenden Vorgang und führt zur Startauswahl.
+  - *Kriterium:* `AppChannelApp.tsx` liest `intent` und `pairingCode` einmal aus der URL und entfernt sie; `intent` startet den passenden Aufruf von `handleStart`. Ist ein Kanal aktiv, ruft ein `popstate`-Listener `handleClearChannel()` auf (nur lokal, ohne Backend). Ein schrittweises Rückgängigmachen gibt es nicht, weil der Server den Ablauf vorantreibt (Modell mit `next`)
+
+### Demo-Link zur QR-Bestätigung
+
+Der Demo-Link der Web-Seite zur QR-Bestätigung (Abschnitt 3) zeigt auf
+`/app/?intent=confirm_peer_login&pairingCode=...`, also direkt auf den App-Kanal. `intent` hat
+dieselben Werte wie das Feld `intent` von `createChannel` (`AuthIntent.fromRequest`, Groß- und
+Kleinschreibung egal). Beide Parameter werden beim Laden aus der URL gelesen und sofort entfernt
+(FE-18). `intent=confirm_peer_login` startet denselben Ablauf wie der Knopf „Anmeldung bestätigen“.
+Ein bekannter Kanal wird dabei zuerst geladen; ist er `AUTHENTICATED`, läuft die Bestätigung über
+ihn. Den `pairingCode` merkt sich die App lokal (`pendingPairingCode`), damit der Schritt `input` von
+`approve-qr` ihn vorausfüllt.
+
+Der QR-Code bzw. Demo-Link verwendet denselben Tab-Namen `identity-demo-app-kanal` wie die
+Willkommensseite (Abschnitt 5). **In der Praxis wird der Tab dort aber nicht wiederverwendet:** Der
+Klick kommt dann von `https://localhost:8543` (echtes Keycloak), also von einer anderen Herkunft als
+der Tab des App-Kanals (`http://localhost:8080/app/`), und Chrome öffnet (so getestet) einen neuen
+Tab. Das ist beim Testen am Desktop etwas unbequem, schränkt aber nichts ein.

@@ -168,7 +168,7 @@ interface JourneyNode {
 
 /**
  * Turns one ChannelSession's flat journey map into a tree via parentJourneyId. A sub-journey runs as
- * another journey's precondition (docs/04-orchestrierung.md #6), e.g. a step-up demanding RE_IDENTIFY.
+ * another journey's precondition (docs/04-orchestrierung.md #7), e.g. a step-up demanding RE_IDENTIFY.
  * Without the tree it looks unrelated. Every level is sorted newest activity first.
  */
 function buildJourneyTree(byJourney: Map<string, JourneyScopedEntry[]>): JourneyNode[] {

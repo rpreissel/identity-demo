@@ -56,7 +56,7 @@ class SessionEvidenceService(
     }
 
     /**
-     * Syncs [source]'s complete currently valid set (docs/05-api.md Abschnitt 3, see
+     * Syncs [source]'s complete currently valid set (docs/05-api.md Abschnitt 3b, see
      * [SessionEvidenceRecord.replaceForSource]). [source] scopes which records may be removed, even when
      * [updates] is empty because everything expired.
      */

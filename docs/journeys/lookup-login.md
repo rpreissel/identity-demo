@@ -50,7 +50,7 @@ stateDiagram-v2
 
 **Das Gerät wiedererkennen.** `OfferBinding` stellt eine freiwillige Frage: „Dieses Gerät für
 künftige Anmeldungen wiedererkennen?“ Dafür implementiert der Zustand das allgemeine
-Markierungs-Interface `AnswerableState` (Orchestrierung, Abschnitt 5). So erkennt der gemeinsame
+Markierungs-Interface `AnswerableState` (Orchestrierung, Abschnitt 8). So erkennt der gemeinsame
 Mechanismus den Zustand, ohne `LookupLoginState.OfferBinding` zu kennen. Gehört das Gerät bereits
 einem anderen Konto als dem gerade angemeldeten, wechselt die Journey nach `ConfirmDeviceRebind`.
 Dort läuft dieselbe Ja/Nein-Frage, mit einem Hinweis, dass die alte Verknüpfung verloren geht. Lehnt der
@@ -62,7 +62,7 @@ Die dauerhafte Zuordnung von Gerät zu Konto (`DeviceAccountLink`) entsteht in d
 **nur** mit Zustimmung und nie nebenbei beim Anmelden.
 
 **Wenn das Niveau nicht reicht.** `AdditionalFactor` setzt die Untergrenze des Kanals durch
-(`acrFloor`, Orchestrierung, Abschnitt 8). Bleibt danach kein kombinierbares Verfahren übrig,
+(`acrFloor`, Orchestrierung, Abschnitt 4). Bleibt danach kein kombinierbares Verfahren übrig,
 bietet die Strategie die erneute Identifizierung nicht selbst an. Sie startet stattdessen die
 gemeinsam genutzte Sub-Journey [`RE_IDENTIFY`](re-identify.md). Ist diese fertig, prüft `Start`
 mit `settleOrRaise` erneut. Diese Journey bietet bewusst **nicht** an, ein weiteres Verfahren

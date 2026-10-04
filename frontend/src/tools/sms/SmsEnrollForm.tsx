@@ -20,7 +20,7 @@ function isValidPhoneNumber(value: string): boolean {
   return PHONE_PATTERN.test(value.replace(/\s+/g, ''))
 }
 
-/** toolId=enroll-sms / step=enroll (docs/06-ablaeufe.md #4): registers a new phone number. */
+/** toolId=enroll-sms / step=enroll (docs/verfahren/sms.md): registers a new phone number. */
 export function SmsEnrollForm({ onSubmit, error, demoPersons, replaces }: SmsEnrollFormProps) {
   const [phoneNumber, setPhoneNumber] = useState(demoPersons?.[0]?.phoneNumber ?? '')
   const [validationError, setValidationError] = useState('')

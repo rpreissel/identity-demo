@@ -21,10 +21,10 @@ import java.util.List;
  * {@code orchestrator}-User-Storage-Komponente (gesetzt in V1__realm.kc.kts, ADR-25). Ohne
  * Fallback: Fehlt ein Wert, scheitert der Aufruf laut, statt einen Login still falsch laufen zu lassen.
  *
- * @param orchestratorBaseUrl Server-zu-Server-Adresse des Orchestrators (docs/05-api.md Abschnitt 3).
+ * @param orchestratorBaseUrl Server-zu-Server-Adresse des Orchestrators (docs/05-api.md Abschnitt 3b).
  * @param publicOrchestratorBaseUrl Der Origin, den ein Browser aufloest. Nur fuer den
  *        Peer-Login-Deep-Link im QR-Code, der auf einem fremden Geraet geoeffnet wird
- *        (docs/07-betrieb.md #5).
+ *        (docs/verfahren/qr.md).
  * @param peerAuthIssuer {@code iss} der Peer-Auth-Assertion (docs/12-entscheidungen.md ADR-7).
  * @param peerAuthAudience {@code aud} derselben Assertion.
  * @param peerAuthSigningKey Signaturschluessel der Assertion. Er liegt an der Komponente, damit alle

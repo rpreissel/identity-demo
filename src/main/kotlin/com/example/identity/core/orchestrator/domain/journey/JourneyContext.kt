@@ -31,7 +31,7 @@ data class JourneyContext(
     val bindingKeyRef: String?,
     /** The account this device is durably linked to, if any, independent of this channel. */
     val linkedAccountId: AccountId?,
-    /** True while this journey runs as another one's precondition (docs/04-orchestrierung.md #6). */
+    /** True while this journey runs as another one's precondition (docs/04-orchestrierung.md #7). */
     val isSubJourney: Boolean,
     /** Answers ACR and candidate questions. */
     val policy: AuthPolicy,

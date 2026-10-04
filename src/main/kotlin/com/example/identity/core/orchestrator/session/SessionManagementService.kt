@@ -44,7 +44,7 @@ class SessionManagementService(
     }
 
     /**
-     * WEB channel creation for an upsert (docs/05-api.md Abschnitt 3). The id is chosen by
+     * WEB channel creation for an upsert (docs/05-api.md Abschnitt 3b). The id is chosen by
      * Keycloak; the caller has checked it is unused. `entryIntent` is [AuthIntent.WEB_SELECT_METHOD]
      * or [AuthIntent.REGISTER]; the other entry intents assume an App channel. [availableTools] is
      * the extension's declaration of what it can render, as on the App channel.

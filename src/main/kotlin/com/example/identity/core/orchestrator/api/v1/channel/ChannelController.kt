@@ -30,7 +30,7 @@ import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.contract.tool_api.envelope.API_V1
 
 /**
- * The App-facade-specific endpoints (docs/05-api.md #2): channel creation and the device-link read,
+ * The App-facade-specific endpoints (docs/05-api.md #3a): channel creation and the device-link read,
  * where the DPoP proof identifies the caller. Everything a channel offers once it exists lives on
  * the facade-neutral [ChannelController].
  */
@@ -86,7 +86,7 @@ class ChannelCreationController(
 }
 
 /**
- * Facade-neutral channel resource (docs/05-api.md #2): everything a channel offers once it exists,
+ * Facade-neutral channel resource (docs/05-api.md #3a): everything a channel offers once it exists,
  * addressed the same way whichever facade created it. Hence no `/app/` or `/kc/` prefix.
  */
 @RestController
@@ -100,7 +100,7 @@ class ChannelController(
     @GetMapping("/{channelSessionId}")
     @Operation(
         summary = "Read the current channel state",
-        description = "The guaranteed resume entry point (docs/05-api.md #2): next always reflects the currently due step.",
+        description = "The guaranteed resume entry point (docs/05-api.md #3a): next always reflects the currently due step.",
         responses = [
             ApiResponse(
                 responseCode = "200",
@@ -242,7 +242,7 @@ class ChannelController(
     @Operation(
         summary = "Read the account's active authentication methods",
         description = "The methods collection as a real readable resource - identical data to ChannelResponse's " +
-            "activeMethods (docs/05-api.md #2), just addressable on its own. Never includes fsc (identification " +
+            "activeMethods (docs/05-api.md #3a), just addressable on its own. Never includes fsc (identification " +
             "is recorded as an IDENTIFIED entry in the account change log, not in authenticationMethods). Empty list, not an error, when no account is " +
             "known yet for this channel.",
         responses = [

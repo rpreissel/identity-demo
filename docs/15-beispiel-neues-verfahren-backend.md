@@ -1,8 +1,14 @@
-# Beispiel für Entwickler: Bank-Ident und Einmalcode-App anbinden
+# Beispiel für Backend-Entwickler: Bank-Ident und Einmalcode-App anbinden
 
 Das Gegenstück zur [Beispiel-Story](11-beispiel-story.md): Dort erlebt eine Nutzerin das System,
-hier baut ein Entwickler zwei neue Verfahren ein. Beide sind ausgedacht, aber so gewählt, dass sie
-fast jede Stelle berühren, an der ein neues Verfahren andockt:
+hier baut ein Entwickler zwei neue Verfahren ein. Dieses Kapitel ist für das **Backend**: die Tools
+im Orchestrator, die Keycloak-Erweiterung und das Login-Theme, also alles, was der Server und der
+Web-Kanal brauchen. Was die App dafür tut, steht im Schwesterkapitel
+[17-beispiel-neues-verfahren-app.md](17-beispiel-neues-verfahren-app.md). Die Verbindung zwischen
+beiden ist der Vertrag unter `api/` ([05-api.md](05-api.md)).
+
+Beide Verfahren sind ausgedacht, aber so gewählt, dass sie fast jede Stelle berühren, an der ein
+neues Verfahren andockt:
 
 - **Bank-Ident** (`ident-bank`): Die Person identifiziert sich über ihre Hausbank. Die App leitet zur
   Bank weiter, die Bank prüft die Person mit ihrer eigenen Kundenprüfung, und der Orchestrator holt
@@ -162,17 +168,19 @@ internal val BANK_CUSTOMER_ID = AttributeType.anchor(
 
 Der Kern ändert sich dafür nicht: Die Regeln des Ankers reisen mit dem Typ.
 
-**Stolperstelle in der App.** Die Rückkehr von Nect ist in `AppChannelApp.tsx` fest verdrahtet
-(`nectCaseId`). Ein zweites Verfahren mit Weiterleitung braucht dort seinen eigenen Parameter. Wer
-das zum zweiten Mal anfasst, sollte es verallgemeinern. Im Web-Kanal ist nichts zu tun: Keycloak
-reicht jeden fremden Parameter der Rückkehr als Eingabe an das Tool weiter.
+**Rückkehr in den Kanal.** Im Web-Kanal ist nichts zu tun: Keycloak reicht jeden fremden Parameter
+der Rückkehr als Eingabe an das Tool weiter, die Erweiterung gibt die `returnUri` beim Anlegen mit
+(Abschnitt 6). Die App braucht für die Rückkehr eigenen Code
+([17-beispiel-neues-verfahren-app.md](17-beispiel-neues-verfahren-app.md) Abschnitt 3); dem Tool
+ist gleich, aus welchem Kanal der `PATCH` kommt.
 
 ## 4) Einmalcode-App: Einrichten und Anmelden
 
 **Einrichten (`enroll-totp`).**
 
 1. `start` erzeugt ein zufälliges Geheimnis und legt es in der Tool-Sitzung ab. `stepData` liefert
-   die `otpauth://`-Adresse, die die App als QR-Code zeigt.
+   die `otpauth://`-Adresse und das Geheimnis zum Abtippen; wie ein Kanal sie zeigt, entscheidet er
+   selbst (im Web als QR-Code, in der App als Link in die Authenticator-App).
 2. Die Person scannt den Code mit ihrer Authenticator-App und gibt den ersten Code ein.
 3. Stimmt er, wird das Geheimnis zum Verfahren: eine Zeile in `auth_totp.enrollment`, und das Tool
    meldet `ToolOutcome.Completed.Enrolled` mit deren `EnrollmentRef`. Stimmt er nicht, meldet es
@@ -218,9 +226,42 @@ Von Hand:
 - **Reihenfolge und Schalter je Kanal** in `application.yml` (`demo.tool-defaults.channels`). Ohne
   Eintrag steht das Tool hinter allen eingeordneten.
 - **Die Sprungseite der simulierten Bank**, falls sie eine eigene Oberfläche hat: `PAGE_APPS` in
-  `WebConfig.kt` und ein Einstieg im Frontend wie `entries/nect`.
+  `WebConfig.kt` und ein eigener Einstieg im Frontend wie `entries/nect`. Die Seite ist Teil der
+  Simulation, nicht der App, und gehört deshalb zum Backend.
 
-## 6) Datenbank, Vertrag, Frontend, Keycloak, Texte
+## 6) Web-Kanal: Keycloak-Erweiterung und Login-Theme
+
+Im Web-Kanal zeigt Keycloak die Schritte eines Tools. Ein Tool, für das die Erweiterung keinen
+Renderer hat, bietet der Web-Kanal nie an. Je Tool sind drei Stellen zu bauen:
+
+1. **Renderer** in `keycloak-extension/src/main/java/com/example/identity/kcext/webtool/<modul>/`:
+   eine Klasse, die `AbstractWebToolRendererFactory` erweitert, eingetragen in
+   `META-INF/services/com.example.identity.kcext.webtool.WebToolRendererFactory`.
+   - `getId()` ist die toolId, `version()` die Fassung, die der Renderer spricht (ADR-51).
+   - `template()` nennt die Seite (`tool-totp-enroll.ftl`), `render(...)` setzt deren Werte aus
+     `stepData` und gibt `null` für einen Schritt, den die Seite nicht kennt.
+   - `activationFields` und `actionFields` nur, wenn das Tool beim Anlegen oder Absenden mehr
+     braucht als die Formularfelder: `ident-bank` schickt dort wie `ident-nect` die Action-URL des
+     laufenden Schritts als `returnUri` ([ADR-47](adr/ADR-047-nect-kehrt-auf-die-action-url-zurueck.md)).
+   - Titel und Hinweis der Seite kommen aus dem Katalog (`OrchestratorToolCatalog`), der Renderer
+     nennt sie nicht.
+   - Vorbilder: `webtool/identnect/` (Weiterleitung), `webtool/sms/` (Einrichten und Anmelden).
+2. **FreeMarker-Seite** unter `keycloak-extension/src/main/resources/theme/orchestrator/login/`,
+   etwa `tool-totp-enroll.ftl`. Die Formularfelder heißen wie die Felder des `PATCH`; Keycloak
+   schickt sie als Eingabe an das Tool. Für `enroll-totp` zeigt die Seite den QR-Code der
+   `otpauth://`-Adresse und das Geheimnis zum Abtippen. Vorbild `tool-sms-enroll.ftl`.
+3. **Keycloakify-Seite** im Theme `keycloak-theme/` ([ADR-41](adr/ADR-041-keycloakify-neben-freemarker.md)),
+   dieselbe Seite in React:
+   - Seitentyp mit den Werten des Renderers in `src/login/KcContext.ts`,
+   - Komponente unter `src/login/pages/` (Vorbild `ToolSmsEnroll.tsx`),
+   - Eintrag im `switch` von `src/login/KcPage.tsx`,
+   - Beispielwerte in `src/login/mockContext.ts` für die Vorschau.
+
+Texte der Seiten stehen als Vorlage `t.of("…")` (FreeMarker) bzw. `t("…")` (Theme) und landen im
+Bündel `keycloak`. Prüfen: `./gradlew :keycloak-extension:test`, im Theme `npx tsc --noEmit` und
+`npm test`, im Zusammenspiel `npm run test:e2e:keycloak` im Frontend (braucht den Compose-Stack).
+
+## 7) Datenbank, Vertrag, Texte
 
 - **Datenbank.** Je Modul ein Ordner `db/migration/<modul>/`, Versionen laufen über alle Module
   durch. Regeln in `db/migration/KONVENTIONEN.md`: eigenes Schema, `enrollment` für das dauerhafte
@@ -231,24 +272,15 @@ Von Hand:
   `api/modules/<modul>.yaml` und je Tool `api/contract/tools/<toolId>/v1.yaml`, danach
   `./gradlew generateFrontendApiTypes`. Ein neues Tool ist kein Bruch;
   `checkPublishedApiCompatibility` meldet es als Hinweis, bis `publishApiVersion` es einfriert
-  ([05-api.md](05-api.md) Abschnitt 1).
-- **Frontend.** Je Modul `frontend/src/tools/<name>/index.tsx` mit einem Eintrag je Tool
-  (`toolId`, `version` als die eine Fassung, die das Frontend spricht, `meta` mit dem Symbol,
-  `explain`, `render`); Name und Hinweis kommen aus dem Katalog.
-  Neue Tools gehören auch in `tools/catalog.fixture.json`, den Katalog der Unit-Tests
-  (`ToolAvailabilityIntegrationTest` prüft ihn gegen den echten). Die Registry findet die Datei von
-  selbst; einen Routing-Eintrag gibt es nicht. Vorbilder `tools/kobil/` und `tools/nect/`.
-- **Keycloak.** Je Tool, das im Web-Kanal laufen soll, ein `WebToolRendererFactory` in der
-  Erweiterung (mit `version()`, der Fassung, die der Renderer spricht), eingetragen in
-  `META-INF/services`, mit Template für FreeMarker und Keycloakify
-  ([ADR-41](adr/ADR-041-keycloakify-neben-freemarker.md)). Vorbilder `webtool/identnect/` und
-  `webtool/sms/`. Was keinen Renderer hat, bietet der Web-Kanal nie an. Titel und Hinweis der Seite
-  holt die Erweiterung aus dem Katalog (`OrchestratorToolCatalog`), der Renderer nennt sie nicht.
+  ([05-api.md](05-api.md) Abschnitt 4). Die erzeugten Typen unter `frontend/src/generated/` und die
+  Katalog-Vorlage der Frontend-Tests (`frontend/src/tools/catalog.fixture.json`) zieht man im selben
+  Zug nach: `ToolAvailabilityIntegrationTest` prüft die Vorlage gegen den echten Katalog, der Build
+  bricht also hier, nicht in der App. Damit hat die App alles, um mit ihrem Teil anzufangen.
 - **Texte.** Nutzertexte als deutsche Vorlage im Code (`Text("…")`, `t("…")`), danach
   `/translate-texts` ([ADR-33](adr/ADR-033-texte-als-vorlage-im-code.md)). Name und
   Hinweis eines Tools landen über die Moduldeklaration im Bündel `app`.
 
-## 7) Was der Build erzwingt
+## 8) Was der Build erzwingt
 
 Diese Tests werden rot, wenn etwas fehlt. Man liest sie am besten als Checkliste:
 
@@ -261,7 +293,7 @@ Diese Tests werden rot, wenn etwas fehlt. Man liest sie am besten als Checkliste
 | `SimulationBoundaryArchitectureTest` | Code außerhalb des Tools greift auf die Simulation zu |
 | `OpenApiSnapshotTest`, `StepDataExamplesTest` | Vertrag nicht erneuert, Beispiel mit unbekannter Form |
 | `TextTranslationsTest` (`-PstrictTexts`), `KcTextCatalogTest` | Texte nicht übersetzt, Name in App und Login-Seite verschieden |
-| `frontend/src/tools/registry.test.ts` | doppelte `toolId`, fehlender Name oder fehlende Erklärung |
+| `ToolAvailabilityIntegrationTest` | Katalog-Vorlage der Frontend-Tests weicht vom echten Katalog ab |
 
 Vieles, was früher ein Test meldete, lässt der Aufbau gar nicht mehr zu: eine Identifizierung ohne
 Name, Vornamen und Geburtsdatum, eine Rolle zweimal, verschiedene Niveaus innerhalb einer Methode.
@@ -276,30 +308,30 @@ Die eigenen Tests schreibt man ab: `*ToolHandlerTest` und `*FlowTest` ohne Sprin
 (`tools/auth_kobil/internal/`), ein Integrationstest über HTTP (`IdentNectIntegrationTest`,
 `KobilBindingIntegrationTest`) und ein Test der Simulation (`simulation/nect/NectIdentTest.kt`).
 
-## 8) Doku nachziehen
+## 9) Doku nachziehen
 
 Kein Test erzwingt die Doku, außer dass jeder Verweis auf Code auflösen muss (`DocReferencesTest`).
 Mindestens:
 
-- [03-tool-architektur.md](03-tool-architektur.md): Tabelle des Katalogs, Abschnitt „Was `ident-bank`
-  von der Bank bekommt“.
-- [06-ablaeufe.md](06-ablaeufe.md): ein Abschnitt je Verfahren.
+- [03-tool-architektur.md](03-tool-architektur.md): Tabelle des Katalogs (Abschnitt 8).
+- [verfahren/](verfahren/README.md): eine Seite je Verfahren, in der Übersicht verlinkt; auf der
+  Seite der Bank ein Abschnitt „Was `ident-bank` von der Bank bekommt“.
 - [port-vertraege.md](port-vertraege.md): der Vertrag mit der Bank.
 - [08-projektrahmen.md](08-projektrahmen.md): die neuen Module in Liste und Diagramm.
 - Glossar: `ident-bank`, `totp` und der Unterschied zu Keycloaks `otp`.
 - Eine eigene ADR, wenn eine Entscheidung fällt, etwa „eigenes TOTP statt Keycloaks OTP“.
 
-## 9) Eine neue Fassung eines Tools einführen
+## 10) Eine neue Fassung eines Tools einführen
 
 Später, wenn das Verfahren läuft und Clients ausgeliefert sind, ändert sich ein Tool so, dass alte
 Clients es nicht mehr bedienen könnten. Ob das eine neue Fassung braucht, sagt die Tabelle in
-[05-api.md](05-api.md) Abschnitt 1; die Entscheidungen dahinter stehen in
+[05-api.md](05-api.md) Abschnitt 2; die Entscheidungen dahinter stehen in
 [ADR-51](adr/ADR-051-versionen-als-pfadsegment.md). Vorbild ist `enroll-sms@2` (Einwilligung als
-Pflichtfeld, [06-ablaeufe.md](06-ablaeufe.md) Abschnitt 4). Für `enroll-totp` sähe das so aus:
+Pflichtfeld, [Verfahren `sms`](verfahren/sms.md)). Für `enroll-totp` sähe das so aus:
 
 1. **Entscheiden, was die alte Fassung ohne das Neue tut:** einen Ersatzwert setzen, weniger liefern
    oder abgeschaltet werden. Das ist eine fachliche Entscheidung, keine technische; sie kommt in den
-   Abschnitt des Verfahrens in [06-ablaeufe.md](06-ablaeufe.md).
+   Seite des Verfahrens unter [verfahren/](verfahren/README.md).
 2. **Fassung deklarieren:** `versions = setOf(1, 2)` an der Deklaration im Modul, mit einem Satz,
    was Fassung 2 ausmacht.
 3. **Ein Handler, Zweig nach Fassung.** Der Handler bekommt `ToolContext.version` vom Controller
@@ -313,9 +345,10 @@ Pflichtfeld, [06-ablaeufe.md](06-ablaeufe.md) Abschnitt 4). Für `enroll-totp` s
 5. **Vertrag:** `./gradlew updateOpenApiSnapshot` schreibt `api/contract/tools/<toolId>/v2.yaml`;
    `v1.yaml` darf sich dabei inhaltlich nicht ändern. `checkPublishedApiCompatibility` meldet die
    neue Fassung als Hinweis, `publishApiVersion` friert sie ein. Danach `generateFrontendApiTypes`.
-6. **Clients:** Jeder Client spricht genau eine Fassung. Im Frontend steht sie als `version` am
-   Tool-Modul, in der Keycloak-Erweiterung als `version()` an der Renderer-Fabrik. Umgestellt wird
-   der Client, der das Neue zeigen kann; die anderen bleiben bei ihrer Fassung.
+6. **Web-Kanal:** Soll er die neue Fassung sprechen, stellt man `version()` am Renderer um und passt
+   FreeMarker- und Keycloakify-Seite an (Abschnitt 6). Die App stellt ihre Fassung selbst um, wenn
+   sie das Neue zeigen kann ([17-beispiel-neues-verfahren-app.md](17-beispiel-neues-verfahren-app.md)
+   Abschnitt 6); bis dahin bleibt sie bei der alten.
 7. **Tests:**
    - Unit-Tests für den Zweig im `*FlowTest` und `*ToolHandlerTest`.
    - Ein Integrationstest, der beide Fassungen nebeneinander durchspielt
@@ -323,8 +356,10 @@ Pflichtfeld, [06-ablaeufe.md](06-ablaeufe.md) Abschnitt 4). Für `enroll-totp` s
      anderen Fassung gibt `409`, das Audit nennt die Fassung.
    - `ToolControllerMappingTest` verlangt den Controller der neuen Fassung von selbst. Die
      Integrationstests deklarieren standardmäßig Fassung 1 und laufen unverändert weiter.
-   - Die Katalog-Vorlage der Frontend-Tests (`tools/catalog.fixture.json`) nennt die neue Fassung.
-8. **Doku:** den Abschnitt des Verfahrens in [06-ablaeufe.md](06-ablaeufe.md) um beide Fassungen
+   - Die Katalog-Vorlage der Frontend-Tests (`frontend/src/tools/catalog.fixture.json`) nennt die
+     neue Fassung.
+8. **Doku:** die Seite des Verfahrens unter [verfahren/](verfahren/README.md) um beide Fassungen
    ergänzen.
 
-Ausgerollt wird erst der Server mit beiden Fassungen, dann der Client mit der neuen.
+Ausgerollt wird erst der Server mit beiden Fassungen, dann der Client mit der neuen. Die Keycloak-
+Erweiterung wird mit dem Server ausgeliefert und kann im selben Zug umstellen.

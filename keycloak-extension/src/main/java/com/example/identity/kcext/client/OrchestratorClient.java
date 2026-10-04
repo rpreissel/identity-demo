@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Talks to the orchestrator's kc facade (docs/05-api.md Abschnitt 3). Every call carries a freshly
+ * Talks to the orchestrator's kc facade (docs/05-api.md Abschnitt 3b). Every call carries a freshly
  * signed peer-auth assertion instead of a bearer token: Keycloak itself is the caller identity
  * (docs/12-entscheidungen.md ADR-7).
  */
@@ -161,7 +161,7 @@ public final class OrchestratorClient {
 
     /**
      * Where {@code toolId} lives in {@code version} (ADR-51). Same facade-neutral tool endpoints the
-     * App channel uses (docs/05-api.md Abschnitt 3).
+     * App channel uses (docs/05-api.md Abschnitt 3b).
      */
     private static String toolPath(String toolId, int version) {
         return "/tools/api/" + segment(toolId) + "/v" + version;
@@ -424,7 +424,7 @@ public final class OrchestratorClient {
     public record AmrEntry(String nativeToolId, String amrSourceId) {
     }
 
-    /** Mirrors AmrEntry (docs/05-api.md Abschnitt 3) - just the two stable ids, never method/loa directly. */
+    /** Mirrors AmrEntry (docs/05-api.md Abschnitt 3b) - just the two stable ids, never method/loa directly. */
     public static final class OrchestratorApiException extends IOException {
         final int status;
         final String errorCode;
@@ -573,7 +573,7 @@ public final class OrchestratorClient {
 
         public boolean isSelectMethod() {
             // "selectIdentificationMethod" is REGISTER's identification choice; it renders the same
-            // selection screen as "selectMethod" (docs/04-orchestrierung.md #4).
+            // selection screen as "selectMethod" (docs/04-orchestrierung.md #6).
             return "orchestrator".equals(type) && ("selectMethod".equals(step) || "selectIdentificationMethod".equals(step));
         }
 

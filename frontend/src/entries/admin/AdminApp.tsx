@@ -33,7 +33,7 @@ const TABS: NavTab<Tab>[] = [
 ]
 
 /**
- * The operator's page (docs/10-frontend.md #0): everything that switches the whole deployment,
+ * The operator's page (docs/10-frontend.md #6): everything that switches the whole deployment,
  * plus the views across all accounts - behind the admin login (AdminSecurityConfig). The two
  * channels only show what a user of that channel would see; the journey trace lives only here.
  */

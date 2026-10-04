@@ -69,7 +69,7 @@ components:
           additionalProperties:
             type: string
           description: 'Method -> who proved it: "orchestrator" for a completed orchestrator tool, "kc" for evidence a native
-            Keycloak authenticator already established (docs/05-api.md Abschnitt 3). Informational only - the orchestrator
+            Keycloak authenticator already established (docs/05-api.md Abschnitt 3b). Informational only - the orchestrator
             alone still resolves the combined acr above, regardless of source.'
           example:
             password: kc
@@ -198,7 +198,7 @@ components:
       properties:
         authData:
           $ref: '#/components/schemas/AuthData'
-          description: WEB channels only (docs/05-api.md Abschnitt 3) - never present for APP.
+          description: WEB channels only (docs/05-api.md Abschnitt 3b) - never present for APP.
         channel:
           $ref: '#/components/schemas/ChannelBlock'
         demo:
@@ -397,7 +397,7 @@ components:
       - kind
       - message
     MethodsResponse:
-      description: 'The account''s active authentication methods (docs/05-api.md #2). Never contains fsc.'
+      description: 'The account''s active authentication methods (docs/05-api.md #3a). Never contains fsc.'
       properties:
         methods:
           items:
@@ -685,7 +685,7 @@ paths:
       tags:
       - Channels
     get:
-      description: 'The guaranteed resume entry point (docs/05-api.md #2): next always reflects the currently due step.'
+      description: 'The guaranteed resume entry point (docs/05-api.md #3a): next always reflects the currently due step.'
       operationId: getChannel
       parameters:
       - in: path
@@ -1044,7 +1044,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/methods:
     get:
       description: 'The methods collection as a real readable resource - identical data to ChannelResponse''s activeMethods
-        (docs/05-api.md #2), just addressable on its own. Never includes fsc (identification is recorded as an IDENTIFIED
+        (docs/05-api.md #3a), just addressable on its own. Never includes fsc (identification is recorded as an IDENTIFIED
         entry in the account change log, not in authenticationMethods). Empty list, not an error, when no account is known
         yet for this channel.'
       operationId: getMethods

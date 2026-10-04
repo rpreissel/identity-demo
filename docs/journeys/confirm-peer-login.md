@@ -67,7 +67,7 @@ dieselben Schritte:
    Kandidaten.
 5. `approve-qr` hat nach der Freigabe einen dritten Schritt `showCode`: Die App zeigt den
    Bestätigungscode, den der Nutzer in den wartenden Browser tippt – erst damit ist der Browser
-   angemeldet ([Betrieb](../07-betrieb.md) Abschnitt 5). `done` schließt das Tool ab.
+   angemeldet ([Verfahren `qr`](../verfahren/qr.md), „Sicherheit des Pairing-Codes“). `done` schließt das Tool ab.
 6. Das Ziel ist erreicht, sobald das Tool `Completed` oder `Failed` meldet. Die Kandidatenliste wird
    danach nicht noch einmal angeboten; die Journey endet mit diesem einen Tool. War der Kanal vorher
    nicht angemeldet, fragt `OfferLogout` (ein `AnswerableState`), ob er angemeldet bleiben soll.

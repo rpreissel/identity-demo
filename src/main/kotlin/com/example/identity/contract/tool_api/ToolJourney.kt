@@ -101,7 +101,7 @@ interface ToolJourney {
      * The credential of [module]'s method this caller may prove: the account's active one, or for a
      * [ToolModule.onePerDevice] method the one living on the caller's key - a credential bound to
      * another device is not reachable. Resolved here, since a handler may not reference `account`
-     * (docs/06-ablaeufe.md #3).
+     * (docs/verfahren/sms.md).
      *
      * @throws UnresolvableReferenceException (422) without an account or without such a credential.
      */

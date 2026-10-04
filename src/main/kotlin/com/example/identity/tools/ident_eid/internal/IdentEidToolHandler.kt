@@ -19,7 +19,7 @@ private val CARD_REJECTED = Text("Die Kartendaten sind ungültig")
 private val PIN_REJECTED = Text("eID-PIN ungueltig")
 
 /**
- * toolId=ident-eid (docs/06-ablaeufe.md #6). Attests what a simulated eID card shows, nothing
+ * toolId=ident-eid (docs/verfahren/eid.md). Attests what a simulated eID card shows, nothing
  * else: first the card read (possession), then a PIN (knowledge). Nobody is looked up; binding to a
  * register person is `ident-kvnr`'s act (ADR-18). Field merging and the decisions live in [IdentEidFlow].
  */

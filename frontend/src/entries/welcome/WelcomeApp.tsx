@@ -25,7 +25,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'status', label: t('Server-Status') },
 ]
 
-/** The named tabs the demo's pages open in, so an open one is reused (docs/10-frontend.md #0). */
+/** The named tabs the demo's pages open in, so an open one is reused (docs/10-frontend.md #5). */
 const APP_TAB = 'identity-demo-app-kanal'
 const WEB_TAB = 'identity-demo-web-kanal'
 const REGISTER_TAB = 'identity-demo-register'
@@ -35,7 +35,7 @@ const MAILBOX_TAB = 'identity-demo-briefkasten'
 const REPO = 'https://github.com/rpreissel/identity-demo'
 
 /**
- * The landing page (docs/10-frontend.md #0): no channel logic, no DPoP key. It reads only the
+ * The landing page (docs/10-frontend.md #6): no channel logic, no DPoP key. It reads only the
  * public server status; every switch lives on the admin page. Links open each app in a named
  * tab. No `rel="noopener"`: it would break the named-target lookup, and same-origin has no
  * tabnabbing risk.

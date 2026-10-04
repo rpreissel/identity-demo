@@ -27,7 +27,7 @@ interface ChannelAccessGuard {
 
 /**
  * Implementation for the facade-neutral tool endpoints (docs/09-dpop.md #3, docs/05-api.md
- * Abschnitt 3). It accepts what [DpopBindingKeyResolver] resolved: a DPoP thumbprint (App) or a
+ * Abschnitt 3b). It accepts what [DpopBindingKeyResolver] resolved: a DPoP thumbprint (App) or a
  * `"kc:"`-prefixed channel binding (Web). `KeycloakChannelService` uses [KeycloakChannelAccessGuard] with the
  * typed [PeerAuthAssertion] instead.
  */

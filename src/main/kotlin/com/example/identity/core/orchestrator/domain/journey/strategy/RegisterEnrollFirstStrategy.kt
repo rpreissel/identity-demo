@@ -24,7 +24,7 @@ import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
- * REGISTER, "Enrollment zuerst" (docs/journeys/register.md). Reached only through
+ * REGISTER, "Enrollment zuerst" (docs/journeys/register-enroll-first.md). Reached only through
  * [RegisterDispatchStrategy]. Mandatory order: email confirmation, then SMS, then the optional
  * identification ([offerIdentificationOrFinish]). A device linked to another account is asked
  * about at the end ([finishOrOfferRebind]), once the account may have an identity to name.

@@ -98,7 +98,7 @@ class ToolAvailabilityIntegrationTest : IntegrationTestSupport() {
 
         given("a client that declares only a subset of the catalog as available") {
             `when`("registering with availableTools restricted to ident-fsc, enroll-sms and confirm-email") {
-                // Registration has mandatory steps (docs/04-orchestrierung.md #2). The set still covers
+                // Registration has mandatory steps (docs/04-orchestrierung.md #5). The set still covers
                 // them, so availability narrows the offers without breaking the journey.
                 val channelSessionId = post(
                     "/orchestrator/api/v1/app/channels",

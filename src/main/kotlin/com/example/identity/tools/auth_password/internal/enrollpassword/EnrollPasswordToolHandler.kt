@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 
 /**
- * toolId=enroll-password: registers a password as a knowledge factor (docs/06-ablaeufe.md #4). A
+ * toolId=enroll-password: registers a password as a knowledge factor (docs/verfahren/password.md). A
  * chosen password is self-verifying, so one PATCH completes it. The input decision lives in
  * [EnrollPasswordFlow].
  */

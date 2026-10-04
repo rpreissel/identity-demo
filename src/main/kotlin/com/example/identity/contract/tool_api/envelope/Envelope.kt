@@ -79,7 +79,7 @@ data class ChannelBlock(
 
 /**
  * What the Keycloak facade's `OrchestratorAuthenticator` writes into Keycloak's session notes on every
- * response (docs/05-api.md Abschnitt 3), for `WEB` channels only. Not gated on a proven
+ * response (docs/05-api.md Abschnitt 3b), for `WEB` channels only. Not gated on a proven
  * factor: Keycloak sets its user context from `subject` as soon as it is known.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -89,7 +89,7 @@ data class AuthData(
     @field:Schema(
         description = "Method -> who proved it: \"orchestrator\" for a completed orchestrator " +
             "tool, \"kc\" for evidence a native Keycloak authenticator already established " +
-            "(docs/05-api.md Abschnitt 3). Informational only - the orchestrator alone " +
+            "(docs/05-api.md Abschnitt 3b). Informational only - the orchestrator alone " +
             "still resolves the combined acr above, regardless of source.",
         example = "{\"password\": \"kc\", \"sms\": \"orchestrator\"}"
     )
@@ -129,14 +129,14 @@ data class ChannelResponse(
     val stepData: StepData? = null,
     @field:Schema(description = "Demo-only correlation IDs, never part of the production contract.")
     val demo: DemoInfo? = null,
-    @field:Schema(description = "WEB channels only (docs/05-api.md Abschnitt 3) - never present for APP.")
+    @field:Schema(description = "WEB channels only (docs/05-api.md Abschnitt 3b) - never present for APP.")
     val authData: AuthData? = null
 )
 
 /**
  * Debug-only view of one journey in the channel's running chain, outermost first. Plain strings
  * instead of the orchestrator's types, because `tool_api` must not depend on `orchestrator`
- * (docs/03-tool-architektur.md #4).
+ * (docs/03-tool-architektur.md #7).
  */
 data class JourneyDebugStep(
     @field:Schema(example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")

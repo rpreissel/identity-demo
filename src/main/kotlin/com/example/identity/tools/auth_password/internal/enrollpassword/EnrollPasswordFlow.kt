@@ -7,7 +7,7 @@ import com.example.identity.tools.auth_password.api.v1.EnrollPasswordStep
 import com.example.identity.contract.tool_api.StepData
 
 /**
- * Single-shot flow (docs/03-tool-architektur.md #3, the optional Flow pattern): a chosen password
+ * Single-shot flow (docs/03-tool-architektur.md #6, the optional Flow pattern): a chosen password
  * is self-verifying, so there is no confirmation step and thus no persisted partial state -
  * [decide] works from the input alone.
  */

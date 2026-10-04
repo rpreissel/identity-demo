@@ -10,7 +10,7 @@ export interface ToolRenderContext {
   step: string
   toolId: string
   /**
-   * Set once a ToolSession exists for this step (docs/05-api.md #2). Device tools build their
+   * Set once a ToolSession exists for this step (docs/05-api.md #1). Device tools build their
    * DPoP-proof htu from it.
    */
   toolSessionId?: string

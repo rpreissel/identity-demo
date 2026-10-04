@@ -7,7 +7,7 @@ import com.nimbusds.jose.jwk.JWK
 import java.time.Instant
 
 /**
- * Verified self-signed proof from an account-bound device key (docs/03-tool-architektur.md,
+ * Verified self-signed proof from an account-bound device key (docs/verfahren/device.md,
  * enroll-device/auth-device) - structurally a DPoP-style proof (own jwk in header, ES256,
  * htm/htu/iat/jti) but with typ="device-proof+jwt" and its own long-lived credential lifecycle,
  * never the per-channel DPoP key ([DpopValidator]).

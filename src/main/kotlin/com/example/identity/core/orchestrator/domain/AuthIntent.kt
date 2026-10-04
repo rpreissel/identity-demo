@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator.domain
 
 /**
  * What the user wants to achieve, together with the strategy that leads them there
- * (docs/04-orchestrierung.md #1). The two are inseparable: "get me in" and "offer the device
+ * (docs/04-orchestrierung.md #2). The two are inseparable: "get me in" and "offer the device
  * first, then other methods, and identification only as a last resort" are one decision, not two.
  *
  * Not a description of what a run turned out to be. Whether a run was a registration or a login is

@@ -22,7 +22,7 @@ value class ToolId(val value: String) {
 /**
  * One procedure ("kobil", "sms") and the tools it consists of: one per [ToolRole] it plays. What
  * all its tools share is stated here once, so a method has one ceiling, one key binding, one
- * reason to be a demonstration (docs/03-tool-architektur.md #1). Built only by [toolModule]; its
+ * reason to be a demonstration (docs/03-tool-architektur.md #2). Built only by [toolModule]; its
  * tools are registered on it afterwards, one value each ([identify], [enroll], [login], ...), in
  * the module's own file. All modules in the application context together are the tool catalog,
  * there is no central list.
@@ -367,7 +367,7 @@ enum class ToolRole(val defaultStartStep: String, private val idPattern: String)
 
     /**
      * Approves or declines a pending request from another channel (e.g. `approve-qr` deciding an
-     * `auth-qr` pairing, docs/03-tool-architektur.md). All other roles act on their own channel.
+     * `auth-qr` pairing, docs/03-tool-architektur.md #4). All other roles act on their own channel.
      * Contributes nothing to its own channel's ACR/AMR and never closes a gap.
      */
     PEER_APPROVAL("input", "approve-%s"),
@@ -375,7 +375,7 @@ enum class ToolRole(val defaultStartStep: String, private val idPattern: String)
     /**
      * Attests an attribute the account owns and others depend on (e.g. `confirm-email`): asserts
      * claims, resolves no identity, leaves no credential, adds nothing to ACR/AMR
-     * (docs/03-tool-architektur.md #2).
+     * (docs/03-tool-architektur.md #4).
      */
     ATTESTATION("input", "confirm-%s");
 

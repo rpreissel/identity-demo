@@ -10,7 +10,7 @@ enum class ChannelState {
     EXPIRED;
 
     /**
-     * This channelSessionId is dead for good (docs/02-domaenenmodell.md #3, docs/05-api.md #2):
+     * This channelSessionId is dead for good (docs/02-domaenenmodell.md #3, docs/05-api.md #1):
      * `next` is absent, and a new channel needs a fresh `POST /channels`. Resume and cancel do not
      * revive it.
      */

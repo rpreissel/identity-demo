@@ -4,7 +4,7 @@ import com.example.identity.contract.tool_api.ids.AccountId
 
 /**
  * Tool calls Keycloak makes for an account it already knows, with no channel and no journey: its
- * native password form checks and replaces the password (docs/05-api.md Abschnitt 3). The module
+ * native password form checks and replaces the password (docs/05-api.md Abschnitt 3b). The module
  * owns the endpoint and the credential; the orchestrator checks who is calling and books the result,
  * as it does for a journey.
  */

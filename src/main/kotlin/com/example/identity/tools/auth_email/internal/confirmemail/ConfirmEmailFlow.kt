@@ -13,7 +13,7 @@ private const val FIELD_EMAIL = "email"
 private const val FIELD_CODE = "code"
 
 /**
- * Pure state of the confirm-email flow (docs/03-tool-architektur.md #3, the optional Flow
+ * Pure state of the confirm-email flow (docs/03-tool-architektur.md #6, the optional Flow
  * pattern) - never leaves this file. Mirrors `auth_sms`'s `EnrollSmsFlow`.
  */
 internal sealed interface ConfirmEmailState {

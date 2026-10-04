@@ -38,7 +38,7 @@ data class DeviceProofPatchRequest(
 )
 
 /**
- * toolId=enroll-device (docs/03-tool-architektur.md): registers a device-bound key pair, gated by a
+ * toolId=enroll-device (docs/verfahren/device.md): registers a device-bound key pair, gated by a
  * system PIN/biometric prompt, as a loa2-capable credential. One controller owns activation, PATCH
  * and GET for this tool (docs/08-projektrahmen.md A11).
  */

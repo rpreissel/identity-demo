@@ -5,7 +5,7 @@ import com.example.identity.contract.tool_api.StepData
 import com.example.identity.contract.tool_api.MissingFields
 
 /**
- * Single-shot flow (docs/03-tool-architektur.md #3, the optional Flow pattern): email+password
+ * Single-shot flow (docs/03-tool-architektur.md #6, the optional Flow pattern): email+password
  * arrive and get checked together, self-verifying like `AuthPasswordFlow` - no persisted
  * partial state, so [decide] works from the input alone.
  */

@@ -136,7 +136,7 @@ public class OrchestratorStorageProvider implements UserStorageProvider, UserReg
 
     @Override
     public boolean isConfiguredFor(RealmModel realm, UserModel user, String credentialType) {
-        // Every federated user is meant to have a password (docs/06-ablaeufe.md #4); finding out
+        // Every federated user is meant to have a password (docs/verfahren/password.md); finding out
         // for sure would cost a round trip.
         return supportsCredentialType(credentialType);
     }

@@ -36,4 +36,4 @@ bauen. Dazu kommt eine ArchUnit-Regel.
 Voreingestellt bleiben die Werte eingeschaltet. Das Projekt ist eine Demo, und die Werte sind ihr Zweck.
 Entschieden ist nur, dass man sie mit einer Einstellung abschalten kann.
 
-Siehe [05-api.md](../05-api.md) Abschnitt 2 (`demo`).
+Siehe [05-api.md](../05-api.md) Abschnitt 1 (`demo`).

@@ -18,7 +18,7 @@ import java.util.List;
  * Runs first in {@code orchestrator-browser}, inside its own small subflow so that
  * {@link AuthenticationFlowCallback} registers. If the browser holds a valid identity cookie, it opens
  * this flow run's channel and resubmits the RestoreData a prior run stashed on that session
- * (docs/05-api.md Abschnitt 3). The binding stays {@code channelSessionId}, never the SSO session id.
+ * (docs/05-api.md Abschnitt 3b). The binding stays {@code channelSessionId}, never the SSO session id.
  *
  * <p>Without a session it does nothing: the channel's first call fixes the entry journey's candidate
  * list, and a later account binding does not recompute it. So the LoA authenticator, which knows the
@@ -88,7 +88,7 @@ public class OrchestratorResumeAuthenticator implements AuthenticationFlowCallba
 
     @Override
     public void onTopFlowSuccess(AuthenticationFlowModel topFlow) {
-        // Fires once at the end of the whole top-level flow (docs/05-api.md Abschnitt 3,
+        // Fires once at the end of the whole top-level flow (docs/05-api.md Abschnitt 3b,
         // restore-data). Only the flow model is available, so the session comes from the context.
         AuthenticationSessionModel authSession = session.getContext().getAuthenticationSession();
         if (authSession == null) return;

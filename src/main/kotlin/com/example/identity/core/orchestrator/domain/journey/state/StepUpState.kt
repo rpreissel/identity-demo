@@ -10,7 +10,7 @@ sealed interface StepUpState : JourneyState {
     companion object {
         /**
          * The seed for [com.example.identity.core.orchestrator.domain.journey.Transition.RequireSubJourney]
-         * when STEP_UP runs as a precondition (docs/04-orchestrierung.md #6). [reason] lets the caller
+         * when STEP_UP runs as a precondition (docs/04-orchestrierung.md #7). [reason] lets the caller
          * say why this run exists; `null` keeps the generic wording. A [Reason], not text, because the
          * state is persisted and wording must change without touching stored journeys.
          */
@@ -31,7 +31,7 @@ sealed interface StepUpState : JourneyState {
          * Whether a dead end here may fall back to offering `RE_IDENTIFY`. False for
          * CONFIRM_PEER_LOGIN's gate: a peer approval must never let someone acquire a fresh identity
          * just to confirm someone else's login. True by default, because re-identification is an
-         * equally valid path to loa2 (docs/04-orchestrierung.md #8), not a lesser fallback.
+         * equally valid path to loa2 (docs/04-orchestrierung.md #4), not a lesser fallback.
          */
         val allowReIdentification: Boolean = true,
         /** Carried into [AuthChoice]; see [StepUpState.forSubJourney]. */

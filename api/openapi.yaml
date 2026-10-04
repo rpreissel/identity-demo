@@ -82,7 +82,7 @@ components:
           additionalProperties:
             type: string
           description: 'Method -> who proved it: "orchestrator" for a completed orchestrator tool, "kc" for evidence a native
-            Keycloak authenticator already established (docs/05-api.md Abschnitt 3). Informational only - the orchestrator
+            Keycloak authenticator already established (docs/05-api.md Abschnitt 3b). Informational only - the orchestrator
             alone still resolves the combined acr above, regardless of source.'
           example:
             password: kc
@@ -284,7 +284,7 @@ components:
       properties:
         authData:
           $ref: '#/components/schemas/AuthData'
-          description: WEB channels only (docs/05-api.md Abschnitt 3) - never present for APP.
+          description: WEB channels only (docs/05-api.md Abschnitt 3b) - never present for APP.
         channel:
           $ref: '#/components/schemas/ChannelBlock'
         demo:
@@ -885,7 +885,7 @@ components:
       - kind
       - message
     MethodsResponse:
-      description: 'The account''s active authentication methods (docs/05-api.md #2). Never contains fsc.'
+      description: 'The account''s active authentication methods (docs/05-api.md #3a). Never contains fsc.'
       properties:
         methods:
           items:
@@ -1149,7 +1149,7 @@ components:
       type: apiKey
     kc-peer-auth:
       bearerFormat: JWT
-      description: 'Signed peer-auth assertion (docs/05-api.md Abschnitt 3, ADR-7). The Web channel''s proof: Keycloak calls
+      description: 'Signed peer-auth assertion (docs/05-api.md Abschnitt 3b, ADR-7). The Web channel''s proof: Keycloak calls
         server-to-server, and the channel binding comes out of the assertion.'
       scheme: bearer
       type: http
@@ -1262,7 +1262,7 @@ paths:
       tags:
       - Channels
     get:
-      description: 'The guaranteed resume entry point (docs/05-api.md #2): next always reflects the currently due step.'
+      description: 'The guaranteed resume entry point (docs/05-api.md #3a): next always reflects the currently due step.'
       operationId: getChannel
       parameters:
       - in: path
@@ -1637,7 +1637,7 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}/methods:
     get:
       description: 'The methods collection as a real readable resource - identical data to ChannelResponse''s activeMethods
-        (docs/05-api.md #2), just addressable on its own. Never includes fsc (identification is recorded as an IDENTIFIED
+        (docs/05-api.md #3a), just addressable on its own. Never includes fsc (identification is recorded as an IDENTIFIED
         entry in the account change log, not in authenticationMethods). Empty list, not an error, when no account is known
         yet for this channel.'
       operationId: getMethods
@@ -2072,7 +2072,7 @@ paths:
       - Keycloak sign-out
   /orchestrator/api/v1/kc/channels/{channelSessionId}:
     patch:
-      description: 'Upsert semantics (docs/05-api.md Abschnitt 3): creates the channel on first call under this Keycloak-chosen
+      description: 'Upsert semantics (docs/05-api.md Abschnitt 3b): creates the channel on first call under this Keycloak-chosen
         id, just resumes it on every later one - idempotent by construction, no separate create-then-resume round trip. accountId/targetAcr
         are only meaningful on step-up.'
       operationId: upsertChannel
@@ -2127,7 +2127,7 @@ paths:
       - Keycloak channels
   /orchestrator/api/v1/kc/channels/{channelSessionId}/restore-data:
     get:
-      description: For the Authenticator's end-of-flow lifecycle hook only (docs/ideen/docs/05-api.md Abschnitt 3) - reads
+      description: For the Authenticator's end-of-flow lifecycle hook only (docs/ideen/docs/05-api.md Abschnitt 3b) - reads
         back what this channel accumulated, to stash in a Keycloak UserSessionModel note and resubmit at a later flow's start.
         kcSessionId is passed explicitly (not read off the channel's own binding) because the returned token must remain valid
         across the flow-run boundary the channel itself does not survive - a fresh channel next flow run, but the very same
@@ -3480,8 +3480,7 @@ paths:
       - 'Tool: QR-Login'
     patch:
       description: 'Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a confirmation
-        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md
-        #5).'
+        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/verfahren/qr.md).'
       operationId: patch_14
       parameters:
       - in: path
@@ -3581,8 +3580,7 @@ paths:
       - 'Tool: QR-Login'
     patch:
       description: 'Step waitForApp: an empty PATCH is the poll. Step enterCode: the app approved and shows a confirmation
-        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/07-betrieb.md
-        #5).'
+        code; the browser is logged in only once it submits that code (docs/05-api.md, Peer-Login bestätigen; docs/verfahren/qr.md).'
       operationId: patch_13
       parameters:
       - in: path

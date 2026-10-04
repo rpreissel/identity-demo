@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 
 /**
- * toolId=enroll-device (docs/03-tool-architektur.md): registers a device-bound key pair as a new
+ * toolId=enroll-device (docs/verfahren/device.md): registers a device-bound key pair as a new
  * credential. The input decision lives in [EnrollDeviceFlow].
  */
 @Component

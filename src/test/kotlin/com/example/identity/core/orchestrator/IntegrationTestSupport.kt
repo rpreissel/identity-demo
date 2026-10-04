@@ -232,7 +232,7 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
         ).statusCode as HttpStatus
 
     /**
-     * `toolSessionId` (docs/05-api.md #2) is stripped here so the many exact-map assertions in
+     * `toolSessionId` (docs/05-api.md #1) is stripped here so the many exact-map assertions in
      * the concrete suites stay focused on routing (type/toolId|context/step) without each needing
      * to know the concrete session id; use [nextRaw] where the id itself is under test.
      */
@@ -242,7 +242,7 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
     @Suppress("UNCHECKED_CAST")
     protected fun Map<String, Any?>.nextRaw(): Map<String, Any?> = this["next"] as Map<String, Any?>
 
-    /** The channel-level block every response carries (docs/05-api.md #2). */
+    /** The channel-level block every response carries (docs/05-api.md #1). */
     @Suppress("UNCHECKED_CAST")
     protected fun Map<String, Any?>.channel(): Map<String, Any?> = this["channel"] as Map<String, Any?>
 
@@ -438,7 +438,7 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
      * Runs ident-fsc + confirm-email + enroll-sms + enroll-password through to AUTHENTICATED,
      * returns the channelSessionId. The address is confirmed even though sms alone already reaches
      * the default loa1 floor: a confirmed email is a Required Action of REGISTRATION
-     * (docs/04-orchestrierung.md #2), not just an ACR-driven candidate.
+     * (docs/04-orchestrierung.md #5), not just an ACR-driven candidate.
      */
     protected fun registerAndAuthenticate(): String {
         val channelSessionId = identify()

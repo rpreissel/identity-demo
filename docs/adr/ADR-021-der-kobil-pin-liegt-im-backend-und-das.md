@@ -35,7 +35,7 @@ Dass der PIN dafür im Klartext verwahrt wird, begründet
 - Den KOBIL-Standardweg beibehalten, also der Nutzer vergibt und tippt einen PIN. Verworfen, weil
   genau das Ziel war, kein weiteres Geheimnis zu verlangen.
 - Nur `{possession}` melden, weil der Server nicht sehen kann, wie entsperrt wurde
-  ([Orchestrierung](../04-orchestrierung.md), Abschnitt 8: „nur Faktoren melden, die dem Server
+  ([Orchestrierung](../04-orchestrierung.md), Abschnitt 4: „nur Faktoren melden, die dem Server
   nachweisbar sind“). Das ist strenger und in einem Punkt richtiger, hätte den Biometrie-Weg aber auf
   `loa1` gesetzt. Dieselbe Handlung wäre dann in zwei Verfahren unterschiedlich viel wert, und
   `auth-device`, das `inherence` von Anfang an aus derselben Angabe des Clients meldet, würde zur

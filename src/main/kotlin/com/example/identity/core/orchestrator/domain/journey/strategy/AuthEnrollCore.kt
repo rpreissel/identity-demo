@@ -52,7 +52,7 @@ internal object AuthEnrollCore {
         val candidates = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
         if (candidates.isNotEmpty()) return Transition.To(AuthChoice(Offer(candidates)))
         // An existing account that logs in is never blocked on a missing confirmed email
-        // (docs/04-orchestrierung.md #8).
+        // (docs/04-orchestrierung.md #5).
         return offerEnrollment(account, ctx, emailObligation = false, resumeAtStart)
     }
 
@@ -122,7 +122,7 @@ internal object AuthEnrollCore {
     }
 
     /**
-     * The last REGISTER obligation (docs/04-orchestrierung.md #8): a run must not end below loa2,
+     * The last REGISTER obligation (docs/04-orchestrierung.md #5): a run must not end below loa2,
      * which its own method management needs. While loa2 is out of reach and the active methods
      * cover fewer than two factor kinds, every enrollment adding a missing kind is offered. Each
      * one adds a kind, so the covered set only grows and the obligation cannot repeat forever.

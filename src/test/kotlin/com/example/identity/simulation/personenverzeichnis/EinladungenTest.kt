@@ -40,7 +40,7 @@ private class Register {
 
 /**
  * The one-time password of an invitation and how long it opens it
- * (docs/06-ablaeufe.md Abschnitt 9, docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
+ * (docs/verfahren/invite.md, docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
  */
 class EinladungenTest : BehaviorSpec({
 

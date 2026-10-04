@@ -44,7 +44,7 @@ class JourneyTraceEntry(
     @Column(name = "journey_id")
     var journeyId: JourneyId? = null,
 
-    /** Set when this journey ran as another's precondition (docs/04-orchestrierung.md #6); the log nests it. */
+    /** Set when this journey ran as another's precondition (docs/04-orchestrierung.md #7); the log nests it. */
     @Column(name = "parent_journey_id")
     var parentJourneyId: JourneyId? = null,
 
