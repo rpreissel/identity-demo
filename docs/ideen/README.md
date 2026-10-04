@@ -14,3 +14,5 @@ durchdenkt.
   (Passkey, OTP) als Tools des Orchestrators führen; im Web delegiert die Anzeige an Keycloak.
 - [Black-Box-Contract-Tests](black-box-contract-tests.md): Eine Testsuite, die nur über HTTP
   prüft, ob sich eine Reimplementierung wie die heutige Implementierung verhält.
+- [Tool-Versionen](tool-versionen.md): Ein Tool in zwei Fassungen nebeneinander führen, wenn
+  mehrere App-Versionen im Einsatz sind, und die alte Fassung später entfernen.
