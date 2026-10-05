@@ -572,6 +572,9 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
 
 - **Token**: Ein signierter Beleg über die Anmeldung, den ein Nutzer danach bei Fachdiensten
   vorlegt. Er nennt das Konto oder die Einladung, das Niveau (`acr`) und die Verfahren (`amr`).
+  Von den Attributen des Nutzers enthält das AccessToken nur Partnernummer (`person_id`) und
+  Mitgliedsnummer (`versnr`). Alle übrigen, etwa Name, E-Mail-Adresse und Geburtsdatum, stehen nur
+  im ID-Token.
   Ein Token gilt nur kurz. Ein Refresh-Token holt einen neuen Token, solange die Sitzung läuft.
   *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3a,
   [ADR-9](../adr/ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md).

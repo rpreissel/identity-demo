@@ -87,6 +87,10 @@ for (const theme of THEMES) {
       expect(claims.acr).toBe('loa1')
       expect(claims.amr).toEqual(['invite'])
       expect(claims.person_id).toBe(MAX.personId)
+      // Only the attributes that attest the identity; the rest is in the ID token.
+      expect(claims.kvnr).toBeUndefined()
+      expect(claims.birth_date).toBeUndefined()
+      expect(claims.family_name).toBeUndefined()
     })
 
     await test.step('ending the process ends the session', async () => {

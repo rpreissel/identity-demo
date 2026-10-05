@@ -66,8 +66,9 @@ sondern die Einladung als Subjekt (`ChannelSession.invitation`). Ein Fehlversuch
    angelegt. Liegt das Niveau der Einladung unter dem verlangten, bricht die Journey vorher ab,
    bevor etwas gebunden wird.
    Keycloak setzt den Nutzer aus der Einladungs-Federation (`f:<UUID>:<Id>`). Seine Tokens
-   enthalten die Stammdaten der Person und die Claims `process` und `invitation`, aber kein
-   `orchestrator_account_id`.
+   enthalten die Claims `process` und `invitation`, aber kein `orchestrator_account_id`. Von den
+   Stammdaten der Person stehen im AccessToken nur Partnernummer und Mitgliedsnummer, alle übrigen
+   nur im ID-Token ([05-api.md](../05-api.md) Abschnitt 3b).
 4. **Wiederkommen.** Bis zur Frist oder bis zum Abschluss des Vorgangs kann sich die Person beliebig
    oft wieder anmelden, wie beim Freischaltcode.
 5. **Beenden.** Das Fachsystem meldet den Vorgang beim Personenverzeichnis ab. Dazu nutzt es die Id

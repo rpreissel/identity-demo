@@ -1164,6 +1164,13 @@ findet nur exakte Treffer ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
   die Werte des Personenverzeichnisses. Für einen Interessenten gilt der stärkste bestätigte Wert
   aus dem Konto. Ein Konto ohne beides zeigt Platzhalternamen. Alle diese Werte sind in Keycloak
   schreibgeschützt.
+- **Was in welchem Token steht:** Das AccessToken geht an jeden Fachdienst, den App oder Website
+  aufrufen. Deshalb enthält es von den Attributen des Nutzers nur die beiden, die seine Identität
+  bezeugen: `person_id` (die Partnernummer) und `versnr` (die Mitgliedsnummer). Dazu kommen die
+  Angaben über die Anmeldung selbst: `sub`, `acr`, `amr`, `auth_time`, `orchestrator_account_id`
+  und beim Vorgangszugang `process` und `invitation`. Alle übrigen Attribute stehen nur im ID-Token
+  und in `userinfo`: Name, Benutzername, E-Mail-Adresse, KVNR, Geburtsdatum und Anschrift.
+  Festgelegt ist das in der Migration V8.
 - **Aktualität:** Keycloak hält einen föderierten Nutzer, also einen aus der Federation gelesenen,
   höchstens 60 Sekunden im Cache (Migration V2). Eine geänderte Adresse oder ein geänderter Name
   ist spätestens dann sichtbar.

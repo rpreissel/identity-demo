@@ -175,12 +175,14 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   verbindet das Dokument schwächer mit seinem Inhaber als die PIN des Personalausweises. Deshalb
   reicht sie nur für `loa2`. Der Dienstleister ist simuliert.
   Im Code: `tools/ident_nect/internal/IdentNectToolHandler.kt`.
-- **ID-Server.** Orchestrator und Keycloak verwalten zusammen die Konten und ihre Attribute. Im Token
-  geben sie diese zusammen mit dem Stand der Authentifizierung weiter:
-  - den Stand der Authentifizierung: das Niveau (`acr`), die benutzten Verfahren (`amr`) und den
-    Zeitpunkt der Anmeldung,
-  - die Attribute: Partnernummer, Mitgliedsnummer, KVNR, Name, Geburtsdatum, Anschrift und die
-    bestätigte E-Mail-Adresse.
+- **ID-Server.** Orchestrator und Keycloak verwalten zusammen die Konten und ihre Attribute. In den
+  Tokens geben sie diese zusammen mit dem Stand der Authentifizierung weiter, also mit dem Niveau
+  (`acr`), den benutzten Verfahren (`amr`) und dem Zeitpunkt der Anmeldung. Welche Attribute in
+  welchem Token stehen, ist bewusst getrennt:
+  - Das **AccessToken** geht an jeden Fachdienst. Es enthält nur die beiden Attribute, die die
+    Identität bezeugen: Partnernummer und Mitgliedsnummer.
+  - Das **ID-Token** ist für die Anwendung, bei der sich der Nutzer angemeldet hat. Es enthält alle
+    Attribute: zusätzlich Name, E-Mail-Adresse, KVNR, Geburtsdatum und Anschrift.
 
   Die Personen selbst verwaltet das Personenverzeichnis. Ändert es eine Person, meldet es das über
   ein Ereignis, und die Konten werden daraufhin angepasst. Keycloak hält keine eigene Kopie der
@@ -193,7 +195,8 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   Im Code: `core/orchestrator/session/TokenService.kt` (Tokens ohne Keycloak);
   `core/account/application/PersonChangeListener.kt`;
   `core/orchestrator/domain/policy/DefaultAuthPolicy.kt`. In der Doku: [API](../05-api.md),
-  Abschnitt 3a „ID-Token-Claims“. Mehr dazu in ADR-34 und ADR-38.
+  Abschnitt 3a „ID-Token-Claims“ und Abschnitt 3b „Was in welchem Token steht“. Mehr dazu in ADR-34
+  und ADR-38.
 - **Authentifizierung über einen Dritten, dem der Server vertraut.** Das Glossar lässt zu, dass das
   Authentisierungsmittel nicht mit dem Server selbst, sondern mit einem vertrauten Dritten vereinbart
   wurde. Genau so funktionieren Freischaltcode und Vorgangszugang: Das Personenverzeichnis schickt
