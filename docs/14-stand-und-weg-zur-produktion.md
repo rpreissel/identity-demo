@@ -1,11 +1,12 @@
 # Stand und Weg zur Produktion
 
-Dieses Kapitel beantwortet vier Fragen:
+Dieses Kapitel beantwortet fünf Fragen:
 
 - Was soll das Projekt leisten?
 - Welche Teile sind bereit für den echten Betrieb (produktionsreif)?
 - Welche Teile dienen nur der Vorführung?
 - Was fehlt noch, bevor eine Instanz mit echten Personendaten laufen darf?
+- Was müsste sich bei einem großen Mengengerüst ändern (Abschnitt 7)?
 
 Das Kapitel fasst nur zusammen. Die Einzelheiten stehen in den verlinkten Kapiteln und
 Entscheidungen.
@@ -212,7 +213,8 @@ wird, müssen die Menschen zustimmen, die es später fachlich und technisch vera
      ([Projektrahmen](08-projektrahmen.md), [Tool-Architektur](03-tool-architektur.md),
      [Architekturentscheidungen](12-entscheidungen.md))?
    - Welche Anforderungen fehlen noch, etwa an Schnittstellen zu Fachdiensten, Mandanten, Last oder
-     Barrierefreiheit?
+     Barrierefreiheit? Was ein großes Mengengerüst an der Architektur ändern würde,
+     steht in Abschnitt 7.
 
    Offene Konzepte stehen unter [Ideen](ideen/).
 3. **Den Kern abschließen.** Dazu gehören die [offenen Befunde](offene-befunde.md), zuerst die zu
@@ -233,3 +235,139 @@ wird, müssen die Menschen zustimmen, die es später fachlich und technisch vera
    braucht aber einen Schlüsselspeicher in der Hardware.
 8. **Freigabe für echte Personendaten.** Die Einschränkung aus ADR-35 endet erst, wenn die Schritte
    1 bis 7 erledigt sind und Datenschutz, Sicherheit und Betrieb zugestimmt haben.
+
+---
+
+## 7) Was ein großes Mengengerüst verlangt
+
+Dieser Abschnitt prüft die Architektur gegen ein angenommenes Mengengerüst: 20 Millionen Konten,
+15 Millionen Versicherte im Personenverzeichnis und 1 Million Anmeldungen am Tag. Im Mittel sind
+das etwa 12 Anmeldungen pro Sekunde. Für Spitzen sind hier 100 bis 300 Anmeldungen pro Sekunde
+angenommen. Verbindliche Lastanforderungen gibt es noch
+nicht (Abschnitt 6, Schritt 2). Die Zahlen unten sind deshalb Schätzungen. Stand der Prüfung:
+2026-10-05.
+
+**Kurz:** Das Datenmodell trägt diese Größe. Die häufigen Abfragen lesen einzelne Zeilen über
+Indizes (siehe [offene-befunde.md](offene-befunde.md) Abschnitt 8, „Sehr viele Konten“). Was nicht
+trägt, ist der Betrieb: Das System läuft heute als genau eine Instanz. Dazu kommen einige Stellen,
+die alles auf einmal lesen oder löschen oder andere Systeme öfter aufrufen als nötig.
+
+### Was für mehr als eine Instanz fehlt
+
+Der Orchestrator verweigert den Start mit `deployment.instances=multiple` und nennt dabei, was fehlt
+(`DeploymentTopology`, [07-betrieb.md](07-betrieb.md) Abschnitt 3b). Im Einzelnen:
+
+- **Datenbank.** Heute ist es eine H2-Datei, die nur ein Prozess öffnen kann. Nötig ist PostgreSQL
+  (`DPoP-demo-pi55`). Einige Flyway-Migrationen nutzen Besonderheiten von H2 und müssen dafür
+  angepasst werden.
+- **Schlüssel für `restoreData`.** `RestoreDataCodec` erzeugt seinen Schlüssel bei jedem Start neu.
+  Eine Web-Anmeldung, die auf einer Instanz beginnt, kann eine andere Instanz deshalb nicht
+  fortsetzen. Nötig ist ein gemeinsamer Schlüssel.
+- **Keycloak-Migrationen beim Start.** Sie laufen ohne Sperre. Starten zwei Instanzen gleichzeitig,
+  wenden beide dieselben Schritte an. Scheitert eine, rollt sie auch die Schritte der anderen
+  zurück. Nötig ist eine Sperre oder ein eigener Schritt beim Ausrollen.
+- **Geplante Aufgaben.** Fünf Aufgaben (Aufräumen, Replay-Tabelle, Änderungsprotokoll,
+  Anmeldeprotokoll, Tool-Sitzungen) laufen ohne gemeinsame Sperre, etwa ShedLock
+  (`DPoP-demo-g7np`).
+- **Pepper für Einmalcodes.** Ist er nicht gesetzt, wählt jede Instanz einen eigenen. Außerhalb des
+  Demomodus muss er ohnehin fest gesetzt sein.
+- **Reihenfolge der Änderungen aus dem Personenverzeichnis.** Die Reihenfolge je Person sichert
+  heute ein einzelner Thread im Prozess (ADR-34). Über mehrere Instanzen gilt das nicht mehr.
+
+### Engpässe unter Last
+
+1. **Jede Erneuerung eines Tokens liest live beim Personenverzeichnis.** Keycloak merkt sich ein
+   gelesenes Konto höchstens 60 Sekunden (Migration V2). Ein AccessToken gilt aber 300 Sekunden
+   (V5). Praktisch jede Erneuerung liest das Konto deshalb neu beim Orchestrator, und der liest die
+   Stammdaten dabei live beim Personenverzeichnis. Bei 20.000 bis 400.000 gleichzeitigen Sitzungen
+   sind das geschätzt 70 bis 1.400 Abfragen pro Sekunde. Abhilfe: den Cache an die Laufzeit des
+   Tokens anpassen oder die Stammdaten zwischenspeichern.
+2. **Der Abruf des Tokens bei Keycloak läuft in einer offenen Datenbanktransaktion.** Im App-Kanal
+   holt der Orchestrator das Token, während seine Transaktion offen ist. Keycloak ruft dabei den
+   Orchestrator zurück, um das Konto zu lesen. Mit einem Lese-Timeout von 10 Sekunden hält ein
+   langsames Keycloak so lange einen Thread und eine Datenbankverbindung fest. Dazu kommt:
+   - Datenbank-Pool und Tomcat laufen mit den Voreinstellungen (10 Verbindungen).
+   - Virtuelle Threads sind nicht eingeschaltet.
+   - Es gibt keinen Circuit Breaker, der Aufrufe an ein ausgefallenes System abbricht.
+3. **Replay-Tabelle.** Jede Anfrage der App und jeder Aufruf von Keycloak an den Orchestrator
+   schreibt eine Zeile in `dpop_proof_replay`, jeweils in einer eigenen Transaktion. Eine
+   Web-Anmeldung erzeugt etwa sechs solcher Zeilen. Jede Minute läuft dazu eine Löschung. Der Punkt
+   ist bereits als offen erfasst ([offene-befunde.md](offene-befunde.md) Abschnitt 8).
+4. **Das stündliche Aufräumen läuft in einer einzigen Transaktion.** `RetentionJob.cleanup` löscht
+   darin unter anderem die abgelaufenen Einträge des Journey-Trace in einer einzigen Anweisung.
+   Geschätzt sind das 170.000 bis 330.000 Zeilen pro Stunde. Nötig sind kleine Portionen mit
+   eigener Transaktion oder Partitionen nach Zeit.
+5. **Stündlicher Durchlauf über alle Konten.** Die Suche nach abgebrochenen Registrierungen filtert
+   und sortiert nach `account.created_at`. Diese Spalte hat keinen Index. Bei 20 Millionen Konten
+   liest die Abfrage jede Stunde die ganze Tabelle. Danach folgt je gefundenem Konto eine weitere
+   Abfrage.
+6. **Fehlender Index beim Abmelden.** Bei jeder Abmeldung in Keycloak sucht der Orchestrator über
+   `app_token_session.keycloak_session_id`. Diese Spalte hat keinen Index. Weitere Spalten ohne
+   Index sind `channel_session.invitation` und `change_log.lookup_key_id`. Über die letzte liest der
+   Orchestrator bei jedem Start die ganze Tabelle.
+7. **Admin-Listen laden alle Konten.** Die Kontoliste zum Journey-Trace
+   (`AdminJourneyTraceController`) lädt alle Konto-Ids und danach für jedes Konto den Namen beim
+   Personenverzeichnis. Sie ist nicht auf den Demomodus beschränkt. Im Demomodus tun
+   `AdminAccountsController`, `KeycloakRealmSessions` und `DemoReset` dasselbe. Nötig ist eine
+   Suche oder seitenweises Laden.
+8. **Massenänderungen im Personenverzeichnis.** Ändern sich viele Personen auf einmal, etwa
+   Millionen zum Jahreswechsel, arbeitet ein einziger Thread die Ereignisse ab. Seine Warteschlange
+   hat keine Grenze, und jedes Ereignis schreibt mehrmals. Durchsatz und Reihenfolge über mehrere
+   Instanzen sind ungeklärt.
+9. **`/idclaims` liest ohne Zwischenspeicher.** Jeder Aufruf liest Mitgliedsnummer und Namen live
+   beim Personenverzeichnis.
+10. **SMS und E-Mail.** Die Tools versenden synchron und ohne Port, ohne Outbox und ohne
+    Wiederholung. Sie nutzen die Simulation direkt.
+11. **Kleinere Punkte.** Der Orchestrator prüft die Signatur jedes Aufrufs von Keycloak zweimal.
+    Der Zwischenspeicher für die Schlüssel von Keycloak (JWKS) sperrt global und lädt unter dieser
+    Sperre mit 10 Sekunden Timeout nach.
+
+### Wie die Daten wachsen
+
+Eine Anmeldung schreibt geschätzt 12 bis 20 Zeilen. In der Spitze sind das 1.500 bis 2.500 Zeilen
+pro Sekunde. Bei den heutigen Aufbewahrungsfristen entstehen ungefähr diese Bestände:
+
+| Tabelle | Bestand (Schätzung) | Hinweis |
+|---|---|---|
+| `account.sign_in_log` | etwa 365 Millionen Zeilen (6 Monate) | heute in Portionen zu 500 Zeilen gelöscht, also etwa 4.000 Transaktionen am Tag |
+| `orchestrator.journey_trace` | 56 bis 112 Millionen Zeilen (14 Tage) | stündlich in einer Anweisung gelöscht, siehe Punkt 4 |
+| `orchestrator.channel_session` | etwa 14 Millionen Zeilen (14 Tage) | |
+| `account.claim` | 20 bis 80 Millionen Zeilen | siehe [offene-befunde.md](offene-befunde.md) Abschnitt 8 |
+| `event_publication` | wächst ohne Grenze | abgeschlossene Einträge räumt niemand ab |
+
+Für `sign_in_log` und `journey_trace` passen Partitionen nach Zeit besser als Löschen: Eine
+abgelaufene Partition wird als Ganzes entfernt.
+
+### Was schon trägt
+
+- Konto, Anker, E-Mail-Adresse, Partnernummer, Geräteverknüpfung und Kanal werden über Indizes
+  einzeln gelesen.
+- Sitzungen, Journeys, Zähler für Sperren und Mengenbegrenzungen, QR-Anfragen und die
+  Signaturschlüssel des Orchestrators liegen in der Datenbank. Sie würden also auch über mehrere
+  Instanzen hinweg funktionieren.
+- Keycloak ruft den Orchestrator nicht bei jeder Anmeldung auf, sondern nur bei einer Abmeldung. Es
+  fragt auch nicht regelmäßig nach.
+- Eine Suche über die Nutzer-Federation liefert nie eine Liste, höchstens einen Treffer.
+- Die Sperre auf der Konto-Zeile ist optimistisch und greift nur bei Änderungen am Konto, nicht bei
+  der Anmeldung.
+
+### Was hier nicht geprüft ist
+
+- Keycloak selbst muss als Cluster mit eigener Datenbank laufen. Seine Sitzungsspeicher müssen für
+  bis zu etwa 400.000 gleichzeitige Sitzungen ausgelegt sein. Die Sitzungen der App sind dauerhaft
+  gespeichert (`PERSISTENT`).
+- Für die echten Anbindungen an Personenverzeichnis, Nect, KOBIL, SMS und E-Mail braucht es
+  Timeouts und Circuit Breaker. Die [Port-Verträge](port-vertraege.md) nennen bisher keine
+  Anforderungen an Antwortzeit und Verfügbarkeit.
+- Einen Lasttest gibt es noch nicht.
+
+### Vorgeschlagene Reihenfolge
+
+1. Die Lastanforderungen festlegen (Abschnitt 6, Schritt 2).
+2. PostgreSQL und die Punkte unter „Was für mehr als eine Instanz fehlt“.
+3. Den Weg der Token-Erneuerung entlasten (Punkt 1) und den Aufruf von Keycloak aus der
+   Transaktion lösen (Punkt 2).
+4. Das Aufräumen in Portionen oder Partitionen umbauen und die fehlenden Indizes anlegen
+   (Punkte 4 bis 6).
+5. Die Admin-Listen auf Suche oder seitenweises Laden umstellen (Punkt 7).
+6. Einen Lasttest aufsetzen.

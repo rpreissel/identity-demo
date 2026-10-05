@@ -117,7 +117,8 @@ Aufgaben der Willkommensseite im Browser vor:
 
 - **[Stand und Weg zur Produktion](14-stand-und-weg-zur-produktion.md)**: Was soll das Projekt
   leisten? Was ist bereit für den echten Betrieb, was ist nur Demo? Was fehlt noch, bevor echte
-  Personendaten verarbeitet werden, und wie geht es weiter?
+  Personendaten verarbeitet werden, und wie geht es weiter? Was müsste sich bei 20 Millionen Konten
+  und 1 Million Anmeldungen am Tag ändern?
 
 ## Ideen
 

@@ -422,6 +422,11 @@ prüft beim Start, ob der Code für diese Umgebung geeignet ist. Wenn nicht, bri
 nennt in einer Liste, was fehlt. Sobald die Voraussetzungen erfüllt sind, also eine gemeinsame Sperre
 für die Jobs und ein fest gesetzter Pepper, ist diese Prüfung die Stelle, an der man sie lockert.
 
+Für einen Betrieb mit mehreren Instanzen unter hoher Last reicht das allein nicht. Dazu gehören auch
+PostgreSQL statt H2, eine Sperre für die Keycloak-Migrationen beim Start und eine Lösung für die
+Reihenfolge der Änderungen aus dem Personenverzeichnis. Die vollständige Liste steht in
+[14-stand-und-weg-zur-produktion.md](14-stand-und-weg-zur-produktion.md) Abschnitt 7.
+
 ## 3c) Außerhalb des Demomodus: was gesetzt sein muss
 
 `demo.mode=false` bedeutet: Hier dürfen echte Personendaten liegen

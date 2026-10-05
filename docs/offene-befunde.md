@@ -252,7 +252,9 @@ einzigen Stelle erledigen.
     ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)). Einen Abgleich aller Konten gibt es nicht.
 
   Das Modell der Claims dahinter beschreibt das [Domänenmodell](02-domaenenmodell.md) in
-  Abschnitt 6.
+  Abschnitt 6. Was über das Datenmodell hinaus bei 20 Millionen Konten und 1 Million
+  Anmeldungen am Tag zu ändern wäre, steht in
+  [14-stand-und-weg-zur-produktion.md](14-stand-und-weg-zur-produktion.md) Abschnitt 7.
 
 Alle drei Punkte verdienen eine eigene, sorgfältig geplante Überarbeitung. Erst danach wird über
 den Entwurf entschieden.
