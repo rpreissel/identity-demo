@@ -16,7 +16,7 @@ kotest = "6.2.5"
 asm = "9.9.1"
 mockk = "1.14.11"
 springmockk = "5.0.1"
-kover = "0.9.9"
+kover = "0.9.11"
 openapi-generator = "7.18.0"
 openapi-diff = "2.1.7"
 # Eine Version fuer beide Seiten der Peer-Auth-Signatur: keycloak-extension signiert, der
