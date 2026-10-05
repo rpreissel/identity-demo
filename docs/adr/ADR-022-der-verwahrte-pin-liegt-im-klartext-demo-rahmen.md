@@ -2,10 +2,18 @@
 
 **Status:** umgesetzt.
 
+**Kontext**: Ein Geheimnis wie ein Passwort speichert man normalerweise nicht im Klartext. Man
+speichert nur einen Hash, also einen daraus berechneten Wert, aus dem sich das Geheimnis nicht
+zurückgewinnen lässt. Das geht aber nur, wenn man das Geheimnis später nie wieder im Original
+braucht. Einige Geheimnisse in diesem Projekt muss der Server dagegen im Original herausgeben oder
+selbst benutzen, etwa eine PIN, die er bei jeder Anmeldung an den Anbieter KOBIL weitergibt, oder
+seinen eigenen Signaturschlüssel. Diese ADR hält fest, welche Geheimnisse das sind und warum die Demo
+sie nicht verschlüsselt.
+
 ## Entscheidung
 
-Einige Geheimnisse speichert die Demo bewusst im Klartext. Das ist ein Kompromiss für die Demo, und
-er steht hier an **einer** Stelle, statt in jedem betroffenen ADR neu begründet zu werden:
+Einige Geheimnisse speichert die Demo bewusst im Klartext. Das ist ein Kompromiss für die Demo. Er
+steht hier an **einer** Stelle, statt in jeder betroffenen ADR neu begründet zu werden:
 
 | Was | Wo | Warum nicht gehasht |
 |---|---|---|
@@ -19,33 +27,34 @@ Verschlüsselt wird nichts davon.
 
 ## Begründung
 
-Verschlüsselung (etwa AES-256-GCM unter einem Schlüssel aus `identity.secrets`) schützt gegen eine
-gestohlene Kopie der Datenbank, aber nicht gegen Zugriff auf den laufenden Prozess, der den Schlüssel
-ja kennen muss. Beim KOBIL-PIN hält außerdem der simulierte Anbieter (`kobil`) denselben Wert
-ohnehin im Klartext, so wie das echte KOBIL es tun müsste. Verschlüsselung auf nur einer Seite sähe
-nach Schutz aus, ohne einer zu sein. Für eine Demo wiegt das den Aufwand für Schlüsselverwaltung nicht
-auf.
+Eine Verschlüsselung (etwa AES-256-GCM unter einem Schlüssel aus `identity.secrets`) schützt gegen
+eine gestohlene Kopie der Datenbank. Sie schützt aber nicht gegen einen Zugriff auf den laufenden
+Prozess, denn der muss den Schlüssel ja kennen. Beim KOBIL-PIN kommt hinzu: Der simulierte Anbieter
+(`kobil`) hält denselben Wert ohnehin im Klartext, so wie es das echte KOBIL tun müsste. Eine
+Verschlüsselung auf nur einer Seite sähe nach Schutz aus, ohne einer zu sein. Für eine Demo lohnt
+sich dafür der Aufwand für die Verwaltung von Schlüsseln nicht.
 
-**Erwogene Alternative beim PIN:** ihn pro Anmeldung neu setzen (KOBIL kann das) und danach verwerfen.
-Dann bliebe nichts dauerhaft gespeichert. Es macht aber jede Anmeldung von der
-Verwaltungsschnittstelle des Anbieters abhängig und öffnet ein Zeitfenster, in dem sich der Wechsel
-des PINs und die Anmeldung über das SDK gegenseitig überholen können.
+**Erwogene Alternative beim PIN:** Den PIN für jede Anmeldung neu setzen (KOBIL kann das) und danach
+verwerfen. Dann bliebe nichts dauerhaft gespeichert. Aber jede Anmeldung wäre dann auf die
+Verwaltungsschnittstelle des Anbieters angewiesen. Außerdem entstünde ein Zeitfenster, in dem der
+Wechsel des PINs und die Anmeldung über das SDK in der falschen Reihenfolge ablaufen können.
 
 ## Folgen
 
-- Vertretbar ist das nur, solange es sichtbar bleibt. Die H2-Konsole ist im Projekt bewusst an; ihr
-  Kommentar in `application.yml` zählt auf, was dort lesbar wäre, wenn man sie über
-  `web-allow-others` öffnete. Die Klartextfelder oben gehören auf diese Liste.
-- Die Einrichtungsdaten von KOBIL liegen nur so lange wie jede Tool-Session: höchstens 24 Stunden
-  (`tool-session.retention`, gelöscht mit ihrer Zeile `orchestrator.tool_session`) und werden nach
-  der Aktivierung geleert.
-- Ein echter Betrieb bräuchte für jede Zeile der Tabelle eine eigene Lösung (Schlüsselspeicher,
-  HSM, verschlüsselte Spalten). Eine Verschlüsselung mit eigenen Schlüsseln je Datensatz für das
-  Claim-Log entwirft [die Idee zur Umschlagverschlüsselung](../ideen/verschluesselung-differenzierte-aufbewahrung.md);
-  dieser Entscheidung greift sie nicht vor.
+- Vertretbar ist das nur, solange es sichtbar bleibt. Die H2-Konsole ist im Projekt bewusst
+  eingeschaltet. Ihr Kommentar in `application.yml` zählt auf, was dort lesbar wäre, wenn man sie
+  über `web-allow-others` öffnete. Die Klartextfelder aus der Tabelle oben gehören auf diese Liste.
+- Die Einrichtungsdaten von KOBIL bleiben nur so lange gespeichert wie jede Tool-Session, also
+  höchstens 24 Stunden (`tool-session.retention`). Sie werden mit ihrer Zeile in
+  `orchestrator.tool_session` gelöscht und nach der Aktivierung geleert.
+- Ein echter Betrieb bräuchte für jede Zeile der Tabelle eine eigene Lösung, etwa einen
+  Schlüsselspeicher, ein HSM oder verschlüsselte Spalten. Für das Log der Angaben (Claim-Log) entwirft
+  [die Idee zur Umschlagverschlüsselung](../ideen/verschluesselung-differenzierte-aufbewahrung.md)
+  eine Verschlüsselung mit eigenen Schlüsseln je Datensatz. Sie ist nur eine Idee und ändert an
+  dieser Entscheidung nichts.
 
 ## Geschichte
 
-Ursprünglich betraf dieser ADR nur den verwahrten KOBIL-PIN. Dieselbe Abwägung stand danach zusätzlich
+Ursprünglich betraf diese ADR nur den verwahrten KOBIL-PIN. Dieselbe Abwägung stand danach zusätzlich
 in ADR-9, ADR-25 und ADR-31. Sie ist jetzt hier zusammengefasst; die anderen ADRs verweisen nur noch
 hierher.

@@ -2,58 +2,79 @@
 
 **Status:** umgesetzt 2026-10-03 (Issue `DPoP-demo-x69i`).
 
-**Entscheidung.** Was ein Tool während eines Durchlaufs festhält (ausgegebener Code-Hash, Ablaufzeit,
-eingegebene Nummer, KOBIL-Aktivierungsdaten …), speichert es über den Port
-`tool_api.ToolSessionData`. Der Orchestrator legt es als JSON in die Spalte `data` der Zeile
-`orchestrator.tool_session`, die es zu jedem Durchlauf ohnehin gibt; `data_type` nennt Modul und
-Klasse des Zustands (`auth_sms.AuthSmsToolSession`). Ein Tool hält seinen Zustand als einfache,
-unveränderliche Datenklasse und ersetzt ihn nach jeder Änderung ganz (`save`).
+**Entscheidung.** Ein [Tool](../glossar/glossar.md) ist ein abgeschlossener Arbeitsschritt, den ein
+Nutzer durchläuft, etwa „SMS einrichten“. Jedes Mal, wenn ein Tool gestartet wird, entsteht eine
+Tool-Sitzung (ein [Tool-Durchlauf](../glossar/glossar.md)). Sie lebt oft nur wenige Minuten. In
+dieser Zeit muss sich das Tool einiges merken, zum Beispiel:
 
-Wie bei den Zählern ([ADR-44](ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)) leiht der
-Orchestrator nur den Speicher. Den Namensraum bestimmt die Klasse des Zustands: Ein Modul liest nur
-Zustände, die es selbst deklariert; ein fremder Typ ist ein Vertragsfehler.
+- den Hash des Codes, den es ausgegeben hat,
+- die Ablaufzeit,
+- die Nummer, die der Nutzer eingegeben hat,
+- die Aktivierungsdaten von KOBIL.
 
-**Warum.** Bisher brachte jedes Tool eine JPA-Entität, ein Repository und eine Tabelle
-`<modul>.<rolle>_tool_session` mit, jedes Modul dazu einen Aufräumjob: 23 Entitäten, 23 Tabellen,
-zehn Jobs. Alle 23 Repositories wurden nur über die `tool_session_id` gelesen und geschrieben und
-nach Alter gelöscht – genau das, was die Zeile im Orchestrator schon kann: gleiche Id, Ablaufzeit,
-Status, Versionsnummer, eigenes Aufräumen. Ein neues Tool schreibt jetzt eine Datenklasse statt drei
+Diese Arbeitsdaten speichert ein Tool über den Port `tool_api.ToolSessionData`. Ein Port ist eine
+fest vereinbarte Schnittstelle; das Tool weiß dadurch nicht, wo die Daten am Ende liegen. Der
+[Orchestrator](../glossar/glossar.md), also der Server, der die Abläufe steuert, führt zu jedem
+Durchlauf ohnehin eine Zeile in `orchestrator.tool_session`. In deren Spalte `data` legt er die
+Arbeitsdaten als JSON ab. Die Spalte `data_type` nennt Modul und Klasse des Zustands, zum Beispiel
+`auth_sms.AuthSmsToolSession`. Ein Tool hält seinen Zustand als einfache, unveränderliche
+Datenklasse. Nach jeder Änderung ersetzt es den Zustand als Ganzes (`save`).
+
+Der Orchestrator stellt dem Tool dabei nur den Speicher bereit. Das ist dasselbe Muster wie bei
+den Zählern ([ADR-44](ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)). Welche Daten zu welchem Modul
+gehören, bestimmt die Klasse des Zustands: Ein Modul liest nur Zustände, die es selbst deklariert
+hat. Findet es einen fremden Typ vor, ist das ein Vertragsfehler.
+
+**Warum.** Bisher brachte jedes Tool drei eigene Teile mit: eine JPA-Entität, ein Repository und
+eine Tabelle `<modul>.<rolle>_tool_session`. Jedes Modul hatte dazu einen eigenen Aufräumjob. Das
+ergab 23 Entitäten, 23 Tabellen und zehn Jobs. Alle 23 Repositories taten dasselbe: Sie lasen und
+schrieben nur über die `tool_session_id` und löschten nach Alter. Genau das kann die Zeile im
+Orchestrator schon. Sie hat dieselbe Id, eine Ablaufzeit, einen Status, eine Versionsnummer und ein
+eigenes Aufräumen. Für ein neues Tool schreibt man jetzt nur noch eine Datenklasse statt drei
 Dateien und einer Migration.
 
 **Folgen.**
 
-- **Aufräumen** fällt mit der Zeile: `RetentionJob` löscht `orchestrator.tool_session` nach
-  `tool-session.retention`. Die Arbeitsdaten selbst leert schon der Abschluss (`DONE`, `ABANDONED`,
-  `SessionManagementService.endToolSession`), denn manche sind Personendaten (`ident-fsc`: KVNR,
-  Partnernummer, Name, Geburtsdatum). Bis dahin liegen sie unverschlüsselt in
-  `orchestrator.tool_session.data` (`DPoP-demo-bo1w`); eine Sitzung, die nicht abgeschlossen wird,
-  behält sie bis zur Aufbewahrungsfrist. Module räumen nur noch eigene kurzlebige Daten auf, die keine
+- **Aufräumen:** Die Arbeitsdaten werden mit ihrer Zeile gelöscht. `RetentionJob` löscht
+  `orchestrator.tool_session` nach der Frist `tool-session.retention`. Die Arbeitsdaten selbst
+  leert schon der Abschluss eines Durchlaufs (`DONE`, `ABANDONED`,
+  `SessionManagementService.endToolSession`). Das ist wichtig, denn manche Arbeitsdaten sind
+  Personendaten, etwa bei `ident-fsc` die KVNR, die Partnernummer, der Name und das Geburtsdatum.
+  Bis zum Abschluss liegen sie unverschlüsselt in `orchestrator.tool_session.data`
+  (`DPoP-demo-bo1w`). Eine Sitzung, die nie abgeschlossen wird, behält sie bis zum Ende der
+  Aufbewahrungsfrist. Die Module räumen nur noch eigene kurzlebige Daten auf, die keine
   Tool-Sitzung sind (`auth_qr.login_request`, `ToolSessionSweeper`).
-- **Gleichzeitige Schreiber:** Die `@Version` der Zeile gilt auch für die Daten. Zwei parallele
-  PATCHes derselben Sitzung enden für den zweiten mit `409`, statt dass der letzte still gewinnt.
-- **Rollierende Deploys:** `ToolSessionDataCodec` liest tolerant (unbekannte Felder werden
-  übersprungen, fehlende bekommen ihren Kotlin-Standardwert). Ein Zustand gibt deshalb jedem Feld,
-  das er später bekommt, einen Standardwert.
-- **Ids** sind zeitlich sortiert (UUIDv7), damit neue Zeilen am Ende des Index landen.
-- **Skalierung:** Bei 10 Mio. Nutzern rund 5 Mio. Tool-Sitzungen am Tag, in der Spitze etwa 2.000
-  Schreibvorgänge pro Sekunde über den Primärschlüssel – dieselbe Last wie vorher, nur in einer
-  statt 24 Tabellen. Beim Wechsel auf PostgreSQL (`DPoP-demo-pi55`) wird diese eine Tabelle nach
-  Tag partitioniert und per `DROP PARTITION` statt `DELETE` aufgeräumt.
-- **Verschlüsselung:** Der Codec ist die einzige Stelle, die Zustände schreibt und liest; dort setzt
-  eine spätere Verschlüsselung an
+- **Gleichzeitige Schreiber:** Die Versionsnummer der Zeile (`@Version`) schützt auch die
+  Arbeitsdaten. Schicken zwei Anfragen gleichzeitig ein PATCH an dieselbe Sitzung, bekommt die
+  zweite `409`. Ohne diesen Schutz würde die spätere Anfrage die frühere unbemerkt überschreiben.
+- **Rollierende Deploys:** Während eines Updates laufen alte und neue Server nebeneinander. Damit
+  das klappt, liest `ToolSessionDataCodec` tolerant: Unbekannte Felder überspringt er, fehlende
+  bekommen ihren Kotlin-Standardwert. Ein Zustand gibt deshalb jedem Feld, das später hinzukommt,
+  einen Standardwert.
+- **Ids** sind zeitlich sortiert (UUIDv7). So stehen neue Zeilen am Ende des Index.
+- **Skalierung:** Bei 10 Mio. Nutzern entstehen rund 5 Mio. Tool-Sitzungen am Tag. In der Spitze
+  sind das etwa 2.000 Schreibvorgänge pro Sekunde über den Primärschlüssel. Das ist dieselbe Last
+  wie vorher, nur in einer Tabelle statt in 24. Beim Wechsel auf PostgreSQL (`DPoP-demo-pi55`) wird
+  diese eine Tabelle nach Tag partitioniert. Aufgeräumt wird dann per `DROP PARTITION` statt
+  per `DELETE`.
+- **Verschlüsselung:** Der Codec ist die einzige Stelle, die Zustände schreibt und liest. Dort lässt
+  sich eine spätere Verschlüsselung einbauen
   ([Idee Umschlagverschlüsselung](../ideen/verschluesselung-differenzierte-aufbewahrung.md)).
   Bis dahin gilt [ADR-22](ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md): Die
   KOBIL-Aktivierungsdaten liegen während der Einrichtung im Klartext und werden danach geleert.
-- **Schema je Modul:** Die Arbeitsdaten liegen nicht mehr im Schema ihres Moduls. Das ist gewollt:
-  Sie sind Teil der Tool-Sitzung, und ihr Inhalt bleibt Sache des Moduls.
-  `ToolSessionCoverageTest` wacht darüber, dass kein Modul wieder eine eigene `*_tool_session`-Tabelle anlegt.
+- **Schema je Modul:** Die Arbeitsdaten liegen nicht mehr im Datenbankschema ihres Moduls. Das ist
+  gewollt. Sie gehören zur Tool-Sitzung, und ihr Inhalt bleibt trotzdem Sache des Moduls.
+  `ToolSessionCoverageTest` achtet darauf, dass kein Modul wieder eine eigene
+  `*_tool_session`-Tabelle anlegt.
 
 **Erwogene Alternativen.**
 
-- **Eine gemeinsame Tabelle `orchestrator.tool_session_data`.** Verworfen: eine zweite Zeile mit
-  derselben Id, eigenem Aufräumen und später eigenen Partitionen, ohne etwas zu gewinnen.
-- **Eine gleich gebaute Tabelle je Modulschema.** Hält „ein Schema je Modul“ ein, braucht aber elf
-  Tabellen, elf Migrationen und elffaches Partitionieren – das, was ADR-44 bei den Zählern verworfen hat.
-- **Ein Schlüssel-Wert-Speicher (Redis mit TTL).** Bleibt möglich: Der Port `ToolSessionData`
-  verbirgt, wo die Daten liegen. Heute würde er einen zweiten Speicher neben der Datenbank bedeuten,
-  ohne Transaktion mit der Journey.
+- **Eine gemeinsame Tabelle `orchestrator.tool_session_data`.** Verworfen. Das wäre eine zweite
+  Zeile mit derselben Id, mit eigenem Aufräumen und später eigenen Partitionen. Gewonnen wäre damit
+  nichts.
+- **Eine gleich gebaute Tabelle in jedem Modulschema.** Damit bliebe die Regel „ein Schema je Modul“
+  eingehalten. Es bräuchte aber elf Tabellen, elf Migrationen und elffaches Partitionieren. Genau
+  das hat ADR-44 bei den Zählern verworfen.
+- **Ein Schlüssel-Wert-Speicher (Redis mit TTL).** Das bleibt möglich, denn der Port
+  `ToolSessionData` verbirgt, wo die Daten liegen. Heute würde es aber einen zweiten Speicher neben
+  der Datenbank bedeuten, ohne gemeinsame Transaktion mit der Journey.

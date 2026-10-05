@@ -1,22 +1,33 @@
 # Tool-Architektur
 
-Ein *Tool* ist ein konkretes Verfahren, um jemanden zu identifizieren, ein Anmeldeverfahren
-einzurichten oder sich anzumelden (`ident-fsc`, `enroll-sms`, `auth-sms`). Dieses Dokument
-beschreibt, wie Tools sich selbst beschreiben und was sie über die Grenze ihres Moduls melden.
+Ein *Tool* ist ein konkreter, abgeschlossener Arbeitsschritt, den ein Nutzer durchläuft. Mit einem
+Tool identifiziert sich jemand, richtet ein Anmeldeverfahren ein oder meldet sich an. Beispiele sind
+`ident-fsc` (Identifizierung mit Freischaltcode), `enroll-sms` (SMS einrichten) und `auth-sms` (mit
+SMS anmelden). Dieses Dokument beschreibt zwei Dinge: wie Tools sich selbst beschreiben und was sie
+aus ihrem Modul heraus an den Orchestrator melden. Der **Orchestrator** ist der Server dieses
+Projekts. Er entscheidet, welche Schritte ein Nutzer durchläuft, und bindet die Tools über eine feste
+Schnittstelle ein. Unbekannte Begriffe erklärt das [Glossar](glossar/glossar.md).
 
-Was der Orchestrator mit diesen Meldungen macht, steht in [04-orchestrierung.md](04-orchestrierung.md).
-Ein durchgehendes Beispiel, das ein neues Verfahren von Anfang bis Ende anbindet, steht in
-[15-beispiel-neues-verfahren-backend.md](15-beispiel-neues-verfahren-backend.md) (Server und Web-Kanal)
-und [17-beispiel-neues-verfahren-app.md](17-beispiel-neues-verfahren-app.md) (App). Was ein
-einzelnes Verfahren im Besonderen tut, steht auf seiner Seite unter
-[verfahren/](verfahren/README.md); die HTTP-Seite eines Tools in [05-api.md](05-api.md) Abschnitt 2.
+Was der Orchestrator mit den Meldungen der Tools macht, steht in
+[04-orchestrierung.md](04-orchestrierung.md). Ein durchgehendes Beispiel, das ein neues Verfahren
+von Anfang bis Ende anbindet, finden Sie hier:
+
+- [15-beispiel-neues-verfahren-backend.md](15-beispiel-neues-verfahren-backend.md) für Server und
+  Web-Kanal,
+- [17-beispiel-neues-verfahren-app.md](17-beispiel-neues-verfahren-app.md) für die App.
+
+Was ein einzelnes Verfahren im Besonderen tut, steht auf seiner Seite unter
+[verfahren/](verfahren/README.md). Die HTTP-Schnittstelle eines Tools beschreibt
+[05-api.md](05-api.md) Abschnitt 2.
 
 ---
 
 ## Einstieg: Zusammenspiel an einem Schritt
 
-Aus Sicht des Backends ist der Orchestrator ein Modulith mit eigenen Tool-Modulen; einzelne Module
-geben Arbeit ihrerseits an externe Dienste ab:
+Der Orchestrator ist ein **Modulith**: eine einzige Anwendung, die intern in Module mit klaren
+Grenzen geteilt ist. Jedes Verfahren hat sein eigenes Tool-Modul. Einzelne Module geben einen Teil
+ihrer Arbeit an externe Dienste weiter, etwa an einen SMS-Versand. Das erste Bild zeigt diesen
+Aufbau aus Sicht des Backends:
 
 ```mermaid
 flowchart LR
@@ -52,8 +63,11 @@ flowchart LR
   M1 -.-> EXT1
 ```
 
-So arbeiten der Orchestrator und ein Tool-Modul wie `auth_sms` bei einem konkreten Schritt
-zusammen:
+Das zweite Bild zeigt, wie der Orchestrator und ein Tool-Modul wie `auth_sms` bei einem konkreten
+Schritt zusammenarbeiten. Der Nutzer gibt zum Beispiel eine TAN ein. Das Tool prüft sie und meldet
+sein Ergebnis (`ToolOutcome`). Die Strategie des Intents (`IntentStrategy`) entscheidet dann, wie es
+weitergeht. Ein **Intent** ist das Anliegen des Nutzers, etwa sich anzumelden. Eine **Journey** ist
+der geführte Ablauf zu diesem Intent.
 
 ```mermaid
 sequenceDiagram
@@ -81,19 +95,22 @@ sequenceDiagram
   JS-->>TC: ChannelResponse (next/stepData)
 ```
 
-Keycloak kommt in einem Schritt nur vor, wenn er die Anmeldung eines App-Kanals abschließt: Dann
-öffnet der Übergang nach `AUTHENTICATED` die Keycloak-Sitzung
-([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)). Konten spiegelt
-Keycloak nicht, es liest ein Konto
-bei Bedarf selbst beim Orchestrator nach ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)). Das Modul
-`account` spricht nie selbst mit Keycloak. Nur wenn ein Konto gelöscht wird, meldet es
-`AccountDeleted`, und nach dem Commit räumt der Orchestrator (`KeycloakAccountRemovalListener`) die
-Daten ab, die Keycloak selbst zu diesem Konto hält, etwa Sitzungen
-([05-api.md](05-api.md) Abschnitt 3b, „Keycloak liest die Konten – keine Spiegelung“).
+**Keycloak** ist das Produkt, das die Anmeldung auf der Website führt und die Tokens ausstellt. In
+einem Schritt kommt Keycloak nur vor, wenn dieser Schritt die Anmeldung eines App-Kanals abschließt.
+Ein **Kanal** ist die Verbindung eines Nutzers zum Orchestrator, über die App oder über die Website.
+Wechselt der App-Kanal in den Zustand `AUTHENTICATED`, öffnet der Orchestrator dabei die
+Keycloak-Sitzung ([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)).
 
-Was der `ToolHandler` intern tut, um zu diesem `ToolOutcome` zu kommen, gehört bewusst nicht zu
-diesem Bild. Er arbeitet mit eigener Fachlogik auf einem eigenen Schema (`ToolDB`), auf das nichts
-außerhalb des Moduls zugreift.
+Keycloak hält keine Kopie der Konten. Es liest ein Konto bei Bedarf selbst beim Orchestrator nach
+([ADR-38](adr/ADR-038-keycloak-liest-konten.md)). Das Modul `account` spricht nie selbst mit
+Keycloak. Nur wenn ein Konto gelöscht wird, meldet es das Ereignis `AccountDeleted`. Nach dem Commit
+löscht der Orchestrator (`KeycloakAccountRemovalListener`) dann die Daten, die Keycloak selbst zu
+diesem Konto speichert, etwa Sitzungen ([05-api.md](05-api.md) Abschnitt 3b, „Keycloak liest die
+Konten – keine Spiegelung“).
+
+Was der `ToolHandler` intern tut, um zu seinem `ToolOutcome` zu kommen, zeigt das Bild bewusst
+nicht. Der Handler arbeitet mit eigener Fachlogik auf einem eigenen Datenbankschema (`ToolDB`). Auf
+dieses Schema greift nichts außerhalb des Moduls zu.
 
 Für Sie als Backend-Entwickler heißt das:
 
@@ -107,72 +124,91 @@ Für Sie als Backend-Entwickler heißt das:
 - **App- und Web-Kanal sind für Sie gleich.** Journey, Tool und `next` funktionieren für beide
   Zugänge gleich ([05-api.md](05-api.md)); Sie schreiben keine Sonderfälle für einen einzelnen
   Kanal in Ihr Modul.
-- **Den Ablauf zum Ausstellen der Tokens müssen Sie nicht bauen.** Das übliche OIDC mit Keycloak
-  ist auf dem Server einmal umgesetzt. Ihr Modul liefert nur das Ergebnis eines Verfahrens, nie
-  selbst ein Token.
+- **Den Ablauf zum Ausstellen der Tokens müssen Sie nicht bauen.** Der übliche Ablauf nach OIDC,
+  dem Standard für Anmeldung und Tokens, ist mit Keycloak auf dem Server einmal umgesetzt. Ihr Modul
+  liefert nur das Ergebnis eines Verfahrens, nie selbst ein Token.
 
 ---
 
 
 ## 1) Begriffe: Tool, Verfahren, Rolle, `ToolSession`
 
-Ein **Verfahren** (Methode, `method`) ist ein Weg, etwas nachzuweisen, etwa `sms` oder `kobil`. Es
-gehört genau einem Modul, das es einmal deklariert (Abschnitt 2). Ein **Tool** ist eine Rolle
-dieses Verfahrens: `enroll-sms` richtet es ein, `auth-sms` meldet damit an, `auth-sms-lookup` meldet
-über die E-Mail-Adresse an. Welche Tools es gibt, zeigt der Katalog in Abschnitt 8; jedes Verfahren
-hat dort seine eigene Seite unter [verfahren/](verfahren/README.md).
+Dieser Abschnitt klärt vier Grundbegriffe, die im ganzen Kapitel vorkommen.
 
-`toolId` (z. B. `ident-fsc`, `enroll-sms`, `auth-sms`) bezeichnet Art und Verfahren in einem
-einzigen Namen. Die `toolId` wird nicht gespeichert, sondern aus der Route abgeleitet; über sie
-werden Handler und Datenklasse des Moduls ausgewählt.
+Ein **Verfahren** (im Code Methode, `method`) ist ein Weg, etwas nachzuweisen, etwa `sms` oder
+`kobil`. Jedes Verfahren gehört genau einem Modul, das es einmal deklariert (Abschnitt 2). Ein
+**Tool** ist eine Rolle dieses Verfahrens. Beim Verfahren `sms` gibt es zum Beispiel drei Tools:
 
-`ToolSession` ist die dritte und kurzlebigste Ebene (`ChannelSession` → `AuthJourney` →
-`ToolSession`). Sie steht für genau einen Durchlauf eines Tools: Daten zu dessen Lebenszyklus und
-die Arbeitsdaten des Tools selbst. Diese hält das Tool als einfache Datenklasse
-(`AuthSmsToolSession`: Enrollment, TAN-Hash, Ablaufzeit) und speichert sie über `ToolSessionData`;
-der Orchestrator legt sie als JSON an die Zeile, liest sie aber nie
-([ADR-49](adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)). Ein Modul braucht dafür weder
-Tabelle noch Aufräumen.
+- `enroll-sms` richtet das Verfahren ein,
+- `auth-sms` meldet mit dem Verfahren an,
+- `auth-sms-lookup` meldet ebenfalls an, findet das Konto aber über die E-Mail-Adresse.
 
-Der Tool-Katalog ist **keine zentral gepflegte Tabelle**. Er entsteht aus den Angaben, die die Module
-über sich selbst machen (`ToolModule` mit seinen Tools, Abschnitt 2). In den Begriffen des
-[externen Glossars](glossar/externes-glossar.md): Tools der Rolle `IDENTIFICATION` sind Identifizierungsmittel, die
-Tools der Rollen `ENROLLMENT` und `KNOWN_ACCOUNT_AUTH`/`ACCOUNT_LOOKUP_AUTH` gehören zu
-Anmeldeverfahren ([Abgleich mit dem externen Glossar](glossar/abgleich-externes-glossar.md)).
+Welche Tools es gibt, zeigt der Katalog in Abschnitt 8. Jedes Verfahren hat dort einen Link auf
+seine eigene Seite unter [verfahren/](verfahren/README.md).
 
-Die **Rolle** (`ToolRole`) sagt, was ein Tool tut. Neben `IDENTIFICATION`, `ENROLLMENT` und
-`KNOWN_ACCOUNT_AUTH` gibt es vier Rollen, die eine Erklärung brauchen:
+Die `toolId` (z. B. `ident-fsc`, `enroll-sms`, `auth-sms`) nennt in einem einzigen Namen die Art
+des Tools und das Verfahren. Die `toolId` wird nicht gespeichert. Der Orchestrator leitet sie aus
+der Route der Anfrage ab und wählt über sie Handler und Datenklasse des Moduls aus.
 
-- `role=ATTESTATION` (`confirm-email`) kennzeichnet den Nachweis, ein Attribut des Kontos zu
-  kontrollieren: kein Credential, keine Identität. Wann ein Tool diese Rolle hat, steht in
-  Abschnitt 4.
-- `role=ACCOUNT_LOOKUP_AUTH` kennzeichnet Anmeldungen, die ihr Subjekt aus der Eingabe selbst finden statt
-  über den Kanal. Die `-lookup`-Varianten haben dieselbe `method` wie ihr Gegenstück mit
-  `KNOWN_ACCOUNT_AUTH` und finden das Konto über eine eingegebene E-Mail-Adresse; ohne diese
-  Unterscheidung wäre die Auswahl der Kandidaten mehrdeutig. `auth-invite-lookup` hat kein Gegenstück und
-  findet über Nummer und Einmalkennwort eine Einladung statt eines Kontos
-  ([Verfahren `invite`](verfahren/invite.md)).
+Die `ToolSession` ist die dritte und kurzlebigste Ebene der Sitzungen (`ChannelSession` →
+`AuthJourney` → `ToolSession`). Sie steht für genau einen Durchlauf eines Tools. Sie enthält Daten
+zum Lebenszyklus dieses Durchlaufs und die Arbeitsdaten des Tools selbst. Die Arbeitsdaten hält das
+Tool als einfache Datenklasse, bei `auth-sms` etwa `AuthSmsToolSession` mit Enrollment, TAN-Hash und
+Ablaufzeit. Das Tool speichert sie über `ToolSessionData`. Der Orchestrator legt sie als JSON in der
+Zeile der `ToolSession` ab, liest sie aber nie
+([ADR-49](adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)). Ein Modul braucht dafür also
+weder eine eigene Tabelle noch eigenes Aufräumen.
+
+Der Tool-Katalog ist **keine zentral gepflegte Tabelle**. Er entsteht aus den Angaben, die die
+Module über sich selbst machen (`ToolModule` mit seinen Tools, Abschnitt 2). Das
+[externe Glossar](glossar/externes-glossar.md) verwendet andere Begriffe: Dort sind Tools der Rolle
+`IDENTIFICATION` Identifizierungsmittel. Die Tools der Rollen `ENROLLMENT` und
+`KNOWN_ACCOUNT_AUTH`/`ACCOUNT_LOOKUP_AUTH` gehören dort zu Anmeldeverfahren
+([Abgleich mit dem externen Glossar](glossar/abgleich-externes-glossar.md)).
+
+Die **Rolle** (`ToolRole`) sagt, was ein Tool fachlich tut. Drei Rollen erklären sich fast von
+selbst:
+
+- `IDENTIFICATION` stellt fest, wer jemand ist,
+- `ENROLLMENT` richtet ein Anmeldeverfahren ein,
+- `KNOWN_ACCOUNT_AUTH` meldet ein Konto an, das der Kanal schon kennt.
+
+Die übrigen vier Rollen brauchen eine Erklärung:
+
+- `role=ATTESTATION` (`confirm-email`) kennzeichnet den Nachweis, dass jemand ein Attribut des
+  Kontos kontrolliert, etwa eine E-Mail-Adresse. Dabei entsteht kein Credential, also nichts, womit
+  man sich später anmelden kann. Es wird auch keine Identität festgestellt. Wann ein Tool diese
+  Rolle hat, steht in Abschnitt 4.
+- `role=ACCOUNT_LOOKUP_AUTH` kennzeichnet Anmeldungen, die ihr **Subjekt** selbst aus der Eingabe
+  ermitteln statt über den Kanal. Das Subjekt ist, wem ein angemeldeter Kanal gehört: einem Konto
+  oder einer Einladung. Die `-lookup`-Varianten haben dieselbe `method` wie ihr Gegenstück mit
+  `KNOWN_ACCOUNT_AUTH`. Sie finden das Konto über eine eingegebene E-Mail-Adresse. Ohne diese
+  Unterscheidung wäre nicht eindeutig, welche Tools zur Auswahl stehen. `auth-invite-lookup` hat
+  kein Gegenstück. Es findet über eine Nummer und ein Einmalkennwort eine Einladung statt eines
+  Kontos ([Verfahren `invite`](verfahren/invite.md)).
 - `role=CORRELATION` (`ident-kvnr`) kennzeichnet einen Schritt, der nur zuordnet. Für sich beweist
-  er nichts: Eine eingetippte KVNR oder Partnernummer ist kein Nachweis. Er ist nie Kandidat einer
-  (erneuten) Identifizierung, denn `forIdentification` und `reIdentCandidates` nehmen nur Tools
-  der Rolle `IDENTIFICATION`. Starten lässt er sich erst, wenn die Identität bereits bestätigt ist
-  (`requires`, ADR-18). `factorTypes = {}` folgt aus dieser Rolle, definiert sie aber nicht.
-- `approve-qr` hat die Rolle `ToolRole.PEER_APPROVAL`, denn
-  keine der übrigen Rollen passt auf „bestätigt, was jemand anderes tut". Was diese Rolle zum Niveau
-  beiträgt, steht in Abschnitt 4.
+  er nichts: Eine eingetippte KVNR oder Partnernummer ist kein Nachweis. Ein solches Tool wird nie
+  für eine (erneute) Identifizierung angeboten, denn `forIdentification` und `reIdentCandidates`
+  nehmen nur Tools der Rolle `IDENTIFICATION`. Starten lässt es sich erst, wenn die Identität
+  bereits bestätigt ist (`requires`, ADR-18). `factorTypes = {}` folgt aus dieser Rolle, definiert
+  sie aber nicht.
+- `approve-qr` hat die Rolle `ToolRole.PEER_APPROVAL`. Keine der übrigen Rollen passt auf den Fall
+  „bestätigt, was jemand anderes tut“. Was diese Rolle zum Niveau beiträgt, steht in Abschnitt 4.
 
 ---
 
 ## 2) Ein Verfahren deklarieren: `ToolModule`
 
-Jedes Modul deklariert sein Verfahren genau einmal, in `<Modul>ToolModule.kt` (z. B.
+Damit der Orchestrator ein Verfahren anbieten kann, muss er wissen, was es kann. Dafür beschreibt
+jedes Modul sein Verfahren selbst, und zwar genau einmal, in der Datei `<Modul>ToolModule.kt` (z. B.
 `tools/auth_kobil/KobilToolModule.kt`). Die Deklaration ist eine reine Selbstbeschreibung ohne
-Abhängigkeiten, getrennt von der Fachlogik in `internal`. Dieselbe Datei trägt die Angaben für
-Spring Modulith (`@ApplicationModule` an der gleichnamigen Klasse `KobilToolModule`) und gibt das
-`ToolModule` als Bean heraus. Der Orchestrator sammelt die Module beim Start ein und bildet daraus
-den Katalog aus Abschnitt 8 (`ToolHandlerRegistry`). Die Deklaration hat zwei Teile: Was das
-Verfahren ist, beschreibt `toolModule(…)`; jedes seiner Tools ist danach ein eigener Wert, am Modul
-registriert:
+Abhängigkeiten. Sie ist getrennt von der Fachlogik, die im Paket `internal` liegt. Dieselbe Datei
+enthält auch die Angaben für Spring Modulith (`@ApplicationModule` an der gleichnamigen Klasse
+`KobilToolModule`) und stellt das `ToolModule` als Bean bereit. Der Orchestrator sammelt die Module
+beim Start ein und bildet daraus den Katalog aus Abschnitt 8 (`ToolHandlerRegistry`).
+
+Die Deklaration hat zwei Teile. Was das Verfahren ist, beschreibt `toolModule(…)`. Danach folgt
+jedes Tool des Verfahrens als eigener Wert, der am Modul registriert wird:
 
 ```kotlin
 internal const val ENROLL_KOBIL_TOOL_ID = "enroll-kobil"
@@ -191,31 +227,40 @@ internal val EnrollKobil = KobilModule.enroll(ENROLL_KOBIL_TOOL_ID, versions = s
 internal val AuthKobil = KobilModule.login(AUTH_KOBIL_TOOL_ID, versions = setOf(1), hint = Text("An das Gerät gebunden …"), startStep = "unlock")
 ```
 
-Die `toolId` steht als Konstante genau einmal im Modul: Die Deklaration nennt sie, und der
-Controller des Tools nimmt dieselbe Konstante für seine Pfade. `versions` nennt die Fassungen, die
-der Server führt, ohne Vorgabewert; je Fassung gibt es einen Controller unter
-`/tools/api/<toolId>/v<N>` ([ADR-51](adr/ADR-051-versionen-als-pfadsegment.md); wann ein Tool eine
-neue Fassung braucht: [API](05-api.md) Abschnitt 2). Auf das Tool selbst zeigt der
-Controller über `ToolController.tool` (`override val tool = AuthKobil`); seine Kontext-Parameter
-(`ActivationToolContext`, `AuthorizedToolContext`, `ToolContext`) werden für dieses Tool aufgelöst. Dass Pfad und Tool übereinstimmen und
-jede deklarierte Fassung genau einen Controller hat, prüft `ToolControllerMappingTest`.
+Die `toolId` steht als Konstante genau einmal im Modul. Die Deklaration nennt sie, und der
+Controller des Tools verwendet dieselbe Konstante für seine Pfade.
+
+`versions` nennt die Fassungen des Tools, die der Server anbietet. Einen Vorgabewert gibt es nicht.
+Je Fassung gibt es einen Controller unter `/tools/api/<toolId>/v<N>`
+([ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)). Wann ein Tool eine neue Fassung braucht,
+steht in [API](05-api.md) Abschnitt 2.
+
+Der Controller verweist über `ToolController.tool` auf sein Tool (`override val tool = AuthKobil`).
+Seine Kontext-Parameter (`ActivationToolContext`, `AuthorizedToolContext`, `ToolContext`) werden für
+dieses Tool aufgelöst. Der Test `ToolControllerMappingTest` prüft zweierlei: dass Pfad und Tool
+übereinstimmen und dass jede deklarierte Fassung genau einen Controller hat.
 
 Was das **Modul** angibt, gilt für alle seine Tools:
 
 | Angabe | Bedeutung |
 |---|---|
-| `method` | z. B. `"sms"` – verbindet `enroll-sms`, `auth-sms` und `auth-sms-lookup` |
-| `name` | wie Nutzer das Verfahren nennen, z. B. `Text("SMS")`: die einzige Stelle; App und Login-Seite lesen ihn aus `GET /tools/catalog` |
-| `proves` | Faktortypen und Niveau, die ein Nachweis des Verfahrens höchstens erbringt (`factorTypes`, `maxAcr`) |
-| `onePerDevice` | ein Eintrag je Gerät, an dessen Schlüssel gebunden (Abschnitt 5) |
-| `demoOnly` | gesetzt, wenn das Verfahren nur in der Demo taugt (ADR-36) |
-| `stepData` | die Formen von `stepData`, mit denen die Tools antworten: eine Map vom `kind` auf die Form mit Beschreibung und Beispielen, deklariert neben den Klassen |
+| `method` | z. B. `"sms"`. Der Name des Verfahrens verbindet seine Tools, hier `enroll-sms`, `auth-sms` und `auth-sms-lookup`. |
+| `name` | wie Nutzer das Verfahren nennen, z. B. `Text("SMS")`. Nur hier steht dieser Name; App und Login-Seite lesen ihn aus `GET /tools/catalog`. |
+| `proves` | welche Faktortypen und welches Niveau ein Nachweis mit diesem Verfahren höchstens erbringt (`factorTypes`, `maxAcr`) |
+| `onePerDevice` | ein Eintrag je Gerät, gebunden an den Schlüssel des Geräts (Abschnitt 5) |
+| `demoOnly` | gesetzt, wenn das Verfahren nur für die Demo geeignet ist (ADR-36) |
+| `stepData` | die Formen von `stepData`, mit denen die Tools antworten. Das ist eine Map vom `kind` auf die Form mit Beschreibung und Beispielen, deklariert neben den Klassen. |
 
-Jedes **Tool** entsteht über die Fabrik seiner Rolle, eine Funktion am Modul. Die Fabrik legt die
-Rolle fest, nimmt die `toolId` und nur die Angaben, die diese Rolle machen darf, und registriert das
-Tool sofort. Jede Fabrik verlangt außerdem `hint`, ein paar Worte dazu, was das Tool tut
-(„Code an die hinterlegte Telefonnummer“), und nimmt optional `name`: ein eigener Name statt des
-Modulnamens, für ein Tool, das nach seinem Zweck heißt („Mit App anmelden“ für `auth-qr-lookup`).
+Ein **Faktortyp** ist die Art eines Beweises: etwas, das man weiß (`KNOWLEDGE`), etwas, das man hat
+(`POSSESSION`), oder etwas, das man ist (`INHERENCE`). Das **Niveau** (`acr`, Werte `loa1` bis
+`loa3`) sagt, wie sehr einer Anmeldung vertraut wird.
+
+Jedes **Tool** entsteht über die Fabrik seiner Rolle. Eine Fabrik ist eine Funktion am Modul. Sie
+legt die Rolle fest, nimmt die `toolId` und nur die Angaben, die zu dieser Rolle passen, und
+registriert das Tool sofort. Jede Fabrik verlangt außerdem `hint`: ein paar Worte dazu, was das
+Tool tut, etwa „Code an die hinterlegte Telefonnummer“. Optional nimmt sie `name` an. Das ist ein
+eigener Name statt des Modulnamens, für ein Tool, das nach seinem Zweck heißt, etwa „Mit App
+anmelden“ für `auth-qr-lookup`.
 
 | Fabrik | Rolle | `toolId` | Eigene Angaben |
 |---|---|---|---|
@@ -227,325 +272,424 @@ Modulnamens, für ein Tool, das nach seinem Zweck heißt („Mit App anmelden“
 | `lookupLogin(…)` | `ACCOUNT_LOOKUP_AUTH` | `auth-<m>-lookup` | `startStep` |
 | `approve(…)` | `PEER_APPROVAL` | `approve-<m>` | `startStep`; erbringt keinen Faktor |
 
-`withoutUserStep` kennzeichnet ein Tool, das ohne Schritt des Nutzers auskommt: `enroll-email`
-macht die schon bestätigte Adresse beim Start sofort zum Anmeldeverfahren. Der Orchestrator startet
-ein solches Tool nie von selbst, auch nicht als einzigen Kandidaten, sondern zeigt die Auswahl mit
-diesem Text, der sagt, was die Wahl bewirkt.
+`withoutUserStep` kennzeichnet ein Tool, das ohne Schritt des Nutzers auskommt. `enroll-email`
+zum Beispiel macht die schon bestätigte Adresse beim Start sofort zum Anmeldeverfahren. Der
+Orchestrator startet ein solches Tool nie von selbst, auch dann nicht, wenn es der einzige Kandidat
+ist. Er zeigt stattdessen die Auswahl mit dem `hint`-Text, der sagt, was die Wahl bewirkt.
 
-Daraus ergeben sich die Felder eines `Tool`: `toolId`, `role`, `name`, `hint`, `startStep` (sonst
-`role.defaultStartStep`), `claims` (eigene Claims nennen das Tool als Quelle), `requires`,
-`withoutUserStep`, und durchgereicht `method`, `factorTypes`, `maxAcr`, `demoOnly`.
+Daraus ergeben sich die Felder eines `Tool`:
+
+- `toolId`, `role`, `name`, `hint`,
+- `startStep` (fehlt er, gilt `role.defaultStartStep`),
+- `claims` (Claims, die das Tool selbst schreibt, nennen das Tool als Quelle),
+- `requires`, `withoutUserStep`,
+- und vom Modul übernommen: `method`, `factorTypes`, `maxAcr`, `demoOnly`.
 
 Die Entscheidungen dahinter:
 
 - Jedes Modul deklariert sein Verfahren einmal (Methode, Faktortypen, Niveau) und darunter je Rolle
-  ein Tool; es gibt keinen zentral zu pflegenden Katalog. Alle Tools einer Methode haben damit
-  dasselbe Niveau und dieselbe Schlüsselbindung, und das Niveau eines eingerichteten Verfahrens
-  hängt nicht davon ab, welches seiner Tools man fragt.
-- Die `toolId` steht ausgeschrieben in der Deklaration, damit man sie dort liest wie in URL,
-  Admin-Seite und Doku. Frei wählbar ist sie trotzdem nicht: Sie muss zu Methode und Rolle passen
-  (`ToolRole.toolIdFor`): `ident-<m>` (Identifizierung und Korrelation), `confirm-<m>`,
-  `enroll-<m>`, `auth-<m>`, `auth-<m>-lookup`, `approve-<m>`. Umgekehrt wird die Methode nie aus der `toolId` gelesen: `enroll-sms` und
-  `auth-sms` gehören zum Modul `sms`, darüber findet ein Tool zum Anmelden die passende Zeile in
+  ein Tool. Einen zentral zu pflegenden Katalog gibt es nicht. Alle Tools einer Methode haben damit
+  dasselbe Niveau und dieselbe Bindung an einen Schlüssel. Das Niveau eines eingerichteten
+  Verfahrens ist also gleich, egal welches seiner Tools man fragt.
+- Die `toolId` steht ausgeschrieben in der Deklaration. So liest man sie dort genauso wie in der
+  URL, auf der Admin-Seite und in der Doku. Frei wählbar ist sie trotzdem nicht. Sie muss zu
+  Methode und Rolle passen (`ToolRole.toolIdFor`). Erlaubt sind diese Muster:
+  - `ident-<m>` (Identifizierung und Korrelation),
+  - `confirm-<m>`,
+  - `enroll-<m>`,
+  - `auth-<m>`,
+  - `auth-<m>-lookup`,
+  - `approve-<m>`.
+
+  Umgekehrt liest der Orchestrator die Methode nie aus der `toolId`. `enroll-sms` und `auth-sms`
+  gehören zum Modul `sms`. Über diese Methode findet ein Tool zum Anmelden die passende Zeile in
   `account.auth_method`.
-- `factorTypes` ist eine **Menge**, weil ein Verfahren mehrere Faktoren zugleich erbringen kann:
+- `factorTypes` ist eine **Menge**, weil ein Verfahren mehrere Faktoren zugleich erbringen kann.
   `enroll-device`/`auth-device` und `enroll-kobil`/`auth-kobil` deklarieren bis zu drei
-  Faktortypen und erbringen je Durchlauf zwei davon mit `loa2` (ein an das Gerät gebundenes
-  Credential plus System-PIN oder Biometrie).
-- `maxAcr` und `factorTypes` dienen der Vorauswahl: Kann dieses Tool eine Lücke überhaupt schließen?
-  Was ein konkreter Durchlauf tatsächlich erreicht hat, meldet `Completed` – nie mehr, als das Tool
-  zulässt (Abschnitt 3).
+  Faktortypen. Je Durchlauf erbringen sie zwei davon mit `loa2`: ein an das Gerät gebundenes
+  Credential plus System-PIN oder Biometrie.
+- `maxAcr` und `factorTypes` dienen der Vorauswahl. Sie beantworten die Frage: Kann dieses Tool die
+  Lücke zum geforderten Niveau überhaupt schließen? Was ein konkreter Durchlauf tatsächlich
+  erreicht hat, meldet `Completed`. Das ist nie mehr, als das Tool zulässt (Abschnitt 3).
 - Zentral bleibt nur, was ein Modul nicht wissen *kann*: welches Niveau sich aus einer
-  **Kombination** von Nachweisen ergibt und welches Niveau eine Ressource verlangt. Das ist Sache der
-  `AuthPolicy` ([Orchestrierung](04-orchestrierung.md)).
+  **Kombination** von Nachweisen ergibt und welches Niveau eine Ressource verlangt. Das entscheidet
+  die Richtlinie für Sicherheitsniveaus (`AuthPolicy`, [Orchestrierung](04-orchestrierung.md)).
 
-**Was beim Registrieren geprüft wird.** Durch diesen Aufbau sind ausgeschlossen: verschiedene
-Niveaus, Faktoren oder Schlüsselbindungen innerhalb einer Methode, ein Tool über dem Niveau seines
-Moduls, Angaben, die zur Rolle nicht passen, und eine Identifizierung ohne Name, Vornamen und
-Geburtsdatum (ADR-39). Beim Registrieren eines Tools geprüft wird, dass seine `toolId` zu Methode und
-Rolle passt, dass keine Rolle doppelt vorkommt (Identifizierung und Korrelation teilen sich
-`ident-<m>`, schließen sich also aus) und dass nur das Personenverzeichnis für eine KVNR einsteht;
-beim Start, dass jede Methode nur ein Modul hat. Sobald der Katalog ein Modul eingesammelt hat,
-nimmt es keine Tools mehr an: Ein später registriertes Tool fehlte sonst still im Katalog. Deshalb
-stehen alle Tools eines Moduls in seiner Datei, gleich unter `toolModule(…)`.
+**Was beim Registrieren geprüft wird.** Manche Fehler kann es durch diesen Aufbau gar nicht geben:
 
-**Jedes Identifizierungsverfahren liefert Name, Vorname und Geburtsdatum.** Danach wird eine Person
-im Änderungsprotokoll wiedergefunden, auch nach der Löschung ihres Kontos (ADR-39).
-`ToolHandlerRegistry` verweigert den Start, wenn ein Verfahren der Rolle `IDENTIFICATION` eines der
-drei nicht deklariert.
+- verschiedene Niveaus, Faktoren oder Schlüsselbindungen innerhalb einer Methode,
+- ein Tool über dem Niveau seines Moduls,
+- Angaben, die nicht zur Rolle passen,
+- eine Identifizierung ohne Name, Vornamen und Geburtsdatum (ADR-39).
+
+Andere Fehler prüft der Orchestrator ausdrücklich. Beim Registrieren eines Tools prüft er:
+
+- dass seine `toolId` zu Methode und Rolle passt,
+- dass keine Rolle doppelt vorkommt. Identifizierung und Korrelation teilen sich `ident-<m>` und
+  schließen sich deshalb gegenseitig aus.
+- dass für eine KVNR nur das Personenverzeichnis als Quelle eingetragen ist, die die Richtigkeit
+  bestätigt.
+
+Beim Start prüft er, dass jede Methode nur ein Modul hat. Sobald der Katalog ein Modul eingesammelt
+hat, nimmt das Modul keine Tools mehr an. Sonst würde ein später registriertes Tool im Katalog
+fehlen, ohne dass es jemand bemerkt. Deshalb stehen alle Tools eines Moduls in seiner Datei, gleich
+unter `toolModule(…)`.
+
+**Jedes Identifizierungsverfahren liefert Name, Vorname und Geburtsdatum.** Anhand dieser Angaben
+lässt sich eine Person im Änderungsprotokoll wiederfinden, auch nach der Löschung ihres Kontos
+(ADR-39). `ToolHandlerRegistry` verweigert den Start der Anwendung, wenn ein Verfahren der Rolle
+`IDENTIFICATION` eine dieser drei Angaben nicht deklariert.
 
 ---
 
 ## 3) Was ein Tool meldet: `ToolOutcome`
 
-Über die Grenze eines Moduls geht nur ein `ToolOutcome`: Das Verfahren läuft noch, ist
-abgeschlossen oder ist fehlgeschlagen.
+Ein Tool-Modul gibt nach außen nur eine Art von Ergebnis weiter: ein `ToolOutcome`. Es sagt, ob das
+Verfahren noch läuft, abgeschlossen ist oder fehlgeschlagen ist. Jede Variante hat eine feste
+Bedeutung:
 
 | Variante | Bedeutung |
 |---|---|
-| `InProgress(nextStep, stepData, demo)` | läuft weiter; `stepData` ist für den Client bestimmt und wird unverändert weitergegeben, `demo` enthält nur Demo-Werte (ADR-28) |
-| `Failed.*(reason, …)` | Versuch fehlgeschlagen, eine Variante je Rolle (siehe unten); wie es mit weiteren Versuchen weitergeht, steht in [Orchestrierung](04-orchestrierung.md) |
-| `Completed.Identified(claims, ...)` | Identität festgestellt; höchstens ein `PERSON_ID`-Claim (eine Partnernummer). Verfahren, die nur bezeugen, was sie lesen (`ident-eid`, `ident-nect`), liefern keinen |
-| `Completed.Attested(claims)` | Attribut bestätigt; kein `enrollmentRef`, `amr` leer, kein eigenes Niveau (Abschnitt 4) |
-| `Completed.Enrolled(enrollmentRef, ...)` | Verfahren eingerichtet |
-| `Completed.Authenticated(subject?, ...)` | Nachweis erbracht; `subject` setzen nur die `ACCOUNT_LOOKUP_AUTH`-Tools: das Konto (`Subject.Account`) oder, bei `auth-invite-lookup`, die Einladung (`Subject.Invitation`) |
-| `Completed.Approved(...)` | Ein `PEER_APPROVAL`-Tool (`approve-qr`) hat eine fremde Anfrage bestätigt |
+| `InProgress(nextStep, stepData, demo)` | Das Verfahren läuft weiter. `stepData` ist für den Client bestimmt und wird unverändert weitergegeben. `demo` enthält nur Werte für die Demo (ADR-28). |
+| `Failed.*(reason, …)` | Der Versuch ist fehlgeschlagen. Es gibt eine Variante je Rolle (siehe unten). Wie es mit weiteren Versuchen weitergeht, steht in [Orchestrierung](04-orchestrierung.md). |
+| `Completed.Identified(claims, ...)` | Die Identität ist festgestellt. Das Ergebnis enthält höchstens einen `PERSON_ID`-Claim (eine Partnernummer). Verfahren, die nur bezeugen, was sie aus einem Dokument lesen (`ident-eid`, `ident-nect`), liefern keinen. |
+| `Completed.Attested(claims)` | Ein Attribut ist bestätigt. Es gibt kein `enrollmentRef`, `amr` ist leer, und es gibt kein eigenes Niveau (Abschnitt 4). |
+| `Completed.Enrolled(enrollmentRef, ...)` | Das Verfahren ist eingerichtet. |
+| `Completed.Authenticated(subject?, ...)` | Der Nachweis ist erbracht. `subject` setzen nur die `ACCOUNT_LOOKUP_AUTH`-Tools: auf das Konto (`Subject.Account`) oder, bei `auth-invite-lookup`, auf die Einladung (`Subject.Invitation`). |
+| `Completed.Approved(...)` | Ein `PEER_APPROVAL`-Tool (`approve-qr`) hat eine fremde Anfrage bestätigt. |
 
-- `InProgress.stepData` ist **für den Client bestimmt** (z. B. `missingFields`); `Completed` und
-  `Failed` sind **für den Orchestrator bestimmt** und werden nie direkt an den Client
+- `InProgress.stepData` ist **für den Client bestimmt** (z. B. `missingFields`). `Completed` und
+  `Failed` sind dagegen **für den Orchestrator bestimmt**. Sie werden nie direkt an den Client
   weitergegeben.
-- `Completed.Authenticated.subject` setzen nur die Tools der Rolle `ACCOUNT_LOOKUP_AUTH`, die ihr
-  Subjekt selbst finden. Die gewöhnlichen `auth-*`-Tools kennen das Konto schon über den Kanal.
+- `Completed.Authenticated.subject` setzen nur die Tools der Rolle `ACCOUNT_LOOKUP_AUTH`, weil sie
+  ihr Subjekt selbst finden. Die gewöhnlichen `auth-*`-Tools kennen das Konto schon über den Kanal.
 
-Ein Fehlschlag nennt über seine Variante, gegen wen der Versuch lief – davon hängt ab, welche
-Sperre nach zu vielen Versuchen greift. Das Subjekt ist ein Pflichtfeld; „niemand“ ist ein
-ausdrückliches `null`, kein vergessener Standardwert:
+**Fehlschläge.** Die Variante eines Fehlschlags sagt, gegen wen der Versuch lief. Davon hängt ab,
+welche **Sperre** nach zu vielen Fehlversuchen gilt. Eine Sperre blockiert ein Konto oder eine
+Person nach zu vielen falschen Versuchen für eine Weile. Das Subjekt ist ein Pflichtfeld. Ist
+niemand betroffen, steht dort ausdrücklich `null`. So lässt sich „niemand“ nicht mit einem
+vergessenen Standardwert verwechseln. Die Varianten:
 
-- **`KnownAccountAuth(reason)`** (`KNOWN_ACCOUNT_AUTH`): gegen das Konto, das der Kanal schon kennt.
-- **`AccountLookupAuth(reason, attempted)`** (`ACCOUNT_LOOKUP_AUTH`): gegen das Konto (`Attempted.Account`), das
-  die Eingabe ergab, oder `null`. Ein Einmalkennwort gehört einer Person: `auth-invite-lookup` nennt
-  `Attempted.Person`, und es zählt die Personen-Mengenbegrenzung wie beim Freischaltcode.
-- **`Identification(reason, attemptedPersonId)`** (`IDENTIFICATION`, `CORRELATION`): gegen die
-  Person, die die Eingabe ergab, oder `null`.
-- **`NothingGuessed(reason)`** (`ENROLLMENT`, `ATTESTATION`, `PEER_APPROVAL`): Kein Geheimnis eines
-  bestehenden Kontos wurde geraten; es zählt keine Sperre.
+- **`KnownAccountAuth(reason)`** (`KNOWN_ACCOUNT_AUTH`): Der Versuch lief gegen das Konto, das der
+  Kanal schon kennt.
+- **`AccountLookupAuth(reason, attempted)`** (`ACCOUNT_LOOKUP_AUTH`): Der Versuch lief gegen das
+  Konto, das die Eingabe ergab (`Attempted.Account`), oder gegen niemanden (`null`). Ein
+  Einmalkennwort gehört einer Person. Deshalb nennt `auth-invite-lookup` stattdessen
+  `Attempted.Person`, und es zählt die Mengenbegrenzung für Personen, wie beim Freischaltcode.
+- **`Identification(reason, attemptedPersonId)`** (`IDENTIFICATION`, `CORRELATION`): Der Versuch
+  lief gegen die Person, die die Eingabe ergab, oder gegen niemanden (`null`).
+- **`NothingGuessed(reason)`** (`ENROLLMENT`, `ATTESTATION`, `PEER_APPROVAL`): Es wurde kein
+  Geheimnis eines bestehenden Kontos geraten. Deshalb zählt keine Sperre.
 
-Eine Variante, die nicht zur Rolle des Tools passt, weist der Orchestrator als Vertragsfehler
-des Moduls ab, bevor er etwas bucht; das gilt für `Failed` wie für `Completed`.
+Meldet ein Tool eine Variante, die nicht zu seiner Rolle passt, weist der Orchestrator sie als
+Vertragsfehler des Moduls ab. Das geschieht, bevor er irgendetwas bucht, und gilt für `Failed` wie
+für `Completed`.
 
-Jeder gemeldete Claim wird vor der Verarbeitung geprüft (`Claim.validateValue`): Er darf nicht leer
-sein, ein `PERSON_ID` muss eine Partnernummer sein (`tool_api.values.PartnerNumber`, `P` und neun Ziffern) und
-ein Geburtsdatum ein ISO-Datum.
+Jeden gemeldeten Claim prüft der Orchestrator vor der Verarbeitung (`Claim.validateValue`):
 
-**`amr`, `achievedAcr` und `factorTypes`.** Jede `Completed`-Variante trägt außerdem `amr` (die
-nachgewiesenen Verfahren, für `SessionEvidence.amr`), `achievedAcr` und `factorTypes`, aber **nur,
-wo der Durchlauf von der Deklaration abweicht**: `null` heißt „wie deklariert“. `amr` und
-`achievedAcr` liefert jedes Tool selbst, weil dasselbe Verfahren je nach Durchlauf unterschiedliche
-Niveaus erreichen kann. Der Orchestrator liest die Werte über das
-Tool (`Tool.amrOf`, `levelOf`, `factorsOf`): `amr` ist dann die Methode (leer bei einem Tool ohne
-eigenen Nachweis), das Niveau `maxAcr`, die Faktoren die des Tools. Ausdrücklich gemeldet werden
-nur echte Abweichungen: das Gerät und KOBIL (Faktoren und `amr` je nach Entsperren), Nect (`amr`
-und Niveau je Dokument), die Einladung (ihr Niveau) und `enroll-email` (kein `amr`). Die Variante
-muss zur Rolle des Tools passen und legt fest, was der Orchestrator tut.
+- Er darf nicht leer sein.
+- Ein `PERSON_ID` muss eine Partnernummer sein (`tool_api.values.PartnerNumber`, `P` und neun
+  Ziffern).
+- Ein Geburtsdatum muss ein ISO-Datum sein.
+
+**`amr`, `achievedAcr` und `factorTypes`.** Jede `Completed`-Variante enthält außerdem drei Werte:
+
+- `amr`: die nachgewiesenen Verfahren, für `SessionEvidence.amr`,
+- `achievedAcr`: das erreichte Niveau,
+- `factorTypes`: die erbrachten Faktortypen.
+
+Gesetzt werden diese Werte aber **nur, wo der Durchlauf von der Deklaration abweicht**. `null`
+heißt „wie deklariert“. `amr` und `achievedAcr` liefert jedes Tool selbst, weil dasselbe Verfahren
+je nach Durchlauf unterschiedliche Niveaus erreichen kann. Der Orchestrator liest die Werte über
+das Tool (`Tool.amrOf`, `levelOf`, `factorsOf`). Ist nichts gemeldet, gilt: `amr` ist die Methode
+(leer bei einem Tool ohne eigenen Nachweis), das Niveau ist `maxAcr`, die Faktoren sind die des
+Tools. Ausdrücklich gemeldet werden nur echte Abweichungen:
+
+- das Gerät und KOBIL: Faktoren und `amr` hängen davon ab, wie entsperrt wurde,
+- Nect: `amr` und Niveau hängen vom Dokument ab,
+- die Einladung: ihr Niveau,
+- `enroll-email`: kein `amr`.
+
+Die Variante muss zur Rolle des Tools passen. Sie legt fest, was der Orchestrator tut.
 
 ---
 
 ## 4) Welche Rolle für ein neues Tool?
 
-Es entscheidet, was der Nachweis beweist:
+Wer ein neues Tool baut, muss ihm eine Rolle geben. Welche Rolle passt, hängt davon ab, was der
+Nachweis des Tools beweist:
 
-- **`IDENTIFICATION`**: wer die Person ist. Der Nachweis zählt auf der Achse IDENTITY und hebt das IAL;
-  Name, Vorname und Geburtsdatum sind Pflicht (Abschnitt 2). Gleich, ob das Personenverzeichnis für
-  die Werte einsteht (`ident-fsc`) oder das Verfahren selbst (`ident-eid`, `ident-nect` lesen das
-  Dokument). `CORRELATION` (`ident-kvnr`) ordnet nur zu und beweist nichts (ADR-18).
-- **`ATTESTATION`**: der Inhaber kontrolliert ein Attribut, das dem Konto als Anker gehört
-  (`AttributeAuthority.Local`) und das auch ohne das eigene Verfahren gebraucht wird: Die
-  Lookup-Tools finden das Konto über die E-Mail-Adresse, `enroll-password` und `enroll-email`
-  setzen sie voraus.
-- **`ENROLLMENT`**: das Attribut gehört dem Verfahren (`AttributeAuthority.MethodModule`) und entsteht
-  und vergeht mit ihm. So die Mobilnummer: `enroll-sms` beweist die Kontrolle mit derselben TAN,
-  mit der es das Verfahren einrichtet, und nichts anderes hängt an der Nummer. Deshalb gibt es kein
-  `confirm-phone`. Sobald ein Lookup oder ein anderes Verfahren die Nummer braucht, wird sie wie die
-  E-Mail-Adresse ein Anker (ADR-17).
+- **`IDENTIFICATION`**: Der Nachweis beweist, wer die Person ist. Er zählt auf der Achse IDENTITY
+  und hebt das IAL. Das **IAL** ist der Teil des Niveaus, der die Frage „Wer ist diese Person
+  wirklich?“ beantwortet (siehe „AAL und IAL“ im [Glossar](glossar/glossar.md)). Name, Vorname und
+  Geburtsdatum sind Pflicht (Abschnitt 2). Das gilt unabhängig davon, wer die Richtigkeit der Werte
+  bestätigt: das Personenverzeichnis (`ident-fsc`) oder das Verfahren selbst (`ident-eid` und
+  `ident-nect` lesen das Dokument). `CORRELATION` (`ident-kvnr`) ordnet dagegen nur zu und beweist
+  nichts (ADR-18).
+- **`ATTESTATION`**: Der Nachweis beweist, dass der Inhaber ein Attribut kontrolliert. Dieses
+  Attribut gehört dem Konto als Anker (`AttributeAuthority.Local`). Es wird auch unabhängig vom
+  eigenen Verfahren gebraucht. Ein Beispiel ist die E-Mail-Adresse: Die Lookup-Tools finden das
+  Konto über sie, und `enroll-password` und `enroll-email` setzen sie voraus.
+- **`ENROLLMENT`**: Das Attribut gehört dem Verfahren (`AttributeAuthority.MethodModule`). Es
+  entsteht mit dem Verfahren und verschwindet mit ihm. Ein Beispiel ist die Mobilnummer:
+  `enroll-sms` beweist die Kontrolle über die Nummer mit derselben TAN, mit der es das Verfahren
+  einrichtet. Nichts anderes braucht die Nummer. Deshalb gibt es kein `confirm-phone`. Sobald ein
+  Lookup oder ein anderes Verfahren die Nummer braucht, wird sie wie die E-Mail-Adresse ein Anker
+  (ADR-17).
 
 ### `ATTESTATION`: ein Attribut bestätigen ist weder Identifizierung noch Anmeldung
 
-`confirm-email` weist nach, dass jemand eine Adresse **kontrolliert**: Dort kommt ein Code an. Das
-ist weder „wer bist du" (`IDENTIFICATION`) noch „weise ein Mittel nach" (`KNOWN_ACCOUNT_AUTH`)
-noch „richte ein Mittel ein" (`ENROLLMENT`). Deshalb gibt es die Rolle `ToolRole.ATTESTATION` mit dem Ergebnis
-`ToolOutcome.Completed.Attested`: Claims ja, `enrollmentRef` nein, `amr` leer und kein eigenes
-Niveau. Der Anker wird unter dem Niveau geschrieben, das die Sitzung schon nachgewiesen hat; eine
-bestätigte Adresse hebt das Niveau des Kanals nie an.
+`confirm-email` weist nach, dass jemand eine Adresse **kontrolliert**: An diese Adresse wird ein
+Code geschickt, und der Nutzer gibt ihn ein. Das passt zu keiner der anderen Rollen:
 
-`ATTESTATION` als `IDENTIFICATION` einzuordnen, wäre falsch: `CandidateTools.forIdentification` und
-`DefaultAuthPolicy.reIdentCandidates` böten das Tool dann als Identifizierung an, und über
-`enrolledUnderAcr` stiege die Obergrenze der danach eingerichteten Verfahren (ADR-5). Welche
-Variante zu welcher Rolle passt, prüft der Orchestrator bei jedem Ergebnis (`Completed.fits`,
-`Failed.fits`).
+- Es ist keine Identifizierung, also nicht „Wer bist du?“ (`IDENTIFICATION`).
+- Es ist keine Anmeldung, also nicht „Weise ein Mittel nach“ (`KNOWN_ACCOUNT_AUTH`).
+- Es richtet nichts ein, also nicht „Richte ein Mittel ein“ (`ENROLLMENT`).
 
-Die Kontaktdaten des Personenverzeichnisses (E-Mail-Adresse, Mobilnummer) sind **kein** Attribut
-des Kontos: Der Port `PersonDirectory` gibt sie nicht heraus, nur die Demo-Vorbelegung liest sie
+Deshalb gibt es die eigene Rolle `ToolRole.ATTESTATION` mit dem Ergebnis
+`ToolOutcome.Completed.Attested`. Dieses Ergebnis enthält Claims, aber kein `enrollmentRef`. `amr`
+ist leer, und es gibt kein eigenes Niveau. Der Anker wird unter dem Niveau geschrieben, das die
+Sitzung schon nachgewiesen hat. Eine bestätigte Adresse hebt das Niveau des Kanals also nie an.
+
+`ATTESTATION` als `IDENTIFICATION` einzuordnen, wäre aus zwei Gründen falsch:
+
+- `CandidateTools.forIdentification` und `DefaultAuthPolicy.reIdentCandidates` würden das Tool dann
+  als Identifizierung anbieten.
+- Über `enrolledUnderAcr` würde die Obergrenze der danach eingerichteten Verfahren steigen (ADR-5).
+
+Welche Variante zu welcher Rolle passt, prüft der Orchestrator bei jedem Ergebnis
+(`Completed.fits`, `Failed.fits`).
+
+Die Kontaktdaten im Personenverzeichnis (E-Mail-Adresse, Mobilnummer) sind **kein** Attribut des
+Kontos. Der Port `PersonDirectory` gibt sie nicht heraus. Nur die Vorbelegung für die Demo liest sie
 (`DemoPersonDirectory`). Die E-Mail-Adresse des Kontos stammt allein aus `confirm-email`
-([Verfahren `email`](verfahren/email.md)). Was davon in Tokens steht: [API](05-api.md) Abschnitt 3a,
-„ID-Token-Claims".
+([Verfahren `email`](verfahren/email.md)). Welche dieser Werte in Tokens stehen, beschreibt
+[API](05-api.md) Abschnitt 3a, „ID-Token-Claims“.
 
-Über die KVNR lässt sich keine Kontrolle nachweisen, nur die Zugehörigkeit zur Person. Sie gehört
-also zu `CORRELATION`; ein `attest-kvnr` gibt es nicht.
+Über die KVNR lässt sich keine Kontrolle nachweisen, nur dass sie zu einer Person gehört. Sie gehört
+also zur Rolle `CORRELATION`. Ein `attest-kvnr` gibt es nicht.
 
 ### `PEER_APPROVAL`: bestätigen, was jemand anderes tut
 
-Tools der Rolle `PEER_APPROVAL` tragen nichts zu ACR und AMR des *eigenen* Kanals bei
-(`evidenceAxis` ist für sie `null`), werden nie als Kandidat angeboten, um eine Lücke zu schließen,
-und nur ausdrücklich per `intent` gestartet. Weil `ToolRole` ein abgeschlossenes `enum` ist und
-`evidenceAxis` jede Rolle ausdrücklich behandelt, muss eine neue Rolle angeben, was sie zum Niveau
-beiträgt. Lehnt jemand eine fremde Anfrage ab, braucht das **kein**
-eigenes `ToolOutcome`; `Failed(reason = "Vom Nutzer abgelehnt")` genügt.
+Ein Tool der Rolle `PEER_APPROVAL` bestätigt eine Anfrage auf einem anderen Kanal. Beim QR-Login
+etwa gibt die App eine Anmeldung im Browser frei. Für solche Tools gelten drei Regeln:
+
+- Sie zählen nicht zu Niveau (ACR) und Verfahren (AMR) des *eigenen* Kanals. `evidenceAxis` ist für
+  sie `null`.
+- Sie werden nie als Kandidat angeboten, um eine Lücke zum geforderten Niveau zu schließen.
+- Sie werden nur ausdrücklich per `intent` gestartet.
+
+`ToolRole` ist ein abgeschlossenes `enum`, und `evidenceAxis` behandelt jede Rolle ausdrücklich.
+Deshalb muss eine neue Rolle angeben, was sie zum Niveau beiträgt. Lehnt jemand eine fremde Anfrage
+ab, braucht das **kein** eigenes `ToolOutcome`. `Failed(reason = "Vom Nutzer abgelehnt")` genügt.
 
 ---
 
 ## 5) Angebot: Voraussetzungen, Verfügbarkeit, Reihenfolge, Bindung an ein Gerät
 
-Welche Tools eine Journey anbietet, bestimmen neben Rolle und Niveau diese allgemeinen Regeln:
+Eine Journey bietet dem Nutzer an bestimmten Stellen Tools zur Auswahl an, etwa „SMS oder
+Passwort“. Welche Tools dabei angeboten werden, hängt zuerst von Rolle und Niveau ab. Zusätzlich
+gelten die folgenden allgemeinen Regeln.
 
-- `requires` wird gegen die zusammengeführten Claims des Kontos geprüft
-  (`AccountProfile.establishedClaims`, also Angaben abzüglich der Widerrufe, ADR-12). Die Prüfung
-  läuft zweimal: bei der Auswahl der Kandidaten und noch einmal beim Start des Tools
-  (`ToolJourneyService.validatePreconditions`). Sonst ließe sich die Kandidatenliste durch
-  einen direkten Aufruf umgehen. Drei Tools nutzen `requires` heute: `enroll-password` und
-  `enroll-email` verlangen `ClaimRequirement(EMAIL, PROVEN)`, `ident-kvnr` die bestätigten
-  Identitätsattribute `FAMILY_NAME`, `GIVEN_NAMES` und `BIRTH_DATE` (ADR-18).
-- `requires` entscheidet **nicht nur über das Angebot, sondern gilt dauerhaft** (ADR-24): Was ein
+#### Voraussetzungen (`requires`)
+
+- Ein Tool kann Voraussetzungen haben (`requires`). Der Orchestrator prüft sie gegen die
+  zusammengeführten Claims des Kontos (`AccountProfile.establishedClaims`). Das sind alle Angaben
+  abzüglich der Widerrufe (ADR-12). Die Prüfung läuft zweimal: bei der Auswahl der Kandidaten und
+  noch einmal beim Start des Tools (`ToolJourneyService.validatePreconditions`). Ohne die zweite
+  Prüfung ließe sich die Kandidatenliste durch einen direkten Aufruf umgehen. Drei Tools nutzen
+  `requires` heute:
+  - `enroll-password` und `enroll-email` verlangen `ClaimRequirement(EMAIL, PROVEN)`, also eine
+    geprüfte E-Mail-Adresse.
+  - `ident-kvnr` verlangt die bestätigten Identitätsattribute `FAMILY_NAME`, `GIVEN_NAMES` und
+    `BIRTH_DATE` (ADR-18).
+- `requires` entscheidet **nicht nur über das Angebot, sondern gilt dauerhaft** (ADR-24). Was ein
   Credential brauchte, um zu entstehen, braucht es auch, um weiter zu bestehen. Fällt die Angabe
-  weg, fällt das Credential mit – und mit ihm alles, was daran hängt. Das wird aus denselben
-  Deklarationen ermittelt (`CredentialRules.dependentsOfLostClaims`). Eine Abhängigkeit
-  zwischen zwei Verfahren braucht deshalb keine eigenen Begriffe: Ein Modul schreibt beim
-  Einrichten einen Claim, ein anderes verlangt ihn, und das Protokoll der Claims erledigt den
-  Rest. `enroll-password` schreibt dafür `PASSWORD_EXISTS`. Heute fragt das niemand ab, aber so
-  ließe sich eine solche Abhängigkeit ausdrücken.
-- Die **Verfügbarkeit** wird auf zwei unabhängigen Ebenen bestimmt, beide als Mengen von
-  `toolId`s. Der Client gibt beim Anlegen des Kanals an, welche Tools er darstellen kann, jedes in
-  der einen Fassung, die er spricht (`availableTools` als `enroll-sms@1`, fest für den ganzen Kanal,
-  [ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)); für das Angebot zählt nur die `toolId`,
-  die Fassung bestimmt den Pfad der Aufrufe. Der Betreiber kann zusätzlich jede Fassung eines
-  Tools **je Kanaltyp** (App oder Web) zur Laufzeit sperren (`ToolAvailabilityService`, ADR-32);
-  gesperrt ist dann jeder Kanal, der genau diese Fassung deklariert hat. Bei jeder
-  Anfrage zählt nur, was in beiden Mengen steht (`JourneyRouting.availableToolsOf`); das wird an
-  drei Stellen geprüft. Bleibt nichts übrig, bricht die Journey genauso ab
-  (`exhausted`/Cancel), als hätte der Nutzer alle Kandidaten abgelehnt.
-- Auch die **Reihenfolge** legt der Betreiber je Kanaltyp fest: eine Rangfolge der Tools, die jede
-  Auswahl in diesem Kanal übernimmt. Sie wirkt nur innerhalb einer Rolle (`ToolRole`), denn
-  jede Auswahl zeigt nur Tools einer Rolle; die Admin-Seite gruppiert entsprechend. Tools ohne
-  Rang stehen dahinter, sortiert nach Rolle und Verfahren. Sortiert wird erst beim Ausliefern der
-  Auswahl (`JourneyRouting.stepFor`), nicht im gespeicherten Angebot der Journey. Eine geänderte
-  Reihenfolge gilt so schon für den nächsten Bildschirm einer laufenden Journey (ADR-32).
-- `onePerDevice` (`device`, `kobil`): Das Credential liegt als nicht exportierbarer Schlüssel auf
-  genau einem Gerät, und mehrere aktive Einträge desselben Verfahrens dürfen nebeneinander bestehen,
-  einer je Gerät. Sonst ersetzt ein neues Einrichten den alten Eintrag. Daraus folgen die **Regeln
-  für Speichern, Angebot und Widerruf**: Die Zeile in `account.auth_method` trägt selbst, ob sie
-  neben anderen bestehen darf (`allows_multiple_instances`). `AuthPolicy.authCandidates` bietet nur
-  den Eintrag an, der auf dem Schlüssel des anfragenden Geräts liegt (`AuthMethodView.boundKeyRef`).
-  `usableByCaller` prüft zusätzlich, dass das Gerät laut `DeviceAccountLink` noch mit diesem Konto
-  verknüpft ist. Und wird das Gerät neu verknüpft, widerruft `JourneyActionExecutor` genau die
-  Credentials, die auf diesem Schlüssel liegen.
+  weg, fällt auch das Credential weg, und mit ihm alles, was von ihm abhängt. Der Orchestrator
+  ermittelt das aus denselben Deklarationen (`CredentialRules.dependentsOfLostClaims`). Eine
+  Abhängigkeit zwischen zwei Verfahren braucht deshalb keine eigenen Begriffe: Ein Modul schreibt
+  beim Einrichten einen Claim, ein anderes verlangt ihn, und das Protokoll der Claims erledigt den
+  Rest. `enroll-password` schreibt dafür den Claim `PASSWORD_EXISTS`. Heute fragt niemand diesen
+  Claim ab, aber so ließe sich eine solche Abhängigkeit ausdrücken.
+
+#### Verfügbarkeit und Reihenfolge
+
+- Die **Verfügbarkeit** eines Tools wird auf zwei unabhängigen Ebenen bestimmt. Beide sind Mengen
+  von `toolId`s:
+  - Der Client gibt beim Anlegen des Kanals an, welche Tools er darstellen kann. Er nennt jedes Tool
+    in der einen Fassung, die er beherrscht (`availableTools` als `enroll-sms@1`). Diese Angabe gilt
+    fest für den ganzen Kanal ([ADR-51](adr/ADR-051-versionen-als-pfadsegment.md)). Für das Angebot
+    zählt nur die `toolId`. Die Fassung bestimmt den Pfad der Aufrufe.
+  - Der Betreiber kann zusätzlich jede Fassung eines Tools **je Kanaltyp** (App oder Web) zur
+    Laufzeit sperren (`ToolAvailabilityService`, ADR-32). Gesperrt ist die Fassung dann für jeden
+    Kanal, der genau diese Fassung deklariert hat.
+
+  Bei jeder Anfrage zählt nur, was in beiden Mengen steht (`JourneyRouting.availableToolsOf`). Das
+  prüft der Orchestrator an drei Stellen. Bleibt kein Tool übrig, bricht die Journey ab
+  (`exhausted`/Cancel), genauso als hätte der Nutzer alle Kandidaten abgelehnt.
+- Auch die **Reihenfolge** legt der Betreiber je Kanaltyp fest. Er bestimmt eine Rangfolge der
+  Tools, die jede Auswahl in diesem Kanal übernimmt. Die Rangfolge wirkt nur innerhalb einer Rolle
+  (`ToolRole`), denn jede Auswahl zeigt nur Tools einer Rolle. Die Admin-Seite gruppiert die Tools
+  deshalb nach Rolle. Tools ohne Rang stehen hinten, sortiert nach Rolle und Verfahren. Sortiert
+  wird erst, wenn der Orchestrator die Auswahl ausliefert (`JourneyRouting.stepFor`), nicht im
+  gespeicherten Angebot der Journey. Eine geänderte Reihenfolge gilt deshalb schon für den nächsten
+  Bildschirm einer laufenden Journey (ADR-32).
+
+#### Bindung an ein Gerät (`onePerDevice`)
+
+- `onePerDevice` gilt für die Verfahren `device` und `kobil`. Bei ihnen liegt das Credential als
+  Schlüssel auf genau einem Gerät, und dieser Schlüssel lässt sich nicht exportieren. Mehrere aktive
+  Einträge desselben Verfahrens dürfen nebeneinander bestehen, einer je Gerät. Bei allen anderen
+  Verfahren ersetzt ein neues Einrichten den alten Eintrag. Daraus folgen Regeln für Speichern,
+  Angebot und Widerruf:
+  - Die Zeile in `account.auth_method` speichert selbst, ob sie neben anderen bestehen darf
+    (`allows_multiple_instances`).
+  - `AuthPolicy.authCandidates` bietet nur den Eintrag an, der auf dem Schlüssel des anfragenden
+    Geräts liegt (`AuthMethodView.boundKeyRef`).
+  - `usableByCaller` prüft zusätzlich, dass das Gerät laut Geräteverknüpfung (`DeviceAccountLink`)
+    noch mit diesem Konto verknüpft ist.
+  - Wird das Gerät neu verknüpft, widerruft `JourneyActionExecutor` genau die Credentials, die auf
+    diesem Schlüssel liegen.
 - Was über einen Eintrag auf diesem Schlüssel **angezeigt** werden darf, meldet das Modul beim
-  Einrichten selbst (`Completed.Enrolled.reference`, beim Gerät der Kanalschlüssel, bei KOBIL die
-  Gerätekennung von KOBIL). So kann der Orchestrator sagen, wodurch dieses Gerät sonst noch bekannt
-  ist (`device-link.boundCredentials`), ohne die Daten des Moduls zu kennen.
-- Mehrere Einträge und die Bindung an ein Gerät sind **ein** Schalter, weil heute jedes Verfahren
-  mit mehreren Einträgen auch an einen Schlüssel gebunden ist. Ein künftiges Verfahren, das nur
-  mehrere Einträge nebeneinander erlaubt, bräuchte einen eigenen Schalter.
+  Einrichten selbst (`Completed.Enrolled.reference`). Beim Gerät ist das der Kanalschlüssel, bei
+  KOBIL die Gerätekennung von KOBIL. So kann der Orchestrator anzeigen, wodurch dieses Gerät sonst
+  noch bekannt ist (`device-link.boundCredentials`), ohne die Daten des Moduls zu kennen.
+- Mehrere Einträge zu erlauben und an ein Gerät zu binden, ist **ein einziger** Schalter. Der Grund:
+  Heute ist jedes Verfahren mit mehreren Einträgen auch an einen Schlüssel gebunden. Ein künftiges
+  Verfahren, das nur mehrere Einträge nebeneinander erlaubt, bräuchte einen eigenen Schalter.
 
 ---
 
 ## 6) Modulinterner Aufbau: das `Flow`-Muster (optional)
 
-Ein Tool-Modul darf sich intern frei organisieren. Nur das `ToolOutcome` verlässt das Modul, nie
-ein interner Zustand. Ein mögliches, aber nicht vorgeschriebenes Muster ist ein reiner `Flow` (z. B. `AuthSmsFlow`): Er
-kennt nur seinen eigenen `State` und leitet aus `(State, Input)` eine `Decision` ab (z. B.
-`AuthSmsDecision.WrongTan`). Der Handler führt danach die Effekte aus (z. B. „TAN senden"),
-speichert den Zustand und übersetzt die `Decision` in ein `ToolOutcome`.
+Ein Tool-Modul darf sich intern frei organisieren. Nach außen gibt es nur das `ToolOutcome` weiter,
+nie einen internen Zustand. Ein mögliches, aber nicht vorgeschriebenes Muster ist ein reiner `Flow`
+(z. B. `AuthSmsFlow`). „Rein“ heißt: Der `Flow` hat keine Nebenwirkungen. Er kennt nur seinen
+eigenen Zustand (`State`) und leitet aus Zustand und Eingabe (`(State, Input)`) eine Entscheidung
+ab (`Decision`, z. B. `AuthSmsDecision.WrongTan`). Danach erledigt der Handler drei Dinge: Er führt
+die Nebenwirkungen aus (z. B. „TAN senden“), speichert den Zustand und übersetzt die `Decision` in
+ein `ToolOutcome`.
 
 ---
 
 ## 7) Wo der Controller lebt: `tool_api` als Modulgrenze
 
-Jedes Tool hat einen eigenen Controller, der seinen Handler direkt und typisiert aufruft, statt
-über eine allgemeine `Map<String, Any?>`. Es gibt keine Verteilung anhand der `toolId` zur
-Laufzeit ([Projektrahmen](08-projektrahmen.md) A11: „Lesbarkeit hat Vorrang vor einer maximal
-generischen API-Anbindung"). Die `EnrollmentRef` wird im Controller aufgelöst und geprüft, bevor
-der Handler aufgerufen wird; der Handler bekommt also nie einen Parameter, der `null` sein könnte.
+Jedes Tool hat einen eigenen Controller. Er ruft seinen Handler direkt und typisiert auf, nicht
+über eine allgemeine `Map<String, Any?>`. Der Orchestrator verteilt Anfragen also nicht zur Laufzeit
+anhand der `toolId` ([Projektrahmen](08-projektrahmen.md) A11: „Lesbarkeit hat Vorrang vor einer
+maximal generischen API-Anbindung“). Der Controller löst die `EnrollmentRef` auf und prüft sie,
+bevor er den Handler aufruft. Der Handler bekommt deshalb nie einen Parameter, der `null` sein
+könnte.
 
 Der `@RestController` eines Tools liegt **im selben Modul wie sein Handler** (z. B.
 `ident_fsc.api.v1.IdentFscToolController`, `auth_sms.api.v1.AuthSmsToolController`), nicht im
-`orchestrator`. Der Orchestrator kennt kein Tool-Modul beim Namen: `orchestrator/OrchestratorModule.kt`
-deklariert `allowedDependencies = ["tool_api", "account", "texts", "demo_mode"]`,
-also kein einziges Tool-Modul (`ident_*`, `auth_*`).
+`orchestrator`. Der Orchestrator kennt kein Tool-Modul beim Namen. Seine Moduldatei
+`orchestrator/OrchestratorModule.kt` deklariert
+`allowedDependencies = ["tool_api", "account", "texts", "demo_mode"]`, also kein einziges
+Tool-Modul (`ident_*`, `auth_*`).
 
-Möglich macht das das gemeinsame Modul `tool_api` (`allowedDependencies = ["texts"]`), das beide
-Seiten kennen dürfen. Die Selbstbeschreibung eines Tools (Abschnitt 2) liegt in seiner Wurzel, die
-Ports liegen in Unterpaketen nach Thema ([Projektrahmen](08-projektrahmen.md) M8):
+Möglich macht das das gemeinsame Modul `tool_api` (`allowedDependencies = ["texts"]`). Beide
+Seiten, Orchestrator und Tool-Module, dürfen dieses Modul kennen. Die Typen für die
+Selbstbeschreibung eines Tools (Abschnitt 2) liegen in der Wurzel von `tool_api`. Die **Ports** liegen in Unterpaketen nach Thema
+([Projektrahmen](08-projektrahmen.md) M8). Ein Port ist eine fest vereinbarte Schnittstelle, über
+die ein Modul ein anderes Modul oder ein Fremdsystem anspricht, ohne es direkt zu kennen.
+`tool_api` enthält diese Bausteine:
 
-- **`ToolJourney`** – die Journey, so weit ein Tool-Controller sie sieht: Tool starten, Kontext
-  laden, Ergebnis anwenden, Journey abbrechen. Implementiert von `ToolJourneyService` im
-  `orchestrator` und per Konstruktor übergeben.
-- **`Lockouts`** – die Sperren des Orchestrators nach Rateversuchen (`isLockedOut`,
-  `isIdentLockedOut`), zum Lesen für Tools, die ihr Subjekt selbst auflösen (Lookup- und
-  Identifizierungs-Tools). Geschrieben werden sie nur vom Orchestrator, aus dem `Failed`-Ergebnis des Tools.
-  Implementiert von `LockoutsService`.
-- **`AccountDirectory`** / **`PersonDirectory`** / **`DeviceProofs`** – schmale Schnittstellen zum
-  Lesen und Prüfen von Daten zu Konto, Person und Geräte-Proof (z. B. findet `auth-sms-lookup`
-  darüber ein Konto anhand der E-Mail-Adresse). Implementiert von `AccountService` (`account`),
-  `Personenverzeichnis` (`personenverzeichnis`) bzw. `DeviceProofValidator` (`orchestrator`),
-  jeweils direkt im Domänenservice, ohne eigene Adapterklasse. Den Freischaltcode prüft `ident_fsc`
-  ebenfalls über einen Port, `ActivationCodes` (`digest`, `isValid`), den `Freischaltcodes`
-  implementiert (ADR-31, Nachtrag). Das Personenverzeichnis ist damit nur über Ports erreichbar; an
-  ihnen wechselt die Sprache vom Deutsch des Registers ins Englische unseres Codes.
-  `PersonDirectory` löst eine KVNR (`findPersonIdByKvnr`) oder eine Partnernummer
-  (`findPersonIdByPartnerNumber`) zur PersonId auf, gleicht Personalien ab (`matchesMasterData`,
-  `matchesPersonalDetails`) und gibt die Mitgliedsnummer (`memberNumberOf`) und den
-  Anzeigenamen (`displayName`) heraus – nie die übrigen Stammdaten.
-- **`IdentityResolver`** – beantwortet, ob bestätigte Claims zu einem bestehenden Konto gehören
+- **`ToolJourney`**: die Journey, so weit ein Tool-Controller sie sieht. Über diesen Port kann ein
+  Controller ein Tool starten, den Kontext laden, ein Ergebnis anwenden und die Journey abbrechen.
+  Implementiert wird er von `ToolJourneyService` im `orchestrator`. Der Controller bekommt ihn per
+  Konstruktor übergeben.
+- **`Lockouts`**: die Sperren des Orchestrators nach Rateversuchen (`isLockedOut`,
+  `isIdentLockedOut`). Tools, die ihr Subjekt selbst ermitteln, können sie lesen. Das sind die
+  Lookup- und die Identifizierungs-Tools. Schreiben darf die Sperren nur der Orchestrator, und zwar
+  anhand des `Failed`-Ergebnisses eines Tools. Implementiert von `LockoutsService`.
+- **`AccountDirectory`**, **`PersonDirectory`** und **`DeviceProofs`**: schmale Schnittstellen, um
+  Daten zu Konto, Person und Geräte-Proof zu lesen und zu prüfen. Ein **Geräte-Proof** ist der
+  Beleg, mit dem die App zeigt, dass sie den Schlüssel des Geräts besitzt. Über diese Ports findet
+  zum Beispiel `auth-sms-lookup` ein Konto anhand der E-Mail-Adresse. Implementiert werden sie von
+  `AccountService` (`account`), `Personenverzeichnis` (`personenverzeichnis`) und
+  `DeviceProofValidator` (`orchestrator`). Jeweils implementiert der Domänenservice den Port
+  direkt, ohne eigene Adapterklasse.
+
+  Den Freischaltcode prüft `ident_fsc` ebenfalls über einen Port: `ActivationCodes` (`digest`,
+  `isValid`), implementiert von `Freischaltcodes` (ADR-31, Nachtrag). Das Personenverzeichnis ist
+  damit nur über Ports erreichbar. An diesen Ports wechselt die Sprache: Das Register verwendet
+  deutsche Namen, unser Code englische.
+
+  `PersonDirectory` bietet diese Funktionen:
+  - eine KVNR (`findPersonIdByKvnr`) oder eine Partnernummer (`findPersonIdByPartnerNumber`) zur
+    PersonId auflösen,
+  - Personalien abgleichen (`matchesMasterData`, `matchesPersonalDetails`),
+  - die Mitgliedsnummer (`memberNumberOf`) und den Anzeigenamen (`displayName`) herausgeben.
+
+  Die übrigen Stammdaten gibt der Port nie heraus.
+- **`IdentityResolver`**: beantwortet, ob bestätigte Claims zu einem bestehenden Konto gehören
   (`resolve`, `attestedIdentityMatches`). Implementiert von `IdentityMatchingService` (`account`).
-- **`KeycloakToolCalls`** – Tool-Aufrufe, die Keycloak für ein Konto macht, das es schon kennt,
-  ohne Kanal und Journey: sein eigenes Passwortformular (`MgmtPasswordController` in
-  `auth_password`, [Verfahren `password`](verfahren/password.md)). Der Port prüft, dass die
-  Peer-Auth-Assertion genau dieses Konto nennt, und
-  bucht das Ergebnis wie in einer Journey: einen Nachweis auf die Kontosperre, ein Einrichten als
-  Claims und Verfahrensinstanz. Implementiert von `KeycloakToolCallsService` (`orchestrator`). Ein
-  Modul, das eine Anfrage wegen des Kontozustands ablehnt, wirft `InvalidStateException` (`409`).
-- **`PasswordCredentialPort`** – prüft oder ersetzt das Passwort hinter einer `EnrollmentRef` für
-  Aufrufer ohne Kanal und Tool-Sitzung: das Entsperren per Passwort in `auth_kobil` und die Prüfung
-  im Passwortformular von Keycloak (`MgmtPasswordController`); implementiert in `auth_password`.
-- **`RateLimit`** / **`RateLimits`** – das Zählwerk des Orchestrators, geliehen an die
-  Module ([ADR-44](adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)). Ein Modul
-  leitet je Mengenbegrenzung eine Klasse von `RateLimit` ab und legt dort Grenze und Zeitfenster fest;
-  welchen Schlüssel es zählt und wann es zurücksetzt, entscheidet sein Handler. So begrenzen
+- **`KeycloakToolCalls`**: Tool-Aufrufe, die Keycloak für ein Konto macht, das es schon kennt. Dabei
+  gibt es weder Kanal noch Journey. Ein Beispiel ist das eigene Passwortformular von Keycloak
+  (`MgmtPasswordController` in `auth_password`, [Verfahren `password`](verfahren/password.md)). Der
+  Port prüft, dass die **Peer-Auth-Assertion** genau dieses Konto nennt. Das ist die signierte
+  Anfrage, mit der sich Keycloak beim Orchestrator ausweist. Danach bucht der Port das Ergebnis wie
+  in einer Journey: einen Nachweis auf die Sperre des Kontos, ein Einrichten als Claims und als
+  eingerichtetes Verfahren. Implementiert von `KeycloakToolCallsService` (`orchestrator`). Lehnt ein
+  Modul eine Anfrage wegen des Kontozustands ab, wirft es `InvalidStateException` (`409`).
+- **`PasswordCredentialPort`**: prüft oder ersetzt das Passwort hinter einer `EnrollmentRef`. Er ist
+  für Aufrufer gedacht, die weder Kanal noch Tool-Sitzung haben. Das sind zwei: das Entsperren per
+  Passwort in `auth_kobil` und die Prüfung im Passwortformular von Keycloak
+  (`MgmtPasswordController`). Implementiert in `auth_password`.
+- **`RateLimit`** und **`RateLimits`**: das Zählwerk des Orchestrators, das die Module mitbenutzen
+  ([ADR-44](adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)). Eine
+  **Mengenbegrenzung** legt fest, wie oft etwas in einem Zeitraum passieren darf. Ein Modul leitet je
+  Mengenbegrenzung eine Klasse von `RateLimit` ab und legt dort Grenze und Zeitfenster fest. Welchen
+  Schlüssel es zählt und wann es den Zähler zurücksetzt, entscheidet sein Handler. So begrenzen
   `auth_sms` (`SmsSendLimit`) und `auth_email` (`EmailSendLimit`) selbst, wie viele Codes sie an
-  eine Nummer oder Adresse schicken. Der Namensraum einer Mengenbegrenzung folgt aus Modul und Klasse, ein
-  Modul kann also nur in seinem eigenen zählen. Eine Mengenbegrenzung ist keine Sperre: Sie begrenzt den
-  Versand, nicht das Raten ([Betrieb](07-betrieb.md) Abschnitt 4). `RateLimits` implementiert
-  `ModuleRateLimits` (`orchestrator`); es speichert den Schlüssel nur als HMAC. Ein Modul, das
-  selbst etwas ablehnt, wirft dafür `TooManyRequestsException` (`tool_api`, `429`), aber nur, wo
-  die Ablehnung nichts verrät.
-- **`PersonChanged`** – kein Port, sondern ein Event: die Änderungsmeldung des
-  Personenverzeichnisses (Partnernummer, geänderte Attributarten, neue KVNR und
-  Mitgliedsnummer). Es liegt hier, damit `personenverzeichnis` es veröffentlichen und
-  `account` darauf reagieren kann (`PersonChangeListener`), ohne dass die beiden Module einander
-  kennen (ADR-34).
-- **`EnrollmentCleanup`** – die umgekehrte Richtung: eine Schnittstelle, über die in einem
-  Tool-Modul geschrieben wird, wenn ein Konto gelöscht wird ([API](05-api.md) Abschnitt 3a, „Konto
-  löschen"). Jedes Modul mit eigener, langlebiger Credential-Tabelle (`auth_sms.enrollment`,
-  `auth_password.enrollment`, `auth_device.enrollment`, `auth_qr.enrollment`,
-  `auth_kobil.enrollment`; der Tabellenname ist `EnrollmentRef.type`) bringt dafür eine
-  `@Component`-Implementierung mit, die über `enrollmentType` angesprochen wird. `auth_email`
-  braucht keine, weil die bestätigte E-Mail-Adresse dem Modul `account` gehört
-  ([Verfahren `email`](verfahren/email.md)).
+  eine Nummer oder Adresse schicken. Der Namensraum einer Mengenbegrenzung ergibt sich aus Modul und
+  Klasse. Ein Modul kann also nur in seinem eigenen Namensraum zählen. Eine Mengenbegrenzung ist
+  keine Sperre: Sie begrenzt den Versand, nicht das Raten ([Betrieb](07-betrieb.md) Abschnitt 4).
+  `RateLimits` wird von `ModuleRateLimits` (`orchestrator`) implementiert und speichert den
+  Schlüssel nur als HMAC. Lehnt ein Modul selbst etwas ab, wirft es dafür
+  `TooManyRequestsException` (`tool_api`, `429`). Das darf es aber nur, wo die Ablehnung nichts
+  verrät.
+- **`PersonChanged`**: kein Port, sondern ein Event. Mit ihm meldet das Personenverzeichnis eine
+  Änderung: Partnernummer, geänderte Attributarten, neue KVNR und Mitgliedsnummer. Das Event liegt
+  in `tool_api`, damit `personenverzeichnis` es veröffentlichen und `account` darauf reagieren kann
+  (`PersonChangeListener`). So müssen die beiden Module einander nicht kennen (ADR-34).
+- **`EnrollmentCleanup`**: die umgekehrte Richtung. Über diese Schnittstelle schreibt der
+  Orchestrator in ein Tool-Modul, wenn ein Konto gelöscht wird ([API](05-api.md) Abschnitt 3a,
+  „Konto löschen“). Jedes Modul mit eigener, langlebiger Credential-Tabelle bringt dafür eine
+  `@Component`-Implementierung mit. Diese Tabellen sind `auth_sms.enrollment`,
+  `auth_password.enrollment`, `auth_device.enrollment`, `auth_qr.enrollment` und
+  `auth_kobil.enrollment`; der Tabellenname ist jeweils `EnrollmentRef.type`. Angesprochen wird die
+  Implementierung über `enrollmentType`. `auth_email` braucht keine, weil die bestätigte
+  E-Mail-Adresse dem Modul `account` gehört ([Verfahren `email`](verfahren/email.md)).
   `AccountDeletionService` (`orchestrator`) sammelt alle `EnrollmentCleanup`-Beans ein, so wie
-  `ToolHandlerRegistry` die `ToolModule`-Beans. Weder `orchestrator` noch `account` müssen dafür
-  ein Tool-Modul beim Namen kennen.
-- **Envelope-DTOs** (`ChannelResponse`, `ChannelBlock`, `ActiveMethodView`, `Next`, `DemoInfo`) –
-  das gemeinsame Antwortformat, das jeder Tool-Controller zurückgibt.
-- **`LeaveToolController`** – der einzige allgemeine Tool-Controller. Die `toolId` steht nur als
-  Pfadparameter darin, eine Logik eines bestimmten Tools hat er nicht: Er verlässt ein Tool, als
-  Ablehnen (`DELETE`) oder als Zurück zur Auswahl (`POST …/back`). Ein anderes Tool startet er nie;
-  das aktiviert der Client danach selbst. Er liegt im Orchestrator
-  (`orchestrator.api.v1.tool`), weder in einem Tool-Modul noch in `tool_api`: Was danach kommt,
-  entscheidet der Zustand der Journey, und `tool_api` ist der Vertrag zwischen den Modulen, keine
-  Web-Schicht.
+  `ToolHandlerRegistry` die `ToolModule`-Beans einsammelt. Weder `orchestrator` noch `account`
+  müssen dafür ein Tool-Modul beim Namen kennen.
+- **Envelope-DTOs** (`ChannelResponse`, `ChannelBlock`, `ActiveMethodView`, `Next`, `DemoInfo`): das
+  gemeinsame Antwortformat, das jeder Tool-Controller zurückgibt.
+- **`LeaveToolController`**: der einzige allgemeine Tool-Controller. Die `toolId` kommt darin nur als
+  Pfadparameter vor. Logik für ein bestimmtes Tool enthält er nicht. Er verlässt ein Tool, entweder
+  als Ablehnen (`DELETE`) oder als Zurück zur Auswahl (`POST …/back`). Ein anderes Tool startet er
+  nie; das aktiviert der Client danach selbst. Der Controller liegt im Orchestrator
+  (`orchestrator.api.v1.tool`), also weder in einem Tool-Modul noch in `tool_api`. Der Grund: Was
+  nach dem Verlassen kommt, entscheidet der Zustand der Journey. Und `tool_api` ist der Vertrag
+  zwischen den Modulen, keine Web-Schicht.
 
-Beide Seiten zeigen auf dieselbe Schnittstelle, nie direkt aufeinander: Ein Tool-Modul ruft
-Methoden von `ToolJourney` auf, ohne `ToolJourneyService` oder den `orchestrator` zu kennen; der
+Beide Seiten verweisen auf dieselbe Schnittstelle, nie direkt aufeinander. Ein Tool-Modul ruft
+Methoden von `ToolJourney` auf, ohne `ToolJourneyService` oder den `orchestrator` zu kennen. Der
 `orchestrator` liest nie einen Handler eines Tool-Moduls. Die HTTP-Pfade
-(`/tools/api/<toolId>/v<N>/...`) hängen nicht davon ab, in welchem Modul ein Controller liegt, denn Spring ordnet Anfragen nach
-`@RequestMapping` zu, nicht nach dem Kotlin-Package. Details zur Modulliste und zur Richtung der
-Abhängigkeiten: [Projektrahmen](08-projektrahmen.md) Abschnitt 3.
+(`/tools/api/<toolId>/v<N>/...`) hängen nicht davon ab, in welchem Modul ein Controller liegt. Denn
+Spring ordnet Anfragen nach `@RequestMapping` zu, nicht nach dem Kotlin-Package. Details zur
+Modulliste und zur Richtung der Abhängigkeiten stehen in [Projektrahmen](08-projektrahmen.md)
+Abschnitt 3.
 
 ---
 
 ## 8) Die Verfahren
 
-Der Katalog, wie ihn die Module heute deklarieren. Jedes Verfahren hat eine eigene Seite mit Ablauf,
-Datenmodell, Aufrufen und Fehlerfällen; die Übersicht steht in [verfahren/README.md](verfahren/README.md).
+Die folgende Tabelle zeigt den Katalog, wie ihn die Module heute deklarieren. Jedes Verfahren hat
+eine eigene Seite mit Ablauf, Datenmodell, Aufrufen und Fehlerfällen. Die Übersicht steht in
+[verfahren/README.md](verfahren/README.md).
 
 | toolId | role | method | factorTypes | maxAcr | allowsMultipleInstances |
 |---|---|---|---|---|---|

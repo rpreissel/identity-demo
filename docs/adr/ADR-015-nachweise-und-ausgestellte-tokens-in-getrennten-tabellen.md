@@ -2,30 +2,42 @@
 
 **Status:** umgesetzt.
 
-**Entscheidung**: `orchestrator.session_evidence` (was auf einem Kanal bewiesen wurde) und `orchestrator.app_token_session` (was
-daraus an Tokens ausgestellt wurde) sind zwei Tabellen, und die Abhängigkeit geht nur in eine Richtung:
-`orchestrator.app_token_session.session_evidence_id` zeigt auf die Nachweise, nie umgekehrt. Mehrere
-Token-Kontexte dürfen auf dieselben Nachweise zeigen (`AppTokenSessionRepository.findBySessionEvidenceId`
-liefert eine Liste). Abgeleitete Werte werden in keiner der beiden gespeichert: `currentAcr`
-berechnet `AuthPolicy.resolveAcr` bei jedem Lesen neu aus `methods`
-([Domänenmodell](../02-domaenenmodell.md) Abschnitt 7).
+**Kontext**: Der Orchestrator, also der Server dieses Projekts, merkt sich für jeden **Kanal** (eine
+Verbindung über App oder Website), was der Nutzer dort bewiesen hat. Das ist der **Nachweis**, etwa
+„Passwort richtig vor 5 Minuten, SMS-Code richtig vor 2 Minuten“. Daraus berechnet er das
+Sicherheitsniveau. Für die App stellt er außerdem **Tokens** aus, also signierte Ausweise, die die
+App bei Fachdiensten vorzeigt. Die Begriffe erklärt auch das [Glossar](../glossar/glossar.md). Die
+Frage ist, ob Nachweise und Tokens in derselben Tabelle stehen oder getrennt.
 
-**Erwogene Alternative**: Eine einzige Tabelle, mit den Spalten für die Tokens neben den Nachweisen in
-derselben Zeile, so wie es vor dem Keycloak-Zugang (`07e7156`) war.
+**Entscheidung**: Es gibt zwei Tabellen:
 
-**Warum diese**: Es gibt zwei Gründe, und keiner hängt davon ab, wie viele Zeilen einander
+- `orchestrator.session_evidence` hält fest, was auf einem Kanal bewiesen wurde.
+- `orchestrator.app_token_session` hält fest, welche Tokens daraus ausgestellt wurden.
+
+Die Abhängigkeit geht nur in eine Richtung: `orchestrator.app_token_session.session_evidence_id`
+zeigt auf die Nachweise, nie umgekehrt. Mehrere Token-Kontexte dürfen auf dieselben Nachweise
+zeigen; `AppTokenSessionRepository.findBySessionEvidenceId` liefert deshalb eine Liste. Abgeleitete
+Werte stehen in keiner der beiden Tabellen. So berechnet `AuthPolicy.resolveAcr` das aktuelle Niveau
+(`currentAcr`) bei jedem Lesen neu aus `methods` (siehe [Domänenmodell](../02-domaenenmodell.md)
+Abschnitt 7).
+
+**Erwogene Alternative**: Eine einzige Tabelle, in der die Spalten für die Tokens in derselben Zeile
+neben den Nachweisen stehen. So war es vor dem Zugang über Keycloak (`07e7156`).
+
+**Warum diese**: Es gibt zwei Gründe. Keiner davon beruht darauf, wie viele Zeilen einander
 zugeordnet sind.
 
 1. **Nicht jeder Kanal hat Tokens, aber jeder hat Nachweise.** Der Web-Kanal legt nie eine
-   `AppTokenSession` an ([API](../05-api.md) Abschnitt 3a); in einer
-   gemeinsamen Tabelle hätte jede Zeile des Web-Kanals vier dauerhaft leere Spalten für Tokens.
-2. **Das eine ist die maßgebliche Angabe, das andere nur ein Zwischenspeicher.** Darauf beruht
-   `SessionEvidenceService.invalidateCachedTokens`: Ein Step-up setzt Access- und RefreshToken auf
-   `null`, **während die Nachweise erhalten bleiben**.
+   `AppTokenSession` an (siehe [API](../05-api.md) Abschnitt 3a). In einer gemeinsamen Tabelle hätte
+   jede Zeile des Web-Kanals vier Spalten für Tokens, die dauerhaft leer blieben.
+2. **Die Nachweise sind die maßgebliche Angabe, die Tokens nur ein Zwischenspeicher.** Darauf beruht
+   `SessionEvidenceService.invalidateCachedTokens`: Bei einem Step-up, also wenn ein angemeldeter
+   Nutzer ein höheres Niveau nachweist, setzt der Server Access- und RefreshToken auf `null`.
+   **Die Nachweise bleiben dabei erhalten.**
 
-**Kosten**: Zwei Tabellen, die sich äußerlich stark ähneln (beide mit `account_id`, `version`,
-`updated_at`) und im APP-Kanal fast immer gemeinsam entstehen. Die erlaubte 1:n-Beziehung ist heute
-in der Praxis immer 1:1. Warum es trotzdem zwei sind, steht in der Code-Dokumentation von
-`AppTokenSession` und `SessionEvidence` und hier.
+**Kosten**: Die beiden Tabellen ähneln sich äußerlich stark. Beide haben `account_id`, `version` und
+`updated_at`, und im APP-Kanal entstehen sie fast immer gemeinsam. Erlaubt ist eine 1:n-Beziehung,
+in der Praxis ist sie heute aber immer 1:1. Warum es trotzdem zwei Tabellen sind, steht hier und in
+der Code-Dokumentation von `AppTokenSession` und `SessionEvidence`.
 
 ---

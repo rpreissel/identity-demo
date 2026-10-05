@@ -1,194 +1,258 @@
 # Offene Befunde
 
-Alle Befunde aus den Bewertungen, die noch offen sind, an einer Stelle: aus der dritten Bewertung
-(2026-09-27), der vierten Bewertung (2026-09-29) und dem Sicherheitsaudit (2026-10-03). Geprüft gegen
-den Code am 2026-10-04. Was erledigt ist, steht hier nicht mehr; es lebt in der Git-Historie und in
-den geschlossenen Issues (Epics `DPoP-demo-9ppv`, `DPoP-demo-updm`, `DPoP-demo-164n`).
-Am Ende stehen die erkannten, bewusst zurückgestellten Verbesserungen (Abschnitt 8): Sie sind keine
-Befunde einer Bewertung, sondern Entscheidungen über Architektur oder Infrastruktur, die noch
+Ein **Befund** ist ein Problem oder eine Schwäche, die eine Bewertung des Projekts gefunden hat.
+Diese Seite sammelt alle Befunde, die noch offen sind, an einer Stelle. Sie stammen aus drei
+Bewertungen:
+
+- aus der dritten Bewertung (2026-09-27),
+- aus der vierten Bewertung (2026-09-29),
+- aus dem Sicherheitsaudit (2026-10-03).
+
+Die Liste wurde am 2026-10-04 mit dem Code abgeglichen. Was erledigt ist, steht hier nicht mehr. Es
+ist in der Git-Historie und in den geschlossenen Issues nachzulesen (Epics `DPoP-demo-9ppv`,
+`DPoP-demo-updm`, `DPoP-demo-164n`).
+
+Am Ende stehen in Abschnitt 8 die erkannten, bewusst zurückgestellten Verbesserungen. Sie sind keine
+Befunde einer Bewertung. Es sind Entscheidungen über Architektur oder Infrastruktur, die noch
 ausstehen.
 
 So ist die Liste zu lesen:
 
-- **Kürzel** bleiben die der Herkunft, weil Doku, Issues und der
-  [Lesepfad Sicherheit](16-lesepfad-sicherheit.md) sie nennen: `S-`, `K-`, `A-`, `Q-` ohne Zusatz
-  aus der vierten Bewertung, mit dem Zusatz „(3.)“ aus der dritten, `SA-` aus dem Sicherheitsaudit.
-- **Schwere** wie in den Bewertungen: mittel (eine Zusage gilt nicht, realistischer Missbrauch),
-  niedrig (begrenzte Wirkung), Hinweis (Hygiene). „Bewusst“ heißt: eine Entscheidung nimmt es in
-  Kauf; es steht als benanntes Restrisiko hier.
-- **Issue**: `bd show <id>`. „–“ heißt: noch kein Issue.
+- **Kürzel:** Jeder Befund behält das Kürzel aus der Bewertung, in der er gefunden wurde. Doku,
+  Issues und der [Lesepfad Sicherheit](16-lesepfad-sicherheit.md) verweisen mit diesen Kürzeln
+  darauf. `S-`, `K-`, `A-` und `Q-` ohne Zusatz stammen aus der vierten Bewertung. Mit dem Zusatz
+  „(3.)“ stammen sie aus der dritten Bewertung. `SA-` stammt aus dem Sicherheitsaudit.
+- **Schwere:** wie in den Bewertungen.
+  - *mittel:* Eine Sicherheitszusage gilt nicht, und ein Missbrauch ist realistisch.
+  - *niedrig:* Die Wirkung ist begrenzt.
+  - *Hinweis:* eine Frage der Sorgfalt, kein akutes Problem.
+  - *bewusst:* Eine Entscheidung nimmt das Problem in Kauf. Es steht hier als benanntes
+    Restrisiko.
+- **Issue:** Mit `bd show <id>` sehen Sie das zugehörige Issue im Issue-Tracker. „–“ heißt: Es gibt
+  noch kein Issue.
 
-Maßstab bleibt [ADR-35](adr/ADR-035-betriebsanspruch-backend-kern-produktionsreif.md): Der
-Backend-Kern soll produktionsreif sein, jede Sicherheitszusage gilt ohne unbenannte Annahme an die
-Umgebung.
+Der Maßstab ist [ADR-35](adr/ADR-035-betriebsanspruch-backend-kern-produktionsreif.md): Der
+Backend-Kern soll produktionsreif sein. Jede Sicherheitszusage muss gelten, ohne dass sie
+stillschweigend etwas von der Umgebung voraussetzt.
 
 ---
 
 ## 1. Sicherheit im Kern
 
 - **S-2 (niedrig) `ident-nect`: `retry` ohne Budget, Nect-Fälle ohne Aufbewahrung.**
-  `IdentNectToolHandler.patch` legt je `retry` einen neuen Fall an, ohne Zähler; `nect.ident_case`
-  räumt niemand. Fix: ein `RateLimit` des Moduls (etwa 3 je ToolSession und 10 Minuten, dann `429`)
-  und ein Sweeper nach `createdAt`. Issue: –
+  Das Tool `ident-nect` identifiziert eine Person über den Anbieter Nect. `IdentNectToolHandler.patch`
+  legt bei jedem `retry` einen neuen Fall an, ohne die Versuche zu zählen. Die Tabelle
+  `nect.ident_case` räumt niemand auf. Vorschlag: ein `RateLimit` des Moduls (etwa 3 Versuche je
+  ToolSession und 10 Minuten, danach `429`) und ein Aufräumjob, der alte Fälle nach `createdAt`
+  löscht. Issue: –
 - **S-3 (3.) (niedrig) Die DPoP-Replay-Tabelle wächst vor Kanal- und Drosselprüfung.** Jeder
-  syntaktisch gültige Proof schreibt eine Zeile; Schlüssel kosten nichts. `DPoP-demo-9ppv.1`
-- **A-4 (niedrig) „`auth-invite` nur im Web-Kanal“ ist eine umschaltbare Voreinstellung.** Die
-  dritte Linie, `JourneyActionExecutor.acceptInvitation`, antwortet mit `check` und damit `500`
-  statt `409`. Entscheidung des Inhabers: Kanalbindung als Eigenschaft des Tools (`ChannelType` nach
-  `tool_api`) oder bei der Voreinstellung bleiben und die dritte Linie als `invalidState`. Issue: –
+  DPoP-Proof (der signierte Beleg, den die App mit jeder Anfrage schickt) wird in einer Tabelle
+  gespeichert, damit er sich nicht wiederverwenden lässt. Jeder syntaktisch gültige Proof schreibt
+  dort eine Zeile, noch bevor der Orchestrator prüft, ob der Kanal existiert und ob die Drosselung die Anfrage ablehnt. Neue
+  Schlüssel kosten einen Angreifer nichts. `DPoP-demo-9ppv.1`
+- **A-4 (niedrig) „`auth-invite` nur im Web-Kanal“ ist eine umschaltbare Voreinstellung.** Dass das
+  Tool `auth-invite` (Vorgangszugang mit Einmalkennwort) nur im Web-Kanal läuft, ist keine feste
+  Eigenschaft des Tools, sondern eine Einstellung. Die dritte Prüfstelle,
+  `JourneyActionExecutor.acceptInvitation`, prüft mit `check` und antwortet deshalb mit `500` statt
+  `409`. Der Inhaber muss entscheiden: Entweder wird die Bindung an den Kanal eine Eigenschaft des
+  Tools (`ChannelType` nach `tool_api`). Oder es bleibt bei der Voreinstellung, und die dritte
+  Prüfstelle meldet `invalidState`. Issue: –
 - **A-5 (niedrig) Ein erfolgreicher Vorgangszugang setzt den Personenzähler nicht zurück.**
-  `ToolJourneyService.chargeRateLimits` setzt bei `Completed.Authenticated` nur das Konto zurück.
-  Vier Fehlversuche, ein Erfolg, ein Fehlversuch sperren die Person 15 Minuten, auch für
-  `ident-fsc`. Fix: Das Ergebnis muss die Person nennen können (Vertragsänderung, Entscheidung des
-  Inhabers). Issue: –
-- **Lookup-Orakel (niedrig).** Demo-TAN und, mit echtem Anbieter, die Versandlatenz verraten, ob
-  eine Adresse ein Konto hat. `DPoP-demo-36xz`
-- **I-23 (niedrig) Kanal-Lebensdauer und Keycloak-Sitzung.** Der Web-Kanal ist `AUTHENTICATED`,
-  bevor Keycloak die Sitzung anlegt; Abmeldemeldung und `restore-data` sind „best effort“.
-  `DPoP-demo-oe06`
-- **I-14 (niedrig) Gerätelink ohne Fremdschlüssel.** `DPoP-demo-hwc6`
+  `ToolJourneyService.chargeRateLimits` setzt bei `Completed.Authenticated` nur den Zähler des
+  Kontos zurück. Beispiel: Vier Fehlversuche, dann ein Erfolg, dann ein Fehlversuch sperren die
+  Person für 15 Minuten. Das gilt auch für `ident-fsc`. Lösung: Das Ergebnis eines Tools muss die
+  Person nennen können. Das ist eine Änderung am Vertrag zwischen Orchestrator und Tools und
+  verlangt eine Entscheidung des Inhabers. Issue: –
+- **Lookup-Orakel (niedrig).** Ein Lookup-Tool sucht das Konto anhand der Eingabe, etwa einer
+  E-Mail-Adresse. Ein Orakel ist ein Verhalten, aus dem ein Angreifer etwas ablesen kann, das
+  geheim bleiben soll. Hier verraten die Demo-TAN und, mit einem echten Anbieter, die Dauer des
+  Versands, ob zu einer Adresse ein Konto existiert. `DPoP-demo-36xz`
+- **I-23 (niedrig) Kanal-Lebensdauer und Keycloak-Sitzung.** Der Web-Kanal steht schon auf
+  `AUTHENTICATED`, bevor Keycloak die Sitzung anlegt. Die Meldung einer Abmeldung und `restore-data`
+  werden nur nach bestem Bemühen („best effort“) zugestellt. `DPoP-demo-oe06`
+- **I-14 (niedrig) Gerätelink ohne Fremdschlüssel.** Die Verknüpfung eines Geräts mit einem Konto
+  ist in der Datenbank nicht per Fremdschlüssel abgesichert. `DPoP-demo-hwc6`
 - **Test (niedrig) Zwei gleichzeitige `PATCH` auf dieselbe ToolSession** sind über `@Version`
   geschützt, aber nicht getestet. `DPoP-demo-df48`
-- **A-16 (3.) (Hinweis) I-10 gilt per Regel nur für den Resolver**, nicht für
-  `IdentityMatchingService`. `DPoP-demo-9ppv.23`
-- **Hinweis: Einrichten in der Verfahrensverwaltung wird bei Abschluss nicht erneut gegen `loa2`
-  geprüft** (`ManageAuthMethodsStrategy`, Zustand `Enrolling`). Altert der Nachweis dazwischen, wird
-  das Verfahren mit niedrigerem Niveau eingetragen, nie mit höherem. Kein Handlungsbedarf. Issue: –
-- **Hinweis: Der Freischaltcode liegt im simulierten Personenverzeichnis ungesalzen.** Der
-  Port-Vertrag sollte die Anforderung an ein echtes System nennen. `DPoP-demo-4xnr`
+- **A-16 (3.) (Hinweis) I-10 gilt per Regel nur für den Resolver**, nicht für den
+  `IdentityMatchingService` dahinter. `DPoP-demo-9ppv.23`
+- **Hinweis: Beim Einrichten in der Verfahrensverwaltung prüft der Orchestrator `loa2` beim
+  Abschluss nicht erneut** (`ManageAuthMethodsStrategy`, Zustand `Enrolling`). Veraltet der
+  Nachweis in der Zwischenzeit, wird das Verfahren mit einem niedrigeren Niveau eingetragen, nie mit
+  einem höheren. Es besteht kein Handlungsbedarf. Issue: –
+- **Hinweis: Der Freischaltcode liegt im simulierten Personenverzeichnis als Hash ohne Salt.** Der
+  Port-Vertrag, also die Beschreibung der Schnittstelle zum Fremdsystem, sollte nennen, was ein
+  echtes System hier leisten muss. `DPoP-demo-4xnr`
 
 ## 2. Keycloak-Erweiterung und -Anbindung
 
 - **K-3 (niedrig) Die Verfahrensverwaltung aktiviert Tools ohne Renderer-Felder.**
-  `OrchestratorManageMethodsRequiredAction` ruft weder `activationFields` noch `actionFields`. Für
-  `ident-nect` fehlt damit die Rücksprungadresse, und der Nect-Retry dort (K-2 der vierten Bewertung)
-  läuft auf eine verbrauchte Adresse. Wurzel sind zwei Dispatcher. `DPoP-demo-9ppv.12`
-- **Fehlerpfade des Authenticators (niedrig)** zeigen teils Keycloaks generische Seite.
+  `OrchestratorManageMethodsRequiredAction` ruft weder `activationFields` noch `actionFields` auf.
+  Für `ident-nect` fehlt damit die Rücksprungadresse. Ein erneuter Nect-Versuch an dieser Stelle (K-2
+  der vierten Bewertung) verwendet deshalb eine Adresse, die schon verbraucht ist. Die Ursache ist,
+  dass es zwei Dispatcher gibt. `DPoP-demo-9ppv.12`
+- **Fehlerpfade des Authenticators (niedrig)** zeigen teils die allgemeine Fehlerseite von Keycloak.
   `DPoP-demo-rdns`
-- **K-6 (Hinweis) Antwort-JWKS mit Nimbus-Voreinstellungen.** `OrchestratorResponseVerifier`
-  nutzt `JWKSourceBuilder.create(…).retrying(true)`: 500 ms Zeitlimit, kein `outageTolerant`. Fix:
-  eigener `ResourceRetriever` mit 3 s/10 s und Größenlimit, `outageTolerant`. Issue: –
-- **K-7 / K-9 (3.) (Hinweis) JSON per `?no_esc` in `<script>`** der Demo-Personenauswahl, nur
-  Seed-Daten im Demomodus. `DPoP-demo-9ppv.11`
-- **K-8 (Hinweis, bewusst) Jeder GET auf die Action-URL wird Tool-Eingabe**, auch
-  `orchestrator_back`/`orchestrator_abandon`. Braucht Aktionscode und Cookie. Option: nur für Tools
-  mit `activationFields`. Issue: –
-- **K-8 (3.) (Hinweis) QR-Status-Endpunkt ohne Mindestintervall.** `DPoP-demo-9ppv.10`
+- **K-6 (Hinweis) Antwort-JWKS mit Nimbus-Voreinstellungen.** Die Keycloak-Erweiterung prüft die
+  Antworten des Orchestrators mit dessen öffentlichen Schlüsseln (JWKS). `OrchestratorResponseVerifier`
+  lädt diese mit `JWKSourceBuilder.create(…).retrying(true)`. Das bedeutet 500 ms Zeitlimit und kein
+  `outageTolerant`. Vorschlag: ein eigener `ResourceRetriever` mit 3 s/10 s und Größenlimit, dazu
+  `outageTolerant`. Issue: –
+- **K-7 / K-9 (3.) (Hinweis) JSON per `?no_esc` in `<script>`** der Demo-Personenauswahl. Betroffen
+  sind nur Beispieldaten im Demomodus. `DPoP-demo-9ppv.11`
+- **K-8 (Hinweis, bewusst) Jeder GET auf die Action-URL wird zur Eingabe für das Tool**, auch
+  `orchestrator_back` und `orchestrator_abandon`. Die Action-URL ist die Adresse, an die das
+  Anmeldeformular in Keycloak geschickt wird. Ein Angreifer braucht dafür den Aktionscode und das
+  Cookie. Möglichkeit: das nur für Tools mit `activationFields` zulassen. Issue: –
+- **K-8 (3.) (Hinweis) QR-Status-Endpunkt ohne Mindestintervall.** Der Endpunkt lässt sich beliebig
+  oft abfragen. `DPoP-demo-9ppv.10`
 - **K-14 (3.) (Hinweis) Peer-Auth-Fenster 300 s im Profil `keycloak`** statt nur in der Variante
-  `host`. `DPoP-demo-9ppv.13`
-- **Hinweis: Die Kanal-Id des Web-Kanals ist aus der Tab-Id abgeleitet**, also vorhersagbar;
-  Zugriff verlangt trotzdem eine signierte Assertion mit passendem `channel_binding`.
-  `DPoP-demo-gxis`
-- **SA-21 (Hinweis) Redirect-URIs mit Wildcard** (`…/*` in `application-keycloak.yml`). Ändert das
-  Realm-Setup und erzwingt einen Neuaufbau; erst die Pfade der SPA klären. `DPoP-demo-164n.21`
+  `host`. Peer-Auth heißt, dass sich Keycloak und Orchestrator mit signierten Nachrichten gegenseitig
+  ausweisen. `DPoP-demo-9ppv.13`
+- **Hinweis: Die Kanal-Id des Web-Kanals ist aus der Tab-Id abgeleitet** und damit vorhersagbar. Für
+  einen Zugriff braucht man trotzdem eine signierte Assertion von Keycloak mit passendem
+  `channel_binding`. `DPoP-demo-gxis`
+- **SA-21 (Hinweis) Redirect-URIs mit Platzhalter** (`…/*` in `application-keycloak.yml`). Eine
+  Änderung betrifft das Realm-Setup und erzwingt einen Neuaufbau. Vorher müssen die Pfade der
+  Single-Page-App geklärt sein. `DPoP-demo-164n.21`
 - **`loa3` im Web-Realm (offen, Entscheidung).** `DPoP-demo-wzcm`
 
 ## 3. Architektur
 
-- **A-3 (niedrig) Die Paketaufteilung der Erweiterung hat Zyklen und keine Prüfregel.**
-  `client ↔ federation`, `federation ↔ login`, `login ↔ resource`, `login ↔ token`. Fix:
-  Wire-Records in ein Blatt-Paket, ArchUnit-Regel `beFreeOfCycles` im Erweiterungsbuild. Issue: –
+- **A-3 (niedrig) Die Paketaufteilung der Erweiterung hat Zyklen und keine Prüfregel.** Diese Pakete
+  hängen gegenseitig voneinander ab: `client ↔ federation`, `federation ↔ login`,
+  `login ↔ resource`, `login ↔ token`. Vorschlag: Die Datenklassen für den Austausch (Wire-Records)
+  kommen in ein eigenes Paket ohne Abhängigkeiten. Dazu kommt die ArchUnit-Regel `beFreeOfCycles` im
+  Build der Erweiterung. Issue: –
 - **A-6 (Hinweis) Die Erweiterung liest die Uhr selbst** (`PeerAuthAssertionSigner`,
-  `OrchestratorResponseVerifier`, `OrchestratorSettings`). Die Zeitregeln der Peer-Auth sind dort
-  nur mit echten Wartezeiten testbar. Fix: `Clock` als Konstruktorparameter. Issue: –
+  `OrchestratorResponseVerifier`, `OrchestratorSettings`). Die Zeitregeln der Peer-Auth lassen sich
+  dort nur mit echten Wartezeiten testen. Vorschlag: `Clock` als Konstruktorparameter. Issue: –
 - **A-7 (Hinweis) Drei Formen für „wer“ in `tool_api`** (`Subject`, `Attempted`, `AuthSubject`).
-  Fachlich verschieden, aber `Subject.Invitation.hash` neben „Id der Einladung“ stolpert. Issue: –
+  Fachlich sind sie verschieden. Aber `Subject.Invitation.hash` neben der „Id der Einladung“ ist
+  verwirrend. Issue: –
 - **A-8 (Hinweis) Die Prüfung von Assertion und `channel_binding` ist in den kc-Controllern
   wiederholt** (`KeycloakAccountLookupController`, `KeycloakInvitationLookupController`,
-  `KeycloakSignOutController`). Fix: ein gemeinsamer Helfer am `PeerAuthValidator`. Issue: –
-- **Aus der dritten Bewertung:** A-7 Modulabhängigkeiten per Test (`DPoP-demo-9ppv.15`), A-8 tote
-  Enum-Werte und CHECKs für Zustände (`9ppv.16`), A-11 gemeinsame Wurzel der REGISTER-Zustände
-  (`9ppv.19`), A-13 `DemoStepReason` aus dem Fachkern (`9ppv.21`), A-14 nur `InvalidInputException`
-  wird `400` (`9ppv.22`), K-5 ArchUnit-Regel „keine Transaktion um Keycloak-Aufrufe“ (`9ppv.7`).
+  `KeycloakSignOutController`). Vorschlag: ein gemeinsamer Helfer am `PeerAuthValidator`. Issue: –
+- **Aus der dritten Bewertung:**
+  - A-7: Modulabhängigkeiten per Test prüfen (`DPoP-demo-9ppv.15`).
+  - A-8: tote Enum-Werte und CHECKs für Zustände (`9ppv.16`).
+  - A-11: gemeinsame Wurzel der REGISTER-Zustände (`9ppv.19`).
+  - A-13: `DemoStepReason` aus dem Fachkern entfernen (`9ppv.21`).
+  - A-14: nur `InvalidInputException` wird zu `400` (`9ppv.22`).
+  - K-5: ArchUnit-Regel „keine Transaktion um Keycloak-Aufrufe“ (`9ppv.7`).
 
 ## 4. Codequalität und Tests
 
 - **Q-4 (niedrig) `!!` auf dem gerade geprüften Feld** in `AuthInviteFlow` und
-  `AuthPasswordLookupFlow`; 21 `!!` insgesamt. Mit Q-8 (3.) `DPoP-demo-9ppv.27`
-- **Q-5 (niedrig) Testhelfer mehrfach definiert**, `IntegrationTestSupport` groß. Mit Q-13 (3.)
-  `DPoP-demo-9ppv.32`
-- **Q-6 / K-10 (niedrig) Dispatch-Duplikate und Testlücken der Erweiterung.** Ohne Test: beide
-  Dispatcher, Resume- und Update-Authenticator, `WebFormRenderer`, die meisten Renderer-Factories.
-  `DPoP-demo-9ppv.12`
-- **Q-7 (Hinweis) `ident_eid` ist vom Kover-Tor ausgenommen**, trägt aber Kernlogik (`IdentEidFlow`).
-  Fix: Ausschluss auf `simulation.*` beschränken. Issue: –
+  `AuthPasswordLookupFlow`. Insgesamt gibt es 21 `!!`. Zusammen mit Q-8 (3.) in `DPoP-demo-9ppv.27`.
+- **Q-5 (niedrig) Testhelfer mehrfach definiert**, und `IntegrationTestSupport` ist groß. Zusammen
+  mit Q-13 (3.) in `DPoP-demo-9ppv.32`.
+- **Q-6 / K-10 (niedrig) Doppelte Verteilungslogik (Dispatch) und Testlücken der Erweiterung.** Ohne
+  Test sind: beide Dispatcher, der Resume- und der Update-Authenticator, `WebFormRenderer` und die
+  meisten Renderer-Factories. `DPoP-demo-9ppv.12`
+- **Q-7 (Hinweis) `ident_eid` ist vom Kover-Tor ausgenommen**, enthält aber Kernlogik
+  (`IdentEidFlow`). Das Kover-Tor prüft die Testabdeckung. Vorschlag: den Ausschluss auf
+  `simulation.*` beschränken. Issue: –
 - **Q-8 / Q-11 (3.) (Hinweis) Umlaute in Text-Vorlagen gemischt.** `DPoP-demo-9ppv.30`
-- **Q-9 (Hinweis) `e2e-keycloak` läuft nicht in der CI.** Lokal gegen compose grün (2026-10-04).
-  Ein nächtlicher Job mit `podman compose` wäre der Weg. Issue: –
-- **Q-10 (Hinweis) `RegisterStrategy.transition` mit 71 Zeilen**, ein `when` über acht Zustände;
-  kein Handlungsbedarf.
-- **Aus der dritten Bewertung:** Q-5 `auth_email` löst das Konto im Controller auf
-  (`DPoP-demo-9ppv.24`), Q-6 QR-Controller mit OpenAPI-Beispielen (`9ppv.25`), Q-7 ein Weg zum
-  Journey/Kanal-Paar (`9ppv.26`), Q-9 `RestoreDataCodec` fängt zu breit (`9ppv.28`), Q-10 `else`
-  bei sealed-Subjekten (`9ppv.29`), Q-12 tote Deklarationen (`9ppv.31`), Q-14 lange KDocs
-  (`9ppv.33`), Q-16 `relaxed`-Mocks (`9ppv.34`), Q-17 `allWarningsAsErrors` (`9ppv.35`).
+- **Q-9 (Hinweis) `e2e-keycloak` läuft nicht in der CI.** Lokal gegen compose lief es am 2026-10-04
+  fehlerfrei. Ein nächtlicher Job mit `podman compose` wäre der Weg. Issue: –
+- **Q-10 (Hinweis) `RegisterStrategy.transition` mit 71 Zeilen**, ein `when` über acht Zustände. Es
+  besteht kein Handlungsbedarf.
+- **Aus der dritten Bewertung:**
+  - Q-5: `auth_email` löst das Konto im Controller auf (`DPoP-demo-9ppv.24`).
+  - Q-6: QR-Controller mit OpenAPI-Beispielen (`9ppv.25`).
+  - Q-7: ein Weg zum Paar aus Journey und Kanal (`9ppv.26`).
+  - Q-9: `RestoreDataCodec` fängt zu viele Fehler ab (`9ppv.28`).
+  - Q-10: `else` bei sealed-Subjekten (`9ppv.29`).
+  - Q-12: tote Deklarationen (`9ppv.31`).
+  - Q-14: lange KDocs (`9ppv.33`).
+  - Q-16: `relaxed`-Mocks (`9ppv.34`).
+  - Q-17: `allWarningsAsErrors` (`9ppv.35`).
 
 ## 5. Umgebung und Betrieb
 
-- **SA-25 (Hinweis) Keine NetworkPolicy auf OpenShift**; Management-Ports sind aus anderen Pods
+- **SA-25 (Hinweis) Keine NetworkPolicy auf OpenShift.** Die Management-Ports sind aus anderen Pods
   erreichbar. `DPoP-demo-164n.25`
-- **S-9 (3.) (Hinweis) Keycloak-Bootstrap-Admin nicht im Startcheck**, `DEMO_MODE`-Hinweis in der
-  Doku. `DPoP-demo-9ppv.3`; fehlendes `demo.mode` gilt als Demomodus (`DPoP-demo-davx`).
-- **S-12 (3.) (Hinweis) Laufzeit-Image in compose nicht gepinnt.** `DPoP-demo-9ppv.5`
-- **Umgebung:** TLS Keycloak ↔ Orchestrator und Proxy-Header (`DPoP-demo-ai4x`); Keycloak
-  `start --optimized` (`DPoP-demo-9msv`); Admin-Geheimnis auf OpenShift (`DPoP-demo-x25a`);
-  PostgreSQL (`DPoP-demo-pi55`); gemeinsame Sperre für geplante Aufgaben (`DPoP-demo-g7np`); Backup
-  und Restore (`DPoP-demo-prnl`); Frontend: CSP, Tokens im Browser, `state`/`nonce`
-  (`DPoP-demo-dm2j`).
+- **S-9 (3.) (Hinweis) Keycloak-Bootstrap-Admin nicht im Startcheck**, Hinweis auf `DEMO_MODE` in der
+  Doku. `DPoP-demo-9ppv.3`. Außerdem gilt ein fehlendes `demo.mode` als Demomodus
+  (`DPoP-demo-davx`).
+- **S-12 (3.) (Hinweis) Laufzeit-Image in compose nicht auf eine feste Version gepinnt.**
+  `DPoP-demo-9ppv.5`
+- **Umgebung:** Dazu gehören diese offenen Punkte:
+  - TLS zwischen Keycloak und Orchestrator und die Proxy-Header (`DPoP-demo-ai4x`),
+  - Keycloak mit `start --optimized` (`DPoP-demo-9msv`),
+  - das Admin-Geheimnis auf OpenShift (`DPoP-demo-x25a`),
+  - PostgreSQL (`DPoP-demo-pi55`),
+  - eine gemeinsame Sperre für geplante Aufgaben (`DPoP-demo-g7np`),
+  - Backup und Restore (`DPoP-demo-prnl`),
+  - im Frontend: CSP, Tokens im Browser, `state`/`nonce` (`DPoP-demo-dm2j`).
 
 ## 6. Bewusst in Kauf genommen
 
 - **SA-27 Die Konto- und Personensperre prüft vor dem Versuch und zählt danach.** Parallele Versuche
-  über mehrere Kanäle kommen alle durch die Prüfung, bevor der fünfte zählt. Praktisch betrifft das
-  Passwörter, die `PasswordPolicy` und Argon2 schützen. Vor einer produktiven Passwortanmeldung per
-  Lookup nachzuholen ([07-betrieb.md](07-betrieb.md) Abschnitt 4). `DPoP-demo-164n.29` (deferred)
+  über mehrere Kanäle kommen alle durch die Prüfung, bevor der fünfte Versuch gezählt ist. Praktisch
+  betrifft das Passwörter, und die sind durch `PasswordPolicy` und Argon2 geschützt. Das muss
+  nachgeholt werden, bevor eine Passwortanmeldung per Lookup produktiv geht
+  ([07-betrieb.md](07-betrieb.md) Abschnitt 4). `DPoP-demo-164n.29` (zurückgestellt)
 - **S-7 `auth-invite` und `ident-fsc`: Eine unbekannte Nummer kostet nichts, eine bekannte
-  antwortet messbar anders.** Das Kennwort selbst ist nicht ratbar. Mit `DPoP-demo-36xz`.
-- **S-8 Keycloaks Action-URL samt Aktionscode liegt am Nect-Fall und geht an das Fremdsystem**
-  (ADR-47). Option: eigene Rücksprungadresse am Orchestrator.
-- **Das `acr` im Token altert nicht** (SA-5): Es beschreibt wie bei Keycloak die Anmeldung
-  ([04-orchestrierung.md](04-orchestrierung.md) Abschnitt 4). Anwendungen prüfen `acr` und, wenn
-  sie Frische brauchen, `auth_time` (`DPoP-demo-mea0`).
-- Weitere bewusste Punkte (DPoP ohne Nonce, Tokens nicht an DPoP gebunden, KOBIL-PIN im Klartext)
-  führt der [Lesepfad Sicherheit](16-lesepfad-sicherheit.md) in seinem Abschnitt 15.
+  antwortet messbar anders.** Ein Angreifer kann also erkennen, ob eine Nummer existiert. Das
+  Kennwort selbst lässt sich aber nicht erraten. Zusammen mit `DPoP-demo-36xz`.
+- **S-8 Keycloaks Action-URL samt Aktionscode wird am Nect-Fall gespeichert und an das Fremdsystem
+  geschickt** (ADR-47). Möglichkeit: eine eigene Rücksprungadresse am Orchestrator.
+- **Das `acr` im Token altert nicht** (SA-5). Das `acr` ist das Niveau, das im Token steht. Es
+  beschreibt wie bei Keycloak üblich die Anmeldung ([04-orchestrierung.md](04-orchestrierung.md)
+  Abschnitt 4). Anwendungen prüfen `acr` und, wenn sie einen frischen Nachweis brauchen, zusätzlich
+  `auth_time` (`DPoP-demo-mea0`).
+- Weitere bewusst in Kauf genommene Punkte führt der [Lesepfad Sicherheit](16-lesepfad-sicherheit.md)
+  in seinem Abschnitt 15 auf: DPoP ohne Nonce, Tokens nicht an DPoP gebunden, KOBIL-PIN im Klartext.
 
 ## 7. Offene Entscheidungen des Inhabers
 
 - **Passwortwechsel:** Soll die Verfahrensverwaltung `enroll-password` bei aktivem Passwort als
-  „ersetzen“ anbieten? Darauf bauen eine Required Action `orchestrator-change-password`, der Anstoß
-  durch den Admin per `execute-actions-email` (`DPoP-demo-164n.27`) und die Account-Konsole für
-  föderierte Nutzer (`DPoP-demo-164n.28`).
-- **A-4** Kanalbindung eines Tools, **A-5** Person am Anmeldeergebnis (oben).
-- **Schlüsselverwaltung** (`DPoP-demo-61kp`), **Verschlüsselung personenbezogener Spalten**
-  (`DPoP-demo-bo1w`), **Aufwerten nach erneuter Identifizierung** (`DPoP-demo-wyp3`), **`loa3` im
-  Web-Realm** (`DPoP-demo-wzcm`).
+  „ersetzen“ anbieten? Davon hängen drei weitere Schritte ab:
+  - eine Required Action `orchestrator-change-password`,
+  - der Anstoß durch den Admin per `execute-actions-email` (`DPoP-demo-164n.27`),
+  - die Account-Konsole für föderierte Nutzer, also Nutzer, die Keycloak beim Orchestrator
+    nachliest (`DPoP-demo-164n.28`).
+- **A-4** Bindung eines Tools an einen Kanal und **A-5** Person am Anmeldeergebnis (siehe
+  Abschnitt 1).
+- Weitere offene Entscheidungen:
+  - **Schlüsselverwaltung** (`DPoP-demo-61kp`),
+  - **Verschlüsselung personenbezogener Spalten** (`DPoP-demo-bo1w`),
+  - **Aufwerten nach erneuter Identifizierung** (`DPoP-demo-wyp3`),
+  - **`loa3` im Web-Realm** (`DPoP-demo-wzcm`).
 - **Echte Fremdsysteme:** Nect (`DPoP-demo-v033`, `DPoP-demo-z90h`).
 
 ## 8. Erkannte, bewusst zurückgestellte Verbesserungen
 
 Diese bekannten Punkte sind bewusst **nicht** vollständig umgesetzt. Jeder davon verlangt eine
-Entscheidung über Architektur oder Infrastruktur und lässt sich nicht mit einer Korrektur an einer
-einzigen Stelle erledigen:
+Entscheidung über Architektur oder Infrastruktur. Keiner lässt sich mit einer Korrektur an einer
+einzigen Stelle erledigen.
 
 - **Skalierung von `orchestrator.dpop_proof_replay`** (siehe auch [09-dpop.md](09-dpop.md)
-  Abschnitt 2): Der Schlüssel ist seit ADR-14 ein SHA-256-Hash fester Länge. Offen bleibt, die
-  Tabelle nach Zeit zu partitionieren oder durch einen eigenen, dauerhaften Schlüssel-Wert-Speicher
-  zu ersetzen. Das ist eine Entscheidung für die Produktivumgebung.
-- **Lebenszyklus eines Kontos und Zusammenführen von Konten**: `Account` hat weder einen Status noch
-  ein Feld `merged_into`. ADR-11 weist einen Konflikt um eine `person_id` bewusst ab, statt die Konten
-  zusammenzuführen. Über die angestrebte Lebensdauer wird ein Zusammenführen aber zwangsläufig nötig,
-  und ohne `merged_into` gibt es dann keinen Weg dorthin ohne Datenverlust.
-- **Sehr viele Konten** (Größenordnung 10 Millionen, `account.claim` dann 20 bis 80 Millionen
-  Zeilen). Die Demo erreicht das nie; für den Fall, dass das Modell so groß wird, gilt:
-  - Die häufigen Abfragen lesen weiter gezielt einzelne Zeilen über schmale, indizierte Spalten
-    (`account` über den Primärschlüssel, `account.anchor` über `(attribute_type, normalized_value)`,
-    `orchestrator.device_account_link` über `binding_key_ref`), nie über Attribut-Wert-Paare.
-  - Gesucht wird nur über normalisierte Werte (`normalizeAnchorValue`); `account.claim` braucht
-    keinen Index für die Suche vom Wert zum Konto.
-  - Bestehende Daten stellt man in wiederholbaren Portionen um, nicht in einer einzigen Transaktion.
+  Abschnitt 2): In dieser Tabelle merkt sich der Orchestrator benutzte DPoP-Proofs. Der Schlüssel ist
+  seit ADR-14 ein SHA-256-Hash mit fester Länge. Offen ist, ob man die Tabelle nach Zeit
+  partitioniert oder durch einen eigenen, dauerhaften Schlüssel-Wert-Speicher ersetzt. Das ist eine
+  Entscheidung für die Produktivumgebung.
+- **Lebenszyklus eines Kontos und Zusammenführen von Konten:** `Account` hat weder einen Status noch
+  ein Feld `merged_into`. ADR-11 lehnt einen Konflikt um eine `person_id` bewusst ab, statt die
+  Konten zusammenzuführen. Über die angestrebte Lebensdauer des Systems wird ein Zusammenführen aber
+  zwangsläufig nötig. Ohne `merged_into` gibt es dann keinen Weg dorthin ohne Datenverlust.
+- **Sehr viele Konten** (Größenordnung 10 Millionen; `account.claim` hätte dann 20 bis 80 Millionen
+  Zeilen). Die Demo erreicht das nie. Für den Fall, dass das Modell so groß wird, gilt:
+  - Die häufigen Abfragen lesen weiterhin gezielt einzelne Zeilen über schmale, indizierte Spalten,
+    nie über Paare aus Attribut und Wert. Das sind `account` über den Primärschlüssel,
+    `account.anchor` über `(attribute_type, normalized_value)` und
+    `orchestrator.device_account_link` über `binding_key_ref`.
+  - Gesucht wird nur über normalisierte Werte (`normalizeAnchorValue`). `account.claim` braucht
+    deshalb keinen Index für die Suche vom Wert zum Konto.
+  - Bestehende Daten stellt man in wiederholbaren Portionen um, nicht in einer einzigen
+    Transaktion.
   - Keycloak liest ein Konto bei Bedarf einzeln, über den Primärschlüssel oder den E-Mail-Anker
-    ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)); einen Abgleich aller Konten gibt es nicht.
+    ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)). Einen Abgleich aller Konten gibt es nicht.
 
-  Das Claims-Modell dahinter beschreibt [Domänenmodell](02-domaenenmodell.md), Abschnitt 6.
+  Das Modell der Claims dahinter beschreibt das [Domänenmodell](02-domaenenmodell.md) in
+  Abschnitt 6.
 
-Alle drei verdienen eine eigene, sorgfältig geplante Überarbeitung, vor der der Entwurf entschieden wird.
+Alle drei Punkte verdienen eine eigene, sorgfältig geplante Überarbeitung. Erst danach wird über
+den Entwurf entschieden.

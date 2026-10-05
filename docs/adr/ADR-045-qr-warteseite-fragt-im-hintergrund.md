@@ -2,67 +2,89 @@
 
 **Status:** umgesetzt 2026-09.
 
-**Entscheidung.** Solange die Seite „Mit der App anmelden“ (`auth-qr`/`auth-qr-lookup`, Schritt
-`waitForApp`) auf die App wartet, lädt sie sich nicht neu. Sie fragt alle zwei Sekunden einen
-eigenen Endpunkt der Keycloak-Erweiterung, ob sie noch wartet, und schickt ihr Formular erst ab,
-wenn sich etwas geändert hat: Die App hat freigegeben oder abgelehnt, die Anfrage ist abgelaufen,
-oder die Journey ist woanders. Beide Login-Themes tun das nach denselben Regeln.
+**Worum es geht.** Beim QR-Login meldet sich ein Nutzer im Browser an, indem er mit der App einen
+QR-Code scannt oder einen kurzen [Pairing-Code](../glossar/glossar.md) abtippt und die Anmeldung in
+der App freigibt. Solange das dauert, zeigt der Browser die Seite „Mit der App anmelden“. Diese
+Seite gehört zu Keycloak, dem Anmeldeserver. Sie muss irgendwie erfahren, wann die App freigegeben
+oder abgelehnt hat. Die Frage ist, wie sie das abfragt, ohne den Nutzer zu stören.
 
-**Warum.** Die Seite schickte ihr leeres Formular alle drei Sekunden ab, um die Entscheidung der
-App abzufragen. Jedes Mal baute Keycloak die ganze Seite neu auf. QR-Code und Pairing-Code
-flackerten, ein Screenreader las die Seite von vorn, und wer den Code gerade abtippte, verlor die
-Stelle.
+**Entscheidung.** Solange die Seite „Mit der App anmelden“ (`auth-qr`/`auth-qr-lookup`, Schritt
+`waitForApp`) auf die App wartet, lädt sie sich nicht neu. Stattdessen fragt sie alle zwei Sekunden
+einen eigenen Endpunkt der Keycloak-Erweiterung, ob sie noch wartet. Ihr Formular schickt sie erst
+ab, wenn sich etwas geändert hat:
+
+- die App hat freigegeben oder abgelehnt,
+- die Anfrage ist abgelaufen,
+- oder die Journey steht nicht mehr in diesem Schritt. (Eine Journey ist der geführte Ablauf, den
+  der Nutzer gerade durchläuft.)
+
+Beide Login-Themes, also beide Varianten für das Aussehen der Anmeldeseiten, folgen dabei denselben
+Regeln.
+
+**Warum.** Bisher schickte die Seite alle drei Sekunden ihr leeres Formular ab, um die Entscheidung
+der App abzufragen. Jedes Mal baute Keycloak die ganze Seite neu auf. Das hatte drei Folgen:
+
+- QR-Code und Pairing-Code flackerten.
+- Ein Screenreader las die Seite jedes Mal von vorn vor.
+- Wer den Code gerade abtippte, verlor die Stelle, an der er war.
 
 ## 1) Der Endpunkt in Keycloak
 
-`GET /realms/{realm}/orchestrator-qr/status?client_id=…&tab_id=…`, ein `RealmResourceProvider`
-der Erweiterung (`QrWaitStatusResourceProvider`).
+Die Seite fragt einen neuen Endpunkt in Keycloak, der nur meldet, ob noch gewartet wird:
+`GET /realms/{realm}/orchestrator-qr/status?client_id=…&tab_id=…`. Er ist ein
+`RealmResourceProvider` der Erweiterung (`QrWaitStatusResourceProvider`).
 
-- **Nur die eigene Anmeldung.** Er findet den Anmeldeablauf wie Keycloaks eigene Seiten: das
-  signierte Cookie `AUTH_SESSION_ID` nennt die Sitzung, `client_id` und `tab_id` den Durchlauf
-  darin. Ohne Cookie, ohne Durchlauf oder bei unbekanntem Client antwortet er `404` ohne Inhalt.
-  Die Adresse samt `client_id` und `tab_id` setzt der Renderer als Seitenattribut `statusUrl`.
-- **Nur lesen.** Er fragt den Orchestrator mit `GET /tools/{toolSessionId}/{toolId}`, von Server zu
-  Server wie jeder andere Aufruf der Erweiterung, und ändert weder den Anmeldeablauf noch die
-  Journey. Weiter geht es nur mit dem Formular, wie bisher.
-- **Nur zwei Antworten.** `{"state":"waiting"}`, solange der Orchestrator genau diese Tool-Sitzung
-  im Schritt `waitForApp` nennt, sonst `{"state":"ready"}`. Auch ein Fehler beim Lesen ist
-  `ready`: Dann meldet der Formularversand, was los ist. Kein Code und kein Konto verlassen den
-  Endpunkt, und `Cache-Control: no-store` hält die Antwort aus jedem Zwischenspeicher.
-- **Kein CORS.** Der Endpunkt setzt keine CORS-Header. Eine fremde Seite kann ihn zwar aufrufen,
-  die Antwort aber nicht lesen.
+- **Nur die eigene Anmeldung.** Der Endpunkt findet den laufenden Anmeldeablauf auf dieselbe Weise
+  wie Keycloaks eigene Seiten. Das signierte Cookie `AUTH_SESSION_ID` nennt die Sitzung, `client_id`
+  und `tab_id` nennen den Durchlauf darin. Fehlt das Cookie, gibt es den Durchlauf nicht oder ist
+  der Client unbekannt, antwortet er `404` ohne Inhalt. Die Adresse samt `client_id` und `tab_id`
+  setzt der Renderer als Seitenattribut `statusUrl`.
+- **Nur lesen.** Der Endpunkt fragt den Orchestrator mit `GET /tools/{toolSessionId}/{toolId}`.
+  Das geschieht von Server zu Server, wie jeder andere Aufruf der Erweiterung. Er ändert weder den
+  Anmeldeablauf noch die Journey. Weiter geht es wie bisher nur mit dem Formular.
+- **Nur zwei Antworten.** Die Antwort ist `{"state":"waiting"}`, solange der Orchestrator genau
+  diesen Tool-Durchlauf im Schritt `waitForApp` meldet. Sonst ist sie `{"state":"ready"}`. Auch ein
+  Fehler beim Lesen ergibt `ready`. Dann meldet der folgende Formularversand, was los ist. Weder ein
+  Code noch ein Konto verlassen den Endpunkt. `Cache-Control: no-store` sorgt dafür, dass kein
+  Zwischenspeicher die Antwort aufbewahrt.
+- **Kein CORS.** Der Endpunkt setzt keine CORS-Header. Eine fremde Webseite kann ihn zwar
+  aufrufen, die Antwort aber nicht lesen.
 
 ## 2) Der Lesezugriff im Orchestrator
 
-Den `GET` auf die Tool-Sitzung gab es schon. Er meldete aber eine abgelehnte oder abgelaufene
-Anfrage weiter als `waitForApp`, weil nur der `PATCH` das Ergebnis auswertet. Dafür gibt es beim
-Lesen jetzt den Schritt `closed`: Die Anfrage ist beendet, der nächste `PATCH` meldet das Ergebnis.
-Der `GET` bleibt ohne Schreibzugriff, und der Vertrag ändert sich nicht, denn `next.step` ist ein
-freier Wert.
+Den `GET` auf den Tool-Durchlauf gab es schon. Er meldete eine abgelehnte oder abgelaufene Anfrage
+aber weiter als `waitForApp`, weil nur der `PATCH` das Ergebnis auswertet. Deshalb meldet der
+Orchestrator beim Lesen jetzt den Schritt `closed`. Er bedeutet: Die Anfrage ist beendet, der
+nächste `PATCH` meldet das Ergebnis. Der `GET` schreibt weiterhin nichts. Der API-Vertrag ändert sich
+nicht, denn `next.step` ist ein freier Wert.
 
 ## 3) Die Seite
 
-- **Nur ein ausdrückliches `waiting` hält die Seite.** Jede andere Antwort, auch `404` oder ein
-  Serverfehler, schickt das Formular einmal ab. Eine Anfrage, die das Netz nicht erreicht, wird
-  nach zwei Sekunden wiederholt.
-- **Kein zusätzlicher Zeitgeber.** Jede Änderung ist über den Endpunkt sichtbar, auch der Ablauf
-  der Anfrage nach fünf Minuten. Ist der Endpunkt selbst gestört, antwortet er nicht mit `waiting`,
-  und die Seite fällt auf das alte Verhalten zurück: Sie lädt neu und fragt dann wieder.
-- **„Abbrechen“ beendet das Fragen,** damit keine späte Antwort das Formular ein zweites Mal
-  abschickt.
-- **Nichts verschiebt sich.** QR-Code und Pairing-Code bleiben stehen, bis die Seite wechselt.
+Die Seite im Browser folgt wenigen festen Regeln:
 
-Die FreeMarker-Vorlage hat die Regeln als kleines Skript, das Keycloakify-Theme als Modul
-`qrStatusPoll.ts` mit eigenen Tests.
+- **Nur ein ausdrückliches `waiting` lässt die Seite weiter warten.** Jede andere Antwort, auch
+  `404` oder ein Serverfehler, schickt das Formular einmal ab. Erreicht eine Anfrage das Netz nicht,
+  wiederholt die Seite sie nach zwei Sekunden.
+- **Kein zusätzlicher Zeitgeber.** Jede Änderung ist über den Endpunkt sichtbar, auch dass die
+  Anfrage nach fünf Minuten abläuft. Ist der Endpunkt selbst gestört, antwortet er nicht mit
+  `waiting`. Die Seite fällt dann auf das alte Verhalten zurück: Sie lädt neu und fragt dann wieder.
+- **„Abbrechen“ beendet das Fragen.** So kann keine späte Antwort das Formular ein zweites Mal
+  abschicken.
+- **Nichts verschiebt sich.** QR-Code und Pairing-Code bleiben unverändert stehen, bis die Seite
+  wechselt.
+
+Die FreeMarker-Vorlage setzt die Regeln als kleines Skript um. Das Keycloakify-Theme setzt sie im
+Modul `qrStatusPoll.ts` um, mit eigenen Tests.
 
 ## Erwogene Alternativen
 
-- **Weiter per Formular fragen, nur seltener.** Verworfen: Das Flackern bliebe, nur seltener, und
+- **Weiter per Formular fragen, nur seltener.** Verworfen: Das Flackern bliebe, nur seltener. Und
   die Freigabe käme später an.
 - **Den Browser direkt beim Orchestrator fragen lassen.** Verworfen: Im Web-Zugang spricht der
   Browser nie mit dem Orchestrator ([05-api.md](../05-api.md) Abschnitt 3b). Er bräuchte dafür eine
   eigene Berechtigung und eine CORS-Freigabe.
-- **Server-Sent Events oder WebSocket statt Abfragen.** Verworfen: Keycloak müsste Verbindungen
-  offen halten, und für eine Entscheidung in einigen Sekunden reicht eine Frage alle zwei Sekunden.
-- **Den `PATCH` im Hintergrund schicken.** Verworfen: Er treibt den Ablauf weiter, zählt Versuche und
-  müsste die nächste Seite zeichnen. Das ist Aufgabe des Formulars.
+- **Server-Sent Events oder WebSocket statt Abfragen.** Verworfen: Keycloak müsste dafür
+  Verbindungen offen halten. Für eine Entscheidung, die nach einigen Sekunden fällt, reicht eine
+  Frage alle zwei Sekunden.
+- **Den `PATCH` im Hintergrund schicken.** Verworfen: Der `PATCH` bringt den Ablauf einen Schritt
+  weiter, zählt Versuche und müsste die nächste Seite darstellen. Das ist Aufgabe des Formulars.

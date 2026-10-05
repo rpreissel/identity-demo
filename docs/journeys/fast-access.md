@@ -3,8 +3,12 @@
 
 # `FAST_ACCESS`
 
-Die schnelle Anmeldung versucht zuerst die bequemen Wege und weicht Schritt für Schritt auf
-aufwendigere aus. Danach folgen die Pflichtzustände, die für die nächste Anmeldung sorgen.
+`FAST_ACCESS` ist die schnelle Anmeldung in der App und der Standard-Einstieg. Sie versucht zuerst
+die bequemen Wege. Lehnt der Nutzer einen Weg ab, bietet sie Schritt für Schritt aufwendigere an.
+Solche Zustände heißen **Ausweichzustände**: Ablehnen führt zum nächsten Weg.
+
+Danach folgen **Pflichtzustände**. In ihnen führt Ablehnen nicht weiter, nur Erfüllen. Sie sorgen
+dafür, dass der Nutzer sich auch beim nächsten Mal anmelden kann.
 
 ```mermaid
 stateDiagram-v2
@@ -58,22 +62,26 @@ stateDiagram-v2
   end note
 ```
 
-`PreferredAuth` enthält genau das eine vorgeschlagene Tool (`toolId`). `AuthChoice` und
-`Enrolling` enthalten das Angebot und die bisherigen Ablehnungen. Sie werden mit `RegisterState`
-gemeinsam genutzt (siehe [`REGISTER`](register.md)). `Enrolling` hat zusätzlich das Feld
-`emailObligation`. `FAST_ACCESS` setzt es nie (es bleibt `false`); die E-Mail-Pflicht gibt es nur,
-wenn die Journey über `RegisterState.Identifying` gelaufen ist (Orchestrierung, Abschnitt 5).
+**Was die Zustände enthalten.** `PreferredAuth` enthält genau das eine vorgeschlagene Tool
+(`toolId`). `AuthChoice` und `Enrolling` enthalten das Angebot und die bisherigen Ablehnungen. Diese
+beiden Zustände nutzt `FAST_ACCESS` gemeinsam mit `RegisterState` (siehe [`REGISTER`](register.md)).
 
-`FAST_ACCESS` identifiziert nie selbst:
+`Enrolling` hat zusätzlich das Feld `emailObligation`. `FAST_ACCESS` setzt es nie, es bleibt also
+`false`. Die Pflicht, die E-Mail-Adresse zu bestätigen, gibt es nur, wenn die Journey über
+`RegisterState.Identifying` gelaufen ist (Orchestrierung, Abschnitt 5).
+
+**Identifizieren lassen andere.** `FAST_ACCESS` identifiziert nie selbst. Dafür startet es eine
+Sub-Journey, also einen untergeordneten Ablauf, der auch von anderen Journeys genutzt wird:
 
 - Gibt es kein Konto, oder hat der Nutzer jedes Verfahren abgelehnt, startet die Journey von
   [`REGISTER`](register.md) als vorgeschalteter Schritt (`Transition.RequireSubJourney`).
-- Kann in `Enrolling` kein Einrichten die Lücke schließen, fragt die gemeinsam genutzte Sub-Journey
-  [`RE_IDENTIFY`](re-identify.md) nach einer erneuten Identifizierung.
+- Kann in `Enrolling` kein neu eingerichtetes Verfahren das fehlende Niveau liefern, fragt die
+  gemeinsam genutzte Sub-Journey [`RE_IDENTIFY`](re-identify.md) nach einer erneuten
+  Identifizierung.
 
 Ist die Sub-Journey fertig (`SubJourneyFinished`), prüft `Start` mit `afterProof` erneut, ob der
 Nachweis reicht.
 
-Der Unterschied zwischen beiden Zustandsarten zeigt sich in `declined`: In einem Ausweichzustand
-sammelt das Feld die abgelehnten Tools, in einem Pflichtzustand **nicht**, denn dort führt Ablehnen
-nicht weiter.
+**Der Unterschied im Code.** Der Unterschied zwischen beiden Zustandsarten zeigt sich im Feld
+`declined`. In einem Ausweichzustand sammelt es die abgelehnten Tools. In einem Pflichtzustand tut
+es das **nicht**, denn dort führt Ablehnen nicht weiter.

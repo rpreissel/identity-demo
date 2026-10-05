@@ -1,7 +1,11 @@
 # Journeys
 
-Ein Zustandsdiagramm je Ziel (Intent), gegen den Code geprüft. Wie die Diagramme zu lesen sind,
-erklärt [../04-orchestrierung.md](../04-orchestrierung.md), Abschnitt 3.
+Eine **Journey** ist ein geführter Ablauf mit mehreren Schritten, der einen Nutzer zu seinem Ziel
+bringt. Das Ziel heißt im System **Intent**, etwa „schnell anmelden“ oder „Konto löschen“.
+
+Hier gibt es für jeden Intent ein Zustandsdiagramm. Ein Test prüft jedes Diagramm gegen den Code.
+Wie die Diagramme zu lesen sind, erklärt [../04-orchestrierung.md](../04-orchestrierung.md),
+Abschnitt 3.
 
 - [`FAST_ACCESS`](fast-access.md)
 - [`REGISTER`](register.md), dazu das Experiment
@@ -14,5 +18,6 @@ erklärt [../04-orchestrierung.md](../04-orchestrierung.md), Abschnitt 3.
 - [`CONFIRM_PEER_LOGIN`](confirm-peer-login.md)
 - [`LOGOUT`](logout.md)
 - [`DELETE_ACCOUNT`](delete-account.md)
-- [Lebenszyklus, unabhängig vom Intent](lebenszyklus-unabhaengig-vom-intent.md): ein Verweis auf
-  [02-domaenenmodell.md](../02-domaenenmodell.md) Abschnitt 3, wo das Diagramm steht
+- [Lebenszyklus, unabhängig vom Intent](lebenszyklus-unabhaengig-vom-intent.md): Diese Datei
+  verweist nur auf [02-domaenenmodell.md](../02-domaenenmodell.md) Abschnitt 3. Dort steht das
+  Diagramm.

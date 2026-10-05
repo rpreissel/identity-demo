@@ -2,73 +2,93 @@
 
 **Status:** entschieden (2026-09-25).
 
-**Entscheidung**: Das Projekt soll zeigen, dass der Ansatz trägt. Den Beleg liefert ein
-**produktionsreifer Backend-Kern**, nicht eine Oberfläche. Frontends und Ausführungsumgebungen
-werden später gehärtet; bis dahin gelten sie als Vorführrahmen.
+Ein Demo-Projekt kann nicht alles zugleich in Produktionsqualität liefern. Es muss entscheiden,
+welche Teile so sorgfältig gebaut werden, als liefen sie im Betrieb mit echten Daten, und welche
+Teile vorerst nur der Vorführung dienen. Ohne diese Grenze bleibt unklar, welche Schwächen ein
+Fehler sind und welche bewusst in Kauf genommen werden. Ein Review im September 2026 hat eine Reihe
+von Befunden ergeben, die nach dieser Grenze eingeordnet werden mussten.
 
-Das Projekt zerfällt dafür in drei Bereiche mit verschiedenem Anspruch:
+**Entscheidung**: Das Projekt soll zeigen, dass der Ansatz funktioniert. Den Beleg liefert ein
+**produktionsreifer Backend-Kern**, nicht eine Oberfläche. Frontends und Ausführungsumgebungen
+werden später gehärtet, also gegen Angriffe und Fehlbedienung abgesichert. Bis dahin gelten sie als
+Vorführrahmen.
+
+Das Projekt ist dafür in drei Bereiche mit unterschiedlichem Anspruch aufgeteilt:
 
 1. **Kern – produktionsreif.**
    - Module: die Gruppen `core/` (`orchestrator` samt `keycloak`-Anbindung, `account`), `contract/`
-     (`tool_api`, `texts`) und `tools/` (alle Tool-Module, `auth_*` wie
+     (`tool_api`, `texts`) und `tools/` (alle Tool-Module, `auth_*` ebenso wie
      `ident_*`).
-   - Die Keycloak-Extension (`keycloak-extension`) und die Realm-Migrationen (`keycloak-migrations`):
-     Sie sind Backend-Code, der über Konten und Niveaus entscheidet.
-   - Anspruch: Jede Sicherheitszusage gilt ohne Voraussetzung an die Umgebung, die nicht ausdrücklich
-     als Annahme benannt ist. Invarianten sind per Typ, Constraint oder Test erzwungen, nicht per
-     Kommentar. Kein unerklärtes „demo-only“ im Kern: Ein Verfahren, das mehr vergibt, als es
-     beweisen kann, erklärt sich selbst und ist außerhalb des Demomodus aus
-     ([ADR-36](ADR-036-niveaus-und-ihre-nachweise.md)).
-2. **Simulierte Fremdsysteme – Vorführrahmen hinter Ports.**
+   - Die Keycloak-Extension (`keycloak-extension`) und die Realm-Migrationen (`keycloak-migrations`).
+     Sie zählen zum Kern, weil sie Backend-Code sind, der über Konten und Niveaus entscheidet. Das
+     Niveau gibt an, wie sehr einer Anmeldung vertraut wird
+     (siehe [Glossar](../glossar/glossar.md)).
+   - Anspruch: Jede Sicherheitszusage gilt, ohne dass die Umgebung etwas Bestimmtes leisten muss.
+     Ausgenommen sind nur Voraussetzungen, die ausdrücklich als Annahme benannt sind. Invarianten,
+     also Regeln, auf die sich der Kern jederzeit verlässt, sind per Typ, Datenbank-Constraint
+     oder Test erzwungen, nicht per Kommentar. Im Kern gibt es kein unerklärtes „demo-only“. Ein
+     Verfahren, das ein höheres Niveau vergibt, als es beweisen kann, sagt das selbst und ist
+     außerhalb des Demomodus abgeschaltet ([ADR-36](ADR-036-niveaus-und-ihre-nachweise.md)).
+2. **Simulierte Fremdsysteme – Vorführrahmen hinter Ports.** Ein Port ist eine fest definierte
+   Schnittstelle, über die der Kern mit einem anderen System spricht.
    - Module: die Gruppe `simulation/` (`personenverzeichnis`, `kobil`, `nect`, `sms`, `mail`) und
-     `demo/demo_seed`; dazu die
-     simulierte eID-Kartenlesung in `ident_eid` und der Klartextversand von TAN/Code.
-   - Anspruch: Sie ersetzen reale Systeme und dürfen deren Sicherheit nicht nachbauen – aber der Kern
-     vertraut ihnen **nur über seinen Port** und nur mit dem, was der Port-Vertrag zusagt. Was ein
-     reales System zusätzlich leisten muss (z. B. Einmaligkeit eines Freischaltcodes, Signatur einer
-     KOBIL-Antwort), steht im Vertrag des Ports, nicht im Mock.
+     `demo/demo_seed`. Dazu kommen die simulierte eID-Kartenlesung in `ident_eid` und der Versand
+     von TAN und Code im Klartext.
+   - Anspruch: Diese Module ersetzen reale Systeme. Sie müssen deren Sicherheit nicht nachbauen.
+     Der Kern vertraut ihnen aber **nur über seinen Port** und nur in dem, was der Vertrag des Ports
+     zusagt. Was ein reales System zusätzlich leisten muss, steht im Vertrag des Ports, nicht im
+     Mock. Beispiele sind die Einmaligkeit eines Freischaltcodes oder die Signatur einer
+     KOBIL-Antwort.
 3. **Frontends und Ausführungsumgebung – später.**
-   - `frontend/`, `keycloak-theme/`, `compose.yml`, `Dockerfile`, `openshift/`, Profil- und
-     Datenbank-Konfiguration für den Betrieb (Admin-Zugang, H2-Konsole, Keycloak-Startmodus,
-     Proxy-Header, TLS zwischen den Containern).
-   - Anspruch: vorführfähig. Sie werden in einer eigenen Runde gehärtet; bis dahin darf keine
-     Instanz mit echten Personendaten laufen.
+   - Dazu gehören `frontend/`, `keycloak-theme/`, `compose.yml`, `Dockerfile`, `openshift/` sowie
+     die Profil- und Datenbank-Konfiguration für den Betrieb. Gemeint sind etwa Admin-Zugang,
+     H2-Konsole, Startmodus von Keycloak, Proxy-Header und TLS zwischen den Containern.
+   - Anspruch: vorführfähig. Diese Teile werden in einer eigenen Runde gehärtet. Bis dahin darf
+     keine Instanz mit echten Personendaten laufen.
 
-**Warum so geschnitten**: Ob der Ansatz trägt, entscheidet sich am Kern: Orchestrierung, Niveaus,
-Kontobindung, DPoP-Bindung. Eine gehärtete Oberfläche oder ein gehärtetes Deployment sagt nichts über
-den Ansatz aus, kostet aber dieselbe Zeit. Umgekehrt hielte ein Kern, dessen Invarianten nur auf
-Konvention beruhen, keiner genauen Prüfung stand.
+**Warum so geschnitten**: Ob der Ansatz funktioniert, entscheidet sich am Kern, also an
+Orchestrierung, Niveaus, Kontobindung und DPoP-Bindung. DPoP bindet ein Token an einen Schlüssel auf
+dem Gerät, sodass ein gestohlenes Token allein nichts nützt. Eine gehärtete Oberfläche oder ein
+gehärtetes Deployment sagt nichts über den Ansatz aus, kostet aber genauso viel Zeit. Umgekehrt
+würde ein Kern, dessen Invarianten nur auf Konvention beruhen, keiner genauen Prüfung standhalten.
 
-**Erwogene Alternative**: Das ganze Projekt als Referenz deklarieren und nur die ausnutzbaren
-Befunde schließen. Verworfen: Dann bleibt P-1 (Invarianten per Konvention) offen, und das Argument
-„produktionsnah“ fällt beim ersten Review in sich zusammen.
+**Erwogene Alternative**: Das ganze Projekt als Referenz erklären und nur die Befunde schließen, die
+sich tatsächlich ausnutzen lassen. Verworfen: Dann bliebe P-1 (Invarianten nur per Konvention)
+offen. Die Aussage, das Projekt sei „produktionsnah“, ließe sich dann schon beim ersten Review nicht
+mehr halten.
 
 **Folgen für die Review-Befunde 2026-09**:
 
-- **Im Kern, jetzt:** S-1 bis S-3, S-6, S-7, M-1 bis M-11, M-13; die strukturellen Maßnahmen P-1
-  (Typen, Constraints, modellbasierter Test, Invariantenregister), P-3 (eine Wahrheit für Keycloak)
-  und P-4 (Niveaus nur mit Nachweis).
-- **S-4 (Trust-all-TLS)** gehört in den Kern, obwohl es nach Umgebung aussieht: Die Klasse sitzt im
-  Kern und wirkt JVM-weit auf jeden ausgehenden Aufruf. Der Kern bindet Trust-all an einen
-  ausdrücklichen Schalter; wie die Umgebung Zertifikate bereitstellt, folgt später.
-- **M-9 (Hop Keycloak → Orchestrator)**: Die Authentisierung der Antwort ist Kern; TLS auf dem Hop ist
-  Umgebung.
+Die Kürzel bezeichnen einzelne Befunde aus dem Review. Sie werden so den drei Bereichen zugeordnet:
+
+- **Im Kern, jetzt:** S-1 bis S-3, S-6, S-7, M-1 bis M-11, M-13. Dazu die strukturellen Maßnahmen
+  - P-1 (Typen, Constraints, modellbasierter Test, Invariantenregister),
+  - P-3 (eine einzige maßgebliche Quelle für Keycloak) und
+  - P-4 (Niveaus nur mit Nachweis).
+- **S-4 (Trust-all-TLS)** gehört in den Kern, obwohl es nach Umgebung aussieht. Gemeint ist eine
+  Einstellung, die jedem TLS-Zertifikat vertraut. Die Klasse dafür liegt im Kern und wirkt in der
+  ganzen JVM auf jeden ausgehenden Aufruf. Der Kern erlaubt Trust-all deshalb nur über einen
+  ausdrücklichen Schalter. Wie die Umgebung Zertifikate bereitstellt, folgt später.
+- **M-9 (Verbindung Keycloak → Orchestrator)**: Dass die Antwort authentisiert ist, gehört zum
+  Kern. TLS auf dieser Verbindung gehört zur Umgebung.
 - **Später (Umgebung/Frontend):** S-5 (Admin-Passwort auf OpenShift), M-12 (Keycloak `start-dev`,
-  H2-Konsole im Pod), Compose-Ports, `forward-headers-strategy`, CSP-Header, Web-Kanal-Tokens im
-  `sessionStorage`, Frontend-Thumbprint.
-- **Fremdsystem-Simulation:** S-8 (Freischaltcode-Hash) liegt im simulierten Personenverzeichnis
-  ([ADR-31](ADR-031-freischaltcode-liegt-im-fremdsystem.md)). Dass ein Code bis zum Ablauf
-  wiederverwendbar bleibt, ist eine eigene, bewusste Entscheidung mit benanntem Restrisiko (ADR-31,
-  Abschnitt „Der Code ist bis zum Ablauf wiederverwendbar“). Die unauthentifizierte Verwaltungs-API
-  des Verzeichnisses bleibt Vorführrahmen.
-- **`ident-eid`** bleibt eine Simulation des eID-Servers mit dessen Niveau (loa3); der Port-Vertrag
-  benennt, dass ein reales Ergebnis serverseitig vom eID-Server kommt und nie aus Client-Angaben.
+  H2-Konsole im Pod), Ports in Compose, `forward-headers-strategy`, CSP-Header, Tokens des
+  Web-Kanals im `sessionStorage`, Thumbprint im Frontend.
+- **Simulation der Fremdsysteme:** S-8 (Hash des Freischaltcodes) betrifft das simulierte
+  Personenverzeichnis ([ADR-31](ADR-031-freischaltcode-liegt-im-fremdsystem.md)). Dass ein Code bis
+  zum Ablauf wiederverwendbar bleibt, ist eine eigene, bewusste Entscheidung mit benanntem
+  Restrisiko. Sie steht in ADR-31 im Abschnitt „Der Code ist bis zum Ablauf wiederverwendbar“. Die
+  Verwaltungs-API des Verzeichnisses verlangt keine Authentisierung. Sie bleibt Vorführrahmen.
+- **`ident-eid`** bleibt eine Simulation des eID-Servers und vergibt dessen Niveau (loa3). Der
+  Vertrag des Ports sagt ausdrücklich, dass ein reales Ergebnis auf dem Server vom eID-Server kommt
+  und nie aus Angaben des Clients.
 
 **Folgen allgemein**:
 
-- „demo-only“ ist im Kern kein zulässiger Kommentar mehr. Findet sich einer, ist es ein Befund: Das
-  Stück wird entweder produktionsreif oder wandert hinter einen Port in den Fremdsystem-Bereich.
-- Die Grenze zwischen Kern und Fremdsystem-Simulation ist ein Port; ein ArchUnit-Test sichert, dass
-  der Kern kein Mock-Modul direkt referenziert.
+- „demo-only“ ist im Kern kein zulässiger Kommentar mehr. Findet sich einer, ist das ein Befund. Das
+  betroffene Stück wird dann entweder produktionsreif, oder es wird hinter einen Port in den
+  Bereich der Fremdsysteme verlegt.
+- Die Grenze zwischen Kern und Simulation der Fremdsysteme ist ein Port. Ein ArchUnit-Test stellt
+  sicher, dass der Kern kein Mock-Modul direkt verwendet.
 - Bevor Frontend und Umgebung gehärtet sind, läuft keine Instanz mit echten Personendaten. Das
   steht als Einschränkung in [07-betrieb.md](../07-betrieb.md).
