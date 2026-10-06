@@ -15,8 +15,8 @@ class ClaimEncryptionKeys(
     private val wrapper: MasterKeyWrapper,
     private val accountRepository: AccountRepository,
 ) {
-    /** Whether the KEK is the public value `application.yml` ships for the demo. */
-    fun usesDemoKek(): Boolean = wrapper.usesDemoKek
+    /** Whether the KMS behind the KEK is the demo's simulation (ADR-54). */
+    fun kmsSimulated(): Boolean = wrapper.simulated
 
     /** KEK versions some account is wrapped with that no configured secret matches: those accounts cannot be read. */
     fun orphanedKekVersions(): Set<String> = accountRepository.kekVersions() - wrapper.knownVersions

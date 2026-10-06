@@ -236,6 +236,11 @@ Personenverzeichnis nur über Ports. `SimulationBoundaryArchitectureTest` prüft
 - **M20** `mail` — Simulierter **Mailserver** mit Postausgang (`MailServer`) für `auth_email`. Im
   Demomodus liest die Seite `/briefkasten/` den Postausgang über `/mock-mail/outbox`. Einzige
   Abhängigkeit ist `demo_mode`. Kein eigenes Schema.
+- **M24** `kms` — Simulierter **Schlüsseldienst** ([ADR-54](adr/ADR-054-schluesseldienst-simuliert.md)),
+  kein Tool-Modul. Einzige Abhängigkeit ist `demo_mode`, eigenes Schema `kms`. Zwei Schnittstellen:
+  `KmsTransit` für unser Backend (einpacken, auspacken, signieren, rotieren, zurückziehen) und
+  `/mock-kms/*` für den Tester im Demomodus. `account` und `orchestrator` sind die einzigen Module,
+  die es erreichen dürfen. Es unterliegt nicht unseren Aufbewahrungsregeln.
 
 #### Die Tabellen des simulierten Personenverzeichnisses
 

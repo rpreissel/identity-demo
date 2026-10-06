@@ -159,15 +159,15 @@ lassen sich mit `bd show` anzeigen.
 
 **Schlüssel und Daten:**
 
-- Ein Zielbild für die Verwaltung der Schlüssel: KMS oder HSM, Rotation, Widerruf
-  (`DPoP-demo-61kp`). Heute liegen die Schlüssel in derselben Datenbank
-  ([ADR-9](adr/ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md)).
+- Alle Schlüssel liegen hinter einem Schlüsseldienst mit Versionen, Rotation und Zurückziehen
+  ([ADR-54](adr/ADR-054-schluesseldienst-simuliert.md)). In der Demo ist der Dienst simuliert und
+  hält sein Material in derselben Datenbank; ein Adapter für Vault Transit, ein Cloud-KMS oder ein
+  HSM fehlt (`DPoP-demo-61kp`).
 - Das Claim-Log ([ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md)), die
   Arbeitsdaten der Tools und die App-Tokens
-  ([ADR-53](adr/ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md)) sind verschlüsselt; der
-  Umschlagschlüssel liegt in der Demo in der Konfiguration. Nicht verschlüsselt sind
-  `account.anchor`, `auth_sms.enrollment.phone_number`, der Signaturschlüssel des Orchestrators und
-  die Simulationen (`personenverzeichnis.person.*`, `nect.ident_case.result`).
+  ([ADR-53](adr/ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md)) sind verschlüsselt. Nicht
+  verschlüsselt sind `account.anchor`, `auth_sms.enrollment.phone_number` und die Simulationen
+  (`personenverzeichnis.person.*`, `nect.ident_case.result`).
 - Die Aufbewahrungsfristen müssen mit Datenschutz und Compliance festgelegt werden. Heute sind es
   Richtwerte.
 
@@ -351,9 +351,9 @@ abgelaufene Partition wird als Ganzes entfernt.
   Nachnamen aus dem Claim-Log, geschätzt 70 bis 1.400 Mal je Sekunde. Der Adapter braucht deshalb
   einen Zwischenspeicher je Instanz für ausgepackte Hauptschlüssel, dann liegt die Rate nach außen
   bei der Zahl der Anmeldungen (12 im Mittel, 100 bis 300 in der Spitze).
-- Sitzungen, Journeys, Zähler für Sperren und Mengenbegrenzungen, QR-Anfragen und die
-  Signaturschlüssel des Orchestrators liegen in der Datenbank. Sie würden also auch über mehrere
-  Instanzen hinweg funktionieren.
+- Sitzungen, Journeys, Zähler für Sperren und Mengenbegrenzungen und QR-Anfragen liegen in der
+  Datenbank, die Signaturschlüssel des Orchestrators im Schlüsseldienst. Sie würden also auch über
+  mehrere Instanzen hinweg funktionieren.
 - Keycloak ruft den Orchestrator nicht bei jeder Anmeldung auf, sondern nur bei einer Abmeldung. Es
   fragt auch nicht regelmäßig nach.
 - Eine Suche über die Nutzer-Federation liefert nie eine Liste, höchstens einen Treffer.

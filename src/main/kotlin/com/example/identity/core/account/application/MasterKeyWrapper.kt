@@ -1,13 +1,11 @@
 package com.example.identity.core.account.application
 
-import java.security.MessageDigest
+import com.example.identity.simulation.kms.KmsKeyType
+import com.example.identity.simulation.kms.KmsTransit
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
-import javax.crypto.spec.SecretKeySpec
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.stereotype.Component
 
 /** A wrapped account master key and the KEK version that wrapped it. */
@@ -15,73 +13,47 @@ class WrappedKey(val bytes: ByteArray, val kekVersion: String)
 
 /**
  * Wraps and unwraps an account's master key with the key-encryption key (KEK), the top of the key
- * hierarchy (ADR-52). The one place that knows where the KEK lives: a configured secret for the
- * demo, a KMS or HSM in production. Keys below this level never leave the process. The wrapping
- * is not bound to the account id: the key is wrapped before the row, and so the id, exists.
+ * hierarchy (ADR-52). The one place that knows where the KEK lives: a key management service that
+ * never hands it out. Keys below this level never leave the process. The wrapping is not bound to
+ * the account id: the key is wrapped before the row, and so the id, exists.
  */
 interface MasterKeyWrapper {
     fun wrap(masterKey: ByteArray): WrappedKey
 
     fun unwrap(wrapped: WrappedKey): ByteArray
 
-    /** Whether the KEK is the one `application.yml` ships for the demo. */
-    val usesDemoKek: Boolean
-
-    /** Every KEK version this wrapper can still unwrap - the current one and each previous one. */
+    /** Every KEK version this wrapper can still unwrap - the current one and each not yet retired. */
     val knownVersions: Set<String>
+
+    /** Whether the service behind the KEK is the demo's simulation rather than a real KMS or HSM. */
+    val simulated: Boolean
 }
 
 /**
- * KEKs that wrapped older master keys: `version -> secret`. A rotated-out KEK stays until every
- * account is re-wrapped under the current one.
- */
-@ConfigurationProperties(prefix = "identity.secrets")
-data class PreviousMasterKeks(val previousMasterKeks: Map<String, String> = emptyMap())
-
-/**
- * The demo adapter: the KEK is a configured secret, so it lives in the process. Outside demo mode
- * `ProductionModeCheck` refuses the public demo value. Unlike the OTP pepper the KEK must be fixed
- * across restarts, or every stored claim becomes unreadable.
+ * The KEK as a key in the KMS (ADR-54): `identity-kek`, created on first use. The KMS returns its
+ * key version with every ciphertext; stored as `v<N>` next to the wrapped key, it tells which
+ * version to ask for later. Rotating the KEK in the KMS needs nothing here: new wraps take the
+ * new version, old ones keep unwrapping until the KMS retires their version.
  */
 @Component
-class ConfiguredKekWrapper(
-    @Value("\${identity.secrets.master-kek}") secret: String,
-    @Value("\${identity.secrets.master-kek-version:1}") private val currentVersion: String,
-    previous: PreviousMasterKeks,
-) : MasterKeyWrapper {
-    private val current: SecretKey
-    private val keks: Map<String, SecretKey>
-
-    override val usesDemoKek: Boolean = secret == DEMO_KEK
-
-    override val knownVersions: Set<String> get() = keks.keys
-
+class KmsKekWrapper(private val kms: KmsTransit) : MasterKeyWrapper {
     init {
-        check(secret.isNotBlank()) { "identity.secrets.master-kek (MASTER_KEK) must not be empty" }
-        check(currentVersion !in previous.previousMasterKeks) { "identity.secrets.master-kek-version '$currentVersion' is also listed among the previous KEKs" }
-        current = keyFromSecret(secret)
-        keks = previous.previousMasterKeks.mapValues { (_, value) -> keyFromSecret(value) } + (currentVersion to current)
+        kms.ensureKey(KEK_KEY, KmsKeyType.AES256)
     }
 
-    override fun wrap(masterKey: ByteArray): WrappedKey =
-        WrappedKey(AesGcm.seal(current, AAD, masterKey), currentVersion)
+    override fun wrap(masterKey: ByteArray): WrappedKey = kms.encrypt(KEK_KEY, masterKey).let { WrappedKey(it.bytes, "v${it.keyVersion}") }
 
-    override fun unwrap(wrapped: WrappedKey): ByteArray {
-        val kek = keks[wrapped.kekVersion]
-            ?: error("master key wrapped with KEK version '${wrapped.kekVersion}', for which no secret is configured (identity.secrets.previous-master-keks)")
-        return AesGcm.open(kek, AAD, wrapped.bytes)
-    }
+    override fun unwrap(wrapped: WrappedKey): ByteArray = kms.decrypt(KEK_KEY, versionOf(wrapped.kekVersion), wrapped.bytes)
 
-    /** A 256-bit key from a secret of any length; the secret itself is never used as key material. */
-    private fun keyFromSecret(secret: String): SecretKey =
-        SecretKeySpec(MessageDigest.getInstance("SHA-256").digest(secret.toByteArray()), "AES")
+    override val knownVersions: Set<String> get() = kms.keyInfo(KEK_KEY).usableVersions.map { "v$it" }.toSet()
 
-    internal companion object {
-        /** The default in `application.yml`; `ClaimCryptoTest` keeps the two equal. */
-        const val DEMO_KEK = "demo-only-master-kek-not-for-real-people"
+    override val simulated: Boolean = true
 
-        /** What the wrapped bytes are for; a wrapped batch key must not pass as a master key. */
-        private val AAD = "account-master-key".toByteArray()
+    private fun versionOf(kekVersion: String): Int =
+        kekVersion.removePrefix("v").toIntOrNull() ?: error("not a KMS key version: '$kekVersion'")
+
+    companion object {
+        const val KEK_KEY = "identity-kek"
     }
 }
 

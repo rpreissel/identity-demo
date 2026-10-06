@@ -24,7 +24,6 @@ class ProductionModeCheck(
     @Value("\${spring.h2.console.enabled:false}") private val h2Console: Boolean,
     @Value("\${identity.secrets.otp-pepper:}") private val otpPepper: String,
     @Value("\${account.change-log.lookup-secret:}") private val lookupSecret: String,
-    @Value("\${identity.secrets.master-kek:}") private val masterKek: String,
     @Value("\${keycloak-tls.trust-self-signed:false}") private val trustSelfSigned: Boolean,
     @Value("\${keycloak-migrate.base-url:}") private val keycloakBaseUrl: String,
     @Value("\${keycloak-setup.orchestrator-base-url:}") private val orchestratorBaseUrlForKeycloak: String,
@@ -70,11 +69,9 @@ class ProductionModeCheck(
             add("account.change-log.lookup-secret ist der oeffentliche Demo-Wert - Suchschluessel waeren fuer jeden umkehrbar (CHANGE_LOG_LOOKUP_SECRET).")
         }
         lookupKeys.orphanedKeyIds().takeIf { it.isNotEmpty() }?.let { add(orphanedKeysMessage(it)) }
-        if (masterKek.length < MIN_SECRET_LENGTH) {
-            // A blank value never gets here: ConfiguredKekWrapper refuses it at construction, in any mode.
-            add("identity.secrets.master-kek ist kuerzer als $MIN_SECRET_LENGTH Zeichen (MASTER_KEK).")
-        } else if (encryptionKeys.usesDemoKek()) {
-            add("identity.secrets.master-kek ist der oeffentliche Demo-Wert - jeder damit eingepackte Schluessel waere fuer jeden lesbar (MASTER_KEK).")
+        // The simulated KMS keeps every key in our own database; real people's data needs a real one (ADR-54).
+        if (encryptionKeys.kmsSimulated()) {
+            add("Der Schluesseldienst ist die Simulation (Modul kms) - Umschlagschluessel und Signaturschluessel laegen in unserer Datenbank. Einen echten KMS- oder HSM-Adapter einsetzen.")
         }
         orphanedKekVersions().takeIf { it.isNotEmpty() }?.let { add(orphanedKekMessage(it)) }
         if (trustSelfSigned) add("Das Zertifikat von Keycloak wird nicht geprueft (trustSelfSignedCertificate). Ein vertrauenswuerdiges Zertifikat verwenden.")
@@ -97,8 +94,8 @@ class ProductionModeCheck(
         encryptionKeys.orphanedKekVersions() + (dataKeys.kekVersions() - dataKeyWrapping.knownVersions)
 
     private fun orphanedKekMessage(versions: Set<String>) =
-        "Gespeicherte Schluessel (account.account, orchestrator.data_key) sind mit KEK-Version $versions eingepackt, fuer die kein Geheimnis " +
-            "konfiguriert ist - die Daten darunter sind nicht mehr lesbar (identity.secrets.previous-master-keks)."
+        "Gespeicherte Schluessel (account.account, orchestrator.data_key) sind mit KEK-Version $versions eingepackt, die der " +
+            "Schluesseldienst nicht mehr auspackt - die Daten darunter sind nicht mehr lesbar (Schluessel identity-kek, zurueckgezogene Versionen)."
 
     private companion object {
         const val DEMO_ADMIN_PASSWORD = "admin"

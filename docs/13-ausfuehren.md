@@ -109,6 +109,9 @@ gleichzeitig laufen.
 - **Personenverzeichnis** (simuliertes Fremdsystem): <http://localhost:8080/personenverzeichnis/>
 - **Briefkasten** (Briefe, SMS und E-Mails an Testpersonen, nur im Demomodus):
   <http://localhost:8080/briefkasten/>
+- **Schlüsseldienst** (simuliertes KMS, nur im Demomodus, [ADR-54](adr/ADR-054-schluesseldienst-simuliert.md)):
+  <http://localhost:8080/mock-kms/keys> zeigt Schlüssel und Versionen; rotieren mit
+  `POST /mock-kms/keys/{name}/rotation`, zurückziehen mit `POST /mock-kms/keys/{name}/retirement?below=N`.
 - **H2-Konsole**: <http://localhost:8080/h2-console>, nur beim Start direkt auf dem Rechner (siehe
   unten, „H2-Konsole: nur beim Host-Start“). Die Startseite verlinkt sie im Server-Status, im
   Abschnitt „Entwickler-Werkzeuge“. Dort stehen auch die Zugangsdaten.

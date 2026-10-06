@@ -1,0 +1,152 @@
+components:
+  schemas:
+    KmsKeyInfo:
+      properties:
+        latestVersion:
+          format: int32
+          type: integer
+        minDecryptionVersion:
+          format: int32
+          type: integer
+        name:
+          type: string
+        type:
+          enum:
+          - AES256
+          - ECDSA_P256
+          type: string
+        usableVersions:
+          items:
+            format: int32
+            type: integer
+          type: array
+        versions:
+          items:
+            format: int32
+            type: integer
+          type: array
+      required:
+      - latestVersion
+      - minDecryptionVersion
+      - name
+      - type
+      - usableVersions
+      - versions
+      type: object
+  securitySchemes:
+    dpop:
+      description: DPoP proof JWT, one per request, bound to method and URL (docs/09-dpop.md). The App channel's proof; the
+        binding key is derived from it and is never supplied by the caller.
+      in: header
+      name: DPoP
+      type: apiKey
+    kc-peer-auth:
+      bearerFormat: JWT
+      description: 'Signed peer-auth assertion (docs/05-api.md Abschnitt 3b, ADR-7). The Web channel''s proof: Keycloak calls
+        server-to-server, and the channel binding comes out of the assertion.'
+      scheme: bearer
+      type: http
+info:
+  description: App-facing (orchestrator-first) API for the DPoP-bound registration and login demo. See docs/05-api.md for
+    the full contract; the Keycloak-facing Keycloak facade is out of scope for this build (docs/08-projektrahmen.md).
+  title: Identity-Demo Orchestrator API
+  version: v1
+openapi: 3.1.0
+paths:
+  /mock-kms/keys:
+    get:
+      description: Alle Schluessel mit ihren Versionen; Schluesselmaterial verlaesst den Dienst nie.
+      operationId: keys
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                items:
+                  $ref: '#/components/schemas/KmsKeyInfo'
+                type: array
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Schluessel und Versionen
+      tags:
+      - Mock KMS
+  /mock-kms/keys/{name}/retirement:
+    post:
+      description: Alle Versionen unterhalb von `below` packen nicht mehr aus und verifizieren nicht mehr; ihr Material wird
+        vernichtet.
+      operationId: retire
+      parameters:
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: below
+        required: true
+        schema:
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KmsKeyInfo'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Versionen zurueckziehen
+      tags:
+      - Mock KMS
+  /mock-kms/keys/{name}/rotation:
+    post:
+      description: Legt eine neue Version an. Sie packt ab jetzt ein und signiert; aeltere Versionen packen weiter aus und
+        verifizieren.
+      operationId: rotate
+      parameters:
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/KmsKeyInfo'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Schluessel rotieren
+      tags:
+      - Mock KMS
+tags:
+- description: Simulierter Schluesseldienst - kein Endpunkt dieser Anwendung, sondern der Fremddienst
+  name: Mock KMS
+- description: 'SMS-TAN: Einrichtung als Faktor, Anmeldung und Login ohne DPoP'
+  name: 'Tool: SMS'
+- description: Gerätebindung über den externen Dienstleister KOBIL
+  name: 'Tool: KOBIL'
+- description: 'Geraetebindung: Einrichtung und Anmeldung ueber den Geraeteschluessel'
+  name: 'Tool: Gerät'
+- description: 'Passwort: Einrichtung als Wissensfaktor, Anmeldung und Login ohne DPoP'
+  name: 'Tool: Passwort'
+- description: 'E-Mail: Bestaetigung der Adresse, Anmeldung und Login ohne DPoP'
+  name: 'Tool: E-Mail'
+- description: 'QR-Pairing: Freigabe eines Web-Kanals aus einer bereits angemeldeten App'
+  name: 'Tool: QR-Login'

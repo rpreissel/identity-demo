@@ -4,7 +4,6 @@ import com.example.identity.contract.tool_api.envelope.API_V1
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.crypto.ECDSASigner
 import com.nimbusds.jose.jwk.ECKey
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.util.Base64URL
@@ -18,6 +17,8 @@ import jakarta.servlet.http.HttpServletResponse
 import java.security.MessageDigest
 import java.time.Clock
 import java.util.Date
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
@@ -28,18 +29,19 @@ import org.springframework.web.util.ContentCachingResponseWrapper
  * Signiert jede Antwort an Keycloak. Die Antwort entscheidet, wer eingeloggt wird; ohne Signatur
  * bestimmte das, wer auf dem Hop antworten kann. TLS ist Umgebung (ADR-35), die Echtheit Kern.
  * Der JWS in [HEADER] bindet `req` (die `jti` der Anfrage), `status` und `body_sha256`, dazu
- * `iss`/`aud` spiegelbildlich zur Anfrage. Eigener Schluessel ([PURPOSE]), ein Schluessel je Zweck.
+ * `iss`/`aud` spiegelbildlich zur Anfrage. Eigener Schluessel ([PURPOSE]) im KMS, ein Schluessel je Zweck.
  */
 @Component
-class KeycloakResponseSigner(repository: NodeSigningKeyRepository, private val clock: Clock) {
-    private val nodeKeys = NodeKeys(repository, clock)
+class KeycloakResponseSigner(private val nodeKeys: KmsNodeKeys, private val clock: Clock) {
 
-    private fun key(): ECKey = nodeKeys.keyFor(PURPOSE, KEY_ID_PREFIX)
+    @EventListener(ApplicationReadyEvent::class)
+    fun provisionKey() = nodeKeys.provision(PURPOSE)
 
-    fun publicKey(): ECKey = key().toPublicJWK()
+    /** Jede noch gueltige Version: Keycloak sucht nach der kid, auch nach einer Rotation. */
+    fun publicKeys(): List<ECKey> = nodeKeys.publicKeys(PURPOSE)
 
     fun sign(request: JWTClaimsSet, status: Int, body: ByteArray): String {
-        val key = key()
+        val signer = nodeKeys.signer(PURPOSE)
         val now = clock.instant()
         val claims = JWTClaimsSet.Builder()
             .issuer(request.audience.singleOrNull())
@@ -50,8 +52,8 @@ class KeycloakResponseSigner(repository: NodeSigningKeyRepository, private val c
             .claim("status", status)
             .claim("body_sha256", Base64URL.encode(MessageDigest.getInstance("SHA-256").digest(body)).toString())
             .build()
-        val jwt = SignedJWT(JWSHeader.Builder(JWSAlgorithm.ES256).keyID(key.keyID).type(JOSEObjectType(TYPE)).build(), claims)
-        jwt.sign(ECDSASigner(key))
+        val jwt = SignedJWT(JWSHeader.Builder(JWSAlgorithm.ES256).keyID(signer.keyId).type(JOSEObjectType(TYPE)).build(), claims)
+        jwt.sign(signer)
         return jwt.serialize()
     }
 
@@ -59,7 +61,6 @@ class KeycloakResponseSigner(repository: NodeSigningKeyRepository, private val c
         const val HEADER = "Orchestrator-Response-Signature"
         const val TYPE = "orchestrator-response+jwt"
         const val PURPOSE = "keycloak-response"
-        private const val KEY_ID_PREFIX = "orchestrator-response"
         private const val TTL_SECONDS = 60L
     }
 }
@@ -107,7 +108,7 @@ class KeycloakResponseJwksController(private val signer: KeycloakResponseSigner)
 
     @GetMapping(RESPONSE_JWKS_PATH)
     @Operation(operationId = "keycloakResponseJwks", summary = "Public Key der Antwortsignatur (Header Orchestrator-Response-Signature)")
-    fun jwks(): Map<String, Any> = JWKSet(signer.publicKey()).toJSONObject()
+    fun jwks(): Map<String, Any> = JWKSet(signer.publicKeys()).toJSONObject()
 }
 
 const val RESPONSE_JWKS_PATH = "$API_V1/kc/response-jwks/.well-known/jwks.json"

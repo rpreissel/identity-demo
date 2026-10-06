@@ -464,19 +464,17 @@ dann alle offenen Punkte auf einmal. Diese Punkte müssen erfüllt sein:
 - `spring.h2.console.enabled=false`.
 - `springdoc.api-docs.enabled=false`. Die Voreinstellung folgt `demo.mode`. Sonst zeigten Swagger-UI
   und `/v3/api-docs` jedem ohne Anmeldung alle Endpunkte. Der API-Vertrag liegt ohnehin in `api/`.
-- `identity.secrets.otp-pepper`, `account.change-log.lookup-secret` und
-  `identity.secrets.master-kek` haben mindestens 32 Zeichen. Die letzten beiden sind nicht der
-  öffentliche Demo-Wert. Außerdem ist für jede Id eines Suchschlüssels im Änderungsprotokoll ein
-  Geheimnis konfiguriert (Abschnitt 3, `account.change_log`).
-- `identity.secrets.master-kek` (`MASTER_KEK`) ist der Umschlagschlüssel der Claim-Verschlüsselung
-  ([ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md)). Er packt den Hauptschlüssel
-  jedes Kontos ein und muss über Neustarts und Instanzen hinweg fest sein. Zum Wechseln den alten
-  Wert unter `identity.secrets.previous-master-keks.<alte Version>` eintragen und neuen Wert und
-  neue Version (`MASTER_KEK_VERSION`) setzen. Jedes Konto merkt sich die Version, mit der sein
-  Hauptschlüssel eingepackt ist (`kek_version`). Der alte Wert darf erst entfernt werden, wenn kein
-  Konto mehr seine Version trägt und kein Tagesschlüssel in `orchestrator.data_key` (ADR-53). Sonst
-  verweigert `ProductionModeCheck` außerhalb des Demomodus den Start; im Demomodus warnt er. Im Produktivbetrieb gehört dieser Schlüssel in ein KMS oder HSM
-  hinter dem Port `MasterKeyWrapper` (`DPoP-demo-61kp`).
+- `identity.secrets.otp-pepper` und `account.change-log.lookup-secret` haben mindestens 32 Zeichen.
+  Das zweite ist nicht der öffentliche Demo-Wert. Außerdem ist für jede Id eines Suchschlüssels im
+  Änderungsprotokoll ein Geheimnis konfiguriert (Abschnitt 3, `account.change_log`).
+- Der Schlüsseldienst ist nicht die Simulation (Modul `kms`,
+  [ADR-54](adr/ADR-054-schluesseldienst-simuliert.md)). Umschlagschlüssel `identity-kek` und die
+  Signaturschlüssel des Orchestrators liegen dort; die Simulation hielte sie in unserer Datenbank.
+  Ein Adapter für Vault Transit, ein Cloud-KMS oder ein HSM ersetzt `KmsKekWrapper` und
+  `KmsNodeKeys`. Jedes Konto und jeder Tagesschlüssel merkt sich die KEK-Version (`kek_version`),
+  mit der er eingepackt ist. Eine Version darf im Dienst erst zurückgezogen werden, wenn keine Zeile
+  sie mehr trägt; sonst verweigert `ProductionModeCheck` außerhalb des Demomodus den Start, im
+  Demomodus warnt er.
 - Der Orchestrator erreicht Keycloak über https (`keycloak-migrate.base-url`) und prüft dessen
   Zertifikat (kein `trustSelfSignedCertificate`).
 - Keycloak erreicht den Orchestrator über https (`orchestratorBaseUrl` der Keycloak-Einrichtung). Über

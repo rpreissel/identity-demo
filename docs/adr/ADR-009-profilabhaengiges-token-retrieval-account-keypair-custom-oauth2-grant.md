@@ -95,9 +95,9 @@ gültigem DPoP-Proof, und das RefreshToken verlässt das Backend nie (siehe
 
 **Folgen und Kosten**: Der Grant ist ein Stück Keycloak-Erweiterung, das dieses Projekt selbst
 geschrieben hat. Er baut auf der Schnittstelle aus `keycloak-server-spi-private` auf. Bei jedem
-Keycloak-Update muss er deshalb mitgeprüft werden. Der Client-Schlüssel des Orchestrators
-(`orchestrator.node_signing_key`) liegt in der Demo im Klartext in der Datenbank (siehe
-[ADR-22](ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md)).
+Keycloak-Update muss er deshalb mitgeprüft werden. Der Client-Schlüssel des Orchestrators liegt im
+Schlüsseldienst, der für ihn signiert ([ADR-54](ADR-054-schluesseldienst-simuliert.md)); in der
+Demo ist das die Simulation.
 
 **Geschichte**: Die übrigen Clients mit `private_key_jwt` statt mit `client_secret` anzumelden, war
 hier als spätere Härtung zurückgestellt. Umgesetzt ist das mit
