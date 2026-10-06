@@ -38,7 +38,7 @@ keycloak = "26.6.4"
 # Maven Central. Das REST-API ist innerhalb von Keycloak 26.x stabil.
 keycloak-admin-client = "26.0.12"
 # Folgt der Keycloak-Version: resteasy.version in keycloak-parent.
-resteasy = "6.2.16.Final"
+resteasy = "7.0.5.Final"
 jakarta-ws-rs = "3.1.0"
 zxing = "3.5.3"
 jsr305 = "3.0.2"
