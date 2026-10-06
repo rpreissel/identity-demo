@@ -1,6 +1,10 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.texts.templateOf
+import com.example.identity.contract.tool_api.claims.AttributeType
+import com.example.identity.core.account.AccountService
+import org.springframework.beans.factory.annotation.Autowired
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -17,6 +21,9 @@ import kotlin.random.Random
  * is not told the register changed.
  */
 class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
+
+    @Autowired
+    private lateinit var accountService: AccountService
 
     init {
         beforeScenario { stubDpopWithFakeJwk() }
@@ -159,15 +166,8 @@ class PersonenverzeichnisIntegrationTest : IntegrationTestSupport() {
                     """{"kvnr":"$newKvnr","versnr":"$versnr","name":"Register","vorname":"Rita","geburtsdatum":"1970-01-01"}"""
                 )
                 eventually { anchor("member_number") == versnr }
-                val kvnrClaims = jdbcTemplate.queryForList(
-                    """
-                    SELECT c.normalized_value FROM account.claim c
-                    WHERE c.account_id = ? AND c.attribute_type = 'kvnr' AND c.claim_source = 'person_directory'
-                    AND NOT EXISTS (SELECT 1 FROM account.retraction r WHERE r.account_id = c.account_id
-                        AND r.attribute_type = c.attribute_type AND r.normalized_value = c.normalized_value)
-                    """.trimIndent(),
-                    String::class.java, accountId
-                ).map { it!!.uppercase() }
+                // Values are stored encrypted (ADR-52), so the established KVNR is read through the service.
+                val kvnrClaims = accountService.establishedClaimValues(AccountId(accountId), setOf(AttributeType.KVNR)).values.map { it.uppercase() }
 
                 val replaced = randomVersnr()
                 registerCall(HttpMethod.PUT, "/personen/$personId", """{"kvnr":"$newKvnr","versnr":"$replaced","name":"Register","vorname":"Rita","geburtsdatum":"1970-01-01"}""")

@@ -16,5 +16,8 @@ enum class RetractionSource {
     PERSON_DIRECTORY,
 
     /** A human operator, with a reason - the escape hatch for everything the two above do not cover. */
-    OPERATOR
+    OPERATOR,
+
+    /** The retention rule of the attribute ran out (`account.claims.retention`, ADR-52); nobody acted. */
+    RETENTION_POLICY
 }

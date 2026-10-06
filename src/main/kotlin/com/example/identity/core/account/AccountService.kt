@@ -13,6 +13,7 @@ import com.example.identity.core.account.infrastructure.AccountAuthMethodReposit
 import com.example.identity.core.account.infrastructure.AccountRepository
 import com.example.identity.core.account.application.MethodDeactivationReason
 import com.example.identity.core.account.application.ChangeLog
+import com.example.identity.core.account.application.ClaimCrypto
 import com.example.identity.core.account.application.PersonLookupKey
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.claims.AttributeAuthority
@@ -44,6 +45,7 @@ class AccountService(
     private val eventPublisher: ApplicationEventPublisher,
     private val changeLog: ChangeLog,
     private val personLookupKey: PersonLookupKey,
+    private val claimCrypto: ClaimCrypto,
     private val clock: Clock,
 ) : AccountDirectory {
 
@@ -157,7 +159,7 @@ class AccountService(
      */
     @Transactional
     fun createAccountInSetup(): AccountProfile {
-        val account = accountRepository.save(Account(createdAt = clock.instant()))
+        val account = accountRepository.save(Account(createdAt = clock.instant()).also(claimCrypto::assignMasterKey))
         return AccountProfile(accountId = account.accountId, personId = null, authenticationMethods = emptyList())
     }
 
@@ -186,20 +188,20 @@ class AccountService(
         val anchorAcr = anchors.mapNotNull { anchor ->
             anchor.attributeType?.let { type -> type to (anchor.establishedAcr?.let(AcrLevel::parse) ?: AcrLevel.NONE) }
         }.toMap()
-        val claims = claimLedger.established(from).sortedBy { it.establishedAt }
+        val claims = claimLedger.establishedWithValues(from)
 
         // Release the unique anchor values before the same values are written on `into`.
         anchorRegistry.releaseNow(anchors)
         changeLog.accountAbsorbed(into, from)
         deleteAccount(from)
 
-        claims.forEach { claim ->
+        claims.forEach { (claim, value) ->
             val type = checkNotNull(claim.attributeType) { "Claim without an attribute type on account $from" }
             recordClaim(
                 into,
                 Claim(
                     attributeType = type,
-                    value = checkNotNull(claim.value) { "Claim without a value on account $from" },
+                    value = value,
                     source = ClaimSource(checkNotNull(claim.claimSource) { "Claim without a source on account $from" }),
                     establishedAcr = claim.establishedAcr?.let(AcrLevel::parse)
                 ),

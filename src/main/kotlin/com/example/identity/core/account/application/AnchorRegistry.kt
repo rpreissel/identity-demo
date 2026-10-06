@@ -43,7 +43,7 @@ class AnchorRegistry(
             // before deletions, so the pair would briefly hold two rows and trip ux_anchor_account_type.
             is AnchorDecision.Replace -> {
                 decision.retractFromLog?.let {
-                    claimLedger.retract(accountId, type, it, RetractionSource.ACCOUNT_MANAGEMENT, "anker-ersetzt", establishedAt)
+                    claimLedger.retractValue(accountId, type, it, RetractionSource.ACCOUNT_MANAGEMENT, "anker-ersetzt", establishedAt)
                 }
                 val row = checkNotNull(existing)
                 row.value = normalized

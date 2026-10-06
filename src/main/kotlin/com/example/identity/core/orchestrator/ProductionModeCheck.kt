@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.core.account.ChangeLogLookupKeys
+import com.example.identity.core.account.ClaimEncryptionKeys
 import com.example.identity.core.orchestrator.session.MockTokenProvider
 import com.example.identity.core.orchestrator.session.TokenProvider
 import com.example.identity.demo.demo_mode.DemoMode
@@ -21,11 +22,13 @@ class ProductionModeCheck(
     @Value("\${spring.h2.console.enabled:false}") private val h2Console: Boolean,
     @Value("\${identity.secrets.otp-pepper:}") private val otpPepper: String,
     @Value("\${account.change-log.lookup-secret:}") private val lookupSecret: String,
+    @Value("\${identity.secrets.master-kek:}") private val masterKek: String,
     @Value("\${keycloak-tls.trust-self-signed:false}") private val trustSelfSigned: Boolean,
     @Value("\${keycloak-migrate.base-url:}") private val keycloakBaseUrl: String,
     @Value("\${keycloak-setup.orchestrator-base-url:}") private val orchestratorBaseUrlForKeycloak: String,
     @Value("\${springdoc.api-docs.enabled:true}") private val apiDocs: Boolean,
     private val tokenProvider: TokenProvider,
+    private val encryptionKeys: ClaimEncryptionKeys,
 ) {
     init {
         if (demoMode.on) {
@@ -62,6 +65,11 @@ class ProductionModeCheck(
             add("account.change-log.lookup-secret ist der oeffentliche Demo-Wert - Suchschluessel waeren fuer jeden umkehrbar (CHANGE_LOG_LOOKUP_SECRET).")
         }
         lookupKeys.orphanedKeyIds().takeIf { it.isNotEmpty() }?.let { add(orphanedKeysMessage(it)) }
+        if (masterKek.length < MIN_SECRET_LENGTH) {
+            add("identity.secrets.master-kek ist leer oder kuerzer als $MIN_SECRET_LENGTH Zeichen (MASTER_KEK).")
+        } else if (encryptionKeys.usesDemoKek()) {
+            add("identity.secrets.master-kek ist der oeffentliche Demo-Wert - jeder damit eingepackte Schluessel waere fuer jeden lesbar (MASTER_KEK).")
+        }
         if (trustSelfSigned) add("Das Zertifikat von Keycloak wird nicht geprueft (trustSelfSignedCertificate). Ein vertrauenswuerdiges Zertifikat verwenden.")
         if (keycloakBaseUrl.isNotBlank() && !keycloakBaseUrl.startsWith("https://")) {
             add("Keycloak wird ueber $keycloakBaseUrl erreicht, nicht ueber https.")

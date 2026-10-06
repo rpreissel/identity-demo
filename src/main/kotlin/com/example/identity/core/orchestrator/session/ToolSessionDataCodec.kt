@@ -8,7 +8,7 @@ import kotlin.reflect.KClass
 
 /**
  * The one place that turns a tool's working data into JSON and back (ToolSessionData). Encrypting
- * it would happen here too (docs/ideen/verschluesselung-differenzierte-aufbewahrung.md).
+ * it would happen here too (docs/adr/ADR-052-umschlagverschluesselung-des-claim-logs.md).
  *
  * Reading is tolerant, because during a rolling deploy one version reads what the other wrote: an
  * unknown field is skipped, a missing one takes its Kotlin default. A state therefore gives every

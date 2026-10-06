@@ -10,12 +10,15 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 
-/** Append-only identity log. Readers use [findEstablished] and compare [AccountClaim.normalizedValue]. */
+/** Append-only identity log. Readers use [findEstablished] and compare [AccountClaim.valueDigest]. */
 @Repository
 interface AccountClaimRepository : JpaRepository<AccountClaim, Long> {
 
     /** Everything one method instance ever asserted - the retraction path's only query. */
     fun findByAuthMethodId(authMethodId: UUID): List<AccountClaim>
+
+    /** Every row a retraction of this (type, value) cancels - to find batches left without a live claim. */
+    fun findByAccountIdAndAttributeTypeAndValueDigest(accountId: AccountId?, attributeType: AttributeType, valueDigest: String?): List<AccountClaim>
 
     /**
      * What this account currently asserts: assertions minus retractions (ADR-12). A retraction only
@@ -31,7 +34,7 @@ interface AccountClaimRepository : JpaRepository<AccountClaim, Long> {
               select r.id from AccountRetraction r
               where r.accountId = a.accountId
                 and r.attributeType = a.attributeType
-                and r.normalizedValue = a.normalizedValue
+                and r.valueDigest = a.valueDigest
                 and r.retractedAt >= a.establishedAt
           )
         """
@@ -40,14 +43,14 @@ interface AccountClaimRepository : JpaRepository<AccountClaim, Long> {
 }
 
 /**
- * The strongest surviving value per attribute: trust rank first, recency only breaks ties. Shared
- * by every established-claims reader, so they all select identically.
+ * The strongest surviving claim per attribute: trust rank first, recency only breaks ties. Shared
+ * by every established-claims reader, so they all select identically. The caller decrypts.
  */
-internal fun List<AccountClaim>.strongestEstablishedValues(types: Set<AttributeType>): Map<AttributeType, String> =
-    filter { it.attributeType in types && it.value != null }
+internal fun List<AccountClaim>.strongestEstablished(types: Set<AttributeType>): Map<AttributeType, AccountClaim> =
+    filter { it.attributeType in types }
         .groupBy { it.attributeType!! }
         .mapValues { (_, claims) ->
             claims.maxWith(
                 compareBy<AccountClaim>({ ClaimSource(it.claimSource.orEmpty()).claimTrust.rank }, { it.establishedAt })
-            ).value!!
+            )
         }

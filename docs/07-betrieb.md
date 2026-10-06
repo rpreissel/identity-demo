@@ -229,6 +229,17 @@ Compliance.
   - *Richtwert:* kein Aufräumen mit der Sitzung
   - *Grund:* Diese Daten gehören dem Konto und werden mit ihm gelöscht, mit allen Werten. Nur
     `account.change_log` überlebt die Löschung (ADR-39).
+- **`account.claim_batch_key` (Datenschlüssel einer Gruppe von Angaben)**
+  - *Frist beginnt mit:* dem Schreiben der Gruppe (`expires_at`)
+  - *Richtwert:* keine Frist. Je Attribut konfigurierbar (`account.claims.retention.<Attribut>`,
+    ISO-Dauer, etwa `family_name: P365D`), nicht für Ankerattribute.
+  - *Grund:* Die Werte im Claim-Log liegen verschlüsselt
+    ([ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md)). Läuft die Frist ab, widerruft
+    `ClaimBatchKeyRetention` die Angaben der Gruppe (`RETENTION_POLICY`) und löscht den
+    Datenschlüssel, täglich, je Gruppe in einer eigenen Transaktion. Die Zeilen in `account.claim`
+    bleiben als Metadaten. Dasselbe geschieht sofort, wenn ein Widerruf die letzte gültige Angabe
+    einer Gruppe trifft. Sicherungen dieser Tabelle und der Kontozeile dürfen höchstens so lange
+    aufbewahrt werden wie die von `account.claim`, sonst bleibt der „gelöschte“ Wert dort lesbar.
 - **Konto im Aufbau** (noch kein Anmeldeverfahren)
   - *Frist beginnt mit:* `createdAt`, sobald kein offener Kanal mehr damit arbeitet
   - *Richtwert:* frühestens nach 1 h, stündlich (`RetentionJob`)
@@ -394,7 +405,8 @@ unabhängigen Stellen im Code:
     QR-Kopplungsanfragen (stündlich),
   - `DpopReplayProtectionService`: Schutz vor wiederholt eingereichten DPoP-Proofs (minütlich),
   - `ChangeLogRetention`: Änderungsprotokoll gelöschter Konten (täglich),
-  - `SignInLogRetention`: Anmeldeprotokoll (täglich).
+  - `SignInLogRetention`: Anmeldeprotokoll (täglich),
+  - `ClaimBatchKeyRetention`: Datenschlüssel abgelaufener Claim-Gruppen (täglich).
 - `identity.secrets.otp-pepper` ist standardmäßig leer. Der Pepper ist ein geheimer Zusatzwert, mit
   dem das Backend SMS- und E-Mail-Codes vor dem Speichern hasht. Ist er leer, würfelt das Backend ihn
   bei jedem Start neu. Zwei Instanzen könnten dann die Codes der jeweils anderen nicht prüfen. Und
@@ -441,9 +453,18 @@ dann alle offenen Punkte auf einmal. Diese Punkte müssen erfüllt sein:
 - `spring.h2.console.enabled=false`.
 - `springdoc.api-docs.enabled=false`. Die Voreinstellung folgt `demo.mode`. Sonst zeigten Swagger-UI
   und `/v3/api-docs` jedem ohne Anmeldung alle Endpunkte. Der API-Vertrag liegt ohnehin in `api/`.
-- `identity.secrets.otp-pepper` und `account.change-log.lookup-secret` haben mindestens 32 Zeichen.
-  Das zweite ist nicht der öffentliche Demo-Wert. Außerdem ist für jede Id eines Suchschlüssels im
-  Änderungsprotokoll ein Geheimnis konfiguriert (Abschnitt 3, `account.change_log`).
+- `identity.secrets.otp-pepper`, `account.change-log.lookup-secret` und
+  `identity.secrets.master-kek` haben mindestens 32 Zeichen. Die letzten beiden sind nicht der
+  öffentliche Demo-Wert. Außerdem ist für jede Id eines Suchschlüssels im Änderungsprotokoll ein
+  Geheimnis konfiguriert (Abschnitt 3, `account.change_log`).
+- `identity.secrets.master-kek` (`MASTER_KEK`) ist der Umschlagschlüssel der Claim-Verschlüsselung
+  ([ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md)). Er packt den Hauptschlüssel
+  jedes Kontos ein und muss über Neustarts und Instanzen hinweg fest sein. Zum Wechseln den alten
+  Wert unter `identity.secrets.previous-master-keks.<alte Version>` eintragen und neuen Wert und
+  neue Version (`MASTER_KEK_VERSION`) setzen. Jedes Konto merkt sich die Version, mit der sein
+  Hauptschlüssel eingepackt ist (`kek_version`). Der alte Wert darf erst entfernt werden, wenn kein
+  Konto mehr seine Version trägt. Im Produktivbetrieb gehört dieser Schlüssel in ein KMS oder HSM
+  hinter dem Port `MasterKeyWrapper` (`DPoP-demo-61kp`).
 - Der Orchestrator erreicht Keycloak über https (`keycloak-migrate.base-url`) und prüft dessen
   Zertifikat (kein `trustSelfSignedCertificate`).
 - Keycloak erreicht den Orchestrator über https (`orchestratorBaseUrl` der Keycloak-Einrichtung). Über

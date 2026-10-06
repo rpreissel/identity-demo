@@ -62,6 +62,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/). Die Tabelle nennt 
 | [ADR-49](adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md) | Die Arbeitsdaten der Tools liegen als JSON an der Tool-Sitzung des Orchestrators |
 | [ADR-50](adr/ADR-050-api-versionierung-umschlag-und-tool.md) | API-Versionierung auf zwei Ebenen: ein Bruch am Umschlag braucht eine neue Version, ein Bruch an einem Tool trifft nur Clients, die es nennen; `/kc` wird nicht eingefroren |
 | [ADR-51](adr/ADR-051-versionen-als-pfadsegment.md) | Versionierung: Orchestrator und Tools einzeln, beide per Pfadsegment (`/orchestrator/api/v1`, `/tools/api/<toolId>/v<N>`); der Client nennt je Tool eine Fassung (`enroll-sms@1`), eine neue Orchestrator-Version ist ein Pflichtupdate; wann ein Tool eine neue Fassung braucht und was die alte dann tut |
+| [ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md) | Umschlagverschlüsselung des Claim-Logs: ein Hauptschlüssel je Konto, ein Datenschlüssel je Gruppe von Angaben; Gleichheit über einen HMAC je Konto; Widerruf und Aufbewahrungsfrist löschen den Datenschlüssel |
 
 Die Nummern ADR-4, 13, 23 und 30 fehlen. Ihr Inhalt steht heute an anderer Stelle:
 

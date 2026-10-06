@@ -91,6 +91,12 @@ account:
   # Anmeldeprotokoll (SignInLog, ADR-39 Nachtrag): kein Nachweis, geht mit dem Konto.
   sign-in-log:
     retention-months: 6
+  # Wie lange der Wert eines Claims lesbar bleibt (ADR-52), je Attribut (wire name) als ISO-Dauer.
+  # Danach widerruft ClaimBatchKeyRetention den Claim und loescht den Datenschluessel seiner Gruppe.
+  # Ohne Eintrag bleibt der Wert, bis das Konto geloescht wird. Ankerattribute sind nicht erlaubt.
+  claims:
+    retention: {}
+    #  family_name: P365D
 
 demo:
   # Demomodus: true fuer diese Demo-Instanz. false fuer jeden Betrieb mit echten Personen - dann sind
@@ -208,6 +214,15 @@ identity:
     # A restart then invalidates codes still in flight (they live five minutes) and two instances
     # cannot verify each other's, so set this explicitly for any multi-instance deployment.
     otp-pepper: ""
+    # Umschlagschluessel (KEK) der Claim-Verschluesselung (ADR-52): packt den Hauptschluessel jedes
+    # Kontos ein. Anders als der Pepper muss er ueber Neustarts fest sein, sonst ist jeder gespeicherte
+    # Claim unlesbar. Der Standardwert ist oeffentlich und nur fuer die Demo; ausserhalb des Demomodus
+    # lehnt ProductionModeCheck ihn ab. Wechsel wie beim lookup-secret: alten Wert unter
+    # previous-master-keks.<alte Version> eintragen, neuen Wert und neue Version setzen.
+    master-kek: ${MASTER_KEK:demo-only-master-kek-not-for-real-people}
+    master-kek-version: ${MASTER_KEK_VERSION:1}
+    # previous-master-keks:
+    #   "1": <alter Wert>
   kobil:
     # Der Mandant, unter dem dieses System seine Nutzer bei KOBIL fuehrt.
     tenant-id: identity-demo

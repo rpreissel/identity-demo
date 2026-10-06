@@ -2,10 +2,8 @@ package com.example.identity.core.account.application
 
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.values.PartnerNumber
-import com.example.identity.core.account.infrastructure.strongestEstablishedValues
 import com.example.identity.core.account.domain.passportForm
 import com.example.identity.core.account.infrastructure.AccountAnchorRepository
-import com.example.identity.core.account.infrastructure.AccountClaimRepository
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.directory.ClaimedIdentity
 import com.example.identity.contract.tool_api.directory.IdentityConflictException
@@ -29,7 +27,7 @@ import java.time.LocalDate
 @Service
 class IdentityMatchingService(
     private val accountAnchorRepository: AccountAnchorRepository,
-    private val accountClaimRepository: AccountClaimRepository,
+    private val claimLedger: ClaimLedger,
     private val personDirectory: PersonDirectory
 ) : IdentityResolver {
 
@@ -65,8 +63,7 @@ class IdentityMatchingService(
      * ties (docs/02-domaenenmodell.md #6). `ident-fsc` checks its own input against the register.
      */
     override fun attestedIdentityMatches(accountId: AccountId, personId: PartnerNumber): Boolean {
-        val attested = accountClaimRepository.findEstablished(accountId)
-            .strongestEstablishedValues(ATTESTABLE_IDENTITY_ATTRIBUTES + ADDRESS_ATTRIBUTES)
+        val attested = claimLedger.establishedValues(accountId, ATTESTABLE_IDENTITY_ATTRIBUTES + ADDRESS_ATTRIBUTES)
         // All of them, not "whatever was attested": ClaimedIdentity skips a null field by design, so
         // a missing date of birth would quietly fall back to the name alone.
         if (!attested.keys.containsAll(ATTESTABLE_IDENTITY_ATTRIBUTES)) return false
@@ -86,7 +83,7 @@ class IdentityMatchingService(
     }
 
     override fun attestationFits(accountId: AccountId, claims: Set<Claim>): Boolean {
-        val attested = accountClaimRepository.findEstablished(accountId).strongestEstablishedValues(ATTESTABLE_IDENTITY_ATTRIBUTES)
+        val attested = claimLedger.establishedValues(accountId, ATTESTABLE_IDENTITY_ATTRIBUTES)
         return ATTESTABLE_IDENTITY_ATTRIBUTES.all { type ->
             val before = attested[type] ?: return@all true
             val now = claims.firstOrNull { it.attributeType == type }?.value ?: return@all true

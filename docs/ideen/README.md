@@ -10,9 +10,6 @@ Begriffe wie Journey, Tool oder Niveau erklärt das [Glossar](../glossar/glossar
 - [Verfahren aufwerten](reidentify-methoden-upgrade.md): Ein Anmeldeverfahren soll mehr zählen
   dürfen, nachdem sich der Nutzer erneut oder erstmals identifiziert hat (Sub-Journey
   `RE_IDENTIFY`).
-- [Umschlagverschlüsselung](verschluesselung-differenzierte-aufbewahrung.md): Mit einer
-  Umschlagverschlüsselung lassen sich einzelne Daten eines Kontos unterschiedlich lange
-  aufbewahren und gezielt unlesbar machen, etwa nach einem Widerruf.
 - [Verfahren ändern](verfahren-aendern.md): Ein eingerichtetes Verfahren ersetzen, etwa durch ein
   neues Passwort oder eine neue Telefonnummer. Dazu verlangt die Verwaltung einen frischen
   Nachweis, wenn der letzte älter als fünf Minuten ist. Diese Idee ist inzwischen umgesetzt.

@@ -6,6 +6,7 @@ import com.example.identity.tools.auth_sms.PHONE_NUMBER
 import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.core.account.application.ClaimCrypto
 import com.example.identity.core.account.infrastructure.AccountAnchorRepository
 import com.example.identity.core.account.infrastructure.ChangeLogRepository
 import com.example.identity.core.account.infrastructure.ChangeType
@@ -44,8 +45,16 @@ class AccountServiceDbTest(
     private val jdbcTemplate: JdbcTemplate,
     private val transactionManager: PlatformTransactionManager,
     private val anchorRepository: AccountAnchorRepository,
-    private val changeLogRepository: ChangeLogRepository
+    private val changeLogRepository: ChangeLogRepository,
+    private val claimCrypto: ClaimCrypto,
 ) : SharedSpringContext({
+
+    /** A retraction row written past the service, so the SQL subtraction itself is what is tested. */
+    fun insertRetraction(accountId: AccountId, type: AttributeType, value: String) = jdbcTemplate.update(
+        """INSERT INTO account.retraction (account_id, attribute_type, value_digest, claim_source, retracted_at)
+           VALUES (?, ?, ?, 'OPERATOR', CURRENT_TIMESTAMP)""",
+        accountId.value, type.wireName, claimCrypto.open(accountId).digest(type, value)
+    )
 
     // Runs first in every `when`: beforeEach would only precede the `then` leaves, after the action.
     fun clearAccounts() {
@@ -270,11 +279,7 @@ class AccountServiceDbTest(
             )
             val beforeRetraction = establishedValues()
 
-            jdbcTemplate.update(
-                """INSERT INTO account.retraction (account_id, attribute_type, normalized_value, claim_source, retracted_at)
-                   VALUES (?, 'family_name', 'muster', 'OPERATOR', CURRENT_TIMESTAMP)""",
-                account.accountId.value
-            )
+            insertRetraction(account.accountId, AttributeType.FAMILY_NAME, "Muster")
 
             then("it stops counting although its log row stays") {
                 beforeRetraction shouldBe mapOf(
@@ -571,11 +576,7 @@ class AccountServiceDbTest(
                 Claim(AttributeType.FAMILY_NAME, "Muster", eid, AcrLevel.LOA3),
                 Claim(AttributeType.GIVEN_NAMES, "Max", eid, AcrLevel.LOA3)
             ), provenAcr = AcrLevel.LOA2)
-            jdbcTemplate.update(
-                """INSERT INTO account.retraction (account_id, attribute_type, normalized_value, claim_source, retracted_at)
-                   VALUES (?, 'family_name', 'muster', 'OPERATOR', CURRENT_TIMESTAMP)""",
-                disposable.accountId.value
-            )
+            insertRetraction(disposable.accountId, AttributeType.FAMILY_NAME, "Muster")
             val target = accountService.createAccountInSetup()
 
             accountService.absorbDisposableAccount(disposable.accountId, target.accountId)
@@ -772,11 +773,15 @@ class AccountServiceDbTest(
     // docs/02-domaenenmodell.md Abschnitt 6: with several values of one attribute, trust decides first,
     // time second. The times are written explicitly, so the order does not depend on the clock.
     given("an account with several values of one attribute") {
-        fun insertClaim(accountId: AccountId, value: String, source: ClaimSource, establishedAt: Instant) = jdbcTemplate.update(
-            """INSERT INTO account.claim (account_id, attribute_type, claim_value, normalized_value, claim_source, established_acr, established_at)
-               VALUES (?, 'family_name', ?, ?, ?, 'loa2', ?)""",
-            accountId.value, value, value.lowercase(), source.value, Timestamp.from(establishedAt)
-        )
+        fun insertClaim(accountId: AccountId, value: String, source: ClaimSource, establishedAt: Instant) {
+            val cipher = claimCrypto.open(accountId)
+            val batch = cipher.newBatch(expiresAt = null, now = establishedAt)
+            jdbcTemplate.update(
+                """INSERT INTO account.claim (account_id, attribute_type, claim_value, value_digest, claim_batch_id, claim_source, established_acr, established_at)
+                   VALUES (?, 'family_name', ?, ?, ?, ?, 'loa2', ?)""",
+                accountId.value, batch.encrypt(value), cipher.digest(AttributeType.FAMILY_NAME, value), batch.id, source.value, Timestamp.from(establishedAt)
+            )
+        }
         val earlier = Instant.parse("2026-01-01T10:00:00Z")
         val later = Instant.parse("2026-02-01T10:00:00Z")
 
