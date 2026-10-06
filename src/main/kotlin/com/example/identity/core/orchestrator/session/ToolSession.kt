@@ -1,7 +1,5 @@
 package com.example.identity.core.orchestrator.session
 
-import org.hibernate.type.SqlTypes
-import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.annotations.UuidGenerator
 import com.example.identity.core.orchestrator.domain.JourneyId
 import com.example.identity.contract.tool_api.ids.ToolSessionId
@@ -63,10 +61,12 @@ class ToolSession(
     @Column(name = "data_type", length = 160)
     var dataType: String? = null
 
-    /** The tool's working data, written and read by `ToolSessionDataCodec` only. */
-    @JdbcTypeCode(SqlTypes.JSON)
+    /** The tool's working data as JSON, sealed under the data key [dataKeyId] (ADR-53); `ToolSessionDataService` only. */
     @Column(name = "data")
-    var data: String? = null
+    var data: ByteArray? = null
+
+    @Column(name = "data_key_id", length = 64)
+    var dataKeyId: String? = null
 
     fun isExpiredAt(now: Instant): Boolean = expiresAt?.let { now.isAfter(it) } ?: false
 

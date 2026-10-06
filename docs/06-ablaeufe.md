@@ -113,8 +113,9 @@ Für dieses Modell gelten die folgenden Entscheidungen:
 - **Der Orchestrator liest keine Moduldaten.** Ein Tool hat Arbeitsdaten, bei SMS etwa die Nummer,
   den Hash der TAN und die Ablaufzeit. Der Orchestrator speichert sie zwar als JSON an seiner
   Tool-Sitzung (`orchestrator.tool_session.data`,
-  [ADR-49](adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)). Aber nur das Modul kennt ihren
-  Aufbau und liest sie.
+  [ADR-49](adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)), verschlüsselt
+  ([ADR-53](adr/ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md)). Aber nur das Modul kennt
+  ihren Aufbau und liest sie.
 
 **Regel für das Identifizierungs-Ereignis im Änderungsprotokoll.** Wenn sich jemand identifiziert,
 schreibt der Orchestrator ein Ereignis `IDENTIFIED` in das Änderungsprotokoll (`account.change_log`,

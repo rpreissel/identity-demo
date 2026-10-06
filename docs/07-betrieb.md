@@ -166,7 +166,8 @@ Compliance.
   - *Richtwert:* 24 h (`tool-session.retention`)
   - *Grund:* Die Zeile enthält den Lebenszyklus und die Arbeitsdaten des Tools (Spalte `data`,
     [ADR-49](adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)), also Personenbezug und
-    Code-Hashes. Bei einer KOBIL-Einrichtung liegen dort während der Einrichtung PIN und
+    Code-Hashes, seit [ADR-53](adr/ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md)
+    verschlüsselt unter dem Datenschlüssel ihres Tages. Bei einer KOBIL-Einrichtung liegen dort während der Einrichtung PIN und
     Entsperrgeheimnis im Klartext. Danach werden sie geleert
     ([ADR-22](adr/ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md)).
 - **`AuthJourney`**
@@ -176,7 +177,15 @@ Compliance.
 - **`AppTokenSession`**
   - *Frist beginnt mit:* Abmeldung / Ende der `ChannelSession`
   - *Richtwert:* sofort
-  - *Grund:* Sie enthält Verweise auf Tokens.
+  - *Grund:* Sie enthält die Tokens selbst als Zwischenspeicher, verschlüsselt unter dem
+    Hauptschlüssel des Kontos ([ADR-53](adr/ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md)).
+    Die Abmeldung leert sie.
+- **`orchestrator.data_key`** (Datenschlüssel der Arbeitsdaten, einer je Tag)
+  - *Frist beginnt mit:* `retire_after`, dem Tagesende plus 7 Tage plus `tool-session.retention`
+  - *Richtwert:* sofort danach, stündlich (`RetentionJob`)
+  - *Grund:* Die Arbeitsdaten in `orchestrator.tool_session.data` liegen verschlüsselt unter dem
+    Schlüssel ihres Tages (ADR-53). Nach der Frist kann keine Zeile ihn mehr brauchen; ihn zu löschen
+    macht auch das unlesbar, was in Sicherungen noch unter ihm liegt.
 - **`ChannelSession`**
   - *Frist beginnt mit:* `expiresAt` / `LOGGED_OUT`
   - *Richtwert:* 14 Tage
@@ -463,8 +472,8 @@ dann alle offenen Punkte auf einmal. Diese Punkte müssen erfüllt sein:
   Wert unter `identity.secrets.previous-master-keks.<alte Version>` eintragen und neuen Wert und
   neue Version (`MASTER_KEK_VERSION`) setzen. Jedes Konto merkt sich die Version, mit der sein
   Hauptschlüssel eingepackt ist (`kek_version`). Der alte Wert darf erst entfernt werden, wenn kein
-  Konto mehr seine Version trägt. Sonst verweigert `ProductionModeCheck` außerhalb des Demomodus den
-  Start; im Demomodus warnt er. Im Produktivbetrieb gehört dieser Schlüssel in ein KMS oder HSM
+  Konto mehr seine Version trägt und kein Tagesschlüssel in `orchestrator.data_key` (ADR-53). Sonst
+  verweigert `ProductionModeCheck` außerhalb des Demomodus den Start; im Demomodus warnt er. Im Produktivbetrieb gehört dieser Schlüssel in ein KMS oder HSM
   hinter dem Port `MasterKeyWrapper` (`DPoP-demo-61kp`).
 - Der Orchestrator erreicht Keycloak über https (`keycloak-migrate.base-url`) und prüft dessen
   Zertifikat (kein `trustSelfSignedCertificate`).

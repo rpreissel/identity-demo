@@ -796,10 +796,10 @@ Diese Station zeigt, was beim Löschen eines Kontos passiert und wie lange Daten
 - **Offen (Entscheidung)** Die Aufbewahrungsfristen sind Richtwerte. Sie müssen mit dem Datenschutz
   festgelegt werden.
 - **Niedrig** Nect-Fälle werden nie aufgeräumt (S-2).
-- **Hinweis** Die Arbeitsdaten eines Tool-Durchlaufs liegen unverschlüsselt in
-  `orchestrator.tool_session.data`, bei `ident-fsc` mit Personendaten. Der Abschluss des Durchlaufs
-  leert sie. Ein nicht abgeschlossener Durchlauf behält sie bis zum Ablauf von
-  `tool-session.retention` (ADR-49, `DPoP-demo-bo1w`).
+- **Hinweis** Die Arbeitsdaten eines Tool-Durchlaufs liegen in `orchestrator.tool_session.data`,
+  bei `ident-fsc` mit Personendaten, verschlüsselt unter dem Datenschlüssel ihres Tages (ADR-53).
+  Der Abschluss des Durchlaufs leert sie. Ein nicht abgeschlossener Durchlauf behält sie bis zum
+  Ablauf von `tool-session.retention` (ADR-49).
 
 ---
 
@@ -822,8 +822,9 @@ Start bricht ab, solange noch eine Demo-Voreinstellung gesetzt ist.
   prüft beim Start:
   - das Admin-Passwort ist als Hash hinterlegt,
   - die H2-Konsole ist aus,
-  - Pepper, Lookup-Geheimnis und der Umschlagschlüssel der Claim-Verschlüsselung (ADR-52) sind lang
-    genug und nicht der Demo-Wert,
+  - Pepper, Lookup-Geheimnis und der Umschlagschlüssel der Verschlüsselung (ADR-52, ADR-53) sind lang
+    genug und nicht der Demo-Wert, und jeder gespeicherte Schlüssel trägt eine konfigurierte
+    KEK-Version,
   - Keycloak wird über https mit geprüftem Zertifikat angesprochen,
   - es gibt keine API-Beschreibung (`springdoc.api-docs.enabled`).
 - [`WithheldDemoDisclosure`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/DemoDisclosure.kt#L65):

@@ -6,6 +6,8 @@ import com.example.identity.core.orchestrator.channel.KeycloakChannelService
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.PlainJWT
 import io.kotest.matchers.collections.shouldBeEmpty
+import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
+import com.example.identity.core.orchestrator.session.AppTokenVault
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
@@ -26,6 +28,12 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
 
     @Autowired
     private lateinit var keycloakChannelService: KeycloakChannelService
+
+    @Autowired
+    private lateinit var appTokenSessionRepository: AppTokenSessionRepository
+
+    @Autowired
+    private lateinit var appTokenVault: AppTokenVault
 
     private enum class Step {
         OPEN_CHANNEL, SIGN_IN_SMS, WRONG_TAN, SIGN_IN_PASSWORD, REPLAY_LAST_PATCH,
@@ -98,7 +106,11 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
             ).firstOrNull()?.get("ID") ?: return false
             val token = PlainJWT(JWTClaimsSet.Builder().issueTime(Date.from(Instant.now().minus(issuedAgo))).build()).serialize()
             val windowEnd = Timestamp.from(Instant.now().plus(windowLeft))
-            jdbcTemplate.update("UPDATE orchestrator.app_token_session SET access_token = ?, refresh_expires_at = ? WHERE id = ?", token, windowEnd, context)
+            // The cached token is sealed under the account's key (ADR-53), so it goes through the vault.
+            val tokenSession = appTokenSessionRepository.findById(context as UUID).get()
+            appTokenVault.storeAccessToken(tokenSession, token)
+            tokenSession.refreshExpiresAt = windowEnd.toInstant()
+            appTokenSessionRepository.save(tokenSession)
             jdbcTemplate.update("UPDATE orchestrator.channel_session SET expires_at = ? WHERE id = ?", windowEnd, UUID.fromString(channel))
             return true
         }

@@ -8,6 +8,8 @@ import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.longs.shouldBeLessThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
+import com.example.identity.core.orchestrator.session.AppTokenVault
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -25,6 +27,12 @@ class AppTokenIssuerIntegrationTest : IntegrationTestSupport() {
 
     @Autowired
     private lateinit var keycloakChannelService: KeycloakChannelService
+
+    @Autowired
+    private lateinit var appTokenSessionRepository: AppTokenSessionRepository
+
+    @Autowired
+    private lateinit var appTokenVault: AppTokenVault
 
     init {
         beforeScenario { stubDpopWithFakeJwk() }
@@ -188,9 +196,7 @@ class AppTokenIssuerIntegrationTest : IntegrationTestSupport() {
                     stateOf(channel) shouldBe "AUTHENTICATED"
                 }
                 then("the transition re-mints the token with the raised acr, in the same session") {
-                    val cached = jdbcTemplate.queryForObject(
-                        "SELECT access_token FROM orchestrator.app_token_session WHERE id = ?", String::class.java, appTokenSessionId(channel)
-                    )
+                    val cached = appTokenVault.accessTokenOf(appTokenSessionRepository.findById(appTokenSessionId(channel)).get())
                     PlainJWT.parse(cached).jwtClaimsSet.getStringClaim("acr") shouldBe "loa2"
                     acr shouldBe "loa2"
                     keycloakSessionOf(channel) shouldBe session

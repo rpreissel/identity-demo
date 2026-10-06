@@ -151,6 +151,7 @@ class SessionManagementService(
             // it goes now rather than with the retention sweep a day later (ADR-49).
             session.data = null
             session.dataType = null
+            session.dataKeyId = null
             toolSessionRepository.save(session)
         }
     }

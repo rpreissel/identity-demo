@@ -40,8 +40,9 @@ Dateien und einer Migration.
   leert schon der Abschluss eines Durchlaufs (`DONE`, `ABANDONED`,
   `SessionManagementService.endToolSession`). Das ist wichtig, denn manche Arbeitsdaten sind
   Personendaten, etwa bei `ident-fsc` die KVNR, die Partnernummer, der Name und das Geburtsdatum.
-  Bis zum Abschluss liegen sie unverschlüsselt in `orchestrator.tool_session.data`
-  (`DPoP-demo-bo1w`). Eine Sitzung, die nie abgeschlossen wird, behält sie bis zum Ende der
+  Bis zum Abschluss liegen sie in `orchestrator.tool_session.data`, verschlüsselt unter dem
+  Datenschlüssel ihres Tages ([ADR-53](ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md)).
+  Eine Sitzung, die nie abgeschlossen wird, behält sie bis zum Ende der
   Aufbewahrungsfrist. Die Module räumen nur noch eigene kurzlebige Daten auf, die keine
   Tool-Sitzung sind (`auth_qr.login_request`, `ToolSessionSweeper`).
 - **Gleichzeitige Schreiber:** Die Versionsnummer der Zeile (`@Version`) schützt auch die
@@ -57,9 +58,9 @@ Dateien und einer Migration.
   wie vorher, nur in einer Tabelle statt in 24. Beim Wechsel auf PostgreSQL (`DPoP-demo-pi55`) wird
   diese eine Tabelle nach Tag partitioniert. Aufgeräumt wird dann per `DROP PARTITION` statt
   per `DELETE`.
-- **Verschlüsselung:** Der Codec ist die einzige Stelle, die Zustände schreibt und liest. Dort lässt
-  sich eine spätere Verschlüsselung einbauen, etwa mit einem Datenschlüssel je Aufbewahrungsklasse
-  ([ADR-52](ADR-052-umschlagverschluesselung-des-claim-logs.md), Alternativen).
+- **Verschlüsselung:** `ToolSessionDataService` ist die einzige Stelle, die Zustände schreibt und
+  liest. Dort liegt die Verschlüsselung mit einem Datenschlüssel je Tag
+  ([ADR-53](ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md)); der Codec serialisiert nur.
   Bis dahin gilt [ADR-22](ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md): Die
   KOBIL-Aktivierungsdaten liegen während der Einrichtung im Klartext und werden danach geleert.
 - **Schema je Modul:** Die Arbeitsdaten liegen nicht mehr im Datenbankschema ihres Moduls. Das ist

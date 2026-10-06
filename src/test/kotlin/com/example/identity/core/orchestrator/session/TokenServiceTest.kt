@@ -236,7 +236,7 @@ private class TokenServiceFixture(session: AppTokenSession?) {
     private val authPolicy = mockk<AuthPolicy> { every { resolveAcr(any(), any()) } returns AcrLevel.LOA2 }
     val accountService = mockk<AccountService>(relaxed = true)
     val personDirectory = mockk<PersonDirectory>(relaxed = true)
-    val service = TokenService(repository, sessionEvidenceService, authPolicy, accountService, personDirectory, clock = TEST_CLOCK)
+    val service = TokenService(repository, sessionEvidenceService, authPolicy, accountService, personDirectory, plainTokenVault, clock = TEST_CLOCK)
 }
 
 private fun appTokenSession(

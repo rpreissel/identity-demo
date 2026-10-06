@@ -140,6 +140,7 @@ private class RetentionFixture {
         sessionEvidenceRepository = mockk(relaxed = true),
         journeyTraceRepository = journeyTraceRepository,
         rateLimitRecordRepository = rateLimitRecordRepository,
+        dataKeyRepository = mockk(relaxed = true),
         accountService = accountService,
         accountDeletionService = accountDeletionService,
         meterRegistry = SimpleMeterRegistry(),

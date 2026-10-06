@@ -81,8 +81,8 @@ class ChannelSessionLifecycle(
                 // a network round trip. KeycloakSessionLogoutListener runs after commit.
                 tokenSession.keycloakSessionId?.let { eventPublisher.publishEvent(KeycloakSessionEnded(it)) }
             }
-            tokenSession.refreshToken = null
-            tokenSession.accessToken = null
+            tokenSession.sealedRefreshToken = null
+            tokenSession.sealedAccessToken = null
             tokenSession.refreshExpiresAt = null
             tokenSession.accessExpiresAt = null
             appTokenSessionService.save(tokenSession)

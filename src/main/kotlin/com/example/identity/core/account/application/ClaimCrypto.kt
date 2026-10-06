@@ -21,7 +21,8 @@ import org.springframework.stereotype.Component
  * ([Account.wrappedMasterKey]), the master key wraps one data key per batch ([ClaimBatchKey]), the
  * data key encrypts the values. Equality within an account uses an HMAC under the master key, so
  * dedup and retraction stay SQL. [open] unwraps the master key once per operation; with a KMS
- * behind [MasterKeyWrapper] that is the only call that leaves the process.
+ * behind [MasterKeyWrapper] that is the only call that leaves the process. Three subkeys are
+ * derived from the master key: wrapping, digest and sealing, so no key serves two purposes.
  */
 @Component
 class ClaimCrypto(
@@ -52,7 +53,15 @@ class ClaimCrypto(
         private val wrapKey = SecretKeySpec(hmac(masterKey, "wrap".toByteArray()), "AES")
         private val digestKey = SecretKeySpec(hmac(masterKey, "digest".toByteArray()), HMAC)
         /** `null` remembers that the batch key is gone, so an erased batch costs one lookup per operation. */
+        private val sealKey = SecretKeySpec(hmac(masterKey, "seal".toByteArray()), "AES")
         private val dataKeys = mutableMapOf<UUID, SecretKey?>()
+
+        /** Encrypts [plaintext] directly under the account's key, bound to [purpose]; for data that lives and dies with the account. */
+        fun seal(purpose: String, plaintext: ByteArray): ByteArray = AesGcm.seal(sealKey, purposeAad(purpose), plaintext)
+
+        fun open(purpose: String, sealed: ByteArray): ByteArray = AesGcm.open(sealKey, purposeAad(purpose), sealed)
+
+        private fun purposeAad(purpose: String) = "account:${accountId.value}:$purpose".toByteArray()
 
         /** The stored equality form of [value]: normalized, then keyed-hashed. */
         fun digest(type: AttributeType, value: String): String {

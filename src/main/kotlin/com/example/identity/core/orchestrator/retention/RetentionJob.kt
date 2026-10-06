@@ -11,6 +11,7 @@ import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
 import com.example.identity.core.orchestrator.session.SessionEvidenceRecordRepository
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
+import com.example.identity.core.orchestrator.session.DataKeyRepository
 import com.example.identity.core.orchestrator.session.ToolSessionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.PageRequest
@@ -37,6 +38,7 @@ class RetentionJob(
     private val sessionEvidenceRepository: SessionEvidenceRecordRepository,
     private val journeyTraceRepository: JourneyTraceRepository,
     private val rateLimitRecordRepository: RateLimitRecordRepository,
+    private val dataKeyRepository: DataKeyRepository,
     private val accountService: AccountService,
     private val accountDeletionService: AccountDeletionService,
     private val meterRegistry: MeterRegistry,
@@ -57,6 +59,8 @@ class RetentionJob(
 
         val journeyTraceEntries = journeyTraceRepository.deleteByCreatedAtBefore(now.minus(JOURNEY_TRACE_RETENTION))
         val staleCounters = rateLimitRecordRepository.deleteStaleCounters(now.minus(RATE_LIMIT_RETENTION), now)
+        // Keys of days whose rows are all gone (ADR-53): what still lies under them is unreadable now.
+        countDeleted("data_key", dataKeyRepository.deleteByRetireAfterBefore(now))
         countDeleted("journey_trace", journeyTraceEntries)
         countDeleted("rate_limit", staleCounters)
         if (journeyTraceEntries > 0 || staleCounters > 0) {

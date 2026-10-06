@@ -38,6 +38,7 @@ class TokenService(
     private val authPolicy: AuthPolicy,
     private val accountService: AccountService,
     private val personDirectory: PersonDirectory,
+    private val vault: AppTokenVault,
     private val clock: Clock
 ) {
 
@@ -55,10 +56,9 @@ class TokenService(
         val now = clock.instant()
 
         val currentExpiry = appTokenSession.accessExpiresAt
-        if (appTokenSession.accessToken != null && currentExpiry != null &&
-            currentExpiry.isAfter(now.plusSeconds(minValiditySeconds))
-        ) {
-            return TokenPair(appTokenSession.accessToken!!, currentExpiry, appTokenSession.refreshExpiresAt!!)
+        val cached = vault.accessTokenOf(appTokenSession)
+        if (cached != null && currentExpiry != null && currentExpiry.isAfter(now.plusSeconds(minValiditySeconds))) {
+            return TokenPair(cached, currentExpiry, appTokenSession.refreshExpiresAt!!)
         }
 
         if (appTokenSession.keycloakSessionId == null) {
@@ -66,16 +66,17 @@ class TokenService(
         } else if (appTokenSession.refreshExpiresAt?.isAfter(now) != true) {
             throw SessionExpiredException("Session window of AppTokenSession $appTokenSessionId has lapsed")
         }
-        if (appTokenSession.refreshToken == null) appTokenSession.refreshToken = "mockrt_${UUID.randomUUID()}"
+        if (appTokenSession.sealedRefreshToken == null) vault.storeRefreshToken(appTokenSession, "mockrt_${UUID.randomUUID()}")
         // Sliding: every refresh moves the window on, so it lapses only after REFRESH_TTL of idleness.
         appTokenSession.refreshExpiresAt = now.plus(REFRESH_TTL)
 
         val accessExpiresAt = now.plus(ACCESS_TTL)
-        appTokenSession.accessToken = mintAccessToken(appTokenSession, now, accessExpiresAt)
+        val accessToken = mintAccessToken(appTokenSession, now, accessExpiresAt)
+        vault.storeAccessToken(appTokenSession, accessToken)
         appTokenSession.accessExpiresAt = accessExpiresAt
         appTokenSessionRepository.save(appTokenSession)
 
-        return TokenPair(appTokenSession.accessToken!!, accessExpiresAt, appTokenSession.refreshExpiresAt!!)
+        return TokenPair(accessToken, accessExpiresAt, appTokenSession.refreshExpiresAt!!)
     }
 
     /** The business ID-token claims, a JSON shape separate from the AccessToken. */

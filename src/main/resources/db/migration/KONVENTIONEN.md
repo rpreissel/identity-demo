@@ -34,7 +34,9 @@ Datei wiederholt. Ausgelegt für ≥ 10 Mio. Konten und eine lange Betriebszeit.
   zugleich `EnrollmentRef.type`.
 - **Arbeitsdaten eines Tool-Durchlaufs** bekommen keine Tabelle im Modul. Ein Tool speichert sie
   über `ToolSessionData`; sie liegen als JSON in `orchestrator.tool_session.data`
-  ([ADR-49](../../../../../docs/adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)). Eine Zeile je
+  ([ADR-49](../../../../../docs/adr/ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)), verschlüsselt
+  unter dem Datenschlüssel ihres Tages
+  ([ADR-53](../../../../../docs/adr/ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md)). Eine Zeile je
   Durchlauf, keine je Versuch — ein Durchlauf übersteht mehrere Fehlversuche
   (`AuthJourney.attempt_budget`). `ToolSessionCoverageTest` lehnt jede andere `*_tool_session`-Tabelle ab.
 

@@ -27,6 +27,7 @@ class KeycloakTokenProvider(
     private val sessionEvidenceService: SessionEvidenceService,
     private val authPolicy: AuthPolicy,
     private val accountService: AccountService,
+    private val vault: AppTokenVault,
     private val clock: Clock
 ) : TokenProvider {
 
@@ -39,17 +40,16 @@ class KeycloakTokenProvider(
         val now = clock.instant()
 
         val currentExpiry = appTokenSession.accessExpiresAt
-        if (appTokenSession.accessToken != null && currentExpiry != null &&
-            currentExpiry.isAfter(now.plusSeconds(minValiditySeconds))
-        ) {
-            return TokenPair(appTokenSession.accessToken!!, currentExpiry, appTokenSession.refreshExpiresAt ?: currentExpiry)
+        val cached = vault.accessTokenOf(appTokenSession)
+        if (cached != null && currentExpiry != null && currentExpiry.isAfter(now.plusSeconds(minValiditySeconds))) {
+            return TokenPair(cached, currentExpiry, appTokenSession.refreshExpiresAt ?: currentExpiry)
         }
 
         // Only the first token of this login opens a Keycloak session (ADR-43). After that, Keycloak's
         // own session decides (SSO idle and max): a lapsed window or a refused refresh or
         // continuation ends the login instead of opening a second session behind its back.
         val sessionId = appTokenSession.keycloakSessionId
-        val refreshToken = appTokenSession.refreshToken
+        val refreshToken = vault.refreshTokenOf(appTokenSession)
         if (sessionId != null && appTokenSession.refreshExpiresAt?.isAfter(now) != true) {
             throw SessionExpiredException("Keycloak session window of AppTokenSession $appTokenSessionId has lapsed")
         }
@@ -68,14 +68,14 @@ class KeycloakTokenProvider(
         }
 
         val accessExpiresAt = now.plusSeconds(response.expiresInSeconds)
-        appTokenSession.accessToken = response.accessToken
+        vault.storeAccessToken(appTokenSession, response.accessToken)
         appTokenSession.accessExpiresAt = accessExpiresAt
         // The Keycloak session of this login (`sid`): every later grant continues exactly this one,
         // and an App logout ends it.
         appTokenSession.keycloakSessionId = sessionId
             ?: checkNotNull(sidClaimOf(response.accessToken)) { "Keycloak token for AppTokenSession $appTokenSessionId carries no sid" }
         if (response.refreshToken != null) {
-            appTokenSession.refreshToken = response.refreshToken
+            vault.storeRefreshToken(appTokenSession, response.refreshToken)
             appTokenSession.refreshExpiresAt = response.refreshExpiresInSeconds?.let { now.plusSeconds(it) }
         }
         appTokenSessionRepository.save(appTokenSession)
