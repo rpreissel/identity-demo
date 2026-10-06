@@ -332,7 +332,7 @@ pro Sekunde. Bei den heutigen Aufbewahrungsfristen entstehen ungefähr diese Bes
 | `account.sign_in_log` | etwa 365 Millionen Zeilen (6 Monate) | heute in Portionen zu 500 Zeilen gelöscht, also etwa 4.000 Transaktionen am Tag |
 | `orchestrator.journey_trace` | 56 bis 112 Millionen Zeilen (14 Tage) | stündlich in einer Anweisung gelöscht, siehe Punkt 4 |
 | `orchestrator.channel_session` | etwa 14 Millionen Zeilen (14 Tage) | |
-| `account.claim` | 20 bis 80 Millionen Zeilen | siehe [offene-befunde.md](offene-befunde.md) Abschnitt 8 |
+| `account.claim` | 100 bis 200 Millionen Zeilen | 3 bis 5 Vorgänge je Konto, ein eID-Lauf schreibt sieben Zeilen; Zugriff weiterhin über Indizes, siehe [offene-befunde.md](offene-befunde.md) Abschnitt 8 |
 | `event_publication` | wächst ohne Grenze | abgeschlossene Einträge räumt niemand ab |
 
 Für `sign_in_log` und `journey_trace` passen Partitionen nach Zeit besser als Löschen: Eine

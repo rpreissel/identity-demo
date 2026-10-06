@@ -37,7 +37,8 @@ Die Frage lautet: Gibt es eine Technik, mit der man je Konto **einen** Schlüsse
 einzelne Daten mit unterschiedlichen Aufbewahrungsfristen oder Regeln für Widerrufe schützen kann?
 Zwei konkrete Beispiele: Die Bestätigung einer E-Mail-Adresse wird zurückgenommen. eID-Daten dürfen
 höchstens ein Jahr aufbewahrt werden. Wo und wie der Schlüssel des Kontos selbst aufbewahrt wird,
-gehört ausdrücklich **nicht** zur Frage.
+gehört ausdrücklich **nicht** zur Frage. Abschnitt 6 skizziert dafür trotzdem ein Zielbild, weil
+es sonst nicht ohne Weiteres zu einem Vorschlag passt, der große Mengen tragen soll.
 
 Zum Verständnis drei Begriffe aus dem Modell der Konten (mehr im [Glossar](../glossar/glossar.md)):
 
@@ -226,9 +227,9 @@ wurden.
 ## 3) Warum es trotzdem „ein Schlüssel je Konto“ ist
 
 Aus Sicht des Kontos gibt es genau **einen** Schlüssel: den Hauptschlüssel des Kontos. Wo und wie
-er selbst aufbewahrt wird, ist bewusst ausgeklammert. Möglich wären etwa ein KMS, ein HSM, eine
-Ableitung aus einer Passphrase oder eine Aufteilung nach Shamir. Das ist als offene Anschlussfrage
-vermerkt, aber nicht entworfen (Abschnitt 6).
+er selbst aufbewahrt wird, ist nicht Teil dieser Frage. Abschnitt 6 skizziert dafür ein Zielbild
+(eingepackt mit einem Schlüssel aus einem KMS oder HSM) und sagt, was die Demo stattdessen tut.
+Entschieden ist das nicht.
 
 Der Hauptschlüssel hat nur eine Aufgabe: jeden Datenschlüssel einzupacken, also zu verschlüsseln.
 Falls das Konzept umgesetzt wird, sieht das so aus:
@@ -325,14 +326,121 @@ Vorgang selbst.
 
 ---
 
-## 6) Ausdrücklich ausgeklammert
+## 6) Aufbewahrung des Hauptschlüssels: Zielbild und Demo
 
-Wo und wie der **Hauptschlüssel selbst** aufbewahrt, geschützt und regelmäßig erneuert wird, ist
-eine eigene Anschlussfrage. Möglich wären etwa ein KMS, ein HSM, ein Geheimnis im
-Anwendungsprozess oder eine Aufteilung nach Shamir. Die Frage ist bewusst ausgeklammert und nicht
-Teil dieses Vorschlags. Sie ist aber praktisch wichtig: Ein Hauptschlüssel im Klartext in der
-Konfiguration der Anwendung wäre kaum besser als der heutige Zustand. Zum Vergleich: Auch der
-Schlüssel `NodeSigningKey.privateKeyJwk` liegt im Klartext (ADR-22).
+Wo und wie der **Hauptschlüssel selbst** aufbewahrt, geschützt und erneuert wird, ist eine eigene
+Frage. Sie ist hier nicht entschieden, aber auch nicht mehr ausgeklammert. Ein Hauptschlüssel im
+Klartext in der Konfiguration der Anwendung wäre kaum besser als der heutige Zustand. Zum
+Vergleich: Auch der Schlüssel `NodeSigningKey.privateKeyJwk` liegt im Klartext (ADR-22).
+
+### Die vier üblichen Wege, kurz
+
+- **KMS (Key Management Service):** ein zentraler Dienst, etwa AWS KMS, Azure Key Vault oder
+  HashiCorp Vault Transit. Der Schlüssel verlässt den Dienst nie. Die Anwendung schickt ihm etwas
+  zum Ein- oder Auspacken und bekommt das Ergebnis zurück. Zugriff läuft über Rechte und wird
+  protokolliert. Jeder Aufruf geht über das Netz (etwa 10 bis 20 ms) und zählt gegen ein Limit je
+  Sekunde (bei AWS KMS je nach Region etwa 5.500 bis 50.000). Erneuern ist eingebaut: Eine neue
+  Version packt neu ein, alte Versionen packen weiter aus.
+- **HSM (Hardware Security Module):** ein zertifiziertes Gerät, aus dem der Schlüssel physisch
+  nicht auslesbar ist, auch nicht für Administratoren. Angesprochen über PKCS#11 oder einen
+  Netzdienst. Oft regulatorisch gefordert, teuer in Anschaffung und Betrieb, mit begrenztem
+  Durchsatz von einigen hundert bis einigen tausend Operationen je Sekunde. Erneuern ist eine
+  Zeremonie mit mehreren Personen. Viele KMS-Dienste laufen intern selbst auf HSMs.
+- **Geheimnis im Anwendungsprozess:** Der Schlüssel liegt im Arbeitsspeicher und kommt beim Start
+  aus einer Umgebungsvariable, einer Konfiguration oder einem Kubernetes-Secret. Schnell und ohne
+  neue Infrastruktur. Wer den Prozess, die Konfiguration oder einen Speicherabzug hat, hat den
+  Schlüssel. Erneuern muss man selbst bauen. So hält das Projekt heute den Pepper für Einmalcodes
+  (`identity.secrets.otp-pepper`, [07-betrieb.md](../07-betrieb.md) Abschnitt 3b).
+- **Aufteilung nach Shamir:** Der Schlüssel wird in n Teile zerlegt, von denen k beliebige ihn
+  wiederherstellen, etwa 3 von 5. Das ist kein Aufbewahrungsort, sondern ein Zugriffsverfahren:
+  Niemand allein kann den Schlüssel freischalten. Nach dem Zusammensetzen liegt er wieder im
+  Prozess. Gut gegen einen einzelnen Innentäter und für die Wiederherstellung, schlecht für einen
+  Betrieb, in dem Instanzen automatisch starten.
+
+Die Wege schließen sich nicht aus. Vault etwa schützt seinen eigenen Hauptschlüssel nach Shamir und
+stellt sich der Anwendung als KMS dar.
+
+### Zielbild: drei Stufen
+
+```
+Umschlagschlüssel (KEK)      im KMS oder HSM, verlässt ihn nie, einer für alle Konten
+  └─ Hauptschlüssel je Konto  in der Datenbank, eingepackt mit dem KEK, einer je Konto
+       └─ Datenschlüssel        in claim_batch_key, eingepackt mit dem Hauptschlüssel, einer je Gruppe
+```
+
+Der Hauptschlüssel je Konto liegt eingepackt als Spalte an der Kontozeile (`account.account`,
+etwa `wrapped_master_key` und `kek_version`). Eine eigene Tabelle braucht es dafür nicht. So wird
+er mit dem Konto gesichert, wiederhergestellt und gelöscht, und es entsteht keine zweite Stelle,
+von der alles abhängt (Abschnitt 7).
+
+Die mittlere Stufe ist kein Selbstzweck. Sie verdient ihren Platz aus vier Gründen, die alle erst
+bei großen Mengen zählen (Abschnitt 8):
+
+1. **Sie entkoppelt den Durchsatz des KMS oder HSM vom Lesen der Claims.** Ein Aufruf nach außen
+   ist nur nötig, um den Hauptschlüssel eines Kontos auszupacken. Danach packt die Anwendung alle
+   Datenschlüssel dieses Kontos lokal mit AES aus. Die Last auf dem KMS wächst mit der Zahl der
+   Konten, die gerade aktiv sind, nicht mit der Zahl der Zugriffe auf Claims. Ein langsames HSM im
+   eigenen Rechenzentrum reicht damit aus.
+2. **Der ausgepackte Hauptschlüssel lässt sich je Konto zwischenspeichern,** in einem begrenzten
+   Speicher je Instanz (etwa Caffeine mit Obergrenze und Verfallszeit von wenigen Minuten), nie in
+   einem gemeinsamen Speicher wie Redis. Bei mehreren Instanzen packt jede Instanz selbst aus. Das
+   kostet im schlechtesten Fall so viele Aufrufe mehr, wie es Instanzen gibt, und bleibt ungefährlich.
+   Entweicht ein Eintrag aus dem Speicher, betrifft das genau ein Konto.
+3. **Den KEK zu erneuern bleibt bezahlbar.** Neu eingepackt werden nur die Hauptschlüssel, also eine
+   Zeile je Konto. Ohne die mittlere Stufe wären es alle Datenschlüssel, also drei- bis fünfmal so
+   viele Zeilen (Abschnitt 8). Mit einem KMS, das alte Versionen behält, kann das sogar träge
+   geschehen, beim nächsten Schreiben je Konto.
+4. **Ein Konto zu löschen ist ein Löschen einer Zeile.** Fällt die Kontozeile mit dem eingepackten
+   Hauptschlüssel, sind alle Gruppen dieses Kontos auf einmal unlesbar, auch in Sicherungen, die
+   die Zeile nicht mehr enthalten. Das ergänzt das heutige harte Löschen des Kontos.
+
+**Zwei Alternativen, geprüft und zurückgestellt:**
+
+- *Keine mittlere Stufe, Datenschlüssel direkt mit dem KEK eingepackt* (das klassische
+  `GenerateDataKey` von AWS). Dann ist jedes Auspacken eines Datenschlüssels ein Aufruf nach außen.
+  Das ist genau der Engpass aus Abschnitt 8. Man müsste stattdessen Datenschlüssel
+  zwischenspeichern, also dasselbe tun wie oben, nur mit drei- bis fünfmal so vielen Einträgen.
+- *Hauptschlüssel ableiten statt speichern* (HKDF aus einem Wurzelschlüssel und der `account_id`).
+  Spart die Spalte am Konto. Dafür muss der Wurzelschlüssel die Anwendung erreichen, also den KMS
+  oder das HSM verlassen, oder der Dienst muss Ableitung mit Kontext anbieten (Vault Transit kann
+  das). Außerdem lässt sich ein abgeleiteter Schlüssel nicht je Konto erneuern. Als Hauptweg
+  verworfen, als spätere Vereinfachung möglich.
+
+### Was im Code dafür nötig ist
+
+Ein kleiner Port im Modul `account`, etwa `MasterKeyWrapper` mit `wrap(accountId, key)` und
+`unwrap(accountId, wrapped)`. Die `account_id` geht als zusätzlicher Kontext in die Verschlüsselung
+ein (AES-GCM *associated data* beziehungsweise der *encryption context* des KMS). Ein eingepackter
+Hauptschlüssel lässt sich so nicht an ein anderes Konto umhängen.
+
+- **Adapter für die Demo:** ein Geheimnis aus der Konfiguration (`identity.secrets.master-kek`).
+  Der KEK liegt dann im Prozess. Das ist für die Demo in Ordnung und hält den Datenbankinhalt ohne
+  Konfiguration unlesbar. Vorbild ist **nicht** der Pepper, sondern
+  `account.change-log.lookup-secret`: ein öffentlicher Demo-Wert als Vorgabe in `application.yml`,
+  über eine Umgebungsvariable ersetzbar. Die Produktionsprüfung in [07-betrieb.md](../07-betrieb.md)
+  Abschnitt 4 bekommt eine weitere Zeile: mindestens 32 Zeichen und nicht der Demo-Wert. Das
+  Vorbild bringt auch schon das Verfahren für den Wechsel mit alter und neuer Id mit. Es lässt sich
+  für `kek_version` übernehmen.
+
+  Warum der Pepper anders bleibt: `identity.secrets.otp-pepper` schützt Codes, die fünf Minuten
+  leben, und Zähler für Versandlimits. Ein neuer Zufallswert je Start kostet nur die Codes, die
+  gerade unterwegs sind. Der KEK schützt Daten, die Jahre leben. Würde er je Start gewürfelt,
+  wären alle Claims nach einem Neustart unlesbar. Beide Geheimnisse bleiben unter
+  `identity.secrets`, und außerhalb des Demomodus müssen beide gesetzt sein.
+- **Adapter für den Produktivbetrieb:** ein KMS oder HSM. Der Adapter ist der einzige Ort, der
+  darüber Bescheid weiß. Die Hauptschlüssel und Datenschlüssel sehen in beiden Fällen gleich aus.
+  Eine Umstellung von Demo auf KMS packt die eine Spalte je Konto neu ein, mehr nicht.
+
+**Erneuern:**
+
+- *Den KEK:* neue Version im KMS, alte Versionen bleiben zum Auspacken. Neu eingepackt wird je
+  Konto beim nächsten Schreiben oder in einem Lauf in Portionen (Abschnitt 8). Die Spalte
+  `kek_version` sagt, welche Version welches Konto noch braucht.
+- *Den Hauptschlüssel eines Kontos:* neuer Schlüssel, die wenigen Datenschlüssel des Kontos neu
+  einpacken, ein Aufruf nach außen. Das geht träge und ist für ein einzelnes Konto billig, etwa
+  nach einem Vorfall oder nach einem festen Zeitraum.
+- *Einen Datenschlüssel:* wird nicht erneuert, sondern gelöscht. Das ist der Zweck der ganzen
+  Konstruktion.
 
 ---
 
@@ -352,60 +460,88 @@ Schlüssel `NodeSigningKey.privateKeyJwk` liegt im Klartext (ADR-22).
   versehentlich massenhaft gelöscht oder unvollständig wiederhergestellt wird. Das ist ein
   härterer Fehlerfall als beim heutigen Klartext. Diese Tabelle braucht eine eigene, entsprechend
   strenge Sicherung.
-- **Rahmen der Demo:** Der Vorschlag sieht bewusst keine Anbindung an ein KMS vor. Er beschreibt
-  die kleinste umsetzbare Variante: `javax.crypto`, keine neue Abhängigkeit, das Muster der
-  `RetentionJob`s wiederverwendet. Für einen Produktivbetrieb müsste die Aufbewahrung des
-  Hauptschlüssels (Abschnitt 6) vor dem ersten echten Einsatz geklärt sein.
+- **Rahmen der Demo:** Der Vorschlag sieht keine Anbindung an ein KMS vor, aber den Port dafür
+  (Abschnitt 6). Die Demo beschreibt die kleinste umsetzbare Variante: `javax.crypto`, keine neue
+  Abhängigkeit, der KEK aus der Konfiguration, das Muster der `RetentionJob`s wiederverwendet. Für
+  einen Produktivbetrieb muss der Adapter für KMS oder HSM vor dem ersten echten Einsatz stehen.
+  Die Daten in der Datenbank ändern sich dadurch nicht.
 
 ---
 
 ## 8) Mengen im Produktivbetrieb
 
 Dieser Abschnitt ist eine grobe Schätzung, keine belastbare Planung der Kapazität. Als Maßstab
-dient eine große gesetzliche Krankenkasse mit etwa 11 Millionen Versicherten.
+dient das Mengengerüst aus [14-stand-und-weg-zur-produktion.md](../14-stand-und-weg-zur-produktion.md)
+Abschnitt 7: 20 Millionen Konten, 1 Million Anmeldungen am Tag, in der Spitze 100 bis 300
+Anmeldungen je Sekunde. Angenommen sind dazu 3 bis 5 Gruppen von Claims je Konto über seine
+Lebensdauer.
 
-- **Wachstum der Schlüsseltabelle:** Ein Konto hat über seine Lebensdauer etwa 3 bis 5 Gruppen von
-  Claims. Das ergibt **30 bis 55 Millionen Zeilen** in `claim_batch_key`, also 6 bis 10 GB bei
-  etwa 150 bis 200 Byte je Zeile. Für sich genommen ist das überschaubar. Es ist aber eine neue
-  Tabelle, die bei jedem Zugriff auf einen Claim mitgelesen wird.
-- **Der eigentliche Engpass ist nicht das Verschlüsseln, sondern das Auspacken mit dem
-  Hauptschlüssel.**
+- **Wachstum der Schlüsseltabelle:** 20 Millionen Konten mal 3 bis 5 Gruppen ergeben **60 bis
+  100 Millionen Zeilen** in `claim_batch_key`, also 12 bis 20 GB bei etwa 150 bis 200 Byte je
+  Zeile. Dazu kommt der eingepackte Hauptschlüssel als Spalte an jeder der 20 Millionen
+  Kontozeilen, etwa 2 GB. Für sich genommen ist das überschaubar. `claim_batch_key` ist aber eine
+  neue Tabelle, die bei jedem Zugriff auf einen Claim mitgelesen wird.
+- **Wo Claims tatsächlich entschlüsselt werden, und wie oft.** Das ist für die Last entscheidend,
+  und es ist nicht die Anmeldung selbst:
+  - `AccountProfile.establishedClaims` enthält nur Attributtyp und Vertrauensstufe. Beides steht
+    unverschlüsselt in der Zeile (Abschnitt 4). Die Journey liest also bei jedem Schritt das
+    Profil, ohne etwas zu entschlüsseln.
+  - **`KeycloakAccountViews.viewOf` liest bei jedem Konto-Lesen durch Keycloak die Werte der
+    gespiegelten Claims** (`establishedClaimValues`, Vor- und Nachname). Keycloak liest das Konto
+    praktisch bei jeder Erneuerung eines Tokens neu
+    ([14-stand-und-weg-zur-produktion.md](../14-stand-und-weg-zur-produktion.md) Abschnitt 7,
+    Engpass 1). Das sind geschätzt **70 bis 1.400 Lesevorgänge je Sekunde**, und jeder davon würde
+    entschlüsseln. Das ist der heiße Pfad.
+  - `recordClaims` entschlüsselt die bestehenden Claims desselben Typs für die Prüfung auf
+    doppelte Angaben. Das geschieht je Identifizierung oder Bestätigung, also selten.
+  - Eine Auskunft nach Art. 15 DSGVO liest alle Gruppen eines Kontos. Das ist die Ausnahme und
+    betrifft ein Konto.
+- **Der eigentliche Engpass ist nicht das Verschlüsseln, sondern das Auspacken mit dem KEK.**
   - AES-256-GCM fällt bei jeder realistischen Last nicht ins Gewicht.
-  - Liegt der Hauptschlüssel aber in einem KMS oder HSM, kostet jedes Entschlüsseln des
-    Hauptschlüssels einen Aufruf über das Netz (etwa 10 bis 20 ms). Geschieht das bei jedem Zugriff
-    auf einen Claim, kommen die Grenzen des KMS für Anfragen je Sekunde dazu (bei AWS KMS etwa
-    5.500 bis 10.000 je Schlüssel) und Kosten je Aufruf. Bei Millionen Anmeldungen am Tag könnte
-    das der größte Kostenpunkt werden.
-  - **Abhilfe:** Den Hauptschlüssel einmal je Sitzung oder Anfrage entschlüsseln und im
-    Arbeitsspeicher vorhalten, nie speichern und nur kurz behalten. Die Last auf dem KMS wächst
-    dann mit der Zahl der Sitzungen und nicht mit der Zahl der Zugriffe auf Claims.
+  - Ginge für jedes Lesen von Claim-Werten ein Aufruf an das KMS oder HSM, wären das die 70 bis
+    1.400 Aufrufe je Sekunde von oben, jeder mit 10 bis 20 ms. Ein KMS in der Cloud trüge das
+    (Limit etwa 5.500 je Sekunde und mehr, Kosten bei AWS etwa 0,03 USD je 10.000 Aufrufe, also
+    im Bereich von einigen hundert bis einigen tausend USD im Jahr). Ein HSM im eigenen
+    Rechenzentrum mit einigen hundert Operationen je Sekunde trüge es nicht.
+  - **Mit dem Zielbild aus Abschnitt 6** geht der Aufruf nach außen nur einmal je Konto und
+    Verfallszeit des Zwischenspeichers. Bei 5 Minuten Verfallszeit und einem Token, das 300
+    Sekunden gilt, liegt die Rate nahe bei der Zahl der Anmeldungen: im Mittel etwa 12, in der
+    Spitze 100 bis 300 Aufrufe je Sekunde. Das trägt auch ein HSM. Die Verfallszeit des
+    Zwischenspeichers und die Laufzeit des Tokens gehören dabei zusammen betrachtet. Wird der
+    Engpass 1 aus 14-stand (Keycloak liest seltener) behoben, sinkt die Rate weiter.
+  - Der Zwischenspeicher je Instanz bleibt klein: Bei 400.000 gleichzeitigen Sitzungen sind das
+    höchstens 400.000 Einträge zu etwa 100 Byte, also rund 40 MB.
 - **Viele einzelne Schlüssel beim Lesen der ganzen Historie** sind unkritisch. Bei K Gruppen braucht
-  es K Auspackvorgänge, etwa für eine Auskunft nach Art. 15 DSGVO. Dabei geht es aber nur um ein
-  Konto, und K ist klein. Im Normalfall, wenn nur der aktuelle Wert gebraucht wird, liest das
-  System ohnehin `AccountAnchor` (Abschnitt 3a) und nicht das Claim-Log. Das teure Lesen vieler
-  Gruppen ist die Ausnahme und gehört nicht zum Ablauf der Anmeldung.
+  es K lokale Auspackvorgänge, etwa für die Auskunft nach Art. 15 DSGVO. K ist klein, und es
+  geht um ein Konto. Im Normalfall, wenn nur der aktuelle Wert gebraucht wird, liest das System
+  ohnehin `AccountAnchor` (Abschnitt 3a) und nicht das Claim-Log.
 - **`RetentionJob` darf das wachsende Claim-Log nicht per Join durchsuchen.**
   - `expires_at` muss **schon beim Schreiben** in `recordClaims` direkt in `claim_batch_key`
     gespeichert werden. Die Attributtypen der Gruppe und ihre Aufbewahrungsregel sind zu diesem
     Zeitpunkt bekannt.
-  - Der Job bleibt dann ein einfaches `DELETE ... WHERE expires_at < now()` über einen Index, wie
-    beim bestehenden Muster.
+  - Der Job bleibt dann ein einfaches `DELETE ... WHERE expires_at < now()` über einen Index, in
+    Portionen, wie beim bestehenden Muster.
   - Daraus folgt eine Regel, die erzwungen werden muss: Eine Gruppe darf nur Attributtypen mit
     **derselben** Aufbewahrungsregel enthalten. Sonst gilt beim Löschen für alle Zeilen der Gruppe
     die längste Frist.
-- **Bei Produktivmengen wird der mögliche Schaden konkret.** Geht die Schlüsseltabelle mit 30 bis
-  55 Millionen Zeilen verloren, trifft das nicht ein Konto, sondern alle zugleich. Das kommt eher
+- **Bei Produktivmengen wird der mögliche Schaden konkret.** Geht `claim_batch_key` mit 60 bis
+  100 Millionen Zeilen verloren, trifft das nicht ein Konto, sondern alle zugleich. Das kommt eher
   einem Totalausfall gleich als dem Verlust einer gewöhnlichen Tabelle. Die Tabelle braucht
   eigene, strengere Zusagen für Verfügbarkeit und Wiederherstellung, bei denen fast kein
-  Datenverlust erlaubt ist. Sie gehört eher in einen eigenen, überwachten Datenspeicher als
-  einfach als weitere Tabelle in das Schema `account`.
-- **Ein echter Vorteil bei großen Mengen: Den Hauptschlüssel zu erneuern wird billig.** Dabei
-  ändert sich nur die kleine Schlüsseltabelle. Die Datenschlüssel werden mit dem neuen
-  Hauptschlüssel neu eingepackt. Die 30 bis 55 Millionen Zeilen mit personenbezogenen Daten in
-  `AccountClaim` bleiben unverändert. Mit einem einzigen Schlüssel ohne Datenschlüssel müsste man
-  beim Erneuern alle Daten neu verschlüsseln. Bei Produktivmengen wäre das ein Vorhaben über
-  mehrere Tage. Hier lohnt sich die Schicht der Datenschlüssel bei echten Mengen also nicht nur in
-  der Theorie.
+  Datenverlust erlaubt ist. Dasselbe gilt für die Spalte mit dem Hauptschlüssel an der Kontozeile.
+  Dass sie an der Kontozeile liegt und nicht in einer weiteren Tabelle, hält die Zahl solcher
+  Stellen bei zwei. Ein Verlust des KEK im KMS oder HSM wäre der dritte und schlimmste Fall. Dort
+  braucht es die Mechanismen des Dienstes gegen versehentliches Löschen (Wartefristen, mehrere
+  Personen).
+- **Erneuern bleibt bei großen Mengen bezahlbar, und zwar auf jeder Stufe.**
+  - *KEK:* neu eingepackt werden 20 Millionen Hauptschlüssel, nicht 60 bis 100 Millionen
+    Datenschlüssel und nicht die Claims. Bei einem Aufruf je Konto und etwa 5.000 Aufrufen je
+    Sekunde dauert ein vollständiger Lauf gut eine Stunde, in Portionen über Tage verteilt oder
+    träge beim nächsten Schreiben. Mit einem einzigen Schlüssel ohne Umschläge müsste man beim
+    Erneuern alle Daten neu verschlüsseln. Das wäre ein Vorhaben über mehrere Tage.
+  - *Hauptschlüssel eines Kontos:* ein Aufruf nach außen und 3 bis 5 lokale Einpackvorgänge.
+  - Hier lohnt sich die Schicht der Datenschlüssel und die mittlere Stufe bei echten Mengen also
+    nicht nur in der Theorie.
 
 ---
 
@@ -418,18 +554,44 @@ dient eine große gesetzliche Krankenkasse mit etwa 11 Millionen Versicherten.
 - `src/main/kotlin/com/example/identity/core/account/infrastructure/AccountAnchor.kt`
   (unverändert; Bezugspunkt für die Abgrenzung in Abschnitt 3a)
 - `src/main/kotlin/com/example/identity/core/account/infrastructure/AccountRetraction.kt`
+- `src/main/kotlin/com/example/identity/core/account/infrastructure/Account.kt` (neue Spalten
+  `wrapped_master_key`, `kek_version`)
+- `src/main/kotlin/com/example/identity/core/orchestrator/keycloak/KeycloakAccountViews.kt`
+  (heißer Pfad für das Entschlüsseln, Abschnitt 8)
+- neuer Port `MasterKeyWrapper` im Modul `account` mit Demo-Adapter aus der Konfiguration
+  (`identity.secrets.master-kek`, Prüfung in `DeploymentTopology`)
 - `docs/adr/` (neues ADR für diese Entscheidung, eingetragen in `docs/12-entscheidungen.md`)
 - `docs/07-betrieb.md` (bestehendes Muster der `*RetentionJob`s erweitern)
 
 ## Nächster Schritt
 
-Wird das Vorhaben weiterverfolgt, sind diese Anschlussfragen zu klären:
+Wird das Vorhaben weiterverfolgt, sind diese Anschlussfragen zu klären. Zu jeder steht eine
+Empfehlung, keine Entscheidung.
 
-1. Wie wird der Hauptschlüssel aufbewahrt (Abschnitt 6)?
-2. Gibt es Datenschlüssel je Gruppe für *alle* Attributtypen oder nur für die sensiblen (`EID_*`,
-   `EMAIL`)?
-3. Wie werden bestehende Claims im Klartext umgestellt?
-4. Soll die Frist von einem Jahr für eID-Daten auch die Zeile des Ankers `EID_RESTRICTED_ID`
-   treffen, mit den Folgen für das Wiedererkennen (Abschnitt 3a)?
-5. Wie wird `RetractionSource.RETENTION_POLICY` für automatische Widerrufe nach Ablauf einer Frist
-   eingeführt (Abschnitt 4)?
+1. **Welcher Dienst hält den KEK im Produktivbetrieb (Abschnitt 6)?** Empfehlung: Vault Transit als
+   erste Wahl. Es läuft im eigenen Rechenzentrum, sichert seinen eigenen Hauptschlüssel nach Shamir
+   und kann wahlweise auf einem HSM aufsetzen. Ein KMS in der Cloud nur, wenn das System ohnehin
+   dort läuft. Das entscheidet der Betreiber. Dieses Dokument hält nur fest, was der Adapter
+   können muss: Einpacken und Auspacken mit Kontext, Versionen, mindestens 300 Aufrufe je Sekunde.
+2. **Datenschlüssel je Gruppe für *alle* Attributtypen oder nur für die sensiblen (`EID_*`,
+   `EMAIL`)?** Empfehlung: alle. Eine Unterscheidung nach Typ bringt zwei Codepfade, und ein
+   Claim ohne Datenschlüssel müsste beim Lesen anders behandelt werden. Der Mehraufwand für Werte
+   wie `PERSON_ID` ist ein lokaler AES-Aufruf. Einzige Ausnahme bleibt `account.anchor`
+   (Abschnitt 3a).
+3. **Wie werden bestehende Claims im Klartext umgestellt?** Bisher gar nicht nötig: Es gibt keine
+   produktiven Daten, und die Demo-Datenbank wird neu aufgebaut. Die neuen Spalten und Tabellen
+   kommen als gewöhnliche Flyway-Migration. Sollte das Vorhaben erst nach einem Produktivstart
+   umgesetzt werden, gilt das Muster aus [offene-befunde.md](../offene-befunde.md) Abschnitt 8:
+   in wiederholbaren Portionen, mit einer Lesephase, in der ein leeres `wrapped_dek` Klartext
+   bedeutet.
+4. **Soll die Frist von einem Jahr für eID-Daten auch die Zeile des Ankers `EID_RESTRICTED_ID`
+   treffen (Abschnitt 3a)?** Empfehlung: nein, der Anker bleibt. Ein Nutzer, der auf einem neuen
+   Gerät nicht mehr wiedererkannt wird, müsste die eID erneut auslesen. Das ist ein Supportfall
+   für die Kasse und ein Ärgernis für den Nutzer. Der Anker ist ein Pseudonym ohne Namen oder
+   Adresse. Die sensiblen Werte im Claim-Log fallen nach einem Jahr trotzdem weg. Das ist eine
+   Produktentscheidung.
+5. **Wie wird `RetractionSource.RETENTION_POLICY` eingeführt (Abschnitt 4)?** Empfehlung: in
+   derselben Änderung wie der erste `RetentionJob`, der Datenschlüssel löscht. Der Job schreibt den
+   Widerruf mit dieser Quelle und löscht den Schlüssel in einer Transaktion. Als Grund trägt er die
+   Aufbewahrungsregel ein, etwa `EID_MAX_AGE_1Y`. So sieht ein Prüfer später, welche Regel gewirkt
+   hat.
