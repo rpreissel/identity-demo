@@ -1,8 +1,11 @@
 package com.example.identity.simulation.kms.api.v1
 
 import com.example.identity.demo.demo_mode.DemoSurface
-import com.example.identity.simulation.kms.KmsKeyInfo
+import com.example.identity.contract.tool_api.kms.KmsKeyInfo
 import com.example.identity.simulation.kms.KmsTransit
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.ExceptionHandler
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.GetMapping
@@ -35,4 +38,14 @@ class KmsMockController(private val kms: KmsTransit) {
     @PostMapping("keys/{name}/retirement")
     @Operation(summary = "Versionen zurueckziehen", description = "Alle Versionen unterhalb von `below` packen nicht mehr aus und verifizieren nicht mehr; ihr Material wird vernichtet.")
     fun retire(@PathVariable name: String, @RequestParam below: Int): KmsKeyInfo = kms.retireBelow(name, below)
+
+    /** A key the service does not have. */
+    @ExceptionHandler(IllegalStateException::class)
+    fun unknownKey(e: IllegalStateException): ResponseEntity<Map<String, String?>> =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to e.message))
+
+    /** A version outside what the key has. */
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun badVersion(e: IllegalArgumentException): ResponseEntity<Map<String, String?>> =
+        ResponseEntity.badRequest().body(mapOf("error" to e.message))
 }

@@ -2,7 +2,9 @@ package com.example.identity.core.account.application
 
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.core.account.AccountDeleted
 import com.example.identity.core.account.domain.normalizeClaimValue
+import org.springframework.context.event.EventListener
 import com.example.identity.core.account.infrastructure.Account
 import com.example.identity.core.account.infrastructure.AccountClaim
 import com.example.identity.core.account.infrastructure.AccountRepository
@@ -46,7 +48,7 @@ class ClaimCrypto(
 
     /** Gives a new account its master key, before the row is saved: the column is not nullable. */
     fun assignMasterKey(account: Account) {
-        val wrapped = wrapper.wrap(AesGcm.newKey())
+        val wrapped = wrapper.wrap(MASTER_KEY_PURPOSE, AesGcm.newKey())
         account.wrappedMasterKey = wrapped.bytes
         account.kekVersion = wrapped.kekVersion
     }
@@ -58,9 +60,15 @@ class ClaimCrypto(
         val now = clock.instant()
         synchronized(masterKeys) { masterKeys[accountId]?.takeIf { it.expiresAt.isAfter(now) }?.let { return it.masterKey } }
         val stored = accountRepository.findStoredMasterKey(accountId) ?: error("Account not found: $accountId")
-        val masterKey = wrapper.unwrap(WrappedKey(stored.wrappedMasterKey, stored.kekVersion))
+        val masterKey = wrapper.unwrap(MASTER_KEY_PURPOSE, WrappedKey(stored.wrappedMasterKey, stored.kekVersion))
         synchronized(masterKeys) { masterKeys[accountId] = Cached(masterKey, now + cacheTtl) }
         return masterKey
+    }
+
+    /** A deleted account's key leaves this instance at once, not after the cache period. */
+    @EventListener(AccountDeleted::class)
+    fun forget(event: AccountDeleted) {
+        synchronized(masterKeys) { masterKeys.remove(event.accountId) }
     }
 
     fun deleteBatch(claimBatchId: UUID) {
@@ -123,5 +131,7 @@ class ClaimCrypto(
 
     private companion object {
         const val HMAC = "HmacSHA256"
+        /** Bound into the wrapping, so a wrapped data key of the orchestrator cannot pass as a master key. */
+        const val MASTER_KEY_PURPOSE = "account-master-key"
     }
 }

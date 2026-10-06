@@ -9,5 +9,5 @@ import org.springframework.modulith.ApplicationModule
  * `AccountService` implements `tool_api.AccountDirectory`, so a tool controller never depends on
  * `account` itself (docs/04-orchestrierung.md #8).
  */
-@ApplicationModule(id = "account", allowedDependencies = ["tool_api", "kms", "texts"])
+@ApplicationModule(id = "account", allowedDependencies = ["tool_api", "texts"])
 internal class AccountModule

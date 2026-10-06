@@ -1,7 +1,7 @@
 package com.example.identity.core.account.application
 
-import com.example.identity.simulation.kms.KmsKeyType
-import com.example.identity.simulation.kms.KmsTransit
+import com.example.identity.contract.tool_api.kms.KeyService
+import com.example.identity.contract.tool_api.kms.KmsKeyType
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
@@ -18,9 +18,10 @@ class WrappedKey(val bytes: ByteArray, val kekVersion: String)
  * the account id: the key is wrapped before the row, and so the id, exists.
  */
 interface MasterKeyWrapper {
-    fun wrap(masterKey: ByteArray): WrappedKey
+    /** [purpose] is bound into the wrapping: a key wrapped as one thing cannot be presented as another. */
+    fun wrap(purpose: String, masterKey: ByteArray): WrappedKey
 
-    fun unwrap(wrapped: WrappedKey): ByteArray
+    fun unwrap(purpose: String, wrapped: WrappedKey): ByteArray
 
     /** Every KEK version this wrapper can still unwrap - the current one and each not yet retired. */
     val knownVersions: Set<String>
@@ -36,21 +37,24 @@ interface MasterKeyWrapper {
  * new version, old ones keep unwrapping until the KMS retires their version.
  */
 @Component
-class KmsKekWrapper(private val kms: KmsTransit) : MasterKeyWrapper {
+class KmsKekWrapper(private val kms: KeyService) : MasterKeyWrapper {
     init {
         kms.ensureKey(KEK_KEY, KmsKeyType.AES256)
     }
 
-    override fun wrap(masterKey: ByteArray): WrappedKey = kms.encrypt(KEK_KEY, masterKey).let { WrappedKey(it.bytes, "v${it.keyVersion}") }
+    override fun wrap(purpose: String, masterKey: ByteArray): WrappedKey =
+        kms.encrypt(KEK_KEY, purpose, masterKey).let { WrappedKey(it.bytes, "v${it.keyVersion}") }
 
-    override fun unwrap(wrapped: WrappedKey): ByteArray = kms.decrypt(KEK_KEY, versionOf(wrapped.kekVersion), wrapped.bytes)
+    override fun unwrap(purpose: String, wrapped: WrappedKey): ByteArray = kms.decrypt(KEK_KEY, versionOf(wrapped.kekVersion), purpose, wrapped.bytes)
 
-    override val knownVersions: Set<String> get() = kms.keyInfo(KEK_KEY).usableVersions.map { "v$it" }.toSet()
+    override val knownVersions: Set<String> get() = checkNotNull(kms.findKey(KEK_KEY)).usableVersions.map { "v$it" }.toSet()
 
-    override val simulated: Boolean = true
+    override val simulated: Boolean get() = kms.simulated
 
+    /** `v<N>` only: a row from before ADR-54 carries a bare number, which no KMS version answers for. */
     private fun versionOf(kekVersion: String): Int =
-        kekVersion.removePrefix("v").toIntOrNull() ?: error("not a KMS key version: '$kekVersion'")
+        kekVersion.takeIf { it.startsWith("v") }?.drop(1)?.toIntOrNull()
+            ?: error("'$kekVersion' is not a KMS key version (v<N>) - the row was wrapped before the key service existed (ADR-54)")
 
     companion object {
         const val KEK_KEY = "identity-kek"

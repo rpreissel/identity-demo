@@ -22,6 +22,6 @@ import org.springframework.modulith.ApplicationModule
  */
 @ApplicationModule(
     id = "orchestrator",
-    allowedDependencies = ["tool_api", "account", "kms", "texts", "demo_mode"]
+    allowedDependencies = ["tool_api", "account", "texts", "demo_mode"]
 )
 internal class OrchestratorModule

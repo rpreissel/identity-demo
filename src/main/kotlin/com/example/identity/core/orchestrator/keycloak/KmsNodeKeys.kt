@@ -1,7 +1,7 @@
 package com.example.identity.core.orchestrator.keycloak
 
-import com.example.identity.simulation.kms.KmsKeyType
-import com.example.identity.simulation.kms.KmsTransit
+import com.example.identity.contract.tool_api.kms.KeyService
+import com.example.identity.contract.tool_api.kms.KmsKeyType
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSSigner
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component
  * still verifies, so Keycloak finds a rotated key by its `kid` without a restart on either side.
  */
 @Component
-class KmsNodeKeys(private val kms: KmsTransit) {
+class KmsNodeKeys(private val kms: KeyService) {
 
     /** `kid` of version [version] of [purpose], as published in its JWKS. */
     fun keyId(purpose: String, version: Int): String = "$purpose-v$version"
@@ -48,15 +48,16 @@ class KmsNodeKeys(private val kms: KmsTransit) {
     private fun infoOf(purpose: String) = kms.findKey(purpose) ?: kms.ensureKey(purpose, KmsKeyType.ECDSA_P256)
 
     inner class KmsJwsSigner(private val purpose: String) : JWSSigner {
-        private val info = infoOf(purpose)
+        // One row read; the key exists since provisioning, or is created once before the start has finished.
+        private val version = runCatching { kms.latestVersion(purpose) }.getOrElse { infoOf(purpose).latestVersion }
 
         /** The kid the header must carry: the version that signs now. */
-        val keyId: String = keyId(purpose, info.latestVersion)
+        val keyId: String = keyId(purpose, version)
 
         override fun sign(header: JWSHeader, signingInput: ByteArray): Base64URL {
             require(header.algorithm == JWSAlgorithm.ES256) { "only ES256 is signed by the KMS, not ${header.algorithm}" }
             val signed = kms.sign(purpose, signingInput)
-            check(signed.keyVersion == info.latestVersion) { "KMS key '$purpose' rotated to v${signed.keyVersion} while signing with ${keyId}" }
+            check(signed.keyVersion == version) { "KMS key '$purpose' rotated to v${signed.keyVersion} while signing with $keyId" }
             // The KMS answers DER; a JWS carries R || S.
             return Base64URL.encode(ECDSA.transcodeSignatureToConcat(signed.bytes, ECDSA.getSignatureByteArrayLength(JWSAlgorithm.ES256)))
         }

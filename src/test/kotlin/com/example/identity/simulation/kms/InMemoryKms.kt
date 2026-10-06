@@ -9,6 +9,10 @@ import com.example.identity.simulation.kms.internal.KmsKeyVersionRepository
 import io.mockk.every
 import io.mockk.mockk
 import java.util.Optional
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
+import org.springframework.transaction.TransactionStatus
+import org.springframework.transaction.support.SimpleTransactionStatus
 
 /** The simulated KMS over maps instead of tables, for unit tests of everything that keys with it. */
 class InMemoryKms {
@@ -27,5 +31,11 @@ class InMemoryKms {
         every { delete(any<KmsKeyVersion>()) } answers { versions.remove(KmsKeyVersionId(firstArg<KmsKeyVersion>().keyName, firstArg<KmsKeyVersion>().version)); Unit }
     }
 
-    val transit = KmsTransit(keyRepository, versionRepository, TEST_CLOCK)
+    val transit = KmsTransit(keyRepository, versionRepository, NoTransactions, TEST_CLOCK)
+
+    private object NoTransactions : PlatformTransactionManager {
+        override fun getTransaction(definition: TransactionDefinition?): TransactionStatus = SimpleTransactionStatus()
+        override fun commit(status: TransactionStatus) = Unit
+        override fun rollback(status: TransactionStatus) = Unit
+    }
 }

@@ -1,5 +1,9 @@
 package com.example.identity.simulation.kms
 
+import com.example.identity.contract.tool_api.kms.KeyService
+import com.example.identity.contract.tool_api.kms.KmsKeyInfo
+import com.example.identity.contract.tool_api.kms.KmsKeyType
+import com.example.identity.contract.tool_api.kms.KmsVersioned
 import com.example.identity.simulation.kms.internal.KmsKey
 import com.example.identity.simulation.kms.internal.KmsKeyRepository
 import com.example.identity.simulation.kms.internal.KmsKeyVersion
@@ -19,21 +23,13 @@ import java.time.Clock
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
-
-/** What this KMS does with a key. */
-enum class KmsKeyType { AES256, ECDSA_P256 }
-
-/** A key as the caller sees it: versions, never material. */
-data class KmsKeyInfo(val name: String, val type: KmsKeyType, val latestVersion: Int, val minDecryptionVersion: Int, val versions: List<Int>) {
-    /** The versions that still decrypt and verify. */
-    val usableVersions: List<Int> get() = versions.filter { it >= minDecryptionVersion }
-}
-
-/** Bytes a key version produced, with that version, so the caller can store both and ask again later. */
-class KmsVersioned(val keyVersion: Int, val bytes: ByteArray)
+import org.springframework.transaction.support.TransactionTemplate
 
 /**
  * The backend-facing face of the simulated KMS, shaped like Vault's Transit engine: named keys with
@@ -46,22 +42,36 @@ class KmsVersioned(val keyVersion: Int, val bytes: ByteArray)
 class KmsTransit(
     private val keys: KmsKeyRepository,
     private val versions: KmsKeyVersionRepository,
+    transactionManager: PlatformTransactionManager,
     private val clock: Clock,
-) {
+) : KeyService {
     private val random = SecureRandom()
+    // Creation commits on its own: a key must never be created inside a caller's transaction, which
+    // may go on to wait for a network peer while holding the row lock every other caller runs into.
+    private val newTransaction = TransactionTemplate(transactionManager).apply { propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW }
 
-    /**
-     * The key, created with its first version if it does not exist yet. Always its own transaction:
-     * a key must never be created inside a caller's transaction, which may go on to wait for a
-     * network peer while holding the row lock every other caller then runs into.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun ensureKey(name: String, type: KmsKeyType): KmsKeyInfo {
-        val key = keys.findById(name).orElse(null)
-            ?: keys.save(KmsKey(name = name, keyType = type.name, latestVersion = 0, createdAt = clock.instant())).also { addVersion(it, type) }
-        check(key.keyType == type.name) { "KMS key '$name' is ${key.keyType}, not $type" }
-        return infoOf(key)
+    override val simulated: Boolean = true
+
+    /** Two instances creating the same key at once: the loser takes the winner's key. */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    override fun ensureKey(name: String, type: KmsKeyType): KmsKeyInfo {
+        findKey(name)?.let { existing ->
+            check(existing.type == type) { "KMS key '$name' is ${existing.type}, not $type" }
+            return existing
+        }
+        return try {
+            newTransaction.execute {
+                val key = keys.save(KmsKey(name = name, keyType = type.name, latestVersion = 0, createdAt = clock.instant()))
+                addVersion(key, type)
+                infoOf(key)
+            }!!
+        } catch (e: DataIntegrityViolationException) {
+            checkNotNull(findKey(name)) { "KMS key '$name' was created concurrently but cannot be read" }
+        }
     }
+
+    @Transactional(readOnly = true)
+    override fun latestVersion(name: String): Int = existing(name).latestVersion
 
     /** A new version; from now on it encrypts and signs, the older ones still decrypt and verify. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -75,7 +85,9 @@ class KmsTransit(
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun retireBelow(name: String, version: Int): KmsKeyInfo {
         val key = existing(name)
-        require(version in 1..key.latestVersion) { "version $version is not one of key '$name'" }
+        require(version in key.minDecryptionVersion..key.latestVersion) {
+            "version $version is not between the retired floor ${key.minDecryptionVersion} and the latest ${key.latestVersion} of key '$name'"
+        }
         key.minDecryptionVersion = version
         versions.findByKeyNameOrderByVersion(name).filter { it.version < version }.forEach(versions::delete)
         return infoOf(keys.save(key))
@@ -84,36 +96,39 @@ class KmsTransit(
     @Transactional(readOnly = true)
     fun keyInfo(name: String): KmsKeyInfo = infoOf(existing(name))
 
-    /** [keyInfo] for a key that may not exist yet, without creating it. */
     @Transactional(readOnly = true)
-    fun findKey(name: String): KmsKeyInfo? = keys.findById(name).orElse(null)?.let(::infoOf)
+    override fun findKey(name: String): KmsKeyInfo? = keys.findById(name).orElse(null)?.let(::infoOf)
 
     @Transactional(readOnly = true)
     fun allKeys(): List<KmsKeyInfo> = keys.findAll().sortedBy { it.name }.map(::infoOf)
 
-    /** [plaintext] under the latest version of the AES key [name]; the nonce leads the bytes. */
+    /** [plaintext] under the latest version of the AES key [name], [context] as checked data; the nonce leads the bytes. */
     @Transactional(readOnly = true)
-    fun encrypt(name: String, plaintext: ByteArray): KmsVersioned {
+    override fun encrypt(name: String, context: String, plaintext: ByteArray): KmsVersioned {
         val key = existing(name, KmsKeyType.AES256)
         val version = key.latestVersion
         val nonce = ByteArray(NONCE_BYTES).also(random::nextBytes)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, aesKey(name, version), GCMParameterSpec(128, nonce)) }
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(Cipher.ENCRYPT_MODE, aesKey(name, version), GCMParameterSpec(128, nonce))
+            updateAAD(context.toByteArray())
+        }
         return KmsVersioned(version, nonce + cipher.doFinal(plaintext))
     }
 
     @Transactional(readOnly = true)
-    fun decrypt(name: String, keyVersion: Int, ciphertext: ByteArray): ByteArray {
+    override fun decrypt(name: String, keyVersion: Int, context: String, ciphertext: ByteArray): ByteArray {
         val key = existing(name, KmsKeyType.AES256)
         check(keyVersion >= key.minDecryptionVersion) { "KMS key '$name' version $keyVersion is retired" }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
             init(Cipher.DECRYPT_MODE, aesKey(name, keyVersion), GCMParameterSpec(128, ciphertext, 0, NONCE_BYTES))
+            updateAAD(context.toByteArray())
         }
         return cipher.doFinal(ciphertext, NONCE_BYTES, ciphertext.size - NONCE_BYTES)
     }
 
     /** ECDSA over SHA-256 of [input] with the latest version of [name], DER-encoded; a JWS caller transcodes it. */
     @Transactional(readOnly = true)
-    fun sign(name: String, input: ByteArray): KmsVersioned {
+    override fun sign(name: String, input: ByteArray): KmsVersioned {
         val key = existing(name, KmsKeyType.ECDSA_P256)
         val version = key.latestVersion
         val signature = Signature.getInstance("SHA256withECDSA").apply { initSign(ecPair(name, version).first); update(input) }
@@ -122,7 +137,7 @@ class KmsTransit(
 
     /** The public half of version [version] - the only thing of a signing key that leaves the service. */
     @Transactional(readOnly = true)
-    fun publicKey(name: String, version: Int): ECPublicKey {
+    override fun publicKey(name: String, version: Int): ECPublicKey {
         val key = existing(name, KmsKeyType.ECDSA_P256)
         check(version >= key.minDecryptionVersion) { "KMS key '$name' version $version is retired" }
         return ecPair(name, version).second

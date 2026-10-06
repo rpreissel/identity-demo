@@ -74,24 +74,25 @@ class ClaimCryptoTest : BehaviorSpec({
     given("a master key wrapped by the KMS") {
         val kms = InMemoryKms()
         val wrapper = KmsKekWrapper(kms.transit)
-        val wrapped = wrapper.wrap(AesGcm.newKey())
+        val wrapped = wrapper.wrap("account-master-key", AesGcm.newKey())
+
+        kms.transit.rotate(KmsKekWrapper.KEK_KEY)
+        val fresh = wrapper.wrap("account-master-key", AesGcm.newKey())
 
         `when`("the KEK is rotated in the KMS") {
-            kms.transit.rotate(KmsKekWrapper.KEK_KEY)
-            val fresh = wrapper.wrap(AesGcm.newKey())
 
             then("old wraps still open, new ones carry the new version, and both versions are known") {
                 wrapped.kekVersion shouldBe "v1"
                 fresh.kekVersion shouldBe "v2"
-                wrapper.unwrap(wrapped).size shouldBe 32
-                wrapper.unwrap(fresh).size shouldBe 32
+                wrapper.unwrap("account-master-key", wrapped).size shouldBe 32
+                wrapper.unwrap("account-master-key", fresh).size shouldBe 32
                 wrapper.knownVersions shouldBe setOf("v1", "v2")
             }
         }
 
         `when`("the old version is retired in the KMS") {
             kms.transit.retireBelow(KmsKekWrapper.KEK_KEY, 2)
-            val result = runCatching { wrapper.unwrap(wrapped) }
+            val result = runCatching { wrapper.unwrap("account-master-key", wrapped) }
 
             then("a key wrapped under it opens no more, and the version is no longer known") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }.message!! shouldContain "retired"
@@ -101,15 +102,67 @@ class ClaimCryptoTest : BehaviorSpec({
 
         `when`("another KMS with its own KEK is asked") {
             val other = KmsKekWrapper(InMemoryKms().transit)
-            val result = runCatching { other.unwrap(wrapped) }
+            val result = runCatching { other.unwrap("account-master-key", wrapped) }
 
             then("it does not open") {
                 shouldThrow<AEADBadTagException> { result.getOrThrow() }
             }
         }
 
+        `when`("it is presented as a data key of another module") {
+            val result = runCatching { wrapper.unwrap("orchestrator-data-key", fresh) }
+
+            then("it does not open - the purpose is bound into the wrapping") {
+                shouldThrow<AEADBadTagException> { result.getOrThrow() }
+            }
+        }
+
+        `when`("a row from before the key service names its version without the prefix") {
+            val result = runCatching { wrapper.unwrap("account-master-key", WrappedKey(wrapped.bytes, "1")) }
+
+            then("the failure says what the row is, instead of a bare decryption error") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }.message!! shouldContain "ADR-54"
+            }
+        }
+
         then("the simulated KMS says so, for ProductionModeCheck") {
             wrapper.simulated shouldBe true
+        }
+    }
+
+    given("the per-instance cache of unwrapped master keys") {
+        val keys = ClaimCryptoFixture()
+        var unwraps = 0
+        val counting = object : MasterKeyWrapper by keys.wrapper {
+            override fun unwrap(purpose: String, wrapped: WrappedKey): ByteArray = keys.wrapper.unwrap(purpose, wrapped).also { unwraps++ }
+        }
+        val clock = io.mockk.mockk<java.time.Clock>()
+        var now = TEST_NOW
+        io.mockk.every { clock.instant() } answers { now }
+        val crypto = ClaimCrypto(keys.accountRepository, keys.batchKeyRepository, counting, clock, cacheTtl = java.time.Duration.ofMinutes(5))
+        keys.account(alice)
+
+        `when`("an account is opened three times within the period, then once after it") {
+            repeat(3) { crypto.open(alice) }
+            val within = unwraps
+            now = TEST_NOW + java.time.Duration.ofMinutes(6)
+            crypto.open(alice)
+
+            then("the KMS unwraps once per period") {
+                within shouldBe 1
+                unwraps shouldBe 2
+            }
+        }
+
+        `when`("the account is deleted") {
+            crypto.open(alice)
+            val before = unwraps
+            crypto.forget(com.example.identity.core.account.AccountDeleted(alice))
+            crypto.open(alice)
+
+            then("the next read unwraps again - the key did not outlive the account in memory") {
+                unwraps shouldBe before + 1
+            }
         }
     }
 
