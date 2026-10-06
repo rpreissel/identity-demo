@@ -45,7 +45,12 @@ class ClaimLedgerTest : BehaviorSpec({
             keys.account(account)
             // The log answers from what was saved, minus what was retracted - the SQL subtraction in Kotlin.
             every { claimRepository.findEstablished(account) } answers {
-                saved.filter { claim -> retractions.none { it.attributeType == claim.attributeType && it.valueDigest == claim.valueDigest } }
+                saved.filter { claim ->
+                    retractions.none {
+                        it.attributeType == claim.attributeType && it.valueDigest == claim.valueDigest &&
+                            (it.claimBatchId == null || it.claimBatchId == claim.claimBatchId)
+                    }
+                }
             }
             every { claimRepository.findByAccountIdAndAttributeTypeAndValueDigest(account, any(), any()) } answers {
                 saved.filter { it.attributeType == secondArg<AttributeType>() && it.valueDigest == thirdArg<String?>() }
@@ -124,6 +129,23 @@ class ClaimLedgerTest : BehaviorSpec({
             }
         }
 
+    }
+
+    given("the same name in an old batch and in a younger one from another source") {
+        val fixture = Fixture(emptyMap())
+        fixture.ledger.append(account, listOf(Claim(AttributeType.FAMILY_NAME, "Muster", eid, AcrLevel.LOA3)), AcrLevel.LOA3, null)
+        val old = fixture.keys.batchKeys.single()
+        fixture.ledger.append(account, listOf(Claim(AttributeType.FAMILY_NAME, "Muster", ClaimSource("ident-nect"), AcrLevel.LOA3)), AcrLevel.LOA3, null)
+
+        `when`("the old batch expires") {
+            fixture.ledger.expire(old, TEST_NOW + Duration.ofDays(400))
+
+            then("the younger batch keeps its value and its key - the retraction names the batch") {
+                fixture.retractions.single().claimBatchId shouldBe old.claimBatchId
+                fixture.keys.batchKeys.map { it.claimBatchId } shouldBe listOf(fixture.saved.last().claimBatchId)
+                fixture.ledger.establishedValues(account, setOf(AttributeType.FAMILY_NAME)) shouldBe mapOf(AttributeType.FAMILY_NAME to "Muster")
+            }
+        }
     }
 
     given("a batch with two claims whose retention runs out") {

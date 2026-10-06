@@ -160,17 +160,7 @@ class ClaimLedger(
      * its data key at once: the withdrawn values become unreadable, their rows stay as metadata.
      */
     fun retract(accountId: AccountId, type: AttributeType, valueDigest: String?, retractionSource: RetractionSource, reason: String?, at: Instant) {
-        changeLog.attributeRetracted(accountId, type.wireName, retractionSource = retractionSource.name, reason = reason, at = at)
-        accountRetractionRepository.save(
-            AccountRetraction(
-                accountId = accountId,
-                attributeType = type,
-                valueDigest = valueDigest,
-                retractionSource = retractionSource,
-                reason = reason,
-                retractedAt = at
-            )
-        )
+        writeRetraction(accountId, type, valueDigest, claimBatchId = null, retractionSource, reason, at)
         val touched = accountClaimRepository.findByAccountIdAndAttributeTypeAndValueDigest(accountId, type, valueDigest)
             .mapNotNull { it.claimBatchId }.toSet()
         if (touched.isEmpty()) return
@@ -178,10 +168,29 @@ class ClaimLedger(
         (touched - live).forEach(crypto::deleteBatch)
     }
 
+    private fun writeRetraction(
+        accountId: AccountId, type: AttributeType, valueDigest: String?, claimBatchId: UUID?,
+        retractionSource: RetractionSource, reason: String?, at: Instant,
+    ) {
+        changeLog.attributeRetracted(accountId, type.wireName, retractionSource = retractionSource.name, reason = reason, at = at)
+        accountRetractionRepository.save(
+            AccountRetraction(
+                accountId = accountId,
+                attributeType = type,
+                valueDigest = valueDigest,
+                claimBatchId = claimBatchId,
+                retractionSource = retractionSource,
+                reason = reason,
+                retractedAt = at
+            )
+        )
+    }
+
     /**
      * Ends a batch whose retention ran out: withdraws what of it still counts, with the policy as
      * source, then deletes its data key. Both in the caller's transaction, so the logical and the
-     * cryptographic state cannot drift apart (ADR-52).
+     * cryptographic state cannot drift apart (ADR-52). The retractions name the batch: the same
+     * value in a younger batch keeps its own retention.
      */
     fun expire(batch: ClaimBatchKey, at: Instant) {
         val accountId = checkNotNull(batch.accountId)
@@ -190,7 +199,9 @@ class ClaimLedger(
             .filter { it.claimBatchId == batchId }
             .map { checkNotNull(it.attributeType) to it.valueDigest }
             .distinct()
-            .forEach { (type, digest) -> retract(accountId, type, digest, RetractionSource.RETENTION_POLICY, "Aufbewahrungsfrist abgelaufen", at) }
+            .forEach { (type, digest) ->
+                writeRetraction(accountId, type, digest, batchId, RetractionSource.RETENTION_POLICY, "Aufbewahrungsfrist abgelaufen", at)
+            }
         crypto.deleteBatch(batchId)
     }
 }

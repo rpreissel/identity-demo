@@ -28,7 +28,10 @@ Umschlagschlüssel (KEK)       Konfiguration (Demo) oder KMS/HSM (Produktion), e
   über den Digest nicht über Konten hinweg suchen. Gesucht wird weiterhin nur über
   `account.anchor`, das im Klartext bleibt (ADR-12, ADR-19).
 - **Widerruf** (`account.retraction`): trägt denselben Digest statt des normalisierten Werts. Die
-  zweite lesbare Kopie, die ADR-12 als Preis nannte, gibt es nicht mehr.
+  zweite lesbare Kopie, die ADR-12 als Preis nannte, gibt es nicht mehr. Ein Widerruf nach
+  abgelaufener Frist nennt zusätzlich seine Gruppe (`claim_batch_id`) und trifft nur deren Zeilen.
+  Derselbe Wert in einer jüngeren Gruppe, etwa aus einer erneuten Identifizierung, behält seine
+  eigene Frist. Alle anderen Widerrufe gelten wie bisher für jede ältere Zeile mit diesem Digest.
 
 Zwei Vorgänge löschen Datenschlüssel:
 

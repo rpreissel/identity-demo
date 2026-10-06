@@ -43,13 +43,16 @@ class ClaimCrypto(
         return AccountCipher(accountId, masterKey)
     }
 
-    fun deleteBatch(claimBatchId: UUID) = batchKeys.deleteById(claimBatchId)
+    fun deleteBatch(claimBatchId: UUID) {
+        batchKeys.deleteByClaimBatchId(claimBatchId)
+    }
 
     inner class AccountCipher(private val accountId: AccountId, masterKey: ByteArray) {
         // Two subkeys, so the digest key and the wrapping key never serve both purposes.
         private val wrapKey = SecretKeySpec(hmac(masterKey, "wrap".toByteArray()), "AES")
         private val digestKey = SecretKeySpec(hmac(masterKey, "digest".toByteArray()), HMAC)
-        private val dataKeys = mutableMapOf<UUID, SecretKey>()
+        /** `null` remembers that the batch key is gone, so an erased batch costs one lookup per operation. */
+        private val dataKeys = mutableMapOf<UUID, SecretKey?>()
 
         /** The stored equality form of [value]: normalized, then keyed-hashed. */
         fun digest(type: AttributeType, value: String): String {
@@ -71,10 +74,11 @@ class ClaimCrypto(
         /** The value of [claim], or `null` once its batch key is deleted (cryptographic erasure). */
         fun decrypt(claim: AccountClaim): String? {
             val batchId = checkNotNull(claim.claimBatchId) { "claim ${claim.id} without a batch" }
-            val key = dataKeys.getOrPut(batchId) {
-                val row = batchKeys.findByClaimBatchIdAndAccountId(batchId, accountId) ?: return null
-                SecretKeySpec(AesGcm.open(wrapKey, batchAad(batchId), checkNotNull(row.wrappedDek)), "AES")
+            if (!dataKeys.containsKey(batchId)) {
+                dataKeys[batchId] = batchKeys.findByClaimBatchIdAndAccountId(batchId, accountId)
+                    ?.let { SecretKeySpec(AesGcm.open(wrapKey, batchAad(batchId), checkNotNull(it.wrappedDek)), "AES") }
             }
+            val key = dataKeys[batchId] ?: return null
             return String(AesGcm.open(key, batchAad(batchId), checkNotNull(claim.encryptedValue)))
         }
 

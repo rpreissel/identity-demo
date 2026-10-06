@@ -475,7 +475,8 @@ ADR-12, ADR-19) und in `db/migration/KONVENTIONEN.md`. Die Begriffe erklärt das
     (`PERSON_DIRECTORY`) und schreibt den neuen, falls es einen gibt (ADR-34).
   - Die Aufbewahrungsfrist eines Attributs läuft ab (`account.claims.retention`,
     [07-betrieb.md](07-betrieb.md) Abschnitt 3). `ClaimBatchKeyRetention` widerruft die Angaben der
-    Gruppe (`RETENTION_POLICY`) und löscht ihren Datenschlüssel in derselben Transaktion.
+    Gruppe (`RETENTION_POLICY`) und löscht ihren Datenschlüssel in derselben Transaktion. Dieser
+    Widerruf nennt seine Gruppe und trifft nur deren Zeilen.
 
   Eine bestätigte E-Mail-Adresse geht nur durch den direkten Widerruf verloren. Dafür gibt es zwei
   Gründe: `confirm-email` schreibt seine Angabe als Bestätigung (`ATTESTATION`), also ganz ohne

@@ -35,6 +35,7 @@ interface AccountClaimRepository : JpaRepository<AccountClaim, Long> {
               where r.accountId = a.accountId
                 and r.attributeType = a.attributeType
                 and r.valueDigest = a.valueDigest
+                and (r.claimBatchId is null or r.claimBatchId = a.claimBatchId)
                 and r.retractedAt >= a.establishedAt
           )
         """

@@ -66,7 +66,8 @@ class ProductionModeCheck(
         }
         lookupKeys.orphanedKeyIds().takeIf { it.isNotEmpty() }?.let { add(orphanedKeysMessage(it)) }
         if (masterKek.length < MIN_SECRET_LENGTH) {
-            add("identity.secrets.master-kek ist leer oder kuerzer als $MIN_SECRET_LENGTH Zeichen (MASTER_KEK).")
+            // A blank value never gets here: ConfiguredKekWrapper refuses it at construction, in any mode.
+            add("identity.secrets.master-kek ist kuerzer als $MIN_SECRET_LENGTH Zeichen (MASTER_KEK).")
         } else if (encryptionKeys.usesDemoKek()) {
             add("identity.secrets.master-kek ist der oeffentliche Demo-Wert - jeder damit eingepackte Schluessel waere fuer jeden lesbar (MASTER_KEK).")
         }

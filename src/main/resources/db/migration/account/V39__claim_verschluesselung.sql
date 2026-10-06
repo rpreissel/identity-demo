@@ -30,8 +30,11 @@ ALTER TABLE account.claim ADD COLUMN value_digest VARCHAR(64) NOT NULL;
 ALTER TABLE account.claim ADD COLUMN claim_batch_id UUID NOT NULL;
 CREATE INDEX ix_claim_batch_id ON account.claim (claim_batch_id);
 
--- Der Widerruf trifft denselben Digest; ein Klartext steht hier nicht mehr.
+-- Der Widerruf trifft denselben Digest; ein Klartext steht hier nicht mehr. Ein Widerruf nach
+-- abgelaufener Frist nennt seine Gruppe und trifft nur deren Zeilen; sonst ist claim_batch_id NULL
+-- und der Widerruf gilt fuer jede aeltere Zeile mit diesem Digest.
 DROP INDEX account.ix_retraction_account_type_value;
 ALTER TABLE account.retraction DROP COLUMN normalized_value;
 ALTER TABLE account.retraction ADD COLUMN value_digest VARCHAR(64) NOT NULL;
+ALTER TABLE account.retraction ADD COLUMN claim_batch_id UUID;
 CREATE INDEX ix_retraction_account_type_digest ON account.retraction (account_id, attribute_type, value_digest);

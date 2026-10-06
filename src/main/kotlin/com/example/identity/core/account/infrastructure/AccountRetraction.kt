@@ -11,11 +11,13 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
+import java.util.UUID
 
 /**
  * One withdrawn (account, attribute type, value) triple. Cancels every matching [AccountClaim]
  * without touching it: the claim log stays append-only, and "currently valid" is the log minus
- * these rows, matched on [valueDigest]. No plaintext: the digest is all a retraction needs.
+ * these rows, matched on [valueDigest]. No plaintext: the digest is all a retraction needs. With a
+ * [claimBatchId] the retraction reaches only that batch (ADR-52, retention), otherwise every older row.
  */
 @Entity
 @Table(schema = "account", name = "retraction")
@@ -29,6 +31,9 @@ class AccountRetraction(
 
     @Column(name = "value_digest", nullable = false)
     var valueDigest: String? = null,
+
+    @Column(name = "claim_batch_id")
+    var claimBatchId: UUID? = null,
 
     @Column(name = "claim_source", nullable = false)
     @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)

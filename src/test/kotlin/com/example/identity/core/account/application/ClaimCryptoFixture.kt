@@ -34,7 +34,7 @@ class ClaimCryptoFixture(val accountRepository: AccountRepository = mockk()) {
         every { batchKeyRepository.findByClaimBatchIdAndAccountId(any(), any()) } answers {
             batchKeys.firstOrNull { it.claimBatchId == firstArg() && it.accountId == accountIdArg(secondArg()) }
         }
-        every { batchKeyRepository.deleteById(any()) } answers { batchKeys.removeIf { it.claimBatchId == firstArg() } }
+        every { batchKeyRepository.deleteByClaimBatchId(any()) } answers { if (batchKeys.removeIf { it.claimBatchId == firstArg() }) 1 else 0 }
     }
 
     /** An account with its own master key, findable by id. */
