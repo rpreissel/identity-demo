@@ -26,6 +26,9 @@ interface MasterKeyWrapper {
 
     /** Whether the KEK is the one `application.yml` ships for the demo. */
     val usesDemoKek: Boolean
+
+    /** Every KEK version this wrapper can still unwrap - the current one and each previous one. */
+    val knownVersions: Set<String>
 }
 
 /**
@@ -50,6 +53,8 @@ class ConfiguredKekWrapper(
     private val keks: Map<String, SecretKey>
 
     override val usesDemoKek: Boolean = secret == DEMO_KEK
+
+    override val knownVersions: Set<String> get() = keks.keys
 
     init {
         check(secret.isNotBlank()) { "identity.secrets.master-kek (MASTER_KEK) must not be empty" }

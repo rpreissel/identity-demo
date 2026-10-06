@@ -463,7 +463,8 @@ dann alle offenen Punkte auf einmal. Diese Punkte müssen erfüllt sein:
   Wert unter `identity.secrets.previous-master-keks.<alte Version>` eintragen und neuen Wert und
   neue Version (`MASTER_KEK_VERSION`) setzen. Jedes Konto merkt sich die Version, mit der sein
   Hauptschlüssel eingepackt ist (`kek_version`). Der alte Wert darf erst entfernt werden, wenn kein
-  Konto mehr seine Version trägt. Im Produktivbetrieb gehört dieser Schlüssel in ein KMS oder HSM
+  Konto mehr seine Version trägt. Sonst verweigert `ProductionModeCheck` außerhalb des Demomodus den
+  Start; im Demomodus warnt er. Im Produktivbetrieb gehört dieser Schlüssel in ein KMS oder HSM
   hinter dem Port `MasterKeyWrapper` (`DPoP-demo-61kp`).
 - Der Orchestrator erreicht Keycloak über https (`keycloak-migrate.base-url`) und prüft dessen
   Zertifikat (kein `trustSelfSignedCertificate`).

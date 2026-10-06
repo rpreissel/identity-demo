@@ -54,7 +54,8 @@ Demo nutzt `ConfiguredKekWrapper`: ein Geheimnis aus der Konfiguration (`identit
 nach dem Vorbild von `account.change-log.lookup-secret` mit öffentlichem Demo-Wert, Version und
 Liste der vorherigen Werte für den Wechsel. Anders als der Pepper für Einmalcodes muss der KEK über
 Neustarts fest sein, sonst ist jede gespeicherte Angabe unlesbar. Außerhalb des Demomodus verlangt
-`ProductionModeCheck` einen eigenen Wert mit mindestens 32 Zeichen. Ein Produktivbetrieb tauscht
+`ProductionModeCheck` einen eigenen Wert mit mindestens 32 Zeichen und ein konfiguriertes Geheimnis
+für jede `kek_version`, die ein Konto noch trägt. Ein Produktivbetrieb tauscht
 den Adapter gegen ein KMS oder HSM. Die Daten in der Datenbank ändern sich dadurch nicht, nur die
 Spalte je Konto wird neu eingepackt.
 

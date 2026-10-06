@@ -31,6 +31,7 @@ class ProductionModeCheckTest : BehaviorSpec({
         lookupSecret: String = secret,
         masterKek: String = secret,
         usesDemoKek: Boolean = false,
+        orphanedKekVersions: Set<String> = emptySet(),
         trustSelfSigned: Boolean = false,
         keycloakBaseUrl: String = "https://keycloak.example",
         orchestratorBaseUrlForKeycloak: String = "https://orchestrator.example",
@@ -46,7 +47,10 @@ class ProductionModeCheckTest : BehaviorSpec({
         },
         adminPassword, h2Console, otpPepper, lookupSecret, masterKek, trustSelfSigned, keycloakBaseUrl, orchestratorBaseUrlForKeycloak, apiDocs,
         tokenProvider,
-        mockk<ClaimEncryptionKeys> { every { usesDemoKek() } returns usesDemoKek },
+        mockk<ClaimEncryptionKeys> {
+            every { usesDemoKek() } returns usesDemoKek
+            every { orphanedKekVersions() } returns orphanedKekVersions
+        },
     )
 
     given("demo mode with every demo default in place") {
@@ -54,11 +58,12 @@ class ProductionModeCheckTest : BehaviorSpec({
             val result = runCatching {
                 check(
                     demoMode = true, adminPassword = "admin", h2Console = true, otpPepper = "", lookupSecret = "", trustSelfSigned = true,
-                    keycloakBaseUrl = "http://keycloak", orchestratorBaseUrlForKeycloak = "http://orchestrator", orphanedLookupKeyIds = setOf("1")
+                    keycloakBaseUrl = "http://keycloak", orchestratorBaseUrlForKeycloak = "http://orchestrator", orphanedLookupKeyIds = setOf("1"),
+                    orphanedKekVersions = setOf("1")
                 )
             }
 
-            then("it starts - the demo defaults are allowed, and orphaned search keys only warn") {
+            then("it starts - the demo defaults are allowed, orphaned search keys and KEK versions only warn") {
                 shouldNotThrowAny { result.getOrThrow() }
             }
         }
@@ -88,6 +93,18 @@ class ProductionModeCheckTest : BehaviorSpec({
                 listOf("demo.admin.password", "spring.h2.console", "springdoc.api-docs", "otp-pepper", "lookup-secret", "master-kek", "trustSelfSignedCertificate", "http://keycloak", "http://orchestrator").forEach {
                     failure.message!! shouldContain it
                 }
+            }
+        }
+    }
+
+    given("accounts wrapped under a KEK version that is no longer configured") {
+        val check = check(demoMode = true, orphanedKekVersions = setOf("1"))
+
+        `when`("listing the violations") {
+            val violations = check.violations()
+
+            then("it is refused - those accounts could not read a single claim") {
+                violations.single() shouldContain "previous-master-keks"
             }
         }
     }
