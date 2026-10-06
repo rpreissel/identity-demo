@@ -100,5 +100,5 @@ private class AppTokenIssuerFixture(issuedAt: Instant?, windowEnd: Instant?, wit
         }
     }
     val sessionManagementService = mockk<SessionManagementService> { every { updateChannelSession(any()) } answers { firstArg() } }
-    val issuer = AppTokenIssuer(tokenProvider, appTokenSessionService, sessionManagementService, TEST_CLOCK)
+    val issuer = AppTokenIssuer(tokenProvider, appTokenSessionService, sessionManagementService, plainTokenVault, TEST_CLOCK)
 }

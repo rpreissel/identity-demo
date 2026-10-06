@@ -76,9 +76,9 @@ class SessionEvidenceService(
      */
     private fun invalidateCachedTokens(sessionEvidenceId: SessionEvidenceId) {
         appTokenSessionRepository.findBySessionEvidenceId(sessionEvidenceId).forEach { appTokenSession ->
-            appTokenSession.accessToken = null
+            appTokenSession.sealedAccessToken = null
             appTokenSession.accessExpiresAt = null
-            appTokenSession.refreshToken = null
+            appTokenSession.sealedRefreshToken = null
             appTokenSessionRepository.save(appTokenSession)
         }
     }

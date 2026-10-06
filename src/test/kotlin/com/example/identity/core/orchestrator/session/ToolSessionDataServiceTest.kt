@@ -19,9 +19,12 @@ class ToolSessionDataServiceTest : BehaviorSpec({
 
     val id = ToolSessionId(UUID.randomUUID())
     val codec = ToolSessionDataCodec()
+    val keys = InMemoryRetentionClassKeys()
     fun service(row: ToolSession?) = ToolSessionDataService(
         mockk<ToolSessionRepository> { every { findByToolSessionId(id) } returns row },
         codec,
+        keys.keys,
+        keys.wrapping,
     )
     fun row() = ToolSession(JourneyId(UUID.randomUUID()), Instant.now().plusSeconds(600), Instant.now())
 
@@ -52,7 +55,9 @@ class ToolSessionDataServiceTest : BehaviorSpec({
     given("a state another version wrote") {
         val session = row().apply {
             dataType = "orchestrator.Step"
-            data = """{"code":"abc","addedLater":true}"""
+            val key = keys.keys.currentToolSessionKey()
+            dataKeyId = key.keyId
+            data = keys.wrapping.seal(key.key, "tool-session:${id.value}:orchestrator.Step".toByteArray(), """{"code":"abc","addedLater":true}""".toByteArray())
         }
 
         then("an unknown field is skipped and a missing one takes its default") {

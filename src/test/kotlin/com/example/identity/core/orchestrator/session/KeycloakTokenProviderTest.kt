@@ -212,7 +212,7 @@ private class KeycloakTokenFixture(val session: AppTokenSession) {
     val sessionEvidenceService = mockk<SessionEvidenceService> { every { getSessionEvidence(any()) } returns null }
     val authPolicy = mockk<AuthPolicy>(relaxed = true)
     val accountService = mockk<AccountService>(relaxed = true)
-    private val provider = KeycloakTokenProvider(appTokenSessionRepository, keycloak, sessionEvidenceService, authPolicy, accountService, clock = TEST_CLOCK)
+    private val provider = KeycloakTokenProvider(appTokenSessionRepository, keycloak, sessionEvidenceService, authPolicy, accountService, plainTokenVault, clock = TEST_CLOCK)
 
     private val appChannel = ChannelSession(channel = ChannelType.APP, now = TEST_NOW).also { it.appTokenSessionId = appTokenSessionId }
 

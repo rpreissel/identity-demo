@@ -65,8 +65,8 @@ classDiagram
     long accountId
     UUID sessionEvidenceId
     string keycloakSessionId
-    string accessToken
-    string refreshToken
+    bytes sealedAccessToken
+    bytes sealedRefreshToken
   }
 
   ChannelSession "1" --> "0..*" AuthJourney : führt
@@ -299,8 +299,9 @@ berechnet.
   Einstieg ohne bekannte ID legt immer eine neue `ChannelSession` an. Ein registriertes Gerät kommt
   über `DeviceAccountLink` trotzdem direkt auf den passenden Weg zur Anmeldung.
 - Der Nachweis einer Sitzung steht in `SessionEvidence`, nicht in der `AppTokenSession`. Die
-  `AppTokenSession` verwaltet nur zwei Dinge: die Tokens des App-Kanals und die Id seiner einen
-  Keycloak-Sitzung (`keycloakSessionId`). Diese Id wird einmal gesetzt und nie ersetzt
+  `AppTokenSession` verwaltet nur zwei Dinge: die Tokens des App-Kanals, verschlüsselt unter dem
+  Hauptschlüssel des Kontos ([ADR-53](adr/ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md),
+  `AppTokenVault`), und die Id seiner einen Keycloak-Sitzung (`keycloakSessionId`). Diese Id wird einmal gesetzt und nie ersetzt
   ([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)).
 - Im Nachweis gibt es je Verfahren einen Eintrag in `methods`. Er hält den Namen des Verfahrens
   (`method`), das Niveau und die Faktortypen fest. `currentAmr` und `currentFactorTypes` sind
@@ -677,12 +678,13 @@ erDiagram
     uuid journey_id FK
     timestamp expires_at "ix, Aufbewahrung"
     varchar data_type "Modul und Klasse der Arbeitsdaten"
-    json data "Arbeitsdaten des Tools, nur das Modul liest sie"
+    varbinary data "Arbeitsdaten des Tools als JSON, verschluesselt unter dem Tagesschluessel data_key_id (ADR-53)"
+    varchar data_key_id
   }
   orchestrator.app_token_session {
     uuid id PK
-    varchar access_token "das Token selbst als Zwischenspeicher, kein Verweis"
-    varchar refresh_token "nie im Frontend"
+    varbinary access_token "das Token selbst als Zwischenspeicher, verschluesselt unter dem Kontoschluessel (ADR-53)"
+    varbinary refresh_token "nie im Frontend"
     timestamp access_expires_at
   }
   orchestrator.session_evidence {

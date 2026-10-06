@@ -5,6 +5,8 @@ import com.example.identity.core.orchestrator.session.MockTokenProvider
 import com.example.identity.core.orchestrator.session.TokenProvider
 import com.example.identity.core.account.ChangeLogLookupKeys
 import com.example.identity.core.account.ClaimEncryptionKeys
+import com.example.identity.core.account.DataKeyWrapping
+import com.example.identity.core.orchestrator.session.DataKeyRepository
 import com.example.identity.demo.demo_mode.DemoMode
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
@@ -32,6 +34,7 @@ class ProductionModeCheckTest : BehaviorSpec({
         masterKek: String = secret,
         usesDemoKek: Boolean = false,
         orphanedKekVersions: Set<String> = emptySet(),
+        orphanedDataKekVersions: Set<String> = emptySet(),
         trustSelfSigned: Boolean = false,
         keycloakBaseUrl: String = "https://keycloak.example",
         orchestratorBaseUrlForKeycloak: String = "https://orchestrator.example",
@@ -51,6 +54,8 @@ class ProductionModeCheckTest : BehaviorSpec({
             every { usesDemoKek() } returns usesDemoKek
             every { orphanedKekVersions() } returns orphanedKekVersions
         },
+        mockk<DataKeyWrapping> { every { knownVersions } returns setOf("1") },
+        mockk<DataKeyRepository> { every { kekVersions() } returns orphanedDataKekVersions },
     )
 
     given("demo mode with every demo default in place") {
@@ -105,6 +110,18 @@ class ProductionModeCheckTest : BehaviorSpec({
 
             then("it is refused - those accounts could not read a single claim") {
                 violations.single() shouldContain "previous-master-keks"
+            }
+        }
+    }
+
+    given("orchestrator data keys wrapped under a KEK version that is no longer configured") {
+        val check = check(demoMode = true, orphanedDataKekVersions = setOf("0"))
+
+        `when`("listing the violations") {
+            val violations = check.violations()
+
+            then("it is refused like an orphaned account key - the working data under it is unreadable") {
+                violations.single() shouldContain "orchestrator.data_key"
             }
         }
     }

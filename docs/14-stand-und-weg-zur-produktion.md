@@ -162,11 +162,12 @@ lassen sich mit `bd show` anzeigen.
 - Ein Zielbild für die Verwaltung der Schlüssel: KMS oder HSM, Rotation, Widerruf
   (`DPoP-demo-61kp`). Heute liegen die Schlüssel in derselben Datenbank
   ([ADR-9](adr/ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md)).
-- Das Claim-Log ist verschlüsselt
-  ([ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md)); der Umschlagschlüssel liegt
-  in der Demo in der Konfiguration. Die übrigen Spalten mit personenbezogenen Daten
-  (`account.anchor`, `personenverzeichnis.person.*`, `orchestrator.tool_session.data`) sind nicht
-  verschlüsselt.
+- Das Claim-Log ([ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md)), die
+  Arbeitsdaten der Tools und die App-Tokens
+  ([ADR-53](adr/ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md)) sind verschlüsselt; der
+  Umschlagschlüssel liegt in der Demo in der Konfiguration. Nicht verschlüsselt sind
+  `account.anchor`, `auth_sms.enrollment.phone_number`, der Signaturschlüssel des Orchestrators und
+  die Simulationen (`personenverzeichnis.person.*`, `nect.ident_case.result`).
 - Die Aufbewahrungsfristen müssen mit Datenschutz und Compliance festgelegt werden. Heute sind es
   Richtwerte.
 

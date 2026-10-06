@@ -17,6 +17,7 @@ class AppTokenIssuer(
     private val tokenProvider: TokenProvider,
     private val appTokenSessionService: AppTokenSessionService,
     private val sessionManagementService: SessionManagementService,
+    private val vault: AppTokenVault,
     private val clock: Clock
 ) {
 
@@ -35,7 +36,7 @@ class AppTokenIssuer(
      */
     fun keepAlive(channel: ChannelSession) {
         val tokenSession = channel.appTokenSessionId?.let(appTokenSessionService::getAppTokenSession) ?: return
-        val issuedAt = tokenSession.accessToken?.let(::issuedAtOf)
+        val issuedAt = vault.accessTokenOf(tokenSession)?.let(::issuedAtOf)
         val windowEnd = tokenSession.refreshExpiresAt
         if (issuedAt != null && windowEnd != null) {
             val used = Duration.between(issuedAt, clock.instant()).toMillis().toDouble()

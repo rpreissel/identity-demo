@@ -41,17 +41,18 @@ class AppTokenSession(
     /**
      * The AccessToken: a mock JWT by default, the real Keycloak `access_token` under `keycloak`,
      * hence the length. A cache, not a source of truth: repeated `.../token` calls return the same
-     * token, and [SessionEvidenceService] clears it on every evidence change.
+     * token, and [SessionEvidenceService] clears it on every evidence change. Sealed under the
+     * account's key; [AppTokenVault] is the only reader and writer.
      */
-    @Column(name = "access_token", length = 4096)
-    var accessToken: String? = null
+    @Column(name = "access_token")
+    var sealedAccessToken: ByteArray? = null
 
     /**
      * Never exposed to the frontend (docs/05-api.md): a credential. Under `keycloak` it is a
-     * full-size refresh_token JWT, hence the length.
+     * full-size refresh_token JWT, hence the length. Sealed like [sealedAccessToken].
      */
-    @Column(name = "refresh_token", length = 4096)
-    var refreshToken: String? = null
+    @Column(name = "refresh_token")
+    var sealedRefreshToken: ByteArray? = null
 
     @Column(name = "auth_time", nullable = false)
     var authTime: Instant? = now
