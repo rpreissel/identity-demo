@@ -146,7 +146,8 @@ com.example.identity
     - `credentials`: Ports, die ein Tool-Modul anbietet,
     - `device`: Geräte-Proof,
     - `envelope`: die Antwortformen `ChannelResponse` und `Next`,
-    - `ratelimit` und `retention`: Zählwerk und Aufbewahrung des Orchestrators.
+    - `ratelimit` und `retention`: Zählwerk und Aufbewahrung des Orchestrators,
+    - `kms`: der Port zum Schlüsseldienst (ADR-54).
   - `tool_api` enthält keine Bean und keinen Controller. Es ist ein Vertrag, keine Web-Schicht
     ([Tool-Architektur](03-tool-architektur.md) Abschnitt 7).
 - **M18** `texts` — Bibliothek für mehrsprachige Nutzertexte (ADR-33). Sie enthält `Text` (die
@@ -236,6 +237,12 @@ Personenverzeichnis nur über Ports. `SimulationBoundaryArchitectureTest` prüft
 - **M20** `mail` — Simulierter **Mailserver** mit Postausgang (`MailServer`) für `auth_email`. Im
   Demomodus liest die Seite `/briefkasten/` den Postausgang über `/mock-mail/outbox`. Einzige
   Abhängigkeit ist `demo_mode`. Kein eigenes Schema.
+- **M24** `kms` — Simulierter **Schlüsseldienst** ([ADR-54](adr/ADR-054-schluesseldienst-simuliert.md)),
+  kein Tool-Modul. Abhängigkeiten sind `tool_api` und `demo_mode`, eigenes Schema `kms`. Es
+  implementiert den Port `tool_api.kms.KeyService` (einpacken, auspacken, signieren) in
+  `KmsTransit` und bietet `/mock-kms/*` für den Tester im Demomodus (rotieren, zurückziehen).
+  `account` und `orchestrator` erreichen es nur über den Port. Es unterliegt nicht unseren
+  Aufbewahrungsregeln.
 
 #### Die Tabellen des simulierten Personenverzeichnisses
 

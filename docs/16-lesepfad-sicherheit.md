@@ -708,9 +708,10 @@ Geheimnisse ins Log gelangen.
 
 **Code:**
 
-- [`NodeSigningKey`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/NodeSigningKey.kt#L23):
+- [`KmsNodeKeys`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/KmsNodeKeys.kt#L24):
   Die privaten Schlüssel des Orchestrators (für Client-Assertions und die Signatur der Antworten)
-  liegen in der Datenbank.
+  liegen im Schlüsseldienst, der signiert und sie nie herausgibt (ADR-54); in der Demo ist das die
+  Simulation `kms`.
   [`OrchestratorClientAssertionSigner`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/OrchestratorClientAssertionSigner.kt#L25)
   hat einen Schlüssel je Client.
 - [`RestoreDataCodec`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/RestoreDataCodec.kt#L51):
@@ -822,9 +823,9 @@ Start bricht ab, solange noch eine Demo-Voreinstellung gesetzt ist.
   prüft beim Start:
   - das Admin-Passwort ist als Hash hinterlegt,
   - die H2-Konsole ist aus,
-  - Pepper, Lookup-Geheimnis und der Umschlagschlüssel der Verschlüsselung (ADR-52, ADR-53) sind lang
-    genug und nicht der Demo-Wert, und jeder gespeicherte Schlüssel trägt eine konfigurierte
-    KEK-Version,
+  - Pepper und Lookup-Geheimnis sind lang genug und nicht der Demo-Wert, der Schlüsseldienst ist
+    nicht die Simulation (ADR-54), und jeder gespeicherte Schlüssel trägt eine KEK-Version, die der
+    Dienst noch auspackt,
   - Keycloak wird über https mit geprüftem Zertifikat angesprochen,
   - es gibt keine API-Beschreibung (`springdoc.api-docs.enabled`).
 - [`WithheldDemoDisclosure`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/DemoDisclosure.kt#L65):

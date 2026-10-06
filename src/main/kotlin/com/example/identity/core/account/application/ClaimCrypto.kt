@@ -2,18 +2,23 @@ package com.example.identity.core.account.application
 
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.core.account.AccountDeleted
 import com.example.identity.core.account.domain.normalizeClaimValue
+import org.springframework.context.event.EventListener
 import com.example.identity.core.account.infrastructure.Account
 import com.example.identity.core.account.infrastructure.AccountClaim
 import com.example.identity.core.account.infrastructure.AccountRepository
 import com.example.identity.core.account.infrastructure.ClaimBatchKey
 import com.example.identity.core.account.infrastructure.ClaimBatchKeyRepository
+import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.util.HexFormat
 import java.util.UUID
 import javax.crypto.Mac
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 /**
@@ -29,19 +34,41 @@ class ClaimCrypto(
     private val accountRepository: AccountRepository,
     private val batchKeys: ClaimBatchKeyRepository,
     private val wrapper: MasterKeyWrapper,
+    private val clock: Clock,
+    /** How long an unwrapped master key stays in this instance; the rate toward the KMS follows from it (ADR-52). */
+    @Value("\${identity.secrets.master-key-cache-ttl:PT5M}") private val cacheTtl: Duration = Duration.ofMinutes(5),
+    @Value("\${identity.secrets.master-key-cache-size:100000}") private val cacheSize: Int = 100_000,
 ) {
+    private class Cached(val masterKey: ByteArray, val expiresAt: Instant)
+
+    // Bounded and short-lived: a master key leaves memory after cacheTtl, and the map never grows past cacheSize.
+    private val masterKeys = object : java.util.LinkedHashMap<AccountId, Cached>(256, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<AccountId, Cached>): Boolean = size > cacheSize
+    }
+
     /** Gives a new account its master key, before the row is saved: the column is not nullable. */
     fun assignMasterKey(account: Account) {
-        val wrapped = wrapper.wrap(AesGcm.newKey())
+        val wrapped = wrapper.wrap(MASTER_KEY_PURPOSE, AesGcm.newKey())
         account.wrappedMasterKey = wrapped.bytes
         account.kekVersion = wrapped.kekVersion
     }
 
     /** The account's keys for one operation; unwrapped data keys are kept for its duration only. */
-    fun open(accountId: AccountId): AccountCipher {
+    fun open(accountId: AccountId): AccountCipher = AccountCipher(accountId, masterKeyOf(accountId))
+
+    private fun masterKeyOf(accountId: AccountId): ByteArray {
+        val now = clock.instant()
+        synchronized(masterKeys) { masterKeys[accountId]?.takeIf { it.expiresAt.isAfter(now) }?.let { return it.masterKey } }
         val stored = accountRepository.findStoredMasterKey(accountId) ?: error("Account not found: $accountId")
-        val masterKey = wrapper.unwrap(WrappedKey(stored.wrappedMasterKey, stored.kekVersion))
-        return AccountCipher(accountId, masterKey)
+        val masterKey = wrapper.unwrap(MASTER_KEY_PURPOSE, WrappedKey(stored.wrappedMasterKey, stored.kekVersion))
+        synchronized(masterKeys) { masterKeys[accountId] = Cached(masterKey, now + cacheTtl) }
+        return masterKey
+    }
+
+    /** A deleted account's key leaves this instance at once, not after the cache period. */
+    @EventListener(AccountDeleted::class)
+    fun forget(event: AccountDeleted) {
+        synchronized(masterKeys) { masterKeys.remove(event.accountId) }
     }
 
     fun deleteBatch(claimBatchId: UUID) {
@@ -104,5 +131,7 @@ class ClaimCrypto(
 
     private companion object {
         const val HMAC = "HmacSHA256"
+        /** Bound into the wrapping, so a wrapped data key of the orchestrator cannot pass as a master key. */
+        const val MASTER_KEY_PURPOSE = "account-master-key"
     }
 }

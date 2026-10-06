@@ -9,9 +9,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import io.mockk.every
-import io.mockk.mockk
-import java.util.Optional
+import com.example.identity.simulation.kms.InMemoryKms
 
 private const val ADMIN_CLIENT = "orchestrator-admin"
 private const val APP_TOKEN_CLIENT = "orchestrator-app-token"
@@ -23,18 +21,12 @@ private const val REALM = "https://kc/realms/Demo"
  */
 class OrchestratorClientAssertionSignerTest : BehaviorSpec({
 
-    /** A signer over an in-memory key store that refuses a second key for the same purpose. */
-    fun signer(): OrchestratorClientAssertionSigner {
-        val stored = mutableMapOf<String, NodeSigningKey>()
-        val repository = mockk<NodeSigningKeyRepository>()
-        every { repository.findById(any()) } answers { Optional.ofNullable(stored[firstArg()]) }
-        every { repository.insert(any(), any(), any(), any()) } answers {
-            val purpose = firstArg<String>()
-            check(purpose !in stored) { "duplicate purpose $purpose" }
-            stored[purpose] = NodeSigningKey(purpose = purpose, publicKeyJwk = secondArg(), privateKeyJwk = thirdArg(), createdAt = TEST_NOW)
-        }
-        return OrchestratorClientAssertionSigner(repository, ADMIN_CLIENT, APP_TOKEN_CLIENT, clock = TEST_CLOCK)
-    }
+    /** A signer over the in-memory KMS, which keeps one key per purpose. */
+    fun signer(): OrchestratorClientAssertionSigner =
+        OrchestratorClientAssertionSigner(KmsNodeKeys(InMemoryKms().transit), ADMIN_CLIENT, APP_TOKEN_CLIENT, clock = TEST_CLOCK)
+
+    /** The current public key of [clientId], or `null` for a client this node does not represent. */
+    fun OrchestratorClientAssertionSigner.publicKeyOf(clientId: String) = publicKeysOf(clientId)?.first()
 
     given("the three clients this node represents") {
         val signer = signer()

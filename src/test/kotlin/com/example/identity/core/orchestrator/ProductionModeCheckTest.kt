@@ -31,8 +31,7 @@ class ProductionModeCheckTest : BehaviorSpec({
         h2Console: Boolean = false,
         otpPepper: String = secret,
         lookupSecret: String = secret,
-        masterKek: String = secret,
-        usesDemoKek: Boolean = false,
+        kmsSimulated: Boolean = false,
         orphanedKekVersions: Set<String> = emptySet(),
         orphanedDataKekVersions: Set<String> = emptySet(),
         trustSelfSigned: Boolean = false,
@@ -48,10 +47,10 @@ class ProductionModeCheckTest : BehaviorSpec({
             every { usesDemoSecret() } returns usesDemoLookupSecret
             every { orphanedKeyIds() } returns orphanedLookupKeyIds
         },
-        adminPassword, h2Console, otpPepper, lookupSecret, masterKek, trustSelfSigned, keycloakBaseUrl, orchestratorBaseUrlForKeycloak, apiDocs,
+        adminPassword, h2Console, otpPepper, lookupSecret, trustSelfSigned, keycloakBaseUrl, orchestratorBaseUrlForKeycloak, apiDocs,
         tokenProvider,
         mockk<ClaimEncryptionKeys> {
-            every { usesDemoKek() } returns usesDemoKek
+            every { kmsSimulated() } returns kmsSimulated
             every { orphanedKekVersions() } returns orphanedKekVersions
         },
         mockk<DataKeyWrapping> { every { knownVersions } returns setOf("1") },
@@ -88,14 +87,14 @@ class ProductionModeCheckTest : BehaviorSpec({
         `when`("the orchestrator starts") {
             val result = runCatching {
                 check(
-                    adminPassword = "admin", h2Console = true, otpPepper = "", lookupSecret = "short", masterKek = "", trustSelfSigned = true,
+                    adminPassword = "admin", h2Console = true, otpPepper = "", lookupSecret = "short", kmsSimulated = true, trustSelfSigned = true,
                     keycloakBaseUrl = "http://keycloak:8080", orchestratorBaseUrlForKeycloak = "http://orchestrator:8080", apiDocs = true
                 )
             }
 
             then("it refuses to start and names each of them at once") {
                 val failure = shouldThrow<IllegalStateException> { result.getOrThrow() }
-                listOf("demo.admin.password", "spring.h2.console", "springdoc.api-docs", "otp-pepper", "lookup-secret", "master-kek", "trustSelfSignedCertificate", "http://keycloak", "http://orchestrator").forEach {
+                listOf("demo.admin.password", "spring.h2.console", "springdoc.api-docs", "otp-pepper", "lookup-secret", "Modul kms", "trustSelfSignedCertificate", "http://keycloak", "http://orchestrator").forEach {
                     failure.message!! shouldContain it
                 }
             }
@@ -109,7 +108,7 @@ class ProductionModeCheckTest : BehaviorSpec({
             val violations = check.violations()
 
             then("it is refused - those accounts could not read a single claim") {
-                violations.single() shouldContain "previous-master-keks"
+                violations.single() shouldContain "zurueckgezogene Versionen"
             }
         }
     }
@@ -126,14 +125,14 @@ class ProductionModeCheckTest : BehaviorSpec({
         }
     }
 
-    given("the public demo KEK, long enough to pass the length check") {
-        val check = check(demoMode = true, usesDemoKek = true)
+    given("the simulated KMS") {
+        val check = check(demoMode = true, kmsSimulated = true)
 
         `when`("listing the violations") {
             val violations = check.violations()
 
-            then("it is refused - every master key wrapped with it would be readable by anyone") {
-                violations.single() shouldContain "master-kek"
+            then("it is refused - every key would lie in our own database") {
+                violations.single() shouldContain "Modul kms"
             }
         }
     }

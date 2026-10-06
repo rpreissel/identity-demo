@@ -49,13 +49,11 @@ Der Hauptschlüssel entsteht mit dem Konto und liegt als Spalte an der Kontozeil
 dem Konto gesichert, wiederhergestellt und gelöscht. Eine Kontolöschung nimmt damit alle Werte des
 Kontos auf einmal mit, auch in Sicherungen, die die Kontozeile nicht mehr enthalten.
 
-**Wo der Umschlagschlüssel liegt.** Hinter dem Port `MasterKeyWrapper` (Modul `account`). Die
-Demo nutzt `ConfiguredKekWrapper`: ein Geheimnis aus der Konfiguration (`identity.secrets.master-kek`),
-nach dem Vorbild von `account.change-log.lookup-secret` mit öffentlichem Demo-Wert, Version und
-Liste der vorherigen Werte für den Wechsel. Anders als der Pepper für Einmalcodes muss der KEK über
-Neustarts fest sein, sonst ist jede gespeicherte Angabe unlesbar. Außerhalb des Demomodus verlangt
-`ProductionModeCheck` einen eigenen Wert mit mindestens 32 Zeichen und ein konfiguriertes Geheimnis
-für jede `kek_version`, die ein Konto noch trägt. Ein Produktivbetrieb tauscht
+**Wo der Umschlagschlüssel liegt.** Hinter dem Port `MasterKeyWrapper` (Modul `account`), in
+einem Schlüsseldienst, der ihn nie herausgibt; in der Demo ist das die Simulation aus
+[ADR-54](ADR-054-schluesseldienst-simuliert.md) (`KmsKekWrapper`). Die erste Fassung dieser
+Entscheidung hielt den KEK als Geheimnis in der Konfiguration (`identity.secrets.master-kek`); das
+ist durch ADR-54 abgelöst. Ein Produktivbetrieb tauscht
 den Adapter gegen ein KMS oder HSM. Die Daten in der Datenbank ändern sich dadurch nicht, nur die
 Spalte je Konto wird neu eingepackt.
 

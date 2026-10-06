@@ -2,8 +2,8 @@ package com.example.identity.core.orchestrator.session
 
 import com.example.identity.TEST_CLOCK
 import com.example.identity.core.account.DataKeyWrapping
-import com.example.identity.core.account.application.ConfiguredKekWrapper
-import com.example.identity.core.account.application.PreviousMasterKeks
+import com.example.identity.core.account.application.KmsKekWrapper
+import com.example.identity.simulation.kms.InMemoryKms
 import io.mockk.every
 import io.mockk.mockk
 import java.util.Optional
@@ -19,7 +19,7 @@ class InMemoryRetentionClassKeys {
         every { findById(any()) } answers { Optional.ofNullable(stored[firstArg()]) }
         every { saveAndFlush(any<DataKey>()) } answers { firstArg<DataKey>().also { stored[it.keyId!!] = it } }
     }
-    val wrapping = DataKeyWrapping(ConfiguredKekWrapper("test-kek-of-at-least-32-characters", "1", PreviousMasterKeks()))
+    val wrapping = DataKeyWrapping(KmsKekWrapper(InMemoryKms().transit))
     val keys = RetentionClassKeys(repository, wrapping, ToolSessionRetentionProperties(), NoTransactions, TEST_CLOCK)
 
     private object NoTransactions : PlatformTransactionManager {

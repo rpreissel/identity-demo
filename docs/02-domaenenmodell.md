@@ -723,5 +723,4 @@ Einige Tabellen fehlen im Diagramm, weil sie keine Beziehungen zu anderen Tabell
 - `orchestrator.tool_availability`
 - `orchestrator.tool_order`
 - `orchestrator.feature_flag`
-- `orchestrator.node_signing_key`
 - `orchestrator.event_publication`: die Event-Publication-Registry von Spring Modulith (ADR-29).

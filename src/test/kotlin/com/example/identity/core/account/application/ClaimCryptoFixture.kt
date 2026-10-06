@@ -1,6 +1,8 @@
 package com.example.identity.core.account.application
 
+import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
+import com.example.identity.simulation.kms.InMemoryKms
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.ids.AccountId
@@ -22,8 +24,9 @@ import java.util.UUID
 class ClaimCryptoFixture(val accountRepository: AccountRepository = mockk()) {
     val batchKeyRepository = mockk<ClaimBatchKeyRepository>()
     val batchKeys = mutableListOf<ClaimBatchKey>()
-    val wrapper = ConfiguredKekWrapper("test-kek-of-at-least-32-characters", "1", PreviousMasterKeks())
-    val crypto = ClaimCrypto(accountRepository, batchKeyRepository, wrapper)
+    val kms = InMemoryKms()
+    val wrapper = KmsKekWrapper(kms.transit)
+    val crypto = ClaimCrypto(accountRepository, batchKeyRepository, wrapper, TEST_CLOCK)
     private val accounts = mutableMapOf<AccountId, Account>()
 
     init {

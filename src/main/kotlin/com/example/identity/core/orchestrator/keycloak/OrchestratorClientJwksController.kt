@@ -26,7 +26,7 @@ class OrchestratorClientJwksController(private val signer: OrchestratorClientAss
     @GetMapping("{clientId}/.well-known/jwks.json")
     @Operation(summary = "Public Key, gegen den Keycloak die private_key_jwt-Assertion dieses Clients prueft")
     fun jwks(@PathVariable clientId: String): ResponseEntity<Map<String, Any>> =
-        signer.publicKeyOf(clientId)
+        signer.publicKeysOf(clientId)
             ?.let { ResponseEntity.ok(JWKSet(it).toJSONObject()) }
             ?: ResponseEntity.notFound().build()
 }

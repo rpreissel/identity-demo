@@ -79,8 +79,9 @@ in der Compose-Datei noch im Realm. Jede Richtung weist sich mit einer Signatur 
 - **Keycloak → Orchestrator.** Die Erweiterung weist sich mit einer signierten Assertion aus (siehe
   ADR-7). Das ist das Gegenstück zur ersten Richtung und folgt demselben Prinzip.
 
-Beide Signaturschlüssel liegen **in einer Datenbank** statt im Arbeitsspeicher des Prozesses. Der
-Schlüssel des Orchestrators liegt in `orchestrator.node_signing_key`. Der Schlüssel der Erweiterung
+Beide Signaturschlüssel liegen **außerhalb des Arbeitsspeichers des Prozesses**. Der Schlüssel des
+Orchestrators liegt im Schlüsseldienst ([ADR-54](ADR-054-schluesseldienst-simuliert.md)), der für
+ihn signiert; `orchestrator.node_signing_key` gibt es seit ADR-54 nicht mehr. Der Schlüssel der Erweiterung
 ist ein Wert der Komponente `orchestrator` und liegt damit in der Datenbank von Keycloak. Vorher
 entstand auf jeder Seite bei jedem Start der JVM ein neues Schlüsselpaar. Das reichte nur, solange
 genau eine Instanz lief. Eine zweite Instanz hätte mit einem Schlüssel signiert, den das JWKS der

@@ -65,8 +65,8 @@ spring:
       # inklusive Passwort-Hashes (auth_password), Geraeteschluesseln (auth_device_enrollment),
       # Freischaltcode-Hashes (personenverzeichnis) und allen Sessions - und dazu allem, was in
       # dieser Demo bewusst im Klartext liegt (ADR-22): jedem lebenden KOBIL-PIN (auth_kobil.enrollment),
-      # den Brief-Klartexten (personenverzeichnis.brief) und den privaten Schluesseln
-      # (orchestrator.node_signing_key). Also: nicht setzen.
+      # den Brief-Klartexten (personenverzeichnis.brief) und dem Schluesselmaterial des simulierten
+      # Schluesseldienstes (kms.transit_key_version, ADR-54). Also: nicht setzen.
       enabled: true
       path: /h2-console
 
@@ -214,15 +214,10 @@ identity:
     # A restart then invalidates codes still in flight (they live five minutes) and two instances
     # cannot verify each other's, so set this explicitly for any multi-instance deployment.
     otp-pepper: ""
-    # Umschlagschluessel (KEK) der Claim-Verschluesselung (ADR-52): packt den Hauptschluessel jedes
-    # Kontos ein. Anders als der Pepper muss er ueber Neustarts fest sein, sonst ist jeder gespeicherte
-    # Claim unlesbar. Der Standardwert ist oeffentlich und nur fuer die Demo; ausserhalb des Demomodus
-    # lehnt ProductionModeCheck ihn ab. Wechsel wie beim lookup-secret: alten Wert unter
-    # previous-master-keks.<alte Version> eintragen, neuen Wert und neue Version setzen.
-    master-kek: ${MASTER_KEK:demo-only-master-kek-not-for-real-people}
-    master-kek-version: ${MASTER_KEK_VERSION:1}
-    # previous-master-keks:
-    #   "1": <alter Wert>
+    # Wie lange ein ausgepackter Hauptschluessel eines Kontos im Speicher der Instanz bleibt (ADR-52).
+    # Bestimmt die Rate zum Schluesseldienst: etwa einmal je Konto und Frist statt je Lesevorgang.
+    master-key-cache-ttl: PT5M
+    master-key-cache-size: 100000
   kobil:
     # Der Mandant, unter dem dieses System seine Nutzer bei KOBIL fuehrt.
     tenant-id: identity-demo
