@@ -14,7 +14,10 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.application.AnchorRegistry
 import com.example.identity.core.account.application.ChangeLog
+import com.example.identity.core.account.application.ClaimCryptoFixture
 import com.example.identity.core.account.application.ClaimLedger
+import com.example.identity.core.account.application.ClaimRetentionPolicy
+import com.example.identity.core.account.application.ClaimRetentionProperties
 import com.example.identity.core.account.application.PersonLookupKey
 import com.example.identity.core.account.infrastructure.Account
 import com.example.identity.core.account.infrastructure.AccountAnchor
@@ -64,7 +67,7 @@ class AccountServiceTest : BehaviorSpec({
                 val claim = fixture.savedClaims.single()
                 claim.accountId shouldBe ownAccount
                 claim.attributeType shouldBe AttributeType.PERSON_ID
-                claim.value shouldBe "P000000042"
+                fixture.valueOf(claim) shouldBe "P000000042"
                 claim.claimSource shouldBe "person_directory"
                 claim.establishedAcr shouldBe "loa2"
                 claim.establishedAt.shouldNotBeNull()
@@ -105,7 +108,7 @@ class AccountServiceTest : BehaviorSpec({
             )
 
             then("the claim is logged raw") {
-                fixture.savedClaims.single().value shouldBe "  Max@Example.COM "
+                fixture.valueOf(fixture.savedClaims.single()) shouldBe "  Max@Example.COM "
             }
 
             then("its anchor materializes normalized") {
@@ -463,14 +466,16 @@ private class AccountServiceFixture(accountId: AccountId) {
     private val anchors = mutableListOf<AccountAnchor>()
 
     val service: AccountService
+    private val keys = ClaimCryptoFixture(accountRepository)
 
     init {
-        val account = Account(createdAt = TEST_NOW).apply { id = accountId.value }
+        val account = keys.account(accountId)
         every { accountRepository.findAccount(accountId) } returns account
         every { accountRepository.findForUpdate(accountId) } returns account
         every { accountRepository.save(any()) } answers { firstArg<Account>().apply { id = accountId.value } }
 
         every { claimRepository.findEstablished(any()) } returns emptyList()
+        every { claimRepository.findByAccountIdAndAttributeTypeAndValueDigest(any(), any(), any()) } returns emptyList()
         every { claimRepository.save(capture(savedClaims)) } answers { firstArg() }
 
         every { anchorRepository.findByAttributeTypeAndValue(any(), any()) } returns null
@@ -485,12 +490,14 @@ private class AccountServiceFixture(accountId: AccountId) {
         // A relaxed mock cannot answer the generic save(S): its fabricated return fails the cast.
         every { retractionRepository.save(capture(savedRetractions)) } answers { firstArg() }
 
-        val ledger = ClaimLedger(claimRepository, retractionRepository, changeLog, clock = TEST_CLOCK)
+        val ledger = ClaimLedger(claimRepository, retractionRepository, changeLog, keys.crypto, ClaimRetentionPolicy(ClaimRetentionProperties()), clock = TEST_CLOCK)
         service = AccountService(
             accountRepository, ledger, AnchorRegistry(anchorRepository, ledger), authMethodRepository,
-            mockk<ApplicationEventPublisher>(relaxed = true), changeLog, mockk<PersonLookupKey>(relaxed = true), TEST_CLOCK
+            mockk<ApplicationEventPublisher>(relaxed = true), changeLog, mockk<PersonLookupKey>(relaxed = true), keys.crypto, TEST_CLOCK
         )
     }
+
+    fun valueOf(claim: AccountClaim): String? = keys.valueOf(claim)
 
     /** [holder] holds [value] as its [type] anchor. */
     fun holds(holder: AccountId, type: AttributeType, value: String, establishedAcr: AcrLevel = AcrLevel.LOA2): AccountAnchor {

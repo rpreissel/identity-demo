@@ -58,8 +58,8 @@ Dateien und einer Migration.
   diese eine Tabelle nach Tag partitioniert. Aufgeräumt wird dann per `DROP PARTITION` statt
   per `DELETE`.
 - **Verschlüsselung:** Der Codec ist die einzige Stelle, die Zustände schreibt und liest. Dort lässt
-  sich eine spätere Verschlüsselung einbauen
-  ([Idee Umschlagverschlüsselung](../ideen/verschluesselung-differenzierte-aufbewahrung.md)).
+  sich eine spätere Verschlüsselung einbauen, etwa mit einem Datenschlüssel je Aufbewahrungsklasse
+  ([ADR-52](ADR-052-umschlagverschluesselung-des-claim-logs.md), Alternativen).
   Bis dahin gilt [ADR-22](ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md): Die
   KOBIL-Aktivierungsdaten liegen während der Einrichtung im Klartext und werden danach geleert.
 - **Schema je Modul:** Die Arbeitsdaten liegen nicht mehr im Datenbankschema ihres Moduls. Das ist

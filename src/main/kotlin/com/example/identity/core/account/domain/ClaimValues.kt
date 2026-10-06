@@ -7,7 +7,7 @@ import java.util.UUID
  * The claim log's normalization rule: trimmed and lowercased, except for an attribute compared as
  * written ([AttributeType.caseSensitive], e.g. a card pseudonym), where case matters and the anchor
  * keeps it too. Writing and subtracting retractions both depend on this rule, or a withdrawn value
- * silently keeps counting (ADR-12).
+ * silently keeps counting (ADR-12). The log stores a keyed digest of this form, never the form itself.
  */
 fun normalizeClaimValue(type: AttributeType?, value: String?): String? =
     value?.trim()?.let { if (type?.caseSensitive == true) it else it.lowercase() }
@@ -17,4 +17,4 @@ fun normalizeClaimValue(type: AttributeType?, value: String?): String? =
  * instance is part of the key, so a fresh enrollment of a known value still logs: revoking the old
  * instance retracts only what that instance asserted.
  */
-data class ClaimKey(val type: AttributeType, val normalizedValue: String, val source: String, val authMethodId: UUID?)
+data class ClaimKey(val type: AttributeType, val valueDigest: String, val source: String, val authMethodId: UUID?)

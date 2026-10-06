@@ -267,11 +267,11 @@ Verfahren ein Geheimnis im Klartext:
 - SMS und E-Mail schicken Codes, die als Hash gespeichert werden.
 
 TOTP ist das erste Verfahren, dessen Geheimnis der Server im Klartext braucht, um jeden Code
-nachzurechnen. Eine Verschlüsselung gespeicherter Daten gibt es im Projekt noch nicht. Vor einem
-echten Betrieb muss das Geheimnis verschlüsselt abgelegt werden, und der Schlüssel dafür gehört
-nicht in dieselbe Datenbank. Mehr dazu in der
-[Idee Umschlagverschlüsselung](ideen/verschluesselung-differenzierte-aufbewahrung.md) und im
-Zielbild der Schlüsselverwaltung (`DPoP-demo-61kp`).
+nachzurechnen. Verschlüsselt ist im Projekt bisher nur das Claim-Log
+([ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md)). Vor einem echten Betrieb muss
+das Geheimnis verschlüsselt abgelegt werden, etwa unter dem Hauptschlüssel des Kontos aus ADR-52,
+und der Umschlagschlüssel dafür gehört nicht in dieselbe Datenbank (Zielbild der
+Schlüsselverwaltung, `DPoP-demo-61kp`).
 
 ## 5) Was der Orchestrator übernimmt und was man doch anfasst
 

@@ -419,9 +419,11 @@ ADR-12, ADR-19) und in `db/migration/KONVENTIONEN.md`. Die Begriffe erklärt das
   und das Niveau (`AcrLevel`). Einträge werden nur ergänzt, nie geändert. Protokolliert werden
   Änderungen, nicht Durchläufe: Gilt eine Angabe schon genau so (gleicher Typ, Wert, Quelle und
   Verfahren), schreibt der Orchestrator sie nicht noch einmal. Ein eID-Lauf mit unveränderter Karte
-  erzeugt also keine sieben neuen Zeilen. Die Spalte `normalized_value` (`@PrePersist`/`@PreUpdate`)
-  hält die Regel zur Normalisierung an genau einer Stelle fest. Das
-  [externe Glossar](glossar/externes-glossar.md) nennt diese Claims **bescheinigte Attribute**,
+  erzeugt also keine sieben neuen Zeilen. Der Wert liegt verschlüsselt (`claim_value`), unter dem
+  Datenschlüssel seiner Gruppe (`claim_batch_id`, Tabelle `account.claim_batch_key`). Gleichheit
+  prüft das System über `value_digest`, einen HMAC des normalisierten Werts unter dem
+  Hauptschlüssel des Kontos (`normalizeClaimValue`, [ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md)).
+  Das [externe Glossar](glossar/externes-glossar.md) nennt diese Claims **bescheinigte Attribute**,
   sobald ein Identifizierungsverfahren oder das Personenverzeichnis ihre Richtigkeit bestätigt. Was
   nur der Nutzer selbst angibt (`SELF_REPORTED`), bleibt unbescheinigt.
 
@@ -455,11 +457,13 @@ ADR-12, ADR-19) und in `db/migration/KONVENTIONEN.md`. Die Begriffe erklärt das
 
 - Ein **Widerruf** (`AccountRetraction`, Tabelle `account.retraction`) macht einen Wert ungültig.
   Jede Widerrufszeile nennt, wer widerruft (`RetractionSource`: `ACCOUNT_MANAGEMENT`,
-  `PERSON_DIRECTORY`, `OPERATOR`), dazu den Grund und den Zeitpunkt
-  ([12-entscheidungen.md](12-entscheidungen.md) ADR-12). „Aktuell gültig“ heißt: alle Angaben
-  abzüglich der Widerrufe. Maßgeblich ist die Zeit: Ein Widerruf macht nur Angaben ungültig, die
-  vor ihm geschrieben wurden. Wird ein Wert danach neu bestätigt, gilt er wieder. Es gibt vier
-  Auslöser für einen Widerruf:
+  `ACCOUNT_HOLDER`, `PERSON_DIRECTORY`, `OPERATOR`, `RETENTION_POLICY`), dazu den Grund und den
+  Zeitpunkt ([12-entscheidungen.md](12-entscheidungen.md) ADR-12). Den Wert nennt sie nur als
+  `value_digest`, nie im Klartext (ADR-52). „Aktuell gültig“ heißt: alle Angaben abzüglich der
+  Widerrufe. Maßgeblich ist die Zeit: Ein Widerruf macht nur Angaben ungültig, die vor ihm
+  geschrieben wurden. Wird ein Wert danach neu bestätigt, gilt er wieder. Gilt nach einem Widerruf
+  keine Angabe einer Gruppe mehr, löscht der Orchestrator ihren Datenschlüssel. Die Werte sind dann
+  dauerhaft unlesbar, die Zeilen bleiben als Metadaten. Es gibt fünf Auslöser für einen Widerruf:
   - Wird ein Verfahren entfernt, nimmt der Orchestrator über `auth_method_id` die Angaben dieses
     Verfahrens zurück. Das betrifft nur die Angaben mit `AttributeAuthority.MethodModule`.
   - Wird ein Anker durch einen neuen Wert ersetzt, widerruft der Orchestrator den alten Wert
@@ -469,6 +473,10 @@ ADR-12, ADR-19) und in `db/migration/KONVENTIONEN.md`. Die Begriffe erklärt das
   - Das Personenverzeichnis meldet per `PersonChanged` eine neue oder entfernte KVNR oder
     Mitgliedsnummer. Dann widerruft `AccountService.applyDirectoryChange` den alten Wert
     (`PERSON_DIRECTORY`) und schreibt den neuen, falls es einen gibt (ADR-34).
+  - Die Aufbewahrungsfrist eines Attributs läuft ab (`account.claims.retention`,
+    [07-betrieb.md](07-betrieb.md) Abschnitt 3). `ClaimBatchKeyRetention` widerruft die Angaben der
+    Gruppe (`RETENTION_POLICY`) und löscht ihren Datenschlüssel in derselben Transaktion. Dieser
+    Widerruf nennt seine Gruppe und trifft nur deren Zeilen.
 
   Eine bestätigte E-Mail-Adresse geht nur durch den direkten Widerruf verloren. Dafür gibt es zwei
   Gründe: `confirm-email` schreibt seine Angabe als Bestätigung (`ATTESTATION`), also ganz ohne

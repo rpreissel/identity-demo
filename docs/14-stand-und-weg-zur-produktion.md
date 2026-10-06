@@ -162,9 +162,11 @@ lassen sich mit `bd show` anzeigen.
 - Ein Zielbild für die Verwaltung der Schlüssel: KMS oder HSM, Rotation, Widerruf
   (`DPoP-demo-61kp`). Heute liegen die Schlüssel in derselben Datenbank
   ([ADR-9](adr/ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md)).
-- Spalten mit personenbezogenen Daten sind nicht verschlüsselt
-  ([Idee Umschlagverschlüsselung](ideen/verschluesselung-differenzierte-aufbewahrung.md),
-  `DPoP-demo-bo1w`).
+- Das Claim-Log ist verschlüsselt
+  ([ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md)); der Umschlagschlüssel liegt
+  in der Demo in der Konfiguration. Die übrigen Spalten mit personenbezogenen Daten
+  (`account.anchor`, `personenverzeichnis.person.*`, `orchestrator.tool_session.data`) sind nicht
+  verschlüsselt.
 - Die Aufbewahrungsfristen müssen mit Datenschutz und Compliance festgelegt werden. Heute sind es
   Richtwerte.
 
@@ -342,6 +344,12 @@ abgelaufene Partition wird als Ganzes entfernt.
 
 - Konto, Anker, E-Mail-Adresse, Partnernummer, Geräteverknüpfung und Kanal werden über Indizes
   einzeln gelesen.
+- Die Verschlüsselung des Claim-Logs (ADR-52) braucht je Lesen eines Werts nur lokale Aufrufe. Erst
+  ein KMS oder HSM hinter `MasterKeyWrapper` macht das Auspacken des Hauptschlüssels zu einem
+  Netzaufruf. Dann zählt Engpass 1: Keycloak liest bei praktisch jeder Token-Erneuerung Vor- und
+  Nachnamen aus dem Claim-Log, geschätzt 70 bis 1.400 Mal je Sekunde. Der Adapter braucht deshalb
+  einen Zwischenspeicher je Instanz für ausgepackte Hauptschlüssel, dann liegt die Rate nach außen
+  bei der Zahl der Anmeldungen (12 im Mittel, 100 bis 300 in der Spitze).
 - Sitzungen, Journeys, Zähler für Sperren und Mengenbegrenzungen, QR-Anfragen und die
   Signaturschlüssel des Orchestrators liegen in der Datenbank. Sie würden also auch über mehrere
   Instanzen hinweg funktionieren.

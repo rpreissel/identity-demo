@@ -48,10 +48,10 @@ Wechsel des PINs und die Anmeldung über das SDK in der falschen Reihenfolge abl
   höchstens 24 Stunden (`tool-session.retention`). Sie werden mit ihrer Zeile in
   `orchestrator.tool_session` gelöscht und nach der Aktivierung geleert.
 - Ein echter Betrieb bräuchte für jede Zeile der Tabelle eine eigene Lösung, etwa einen
-  Schlüsselspeicher, ein HSM oder verschlüsselte Spalten. Für das Log der Angaben (Claim-Log) entwirft
-  [die Idee zur Umschlagverschlüsselung](../ideen/verschluesselung-differenzierte-aufbewahrung.md)
-  eine Verschlüsselung mit eigenen Schlüsseln je Datensatz. Sie ist nur eine Idee und ändert an
-  dieser Entscheidung nichts.
+  Schlüsselspeicher, ein HSM oder verschlüsselte Spalten. Für das Log der Angaben (Claim-Log) gibt
+  es sie: [ADR-52](ADR-052-umschlagverschluesselung-des-claim-logs.md) verschlüsselt die Werte mit
+  eigenen Schlüsseln je Gruppe. An dieser Entscheidung ändert das nichts; die Zeilen der Tabelle oben
+  bleiben im Klartext.
 
 ## Geschichte
 

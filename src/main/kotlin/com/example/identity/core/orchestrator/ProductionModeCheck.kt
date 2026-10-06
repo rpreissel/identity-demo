@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.core.account.ChangeLogLookupKeys
+import com.example.identity.core.account.ClaimEncryptionKeys
 import com.example.identity.core.orchestrator.session.MockTokenProvider
 import com.example.identity.core.orchestrator.session.TokenProvider
 import com.example.identity.demo.demo_mode.DemoMode
@@ -21,17 +22,20 @@ class ProductionModeCheck(
     @Value("\${spring.h2.console.enabled:false}") private val h2Console: Boolean,
     @Value("\${identity.secrets.otp-pepper:}") private val otpPepper: String,
     @Value("\${account.change-log.lookup-secret:}") private val lookupSecret: String,
+    @Value("\${identity.secrets.master-kek:}") private val masterKek: String,
     @Value("\${keycloak-tls.trust-self-signed:false}") private val trustSelfSigned: Boolean,
     @Value("\${keycloak-migrate.base-url:}") private val keycloakBaseUrl: String,
     @Value("\${keycloak-setup.orchestrator-base-url:}") private val orchestratorBaseUrlForKeycloak: String,
     @Value("\${springdoc.api-docs.enabled:true}") private val apiDocs: Boolean,
     private val tokenProvider: TokenProvider,
+    private val encryptionKeys: ClaimEncryptionKeys,
 ) {
     init {
         if (demoMode.on) {
             val log = LoggerFactory.getLogger(ProductionModeCheck::class.java)
             log.info("Demomodus: Demo-Voreinstellungen erlaubt, ProductionModeCheck prueft nichts.")
             lookupKeys.orphanedKeyIds().takeIf { it.isNotEmpty() }?.let { log.warn(orphanedKeysMessage(it)) }
+            encryptionKeys.orphanedKekVersions().takeIf { it.isNotEmpty() }?.let { log.warn(orphanedKekMessage(it)) }
         } else {
             val violations = violations()
             check(violations.isEmpty()) {
@@ -62,6 +66,13 @@ class ProductionModeCheck(
             add("account.change-log.lookup-secret ist der oeffentliche Demo-Wert - Suchschluessel waeren fuer jeden umkehrbar (CHANGE_LOG_LOOKUP_SECRET).")
         }
         lookupKeys.orphanedKeyIds().takeIf { it.isNotEmpty() }?.let { add(orphanedKeysMessage(it)) }
+        if (masterKek.length < MIN_SECRET_LENGTH) {
+            // A blank value never gets here: ConfiguredKekWrapper refuses it at construction, in any mode.
+            add("identity.secrets.master-kek ist kuerzer als $MIN_SECRET_LENGTH Zeichen (MASTER_KEK).")
+        } else if (encryptionKeys.usesDemoKek()) {
+            add("identity.secrets.master-kek ist der oeffentliche Demo-Wert - jeder damit eingepackte Schluessel waere fuer jeden lesbar (MASTER_KEK).")
+        }
+        encryptionKeys.orphanedKekVersions().takeIf { it.isNotEmpty() }?.let { add(orphanedKekMessage(it)) }
         if (trustSelfSigned) add("Das Zertifikat von Keycloak wird nicht geprueft (trustSelfSignedCertificate). Ein vertrauenswuerdiges Zertifikat verwenden.")
         if (keycloakBaseUrl.isNotBlank() && !keycloakBaseUrl.startsWith("https://")) {
             add("Keycloak wird ueber $keycloakBaseUrl erreicht, nicht ueber https.")
@@ -76,6 +87,10 @@ class ProductionModeCheck(
     private fun orphanedKeysMessage(ids: Set<String>) =
         "account.change_log traegt Suchschluessel mit Id $ids, fuer die kein Geheimnis konfiguriert ist - " +
             "diese Eintraege sind nicht mehr nach Namen zu finden (account.change-log.previous-lookup-secrets)."
+
+    private fun orphanedKekMessage(versions: Set<String>) =
+        "account.account traegt Hauptschluessel mit KEK-Version $versions, fuer die kein Geheimnis konfiguriert ist - " +
+            "diese Konten koennen keine Angabe mehr lesen (identity.secrets.previous-master-keks)."
 
     private companion object {
         const val DEMO_ADMIN_PASSWORD = "admin"

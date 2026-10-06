@@ -19,6 +19,7 @@ val SCHEDULED_JOBS: Map<String, String> = mapOf(
     "DpopReplayProtectionService" to "Schutz vor wiederholten DPoP-Proofs (minuetlich)",
     "ChangeLogRetention" to "Aenderungsprotokoll geloeschter Konten (taeglich)",
     "SignInLogRetention" to "Anmeldeprotokoll (taeglich)",
+    "ClaimBatchKeyRetention" to "Datenschluessel abgelaufener Claim-Gruppen (taeglich)",
 )
 
 /**

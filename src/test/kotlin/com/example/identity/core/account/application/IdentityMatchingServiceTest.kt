@@ -16,6 +16,7 @@ import com.example.identity.core.account.infrastructure.AccountAnchor
 import com.example.identity.core.account.infrastructure.AccountAnchorRepository
 import com.example.identity.core.account.infrastructure.AccountClaim
 import com.example.identity.core.account.infrastructure.AccountClaimRepository
+import com.example.identity.TEST_CLOCK
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
@@ -362,7 +363,11 @@ private class IdentityMatchingFixture {
     val anchorRepository = mockk<AccountAnchorRepository>()
     val claimRepository = mockk<AccountClaimRepository>()
     val personDirectory = mockk<PersonDirectory>()
-    val service = IdentityMatchingService(anchorRepository, claimRepository, personDirectory)
+    val service = IdentityMatchingService(
+        anchorRepository,
+        ClaimLedger(claimRepository, mockk(), mockk(relaxed = true), keys.crypto, ClaimRetentionPolicy(ClaimRetentionProperties()), TEST_CLOCK),
+        personDirectory
+    )
 
     fun anchor(type: AttributeType, value: String, accountId: AccountId) {
         every { anchorRepository.findByAttributeTypeAndValue(type, value) } returns
@@ -370,6 +375,8 @@ private class IdentityMatchingFixture {
     }
 }
 
-private fun accountClaim(type: AttributeType, value: String, source: ClaimSource) = AccountClaim(
-    accountId = AccountId(1L), attributeType = type, value = value, claimSource = source.value, establishedAt = TEST_NOW
-)
+/** One key hierarchy for the whole spec: every claim here belongs to account 1. */
+private val keys = ClaimCryptoFixture()
+
+private fun accountClaim(type: AttributeType, value: String, source: ClaimSource): AccountClaim =
+    keys.claim(AccountId(1L), type, value, source)

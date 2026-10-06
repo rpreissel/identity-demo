@@ -60,11 +60,10 @@ sagen, was wann galt. Eine Widerrufszeile belegt ihre Herkunft genauso wie eine 
 bleibt der Vertrag der Tools so frei von negativen Ergebnissen.
 
 **Folgen und Kosten**: Es gibt zwei Formen statt einer. Der gültige Wert ist immer eine Differenz über
-zwei Tabellen. Der Widerruf macht einen Wert nur ungültig, er löscht ihn nicht. Mit dem
-normalisierten Wert steht in der Widerrufszeile sogar eine zweite lesbare Kopie. Wann beide Zeilen
-nach Ablauf einer Aufbewahrungsfrist gemeinsam gelöscht werden, ist bewusst nicht mitentschieden
-(siehe [Idee: Verschlüsselung und Aufbewahrung](../ideen/verschluesselung-differenzierte-aufbewahrung.md)).
-Der Nachweis für das Audit ist davon nicht betroffen: `account.change_log` (IDENTIFIED) hält
+zwei Tabellen. Der Widerruf macht einen Wert nur ungültig, er löscht ihn nicht. Seit
+[ADR-52](ADR-052-umschlagverschluesselung-des-claim-logs.md) nennt die Widerrufszeile den Wert nur
+als Digest, und der Widerruf der letzten gültigen Angabe einer Gruppe macht die Werte auch
+kryptografisch unlesbar. Der Nachweis für das Audit ist davon nicht betroffen: `account.change_log` (IDENTIFIED) hält
 Verfahren, Niveau und Zeitpunkt fest, ohne die Werte.
 
 **Geschichte**: Anfangs hielten abgeleitete Spalten am Konto den aktuellen Wert, und nur eine Stelle

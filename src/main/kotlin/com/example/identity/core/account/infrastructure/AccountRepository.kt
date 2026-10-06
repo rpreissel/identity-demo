@@ -27,6 +27,16 @@ interface AccountRepository : JpaRepository<Account, Long> {
     @Query("select a.id from Account a")
     fun findAllIdValues(): List<Long>
 
+    /** Every KEK version some account's master key is wrapped with - which KEKs are still needed. */
+    @Query("select distinct a.kekVersion from Account a")
+    fun kekVersions(): Set<String>
+
+    /** The account's wrapped master key without loading the row - see [StoredMasterKey]. */
+    fun findStoredMasterKey(accountId: AccountId): StoredMasterKey? = findStoredMasterKeyById(accountId.value)
+
+    @Query("select new com.example.identity.core.account.infrastructure.StoredMasterKey(a.wrappedMasterKey, a.kekVersion) from Account a where a.id = :id")
+    fun findStoredMasterKeyById(@Param("id") id: Long): StoredMasterKey?
+
     /** Loads the lock root for a change to the account's current state - see [Account.version]. */
     fun findForUpdate(accountId: AccountId): Account? = findForUpdateById(accountId.value)
 
