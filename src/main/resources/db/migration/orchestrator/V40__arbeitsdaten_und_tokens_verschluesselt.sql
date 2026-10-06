@@ -14,7 +14,9 @@ CREATE TABLE orchestrator.data_key (
 CREATE INDEX ix_data_key_retire_after ON orchestrator.data_key (retire_after);
 
 -- Die Arbeitsdaten (ADR-49) bleiben JSON, aber als Chiffrat unter dem Datenschluessel data_key_id.
+-- Offene Durchlaeufe verlieren ihre Daten samt Typ und beginnen beim naechsten Schritt von vorn.
 ALTER TABLE orchestrator.tool_session DROP COLUMN data;
+UPDATE orchestrator.tool_session SET data_type = NULL;
 ALTER TABLE orchestrator.tool_session ADD COLUMN data VARBINARY(1000000);
 ALTER TABLE orchestrator.tool_session ADD COLUMN data_key_id VARCHAR(64);
 

@@ -12,6 +12,8 @@ import com.example.identity.core.orchestrator.session.SessionEvidenceRecordRepos
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
 import com.example.identity.core.orchestrator.session.DataKeyRepository
+import com.example.identity.core.orchestrator.session.JOURNEY_RETENTION
+import com.example.identity.core.orchestrator.session.ToolSessionRetentionProperties
 import com.example.identity.core.orchestrator.session.ToolSessionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.PageRequest
@@ -144,7 +146,6 @@ class RetentionJob(
         /** Page size for [deleteExpiredJourneys] and [deleteExpiredChannels]. */
         private const val RETENTION_BATCH_SIZE = 500
 
-        private val JOURNEY_RETENTION: Duration = Duration.ofDays(7)
         /** An account being set up younger than this is never discarded, whatever the channels say. */
         private val REGISTRATION_GRACE: Duration = Duration.ofHours(1)
         private val TERMINAL_STATES = ChannelState.entries.filter { it.isTerminal }

@@ -403,7 +403,7 @@ dagegen nicht von selbst ab. Nur der zweite Fall braucht deshalb eine Wiederholu
 Das Backend geht davon aus, dass genau eine Instanz läuft. Diese Annahme steht an drei voneinander
 unabhängigen Stellen im Code:
 
-- **Fünf geplante Jobs** laufen ohne Sperre und ohne Wahl einer führenden Instanz. Bei mehreren
+- **Die geplanten Jobs** laufen ohne Sperre und ohne Wahl einer führenden Instanz. Bei mehreren
   Instanzen liefe jeder Lauf mehrfach parallel. Alle Jobs sind idempotent, das heißt: Ein zweiter
   Lauf löscht, was der erste übrig ließ, oder er löscht nichts. Gleichzeitige Löschläufe auf
   denselben Zeilen sind aber nicht erprobt. Die Liste der Jobs steht in `SCHEDULED_JOBS`
@@ -415,7 +415,9 @@ unabhängigen Stellen im Code:
   - `DpopReplayProtectionService`: Schutz vor wiederholt eingereichten DPoP-Proofs (minütlich),
   - `ChangeLogRetention`: Änderungsprotokoll gelöschter Konten (täglich),
   - `SignInLogRetention`: Anmeldeprotokoll (täglich),
-  - `ClaimBatchKeyRetention`: Datenschlüssel abgelaufener Claim-Gruppen (täglich).
+  - `ClaimBatchKeyRetention`: Datenschlüssel abgelaufener Claim-Gruppen (täglich),
+  - `RetentionClassKeys`: Tagesschlüssel der Arbeitsdaten für heute und morgen vorab anlegen
+    (beim Start und stündlich).
 - `identity.secrets.otp-pepper` ist standardmäßig leer. Der Pepper ist ein geheimer Zusatzwert, mit
   dem das Backend SMS- und E-Mail-Codes vor dem Speichern hasht. Ist er leer, würfelt das Backend ihn
   bei jedem Start neu. Zwei Instanzen könnten dann die Codes der jeweils anderen nicht prüfen. Und

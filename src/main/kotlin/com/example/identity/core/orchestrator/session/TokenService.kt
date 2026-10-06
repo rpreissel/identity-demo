@@ -56,7 +56,8 @@ class TokenService(
         val now = clock.instant()
 
         val currentExpiry = appTokenSession.accessExpiresAt
-        val cached = vault.accessTokenOf(appTokenSession)
+        val tokens = vault.forSession(appTokenSession)
+        val cached = tokens.accessToken
         if (cached != null && currentExpiry != null && currentExpiry.isAfter(now.plusSeconds(minValiditySeconds))) {
             return TokenPair(cached, currentExpiry, appTokenSession.refreshExpiresAt!!)
         }
@@ -66,13 +67,13 @@ class TokenService(
         } else if (appTokenSession.refreshExpiresAt?.isAfter(now) != true) {
             throw SessionExpiredException("Session window of AppTokenSession $appTokenSessionId has lapsed")
         }
-        if (appTokenSession.sealedRefreshToken == null) vault.storeRefreshToken(appTokenSession, "mockrt_${UUID.randomUUID()}")
+        if (appTokenSession.sealedRefreshToken == null) tokens.refreshToken = "mockrt_${UUID.randomUUID()}"
         // Sliding: every refresh moves the window on, so it lapses only after REFRESH_TTL of idleness.
         appTokenSession.refreshExpiresAt = now.plus(REFRESH_TTL)
 
         val accessExpiresAt = now.plus(ACCESS_TTL)
         val accessToken = mintAccessToken(appTokenSession, now, accessExpiresAt)
-        vault.storeAccessToken(appTokenSession, accessToken)
+        tokens.accessToken = accessToken
         appTokenSession.accessExpiresAt = accessExpiresAt
         appTokenSessionRepository.save(appTokenSession)
 

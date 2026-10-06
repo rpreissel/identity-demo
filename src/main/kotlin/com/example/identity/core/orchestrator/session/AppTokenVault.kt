@@ -1,33 +1,35 @@
 package com.example.identity.core.orchestrator.session
 
 import com.example.identity.core.account.AccountDataCipher
+import com.example.identity.core.account.AccountSealer
 import org.springframework.stereotype.Component
 
 /**
  * The cached tokens of an [AppTokenSession] at rest: sealed under the owning account's key
- * (ADR-52, `AccountDataCipher`), each bound to its purpose, so a stolen table row yields no usable
- * token and a refresh token cannot pass as an access token. Nulling a token needs no key.
+ * (ADR-53, `AccountDataCipher`), each bound to its purpose, so a stolen table row yields no usable
+ * token and a refresh token cannot pass as an access token. [forSession] opens the account's key
+ * once for everything a caller does with the session. Nulling a token needs no key.
  */
 @Component
 class AppTokenVault(private val cipher: AccountDataCipher) {
 
-    fun accessTokenOf(session: AppTokenSession): String? = session.sealedAccessToken?.let { open(session, ACCESS, it) }
+    fun forSession(session: AppTokenSession): SessionTokens = SessionTokens(session, cipher.forAccount(checkNotNull(session.accountId)))
 
-    fun refreshTokenOf(session: AppTokenSession): String? = session.sealedRefreshToken?.let { open(session, REFRESH, it) }
+    fun accessTokenOf(session: AppTokenSession): String? = forSession(session).accessToken
 
-    fun storeAccessToken(session: AppTokenSession, token: String?) {
-        session.sealedAccessToken = token?.let { seal(session, ACCESS, it) }
+    class SessionTokens internal constructor(private val session: AppTokenSession, private val sealer: AccountSealer) {
+        var accessToken: String?
+            get() = session.sealedAccessToken?.let { String(sealer.open(ACCESS, it)) }
+            set(value) {
+                session.sealedAccessToken = value?.let { sealer.seal(ACCESS, it.toByteArray()) }
+            }
+
+        var refreshToken: String?
+            get() = session.sealedRefreshToken?.let { String(sealer.open(REFRESH, it)) }
+            set(value) {
+                session.sealedRefreshToken = value?.let { sealer.seal(REFRESH, it.toByteArray()) }
+            }
     }
-
-    fun storeRefreshToken(session: AppTokenSession, token: String?) {
-        session.sealedRefreshToken = token?.let { seal(session, REFRESH, it) }
-    }
-
-    private fun seal(session: AppTokenSession, purpose: String, token: String): ByteArray =
-        cipher.seal(checkNotNull(session.accountId), purpose, token.toByteArray())
-
-    private fun open(session: AppTokenSession, purpose: String, sealed: ByteArray): String =
-        String(cipher.open(checkNotNull(session.accountId), purpose, sealed))
 
     private companion object {
         const val ACCESS = "app-token:access"

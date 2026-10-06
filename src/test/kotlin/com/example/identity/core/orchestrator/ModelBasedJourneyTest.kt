@@ -108,7 +108,7 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
             val windowEnd = Timestamp.from(Instant.now().plus(windowLeft))
             // The cached token is sealed under the account's key (ADR-53), so it goes through the vault.
             val tokenSession = appTokenSessionRepository.findById(context as UUID).get()
-            appTokenVault.storeAccessToken(tokenSession, token)
+            appTokenVault.forSession(tokenSession).accessToken = token
             tokenSession.refreshExpiresAt = windowEnd.toInstant()
             appTokenSessionRepository.save(tokenSession)
             jdbcTemplate.update("UPDATE orchestrator.channel_session SET expires_at = ? WHERE id = ?", windowEnd, UUID.fromString(channel))

@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.EnableScheduling
 
 @SpringBootApplication
-// Fuer orchestrator.retention.ToolSessionRetentionProperties - die eine Stelle, an der die Aufbewahrungs-
+// Fuer orchestrator.session.ToolSessionRetentionProperties - die eine Stelle, an der die Aufbewahrungs-
 // frist der Tool-Session-Daten steht (docs/07-betrieb.md #3).
 @ConfigurationPropertiesScan
 class IdentityApplication

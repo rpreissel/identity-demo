@@ -40,7 +40,8 @@ class KeycloakTokenProvider(
         val now = clock.instant()
 
         val currentExpiry = appTokenSession.accessExpiresAt
-        val cached = vault.accessTokenOf(appTokenSession)
+        val tokens = vault.forSession(appTokenSession)
+        val cached = tokens.accessToken
         if (cached != null && currentExpiry != null && currentExpiry.isAfter(now.plusSeconds(minValiditySeconds))) {
             return TokenPair(cached, currentExpiry, appTokenSession.refreshExpiresAt ?: currentExpiry)
         }
@@ -49,7 +50,7 @@ class KeycloakTokenProvider(
         // own session decides (SSO idle and max): a lapsed window or a refused refresh or
         // continuation ends the login instead of opening a second session behind its back.
         val sessionId = appTokenSession.keycloakSessionId
-        val refreshToken = vault.refreshTokenOf(appTokenSession)
+        val refreshToken = tokens.refreshToken
         if (sessionId != null && appTokenSession.refreshExpiresAt?.isAfter(now) != true) {
             throw SessionExpiredException("Keycloak session window of AppTokenSession $appTokenSessionId has lapsed")
         }
@@ -68,14 +69,14 @@ class KeycloakTokenProvider(
         }
 
         val accessExpiresAt = now.plusSeconds(response.expiresInSeconds)
-        vault.storeAccessToken(appTokenSession, response.accessToken)
+        tokens.accessToken = response.accessToken
         appTokenSession.accessExpiresAt = accessExpiresAt
         // The Keycloak session of this login (`sid`): every later grant continues exactly this one,
         // and an App logout ends it.
         appTokenSession.keycloakSessionId = sessionId
             ?: checkNotNull(sidClaimOf(response.accessToken)) { "Keycloak token for AppTokenSession $appTokenSessionId carries no sid" }
         if (response.refreshToken != null) {
-            vault.storeRefreshToken(appTokenSession, response.refreshToken)
+            tokens.refreshToken = response.refreshToken
             appTokenSession.refreshExpiresAt = response.refreshExpiresInSeconds?.let { now.plusSeconds(it) }
         }
         appTokenSessionRepository.save(appTokenSession)

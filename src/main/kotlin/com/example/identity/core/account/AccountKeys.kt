@@ -35,15 +35,27 @@ class DataKeyWrapping(private val wrapper: MasterKeyWrapper) {
     fun open(key: ByteArray, aad: ByteArray, sealed: ByteArray): ByteArray = AesGcm.open(SecretKeySpec(key, "AES"), aad, sealed)
 }
 
+/** One account's key, opened once; [purpose] is bound into every ciphertext. */
+interface AccountSealer {
+    fun seal(purpose: String, plaintext: ByteArray): ByteArray
+
+    fun open(purpose: String, sealed: ByteArray): ByteArray
+}
+
 /**
  * Encryption under an account's master key for data that lives and dies with the account, such as
- * the tokens of its app sessions. [purpose] is bound into the ciphertext, so a value sealed for one
- * use cannot be presented as another. Deleting the account makes everything sealed here unreadable.
+ * the tokens of its app sessions. A value sealed for one purpose cannot be presented as another.
+ * Deleting the account makes everything sealed here unreadable. [forAccount] unwraps the master key
+ * once; a caller keeps the sealer for the whole operation.
  */
 @Component
 @Transactional(readOnly = true)
 class AccountDataCipher(private val crypto: ClaimCrypto) {
-    fun seal(accountId: AccountId, purpose: String, plaintext: ByteArray): ByteArray = crypto.open(accountId).seal(purpose, plaintext)
+    fun forAccount(accountId: AccountId): AccountSealer = Sealer(crypto.open(accountId))
 
-    fun open(accountId: AccountId, purpose: String, sealed: ByteArray): ByteArray = crypto.open(accountId).open(purpose, sealed)
+    private class Sealer(private val cipher: ClaimCrypto.AccountCipher) : AccountSealer {
+        override fun seal(purpose: String, plaintext: ByteArray): ByteArray = cipher.seal(purpose, plaintext)
+
+        override fun open(purpose: String, sealed: ByteArray): ByteArray = cipher.open(purpose, sealed)
+    }
 }

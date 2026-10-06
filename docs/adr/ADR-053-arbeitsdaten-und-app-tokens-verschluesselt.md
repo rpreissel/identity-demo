@@ -14,8 +14,10 @@ oft ohne Konto (eine Registrierung liest die Karte, bevor das Konto entsteht) un
 einzeln gelöscht, sondern mit der Tool-Sitzung nach `tool-session.retention`. Deshalb:
 
 - Ein **Datenschlüssel je Aufbewahrungsklasse und Tag** (`orchestrator.data_key`, Klasse
-  `TOOL_SESSION`, Id `TOOL_SESSION:<Datum>`). Der erste Schreibvorgang eines Tages legt ihn an,
-  eingepackt mit dem KEK. Jede Zeile nennt den Schlüssel ihres Tages (`data_key_id`).
+  `TOOL_SESSION`, Id `TOOL_SESSION:<Datum>`), eingepackt mit dem KEK. `RetentionClassKeys` legt den
+  Schlüssel für heute und morgen beim Start und stündlich vorab an; nur wenn das ausblieb, legt ihn
+  der erste Schreibvorgang des Tages in seiner eigenen Transaktion an. Jede Zeile nennt den
+  Schlüssel ihres Tages (`data_key_id`).
 - Die Werte bleiben JSON, liegen aber als Chiffrat (AES-256-GCM) unter diesem Schlüssel, mit
   Tool-Sitzung und Datentyp als geprüften Zusatzdaten. `ToolSessionDataService` ist die eine
   Stelle, die ver- und entschlüsselt. Der Codec serialisiert weiterhin nur.
@@ -56,11 +58,14 @@ KMS-Adapter für alle Schlüssel. `ProductionModeCheck` prüft die KEK-Versionen
 **Folgen und Kosten.**
 
 - Jeder Journey-Schritt ver- und entschlüsselt die Arbeitsdaten einmal, lokal. Der Tagesschlüssel
-  liegt ausgepackt im Speicher der Instanz; der erste Zugriff eines Tages je Instanz packt ihn aus.
-  Legen zwei Instanzen denselben Tagesschlüssel gleichzeitig an, gewinnt die Datenbank
-  (Primärschlüssel), die andere übernimmt den gewonnenen.
-- Jedes Lesen eines zwischengespeicherten Tokens packt den Hauptschlüssel des Kontos aus, wie beim
-  Claim-Log. Mit einem KMS gilt dieselbe Rechnung wie dort (ADR-52, Zwischenspeicher je Instanz).
+  liegt ausgepackt im Speicher der Instanz, bis er verfällt; danach liest ihn keine Instanz mehr,
+  auch nicht eine, die ihn noch im Speicher hatte. Legen zwei Instanzen denselben Tagesschlüssel
+  gleichzeitig an, gewinnt die Datenbank (Primärschlüssel); die andere Anfrage scheitert einmal
+  und findet den Schlüssel beim nächsten Versuch. Das Vorab-Anlegen hält diesen Fall fern.
+- Jede Token-Anfrage packt den Hauptschlüssel des Kontos einmal aus (`AppTokenVault.forSession`),
+  wie beim Claim-Log. Mit einem KMS gilt dieselbe Rechnung wie dort (ADR-52, Zwischenspeicher je
+  Instanz). Das Verlängern einer Sitzung liest dafür das Access-Token, um seinen Ausstellungszeitpunkt
+  zu kennen; ein eigener Zeitstempel in der Zeile würde das ersparen und ist ein möglicher Folgeschritt.
 - Die Spalten `data`, `access_token` und `refresh_token` sind binär. Tests, die sie lesen, gehen
   über `ToolSessionDataService` beziehungsweise `AppTokenVault`.
 - Bestehende Zeilen verlieren beim Umstieg ihren Inhalt: Arbeitsdaten offener Durchläufe und

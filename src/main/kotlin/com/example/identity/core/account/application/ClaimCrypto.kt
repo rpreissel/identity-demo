@@ -49,11 +49,11 @@ class ClaimCrypto(
     }
 
     inner class AccountCipher(private val accountId: AccountId, masterKey: ByteArray) {
-        // Two subkeys, so the digest key and the wrapping key never serve both purposes.
+        // Three subkeys, so wrapping, digest and sealing never share key material.
         private val wrapKey = SecretKeySpec(hmac(masterKey, "wrap".toByteArray()), "AES")
         private val digestKey = SecretKeySpec(hmac(masterKey, "digest".toByteArray()), HMAC)
-        /** `null` remembers that the batch key is gone, so an erased batch costs one lookup per operation. */
         private val sealKey = SecretKeySpec(hmac(masterKey, "seal".toByteArray()), "AES")
+        /** `null` remembers that the batch key is gone, so an erased batch costs one lookup per operation. */
         private val dataKeys = mutableMapOf<UUID, SecretKey?>()
 
         /** Encrypts [plaintext] directly under the account's key, bound to [purpose]; for data that lives and dies with the account. */

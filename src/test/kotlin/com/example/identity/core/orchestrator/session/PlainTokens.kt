@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.session
 
 import com.example.identity.core.account.AccountDataCipher
+import com.example.identity.core.account.AccountSealer
 import io.mockk.every
 import io.mockk.mockk
 
@@ -10,8 +11,10 @@ import io.mockk.mockk
  */
 val plainTokenVault: AppTokenVault = AppTokenVault(
     mockk<AccountDataCipher> {
-        every { seal(any(), any(), any()) } answers { thirdArg() }
-        every { open(any(), any(), any()) } answers { thirdArg() }
+        every { forAccount(any()) } returns object : AccountSealer {
+            override fun seal(purpose: String, plaintext: ByteArray) = plaintext
+            override fun open(purpose: String, sealed: ByteArray) = sealed
+        }
     }
 )
 
