@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_kobil.internal
 
+import com.example.identity.contract.tool_api.ids.MasterKeyId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -15,7 +16,7 @@ internal const val KOBIL_ENROLLMENT_TYPE = "auth_kobil.enrollment"
  * Long-lived, account-bound KOBIL credential. KOBIL holds the key material. This row decides whether
  * a redeemed assertion belongs here ([kobilDeviceId]), releases the PIN to the rightful app
  * ([unlockSecretHash]) and offers the credential only on its installation ([bindingKeyRef]).
- * [pin] is plaintext on purpose (ADR-22).
+ * [sealedPin] is the kept PIN (ADR-21), sealed under the journey's master key [masterKeyId] (ADR-55); [KobilPins] reads it.
  */
 @Entity
 @Table(schema = "auth_kobil", name = "enrollment")
@@ -31,7 +32,10 @@ class KobilEnrollment(
     var kobilDeviceId: String = "",
 
     @Column(name = "pin", nullable = false)
-    var pin: String = "",
+    var sealedPin: ByteArray? = null,
+
+    @Column(name = "key_id", nullable = false)
+    var masterKeyId: MasterKeyId? = null,
 
     /**
      * Null without consent to unlocking by biometrics; the account password is then the only way

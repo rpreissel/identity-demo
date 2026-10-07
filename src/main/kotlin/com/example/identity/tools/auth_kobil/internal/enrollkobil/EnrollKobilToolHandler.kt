@@ -2,10 +2,12 @@ package com.example.identity.tools.auth_kobil.internal.enrollkobil
 
 import com.example.identity.contract.tool_api.ToolSessionData
 import com.example.identity.contract.tool_api.require
+import com.example.identity.contract.tool_api.ids.MasterKeyId
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_kobil.KobilModule
 import com.example.identity.tools.auth_kobil.internal.KOBIL_ENROLLMENT_TYPE
 import com.example.identity.tools.auth_kobil.internal.KobilEnrollment
+import com.example.identity.tools.auth_kobil.internal.KobilPins
 import com.example.identity.tools.auth_kobil.internal.KobilEnrollmentRepository
 import com.example.identity.tools.auth_kobil.internal.KobilSecrets
 import com.example.identity.tools.auth_kobil.internal.kobilFactorTypes
@@ -30,6 +32,7 @@ class EnrollKobilToolHandler(
     private val enrollmentRepository: KobilEnrollmentRepository,
     private val secrets: KobilSecrets,
     private val ssms: KobilSsms,
+    private val pins: KobilPins,
     @Value("\${identity.kobil.tenant-id:identity-demo}") private val tenantId: String,
     private val clock: Clock,
 ) {
@@ -71,6 +74,8 @@ class EnrollKobilToolHandler(
         biometricConsent: Boolean?,
         bindingKeyRef: String,
         label: String?,
+        /** The key the kept PIN is sealed under (ADR-55); the context names it. */
+        masterKeyId: MasterKeyId,
     ): ToolOutcome {
         val session = sessions.require<EnrollKobilToolSession>(toolSessionId)
         val user = KobilUserRef(session.kobilTenantId, session.kobilUserId)
@@ -91,7 +96,8 @@ class EnrollKobilToolHandler(
                             kobilTenantId = session.kobilTenantId,
                             kobilUserId = session.kobilUserId,
                             kobilDeviceId = decision.deviceId,
-                            pin = session.pin,
+                            sealedPin = pins.seal(session.pin, masterKeyId),
+                            masterKeyId = masterKeyId,
                             // Only with consent - see EnrollKobilDecision.Enroll.
                             unlockSecretHash = if (decision.biometricConsent) secrets.hash(session.unlockSecret) else null,
                             bindingKeyRef = bindingKeyRef,

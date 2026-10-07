@@ -129,7 +129,7 @@ class JourneyActionExecutor(
                     identityResolver.attestationFits(checkNotNull(inHandAccount).accountId, action.outcome.claims.toSet())
                 }
                 when (target) {
-                    IdentificationTarget.NewAccount -> accountService.createAccountInSetup().accountId
+                    IdentificationTarget.NewAccount -> accountService.createAccountInSetup(channel.journeyKeyId).accountId
                     is IdentificationTarget.AccountInHand -> target.accountId
                 }
             }
@@ -194,7 +194,7 @@ class JourneyActionExecutor(
         // Created lazily, as in performAdoptCredential: under REGISTER the address may be the
         // first step. An abandoned channel leaves no orphan (deleteIfAbandonedUnidentified).
         val inHand = channel.accountId
-            ?: accountService.createAccountInSetup().accountId.also { bindAccount(journey, channel, it) }
+            ?: accountService.createAccountInSetup(channel.journeyKeyId).accountId.also { bindAccount(journey, channel, it) }
         val sessionEvidenceId = checkNotNull(channel.sessionEvidenceId) { "Attested without an SessionEvidence" }
         val evidence = checkNotNull(sessionEvidenceService.getSessionEvidence(sessionEvidenceId)) {
             "SessionEvidence not found: $sessionEvidenceId"
@@ -231,7 +231,7 @@ class JourneyActionExecutor(
         // With no account yet (REGISTER), the first completed enrollment creates one. An abandoned
         // channel leaves no orphan (deleteIfAbandonedUnidentified).
         val accountId = channel.accountId
-            ?: accountService.createAccountInSetup().accountId.also { bindAccount(journey, channel, it) }
+            ?: accountService.createAccountInSetup(channel.journeyKeyId).accountId.also { bindAccount(journey, channel, it) }
         val sessionEvidenceId = checkNotNull(channel.sessionEvidenceId) { "Enrolled without an SessionEvidence" }
         val evidence = checkNotNull(sessionEvidenceService.getSessionEvidence(sessionEvidenceId)) {
             "SessionEvidence not found: $sessionEvidenceId"
@@ -431,6 +431,8 @@ class JourneyActionExecutor(
     private fun bindAccount(journey: AuthJourney, channel: ChannelSession, accountId: AccountId) {
         journey.accountId = accountId
         channel.subject = Subject.Account(accountId)
+        // What the journey sealed before it knew the account stays readable: the account takes the key (ADR-55).
+        channel.journeyKeyId?.let { accountService.adoptJourneyKey(accountId, it) }
         if (channel.sessionEvidenceId == null) {
             // Fresh login: start a new session evidence rather than reuse a stale one.
             val evidenceId = checkNotNull(sessionEvidenceService.createForAccount(accountId).sessionEvidenceId)

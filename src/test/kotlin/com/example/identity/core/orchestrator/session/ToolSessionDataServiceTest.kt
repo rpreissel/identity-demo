@@ -57,7 +57,7 @@ class ToolSessionDataServiceTest : BehaviorSpec({
             dataType = "orchestrator.Step"
             val key = keys.keys.currentToolSessionKey()
             dataKeyId = key.keyId
-            data = keys.wrapping.seal(key.key, "tool-session:${id.value}:orchestrator.Step".toByteArray(), """{"code":"abc","addedLater":true}""".toByteArray())
+            data = keys.wrapping.seal(key.key, "data-key:${key.keyId}", "tool-session:${id.value}:orchestrator.Step".toByteArray(), """{"code":"abc","addedLater":true}""".toByteArray())
         }
 
         then("an unknown field is skipped and a missing one takes its default") {

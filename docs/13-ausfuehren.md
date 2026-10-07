@@ -109,6 +109,10 @@ gleichzeitig laufen.
 - **Personenverzeichnis** (simuliertes Fremdsystem): <http://localhost:8080/personenverzeichnis/>
 - **Briefkasten** (Briefe, SMS und E-Mails an Testpersonen, nur im Demomodus):
   <http://localhost:8080/briefkasten/>
+- **Verschlüsselung abschalten** (nur Demo): `IDENTITY_ENCRYPTION_ENABLED=false` schreibt Werte
+  lesbar, jeder mit dem Kopf `ide1;key=…;alg=none;`, der den zuständigen Schlüssel nennt. Die
+  Schlüssel werden weiter verwaltet, Digests bleiben Digests. Alte Zeilen bleiben lesbar, der
+  Schalter darf jederzeit umgelegt werden ([ADR-55](adr/ADR-055-geheimnisse-der-verfahren-im-schluesseldienst.md)).
 - **Schlüsseldienst** (simuliertes KMS, nur im Demomodus, [ADR-54](adr/ADR-054-schluesseldienst-simuliert.md)):
   <http://localhost:8080/mock-kms/keys> zeigt Schlüssel und Versionen; rotieren mit
   `POST /mock-kms/keys/{name}/rotation`, zurückziehen mit `POST /mock-kms/keys/{name}/retirement?below=N`.

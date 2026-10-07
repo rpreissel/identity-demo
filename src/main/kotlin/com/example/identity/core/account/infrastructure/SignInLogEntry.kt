@@ -10,8 +10,6 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
-import org.hibernate.annotations.JdbcTypeCode
-import org.hibernate.type.SqlTypes
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
@@ -61,9 +59,9 @@ class SignInLogEntry(
     @Column(name = "acr", updatable = false, length = 16)
     val acr: String? = null,
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    /** The event's keys as JSON, sealed under the account's key; for an invitation, readable with `key=none` (ADR-55). */
     @Column(name = "details", updatable = false)
-    val details: Map<String, Any?>? = null,
+    val sealedDetails: ByteArray? = null,
 
     @Column(name = "occurred_at", nullable = false, updatable = false)
     val occurredAt: Instant,

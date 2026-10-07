@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.retention.RetentionJob
 import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
 import com.example.identity.core.orchestrator.session.AppTokenVault
@@ -57,6 +58,22 @@ class WorkingDataEncryptionDbTest : IntegrationTestSupport() {
                         (row["DATA_KEY_ID"] as String) shouldStartWith "TOOL_SESSION:"
                         dataKeys.findById(row["DATA_KEY_ID"] as String).isPresent shouldBe true
                     }
+                }
+            }
+        }
+
+        given("a registration whose journey got its key before the account existed") {
+            `when`("ident-fsc creates the account and enroll-sms seals the number") {
+                val channel = identifyAndConfirmEmail()
+                enrollSms(channel)
+                val accountId = AccountId(jdbcTemplate.queryForObject("SELECT account_id FROM orchestrator.channel_session WHERE id = ?", Long::class.java, UUID.fromString(channel))!!)
+
+                then("the journey's key is the account's primary key, and the number's row names it") {
+                    val keys = jdbcTemplate.queryForList("SELECT key_id FROM account.master_key WHERE account_id = ? AND primary_key = TRUE", UUID::class.java, accountId.value)
+                    keys.size shouldBe 1
+                    val numberKey = jdbcTemplate.queryForObject("SELECT key_id FROM auth_sms.enrollment", UUID::class.java)
+                    numberKey shouldBe keys.single()
+                    jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.master_key WHERE account_id IS NULL", Int::class.java) shouldBe 0
                 }
             }
         }

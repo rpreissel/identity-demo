@@ -5,11 +5,12 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountDeleted
 import com.example.identity.core.account.domain.normalizeClaimValue
 import org.springframework.context.event.EventListener
-import com.example.identity.core.account.infrastructure.Account
+import com.example.identity.contract.tool_api.ids.MasterKeyId
 import com.example.identity.core.account.infrastructure.AccountClaim
-import com.example.identity.core.account.infrastructure.AccountRepository
 import com.example.identity.core.account.infrastructure.ClaimBatchKey
 import com.example.identity.core.account.infrastructure.ClaimBatchKeyRepository
+import com.example.identity.core.account.infrastructure.MasterKey
+import com.example.identity.core.account.infrastructure.MasterKeyRepository
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -31,9 +32,10 @@ import org.springframework.stereotype.Component
  */
 @Component
 class ClaimCrypto(
-    private val accountRepository: AccountRepository,
+    private val masterKeys: MasterKeyRepository,
     private val batchKeys: ClaimBatchKeyRepository,
     private val wrapper: MasterKeyWrapper,
+    private val envelopes: Envelopes,
     private val clock: Clock,
     /** How long an unwrapped master key stays in this instance; the rate toward the KMS follows from it (ADR-52). */
     @Value("\${identity.secrets.master-key-cache-ttl:PT5M}") private val cacheTtl: Duration = Duration.ofMinutes(5),
@@ -42,58 +44,94 @@ class ClaimCrypto(
     private class Cached(val masterKey: ByteArray, val expiresAt: Instant)
 
     // Bounded and short-lived: a master key leaves memory after cacheTtl, and the map never grows past cacheSize.
-    private val masterKeys = object : java.util.LinkedHashMap<AccountId, Cached>(256, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<AccountId, Cached>): Boolean = size > cacheSize
+    private val cache = object : java.util.LinkedHashMap<MasterKeyId, Cached>(256, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<MasterKeyId, Cached>): Boolean = size > cacheSize
     }
 
-    /** Gives a new account its master key, before the row is saved: the column is not nullable. */
-    fun assignMasterKey(account: Account) {
+    /**
+     * A master key nobody owns yet (ADR-55): a journey seals under it until its account exists. Rows
+     * are committed on their own, so a sealing module can read the key back in any transaction.
+     */
+    fun newPendingKey(): MasterKeyId = createKey(accountId = null, primary = false).let { checkNotNull(it.keyId) }
+
+    /** The account's first key: claims and tokens live under it. */
+    fun createPrimaryKey(accountId: AccountId): MasterKeyId = createKey(accountId, primary = true).let { checkNotNull(it.keyId) }
+
+    /**
+     * The account takes the journey's key: as its primary key if it has none yet, otherwise as a
+     * further key that keeps readable what was sealed under it before the account was known.
+     */
+    fun adopt(accountId: AccountId, keyId: MasterKeyId) {
+        val key = masterKeys.findKey(keyId) ?: error("master key $keyId not found")
+        // Already someone's: an earlier binding of this channel adopted it. A merge keeps the first owner's.
+        if (key.accountId != null) return
+        key.accountId = accountId
+        key.primary = masterKeys.findByAccountIdAndPrimaryTrue(accountId) == null
+        masterKeys.save(key)
+    }
+
+    /** The id of the account's primary key, for a tool context on a channel that has an account. */
+    fun primaryKeyOf(accountId: AccountId): MasterKeyId =
+        checkNotNull(masterKeys.findByAccountIdAndPrimaryTrue(accountId)?.keyId) { "account $accountId has no master key" }
+
+    private fun createKey(accountId: AccountId?, primary: Boolean): MasterKey {
         val wrapped = wrapper.wrap(MASTER_KEY_PURPOSE, AesGcm.newKey())
-        account.wrappedMasterKey = wrapped.bytes
-        account.kekVersion = wrapped.kekVersion
+        return masterKeys.save(
+            MasterKey(keyUuid = UUID.randomUUID(), accountId = accountId, primary = primary, wrappedMasterKey = wrapped.bytes, kekVersion = wrapped.kekVersion, createdAt = clock.instant())
+        )
     }
 
-    /** The account's keys for one operation; unwrapped data keys are kept for its duration only. */
-    fun open(accountId: AccountId): AccountCipher = AccountCipher(accountId, masterKeyOf(accountId))
+    /** The account's keys for one operation, under its primary key; unwrapped data keys are kept for its duration only. */
+    fun open(accountId: AccountId): AccountCipher = openKey(primaryKeyOf(accountId))
 
-    private fun masterKeyOf(accountId: AccountId): ByteArray {
+    /** Any master key by id - the account's or a journey's pending one (ADR-55). */
+    fun openKey(keyId: MasterKeyId): AccountCipher = AccountCipher(keyId, masterKeyOf(keyId))
+
+    private fun masterKeyOf(keyId: MasterKeyId): ByteArray {
         val now = clock.instant()
-        synchronized(masterKeys) { masterKeys[accountId]?.takeIf { it.expiresAt.isAfter(now) }?.let { return it.masterKey } }
-        val stored = accountRepository.findStoredMasterKey(accountId) ?: error("Account not found: $accountId")
-        val masterKey = wrapper.unwrap(MASTER_KEY_PURPOSE, WrappedKey(stored.wrappedMasterKey, stored.kekVersion))
-        synchronized(masterKeys) { masterKeys[accountId] = Cached(masterKey, now + cacheTtl) }
+        synchronized(cache) { cache[keyId]?.takeIf { it.expiresAt.isAfter(now) }?.let { return it.masterKey } }
+        val stored = masterKeys.findKey(keyId) ?: error("master key $keyId not found")
+        val masterKey = wrapper.unwrap(MASTER_KEY_PURPOSE, WrappedKey(checkNotNull(stored.wrappedMasterKey), checkNotNull(stored.kekVersion)))
+        synchronized(cache) { cache[keyId] = Cached(masterKey, now + cacheTtl) }
         return masterKey
     }
 
-    /** A deleted account's key leaves this instance at once, not after the cache period. */
+    /** A deleted account's keys leave this instance at once, not after the cache period. */
     @EventListener(AccountDeleted::class)
     fun forget(event: AccountDeleted) {
-        synchronized(masterKeys) { masterKeys.remove(event.accountId) }
+        synchronized(cache) { cache.keys.removeAll(event.masterKeyIds.toSet()) }
     }
 
     fun deleteBatch(claimBatchId: UUID) {
         batchKeys.deleteByClaimBatchId(claimBatchId)
     }
 
-    inner class AccountCipher(private val accountId: AccountId, masterKey: ByteArray) {
+    /** Opened under one master key; batch keys belong to the account that key is primary for. */
+    inner class AccountCipher(private val keyId: MasterKeyId, masterKey: ByteArray) {
         // Three subkeys, so wrapping, digest and sealing never share key material.
         private val wrapKey = SecretKeySpec(hmac(masterKey, "wrap".toByteArray()), "AES")
         private val digestKey = SecretKeySpec(hmac(masterKey, "digest".toByteArray()), HMAC)
         private val sealKey = SecretKeySpec(hmac(masterKey, "seal".toByteArray()), "AES")
         /** `null` remembers that the batch key is gone, so an erased batch costs one lookup per operation. */
         private val dataKeys = mutableMapOf<UUID, SecretKey?>()
+        // Batch keys belong to the account; looked up once per operation.
+        private val ownerId: AccountId by lazy { accountIdOf(keyId) }
 
         /** Encrypts [plaintext] directly under the account's key, bound to [purpose]; for data that lives and dies with the account. */
-        fun seal(purpose: String, plaintext: ByteArray): ByteArray = AesGcm.seal(sealKey, purposeAad(purpose), plaintext)
+        fun seal(purpose: String, plaintext: ByteArray): ByteArray = envelopes.seal(sealKey, "master:$keyId", purposeAad(purpose), plaintext)
 
-        fun open(purpose: String, sealed: ByteArray): ByteArray = AesGcm.open(sealKey, purposeAad(purpose), sealed)
+        fun open(purpose: String, sealed: ByteArray): ByteArray = envelopes.open(sealKey, "master:$keyId", purposeAad(purpose), sealed)
 
-        private fun purposeAad(purpose: String) = "account:${accountId.value}:$purpose".toByteArray()
+        private fun purposeAad(purpose: String) = "key:$keyId:$purpose".toByteArray()
 
-        /** The stored equality form of [value]: normalized, then keyed-hashed. */
+        /**
+         * The stored equality form of [value]: normalized, then keyed-hashed, headed by the key that
+         * hashed it (ADR-55). Never readable, whatever the demo switch says: dedup and retraction
+         * compare this column in SQL, and a switched row would match nothing.
+         */
         fun digest(type: AttributeType, value: String): String {
             val normalized = checkNotNull(normalizeClaimValue(type, value))
-            return HexFormat.of().formatHex(hmac(digestKey, "${type.wireName}\u001F$normalized".toByteArray()))
+            return "${Envelopes.MAGIC};key=master:$keyId;alg=hmac-sha256;" + HexFormat.of().formatHex(hmac(digestKey, "${type.wireName}\u001F$normalized".toByteArray()))
         }
 
         /** Creates and stores the data key of a new batch. */
@@ -101,7 +139,8 @@ class ClaimCrypto(
             val id = UUID.randomUUID()
             val dek = AesGcm.newKey()
             batchKeys.save(
-                ClaimBatchKey(claimBatchId = id, accountId = accountId, wrappedDek = AesGcm.seal(wrapKey, batchAad(id), dek), expiresAt = expiresAt, createdAt = now)
+                // A key is wrapped in every mode; only values follow the demo switch.
+                ClaimBatchKey(claimBatchId = id, accountId = ownerId, wrappedDek = envelopes.seal(wrapKey, "master:$keyId", batchAad(id), dek, encrypt = true), expiresAt = expiresAt, createdAt = now)
             )
             val key = SecretKeySpec(dek, "AES").also { dataKeys[id] = it }
             return OpenBatch(id, key)
@@ -111,19 +150,22 @@ class ClaimCrypto(
         fun decrypt(claim: AccountClaim): String? {
             val batchId = checkNotNull(claim.claimBatchId) { "claim ${claim.id} without a batch" }
             if (!dataKeys.containsKey(batchId)) {
-                dataKeys[batchId] = batchKeys.findByClaimBatchIdAndAccountId(batchId, accountId)
-                    ?.let { SecretKeySpec(AesGcm.open(wrapKey, batchAad(batchId), checkNotNull(it.wrappedDek)), "AES") }
+                dataKeys[batchId] = batchKeys.findByClaimBatchIdAndAccountId(batchId, ownerId)
+                    ?.let { SecretKeySpec(envelopes.open(wrapKey, "master:$keyId", batchAad(batchId), checkNotNull(it.wrappedDek)), "AES") }
             }
             val key = dataKeys[batchId] ?: return null
-            return String(AesGcm.open(key, batchAad(batchId), checkNotNull(claim.encryptedValue)))
+            return String(envelopes.open(key, "batch:$batchId", batchAad(batchId), checkNotNull(claim.encryptedValue)))
         }
 
-        private fun batchAad(batchId: UUID) = "account:${accountId.value}:batch:$batchId".toByteArray()
+        private fun batchAad(batchId: UUID) = "key:$keyId:batch:$batchId".toByteArray()
 
         inner class OpenBatch(val id: UUID, private val key: SecretKey) {
-            fun encrypt(value: String): ByteArray = AesGcm.seal(key, batchAad(id), value.toByteArray())
+            fun encrypt(value: String): ByteArray = envelopes.seal(key, "batch:$id", batchAad(id), value.toByteArray())
         }
     }
+
+    private fun accountIdOf(keyId: MasterKeyId): AccountId =
+        checkNotNull(masterKeys.findKey(keyId)?.accountId) { "master key $keyId belongs to no account yet" }
 
     private fun hmac(key: ByteArray, input: ByteArray): ByteArray = hmac(SecretKeySpec(key, HMAC), input)
 

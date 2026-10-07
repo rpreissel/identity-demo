@@ -23,7 +23,7 @@ CREATE TABLE auth_kobil.enrollment (
     -- Die Geraetekennung: Vergleichsanker nach der Einloesung. Kein Angebotsfilter, denn beim
     -- Angebot kennt der Server sie noch nicht (siehe binding_key_ref).
     kobil_device_id    VARCHAR(255) NOT NULL,
-    -- Demo-only: Klartext, nicht verschluesselt. Er muss herausgegeben werden koennen, also
+    -- Seit ADR-55 verschluesselt (V44); der Hinweis auf den Klartext gilt nicht mehr.
     -- kommt kein Hash in Frage (ADR-22). Damit steht er auch in der offenen H2-Konsole.
     pin                VARCHAR(32)  NOT NULL,
     -- Serverseitige Haelfte des lokal biometriegeschuetzten Secrets, gehasht. NULL heisst: der

@@ -218,6 +218,12 @@ identity:
     # Bestimmt die Rate zum Schluesseldienst: etwa einmal je Konto und Frist statt je Lesevorgang.
     master-key-cache-ttl: PT5M
     master-key-cache-size: 100000
+  # Demo-Schalter (ADR-55): aus heisst, Werte liegen lesbar in den Tabellen, jeder mit dem Kopf
+  # "ide1;key=...;alg=none;", der sagt, womit er verschluesselt waere. Die Schluessel werden
+  # weiter angelegt, eingepackt und rotiert. Lesen folgt der Zeile, nicht dem Schalter; er darf
+  # jederzeit umgelegt werden. Ausserhalb des Demomodus lehnt ProductionModeCheck "false" ab.
+  encryption:
+    enabled: ${IDENTITY_ENCRYPTION_ENABLED:true}
   kobil:
     # Der Mandant, unter dem dieses System seine Nutzer bei KOBIL fuehrt.
     tenant-id: identity-demo

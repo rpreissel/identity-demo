@@ -2,6 +2,7 @@ package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.core.orchestrator.journey.JourneyEndedException
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.MasterKeyId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
 import com.example.identity.contract.tool_api.values.PartnerNumber
@@ -77,8 +78,11 @@ class ToolJourneyService(
         val journeyId: JourneyId,
         val channelSessionId: ChannelSessionId,
         override val bindingKeyRef: String,
-        override val accountId: AccountId?
-    ) : AuthorizedToolContext
+        override val accountId: AccountId?,
+        private val masterKeySource: () -> MasterKeyId,
+    ) : AuthorizedToolContext {
+        override fun masterKey(): MasterKeyId = masterKeySource()
+    }
 
     /** A [Context] whose session the activating request created. */
     data class Activation(val context: Context) : ActivationToolContext, AuthorizedToolContext by context
@@ -125,8 +129,24 @@ class ToolJourneyService(
             journeyId = journey.journeyId,
             channelSessionId = channel.id,
             bindingKeyRef = bindingKeyRef,
-            accountId = channel.accountId
+            accountId = channel.accountId,
+            masterKeySource = { masterKeyFor(channel) },
         ))
+    }
+
+    /**
+     * The key a tool seals under (ADR-55): the account's primary key, or the channel's journey key,
+     * created when a tool first asks on a channel without an account. Asked lazily, so a login or
+     * identification creates no key. The channel row is updated at once, so the key outlives the
+     * request and the account adopts it when it binds (`JourneyActionExecutor.bindAccount`).
+     */
+    private fun masterKeyFor(channel: ChannelSession): MasterKeyId {
+        channel.accountId?.let { return accountService.masterKeyOf(it) }
+        channel.journeyKeyId?.let { return it }
+        val key = accountService.newJourneyKey()
+        channel.journeyKeyId = key
+        sessionManagementService.updateChannelSession(channel)
+        return key
     }
 
     /**
@@ -183,7 +203,8 @@ class ToolJourneyService(
             journeyId = journey.journeyId,
             channelSessionId = channel.id,
             bindingKeyRef = bindingKeyRef,
-            accountId = channel.accountId
+            accountId = channel.accountId,
+            masterKeySource = { masterKeyFor(channel) },
         )
     }
 

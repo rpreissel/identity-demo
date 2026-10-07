@@ -364,7 +364,8 @@ ADR-12, ADR-19) und in `db/migration/KONVENTIONEN.md`. Die Begriffe erklärt das
     Anmeldeverfahren eingerichtet. Deaktivierte Verfahren zählen dabei mit. Ein solches Konto darf
     gelöscht oder mit einem anderen zusammengeführt werden (ADR-20).
 - `AccountAuthMethod` ist ein eingerichtetes Verfahren eines Kontos (`method`,
-  `active`/`deactivatedAt`, `enrolledUnderAcr`, `label`, `details`). Ein **Credential** ist dabei
+  `active`/`deactivatedAt`, `enrolledUnderAcr`, `label`, `details`; `label` und `reference` liegen
+  versiegelt unter dem Schlüssel des Kontos, [ADR-55](adr/ADR-055-geheimnisse-der-verfahren-im-schluesseldienst.md)). Ein **Credential** ist dabei
   das, womit sich der Nutzer bei diesem Verfahren ausweist, etwa eine hinterlegte Telefonnummer oder
   ein Schlüssel. Der Verweis auf das Credential (`EnrollmentRef`) steht in zwei echten Spalten
   (`enrollment_type`, `enrollment_id`). Das ist die einzige Stelle, an der Konto und Credential

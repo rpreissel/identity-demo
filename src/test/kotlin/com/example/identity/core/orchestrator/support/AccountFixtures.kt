@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.support
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.tools.auth_sms.internal.SmsNumbers
 import com.example.identity.tools.auth_sms.PHONE_NUMBER as PHONE_NUMBER_ATTRIBUTE
 import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
 import com.example.identity.core.account.AccountService
@@ -34,6 +35,7 @@ class AccountFixtures(
     private val personDirectory: PersonDirectory,
     private val passwordCredentialPort: PasswordCredentialPort,
     private val smsEnrollmentRepository: AuthSmsEnrollmentRepository,
+    private val smsNumbers: SmsNumbers,
     private val deviceEnrollmentRepository: DeviceEnrollmentRepository,
     private val sessionManagementService: SessionManagementService
 ) {
@@ -123,7 +125,7 @@ class AccountFixtures(
         val instanceId = UUID.randomUUID()
         when (method) {
             is Method.Sms -> {
-                val enrollment = smsEnrollmentRepository.save(AuthSmsEnrollment(phoneNumber = method.phoneNumber, createdAt = Instant.now()))
+                val enrollment = smsEnrollmentRepository.save(smsNumbers.newEnrollment(method.phoneNumber, accountService.masterKeyOf(accountId), Instant.now()))
                 accountService.recordClaims(
                     accountId,
                     listOf(Claim(PHONE_NUMBER_ATTRIBUTE, method.phoneNumber, ENROLL_SMS_SOURCE, AcrLevel.LOA1)),

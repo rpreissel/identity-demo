@@ -50,7 +50,7 @@ class ClaimEncryptionDbTest(
                     String(row["CLAIM_VALUE"] as ByteArray, Charsets.ISO_8859_1) shouldNotContain "Max"
                     (row["VALUE_DIGEST"] as String).lowercase() shouldNotContain "muster"
                 }
-                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.account WHERE id = ? AND wrapped_master_key IS NOT NULL", Int::class.java, account.value) shouldBe 1
+                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.master_key WHERE account_id = ? AND primary_key = TRUE", Int::class.java, account.value) shouldBe 1
             }
 
             then("one batch key serves the run, and the values read back") {

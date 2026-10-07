@@ -45,9 +45,11 @@ Zwei Vorgänge löschen Datenschlüssel:
   dürfen keine Frist haben: Ihr Wert liegt auch in `account.anchor`, und ein Konto, dessen Anker
   verfällt, erkennt seinen Inhaber nicht mehr.
 
-Der Hauptschlüssel entsteht mit dem Konto und liegt als Spalte an der Kontozeile. So wird er mit
-dem Konto gesichert, wiederhergestellt und gelöscht. Eine Kontolöschung nimmt damit alle Werte des
-Kontos auf einmal mit, auch in Sicherungen, die die Kontozeile nicht mehr enthalten.
+Der Hauptschlüssel entsteht mit dem Konto, oder schon für die Journey, die es anlegt, und liegt in
+`account.master_key` (seit [ADR-55](ADR-055-geheimnisse-der-verfahren-im-schluesseldienst.md); die
+erste Fassung hielt ihn als Spalte an der Kontozeile). Mit dem Konto wird er gesichert,
+wiederhergestellt und gelöscht. Eine Kontolöschung nimmt damit alle Werte des Kontos auf einmal mit,
+auch in Sicherungen, die die Kontozeile nicht mehr enthalten.
 
 **Wo der Umschlagschlüssel liegt.** Hinter dem Port `MasterKeyWrapper` (Modul `account`), in
 einem Schlüsseldienst, der ihn nie herausgibt; in der Demo ist das die Simulation aus

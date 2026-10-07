@@ -824,8 +824,8 @@ Start bricht ab, solange noch eine Demo-Voreinstellung gesetzt ist.
   - das Admin-Passwort ist als Hash hinterlegt,
   - die H2-Konsole ist aus,
   - Pepper und Lookup-Geheimnis sind lang genug und nicht der Demo-Wert, der Schlüsseldienst ist
-    nicht die Simulation (ADR-54), und jeder gespeicherte Schlüssel trägt eine KEK-Version, die der
-    Dienst noch auspackt,
+    nicht die Simulation (ADR-54), die Verschlüsselung ist eingeschaltet (ADR-55), und jeder
+    gespeicherte Schlüssel trägt eine KEK-Version, die der Dienst noch auspackt,
   - Keycloak wird über https mit geprüftem Zertifikat angesprochen,
   - es gibt keine API-Beschreibung (`springdoc.api-docs.enabled`).
 - [`WithheldDemoDisclosure`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/DemoDisclosure.kt#L65):

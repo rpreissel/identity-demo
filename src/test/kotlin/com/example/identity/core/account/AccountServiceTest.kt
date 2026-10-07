@@ -493,7 +493,7 @@ private class AccountServiceFixture(accountId: AccountId) {
         val ledger = ClaimLedger(claimRepository, retractionRepository, changeLog, keys.crypto, ClaimRetentionPolicy(ClaimRetentionProperties()), clock = TEST_CLOCK)
         service = AccountService(
             accountRepository, ledger, AnchorRegistry(anchorRepository, ledger), authMethodRepository,
-            mockk<ApplicationEventPublisher>(relaxed = true), changeLog, mockk<PersonLookupKey>(relaxed = true), keys.crypto, TEST_CLOCK
+            mockk<ApplicationEventPublisher>(relaxed = true), changeLog, mockk<PersonLookupKey>(relaxed = true), keys.crypto, keys.masterKeyRepository, TEST_CLOCK
         )
     }
 

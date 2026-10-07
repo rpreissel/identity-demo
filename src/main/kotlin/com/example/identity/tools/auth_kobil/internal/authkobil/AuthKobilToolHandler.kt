@@ -10,6 +10,7 @@ import com.example.identity.tools.auth_kobil.internal.KOBIL_ENROLLMENT_TYPE
 import com.example.identity.tools.auth_kobil.api.v1.KobilUnlockCredential
 import com.example.identity.tools.auth_kobil.internal.KobilEnrollment
 import com.example.identity.tools.auth_kobil.internal.KobilEnrollmentRepository
+import com.example.identity.tools.auth_kobil.internal.KobilPins
 import com.example.identity.tools.auth_kobil.internal.KobilSecrets
 import com.example.identity.tools.auth_kobil.internal.kobilFactorTypes
 import com.example.identity.simulation.kobil.KobilRisk
@@ -38,6 +39,7 @@ class AuthKobilToolHandler(
     private val secrets: KobilSecrets,
     private val ssms: KobilSsms,
     private val passwordCredentials: PasswordCredentialPort,
+    private val pins: KobilPins,
     /**
      * Which reported signals this deployment refuses to authenticate through. A named set, not a
      * score: a score would have to be invented, and an invented number reads as a measurement.
@@ -100,7 +102,7 @@ class AuthKobilToolHandler(
         return ToolOutcome.InProgress(
             nextStep = step,
             // The released PIN belongs to this one response - see KobilOtpStep.kobilPin.
-            stepData = (fields as KobilOtpStep).copy(kobilPin = enrollment.pin),
+            stepData = (fields as KobilOtpStep).copy(kobilPin = pins.pinOf(enrollment)),
         )
     }
 

@@ -1,6 +1,8 @@
 package com.example.identity.tools.auth_kobil.internal.authkobil
 
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
+import com.example.identity.tools.auth_kobil.internal.KobilPins
+import com.example.identity.core.account.application.ClaimCryptoFixture
 import com.example.identity.contract.tool_api.load
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
@@ -48,7 +50,10 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
     val secrets = KobilSecrets(pinLength = 8)
     val ssms = mockk<KobilSsms>()
     val passwordCredentials = mockk<PasswordCredentialPort>()
-    val handler = AuthKobilToolHandler(sessions, enrollmentRepository, secrets, ssms, passwordCredentials,
+    val keys = ClaimCryptoFixture()
+    val keyId = keys.newKey()
+    val pins = KobilPins(keys.sealing)
+    val handler = AuthKobilToolHandler(sessions, enrollmentRepository, secrets, ssms, passwordCredentials, pins,
         blockingRisks = setOf(KobilRisk.ROOTED, KobilRisk.EMULATOR, KobilRisk.DEBUGGER_ATTACHED, KobilRisk.APP_TAMPERED),
         pinReleaseTtlSeconds = 120,
         clock = TEST_CLOCK,)
@@ -60,7 +65,8 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             kobilTenantId = tenantId,
             kobilUserId = "kob-$enrollmentId",
             kobilDeviceId = "dev-$enrollmentId",
-            pin = "12345678",
+            sealedPin = pins.seal("12345678", keyId),
+            masterKeyId = keyId,
             unlockSecretHash = if (biometricConsent) secrets.hash("unlock-secret-$enrollmentId") else null,
             bindingKeyRef = "jkt-$enrollmentId",
             createdAt = TEST_NOW,
@@ -150,7 +156,7 @@ class AuthKobilToolHandlerTest : BehaviorSpec({
             then("it hands the PIN over in this response, at step otp") {
                 outcome shouldBe ToolOutcome.InProgress(
                     nextStep = "otp",
-                    stepData = KobilOtpStep(listOf("otp"), tenantId, "kob-10", kobilPin = enrollment.pin),
+                    stepData = KobilOtpStep(listOf("otp"), tenantId, "kob-10", kobilPin = "12345678"),
                 )
             }
 

@@ -74,6 +74,9 @@ class ProductionModeCheck(
             add("Der Schluesseldienst ist die Simulation (Modul kms) - Umschlagschluessel und Signaturschluessel laegen in unserer Datenbank. Einen echten KMS- oder HSM-Adapter einsetzen.")
         }
         orphanedKekVersions().takeIf { it.isNotEmpty() }?.let { add(orphanedKekMessage(it)) }
+        if (encryptionKeys.encryptionDisabled()) {
+            add("identity.encryption.enabled ist aus - Werte laegen lesbar in den Tabellen, nur mit dem Namen des Schluessels davor. Ein Demo-Schalter, nicht fuer echte Personen.")
+        }
         if (trustSelfSigned) add("Das Zertifikat von Keycloak wird nicht geprueft (trustSelfSignedCertificate). Ein vertrauenswuerdiges Zertifikat verwenden.")
         if (keycloakBaseUrl.isNotBlank() && !keycloakBaseUrl.startsWith("https://")) {
             add("Keycloak wird ueber $keycloakBaseUrl erreicht, nicht ueber https.")

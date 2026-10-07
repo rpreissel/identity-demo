@@ -4,6 +4,7 @@ import com.example.identity.contract.tool_api.ToolVersion
 import com.example.identity.core.orchestrator.domain.SessionEvidenceId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.MasterKeyId
 import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.ChannelState
@@ -94,6 +95,10 @@ class ChannelSession(
     /** Both channel types (docs/05-api.md Abschnitt 3b): the evidence itself. */
     @Column(name = "session_evidence_id")
     var sessionEvidenceId: SessionEvidenceId? = null
+
+    /** The master key the journey seals under while it has no account (ADR-55); adopted by the account it binds. */
+    @Column(name = "journey_key_id")
+    var journeyKeyId: MasterKeyId? = null
 
     /**
      * Whether at least one factor was proven on this channel. Weaker than `state == AUTHENTICATED`,

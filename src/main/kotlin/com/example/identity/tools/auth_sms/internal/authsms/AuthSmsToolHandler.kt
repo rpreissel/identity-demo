@@ -10,6 +10,7 @@ import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 import com.example.identity.contract.tool_api.TooManyRequestsException
 
 import com.example.identity.tools.auth_sms.internal.SMS_ENROLLMENT_TYPE
+import com.example.identity.tools.auth_sms.internal.SmsNumbers
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
@@ -27,7 +28,8 @@ class AuthSmsToolHandler(
     private val enrollmentRepository: AuthSmsEnrollmentRepository,
     private val tanGenerator: TanGenerator,
     private val smsGateway: SmsGateway,
-    private val sendLimit: SmsSendLimit
+    private val sendLimit: SmsSendLimit,
+    private val numbers: SmsNumbers,
 ) {
 
     @Transactional
@@ -40,8 +42,9 @@ class AuthSmsToolHandler(
         val enrollment = enrollmentRepository.findByIdOrNull(enrollmentId)
             ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "id=${enrollmentRef.id}")
 
+        val phoneNumber = numbers.phoneNumberOf(enrollment)
         // The channel already knows the account, so saying "too many" reveals nothing.
-        if (!sendLimit.trySend(enrollment.phoneNumber.orEmpty())) {
+        if (!sendLimit.trySend(phoneNumber)) {
             throw TooManyRequestsException(Text("Zu viele Codes angefordert. Bitte versuchen Sie es in einigen Minuten erneut."))
         }
         val issued = tanGenerator.issue()
@@ -49,7 +52,7 @@ class AuthSmsToolHandler(
             toolSessionId,
             AuthSmsToolSession(enrollmentRefId = enrollmentRef.id, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt),
         )
-        smsGateway.sendTan(enrollment.phoneNumber.orEmpty(), issued.plainTan)
+        smsGateway.sendTan(phoneNumber, issued.plainTan)
 
         // demoTan: this is a demo, not a real SMS gateway - showing it in the UI means testers
         // don't need server-log access (docs/verfahren/sms.md).
@@ -71,7 +74,7 @@ class AuthSmsToolHandler(
                 // method that no longer exists proves nothing.
                 val enrollment = data.enrollmentRefId?.toLongOrNull()?.let { enrollmentRepository.findByIdOrNull(it) }
                     ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "toolSession=$toolSessionId")
-                sendLimit.received(enrollment.phoneNumber.orEmpty())
+                sendLimit.received(numbers.phoneNumberOf(enrollment))
                 ToolOutcome.Completed.Authenticated()
             }
         }

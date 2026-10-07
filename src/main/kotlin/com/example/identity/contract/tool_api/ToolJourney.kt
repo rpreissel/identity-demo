@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.util.UriComponentsBuilder
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.MasterKeyId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.ids.ToolSessionId
@@ -41,6 +42,13 @@ interface ToolContext {
      * running journey), or `null` while nobody is known yet.
      */
     val accountId: AccountId?
+    /**
+     * The master key a tool seals its long-lived secrets under (`kms.AccountSealing`, ADR-55): the
+     * account's own key, or - asked for the first time on a channel without an account - a key
+     * created for this journey, which the account adopts when it binds. Only a tool that stores a
+     * secret asks; a login or identification never creates a key.
+     */
+    fun masterKey(): MasterKeyId
 }
 
 /**

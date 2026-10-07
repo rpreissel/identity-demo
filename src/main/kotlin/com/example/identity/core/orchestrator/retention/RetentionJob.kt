@@ -63,6 +63,8 @@ class RetentionJob(
         val staleCounters = rateLimitRecordRepository.deleteStaleCounters(now.minus(RATE_LIMIT_RETENTION), now)
         // Keys of days whose rows are all gone (ADR-53): what still lies under them is unreadable now.
         countDeleted("data_key", dataKeyRepository.deleteByRetireAfterBefore(now))
+        // Journey keys no account adopted (ADR-55): the channels that could name them are gone by now.
+        countDeleted("master_key", accountService.deleteJourneyKeysCreatedBefore(now.minus(CHANNEL_SESSION_RETENTION)))
         countDeleted("journey_trace", journeyTraceEntries)
         countDeleted("rate_limit", staleCounters)
         if (journeyTraceEntries > 0 || staleCounters > 0) {
