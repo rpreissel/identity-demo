@@ -11,15 +11,17 @@ class ModuleMigrationLocationsTest : BehaviorSpec({
     fun locations(demoMode: Boolean): List<String> = ModuleMigrationLocations(DemoMode(demoMode)).moduleLocations()
 
     given("demo mode") {
-        then("every module folder runs, demo_seed included") {
+        then("every module folder runs, demo_seed and demo_views included") {
             locations(true) shouldContain "classpath:db/migration/demo_seed"
+            locations(true) shouldContain "classpath:db/migration/demo_views"
             locations(true) shouldContain "classpath:db/migration/account"
         }
     }
 
     given("demo mode off") {
-        then("demo_seed is left out, every other module still runs") {
+        then("demo_seed and demo_views are left out, every other module still runs") {
             locations(false) shouldNotContain "classpath:db/migration/demo_seed"
+            locations(false) shouldNotContain "classpath:db/migration/demo_views"
             locations(false) shouldContain "classpath:db/migration/account"
         }
     }

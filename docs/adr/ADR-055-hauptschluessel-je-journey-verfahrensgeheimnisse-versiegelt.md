@@ -60,8 +60,9 @@ niemand merken.
 Zusatzdaten und Wert). Die Anwendung liest einen lesbaren Wert also nur, wenn der Schlüssel
 stimmt, und ein falscher Schlüssel scheitert mit derselben Ausnahme wie beim echten Chiffrat. Die
 Schlüssel werden in beiden Modi gleich angelegt, eingepackt, übernommen und rotiert; Datenschlüssel
-und Hauptschlüssel bleiben immer eingepackt. In der Konsole findet man den Schlüssel einer Zeile
-mit `CAST(key_id AS VARCHAR) LIKE '3f9a2b1c%'`.
+und Hauptschlüssel bleiben immer eingepackt. Die versiegelten Spalten sind binär; je Tabelle liefert
+eine Sicht mit Endung `_demo_readable` sie als Text (Migrationsverzeichnis `demo_views`, nur in der Demo).
+In der Konsole findet man den Schlüssel einer Zeile mit `CAST(key_id AS VARCHAR) LIKE '3f9a2b1c%'`.
 
 **Der Modus gehört zur Datenbank.** Die versiegelten Spalten sind so breit, wie der Modus es
 braucht: Flyway setzt die Breiten als Platzhalter ein (`${secret_width}`, `${digest_width}` und

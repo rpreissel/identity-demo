@@ -113,7 +113,9 @@ gleichzeitig laufen.
   `false`) und speichert lesbar: Jeder Wert trägt einen kurzen Kopf wie `[konto 3f9a2b1c pruefwert a17e03c9]`
   oder `[gruppe 7c1d0e2a pruefwert 5bd2f810]`, der den zuständigen Schlüssel und einen Prüfwert darunter
   nennt, und ist dahinter lesbar. Die Schlüssel werden wie im Ernstfall verwaltet (`/mock-kms`).
-  Mit `true` wird echt verschlüsselt, ohne Kopf. Der Modus gehört zur Datenbank: Ein Start im
+  Die Spalten sind binär und erscheinen in der H2-Konsole als Hex; je Tabelle liefert eine Sicht
+  mit Endung `_demo_readable` sie als Text, etwa `SELECT * FROM account.claim_demo_readable` (nur in der Demo,
+  Migrationsverzeichnis `demo_views`). Mit `true` wird echt verschlüsselt, ohne Kopf. Der Modus gehört zur Datenbank: Ein Start im
   anderen Modus bricht vor der ersten Migration ab, ohne etwas zu ändern; dann das Volume
   `orchestrator-data` leeren
   ([ADR-55](adr/ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md)).
