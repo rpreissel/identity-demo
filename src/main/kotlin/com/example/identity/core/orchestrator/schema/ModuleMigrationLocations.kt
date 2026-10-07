@@ -47,10 +47,11 @@ class ModuleMigrationLocations(private val demoMode: DemoMode) {
 
     private companion object {
         /**
-         * The demo personas and their letters, which must not appear in a real database. A database
-         * that ran them cannot leave demo mode; Flyway then refuses the unknown applied migration.
+         * The demo personas and their letters, and the readable views on sealed columns (ADR-55),
+         * which must not appear in a real database. A database that ran them cannot leave demo
+         * mode; Flyway then refuses the unknown applied migration.
          */
-        val DEMO_ONLY_LOCATIONS = setOf("classpath:db/migration/demo_seed")
+        val DEMO_ONLY_LOCATIONS = setOf("classpath:db/migration/demo_seed", "classpath:db/migration/demo_views")
 
         private val log = LoggerFactory.getLogger(ModuleMigrationLocations::class.java)
     }
