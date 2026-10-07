@@ -1,72 +1,98 @@
 package com.example.identity.core.account.application
 
+import com.example.identity.contract.tool_api.ids.MasterKeyId
+import java.util.HexFormat
+import java.util.UUID
+import javax.crypto.AEADBadTagException
+import javax.crypto.Mac
 import javax.crypto.SecretKey
+import javax.crypto.spec.SecretKeySpec
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 /**
- * Every sealed value says what it is sealed with (ADR-55): a readable header
- * `ide1;key=<key reference>;alg=aes-256-gcm;` or `...;alg=none;` leads the bytes, then the payload.
- * [open] checks the header against the key it was asked with, so a value cannot be presented under
- * another key, and the header is bound into the ciphertext. In demo mode encryption can be switched
- * off (`identity.encryption.enabled=false`): values are then stored readable, still with the header
- * naming the key they would be sealed under, and keys are still wrapped. Reading follows the row,
- * not the switch, so it may be flipped at any time. `ProductionModeCheck` refuses the switch off.
+ * How a sealed value lies in its column (ADR-55). With encryption on, the column holds the bare
+ * ciphertext (AES-256-GCM, the key's reference bound in as additional data) and nothing else. In
+ * the demo (`identity.encryption.enabled=false`) values lie readable, led by a short header naming
+ * the key they would be sealed under: `[konto 3f9a2b1c]` for a master key, `[gruppe 7c1d0e2a]` for
+ * a claim batch, `[tag TOOL_SESSION:2026-10-07]` for a day's data key, `[ohne]` for a row of no
+ * account. A readable value still opens only under its key: the header ends in a short tag
+ * (HMAC under the key over header, additional data and value), and a wrong key fails the way a
+ * wrong key fails in the real mode. A key is wrapped in every mode; in the demo its header ends
+ * in ` aes`. The mode is fixed per database (`EncryptionModeGuard`): reading follows the mode.
  */
 @Component
 class Envelopes(@Value("\${identity.encryption.enabled:true}") val encryptionEnabled: Boolean = true) {
 
-    /** [encrypt] defaults to the switch; a key wrap passes `true`, since keys stay wrapped in every mode. */
+    /** [encrypt] defaults to the mode; a key wrap passes `true`, since keys stay wrapped in every mode. */
     fun seal(key: SecretKey, keyRef: String, aad: ByteArray, plaintext: ByteArray, encrypt: Boolean = encryptionEnabled): ByteArray {
-        val header = header(keyRef, if (encrypt) AES_GCM else NONE).toByteArray()
-        return header + if (encrypt) AesGcm.seal(key, aad + header, plaintext) else plaintext
+        if (encryptionEnabled) return AesGcm.seal(key, aad + keyRef.toByteArray(), plaintext)
+        if (encrypt) {
+            val header = header(keyRef, AES).toByteArray()
+            return header + AesGcm.seal(key, aad + header, plaintext)
+        }
+        return header(keyRef, tag(key, keyRef, aad, plaintext)).toByteArray() + plaintext
     }
 
     fun open(key: SecretKey, keyRef: String, aad: ByteArray, sealed: ByteArray): ByteArray {
+        if (encryptionEnabled) return AesGcm.open(key, aad + keyRef.toByteArray(), sealed)
         val (header, payloadStart) = headerOf(sealed)
-        val fields = header.removePrefix("$MAGIC;").split(';').filter { it.isNotEmpty() }.associate { it.substringBefore('=') to it.substringAfter('=') }
-        val sealedUnder = fields["key"] ?: error("sealed value without a key reference")
+        val fields = header.removePrefix("[").removeSuffix("]")
+        val sealedUnder = fields.substringBeforeLast(' ')
         check(sealedUnder == keyRef) { "value sealed under '$sealedUnder', asked with '$keyRef'" }
         val payload = sealed.copyOfRange(payloadStart, sealed.size)
-        return when (val alg = fields["alg"]) {
-            AES_GCM -> AesGcm.open(key, aad + header.toByteArray(), payload)
-            NONE -> payload
-            else -> error("unknown algorithm '$alg' in a sealed value")
-        }
+        val suffix = fields.substringAfterLast(' ')
+        if (suffix == AES) return AesGcm.open(key, aad + header.toByteArray(), payload)
+        // The same failure as a wrong key in the real mode.
+        if (suffix != tag(key, keyRef, aad, payload)) throw AEADBadTagException("value under '$keyRef' does not open with this key")
+        return payload
     }
 
-    /** A row that belongs to no account and so has no key: readable, headed `key=none;alg=none;`. */
-    fun plain(payload: ByteArray): ByteArray = header(NO_KEY, NONE).toByteArray() + payload
+    /** A row that belongs to no account and so has no key: readable in every mode, headed `[ohne]` in the demo. */
+    fun plain(payload: ByteArray): ByteArray = if (encryptionEnabled) payload else "[$NO_KEY]".toByteArray() + payload
 
     fun openPlain(sealed: ByteArray): ByteArray {
+        if (encryptionEnabled) return sealed
         val (header, payloadStart) = headerOf(sealed)
-        check(header == header(NO_KEY, NONE)) { "not a plain row: $header" }
+        check(header == "[$NO_KEY]") { "not a plain row: $header" }
         return sealed.copyOfRange(payloadStart, sealed.size)
     }
 
-    /** What a row is sealed with, for a reader that only wants to know - `null` if it carries no header. */
-    fun describe(sealed: ByteArray): String? = runCatching { headerOf(sealed).first }.getOrNull()
+    /** The demo header of a row, for a reader that only wants to know - `null` outside the demo. */
+    fun describe(sealed: ByteArray): String? = if (encryptionEnabled) null else runCatching { headerOf(sealed).first }.getOrNull()
 
-    private fun header(keyRef: String, alg: String) = "$MAGIC;key=$keyRef;alg=$alg;"
+    /** The demo form of a digest: the key's header, then the readable normalized value. */
+    fun readableDigest(keyRef: String, value: String): String = "[$keyRef]$value"
 
-    /** The header and where the payload starts: the magic, then two fields, each ended by `;`. */
+    private fun header(keyRef: String, suffix: String) = "[$keyRef $suffix]"
+
+    /** Eight hex characters of an HMAC under [key]: short enough to read past, long enough that a wrong key never matches by chance in a demo. */
+    private fun tag(key: SecretKey, keyRef: String, aad: ByteArray, payload: ByteArray): String {
+        val mac = Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(key.encoded, "HmacSHA256")) }
+        mac.update(keyRef.toByteArray()); mac.update(aad)
+        return HexFormat.of().formatHex(mac.doFinal(payload)).take(8)
+    }
+
+    /** The header and where the payload starts: `[` up to the first `]`. */
     private fun headerOf(sealed: ByteArray): Pair<String, Int> {
-        val prefix = "$MAGIC;".toByteArray()
-        require(sealed.size > prefix.size && sealed.copyOfRange(0, prefix.size).contentEquals(prefix)) { "not a sealed value: no header" }
-        var semicolons = 0
-        var end = prefix.size
-        while (end < sealed.size && semicolons < 2) {
-            if (sealed[end] == ';'.code.toByte()) semicolons++
-            end++
-        }
-        require(semicolons == 2) { "not a sealed value: header incomplete" }
-        return String(sealed, 0, end, Charsets.US_ASCII) to end
+        require(sealed.isNotEmpty() && sealed[0] == '['.code.toByte()) { "not a demo row: no header" }
+        val end = sealed.indexOf(']'.code.toByte())
+        require(end > 0) { "not a demo row: header incomplete" }
+        return String(sealed, 0, end + 1, Charsets.US_ASCII) to end + 1
     }
 
     companion object {
-        const val MAGIC = "ide1"
-        const val AES_GCM = "aes-256-gcm"
-        const val NONE = "none"
-        const val NO_KEY = "none"
+        const val AES = "aes"
+        const val NO_KEY = "ohne"
+
+        /** The eight leading characters of an id: enough to find the key in the console (`CAST(key_id AS VARCHAR) LIKE '3f9a2b1c%'`). */
+        private fun short(id: UUID) = id.toString().take(8)
+
+        fun masterKey(id: MasterKeyId) = "konto ${short(id.value)}"
+        fun batch(id: UUID) = "gruppe ${short(id)}"
+        fun dataKey(keyId: String) = "tag $keyId"
+
+        /** What a demo header adds to a column at most (`[tag TOOL_SESSION:2026-10-07 a3f91c2e]`); the schema widens by it. */
+        const val HEADER_ALLOWANCE = 48
     }
 }

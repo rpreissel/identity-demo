@@ -109,10 +109,13 @@ gleichzeitig laufen.
 - **Personenverzeichnis** (simuliertes Fremdsystem): <http://localhost:8080/personenverzeichnis/>
 - **Briefkasten** (Briefe, SMS und E-Mails an Testpersonen, nur im Demomodus):
   <http://localhost:8080/briefkasten/>
-- **Verschlüsselung abschalten** (nur Demo): `IDENTITY_ENCRYPTION_ENABLED=false` schreibt Werte
-  lesbar, jeder mit dem Kopf `ide1;key=…;alg=none;`, der den zuständigen Schlüssel nennt. Die
-  Schlüssel werden weiter verwaltet, Digests bleiben Digests. Alte Zeilen bleiben lesbar, der
-  Schalter darf jederzeit umgelegt werden ([ADR-55](adr/ADR-055-geheimnisse-der-verfahren-im-schluesseldienst.md)).
+- **Verschlüsselung in der Demo**: Die Demo läuft ohne (`IDENTITY_ENCRYPTION_ENABLED`, Vorgabe
+  `false`), tut aber so als ob: Jeder Wert trägt einen kurzen Kopf wie `[konto 3f9a2b1c a17e03c9]`
+  oder `[gruppe 7c1d0e2a 5bd2f810]`, der den zuständigen Schlüssel und einen Prüfwert darunter
+  nennt, und ist dahinter lesbar. Die Schlüssel werden wie im Ernstfall verwaltet (`/mock-kms`).
+  Mit `true` wird echt verschlüsselt, ohne Kopf. Der Modus gehört zur Datenbank: Ein Start im
+  anderen Modus bricht vor der ersten Änderung ab, dann `orchestrator-data` leeren
+  ([ADR-55](adr/ADR-055-geheimnisse-der-verfahren-im-schluesseldienst.md)).
 - **Schlüsseldienst** (simuliertes KMS, nur im Demomodus, [ADR-54](adr/ADR-054-schluesseldienst-simuliert.md)):
   <http://localhost:8080/mock-kms/keys> zeigt Schlüssel und Versionen; rotieren mit
   `POST /mock-kms/keys/{name}/rotation`, zurückziehen mit `POST /mock-kms/keys/{name}/retirement?below=N`.

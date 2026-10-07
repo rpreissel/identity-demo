@@ -118,20 +118,24 @@ class ClaimCrypto(
         private val ownerId: AccountId by lazy { accountIdOf(keyId) }
 
         /** Encrypts [plaintext] directly under the account's key, bound to [purpose]; for data that lives and dies with the account. */
-        fun seal(purpose: String, plaintext: ByteArray): ByteArray = envelopes.seal(sealKey, "master:$keyId", purposeAad(purpose), plaintext)
+        private val keyRef = Envelopes.masterKey(keyId)
 
-        fun open(purpose: String, sealed: ByteArray): ByteArray = envelopes.open(sealKey, "master:$keyId", purposeAad(purpose), sealed)
+        fun seal(purpose: String, plaintext: ByteArray): ByteArray = envelopes.seal(sealKey, keyRef, purposeAad(purpose), plaintext)
+
+        fun open(purpose: String, sealed: ByteArray): ByteArray = envelopes.open(sealKey, keyRef, purposeAad(purpose), sealed)
 
         private fun purposeAad(purpose: String) = "key:$keyId:$purpose".toByteArray()
 
         /**
-         * The stored equality form of [value]: normalized, then keyed-hashed, headed by the key that
-         * hashed it (ADR-55). Never readable, whatever the demo switch says: dedup and retraction
-         * compare this column in SQL, and a switched row would match nothing.
+         * The stored equality form of [value]: normalized, then keyed-hashed. In the demo it is the
+         * normalized value itself behind the key's header (ADR-55): readable, and still equal for
+         * equal values. Dedup and retraction compare this column in SQL, so the mode is fixed per
+         * database, never switched on data.
          */
         fun digest(type: AttributeType, value: String): String {
             val normalized = checkNotNull(normalizeClaimValue(type, value))
-            return "${Envelopes.MAGIC};key=master:$keyId;alg=hmac-sha256;" + HexFormat.of().formatHex(hmac(digestKey, "${type.wireName}\u001F$normalized".toByteArray()))
+            return if (envelopes.encryptionEnabled) HexFormat.of().formatHex(hmac(digestKey, "${type.wireName}\u001F$normalized".toByteArray()))
+            else envelopes.readableDigest(keyRef, "${type.wireName}=$normalized")
         }
 
         /** Creates and stores the data key of a new batch. */
@@ -140,7 +144,7 @@ class ClaimCrypto(
             val dek = AesGcm.newKey()
             batchKeys.save(
                 // A key is wrapped in every mode; only values follow the demo switch.
-                ClaimBatchKey(claimBatchId = id, accountId = ownerId, wrappedDek = envelopes.seal(wrapKey, "master:$keyId", batchAad(id), dek, encrypt = true), expiresAt = expiresAt, createdAt = now)
+                ClaimBatchKey(claimBatchId = id, accountId = ownerId, wrappedDek = envelopes.seal(wrapKey, keyRef, batchAad(id), dek, encrypt = true), expiresAt = expiresAt, createdAt = now)
             )
             val key = SecretKeySpec(dek, "AES").also { dataKeys[id] = it }
             return OpenBatch(id, key)
@@ -151,16 +155,16 @@ class ClaimCrypto(
             val batchId = checkNotNull(claim.claimBatchId) { "claim ${claim.id} without a batch" }
             if (!dataKeys.containsKey(batchId)) {
                 dataKeys[batchId] = batchKeys.findByClaimBatchIdAndAccountId(batchId, ownerId)
-                    ?.let { SecretKeySpec(envelopes.open(wrapKey, "master:$keyId", batchAad(batchId), checkNotNull(it.wrappedDek)), "AES") }
+                    ?.let { SecretKeySpec(envelopes.open(wrapKey, keyRef, batchAad(batchId), checkNotNull(it.wrappedDek)), "AES") }
             }
             val key = dataKeys[batchId] ?: return null
-            return String(envelopes.open(key, "batch:$batchId", batchAad(batchId), checkNotNull(claim.encryptedValue)))
+            return String(envelopes.open(key, Envelopes.batch(batchId), batchAad(batchId), checkNotNull(claim.encryptedValue)))
         }
 
         private fun batchAad(batchId: UUID) = "key:$keyId:batch:$batchId".toByteArray()
 
         inner class OpenBatch(val id: UUID, private val key: SecretKey) {
-            fun encrypt(value: String): ByteArray = envelopes.seal(key, "batch:$id", batchAad(id), value.toByteArray())
+            fun encrypt(value: String): ByteArray = envelopes.seal(key, Envelopes.batch(id), batchAad(id), value.toByteArray())
         }
     }
 

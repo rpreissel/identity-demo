@@ -473,8 +473,9 @@ dann alle offenen Punkte auf einmal. Diese Punkte müssen erfüllt sein:
 - `identity.secrets.otp-pepper` und `account.change-log.lookup-secret` haben mindestens 32 Zeichen.
   Das zweite ist nicht der öffentliche Demo-Wert. Außerdem ist für jede Id eines Suchschlüssels im
   Änderungsprotokoll ein Geheimnis konfiguriert (Abschnitt 3, `account.change_log`).
-- `identity.encryption.enabled` ist `true`. Der Schalter ist für die Demo: `false` schreibt Werte
-  lesbar in die Tabellen, nur mit dem Kopf, der den zuständigen Schlüssel nennt
+- `identity.encryption.enabled` ist `true`. Die Demo läuft mit `false` und schreibt Werte lesbar in
+  die Tabellen, nur mit einem Kopf, der den zuständigen Schlüssel nennt. Der Modus gehört zur
+  Datenbank; ein Start im anderen Modus bricht vor der ersten Migration ab
   ([ADR-55](adr/ADR-055-geheimnisse-der-verfahren-im-schluesseldienst.md)).
 - Der Schlüsseldienst ist nicht die Simulation (Modul `kms`,
   [ADR-54](adr/ADR-054-schluesseldienst-simuliert.md)). Umschlagschlüssel `identity-kek` und die

@@ -33,12 +33,12 @@ class DataKeyWrapping(private val wrapper: MasterKeyWrapper, private val envelop
     /** Every KEK version that can still be unwrapped; a stored key under any other version is unreadable. */
     val knownVersions: Set<String> get() = wrapper.knownVersions
 
-    /** A value under [key], named [keyRef] in its header, with [aad] bound into the ciphertext; follows the demo switch. */
-    fun seal(key: ByteArray, keyRef: String, aad: ByteArray, plaintext: ByteArray): ByteArray =
-        envelopes.seal(SecretKeySpec(key, "AES"), keyRef, aad, plaintext)
+    /** A value under the data key [dataKeyId] (bytes [key]), with [aad] bound into the ciphertext; readable in the demo (ADR-55). */
+    fun seal(key: ByteArray, dataKeyId: String, aad: ByteArray, plaintext: ByteArray): ByteArray =
+        envelopes.seal(SecretKeySpec(key, "AES"), Envelopes.dataKey(dataKeyId), aad, plaintext)
 
-    fun open(key: ByteArray, keyRef: String, aad: ByteArray, sealed: ByteArray): ByteArray =
-        envelopes.open(SecretKeySpec(key, "AES"), keyRef, aad, sealed)
+    fun open(key: ByteArray, dataKeyId: String, aad: ByteArray, sealed: ByteArray): ByteArray =
+        envelopes.open(SecretKeySpec(key, "AES"), Envelopes.dataKey(dataKeyId), aad, sealed)
 
     private companion object {
         /** Bound into the wrapping, so a data key of another module cannot pass as an account's master key. */

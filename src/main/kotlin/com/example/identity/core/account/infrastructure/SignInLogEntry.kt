@@ -59,7 +59,7 @@ class SignInLogEntry(
     @Column(name = "acr", updatable = false, length = 16)
     val acr: String? = null,
 
-    /** The event's keys as JSON, sealed under the account's key; for an invitation, readable with `key=none` (ADR-55). */
+    /** The event's keys as JSON, sealed under the account's key; for an invitation, readable in every mode (ADR-55). */
     @Column(name = "details", updatable = false)
     val sealedDetails: ByteArray? = null,
 

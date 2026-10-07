@@ -20,3 +20,8 @@ scheduling:
 ident-nect:
   return-uri-prefixes:
     - https://kc.test/realms/
+
+# Die Tests pruefen den Ernstfall; die Demo selbst laeuft ohne Verschluesselung (ADR-55).
+identity:
+  encryption:
+    enabled: true

@@ -37,18 +37,38 @@ Die Verfahrensmodule erreichen den Schlüssel über den Port `tool_api.kms.Accou
 den Schlüssel, den sie nennt; ein Konto muss dafür nicht bekannt sein. Mit dem Konto gehen alle
 seine Schlüssel, und mit ihnen alles, was darunter liegt.
 
-**3. Jeder versiegelte Wert sagt, womit er versiegelt ist.** Ein lesbarer Kopf führt die Bytes:
-`ide1;key=<Schlüsselbezug>;alg=aes-256-gcm;`, etwa `key=batch:<Gruppe>`, `key=master:<Kennung>`
-oder `key=data-key:TOOL_SESSION:<Tag>`. Beim Lesen wird der Kopf gegen den Schlüssel geprüft, mit
-dem gefragt wird, und er ist in das Chiffrat eingebunden. Ein Wert lässt sich damit nicht unter
-einem anderen Schlüssel vorlegen, und ein Tester sieht in der H2-Konsole an jeder Zeile, welcher
-Schlüssel zuständig ist (`Envelopes`).
+**3. Außerhalb der Demo liegt in der Spalte nur das Chiffrat; die Demo tut so als ob und sagt
+dazu, womit.** Mit `identity.encryption.enabled=true` hält die Spalte das nackte Chiffrat
+(AES-256-GCM, der Schlüsselbezug ist in die Zusatzdaten eingebunden) und ein Digest die 64
+Hex-Zeichen des HMAC, sonst nichts. Die Demo läuft mit `false`: Werte und Digests liegen lesbar in
+den Tabellen, und ein kurzer Kopf nennt den Schlüssel, unter dem sie sonst lägen, so kurz wie
+möglich: Art und die ersten acht Zeichen der Kennung.
 
-**Der Demo-Schalter.** `identity.encryption.enabled=false` schreibt Werte lesbar, mit demselben
-Kopf und `alg=none`. Die Schlüssel werden weiter angelegt, eingepackt, übernommen und rotiert;
-Datenschlüssel und Hauptschlüssel bleiben in jedem Modus eingepackt. Lesen folgt der Zeile, nicht
-dem Schalter: Er darf jederzeit umgelegt werden, alte Zeilen bleiben lesbar. `ProductionModeCheck`
-lehnt den Schalter außerhalb des Demomodus ab.
+| Kopf | Schlüssel | Beispiel |
+|---|---|---|
+| `[konto 3f9a2b1c a17e03c9]` | Hauptschlüssel des Kontos, `account.master_key` | Mobilnummer, PIN, App-Token, Bezeichnung |
+| `[gruppe 7c1d0e2a 5bd2f810]` | Datenschlüssel der Claim-Gruppe, `account.claim_batch_key` | Claim-Wert |
+| `[tag TOOL_SESSION:2026-10-07 9e4c1a77]` | Datenschlüssel des Tages, `orchestrator.data_key` | Arbeitsdaten eines Tools |
+| `[konto 3f9a2b1c aes]` | wie oben, der Wert dahinter ist trotzdem ein Chiffrat | eingepackter Gruppenschlüssel |
+| `[konto 3f9a2b1c]family_name=muster` | Digest: der normalisierte Wert selbst, vergleichbar in SQL | `claim.value_digest` |
+| `[ohne]` | kein Schlüssel, die Zeile gehört keinem Konto | Anmeldeprotokoll einer Einladung |
+
+Der letzte Teil des Kopfes ist ein Prüfwert unter dem Schlüssel (acht Hex-Zeichen eines HMAC über
+Kopf, Zusatzdaten und Wert). Die Anwendung liest einen lesbaren Wert also nur, wenn der Schlüssel
+stimmt, und ein falscher Schlüssel scheitert mit derselben Ausnahme wie beim echten Chiffrat. Die
+Schlüssel werden in beiden Modi gleich angelegt, eingepackt, übernommen und rotiert; Datenschlüssel
+und Hauptschlüssel bleiben immer eingepackt. In der Konsole findet man den Schlüssel einer Zeile
+mit `CAST(key_id AS VARCHAR) LIKE '3f9a2b1c%'`.
+
+**Der Modus gehört zur Datenbank.** Die versiegelten Spalten sind so breit, wie der Modus es
+braucht: Flyway setzt die Breiten als Platzhalter ein (`${secret_width}`, `${digest_width}` und
+weitere aus `ClaimEncryptionKeys.schemaPlaceholders`), und die erste Migration schreibt den Modus
+nach `orchestrator.encryption_mode`. Vor jeder weiteren Migration vergleicht `EncryptionModeGuard`
+diese Zeile mit dem laufenden Schalter und bricht ab, ohne etwas zu ändern, wenn sie abweicht: Ein
+umgelegter Schalter auf vorhandenen Daten machte jeden Digest unvergleichbar und jeden Wert
+unlesbar. Die Demo-Wiederherstellung, die eine kaputte H2-Datei löscht, lässt diesen Abbruch durch.
+Die Tests laufen mit eingeschalteter Verschlüsselung; `ProductionModeCheck` lehnt den Schalter
+außerhalb des Demomodus ab.
 
 **Alternativen.**
 
@@ -65,8 +85,8 @@ lehnt den Schalter außerhalb des Demomodus ab.
 
 - `account.account` trägt keine Schlüsselspalten mehr; `ClaimCrypto` liest den Schlüssel über die
   Kennung und hält ihn je Instanz im Speicher (ADR-54). Batch-Schlüssel gehören weiter dem Konto.
-- Die versiegelten Spalten sind binär und um den Kopf breiter. Tests lesen über die Dienste
-  (`SmsNumbers`, `KobilPins`, `AccountService`, `SignInLog`).
+- Die versiegelten Spalten sind binär; in der Demo um den Kopf breiter. Tests lesen über die
+  Dienste (`SmsNumbers`, `KobilPins`, `AccountService`, `SignInLog`).
 - Ein Konto, das im Lauf einer Journey mit einem anderen verschmilzt (`absorbDisposableAccount`),
   verliert seine Schlüssel mit der Löschung. Das ist unschädlich: Ein verwerfbares Konto hat kein
   Verfahren und damit nichts, was unter ihnen läge.

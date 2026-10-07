@@ -120,6 +120,9 @@ services:
       # Frist fuer den frischen Nachweis (docs/04-orchestrierung.md #8). Kuerzer nur fuer die
       # Playwright-Spec fresh-proof.spec.ts, die sonst fuenf Minuten warten muesste.
       IDENTITY_POLICY_SELF_SERVICE_MAX_AGE: ${SELF_SERVICE_MAX_AGE:-PT5M}
+      # Die Demo speichert lesbar und tut so als ob (ADR-55). Der Modus gehoert zur Datenbank: Ein
+      # Start im anderen Modus bricht ab, vorher das Volume orchestrator-data leeren.
+      IDENTITY_ENCRYPTION_ENABLED: ${IDENTITY_ENCRYPTION_ENABLED:-false}
       # /data liegt auf dem eigenen Volume (siehe unten).
       SPRING_DATASOURCE_URL: jdbc:h2:file:/data/identitydb
       # Im Compose-Netzwerk heisst Keycloak "keycloak", nicht "localhost" wie in

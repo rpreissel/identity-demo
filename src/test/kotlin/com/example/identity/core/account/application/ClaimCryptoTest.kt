@@ -14,6 +14,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldEndWith
+import io.kotest.matchers.string.shouldMatch
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import com.example.identity.simulation.kms.InMemoryKms
@@ -43,9 +44,7 @@ class ClaimCryptoTest : BehaviorSpec({
                 val cipher = keys.crypto.open(alice)
                 claim.valueDigest shouldBe cipher.digest(AttributeType.FAMILY_NAME, "  MUSTER ")
                 claim.valueDigest shouldNotBe cipher.digest(AttributeType.GIVEN_NAMES, "Muster")
-                claim.valueDigest!! shouldStartWith "ide1;key=master:"
-                claim.valueDigest!! shouldContain ";alg=hmac-sha256;"
-                claim.valueDigest!!.substringAfterLast(';').length shouldBe 64
+                claim.valueDigest!!.length shouldBe 64
                 keys.account(bob)
                 keys.crypto.open(bob).digest(AttributeType.FAMILY_NAME, "Muster") shouldNotBe claim.valueDigest
             }
@@ -71,8 +70,8 @@ class ClaimCryptoTest : BehaviorSpec({
             keys.batchKeys.single { it.claimBatchId == claim.claimBatchId }.accountId = keys.account(bob).let { bob }
             val result = runCatching { keys.crypto.open(bob).decrypt(claim) }
 
-            then("it does not open - the header names the key it was wrapped under") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }.message!! shouldContain "sealed under 'master:"
+            then("it does not open - the wrapping is bound to the key it was made under") {
+                shouldThrow<AEADBadTagException> { result.getOrThrow() }
             }
         }
     }
@@ -172,46 +171,58 @@ class ClaimCryptoTest : BehaviorSpec({
         }
     }
 
-    given("the envelope every sealed value carries") {
+    given("a sealed value outside the demo") {
         val keys = ClaimCryptoFixture()
         val claim = keys.claim(alice, AttributeType.FAMILY_NAME, "Muster", ClaimSource.PERSON_DIRECTORY)
 
-        then("the row says which key and algorithm it is sealed with") {
-            String(claim.encryptedValue!!, Charsets.ISO_8859_1) shouldStartWith "ide1;key=batch:${claim.claimBatchId};alg=aes-256-gcm;"
-            keys.envelopes.describe(claim.encryptedValue!!) shouldBe "ide1;key=batch:${claim.claimBatchId};alg=aes-256-gcm;"
+        then("the row is bare ciphertext without any header") {
+            claim.encryptedValue!![0] shouldNotBe '['.code.toByte()
+            keys.envelopes.describe(claim.encryptedValue!!).shouldBeNull()
         }
 
         `when`("a value is presented under another key") {
             val other = keys.claim(alice, AttributeType.GIVEN_NAMES, "Max", ClaimSource.PERSON_DIRECTORY)
             val swapped = AccountClaim(accountId = alice, attributeType = other.attributeType, encryptedValue = claim.encryptedValue, valueDigest = other.valueDigest, claimBatchId = other.claimBatchId, claimSource = other.claimSource, establishedAt = TEST_NOW)
-            val result = runCatching { keys.valueOf(swapped) }
 
-            then("the header gives it away before any decryption") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }.message!! shouldContain "sealed under 'batch:${claim.claimBatchId}'"
+            then("the bound key reference rejects it") {
+                shouldThrow<AEADBadTagException> { keys.valueOf(swapped) }
             }
         }
     }
 
-    given("the demo switch that stores values readable") {
+    given("the demo, which stores values readable but says what would seal them") {
         val plain = ClaimCryptoFixture(encryptionEnabled = false)
         val claim = plain.claim(alice, AttributeType.FAMILY_NAME, "Muster", ClaimSource.PERSON_DIRECTORY)
+        val batch = claim.claimBatchId.toString().take(8)
+        val key = plain.masterKeys.single().keyUuid.toString().take(8)
 
-        then("the value is readable in the row, headed by the key it would be sealed under, and reads back") {
+        then("the value sits readable behind the short header naming its batch key and a tag under it, and reads back") {
             val stored = String(claim.encryptedValue!!, Charsets.ISO_8859_1)
-            stored shouldStartWith "ide1;key=batch:${claim.claimBatchId};alg=none;"
-            stored shouldEndWith "Muster"
+            stored shouldMatch Regex("\\[gruppe $batch [0-9a-f]{8}]Muster")
+            plain.envelopes.describe(claim.encryptedValue!!) shouldBe stored.substringBefore(']') + "]"
             plain.valueOf(claim) shouldBe "Muster"
         }
 
-        then("the batch key is wrapped regardless") {
-            String(plain.batchKeys.single().wrappedDek!!, Charsets.ISO_8859_1) shouldContain "alg=aes-256-gcm"
+        then("a readable value still needs its key - a tampered value or another key fails like a wrong key does") {
+            val tampered = claim.encryptedValue!!.copyOf().also { it[it.size - 1] = 'X'.code.toByte() }
+            shouldThrow<AEADBadTagException> { plain.valueOf(AccountClaim(accountId = alice, attributeType = claim.attributeType, encryptedValue = tampered, valueDigest = claim.valueDigest, claimBatchId = claim.claimBatchId, claimSource = claim.claimSource, establishedAt = TEST_NOW)) }
         }
 
-        `when`("the switch is turned back on") {
-            val encrypting = ClaimCrypto(plain.masterKeyRepository, plain.batchKeyRepository, plain.wrapper, Envelopes(true), TEST_CLOCK)
+        then("the digest is the normalized value behind the account key's header, so dedup still works") {
+            claim.valueDigest shouldBe "[konto $key]family_name=muster"
+            claim.valueDigest shouldBe plain.crypto.open(alice).digest(AttributeType.FAMILY_NAME, " MUSTER ")
+        }
 
-            then("the readable row still reads - reading follows the row, not the switch") {
-                encrypting.open(alice).decrypt(claim) shouldBe "Muster"
+        then("the batch key is wrapped regardless, and says so") {
+            String(plain.batchKeys.single().wrappedDek!!, Charsets.ISO_8859_1) shouldStartWith "[konto $key aes]"
+        }
+
+        `when`("a value is presented under another key") {
+            val other = plain.claim(alice, AttributeType.GIVEN_NAMES, "Max", ClaimSource.PERSON_DIRECTORY)
+            val swapped = AccountClaim(accountId = alice, attributeType = other.attributeType, encryptedValue = claim.encryptedValue, valueDigest = other.valueDigest, claimBatchId = other.claimBatchId, claimSource = other.claimSource, establishedAt = TEST_NOW)
+
+            then("the header gives it away") {
+                shouldThrow<IllegalStateException> { plain.valueOf(swapped) }.message!! shouldContain "sealed under 'gruppe $batch'"
             }
         }
     }

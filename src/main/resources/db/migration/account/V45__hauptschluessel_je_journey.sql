@@ -18,10 +18,10 @@ CREATE INDEX ix_master_key_created_at ON account.master_key (created_at);
 ALTER TABLE account.account DROP COLUMN wrapped_master_key;
 ALTER TABLE account.account DROP COLUMN kek_version;
 
--- Jeder versiegelte Wert traegt einen lesbaren Kopf ("ide1;key=...;alg=...;", ADR-55); die Spalten
--- brauchen dafuer Platz.
-ALTER TABLE account.claim_batch_key ALTER COLUMN wrapped_dek SET DATA TYPE VARBINARY(256);
-ALTER TABLE account.claim ALTER COLUMN claim_value SET DATA TYPE VARBINARY(1200);
--- Auch ein Digest nennt seinen Schluessel ("ide1;key=master:...;alg=hmac-sha256;" + Hex).
-ALTER TABLE account.claim ALTER COLUMN value_digest SET DATA TYPE VARCHAR(160);
-ALTER TABLE account.retraction ALTER COLUMN value_digest SET DATA TYPE VARCHAR(160);
+-- Die Breite der versiegelten Spalten haengt vom Modus ab (Platzhalter aus EncryptionModeGuard,
+-- ADR-55): mit Verschluesselung das nackte Chiffrat, in der Demo der lesbare Wert hinter einem
+-- kurzen Kopf, der den Schluessel nennt. Ein Digest ist dann der normalisierte Wert selbst.
+ALTER TABLE account.claim_batch_key ALTER COLUMN wrapped_dek SET DATA TYPE VARBINARY(${wrapped_key_width});
+ALTER TABLE account.claim ALTER COLUMN claim_value SET DATA TYPE VARBINARY(${claim_value_width});
+ALTER TABLE account.claim ALTER COLUMN value_digest SET DATA TYPE VARCHAR(${digest_width});
+ALTER TABLE account.retraction ALTER COLUMN value_digest SET DATA TYPE VARCHAR(${digest_width});
