@@ -40,7 +40,8 @@ als `pin` gemeldet, nie als `password`. Der Grund: Ein `amr`-Eintrag `password` 
 `findActiveMethod(accountId, "password")` den Datensatz des echten Passwortverfahrens diesem Durchlauf
 zuordnen. Dann würde das Passwort doppelt gezählt.
 
-Warum die PIN dafür im Klartext verwahrt wird, begründet
+Warum die PIN dafür für den Server lesbar verwahrt wird, nicht als Hash, begründet
+ADR-22; seit ADR-55 liegt sie versiegelt. Die Begründung gibt
 [ADR-22](ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md).
 
 **Erwogene Alternativen.**

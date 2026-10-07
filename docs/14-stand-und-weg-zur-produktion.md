@@ -167,7 +167,7 @@ lassen sich mit `bd show` anzeigen.
   Arbeitsdaten der Tools und die App-Tokens
   ([ADR-53](adr/ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md)) sind verschlüsselt. Mobilnummer,
   KOBIL-PIN, Verfahrensangaben und Anmeldeprotokoll liegen unter dem Schlüssel des Kontos
-  ([ADR-55](adr/ADR-055-geheimnisse-der-verfahren-im-schluesseldienst.md)). Nicht verschlüsselt sind
+  ([ADR-55](adr/ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md)). Nicht verschlüsselt sind
   `account.anchor` und die Simulationen (`personenverzeichnis.person.*`, `nect.ident_case.result`).
 - Die Aufbewahrungsfristen müssen mit Datenschutz und Compliance festgelegt werden. Heute sind es
   Richtwerte.
@@ -225,7 +225,7 @@ wird, müssen die Menschen zustimmen, die es später fachlich und technisch vera
    Sicherheit und Keycloak (Abschnitte 1 und 2), und die offenen Invarianten. Der Kern ist der
    Beweis für den Ansatz. Deshalb muss er jede genaue Prüfung bestehen.
 4. **Grundsatzentscheidungen treffen.** Das betrifft die Verwaltung der Schlüssel
-   (`DPoP-demo-61kp`), die Verschlüsselung gespeicherter Daten (`DPoP-demo-bo1w`), die
+   (`DPoP-demo-61kp`), die
    Zieldatenbank (`DPoP-demo-pi55`) und die Frage, ob mehr als eine Instanz laufen soll. Diese
    Entscheidungen betreffen Modell und Migrationen. Je später sie getroffen werden, desto teurer
    werden sie.

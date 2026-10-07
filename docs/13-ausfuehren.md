@@ -110,12 +110,13 @@ gleichzeitig laufen.
 - **Briefkasten** (Briefe, SMS und E-Mails an Testpersonen, nur im Demomodus):
   <http://localhost:8080/briefkasten/>
 - **Verschlüsselung in der Demo**: Die Demo läuft ohne (`IDENTITY_ENCRYPTION_ENABLED`, Vorgabe
-  `false`), tut aber so als ob: Jeder Wert trägt einen kurzen Kopf wie `[konto 3f9a2b1c pruefwert a17e03c9]`
+  `false`) und speichert lesbar: Jeder Wert trägt einen kurzen Kopf wie `[konto 3f9a2b1c pruefwert a17e03c9]`
   oder `[gruppe 7c1d0e2a pruefwert 5bd2f810]`, der den zuständigen Schlüssel und einen Prüfwert darunter
   nennt, und ist dahinter lesbar. Die Schlüssel werden wie im Ernstfall verwaltet (`/mock-kms`).
   Mit `true` wird echt verschlüsselt, ohne Kopf. Der Modus gehört zur Datenbank: Ein Start im
-  anderen Modus bricht vor der ersten Änderung ab, dann `orchestrator-data` leeren
-  ([ADR-55](adr/ADR-055-geheimnisse-der-verfahren-im-schluesseldienst.md)).
+  anderen Modus bricht vor der ersten Migration ab, ohne etwas zu ändern; dann das Volume
+  `orchestrator-data` leeren
+  ([ADR-55](adr/ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md)).
 - **Schlüsseldienst** (simuliertes KMS, nur im Demomodus, [ADR-54](adr/ADR-054-schluesseldienst-simuliert.md)):
   <http://localhost:8080/mock-kms/keys> zeigt Schlüssel und Versionen; rotieren mit
   `POST /mock-kms/keys/{name}/rotation`, zurückziehen mit `POST /mock-kms/keys/{name}/retirement?below=N`.

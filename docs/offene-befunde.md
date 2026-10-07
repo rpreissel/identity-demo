@@ -204,7 +204,7 @@ stillschweigend etwas von der Umgebung voraussetzt.
   Abschnitt 4). Anwendungen prüfen `acr` und, wenn sie einen frischen Nachweis brauchen, zusätzlich
   `auth_time` (`DPoP-demo-mea0`).
 - Weitere bewusst in Kauf genommene Punkte führt der [Lesepfad Sicherheit](16-lesepfad-sicherheit.md)
-  in seinem Abschnitt 15 auf: DPoP ohne Nonce, Tokens nicht an DPoP gebunden, KOBIL-PIN im Klartext.
+  in seinem Abschnitt 15 auf: DPoP ohne Nonce, Tokens nicht an DPoP gebunden, KOBIL-PIN für den Server lesbar.
 
 ## 7. Offene Entscheidungen des Inhabers
 

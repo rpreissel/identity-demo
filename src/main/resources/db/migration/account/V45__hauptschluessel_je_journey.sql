@@ -18,7 +18,8 @@ CREATE INDEX ix_master_key_created_at ON account.master_key (created_at);
 ALTER TABLE account.account DROP COLUMN wrapped_master_key;
 ALTER TABLE account.account DROP COLUMN kek_version;
 
--- Die Breite der versiegelten Spalten haengt vom Modus ab (Platzhalter aus EncryptionModeGuard,
+-- Die Breite der versiegelten Spalten haengt vom Modus ab (Platzhalter aus
+-- ClaimEncryptionKeys.schemaPlaceholders, gesetzt von EncryptionModeGuard,
 -- ADR-55): mit Verschluesselung das nackte Chiffrat, in der Demo der lesbare Wert hinter einem
 -- kurzen Kopf, der den Schluessel nennt. Ein Digest ist dann der normalisierte Wert selbst.
 ALTER TABLE account.claim_batch_key ALTER COLUMN wrapped_dek SET DATA TYPE VARBINARY(${wrapped_key_width});

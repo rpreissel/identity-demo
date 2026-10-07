@@ -607,7 +607,9 @@ der Client. Deshalb ist das Verfahren `demoOnly`.
 
 **KOBIL** ([ADR-21](adr/ADR-021-der-kobil-pin-liegt-im-backend-und-das.md),
 [ADR-22](adr/ADR-022-der-verwahrte-pin-liegt-im-klartext-demo-rahmen.md)): Der PIN liegt im
-Klartext im Backend ([`KobilEnrollment`](../src/main/kotlin/com/example/identity/tools/auth_kobil/internal/KobilEnrollment.kt#L18)).
+Backend, versiegelt unter dem Hauptschlüssel der Journey, die ihn eingerichtet hat
+([`KobilEnrollment`](../src/main/kotlin/com/example/identity/tools/auth_kobil/internal/KobilEnrollment.kt),
+`KobilPins`, ADR-55); der Server kann ihn lesen (ADR-22).
 Das Entsperrgeheimnis (256 Bit) liegt dort nur als Hash
 ([`KobilSecrets.matches`](../src/main/kotlin/com/example/identity/tools/auth_kobil/internal/KobilSecrets.kt#L39)).
 [`releasePin`](../src/main/kotlin/com/example/identity/tools/auth_kobil/internal/authkobil/AuthKobilToolHandler.kt#L74)
@@ -634,7 +636,7 @@ Simulationen und `demoOnly`.
 
 **Offene Punkte:**
 
-- **Bewusst** Der KOBIL-PIN liegt im Klartext vor (ADR-22). Das Entsperrgeheimnis liegt im Browser
+- **Bewusst** Der KOBIL-PIN ist für den Server lesbar, nicht gehasht (ADR-22); gespeichert versiegelt (ADR-55). Das Entsperrgeheimnis liegt im Browser
   im `localStorage` (Station 11).
 - **Niedrig** `ident-nect`: `retry` hat kein Budget, und Nect-Fälle werden nicht aufgeräumt (S-2,
   kein Issue).
@@ -706,6 +708,21 @@ Geheimnisse ins Log gelangen.
 **Doku:** [14-stand-und-weg-zur-produktion.md](14-stand-und-weg-zur-produktion.md) Abschnitt 5;
 [invarianten.md](invarianten.md) I-16, I-17, I-19.
 
+**Was wie gespeichert ist:**
+
+- Versiegelt unter dem Datenschlüssel der Claim-Gruppe: `account.claim.claim_value` (ADR-52).
+- Versiegelt unter dem Tagesschlüssel: `orchestrator.tool_session.data` (ADR-53).
+- Versiegelt unter dem Hauptschlüssel des Kontos: App-Tokens (`orchestrator.app_token_session`),
+  `account.auth_method.label` und `reference`, `account.sign_in_log.details` (ADR-53, ADR-55).
+- Versiegelt unter dem Hauptschlüssel der Journey, den das Konto übernimmt:
+  `auth_sms.enrollment.phone_number`, `auth_kobil.enrollment.pin` (ADR-55).
+- Als HMAC: `account.claim.value_digest`, `account.retraction.value_digest` (ADR-52),
+  `account.change_log.lookup_key`.
+- Als Hash mit Pepper: Passwörter, OTP- und QR-Codes, KOBIL-Entsperrgeheimnis, Freischaltcode.
+- Lesbar: `account.anchor` (ADR-52), die Simulationen (`personenverzeichnis`, `nect`, `kobil`).
+- In der Demo liegen die versiegelten Werte lesbar hinter einem Kopf, der den Schlüssel nennt;
+  die Schlüssel selbst bleiben eingepackt (ADR-55).
+
 **Code:**
 
 - [`KmsNodeKeys`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/KmsNodeKeys.kt#L24):
@@ -736,7 +753,7 @@ Geheimnisse ins Log gelangen.
 **Offene Punkte:**
 
 - **Offen (Entscheidung)** Schlüsselverwaltung mit KMS/HSM, Rotation und Widerruf
-  (`DPoP-demo-61kp`). Außerdem sind personenbezogene Spalten unverschlüsselt (`DPoP-demo-bo1w`).
+  (`DPoP-demo-61kp`). Lesbar bleiben `account.anchor` (ADR-52) und die Simulationen (ADR-53, ADR-55).
 - **Betrieb** Mehrere Instanzen brauchen einen festen Pepper und eine gemeinsame Sperre für
   geplante Aufgaben (`DPoP-demo-g7np`). Ein leerer Pepper bedeutet: bei jedem Start ein neuer,
   zufälliger.
@@ -907,8 +924,8 @@ Diese Tabelle fasst alle offenen Punkte der Stationen zusammen.
 | Admin-Passwort von Keycloak nicht im Startcheck | Hinweis | 13 | `DPoP-demo-9ppv.3` |
 | Keine DPoP-Nonce | bewusst | 2 | – |
 | Tokens nicht an DPoP gebunden | bewusst | 2 | ADR-9 |
-| KOBIL-PIN im Klartext | bewusst | 8 | ADR-22 |
-| Schlüssel in der Datenbank, keine Rotation | Entscheidung | 10 | `DPoP-demo-61kp` |
-| Personenbezogene Spalten unverschlüsselt | Entscheidung | 10 | `DPoP-demo-bo1w` |
+| KOBIL-PIN für den Server lesbar, nicht gehasht | bewusst | 8 | ADR-22, ADR-55 |
+| Schlüsseldienst nur simuliert, echter KMS/HSM-Adapter fehlt | Entscheidung | 10 | `DPoP-demo-61kp` |
+| `account.anchor` und Simulationen lesbar | Entscheidung | 10 | ADR-52, ADR-55 |
 | TLS zwischen Keycloak und Orchestrator, Proxy-Header | Umgebung | 2, 4 | `DPoP-demo-ai4x` |
 | Keycloak `start-dev`, Secrets, PostgreSQL | Umgebung | 13 | `DPoP-demo-9msv`, `x25a`, `pi55` |

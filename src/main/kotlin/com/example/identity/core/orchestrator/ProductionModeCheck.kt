@@ -97,7 +97,7 @@ class ProductionModeCheck(
         encryptionKeys.orphanedKekVersions() + (dataKeys.kekVersions() - dataKeyWrapping.knownVersions)
 
     private fun orphanedKekMessage(versions: Set<String>) =
-        "Gespeicherte Schluessel (account.account, orchestrator.data_key) sind mit KEK-Version $versions eingepackt, die der " +
+        "Gespeicherte Schluessel (account.master_key, orchestrator.data_key) sind mit KEK-Version $versions eingepackt, die der " +
             "Schluesseldienst nicht mehr auspackt - die Daten darunter sind nicht mehr lesbar (Schluessel identity-kek, zurueckgezogene Versionen)."
 
     private companion object {

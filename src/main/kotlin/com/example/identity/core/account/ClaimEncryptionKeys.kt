@@ -36,8 +36,8 @@ class ClaimEncryptionKeys(
                 "claim_value_width" to (1100 + allowance).toString(),
                 // 64 hex characters of HMAC-SHA256, or the readable normalized value behind its header - as long as a value may be.
                 "digest_width" to (if (encrypted) 64 else 1100 + allowance).toString(),
-                // Phone number, PIN, label, reference.
-                "secret_width" to (256 + allowance).toString(),
+                // Phone number, PIN, label, reference: up to 255 characters plus nonce and tag.
+                "secret_width" to (288 + allowance).toString(),
                 "details_width" to (2048 + allowance).toString(),
             )
         }

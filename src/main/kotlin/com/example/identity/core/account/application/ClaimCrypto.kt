@@ -23,8 +23,8 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 /**
- * The key hierarchy of the claim log (ADR-52): the KEK wraps one master key per account
- * ([Account.wrappedMasterKey]), the master key wraps one data key per batch ([ClaimBatchKey]), the
+ * The key hierarchy of the claim log (ADR-52): the KEK wraps the master keys ([MasterKey], one
+ * primary per account, ADR-55), the master key wraps one data key per batch ([ClaimBatchKey]), the
  * data key encrypts the values. Equality within an account uses an HMAC under the master key, so
  * dedup and retraction stay SQL. [open] unwraps the master key once per operation; with a KMS
  * behind [MasterKeyWrapper] that is the only call that leaves the process. Three subkeys are

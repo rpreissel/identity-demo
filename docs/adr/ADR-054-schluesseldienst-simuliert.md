@@ -62,7 +62,7 @@ Start, solange der Schlüsseldienst die Simulation ist, so wie er den Mock-Token
   Dienst folgt der Zahl der aktiven Konten, nicht der Lesevorgänge. Eine im Dienst zurückgezogene
   Version wirkt auf einer Instanz deshalb erst nach Ablauf dieser Frist. Tagesschlüssel hält
   `RetentionClassKeys` ohnehin.
-- `ProductionModeCheck` prüft, dass jede in `account.account` und `orchestrator.data_key`
+- `ProductionModeCheck` prüft, dass jede in `account.master_key` und `orchestrator.data_key`
   gespeicherte KEK-Version im Dienst noch auspackt.
 
 **Was ein echter Dienst ändert.** Nichts an den Tabellen und nichts an den Versionen. `KeyService`

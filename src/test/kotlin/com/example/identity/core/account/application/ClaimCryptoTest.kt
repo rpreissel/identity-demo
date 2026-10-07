@@ -201,7 +201,6 @@ class ClaimCryptoTest : BehaviorSpec({
 
         then("the row is bare ciphertext without any header") {
             claim.encryptedValue!![0] shouldNotBe '['.code.toByte()
-            keys.envelopes.describe(claim.encryptedValue!!).shouldBeNull()
         }
 
         `when`("a value is presented under another key") {
@@ -223,7 +222,6 @@ class ClaimCryptoTest : BehaviorSpec({
         then("the value sits readable behind the short header naming its batch key and a tag under it, and reads back") {
             val stored = String(claim.encryptedValue!!, Charsets.ISO_8859_1)
             stored shouldMatch Regex("\\[gruppe $batch pruefwert [0-9a-f]{8}]Muster")
-            plain.envelopes.describe(claim.encryptedValue!!) shouldBe stored.substringBefore(']') + "]"
             plain.valueOf(claim) shouldBe "Muster"
         }
 

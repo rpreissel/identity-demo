@@ -184,7 +184,7 @@ Compliance.
   - *Frist beginnt mit:* `created_at`
   - *Richtwert:* 14 Tage, wie `ChannelSession`, stündlich (`RetentionJob`)
   - *Grund:* Eine Journey ohne Konto bekommt ihren Schlüssel, sobald ein Einrichtungs-Tool ihn
-    anfordert ([ADR-55](adr/ADR-055-geheimnisse-der-verfahren-im-schluesseldienst.md)). Bindet sie
+    anfordert ([ADR-55](adr/ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md)). Bindet sie
     nie ein Konto, nennt nach Ablauf der Kanalfrist keine Zeile mehr den Schlüssel.
 - **`orchestrator.data_key`** (Datenschlüssel der Arbeitsdaten, einer je Tag)
   - *Frist beginnt mit:* `retire_after`, dem Tagesende plus 7 Tage plus `tool-session.retention`
@@ -476,13 +476,13 @@ dann alle offenen Punkte auf einmal. Diese Punkte müssen erfüllt sein:
 - `identity.encryption.enabled` ist `true`. Die Demo läuft mit `false` und schreibt Werte lesbar in
   die Tabellen, nur mit einem Kopf, der den zuständigen Schlüssel nennt. Der Modus gehört zur
   Datenbank; ein Start im anderen Modus bricht vor der ersten Migration ab
-  ([ADR-55](adr/ADR-055-geheimnisse-der-verfahren-im-schluesseldienst.md)).
+  ([ADR-55](adr/ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md)).
 - Der Schlüsseldienst ist nicht die Simulation (Modul `kms`,
   [ADR-54](adr/ADR-054-schluesseldienst-simuliert.md)). Umschlagschlüssel `identity-kek` und die
   Signaturschlüssel des Orchestrators liegen dort; die Simulation hielte sie in unserer Datenbank.
   Ein Adapter für Vault Transit, ein Cloud-KMS oder ein HSM ersetzt `KmsKekWrapper` und
-  `KmsNodeKeys`. Jedes Konto und jeder Tagesschlüssel merkt sich die KEK-Version (`kek_version`),
-  mit der er eingepackt ist. Eine Version darf im Dienst erst zurückgezogen werden, wenn keine Zeile
+  `KmsNodeKeys`. Jeder Hauptschlüssel (`account.master_key`) und jeder Tagesschlüssel (`orchestrator.data_key`)
+  merkt sich die KEK-Version (`kek_version`), mit der er eingepackt ist. Eine Version darf im Dienst erst zurückgezogen werden, wenn keine Zeile
   sie mehr trägt; sonst verweigert `ProductionModeCheck` außerhalb des Demomodus den Start, im
   Demomodus warnt er.
 - Der Orchestrator erreicht Keycloak über https (`keycloak-migrate.base-url`) und prüft dessen

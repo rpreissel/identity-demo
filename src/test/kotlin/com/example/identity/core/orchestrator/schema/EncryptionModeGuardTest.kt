@@ -49,8 +49,8 @@ class EncryptionModeGuardTest : BehaviorSpec({
 
     given("the column widths") {
         then("the demo widens every sealed column by the header, and the digest holds the readable value") {
-            ClaimEncryptionKeys.schemaPlaceholders(true)["secret_width"] shouldBe "256"
-            ClaimEncryptionKeys.schemaPlaceholders(false)["secret_width"] shouldBe (256 + Envelopes.HEADER_ALLOWANCE).toString()
+            ClaimEncryptionKeys.schemaPlaceholders(true)["secret_width"] shouldBe "288"
+            ClaimEncryptionKeys.schemaPlaceholders(false)["secret_width"] shouldBe (288 + Envelopes.HEADER_ALLOWANCE).toString()
             ClaimEncryptionKeys.schemaPlaceholders(true)["digest_width"] shouldBe "64"
             ClaimEncryptionKeys.schemaPlaceholders(true)["encryption_enabled"] shouldBe "true"
         }

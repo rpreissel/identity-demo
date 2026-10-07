@@ -17,7 +17,7 @@ steht hier an **einer** Stelle, statt in jeder betroffenen ADR neu begründet zu
 
 | Was | Wo | Warum nicht gehasht |
 |---|---|---|
-| verwahrter KOBIL-PIN ([ADR-21](ADR-021-der-kobil-pin-liegt-im-backend-und-das.md)) | `auth_kobil.enrollment.pin`, seit [ADR-55](ADR-055-geheimnisse-der-verfahren-im-schluesseldienst.md) verschlüsselt, aber für den Server lesbar | muss für jede Anmeldung herausgegeben werden |
+| verwahrter KOBIL-PIN ([ADR-21](ADR-021-der-kobil-pin-liegt-im-backend-und-das.md)) | `auth_kobil.enrollment.pin`, seit [ADR-55](ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md) verschlüsselt, aber für den Server lesbar | muss für jede Anmeldung herausgegeben werden |
 | PIN und Entsperrgeheimnis während einer KOBIL-Einrichtung | Arbeitsdaten von `enroll-kobil` in `orchestrator.tool_session.data` ([ADR-49](ADR-049-arbeitsdaten-der-tools-am-orchestrator.md)); seit [ADR-53](ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md) verschlüsselt, aber für den Server lesbar | ein Neuladen der Seite soll den Ablauf nicht abbrechen |
 | Freischaltcode im Brief ([ADR-31](ADR-031-freischaltcode-liegt-im-fremdsystem.md)) | `personenverzeichnis.brief.code` | den Klartext gibt es auch in der echten Welt, auf Papier; geprüft wird nur gegen den Hash in `freischaltcode` |
 | Signaturschlüssel des Orchestrators ([ADR-25](ADR-025-die-keycloak-konfiguration-steht-im-realm-nicht-in.md)) | seit [ADR-54](ADR-054-schluesseldienst-simuliert.md) im Schlüsseldienst (`kms.transit_key_version`, Simulation); die Tabelle `orchestrator.node_signing_key` gibt es nicht mehr | der Dienst signiert, der Schlüssel verlässt ihn nie |

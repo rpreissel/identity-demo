@@ -60,9 +60,6 @@ class Envelopes(@Value("\${identity.encryption.enabled:true}") val encryptionEna
         return sealed.copyOfRange(payloadStart, sealed.size)
     }
 
-    /** The demo header of a row, for a reader that only wants to know - `null` outside the demo. */
-    fun describe(sealed: ByteArray): String? = if (encryptionEnabled) null else runCatching { headerOf(sealed).first }.getOrNull()
-
     /** The demo form of a digest: the key's header, then the readable normalized value. */
     fun readableDigest(keyRef: String, value: String): String = "[$keyRef]$value"
 

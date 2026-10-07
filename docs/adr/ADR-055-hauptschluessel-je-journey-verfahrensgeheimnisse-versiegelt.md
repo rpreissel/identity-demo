@@ -1,11 +1,13 @@
-# ADR-55: Ein Hauptschlüssel je Journey, versiegelte Verfahrensgeheimnisse, lesbare Umschlagköpfe
+# ADR-55: Ein Hauptschlüssel je Journey, versiegelte Verfahrensgeheimnisse, lesbare Köpfe in der Demo
 
 **Status:** umgesetzt 2026-10-07 (Issue `DPoP-demo-wbuk`). Baut auf
 [ADR-52](ADR-052-umschlagverschluesselung-des-claim-logs.md) und
 [ADR-54](ADR-054-schluesseldienst-simuliert.md) auf und schließt die Liste aus
 [ADR-53](ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md) bis auf `account.anchor`.
 
-**Entscheidung.** Drei Dinge, die zusammengehören.
+**Entscheidung.** Drei Dinge, die zusammengehören. Begriffe wie in ADR-52: *eingepackt* heißt,
+ein Schlüssel liegt verschlüsselt unter dem nächsthöheren Schlüssel; *versiegelt* heißt, ein Wert
+liegt verschlüsselt unter einem Hauptschlüssel oder Datenschlüssel.
 
 **1. Der Hauptschlüssel ist eine eigene Tabelle, und eine Journey bekommt ihn vor dem Konto.**
 `account.master_key` hält je Schlüssel den eingepackten Wert, die KEK-Version und das Konto, dem
@@ -37,12 +39,12 @@ Die Verfahrensmodule erreichen den Schlüssel über den Port `tool_api.kms.Accou
 den Schlüssel, den sie nennt; ein Konto muss dafür nicht bekannt sein. Mit dem Konto gehen alle
 seine Schlüssel, und mit ihnen alles, was darunter liegt.
 
-**3. Außerhalb der Demo liegt in der Spalte nur das Chiffrat; die Demo tut so als ob und sagt
-dazu, womit.** Mit `identity.encryption.enabled=true` hält die Spalte das nackte Chiffrat
-(AES-256-GCM, der Schlüsselbezug ist in die Zusatzdaten eingebunden) und ein Digest die 64
-Hex-Zeichen des HMAC, sonst nichts. Die Demo läuft mit `false`: Werte und Digests liegen lesbar in
-den Tabellen, und ein kurzer Kopf nennt den Schlüssel, unter dem sie sonst lägen: Art und die
-ersten acht Zeichen der Kennung, dann der Prüfwert. Jeder Teil ist benannt, den Aufbau muss sich
+**3. Außerhalb der Demo liegt in der Spalte nur das Chiffrat; die Demo speichert lesbar und nennt
+im Kopf den Schlüssel, unter dem der Wert sonst läge.** Mit `identity.encryption.enabled=true` hält
+die Spalte nur das Chiffrat (AES-256-GCM, der Schlüsselbezug ist in die Zusatzdaten eingebunden)
+und ein Digest die 64 Hex-Zeichen des HMAC. Die Demo läuft mit `false`: Werte und Digests liegen
+lesbar in den Tabellen, und ein kurzer Kopf nennt den Schlüssel: Art und die ersten acht Zeichen
+der Kennung, dann der Prüfwert. Jeder Teil ist benannt, den Aufbau muss sich
 niemand merken.
 
 | Kopf | Schlüssel | Beispiel |
@@ -54,7 +56,7 @@ niemand merken.
 | `[konto 3f9a2b1c]family_name=muster` | Digest: der normalisierte Wert selbst, vergleichbar in SQL | `claim.value_digest` |
 | `[ohne]` | kein Schlüssel, die Zeile gehört keinem Konto | Anmeldeprotokoll einer Einladung |
 
-`pruefwert` ist ein Prüfwert unter dem Schlüssel (acht Hex-Zeichen eines HMAC über Kopf,
+`pruefwert` ist ein Prüfwert unter dem Schlüssel (acht Hex-Zeichen eines HMAC über Schlüsselbezug,
 Zusatzdaten und Wert). Die Anwendung liest einen lesbaren Wert also nur, wenn der Schlüssel
 stimmt, und ein falscher Schlüssel scheitert mit derselben Ausnahme wie beim echten Chiffrat. Die
 Schlüssel werden in beiden Modi gleich angelegt, eingepackt, übernommen und rotiert; Datenschlüssel
@@ -63,8 +65,9 @@ mit `CAST(key_id AS VARCHAR) LIKE '3f9a2b1c%'`.
 
 **Der Modus gehört zur Datenbank.** Die versiegelten Spalten sind so breit, wie der Modus es
 braucht: Flyway setzt die Breiten als Platzhalter ein (`${secret_width}`, `${digest_width}` und
-weitere aus `ClaimEncryptionKeys.schemaPlaceholders`), und die erste Migration schreibt den Modus
-nach `orchestrator.encryption_mode`. Vor jeder weiteren Migration vergleicht `EncryptionModeGuard`
+weitere aus `ClaimEncryptionKeys.schemaPlaceholders`, gesetzt von `EncryptionModeGuard`), und der
+erste Migrationslauf schreibt den Modus nach `orchestrator.encryption_mode` (V48, Platzhalter
+`${encryption_enabled}`). Vor jedem weiteren Lauf vergleicht `EncryptionModeGuard`
 diese Zeile mit dem laufenden Schalter und bricht ab, ohne etwas zu ändern, wenn sie abweicht: Ein
 umgelegter Schalter auf vorhandenen Daten machte jeden Digest unvergleichbar und jeden Wert
 unlesbar. Die Demo-Wiederherstellung, die eine kaputte H2-Datei löscht, lässt diesen Abbruch durch.
