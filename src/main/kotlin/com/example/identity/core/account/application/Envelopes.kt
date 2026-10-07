@@ -14,12 +14,14 @@ import org.springframework.stereotype.Component
  * How a sealed value lies in its column (ADR-55). With encryption on, the column holds the bare
  * ciphertext (AES-256-GCM, the key's reference bound in as additional data) and nothing else. In
  * the demo (`identity.encryption.enabled=false`) values lie readable, led by a short header naming
- * the key they would be sealed under: `[konto 3f9a2b1c]` for a master key, `[gruppe 7c1d0e2a]` for
- * a claim batch, `[tag TOOL_SESSION:2026-10-07]` for a day's data key, `[ohne]` for a row of no
- * account. A readable value still opens only under its key: the header ends in a short tag
- * (HMAC under the key over header, additional data and value), and a wrong key fails the way a
- * wrong key fails in the real mode. A key is wrapped in every mode; in the demo its header ends
- * in ` aes`. The mode is fixed per database (`EncryptionModeGuard`): reading follows the mode.
+ * the key they would be sealed under, each part named so nobody has to remember the layout:
+ * `[konto 3f9a2b1c pruefwert a17e03c9]` for a master key, `[gruppe 7c1d0e2a pruefwert ...]` for a
+ * claim batch, `[tag TOOL_SESSION:2026-10-07 pruefwert ...]` for a day's data key, `[ohne]` for a
+ * row of no account. `pruefwert` is a short HMAC under the key over header, additional data and
+ * value: a readable value still opens only under its key, and a wrong key fails the way it fails
+ * in the real mode. A key is wrapped in every mode; in the demo its header says so:
+ * `[verschluesselt mit konto 3f9a2b1c]`.
+ * The mode is fixed per database (`EncryptionModeGuard`): reading follows the mode.
  */
 @Component
 class Envelopes(@Value("\${identity.encryption.enabled:true}") val encryptionEnabled: Boolean = true) {
@@ -28,23 +30,23 @@ class Envelopes(@Value("\${identity.encryption.enabled:true}") val encryptionEna
     fun seal(key: SecretKey, keyRef: String, aad: ByteArray, plaintext: ByteArray, encrypt: Boolean = encryptionEnabled): ByteArray {
         if (encryptionEnabled) return AesGcm.seal(key, aad + keyRef.toByteArray(), plaintext)
         if (encrypt) {
-            val header = header(keyRef, AES).toByteArray()
+            val header = "[$ENCRYPTED $keyRef]".toByteArray()
             return header + AesGcm.seal(key, aad + header, plaintext)
         }
-        return header(keyRef, tag(key, keyRef, aad, plaintext)).toByteArray() + plaintext
+        return header(keyRef, "$TAG ${tag(key, keyRef, aad, plaintext)}").toByteArray() + plaintext
     }
 
     fun open(key: SecretKey, keyRef: String, aad: ByteArray, sealed: ByteArray): ByteArray {
         if (encryptionEnabled) return AesGcm.open(key, aad + keyRef.toByteArray(), sealed)
         val (header, payloadStart) = headerOf(sealed)
         val fields = header.removePrefix("[").removeSuffix("]")
-        val sealedUnder = fields.substringBeforeLast(' ')
+        val encrypted = fields.startsWith("$ENCRYPTED ")
+        val sealedUnder = if (encrypted) fields.removePrefix("$ENCRYPTED ") else fields.substringBefore(" $TAG ")
         check(sealedUnder == keyRef) { "value sealed under '$sealedUnder', asked with '$keyRef'" }
         val payload = sealed.copyOfRange(payloadStart, sealed.size)
-        val suffix = fields.substringAfterLast(' ')
-        if (suffix == AES) return AesGcm.open(key, aad + header.toByteArray(), payload)
+        if (encrypted) return AesGcm.open(key, aad + header.toByteArray(), payload)
         // The same failure as a wrong key in the real mode.
-        if (suffix != tag(key, keyRef, aad, payload)) throw AEADBadTagException("value under '$keyRef' does not open with this key")
+        if (fields.substringAfter(" $TAG ", "") != tag(key, keyRef, aad, payload)) throw AEADBadTagException("value under '$keyRef' does not open with this key")
         return payload
     }
 
@@ -82,7 +84,8 @@ class Envelopes(@Value("\${identity.encryption.enabled:true}") val encryptionEna
     }
 
     companion object {
-        const val AES = "aes"
+        const val ENCRYPTED = "verschluesselt mit"
+        const val TAG = "pruefwert"
         const val NO_KEY = "ohne"
 
         /** The eight leading characters of an id: enough to find the key in the console (`CAST(key_id AS VARCHAR) LIKE '3f9a2b1c%'`). */
@@ -92,7 +95,7 @@ class Envelopes(@Value("\${identity.encryption.enabled:true}") val encryptionEna
         fun batch(id: UUID) = "gruppe ${short(id)}"
         fun dataKey(keyId: String) = "tag $keyId"
 
-        /** What a demo header adds to a column at most (`[tag TOOL_SESSION:2026-10-07 a3f91c2e]`); the schema widens by it. */
-        const val HEADER_ALLOWANCE = 48
+        /** What a demo header adds to a column at most (`[tag TOOL_SESSION:2026-10-07 pruefwert a3f91c2e]`); the schema widens by it. */
+        const val HEADER_ALLOWANCE = 64
     }
 }

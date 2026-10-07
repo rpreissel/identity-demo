@@ -432,7 +432,7 @@ class JourneyActionExecutor(
         journey.accountId = accountId
         channel.subject = Subject.Account(accountId)
         // What the journey sealed before it knew the account stays readable: the account takes the key (ADR-55).
-        channel.journeyKeyId?.let { accountService.adoptJourneyKey(accountId, it) }
+        channel.journeyKeyId?.let { if (!accountService.adoptJourneyKey(accountId, it)) channel.journeyKeyId = null }
         if (channel.sessionEvidenceId == null) {
             // Fresh login: start a new session evidence rather than reuse a stale one.
             val evidenceId = checkNotNull(sessionEvidenceService.createForAccount(accountId).sessionEvidenceId)

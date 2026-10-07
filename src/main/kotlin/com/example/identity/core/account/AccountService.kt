@@ -163,8 +163,9 @@ class AccountService(
     @Transactional
     fun createAccountInSetup(journeyKey: MasterKeyId? = null): AccountProfile {
         val account = accountRepository.save(Account(createdAt = clock.instant()))
-        // The journey's key becomes the account's primary one (ADR-55), or the account gets a fresh one.
-        if (journeyKey != null) claimCrypto.adopt(account.accountId, journeyKey) else claimCrypto.createPrimaryKey(account.accountId)
+        // The journey's key becomes the account's primary one (ADR-55); without one, or if that key
+        // is gone or another account's, the account gets a fresh one. An account never lacks a key.
+        if (journeyKey == null || !claimCrypto.adopt(account.accountId, journeyKey)) claimCrypto.createPrimaryKey(account.accountId)
         return AccountProfile(accountId = account.accountId, personId = null, authenticationMethods = emptyList())
     }
 
@@ -402,9 +403,17 @@ class AccountService(
     @Transactional(readOnly = true)
     fun masterKeyOf(accountId: AccountId): MasterKeyId = claimCrypto.primaryKeyOf(accountId)
 
-    /** The journey's key joins the account; what was sealed under it before the account was known stays readable. */
+    /**
+     * The journey's key joins the account; what was sealed under it before the account was known
+     * stays readable. `false` if the key is gone or another account's: then nothing of this account
+     * lies under it, and the channel should forget it.
+     */
     @Transactional
-    fun adoptJourneyKey(accountId: AccountId, journeyKey: MasterKeyId) = claimCrypto.adopt(accountId, journeyKey)
+    fun adoptJourneyKey(accountId: AccountId, journeyKey: MasterKeyId): Boolean = claimCrypto.adopt(accountId, journeyKey)
+
+    /** Whether a journey may still seal under [journeyKey]: it exists and no account owns it. */
+    @Transactional(readOnly = true)
+    fun isPendingJourneyKey(journeyKey: MasterKeyId): Boolean = claimCrypto.isPending(journeyKey)
 
     /** Keys no account adopted and no channel can still name - the journey ended without one. */
     @Transactional

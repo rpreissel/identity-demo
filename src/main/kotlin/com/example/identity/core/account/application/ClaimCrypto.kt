@@ -60,15 +60,20 @@ class ClaimCrypto(
     /**
      * The account takes the journey's key: as its primary key if it has none yet, otherwise as a
      * further key that keeps readable what was sealed under it before the account was known.
+     * `false` if the key is gone or another account's - then it is not this account's key.
      */
-    fun adopt(accountId: AccountId, keyId: MasterKeyId) {
-        val key = masterKeys.findKey(keyId) ?: error("master key $keyId not found")
-        // Already someone's: an earlier binding of this channel adopted it. A merge keeps the first owner's.
-        if (key.accountId != null) return
+    fun adopt(accountId: AccountId, keyId: MasterKeyId): Boolean {
+        val key = masterKeys.findKey(keyId) ?: return false
+        // An earlier binding of this channel adopted it already.
+        if (key.accountId != null) return key.accountId == accountId
         key.accountId = accountId
         key.primary = masterKeys.findByAccountIdAndPrimaryTrue(accountId) == null
         masterKeys.save(key)
+        return true
     }
+
+    /** Whether [keyId] is a key nobody owns yet, so a journey may still seal under it. */
+    fun isPending(keyId: MasterKeyId): Boolean = masterKeys.findKey(keyId)?.let { it.accountId == null } ?: false
 
     /** The id of the account's primary key, for a tool context on a channel that has an account. */
     fun primaryKeyOf(accountId: AccountId): MasterKeyId =

@@ -73,17 +73,21 @@ class WorkingDataEncryptionDbTest : IntegrationTestSupport() {
                     keys.size shouldBe 1
                     val numberKey = jdbcTemplate.queryForObject("SELECT key_id FROM auth_sms.enrollment", UUID::class.java)
                     numberKey shouldBe keys.single()
-                    jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.master_key WHERE account_id IS NULL", Int::class.java) shouldBe 0
                 }
             }
         }
 
         given("a signed-in app channel") {
             `when`("its token is cached") {
+                val pendingBefore = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.master_key WHERE account_id IS NULL", Int::class.java)
                 val channel = UUID.fromString(loginAsSeededAccount())
                 val appTokenSessionId = jdbcTemplate.queryForObject(
                     "SELECT app_token_session_id FROM orchestrator.channel_session WHERE id = ?", UUID::class.java, channel
                 )!!
+
+                then("a login creates no key - only an enrollment asks for one (ADR-55)") {
+                    jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.master_key WHERE account_id IS NULL", Int::class.java) shouldBe pendingBefore
+                }
 
                 then("the stored token is not the token, but the vault gives it back") {
                     val raw = jdbcTemplate.queryForObject("SELECT access_token FROM orchestrator.app_token_session WHERE id = ?", ByteArray::class.java, appTokenSessionId)!!

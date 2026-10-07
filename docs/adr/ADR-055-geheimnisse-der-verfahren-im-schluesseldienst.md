@@ -41,20 +41,21 @@ seine Schlüssel, und mit ihnen alles, was darunter liegt.
 dazu, womit.** Mit `identity.encryption.enabled=true` hält die Spalte das nackte Chiffrat
 (AES-256-GCM, der Schlüsselbezug ist in die Zusatzdaten eingebunden) und ein Digest die 64
 Hex-Zeichen des HMAC, sonst nichts. Die Demo läuft mit `false`: Werte und Digests liegen lesbar in
-den Tabellen, und ein kurzer Kopf nennt den Schlüssel, unter dem sie sonst lägen, so kurz wie
-möglich: Art und die ersten acht Zeichen der Kennung.
+den Tabellen, und ein kurzer Kopf nennt den Schlüssel, unter dem sie sonst lägen: Art und die
+ersten acht Zeichen der Kennung, dann der Prüfwert. Jeder Teil ist benannt, den Aufbau muss sich
+niemand merken.
 
 | Kopf | Schlüssel | Beispiel |
 |---|---|---|
-| `[konto 3f9a2b1c a17e03c9]` | Hauptschlüssel des Kontos, `account.master_key` | Mobilnummer, PIN, App-Token, Bezeichnung |
-| `[gruppe 7c1d0e2a 5bd2f810]` | Datenschlüssel der Claim-Gruppe, `account.claim_batch_key` | Claim-Wert |
-| `[tag TOOL_SESSION:2026-10-07 9e4c1a77]` | Datenschlüssel des Tages, `orchestrator.data_key` | Arbeitsdaten eines Tools |
-| `[konto 3f9a2b1c aes]` | wie oben, der Wert dahinter ist trotzdem ein Chiffrat | eingepackter Gruppenschlüssel |
+| `[konto 3f9a2b1c pruefwert a17e03c9]` | Hauptschlüssel des Kontos, `account.master_key` | Mobilnummer, PIN, App-Token, Bezeichnung |
+| `[gruppe 7c1d0e2a pruefwert 5bd2f810]` | Datenschlüssel der Claim-Gruppe, `account.claim_batch_key` | Claim-Wert |
+| `[tag TOOL_SESSION:2026-10-07 pruefwert 9e4c1a77]` | Datenschlüssel des Tages, `orchestrator.data_key` | Arbeitsdaten eines Tools |
+| `[verschluesselt mit konto 3f9a2b1c]` | der Wert dahinter ist auch in der Demo verschlüsselt, mit diesem Hauptschlüssel | Gruppenschlüssel in `claim_batch_key.wrapped_dek` |
 | `[konto 3f9a2b1c]family_name=muster` | Digest: der normalisierte Wert selbst, vergleichbar in SQL | `claim.value_digest` |
 | `[ohne]` | kein Schlüssel, die Zeile gehört keinem Konto | Anmeldeprotokoll einer Einladung |
 
-Der letzte Teil des Kopfes ist ein Prüfwert unter dem Schlüssel (acht Hex-Zeichen eines HMAC über
-Kopf, Zusatzdaten und Wert). Die Anwendung liest einen lesbaren Wert also nur, wenn der Schlüssel
+`pruefwert` ist ein Prüfwert unter dem Schlüssel (acht Hex-Zeichen eines HMAC über Kopf,
+Zusatzdaten und Wert). Die Anwendung liest einen lesbaren Wert also nur, wenn der Schlüssel
 stimmt, und ein falscher Schlüssel scheitert mit derselben Ausnahme wie beim echten Chiffrat. Die
 Schlüssel werden in beiden Modi gleich angelegt, eingepackt, übernommen und rotiert; Datenschlüssel
 und Hauptschlüssel bleiben immer eingepackt. In der Konsole findet man den Schlüssel einer Zeile

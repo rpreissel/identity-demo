@@ -219,7 +219,7 @@ identity:
     master-key-cache-ttl: PT5M
     master-key-cache-size: 100000
   # Die Demo laeuft ohne Verschluesselung, tut aber so als ob (ADR-55): Werte und Digests liegen
-  # lesbar in den Tabellen, jeder mit einem kurzen Kopf wie "[konto 3f9a2b1c a17e03c9]", der den
+  # lesbar in den Tabellen, jeder mit einem kurzen Kopf wie "[konto 3f9a2b1c pruefwert a17e03c9]", der den
   # Schluessel nennt und einen Pruefwert darunter traegt. Die Schluessel werden wie im Ernstfall
   # angelegt, eingepackt, uebernommen und rotiert. Mit "true" liegt nur das Chiffrat in der Spalte.
   # Der Modus gehoert zur Datenbank (orchestrator.encryption_mode): ein Start im anderen Modus

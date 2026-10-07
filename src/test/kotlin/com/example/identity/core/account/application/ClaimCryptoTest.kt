@@ -18,6 +18,8 @@ import io.kotest.matchers.string.shouldMatch
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import com.example.identity.simulation.kms.InMemoryKms
+import com.example.identity.contract.tool_api.ids.MasterKeyId
+import java.util.UUID
 import javax.crypto.AEADBadTagException
 
 /**
@@ -171,6 +173,28 @@ class ClaimCryptoTest : BehaviorSpec({
         }
     }
 
+    given("a journey's pending key") {
+        val keys = ClaimCryptoFixture()
+        val pending = keys.newKey()
+
+        `when`("an account without a key adopts it") {
+            val taken = keys.crypto.adopt(alice, pending)
+
+            then("it becomes the account's primary key, and a repeat by the same account is fine") {
+                taken shouldBe true
+                keys.crypto.primaryKeyOf(alice) shouldBe pending
+                keys.crypto.isPending(pending) shouldBe false
+                keys.crypto.adopt(alice, pending) shouldBe true
+            }
+
+            then("another account cannot take it, and a key that is gone is nobody's") {
+                keys.crypto.adopt(bob, pending) shouldBe false
+                keys.crypto.adopt(bob, MasterKeyId(UUID.randomUUID())) shouldBe false
+                keys.crypto.isPending(MasterKeyId(UUID.randomUUID())) shouldBe false
+            }
+        }
+    }
+
     given("a sealed value outside the demo") {
         val keys = ClaimCryptoFixture()
         val claim = keys.claim(alice, AttributeType.FAMILY_NAME, "Muster", ClaimSource.PERSON_DIRECTORY)
@@ -198,7 +222,7 @@ class ClaimCryptoTest : BehaviorSpec({
 
         then("the value sits readable behind the short header naming its batch key and a tag under it, and reads back") {
             val stored = String(claim.encryptedValue!!, Charsets.ISO_8859_1)
-            stored shouldMatch Regex("\\[gruppe $batch [0-9a-f]{8}]Muster")
+            stored shouldMatch Regex("\\[gruppe $batch pruefwert [0-9a-f]{8}]Muster")
             plain.envelopes.describe(claim.encryptedValue!!) shouldBe stored.substringBefore(']') + "]"
             plain.valueOf(claim) shouldBe "Muster"
         }
@@ -214,7 +238,7 @@ class ClaimCryptoTest : BehaviorSpec({
         }
 
         then("the batch key is wrapped regardless, and says so") {
-            String(plain.batchKeys.single().wrappedDek!!, Charsets.ISO_8859_1) shouldStartWith "[konto $key aes]"
+            String(plain.batchKeys.single().wrappedDek!!, Charsets.ISO_8859_1) shouldStartWith "[verschluesselt mit konto $key]"
         }
 
         `when`("a value is presented under another key") {

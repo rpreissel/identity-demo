@@ -34,8 +34,8 @@ class ClaimEncryptionKeys(
                 // A wrapped 32-byte key: 12 nonce + 32 + 16 tag.
                 "wrapped_key_width" to (64 + allowance).toString(),
                 "claim_value_width" to (1100 + allowance).toString(),
-                // 64 hex characters of HMAC-SHA256, or the readable normalized value behind its header.
-                "digest_width" to (if (encrypted) 64 else 300 + allowance).toString(),
+                // 64 hex characters of HMAC-SHA256, or the readable normalized value behind its header - as long as a value may be.
+                "digest_width" to (if (encrypted) 64 else 1100 + allowance).toString(),
                 // Phone number, PIN, label, reference.
                 "secret_width" to (256 + allowance).toString(),
                 "details_width" to (2048 + allowance).toString(),

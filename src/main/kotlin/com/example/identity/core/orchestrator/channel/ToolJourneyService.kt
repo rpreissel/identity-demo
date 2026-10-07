@@ -142,7 +142,8 @@ class ToolJourneyService(
      */
     private fun masterKeyFor(channel: ChannelSession): MasterKeyId {
         channel.accountId?.let { return accountService.masterKeyOf(it) }
-        channel.journeyKeyId?.let { return it }
+        // A key the channel still names but that is gone or owned elsewhere is not this journey's.
+        channel.journeyKeyId?.takeIf(accountService::isPendingJourneyKey)?.let { return it }
         val key = accountService.newJourneyKey()
         channel.journeyKeyId = key
         sessionManagementService.updateChannelSession(channel)
