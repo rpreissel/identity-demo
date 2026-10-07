@@ -74,6 +74,9 @@ class ProductionModeCheck(
             add("Der Schluesseldienst ist die Simulation (Modul kms) - Umschlagschluessel und Signaturschluessel laegen in unserer Datenbank. Einen echten KMS- oder HSM-Adapter einsetzen.")
         }
         orphanedKekVersions().takeIf { it.isNotEmpty() }?.let { add(orphanedKekMessage(it)) }
+        if (encryptionKeys.encryptionDisabled()) {
+            add("identity.encryption.enabled ist aus - Werte laegen lesbar in den Tabellen, nur mit dem Namen des Schluessels davor. Ein Demo-Schalter, nicht fuer echte Personen.")
+        }
         if (trustSelfSigned) add("Das Zertifikat von Keycloak wird nicht geprueft (trustSelfSignedCertificate). Ein vertrauenswuerdiges Zertifikat verwenden.")
         if (keycloakBaseUrl.isNotBlank() && !keycloakBaseUrl.startsWith("https://")) {
             add("Keycloak wird ueber $keycloakBaseUrl erreicht, nicht ueber https.")
@@ -94,7 +97,7 @@ class ProductionModeCheck(
         encryptionKeys.orphanedKekVersions() + (dataKeys.kekVersions() - dataKeyWrapping.knownVersions)
 
     private fun orphanedKekMessage(versions: Set<String>) =
-        "Gespeicherte Schluessel (account.account, orchestrator.data_key) sind mit KEK-Version $versions eingepackt, die der " +
+        "Gespeicherte Schluessel (account.master_key, orchestrator.data_key) sind mit KEK-Version $versions eingepackt, die der " +
             "Schluesseldienst nicht mehr auspackt - die Daten darunter sind nicht mehr lesbar (Schluessel identity-kek, zurueckgezogene Versionen)."
 
     private companion object {

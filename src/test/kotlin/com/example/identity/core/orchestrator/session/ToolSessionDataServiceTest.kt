@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
 import io.kotest.assertions.throwables.shouldThrow
@@ -57,7 +58,7 @@ class ToolSessionDataServiceTest : BehaviorSpec({
             dataType = "orchestrator.Step"
             val key = keys.keys.currentToolSessionKey()
             dataKeyId = key.keyId
-            data = keys.wrapping.seal(key.key, "tool-session:${id.value}:orchestrator.Step".toByteArray(), """{"code":"abc","addedLater":true}""".toByteArray())
+            data = keys.wrapping.seal(key.key, key.keyId, "tool-session:${id.value}:orchestrator.Step".toByteArray(), """{"code":"abc","addedLater":true}""".toByteArray())
         }
 
         then("an unknown field is skipped and a missing one takes its default") {

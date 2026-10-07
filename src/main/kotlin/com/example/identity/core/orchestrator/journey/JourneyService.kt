@@ -562,6 +562,9 @@ class JourneyService(
         if (target != ChannelState.AUTHENTICATED) {
             channel.appTokenSessionId = null
             channel.sessionEvidenceId = null
+            // The journey's key went with the discarded account, or stays pending for the sweep;
+            // the next journey on this channel gets its own (ADR-55).
+            channel.journeyKeyId = null
             val abandonedAccountId = channel.accountId
             channel.subject = if (channel.entryIntent.startsFromDeviceLink && channel.bindingKeyRef != null) {
                 sessionManagementService.findLinkedAccountId(channel.bindingKeyRef!!)?.let(Subject::Account)

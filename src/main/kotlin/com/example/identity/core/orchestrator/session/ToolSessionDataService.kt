@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+
 import com.example.identity.contract.tool_api.ToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.account.DataKeyWrapping
@@ -31,7 +32,7 @@ class ToolSessionDataService(
         check(stored == expected) { "Tool session $toolSessionId holds $stored, not $expected" }
         val sealed = checkNotNull(session.data) { "Tool session $toolSessionId names $stored but holds no data" }
         val key = checkNotNull(session.dataKeyId?.let(keys::keyOf)) { "Tool session $toolSessionId: its data key ${session.dataKeyId} is retired" }
-        return codec.read(String(wrapping.open(key, aad(toolSessionId, stored), sealed)), type)
+        return codec.read(String(wrapping.open(key, checkNotNull(session.dataKeyId), aad(toolSessionId, stored), sealed)), type)
     }
 
     override fun save(toolSessionId: ToolSessionId, state: Any) {
@@ -41,7 +42,7 @@ class ToolSessionDataService(
         session.dataType = type
         val key = keys.currentToolSessionKey()
         session.dataKeyId = key.keyId
-        session.data = wrapping.seal(key.key, aad(toolSessionId, type), codec.write(state).toByteArray())
+        session.data = wrapping.seal(key.key, key.keyId, aad(toolSessionId, type), codec.write(state).toByteArray())
     }
 
     private fun aad(toolSessionId: ToolSessionId, type: String) = "tool-session:${toolSessionId.value}:$type".toByteArray()

@@ -180,6 +180,12 @@ Compliance.
   - *Grund:* Sie enthält die Tokens selbst als Zwischenspeicher, verschlüsselt unter dem
     Hauptschlüssel des Kontos ([ADR-53](adr/ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md)).
     Die Abmeldung leert sie.
+- **`account.master_key` ohne Konto** (Schlüssel einer Journey, die kein Konto band)
+  - *Frist beginnt mit:* `created_at`
+  - *Richtwert:* 14 Tage, wie `ChannelSession`, stündlich (`RetentionJob`)
+  - *Grund:* Eine Journey ohne Konto bekommt ihren Schlüssel, sobald ein Einrichtungs-Tool ihn
+    anfordert ([ADR-55](adr/ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md)). Bindet sie
+    nie ein Konto, nennt nach Ablauf der Kanalfrist keine Zeile mehr den Schlüssel.
 - **`orchestrator.data_key`** (Datenschlüssel der Arbeitsdaten, einer je Tag)
   - *Frist beginnt mit:* `retire_after`, dem Tagesende plus 7 Tage plus `tool-session.retention`
   - *Richtwert:* sofort danach, stündlich (`RetentionJob`)
@@ -467,12 +473,16 @@ dann alle offenen Punkte auf einmal. Diese Punkte müssen erfüllt sein:
 - `identity.secrets.otp-pepper` und `account.change-log.lookup-secret` haben mindestens 32 Zeichen.
   Das zweite ist nicht der öffentliche Demo-Wert. Außerdem ist für jede Id eines Suchschlüssels im
   Änderungsprotokoll ein Geheimnis konfiguriert (Abschnitt 3, `account.change_log`).
+- `identity.encryption.enabled` ist `true`. Die Demo läuft mit `false` und schreibt Werte lesbar in
+  die Tabellen, nur mit einem Kopf, der den zuständigen Schlüssel nennt. Der Modus gehört zur
+  Datenbank; ein Start im anderen Modus bricht vor der ersten Migration ab
+  ([ADR-55](adr/ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md)).
 - Der Schlüsseldienst ist nicht die Simulation (Modul `kms`,
   [ADR-54](adr/ADR-054-schluesseldienst-simuliert.md)). Umschlagschlüssel `identity-kek` und die
   Signaturschlüssel des Orchestrators liegen dort; die Simulation hielte sie in unserer Datenbank.
   Ein Adapter für Vault Transit, ein Cloud-KMS oder ein HSM ersetzt `KmsKekWrapper` und
-  `KmsNodeKeys`. Jedes Konto und jeder Tagesschlüssel merkt sich die KEK-Version (`kek_version`),
-  mit der er eingepackt ist. Eine Version darf im Dienst erst zurückgezogen werden, wenn keine Zeile
+  `KmsNodeKeys`. Jeder Hauptschlüssel (`account.master_key`) und jeder Tagesschlüssel (`orchestrator.data_key`)
+  merkt sich die KEK-Version (`kek_version`), mit der er eingepackt ist. Eine Version darf im Dienst erst zurückgezogen werden, wenn keine Zeile
   sie mehr trägt; sonst verweigert `ProductionModeCheck` außerhalb des Demomodus den Start, im
   Demomodus warnt er.
 - Der Orchestrator erreicht Keycloak über https (`keycloak-migrate.base-url`) und prüft dessen

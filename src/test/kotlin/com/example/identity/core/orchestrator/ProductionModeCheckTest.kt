@@ -32,6 +32,7 @@ class ProductionModeCheckTest : BehaviorSpec({
         otpPepper: String = secret,
         lookupSecret: String = secret,
         kmsSimulated: Boolean = false,
+        encryptionDisabled: Boolean = false,
         orphanedKekVersions: Set<String> = emptySet(),
         orphanedDataKekVersions: Set<String> = emptySet(),
         trustSelfSigned: Boolean = false,
@@ -51,6 +52,7 @@ class ProductionModeCheckTest : BehaviorSpec({
         tokenProvider,
         mockk<ClaimEncryptionKeys> {
             every { kmsSimulated() } returns kmsSimulated
+            every { encryptionDisabled() } returns encryptionDisabled
             every { orphanedKekVersions() } returns orphanedKekVersions
         },
         mockk<DataKeyWrapping> { every { knownVersions } returns setOf("1") },
@@ -121,6 +123,16 @@ class ProductionModeCheckTest : BehaviorSpec({
 
             then("it is refused like an orphaned account key - the working data under it is unreadable") {
                 violations.single() shouldContain "orchestrator.data_key"
+            }
+        }
+    }
+
+    given("the demo switch that stores values readable") {
+        val check = check(demoMode = true, encryptionDisabled = true)
+
+        `when`("listing the violations") {
+            then("it is refused outside the demo") {
+                check.violations().single() shouldContain "identity.encryption.enabled"
             }
         }
     }

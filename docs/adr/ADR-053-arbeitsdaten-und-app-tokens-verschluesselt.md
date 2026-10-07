@@ -70,6 +70,6 @@ KMS-Adapter für alle Schlüssel. `ProductionModeCheck` prüft die KEK-Versionen
   über `ToolSessionDataService` beziehungsweise `AppTokenVault`.
 - Bestehende Zeilen verlieren beim Umstieg ihren Inhalt: Arbeitsdaten offener Durchläufe und
   zwischengespeicherte Tokens. Beides wird neu erzeugt, ein Durchlauf beginnt von vorn.
-- Nicht verschlüsselt bleiben `account.anchor`, die Simulationen (`personenverzeichnis`, `nect`,
-  `kobil`), `auth_sms.enrollment.phone_number`, der Signaturschlüssel des Orchestrators (ADR-22)
-  und die KOBIL-PIN. Das Zielbild für die Schlüssel liegt in `DPoP-demo-61kp`.
+- Nicht verschlüsselt bleiben `account.anchor` und die Simulationen (`personenverzeichnis`, `nect`,
+  `kobil`). Mobilnummer und KOBIL-PIN folgen in [ADR-55](ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md),
+  der Signaturschlüssel des Orchestrators in [ADR-54](ADR-054-schluesseldienst-simuliert.md).

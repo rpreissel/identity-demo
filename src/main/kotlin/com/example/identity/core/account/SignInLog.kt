@@ -18,6 +18,9 @@ import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import tools.jackson.module.kotlin.jacksonMapperBuilder
+import com.example.identity.core.account.application.Envelopes
+import com.example.identity.core.account.application.ClaimCrypto
 
 /** One line of the sign-in log, as [SignInLog.of] hands it out. */
 data class SignInRecord(
@@ -38,8 +41,11 @@ data class SignInRecord(
 class SignInLog(
     private val repository: SignInLogRepository,
     private val accounts: AccountRepository,
+    private val claimCrypto: ClaimCrypto,
+    private val envelopes: Envelopes,
     private val clock: Clock,
 ) {
+    private val json = jacksonMapperBuilder().build()
 
     /**
      * An entry journey (logging in, registering, a peer login) left the channel authenticated.
@@ -77,26 +83,40 @@ class SignInLog(
     @Transactional(propagation = Propagation.REQUIRED)
     fun invitationSignedIn(invitation: InvitationId, channel: String?, acr: String?, amr: List<String>, tools: List<String>) =
         save(SignInLogEntry(invitation = invitation, signInType = SignInType.SIGNED_IN, channel = channel, acr = acr,
-            details = details(SignInType.SIGNED_IN, mapOf("amr" to amr, "tools" to tools)), occurredAt = clock.instant()))
+            sealedDetails = envelopes.plain(details(SignInType.SIGNED_IN, mapOf("amr" to amr, "tools" to tools))), occurredAt = clock.instant()))
 
     /** A session of [invitation] ended on purpose; [endedBy] as in [signedOut]. */
     @Transactional(propagation = Propagation.REQUIRED)
     fun invitationSignedOut(invitation: InvitationId, channel: String?, endedBy: String) =
         save(SignInLogEntry(invitation = invitation, signInType = SignInType.SIGNED_OUT, channel = channel,
-            details = details(SignInType.SIGNED_OUT, mapOf("endedBy" to endedBy)), occurredAt = clock.instant()))
+            sealedDetails = envelopes.plain(details(SignInType.SIGNED_OUT, mapOf("endedBy" to endedBy))), occurredAt = clock.instant()))
 
     @Transactional(readOnly = true)
-    fun of(accountId: AccountId): List<SignInRecord> =
-        repository.findByAccountIdOrderByOccurredAt(accountId).map { it.toRecord() }
+    fun of(accountId: AccountId): List<SignInRecord> {
+        val entries = repository.findByAccountIdOrderByOccurredAt(accountId)
+        if (entries.isEmpty()) return emptyList()
+        val cipher = claimCrypto.open(accountId)
+        return entries.map { it.toRecord { sealed -> cipher.open(DETAILS, sealed) } }
+    }
 
     @Transactional(readOnly = true)
     fun ofInvitation(invitation: InvitationId): List<SignInRecord> =
-        repository.findByInvitationOrderByOccurredAt(invitation).map { it.toRecord() }
+        repository.findByInvitationOrderByOccurredAt(invitation).map { it.toRecord(envelopes::openPlain) }
 
-    private fun SignInLogEntry.toRecord() = SignInRecord(signInType.name, channel, acr, details.orEmpty(), occurredAt)
+    private fun SignInLogEntry.toRecord(open: (ByteArray) -> ByteArray): SignInRecord =
+        SignInRecord(signInType.name, channel, acr, sealedDetails?.let { readDetails(open(it)) }.orEmpty(), occurredAt)
 
-    private fun details(type: SignInType, details: Map<String, Any?>) =
-        mapOf("type" to type.name, "version" to type.detailsVersion) + details.filterValues { it != null }
+    @Suppress("UNCHECKED_CAST")
+    private fun readDetails(bytes: ByteArray): Map<String, Any?> = json.readValue(bytes, Map::class.java) as Map<String, Any?>
+
+    /** The event's keys as JSON bytes, ready to be sealed. */
+    private fun details(type: SignInType, details: Map<String, Any?>): ByteArray =
+        json.writeValueAsBytes(mapOf("type" to type.name, "version" to type.detailsVersion) + details.filterValues { it != null })
+
+    private companion object {
+        /** Purpose of the sealed details (ADR-55). */
+        const val DETAILS = "sign-in-log:details"
+    }
 
     private fun save(entry: SignInLogEntry) {
         repository.save(entry)
@@ -111,7 +131,7 @@ class SignInLog(
         save(
             SignInLogEntry(
                 accountId = accountId, signInType = type, channel = channel, acr = acr,
-                details = details(type, details), occurredAt = clock.instant(),
+                sealedDetails = claimCrypto.open(accountId).seal(DETAILS, details(type, details)), occurredAt = clock.instant(),
             )
         )
     }

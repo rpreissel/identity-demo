@@ -1,12 +1,13 @@
 package com.example.identity.tools.auth_sms.internal.enrollsms
 import com.example.identity.contract.tool_api.ToolSessionData
 import com.example.identity.contract.tool_api.require
+import com.example.identity.contract.tool_api.ids.MasterKeyId
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_sms.PHONE_NUMBER
 import com.example.identity.contract.tool_api.InvalidInputException
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.contract.texts.Text
-import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollment
+import com.example.identity.tools.auth_sms.internal.SmsNumbers
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
 import com.example.identity.tools.auth_sms.internal.SmsSendLimit
@@ -36,6 +37,7 @@ class EnrollSmsToolHandler(
     private val tanGenerator: TanGenerator,
     private val smsGateway: SmsGateway,
     private val sendLimit: SmsSendLimit,
+    private val numbers: SmsNumbers,
     private val clock: Clock
 ) {
 
@@ -54,7 +56,8 @@ class EnrollSmsToolHandler(
      * journey, since nothing was guessed.
      */
     @Transactional
-    fun patch(toolSessionId: ToolSessionId, version: Int, phoneNumber: String?, tan: String?, consent: Boolean? = null): ToolOutcome {
+    /** [masterKeyId] is the key the confirmed number is sealed under (ADR-55); the context names it. */
+    fun patch(toolSessionId: ToolSessionId, version: Int, phoneNumber: String?, tan: String?, consent: Boolean? = null, masterKeyId: MasterKeyId): ToolOutcome {
         val data = sessions.require<EnrollSmsToolSession>(toolSessionId)
         val input = EnrollSmsInput(phoneNumber, tan, consent)
 
@@ -89,7 +92,7 @@ class EnrollSmsToolHandler(
 
             is EnrollSmsDecision.Complete -> {
                 sendLimit.received(decision.phoneNumber)
-                val enrollment = enrollmentRepository.save(AuthSmsEnrollment(decision.phoneNumber, createdAt = clock.instant()))
+                val enrollment = enrollmentRepository.save(numbers.newEnrollment(decision.phoneNumber, masterKeyId, createdAt = clock.instant()))
                 ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef(type = SMS_ENROLLMENT_TYPE, id = enrollment.id.toString()),
                     claims = listOf(

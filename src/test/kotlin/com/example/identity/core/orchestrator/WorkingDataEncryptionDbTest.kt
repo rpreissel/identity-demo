@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.retention.RetentionJob
 import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
 import com.example.identity.core.orchestrator.session.AppTokenVault
@@ -61,12 +62,32 @@ class WorkingDataEncryptionDbTest : IntegrationTestSupport() {
             }
         }
 
+        given("a registration whose journey got its key before the account existed") {
+            `when`("ident-fsc creates the account and enroll-sms seals the number") {
+                val channel = identifyAndConfirmEmail()
+                enrollSms(channel)
+                val accountId = AccountId(jdbcTemplate.queryForObject("SELECT account_id FROM orchestrator.channel_session WHERE id = ?", Long::class.java, UUID.fromString(channel))!!)
+
+                then("the journey's key is the account's primary key, and the number's row names it") {
+                    val keys = jdbcTemplate.queryForList("SELECT key_id FROM account.master_key WHERE account_id = ? AND primary_key = TRUE", UUID::class.java, accountId.value)
+                    keys.size shouldBe 1
+                    val numberKey = jdbcTemplate.queryForObject("SELECT key_id FROM auth_sms.enrollment", UUID::class.java)
+                    numberKey shouldBe keys.single()
+                }
+            }
+        }
+
         given("a signed-in app channel") {
             `when`("its token is cached") {
+                val pendingBefore = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.master_key WHERE account_id IS NULL", Int::class.java)
                 val channel = UUID.fromString(loginAsSeededAccount())
                 val appTokenSessionId = jdbcTemplate.queryForObject(
                     "SELECT app_token_session_id FROM orchestrator.channel_session WHERE id = ?", UUID::class.java, channel
                 )!!
+
+                then("a login creates no key - only an enrollment asks for one (ADR-55)") {
+                    jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.master_key WHERE account_id IS NULL", Int::class.java) shouldBe pendingBefore
+                }
 
                 then("the stored token is not the token, but the vault gives it back") {
                     val raw = jdbcTemplate.queryForObject("SELECT access_token FROM orchestrator.app_token_session WHERE id = ?", ByteArray::class.java, appTokenSessionId)!!

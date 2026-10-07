@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_sms.internal.authsmslookup
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
+import com.example.identity.tools.auth_sms.internal.SmsNumbers
+import com.example.identity.core.account.application.ClaimCryptoFixture
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.AccountId
@@ -46,8 +48,10 @@ private class Fixture {
 
     /** The session as the handler last saved it. */
     val session: AuthSmsLookupToolSession get() = sessions.stored(toolSessionId)
+    val keys = ClaimCryptoFixture()
+    val smsNumbers = SmsNumbers(keys.sealing)
     val enrollments = mockk<AuthSmsEnrollmentRepository>().also {
-        every { it.findById(1L) } returns Optional.of(AuthSmsEnrollment(phoneNumber = PHONE, createdAt = TEST_NOW).apply { id = 1L })
+        every { it.findById(1L) } returns Optional.of(smsNumbers.newEnrollment(PHONE, keys.newKey(), TEST_NOW).apply { id = 1L })
     }
     val accountDirectory = mockk<AccountDirectory>().also {
         every { it.activeEnrollment(ACCOUNT, "sms") } returns SMS_REF
@@ -55,7 +59,7 @@ private class Fixture {
     val tans = TanGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val gateway = SmsGateway(clock = TEST_CLOCK)
-    val handler = AuthSmsLookupToolHandler( sessions, enrollments, tans, gateway, sendLimit, accountDirectory)
+    val handler = AuthSmsLookupToolHandler(sessions, enrollments, tans, gateway, sendLimit, accountDirectory, smsNumbers)
 
     fun withSendBudgetUsedUp() = apply {
         every { sendLimit.trySend(PHONE) } returns false

@@ -109,6 +109,7 @@ class EnrollKobilToolController(
             request?.biometricConsent,
             context.bindingKeyRef,
             request?.label,
+            masterKeyId = context.masterKey(),
         )
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }

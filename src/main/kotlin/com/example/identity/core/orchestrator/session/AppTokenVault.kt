@@ -1,7 +1,7 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.kms.AccountSealer
 import com.example.identity.core.account.AccountDataCipher
-import com.example.identity.core.account.AccountSealer
 import org.springframework.stereotype.Component
 
 /**

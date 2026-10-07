@@ -2,6 +2,8 @@ package com.example.identity.core.account
 
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ids.MasterKeyId
+import com.example.identity.core.account.infrastructure.MasterKeyRepository
 import com.example.identity.contract.tool_api.directory.PersonChanged
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.account.infrastructure.Account
@@ -34,7 +36,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 /** Fired once an account row is gone; the only account event, as Keycloak reads accounts itself (ADR-38). */
-data class AccountDeleted(val accountId: AccountId)
+data class AccountDeleted(val accountId: AccountId, val masterKeyIds: List<MasterKeyId> = emptyList())
 
 @Service
 class AccountService(
@@ -46,6 +48,7 @@ class AccountService(
     private val changeLog: ChangeLog,
     private val personLookupKey: PersonLookupKey,
     private val claimCrypto: ClaimCrypto,
+    private val masterKeyRepository: MasterKeyRepository,
     private val clock: Clock,
 ) : AccountDirectory {
 
@@ -158,8 +161,11 @@ class AccountService(
      * same caller transaction, so a failed claim also rolls back the new account.
      */
     @Transactional
-    fun createAccountInSetup(): AccountProfile {
-        val account = accountRepository.save(Account(createdAt = clock.instant()).also(claimCrypto::assignMasterKey))
+    fun createAccountInSetup(journeyKey: MasterKeyId? = null): AccountProfile {
+        val account = accountRepository.save(Account(createdAt = clock.instant()))
+        // The journey's key becomes the account's primary one (ADR-55); without one, or if that key
+        // is gone or another account's, the account gets a fresh one. An account never lacks a key.
+        if (journeyKey == null || !claimCrypto.adopt(account.accountId, journeyKey)) claimCrypto.createPrimaryKey(account.accountId)
         return AccountProfile(accountId = account.accountId, personId = null, authenticationMethods = emptyList())
     }
 
@@ -280,6 +286,7 @@ class AccountService(
             return getProfileOrThrow(accountId)
         }
         changeLog.methodAdded(accountId, method, enrolledUnderAcr, enrolledUnderAmr, channel, tool, now)
+        val cipher = claimCrypto.open(accountId)
         accountAuthMethodRepository.save(
             AccountAuthMethod(
                 accountId = accountId,
@@ -287,9 +294,9 @@ class AccountService(
                 enrollmentType = enrollmentRef.type,
                 enrollmentId = enrollmentRef.id,
                 enrolledUnderAcr = enrolledUnderAcr,
-                label = label,
+                sealedLabel = label?.let { cipher.seal(LABEL, it.toByteArray()) },
                 boundKeyRef = boundKeyRef,
-                reference = reference,
+                sealedReference = reference?.let { cipher.seal(REFERENCE, it.toByteArray()) },
                 allowsMultipleInstances = allowsMultipleInstances
             ).also { it.id = instanceId; it.createdAt = now }
         )
@@ -327,8 +334,9 @@ class AccountService(
     @Transactional
     fun deleteAccount(accountId: AccountId) {
         changeLog.accountDeleted(accountId)
+        val keys = masterKeyRepository.findByAccountId(accountId).mapNotNull { it.keyId }
         accountRepository.deleteAccount(accountId)
-        eventPublisher.publishEvent(AccountDeleted(accountId))
+        eventPublisher.publishEvent(AccountDeleted(accountId, keys))
     }
 
     /**
@@ -369,7 +377,10 @@ class AccountService(
     /** All active instances of [method], e.g. one `device` entry per physical device. */
     @Transactional(readOnly = true)
     fun findActiveMethods(accountId: AccountId, method: String): List<AuthMethodView> =
-        accountAuthMethodRepository.findByAccountIdAndMethodAndActiveTrueOrderByCreatedAt(accountId, method).map { it.toView() }
+        accountAuthMethodRepository.findByAccountIdAndMethodAndActiveTrueOrderByCreatedAt(accountId, method).let { methods ->
+            val cipher = if (methods.any { it.sealedLabel != null || it.sealedReference != null }) claimCrypto.open(accountId) else null
+            methods.map { it.toView(cipher) }
+        }
 
     // AccountDirectory (tool_api) -------------------------------------------------------------
 
@@ -383,6 +394,30 @@ class AccountService(
     /** Only accounts that are set up: one without a login method is not there for a login (ADR-46). */
     override fun resolveByAnchor(type: AttributeType, value: String): AccountId? =
         anchorRegistry.holderOf(type, value)?.takeIf { accountAuthMethodRepository.existsByAccountId(it) }
+
+    /** A master key for a journey that has no account yet (ADR-55); the account adopts it later. */
+    @Transactional
+    fun newJourneyKey(): MasterKeyId = claimCrypto.newPendingKey()
+
+    /** The key a tool on this account seals under: the account's primary key. */
+    @Transactional(readOnly = true)
+    fun masterKeyOf(accountId: AccountId): MasterKeyId = claimCrypto.primaryKeyOf(accountId)
+
+    /**
+     * The journey's key joins the account; what was sealed under it before the account was known
+     * stays readable. `false` if the key is gone or another account's: then nothing of this account
+     * lies under it, and the channel should forget it.
+     */
+    @Transactional
+    fun adoptJourneyKey(accountId: AccountId, journeyKey: MasterKeyId): Boolean = claimCrypto.adopt(accountId, journeyKey)
+
+    /** Whether a journey may still seal under [journeyKey]: it exists and no account owns it. */
+    @Transactional(readOnly = true)
+    fun isPendingJourneyKey(journeyKey: MasterKeyId): Boolean = claimCrypto.isPending(journeyKey)
+
+    /** Keys no account adopted and no channel can still name - the journey ended without one. */
+    @Transactional
+    fun deleteJourneyKeysCreatedBefore(cutoff: Instant): Int = masterKeyRepository.deletePendingCreatedBefore(cutoff)
 
     override fun anchorValue(accountId: AccountId, type: AttributeType): String? {
         check(type.isLocalAnchor) { "$type is not a local account anchor, it is owned by ${type.authority}" }
@@ -458,29 +493,36 @@ class AccountService(
         val accountId = account.accountId
         val anchors = anchorRegistry.anchorsOf(accountId).associateBy { it.attributeType }
         val emailAnchor = anchors[AttributeType.EMAIL]
+        val methods = accountAuthMethodRepository.findByAccountIdOrderByCreatedAt(accountId)
+        // The key is opened once per profile, only if a method carries a sealed field.
+        val cipher = if (methods.any { it.sealedLabel != null || it.sealedReference != null }) claimCrypto.open(accountId) else null
         return AccountProfile(
             accountId = accountId,
             personId = anchors[AttributeType.PERSON_ID]?.value?.let(::PartnerNumber),
-            authenticationMethods = accountAuthMethodRepository.findByAccountIdOrderByCreatedAt(accountId).map { it.toView() },
+            authenticationMethods = methods.map { it.toView(cipher) },
             email = emailAnchor?.value,
             emailConfirmedAt = emailAnchor?.establishedAt,
             establishedClaims = claimLedger.establishedTrust(accountId)
         )
     }
 
-    private fun AccountAuthMethod.toView() = AuthMethodView(
+    private fun AccountAuthMethod.toView(cipher: ClaimCrypto.AccountCipher?) = AuthMethodView(
         id = id.toString(),
         method = method.orEmpty(),
         active = active,
         createdAt = createdAt,
         enrolledUnderAcr = enrolledUnderAcr,
         boundKeyRef = boundKeyRef,
-        reference = reference,
+        reference = sealedReference?.let { String(checkNotNull(cipher).open(REFERENCE, it)) },
         enrollmentRef = enrollmentRef,
-        label = label
+        label = sealedLabel?.let { String(checkNotNull(cipher).open(LABEL, it)) }
     )
 
     private companion object {
+        /** Purposes of the sealed fields of a method instance (ADR-55). */
+        const val LABEL = "auth-method:label"
+        const val REFERENCE = "auth-method:reference"
+
         /** What the Personenverzeichnis' own word counts as for [applyDirectoryChange] - the anchor floor of both identifiers. */
         val DIRECTORY_ACR = AcrLevel.LOA2
 

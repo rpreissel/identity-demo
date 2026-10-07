@@ -1,5 +1,7 @@
 package com.example.identity.tools.auth_sms.internal.authsms
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
+import com.example.identity.tools.auth_sms.internal.SmsNumbers
+import com.example.identity.core.account.application.ClaimCryptoFixture
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
@@ -39,10 +41,12 @@ private class Fixture {
     val tans = TanGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<SmsSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val gateway = SmsGateway(clock = TEST_CLOCK)
-    val handler = AuthSmsToolHandler( sessions, enrollments, tans, gateway, sendLimit)
+    val keys = ClaimCryptoFixture()
+    val smsNumbers = SmsNumbers(keys.sealing)
+    val handler = AuthSmsToolHandler(sessions, enrollments, tans, gateway, sendLimit, smsNumbers)
 
     fun withEnrolledNumber(id: Long) = apply {
-        every { enrollments.findById(id) } returns Optional.of(AuthSmsEnrollment(phoneNumber = PHONE, createdAt = TEST_NOW).apply { this.id = id })
+        every { enrollments.findById(id) } returns Optional.of(smsNumbers.newEnrollment(PHONE, keys.newKey(), TEST_NOW).apply { this.id = id })
     }
 
     fun withSendBudgetUsedUp() = apply {

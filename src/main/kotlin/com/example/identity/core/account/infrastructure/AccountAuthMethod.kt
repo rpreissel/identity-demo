@@ -33,14 +33,16 @@ class AccountAuthMethod(
     @Column(name = "enrolled_under_acr")
     var enrolledUnderAcr: String? = null,
 
+    /** The holder's own name for the instance, sealed under the account's key (ADR-55). */
     @Column(name = "label")
-    var label: String? = null,
+    var sealedLabel: ByteArray? = null,
 
     @Column(name = "bound_key_ref")
     var boundKeyRef: String? = null,
 
+    /** What of the instance may be shown on its device, e.g. the KOBIL device id; sealed like the label. */
     @Column(name = "reference")
-    var reference: String? = null,
+    var sealedReference: ByteArray? = null,
 
     @Column(name = "allows_multiple_instances", nullable = false)
     var allowsMultipleInstances: Boolean = false

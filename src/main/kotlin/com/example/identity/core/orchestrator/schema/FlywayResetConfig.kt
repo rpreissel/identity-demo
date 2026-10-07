@@ -29,6 +29,8 @@ class FlywayResetConfig {
             try {
                 flyway.migrate()
             } catch (e: FlywayException) {
+                // A database of the other encryption mode is not broken: it is kept, and the start stops (ADR-55).
+                generateSequence<Throwable>(e) { it.cause }.filterIsInstance<EncryptionModeGuard.ModeMismatch>().firstOrNull()?.let { throw it }
                 log.warn(
                     "Flyway migration failed ({}) - deleting the H2 database file and recreating it " +
                         "from scratch. Demo-only recovery: this discards all existing data.",

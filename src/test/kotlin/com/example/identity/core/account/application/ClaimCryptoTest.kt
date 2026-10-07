@@ -1,9 +1,11 @@
 package com.example.identity.core.account.application
 
+import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.core.account.infrastructure.AccountClaim
 import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -11,8 +13,13 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldEndWith
+import io.kotest.matchers.string.shouldMatch
 import io.kotest.matchers.string.shouldNotContain
+import io.kotest.matchers.string.shouldStartWith
 import com.example.identity.simulation.kms.InMemoryKms
+import com.example.identity.contract.tool_api.ids.MasterKeyId
+import java.util.UUID
 import javax.crypto.AEADBadTagException
 
 /**
@@ -65,7 +72,7 @@ class ClaimCryptoTest : BehaviorSpec({
             keys.batchKeys.single { it.claimBatchId == claim.claimBatchId }.accountId = keys.account(bob).let { bob }
             val result = runCatching { keys.crypto.open(bob).decrypt(claim) }
 
-            then("it does not open - the wrapping is bound to the account") {
+            then("it does not open - the wrapping is bound to the key it was made under") {
                 shouldThrow<AEADBadTagException> { result.getOrThrow() }
             }
         }
@@ -139,7 +146,7 @@ class ClaimCryptoTest : BehaviorSpec({
         val clock = io.mockk.mockk<java.time.Clock>()
         var now = TEST_NOW
         io.mockk.every { clock.instant() } answers { now }
-        val crypto = ClaimCrypto(keys.accountRepository, keys.batchKeyRepository, counting, clock, cacheTtl = java.time.Duration.ofMinutes(5))
+        val crypto = ClaimCrypto(keys.masterKeyRepository, keys.batchKeyRepository, counting, keys.envelopes, clock, cacheTtl = java.time.Duration.ofMinutes(5))
         keys.account(alice)
 
         `when`("an account is opened three times within the period, then once after it") {
@@ -157,11 +164,87 @@ class ClaimCryptoTest : BehaviorSpec({
         `when`("the account is deleted") {
             crypto.open(alice)
             val before = unwraps
-            crypto.forget(com.example.identity.core.account.AccountDeleted(alice))
+            crypto.forget(com.example.identity.core.account.AccountDeleted(alice, listOf(keys.crypto.primaryKeyOf(alice))))
             crypto.open(alice)
 
             then("the next read unwraps again - the key did not outlive the account in memory") {
                 unwraps shouldBe before + 1
+            }
+        }
+    }
+
+    given("a journey's pending key") {
+        val keys = ClaimCryptoFixture()
+        val pending = keys.newKey()
+
+        `when`("an account without a key adopts it") {
+            val taken = keys.crypto.adopt(alice, pending)
+
+            then("it becomes the account's primary key, and a repeat by the same account is fine") {
+                taken shouldBe true
+                keys.crypto.primaryKeyOf(alice) shouldBe pending
+                keys.crypto.isPending(pending) shouldBe false
+                keys.crypto.adopt(alice, pending) shouldBe true
+            }
+
+            then("another account cannot take it, and a key that is gone is nobody's") {
+                keys.crypto.adopt(bob, pending) shouldBe false
+                keys.crypto.adopt(bob, MasterKeyId(UUID.randomUUID())) shouldBe false
+                keys.crypto.isPending(MasterKeyId(UUID.randomUUID())) shouldBe false
+            }
+        }
+    }
+
+    given("a sealed value outside the demo") {
+        val keys = ClaimCryptoFixture()
+        val claim = keys.claim(alice, AttributeType.FAMILY_NAME, "Muster", ClaimSource.PERSON_DIRECTORY)
+
+        then("the row is bare ciphertext without any header") {
+            claim.encryptedValue!![0] shouldNotBe '['.code.toByte()
+        }
+
+        `when`("a value is presented under another key") {
+            val other = keys.claim(alice, AttributeType.GIVEN_NAMES, "Max", ClaimSource.PERSON_DIRECTORY)
+            val swapped = AccountClaim(accountId = alice, attributeType = other.attributeType, encryptedValue = claim.encryptedValue, valueDigest = other.valueDigest, claimBatchId = other.claimBatchId, claimSource = other.claimSource, establishedAt = TEST_NOW)
+
+            then("the bound key reference rejects it") {
+                shouldThrow<AEADBadTagException> { keys.valueOf(swapped) }
+            }
+        }
+    }
+
+    given("the demo, which stores values readable but says what would seal them") {
+        val plain = ClaimCryptoFixture(encryptionEnabled = false)
+        val claim = plain.claim(alice, AttributeType.FAMILY_NAME, "Muster", ClaimSource.PERSON_DIRECTORY)
+        val batch = claim.claimBatchId.toString().take(8)
+        val key = plain.masterKeys.single().keyUuid.toString().take(8)
+
+        then("the value sits readable behind the short header naming its batch key and a tag under it, and reads back") {
+            val stored = String(claim.encryptedValue!!, Charsets.ISO_8859_1)
+            stored shouldMatch Regex("\\[gruppe $batch pruefwert [0-9a-f]{8}]Muster")
+            plain.valueOf(claim) shouldBe "Muster"
+        }
+
+        then("a readable value still needs its key - a tampered value or another key fails like a wrong key does") {
+            val tampered = claim.encryptedValue!!.copyOf().also { it[it.size - 1] = 'X'.code.toByte() }
+            shouldThrow<AEADBadTagException> { plain.valueOf(AccountClaim(accountId = alice, attributeType = claim.attributeType, encryptedValue = tampered, valueDigest = claim.valueDigest, claimBatchId = claim.claimBatchId, claimSource = claim.claimSource, establishedAt = TEST_NOW)) }
+        }
+
+        then("the digest is the normalized value behind the account key's header, so dedup still works") {
+            claim.valueDigest shouldBe "[konto $key]family_name=muster"
+            claim.valueDigest shouldBe plain.crypto.open(alice).digest(AttributeType.FAMILY_NAME, " MUSTER ")
+        }
+
+        then("the batch key is wrapped regardless, and says so") {
+            String(plain.batchKeys.single().wrappedDek!!, Charsets.ISO_8859_1) shouldStartWith "[verschluesselt mit konto $key]"
+        }
+
+        `when`("a value is presented under another key") {
+            val other = plain.claim(alice, AttributeType.GIVEN_NAMES, "Max", ClaimSource.PERSON_DIRECTORY)
+            val swapped = AccountClaim(accountId = alice, attributeType = other.attributeType, encryptedValue = claim.encryptedValue, valueDigest = other.valueDigest, claimBatchId = other.claimBatchId, claimSource = other.claimSource, establishedAt = TEST_NOW)
+
+            then("the header gives it away") {
+                shouldThrow<IllegalStateException> { plain.valueOf(swapped) }.message!! shouldContain "sealed under 'gruppe $batch'"
             }
         }
     }

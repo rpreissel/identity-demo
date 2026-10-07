@@ -364,7 +364,8 @@ ADR-12, ADR-19) und in `db/migration/KONVENTIONEN.md`. Die Begriffe erklärt das
     Anmeldeverfahren eingerichtet. Deaktivierte Verfahren zählen dabei mit. Ein solches Konto darf
     gelöscht oder mit einem anderen zusammengeführt werden (ADR-20).
 - `AccountAuthMethod` ist ein eingerichtetes Verfahren eines Kontos (`method`,
-  `active`/`deactivatedAt`, `enrolledUnderAcr`, `label`, `details`). Ein **Credential** ist dabei
+  `active`/`deactivatedAt`, `enrolledUnderAcr`, `label`, `details`; `label` und `reference` liegen
+  versiegelt unter dem Schlüssel des Kontos, [ADR-55](adr/ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md)). Ein **Credential** ist dabei
   das, womit sich der Nutzer bei diesem Verfahren ausweist, etwa eine hinterlegte Telefonnummer oder
   ein Schlüssel. Der Verweis auf das Credential (`EnrollmentRef`) steht in zwei echten Spalten
   (`enrollment_type`, `enrollment_id`). Das ist die einzige Stelle, an der Konto und Credential
@@ -554,6 +555,8 @@ Datenbank per Kaskade auf. Das erledigt immer die API des Moduls, dem die Daten 
 
 ```mermaid
 erDiagram
+  account.account ||--o{ account.master_key : "hat Hauptschlüssel (ADR-55)"
+  account.master_key ||--o{ account.claim_batch_key : "packt Gruppenschlüssel ein"
   account.account ||--o{ account.anchor : "hat aktuellen Ankerwert"
   account.account ||--o{ account.auth_method : "hat eingerichtetes Verfahren"
   account.account ||--o{ account.claim : "bestätigt (nur anfügen)"
@@ -582,11 +585,25 @@ erDiagram
     varchar enrollment_id
     boolean active "ck: active = (deactivated_at IS NULL)"
   }
+  account.master_key {
+    uuid key_id PK
+    bigint account_id FK "NULL: Schlüssel einer Journey ohne Konto (ADR-55)"
+    boolean primary_key "ein primärer Schlüssel je Konto"
+    varbinary wrapped_master_key "eingepackt mit dem KEK"
+    varchar kek_version
+  }
+  account.claim_batch_key {
+    uuid claim_batch_id PK
+    bigint account_id FK
+    varbinary wrapped_dek "eingepackt mit dem Hauptschlüssel"
+    timestamp expires_at
+  }
   account.claim {
     bigint account_id FK
     varchar attribute_type
-    varchar claim_value "wie bezeugt"
-    varchar normalized_value "Normalform (@PrePersist)"
+    varbinary claim_value "versiegelt unter dem Datenschlüssel der Gruppe (ADR-52)"
+    varchar value_digest "HMAC unter dem Hauptschlüssel, für Dedup und Widerruf"
+    uuid claim_batch_id FK
     varchar claim_source "z.B. person_directory, ident-eid"
     uuid auth_method_id "ix; von welchem Verfahren die Angabe stammt"
     varchar established_acr
@@ -612,11 +629,12 @@ erDiagram
     varchar sign_in_type "SIGNED_IN, SIGN_IN_FAILED, LOCKED_OUT, ..."
     varchar channel
     varchar acr
-    json details "type, version, amr, Verfahren, ..."
+    varbinary details "type, version, amr, Verfahren, ...; versiegelt (ADR-55)"
   }
   auth_sms.enrollment {
     bigint id PK
-    varchar phone_number
+    varbinary phone_number "versiegelt unter key_id (ADR-55)"
+    uuid key_id "Hauptschlüssel, account.master_key"
   }
   auth_device.enrollment {
     bigint id PK
@@ -663,6 +681,7 @@ erDiagram
     varchar state
     varchar acr_floor "dauerhafte Untergrenze des Kanals"
     varchar invitation "Subjekt ist Konto (account_id) oder Einladung, ck nie beides"
+    uuid journey_key_id "Schlüssel der Journey vor dem Konto (ADR-55)"
     timestamp expires_at "ix, Aufbewahrung"
   }
   orchestrator.auth_journey {
