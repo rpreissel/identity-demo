@@ -44,7 +44,7 @@ Für die nativen Schritte gelten die Regeln des Kontos nicht:
   aussperrt, und beim Löschen des Kontos.
 - Das Passwort lässt sich über Keycloak setzen, ohne Journey und ohne die Prüfungen auf
   Mindestniveau (Floor) und Frische des letzten Nachweises
-  ([Verfahren ändern](verfahren-aendern.md)).
+  ([`MANAGE_AUTH_METHODS`](../journeys/manage-auth-methods.md)).
 - Fehlversuche werden an zwei Stellen gezählt: in Keycloaks Schutz gegen das Durchprobieren von
   Passwörtern (Brute-Force-Schutz) und in der Kontosperre des Orchestrators.
 
