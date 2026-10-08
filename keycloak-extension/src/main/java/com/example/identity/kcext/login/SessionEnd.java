@@ -2,7 +2,6 @@ package com.example.identity.kcext.login;
 
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserSessionModel;
-import org.keycloak.models.utils.SessionExpirationUtils;
 
 /**
  * The latest end of a Keycloak user session without further activity, which caps the Web channel's
@@ -22,8 +21,8 @@ final class SessionEnd {
     }
 
     static long epochSecond(RealmModel realm, long startedSeconds, long lastRefreshSeconds) {
-        long idleEnd = lastRefreshSeconds + SessionExpirationUtils.getSsoSessionIdleTimeout(realm);
-        long lifespanEnd = startedSeconds + SessionExpirationUtils.getSsoSessionMaxLifespan(realm);
+        long idleEnd = lastRefreshSeconds + realm.getSsoSessionIdleTimeout();
+        long lifespanEnd = startedSeconds + realm.getSsoSessionMaxLifespan();
         return Math.min(idleEnd, lifespanEnd);
     }
 }

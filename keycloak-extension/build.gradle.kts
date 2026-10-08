@@ -47,7 +47,6 @@ dependencies {
     // Nur fuer Tests, die ein ComponentModel in die Hand nehmen (OrchestratorSettingsTest) - zur
     // Laufzeit stellt Keycloak diese Klassen, siehe compileOnly oben.
     testImplementation(libs.keycloak.server.spi)
-    // SessionEndTest: Keycloaks eigene Berechnung der Sitzungsfristen (SessionExpirationUtils).
     testImplementation(libs.keycloak.server.spi.private)
     testImplementation(libs.keycloak.model.storage)
     testImplementation(libs.keycloak.model.storage.private)

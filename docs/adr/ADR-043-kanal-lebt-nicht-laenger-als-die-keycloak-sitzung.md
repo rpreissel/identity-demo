@@ -139,8 +139,9 @@ keine weitere Aktivität kommt. Die Extension berechnet es aus den Werten des Re
 - die Höchstdauer zählt ab dem Beginn.
 
 Der Orchestrator setzt `expiresAt` auf den kleineren Wert aus seiner eigenen Frist und diesem Wert.
-Die Extension rechnet mit den Werten ohne „Angemeldet bleiben“. Diese Werte sind nie kürzer. Der
-Kanal endet also höchstens zu früh, nie zu spät.
+Die Extension liest die regulären Fristen direkt über die öffentlichen Getter von `RealmModel`,
+nicht über private Hilfsmethoden von Keycloak. Sie rechnet mit den Werten ohne „Angemeldet bleiben“.
+Die Remember-me-Fristen sind nie kürzer. Der Kanal endet also höchstens zu früh, nie zu spät.
 
 Diese Lösung ist gewählt, weil sie mit dem einen Aufruf auskommt, den es am Ende jedes Durchlaufs
 schon gibt. Nach diesem Aufruf braucht niemand den Web-Kanal mehr, außer für einen folgenden Schritt
