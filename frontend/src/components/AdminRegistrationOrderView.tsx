@@ -1,6 +1,7 @@
 import { t } from '../texts'
 import { useEffect, useState } from 'react'
 import { fetchRegistrationOrder, setRegistrationOrder } from '../api.ts'
+import { SettingRow } from './SettingRow'
 
 /**
  * REGISTER's "Enrollment zuerst" experiment (docs/journeys/register-enroll-first.md, `RegisterEnrollFirstStrategy`):
@@ -20,11 +21,10 @@ export function AdminRegistrationOrderView() {
 
   useEffect(reload, [])
 
-  async function toggle() {
-    if (enrollFirst === null) return
+  async function choose(order: 'ident' | 'enroll') {
     try {
       setError('')
-      await setRegistrationOrder(!enrollFirst)
+      await setRegistrationOrder(order === 'enroll')
       reload()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -32,30 +32,20 @@ export function AdminRegistrationOrderView() {
   }
 
   return (
-    <div className="card">
-      <h2>{t('Registrierungsreihenfolge')}</h2>
-      <p>
-        {t(
-          'Experiment: Identifikation zuerst (Status quo) oder erst Enrollment, mit optionaler Identifikation am Ende. ' +
-            'Wirkt für die nächste neu gestartete REGISTER-Journey - eine bereits laufende behält ihre Reihenfolge.',
-        )}
-      </p>
-      {error && <p className="error-card">{error}</p>}
-      {enrollFirst === null ? (
-        !error && <p>{t('Lädt…')}</p>
-      ) : (
-        <ul className="status-list">
-          <li>
-            <span className="label">{t('Reihenfolge')}</span>
-            <span className="value-with-action">
-              <span className="value">{enrollFirst ? t('Enrollment zuerst') : t('Identifikation zuerst')}</span>
-              <button className="secondary small" onClick={toggle}>
-                {t('Umschalten')}
-              </button>
-            </span>
-          </li>
-        </ul>
+    <SettingRow
+      title={t('Reihenfolge der Registrierung')}
+      hint={t(
+        'Ob ein neues Konto zuerst identifiziert wird oder zuerst ein Anmeldeverfahren bekommt und die Identifikation am Ende anbietet. ' +
+          'Gilt für die nächste neu gestartete Registrierung; eine laufende behält ihre Reihenfolge.',
       )}
-    </div>
+      choices={[
+        { value: 'ident', label: t('Identifikation zuerst') },
+        { value: 'enroll', label: t('Enrollment zuerst') },
+      ]}
+      value={enrollFirst === null ? null : enrollFirst ? 'enroll' : 'ident'}
+      onChange={choose}
+    >
+      {error && <span className="error-text">{error}</span>}
+    </SettingRow>
   )
 }

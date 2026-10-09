@@ -69,9 +69,12 @@ export function AdminApp() {
       <div className={tab === 'journeytrace' ? 'web-page web-page-wide' : 'web-page'}>
         {tab === 'einstellungen' && (
           <>
+            <section className="card admin-card admin-general">
+              <h2>{t('Allgemein')}</h2>
+              <AdminRegistrationOrderView />
+              <AdminLoa1LoginView />
+            </section>
             <AdminToolAvailabilityView />
-            <AdminRegistrationOrderView />
-            <AdminLoa1LoginView />
           </>
         )}
         {tab === 'journeytrace' && (

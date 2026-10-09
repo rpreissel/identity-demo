@@ -16,7 +16,6 @@ const CHANNEL_LABELS: Record<ChannelType, string> = {
   APP: t('App'),
   WEB: t('Website'),
 }
-const CHANNEL_ICONS: Record<ChannelType, string> = { APP: '📱', WEB: '🌐' }
 
 /** One heading per role - each role is one kind of selection list the user sees. */
 const ROLE_LABELS: Record<ToolRole, string> = {
@@ -88,59 +87,60 @@ export function AdminToolAvailabilityView() {
   }
 
   return (
-    <div className="card">
-      <h2>{t('Verfahren je Kanal')}</h2>
-      <p>{t('Was jeder Zugang anbietet und in welcher Reihenfolge. Gespeichert wirkt jede Änderung sofort, auch in laufenden Vorgängen.')}</p>
-      {error && <p className="error-card">{error}</p>}
-      {channels === null ? (
-        !error && <p>{t('Lädt…')}</p>
-      ) : (
-        <>
-          <div className="app-tabs tool-admin-tabs" role="tablist" aria-label={t('Zugang')}>
-            {channels.map((c) => (
-              <button
-                key={c.channel}
-                role="tab"
-                aria-selected={c.channel === channel}
-                className={c.channel === channel ? 'active' : ''}
-                // While a draft is open, the other channel waits: switching would drop it unseen.
-                disabled={mode === 'order' && c.channel !== channel}
-                onClick={() => setChannel(c.channel)}
-              >
-                {CHANNEL_ICONS[c.channel]} {CHANNEL_LABELS[c.channel]}
-              </button>
-            ))}
-          </div>
-          <div className="tool-admin-toolbar">
-            <p className="tool-admin-intro">
-              {mode === 'order'
-                ? t('Jede Auswahl (anmelden, identifizieren, einrichten) zeigt ihre Verfahren in dieser Reihenfolge. Die Änderungen gelten erst nach „Speichern“.')
-                : t('Gesperrt wird je Fassung (@1, @2). Wer eine gesperrte Fassung spricht, bekommt das Verfahren nicht angeboten; jeder Client zeigt außerdem nur, was er darstellen kann.')}
-            </p>
+    <section className="card admin-card admin-tools">
+      <div className="admin-card-head">
+        <div>
+          <h2>{t('Verfahren')}</h2>
+          <p>
+            {mode === 'order'
+              ? t('Jede Auswahl (anmelden, identifizieren, einrichten) zeigt ihre Verfahren in dieser Reihenfolge. Die Änderungen gelten erst nach „Speichern“.')
+              : t('Was ein Zugang anbietet. Gesperrt wird je Fassung (@1, @2); jeder Client zeigt außerdem nur, was er darstellen kann.')}
+          </p>
+        </div>
+        {channels !== null && (
+          <div className="admin-card-tools">
+            <div className="segmented" role="tablist" aria-label={t('Zugang')}>
+              {channels.map((c) => (
+                <button
+                  key={c.channel}
+                  role="tab"
+                  aria-selected={c.channel === channel}
+                  className={c.channel === channel ? 'on' : ''}
+                  // While a draft is open, the other channel waits: switching would drop it unseen.
+                  disabled={mode === 'order' && c.channel !== channel}
+                  onClick={() => setChannel(c.channel)}
+                >
+                  {CHANNEL_LABELS[c.channel]}
+                </button>
+              ))}
+            </div>
             {mode === 'order' ? (
-              <span className="tool-admin-actions">
+              <>
                 <button className="secondary" onClick={leaveOrder}>
                   {t('Abbrechen')}
                 </button>
                 <button disabled={!changed} onClick={saveOrder}>
                   {t('Speichern')}
                 </button>
-              </span>
+              </>
             ) : (
               <button className="secondary" onClick={editOrder}>
-                <span aria-hidden="true">⇅</span> {t('Reihenfolge ändern')}
+                {t('Reihenfolge ändern')}
               </button>
             )}
           </div>
-          {current &&
-            (mode === 'order' && draft ? (
-              <OrderPanel tools={draft.flatMap((id) => current.tools.filter((tool) => tool.toolId === id))} order={draft} onChange={setDraft} />
-            ) : (
-              <AvailabilityPanel key={channel} channel={current} run={run} />
-            ))}
-        </>
-      )}
-    </div>
+        )}
+      </div>
+      {error && <p className="error-card">{error}</p>}
+      {channels === null
+        ? !error && <p>{t('Lädt…')}</p>
+        : current &&
+          (mode === 'order' && draft ? (
+            <OrderPanel tools={draft.flatMap((id) => current.tools.filter((tool) => tool.toolId === id))} order={draft} onChange={setDraft} />
+          ) : (
+            <AvailabilityPanel key={channel} channel={current} run={run} />
+          ))}
+    </section>
   )
 }
 
@@ -178,7 +178,11 @@ function VersionBadge({ version }: { version: number }) {
   return <span className="version-badge">@{version}</span>
 }
 
-/** Which versions this channel offers: a tool with one version is one row, one with several lists them below it; locking asks for a reason in place. */
+/**
+ * Which versions this channel offers, as one table: a group row per selection list, a row per
+ * version with its switch. A tool with several versions names itself once for all its rows.
+ * Switching a version off asks for the reason in place.
+ */
 function AvailabilityPanel({ channel, run }: { channel: ChannelToolAvailability; run: (a: () => Promise<void>) => void }) {
   const [locking, setLocking] = useState<string | null>(null)
   const [reason, setReason] = useState(() => t('manuell gesperrt'))
@@ -190,73 +194,84 @@ function AvailabilityPanel({ channel, run }: { channel: ChannelToolAvailability;
     })
   }
 
-  /** One version: its label, why it is locked, and its button - or the reason field while locking it. */
-  function versionLine(version: ToolVersionAvailability, label: ReactNode) {
-    return (
-      <>
-        <div className="tool-admin-row">
-          <span className="tool-admin-label">
-            {label}
-            {!version.enabled && <span className="tool-admin-reason">{version.reason ? t('gesperrt: {grund}', { grund: version.reason }) : t('gesperrt')}</span>}
-          </span>
-          {locking !== version.tool && (
+  function rows(tool: ToolAvailabilityEntry): ReactNode[] {
+    const multi = tool.versions.length > 1
+    return tool.versions.flatMap((version, index) => {
+      const row = (
+        <tr key={version.tool} className={version.enabled ? undefined : 'tool-off'}>
+          {index === 0 && (
+            <td rowSpan={tool.versions.length} className={multi ? 'tool-name tool-name-multi' : 'tool-name'}>
+              <ToolName tool={tool} />
+              {multi && <span className="tool-count">{t('{anzahl} Fassungen', { anzahl: tool.versions.length })}</span>}
+            </td>
+          )}
+          <td>
+            <VersionBadge version={version.version} />
+          </td>
+          <td>
             <button
-              className="secondary small"
+              className={version.enabled ? 'tool-switch on' : 'tool-switch'}
+              aria-pressed={version.enabled}
               aria-label={version.enabled ? t('{tool} sperren', { tool: version.tool }) : t('{tool} freigeben', { tool: version.tool })}
+              disabled={locking === version.tool}
               onClick={() => (version.enabled ? setLocking(version.tool) : run(() => setToolAvailability(version.tool, channel.channel, true)))}
             >
-              {version.enabled ? t('Sperren…') : t('Freigeben')}
+              <span className="tool-switch-track" aria-hidden="true" />
+              {version.enabled ? t('An') : t('Aus')}
             </button>
-          )}
-        </div>
-        {locking === version.tool && (
-          <div className="tool-admin-lock">
-            <input aria-label={t('Grund für die Sperre von {tool}', { tool: version.tool })} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
-            <button className="secondary small" onClick={() => setLocking(null)}>
-              {t('Abbrechen')}
-            </button>
-            <button className="small" onClick={() => lock(version)}>
-              {t('Sperren')}
-            </button>
-          </div>
-        )}
-      </>
-    )
+          </td>
+          <td className="tool-note">{!version.enabled && (version.reason ?? t('gesperrt'))}</td>
+        </tr>
+      )
+      if (locking !== version.tool) return [row]
+      return [
+        row,
+        <tr key={`${version.tool}-lock`} className="tool-lock-row">
+          <td colSpan={multi ? 3 : 4}>
+            <div className="tool-admin-lock">
+              <label htmlFor={`lock-${version.tool}`}>{t('Grund der Sperre')}</label>
+              <input
+                id={`lock-${version.tool}`}
+                aria-label={t('Grund für die Sperre von {tool}', { tool: version.tool })}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                autoFocus
+              />
+              <button className="secondary small" onClick={() => setLocking(null)}>
+                {t('Abbrechen')}
+              </button>
+              <button className="small" onClick={() => lock(version)}>
+                {t('Sperren')}
+              </button>
+            </div>
+          </td>
+        </tr>,
+      ]
+    })
   }
 
   return (
-    <div className="tool-admin-panel">
-      <div className="tool-admin-grid">
+    <div className="tool-table-wrap">
+      <table className="tool-table">
+        <thead>
+          <tr>
+            <th>{t('Verfahren')}</th>
+            <th>{t('Fassung')}</th>
+            <th>{t('Angeboten')}</th>
+            <th>{t('Hinweis')}</th>
+          </tr>
+        </thead>
         {byRole(channel.tools).map(([role, tools]) => (
-          <section key={role} className="tool-admin-group">
-            <h4>{ROLE_LABELS[role]}</h4>
-            <ul className="tool-admin-rows">
-              {tools.map((tool) =>
-                tool.versions.length === 1 ? (
-                  <li key={tool.toolId} className={tool.versions[0].enabled ? '' : 'tool-admin-off'}>
-                    {versionLine(tool.versions[0], <ToolName tool={tool} version={tool.versions[0].version} />)}
-                  </li>
-                ) : (
-                  // Several versions (ADR-51): the tool once, each version on its own line below it.
-                  <li key={tool.toolId} className="tool-admin-multi">
-                    <div className="tool-admin-row">
-                      <ToolName tool={tool} />
-                      <span className="tool-admin-count">{t('{anzahl} Fassungen', { anzahl: tool.versions.length })}</span>
-                    </div>
-                    <ul className="tool-admin-versions">
-                      {tool.versions.map((version) => (
-                        <li key={version.tool} className={version.enabled ? '' : 'tool-admin-off'}>
-                          {versionLine(version, <VersionBadge version={version.version} />)}
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ),
-              )}
-            </ul>
-          </section>
+          <tbody key={role}>
+            <tr className="tool-group">
+              <th colSpan={4} scope="colgroup">
+                {ROLE_LABELS[role]}
+              </th>
+            </tr>
+            {tools.flatMap(rows)}
+          </tbody>
         ))}
-      </div>
+      </table>
     </div>
   )
 }

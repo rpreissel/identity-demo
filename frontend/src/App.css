@@ -1346,88 +1346,247 @@ button.small,
   white-space: nowrap;
 }
 
-/* Admin: tools per channel (AdminToolAvailabilityView) - one channel at a time, availability and
-   order as two views. */
-.tool-admin-tabs {
-  margin: 1rem 0 0.5rem;
+/* Admin settings ("Einstellungen"): a block of general switches (SettingRow) and one table of the
+   tools per channel (AdminToolAvailabilityView). */
+.admin-card {
+  padding: 0;
+  overflow: hidden;
 }
 
-/* Under the tabs: what this view does, and the button that switches to the other one. */
-.tool-admin-toolbar {
+.admin-card > h2 {
+  margin: 0;
+  padding: 1.25rem 1.5rem 1rem;
+  font-size: 1.2rem;
+}
+
+.admin-card > .error-card,
+.admin-card > p {
+  margin: 0 1.5rem 1rem;
+}
+
+.admin-card-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.5rem;
+  gap: 0.9rem;
+  padding: 1.25rem 1.5rem;
 }
 
-.tool-admin-toolbar button {
-  flex-shrink: 0;
-  white-space: nowrap;
+.admin-card-head h2 {
+  margin: 0;
+  font-size: 1.2rem;
 }
 
-.tool-admin-actions {
-  display: inline-flex;
-  flex-shrink: 0;
-  gap: 0.5rem;
+.admin-card-head p {
+  margin: 0.15rem 0 0;
+  max-width: 38rem;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.admin-card-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 /* "Speichern" without a change: clearly not available yet. */
-.tool-admin-actions button:disabled {
+.admin-card-tools button:disabled {
   opacity: 0.4;
   cursor: default;
 }
 
-@media (max-width: 600px) {
-  .tool-admin-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .tool-admin-actions button {
-    flex: 1;
-  }
-}
-
-.tool-admin-intro {
-  margin: 0.25rem 0 0.5rem;
-  font-size: 0.85rem;
-  color: var(--text);
-}
-
-.tool-admin-group h4 {
-  margin: 1.25rem 0 0.35rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text);
-}
-
-.tool-admin-rows,
-.tool-admin-order {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-.tool-admin-rows > li,
-.tool-admin-order > li {
-  padding: 0.55rem 0.8rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.tool-admin-rows > li:last-child,
-.tool-admin-order > li:last-child {
-  border-bottom: none;
-}
-
-.tool-admin-row {
+.setting-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.9rem 1.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.setting-text {
+  display: flex;
+  flex: 1 1 24rem;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.setting-text strong {
+  color: var(--text-h);
+}
+
+.setting-text > span {
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.setting-text .error-text {
+  color: #b42318;
+}
+
+.setting-note {
+  font-style: italic;
+}
+
+/* Two or more mutually exclusive choices side by side; the chosen one filled in the area's color. */
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.segmented button {
+  padding: 0.45rem 0.9rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.segmented button:hover {
+  filter: none;
+  color: var(--text-h);
+}
+
+.segmented button.on {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.segmented button:disabled:not(.on) {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The tools of one channel: a group row per selection list, a row per version. */
+.tool-table-wrap {
+  overflow-x: auto;
+  border-top: 1px solid var(--border);
+}
+
+.tool-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.tool-table thead th {
+  padding: 0.6rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tool-table td {
+  padding: 0.65rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.tool-table thead th:nth-child(1) { width: 34%; }
+.tool-table thead th:nth-child(2) { width: 6rem; }
+.tool-table thead th:nth-child(3) { width: 8rem; }
+
+.tool-table .tool-group th {
+  padding: 1.1rem 1.5rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: left;
+  color: var(--accent);
+}
+
+/* A tool with several versions names itself once, marked by a line along all its rows. */
+.tool-name-multi {
+  box-shadow: inset 3px 0 0 var(--accent-border);
+}
+
+.tool-count {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.tool-off .version-badge {
+  border-color: var(--border);
+  background: none;
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.tool-off .tool-name .tool-admin-name {
+  opacity: 0.55;
+}
+
+.tool-note {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* On/off as a switch; the label next to it says the state in words too. */
+.tool-switch {
+  gap: 0.55rem;
+  padding: 0.2rem 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.tool-switch:hover {
+  filter: none;
+}
+
+.tool-switch-track {
+  position: relative;
+  width: 2.3rem;
+  height: 1.3rem;
+  border-radius: 999px;
+  background: #c9c6bb;
+  transition: background 0.15s;
+}
+
+.tool-switch-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: calc(1.3rem - 6px);
+  height: calc(1.3rem - 6px);
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.15s;
+}
+
+.tool-switch.on {
+  color: var(--text-h);
+}
+
+.tool-switch.on .tool-switch-track {
+  background: var(--accent);
+}
+
+.tool-switch.on .tool-switch-track::after {
+  transform: translateX(1rem);
+}
+
+.tool-lock-row td {
+  background: var(--accent-bg);
 }
 
 /* Name above, id small below - the same height for every row, however long the name. */
@@ -1444,12 +1603,8 @@ button.small,
   padding: 0;
   font-size: 0.72rem;
   font-weight: normal;
-  color: var(--text);
+  color: var(--muted);
   background: none;
-}
-
-.tool-admin-off .tool-admin-name {
-  opacity: 0.55;
 }
 
 .version-badge {
@@ -1460,60 +1615,38 @@ button.small,
   background: var(--accent-bg);
   color: var(--accent);
   font-family: var(--mono);
-  font-size: 0.72rem;
-  font-weight: 600;
-  vertical-align: 0.1em;
-}
-
-.tool-admin-off .version-badge {
-  border-color: var(--border);
-  background: none;
-  color: var(--text);
-  text-decoration: line-through;
-}
-
-.tool-admin-count {
-  flex-shrink: 0;
   font-size: 0.75rem;
-  color: var(--text);
-}
-
-/* A tool with several versions: each version indented under the tool, joined by a line. */
-.tool-admin-versions {
-  list-style: none;
-  margin: 0.45rem 0 0 0.35rem;
-  padding: 0 0 0 0.85rem;
-  border-left: 2px solid var(--accent-border);
-}
-
-.tool-admin-versions > li {
-  padding: 0.3rem 0;
-}
-
-
-.tool-admin-label {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.tool-admin-rows .tool-admin-reason {
-  display: block;
-  margin: 0.15rem 0 0;
-  line-height: 1.35;
-  font-size: 0.8rem;
-  color: var(--text);
+  font-weight: 600;
 }
 
 .tool-admin-lock {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.4rem;
-  margin-top: 0.5rem;
+}
+
+.tool-admin-lock label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-h);
 }
 
 .tool-admin-lock input {
-  flex-basis: 100%;
+  flex: 1 1 16rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+/* The draft of the order: one numbered list per selection list. */
+.tool-admin-panel {
+  padding: 0 1.5rem 1.5rem;
+  border-top: 1px solid var(--border);
 }
 
 .tool-admin-grid {
@@ -1523,14 +1656,40 @@ button.small,
   column-gap: 1.5rem;
 }
 
+.tool-admin-group h4 {
+  margin: 1.25rem 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.tool-admin-order {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
 .tool-admin-order > li {
   display: flex;
   align-items: center;
   gap: 0.65rem;
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tool-admin-order > li:last-child {
+  border-bottom: none;
 }
 
 .tool-admin-order .tool-admin-name {
   flex: 1;
+}
+
+.tool-admin-off .tool-admin-name {
+  opacity: 0.55;
 }
 
 .tool-admin-rank {
@@ -1539,16 +1698,17 @@ button.small,
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 50%;
-  background: var(--code-bg);
+  background: var(--accent-bg);
+  font-family: var(--mono);
   font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text);
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .tool-admin-tag {
   flex-shrink: 0;
   font-size: 0.75rem;
-  color: var(--text);
+  color: var(--muted);
 }
 
 .tool-admin-arrows {

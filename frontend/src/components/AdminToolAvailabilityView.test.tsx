@@ -123,7 +123,7 @@ describe('AdminToolAvailabilityView', () => {
     it('groups the tools by role', async () => {
       render(<AdminToolAvailabilityView />)
 
-      expect(await screen.findByRole('heading', { name: 'Identifizieren' })).toBeInTheDocument()
+      expect(await screen.findByRole('columnheader', { name: 'Identifizieren' })).toBeInTheDocument()
     })
 
     it('leaves out a role with a single tool, which has no order to set', async () => {

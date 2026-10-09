@@ -462,8 +462,11 @@ Orchestrators:
     im Demomodus) und die H2-Konsole.
 - **Admin** (`/admin/`): Das ist die Sicht des Betreibers. Sie liegt hinter der Admin-Anmeldung
   (HTTP Basic auf `/orchestrator/admin/**`, `AdminSecurityConfig`). Sie hat diese Reiter:
-  - *Einstellungen*: Verfahren je Kanal sperren (je Fassung) und ordnen (je Tool), Reihenfolge der
-    Registrierung, Oberfläche der Keycloak-Anmeldeseiten, Beginn der Anmeldung auf `loa1`.
+  - *Einstellungen*: Oben steht der Block „Allgemein“ mit je einer Zeile und zwei Wahlknöpfen für die
+    Reihenfolge der Registrierung und die erste Anmeldeseite der Website (`SettingRow`). Darunter
+    steht eine Tabelle „Verfahren“ je Zugang (App oder Website): eine Gruppenzeile je Auswahlliste,
+    eine Zeile je Fassung mit einem An/Aus-Schalter. Beim Ausschalten fragt die Zeile nach dem Grund.
+    „Reihenfolge ändern“ öffnet einen Entwurf, der erst mit „Speichern“ gilt.
   - *Journey-Trace* über alle Konten und Geräte, mit laufender Aktualisierung.
   - *Sitzungen* zeigt die aktiven Sitzungen. Die Seite liest sie beim Öffnen und bei
     „Aktualisieren“. Sie zeigt je Kanal die Anzahl und die zehn neuesten Sitzungen des

@@ -2,6 +2,7 @@ import { t } from '../texts'
 import { Tx } from '../Tx'
 import { useEffect, useState } from 'react'
 import { ApiError, fetchLoa1Login, setLoa1Login, type Loa1Login } from '../api.ts'
+import { SettingRow } from './SettingRow'
 
 /**
  * Switches what the web channel's first sign-in page asks for: Keycloak's password or the
@@ -25,12 +26,11 @@ export function AdminLoa1LoginView() {
 
   useEffect(reload, [])
 
-  async function toggle() {
-    if (login === null) return
+  async function choose(next: Loa1Login) {
     setSwitching(true)
     try {
       setError('')
-      await setLoa1Login(login === 'ORCHESTRATOR' ? 'KEYCLOAK_PASSWORD' : 'ORCHESTRATOR')
+      await setLoa1Login(next)
       reload()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -40,43 +40,23 @@ export function AdminLoa1LoginView() {
   }
 
   return (
-    <div className="card">
-      <h2>{t('Beginn der Anmeldung im Web-Kanal')}</h2>
-      <p>
-        {t(
-          'Was Keycloak auf der ersten Anmeldeseite abfragt: sein eigenes Passwortformular oder gleich alle Verfahren des Orchestrators, ' +
-            'auch die Anmeldung per QR-Code. Gilt sofort für alle Besucher.',
-        )}
-      </p>
-      {unavailable ? (
-        <p className="hint">
+    <SettingRow
+      title={t('Erste Anmeldeseite der Website')}
+      hint={t('Was Keycloak bei „Anmelden“ zuerst zeigt: sein Passwortformular oder gleich alle Verfahren, auch die Anmeldung per QR-Code. Gilt sofort für alle.')}
+      choices={[
+        { value: 'ORCHESTRATOR', label: t('Gleich alle Verfahren zur Wahl') },
+        { value: 'KEYCLOAK_PASSWORD', label: t('Erst das Passwort') },
+      ]}
+      value={unavailable ? null : login}
+      disabled={switching}
+      onChange={choose}
+    >
+      {unavailable && (
+        <span className="setting-note">
           <Tx text="Nur verfügbar, wenn das Backend mit dem Spring-Profil {profil} läuft." profil={'"keycloak"'} />
-        </p>
-      ) : (
-        <>
-          {error && <p className="error-card">{error}</p>}
-          {login === null ? (
-            !error && <p>{t('Lädt…')}</p>
-          ) : (
-            <ul className="status-list">
-              <li>
-                <span className="label">{t('Erste Anmeldeseite')}</span>
-                <span className="value-with-action">
-                  <span className="value">{loa1LoginLabel(login)}</span>
-                  <button className="secondary small" onClick={toggle} disabled={switching}>
-                    {t('Umschalten')}
-                  </button>
-                </span>
-              </li>
-            </ul>
-          )}
-        </>
+        </span>
       )}
-    </div>
+      {error && <span className="error-text">{error}</span>}
+    </SettingRow>
   )
-}
-
-/** The wording of the website's demo column (WebChannelView). */
-function loa1LoginLabel(login: Loa1Login): string {
-  return login === 'ORCHESTRATOR' ? t('Gleich alle Verfahren zur Wahl') : t('Erst das Passwort')
 }
