@@ -41,7 +41,8 @@ einer einzigen **Rolle** (`ToolRole`). Die Rollen sind, in dieser Reihenfolge:
 In dieser Reihenfolge zeigt die Admin-Seite die Gruppen, so wie ein Nutzer ihnen begegnet. Eine
 Rangfolge zwischen den Rollen hätte keine Wirkung. Die Admin-Seite gruppiert deshalb je Kanal nach
 Rolle, und die Pfeile ▲/▼ tauschen nur innerhalb einer Gruppe. Gespeichert wird trotzdem eine Liste
-je Kanal.
+je Kanal. Die Admin-Seite sortiert in einem Entwurf und schreibt die Liste erst mit „Speichern“ auf
+einmal. Gesperrte Tools blendet sie dabei aus; sie behalten ihren Platz in der Liste.
 
 Tools, die noch nicht eingeordnet sind, stehen hinter den eingeordneten. Sie folgen der
 voreingestellten Reihenfolge (erst Rolle, dann Verfahren), die auch die Admin-Seite anzeigt. Vorher
