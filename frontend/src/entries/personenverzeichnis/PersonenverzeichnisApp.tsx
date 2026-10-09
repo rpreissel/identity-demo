@@ -63,8 +63,8 @@ export function PersonenverzeichnisApp() {
   useEffect(reload, [reload])
 
   return (
-    <div className="web-shell channel-ext">
-      <ChannelNav badge={`🏛️ ${t('Personenverzeichnis')}`} tabs={TABS} sub={tab} onSelectTab={setTab} />
+    <div className="web-shell channel-pv">
+      <ChannelNav area="pv" tabs={TABS} sub={tab} onSelectTab={setTab} />
       <div className="web-page">
         <div className="ext-banner">
           <Tx text="Simuliertes {fremdsystem}: das externe Personenverzeichnis." fremdsystem={<strong>{t('Fremdsystem')}</strong>} />{' '}

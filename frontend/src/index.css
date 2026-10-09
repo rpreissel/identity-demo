@@ -1,27 +1,57 @@
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+/* "Leitstand": one shell for every demo page (docs/10-frontend.md). A paper-light ground, dark ink,
+   IBM Plex (self-hosted, @fontsource), and one color per area of the demo - App, Website,
+   Personenverzeichnis, Briefkasten, Verwaltung, Nect - carried by the header and tinting the page,
+   so a tester always sees where they are. The phone and browser mocks pin their own values
+   (phone.css, browser.css) and do not follow these. */
 :root {
   /* Same reasoning as body's overflow-x below: the root element is the actual horizontally
      scrolling box in most browsers, not body, so the clip has to sit here too or a hidden
      DiagramHint popover still drags a scrollbar in. */
   overflow-x: hidden;
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
+  --text: #3f4452;
+  --text-h: #16181d;
+  --muted: #5b6070;
+  --bg: #f6f5f1;
+  --surface: #ffffff;
+  --border: #e2e0d8;
+  --code-bg: #f1efe9;
+  /* The area's color: header, active controls, accents. The start page has none of its own. */
+  --accent: #16181d;
+  --accent-strong: #000000;
+  --accent-bg: rgba(22, 24, 29, 0.06);
+  --accent-border: rgba(22, 24, 29, 0.3);
+  --on-accent: #ffffff;
+  --header-bg: #ffffff;
+  --header-text: #16181d;
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    rgba(22, 24, 29, 0.08) 0 10px 15px -3px, rgba(22, 24, 29, 0.04) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* The areas' colors, also used outside their own pages (navigation dots, the start page). */
+  --area-app: #2f4bd0;
+  --area-web: #0b7a61;
+  --area-pv: #8c5a00;
+  --area-mail: #a8402a;
+  --area-admin: #5b3cc4;
+  --area-nect: #7a2e56;
+  --real-bg: #e3f1ea;
+  --real-text: #145c3a;
+  --sim-bg: #f4ecdd;
+  --sim-text: #7a4e00;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
+  --sans: 'IBM Plex Sans', system-ui, 'Segoe UI', sans-serif;
+  --heading: 'IBM Plex Sans', system-ui, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+
+  font: 17px/155% var(--sans);
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -34,118 +64,71 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-/* Per-Kanal-Farbschema: eigenständige Paletten statt nur eines anderen Akzenttons, damit App- und
-   Web-Kanal auf den ersten Blick und unabhängig vom OS-Farbschema auseinanderzuhalten sind.
-   App-Kanal: dunkel + Lila (wie eine native App). Web-Kanal: hell + Blau (wie eine Website).
-   Beide setzen `color-scheme`, damit native Formularelemente mitziehen. */
-/* background/color hier explizit, nicht nur die Custom Properties: Sonst bleibt der Kanal-Wrapper
-   transparent, und das dunkle html-Grundlayout scheint um Cards und Navbar herum durch. */
-.channel-app {
-  --text: #b7b0c6;
-  --text-h: #f4f1fb;
-  --bg: #16121f;
-  --border: #35294a;
-  --code-bg: #1f1830;
-  --accent: #b458ff;
-  --accent-bg: rgba(180, 88, 255, 0.16);
-  --accent-border: rgba(180, 88, 255, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.45) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
-  color-scheme: dark;
+/* One class per area on the entry's root div. Each sets the area color, its tint as the page
+   ground and a header in the area color; background/color explicitly, so the wrapper is never
+   transparent. */
+.channel-app,
+.channel-web,
+.channel-pv,
+.channel-mail,
+.channel-admin,
+.channel-nect {
+  --header-bg: var(--accent);
+  --header-text: #ffffff;
+  color-scheme: light;
   background: var(--bg);
   color: var(--text);
+}
+
+.channel-app {
+  --accent: var(--area-app);
+  --accent-strong: #2238a8;
+  --accent-bg: rgba(47, 75, 208, 0.09);
+  --accent-border: rgba(47, 75, 208, 0.35);
+  --bg: #edf0fc;
 }
 
 .channel-web {
-  --text: #475569;
-  --text-h: #0f172a;
-  --bg: #ffffff;
-  --border: #d7e0ee;
-  --code-bg: #eef2f8;
-  --accent: #2563eb;
-  --accent-bg: rgba(37, 99, 235, 0.08);
-  --accent-border: rgba(37, 99, 235, 0.35);
-  --shadow:
-    rgba(15, 23, 42, 0.1) 0 10px 15px -3px, rgba(15, 23, 42, 0.05) 0 4px 6px -2px;
-  color-scheme: light;
-  background: var(--bg);
-  color: var(--text);
+  --accent: var(--area-web);
+  --accent-strong: #08604c;
+  --accent-bg: rgba(11, 122, 97, 0.09);
+  --accent-border: rgba(11, 122, 97, 0.35);
+  --bg: #e9f4f0;
 }
 
-/* Personenverzeichnis (/personenverzeichnis/): ein simuliertes Fremdsystem, darum eine dritte,
-   amtlich-nüchterne Palette (hell + Petrol) und eine Serifenschrift für Überschriften. Man soll
-   ohne Lesen merken, dass man nicht in unserer Anwendung ist. */
-.channel-ext {
-  --text: #3f4a4a;
-  --text-h: #102a2a;
-  --bg: #fbfaf6;
-  --border: #d6d9cf;
-  --code-bg: #eef0e8;
-  --accent: #0f766e;
-  --accent-bg: rgba(15, 118, 110, 0.08);
-  --accent-border: rgba(15, 118, 110, 0.35);
-  --heading: Georgia, 'Times New Roman', serif;
-  --shadow:
-    rgba(16, 42, 42, 0.08) 0 10px 15px -3px, rgba(16, 42, 42, 0.04) 0 4px 6px -2px;
-  color-scheme: light;
-  background: var(--bg);
-  color: var(--text);
+/* Personenverzeichnis: a simulated foreign system. */
+.channel-pv {
+  --accent: var(--area-pv);
+  --accent-strong: #6b4400;
+  --accent-bg: rgba(140, 90, 0, 0.1);
+  --accent-border: rgba(140, 90, 0, 0.35);
+  --bg: #f7f1e6;
 }
 
-/* Nect (/nect/): ein fremder Identifizierungsdienst, auf dessen Seite der Nutzer kurz wechselt -
-   hell, Korallrot, damit der Seitenwechsel aus der App heraus sofort sichtbar ist. */
-.channel-nect {
-  --text: #4a3f40;
-  --text-h: #2a1214;
-  --bg: #fffafa;
-  --border: #eed6d7;
-  --code-bg: #fbeeee;
-  --accent: #e5484d;
-  --accent-bg: rgba(229, 72, 77, 0.08);
-  --accent-border: rgba(229, 72, 77, 0.35);
-  --shadow:
-    rgba(42, 18, 20, 0.08) 0 10px 15px -3px, rgba(42, 18, 20, 0.04) 0 4px 6px -2px;
-  color-scheme: light;
-  background: var(--bg);
-  color: var(--text);
+/* Briefkasten: the recipients' side, simulated. */
+.channel-mail {
+  --accent: var(--area-mail);
+  --accent-strong: #822f1e;
+  --accent-bg: rgba(168, 64, 42, 0.09);
+  --accent-border: rgba(168, 64, 42, 0.35);
+  --bg: #f8eeeb;
 }
 
-/* Admin (/admin/): unser eigenes System, aber die Betreiber-Sicht - dunkel + Bernstein, damit sie
-   sich weder mit dem App-Kanal (Lila) noch mit dem Web-Kanal (Blau) verwechseln lässt. */
 .channel-admin {
-  --text: #c8c3b8;
-  --text-h: #f7f3ea;
-  --bg: #1a1814;
-  --border: #3a352b;
-  --code-bg: #24211b;
-  --accent: #e0a526;
-  --accent-bg: rgba(224, 165, 38, 0.14);
-  --accent-border: rgba(224, 165, 38, 0.45);
-  --shadow:
-    rgba(0, 0, 0, 0.45) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
-  color-scheme: dark;
-  background: var(--bg);
-  color: var(--text);
+  --accent: var(--area-admin);
+  --accent-strong: #432a99;
+  --accent-bg: rgba(91, 60, 196, 0.09);
+  --accent-border: rgba(91, 60, 196, 0.35);
+  --bg: #f0edfb;
+}
+
+/* Nect: a foreign identification service the user briefly switches to. */
+.channel-nect {
+  --accent: var(--area-nect);
+  --accent-strong: #5e2242;
+  --accent-bg: rgba(122, 46, 86, 0.09);
+  --accent-border: rgba(122, 46, 86, 0.35);
+  --bg: #f7eef3;
 }
 
 #root {
@@ -167,13 +150,13 @@ body {
 h1,
 h2 {
   font-family: var(--heading);
-  font-weight: 500;
+  font-weight: 700;
   color: var(--text-h);
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
+  font-size: 48px;
+  letter-spacing: -0.02em;
   margin: 32px 0;
   @media (max-width: 1024px) {
     font-size: 36px;

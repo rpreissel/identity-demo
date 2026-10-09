@@ -42,6 +42,26 @@
 /* ---- The device ------------------------------------------------------------------------------ */
 
 .phone {
+  /* The mock keeps its look whatever the shell around it does: the tokens it inherits from the
+     shell (index.css), pinned to the values it was built with. */
+  --text: #b7b0c6;
+  --text-h: #f4f1fb;
+  --bg: #16121f;
+  --surface: #16121f;
+  --border: #35294a;
+  --code-bg: #1f1830;
+  --accent: #b458ff;
+  --accent-bg: rgba(180, 88, 255, 0.16);
+  --accent-border: rgba(180, 88, 255, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.45) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+  font-family: var(--sans);
+  font-size: 18px;
+  line-height: 145%;
+  letter-spacing: 0.18px;
   --phone-blue: #006bdd;
   --phone-blue-hover: #0055b6;
   --phone-navy: #002356;
@@ -765,7 +785,7 @@
   padding: 16px 18px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: color-mix(in srgb, var(--bg) 94%, var(--accent));
+  background: var(--surface);
   box-shadow: none;
   color: var(--text-h);
 }

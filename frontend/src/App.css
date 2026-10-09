@@ -71,7 +71,7 @@
   padding: 1.5rem;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--bg);
+  background: var(--surface);
   box-shadow: var(--shadow);
 }
 
@@ -298,7 +298,7 @@
 
 .nesting-box--3 {
   margin-top: 0.85rem;
-  background: var(--bg);
+  background: var(--surface);
   border-color: var(--accent);
 }
 
@@ -376,7 +376,7 @@
   max-height: min(70vh, 640px);
   overflow-x: auto;
   overflow-y: auto;
-  background: var(--bg);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: var(--shadow);
@@ -424,7 +424,7 @@
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text-h);
   font-size: 1rem;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -573,7 +573,7 @@ a.method-choice {
   padding: 0.9rem 1.1rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text-h);
   text-align: left;
   text-decoration: none;
@@ -1091,46 +1091,166 @@ button.small,
 
 
 
-/* Beide Kanal-Chromes (App/Web) teilen dieselbe Topbar (ChannelNav.tsx). Sie unterscheiden sich nur
-   im Farbschema (.channel-app/.channel-web, index.css) und in der Breite der Inhaltsspalte. So
-   lesen sich beide Kanäle als dieselbe Art UI in verschiedenen Farben. */
+/* The shell around every demo page (ChannelNav.tsx): a header in the area's color with the
+   wordmark and the areas of the demo, under it the page's own views. index.css sets the colors. */
 .app-frame,
 .web-shell {
   width: 100%;
   min-height: 100vh;
 }
 
-.channel-topbar {
+.shell-legend {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  height: 8px;
+}
+
+.shell-legend--app { background: var(--area-app); }
+.shell-legend--web { background: var(--area-web); }
+.shell-legend--pv { background: var(--area-pv); }
+.shell-legend--mail { background: var(--area-mail); }
+.shell-legend--admin { background: var(--area-admin); }
+
+.shell-header {
+  background: var(--header-bg);
+  color: var(--header-text);
+  border-bottom: 1px solid var(--border);
+}
+
+.shell-bar {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0.8rem 1.5rem;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 0.85rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  gap: 1rem;
 }
 
-.channel-topbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.channel-topbar-tabs {
-  border-bottom: none;
-  flex-wrap: wrap;
-}
-
-.channel-badge {
+.shell-brand {
   display: inline-flex;
   align-items: center;
-  padding: 0.3rem 0.75rem;
-  border-radius: 999px;
-  background: var(--accent-bg);
+  gap: 0.7rem;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.shell-brand-mark {
+  fill: #16181d;
+}
+
+.channel-app .shell-brand-mark,
+.channel-web .shell-brand-mark,
+.channel-pv .shell-brand-mark,
+.channel-mail .shell-brand-mark,
+.channel-admin .shell-brand-mark,
+.channel-nect .shell-brand-mark {
+  fill: rgba(0, 0, 0, 0.28);
+}
+
+.shell-areas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.shell-area {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.6rem;
+  padding: 0 0.85rem;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.92rem;
+  opacity: 0.92;
+}
+
+.shell-area:hover {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  opacity: 1;
+}
+
+.shell-area.active {
+  background: var(--surface);
   color: var(--accent);
-  font-size: 0.85rem;
+  font-weight: 700;
+  opacity: 1;
+}
+
+/* On the neutral start page the current entry is dark, like the start page itself. */
+.channel-start .shell-area.active {
+  background: var(--text-h);
+  color: #ffffff;
+}
+
+.shell-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.7);
+}
+
+.shell-dot--app { background: var(--area-app); }
+.shell-dot--web { background: var(--area-web); }
+.shell-dot--pv { background: var(--area-pv); }
+.shell-dot--mail { background: var(--area-mail); }
+.shell-dot--admin { background: var(--area-admin); }
+
+.shell-subbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.shell-subbar-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.shell-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.shell-tabs button {
+  padding: 0.85rem 0.15rem;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
   font-weight: 600;
+  cursor: pointer;
+}
+
+.shell-tabs button:hover {
+  color: var(--text-h);
+}
+
+.shell-tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.shell-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
 }
 
 .web-page {
@@ -1143,12 +1263,6 @@ button.small,
 
 .web-page-wide {
   max-width: 100%;
-}
-
-.channel-topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 .card-heading-row {
@@ -1167,7 +1281,7 @@ button.small,
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text-h);
   font-size: 1rem;
 }

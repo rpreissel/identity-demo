@@ -110,7 +110,7 @@ export function NectApp() {
 
   return (
     <div className="web-shell channel-nect">
-      <ChannelNav badge={`🪪 ${t('Nect Ident')}`} />
+      <ChannelNav area="nect" />
       <div className="web-page">
         <div className="ext-banner">
           <Tx text="Simulierter {dienst} (Nect)." dienst={<strong>{t('Identifizierungsdienst')}</strong>} />{' '}

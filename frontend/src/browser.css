@@ -26,6 +26,26 @@
 /* ---- The window ------------------------------------------------------------------------------ */
 
 .browser {
+  /* The mock keeps its look whatever the shell around it does: the tokens it inherits from the
+     shell (index.css), pinned to the values it was built with. */
+  --text: #475569;
+  --text-h: #0f172a;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --border: #d7e0ee;
+  --code-bg: #eef2f8;
+  --accent: #2563eb;
+  --accent-bg: rgba(37, 99, 235, 0.08);
+  --accent-border: rgba(37, 99, 235, 0.35);
+  --shadow:
+    rgba(15, 23, 42, 0.1) 0 10px 15px -3px, rgba(15, 23, 42, 0.05) 0 4px 6px -2px;
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+  font-family: var(--sans);
+  font-size: 18px;
+  line-height: 145%;
+  letter-spacing: 0.18px;
   --site-text: #454542;
   --site-strong: #333332;
   --site-muted: #6f6e6b;

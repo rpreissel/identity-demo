@@ -45,7 +45,7 @@ export function AdminApp() {
   if (!loggedIn) {
     return (
       <div className="web-shell channel-admin">
-        <ChannelNav badge={'🛠️ ' + t('Admin')} />
+        <ChannelNav area="admin" />
         <div className="web-page">
           <LoginForm onLoggedIn={() => setLoggedIn(true)} />
         </div>
@@ -56,7 +56,7 @@ export function AdminApp() {
   return (
     <div className="web-shell channel-admin">
       <ChannelNav
-        badge={'🛠️ ' + t('Admin')}
+        area="admin"
         tabs={TABS}
         sub={tab}
         onSelectTab={setTab}

@@ -13,6 +13,8 @@ import { ActiveSessionsView } from '../../components/ActiveSessionsView'
 import { DeveloperTools } from '../../components/DeveloperTools'
 import { Disclosure } from '../../components/Disclosure'
 import { markAsStartWindow } from '../../startWindow'
+import { ChannelNav } from '../../components/ChannelNav'
+import { ADMIN_TAB, APP_TAB, MAILBOX_TAB, REGISTER_TAB, WEB_TAB } from '../../areas'
 import { t } from '../../texts'
 import { Tx } from '../../Tx'
 import { useHashTab } from '../../useHashTab'
@@ -24,13 +26,6 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'begriffe', label: t('Begriffe') },
   { key: 'status', label: t('Server-Status') },
 ]
-
-/** The named tabs the demo's pages open in, so an open one is reused (docs/10-frontend.md #5). */
-const APP_TAB = 'identity-demo-app-kanal'
-const WEB_TAB = 'identity-demo-web-kanal'
-const REGISTER_TAB = 'identity-demo-register'
-const ADMIN_TAB = 'identity-demo-admin'
-const MAILBOX_TAB = 'identity-demo-briefkasten'
 
 const REPO = 'https://github.com/rpreissel/identity-demo'
 
@@ -56,23 +51,18 @@ export function WelcomeApp() {
   }, [])
 
   return (
-    <div className="app welcome">
-      <header className="app-header">
-        <h1>{t('Identity Journey')}</h1>
-        <p>{t('Legen Sie ein Konto an, melden Sie sich an wie bei einer Krankenkasse, und schauen Sie dabei hinter die Kulissen.')}</p>
-      </header>
+    <div className="web-shell channel-start">
+      <ChannelNav tabs={TABS} sub={tab} onSelectTab={setTab} />
+      <div className="app welcome">
+        <header className="app-header">
+          <h1>{t('Identity Journey')}</h1>
+          <p>{t('Legen Sie ein Konto an, melden Sie sich an wie bei einer Krankenkasse, und schauen Sie dabei hinter die Kulissen.')}</p>
+        </header>
 
-      <div className="app-tabs" role="tablist">
-        {TABS.map((x) => (
-          <button key={x.key} role="tab" aria-selected={tab === x.key} className={tab === x.key ? 'active' : ''} onClick={() => setTab(x.key)}>
-            {x.label}
-          </button>
-        ))}
+        {tab === 'loslegen' && <GetStarted keycloak={keycloak} />}
+        {tab === 'begriffe' && <Glossary />}
+        {tab === 'status' && <ServerStatus />}
       </div>
-
-      {tab === 'loslegen' && <GetStarted keycloak={keycloak} />}
-      {tab === 'begriffe' && <Glossary />}
-      {tab === 'status' && <ServerStatus />}
     </div>
   )
 }

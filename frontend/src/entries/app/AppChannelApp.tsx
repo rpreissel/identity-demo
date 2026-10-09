@@ -917,7 +917,7 @@ export function AppChannelApp() {
     <DemoProvider>
       {(demoTargets) => (
         <div className="app-frame channel-app">
-          <ChannelNav badge={`📱 ${t('App-Kanal')}`} />
+          <ChannelNav area="app" />
           <div className="app-stage">
             <div className="app-stage__phone">
               <PhoneFrame title="Demo" footer={discardQuestion || undefined}>

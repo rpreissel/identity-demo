@@ -88,8 +88,8 @@ export function BriefkastenApp() {
   const kindLabel = { brief: `📮 ${t('Brief')}`, sms: `📱 ${t('SMS')}`, mail: `✉️ ${t('E-Mail')}` }
 
   return (
-    <div className="web-shell channel-ext">
-      <ChannelNav badge={`📬 ${t('Briefkasten')}`} />
+    <div className="web-shell channel-mail">
+      <ChannelNav area="mail" />
       <div className="web-page">
         <div className="ext-banner">
           {t('Simuliert: die Seite der Empfänger. Was an Testpersonen verschickt wird, landet hier statt auf dem Handy, im E-Mail-Postfach oder im Briefkasten zu Hause.')}
