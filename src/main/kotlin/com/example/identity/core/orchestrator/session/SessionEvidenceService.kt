@@ -56,19 +56,6 @@ class SessionEvidenceService(
     }
 
     /**
-     * Syncs [source]'s complete currently valid set (docs/05-api.md Abschnitt 3b, see
-     * [SessionEvidenceRecord.replaceForSource]). [source] scopes which records may be removed, even when
-     * [updates] is empty because everything expired.
-     */
-    fun applyEvidenceUpdate(sessionEvidenceId: SessionEvidenceId, updates: List<MethodEvidence>, source: String) {
-        val evidence = sessionEvidenceRepository.findBySessionEvidenceId(sessionEvidenceId)
-            ?: error("SessionEvidenceRecord not found: $sessionEvidenceId")
-        evidence.replaceForSource(source, updates, clock.instant())
-        sessionEvidenceRepository.save(evidence)
-        invalidateCachedTokens(sessionEvidenceId)
-    }
-
-    /**
      * Evidence changed, so tokens minted from it are stale; both token providers cache by time
      * only. Clearing, not re-minting, keeps this service free of [TokenProvider]. The RefreshToken
      * goes too: [KeycloakTokenProvider]'s refresh path (ADR-9) would keep renewing with pre-step-up
@@ -84,15 +71,15 @@ class SessionEvidenceService(
     }
 
     /**
-     * Links a [ChannelSession] to its session evidence, creating one if needed, and syncs [source]'s
-     * set via [applyEvidenceUpdate].
+     * Links a [ChannelSession] to its session evidence, creating one if needed, and adds [updates]
+     * via [applyEvidence].
      */
-    fun attachToChannel(channel: ChannelSession, source: String, updates: List<MethodEvidence>) {
+    fun attachToChannel(channel: ChannelSession, updates: List<MethodEvidence>) {
         val accountId = checkNotNull(channel.accountId) { "Evidence update without a known account" }
         if (channel.sessionEvidenceId == null) {
             channel.sessionEvidenceId = createForAccount(accountId).sessionEvidenceId
             sessionManagementService.updateChannelSession(channel)
         }
-        applyEvidenceUpdate(checkNotNull(channel.sessionEvidenceId), updates, source)
+        applyEvidence(checkNotNull(channel.sessionEvidenceId), updates)
     }
 }

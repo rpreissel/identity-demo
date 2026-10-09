@@ -68,11 +68,11 @@ components:
         amr:
           additionalProperties:
             type: string
-          description: 'Method -> who vouches for it: "orchestrator" for a tool completed in this channel, "kc" for evidence
-            carried over from an earlier flow run of the same Keycloak session (RestoreData, docs/05-api.md Abschnitt 3b).
-            Informational only - the orchestrator alone still resolves the combined acr above, regardless of source.'
+          description: 'The proven methods, each mapped to "orchestrator": every proof is an orchestrator tool''s, also one
+            carried over by RestoreData (ADR-58). The map shape stays for compatibility. Informational only - the orchestrator
+            alone resolves the combined acr above.'
           example:
-            password: kc
+            password: orchestrator
             sms: orchestrator
           type: object
         subject:

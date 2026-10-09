@@ -335,8 +335,9 @@ gelten:
   Ergebnis, eine zugesicherte Fähigkeit eines Tools und eine Voraussetzung.
 - `AcrLevel`, `EvidenceAxis`, `FactorType`, `acrFloor` und `targetAcr` gehören zu verschiedenen
   Sicherheitsregeln.
-- `ClaimSource` ist die Quelle einer Angabe. `AmrSource` sagt, woher ein Nachweis der Sitzung
-  kommt. Beide haben unterschiedliche Werte.
+- `ClaimSource` ist die Quelle einer Angabe. Ein Nachweis der Sitzung hat keine eigene Quelle mehr:
+  Jeder stammt aus einem Tool des Orchestrators
+  ([ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)).
 
 Die Entscheidungen dazu stehen in [12-entscheidungen.md](12-entscheidungen.md) (ADR-10, ADR-11,
 ADR-12, ADR-19) und in `db/migration/KONVENTIONEN.md`. Die Begriffe erklärt das

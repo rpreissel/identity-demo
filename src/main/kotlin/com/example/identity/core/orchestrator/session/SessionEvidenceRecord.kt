@@ -21,7 +21,6 @@ import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.UUID
-import com.example.identity.core.orchestrator.domain.AmrSource
 
 /**
  * The persisted evidence record, kept apart from the tokens issued from it (ADR-15). One per
@@ -79,13 +78,6 @@ class SessionEvidenceRecord(
     val currentAmr: List<String> get() = methods.map { it.method }
 
     /**
-     * Who proved each entry in [currentAmr]: [AmrSource.ORCHESTRATOR] or [AmrSource.KEYCLOAK]
-     * (docs/05-api.md Abschnitt 3b). Exposed via `AuthData.amr` on WEB channels for
-     * information only; the orchestrator alone resolves the combined `acr`.
-     */
-    val currentAmrSource: Map<String, String> get() = methods.associate { it.method to it.source }
-
-    /**
      * Each entry's loa (docs/05-api.md Abschnitt 3b), the only figure `AuthPolicy.resolveAcr` prices
      * from, whether an orchestrator tool proved it here or it was restored from Keycloak's session.
      */
@@ -112,18 +104,14 @@ class SessionEvidenceRecord(
 
     /**
      * Merge: adds or updates the given methods, never removes one. Used for the proof of a single
-     * completed tool. Per entry, an orchestrator proof upgrades a method last reported by Keycloak,
-     * whose report the orchestrator cannot verify (ADR-7). The reverse never happens. [factorTypes]
-     * stay unioned over the trail.
+     * completed tool and for restored evidence. [factorTypes] stay unioned over the trail.
      */
     fun addAmr(updates: List<MethodEvidence>, now: Instant) {
         for (update in updates) {
             val method = update.method.value
             val existing = methods.find { it.method == method }
-            val newSource = if (existing == null || existing.source == AmrSource.KEYCLOAK) update.source else existing.source
             val record = MethodEvidenceRecord(
                 method = method,
-                source = newSource,
                 loa = update.loa.value,
                 enrolledUnderAcr = update.enrolledUnderAcr?.value,
                 factorTypes = (existing?.factorTypes ?: emptySet()) + update.factorTypes,
@@ -136,27 +124,11 @@ class SessionEvidenceRecord(
         }
         updatedAt = now
     }
-
-    /**
-     * Sync, not merge: [updates] is the caller's complete currently valid set for [source]
-     * (docs/05-api.md Abschnitt 3b). A record owned by [source] whose method is missing has expired
-     * and is dropped. Records owned by another source stay, so Keycloak never downgrades an
-     * orchestrator proof. The rest is upserted as in [addAmr].
-     */
-    fun replaceForSource(source: String, updates: List<MethodEvidence>, now: Instant) {
-        val stillValid = updates.map { it.method.value }.toSet()
-        val expired = methods.filter { it.source == source && it.method !in stillValid }
-        if (expired.isNotEmpty()) {
-            methods = methods.filterNot { it in expired }.toMutableList()
-        }
-        addAmr(updates, now)
-    }
 }
 
 /** One method's record within [SessionEvidenceRecord.methods]. */
 data class MethodEvidenceRecord(
     val method: String,
-    val source: String,
     val loa: String,
     val enrolledUnderAcr: String? = null,
     val factorTypes: Set<FactorType> = emptySet(),
@@ -169,12 +141,12 @@ data class MethodEvidenceRecord(
 )
 
 /**
- * Rebuilds the [MethodEvidence] this record represents, including `source` and `amrSourceId`,
+ * Rebuilds the [MethodEvidence] this record represents, including `amrSourceId`,
  * which `SessionEvidence.from(...)` defaults away. Every reader of a stored [SessionEvidenceRecord] goes
  * through here.
  */
 fun MethodEvidenceRecord.toMethodEvidence(): MethodEvidence =
-    MethodEvidence(MethodName(method), AcrLevel.parse(loa) ?: AcrLevel.NONE, enrolledUnderAcr?.let(AcrLevel::parse), factorTypes, source, amrSourceId, axis, provenAt)
+    MethodEvidence(MethodName(method), AcrLevel.parse(loa) ?: AcrLevel.NONE, enrolledUnderAcr?.let(AcrLevel::parse), factorTypes, amrSourceId, axis, provenAt)
 
 /** The core [SessionEvidence] this channel's evidence currently is. */
 fun SessionEvidenceRecord.toCoreEvidence(): SessionEvidence = SessionEvidence(methods.map { it.toMethodEvidence() })

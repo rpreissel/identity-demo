@@ -9,10 +9,9 @@ fun SessionEvidence.Companion.fromNow(
     factorTypes: Set<FactorType>,
     methodAcr: Map<String, String> = emptyMap(),
     enrolledUnderAcr: Map<String, String> = emptyMap(),
-    source: Map<String, String> = emptyMap(),
     amrSourceId: Map<String, String> = emptyMap(),
     axis: Map<String, EvidenceAxis> = emptyMap(),
-): SessionEvidence = from(amr, factorTypes, methodAcr, enrolledUnderAcr, source, amrSourceId, axis).provenAt()
+): SessionEvidence = from(amr, factorTypes, methodAcr, enrolledUnderAcr, amrSourceId, axis).provenAt()
 
 /** The same evidence, every proof stamped with [at]. */
 fun SessionEvidence.provenAt(at: java.time.Instant = TEST_NOW): SessionEvidence = SessionEvidence(methods.map { it.copy(provenAt = at) })

@@ -88,7 +88,7 @@ class JourneyActionExecutor(
             is Action.AdoptCredential -> demoNotice = performAdoptCredential(journey, channel, action)
             is Action.AcceptProof -> performAcceptProof(journey, channel, action)
             is Action.ApplyRestoredEvidence ->
-                journeyRecorder.mergeEvidence(journey, channel, action.source, action.methods)
+                journeyRecorder.restoreEvidence(channel, action.methods)
             // The tool already wrote its own effect (QrLoginRequest). A peer approval proves nothing
             // on this channel (no amr, on no evidence axis), so this bookkeeping never changes its evidence.
             is Action.RecordApproval -> journeyRecorder.recordToolCompletion(journey, channel, action.tool, action.outcome, action.tool.levelOf(action.outcome))

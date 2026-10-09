@@ -4,7 +4,6 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodName
-import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.nimbusds.jose.JWSAlgorithm
@@ -73,9 +72,6 @@ class RestoreDataCodec(private val clock: Clock, private val ttl: Duration = TTL
         put("loa", loa.value)
         enrolledUnderAcr?.let { put("enrolledUnderAcr", it.value) }
         if (factorTypes.isNotEmpty()) put("factorTypes", factorTypes.map { it.name })
-        // Both carried verbatim: `source` keeps a restored method's orchestrator strength instead
-        // of degrading it to a Keycloak self-report.
-        put("source", source)
         put("amrSourceId", amrSourceId)
         // Restoring a proof must not make it young again (docs/04-orchestrierung.md #4).
         provenAt?.let { put("provenAt", it.epochSecond) }
@@ -89,8 +85,7 @@ class RestoreDataCodec(private val clock: Clock, private val ttl: Duration = TTL
         factorTypes = (this["factorTypes"] as? List<String>)?.mapNotNull { name ->
             runCatching { FactorType.valueOf(name) }.getOrNull()
         }?.toSet() ?: emptySet(),
-        source = this["source"] as? String ?: AmrSource.KEYCLOAK,
-        amrSourceId = this["amrSourceId"] as? String ?: this["method"] as String,
+        amrSourceId = this["amrSourceId"] as String,
         // Without a time the proof is of unknown age, never a fresh one.
         provenAt = (this["provenAt"] as? Number)?.let { Instant.ofEpochSecond(it.toLong()) } ?: Instant.EPOCH,
     )

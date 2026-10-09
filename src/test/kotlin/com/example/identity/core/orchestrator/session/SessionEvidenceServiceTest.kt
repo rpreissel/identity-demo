@@ -16,9 +16,8 @@ import java.util.UUID
 
 /**
  * Unit test of [SessionEvidenceService]'s cache invalidation: after a step-up no stale AccessToken may
- * stay pollable in an [AppTokenSession]. [SessionEvidenceService.applyEvidence] and
- * [SessionEvidenceService.applyEvidenceUpdate] both change the [SessionEvidenceRecord] row a token was
- * minted from, so both clear every [AppTokenSession] pointing at it.
+ * stay pollable in an [AppTokenSession]. [SessionEvidenceService.applyEvidence] changes the
+ * [SessionEvidenceRecord] row a token was minted from, so it clears every [AppTokenSession] pointing at it.
  */
 class SessionEvidenceServiceTest : BehaviorSpec({
 
@@ -39,24 +38,12 @@ class SessionEvidenceServiceTest : BehaviorSpec({
             }
         }
 
-        `when`("a source's complete set is synced (applyEvidenceUpdate)") {
-            val fixture = SessionEvidenceFixture(sessionEvidenceId, refreshWindow)
-            fixture.service.applyEvidenceUpdate(sessionEvidenceId, emptyList(), "kc")
-
-            then("the cached tokens are cleared and saved") {
-                fixture.cachedTokensAreCleared()
-            }
-
-            then("the session and its window stay") {
-                fixture.appTokenSession!!.refreshExpiresAt shouldBe refreshWindow
-            }
-        }
     }
 
     given("evidence no AppTokenSession was ever minted from") {
-        `when`("a source's complete set is synced") {
+        `when`("evidence is added") {
             val fixture = SessionEvidenceFixture(sessionEvidenceId, refreshWindow = null)
-            fixture.service.applyEvidenceUpdate(sessionEvidenceId, emptyList(), "kc")
+            fixture.service.applyEvidence(sessionEvidenceId, emptyList())
 
             then("nothing is saved - nothing to invalidate") {
                 verify(exactly = 0) { fixture.appTokenSessionRepository.save(any()) }

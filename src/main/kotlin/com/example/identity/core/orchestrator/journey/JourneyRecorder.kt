@@ -4,11 +4,9 @@ import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.account.SignInLog
-import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodName
 import com.example.identity.core.orchestrator.domain.policy.evidenceAxis
-import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.session.SessionEvidenceService
 import com.example.identity.core.orchestrator.session.ChannelSession
@@ -17,10 +15,9 @@ import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.stereotype.Component
-import com.example.identity.core.orchestrator.session.forLog
 
 /**
- * Records what a completed step writes outside the state machine's tables: evidence syncs,
+ * Records what a completed step writes outside the state machine's tables: restored evidence,
  * per-tool evidence, session events and the account's change log. It never decides anything.
  */
 @Component
@@ -28,31 +25,14 @@ class JourneyRecorder(
     private val sessionEvidenceService: SessionEvidenceService,
     private val accountService: AccountService,
     private val signInLog: SignInLog,
-    private val journeyTraceService: JourneyTraceService,
-    private val journeyTraceDetails: JourneyTraceDetails,
-    private val codec: JourneyStateCodec
 ) {
 
-    /** Merges [source]'s complete current evidence set into the channel. */
-    fun mergeEvidence(journey: AuthJourney, channel: ChannelSession, source: String, updates: List<MethodEvidence>) {
-        // [source]'s set before the update. Callers resend their complete set on every call
-        // (docs/05-api.md Abschnitt 3b), so only a real change is logged.
-        val before = channel.sessionEvidenceId
-            ?.let { sessionEvidenceService.getSessionEvidence(it) }?.methods.orEmpty()
-            .filter { it.source == source }
-            .map { Triple(it.method, it.loa, it.amrSourceId) }
-            .toSet()
-        val after = updates.map { Triple(it.method.value, it.loa.value, it.amrSourceId) }.toSet()
-
-        sessionEvidenceService.attachToChannel(channel, source, updates)
-        if (before != after) {
-            // The transition after it does not show what changed. snake_case marks an entry that
-            // is no transition.
-            journeyTraceService.record(channel.forLog(), journey.forLog(), "evidence_synced",
-                journeyState = codec.read(journey)::class.simpleName,
-                detail = mapOf("source" to source, "methods" to journeyTraceDetails.methodEvidenceDetail(updates))
-            )
-        }
+    /**
+     * Adds what an earlier flow run proved to a fresh channel's evidence. The transition that
+     * performs it lists the methods in the journey trace.
+     */
+    fun restoreEvidence(channel: ChannelSession, methods: List<MethodEvidence>) {
+        sessionEvidenceService.attachToChannel(channel, methods)
     }
 
     /**
@@ -79,7 +59,6 @@ class JourneyRecorder(
             // The account's enrollment record for this method (docs/06-ablaeufe.md #1).
                 enrolledUnderAcr = accountId?.let { accountService.findActiveMethod(it, method)?.enrolledUnderAcr }?.let(AcrLevel::parse),
                 factorTypes = tool.factorsOf(outcome),
-                source = AmrSource.ORCHESTRATOR,
                 amrSourceId = tool.toolId.value,
                 axis = axis,
             )
@@ -120,7 +99,6 @@ class JourneyRecorder(
         val amr = evidence?.currentAmr.orEmpty()
         // The orchestrator tools behind it, in the version this client spoke (ADR-51).
         val tools = evidence?.methods.orEmpty()
-            .filter { it.source == AmrSource.ORCHESTRATOR }
             .mapNotNull { it.amrSourceId?.let(channel::declaredVersionOf) }
             .distinct()
         when (val subject = channel.subject ?: return) {

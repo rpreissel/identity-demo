@@ -10,7 +10,6 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AccountService
-import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.core.orchestrator.domain.SessionEvidenceId
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
@@ -261,8 +260,8 @@ private fun appTokenSession(
 private fun smsAndPasswordEvidence(accountId: AccountId) = SessionEvidenceRecord(Subject.Account(accountId), TEST_NOW).apply {
     addAmr(
         listOf(
-            MethodEvidence(MethodName("sms"), AcrLevel.LOA1, amrSourceId = "auth-sms", source = AmrSource.ORCHESTRATOR),
-            MethodEvidence(MethodName("password"), AcrLevel.LOA1, amrSourceId = "auth-password", source = AmrSource.ORCHESTRATOR),
+            MethodEvidence(MethodName("sms"), AcrLevel.LOA1, amrSourceId = "auth-sms"),
+            MethodEvidence(MethodName("password"), AcrLevel.LOA1, amrSourceId = "auth-password"),
         ),
         now = TEST_NOW
     )

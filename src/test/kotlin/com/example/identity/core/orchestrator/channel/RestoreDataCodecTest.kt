@@ -5,7 +5,6 @@ import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodName
@@ -34,7 +33,6 @@ class RestoreDataCodecTest : BehaviorSpec({
                     loa = AcrLevel.LOA1,
                     enrolledUnderAcr = AcrLevel.LOA1,
                     factorTypes = setOf(FactorType.POSSESSION),
-                    source = AmrSource.ORCHESTRATOR,
                     amrSourceId = "auth-sms",
                     provenAt = TEST_NOW.minus(Duration.ofMinutes(20))
                 ),
@@ -42,8 +40,7 @@ class RestoreDataCodecTest : BehaviorSpec({
                     method = MethodName("password"),
                     loa = AcrLevel.LOA1,
                     factorTypes = setOf(FactorType.KNOWLEDGE),
-                    source = AmrSource.KEYCLOAK,
-                    amrSourceId = "auth-username-password-form",
+                    amrSourceId = "auth-password",
                     provenAt = TEST_NOW.minus(Duration.ofMinutes(5))
                 )
             )

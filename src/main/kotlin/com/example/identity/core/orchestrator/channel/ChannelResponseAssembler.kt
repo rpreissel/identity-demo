@@ -8,7 +8,6 @@ import com.example.identity.core.account.AuthMethodView
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
-import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.core.orchestrator.session.SessionEvidenceService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.domain.ChannelState
@@ -70,7 +69,9 @@ class ChannelResponseAssembler(
     fun authDataFor(channel: ChannelSession): AuthData? {
         if (channel.channel != ChannelType.WEB) return null
         val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
-        val amr = evidence?.currentAmr?.associateWith { evidence.currentAmrSource[it] ?: AmrSource.ORCHESTRATOR }
+        // Method -> who proved it. Since ADR-58 every proof is an orchestrator tool's; the map's shape
+        // stays for the frozen envelope (ADR-50).
+        val amr = evidence?.currentAmr?.associateWith { "orchestrator" }
         val acr = evidence?.let {
             val account = channel.accountId?.let { id -> accountService.findAccount(id) }
             authPolicy.resolveAcr(it.toCoreEvidence(), account)

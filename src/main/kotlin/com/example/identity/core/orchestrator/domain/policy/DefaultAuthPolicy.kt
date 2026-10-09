@@ -142,7 +142,7 @@ class DefaultAuthPolicy(
             val projected = SessionEvidence(
                 evidence.methods + MethodEvidence(
                     MethodName(m.method), cappedAcr(m, d), AcrLevel.parse(m.enrolledUnderAcr), d.factorTypes,
-                    source = "simulation", amrSourceId = "simulation", provenAt = clock.instant()
+                    amrSourceId = "simulation", provenAt = clock.instant()
                 ),
             )
             val helpsLevel = applyMfaBump(baseAcr(projected.methods), projected) >= requiredAcr

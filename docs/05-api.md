@@ -1061,11 +1061,12 @@ Keycloak. Hier gibt es eine für Konten und eine für Einladungen, jede mit eine
 als Komponenten-Id. Keycloak lässt nie zu, dass ein Subjekt die Sitzung eines anderen fortsetzt
 (`LoginCompletion`).
 
-`amr` ordnet jedem Verfahren seine Quelle zu: `"orchestrator"` für ein abgeschlossenes Tool des
-Orchestrators in diesem Kanal, `"kc"` für einen Nachweis, den Keycloaks Sitzung aus einem früheren
-Durchlauf weitergibt (RestoreData). Keycloak selbst prüft kein Verfahren
-([ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). Das ist nur eine Information. Den
-kombinierten `acr` bestimmt ausschließlich der Orchestrator.
+`amr` nennt die nachgewiesenen Verfahren, jedes mit dem Wert `"orchestrator"`. Jeder Nachweis
+stammt aus einem Tool des Orchestrators, auch einer, den RestoreData aus einem früheren Durchlauf
+übernimmt. Keycloak selbst prüft kein Verfahren
+([ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). Die Form einer
+Zuordnung bleibt, damit der Vertrag gleich bleibt. Das ist nur eine Information. Den kombinierten
+`acr` bestimmt ausschließlich der Orchestrator.
 
 #### Welche Tools der Web-Kanal anbietet
 

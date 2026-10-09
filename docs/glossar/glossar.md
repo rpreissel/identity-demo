@@ -482,17 +482,9 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   verantwortlich ist: das Personenverzeichnis, ein Prüfverfahren wie der Online-Ausweis oder der
   Nutzer selbst. Aus der Quelle folgt, wie verlässlich
   die Angabe ist. Auch ein Widerruf nennt seine Quelle, etwa „vom Personenverzeichnis gemeldet“.
-  Nicht zu verwechseln mit der Quelle eines Nachweises.
   *Im Code:* `ClaimSource`. Beim Widerruf `RetractionSource`, Spalte `claim_source`.
   *Mehr dazu:* [02-domaenenmodell](../02-domaenenmodell.md) Abschnitt 6,
   [ADR-12](../adr/ADR-012-ein-widerruf-ist-eine-eigene-zeile-mit-eigenem.md).
-- **Quelle eines Nachweises**: Sie sagt, woher ein Nachweis in der Sitzung stammt. Das ist
-  entweder ein Tool des Orchestrators in diesem Kanal oder Keycloaks Sitzung, die Nachweise eines
-  früheren Anmeldedurchlaufs weitergibt (RestoreData). Keycloak selbst prüft kein Verfahren
-  ([ADR-58](../adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). Nicht zu
-  verwechseln mit der Quelle einer Angabe.
-  *Im Code:* `AmrSource` mit `orchestrator` und `kc`.
-  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3b.
 
 ## R
 

@@ -63,15 +63,7 @@ sealed interface Action {
      * Übergang"). No strategy sees this action; it runs before `initialState()`.
      */
     data class ApplyRestoredEvidence(
-        /**
-         * Which foreign system vouches for [methods] (e.g. `AmrSource.KEYCLOAK`). Evidence is merged
-         * per source, so a later report from the same source replaces its own set.
-         */
-        val source: String,
-        /**
-         * The complete current set from [source], not a delta: every caller re-reports everything
-         * it knows on every call (docs/05-api.md Abschnitt 3b).
-         */
+        /** What an earlier flow run of the same Keycloak session proved, each with its original age. */
         val methods: List<MethodEvidence>
     ) : Action
 

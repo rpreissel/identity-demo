@@ -157,7 +157,7 @@ class AccountRulesTest : BehaviorSpec({
 
     // An attested address that belongs to another account.
     fun evidence(axis: EvidenceAxis) = SessionEvidence(listOf(
-        MethodEvidence(MethodName("m"), AcrLevel.LOA2, source = "ORCHESTRATOR", amrSourceId = "t", axis = axis)
+        MethodEvidence(MethodName("m"), AcrLevel.LOA2, amrSourceId = "t", axis = axis)
     ))
 
     given("an attested address of another account, no identification in this session") {

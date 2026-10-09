@@ -13,7 +13,6 @@ import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
-import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.AppTokenSessionService
 import com.example.identity.core.orchestrator.session.SessionEvidenceService
@@ -112,7 +111,7 @@ class KeycloakChannelService(
         // restoreDataToken carries an earlier flow run's state (docs/05-api.md Abschnitt 3b). decode()
         // checks it is bound to [restoreDataKeycloakSessionId], Keycloak's durable UserSessionModel id,
         // which differs from assertion.channelBinding. A wrong, tampered or expired token yields null,
-        // like "nothing to restore". Restored methods keep their original `source`.
+        // like "nothing to restore". Restored methods keep their original age.
         val restoreData = restoreDataToken?.let { restoreDataCodec.decode(it, restoreDataKeycloakSessionId) }
         // Keycloak's user and the restore token must name the same subject. Preferring one would let
         // a mis-attributed Keycloak user carry this session's evidence elsewhere. An invitation's
@@ -184,7 +183,7 @@ class KeycloakChannelService(
         return if (seedFactors.isNotEmpty()) {
             channelService.resumeChannel(
                 sessionManagementService.reloadChannelSession(channelSessionId),
-                Action.ApplyRestoredEvidence(AmrSource.KEYCLOAK, seedFactors)
+                Action.ApplyRestoredEvidence(seedFactors)
             )
         } else {
             channelService.resumeChannel(sessionManagementService.reloadChannelSession(channelSessionId))

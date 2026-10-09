@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.domain.policy
 
-import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolRole
@@ -58,21 +57,14 @@ data class MethodEvidence(
     val loa: AcrLevel,
     /**
      * This method's ceiling for an MFA combination (docs/06-ablaeufe.md #1), from its enrollment
-     * record. For a method Keycloak reported natively the caller supplies it (docs/05-api.md
-     * Abschnitt 3b). Null contributes nothing to the cap.
+     * record. Null contributes nothing to the cap.
      */
     val enrolledUnderAcr: AcrLevel? = null,
     /** The factor kinds this method contributes. */
     val factorTypes: Set<FactorType> = emptySet(),
     /**
-     * [AmrSource.ORCHESTRATOR] or [AmrSource.KEYCLOAK]. [AuthPolicy] does not read it. Carried here
-     * so it survives a `RestoreData` round-trip; otherwise restored evidence could later downgrade a
-     * method an orchestrator tool proved.
-     */
-    val source: String,
-    /**
-     * What produced this proof: an orchestrator tool's `toolId`, Keycloak's authenticator id
-     * (docs/05-api.md Abschnitt 3b), or `"simulation"` for a candidate the policy projects.
+     * What produced this proof: an orchestrator tool's `toolId`, or `"simulation"` for a candidate
+     * the policy projects.
      */
     val amrSourceId: String,
     /** Which trust question this entry answers; only an identification sets [EvidenceAxis.IDENTITY]. */
@@ -111,7 +103,6 @@ data class SessionEvidence(
             factorTypes: Set<FactorType>,
             methodAcr: Map<String, String> = emptyMap(),
             enrolledUnderAcr: Map<String, String> = emptyMap(),
-            source: Map<String, String> = emptyMap(),
             amrSourceId: Map<String, String> = emptyMap(),
             axis: Map<String, EvidenceAxis> = emptyMap(),
         ): SessionEvidence = SessionEvidence(
@@ -121,8 +112,6 @@ data class SessionEvidence(
                     methodAcr[m]?.let(AcrLevel::parse) ?: AcrLevel.NONE,
                     enrolledUnderAcr[m]?.let(AcrLevel::parse),
                     factorTypes,
-                    // Default for callers without an opinion; AuthPolicy does not read it.
-                    source[m] ?: AmrSource.ORCHESTRATOR,
                     // Falls back to the method name when the caller has no source id.
                     amrSourceId[m] ?: m,
                     // An identification (e.g. "fsc") must say so explicitly.

@@ -117,15 +117,13 @@ com.example.identity
   Implementiert die `tool_api`-Ports `ToolJourney`, `Lockouts`, `DeviceProofs` und `RateLimits`.
 - **M1a** `orchestrator.domain` — Kein eigenes Modulith-Modul, sondern das unterste Paket
   **innerhalb** von `orchestrator`. Es enthält:
-  - die gemeinsamen Begriffe (`AuthIntent`, `AmrSource`, `AcrLevels`, `OrchestratorException`,
+  - die gemeinsamen Begriffe (`AuthIntent`, `AcrLevels`, `OrchestratorException`,
     `FeatureFlagProvider`, `ToolCatalog`),
   - den fachlichen Kern: die Zustände der Journeys, `IntentStrategy` mit `Transition`/`Action`,
     `AuthPolicy` und `SessionEvidence`.
 
   Alle anderen Pakete des Orchestrators dürfen von diesem Paket abhängen, es selbst aber von keinem.
-  Dadurch bleiben die Pakete des Orchestrators frei von zyklischen Abhängigkeiten. Ein Beispiel:
-  `AmrSource` gibt an, woher ein Nachweis stammt. Das ist eine Frage der Richtlinie. Deshalb liegt
-  `AmrSource` hier und nicht neben der JPA-Entität, die den Nachweis speichert. Regel, Inhalt und
+  Dadurch bleiben die Pakete des Orchestrators frei von zyklischen Abhängigkeiten. Regel, Inhalt und
   empfohlene Lesereihenfolge stehen unter [Fachkern und Technik](#fachkern-und-technik).
 - **M4** `account` — Konten, Identifizierungen und Anmeldeverfahren. Implementiert die
   `tool_api`-Ports `AccountDirectory` und `IdentityResolver`.
@@ -452,7 +450,7 @@ Lesesicht `account.AccountProfile`). Beide Regeln prüft ArchUnit, ein Werkzeug 
 
 **Was im Orchestrator wo liegt.**
 
-- `orchestrator.domain` (M1a): die Grundbegriffe – `AuthIntent`, `AcrLevels`, `AmrSource`,
+- `orchestrator.domain` (M1a): die Grundbegriffe – `AuthIntent`, `AcrLevels`,
   `ChannelType`, `ErrorCode`, `OrchestratorException`, `ToolCatalog`.
 - `orchestrator.domain.journey`: `IntentStrategy`, `JourneyContext`, `JourneyEvent`, `Transition`,
   `Action`. Darunter liegen `state` (die Zustände je Intent) und `strategy` (eine Strategie je
@@ -477,8 +475,8 @@ Lesesicht `account.AccountProfile`). Beide Regeln prüft ArchUnit, ein Werkzeug 
   Klassen `Keycloak…`, Paket `keycloak`, Konfiguration `keycloak.peer-auth`. Das gilt in beide
   Richtungen, also wenn Keycloak uns aufruft (Keycloak-Fassade) und wenn wir Keycloak aufrufen.
   Die Abkürzung `kc` steht nur noch dort, wo sie nach außen festgelegt ist: in den Pfaden `/kc/…`, in
-  Feldern wie `kcSessionId` des veröffentlichten Vertrags, im `amr`-Wert `kc` und in der
-  Keycloak-Erweiterung (Paket `kcext`).
+  Feldern wie `kcSessionId` des veröffentlichten Vertrags und in der Keycloak-Erweiterung (Paket
+  `kcext`).
 
 **Was im Konto-Modul wo liegt.**
 

@@ -100,8 +100,7 @@ class JourneyActionExecutorTest : BehaviorSpec({
 
             then("the confirming session's evidence is left unchanged") {
                 verify(exactly = 0) { fixture.sessionEvidenceService.applyEvidence(any(), any()) }
-                verify(exactly = 0) { fixture.sessionEvidenceService.applyEvidenceUpdate(any(), any(), any()) }
-                verify(exactly = 0) { fixture.sessionEvidenceService.attachToChannel(any(), any(), any()) }
+                verify(exactly = 0) { fixture.sessionEvidenceService.attachToChannel(any(), any()) }
             }
         }
     }
@@ -172,9 +171,7 @@ private class RecordApprovalFixture {
     val sessionEvidenceService = mockk<SessionEvidenceService>(relaxed = true)
     val executor = executor(
         sessionEvidenceService = sessionEvidenceService,
-        journeyRecorder = JourneyRecorder(
-            sessionEvidenceService, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true)
-        )
+        journeyRecorder = JourneyRecorder(sessionEvidenceService, mockk(relaxed = true), mockk(relaxed = true))
     )
 }
 
