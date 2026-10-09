@@ -59,7 +59,7 @@ Seitenrahmen (`Layout.tsx`) zeigt immer den Seitentitel, nie den technischen Nut
 **Keycloaks eigene Seiten** (Passwortformular, Info, erneute Anmeldung …) zeichnet Keycloakify mit
 seinen Standardseiten, aber im Rahmen `KcTemplate.tsx`, also in unserem Layout statt im
 PatternFly-Template. Ihre Klassen bildet `KC_CLASSES` in `KcPage.tsx` auf die des Themes ab. Kennt die
-Anmeldung den Nutzer schon, steht unter dem Titel ein Hinweis „Für <Adresse>. Nicht Sie?“, aber nur,
+Anmeldung den Nutzer schon, steht unter dem Titel ein Hinweis wie „Für erika@example.org. Nicht Sie?“, aber nur,
 wenn der Name eine E-Mail-Adresse ist. Weil die Extension diesen Seiten keine `texts` schickt, nimmt
 das Theme dort seine eigenen Bundles in der Sprache der Anmeldung (`bundledTexts.ts`).
 
