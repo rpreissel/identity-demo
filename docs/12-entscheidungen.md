@@ -21,7 +21,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/). Die Tabelle nennt 
 | [ADR-5](adr/ADR-005-drei-obergrenzen-fuer-das-sicherheitsniveau.md) | Zwei Obergrenzen für das Sicherheitsniveau |
 | [ADR-6](adr/ADR-006-next-als-reine-adresse-feste-routing-tabelle-statt.md) | `next` als reine Adresse, feste Routing-Tabelle statt HATEOAS |
 | [ADR-7](adr/ADR-007-web-kanal-ohne-mtls-signierte-request-assertion-statt.md) | Web-Kanal ohne mTLS, signierte Request-Assertion statt Client-Zertifikat |
-| [ADR-8](adr/ADR-008-keycloak-fuehrt-seine-eigenen-nativen-schritte-selbst-statt.md) | Keycloak führt seine eigenen nativen Schritte selbst, statt alles zu delegieren oder über Identity-Brokering zu gehen |
+| [ADR-8](adr/ADR-008-keycloak-fuehrt-seine-eigenen-nativen-schritte-selbst-statt.md) | Keycloak führt seine eigenen nativen Schritte selbst, statt alles zu delegieren oder über Identity-Brokering zu gehen *(abgelöst durch [ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md))* |
 | [ADR-9](adr/ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md) | Profilabhängiger Token-Abruf — eigener OAuth2-Grant, den nur der Orchestrator aufrufen darf |
 | [ADR-10](adr/ADR-010-interessent-ist-konto-zustand-kein-eigener-authintent.md) | Interessent ist Konto-Zustand, kein eigener AuthIntent |
 | [ADR-11](adr/ADR-011-kontouebergreifender-person-id-konflikt-ist-abweisung-merge-nie.md) | Ein Anker, der schon einem anderen Konto gehört, wird abgewiesen; Konten werden nie automatisch zusammengeführt |
@@ -52,7 +52,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/). Die Tabelle nennt 
 | [ADR-39](adr/ADR-039-was-eine-kontoloeschung-ueberlebt.md) | Was eine Kontolöschung überlebt – das Änderungsprotokoll ohne Werte |
 | [ADR-40](adr/ADR-040-fachkern-im-paket-domain.md) | Der fachliche Kern liegt im Paket `domain`, ohne Framework, per ArchUnit geprüft |
 | [ADR-41](adr/ADR-041-keycloakify-neben-freemarker.md) | Keycloakify läuft neben FreeMarker, der Orchestrator schaltet realmweit um *(abgelöst durch [ADR-57](adr/ADR-057-keycloakify-einziges-login-theme.md))* |
-| [ADR-42](adr/ADR-042-loa1-anmeldung-umschalten.md) | Ein Browser-Client, der Orchestrator schaltet die Anmeldung auf `loa1` um |
+| [ADR-42](adr/ADR-042-loa1-anmeldung-umschalten.md) | Ein Browser-Client, der Orchestrator schaltet die Anmeldung auf `loa1` um *(abgelöst durch [ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md))* |
 | [ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md) | Ein angemeldeter Kanal hat genau eine Keycloak-Sitzung und lebt nicht länger als sie |
 | [ADR-44](adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md) | Das Zählwerk liegt im Orchestrator, die Regeln in den Modulen |
 | [ADR-45](adr/ADR-045-qr-warteseite-fragt-im-hintergrund.md) | Die QR-Warteseite fragt im Hintergrund und schickt ihr Formular nur einmal |
@@ -68,6 +68,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/). Die Tabelle nennt 
 | [ADR-55](adr/ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md) | Ein Hauptschlüssel je Journey, den das Konto übernimmt; Mobilnummer, PIN, Verfahrensangaben und Anmeldeprotokoll versiegelt; die Demo speichert lesbar mit kurzem Kopf und Prüfwert des Schlüssels, der Modus gehört zur Datenbank |
 | [ADR-56](adr/ADR-056-vault-transit-als-schluesseldienst.md) | Vault Transit ist das Ziel für den Schlüsseldienst hinter `KeyService`; die Demo bleibt bei der Simulation, Keycloaks eigene Schlüssel bleiben bei Keycloak |
 | [ADR-57](adr/ADR-057-keycloakify-einziges-login-theme.md) | Keycloakify ist das einzige Login-Theme; das FreeMarker-Theme und der Schalter zwischen beiden entfallen, die eigenen Texte hängt der Build an die Bundles des Theme-JARs |
+| [ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md) | Keycloak führt keine eigenen Anmeldeschritte mehr: kein Passwortformular, keine gespeicherten Credentials, native Verfahren werden nicht umhüllt, sondern eigene Tools *(entschieden, Umsetzung offen)* |
 
 Die Nummern ADR-4, 13, 23 und 30 fehlen. Ihr Inhalt steht heute an anderer Stelle:
 

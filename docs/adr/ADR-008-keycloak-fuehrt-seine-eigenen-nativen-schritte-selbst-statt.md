@@ -1,6 +1,8 @@
 # ADR-8: Keycloak führt seine eigenen nativen Schritte selbst, statt alles zu delegieren oder über Identity-Brokering zu gehen
 
-**Status:** umgesetzt.
+**Status:** umgesetzt, abgelöst 2026-10-09 durch
+[ADR-58](ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md): Keycloak führt keine eigenen
+Anmeldeschritte mehr. Bis zur Umsetzung (`DPoP-demo-0ntu`) beschreibt diese ADR den Code.
 
 > **Nachtrag 2026-09-26:** Die Passwortprüfung läuft weiter über `OrchestratorStorageProvider` und
 > `MgmtPasswordController`. Der Provider ist aber seit [ADR-38](ADR-038-keycloak-liest-konten.md)

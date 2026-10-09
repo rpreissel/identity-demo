@@ -13,9 +13,10 @@ nur noch ein Fremdsystem, das einen Faktor speichert und prüft.
 Dazu gehören die Obergrenze für das Sicherheitsniveau, die Prüfung gegen Aussperren und das
 Löschen beim Löschen des Kontos. Abschnitt 1 beschreibt das genauer.
 
-**Stand: Konzept, nicht umgesetzt** (Stand 2026-10-04). Die Aussagen darüber, wie Keycloak intern
-arbeitet, sind nicht mit Keycloak 26.6 erprobt. Das soll ein Spike klären, also ein kleiner
-Versuchsaufbau (Abschnitt 7).
+**Stand: verworfen** (2026-10-09). Ein Spike hat die Hülle gegen Keycloak 26.6.4 erprobt.
+Sie trägt, aber Keycloaks eigene Seiten hängen an Keycloaks Ablauf (Abschnitt 8).
+[ADR-58](../adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md) entscheidet deshalb:
+Native Verfahren werden nicht umhüllt, und Keycloak führt keine eigenen Anmeldeschritte mehr.
 
 ---
 
@@ -167,3 +168,119 @@ Zuerst kommt ein Spike mit OTP als kleinstem Fall, erst danach der Passkey. Der 
 Funktioniert die Hülle, folgt der Rest dem Muster von KOBIL. Funktioniert sie nicht, bleibt es bei
 ADR-8. Die nativen Verfahren melden dem Orchestrator dann nur, dass sie eingerichtet oder entfernt
 wurden.
+
+## 8) Stand des Spikes (2026-10-09)
+
+**Was gebaut ist.** Der Code liegt nur auf dem Branch `spike/native-otp-wrapper`, nicht auf
+`main` (ADR-58).
+
+- Das Modul `auth_otp` (`src/main/kotlin/com/example/identity/tools/auth_otp/`) hat die Tools
+  `enroll-otp` und `auth-otp` mit der Methode `otp`. Es speichert nur die Id des Credentials in
+  Keycloak (`auth_otp.enrollment`). Beide Tools nehmen ein Ergebnis nur von Keycloak an
+  (`KeycloakToolCalls.requireKeycloak`). Ein Erfolg bei `auth-otp` zählt nur für genau das
+  Credential, das `enroll-otp` eingerichtet hat.
+- In der Erweiterung umhüllen `InterceptingFlowContext` und `InterceptingRequiredActionContext`
+  Keycloaks Kontexte
+  (`keycloak-extension/src/main/java/com/example/identity/kcext/webtool/nativestep/`). Sie sind von
+  Hand ausgeschrieben, kein dynamischer Proxy. Fügt Keycloak der Schnittstelle eine Methode hinzu,
+  schlägt deshalb das Bauen fehl.
+- `OtpAuthRendererFactory` ruft `OTPFormAuthenticator` auf, `OtpEnrollRendererFactory` die
+  Required Action `UpdateTotp`. `OrchestratorAuthenticator` und
+  `OrchestratorManageMethodsRequiredAction` fragen solche Renderer nach der Seite. Das abgeschickte
+  Formular geben sie zuerst an den nativen Schritt. An den Orchestrator geht nur das Ergebnis,
+  der Code selbst verlässt Keycloak nicht.
+- Im App-Kanal sind beide Tools ausgeschaltet.
+
+**Was aus dem Quelltext von Keycloak 26.6.4 und den Tests belegt ist.**
+
+- **Die Hülle trägt.** `OTPFormAuthenticator` liest aus dem Kontext nur Nutzer, Realm, Sitzung,
+  Formular, Ereignis und Anfrage. Es endet mit `success`, `failureChallenge`, `challenge` oder
+  `forceChallenge`. Das Formular baut es über `context.form()` mit der Execution aus
+  `context.getExecution()`. So schickt die Seite an die laufende Execution des Orchestrators
+  zurück. `UpdateTotp` braucht ebenso nur `form()`, `getUser()`, `getRealm()` und die Anfrage.
+- **Keycloaks Brute-Force-Schutz zählt nicht mehr mit.** Den Fehlversuch bucht Keycloak erst, wenn
+  `failureChallenge` den Ablauf erreicht. Die Hülle fängt den Aufruf vorher ab, deshalb zählt nur
+  der Orchestrator ([ADR-44](../adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)).
+  `InterceptingFlowContextTest` hält das fest.
+- **Wo das Credential liegt.** `OrchestratorStorageProvider` beansprucht nur `password`. Ein
+  OTP-Credential speichert Keycloak deshalb in seinem Speicher für föderierte Nutzer, unter
+  derselben Nutzer-Id.
+- **`UpdateTotp` legt das Credential an, bevor es den Erfolg meldet.** Lehnt der Orchestrator die
+  Meldung ab, bliebe es also übrig. Die Erweiterung löscht es in diesem Fall wieder
+  (`NativeRequiredActionStep.rejected`). Die Id des neuen Credentials erfährt sie aus dem
+  Vergleich der OTP-Credentials vor und nach dem Schritt.
+
+**Was die Tests als Grenze zeigen.**
+
+- **Die Registrierung bietet `enroll-otp` an.** `RegisterStrategyTest` und
+  `RegisterEnrollFirstStrategyTest` zeigen es. In der Registrierung gibt es aber noch keinen
+  Keycloak-Nutzer, und dort läuft auch keine Required Action. Die Erweiterung zeigt an dieser
+  Stelle nur eine Fehlerseite. Es fehlt eine Deklaration am Tool, etwa „erst einrichtbar, wenn das
+  Konto existiert“, die die Strategien beachten.
+- **Jeder native Schritt läuft nur in seinem eigenen Keycloak-Kontext.** Ein Authenticator läuft
+  nur im Anmeldeablauf, eine Required Action nur in der Verwaltung der Verfahren. Fordert die
+  Verwaltung einen frischen Nachweis an und bietet dafür `auth-otp` an, zeigt die Erweiterung eine
+  Fehlerseite (`WebFormRenderer.toolForm`).
+
+**Was der Live-Lauf zeigt** (Compose-Stack mit Keycloak 26.6.4, Chrome, 2026-10-09).
+
+Was funktioniert:
+
+- **Einrichten.** Unter „Verfahren verwalten“ zeigt `enroll-otp` Keycloaks eigene Seite mit dem
+  QR-Code. Das Formular schickt an die Verwaltung des Orchestrators zurück. Bei einem falschen
+  ersten Code zeigt Keycloak dieselbe Seite mit seiner Fehlermeldung, der Orchestrator hört davon
+  nichts. Ein richtiger Code führt zu „Anmeldeverfahren hinzugefügt“, und das Verfahren steht in
+  der Liste.
+- **Anmelden.** Nach dem Passwort bietet der Step-up auf `loa2` neben SMS auch `auth-otp` an.
+  Keycloaks OTP-Seite läuft in der Execution des Orchestrators. Ein falscher Code kommt mit dem
+  Text des Orchestrators zurück („Der Code ist ungültig. …“), er ist also dort als Fehlversuch
+  angekommen. Ein richtiger Code schließt die Anmeldung ab, und Keycloak leitet mit
+  Autorisierungscode zur Website zurück.
+- **Neuladen und Zurück-Knopf** brechen den Schritt nicht ab. In der Anmeldung zeigt das Neuladen
+  wieder die OTP-Seite. Schickt man eine Seite ab, die der Zurück-Knopf aus dem Cache holt,
+  erkennt Keycloak die veraltete Aktion und zeigt den Schritt frisch. In der Verwaltung zeigt ein
+  GET den laufenden nativen Schritt erneut, nicht die Liste.
+- **Wo das Credential liegt.** Die Admin-API nennt beide OTP-Credentials unter der föderierten
+  Nutzer-Id `f:<provider>:<accountId>`, der Nutzer ist nicht importiert (ADR-38). Nach einem
+  Neustart von Keycloak liegen sie unverändert dort, mit denselben Ids.
+
+Was nicht funktioniert:
+
+- **Die Registrierung endet in einer Sackgasse.** Wählt man dort „Authenticator-App (Keycloak)“,
+  erscheint „Dieses Anmeldeverfahren ist an dieser Stelle nicht möglich.“ ohne Weg zurück, auch
+  nach dem Neuladen. Nur ein neuer Anmeldevorgang hilft.
+- **Der Link „mode=manual“ zum Abtippen des Geheimnisses** zeigt auf Keycloaks eigene Required
+  Action. `TotpBean.getManualUrl()` setzt `execution=CONFIGURE_TOTP` fest im Code. Keycloak
+  antwortet mit „Diese Seite ist nicht mehr gültig“. Über „fortsetzen“ kommt man zum Schritt
+  zurück. Keine Hülle kann das abfangen. Es ginge nur im Theme, das den Link umschreibt.
+- **„Abbrechen“ beim Einrichten beendet die ganze Verwaltung.** Der Knopf `cancel-aia` wirkt auf die
+  vom Client angestoßene Aktion insgesamt. Keycloak leitet mit `kc_action_status=cancelled` zur
+  Website zurück, die Required Action sieht den Abbruch gar nicht.
+- **Die native OTP-Seite hat weder „Zurück“ noch „Abbrechen“.** Wer `auth-otp` gewählt hat, kommt
+  nicht mehr zu SMS, nur über einen neuen Anmeldevorgang.
+- **Ein entferntes Verfahren bleibt in Keycloak wählbar.** Nach dem Entfernen bleibt das Credential
+  in Keycloak liegen. Die OTP-Seite bietet es weiter an und wählt es sogar vor, weil es das ältere
+  ist. Ein Code dafür zählt beim Orchestrator nicht, weil er nur das eingerichtete Credential
+  annimmt. Für den Nutzer ist die Auswahl aber verwirrend. `UpdateTotp` verlangt außerdem beim
+  erneuten Einrichten einen Gerätenamen, weil es das alte Credential noch sieht.
+- Die Texte der nativen Seiten passen nicht immer, etwa „Sie müssen eine
+  Mehrfachauthentifizierung einrichten, um das Benutzerkonto zu aktivieren“ beim freiwilligen
+  Hinzufügen.
+
+Nicht geprüft ist, ob Keycloaks Brute-Force-Schutz im Live-Lauf wirklich nichts bucht. Belegt ist
+das nur durch den Quelltext und `InterceptingFlowContextTest`.
+
+**Empfehlung.** Die Hülle trägt. Sie nutzt nur die Authenticator-SPI, Einrichten und Anmelden
+laufen über Keycloaks eigene Schritte, und jedes Ergebnis erreicht zuerst den Orchestrator. Die
+Schwierigkeiten liegen in den nativen Seiten selbst: Sie bringen eigene Links und Knöpfe mit, die
+an Keycloaks Ablauf hängen (`mode=manual`, `cancel-aia`), und ihnen fehlen die Wege der
+Tool-Seiten (Zurück, Abbrechen). Dazu kommt die Grenze aus den Tests: Ein natives Verfahren lässt
+sich erst einrichten, wenn das Konto existiert. Vor dem Passkey braucht es deshalb drei Dinge:
+
+- die Deklaration „erst nach dem Konto“,
+- das Löschen des Credentials in Keycloak beim Entfernen,
+- eine Entscheidung, ob das Theme die nativen Seiten um Zurück und Abbrechen ergänzt und den Link
+  `mode=manual` umschreibt.
+
+Gelingt das, lohnt eine neue ADR, die ADR-8 für die nativen Verfahren ablöst. Bleiben die nativen
+Seiten so, wie Keycloak sie liefert, ist der Gewinn gegenüber ADR-8 kleiner als gedacht.
