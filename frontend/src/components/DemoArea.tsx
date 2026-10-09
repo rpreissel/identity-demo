@@ -85,6 +85,7 @@ export interface DemoIntro {
  * collapsed, the intro open only on the first visit (docs/10-frontend.md).
  */
 export function DemoArea({
+  head,
   targets,
   session,
   actions,
@@ -92,6 +93,8 @@ export function DemoArea({
   background,
   children,
 }: {
+  /** Above everything: which channel this column explains, and what is real behind it. */
+  head?: { title: string; tag: string }
   targets: DemoTargetRefs
   /** Whose session this is, at which level - always first, on every screen (SessionSummary). */
   session?: ReactNode
@@ -106,20 +109,29 @@ export function DemoArea({
   const introOpen = useFirstVisit(`identity-demo-intro-seen-${intro?.id ?? 'none'}`)
   return (
     <aside className="demo-area" aria-label={t('Demo-Werkzeuge')}>
+      {head && (
+        <div className="demo-head">
+          <div>
+            <span className="demo-kicker">{t('Hinter den Kulissen')}</span>
+            <h1>{head.title}</h1>
+          </div>
+          <span className="tag tag-real">{head.tag}</span>
+        </div>
+      )}
       {session}
       <section className="card demo-step">
-        <h2>{t('Zu diesem Schritt')}</h2>
+        <h2 className="demo-kicker">{t('Zu diesem Schritt')}</h2>
         <div ref={targets.step} className="demo-step__slot" />
       </section>
       {actions && (
         <section className="card">
-          <h2>{t('Aktionen der Demo')}</h2>
+          <h2 className="demo-kicker">{t('Aktionen der Demo')}</h2>
           <ul className="task-list">{actions}</ul>
         </section>
       )}
       {children}
       <section className="card demo-background">
-        <h2>{t('Hintergrund')}</h2>
+        <h2 className="demo-kicker">{t('Hintergrund')}</h2>
         {intro && (
           <Disclosure summary={intro.title} defaultOpen={introOpen}>
             {intro.body}

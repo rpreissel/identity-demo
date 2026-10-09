@@ -1095,6 +1095,7 @@ export function AppChannelApp() {
             </div>
 
             <DemoArea
+              head={{ title: t('App-Kanal'), tag: t('Echt · Orchestrator') }}
               targets={demoTargets}
               session={
                 <SessionSummary

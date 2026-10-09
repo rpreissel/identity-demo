@@ -85,6 +85,7 @@
   --accent-strong: #2238a8;
   --accent-bg: rgba(47, 75, 208, 0.09);
   --accent-border: rgba(47, 75, 208, 0.35);
+  --accent-deep: #1b2a78;
   --bg: #edf0fc;
 }
 
@@ -93,6 +94,7 @@
   --accent-strong: #08604c;
   --accent-bg: rgba(11, 122, 97, 0.09);
   --accent-border: rgba(11, 122, 97, 0.35);
+  --accent-deep: #0b4f40;
   --bg: #e9f4f0;
 }
 

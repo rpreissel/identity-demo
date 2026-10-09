@@ -19,17 +19,22 @@ export function SessionSummary({ signedIn, name, role, acr, amr }: SessionSummar
   const who = name ? (role ? `${name} (${role})` : name) : undefined
   return (
     <section className="card session-summary" aria-label={t('Sitzung')}>
-      <span className="session-summary__who">
-        {signedIn ? (who ?? t('Angemeldet')) : proven ? t('Anmeldung läuft') : t('Nicht angemeldet')}
-        {!signedIn && proven && who && <span className="session-summary__muted"> · {who}</span>}
+      <span className="session-summary__state">
+        <span className="session-summary__label">{t('Sitzung')}</span>
+        <span className="session-summary__who">
+          {signedIn ? (who ?? t('Angemeldet')) : proven ? t('Anmeldung läuft') : t('Nicht angemeldet')}
+          {!signedIn && proven && who && <span className="session-summary__muted"> · {who}</span>}
+        </span>
       </span>
       {proven && (
         <span className="session-summary__facts">
           <span>
-            <span className="session-summary__muted">acr</span> <code>{acr ?? '–'}</code>
+            <span className="session-summary__label">acr</span>
+            <code>{acr ?? '–'}</code>
           </span>
           <span>
-            <span className="session-summary__muted">amr</span> <code>{amr && amr.length > 0 ? amr.join(', ') : '–'}</code>
+            <span className="session-summary__label">amr</span>
+            <code>{amr && amr.length > 0 ? amr.join(', ') : '–'}</code>
           </span>
         </span>
       )}

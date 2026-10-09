@@ -14,13 +14,13 @@ const entry = {
 }
 
 describe('JourneyTraceView', () => {
-  it('shows whether a channel log entry came from App or Web', async () => {
+  it('shows whether a channel log entry came from the app or the website', async () => {
     const fetchLog = vi.fn().mockResolvedValue({ entries: [entry], accounts: [{ accountId: 4, displayName: 'Tina Tester' }] })
 
     render(<JourneyTraceView fetchLog={fetchLog} />)
 
-    expect(await screen.findByText('Web')).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /Web ·/ })).toBeInTheDocument()
+    expect(await screen.findByText('Website')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Website ·/ })).toBeInTheDocument()
   })
 
   it('names the person of a channel and offers every account in the filter, even without entries', async () => {

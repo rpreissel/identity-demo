@@ -437,6 +437,22 @@ Anforderungen an alle Apps:
 
 ## 6) Was es nur für die Demo gibt
 
+### Die Hülle „Leitstand“
+
+Alle Seiten außer dem Smartphone-Mock und dem Browser-Mock teilen eine Hülle. Die Kopfleiste
+(`ChannelNav`) führt mit der Wortmarke zur Startseite und listet die Bereiche der Demo (`areas.ts`):
+App, Website, Personenverzeichnis, Briefkasten und Verwaltung. Jeder Bereich öffnet sich in einem
+eigenen benannten Tab. Jeder Bereich hat eine kräftige Farbe (`--area-*` in `index.css`). Die
+Kopfleiste ist vollflächig in dieser Farbe, die Seite leicht darin getönt, und Akzente wie aktive
+Reiter oder Knöpfe nehmen sie auf (`.channel-<bereich>`). Favicon und `theme-color` jeder Seite haben
+dieselbe Farbe. Die Startseite ist neutral und zeigt die Farben als Streifen über der Kopfleiste.
+Darunter stehen, wenn die Seite welche hat, ihre Reiter. Schrift ist IBM Plex Sans und für Kennungen
+IBM Plex Mono (`@fontsource`). Die beiden Mocks frieren in `phone.css` und `browser.css` ihre
+eigenen Farben und Schriften ein, damit die Hülle sie nicht verändert.
+
+Seiten, die ein fremdes System spielen (Personenverzeichnis, Briefkasten, Nect), tragen unter der
+Kopfleiste ein gestreiftes Band „Simuliert“ (`SimBand`).
+
 ### Die Seiten der Demo
 
 Fünf der sieben Apps dienen der Demo oder simulieren Fremdsysteme, also Systeme außerhalb des
@@ -444,21 +460,22 @@ Orchestrators:
 
 - **Willkommen** (`/`): Diese Seite hat keinen Kanal und keinen DPoP-Schlüssel. Sie hat drei Reiter:
   - *Loslegen* lädt zum Ausprobieren ein. Oben steht ein großer Knopf „In der App registrieren“
-    (`/app/?intent=register`, FE-18). Darunter folgen eine kurze Liste von Aufgaben, je mit einem
-    Knopf, der den passenden Tab öffnet, dann die Kacheln zu allen anderen Apps und zugeklappt „Was
-    ist echt, was simuliert?“.
+    (`/app/?intent=register`, FE-18) und daneben der Ablauf in drei Schritten. Darunter folgen die
+    Aufgaben als Karten, je mit der Farbe ihres Bereichs und einem Link, der den passenden Tab
+    öffnet, dann die Bereiche der Demo mit der Marke „Echt“ oder „Simuliert“ und zwei Kästen, was
+    echt und was simuliert ist.
 
     Am Ende steht „Demo zurücksetzen“. Dafür braucht man keine Admin-Anmeldung
     (`POST /orchestrator/demo/reset`). Der Knopf setzt aber noch nicht zurück. Er lädt erst die
     aktiven Sitzungen (`GET /orchestrator/demo/sessions`) und fragt direkt auf der Seite nach, nicht
     per Browser-Dialog. Sind Sitzungen aktiv, warnt er, dass das Zurücksetzen sie beendet, und
     listet sie auf. Erst „Jetzt zurücksetzen“ löscht. Danach steht das Ergebnis in einer Zeile.
-  - *Begriffe* erklärt mit je einem Satz die Wörter, die die Oberfläche benutzt. Der Reiter
+  - *Begriffe* erklärt mit je einem Satz die Wörter, die die Oberfläche benutzt, als Kartenraster. Der Reiter
     verlinkt den Quellcode, den Einstieg in die Doku ([01-ueberblick.md](01-ueberblick.md)) und die
     [Beispiel-Story](11-beispiel-story.md).
   - *Server-Status* liest nur das öffentliche `GET /orchestrator/demo/server-info`. Er zeigt das
-    Keycloak-Profil, die Reihenfolge der Registrierung und die gesperrten Tools. Im Demomodus kommen
-    Zustand und Kennzahlen dazu. Darunter stehen die Werkzeuge für Entwickler: die Swagger-UI (nur
+    Keycloak-Profil, die Reihenfolge der Registrierung und die gesperrten Tools als Kacheln. Im
+    Demomodus kommen der Gesamtzustand, je Prüfung eine Kachel und die Kennzahlen dazu. Darunter stehen die Werkzeuge für Entwickler: die Swagger-UI (nur
     im Demomodus) und die H2-Konsole.
 - **Admin** (`/admin/`): Das ist die Sicht des Betreibers. Sie liegt hinter der Admin-Anmeldung
   (HTTP Basic auf `/orchestrator/admin/**`, `AdminSecurityConfig`). Sie hat diese Reiter:
@@ -489,15 +506,19 @@ Orchestrators:
   `/mock-mail/outbox`). Diese gibt es nur im Demomodus. Die Seite lädt alle drei Sekunden neu.
 - **Nect-Sprungseite** (`/nect/`): der simulierte Identifizierungsdienst Nect (Online-Ausweis,
   Reisepass, EUDI-Wallet), zu dem `ident-nect` weiterleitet. Fachlich spricht die Seite nur
-  `/mock-nect/*` an.
+  `/mock-nect/*` an. Sie ist schmal und mittig wie die Seite eines fremden Anbieters: die Marke
+  „Nect Ident“, darunter eine Karte mit den drei Schritten, der Wahl des Dokuments, den angefragten
+  und übermittelten Daten als Marken und dem Formular.
 
 ### Die Demo-Spalte neben dem Smartphone
 
-Die Spalte rechts vom Smartphone (`DemoArea`) zeigt nur, was es allein für die Demo gibt. Sie ist
-nach den Fragen geordnet, die ein Besucher hat:
+Die Spalte rechts vom Smartphone (`DemoArea`) zeigt nur, was es allein für die Demo gibt. Oben
+steht ihr Kopf: „Hinter den Kulissen“, der Kanal und was dahinter echt ist („Echt · Orchestrator“,
+neben der Website „Echt · Keycloak“). Danach ist sie nach den Fragen geordnet, die ein Besucher hat:
 
-1. **Sitzung**: eine Zeile, wer angemeldet ist und mit welchem Niveau (`SessionSummary`).
-2. **Zu diesem Schritt**: welche Journey läuft und in einem Satz, warum der Schritt an der Reihe
+1. **Sitzung**: eine dunkle Leiste in der Farbe des Bereichs: wer angemeldet ist und mit welchem
+   Niveau und welchen Verfahren (`SessionSummary`).
+2. **Zu diesem Schritt**, mit einem Balken in der Bereichsfarbe: welche Journey läuft und in einem Satz, warum der Schritt an der Reihe
    ist. Darunter stehen die Demo-Hilfen des Schritts (Testperson, vorbelegter Code, Token).
    Zugeklappt darunter steht, was der Schritt tut und wer an der Reihe ist. Die Hilfen schreibt
    jedes Formular selbst in `<Demo>`.

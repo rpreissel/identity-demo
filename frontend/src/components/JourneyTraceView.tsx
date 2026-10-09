@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { describeError } from '../api'
 import type { JourneyTraceEntryView, JourneyTraceResponse } from '../types'
-import { t } from '../texts'
+import { language, t } from '../texts'
 
 /** The admin endpoint's answer: the entries plus every account they can be filtered by. */
 type LogWithAccounts = JourneyTraceResponse & { accounts: { accountId: number; displayName?: string | null }[] }
@@ -114,13 +114,13 @@ function flatten(keyPath: string, value: unknown): DetailChip[] {
   return [{ key: keyPath, label: labelFor(keyPath), value: String(value) }]
 }
 
-const dateTimeFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'medium' })
-const timeFormat = new Intl.DateTimeFormat('de-DE', { timeStyle: 'medium' })
+const dateTimeFormat = { format: (d: Date) => d.toLocaleString(language(), { dateStyle: 'medium', timeStyle: 'medium' }) }
+const timeFormat = { format: (d: Date) => d.toLocaleTimeString(language(), { timeStyle: 'medium' }) }
 
 function channelTypeLabel(channelType?: string): string {
-  if (channelType === 'APP') return 'App'
-  if (channelType === 'WEB') return 'Web'
-  return 'Unbekannt'
+  if (channelType === 'APP') return t('App')
+  if (channelType === 'WEB') return t('Website')
+  return t('Unbekannt')
 }
 
 /** A journey-scoped entry, narrowed from JourneyTraceEntryView once journeyId/intent are known to be set. */
@@ -276,7 +276,7 @@ export function JourneyTraceView({ fetchLog }: Props) {
       const accountId = allEntries.find((e) => e.accountId != null)?.accountId
       return {
         channelSessionId,
-        person: accountId != null ? accountNames.get(accountId) ?? `Konto ${accountId}` : 'ohne Konto',
+        person: accountId != null ? accountNames.get(accountId) ?? t('Konto {id}', { id: accountId }) : t('ohne Konto'),
         channelType: firstChannelType(allEntries),
         journeyTree: buildJourneyTree(byJourney),
         channelLevelEntries,
@@ -288,15 +288,17 @@ export function JourneyTraceView({ fetchLog }: Props) {
 
   return (
     <div className="card journey-trace-card">
-      <h2>Journey-Trace</h2>
+      <h2>{t('Journey-Trace')}</h2>
       <p>
-        Jeder Journey-Schritt aller Konten und Geräte, neueste zuerst - gruppiert nach Person, ChannelSession und
-        Journey. Mit „Live“ läuft die Ansicht neben einer Demo mit. Nur zu Demo-/Debug-Zwecken, kein Audit-Trail.
+        {t(
+          'Jeder Journey-Schritt aller Konten und Geräte, neueste zuerst - gruppiert nach Person, ChannelSession und ' +
+            'Journey. Mit „Live“ läuft die Ansicht neben einer Demo mit. Nur zu Demo-/Debug-Zwecken, kein Audit-Trail.',
+        )}
       </p>
 
       <div className="controls">
         <label className="field-row">
-          Person:
+          {t('Person:')}
           <select
             value={accountFilter}
             onChange={(e) => {
@@ -305,13 +307,13 @@ export function JourneyTraceView({ fetchLog }: Props) {
               setJourneyFilter('')
             }}
           >
-            <option value="">Alle ({accountNames.size})</option>
+            <option value="">{t('Alle ({anzahl})', { anzahl: accountNames.size })}</option>
             {[...accountNames.entries()].map(([id, name]) => (
               <option key={id} value={String(id)}>
                 {name}
               </option>
             ))}
-            {entries.some((e) => e.accountId == null) && <option value="none">ohne Konto</option>}
+            {entries.some((e) => e.accountId == null) && <option value="none">{t('ohne Konto')}</option>}
           </select>
         </label>
         <label className="field-row">
@@ -323,7 +325,7 @@ export function JourneyTraceView({ fetchLog }: Props) {
               setJourneyFilter('')
             }}
           >
-            <option value="">Alle ({channelOptions.length})</option>
+            <option value="">{t('Alle ({anzahl})', { anzahl: channelOptions.length })}</option>
             {channelOptions.map(([id, { createdAt, channelType }]) => (
               <option key={id} value={id}>
                 {channelTypeLabel(channelType)} · {dateTimeFormat.format(new Date(createdAt))}
@@ -334,7 +336,7 @@ export function JourneyTraceView({ fetchLog }: Props) {
         <label className="field-row">
           Journey:
           <select value={journeyFilter} onChange={(e) => setJourneyFilter(e.target.value)}>
-            <option value="">Alle ({journeyOptions.length})</option>
+            <option value="">{t('Alle ({anzahl})', { anzahl: journeyOptions.length })}</option>
             {journeyOptions.map(([id, { createdAt, intent }]) => (
               <option key={id} value={id}>
                 {intent} · {dateTimeFormat.format(new Date(createdAt))}
@@ -343,11 +345,11 @@ export function JourneyTraceView({ fetchLog }: Props) {
           </select>
         </label>
         <button type="button" onClick={() => load()} disabled={loading}>
-          Aktualisieren
+          {t('Aktualisieren')}
         </button>
         <label className="field-row">
           <input type="checkbox" checked={liveOn} onChange={(e) => setLiveOn(e.target.checked)} />
-          Live ({LIVE_INTERVAL_MS / 1000} s)
+          {t('Live ({sekunden} s)', { sekunden: LIVE_INTERVAL_MS / 1000 })}
         </label>
       </div>
 
@@ -356,14 +358,15 @@ export function JourneyTraceView({ fetchLog }: Props) {
           <p>{error}</p>
         </div>
       )}
-      {loading && entries.length === 0 && <p>Lädt…</p>}
-      {!loading && filtered.length === 0 && !error && <p>Keine Einträge.</p>}
+      {loading && entries.length === 0 && <p>{t('Lädt…')}</p>}
+      {!loading && filtered.length === 0 && !error && <p>{t('Keine Einträge.')}</p>}
 
       {groupedNewestFirst.map(({ channelSessionId, person, channelType, journeyTree, channelLevelEntries, earliest }) => (
         <div key={channelSessionId} className="journey-trace-channel">
           <div className="journey-trace-channel-header">
             <h3>
-              {person && <>{person} · </>}ChannelSession vom {dateTimeFormat.format(new Date(earliest))}
+              {person && <>{person} · </>}
+              {t('ChannelSession vom {datum}', { datum: dateTimeFormat.format(new Date(earliest)) })}
             </h3>
             <span className="journey-trace-channel-type">{channelTypeLabel(channelType)}</span>
           </div>
@@ -382,11 +385,11 @@ function renderEntryTable(entries: JourneyTraceEntryView[]) {
       <table className="journey-trace-table">
         <thead>
           <tr>
-            <th>Time</th>
-            <th>State</th>
-            <th>Event</th>
-            <th>Tool</th>
-            <th>Details</th>
+            <th>{t('Zeit')}</th>
+            <th>{t('Zustand')}</th>
+            <th>{t('Ereignis')}</th>
+            <th>{t('Tool')}</th>
+            <th>{t('Details')}</th>
           </tr>
         </thead>
         <tbody>

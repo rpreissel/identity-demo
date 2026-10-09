@@ -774,17 +774,17 @@
 .demo-area {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  font-size: 0.95rem;
+  line-height: 1.55;
 }
 
 .demo-area .card {
   margin: 0;
-  padding: 16px 18px;
+  padding: 20px 22px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--surface);
   box-shadow: none;
   color: var(--text-h);
@@ -801,9 +801,51 @@
 
 .demo-area .card h2 {
   margin: 0 0 10px;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.05rem;
+  font-weight: 700;
   line-height: 1.4;
+}
+
+/* The column's own section titles: small, spaced, in the area's color - the cards' content stays bold. */
+.demo-area .demo-kicker,
+.demo-area .card h2.demo-kicker {
+  display: block;
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.demo-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 2px;
+}
+
+.demo-head .demo-kicker {
+  margin: 0 0 2px;
+}
+
+.demo-head h1 {
+  margin: 0;
+  font-size: 1.85rem;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  color: var(--text-h);
+}
+
+/* "Zu diesem Schritt": the card the eye goes to, marked by a bar in the area's color. */
+.demo-area .demo-step {
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+.demo-area .demo-background .demo-kicker {
+  color: var(--muted);
 }
 
 .demo-area h3,
@@ -992,29 +1034,59 @@
   color: var(--text);
 }
 
-/* SessionSummary: one line - who, then level and methods. */
+/* SessionSummary: a dark bar in the area's color - who, then level and methods as labelled columns. */
 .demo-area .session-summary {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 16px;
-  padding: 12px 18px;
-  color: var(--text-h);
+  align-items: center;
+  gap: 12px 24px;
+  padding: 18px 22px;
+  border-color: var(--accent-deep, var(--text-h));
+  background: var(--accent-deep, var(--text-h));
+  color: #ffffff;
+}
+
+.session-summary__state {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-summary__label {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
 }
 
 .session-summary__who {
-  font-weight: 600;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #ffffff;
 }
 
 .session-summary__facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 16px;
-  margin-left: auto;
+  gap: 8px 24px;
+}
+
+.session-summary__facts > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.demo-area .session-summary code {
+  padding: 0;
+  background: none;
+  font-family: var(--mono);
+  color: #ffffff;
 }
 
 .session-summary__muted {
-  color: var(--text);
+  color: rgba(255, 255, 255, 0.7);
   font-weight: 400;
 }
 
@@ -1042,4 +1114,24 @@
   font-size: 0.75rem;
   white-space: pre;
   overflow-x: auto;
+}
+
+/* Choices in the column (the website's first sign-in page): cards, the chosen one in the area's color. */
+.demo-area .client-choice {
+  gap: 10px;
+}
+
+.demo-area .client-choice label {
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+}
+
+.demo-area .client-choice label:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.demo-area .client-choice input {
+  accent-color: var(--accent);
 }

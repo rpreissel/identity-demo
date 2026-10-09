@@ -1259,7 +1259,13 @@ button.small,
   max-width: min(94vw, 1200px);
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
+  box-sizing: border-box;
   text-align: left;
+}
+
+.web-page select,
+.web-page input {
+  font-family: inherit;
 }
 
 .web-page-wide {
@@ -1285,20 +1291,6 @@ button.small,
   background: var(--surface);
   color: var(--text-h);
   font-size: 1rem;
-}
-
-/* /personenverzeichnis/ - Personenverzeichnis */
-.ext-banner {
-  padding: 0.75rem 1rem;
-  border-left: 4px solid var(--accent);
-  background: var(--accent-bg);
-  color: var(--text-h);
-  font-size: 0.9rem;
-}
-
-.ext-banner code {
-  margin: 0;
-  padding: 0 0.2rem;
 }
 
 /* A letter as the recipient would hold it: paper white, the code large. */
@@ -2107,18 +2099,56 @@ button.small,
   cursor: default;
 }
 
-/* Which tools are switched off here, and why - a short list where a section was opened for it. */
+/* Which tools are switched off here, and why: the tools as marks, one line per reason. */
 .unavailable-tools {
-  margin: 0.5rem 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
 }
 
-.unavailable-tools ul {
-  margin: 0.25rem 0 0;
-  padding-left: 1.2rem;
+.unavailable-tools__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--text-h);
 }
 
-.unavailable-tools code {
-  font-size: 0.8rem;
+.unavailable-tools__head a {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.unavailable-tools__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.unavailable-tools__group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.unavailable-tools__group code {
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.unavailable-tools__group > span {
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 /* ---- Start page (WelcomeApp): Loslegen, Begriffe, Server-Status -------------------------------- */
@@ -2673,4 +2703,248 @@ a.start-area:hover {
 .area-page input,
 .area-page select {
   font-family: inherit;
+}
+
+/* Nect's jump page: a narrow page of its own, Nect's mark above one card with the steps and the form. */
+.nect-page {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  text-align: left;
+}
+
+.nect-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--accent);
+}
+
+.nect-brand > span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.nect-brand strong {
+  font-size: 1.25rem;
+  color: var(--text-h);
+}
+
+.nect-brand > span > span {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.nect-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  padding: 2rem;
+  border: 1px solid var(--accent-border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.nect-card h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: -0.015em;
+}
+
+.nect-card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.nect-card .form-group {
+  margin: 0;
+}
+
+.nect-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.nect-intro p {
+  margin: 0;
+  color: var(--text);
+}
+
+.nect-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.nect-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.nect-steps b {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
+.nect-steps li.done b,
+.nect-steps li.current b {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.nect-steps li:not(.done):not(.current) strong {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.nect-steps li > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-top: 0.15rem;
+}
+
+.nect-steps code {
+  margin: 0;
+  padding: 0;
+  background: none;
+  font-size: 0.82rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.nect-procedures {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.nect-procedures legend {
+  margin-bottom: 0.6rem;
+  padding: 0;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.nect-procedures > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.5rem;
+}
+
+.nect-procedures button {
+  padding: 0.75rem 1rem;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-h);
+}
+
+.nect-procedures button:hover {
+  filter: none;
+  border-color: var(--accent-border);
+}
+
+.nect-procedures button.on {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.nect-procedures p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.nect-data {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.nect-data dt {
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.nect-data dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.nect-data dd span {
+  padding: 0.1rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.nect-data dd span.on {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.nect-data em {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.nect-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.9rem 1rem;
+}
+
+.nect-fields label input[type='checkbox'],
+.nect-check input {
+  width: auto;
+  margin-right: 0.35rem;
+  accent-color: var(--accent);
+}
+
+.nect-page input,
+.nect-page select {
+  font-family: inherit;
+}
+
+.nect-actions {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
 }

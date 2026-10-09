@@ -496,6 +496,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
           </div>
 
           <DemoArea
+            head={{ title: t('Web-Kanal'), tag: t('Echt · Keycloak') }}
             targets={demoTargets}
             session={
               <SessionSummary

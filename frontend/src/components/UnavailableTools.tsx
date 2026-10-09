@@ -2,6 +2,7 @@ import { t } from '../texts'
 import { useEffect, useState } from 'react'
 import { fetchServerInfo, type ChannelType, type ServerInfo } from '../api.ts'
 import { knownToolIds, toolVersionOf } from '../tools/registry'
+import { ADMIN_TAB } from '../areas'
 
 interface UnavailableToolsProps {
   /** Whose operator locks count - a lock for the Web channel does not affect the App, and vice versa. */
@@ -43,22 +44,40 @@ export function UnavailableTools({ channel, availableTools }: UnavailableToolsPr
 
   if (rows.length === 0) return null
 
+  // One line per reason: the tools as marks, why once after them - the same reason is often shared.
+  const groups = new Map<string, string[]>()
+  for (const row of rows) {
+    const note = [
+      row.clientDisabled && t('auf diesem Client deaktiviert'),
+      row.lock && (row.lock.reason ? t('gesperrt: {grund}', { grund: row.lock.reason }) : t('gesperrt')),
+    ]
+      .filter(Boolean)
+      .join(' · ')
+    groups.set(note, [...(groups.get(note) ?? []), row.toolId])
+  }
+
   return (
     <div className="unavailable-tools">
-      <p>{t('{anzahl} Verfahren nicht verfügbar', { anzahl: rows.length })}</p>
-      <ul>
-        {rows.map((row) => (
-          <li key={row.toolId}>
-            <code>{row.toolId}</code>{' '}
-            {[
-              row.clientDisabled && t('auf diesem Client deaktiviert'),
-              row.lock && (row.lock.reason ? t('gesperrt: {grund}', { grund: row.lock.reason }) : t('gesperrt')),
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </li>
-        ))}
-      </ul>
+      <div className="unavailable-tools__head">
+        <strong>{t('{anzahl} Verfahren nicht verfügbar', { anzahl: rows.length })}</strong>
+        {rows.some((row) => row.lock) && (
+          <a href="/admin/#einstellungen" target={ADMIN_TAB}>
+            {t('In der Verwaltung ändern')}
+          </a>
+        )}
+      </div>
+      {[...groups.entries()].map(([note, tools]) => (
+        <div key={note} className="unavailable-tools__group">
+          <ul>
+            {tools.map((tool) => (
+              <li key={tool}>
+                <code>{tool}</code>
+              </li>
+            ))}
+          </ul>
+          <span>{note}</span>
+        </div>
+      ))}
     </div>
   )
 }
