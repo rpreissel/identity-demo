@@ -752,8 +752,8 @@ Geheimnisse ins Log gelangen.
 
 **Offene Punkte:**
 
-- **Offen (Entscheidung)** Schlüsselverwaltung mit KMS/HSM, Rotation und Widerruf
-  (`DPoP-demo-61kp`). Lesbar bleiben `account.anchor` (ADR-52) und die Simulationen (ADR-53, ADR-55).
+- **Offen (Umsetzung)** Adapter für den echten Schlüsseldienst Vault Transit (ADR-56,
+  `DPoP-demo-lmt9`). Lesbar bleiben `account.anchor` (ADR-52) und die Simulationen (ADR-53, ADR-55).
 - **Betrieb** Mehrere Instanzen brauchen einen festen Pepper und eine gemeinsame Sperre für
   geplante Aufgaben (`DPoP-demo-g7np`). Ein leerer Pepper bedeutet: bei jedem Start ein neuer,
   zufälliger.
@@ -925,7 +925,7 @@ Diese Tabelle fasst alle offenen Punkte der Stationen zusammen.
 | Keine DPoP-Nonce | bewusst | 2 | – |
 | Tokens nicht an DPoP gebunden | bewusst | 2 | ADR-9 |
 | KOBIL-PIN für den Server lesbar, nicht gehasht | bewusst | 8 | ADR-22, ADR-55 |
-| Schlüsseldienst nur simuliert, echter KMS/HSM-Adapter fehlt | Entscheidung | 10 | `DPoP-demo-61kp` |
+| Schlüsseldienst nur simuliert, Adapter für Vault Transit fehlt | Umgebung | 10 | ADR-56, `DPoP-demo-lmt9` |
 | `account.anchor` und Simulationen lesbar | Entscheidung | 10 | ADR-52, ADR-55 |
 | TLS zwischen Keycloak und Orchestrator, Proxy-Header | Umgebung | 2, 4 | `DPoP-demo-ai4x` |
 | Keycloak `start-dev`, Secrets, PostgreSQL | Umgebung | 13 | `DPoP-demo-9msv`, `x25a`, `pi55` |

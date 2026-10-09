@@ -161,8 +161,8 @@ lassen sich mit `bd show` anzeigen.
 
 - Alle Schlüssel liegen hinter einem Schlüsseldienst mit Versionen, Rotation und Zurückziehen
   ([ADR-54](adr/ADR-054-schluesseldienst-simuliert.md)). In der Demo ist der Dienst simuliert und
-  hält sein Material in derselben Datenbank; ein Adapter für Vault Transit, ein Cloud-KMS oder ein
-  HSM fehlt (`DPoP-demo-61kp`).
+  hält sein Material in derselben Datenbank. Ziel ist Vault Transit
+  ([ADR-56](adr/ADR-056-vault-transit-als-schluesseldienst.md)), der Adapter fehlt (`DPoP-demo-lmt9`).
 - Das Claim-Log ([ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md)), die
   Arbeitsdaten der Tools und die App-Tokens
   ([ADR-53](adr/ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md)) sind verschlüsselt. Mobilnummer,
@@ -224,8 +224,8 @@ wird, müssen die Menschen zustimmen, die es später fachlich und technisch vera
 3. **Den Kern abschließen.** Dazu gehören die [offenen Befunde](offene-befunde.md), zuerst die zu
    Sicherheit und Keycloak (Abschnitte 1 und 2), und die offenen Invarianten. Der Kern ist der
    Beweis für den Ansatz. Deshalb muss er jede genaue Prüfung bestehen.
-4. **Grundsatzentscheidungen treffen.** Das betrifft die Verwaltung der Schlüssel
-   (`DPoP-demo-61kp`), die
+4. **Grundsatzentscheidungen treffen.** Die Verwaltung der Schlüssel ist entschieden
+   ([ADR-56](adr/ADR-056-vault-transit-als-schluesseldienst.md)). Offen sind die
    Zieldatenbank (`DPoP-demo-pi55`) und die Frage, ob mehr als eine Instanz laufen soll. Diese
    Entscheidungen betreffen Modell und Migrationen. Je später sie getroffen werden, desto teurer
    werden sie.

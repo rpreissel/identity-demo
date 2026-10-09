@@ -66,6 +66,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/). Die Tabelle nennt 
 | [ADR-53](adr/ADR-053-arbeitsdaten-und-app-tokens-verschluesselt.md) | Arbeitsdaten der Tools unter einem Datenschlüssel je Tag, App-Tokens unter dem Hauptschlüssel des Kontos; beide Schlüssel hängen am KEK aus ADR-52 |
 | [ADR-54](adr/ADR-054-schluesseldienst-simuliert.md) | Ein Schlüsseldienst hinter allen Schlüsseln: Umschlagschlüssel und Signaturschlüssel liegen im KMS, in der Demo simuliert (Modul `kms`), der Signaturschlüssel verlässt den Dienst nie |
 | [ADR-55](adr/ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md) | Ein Hauptschlüssel je Journey, den das Konto übernimmt; Mobilnummer, PIN, Verfahrensangaben und Anmeldeprotokoll versiegelt; die Demo speichert lesbar mit kurzem Kopf und Prüfwert des Schlüssels, der Modus gehört zur Datenbank |
+| [ADR-56](adr/ADR-056-vault-transit-als-schluesseldienst.md) | Vault Transit ist das Ziel für den Schlüsseldienst hinter `KeyService`; die Demo bleibt bei der Simulation, Keycloaks eigene Schlüssel bleiben bei Keycloak |
 
 Die Nummern ADR-4, 13, 23 und 30 fehlen. Ihr Inhalt steht heute an anderer Stelle:
 

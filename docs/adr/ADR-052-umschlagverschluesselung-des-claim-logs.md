@@ -109,6 +109,7 @@ Speicher, betrifft das ein Konto.
 - Keine Datenübernahme: Es gab keine Produktivdaten. Eine bestehende Demo-Datenbank scheitert an
   V39 und wird im Demomodus neu aufgebaut (`FlywayResetConfig`).
 
-**Offen.** Der KMS- oder HSM-Adapter samt Zwischenspeicher je Instanz (`DPoP-demo-61kp`). Ob die
+**Offen.** Der Adapter für den echten Schlüsseldienst (Vault Transit, ADR-56, `DPoP-demo-lmt9`); den
+Zwischenspeicher je Instanz hat ADR-54 umgesetzt. Ob die
 Werte in `account.anchor` einen eigenen Schutz brauchen, entscheidet dieses ADR nicht; dort gilt
 weiter das harte Löschen aus ADR-12.

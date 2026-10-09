@@ -270,8 +270,8 @@ TOTP ist das erste Verfahren, dessen Geheimnis der Server im Klartext braucht, u
 nachzurechnen. Verschlüsselt ist im Projekt bisher nur das Claim-Log
 ([ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md)). Vor einem echten Betrieb muss
 das Geheimnis verschlüsselt abgelegt werden, etwa unter dem Hauptschlüssel des Kontos aus ADR-52,
-und der Umschlagschlüssel dafür gehört nicht in dieselbe Datenbank (Zielbild der
-Schlüsselverwaltung, `DPoP-demo-61kp`).
+und der Umschlagschlüssel dafür gehört nicht in dieselbe Datenbank (Schlüsseldienst,
+[ADR-56](adr/ADR-056-vault-transit-als-schluesseldienst.md)).
 
 ## 5) Was der Orchestrator übernimmt und was man doch anfasst
 

@@ -217,7 +217,6 @@ stillschweigend etwas von der Umgebung voraussetzt.
 - **A-4** Bindung eines Tools an einen Kanal und **A-5** Person am Anmeldeergebnis (siehe
   Abschnitt 1).
 - Weitere offene Entscheidungen:
-  - **Schlüsselverwaltung** (`DPoP-demo-61kp`),
   - **Verschlüsselung personenbezogener Spalten** (`DPoP-demo-bo1w`),
   - **Aufwerten nach erneuter Identifizierung** (`DPoP-demo-wyp3`),
   - **`loa3` im Web-Realm** (`DPoP-demo-wzcm`).
