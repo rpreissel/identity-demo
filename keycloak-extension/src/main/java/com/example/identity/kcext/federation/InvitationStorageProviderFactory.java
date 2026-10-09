@@ -38,7 +38,7 @@ public class InvitationStorageProviderFactory implements UserStorageProviderFact
 
     @Override
     public InvitationStorageProvider create(KeycloakSession session, ComponentModel model) {
-        return new InvitationStorageProvider(session, model, OrchestratorSettings.of(session).newClient());
+        return new InvitationStorageProvider(session, model, () -> OrchestratorSettings.of(session).newClient());
     }
 
     @Override

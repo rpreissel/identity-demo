@@ -3,6 +3,7 @@ package com.example.identity.kcext.federation;
 import com.example.identity.kcext.client.OrchestratorClient;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ModelException;
@@ -22,19 +23,26 @@ public class InvitationStorageProvider implements UserStorageProvider, UserLooku
 
     private final KeycloakSession session;
     private final ComponentModel model;
-    private final OrchestratorClient client;
+    private final Supplier<OrchestratorClient> clientSource;
+    private OrchestratorClient client;
 
-    InvitationStorageProvider(KeycloakSession session, ComponentModel model, OrchestratorClient client) {
+    /** Built on first use, like {@link OrchestratorStorageProvider}: removing the realm creates this provider too. */
+    InvitationStorageProvider(KeycloakSession session, ComponentModel model, Supplier<OrchestratorClient> clientSource) {
         this.session = session;
         this.model = model;
-        this.client = client;
+        this.clientSource = clientSource;
+    }
+
+    private OrchestratorClient client() {
+        if (client == null) client = clientSource.get();
+        return client;
     }
 
     @Override
     public UserModel getUserById(RealmModel realm, String id) {
         String invitation = StorageId.externalId(id);
         try {
-            KcInvitation found = client.invitationById(invitation);
+            KcInvitation found = client().invitationById(invitation);
             return found == null ? null : new InvitationUser(session, realm, model, found);
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();

@@ -5,6 +5,7 @@ import org.keycloak.models.ModelException;
 
 import static com.example.identity.kcext.KcTestFixtures.component;
 import static com.example.identity.kcext.KcTestFixtures.unreachableOrchestrator;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -17,7 +18,7 @@ class InvitationStorageProviderTest {
     private static final String COMPONENT_ID = "05a332f1-f79d-46f6-9954-a3c95432e5c4";
 
     private final InvitationStorageProvider provider =
-            new InvitationStorageProvider(null, component(COMPONENT_ID), unreachableOrchestrator());
+            new InvitationStorageProvider(null, component(COMPONENT_ID), () -> unreachableOrchestrator());
 
     @Test
     void anUnreachableOrchestratorIsAnErrorNotAnUnknownUser() {
@@ -28,5 +29,18 @@ class InvitationStorageProviderTest {
     void anInvitationIsNeverFoundByNameOrAddress() {
         assertNull(provider.getUserByUsername(null, "invitation-" + "a".repeat(64)));
         assertNull(provider.getUserByEmail(null, "max@example.com"));
+    }
+
+    /**
+     * Keycloak creates this provider when it removes the realm, too. Creating it must not read the
+     * settings of the account federation, which may be unreadable then (DPoP-demo-egyu); without a
+     * session, reading them would fail here.
+     */
+    @Test
+    void creatingTheProviderDoesNotReadTheSettings() {
+        InvitationStorageProvider created = assertDoesNotThrow(
+                () -> new InvitationStorageProviderFactory().create(null, component(COMPONENT_ID)));
+
+        assertDoesNotThrow(() -> created.preRemove(null));
     }
 }

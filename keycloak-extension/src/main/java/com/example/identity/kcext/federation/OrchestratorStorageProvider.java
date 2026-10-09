@@ -21,6 +21,7 @@ import org.keycloak.storage.user.UserRegistrationProvider;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -36,12 +37,22 @@ public class OrchestratorStorageProvider implements UserStorageProvider, UserReg
 
     private final KeycloakSession session;
     private final ComponentModel model;
-    private final OrchestratorClient client;
+    private final Supplier<OrchestratorClient> clientSource;
+    private OrchestratorClient client;
 
-    OrchestratorStorageProvider(KeycloakSession session, ComponentModel model, OrchestratorClient client) {
+    /**
+     * The client is built on first use, not here: Keycloak also instantiates this provider when it
+     * removes the realm, and an unreadable component config must not block that (DPoP-demo-egyu).
+     */
+    OrchestratorStorageProvider(KeycloakSession session, ComponentModel model, Supplier<OrchestratorClient> clientSource) {
         this.session = session;
         this.model = model;
-        this.client = client;
+        this.clientSource = clientSource;
+    }
+
+    private OrchestratorClient client() {
+        if (client == null) client = clientSource.get();
+        return client;
     }
 
     // Lookup ---------------------------------------------------------------------------------
@@ -55,17 +66,17 @@ public class OrchestratorStorageProvider implements UserStorageProvider, UserReg
         } catch (NumberFormatException e) {
             return null;
         }
-        return wrap(realm, read(() -> client.accountById(accountId)));
+        return wrap(realm, read(() -> client().accountById(accountId)));
     }
 
     @Override
     public UserModel getUserByUsername(RealmModel realm, String username) {
-        return wrap(realm, read(() -> client.accountByUsername(username)));
+        return wrap(realm, read(() -> client().accountByUsername(username)));
     }
 
     @Override
     public UserModel getUserByEmail(RealmModel realm, String email) {
-        return wrap(realm, read(() -> client.accountByEmail(email)));
+        return wrap(realm, read(() -> client().accountByEmail(email)));
     }
 
     @Override
@@ -149,7 +160,7 @@ public class OrchestratorStorageProvider implements UserStorageProvider, UserReg
         // Ein Ausfall ist kein falsches Passwort: false zaehlte Keycloaks Brute-Force-Schutz dem
         // Nutzer an und sperrte bei kurzem Ausfall alle, die sich gerade anmelden.
         try {
-            return client.verifyPassword(accountId, input.getChallengeResponse());
+            return client().verifyPassword(accountId, input.getChallengeResponse());
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new ModelException("Orchestrator password verification failed", e);
