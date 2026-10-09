@@ -371,15 +371,41 @@ p.orc-hint {
   color: var(--orc-color-text);
 }
 
-/* Demo-only helper above a real form: set apart as a tool, not a form field. */
+/* Demo-only helpers live in an aside beside the card, never in the form (Layout.tsx). On a wide
+   screen the aside hangs to the right of the card, which keeps its place and width; on a narrow
+   one it sits above the card. Empty on pages without demo values. */
+.orc-stage {
+  position: relative;
+}
+
+.orc-demo-aside:empty {
+  display: none;
+}
+
+.orc-demo-aside {
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 1280px) {
+  .orc-demo-aside {
+    position: absolute;
+    top: 0;
+    left: calc(100% + 1.5rem);
+    width: 15rem;
+    margin: 0;
+  }
+}
+
 .orc-demo-picker {
-  padding: 0.75rem 1rem;
-  margin-bottom: 1.5rem;
-  border: 1px dashed var(--orc-color-border);
+  margin: 0;
+  padding: 0.75rem 1rem 1rem;
+  border: 2px dashed var(--orc-color-demo);
+  border-radius: var(--orc-radius);
   background: var(--orc-color-surface-soft);
 }
 
 .orc-demo-picker label {
+  margin-bottom: 0.5rem;
   font-size: var(--orc-font-size-small);
 }
 
@@ -444,4 +470,75 @@ p.orc-hint {
 .orc-field select {
   padding-top: 0;
   padding-bottom: 0;
+}
+
+/* ---- Keycloak's own pages (KcTemplate.tsx, KC_CLASSES in KcPage.tsx) ------------- */
+
+/* Keycloak's password field: the show/hide toggle needs PatternFly's icon font, which we do not load. */
+.orc-visibility {
+  display: none;
+}
+
+/* Inside Keycloak's forms (.orc-kc) the field rules would also hit the submit input and the
+   checkbox; and the rule under the known user is ours already. */
+.orc-kc hr {
+  display: none;
+}
+
+.orc-kc .orc-field input.orc-button {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 50px;
+  padding: 0.75rem 1.25rem;
+  background: var(--orc-color-surface-soft);
+  font-weight: var(--orc-font-weight-light);
+  cursor: pointer;
+}
+
+.orc-kc .orc-field input.orc-button-primary {
+  border-color: var(--orc-color-action);
+  background: var(--orc-color-action);
+  color: var(--orc-color-on-action);
+}
+
+.orc-kc .orc-field input.orc-button-primary:hover {
+  border-color: var(--orc-color-action-hover);
+  background: var(--orc-color-action-hover);
+}
+
+.orc-kc .checkbox label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: normal;
+}
+
+.orc-kc input[type='checkbox'] {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  padding: 0;
+}
+
+.orc-form-options {
+  margin: 0 0 1.25rem;
+  font-size: var(--orc-font-size-small);
+}
+
+.orc-hint-error {
+  color: var(--orc-color-danger);
+}
+
+.orc-link-button {
+  margin-top: 1rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--orc-color-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }

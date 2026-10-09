@@ -1,8 +1,6 @@
 import { createGetKcContextMock } from 'keycloakify/login/KcContext'
 import type { KcContext, KcContextExtension, KcContextExtensionPerPage } from './KcContext'
-import { parseProperties } from '../texts'
-import de from '../../messages/messages_de.properties?raw'
-import en from '../../messages/messages_en.properties?raw'
+import { bundledTexts } from './bundledTexts'
 
 /**
  * Pages without Keycloak, for `npm run dev` and tests: `?page=orchestrator-tool.ftl` picks the
@@ -68,6 +66,10 @@ const { getKcContextMock } = createGetKcContextMock({
 export function mockContext(): KcContext {
   const query = new URLSearchParams(window.location.search)
   const pageId = query.get('page') ?? 'orchestrator-select.ftl'
-  const texts = parseProperties(query.get('lang') === 'en' ? en : de)
-  return getKcContextMock({ pageId: pageId as KcContext['pageId'], overrides: { texts } }) as KcContext
+  const texts = bundledTexts(query.get('lang') ?? 'de')
+  // `?user=erika@example.org`: the login already knows who signs in, as on Keycloak's own pages
+  // during a step-up or after the username step.
+  const user = query.get('user')
+  const auth = user ? { attemptedUsername: user, showUsername: true, showResetCredentials: false } : undefined
+  return getKcContextMock({ pageId: pageId as KcContext['pageId'], overrides: { texts, ...(auth && { auth }) } }) as KcContext
 }

@@ -1,9 +1,10 @@
 import { lazy, Suspense } from 'react'
 import DefaultPage from 'keycloakify/login/DefaultPage'
-import Template from 'keycloakify/login/Template'
+import Template from './KcTemplate'
 import type { KcContext } from './KcContext'
 import { useI18n } from './i18n'
 import { setTexts } from '../texts'
+import { bundledTexts } from './bundledTexts'
 import { OrchestratorConfirm } from './pages/OrchestratorConfirm'
 import { OrchestratorError } from './pages/OrchestratorError'
 import { OrchestratorManageMethods } from './pages/OrchestratorManageMethods'
@@ -28,13 +29,27 @@ import './theme.css'
 
 const UserProfileFormFields = lazy(() => import('keycloakify/login/UserProfileFormFields'))
 
+/** Keycloak's own pages in our look: their PatternFly classes mapped onto the theme's. */
+const KC_CLASSES = {
+  kcFormGroupClass: 'orc-field',
+  kcFormButtonsClass: 'orc-actions',
+  kcFormOptionsWrapperClass: 'orc-form-options',
+  kcButtonClass: 'orc-button',
+  kcButtonPrimaryClass: 'orc-button-primary',
+  kcInputGroup: 'orc-input-group',
+  kcInputErrorMessageClass: 'orc-hint orc-hint-error',
+  kcFormPasswordVisibilityButtonClass: 'orc-visibility',
+  kcCheckboxInputClass: 'orc-checkbox',
+}
+
 /**
  * One component per page id. The orchestrator's own pages are rebuilt here; any page id without
  * its own component - Keycloak's built-in pages such as login-page-expired.ftl - falls back to
- * Keycloakify's default rendering.
+ * Keycloakify's default page, framed by our KcTemplate and styled through KC_CLASSES.
  */
 export default function KcPage({ kcContext }: { kcContext: KcContext }) {
-  setTexts(kcContext.texts)
+  // Keycloak's own pages carry no texts from the extension: the bundle in the login's language.
+  setTexts(kcContext.texts ?? bundledTexts(kcContext.locale?.currentLanguageTag))
   const { i18n } = useI18n({ kcContext })
   return (
     <Suspense>
@@ -85,9 +100,9 @@ export default function KcPage({ kcContext }: { kcContext: KcContext }) {
               <DefaultPage
                 kcContext={kcContext}
                 i18n={i18n}
-                classes={{}}
+                classes={KC_CLASSES}
                 Template={Template}
-                doUseDefaultCss={true}
+                doUseDefaultCss={false}
                 UserProfileFormFields={UserProfileFormFields}
                 doMakeUserConfirmPassword={true}
               />

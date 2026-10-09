@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { t } from '../../texts'
+import { DemoSlotContext } from '../demoSlot'
 
 type Person = Record<string, string | null | undefined>
 
 /**
- * The demo's test persons (demo-person-picker.ftl, the App channel's DemoPersonPicker.tsx): picking
- * one fills the given inputs - `fields` maps input id to the person's field - and the first person
- * is taken on load. The inputs stay free text; without demo values (ADR-28) there is no list and
- * the form starts empty.
+ * The demo's test persons (like the App channel's DemoPersonPicker.tsx): picking one fills the
+ * given inputs - `fields` maps input id to the person's field - and the first person is taken on
+ * load. It renders into the demo aside beside the card (Layout.tsx), outside the form, so the form
+ * looks as it would without the demo. The inputs stay free text; without demo values (ADR-28) there
+ * is no list and the form starts empty.
  */
 export function DemoPersonPicker({
   personsJson,
@@ -31,14 +34,15 @@ export function DemoPersonPicker({
     }
   })
   const [chosen, setChosen] = useState(persons.length > 0 ? '0' : '')
+  const slot = useContext(DemoSlotContext)
 
   useEffect(() => {
     if (persons.length > 0) apply(persons[0], fields)
-    // Only once, on load - like the template's DOMContentLoaded.
+    // Only once, on load.
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (persons.length === 0) return null
-  return (
+  if (persons.length === 0 || !slot) return null
+  return createPortal(
     <div className="orc-field orc-demo-picker">
       <label htmlFor="demoPerson">
         <span className="orc-demo-tag">{t('Demo')}</span> {title ?? t('Testperson übernehmen')}
@@ -58,7 +62,8 @@ export function DemoPersonPicker({
           </option>
         ))}
       </select>
-    </div>
+    </div>,
+    slot,
   )
 }
 
