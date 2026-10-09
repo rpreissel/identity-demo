@@ -478,10 +478,13 @@ Orchestrators:
   Personen, Freischaltcodes und Einladungen mit Einmalkennwort. Einladungen kann man dort
   ausstellen, den Vorgang abschließen oder sie widerrufen. Fachlich spricht die Seite nur
   `/mock-personenverzeichnis/*` an. Vom `/orchestrator` lädt sie nur die Texte der gemeinsamen
-  Komponenten.
+  Komponenten. Unter der Kopfleiste sagt ein gestreiftes Band „Simuliert“ (`SimBand`), dass hier ein
+  fremdes System spielt. Die Personen stehen in einer durchsuchbaren Tabelle. Freischaltcodes und
+  Einladungen zeigen links den Bestand der gewählten Person und rechts das Formular für einen neuen Brief.
 - **Briefkasten** (`/briefkasten/`): die simulierte Seite der Empfänger. Briefe, SMS und E-Mails an
-  Testpersonen stehen in einer Liste, die neuesten zuerst, mit den Codes im Klartext. Bei einem
-  Brief mit Einmalkennwort nennt eine kleine Zeile darunter den Vorgang. Die Seite liest die
+  Testpersonen stehen als Karten untereinander, die neuesten zuerst, mit dem Code im Klartext und
+  einem Knopf „Kopieren“. Ein Filter zeigt nur SMS, E-Mails oder Briefe. Bei einem Brief mit
+  Einmalkennwort nennt die Zeile unter dem Empfänger den Vorgang. Die Seite liest die
   Postausgänge der Simulationen (`/mock-personenverzeichnis/briefe`, `/mock-sms/outbox`,
   `/mock-mail/outbox`). Diese gibt es nur im Demomodus. Die Seite lädt alle drei Sekunden neu.
 - **Nect-Sprungseite** (`/nect/`): der simulierte Identifizierungsdienst Nect (Online-Ausweis,

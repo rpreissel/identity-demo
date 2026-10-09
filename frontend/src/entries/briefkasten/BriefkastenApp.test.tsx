@@ -32,16 +32,19 @@ describe('Briefkasten', () => {
     render(<BriefkastenApp />)
 
     await screen.findByText('123456')
-    const rows = screen.getAllByRole('row').slice(1)
-    expect(rows.map((row) => within(row).getAllByRole('cell')[2].textContent)).toEqual(['123456', '654321', 'FSC-1111', 'ABCD-EFGH-JKLM'])
-    expect(within(rows[0]).getByText('Erika Muster (+491700000001)')).toBeInTheDocument()
-    expect(within(rows[1]).getByText('Erika Muster (Erika@example.org)')).toBeInTheDocument()
+    const items = screen.getAllByRole('listitem')
+    expect(items.map((item) => item.querySelector('.mailbox-code')?.textContent)).toEqual(['123456', '654321', 'FSC-1111', 'ABCD-EFGH-JKLM'])
+    expect(within(items[0]).getByText('SMS an Erika Muster')).toBeInTheDocument()
+    expect(within(items[0]).getByText('+491700000001')).toBeInTheDocument()
+    expect(within(items[1]).getByText('E-Mail an Erika Muster')).toBeInTheDocument()
+    expect(within(items[1]).getByText('Erika@example.org')).toBeInTheDocument()
   })
+
   it('nennt beim Brief mit Einmalkennwort den Vorgang mit seinem Namen (ADR-48)', async () => {
     render(<BriefkastenApp />)
 
     await screen.findByText('ABCD-EFGH-JKLM')
-    const row = screen.getByText('ABCD-EFGH-JKLM').closest('tr')!
+    const row = screen.getByText('ABCD-EFGH-JKLM').closest('li')!
     expect(within(row).getByText('Einmalkennwort für Bonusprogramm')).toBeInTheDocument()
   })
 })

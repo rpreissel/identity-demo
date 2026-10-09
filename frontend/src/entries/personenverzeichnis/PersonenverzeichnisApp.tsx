@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import '../../App.css'
 import { ChannelNav, type NavTab } from '../../components/ChannelNav'
+import { AreaHead, SimBand } from '../../components/SimBand'
 import { personenverzeichnisApi, type Brief, type Einladung, type Freischaltcode, type RegisterPerson, type Vorgang } from '../../personenverzeichnisApi'
 import { language, t } from '../../texts'
 import { Tx } from '../../Tx'
@@ -30,11 +31,13 @@ function fullName(p: RegisterPerson | undefined): string {
   return p ? [p.vorname, p.name].filter(Boolean).join(' ') || `#${p.id}` : t('unbekannt')
 }
 
-/** "Straße Nr, PLZ Ort" - leaving out whatever part the register does not have. */
-function address(p: RegisterPerson): string {
-  const street = [p.strasse, p.hausnummer].filter(Boolean).join(' ')
-  const city = [p.plz, p.ort].filter(Boolean).join(' ')
-  return [street, city].filter(Boolean).join(', ') || '–'
+/** The address in its two lines, leaving out whatever part the register does not have. */
+const street = (p: RegisterPerson) => [p.strasse, p.hausnummer].filter(Boolean).join(' ')
+const city = (p: RegisterPerson) => [p.plz, p.ort].filter(Boolean).join(' ')
+
+/** A day in the reader's language - from a date (yyyy-mm-dd) or an instant. */
+function formatDay(value: string): string {
+  return new Date(value.length === 10 ? `${value}T00:00:00` : value).toLocaleDateString(language(), { dateStyle: 'medium' })
 }
 
 function formatDate(iso: string | undefined): string {
@@ -65,29 +68,64 @@ export function PersonenverzeichnisApp() {
   return (
     <div className="web-shell channel-pv">
       <ChannelNav area="pv" tabs={TABS} sub={tab} onSelectTab={setTab} />
-      <div className="web-page">
-        <div className="ext-banner">
-          <Tx text="Simuliertes {fremdsystem}: das externe Personenverzeichnis." fremdsystem={<strong>{t('Fremdsystem')}</strong>} />{' '}
-          <Tx
-            text="Unsere Anwendung liest es nur über {schnittstelle} und fragt es beim Freischaltcode ({fsc}) und bei der Zuordnung ({zuordnung})."
-            schnittstelle={<code>PersonDirectory</code>}
-            fsc={<code>ident-fsc</code>}
-            zuordnung={<code>ident-kvnr</code>}
-          />{' '}
-          {t('Was Sie hier ändern, meldet es an die Konten - und über sie an Keycloak.')}
-        </div>
+      <SimBand label={t('Simuliert · Fremdes System')}>
+        <Tx
+          text="Unsere Anwendung liest es nur über {schnittstelle} und fragt es beim Freischaltcode ({fsc}) und bei der Zuordnung ({zuordnung})."
+          schnittstelle={<code>PersonDirectory</code>}
+          fsc={<code>ident-fsc</code>}
+          zuordnung={<code>ident-kvnr</code>}
+        />{' '}
+        {t('Was Sie hier ändern, meldet es an die Konten - und über sie an Keycloak.')}
+      </SimBand>
+      <main className="area-page">
         {error && <div className="card error-card"><h2>{t('Fehler')}</h2><p>{error}</p></div>}
         {tab === 'personen' && <PersonenTab personen={personen} onChanged={reload} onError={setError} />}
         {tab === 'freischaltcodes' && <FreischaltcodesTab personen={personen} onError={setError} />}
         {tab === 'einladungen' && <EinladungenTab personen={personen} onError={setError} />}
-      </div>
+      </main>
     </div>
   )
+}
+
+/** Whether a person matches the search: name, Partnernummer, insurance number, KVNR or e-mail. */
+function matches(p: RegisterPerson, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return [fullName(p), p.id, p.versnr, p.kvnr, p.email].some((v) => v?.toLowerCase().includes(q))
+}
+
+function RoleTag({ person }: { person: RegisterPerson }) {
+  return person.versnr ? <span className="role-tag">{t('Versicherter')}</span> : <span className="role-tag role-tag--partner">{t('Partner')}</span>
+}
+
+/** The register's choice of person, the same on both issuing tabs. */
+function PersonSelect({ id, personen, value, onChange }: { id: string; personen: RegisterPerson[]; value: string | null; onChange: (id: string) => void }) {
+  return (
+    <div className="form-group">
+      <label htmlFor={id}>{t('Person')}</label>
+      <select id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+        {personen.map((p) => <option key={p.id} value={p.id}>{p.kvnr ? `${fullName(p)} (${p.kvnr})` : fullName(p)}</option>)}
+      </select>
+    </div>
+  )
+}
+
+function StatusTag({ kind, children }: { kind: 'ok' | 'off'; children: string }) {
+  return <span className={kind === 'ok' ? 'status-tag status-tag--ok' : 'status-tag'}>{children}</span>
 }
 
 function PersonenTab({ personen, onChanged, onError }: { personen: RegisterPerson[]; onChanged: () => void; onError: (m: string | null) => void }) {
   // null = no form open; an object without id = new person.
   const [editing, setEditing] = useState<RegisterPerson | null>(null)
+  const [query, setQuery] = useState('')
+  const shown = personen.filter((p) => matches(p, query))
+  const form = useRef<HTMLFormElement>(null)
+
+  // The form opens under the table; bring it into view, a long list would hide it.
+  const editingId = editing ? (editing.id ?? '') : null
+  useEffect(() => {
+    if (editingId !== null) form.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+  }, [editingId])
 
   async function save(e: FormEvent) {
     e.preventDefault()
@@ -105,41 +143,53 @@ function PersonenTab({ personen, onChanged, onError }: { personen: RegisterPerso
 
   return (
     <>
-      <div className="card">
-        <div className="card-heading-row">
-          <h2>{t('Personen')}</h2>
-          <button className="secondary small" onClick={() => setEditing({})}>
-            + {t('Neue Person')}
-          </button>
-        </div>
-        <div className="journey-trace-table-scroll">
-          <table className="journey-trace-table">
-            <thead>
-              <tr><th>{t('Partnernummer')}</th><th>{t('Rolle')}</th><th>{t('Versicherungsnummer')}</th><th>{t('KVNR')}</th><th>{t('Name')}</th><th>{t('Geburtsdatum')}</th><th>{t('Adresse')}</th><th>{t('E-Mail-Adresse')}</th><th>{t('Mobilnummer')}</th><th /></tr>
-            </thead>
-            <tbody>
-              {personen.map((p) => (
-                <tr key={p.id}>
-                  <td><code>{p.id}</code></td>
-                  <td>{p.versnr ? t('Versicherter') : t('Partner')}</td>
-                  <td>{p.versnr ? <code>{p.versnr}</code> : '–'}</td>
-                  <td>{p.kvnr ? <code>{p.kvnr}</code> : '–'}</td>
-                  <td>{fullName(p)}</td>
-                  <td>{p.geburtsdatum ?? '–'}</td>
-                  <td>{address(p)}</td>
-                  <td>{p.email ?? '–'}</td>
-                  <td>{p.mobilnummer ?? '–'}</td>
-                  <td><button className="secondary small" onClick={() => setEditing({ ...p })}>{t('Bearbeiten')}</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <AreaHead kicker={t('Personenverzeichnis')} title={t('Personen')} />
+      <div className="area-toolbar">
+        <label className="area-search">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.6" />
+            <path d="M12.5 12.5L16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('Name, Partnernummer oder KVNR')} aria-label={t('Personen suchen')} />
+        </label>
+        <button onClick={() => setEditing({})}>{t('Neue Person')}</button>
+      </div>
+      <div className="data-card">
+        <table className="data-table">
+          <thead>
+            <tr><th>{t('Person')}</th><th>{t('Rolle')}</th><th>{t('Partnernummer')}</th><th>{t('KVNR')}</th><th>{t('Geburtsdatum')}</th><th>{t('Adresse')}</th><th /></tr>
+          </thead>
+          <tbody>
+            {shown.length === 0 && <tr><td colSpan={7} className="data-empty">{t('Keine Person gefunden.')}</td></tr>}
+            {shown.map((p) => (
+              <tr key={p.id}>
+                <td>
+                  <strong>{fullName(p)}</strong>
+                  <span className="data-sub">{p.email ?? '–'}</span>
+                  {p.mobilnummer && <span className="data-sub">{p.mobilnummer}</span>}
+                </td>
+                <td>
+                  <RoleTag person={p} />
+                  {p.versnr && <span className="data-sub data-mono" title={t('Versicherungsnummer')}>{p.versnr}</span>}
+                </td>
+                <td className="data-mono">{p.id}</td>
+                <td className="data-mono">{p.kvnr ?? '–'}</td>
+                <td>{p.geburtsdatum ? formatDay(p.geburtsdatum) : '–'}</td>
+                <td className="data-muted data-nowrap">
+                  {street(p) || '–'}
+                  {city(p) && <span className="data-sub">{city(p)}</span>}
+                </td>
+                <td className="data-action"><button className="secondary small" onClick={() => setEditing({ ...p })}>{t('Bearbeiten')}</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {editing && (
-        <form className="card" onSubmit={save}>
+        <form className="card pv-form" onSubmit={save} ref={form}>
           <h2>{editing.id ? t('{name} bearbeiten', { name: fullName(editing) }) : t('Neue Person')}</h2>
+          <div className="pv-form-grid">
           <div className="form-group">
             <label htmlFor="ext-versnr">{t('Versicherungsnummer (nur wenn bei uns versichert)')}</label>
             <input
@@ -171,6 +221,7 @@ function PersonenTab({ personen, onChanged, onError }: { personen: RegisterPerso
               />
             </div>
           ))}
+          </div>
           <div className="form-actions">
             <button type="submit">{t('Speichern')}</button>
             <button type="button" className="secondary" onClick={() => setEditing(null)}>{t('Abbrechen')}</button>
@@ -214,48 +265,57 @@ function FreischaltcodesTab({ personen, onError }: { personen: RegisterPerson[];
   }
 
   return (
-    <div className="card">
-      <h2>{t('Freischaltcodes')}</h2>
-      <div className="form-group">
-        <label htmlFor="ext-person">{t('Person')}</label>
-        <select id="ext-person" value={selected ?? ''} onChange={(e) => { setPersonId(e.target.value); setIssued(null) }}>
-          {personen.map((p) => <option key={p.id} value={p.id}>{p.kvnr ? `${fullName(p)} (${p.kvnr})` : fullName(p)}</option>)}
-        </select>
-      </div>
+    <>
+      <AreaHead kicker={t('Personenverzeichnis')} title={t('Freischaltcodes')} />
+      <div className="pv-split">
+        <section className="card pv-stock">
+          <PersonSelect id="ext-person" personen={personen} value={selected} onChange={(id) => { setPersonId(id); setIssued(null) }} />
+          <table className="data-table">
+            <thead><tr><th>#</th><th>{t('Status')}</th><th>{t('Gültig bis')}</th><th /></tr></thead>
+            <tbody>
+              {codes.length === 0 && <tr><td colSpan={4} className="data-empty">{t('Keine Freischaltcodes.')}</td></tr>}
+              {codes.map((c) => (
+                <tr key={c.id}>
+                  <td className="data-mono">{c.id}</td>
+                  <td>
+                    {c.revokedAt ? (
+                      <>
+                        <StatusTag kind="off">{t('widerrufen')}</StatusTag>
+                        <span className="data-sub data-nowrap">{formatDate(c.revokedAt)}</span>
+                      </>
+                    ) : c.valid ? (
+                      <StatusTag kind="ok">{t('gültig')}</StatusTag>
+                    ) : (
+                      <StatusTag kind="off">{t('abgelaufen')}</StatusTag>
+                    )}
+                  </td>
+                  <td className="data-nowrap">{formatDay(c.expiresAt)}</td>
+                  <td className="data-action">{!c.revokedAt && <button className="secondary small" onClick={() => widerrufen(c.id)}>{t('Widerrufen')}</button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="pv-note">
+            {t('Das Personenverzeichnis speichert nur den Hash.')}{' '}
+            <Tx text="Den Klartext trägt allein der Brief, er liegt im {briefkasten}." briefkasten={<a href="/briefkasten/" target="identity-demo-briefkasten">{t('Briefkasten')}</a>} />
+          </p>
+        </section>
 
-      <div className="journey-trace-table-scroll">
-        <table className="journey-trace-table">
-          <thead><tr><th>#</th><th>{t('Status')}</th><th>{t('Gültig bis')}</th><th /></tr></thead>
-          <tbody>
-            {codes.length === 0 && <tr><td colSpan={4}>{t('Keine Freischaltcodes.')}</td></tr>}
-            {codes.map((c) => (
-              <tr key={c.id}>
-                <td>{c.id}</td>
-                <td>{c.revokedAt ? t('widerrufen {datum}', { datum: formatDate(c.revokedAt) }) : c.valid ? `✅ ${t('gültig')}` : t('abgelaufen')}</td>
-                <td>{formatDate(c.expiresAt)}</td>
-                <td>{!c.revokedAt && <button className="secondary small" onClick={() => widerrufen(c.id)}>{t('Widerrufen')}</button>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <section className="card pv-issue">
+          <h2>{t('Neuen Code ausstellen')}</h2>
+          <div className="form-group">
+            <label htmlFor="ext-gueltig">{t('Gültig bis')}</label>
+            <input id="ext-gueltig" type="date" value={gueltigBis} onChange={(e) => setGueltigBis(e.target.value)} />
+          </div>
+          <div className="form-actions">
+            <button onClick={ausstellen} disabled={selected == null}>
+              {t('Ausstellen und Brief versenden')}
+            </button>
+          </div>
+          {issued && <BriefCard brief={issued} person={personen.find((p) => p.id === issued.personId)} />}
+        </section>
       </div>
-      <p className="hint">
-        {t('Das Personenverzeichnis speichert nur den Hash.')}{' '}
-        <Tx text="Den Klartext trägt allein der Brief, er liegt im {briefkasten}." briefkasten={<a href="/briefkasten/" target="identity-demo-briefkasten">{t('Briefkasten')}</a>} />
-      </p>
-
-      <h3>{t('Neuen Code ausstellen')}</h3>
-      <div className="form-group">
-        <label htmlFor="ext-gueltig">{t('Gültig bis')}</label>
-        <input id="ext-gueltig" type="date" value={gueltigBis} onChange={(e) => setGueltigBis(e.target.value)} />
-      </div>
-      <div className="form-actions">
-        <button onClick={ausstellen} disabled={selected == null}>
-          {t('Ausstellen und Brief versenden')}
-        </button>
-      </div>
-      {issued && <BriefCard brief={issued} person={personen.find((p) => p.id === issued.personId)} />}
-    </div>
+    </>
   )
 }
 
@@ -265,10 +325,11 @@ function inOneMonth(): string {
   return d.toISOString().slice(0, 10)
 }
 
-function einladungStatus(e: Einladung): string {
-  if (e.abgeschlossenAm) return t('Vorgang abgeschlossen {datum}', { datum: formatDate(e.abgeschlossenAm) })
-  if (e.widerrufenAm) return t('widerrufen {datum}', { datum: formatDate(e.widerrufenAm) })
-  return e.offen ? `✅ ${t('offen')}` : t('abgelaufen')
+/** What became of an invitation: a short state for the tag, and when, if it ended. */
+function einladungStatus(e: Einladung): { label: string; kind: 'ok' | 'off'; at?: string } {
+  if (e.abgeschlossenAm) return { label: t('abgeschlossen'), kind: 'off', at: e.abgeschlossenAm }
+  if (e.widerrufenAm) return { label: t('widerrufen'), kind: 'off', at: e.widerrufenAm }
+  return e.offen ? { label: t('offen'), kind: 'ok' } : { label: t('abgelaufen'), kind: 'off' }
 }
 
 /**
@@ -310,76 +371,81 @@ function EinladungenTab({ personen, onError }: { personen: RegisterPerson[]; onE
   }
 
   return (
-    <div className="card">
-      <h2>{t('Einladungen')}</h2>
-      <div className="form-group">
-        <label htmlFor="inv-person">{t('Person')}</label>
-        <select id="inv-person" value={selected ?? ''} onChange={(e) => { setPersonId(e.target.value); setIssued(null) }}>
-          {personen.map((p) => <option key={p.id} value={p.id}>{p.kvnr ? `${fullName(p)} (${p.kvnr})` : fullName(p)}</option>)}
-        </select>
-      </div>
+    <>
+      <AreaHead kicker={t('Personenverzeichnis')} title={t('Einladungen')} />
+      <div className="pv-split">
+        <section className="card pv-stock">
+          <PersonSelect id="inv-person" personen={personen} value={selected} onChange={(id) => { setPersonId(id); setIssued(null) }} />
+          <div className="data-scroll">
+            <table className="data-table">
+              <thead><tr><th>{t('Vorgang')}</th><th>{t('Niveau')}</th><th>{t('Status')}</th><th>{t('Gültig bis')}</th><th /></tr></thead>
+              <tbody>
+                {einladungen.length === 0 && <tr><td colSpan={5} className="data-empty">{t('Keine Einladungen.')}</td></tr>}
+                {einladungen.map((e) => (
+                  <tr key={e.id}>
+                    <td>
+                      <strong>{vorgangName(e.vorgang)}</strong>
+                      <span className="data-sub data-mono" title={e.id}>{e.id.slice(0, 12)}…</span>
+                    </td>
+                    <td className="data-mono">{e.niveau}</td>
+                    <td>
+                      <StatusTag kind={einladungStatus(e).kind}>{einladungStatus(e).label}</StatusTag>
+                      {einladungStatus(e).at && <span className="data-sub data-nowrap">{formatDate(einladungStatus(e).at)}</span>}
+                    </td>
+                    <td className="data-nowrap">{formatDay(e.gueltigBis)}</td>
+                    <td className="data-action">
+                      {e.offen && (
+                        <span className="data-buttons">
+                          <button className="secondary small" onClick={() => run(() => personenverzeichnisApi.einladungAbschliessen(e.id))}>{t('Vorgang abschließen')}</button>
+                          <button className="secondary small" onClick={() => run(() => personenverzeichnisApi.einladungWiderrufen(e.id))}>{t('Widerrufen')}</button>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="pv-note">
+            {t('Das Personenverzeichnis speichert nur den Hash über Person, Einmalkennwort und Vorgang.')}{' '}
+            <Tx text="Den Klartext trägt allein der Brief, er liegt im {briefkasten}." briefkasten={<a href="/briefkasten/" target="identity-demo-briefkasten">{t('Briefkasten')}</a>} />
+          </p>
+        </section>
 
-      <div className="journey-trace-table-scroll">
-        <table className="journey-trace-table">
-          <thead><tr><th>{t('Vorgang')}</th><th>{t('Niveau')}</th><th>{t('Status')}</th><th>{t('Gültig bis')}</th><th>{t('Id')}</th><th /></tr></thead>
-          <tbody>
-            {einladungen.length === 0 && <tr><td colSpan={6}>{t('Keine Einladungen.')}</td></tr>}
-            {einladungen.map((e) => (
-              <tr key={e.id}>
-                <td>{vorgangName(e.vorgang)}</td>
-                <td>{e.niveau}</td>
-                <td>{einladungStatus(e)}</td>
-                <td>{formatDate(e.gueltigBis)}</td>
-                <td><code title={e.id}>{e.id.slice(0, 12)}…</code></td>
-                <td>
-                  {e.offen && (
-                    <>
-                      <button className="secondary small" onClick={() => run(() => personenverzeichnisApi.einladungAbschliessen(e.id))}>{t('Vorgang abschließen')}</button>{' '}
-                      <button className="secondary small" onClick={() => run(() => personenverzeichnisApi.einladungWiderrufen(e.id))}>{t('Widerrufen')}</button>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <section className="card pv-issue">
+          <h2>{t('Neue Einladung ausstellen')}</h2>
+          <div className="form-group">
+            <label htmlFor="inv-vorgang">{t('Vorgang')}</label>
+            <select id="inv-vorgang" value={gewaehlterVorgang} onChange={(e) => setVorgang(e.target.value)}>
+              {vorgaenge.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label htmlFor="inv-niveau">{t('Niveau')}</label>
+            <select id="inv-niveau" value={niveau} onChange={(e) => setNiveau(e.target.value as 'loa1' | 'loa2')}>
+              <option value="loa1">loa1</option>
+              <option value="loa2">loa2</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label htmlFor="inv-gueltig">{t('Gültig bis')}</label>
+            <input id="inv-gueltig" type="date" value={gueltigBis} onChange={(e) => setGueltigBis(e.target.value)} />
+          </div>
+          <div className="form-actions">
+            <button
+              disabled={selected == null || gewaehlterVorgang === ''}
+              onClick={() => run(async () => {
+                if (selected == null) return
+                setIssued(await personenverzeichnisApi.einladungAusstellen(selected, gewaehlterVorgang, niveau, new Date(`${gueltigBis}T23:59:59`).toISOString()))
+              })}
+            >
+              {t('Ausstellen und Brief versenden')}
+            </button>
+          </div>
+          {issued && <BriefCard brief={issued} person={personen.find((p) => p.id === issued.personId)} vorgangName={issued.vorgang && vorgangName(issued.vorgang)} />}
+        </section>
       </div>
-      <p className="hint">
-        {t('Das Personenverzeichnis speichert nur den Hash über Person, Einmalkennwort und Vorgang.')}{' '}
-        <Tx text="Den Klartext trägt allein der Brief, er liegt im {briefkasten}." briefkasten={<a href="/briefkasten/" target="identity-demo-briefkasten">{t('Briefkasten')}</a>} />
-      </p>
-
-      <h3>{t('Neue Einladung ausstellen')}</h3>
-      <div className="form-group">
-        <label htmlFor="inv-vorgang">{t('Vorgang')}</label>
-        <select id="inv-vorgang" value={gewaehlterVorgang} onChange={(e) => setVorgang(e.target.value)}>
-          {vorgaenge.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-        </select>
-      </div>
-      <div className="form-group">
-        <label htmlFor="inv-niveau">{t('Niveau')}</label>
-        <select id="inv-niveau" value={niveau} onChange={(e) => setNiveau(e.target.value as 'loa1' | 'loa2')}>
-          <option value="loa1">loa1</option>
-          <option value="loa2">loa2</option>
-        </select>
-      </div>
-      <div className="form-group">
-        <label htmlFor="inv-gueltig">{t('Gültig bis')}</label>
-        <input id="inv-gueltig" type="date" value={gueltigBis} onChange={(e) => setGueltigBis(e.target.value)} />
-      </div>
-      <div className="form-actions">
-        <button
-          disabled={selected == null || gewaehlterVorgang === ''}
-          onClick={() => run(async () => {
-            if (selected == null) return
-            setIssued(await personenverzeichnisApi.einladungAusstellen(selected, gewaehlterVorgang, niveau, new Date(`${gueltigBis}T23:59:59`).toISOString()))
-          })}
-        >
-          {t('Ausstellen und Brief versenden')}
-        </button>
-      </div>
-      {issued && <BriefCard brief={issued} person={personen.find((p) => p.id === issued.personId)} vorgangName={issued.vorgang && vorgangName(issued.vorgang)} />}
-    </div>
+    </>
   )
 }
 

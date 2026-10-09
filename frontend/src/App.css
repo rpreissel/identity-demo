@@ -1160,6 +1160,7 @@ button.small,
 .shell-area {
   display: inline-flex;
   align-items: center;
+  white-space: nowrap;
   gap: 0.5rem;
   min-height: 2.6rem;
   padding: 0 0.85rem;
@@ -1300,19 +1301,14 @@ button.small,
   padding: 0 0.2rem;
 }
 
-.brief-list {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-}
-
+/* A letter as the recipient would hold it: paper white, the code large. */
 .brief {
   margin-top: 1rem;
-  padding: 1rem 1.25rem;
+  padding: 1.1rem 1.3rem;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #fff;
-  font-family: var(--heading);
+  border-radius: 6px;
+  background: #fffdf9;
+  box-shadow: 0 1px 0 var(--border), 0 6px 18px rgba(22, 24, 29, 0.06);
   color: #222;
 }
 
@@ -1326,23 +1322,409 @@ button.small,
   margin-top: 0.4rem;
   font-family: var(--mono);
   font-size: 1.4rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.15em;
   color: #111;
 }
 
-/* What a letter carries besides its code: one small line under the kind. */
-.mailbox-detail {
-  display: block;
-  font-size: 0.8rem;
-  color: var(--text-muted, var(--text));
+/* Pages of a foreign system (register, mailbox, Nect): a striped band says "simulated" under the header. */
+.sim-band {
+  background: repeating-linear-gradient(135deg, var(--accent-bg) 0 14px, transparent 14px 28px), var(--surface);
+  border-bottom: 1px solid var(--accent-border);
 }
 
-/* Personenverzeichnis: letters, SMS and e-mails in one list; the code is what the reader looks for. */
-.mailbox-code {
-  font-family: var(--mono);
+.sim-band-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0.85rem 1.5rem;
+  box-sizing: border-box;
+}
+
+.sim-band-label {
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sim-band-text {
+  flex: 1 1 30rem;
+  font-size: 0.93rem;
+  color: var(--text-h);
+}
+
+.sim-band-text code {
+  margin: 0;
+  padding: 0 0.15rem;
+  white-space: nowrap;
+}
+
+.area-page {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem 4rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  text-align: left;
+}
+
+.area-page .card {
+  margin: 0;
+}
+
+.area-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.area-head > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.area-head h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  letter-spacing: -0.015em;
+}
+
+.area-kicker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.area-empty {
+  padding: 2rem;
+  border: 1px dashed var(--accent-border);
+  border-radius: 14px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.area-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.area-search {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 0 1 24rem;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--muted);
+  box-sizing: border-box;
+}
+
+.area-search:focus-within {
+  border-color: var(--accent);
+}
+
+.area-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-h);
+  font: inherit;
+}
+
+/* A table of records in a white card; mono for ids, a muted second line for details. */
+.data-card {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.data-scroll {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.93rem;
+}
+
+.data-table th {
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.data-table td {
+  padding: 0.8rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text-h);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table strong {
+  display: block;
+}
+
+.data-sub {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.data-mono {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.data-muted {
+  color: var(--text);
+}
+
+.data-action {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.data-buttons {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.data-empty {
+  color: var(--muted);
+  text-align: center;
+}
+
+.role-tag,
+.status-tag {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  background: var(--code-bg);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.role-tag {
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+}
+
+.role-tag--partner {
+  background: var(--code-bg);
+  color: var(--text);
+}
+
+.status-tag--ok {
+  background: var(--real-bg);
+  color: var(--real-text);
+}
+
+/* Register: the person form in two columns; issuing tabs with the stock left and the new letter right. */
+.pv-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0 1.25rem;
+}
+
+.pv-split {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
+  align-items: start;
+  gap: 1.25rem;
+}
+
+@media (max-width: 860px) {
+  .pv-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pv-stock .data-table th:first-child,
+.pv-stock .data-table td:first-child {
+  padding-left: 0;
+}
+
+.pv-issue h2 {
+  margin-top: 0;
+  font-size: 1.15rem;
+}
+
+.pv-note {
+  margin: 1rem 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+/* Mailbox: filter chips with counts, one card per message, the code large and copyable. */
+.chip-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip-filter button {
+  gap: 0.45rem;
+  padding: 0.4rem 0.9rem;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.chip-filter button:hover {
+  filter: none;
+  border-color: var(--accent-border);
+}
+
+.chip-filter button.on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.chip-count {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.mailbox-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mailbox-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 15rem 9.5rem 6.5rem;
+  align-items: center;
+  gap: 0.9rem 1.5rem;
+  padding: 1.1rem 1.4rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.mailbox-item--brief {
+  background: #fffdf9;
+}
+
+.mailbox-kind {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.mailbox-to {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mailbox-to strong {
+  color: var(--text-h);
+}
+
+.mailbox-to span {
+  font-size: 0.88rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.mailbox-code {
+  justify-self: end;
+  font-family: var(--mono);
+  font-size: 1.35rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--text-h);
+  white-space: nowrap;
+}
+
+.mailbox-when {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.mailbox-copy {
+  min-width: 6.5rem;
+}
+
+@media (max-width: 760px) {
+  .mailbox-item {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+  }
+
+  .mailbox-code {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .mailbox-when {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .mailbox-copy {
+    grid-column: 3;
+    grid-row: 1 / span 3;
+  }
+}
+
+.data-nowrap {
   white-space: nowrap;
 }
 
@@ -2286,4 +2668,9 @@ a.start-area:hover {
 
 .start-page a:not([class]):hover {
   color: var(--area-app);
+}
+
+.area-page input,
+.area-page select {
+  font-family: inherit;
 }

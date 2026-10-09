@@ -475,7 +475,7 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   await issue.click()
   await page.waitForTimeout(1200)
   await caption(page, 'Ausgestellt. Das Verzeichnis speichert nur einen Hash. Das Einmalkennwort im Klartext steht allein im Brief.')
-  await open(page, '/briefkasten/', () => page.getByRole('cell', { name: 'Erika Beispiel' }).first().waitFor(),
+  await open(page, '/briefkasten/', () => page.getByRole('listitem').filter({ hasText: 'Erika Beispiel' }).first().waitFor(),
     'Der Briefkasten der Demo, hier landet alles, was an Testpersonen verschickt wird. Ganz oben der Brief an Erika mit dem Einmalkennwort.')
   const inviteTile = () => page.getByRole('button', { name: ui('Mit Einmalkennwort anmelden') })
   const webLogout = () => page.getByRole('button', { name: ui('Abmelden'), exact: true }).first()
