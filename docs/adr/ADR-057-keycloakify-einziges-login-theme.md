@@ -56,6 +56,16 @@ Die Überschrift heißt `pageTitle`, nicht `title`: Keycloak setzt `title` auf j
 Seitenrahmen (`Layout.tsx`) zeigt immer den Seitentitel, nie den technischen Nutzernamen
 `account-<id>` eines Kontos im Aufbau (ADR-46).
 
+**Keycloaks eigene Seiten** (Passwortformular, Info, erneute Anmeldung …) zeichnet Keycloakify mit
+seinen Standardseiten, aber im Rahmen `KcTemplate.tsx`, also in unserem Layout statt im
+PatternFly-Template. Ihre Klassen bildet `KC_CLASSES` in `KcPage.tsx` auf die des Themes ab. Kennt die
+Anmeldung den Nutzer schon, steht unter dem Titel ein Hinweis „Für <Adresse>. Nicht Sie?“, aber nur,
+wenn der Name eine E-Mail-Adresse ist. Weil die Extension diesen Seiten keine `texts` schickt, nimmt
+das Theme dort seine eigenen Bundles in der Sprache der Anmeldung (`bundledTexts.ts`).
+
+**Demo-Hilfen** wie die Auswahl der Testperson stehen in einer eigenen Spalte neben der Karte (auf
+schmalen Bildschirmen darüber), nie im Formular (`demoSlot.ts`, `DemoPersonPicker.tsx`).
+
 ## 3) Aussehen
 
 Kein Logo, kein Markenname, nur Farben, Formen und Schrift: warme Grautöne, eckige Kanten ohne
