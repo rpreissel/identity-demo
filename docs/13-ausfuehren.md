@@ -379,7 +379,7 @@ aus: `ORCHESTRATOR_URL=http://localhost:8090 KEYCLOAK_URL=http://localhost:8091`
 Diese Suite läuft nicht in der CI. Sie setzt die Demo zu Beginn zurück. Das Konto, mit dem sie sich
 anmeldet, registriert sie selbst über die Website. Die einzelnen Specs:
 
-- `vorgangszugang.spec.ts` prüft die Anmeldung mit Einmalkennwort in beiden Themes
+- `vorgangszugang.spec.ts` prüft die Anmeldung mit Einmalkennwort
   ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)):
   - eine Einladung beim Personenverzeichnis ausstellen,
   - sich anmelden,
@@ -392,7 +392,7 @@ anmeldet, registriert sie selbst über die Website. Die einzelnen Specs:
   Kopplungscode. Die frisch angemeldete App nimmt den Code an und gibt die Anmeldung frei. Der
   Bestätigungscode der App schließt die Anmeldung auf der Website ab.
 - `change-method.spec.ts` ändert das Passwort über die Required Action zur Verwaltung der
-  Verfahren, in beiden Themes und mit einer einzigen Browser-Sitzung. Eine Required Action ist ein
+  Verfahren, mit einer einzigen Browser-Sitzung. Eine Required Action ist ein
   Schritt, den Keycloak nach der Anmeldung verlangt.
 - `fresh-proof.spec.ts` prüft dort die erneute Bestätigung bei einem zu alten Nachweis. Dieser Spec
   läuft nur gegen einen Stack mit kurzer Frist und wird sonst übersprungen. So starten Sie ihn:
