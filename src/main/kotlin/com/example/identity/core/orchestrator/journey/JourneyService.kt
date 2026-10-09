@@ -95,7 +95,7 @@ class JourneyService(
      * Starts a journey and produces its first offer. [seed] names the concrete wish (a step-up
      * target, a method to remove); without it [IntentStrategy.initialState] applies. [seedAction]
      * is a logged entry transition that runs before `initialState()`, so the strategy already sees
-     * its effect (docs/04-orchestrierung.md #8, "RestoreData als erster Übergang").
+     * its effect (docs/04-orchestrierung.md #8, "Übernommene Nachweise als erster Übergang").
      * Only on a [LiveChannel]: an ended channel never gets a journey again (docs/invarianten.md I-1).
      */
     fun start(

@@ -59,8 +59,8 @@ sealed interface Action {
 
     /**
      * Prime a fresh channel's evidence from [methods] before the journey's first decision
-     * (`JourneyService.start`'s `seedAction`, docs/04-orchestrierung.md, "RestoreData als erster
-     * Übergang"). No strategy sees this action; it runs before `initialState()`.
+     * (`JourneyService.start`'s `seedAction`, docs/04-orchestrierung.md, "Übernommene Nachweise als
+     * erster Übergang"). No strategy sees this action; it runs before `initialState()`.
      */
     data class ApplyRestoredEvidence(
         /** What an earlier flow run of the same Keycloak session proved, each with its original age. */

@@ -674,6 +674,7 @@ erDiagram
   orchestrator.auth_journey }o..o| orchestrator.auth_journey : "parent_journey_id (ohne FK)"
   orchestrator.channel_session }o..o| account.account : "account_id"
   orchestrator.device_account_link }o..|| account.account : "account_id"
+  orchestrator.keycloak_session_evidence }o..|| account.account : "account_id"
 
   orchestrator.channel_session {
     uuid id PK
@@ -715,6 +716,12 @@ erDiagram
   orchestrator.device_account_link {
     varchar binding_key_ref PK "einzige langlebige Zuordnung Gerät -> Konto"
   }
+  orchestrator.keycloak_session_evidence {
+    varchar kc_session_id PK "Keycloak-Sitzung, mit method der Schlüssel"
+    varchar method PK "eine Zeile je Sitzung und Verfahren"
+    timestamp proven_at "ersetzt nur durch einen jüngeren Nachweis"
+    timestamp expires_at "ix, Ende der Keycloak-Sitzung"
+  }
   account.account {
     bigint id PK "Spalten siehe Diagramm Konto"
   }
@@ -726,6 +733,11 @@ Orchestrator; der Web-Kanal legt nie eine `AppTokenSession` an. Zweitens sind di
 maßgebliche Grundlage, mit der die Richtlinie für Sicherheitsniveaus (`AuthPolicy`) rechnet. Das
 Token ist nur eine daraus ausgestellte Kopie, die man verwerfen kann
 ([12-entscheidungen.md](12-entscheidungen.md) ADR-15).
+
+`orchestrator.keycloak_session_evidence` hält fest, was die Durchläufe einer Keycloak-Sitzung
+nachgewiesen haben. Ein neuer Web-Kanal derselben Sitzung übernimmt diese Nachweise. Die Zeilen
+leben so lange wie die Keycloak-Sitzung, nicht wie ein Kanal
+([ADR-59](adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md)).
 
 Die Arbeitsdaten eines Tools haben keine eigene Tabelle. Das Tool speichert sie über
 `ToolSessionData`. Sie liegen als JSON in der Zeile seiner `orchestrator.tool_session`

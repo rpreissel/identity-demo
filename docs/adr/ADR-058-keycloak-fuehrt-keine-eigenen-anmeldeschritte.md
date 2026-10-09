@@ -98,7 +98,9 @@ Die vollständige Liste steht im Issue `DPoP-demo-0ntu`:
 
 - In der Extension: `OrchestratorUpdateAuthenticator` und der Teil von
   `OrchestratorResumeAuthenticator`, der native Nachweise über `restoreData` überträgt. RestoreData
-  selbst bleibt: Es trägt weiter die Nachweise eines früheren Durchlaufs.
+  selbst bleibt: Es trägt weiter die Nachweise eines früheren Durchlaufs. (Nachtrag: Seit
+  [ADR-59](ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md) legt der Orchestrator diese
+  Nachweise selbst je Keycloak-Sitzung ab. Das Token entfällt.)
   `OrchestratorStorageProvider` ist kein `CredentialInputValidator` und kein
   `CredentialInputUpdater` mehr.
 - Im Realm: die Executions `auth-username-password-form` und `orchestrator-update-authenticator`

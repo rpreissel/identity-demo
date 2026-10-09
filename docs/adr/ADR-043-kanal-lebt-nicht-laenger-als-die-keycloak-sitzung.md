@@ -147,6 +147,11 @@ Diese Lösung ist gewählt, weil sie mit dem einen Aufruf auskommt, den es am En
 schon gibt. Nach diesem Aufruf braucht niemand den Web-Kanal mehr, außer für einen folgenden Schritt
 desselben Durchlaufs. Jeder weitere Durchlauf (etwa ein Step-up) legt einen neuen Kanal an.
 
+**Nachtrag 2026-10-09.** Mit [ADR-59](ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md)
+heißt der Aufruf am Ende des Durchlaufs `POST .../flow-end`. Er gibt kein Token mehr zurück. Die
+Regel dieser ADR bleibt: `sessionExpiresAt` begrenzt den Kanal. Dazu enden mit ihm auch die
+Nachweise, die der Orchestrator für die Keycloak-Sitzung ablegt.
+
 ## 5) Was nicht garantiert ist
 
 Zwei Fälle deckt die Regel nicht vollständig ab:

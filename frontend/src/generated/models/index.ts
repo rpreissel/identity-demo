@@ -93,7 +93,7 @@ export interface AuthData {
      */
     acr?: string;
     /**
-     * The proven methods, each mapped to "orchestrator": every proof is an orchestrator tool's, also one carried over by RestoreData (ADR-58). The map shape stays for compatibility. Informational only - the orchestrator alone resolves the combined acr above.
+     * The proven methods, each mapped to "orchestrator": every proof is an orchestrator tool's, also one taken over from an earlier flow run of the same Keycloak session (ADR-58, ADR-59). The map shape stays for compatibility. Informational only - the orchestrator alone resolves the combined acr above.
      * @type {{ [key: string]: string; }}
      * @memberof AuthData
      */
@@ -1154,17 +1154,11 @@ export interface KeycloakChannelUpsertRequest {
      */
     intent?: string;
     /**
-     * Required whenever restoreData is present, ignored otherwise. Keycloak's own, durable UserSessionModel id - deliberately NOT read off the peer-auth assertion (the assertion's Keycloak binding is always THIS flow run's own channelSessionId, docs/02-domaenenmodell.md Abschnitt 1, so it can't verify a token minted for a DIFFERENT, earlier flow run's channel). Must match what GET .../restore-data was called with to produce this exact restoreData token.
+     * Keycloak's own, durable UserSessionModel id, when the browser already holds a Keycloak session - deliberately NOT read off the peer-auth assertion (the assertion's Keycloak binding is always THIS flow run's own channelSessionId, docs/02-domaenenmodell.md Abschnitt 1). On a channel's first call, what earlier flow runs of that session proved seeds the channel (ADR-59); ignored on later calls.
      * @type {string}
      * @memberof KeycloakChannelUpsertRequest
      */
     kcSessionId?: string;
-    /**
-     * A signed RestoreData token this same UserSession's channel returned earlier via GET .../restore-data, resubmitted verbatim (docs/05-api.md, section 3) - the bulk, one-shot way to seed a brand-new channel with what a PRIOR, unrelated flow run already established. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
-     * @type {string}
-     * @memberof KeycloakChannelUpsertRequest
-     */
-    restoreData?: string;
     /**
      * Whom Keycloak knows this flow run belongs to: an account or an invitation (ADR-48), the same shape as authData.subject in the answer. A channel already bound to another subject refuses it (409); an account binds a channel that has none, an invitation never does - only its own proof binds it.
      * @type {AuthSubject}
@@ -1648,19 +1642,6 @@ export const QrPairingStepKindEnum = {
 } as const;
 export type QrPairingStepKindEnum = typeof QrPairingStepKindEnum[keyof typeof QrPairingStepKindEnum];
 
-/**
- * The channel's current RestoreData, signed - null if there is nothing worth restoring yet.
- * @export
- * @interface RestoreDataResponse
- */
-export interface RestoreDataResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof RestoreDataResponse
-     */
-    restoreData?: string;
-}
 /**
  * Several procedures are possible; the client shows a selection.
  * @export

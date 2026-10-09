@@ -231,7 +231,7 @@ er besteht nie länger als seine Sitzung in Keycloak.
 - [`JourneyActionExecutor.linkDeviceTo`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyActionExecutor.kt#L341)
   verknüpft ein Gerät nur nach Rückfrage neu. Dabei widerruft er jedes Credential, das an den
   Schlüssel gebunden ist.
-- [`KeycloakChannelService.signedOutAtKeycloak`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L62):
+- [`KeycloakChannelService.signedOutAtKeycloak`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L68):
   Eine Abmeldung in Keycloak beendet die Web- und App-Kanäle dieser Sitzung.
 
 **Härtungen:**
@@ -247,7 +247,7 @@ er besteht nie länger als seine Sitzung in Keycloak.
 **Offene Punkte:**
 
 - **Niedrig** Der Web-Kanal steht nach dem letzten Schritt schon auf `AUTHENTICATED`, bevor
-  Keycloak die Sitzung anlegt. Die Meldung einer Abmeldung und `restore-data` werden nur nach
+  Keycloak die Sitzung anlegt. Die Meldung einer Abmeldung und `flow-end` werden nur nach
   bestem Bemühen („best effort“) zugestellt (`DPoP-demo-oe06`).
 - **Niedrig** I-14 (kein Gerätelink auf ein gelöschtes Konto) ist nicht durch einen Fremdschlüssel
   in der Datenbank abgesichert (`DPoP-demo-hwc6`).
@@ -264,7 +264,9 @@ die der Orchestrator nennt.
 
 **Doku:** [ADR-7](adr/ADR-007-web-kanal-ohne-mtls-signierte-request-assertion-statt.md);
 [05-api.md](05-api.md) Abschnitt 3b (Keycloak-Endpunkte); [04-orchestrierung.md](04-orchestrierung.md)
-Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten.md) I-15, I-16, I-31.
+Abschnitt 8 „Übernommene Nachweise als erster Übergang“;
+[ADR-59](adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md);
+[invarianten.md](invarianten.md) I-15, I-16, I-31.
 
 **Code im Orchestrator:**
 
@@ -279,14 +281,17 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
   jede Assertion ab („fail-closed“: im Zweifel ablehnen).
 - [`KeycloakChannelAccessGuard`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ChannelAccessGuard.kt#L72):
   Das `channel_binding` muss zum Kanal passen. Eine bekannte Kanal-Id allein reicht nicht.
-- [`KeycloakChannelService.upsertChannel`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L100):
-  Ein fremdes Subjekt ergibt `409`. RestoreData (ein signierter Zettel mit früheren Nachweisen
-  derselben Sitzung) gilt nur für dasselbe Subjekt.
-- [`KeycloakChannelService.restoreData`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L204)
-  kürzt die Frist des Kanals auf das Ende der Keycloak-Sitzung. Für Einladungen gibt er nichts
-  heraus (I-30).
-- [`RestoreDataCodec.decode`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/RestoreDataCodec.kt#L51)
-  prüft HMAC, `sub` (muss die Keycloak-Sitzung sein) und Ablauf. Jeder Fehler ergibt `null`.
+- [`KeycloakChannelService.upsertChannel`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L108):
+  Ein fremdes Subjekt ergibt `409`. Die Nachweise früherer Durchläufe derselben Keycloak-Sitzung
+  (`kcSessionId`) übernimmt nur ein neuer Kanal desselben Kontos. Gehören sie einem anderen Konto,
+  gibt es ebenfalls `409`.
+- [`KeycloakChannelService.flowEnded`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L209)
+  kürzt die Frist des Kanals auf das Ende der Keycloak-Sitzung. Es legt die Nachweise des Kanals je
+  Sitzung und Verfahren ab und ersetzt einen Nachweis nur durch einen jüngeren. Für Einladungen legt
+  es nichts ab (I-30).
+- [`KeycloakSessionEvidenceRepository`](../src/main/kotlin/com/example/identity/core/orchestrator/session/KeycloakSessionEvidenceRepository.kt#L15)
+  liest nur Zeilen, die noch nicht abgelaufen sind. Sie enden mit der Keycloak-Sitzung, mit ihrer
+  Abmeldung, mit dem Widerruf des Verfahrens und mit dem Löschen des Kontos.
 - [`KeycloakResponseSigner.sign`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/KeycloakResponseSigning.kt#L42)
   signiert die Antwort mit `req`, `status` und `body_sha256`, gültig für 60 s.
   [`KeycloakResponseSigningFilter`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/KeycloakResponseSigning.kt#L75)
@@ -301,7 +306,7 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
 - [`PeerAuthAssertionSigner`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/PeerAuthAssertionSigner.java#L21)
   signiert die Assertions. Der Schlüssel ist als Geheimnis der Komponente gespeichert
   ([`OrchestratorSettings.ensureSigningKey`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorSettings.java#L100)).
-- [`OrchestratorClient.send`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorClient.java#L338)
+- [`OrchestratorClient.send`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorClient.java#L333)
   prüft jede Antwort, bevor es den Status auswertet. Die Prüfung der Inhalte steht in
   [`OrchestratorResponseVerifier.checkClaims`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorResponseVerifier.java#L94).
 - [`OrchestratorAuthenticator.handleResponse`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorAuthenticator.java#L141):
@@ -309,11 +314,12 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
 - [`LoginCompletion.judge`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/LoginCompletion.java#L37):
   Eine Anmeldung ist nur fertig, wenn es ein Subjekt gibt, es dasselbe Subjekt ist und das `acr`
   mindestens das Ziel des Subflows erreicht (`acr ≥` Ziel).
-- [`OrchestratorResumeAuthenticator.authenticate`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorResumeAuthenticator.java#L40)
-  nimmt RestoreData höchstens einmal je Auth-Session an. Er setzt das angefragte Niveau als
-  Untergrenze und nimmt keine Einladungen an. Scheitert die Wiederaufnahme, läuft eine normale
+- [`OrchestratorResumeAuthenticator.authenticate`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorResumeAuthenticator.java#L41)
+  nennt dem Orchestrator nur die Id der Keycloak-Sitzung, die das Identitäts-Cookie belegt. Er setzt
+  das angefragte Niveau als Untergrenze und nimmt keine Einladungen an. Scheitert die Wiederaufnahme, läuft eine normale
   Anmeldung. Ein Fehler gewährt also nichts.
-- [`OrchestratorNotes.stashRestoreDataAtFlowEnd`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L125).
+- [`OrchestratorNotes.reportFlowEnd`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L121)
+  meldet am Ende eines Durchlaufs, zu welcher Keycloak-Sitzung der Kanal gehört.
 - [`QrWaitStatusResourceProvider.status`](../keycloak-extension/src/main/java/com/example/identity/kcext/resource/QrWaitStatusResourceProvider.java#L74)
   ist ohne Anmeldung erreichbar. Er verlangt aber das signierte Cookie `AUTH_SESSION_ID` von
   Keycloak und antwortet nur mit `waiting` oder `ready`.
@@ -367,7 +373,7 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
   `ChannelToolDeclarationIntegrationTest`).
 - Formulardaten (`toolId`, `methodInstanceId`) werden nur als einfaches Pfadsegment
   `[A-Za-z0-9._~-]` übernommen, ohne `.` und `..`
-  ([`OrchestratorClient.segment`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorClient.java#L374),
+  ([`OrchestratorClient.segment`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorClient.java#L369),
   `OrchestratorClientSegmentTest`). Sie können die signierte Adresse also nicht verändern.
 
 **Offene Punkte:**
@@ -381,7 +387,7 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
 - **Hinweis** Das Zeitfenster für Peer-Auth beträgt 300 s im ganzen Profil `keycloak` statt nur in
   der Variante `host` (`DPoP-demo-9ppv.13`).
 - **Hinweis** Die Kanal-Id des Web-Kanals wird aus der Tab-Id von Keycloak abgeleitet
-  ([`OrchestratorNotes.channelSessionId`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L75))
+  ([`OrchestratorNotes.channelSessionId`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L71))
   und ist damit vorhersagbar. Für einen Zugriff braucht man trotzdem eine signierte Assertion mit
   passendem `channel_binding` (`DPoP-demo-gxis`).
 - **Hinweis** Der Endpunkt für den QR-Status hat kein Mindestintervall (`DPoP-demo-9ppv.10`).
@@ -728,9 +734,6 @@ Geheimnisse ins Log gelangen.
   Simulation `kms`.
   [`OrchestratorClientAssertionSigner`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/OrchestratorClientAssertionSigner.kt#L25)
   hat einen Schlüssel je Client.
-- [`RestoreDataCodec`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/RestoreDataCodec.kt#L51):
-  Der HMAC-Schlüssel wird bei jedem Start zufällig erzeugt. Ein Neustart macht deshalb alle
-  RestoreData ungültig.
 - [`PersonLookupKey`](../src/main/kotlin/com/example/identity/core/account/application/PersonLookupKey.kt#L29):
   Suchschlüssel im Änderungsprotokoll werden als Hash mit Geheimnis gespeichert, nie im Klartext.
 
@@ -799,12 +802,12 @@ Diese Station zeigt, was beim Löschen eines Kontos passiert und wie lange Daten
 
 - [`performDeleteAccount`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyActionExecutor.kt#L359)
   prüft das verlangte Niveau unmittelbar vor dem Löschen noch einmal.
-- [`AccountDeletionService.deleteAccount`](../src/main/kotlin/com/example/identity/core/orchestrator/session/AccountDeletionService.kt#L40)
+- [`AccountDeletionService.deleteAccount`](../src/main/kotlin/com/example/identity/core/orchestrator/session/AccountDeletionService.kt#L41)
   löscht Credentials, Gerätelinks, Kanäle, Tokens, Evidenz und das Journey-Protokoll (Trace). Den
   Keycloak-Nutzer entfernt ein Ereignis.
 - [`ChangeLog`](../src/main/kotlin/com/example/identity/core/account/application/ChangeLog.kt#L34)
   bleibt nach der Löschung erhalten. Es enthält Ereignisse, aber nie Werte.
-- [`RetentionJob.cleanup`](../src/main/kotlin/com/example/identity/core/orchestrator/retention/RetentionJob.kt#L51).
+- [`RetentionJob.cleanup`](../src/main/kotlin/com/example/identity/core/orchestrator/retention/RetentionJob.kt#L57).
 
 **Offene Punkte:**
 

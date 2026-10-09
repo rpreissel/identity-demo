@@ -353,16 +353,10 @@ components:
           example: register
           type: string
         kcSessionId:
-          description: Required whenever restoreData is present, ignored otherwise. Keycloak's own, durable UserSessionModel
-            id - deliberately NOT read off the peer-auth assertion (the assertion's Keycloak binding is always THIS flow run's
-            own channelSessionId, docs/02-domaenenmodell.md Abschnitt 1, so it can't verify a token minted for a DIFFERENT,
-            earlier flow run's channel). Must match what GET .../restore-data was called with to produce this exact restoreData
-            token.
-          type: string
-        restoreData:
-          description: A signed RestoreData token this same UserSession's channel returned earlier via GET .../restore-data,
-            resubmitted verbatim (docs/05-api.md, section 3) - the bulk, one-shot way to seed a brand-new channel with what
-            a PRIOR, unrelated flow run already established. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
+          description: Keycloak's own, durable UserSessionModel id, when the browser already holds a Keycloak session - deliberately
+            NOT read off the peer-auth assertion (the assertion's Keycloak binding is always THIS flow run's own channelSessionId,
+            docs/02-domaenenmodell.md Abschnitt 1). On a channel's first call, what earlier flow runs of that session proved
+            seeds the channel (ADR-59); ignored on later calls.
           type: string
         subject:
           $ref: ../openapi.yaml#/components/schemas/AuthSubject
@@ -530,12 +524,6 @@ components:
           type: boolean
       required:
       - enrollFirst
-      type: object
-    RestoreDataResponse:
-      description: The channel's current RestoreData, signed - null if there is nothing worth restoring yet.
-      properties:
-        restoreData:
-          type: string
       type: object
     ServerInfo:
       properties:
@@ -1875,15 +1863,14 @@ paths:
       summary: Upsert a Web channel and advance its journey
       tags:
       - Keycloak channels
-  /orchestrator/api/v1/kc/channels/{channelSessionId}/restore-data:
-    get:
-      description: For the Authenticator's end-of-flow lifecycle hook only (docs/ideen/docs/05-api.md Abschnitt 3b) - reads
-        back what this channel accumulated, to stash in a Keycloak UserSessionModel note and resubmit at a later flow's start.
-        kcSessionId is passed explicitly (not read off the channel's own binding) because the returned token must remain valid
-        across the flow-run boundary the channel itself does not survive - a fresh channel next flow run, but the very same
-        UserSessionModel id. sessionExpiresAt (epoch seconds) is the latest end of that Keycloak session without further activity;
-        the channel's expiry is capped at it (docs/adr/ADR-043).
-      operationId: getRestoreData
+  /orchestrator/api/v1/kc/channels/{channelSessionId}/flow-end:
+    post:
+      description: 'For the Authenticator''s end-of-flow lifecycle hook only (docs/05-api.md Abschnitt 3b). Records what this
+        channel proved for Keycloak''s durable session kcSessionId (ADR-59), so a later flow run of the same session starts
+        with it. kcSessionId is passed explicitly, not read off the channel''s own binding: the evidence must outlive this
+        flow run''s channel. sessionExpiresAt (epoch seconds) is the latest end of that Keycloak session without further activity;
+        the channel''s expiry and the recorded evidence end with it (docs/adr/ADR-043).'
+      operationId: flowEnded
       parameters:
       - in: path
         name: channelSessionId
@@ -1908,12 +1895,8 @@ paths:
         schema:
           type: string
       responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/RestoreDataResponse'
-          description: OK
+        '204':
+          description: Recorded
         default:
           content:
             application/json:
@@ -1923,7 +1906,7 @@ paths:
       security:
       - kc-peer-auth: [
           ]
-      summary: Fetch this channel's signed RestoreData
+      summary: Report that this channel's Keycloak flow run ended
       tags:
       - Keycloak channels
   /orchestrator/api/v1/kc/invitations/{invitation}:

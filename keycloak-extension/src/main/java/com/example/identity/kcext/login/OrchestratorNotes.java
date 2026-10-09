@@ -39,8 +39,6 @@ public final class OrchestratorNotes {
     public static final String PENDING_KIND = "orchestrator_pending_kind";
     public static final String PENDING_TOOL_ID = "orchestrator_pending_tool_id";
     public static final String PENDING_TOOL_SESSION_ID = "orchestrator_pending_tool_session_id";
-    /** Set once restoreData was already submitted this flow run, so a later resume doesn't resend it. */
-    static final String RESTORE_SUBMITTED = "orchestrator_restore_submitted";
 
     /**
      * Copied into the UserSessionModel at session creation. Public because the App channel's custom
@@ -49,8 +47,6 @@ public final class OrchestratorNotes {
      */
     public static final String USER_SESSION_NOTE_ACR = "orchestrator_acr";
     public static final String USER_SESSION_NOTE_AMR = "orchestrator_amr";
-    /** Written by the end-of-flow restore-data hook, see {@link #stashRestoreDataAtFlowEnd}. */
-    static final String USER_SESSION_NOTE_RESTORE_DATA = "orchestrator_restore_data";
 
     /** The orchestrator accountId, once known - a durable Keycloak user attribute, read back on every later step-up. */
     public static final String USER_ATTR_ACCOUNT_ID = AccountUsers.ACCOUNT_ID_ATTRIBUTE;
@@ -117,12 +113,12 @@ public final class OrchestratorNotes {
     }
 
     /**
-     * The end-of-flow RestoreData hook (docs/05-api.md Abschnitt 3b), called from
-     * {@link OrchestratorResumeAuthenticator#onTopFlowSuccess} once the whole top-level flow is done.
-     * On a first login no UserSessionModel exists yet; Keycloak copies user-session notes onto it
-     * when it is created, so writing the note here is enough.
+     * The end-of-flow hook, called from {@link OrchestratorResumeAuthenticator#onTopFlowSuccess} once
+     * the whole top-level flow is done: tells the orchestrator which Keycloak session this channel
+     * belongs to, so it records what the channel proved for that session (ADR-59). On a first login
+     * no UserSessionModel exists yet; Keycloak creates it with the parent session's id.
      */
-    static void stashRestoreDataAtFlowEnd(KeycloakSession session, AuthenticationSessionModel authSession, OrchestratorClient client, Logger log) {
+    static void reportFlowEnd(KeycloakSession session, AuthenticationSessionModel authSession, OrchestratorClient client, Logger log) {
         String channelSessionId = authSession.getAuthNote(CHANNEL_SESSION_ID);
         if (channelSessionId == null) return; // Not a Keycloak-channel flow run.
         try {
@@ -130,14 +126,11 @@ public final class OrchestratorNotes {
             UserSessionModel existing = resolveExistingUserSession(session, realm);
             String durableSessionId = existing != null ? existing.getId() : authSession.getParentSession().getId();
             long sessionExpiresAt = SessionEnd.epochSecond(realm, existing, Time.currentTime());
-            String restoreData = client.restoreData(channelSessionId, durableSessionId, sessionExpiresAt);
-            if (restoreData != null) {
-                authSession.setUserSessionNote(USER_SESSION_NOTE_RESTORE_DATA, restoreData);
-            }
+            client.flowEnded(channelSessionId, durableSessionId, sessionExpiresAt);
         } catch (Exception e) {
-            // Best-effort: a missed RestoreData write only means a later step-up starts without a
-            // running start (docs/05-api.md Abschnitt 3b), never a broken login.
-            log.warnf(e, "Failed to fetch/stash RestoreData for channel %s", channelSessionId);
+            // Best-effort: a missed report only means a later step-up starts without the session's
+            // earlier proofs (docs/05-api.md Abschnitt 3b), never a broken login.
+            log.warnf(e, "Failed to report the end of the flow run for channel %s", channelSessionId);
         }
     }
 

@@ -150,6 +150,9 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
   benannt. [Glossar](glossar.md#w)
 - **`keycloak-migrations`** → das Modul, das das **Realm** in Keycloak anlegt und
   seine Einstellungen pflegt. [Glossar](glossar.md#r)
+- **`KeycloakSessionEvidence`** (Tabelle `orchestrator.keycloak_session_evidence`),
+  **`ApplyRestoredEvidence`** → **Übernommene Nachweise**: was frühere Anmeldevorgänge derselben
+  Keycloak-Sitzung bewiesen haben, je Sitzung und Verfahren. [Glossar](glossar.md#u)
 - **`keycloakSessionId`**, **`UserSessionModel`** → **Keycloak-Sitzung**: die Sitzung,
   die Keycloak für einen angemeldeten Nutzer führt. [Glossar](glossar.md#k)
 - **`KNOWN_ACCOUNT_AUTH`** → **Tool-Rolle** eines Tools, das ein schon bekanntes Konto
@@ -233,8 +236,6 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
 - **`REGISTER`** → **Registrierung**. [Glossar](glossar.md#r)
 - **`RegisterEnrollFirstStrategy`** → die Variante „Enrollment zuerst“ der **Registrierung**.
   [Glossar](glossar.md#r)
-- **`RestoreData`** → **RestoreData**: ein signierter Datensatz, mit dem Keycloak die
-  Nachweise eines früheren Anmeldevorgangs derselben Keycloak-Sitzung weitergibt. [Glossar](glossar.md#r)
 - **`RetractionSource`** (Spalte `claim_source` des Widerrufs) → die **Quelle** eines **Widerrufs**.
   [Glossar](glossar.md#q)
 

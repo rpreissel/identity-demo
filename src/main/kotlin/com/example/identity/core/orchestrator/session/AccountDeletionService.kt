@@ -26,6 +26,7 @@ class AccountDeletionService(
     private val channelSessionRepository: ChannelSessionRepository,
     private val appTokenSessionRepository: AppTokenSessionRepository,
     private val sessionEvidenceRepository: SessionEvidenceRecordRepository,
+    private val keycloakSessionEvidenceRepository: KeycloakSessionEvidenceRepository,
     private val journeyTraceRepository: JourneyTraceRepository,
     private val rateLimitRecordRepository: RateLimitRecordRepository
 ) {
@@ -53,6 +54,7 @@ class AccountDeletionService(
         }
         appTokenSessionRepository.findByAccountId(accountId).forEach { appTokenSessionRepository.delete(it) }
         sessionEvidenceRepository.findByAccountId(accountId).forEach { sessionEvidenceRepository.delete(it) }
+        keycloakSessionEvidenceRepository.deleteByAccount(accountId.value)
 
         accountService.deleteAccount(accountId)
 
@@ -83,6 +85,11 @@ class AccountDeletionService(
      * matching (docs/09-dpop.md).
      */
     fun revokeMethod(accountId: AccountId, methodInstanceId: String) {
+        // A later flow run of any of the account's Keycloak sessions must not bring this method's
+        // proof back (ADR-59). By method, not instance: with two devices both lose their taken-over
+        // proof, which only means proving the remaining one again.
+        accountService.findAccount(accountId)?.authenticationMethods?.firstOrNull { it.id == methodInstanceId }
+            ?.let { keycloakSessionEvidenceRepository.deleteByAccountAndMethod(accountId.value, it.method) }
         accountService.enrollmentRefFor(accountId, methodInstanceId)?.let { ref -> deleteCredential(accountId, ref) }
         // Whatever only this credential backed stops being a valid claim (ADR-12). The rule lives
         // in retractClaimsOf.

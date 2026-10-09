@@ -60,8 +60,9 @@ sich nur im Feld `accountAlreadyKnown`:
 
 **Bei jedem Ereignis neu prüfen.** Bei jedem Ereignis (`Started`, `ActionCompleted`) prüft die
 Journey erneut, ob die vorhandenen Nachweise reichen. Dann baut sie die Kandidatenliste ganz neu
-auf. Ein Nachweis kann nämlich schon vorliegen, bevor überhaupt etwas angeboten wurde. Er kann etwa aus RestoreData stammen, einem von Keycloak aufbewahrten Stand
-früherer Nachweise.
+auf. Ein Nachweis kann nämlich schon vorliegen, bevor überhaupt etwas angeboten wurde. Er kann etwa
+aus einem früheren Durchlauf derselben Keycloak-Sitzung stammen ([Orchestrierung](../04-orchestrierung.md)
+Abschnitt 8, „Übernommene Nachweise als erster Übergang“).
 
 **Der Ausweg beim Step-up.** Manchmal bleibt für das Konto kein Anmelde-Tool übrig, das das
 fehlende Niveau liefern kann, oder der Nutzer hat alle abgelehnt. Dann fordert die Journey die

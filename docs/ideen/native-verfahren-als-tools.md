@@ -154,7 +154,8 @@ angeboten würde.
   hinnehmbar ist.
 - **Wiederherstellen des Kanals.** `OrchestratorResumeAuthenticator` und `restoreData` übertragen
   heute auch native Nachweise. Ohne native Schritte wird das einfacher. Wie viel sich dadurch
-  ändert, ist noch zu prüfen.
+  ändert, ist noch zu prüfen. (Erledigt: [ADR-58](../adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md),
+  [ADR-59](../adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md).)
 
 ## 7) Nächste Schritte
 

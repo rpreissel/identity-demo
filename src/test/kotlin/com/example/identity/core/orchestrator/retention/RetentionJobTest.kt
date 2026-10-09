@@ -138,6 +138,7 @@ private class RetentionFixture {
         channelSessionRepository = channelSessionRepository,
         appTokenSessionRepository = appTokenSessionRepository,
         sessionEvidenceRepository = mockk(relaxed = true),
+        keycloakSessionEvidenceRepository = mockk(relaxed = true),
         journeyTraceRepository = journeyTraceRepository,
         rateLimitRecordRepository = rateLimitRecordRepository,
         dataKeyRepository = mockk(relaxed = true),

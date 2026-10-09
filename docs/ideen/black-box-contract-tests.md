@@ -160,7 +160,7 @@ Web-Kanal. Dazu kommen rund 24 Tools und 10 Intents mit eigenem Diagramm in `doc
 | Tools (je 4–6) | Erfolg, Fehlversuch, Sperre nach zu vielen Versuchen, back, delete, GET | 100–140 |
 | Journeys | 2–5 Szenarien je Intent, von Anfang bis Ende über den Treiber | 30–50 |
 | Token und Methoden | Token, idclaims, Attribute, Methoden auflisten und löschen, Step-up | 15–20 |
-| Web-Kanal | PATCH anlegen und fortsetzen, restore-data, Konten, Einladungen, sign-outs, Ablehnung bei Peer-Auth, Antwortsignatur | 20–30 |
+| Web-Kanal | PATCH anlegen und fortsetzen, flow-end, Konten, Einladungen, sign-outs, Ablehnung bei Peer-Auth, Antwortsignatur | 20–30 |
 | Öffentliche Endpunkte | `/tools/catalog`, `/texts/{lang}`, mgmt-Passwort | 5–10 |
 
 Zusammen sind das **200 bis 300 Testfälle**. Die Schema- und die Abdeckungsprüfung kommen ohne

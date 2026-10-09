@@ -8,6 +8,7 @@ import com.example.identity.core.orchestrator.journey.AuthJourneyRepository
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceRepository
 import com.example.identity.core.orchestrator.session.RateLimitRecordRepository
 import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
+import com.example.identity.core.orchestrator.session.KeycloakSessionEvidenceRepository
 import com.example.identity.core.orchestrator.session.SessionEvidenceRecordRepository
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
@@ -38,6 +39,7 @@ class RetentionJob(
     private val channelSessionRepository: ChannelSessionRepository,
     private val appTokenSessionRepository: AppTokenSessionRepository,
     private val sessionEvidenceRepository: SessionEvidenceRecordRepository,
+    private val keycloakSessionEvidenceRepository: KeycloakSessionEvidenceRepository,
     private val journeyTraceRepository: JourneyTraceRepository,
     private val rateLimitRecordRepository: RateLimitRecordRepository,
     private val dataKeyRepository: DataKeyRepository,
@@ -65,6 +67,8 @@ class RetentionJob(
         countDeleted("data_key", dataKeyRepository.deleteByRetireAfterBefore(now))
         // Journey keys no account adopted (ADR-55): the channels that could name them are gone by now.
         countDeleted("master_key", accountService.deleteJourneyKeysCreatedBefore(now.minus(CHANNEL_SESSION_RETENTION)))
+        // What ended Keycloak sessions proved (ADR-59): their end is the rows' expiry.
+        countDeleted("keycloak_session_evidence", keycloakSessionEvidenceRepository.deleteExpired(now))
         countDeleted("journey_trace", journeyTraceEntries)
         countDeleted("rate_limit", staleCounters)
         if (journeyTraceEntries > 0 || staleCounters > 0) {

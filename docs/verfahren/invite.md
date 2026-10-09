@@ -100,8 +100,8 @@ Ein Kanal, der einer Einladung gehört, kann weniger als ein Kanal mit Konto:
   Flow-Durchlauf weiter.
 - Er kann nicht per Step-up über das Niveau der Einladung steigen. Ein Step-up heißt, dass ein
   angemeldeter Nutzer noch etwas beweist, um ein höheres Niveau zu erreichen.
-- Bei `restore-data` gibt er nichts zurück. Seine Evidenz gehört der Einladung und darf nicht in
-  einen späteren Durchlauf für ein Konto übernommen werden.
+- Am Ende des Durchlaufs (`flow-end`) legt der Orchestrator für ihn nichts ab. Seine Evidenz gehört
+  der Einladung und darf nicht in einen späteren Durchlauf für ein Konto übernommen werden.
 
 Konto und Einladung teilen sich nie eine Keycloak-Sitzung. Um zwischen beiden zu wechseln, muss sich
 der Nutzer abmelden.

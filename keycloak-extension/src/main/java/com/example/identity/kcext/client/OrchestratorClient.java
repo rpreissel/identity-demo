@@ -59,15 +59,14 @@ public final class OrchestratorClient {
      * PATCH .../kc/channels/{channelSessionId}, upsert semantics. Signed with {@code channelSessionId}
      * as the peer-auth binding (docs/02-domaenenmodell.md Abschnitt 1): unique per flow run, so two
      * tabs stepping up the same SSO session never share a binding. {@code durableKcSessionId} is
-     * Keycloak's UserSessionModel id; it travels only with {@code restoreData}, so the server can
-     * check that token was minted for this browser's durable identity. {@code subject} is whom
-     * Keycloak knows this run belongs to.
+     * Keycloak's UserSessionModel id when the browser already holds a session: on the channel's first
+     * call the orchestrator seeds it with what earlier flow runs of that session proved (ADR-59).
+     * {@code subject} is whom Keycloak knows this run belongs to.
      */
     public ChannelResponse upsertChannel(
             String channelSessionId,
             KcSubject subject,
             String targetAcr,
-            String restoreData,
             String durableKcSessionId,
             List<String> availableTools,
             String intent
@@ -88,25 +87,21 @@ public final class OrchestratorClient {
             ArrayNode toolsArray = body.putArray("availableTools");
             availableTools.forEach(toolsArray::add);
         }
-        if (restoreData != null) {
-            body.put("restoreData", restoreData);
-            body.put("kcSessionId", durableKcSessionId);
-        }
+        if (durableKcSessionId != null) body.put("kcSessionId", durableKcSessionId);
         JsonNode response = send("PATCH", path, channelSessionId, body);
         return ChannelResponse.from(response);
     }
 
     /**
-     * GET .../kc/channels/{channelSessionId}/restore-data, the end-of-flow hook. Signed with the
-     * {@code channelSessionId} binding; {@code durableKcSessionId} only names what the returned
-     * token is bound to. {@code sessionExpiresAt} (epoch seconds) caps the channel's expiry (ADR-43).
+     * POST .../kc/channels/{channelSessionId}/flow-end, the end-of-flow hook. Signed with the
+     * {@code channelSessionId} binding; {@code durableKcSessionId} names the Keycloak session the
+     * orchestrator records this channel's evidence for (ADR-59). {@code sessionExpiresAt} (epoch
+     * seconds) caps the channel's expiry and ends that evidence (ADR-43).
      */
-    public String restoreData(String channelSessionId, String durableKcSessionId, long sessionExpiresAt) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/kc/channels/" + channelSessionId + "/restore-data?kcSessionId=" + urlEncode(durableKcSessionId)
+    public void flowEnded(String channelSessionId, String durableKcSessionId, long sessionExpiresAt) throws IOException, InterruptedException {
+        String path = "/orchestrator/api/v1/kc/channels/" + channelSessionId + "/flow-end?kcSessionId=" + urlEncode(durableKcSessionId)
                 + "&sessionExpiresAt=" + sessionExpiresAt;
-        JsonNode response = send("GET", path, channelSessionId, null);
-        JsonNode restoreData = response.path("restoreData");
-        return restoreData.isTextual() ? restoreData.asText() : null;
+        send("POST", path, channelSessionId, null);
     }
 
     /**

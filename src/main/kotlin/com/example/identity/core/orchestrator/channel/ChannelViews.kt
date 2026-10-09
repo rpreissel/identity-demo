@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.contract.tool_api.ids.AccountId
-import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.contract.tool_api.envelope.ActiveMethodView
 import io.swagger.v3.oas.annotations.media.Schema
 import java.time.Instant
@@ -58,13 +57,3 @@ data class DeviceLinkResponse(
     val boundCredentials: List<BoundCredentialView> = emptyList()
 )
 
-/**
- * What a new Web channel may resume from without re-proving it (docs/05-api.md Abschnitt 3b).
- * [evidence] is the real `SessionEvidence`, not a lossy copy. Fetched from its own endpoint by the
- * authenticator's end-of-flow hook only. On the wire it is always signed by [RestoreDataCodec] and
- * bound to its UserSession, so a leaked note cannot hand evidence to another session.
- */
-data class RestoreData(
-    val accountId: AccountId? = null,
-    val evidence: SessionEvidence? = null
-)

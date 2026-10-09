@@ -978,13 +978,14 @@ Inhalt der Anfrage (`KeycloakChannelUpsertRequest`, alle Felder optional):
   Kandidaten von `WEB_SELECT_METHOD` ([Orchestrierung](04-orchestrierung.md) Abschnitt 3). Ein
   unbekannter Wert führt zu `400`, bevor sich am Kanal etwas ändert. Er wird nie stillschweigend als
   `none` behandelt.
-- **`restoreData` / `kcSessionId`**: `restoreData` ist ein signiertes Token aus
-  `GET .../restore-data`. Es stammt von einer FRÜHEREN, unabhängigen `ChannelSession` derselben
-  Keycloak-Nutzersitzung. Damit gibt Keycloak die Nachweise, die dort erbracht wurden, samt ihrem
-  Zeitpunkt an einen neu angelegten Kanal weiter. Für Niveaus über `loa1` zählen sie nur
-  30 Minuten ([Orchestrierung](04-orchestrierung.md) Abschnitt 4). `kcSessionId` bindet das Token
-  an Keycloaks dauerhafte Nutzersitzung (`UserSessionModel`). Ein falsches, abgelaufenes oder
-  manipuliertes Token behandelt der Orchestrator als `null`, nie als Fehler.
+- **`kcSessionId`**: Die Id von Keycloaks dauerhafter Nutzersitzung (`UserSessionModel`). Keycloak
+  schickt sie, wenn der Browser schon eine Sitzung hat. Der Orchestrator liest dann, was frühere,
+  unabhängige `ChannelSession`s dieser Sitzung nachgewiesen haben (Tabelle
+  `keycloak_session_evidence`, [ADR-59](adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md)).
+  Ein neu angelegter Kanal übernimmt diese Nachweise samt ihrem Zeitpunkt. Für Niveaus über `loa1`
+  zählen sie nur 30 Minuten ([Orchestrierung](04-orchestrierung.md) Abschnitt 4). Eine unbekannte
+  oder abgelaufene Sitzung bringt keine Nachweise mit. Gehören die Nachweise einem anderen Konto
+  als `subject`, antwortet der Orchestrator mit `409`.
 - **`availableTools`**: Welche `toolId`s das Keycloak-Theme, also die Gestaltung der
   Anmeldeseiten, darstellen kann. Dafür gibt es je Tool einen `WebToolRenderer`. Der Orchestrator
   liest das Feld nur beim ersten Aufruf. Es ist das Gegenstück zu `availableTools` bei
@@ -993,19 +994,23 @@ Inhalt der Anfrage (`KeycloakChannelUpsertRequest`, alle Felder optional):
   sind nur `web_select_method` und `register`. Einen unbekannten oder unzulässigen Wert lehnt der
   Orchestrator ab (`409`).
 
-`GET .../{channelSessionId}/restore-data?kcSessionId=...` gibt es nur für einen einzigen Aufruf:
-den, den Keycloak am Ende des Anmeldeablaufs macht. Er liefert die gesammelten Nachweise dieses
-Kanals als Token, gebunden an diese `kcSessionId` (`RestoreDataCodec`). Keycloak speichert das Token
-als Notiz im `UserSessionModel`. Bei einem SPÄTEREN Step-up schickt Keycloak es unverändert als
-`restoreData` im ersten `PATCH` zurück.
+`POST .../{channelSessionId}/flow-end?kcSessionId=...&sessionExpiresAt=...` gibt es nur für einen
+einzigen Aufruf: den, den Keycloak am Ende eines erfolgreichen Anmeldeablaufs macht
+(`OrchestratorNotes.reportFlowEnd`). Die Antwort ist `204`. Der Orchestrator legt die Nachweise
+dieses Kanals unter der `kcSessionId` ab, eine Zeile je Verfahren. Fehlt eine Zeile, legt er sie an.
+Eine vorhandene Zeile ersetzt er nur durch einen jüngeren Nachweis. So überschreiben sich zwei Tabs
+derselben Sitzung nicht. Bei einem SPÄTEREN Step-up schickt Keycloak nur die `kcSessionId` im ersten
+`PATCH`. Bleibt der Aufruf aus, beginnt ein späterer Step-up ohne diese Nachweise. Die Anmeldung
+selbst scheitert daran nicht.
 
-Dieselbe Antwort enthält `sessionExpiresAt` (in Epochensekunden). Das ist das späteste Ende dieser
+Derselbe Aufruf enthält `sessionExpiresAt` (in Epochensekunden). Das ist das späteste Ende dieser
 Keycloak-Sitzung, wenn keine weitere Aktivität folgt. Es wird aus SSO idle und SSO max des Realms
 berechnet (`SessionEnd`); ein Realm ist ein abgeschlossener Bereich in Keycloak mit eigenen Nutzern
 und Einstellungen. Der Orchestrator setzt die Frist des Kanals auf den kleineren der beiden Werte:
 seine 30 Minuten oder diesen Zeitpunkt. So besteht auch der Web-Kanal nie länger als seine Sitzung
-([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)). Ein Einladungs-Kanal
-gibt bei `restore-data` nichts zurück ([Verfahren `invite`](verfahren/invite.md)).
+([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)). Die abgelegten
+Nachweise der Sitzung enden zum selben Zeitpunkt. Nennt Keycloak keinen, enden sie nach 12 Stunden.
+Ein Einladungs-Kanal legt bei `flow-end` nichts ab ([Verfahren `invite`](verfahren/invite.md)).
 
 Danach läuft **alles** über dieselben Endpunkte wie im App-Zugang, ohne das Präfix `/kc/`:
 
@@ -1062,8 +1067,8 @@ als Komponenten-Id. Keycloak lässt nie zu, dass ein Subjekt die Sitzung eines a
 (`LoginCompletion`).
 
 `amr` nennt die nachgewiesenen Verfahren, jedes mit dem Wert `"orchestrator"`. Jeder Nachweis
-stammt aus einem Tool des Orchestrators, auch einer, den RestoreData aus einem früheren Durchlauf
-übernimmt. Keycloak selbst prüft kein Verfahren
+stammt aus einem Tool des Orchestrators, auch einer, den ein neuer Kanal aus einem früheren Durchlauf
+derselben Sitzung übernimmt. Keycloak selbst prüft kein Verfahren
 ([ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). Die Form einer
 Zuordnung bleibt, damit der Vertrag gleich bleibt. Das ist nur eine Information. Den kombinierten
 `acr` bestimmt ausschließlich der Orchestrator.
@@ -1122,7 +1127,8 @@ registriert. Man erreicht sie über dieselbe `/auth`-URL wie einen normalen Logi
 
 Ein zweiter Login wird nicht erzwungen. Der vorangehende Durchlauf von `orchestrator-browser` nutzt
 das bestehende SSO-Cookie von Keycloak. `OrchestratorResumeAuthenticator` bringt dann den neuen
-Kanal im Orchestrator über `restoreData` auf `AUTHENTICATED`, sofern die Nachweise ausreichen.
+Kanal im Orchestrator mit den übernommenen Nachweisen der Sitzung (`kcSessionId`) auf
+`AUTHENTICATED`, sofern sie ausreichen.
 Sonst gilt der normale Weg über Login und Step-up.
 
 Wiederhergestellte Nachweise behalten ihren Zeitpunkt. Die Liste der Verfahren erscheint deshalb
@@ -1204,7 +1210,7 @@ Abschnitt 3a.
 
 Was nur Keycloak aufruft, liegt unter `/orchestrator/api/v1/kc/`. Damit gehört es nicht zum
 eingefrorenen Vertrag (ADR-50). Außer der Fassade oben (`PATCH .../kc/channels/{channelSessionId}`,
-`GET .../restore-data`) sind das Aufrufe ohne Kanal und ohne ToolSession. Sie betreffen ein Konto
+`POST .../flow-end`) sind das Aufrufe ohne Kanal und ohne ToolSession. Sie betreffen ein Konto
 oder eine Einladung, die Keycloak schon kennt:
 
 - Die Kontoabfrage (`/kc/accounts`, [ADR-38](adr/ADR-038-keycloak-liest-konten.md)) und der

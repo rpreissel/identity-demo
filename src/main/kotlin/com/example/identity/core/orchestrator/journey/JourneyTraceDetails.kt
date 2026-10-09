@@ -100,7 +100,7 @@ class JourneyTraceDetails(
                 else -> null
             }
         )
-        // [state] is the one before this transition. The RestoreData entry transition can
+        // [state] is the one before this transition. The entry transition with taken-over evidence can
         // authenticate on the first Started without a `To` entry, so the candidates show here.
         Transition.Authenticated -> mapOf(
             "decision" to "Authenticated",

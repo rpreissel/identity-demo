@@ -6,7 +6,7 @@ import java.time.Instant
  * A verified peer-auth assertion (ADR-7, docs/02-domaenenmodell.md Abschnitt 1): "this is Keycloak,
  * acting for this channel", never who the end user is. [channelBinding] is the flow run's own
  * `channelSessionId`, so two tabs on the same SSO session never share a binding. Keycloak's durable
- * user session id travels separately, only where RestoreData needs it.
+ * user session id travels separately, only where the session's evidence needs it (ADR-59).
  */
 data class PeerAuthAssertion(
     val jti: String,

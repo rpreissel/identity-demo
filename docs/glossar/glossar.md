@@ -499,12 +499,6 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   beginnen (Experiment „Enrollment zuerst“). Die Identifizierung wird dann nur noch angeboten.
   *Im Code:* Intent `REGISTER`, Varianten `RegisterStrategy` und `RegisterEnrollFirstStrategy`.
   *Mehr dazu:* [journeys/register](../journeys/register.md).
-- **RestoreData**: Ein signierter Datensatz, den Keycloak aufbewahrt. Er enthält, was ein Nutzer in
-  einem früheren Anmeldevorgang derselben Sitzung schon bewiesen hat. Beim nächsten Vorgang gibt
-  Keycloak den Datensatz an den Orchestrator zurück, damit der Nutzer nicht alles noch einmal
-  beweisen muss. Der Datensatz sagt auch, wann der Beweis erbracht wurde. Ältere Beweise zählen nur
-  noch für `loa1`.
-  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3b.
 
 ## S
 
@@ -615,6 +609,15 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   Sub-Journey starten, die Anmeldung abschließen oder die Journey abbrechen.
   *Im Code:* `Transition`, ausgelöst durch ein `JourneyEvent`.
   *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
+- **Übernommene Nachweise**: Was ein Nutzer in einem früheren Anmeldevorgang derselben
+  Keycloak-Sitzung schon bewiesen hat. Der Orchestrator legt es am Ende jedes Vorgangs ab, eine Zeile
+  je Sitzung und Verfahren. Beim nächsten Vorgang nennt Keycloak nur die Sitzung, und der neue Kanal
+  übernimmt die Nachweise. So muss der Nutzer nicht alles noch einmal beweisen. Jeder Nachweis
+  behält seinen Zeitpunkt. Ältere Nachweise zählen nur noch für `loa1`.
+  *Im Code:* `KeycloakSessionEvidence` (Tabelle `orchestrator.keycloak_session_evidence`),
+  `Action.ApplyRestoredEvidence`.
+  *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3b,
+  [ADR-59](../adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md).
 - **Untergrenze des Kanals** und **Ziel eines Durchlaufs**: Zwei Niveaus, mit denen der
   Orchestrator rechnet. Die Untergrenze ist das Niveau, unter das ein Kanal nie fallen darf, solange
   er besteht. Das Ziel ist das Niveau, das ein einzelner Step-up erreichen soll. Gerechnet wird

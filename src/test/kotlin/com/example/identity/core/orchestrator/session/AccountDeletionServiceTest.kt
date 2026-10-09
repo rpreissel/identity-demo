@@ -158,6 +158,7 @@ private class AccountDeletionFixture(cleanupTypes: List<String> = emptyList()) {
         channelSessionRepository,
         mockk<AppTokenSessionRepository>(relaxed = true),
         mockk<SessionEvidenceRecordRepository>(relaxed = true),
+        mockk<KeycloakSessionEvidenceRepository>(relaxed = true),
         journeyTraceRepository,
         rateLimitRecordRepository
     )

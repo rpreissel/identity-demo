@@ -69,8 +69,8 @@ components:
           additionalProperties:
             type: string
           description: 'The proven methods, each mapped to "orchestrator": every proof is an orchestrator tool''s, also one
-            carried over by RestoreData (ADR-58). The map shape stays for compatibility. Informational only - the orchestrator
-            alone resolves the combined acr above.'
+            taken over from an earlier flow run of the same Keycloak session (ADR-58, ADR-59). The map shape stays for compatibility.
+            Informational only - the orchestrator alone resolves the combined acr above.'
           example:
             password: orchestrator
             sms: orchestrator

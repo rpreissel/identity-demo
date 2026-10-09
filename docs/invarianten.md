@@ -80,13 +80,13 @@ Nummern stehen in der Liste am Ende.
 - **I-23 `AUTHENTICATED` erzeugt eine Keycloak-Sitzung, und der Kanal überlebt sie nie; die Sitzungsdauer bestimmt Keycloak ([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)).**
   - Worum es geht: Keycloak bestimmt, wie lange eine Anmeldung gilt. Der Kanal darf nicht angemeldet bleiben, wenn die Sitzung in Keycloak schon abgelaufen oder abgemeldet ist. Sonst gälten für dieselbe Anmeldung zwei verschiedene Ablaufzeiten.
   - Mechanismus: `type:AppTokenIssuer` (der App-Kanal holt beim Übergang nach `AUTHENTICATED` sein erstes Token. Jedes Token, auch die Erneuerung bei einer Interaktion in der Journey, setzt `expiresAt` auf das Sitzungsfenster, das Keycloak meldet.), `type:SessionRefusedException` (lehnt Keycloak ab, wird der Übergang zurückgerollt), `type:ChannelSessionEndedException` (eine Sitzung, die sich nicht mehr erneuern lässt, beendet den Kanal endgültig), `type:SessionEnd` (im Web-Kanal meldet Keycloak am Ende des Durchlaufs das späteste Sitzungsende), `test:ModelBasedJourneyTest` (die Sitzung altert, läuft ab oder wird in Keycloak abgemeldet; der Test prüft nach jedem Schritt), `test:AppTokenIssuerIntegrationTest`, `test:SessionRefusedIntegrationTest`, `test:KeycloakChannelIntegrationTest`, `test:SessionEndTest`
-  - Lücke: Im Web-Kanal ist die Zeit zwischen dem letzten Schritt der Journey und dem Ende des Keycloak-Durchlaufs nicht abgesichert. Meldungen, die verloren gehen können (`restore-data`, Abmeldung), werden nur nach bestem Bemühen („best effort“) zugestellt. Issue `DPoP-demo-oe06`.
+  - Lücke: Im Web-Kanal ist die Zeit zwischen dem letzten Schritt der Journey und dem Ende des Keycloak-Durchlaufs nicht abgesichert. Meldungen, die verloren gehen können (`flow-end`, Abmeldung), werden nur nach bestem Bemühen („best effort“) zugestellt. Issue `DPoP-demo-oe06`.
 - **I-24 Zu einem Kanal gehört genau eine Keycloak-Sitzung: Sie wird einmal geöffnet und nie ersetzt; ein Step-up läuft in derselben Sitzung.**
   - Worum es geht: Die Sitzung wird einmal geöffnet und danach nur fortgesetzt. Das gilt auch für einen Step-up, also wenn sich der Nutzer auf ein höheres Niveau hochstuft. So ist eine Abmeldung in Keycloak eindeutig, und keine vergessene Nebensitzung bleibt übrig.
   - Mechanismus: `type:KeycloakTokenProvider` (nur wenn noch keine `keycloakSessionId` bekannt ist, wird eine Sitzung geöffnet. Danach setzt der Grant, also die Token-Anfrage bei Keycloak, per `session_id` genau diese Sitzung fort.), `type:AccountTokenGrantType` (setzt nur eine gültige, eigene Sitzung desselben Nutzers fort und lehnt sonst ab), `test:AccountTokenSessionTest`, `test:ModelBasedJourneyTest`, `test:KeycloakTokenProviderTest`, `test:TokenServiceTest`, `test:AppTokenIssuerIntegrationTest`
 - **I-32 Ein Niveau über loa1 beruht nur auf Nachweisen der letzten 30 Minuten; ein wiederhergestellter Nachweis wird dadurch nicht jünger ([04-orchestrierung](04-orchestrierung.md) Abschnitt 4).**
   - Worum es geht: Ein zweiter Faktor von heute Morgen reicht am Nachmittag nicht mehr für `loa2`. Wer mehr will, muss ihn frisch bestätigen. Wird ein Nachweis in einen neuen Anmeldedurchlauf übernommen, behält er seinen alten Zeitstempel. Sonst könnte man einen alten Nachweis als frisch ausgeben, indem man ihn einfach weitergibt. Die Regel gilt für das Niveau, das der Orchestrator meldet, und für jeden neuen Durchlauf. Das `acr` eines schon ausgestellten Tokens (das Niveau, das im Token steht) altert dagegen nicht. Es beschreibt wie bei Keycloak üblich die Anmeldung (04 Abschnitt 8).
-  - Mechanismus: `test:DefaultAuthPolicyTest`, `test:RestoreDataCodecTest`, `test:KeycloakChannelIntegrationTest`
+  - Mechanismus: `test:DefaultAuthPolicyTest`, `type:KeycloakSessionEvidence` (eine übernommene Zeile behält `proven_at`), `test:KeycloakChannelIntegrationTest`
 
 ## Subjekt eines Kanals: Konto oder Einladung
 
@@ -95,7 +95,7 @@ Nummern stehen in der Liste am Ende.
   - Mechanismus: `sql:ck_channel_session_one_subject`, `sql:ck_session_evidence_one_subject`, `sql:ck_sign_in_log_one_subject`, `test:DatabaseInvariantConstraintTest`, `test:KeycloakChannelIntegrationTest`, `test:AuthInviteIntegrationTest` (auch: Nennt Keycloak ein anderes Subjekt, folgt `409`)
 - **I-30 Die Evidenz einer Einladung wandert in keinen späteren Anmeldedurchlauf ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).**
   - Worum es geht: Das Kennwort einer Einladung taugt nur für den einen Vorgang. Sein Nachweis wird nicht in eine spätere Anmeldung mit einem Konto übernommen.
-  - Mechanismus: `test:AuthInviteIntegrationTest` (`restore-data` bleibt für einen Kanal mit Einladung leer)
+  - Mechanismus: `test:AuthInviteIntegrationTest` (`flow-end` legt für einen Kanal mit Einladung nichts ab)
 
 ## Konto im Aufbau ([ADR-46](adr/ADR-046-konto-im-aufbau.md))
 

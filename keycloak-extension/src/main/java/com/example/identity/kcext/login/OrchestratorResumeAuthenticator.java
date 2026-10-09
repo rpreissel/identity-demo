@@ -17,8 +17,9 @@ import java.util.List;
 /**
  * Runs first in {@code orchestrator-browser}, inside its own small subflow so that
  * {@link AuthenticationFlowCallback} registers. If the browser holds a valid identity cookie, it opens
- * this flow run's channel and resubmits the RestoreData a prior run stashed on that session
- * (docs/05-api.md Abschnitt 3b). The binding stays {@code channelSessionId}, never the SSO session id.
+ * this flow run's channel and names that Keycloak session, so the orchestrator seeds the channel with
+ * what earlier runs of it proved (ADR-59). At the end of the run it reports which session the channel
+ * belonged to. The binding stays {@code channelSessionId}, never the SSO session id.
  *
  * <p>Without a session it does nothing: the channel's first call fixes the entry journey's candidate
  * list, and a later account binding does not recompute it. So the LoA authenticator, which knows the
@@ -50,21 +51,17 @@ public class OrchestratorResumeAuthenticator implements AuthenticationFlowCallba
             }
             if (existingUserSession != null) {
                 // A fresh channel for this flow run. The link to the existing session travels only
-                // in restoreData, never in the binding (see OrchestratorNotes.channelSessionId).
+                // as kcSessionId, never in the binding (see OrchestratorNotes.channelSessionId).
                 String newChannelSessionId = OrchestratorNotes.channelSessionId(context);
 
                 // context.getUser() is not set yet this early; the UserSessionModel carries the user.
                 KcSubject subject = KcSubject.of(existingUserSession.getUser());
-                String restoreData = null;
-                if (!"true".equals(authSession.getAuthNote(OrchestratorNotes.RESTORE_SUBMITTED))) {
-                    restoreData = existingUserSession.getNote(OrchestratorNotes.USER_SESSION_NOTE_RESTORE_DATA);
-                    authSession.setAuthNote(OrchestratorNotes.RESTORE_SUBMITTED, "true");
-                }
 
-                // Raise the floor to Keycloak's requested level, so a resumed proof cannot finish
-                // the journey below it.
+                // Raise the floor to Keycloak's requested level, so a taken-over proof cannot finish
+                // the journey below it. On the channel's first call the orchestrator seeds it with what
+                // earlier flow runs of this session proved (ADR-59).
                 OrchestratorClient.ChannelResponse response = client.upsertChannel(
-                        newChannelSessionId, subject, OrchestratorNotes.requestedAcr(context), restoreData, existingUserSession.getId(),
+                        newChannelSessionId, subject, OrchestratorNotes.requestedAcr(context), existingUserSession.getId(),
                         WebToolAvailability.renderableTools(context.getSession()), null
                 );
                 OrchestratorNotes.applyAuthData(authSession, response);
@@ -82,17 +79,17 @@ public class OrchestratorResumeAuthenticator implements AuthenticationFlowCallba
 
     @Override
     public void onParentFlowSuccess(AuthenticationFlowContext context) {
-        // Fires right after authenticate(), at the start of the flow: too early for RestoreData.
+        // Fires right after authenticate(), at the start of the flow: too early for the end report.
         // onTopFlowSuccess is the end-of-flow hook the wrapper subflow exists for.
     }
 
     @Override
     public void onTopFlowSuccess(AuthenticationFlowModel topFlow) {
-        // Fires once at the end of the whole top-level flow (docs/05-api.md Abschnitt 3b,
-        // restore-data). Only the flow model is available, so the session comes from the context.
+        // Fires once at the end of the whole top-level flow (docs/05-api.md Abschnitt 3b, flow-end).
+        // Only the flow model is available, so the session comes from the context.
         AuthenticationSessionModel authSession = session.getContext().getAuthenticationSession();
         if (authSession == null) return;
-        OrchestratorNotes.stashRestoreDataAtFlowEnd(session, authSession, client, LOG);
+        OrchestratorNotes.reportFlowEnd(session, authSession, client, LOG);
     }
 
     @Override

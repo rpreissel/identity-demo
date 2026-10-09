@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.AuthIntent
@@ -56,7 +57,7 @@ class KeycloakChannelServiceTest : BehaviorSpec({
         `when`("its flow run ends in a Keycloak session that ends in 2 minutes") {
             val fixture = KeycloakChannelFixture()
             val sessionEnd = TEST_NOW.plus(Duration.ofMinutes(2))
-            fixture.service.restoreData(fixture.channelSessionId, fixture.assertion, "kc-session-1", sessionExpiresAt = sessionEnd)
+            fixture.service.flowEnded(fixture.channelSessionId, fixture.assertion, "kc-session-1", sessionExpiresAt = sessionEnd)
 
             then("the channel's expiry is capped at the session's end, and the durable session id recorded") {
                 fixture.existing.expiresAt shouldBe sessionEnd
@@ -68,7 +69,7 @@ class KeycloakChannelServiceTest : BehaviorSpec({
         `when`("its flow run ends in a Keycloak session that outlasts it") {
             val fixture = KeycloakChannelFixture()
             val before = fixture.existing.expiresAt
-            fixture.service.restoreData(fixture.channelSessionId, fixture.assertion, "kc-session-1", sessionExpiresAt = TEST_NOW.plus(Duration.ofHours(10)))
+            fixture.service.flowEnded(fixture.channelSessionId, fixture.assertion, "kc-session-1", sessionExpiresAt = TEST_NOW.plus(Duration.ofHours(10)))
 
             then("the channel keeps its shorter lifetime") {
                 fixture.existing.expiresAt shouldBe before
@@ -79,7 +80,7 @@ class KeycloakChannelServiceTest : BehaviorSpec({
 
 /**
  * The service over relaxed mocks. Upserting [channelSessionId] creates a fresh channel; reading it
- * back for [restoreData][KeycloakChannelService.restoreData] finds [existing], which lives 30 more minutes.
+ * back for [flowEnded][KeycloakChannelService.flowEnded] finds [existing], which lives 30 more minutes.
  */
 private class KeycloakChannelFixture {
     val channelSessionId = ChannelSessionId(UUID.randomUUID())
@@ -104,7 +105,9 @@ private class KeycloakChannelFixture {
         journeyService = mockk(relaxed = true),
         accountService = mockk(relaxed = true),
         sessionEvidenceService = mockk(relaxed = true),
-        restoreDataCodec = mockk(relaxed = true),
+        keycloakSessionEvidenceRepository = mockk(relaxed = true),
+        keycloakSessionEvidenceInitializer = mockk(relaxed = true),
+        clock = TEST_CLOCK,
         channelSessionRepository = mockk(relaxed = true),
         signInLog = mockk(relaxed = true),
         appTokenSessionService = mockk(relaxed = true),

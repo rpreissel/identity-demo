@@ -26,10 +26,9 @@ class DeploymentTopologyCheckTest : BehaviorSpec({
         `when`("the topology is checked") {
             val result = runCatching { check.check() }
 
-            then("it refuses and names what is still missing - the jobs by name, the per-process secrets") {
+            then("it refuses and names what is still missing - the jobs by name, the per-process secret") {
                 val failure = shouldThrow<IllegalStateException> { result.getOrThrow() }
                 failure.message!! shouldContain "otp-pepper"
-                failure.message!! shouldContain "RestoreDataCodec"
                 SCHEDULED_JOBS.keys.forEach { failure.message!! shouldContain it }
             }
         }

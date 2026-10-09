@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.api.v1.keycloak
 
 import com.example.identity.contract.tool_api.envelope.AuthSubject
-import com.fasterxml.jackson.annotation.JsonInclude
 import io.swagger.v3.oas.annotations.media.Schema
 
 @Schema(
@@ -24,20 +23,11 @@ data class KeycloakChannelUpsertRequest(
     @field:Schema(example = "loa2")
     val targetAcr: String? = null,
     @field:Schema(
-        description = "A signed RestoreData token this same UserSession's channel returned " +
-            "earlier via GET .../restore-data, resubmitted verbatim (docs/05-api.md, section 3) - " +
-            "the bulk, one-shot way to seed a brand-new channel with what a PRIOR, " +
-            "unrelated flow run already established. " +
-            "Opaque to every caller but the orchestrator itself - see RestoreDataCodec."
-    )
-    val restoreData: String? = null,
-    @field:Schema(
-        description = "Required whenever restoreData is present, ignored otherwise. Keycloak's " +
-            "own, durable UserSessionModel id - deliberately NOT read off the peer-auth assertion " +
-            "(the assertion's Keycloak binding is always THIS flow run's own channelSessionId, " +
-            "docs/02-domaenenmodell.md Abschnitt 1, so it can't verify a token minted for a DIFFERENT, " +
-            "earlier flow run's channel). Must match what GET .../restore-data was called with to " +
-            "produce this exact restoreData token."
+        description = "Keycloak's own, durable UserSessionModel id, when the browser already holds a " +
+            "Keycloak session - deliberately NOT read off the peer-auth assertion (the assertion's Keycloak " +
+            "binding is always THIS flow run's own channelSessionId, docs/02-domaenenmodell.md Abschnitt 1). " +
+            "On a channel's first call, what earlier flow runs of that session proved seeds the channel " +
+            "(ADR-59); ignored on later calls."
     )
     val kcSessionId: String? = null,
     @field:Schema(
@@ -61,8 +51,3 @@ data class KeycloakChannelUpsertRequest(
     )
     val intent: String? = null
 )
-
-/** Wire wrapper for `GET .../restore-data` (docs/05-api.md Abschnitt 3b), a JSON object like every other answer. */
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(description = "The channel's current RestoreData, signed - null if there is nothing worth restoring yet.")
-data class RestoreDataResponse(val restoreData: String? = null)

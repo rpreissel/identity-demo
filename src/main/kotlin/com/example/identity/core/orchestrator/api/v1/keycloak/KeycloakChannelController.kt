@@ -21,12 +21,12 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import java.time.Instant
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import com.example.identity.contract.tool_api.envelope.API_V1
@@ -84,8 +84,7 @@ class KeycloakChannelController(
             assertion = assertion,
             subject = subjectOf(body),
             targetAcr = body.targetAcr,
-            restoreDataToken = body.restoreData,
-            restoreDataKeycloakSessionId = body.kcSessionId,
+            kcSessionId = body.kcSessionId,
             availableTools = body.availableTools,
             intent = body.intent
         )
@@ -102,33 +101,32 @@ class KeycloakChannelController(
         }
     }
 
-    @GetMapping("/{channelSessionId}/restore-data")
+    @PostMapping("/{channelSessionId}/flow-end")
     @Operation(
-        summary = "Fetch this channel's signed RestoreData",
-        description = "For the Authenticator's end-of-flow lifecycle hook only (docs/ideen/" +
-            "docs/05-api.md Abschnitt 3b) - reads back what this channel accumulated, to stash in a " +
-            "Keycloak UserSessionModel note and resubmit at a later flow's start. kcSessionId is " +
-            "passed explicitly (not read off the channel's own binding) because the returned token " +
-            "must remain valid across the flow-run boundary the channel itself does not survive - " +
-            "a fresh channel next flow run, but the very same UserSessionModel id. " +
-            "sessionExpiresAt (epoch seconds) is the latest end of that Keycloak session without " +
-            "further activity; the channel's expiry is capped at it (docs/adr/ADR-043)."
+        summary = "Report that this channel's Keycloak flow run ended",
+        description = "For the Authenticator's end-of-flow lifecycle hook only (docs/05-api.md Abschnitt 3b). " +
+            "Records what this channel proved for Keycloak's durable session kcSessionId (ADR-59), so a later " +
+            "flow run of the same session starts with it. kcSessionId is passed explicitly, not read off the " +
+            "channel's own binding: the evidence must outlive this flow run's channel. sessionExpiresAt " +
+            "(epoch seconds) is the latest end of that Keycloak session without further activity; the " +
+            "channel's expiry and the recorded evidence end with it (docs/adr/ADR-043)."
     )
-    fun getRestoreData(
+    @ApiResponse(responseCode = "204", description = "Recorded")
+    fun flowEnded(
         @PathVariable channelSessionId: ChannelSessionId,
         @RequestParam kcSessionId: String,
         @RequestParam(required = false) sessionExpiresAt: Long?,
         @RequestHeader("Authorization") authorization: String?,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<RestoreDataResponse> {
+    ): ResponseEntity<Void> {
         val assertion = peerAuthValidator.validate(
             bearerToken(authorization),
             httpRequest.method,
             peerAuthTarget(httpRequest),
             peerAuthBodySha256(httpRequest)
         )
-        val sessionEnd = sessionExpiresAt?.let(Instant::ofEpochSecond)
-        return ResponseEntity.ok(RestoreDataResponse(keycloakChannelService.restoreData(channelSessionId, assertion, kcSessionId, sessionEnd)))
+        keycloakChannelService.flowEnded(channelSessionId, assertion, kcSessionId, sessionExpiresAt?.let(Instant::ofEpochSecond))
+        return ResponseEntity.noContent().build()
     }
 
     private fun bearerToken(authorization: String?): String {

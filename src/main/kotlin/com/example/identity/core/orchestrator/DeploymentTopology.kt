@@ -72,10 +72,6 @@ class DeploymentTopologyCheck(
                     "sind nicht erprobt; eine Sperre (ShedLock o. ae.) fehlt noch (docs/07-betrieb.md " +
                     "Abschnitt 3b)."
             )
-            add(
-                "RestoreDataCodec erzeugt sein Signaturgeheimnis je Prozess - ein RestoreData-Token " +
-                    "einer Instanz ist fuer die andere unlesbar (Web-Anmeldung muss neu beginnen)."
-            )
         }
 
         error(

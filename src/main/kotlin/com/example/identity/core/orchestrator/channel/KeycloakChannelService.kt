@@ -2,6 +2,7 @@ package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.core.orchestrator.journey.JourneyEndedException
 import com.example.identity.core.orchestrator.session.ChannelSessionEndedException
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.session.id
@@ -12,7 +13,6 @@ import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
-import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.AppTokenSessionService
 import com.example.identity.core.orchestrator.session.SessionEvidenceService
@@ -24,6 +24,11 @@ import com.example.identity.core.orchestrator.session.ChannelSessionRepository
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.keycloak.PeerAuthValidationException
+import com.example.identity.core.orchestrator.session.KeycloakSessionEvidenceInitializer
+import com.example.identity.core.orchestrator.session.KeycloakSessionEvidenceRepository
+import com.example.identity.core.orchestrator.session.MethodEvidenceRow
+import org.springframework.dao.DataIntegrityViolationException
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -45,7 +50,9 @@ class KeycloakChannelService(
     private val journeyService: JourneyService,
     private val accountService: AccountService,
     private val sessionEvidenceService: SessionEvidenceService,
-    private val restoreDataCodec: RestoreDataCodec,
+    private val keycloakSessionEvidenceRepository: KeycloakSessionEvidenceRepository,
+    private val keycloakSessionEvidenceInitializer: KeycloakSessionEvidenceInitializer,
+    private val clock: Clock,
     private val channelSessionRepository: ChannelSessionRepository,
     private val signInLog: SignInLog,
     private val appTokenSessionService: AppTokenSessionService,
@@ -59,6 +66,8 @@ class KeycloakChannelService(
      * unknown account is nothing to log; an invitation always is (ADR-48).
      */
     fun signedOutAtKeycloak(subject: Subject, kcSessionId: String) {
+        // The session is gone, and so is what it proved: a later sign-in starts from nothing.
+        keycloakSessionEvidenceRepository.deleteBySession(kcSessionId)
         val appLogins = when (subject) {
             is Subject.Account -> {
                 if (accountService.findAccount(subject.id) == null) return
@@ -101,31 +110,28 @@ class KeycloakChannelService(
         assertion: PeerAuthAssertion,
         subject: Subject?,
         targetAcr: String?,
-        restoreDataToken: String? = null,
-        restoreDataKeycloakSessionId: String? = null,
+        kcSessionId: String? = null,
         availableTools: List<String>? = null,
         intent: String? = null
     ): ChannelResponse {
         // Checked before anything changes, so a rejected level leaves the channel as it was.
         val targetFloor = targetAcr?.let(::requestedAcr)
-        // restoreDataToken carries an earlier flow run's state (docs/05-api.md Abschnitt 3b). decode()
-        // checks it is bound to [restoreDataKeycloakSessionId], Keycloak's durable UserSessionModel id,
-        // which differs from assertion.channelBinding. A wrong, tampered or expired token yields null,
-        // like "nothing to restore". Restored methods keep their original age.
-        val restoreData = restoreDataToken?.let { restoreDataCodec.decode(it, restoreDataKeycloakSessionId) }
-        // Keycloak's user and the restore token must name the same subject. Preferring one would let
-        // a mis-attributed Keycloak user carry this session's evidence elsewhere. An invitation's
-        // evidence is never restored (ADR-48), so a token naming an account never belongs to one.
-        val restoredSubject = restoreData?.accountId?.let(Subject::Account)
+        // What earlier flow runs of the same Keycloak session proved (ADR-59), each with its
+        // original age. The rows of a session all belong to the account that signed in there.
+        val restored = kcSessionId?.let { keycloakSessionEvidenceRepository.findLive(it, clock.instant()) }.orEmpty()
+        // Keycloak's user and the session's evidence must name the same account. Preferring one
+        // would let a mis-attributed Keycloak user carry this session's evidence elsewhere. An
+        // invitation's evidence is never stored (ADR-48), so restored evidence never belongs to one.
+        val restoredSubject = restored.firstOrNull()?.let { Subject.Account(AccountId(it.accountId)) }
         if (subject != null && restoredSubject != null && subject != restoredSubject) {
             throw OrchestratorException.invalidState(
                 Text("Die Sitzung gehört zu einem anderen Konto"),
-                "subject=${subject::class.simpleName} restoreData.accountId=${restoreData.accountId}"
+                "subject=${subject::class.simpleName} restored.accountId=${restoredSubject.id}"
             )
         }
         val effectiveSubject = subject ?: restoredSubject
         val effectiveAccountId = (effectiveSubject as? Subject.Account)?.id
-        val restoredFactors = restoreData?.evidence?.methods.orEmpty()
+        val restoredFactors = restored.map { it.toMethodEvidence() }
         // Fails fast: an unknown accountId would otherwise surface later as an unrelated error.
         if (effectiveAccountId != null && accountService.findAccount(effectiveAccountId) == null) {
             throw OrchestratorException.notFound(Text("Account not found"), "accountId=${effectiveAccountId}")
@@ -176,7 +182,7 @@ class KeycloakChannelService(
         targetFloor?.let { sessionManagementService.raiseChannelAcrFloor(channelSessionId, it.value) }
 
         // On a channel this call created, the entry journey's first decision already sees the
-        // restored methods (docs/04-orchestrierung.md #8, "RestoreData als erster Übergang").
+        // restored methods (docs/04-orchestrierung.md #8, "Übernommene Nachweise als erster Übergang").
         // Deciding without them would offer a way out (a step-up's RE_IDENTIFY) the proofs already
         // in hand make needless.
         val seedFactors = if (isFreshChannel) restoredFactors else emptyList()
@@ -196,11 +202,11 @@ class KeycloakChannelService(
     )
 
     /**
-     * Called once by the authenticator's end-of-flow hook (docs/05-api.md Abschnitt 3b), see
-     * [RestoreData]. The token is bound to [kcSessionId], the fresh UserSessionModel id only the
-     * caller knows ([RestoreDataCodec]). `null` for a channel with nothing worth restoring.
+     * Called once by the authenticator's end-of-flow hook (docs/05-api.md Abschnitt 3b) with Keycloak's
+     * durable session id [kcSessionId]. Records what this channel proved for that session (ADR-59),
+     * one row per method, and caps the channel at the session's end [sessionExpiresAt] (ADR-43).
      */
-    fun restoreData(channelSessionId: ChannelSessionId, assertion: PeerAuthAssertion, kcSessionId: String, sessionExpiresAt: Instant? = null): String? {
+    fun flowEnded(channelSessionId: ChannelSessionId, assertion: PeerAuthAssertion, kcSessionId: String, sessionExpiresAt: Instant? = null) {
         val channel = keycloakChannelAccessGuard.requireChannel(channelSessionId, assertion)
         // Every completed Keycloak flow run makes this call, so it records the durable session id
         // without a separate write path. [sessionExpiresAt] is the latest end of that session
@@ -213,12 +219,25 @@ class KeycloakChannelService(
         }
         // The evidence of a process access belongs to its invitation. Carried into a later flow run,
         // it would count for whatever account that run signs in (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
-        if (channel.invitation != null) return null
-        val storedEvidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
-        val methods = storedEvidence?.methods?.map { it.toMethodEvidence() }
-        if (channel.accountId == null && methods.isNullOrEmpty()) return null
-        val coreEvidence = methods?.takeIf { it.isNotEmpty() }?.let { SessionEvidence(it) }
-        return restoreDataCodec.encode(RestoreData(accountId = channel.accountId, evidence = coreEvidence), kcSessionId)
+        if (channel.invitation != null) return
+        val accountId = channel.accountId ?: return
+        val methods = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }?.methods.orEmpty()
+        if (methods.isEmpty()) return
+        val now = clock.instant()
+        val expiresAt = sessionExpiresAt ?: now.plus(SESSION_EVIDENCE_FALLBACK_TTL)
+        methods.map { MethodEvidenceRow.of(it.toMethodEvidence(), now) }.forEach { row ->
+            // Created in its own transaction; a tab that ends at the same moment may have won.
+            try {
+                keycloakSessionEvidenceInitializer.createIfAbsent(kcSessionId, accountId.value, row, expiresAt)
+            } catch (_: DataIntegrityViolationException) {
+                // The row exists now; the update below decides.
+            }
+            keycloakSessionEvidenceRepository.updateIfYounger(
+                kcSessionId, row.method, accountId.value, row.loa, row.enrolledUnderAcr,
+                row.factorTypes, row.amrSourceId, row.axis, row.provenAt,
+            )
+        }
+        keycloakSessionEvidenceRepository.extend(kcSessionId, expiresAt)
     }
 
     /** The Keycloak facade's reading of `intent`: [AuthIntent.fromRequest] for a [ChannelType.WEB] channel. */
@@ -227,7 +246,10 @@ class KeycloakChannelService(
             ?: throw OrchestratorException.invalidState(Text("Dieser Vorgang ist im Web-Kanal nicht zugelassen"), "intent=${intent}")
 
     companion object {
-        // One Keycloak flow run; at its end [restoreData] caps it at the session's end (ADR-43).
+        // One Keycloak flow run; at its end [flowEnded] caps it at the session's end (ADR-43).
         private val CHANNEL_TTL: Duration = Duration.ofMinutes(30)
+
+        // Only when Keycloak names no session end: as long as Keycloak's longest SSO session.
+        private val SESSION_EVIDENCE_FALLBACK_TTL: Duration = Duration.ofHours(12)
     }
 }

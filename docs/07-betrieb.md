@@ -199,6 +199,15 @@ Compliance.
     Löschen eines Kontos (siehe unten). Die Kanäle länger aufzubewahren als das Protokoll selbst
     (14 Tage) bringt deshalb nichts. Weil bei jedem App-Start eine Sitzung entsteht, ist das eine
     große Tabelle. Gelöscht wird deshalb in Stapeln, mit einer Anweisung je Tabelle.
+- **`orchestrator.keycloak_session_evidence`** (übernommene Nachweise einer Keycloak-Sitzung)
+  - *Frist beginnt mit:* `expires_at`, dem spätesten Ende der Keycloak-Sitzung (ohne diese Angabe
+    12 h nach dem Ende des Durchlaufs)
+  - *Richtwert:* sofort danach, stündlich (`RetentionJob`)
+  - *Grund:* Die Zeilen dienen nur dazu, dass ein neuer Durchlauf derselben Sitzung frühere
+    Nachweise übernimmt ([ADR-59](adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md)).
+    Ohne die Sitzung braucht sie niemand. Schon vorher löschen sie die Abmeldung in Keycloak (alle
+    Zeilen der Sitzung), der Widerruf eines Verfahrens (seine Zeilen in allen Sitzungen des Kontos)
+    und das Löschen des Kontos.
 - **`JourneyTraceEntry`**
   - *Frist beginnt mit:* `createdAt`
   - *Richtwert:* 14 Tage
@@ -406,7 +415,7 @@ dagegen nicht von selbst ab. Nur der zweite Fall braucht deshalb eine Wiederholu
 
 ## 3b) Das System läuft als eine einzige Instanz
 
-Das Backend geht davon aus, dass genau eine Instanz läuft. Diese Annahme steht an drei voneinander
+Das Backend geht davon aus, dass genau eine Instanz läuft. Diese Annahme steht an zwei voneinander
 unabhängigen Stellen im Code:
 
 - **Die geplanten Jobs** laufen ohne Sperre und ohne Wahl einer führenden Instanz. Bei mehreren
@@ -415,7 +424,8 @@ unabhängigen Stellen im Code:
   denselben Zeilen sind aber nicht erprobt. Die Liste der Jobs steht in `SCHEDULED_JOBS`
   (`DeploymentTopology.kt`). `ScheduledJobsTest` prüft, dass sie mit den `@Scheduled`-Methoden
   übereinstimmt:
-  - `RetentionJob`: Sitzungen, Journeys, Ablaufprotokoll und Zähler (stündlich),
+  - `RetentionJob`: Sitzungen, Journeys, Ablaufprotokoll, übernommene Nachweise und Zähler
+    (stündlich),
   - `ToolSessionRetentionDriver`: andere kurzlebige Daten der Module, heute die
     QR-Kopplungsanfragen (stündlich),
   - `DpopReplayProtectionService`: Schutz vor wiederholt eingereichten DPoP-Proofs (minütlich),
@@ -428,8 +438,6 @@ unabhängigen Stellen im Code:
   dem das Backend SMS- und E-Mail-Codes vor dem Speichern hasht. Ist er leer, würfelt das Backend ihn
   bei jedem Start neu. Zwei Instanzen könnten dann die Codes der jeweils anderen nicht prüfen. Und
   jede Instanz hätte eigene Zähler für die Versandlimits.
-- `RestoreDataCodec` erzeugt sein Signaturgeheimnis je Prozess. Ein RestoreData-Token der einen
-  Instanz kann die andere deshalb nicht lesen.
 
 Unkritisch für mehrere Instanzen sind dagegen:
 

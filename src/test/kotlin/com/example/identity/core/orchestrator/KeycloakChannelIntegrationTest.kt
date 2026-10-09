@@ -3,6 +3,7 @@ package com.example.identity.core.orchestrator
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.account.AccountService
+import com.example.identity.core.orchestrator.session.AccountDeletionService
 import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
 import com.example.identity.core.orchestrator.support.AccountFixtures
 import io.kotest.assertions.throwables.shouldThrow
@@ -26,6 +27,9 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
 
     @Autowired
     private lateinit var accountService: AccountService
+
+    @Autowired
+    private lateinit var accountDeletionService: AccountDeletionService
 
     init {
         beforeScenario { stubDpopWithFakeJwk() }
@@ -70,6 +74,15 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
     private fun keycloakPatchTool(url: String, body: String): Map<String, Any?> =
         restTemplate.exchange("http://localhost:$port$url", HttpMethod.PATCH, HttpEntity(body, keycloakHeaders()), mapType)
             .let { it.statusCode shouldBe HttpStatus.OK; it.body!! }
+
+    /** Keycloak's end-of-flow report: the channel belonged to [kcSession] (ADR-59). */
+    private fun flowEnd(channelSessionId: ChannelSessionId, kcSession: String, stub: Boolean = true) {
+        if (stub) stubAssertion(channelBinding = channelSessionId.toString())
+        restTemplate.exchange(
+            "http://localhost:$port/orchestrator/api/v1/kc/channels/$channelSessionId/flow-end?kcSessionId=$kcSession",
+            HttpMethod.POST, HttpEntity<Void>(keycloakHeaders()), String::class.java
+        ).statusCode shouldBe HttpStatus.NO_CONTENT
+    }
 
     /** Runs auth-sms on a Web channel through to its end, as Keycloak's authenticator does. */
     private fun keycloakAuthSms(channelSessionId: ChannelSessionId): Map<String, Any?> {
@@ -353,33 +366,31 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
             }
         }
 
-        given("a Web login at loa2 whose proofs are restored in a later flow run (docs/04-orchestrierung.md #4)") {
-            /** A login at loa2 on a fresh Web channel (password and sms), and the RestoreData its flow run ends with. */
-            fun loginAtLoa2(accountId: AccountId): Pair<ChannelSessionId, String> {
+        given("Web logins whose proofs a later flow run of the same Keycloak session takes over (ADR-59)") {
+            /** A login at loa2 on a fresh Web channel (password and sms), reported as ended in [kcSession]. */
+            fun loginAtLoa2(accountId: AccountId, kcSession: String): ChannelSessionId {
                 val channelSessionId = ChannelSessionId(UUID.randomUUID())
                 stubAssertion(channelBinding = channelSessionId.toString())
                 keycloakPatch(channelSessionId, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2"}""")
                 keycloakAuthPassword(channelSessionId)
                 keycloakAuthSms(channelSessionId).channel()["state"] shouldBe "AUTHENTICATED"
-                val token = restTemplate.exchange(
-                    "http://localhost:$port/orchestrator/api/v1/kc/channels/$channelSessionId/restore-data?kcSessionId=kc-aged",
-                    HttpMethod.GET, HttpEntity<Void>(keycloakHeaders()), mapType
-                ).body!!["restoreData"] as String
-                return channelSessionId to token
+                flowEnd(channelSessionId, kcSession)
+                return channelSessionId
             }
 
-            fun resume(accountId: AccountId, token: String): Map<String, Any?> {
+            /** A fresh channel of [kcSession] asking for loa2, as Keycloak's resume step opens it. */
+            fun resume(accountId: AccountId, kcSession: String): Map<String, Any?> {
                 val channelSessionId = ChannelSessionId(UUID.randomUUID())
                 stubAssertion(channelBinding = channelSessionId.toString())
-                return keycloakPatch(channelSessionId, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2","restoreData":"$token","kcSessionId":"kc-aged"}""")
+                return keycloakPatch(channelSessionId, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2","kcSessionId":"$kcSession"}""")
             }
 
             `when`("the next flow run asks for loa2 while the proofs are recent") {
                 val accountId = accountWithSmsAndPassword()
-                val (_, token) = loginAtLoa2(accountId)
-                val resumed = resume(accountId, token)
+                loginAtLoa2(accountId, "kc-recent")
+                val resumed = resume(accountId, "kc-recent")
 
-                then("the restored proofs carry it") {
+                then("the taken-over proofs carry it") {
                     resumed.channel()["state"] shouldBe "AUTHENTICATED"
                     (resumed["authData"] as Map<*, *>)["acr"] shouldBe "loa2"
                 }
@@ -387,18 +398,121 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
 
             `when`("the next flow run asks for loa2 after the proofs are older than 30 minutes") {
                 val accountId = accountWithSmsAndPassword()
-                val (first, _) = loginAtLoa2(accountId)
-                ageProofs(first.value, minutes = 31)
-                val token = restTemplate.exchange(
-                    "http://localhost:$port/orchestrator/api/v1/kc/channels/$first/restore-data?kcSessionId=kc-aged",
-                    HttpMethod.GET, HttpEntity<Void>(keycloakHeaders().also { stubAssertion(channelBinding = first.toString()) }), mapType
-                ).body!!["restoreData"] as String
-                val resumed = resume(accountId, token)
+                loginAtLoa2(accountId, "kc-aged")
+                jdbcTemplate.update(
+                    "UPDATE orchestrator.keycloak_session_evidence SET proven_at = ? WHERE kc_session_id = ?",
+                    java.sql.Timestamp.from(Instant.now().minusSeconds(31 * 60)), "kc-aged"
+                )
+                val resumed = resume(accountId, "kc-aged")
 
                 then("they carry only loa1, and a new proof is asked for") {
                     resumed.channel()["state"] shouldNotBe "AUTHENTICATED"
                     resumed.next()["step"] shouldBe "selectMethod"
                     (resumed["authData"] as Map<*, *>)["acr"] shouldBe "loa1"
+                }
+            }
+
+            `when`("a flow run of another Keycloak session starts") {
+                val accountId = accountWithSmsAndPassword()
+                loginAtLoa2(accountId, "kc-mine")
+                val resumed = resume(accountId, "kc-other-browser")
+
+                then("it takes over nothing") {
+                    resumed.channel()["state"] shouldNotBe "AUTHENTICATED"
+                    (resumed["authData"] as Map<*, *>)["amr"] shouldBe null
+                }
+            }
+
+            `when`("two tabs of one session prove one method each, and a third run starts") {
+                val accountId = accountWithSmsAndPassword()
+                // Both tabs started before either ended, so neither took over the other's proof.
+                val withPassword = ChannelSessionId(UUID.randomUUID())
+                stubAssertion(channelBinding = withPassword.toString())
+                keycloakPatch(withPassword, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa1"}""")
+                keycloakAuthPassword(withPassword)
+                val withSms = ChannelSessionId(UUID.randomUUID())
+                stubAssertion(channelBinding = withSms.toString())
+                keycloakPatch(withSms, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa1"}""")
+                keycloakAuthSms(withSms)
+                flowEnd(withSms, "kc-tabs")
+                flowEnd(withPassword, "kc-tabs")
+                val resumed = resume(accountId, "kc-tabs")
+
+                then("it gets both proofs, not just the last tab's") {
+                    resumed.channel()["state"] shouldBe "AUTHENTICATED"
+                    (resumed["authData"] as Map<*, *>)["acr"] shouldBe "loa2"
+                }
+            }
+
+            `when`("two channels of one session report their end at the same moment") {
+                val accountId = accountWithSmsAndPassword()
+                val first = loginAtLoa2(accountId, "kc-race-a")
+                val second = loginAtLoa2(accountId, "kc-race-b")
+                // Each request carries the binding of the channel its path names.
+                every { peerAuthValidator.validate(any(), any(), any(), any()) } answers {
+                    val url = thirdArg<String>()
+                    PeerAuthAssertion(
+                        jti = UUID.randomUUID().toString(), issuedAt = Instant.now(),
+                        channelBinding = Regex("/kc/channels/([0-9a-f-]{36})/").find(url)!!.groupValues[1], subject = null
+                    )
+                }
+                val failures = java.util.concurrent.CopyOnWriteArrayList<Throwable>()
+                listOf(first, second).map { channel ->
+                    kotlin.concurrent.thread { runCatching { flowEnd(channel, "kc-race", stub = false) }.onFailure(failures::add) }
+                }.forEach { it.join() }
+                val rows = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM orchestrator.keycloak_session_evidence WHERE kc_session_id = 'kc-race'", Int::class.java
+                )
+
+                then("both succeed and the session holds each method once") {
+                    failures shouldBe emptyList()
+                    rows shouldBe 2
+                }
+            }
+
+            `when`("the account's sms method is removed after the login") {
+                val accountId = accountWithSmsAndPassword()
+                loginAtLoa2(accountId, "kc-revoked")
+                val sms = accountService.findAccount(accountId)!!.authenticationMethods.first { it.active && it.method == "sms" }
+                accountDeletionService.revokeMethod(accountId, sms.id)
+                val methods = jdbcTemplate.queryForList(
+                    "SELECT method FROM orchestrator.keycloak_session_evidence WHERE kc_session_id = 'kc-revoked'", String::class.java
+                )
+
+                then("a later run no longer takes over its proof") {
+                    methods shouldBe listOf("password")
+                }
+            }
+
+            `when`("Keycloak reports the logout of the session") {
+                val accountId = accountWithSmsAndPassword()
+                loginAtLoa2(accountId, "kc-logout")
+                stubAssertion(channelBinding = accountId.toString())
+                restTemplate.exchange(
+                    "http://localhost:$port/orchestrator/api/v1/kc/accounts/$accountId/sign-outs?kcSessionId=kc-logout",
+                    HttpMethod.POST, HttpEntity<Void>(keycloakHeaders()), String::class.java
+                )
+                val rows = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM orchestrator.keycloak_session_evidence WHERE kc_session_id = 'kc-logout'", Int::class.java
+                )
+
+                then("what the session proved is gone") {
+                    rows shouldBe 0
+                }
+            }
+
+            `when`("a later run of the session names another account") {
+                val accountId = accountWithSmsAndPassword()
+                loginAtLoa2(accountId, "kc-owner")
+                val otherAccountId = accountService.createAccountInSetup().accountId
+                val channelSessionId = ChannelSessionId(UUID.randomUUID())
+                stubAssertion(channelBinding = channelSessionId.toString())
+                val result = runCatching {
+                    keycloakPatchRaw(channelSessionId, """{"subject":{"type":"account","id":"$otherAccountId"},"kcSessionId":"kc-owner"}""")
+                }
+
+                then("it is refused, the evidence stays with its account") {
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
                 }
             }
         }
@@ -407,10 +521,10 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
             fun expiresAt(channelSessionId: ChannelSessionId): Instant = jdbcTemplate.queryForObject(
                 "SELECT expires_at FROM orchestrator.channel_session WHERE id = ?", java.sql.Timestamp::class.java, channelSessionId.value
             )!!.toInstant()
-            fun fetchRestoreData(channelSessionId: ChannelSessionId, sessionExpiresAt: Instant) = restTemplate.exchange(
-                "http://localhost:$port/orchestrator/api/v1/kc/channels/$channelSessionId/restore-data" +
+            fun reportFlowEnd(channelSessionId: ChannelSessionId, sessionExpiresAt: Instant) = restTemplate.exchange(
+                "http://localhost:$port/orchestrator/api/v1/kc/channels/$channelSessionId/flow-end" +
                     "?kcSessionId=kc-session-1&sessionExpiresAt=${sessionExpiresAt.epochSecond}",
-                HttpMethod.GET, HttpEntity<Void>(keycloakHeaders()), mapType
+                HttpMethod.POST, HttpEntity<Void>(keycloakHeaders()), String::class.java
             ).statusCode
 
             `when`("Keycloak's session ends before the channel's flow-run lifetime") {
@@ -419,10 +533,10 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                 keycloakPatch(channelSessionId)
                 val sessionEnd = Instant.now().plusSeconds(120)
 
-                val status = fetchRestoreData(channelSessionId, sessionEnd)
+                val status = reportFlowEnd(channelSessionId, sessionEnd)
 
                 then("the channel's expiry is capped at the session's end") {
-                    status shouldBe HttpStatus.OK
+                    status shouldBe HttpStatus.NO_CONTENT
                     expiresAt(channelSessionId).epochSecond shouldBe sessionEnd.epochSecond
                 }
             }

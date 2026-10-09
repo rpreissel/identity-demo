@@ -24,7 +24,7 @@ import java.util.UUID
 
 /**
  * The persisted evidence record, kept apart from the tokens issued from it (ADR-15). One per
- * channel, cleared at logout; continuity across flow runs is the Keycloak facade's `RestoreData`. The
+ * channel, cleared at logout; continuity across flow runs is [KeycloakSessionEvidence] (ADR-59). The
  * persisted form of [com.example.identity.core.orchestrator.domain.policy.SessionEvidence]. `currentAcr` is no
  * field: every reader recomputes it with `AuthPolicy.resolveAcr`.
  */

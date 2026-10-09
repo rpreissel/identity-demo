@@ -264,9 +264,6 @@ Der Orchestrator verweigert den Start mit `deployment.instances=multiple` und ne
 - **Datenbank.** Heute ist es eine H2-Datei, die nur ein Prozess öffnen kann. Nötig ist PostgreSQL
   (`DPoP-demo-pi55`). Einige Flyway-Migrationen nutzen Besonderheiten von H2 und müssen dafür
   angepasst werden.
-- **Schlüssel für `restoreData`.** `RestoreDataCodec` erzeugt seinen Schlüssel bei jedem Start neu.
-  Eine Web-Anmeldung, die auf einer Instanz beginnt, kann eine andere Instanz deshalb nicht
-  fortsetzen. Nötig ist ein gemeinsamer Schlüssel.
 - **Keycloak-Migrationen beim Start.** Sie laufen ohne Sperre. Starten zwei Instanzen gleichzeitig,
   wenden beide dieselben Schritte an. Scheitert eine, rollt sie auch die Schritte der anderen
   zurück. Nötig ist eine Sperre oder ein eigener Schritt beim Ausrollen.

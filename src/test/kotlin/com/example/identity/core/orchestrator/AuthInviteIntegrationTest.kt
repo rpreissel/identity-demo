@@ -178,7 +178,7 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 keycloakCall(HttpMethod.PATCH, "/tools/api/auth-invite-lookup/v1/$toolSessionId",
                     """{"kvnr":"A123456789","code":"${issued.code}"}""")
                 // The end of the flow run tells the channel its durable Keycloak session.
-                keycloakCall(HttpMethod.GET, "/orchestrator/api/v1/kc/channels/$channelSessionId/restore-data?kcSessionId=kc-invite-session")
+                keycloakCall(HttpMethod.POST, "/orchestrator/api/v1/kc/channels/$channelSessionId/flow-end?kcSessionId=kc-invite-session")
                 stubAssertion(issued.invitation.value)
                 val reported = keycloakCall(HttpMethod.POST,
                     "/orchestrator/api/v1/kc/invitations/${issued.invitation}/sign-outs?kcSessionId=kc-invite-session")
@@ -232,17 +232,19 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                 }
             }
 
-            `when`("Keycloak ends the flow run and asks for restore data") {
+            `when`("Keycloak reports the end of the flow run") {
                 val issued = issue(PartnerNumber("P000000001"), "loa1")
                 val (channelSessionId, toolSessionId) = openInviteTool("loa1")
                 keycloakCall(HttpMethod.PATCH, "/tools/api/auth-invite-lookup/v1/$toolSessionId",
                     """{"kvnr":"A123456789","code":"${issued.code}"}""")
 
-                val restore = keycloakCall(HttpMethod.GET,
-                    "/orchestrator/api/v1/kc/channels/$channelSessionId/restore-data?kcSessionId=kc-session-1").body!!
+                keycloakCall(HttpMethod.POST, "/orchestrator/api/v1/kc/channels/$channelSessionId/flow-end?kcSessionId=kc-invite-run")
+                val recorded = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM orchestrator.keycloak_session_evidence WHERE kc_session_id = 'kc-invite-run'", Int::class.java
+                )
 
-                then("it gets none: the invitation's evidence never reaches a later run") {
-                    restore["restoreData"] shouldBe null
+                then("nothing is recorded: the invitation's evidence never reaches a later run") {
+                    recorded shouldBe 0
                 }
             }
 

@@ -56,9 +56,9 @@ public class OrchestratorAuthenticator implements Authenticator {
 
             // The intent only counts on a channel's first call, so a changed intent gets a fresh
             // channel above (docs/04-orchestrierung.md #2).
-            // No restoreData here: the resume authenticator reports it once, at the start of the run.
+            // No kcSessionId here: the resume authenticator names the session once, at the start of the run.
             OrchestratorClient.ChannelResponse response = client.upsertChannel(
-                    channelSessionId, subject, targetAcr, null, null,
+                    channelSessionId, subject, targetAcr, null,
                     WebToolAvailability.renderableTools(context.getSession()), intent
             );
             handleResponse(context, response, null);

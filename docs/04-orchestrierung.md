@@ -385,10 +385,10 @@ Die Regel steht in der `AuthPolicy` und gilt deshalb für beide Kanäle. Nach 30
 Kanal also `loa1`. Ein Ziel ab `loa2` verlangt dann einen neuen Nachweis. Dabei wird auch das schon
 benutzte Verfahren wieder angeboten.
 
-Wiederhergestellte Nachweise (`RestoreData`, ein von Keycloak aufbewahrter Stand früherer
-Nachweise) behalten ihren Zeitpunkt. Ein Nachweis ohne Zeitpunkt gilt als beliebig alt. Ohne diese
-Regel würde der Weg über `RestoreData` ein einmal erreichtes `loa2` über jeden neuen Durchlauf bis
-zum Ende der Sitzung festhalten.
+Übernommene Nachweise (was frühere Durchläufe derselben Keycloak-Sitzung nachgewiesen haben,
+[ADR-59](adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md)) behalten ihren Zeitpunkt.
+Ein Nachweis ohne Zeitpunkt gilt als beliebig alt. Ohne diese Regel würde die Übernahme ein einmal
+erreichtes `loa2` über jeden neuen Durchlauf bis zum Ende der Sitzung festhalten.
 
 ### Ein frischer Nachweis für Verwaltung, Löschen und QR-Bestätigung
 
@@ -657,7 +657,7 @@ Journeys und Kanäle hinweg. Welche Arten von Versuchen bewusst nicht zählen un
 
 ---
 
-## 8) Technik: SPI, Phasen, RestoreData, Tool-Controller
+## 8) Technik: SPI, Phasen, übernommene Nachweise, Tool-Controller
 
 Dieser Abschnitt richtet sich an Entwickler. Er beschreibt, wie die Strategien im Code aufgebaut
 sind und wie der gemeinsame Mechanismus ihre Entscheidungen ausführt.
@@ -728,8 +728,8 @@ Wege:
 - `Action.LinkDevice`, `Action.RevokeAuthMethod` und `Action.DeleteAccount`: Die Strategie liefert
   `Perform`, statt selbst zu verknüpfen oder zu löschen (`LookupLoginState.OfferBinding`,
   `ManageAuthMethodsState.RemoveRequested`, `DeleteAccountState.ConfirmationRequired`).
-- RestoreData ([05-api.md](05-api.md) Abschnitt 3b): Das ist kein `JourneyEvent`, sondern der erste
-  Übergang des Automaten. Mehr dazu unten.
+- Übernommene Nachweise ([05-api.md](05-api.md) Abschnitt 3b): Das ist kein `JourneyEvent`,
+  sondern der erste Übergang des Automaten. Mehr dazu unten.
 
 Eine **`Action`** beschreibt, was ein Übergang an Daten ändern will. Es gibt diese Varianten:
 
@@ -737,7 +737,7 @@ Eine **`Action`** beschreibt, was ein Übergang an Daten ändern will. Es gibt d
 - **`AdoptCredential(tool, outcome)`** — Ein neues Verfahren wurde eingerichtet.
 - **`AcceptProof(tool, outcome)`** — Ein Nachweis wurde erbracht. Ob das Tool sein Subjekt (das Konto, um das es geht) selbst *nennen* darf, leitet der Executor aus `ToolRole.ACCOUNT_LOOKUP_AUTH` und der aktuellen Zuordnung ab. Widerspricht ein genanntes Konto einem schon gebundenen, gibt es `409`. Nennt das Tool eine Einladung (`Subject.Invitation`, `auth-invite-lookup`), bindet der Executor sie statt eines Kontos als Subjekt des Kanals. Das geschieht nur im Web-Kanal und nur auf einem Kanal ohne Subjekt ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).
 - **`AdoptAttestation(tool, outcome)`** — Ein Attribut des Kontos wurde bestätigt (z. B. die E-Mail-Adresse). Das allein darf nie zu einem *anderen* Konto wechseln. Dafür braucht es eine echte Identifizierung in derselben Sitzung.
-- **`ApplyRestoredEvidence(source, methods)`** — siehe „RestoreData als erster Übergang“ unten.
+- **`ApplyRestoredEvidence(methods)`** — siehe „Übernommene Nachweise als erster Übergang“ unten.
 - **`RecordApproval(tool, outcome)`** — Ein `PEER_APPROVAL`-Tool hat über die Anfrage eines anderen Kanals entschieden (`CONFIRM_PEER_LOGIN`). Das wird nur verbucht und ändert keinen eigenen Nachweis.
 - **`RevokeAuthMethod(methodInstanceId)`** — **Ein Anmeldeverfahren** widerrufen, also das Credential selbst und nicht nur einen Schalter. Wer sich damit aussperren würde, wird vom Automaten abgewiesen, nicht von der Strategie. Der Name sagt, was die Action zerstört. Daneben steht `DeleteAccount`, das das ganze Konto zerstört.
 - **`RetractAttribute(attributeType)`** — Ein Attribut des Kontos zurücknehmen, heute die bestätigte E-Mail-Adresse. Was davon abhing (`requires`), entfällt ebenfalls.
@@ -860,14 +860,16 @@ Sie stehen als reine Funktionen im Fachkern ([ADR-40](adr/ADR-040-fachkern-im-pa
 
 Der Executor liest, fragt die Regel und schreibt.
 
-### RestoreData als erster Übergang
+### Übernommene Nachweise als erster Übergang
 
-Manchmal liefert der Aufrufer schon beim Start einen Nachweis mit. Das ist RestoreData im
-Web-Kanal ([05-api.md](05-api.md) Abschnitt 3b): ein von Keycloak aufbewahrter Stand früherer
-Nachweise.
+Manchmal liegt schon beim Start ein Nachweis vor. Im Web-Kanal sind das die Nachweise früherer
+Durchläufe derselben Keycloak-Sitzung ([05-api.md](05-api.md) Abschnitt 3b). Der Orchestrator legt
+sie am Ende jedes Durchlaufs je Sitzung und Verfahren ab
+([ADR-59](adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md)). Ein neuer Kanal derselben
+Sitzung übernimmt sie.
 
-Ein solcher Nachweis ist keine fachliche Entscheidung einer Strategie, sondern nur eine Information
-des Aufrufers. Er läuft deshalb als **erster Übergang** des Automaten. In Statecharts ist das der
+Ein solcher Nachweis ist keine fachliche Entscheidung einer Strategie, sondern nur ein schon
+vorhandener Stand. Er läuft deshalb als **erster Übergang** des Automaten. In Statecharts ist das der
 Übergang vom Startpunkt zum ersten Zustand. Er läuft mechanisch, ohne Bedingung und gehört zu
 keinem Zustand.
 

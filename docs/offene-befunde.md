@@ -68,7 +68,7 @@ stillschweigend etwas von der Umgebung voraussetzt.
   geheim bleiben soll. Hier verraten die Demo-TAN und, mit einem echten Anbieter, die Dauer des
   Versands, ob zu einer Adresse ein Konto existiert. `DPoP-demo-36xz`
 - **I-23 (niedrig) Kanal-Lebensdauer und Keycloak-Sitzung.** Der Web-Kanal steht schon auf
-  `AUTHENTICATED`, bevor Keycloak die Sitzung anlegt. Die Meldung einer Abmeldung und `restore-data`
+  `AUTHENTICATED`, bevor Keycloak die Sitzung anlegt. Die Meldung einer Abmeldung und `flow-end`
   werden nur nach bestem Bemühen („best effort“) zugestellt. `DPoP-demo-oe06`
 - **I-14 (niedrig) Gerätelink ohne Fremdschlüssel.** Die Verknüpfung eines Geräts mit einem Konto
   ist in der Datenbank nicht per Fremdschlüssel abgesichert. `DPoP-demo-hwc6`
@@ -160,7 +160,6 @@ stillschweigend etwas von der Umgebung voraussetzt.
   - Q-5: `auth_email` löst das Konto im Controller auf (`DPoP-demo-9ppv.24`).
   - Q-6: QR-Controller mit OpenAPI-Beispielen (`9ppv.25`).
   - Q-7: ein Weg zum Paar aus Journey und Kanal (`9ppv.26`).
-  - Q-9: `RestoreDataCodec` fängt zu viele Fehler ab (`9ppv.28`).
   - Q-10: `else` bei sealed-Subjekten (`9ppv.29`).
   - Q-12: tote Deklarationen (`9ppv.31`).
   - Q-14: lange KDocs (`9ppv.33`).

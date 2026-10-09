@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * A {@link AuthenticationFlowCallbackFactory}, so {@link OrchestratorResumeAuthenticator#onTopFlowSuccess}
- * fires at the end of the top-level flow (RestoreData hook, docs/05-api.md Abschnitt 3b). This needs
+ * fires at the end of the top-level flow (end report, docs/05-api.md Abschnitt 3b). This needs
  * the execution wrapped in its own subflow in the realm config.
  */
 public class OrchestratorResumeAuthenticatorFactory implements AuthenticationFlowCallbackFactory {
@@ -56,7 +56,7 @@ public class OrchestratorResumeAuthenticatorFactory implements AuthenticationFlo
     @Override
     public String getHelpText() {
         return "First step of every orchestrator-driven browser flow run (docs/05-api.md "
-                + "Abschnitt 3) - creates/resumes this run's channel and, on step-up, resubmits RestoreData. Place "
+                + "Abschnitt 3) - creates/resumes this run's channel and, on step-up, names the Keycloak session (ADR-59). Place "
                 + "before auth-cookie, at the start of the flow.";
     }
 

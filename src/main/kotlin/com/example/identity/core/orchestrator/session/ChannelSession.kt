@@ -48,7 +48,7 @@ class ChannelSession(
 
     /**
      * WEB only: Keycloak's durable `UserSessionModel` id, known once a flow has completed
-     * (set by `KeycloakChannelService.restoreData`). Only [com.example.identity.core.orchestrator.retention.RetentionJob]
+     * (set by `KeycloakChannelService.flowEnded`). Only [com.example.identity.core.orchestrator.retention.RetentionJob]
      * reads it, to ask whether the session is still alive. Never used for authorization.
      */
     @Column(name = "kc_durable_session_id", length = 64)

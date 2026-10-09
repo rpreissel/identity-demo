@@ -69,6 +69,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/). Die Tabelle nennt 
 | [ADR-56](adr/ADR-056-vault-transit-als-schluesseldienst.md) | Vault Transit ist das Ziel für den Schlüsseldienst hinter `KeyService`; die Demo bleibt bei der Simulation, Keycloaks eigene Schlüssel bleiben bei Keycloak |
 | [ADR-57](adr/ADR-057-keycloakify-einziges-login-theme.md) | Keycloakify ist das einzige Login-Theme; das FreeMarker-Theme und der Schalter zwischen beiden entfallen, die eigenen Texte hängt der Build an die Bundles des Theme-JARs |
 | [ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md) | Keycloak führt keine eigenen Anmeldeschritte mehr: kein Passwortformular, keine gespeicherten Credentials, native Verfahren werden nicht umhüllt, sondern eigene Tools |
+| [ADR-59](adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md) | Die Nachweise einer Keycloak-Sitzung liegen im Orchestrator, eine Zeile je Sitzung und Verfahren; das signierte RestoreData-Token entfällt, parallele Tabs verlieren keine Nachweise mehr |
 
 Die Nummern ADR-4, 13, 23 und 30 fehlen. Ihr Inhalt steht heute an anderer Stelle:
 

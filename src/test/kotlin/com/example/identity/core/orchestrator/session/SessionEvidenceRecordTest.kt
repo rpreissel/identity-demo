@@ -13,8 +13,8 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * How [SessionEvidenceRecord] adds proofs: a completed tool's, or what RestoreData carries over from
- * an earlier flow run. It only adds, never removes (ADR-58: nobody reports a set that replaces one).
+ * How [SessionEvidenceRecord] adds proofs: a completed tool's, or one taken over from an earlier flow
+ * run of the same Keycloak session (ADR-59). It only adds, never removes (ADR-58: nobody reports a set that replaces one).
  */
 class SessionEvidenceRecordTest : BehaviorSpec({
 
