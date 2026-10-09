@@ -10,6 +10,8 @@ import { Disclosure } from './Disclosure'
 interface TokenPanelProps {
   dpop: DpopKeyPair
   channelSessionId: string
+  /** After "AccessToken aktualisieren" brought a new token - what the screen shows may have changed with it. */
+  onRefreshed?: () => void
 }
 
 /**
@@ -31,7 +33,7 @@ function formatRemaining(expiresAt: string): string {
  * data. The backend decides on every getToken() whether to mint a new token; this panel never
  * sees a RefreshToken value, only its expiry.
  */
-export function TokenPanel({ dpop, channelSessionId }: TokenPanelProps) {
+export function TokenPanel({ dpop, channelSessionId, onRefreshed }: TokenPanelProps) {
   const [token, setToken] = useState<TokenResponse | null>(null)
   const [error, setError] = useState('')
 
@@ -39,9 +41,12 @@ export function TokenPanel({ dpop, channelSessionId }: TokenPanelProps) {
   // getToken() could fail with CONCURRENT_MODIFICATION. The buttons call loadToken() directly.
   const loadingInitialTokenRef = useRef(false)
 
-  function loadToken(minValiditySeconds?: number, onSettled?: () => void) {
+  function loadToken(minValiditySeconds?: number, onSettled?: () => void, onLoaded?: () => void) {
     getToken(dpop, channelSessionId, minValiditySeconds)
-      .then(setToken)
+      .then((loaded) => {
+        setToken(loaded)
+        onLoaded?.()
+      })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(onSettled)
   }
@@ -74,7 +79,7 @@ export function TokenPanel({ dpop, channelSessionId }: TokenPanelProps) {
         </ul>
       )}
       <div className="form-actions">
-        <button className="secondary" onClick={() => loadToken(FORCE_REFRESH_MIN_VALIDITY_SECONDS)}>
+        <button className="secondary" onClick={() => loadToken(FORCE_REFRESH_MIN_VALIDITY_SECONDS, undefined, onRefreshed)}>
           {t('AccessToken aktualisieren')}
         </button>
       </div>

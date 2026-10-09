@@ -172,9 +172,11 @@ export function AuthenticationCompletedView({
   const canStepUpToLoa2 = isBelowAcr(currentAcr, 'loa2')
 
   // Who is logged in: real ID-token claims (docs/05-api.md, "ID-Token-Claims"), not the demo-only
-  // object. Fetched once when this screen is reached, not part of every response. Without them the
-  // screen still works; no error is shown.
+  // object. Fetched when this screen is reached and again after the token was renewed (a name
+  // changed in the register shows then), not part of every response. Without them the screen
+  // still works; no error is shown.
   const [claims, setClaims] = useState<IdTokenClaims | undefined>()
+  const [claimsVersion, setClaimsVersion] = useState(0)
   useEffect(() => {
     let active = true
     getIdClaims(dpop, channelSessionId)
@@ -187,7 +189,7 @@ export function AuthenticationCompletedView({
     return () => {
       active = false
     }
-  }, [dpop, channelSessionId])
+  }, [dpop, channelSessionId, claimsVersion])
 
   const personName = typeof claims?.name === 'string' ? claims.name : undefined
   // The role (ADR-34): versnr = insured with us (Versicherter); personId alone = known to the
@@ -380,7 +382,7 @@ export function AuthenticationCompletedView({
     <>
       {screen}
       <Demo>
-        <TokenPanel dpop={dpop} channelSessionId={channelSessionId} />
+        <TokenPanel dpop={dpop} channelSessionId={channelSessionId} onRefreshed={() => setClaimsVersion((v) => v + 1)} />
       </Demo>
     </>
   )
