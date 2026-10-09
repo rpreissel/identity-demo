@@ -1232,79 +1232,190 @@ button.small,
   white-space: nowrap;
 }
 
-/* Admin: one ordered tool list per channel, side by side, stacked on narrow screens. */
-.tool-channel-columns {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1.5rem;
+/* Admin: tools per channel (AdminToolAvailabilityView) - one channel at a time, availability and
+   order as two views. */
+.tool-admin-tabs {
+  margin: 1rem 0 0.5rem;
 }
 
-.tool-order-group h4 {
-  margin: 1rem 0 0.25rem;
+/* Under the tabs: what this view does, and the button that switches to the other one. */
+.tool-admin-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.tool-admin-toolbar button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.tool-admin-actions {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .tool-admin-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tool-admin-actions button {
+    flex: 1;
+  }
+}
+
+.tool-admin-intro {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.tool-admin-group h4 {
+  margin: 1.25rem 0 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.tool-admin-rows,
+.tool-admin-order {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.tool-admin-rows > li,
+.tool-admin-order > li {
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tool-admin-rows > li:last-child,
+.tool-admin-order > li:last-child {
+  border-bottom: none;
+}
+
+.tool-admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* Name above, id small below - the same height for every row, however long the name. */
+.tool-admin-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--text-h);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.tool-admin-name code {
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: normal;
+  color: var(--text);
+  background: none;
+}
+
+.tool-admin-off .tool-admin-name {
+  opacity: 0.55;
+}
+
+.tool-admin-versions {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+/* One version's switch: filled when offered, hollow when locked. */
+.version-switch {
+  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.version-switch.on {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.version-switch.off {
+  border-style: dashed;
+  border-color: var(--border);
+  background: none;
+  color: var(--text);
+  text-decoration: line-through;
+}
+
+.tool-admin-rows .tool-admin-reason {
+  margin: 0.15rem 0 0;
   font-size: 0.8rem;
   color: var(--text);
 }
 
-.tool-order-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.tool-admin-lock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
 }
 
-.tool-order-list li {
+.tool-admin-lock input {
+  flex-basis: 100%;
+}
+
+.tool-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  align-items: start;
+  column-gap: 1.5rem;
+}
+
+.tool-admin-order > li {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid var(--border);
+  gap: 0.65rem;
 }
 
-.tool-order-arrows {
+.tool-admin-order .tool-admin-name {
+  flex: 1;
+}
+
+.tool-admin-rank {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--code-bg);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tool-admin-arrows {
   display: inline-flex;
   gap: 0.2rem;
 }
 
-.tool-order-arrows button {
+.tool-admin-arrows button {
   padding: 0.15rem 0.45rem;
 }
 
-.tool-order-name {
-  flex: 1;
-}
-
-/* The versions of one tool, each with its own switch (ADR-51); the order stays with the tool. */
-.tool-versions {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.2rem;
-}
-
-.tool-order-list .tool-versions li {
-  border-bottom: none;
-  padding: 0;
-  gap: 0.4rem;
-}
-
-.tool-versions li.tool-locked > code {
-  text-decoration: line-through;
-  opacity: 0.6;
-}
-
-.tool-order-reason {
-  font-size: 0.8rem;
-  color: var(--text);
-}
-
-.tool-order-list li.tool-locked > .tool-order-name {
-  text-decoration: line-through;
-  opacity: 0.6;
-}
-
-.tool-order-arrows button:disabled {
+.tool-admin-arrows button:disabled {
   opacity: 0.25;
   cursor: default;
 }
