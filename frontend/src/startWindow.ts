@@ -10,8 +10,9 @@ export function markAsStartWindow(): void {
 }
 
 /**
- * Brings the start tab to the front. Falls back to navigating this tab when there is no start
- * tab to switch to: the app was opened directly, the start tab was closed, or this is it.
+ * Brings the start tab to the front. Browsers find a named tab only among the tabs that opened one
+ * another, so a tab opened by hand (address bar, bookmark) finds none: then the start page opens in
+ * a new tab, and this one keeps what it shows.
  */
 export function goToStart(): void {
   if (window.name === START_WINDOW) {
@@ -21,6 +22,7 @@ export function goToStart(): void {
   // An empty URL addresses the named tab without navigating it - its tab and scroll state stay.
   const start = window.open('', START_WINDOW)
   if (!start) {
+    // Popups blocked: the only way left is this tab.
     window.location.href = '/'
     return
   }
@@ -31,11 +33,15 @@ export function goToStart(): void {
     // Not readable means some other origin lives there - not our start page either.
     isFreshBlank = true
   }
-  if (isFreshBlank) {
-    // No start tab existed; window.open just created an empty one. Discard it and go home here.
-    start.close()
-    window.location.href = '/'
-    return
-  }
+  // No start tab was found: window.open just made an empty one under that name - the start page goes there.
+  if (isFreshBlank) start.location.href = '/'
   start.focus()
+}
+
+/**
+ * Names this tab after its area (areas.ts), so links from the start page and the other areas bring it
+ * to the front instead of opening a second copy - also when it was opened by hand.
+ */
+export function markAsAreaWindow(target: string): void {
+  if (window.name !== target) window.name = target
 }

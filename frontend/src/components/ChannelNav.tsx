@@ -1,6 +1,6 @@
 import { t } from '../texts'
-import type { MouseEvent, ReactNode } from 'react'
-import { goToStart } from '../startWindow'
+import { useEffect, type MouseEvent, type ReactNode } from 'react'
+import { goToStart, markAsAreaWindow } from '../startWindow'
 import { AREA_LINKS, areaLabel, type Area } from '../areas'
 
 export interface NavTab<K extends string> {
@@ -31,6 +31,10 @@ function toStart(event: MouseEvent) {
  * tab (areas.ts); "Start" switches back to the tab the demo started in instead of loading it here.
  */
 export function ChannelNav<K extends string>({ area, tabs = [], sub, onSelectTab, actions }: Props<K>) {
+  const target = AREA_LINKS.find((link) => link.key === area)?.target
+  useEffect(() => {
+    if (target) markAsAreaWindow(target)
+  }, [target])
   return (
     <>
       {!area && (
