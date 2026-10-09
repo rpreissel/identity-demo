@@ -1,3 +1,5 @@
+import { t } from './texts'
+
 /**
  * The areas of the demo, in the order the shell's navigation lists them (ChannelNav). Each opens
  * in a tab of its own, addressed by name: a link from any page brings that area's tab to the front
@@ -24,3 +26,19 @@ export const AREA_LINKS: readonly AreaLink[] = [
   { key: 'mail', href: '/briefkasten/', target: MAILBOX_TAB },
   { key: 'admin', href: '/admin/', target: ADMIN_TAB },
 ]
+
+/** The area's name as the navigation and the start page show it. */
+export function areaLabel(area: Area): string {
+  switch (area) {
+    case 'app':
+      return t('App')
+    case 'web':
+      return t('Website')
+    case 'pv':
+      return t('Personenverzeichnis')
+    case 'mail':
+      return t('Briefkasten')
+    case 'admin':
+      return t('Verwaltung')
+  }
+}

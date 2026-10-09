@@ -1,7 +1,7 @@
 import { t } from '../texts'
 import type { MouseEvent, ReactNode } from 'react'
 import { goToStart } from '../startWindow'
-import { AREA_LINKS, type Area } from '../areas'
+import { AREA_LINKS, areaLabel, type Area } from '../areas'
 
 export interface NavTab<K extends string> {
   key: K
@@ -17,21 +17,6 @@ interface Props<K extends string> {
   onSelectTab?: (sub: K) => void
   /** Right-hand extras in the row of views (e.g. the admin page's logout). */
   actions?: ReactNode
-}
-
-function areaLabel(area: Area): string {
-  switch (area) {
-    case 'app':
-      return t('App')
-    case 'web':
-      return t('Website')
-    case 'pv':
-      return t('Personenverzeichnis')
-    case 'mail':
-      return t('Briefkasten')
-    case 'admin':
-      return t('Verwaltung')
-  }
 }
 
 function toStart(event: MouseEvent) {

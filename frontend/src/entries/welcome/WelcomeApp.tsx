@@ -11,10 +11,9 @@ import {
 } from '../../api'
 import { ActiveSessionsView } from '../../components/ActiveSessionsView'
 import { DeveloperTools } from '../../components/DeveloperTools'
-import { Disclosure } from '../../components/Disclosure'
 import { markAsStartWindow } from '../../startWindow'
 import { ChannelNav } from '../../components/ChannelNav'
-import { ADMIN_TAB, APP_TAB, MAILBOX_TAB, REGISTER_TAB, WEB_TAB } from '../../areas'
+import { ADMIN_TAB, APP_TAB, REGISTER_TAB, WEB_TAB, AREA_LINKS, areaLabel, type Area } from '../../areas'
 import { t } from '../../texts'
 import { Tx } from '../../Tx'
 import { useHashTab } from '../../useHashTab'
@@ -53,25 +52,24 @@ export function WelcomeApp() {
   return (
     <div className="web-shell channel-start">
       <ChannelNav tabs={TABS} sub={tab} onSelectTab={setTab} />
-      <div className="app welcome">
-        <header className="app-header">
-          <h1>{t('Identity Journey')}</h1>
-          <p>{t('Legen Sie ein Konto an, melden Sie sich an wie bei einer Krankenkasse, und schauen Sie dabei hinter die Kulissen.')}</p>
-        </header>
-
+      <main className="start-page">
         {tab === 'loslegen' && <GetStarted keycloak={keycloak} />}
         {tab === 'begriffe' && <Glossary />}
         {tab === 'status' && <ServerStatus />}
-      </div>
+      </main>
     </div>
   )
 }
 
-/** One task to try: what to do, and the button that opens the tab where it happens. */
-function Task({ children, action }: { children: ReactNode; action: ReactNode }) {
+/** One task to try: in which area, what to do, and the link that opens the area's tab. */
+function Task({ area, children, action }: { area: Area; children: ReactNode; action: ReactNode }) {
   return (
-    <li className="task-row">
-      <span>{children}</span>
+    <li className="start-task">
+      <span className={`start-area-name start-area-name--${area}`}>
+        <span className={`shell-dot shell-dot--${area}`} aria-hidden="true" />
+        {areaLabel(area)}
+      </span>
+      <p>{children}</p>
       {action}
     </li>
   )
@@ -79,13 +77,26 @@ function Task({ children, action }: { children: ReactNode; action: ReactNode }) 
 
 function OpenLink({ href, target, label }: { href: string; target: string; label: string }) {
   return (
-    <a className="button secondary" href={href} target={target}>
+    <a className="start-go" href={href} target={target}>
       {label}
     </a>
   )
 }
 
-/** Invites to play: one first action, then a few tasks, then what each tab plays. */
+/** What each area plays, and whether it is real or simulated. */
+const AREA_HINTS: Record<Area, { hint: () => string; real: boolean }> = {
+  app: { hint: () => t('Registrieren, anmelden, Verfahren einrichten. Daneben erklärt die Demo jeden Schritt.'), real: true },
+  web: { hint: () => t('Anmelden wie im Kundenportal, auch per QR-Code mit der App. Dahinter steht ein echtes Keycloak.'), real: true },
+  pv: { hint: () => t('Die Testpersonen und ihre Freischaltcodes. Ein fremdes System, nur simuliert.'), real: false },
+  mail: { hint: () => t('Briefe, SMS und E-Mails an die Testpersonen, mit den Codes darin. Die Seite der Empfänger, nur simuliert.'), real: false },
+  admin: { hint: () => t('Jeden Schritt jeder Journey verfolgen, Verfahren sperren, die Demo zurücksetzen.'), real: true },
+}
+
+function RealTag({ real }: { real: boolean }) {
+  return <span className={real ? 'tag tag-real' : 'tag tag-sim'}>{real ? t('Echt') : t('Simuliert')}</span>
+}
+
+/** Invites to play: one first action, then a few tasks, then what each area plays. */
 function GetStarted({ keycloak }: { keycloak: boolean | null }) {
   const webMissing = (
     <span className="task-note">
@@ -94,163 +105,133 @@ function GetStarted({ keycloak }: { keycloak: boolean | null }) {
   )
   return (
     <>
-      <section className="card welcome-hero">
-        <h2>{t('Fangen Sie in der App an')}</h2>
-        <p>
-          {t(
-            'Registrieren Sie sich mit einer Testperson. Wählen Sie als Anmeldeverfahren „Gerät“: Dann ist die App an ' +
-              'dieses Gerät gebunden, und Sie melden sich hier künftig ohne Passwort an. Das dauert etwa zwei Minuten, ' +
-              'und alles, was Sie eingeben, steht schon im Formular oder in der Spalte daneben.',
-          )}
-        </p>
-        <a className="button button-large" href="/app/?intent=register" target={APP_TAB}>
-          {t('In der App registrieren')}
-        </a>
-      </section>
-
-      <section className="card">
-        <h2>{t('Danach ausprobieren')}</h2>
-        <ol className="task-list">
-          <Task action={<OpenLink href="/app/" target={APP_TAB} label={t('App öffnen')} />}>
-            {t('In der App unter „Sicherheit“ die Anmeldung per QR-Code aktivieren und ein Passwort vergeben.')}
-          </Task>
-          <Task
-            action={
-              keycloak === false ? webMissing : <OpenLink href="/web/" target={WEB_TAB} label={t('Website öffnen')} />
-            }
-          >
-            {t('Auf der Website mit dem Passwort anmelden und die Gesundheitsdaten öffnen: Dafür bestätigen Sie die Anmeldung in der App.')}
-          </Task>
-          <Task action={<OpenLink href="/personenverzeichnis/" target={REGISTER_TAB} label={t('Personenverzeichnis öffnen')} />}>
-            {t('Im Personenverzeichnis Ihren Namen ändern und sehen, dass die App ihn übernimmt.')}
-          </Task>
-          <Task action={<OpenLink href="/personenverzeichnis/#einladungen" target={REGISTER_TAB} label={t('Einladung ausstellen')} />}>
-            {t('Im Personenverzeichnis einen Brief mit Einmalkennwort verschicken und damit auf der Website einen Vorgang erledigen, ganz ohne Konto.')}
-          </Task>
-          <Task action={<OpenLink href="/admin/#journeytrace" target={ADMIN_TAB} label={t('Admin-Seite öffnen')} />}>
-            {t('Auf der Admin-Seite verfolgen, welche Schritte Ihre Journey durchlaufen hat.')}
-          </Task>
-          <Task action={<OpenLink href="/app/" target={APP_TAB} label={t('App öffnen')} />}>
-            {t('In der App unter „Sicherheit“ das Konto löschen und von vorn anfangen.')}
-          </Task>
+      <section className="start-hero">
+        <div className="start-hero-text">
+          <span className="tag tag-real">{t('Echter Orchestrator · simulierte Umgebung')}</span>
+          <h1>{t('Registrieren und anmelden – und dabei hinter die Kulissen schauen.')}</h1>
+          <p className="start-lead">{t('Legen Sie ein Konto an, melden Sie sich an wie bei einer Krankenkasse, und schauen Sie dabei hinter die Kulissen.')}</p>
+          <div className="start-actions">
+            <a className="button button-large" href="/app/?intent=register" target={APP_TAB}>
+              {t('In der App registrieren')}
+            </a>
+            {keycloak !== false && (
+              <a className="button button-large secondary" href="/web/" target={WEB_TAB}>
+                {t('Website öffnen')}
+              </a>
+            )}
+          </div>
+          <p className="start-note">
+            {t(
+              'Registrieren Sie sich mit einer Testperson. Wählen Sie als Anmeldeverfahren „Gerät“: Dann ist die App an ' +
+                'dieses Gerät gebunden, und Sie melden sich hier künftig ohne Passwort an. Das dauert etwa zwei Minuten, ' +
+                'und alles, was Sie eingeben, steht schon im Formular oder in der Spalte daneben.',
+            )}
+          </p>
+        </div>
+        <ol className="start-steps">
+          <li>
+            <span className="start-step-no">01</span>
+            <span>
+              <strong>{t('In der App registrieren')}</strong>
+              <span>{t('Identifizieren, E-Mail-Adresse bestätigen, „Gerät“ als Anmeldeverfahren wählen.')}</span>
+            </span>
+          </li>
+          <li>
+            <span className="start-step-no">02</span>
+            <span>
+              <strong>{t('Auf der Website anmelden')}</strong>
+              <span>{t('Die Gesundheitsdaten verlangen mehr: Sie bestätigen die Anmeldung in der App.')}</span>
+            </span>
+          </li>
+          <li>
+            <span className="start-step-no">03</span>
+            <span>
+              <strong>{t('Nachvollziehen')}</strong>
+              <span>{t('In der Verwaltung jeden Schritt Ihrer Journey verfolgen.')}</span>
+            </span>
+          </li>
         </ol>
       </section>
 
-      <section className="card">
-        <h2>{t('Die Tabs der Demo')}</h2>
-        <ul className="method-choice-list tab-tiles">
-          <li>
-            <a className="method-choice" href="/app/" target={APP_TAB} aria-label={t('Zum App-Kanal')}>
-              <span className="method-choice-icon" aria-hidden="true">
-                📱
-              </span>
-              <span className="method-choice-text">
-                <span className="method-choice-label">{t('App')}</span>
-                <span className="method-choice-hint">
-                  {t('Registrieren, anmelden, Verfahren einrichten. Daneben erklärt die Demo jeden Schritt.')}
-                </span>
-              </span>
-            </a>
-          </li>
-          <li>
-            {keycloak === false ? (
-              <div className="method-choice method-choice-disabled" aria-disabled="true">
-                <span className="method-choice-icon" aria-hidden="true">
-                  🌐
-                </span>
-                <span className="method-choice-text">
-                  <span className="method-choice-label">{t('Website nicht verfügbar')}</span>
-                  <span className="method-choice-hint">
+      <section className="start-section">
+        <div className="start-section-head">
+          <h2>{t('Danach ausprobieren')}</h2>
+          <span>{t('Jede Aufgabe zeigt einen anderen Teil der Demo.')}</span>
+        </div>
+        <ul className="start-tasks">
+          <Task area="app" action={<OpenLink href="/app/" target={APP_TAB} label={t('App öffnen')} />}>
+            {t('In der App unter „Sicherheit“ die Anmeldung per QR-Code aktivieren und ein Passwort vergeben.')}
+          </Task>
+          <Task area="web" action={keycloak === false ? webMissing : <OpenLink href="/web/" target={WEB_TAB} label={t('Website öffnen')} />}>
+            {t('Auf der Website mit dem Passwort anmelden und die Gesundheitsdaten öffnen: Dafür bestätigen Sie die Anmeldung in der App.')}
+          </Task>
+          <Task area="pv" action={<OpenLink href="/personenverzeichnis/" target={REGISTER_TAB} label={t('Personenverzeichnis öffnen')} />}>
+            {t('Im Personenverzeichnis Ihren Namen ändern und sehen, dass die App ihn übernimmt.')}
+          </Task>
+          <Task area="pv" action={<OpenLink href="/personenverzeichnis/#einladungen" target={REGISTER_TAB} label={t('Einladung ausstellen')} />}>
+            {t('Im Personenverzeichnis einen Brief mit Einmalkennwort verschicken und damit auf der Website einen Vorgang erledigen, ganz ohne Konto.')}
+          </Task>
+          <Task area="admin" action={<OpenLink href="/admin/#journeytrace" target={ADMIN_TAB} label={t('Verwaltung öffnen')} />}>
+            {t('In der Verwaltung verfolgen, welche Schritte Ihre Journey durchlaufen hat.')}
+          </Task>
+          <Task area="app" action={<OpenLink href="/app/" target={APP_TAB} label={t('App öffnen')} />}>
+            {t('In der App unter „Sicherheit“ das Konto löschen und von vorn anfangen.')}
+          </Task>
+        </ul>
+      </section>
+
+      <section className="start-section">
+        <h2>{t('Die Bereiche der Demo')}</h2>
+        <ul className="start-areas">
+          {AREA_LINKS.map((link) =>
+            link.key === 'web' && keycloak === false ? (
+              <li key={link.key}>
+                <div className={`start-area start-area--${link.key} start-area--off`} aria-disabled="true">
+                  <strong>{t('Website nicht verfügbar')}</strong>
+                  <span>
                     <Tx
                       text="Nur mit echtem Keycloak - Server mit Profil {profil} starten ({befehl})"
                       profil={<code>keycloak</code>}
                       befehl={<code>./gradlew bootRunKc</code>}
                     />
                   </span>
-                </span>
-              </div>
+                </div>
+              </li>
             ) : (
-              <a className="method-choice" href="/web/" target={WEB_TAB} aria-label={t('Zum Web-Kanal')}>
-                <span className="method-choice-icon" aria-hidden="true">
-                  🌐
-                </span>
-                <span className="method-choice-text">
-                  <span className="method-choice-label">{t('Website')}</span>
-                  <span className="method-choice-hint">
-                    {t('Anmelden wie im Kundenportal, auch per QR-Code mit der App. Dahinter steht ein echtes Keycloak.')}
-                  </span>
-                </span>
-              </a>
-            )}
-          </li>
-          <li>
-            <a className="method-choice" href="/personenverzeichnis/" target={REGISTER_TAB} aria-label={t('Zum Personenverzeichnis')}>
-              <span className="method-choice-icon" aria-hidden="true">
-                🏛️
-              </span>
-              <span className="method-choice-text">
-                <span className="method-choice-label">{t('Personenverzeichnis')}</span>
-                <span className="method-choice-hint">
-                  {t('Die Testpersonen und ihre Freischaltcodes. Ein fremdes System, nur simuliert.')}
-                </span>
-              </span>
-            </a>
-          </li>
-          <li>
-            <a className="method-choice" href="/briefkasten/" target={MAILBOX_TAB} aria-label={t('Zum Briefkasten')}>
-              <span className="method-choice-icon" aria-hidden="true">
-                📬
-              </span>
-              <span className="method-choice-text">
-                <span className="method-choice-label">{t('Briefkasten')}</span>
-                <span className="method-choice-hint">
-                  {t('Briefe, SMS und E-Mails an die Testpersonen, mit den Codes darin. Die Seite der Empfänger, nur simuliert.')}
-                </span>
-              </span>
-            </a>
-          </li>
-          <li>
-            <a className="method-choice" href="/admin/" target={ADMIN_TAB} aria-label={t('Zur Admin-Seite')}>
-              <span className="method-choice-icon" aria-hidden="true">
-                🛠️
-              </span>
-              <span className="method-choice-text">
-                <span className="method-choice-label">{t('Admin')}</span>
-                <span className="method-choice-hint">
-                  {t('Jeden Schritt jeder Journey verfolgen, Verfahren sperren, die Demo zurücksetzen.')}
-                </span>
-              </span>
-            </a>
-          </li>
+              <li key={link.key}>
+                <a className={`start-area start-area--${link.key}`} href={link.href} target={link.target}>
+                  <strong>{areaLabel(link.key)}</strong>
+                  <span>{AREA_HINTS[link.key].hint()}</span>
+                  <RealTag real={AREA_HINTS[link.key].real} />
+                </a>
+              </li>
+            ),
+          )}
         </ul>
       </section>
 
-      <section className="card">
-        <Disclosure summary={t('Was ist echt, was simuliert?')}>
-          <div className="real-vs-sim">
-            <div>
-              <h3>{t('Echt')}</h3>
-              <ul>
-                <li>{t('Der Orchestrator: Journeys, Konten, Verfahren, Tokens')}</li>
-                <li>{t('Die DPoP-Signaturen - der Geräteschlüssel entsteht per WebCrypto im Browser')}</li>
-                <li>
-                  <Tx text="Keycloak und der Website-Login (OIDC mit PKCE) - nur mit Profil {profil}" profil={<code>keycloak</code>} />
-                </li>
-                <li>{t('Die Sicherheitsniveaus (loa1 bis loa3) und der Step-up')}</li>
-              </ul>
-            </div>
-            <div>
-              <h3>{t('Simuliert')}</h3>
-              <ul>
-                <li>{t('Das Smartphone - ein Browser-Tab')}</li>
-                <li>{t('SMS- und E-Mail-Versand - die Codes stehen im Briefkasten')}</li>
-                <li>{t('Der Brief mit dem Freischaltcode - ebenfalls im Briefkasten')}</li>
-                <li>{t('Das Auslesen der eID-Karte und die Dienstleister Nect und KOBIL')}</li>
-                <li>{t('Das Personenverzeichnis selbst')}</li>
-              </ul>
-            </div>
-          </div>
-        </Disclosure>
+      <section className="start-section start-realsim">
+        <div className="start-panel">
+          <RealTag real />
+          <ul>
+            <li>{t('Der Orchestrator: Journeys, Konten, Verfahren, Tokens')}</li>
+            <li>{t('Die DPoP-Signaturen - der Geräteschlüssel entsteht per WebCrypto im Browser')}</li>
+            <li>
+              <Tx text="Keycloak und der Website-Login (OIDC mit PKCE) - nur mit Profil {profil}" profil={<code>keycloak</code>} />
+            </li>
+            <li>{t('Die Sicherheitsniveaus (loa1 bis loa3) und der Step-up')}</li>
+          </ul>
+        </div>
+        <div className="start-panel">
+          <RealTag real={false} />
+          <ul>
+            <li>{t('Das Smartphone - ein Browser-Tab')}</li>
+            <li>{t('SMS- und E-Mail-Versand - die Codes stehen im Briefkasten')}</li>
+            <li>{t('Der Brief mit dem Freischaltcode - ebenfalls im Briefkasten')}</li>
+            <li>{t('Das Auslesen der eID-Karte und die Dienstleister Nect und KOBIL')}</li>
+            <li>{t('Das Personenverzeichnis selbst')}</li>
+          </ul>
+        </div>
       </section>
 
       <DemoReset />
@@ -295,7 +276,7 @@ function DemoReset() {
 
   const active = report ? activeCount(report) : 0
   return (
-    <section className="card">
+    <section className="start-reset">
       <h2>{t('Demo zurücksetzen')}</h2>
       <p>
         {t(
@@ -365,53 +346,48 @@ const GLOSSARY: { term: string; meaning: string }[] = [
   { term: t('AccessToken'), meaning: t('Der Ausweis, mit dem eine Anwendung Sie nach der Anmeldung erkennt. In der App ist er an dieses Gerät gebunden (DPoP).') },
 ]
 
+const READ_ON: { text: () => string; href: string; label: () => string }[] = [
+  { text: () => t('Ein gesprochenes Video spielt die Aufgaben dieser Seite einmal durch.'), href: `${REPO}/blob/main/docs/media/demo.mp4`, label: () => t('Demo-Video ansehen') },
+  {
+    text: () => t('Ein Erklärvideo von gut fünf Minuten zeigt Konzepte, Stand und die Vor- und Nachteile des Ansatzes.'),
+    href: `${REPO}/blob/main/docs/media/erklaervideo.mp4`,
+    label: () => t('Erklärvideo ansehen'),
+  },
+  { text: () => t('Die Dokumentation beginnt mit einem Überblick über Begriffe und Aufbau.'), href: `${REPO}/blob/main/docs/01-ueberblick.md`, label: () => t('Überblick lesen') },
+  {
+    text: () => t('Eine durchgehende Geschichte: Mara registriert sich, kommt wieder und erhöht ihr Sicherheitsniveau.'),
+    href: `${REPO}/blob/main/docs/11-beispiel-story.md`,
+    label: () => t('Beispiel lesen'),
+  },
+  { text: () => t('Der Quellcode der Demo auf GitHub.'), href: REPO, label: () => t('Quellcode öffnen') },
+]
+
 function Glossary() {
   return (
     <>
-      <section className="card">
-        <h2>{t('Begriffe')}</h2>
-        <dl className="glossary">
-          {GLOSSARY.map((entry) => (
-            <div key={entry.term}>
-              <dt>{entry.term}</dt>
-              <dd>{entry.meaning}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-      <section className="card">
+      <div className="start-intro">
+        <h1>{t('Begriffe')}</h1>
+        <p className="start-lead">{t('Die Wörter, die Ihnen in der Demo immer wieder begegnen – kurz erklärt.')}</p>
+      </div>
+      <dl className="start-glossary">
+        {GLOSSARY.map((entry) => (
+          <div key={entry.term}>
+            <dt>{entry.term}</dt>
+            <dd>{entry.meaning}</dd>
+          </div>
+        ))}
+      </dl>
+      <section className="start-section">
         <h2>{t('Weiterlesen')}</h2>
-        <ul className="task-list">
-          <li className="task-row">
-            <span>{t('Ein gesprochenes Video spielt die Aufgaben dieser Seite einmal durch.')}</span>
-            <a className="button secondary" href={`${REPO}/blob/main/docs/media/demo.mp4`} target="_blank" rel="noreferrer">
-              {t('Demo-Video ansehen')}
-            </a>
-          </li>
-          <li className="task-row">
-            <span>{t('Ein Erklärvideo von gut fünf Minuten zeigt Konzepte, Stand und die Vor- und Nachteile des Ansatzes.')}</span>
-            <a className="button secondary" href={`${REPO}/blob/main/docs/media/erklaervideo.mp4`} target="_blank" rel="noreferrer">
-              {t('Erklärvideo ansehen')}
-            </a>
-          </li>
-          <li className="task-row">
-            <span>{t('Die Dokumentation beginnt mit einem Überblick über Begriffe und Aufbau.')}</span>
-            <a className="button secondary" href={`${REPO}/blob/main/docs/01-ueberblick.md`} target="_blank" rel="noreferrer">
-              {t('Überblick lesen')}
-            </a>
-          </li>
-          <li className="task-row">
-            <span>{t('Eine durchgehende Geschichte: Mara registriert sich, kommt wieder und erhöht ihr Sicherheitsniveau.')}</span>
-            <a className="button secondary" href={`${REPO}/blob/main/docs/11-beispiel-story.md`} target="_blank" rel="noreferrer">
-              {t('Beispiel lesen')}
-            </a>
-          </li>
-          <li className="task-row">
-            <span>{t('Der Quellcode der Demo auf GitHub.')}</span>
-            <a className="button secondary" href={REPO} target="_blank" rel="noreferrer">
-              {t('Quellcode öffnen')}
-            </a>
-          </li>
+        <ul className="start-read">
+          {READ_ON.map((item) => (
+            <li key={item.href}>
+              <span>{item.text()}</span>
+              <a href={item.href} target="_blank" rel="noreferrer">
+                {item.label()}
+              </a>
+            </li>
+          ))}
         </ul>
       </section>
     </>
@@ -430,70 +406,80 @@ function ServerStatus() {
   }, [])
 
   if (error) return <div className="card error-card"><p>{error}</p></div>
-  if (!info) return <div className="card"><p>{t('Lädt…')}</p></div>
+  if (!info) return <p>{t('Lädt…')}</p>
 
+  const up = info.operations ? info.operations.status === 'UP' : null
   return (
-    <div className="card">
-      <h2>{t('Server-Status')}</h2>
-      <p>
-        {t('So ist die Demo gerade eingestellt.')}{' '}
-        <Tx
-          text="Reihenfolge der Registrierung und gesperrte Verfahren ändern Sie auf der {link}; Keycloak und Demo-Werte legt der Serverstart fest."
-          link={<a href="/admin/">{t('Admin-Seite')}</a>}
-        />
-      </p>
-      <ul className="status-list">
-        <li>
-          <span className="label">{t('Identitätsanbieter (Web-Kanal)')}</span>
-          <span className="value">
-            {info.keycloak ? t('Keycloak, Realm {realm}', { realm: info.keycloak.realm }) : t('Kein Keycloak - Web-Kanal nicht verfügbar')}
+    <>
+      <div className="start-intro start-intro-row">
+        <div>
+          <h1>{t('Server-Status')}</h1>
+          <p className="start-lead">{t('So ist die Demo gerade eingestellt.')}</p>
+        </div>
+        {up !== null && (
+          <span className={up ? 'start-health start-health--up' : 'start-health start-health--down'}>
+            <span className="start-health-dot" aria-hidden="true" />
+            {up ? t('Alles in Ordnung') : t('Gesamtzustand: {status}', { status: info.operations!.status })}
           </span>
-        </li>
-        {info.keycloak && (
-          <li>
-            <span className="label">{t('Keycloak')}</span>
-            <a className="value" href={info.keycloak.baseUrl} target="_blank" rel="noreferrer">
-              {info.keycloak.baseUrl}
-            </a>
-          </li>
         )}
-        {info.keycloak && (
+      </div>
+
+      <section className="start-section">
+        <div className="start-section-head">
+          <h2>{t('Einstellungen')}</h2>
+          <a href="/admin/" target={ADMIN_TAB}>
+            {t('In der Verwaltung ändern')}
+          </a>
+        </div>
+        <ul className="start-settings">
           <li>
-            <span className="label">{t('Erste Anmeldeseite')}</span>
-            <span className="value">{info.keycloak.loa1Login === 'ORCHESTRATOR' ? t('Gleich alle Verfahren zur Wahl') : t('Erst das Passwort')}</span>
+            <span className="start-setting-label">{t('Identitätsanbieter (Web-Kanal)')}</span>
+            <strong>{info.keycloak ? t('Keycloak, Realm {realm}', { realm: info.keycloak.realm }) : t('Kein Keycloak - Web-Kanal nicht verfügbar')}</strong>
+            {info.keycloak && (
+              <a href={info.keycloak.baseUrl} target="_blank" rel="noreferrer">
+                <code>{info.keycloak.baseUrl}</code>
+              </a>
+            )}
           </li>
-        )}
-        <li>
-          <span className="label">{t('Registrierungsreihenfolge')}</span>
-          <span className="value">{info.registrationEnrollFirst ? t('Enrollment zuerst') : t('Identifikation zuerst')}</span>
-        </li>
-        <li className={info.disabledTools.length === 0 ? undefined : 'status-stacked'}>
-          <span className="label">{t('Gesperrte Verfahren')}</span>
-          {info.disabledTools.length === 0 ? (
-            <span className="value">{t('keine')}</span>
-          ) : (
-            // One line per channel and reason - the reason once, not after every tool.
-            <ul className="status-sublist">
-              {disabledGroups(info.disabledTools).map((g) => (
-                <li key={`${g.channel}|${g.reason}`}>
-                  <span className="status-group">
-                    {g.channel === 'APP' ? t('App') : t('Web')}
-                    {g.reason ? ` · ${g.reason}` : ''}
-                  </span>
-                  <span className="value">{g.tools.join(', ')}</span>
-                </li>
-              ))}
-            </ul>
+          {info.keycloak && (
+            <li>
+              <span className="start-setting-label">{t('Erste Anmeldeseite')}</span>
+              <strong>{info.keycloak.loa1Login === 'ORCHESTRATOR' ? t('Gleich alle Verfahren zur Wahl') : t('Erst das Passwort')}</strong>
+            </li>
           )}
-        </li>
-        <li>
-          <span className="label">{t('Demo-Werte in Antworten')}</span>
-          <span className="value">{info.demoMode ? t('an (TANs, Testpersonen, Vorbelegung)') : t('aus')}</span>
-        </li>
-      </ul>
-      <DeveloperTools demoMode={info.demoMode} />
+          <li>
+            <span className="start-setting-label">{t('Registrierungsreihenfolge')}</span>
+            <strong>{info.registrationEnrollFirst ? t('Enrollment zuerst') : t('Identifikation zuerst')}</strong>
+          </li>
+          <li>
+            <span className="start-setting-label">{t('Demo-Werte in Antworten')}</span>
+            <strong>{info.demoMode ? t('an (TANs, Testpersonen, Vorbelegung)') : t('aus')}</strong>
+          </li>
+          <li className="start-setting-wide">
+            <span className="start-setting-label">{t('Gesperrte Verfahren')}</span>
+            {info.disabledTools.length === 0 ? (
+              <strong>{t('keine')}</strong>
+            ) : (
+              // One line per channel and reason - the reason once, not after every tool.
+              disabledGroups(info.disabledTools).map((g) => (
+                <span key={`${g.channel}|${g.reason}`} className="start-locked">
+                  <span className={g.channel === 'APP' ? 'start-locked-channel start-locked-channel--app' : 'start-locked-channel start-locked-channel--web'}>
+                    {g.channel === 'APP' ? t('App') : t('Web')}
+                  </span>
+                  {g.tools.map((tool) => (
+                    <code key={tool}>{tool}</code>
+                  ))}
+                  {g.reason && <span className="start-locked-reason">{g.reason}</span>}
+                </span>
+              ))
+            )}
+          </li>
+        </ul>
+        <DeveloperTools demoMode={info.demoMode} />
+      </section>
+
       {info.operations && <OperationsStatus operations={info.operations} />}
-    </div>
+    </>
   )
 }
 
@@ -503,37 +489,39 @@ function ServerStatus() {
  */
 function OperationsStatus({ operations }: { operations: OperationsInfo }) {
   return (
-    <>
-      <h3>{t('Betrieb')}</h3>
-      <p>
+    <section className="start-section">
+      <h2>{t('Betrieb')}</h2>
+      <p className="start-lead-small">
         <Tx
           text="Zustand und Kennzahlen, wie sie der Orchestrator für die Überwachung meldet (im Betrieb unter {path} auf einem eigenen Port)."
           path={<code>/actuator</code>}
         />
       </p>
-      <ul className="status-list">
-        <li>
-          <span className="label">{t('Gesamtzustand')}</span>
-          <span className="value">{operations.status}</span>
-        </li>
+      <ul className="start-health-list">
         {operations.components.map((c) => (
-          <li key={c.name}>
-            <span className="label">{healthComponentLabel(c.name)}</span>
-            <span className="value">{c.status}</span>
-          </li>
-        ))}
-        {operations.metrics.map((m) => (
-          <li key={`${m.name}|${JSON.stringify(m.tags)}`}>
-            <span className="label">{metricLabel(m.name, m.tags)}</span>
-            <span className="value">
-              {m.meanMillis != null
-                ? t('{count} Aufrufe, im Mittel {millis} ms', { count: String(m.value), millis: m.meanMillis.toFixed(0) })
-                : String(m.value)}
+          <li key={c.name} className={c.status === 'UP' ? 'start-check start-check--up' : 'start-check start-check--down'}>
+            <span className="start-check-mark" aria-hidden="true">
+              {c.status === 'UP' ? '✓' : '!'}
+            </span>
+            <span>
+              <strong>{healthComponentLabel(c.name)}</strong>
+              <span>{c.status}</span>
             </span>
           </li>
         ))}
       </ul>
-    </>
+      {operations.metrics.length > 0 && (
+        <ul className="start-metrics">
+          {operations.metrics.map((m) => (
+            <li key={`${m.name}|${JSON.stringify(m.tags)}`}>
+              <span>{metricLabel(m.name, m.tags)}</span>
+              <strong>{String(m.value)}</strong>
+              {m.meanMillis != null && <span>{t('im Mittel {millis} ms', { millis: m.meanMillis.toFixed(0) })}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 
