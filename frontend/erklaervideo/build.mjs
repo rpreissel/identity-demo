@@ -58,7 +58,12 @@ console.log(`total ${total.toFixed(1)} s`)
 for (const s of scenes) console.log(`  ${s.id.padEnd(24)} ${s.duration.toFixed(1)} s`)
 
 // 2) One HTML page per scene; setTime(t) puts every [data-b] element where it is at time t
-const css = readFileSync(join(DIR, 'style.css'), 'utf8')
+// The demo's own type (IBM Plex, as in the app's shell), embedded: setContent pages cannot load files.
+const FONTS = join(DIR, '..', 'node_modules', '@fontsource')
+const fontFace = (family, dir, weight) =>
+  `@font-face{font-family:'${family}';font-weight:${weight};font-style:normal;src:url(data:font/woff2;base64,${readFileSync(join(FONTS, dir, 'files', `${dir}-latin-${weight}-normal.woff2`)).toString('base64')}) format('woff2')}`
+const fonts = [400, 500, 600, 700].flatMap((w) => [fontFace('IBM Plex Sans', 'ibm-plex-sans', w), fontFace('IBM Plex Mono', 'ibm-plex-mono', w)]).join('\n')
+const css = fonts + '\n' + readFileSync(join(DIR, 'style.css'), 'utf8')
 const page = (s) => `<!doctype html><html lang="de"><head><meta charset="utf-8"><style>${css}</style></head><body>
 <svg width="0" height="0" style="position:absolute"><defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8aa4ff"/></marker></defs></svg>
 <div class="stage">

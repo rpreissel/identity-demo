@@ -6,19 +6,19 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { width: 1920px; height: 1080px; overflow: hidden; }
 body {
-  font-family: system-ui, -apple-system, "Helvetica Neue", sans-serif; color: var(--text);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif; color: var(--text);
   background: radial-gradient(1200px 700px at 85% -10%, #26205a 0%, transparent 60%),
               radial-gradient(900px 600px at -10% 110%, #132a4f 0%, transparent 60%), var(--bg);
   -webkit-font-smoothing: antialiased;
 }
-code, .mono span, .json { font-family: "SF Mono", Menlo, monospace; }
+code, .mono span, .json { font-family: 'IBM Plex Mono', Menlo, monospace; }
 .stage { position: relative; width: 1920px; height: 1080px; }
 .abs { position: absolute; }
 header { position: absolute; left: 150px; top: 70px; right: 150px; }
 header .kicker { font-size: 24px; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); font-weight: 600; }
 header h1 { font-size: 58px; font-weight: 700; letter-spacing: -.01em; margin-top: 8px; }
 footer { position: absolute; left: 150px; right: 150px; bottom: 34px; display: flex; justify-content: space-between; align-items: center; font-size: 18px; color: var(--dim); }
-footer .brand { font-family: "SF Mono", Menlo, monospace; }
+footer .brand { font-family: 'IBM Plex Mono', Menlo, monospace; }
 footer .chapters { display: flex; gap: 10px; }
 footer .chapters span { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); }
 footer .chapters span.on { background: var(--blue); color: #0b0e1c; border-color: var(--blue); font-weight: 600; }
@@ -90,7 +90,7 @@ svg.edges path.sim { stroke: #6c7397; stroke-dasharray: 10 8; marker-end: none; 
 
 .stairs { display: flex; align-items: flex-end; gap: 24px; }
 .lvl { flex: 1; border-radius: 20px 20px 6px 6px; padding: 24px; position: relative; display: flex; flex-direction: column; }
-.lvl .lv { font-family: "SF Mono", Menlo, monospace; font-size: 40px; font-weight: 700; margin-bottom: 10px; }
+.lvl .lv { font-family: 'IBM Plex Mono', Menlo, monospace; font-size: 40px; font-weight: 700; margin-bottom: 10px; }
 .lvl p { font-size: 25px; line-height: 1.35; }
 .lvl small { font-size: 20px; color: var(--muted); }
 .lvl em { font-style: normal; font-size: 19px; color: var(--amber); margin-top: 14px; display: block; }
@@ -113,19 +113,19 @@ svg.edges path.sim { stroke: #6c7397; stroke-dasharray: 10 8; marker-end: none; 
 .bullets li.accent-li::before { background: var(--violet); }
 
 .mod-outer { border: 2px solid var(--line); border-radius: 24px; background: rgba(18,23,51,.6); }
-.mod-h { font-family: "SF Mono", Menlo, monospace; font-size: 20px; color: var(--muted); margin: 0 0 12px; }
+.mod-h { font-family: 'IBM Plex Mono', Menlo, monospace; font-size: 20px; color: var(--muted); margin: 0 0 12px; }
 .mod-outer .mod-h { position: absolute; top: 18px; left: 30px; }
 .mod { background: var(--panel); border: 1.5px solid var(--line); border-radius: 16px; padding: 16px 20px; }
 .core-mod { border: 2.5px solid var(--blue); }
-.sub-mod { font-family: "SF Mono", Menlo, monospace; font-size: 24px; background: #222a5c; border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; }
-.sub-mod small { font-family: system-ui; display: block; font-size: 17px; color: var(--muted); margin-top: 4px; }
+.sub-mod { font-family: 'IBM Plex Mono', Menlo, monospace; font-size: 24px; background: #222a5c; border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; }
+.sub-mod small { font-family: 'IBM Plex Sans', system-ui; display: block; font-size: 17px; color: var(--muted); margin-top: 4px; }
 .domain { font-size: 19px; color: var(--green); border: 1.5px solid rgba(74,222,128,.5); border-radius: 10px; padding: 8px 12px; }
 .domain code { color: var(--green); }
 .lone { font-size: 24px; color: var(--violet); }
 small.inline { font-size: 19px; color: var(--muted); margin-left: 10px; }
 .sim-mod { border: 2px dashed #555d85; }
 .side .card { margin-bottom: 18px; padding: 18px 22px; }
-.side .card b { font-family: "SF Mono", Menlo, monospace; font-size: 24px; }
+.side .card b { font-family: 'IBM Plex Mono', Menlo, monospace; font-size: 24px; }
 
 .col { background: var(--panel); border-radius: 20px; padding: 28px; border: 2px solid var(--line); }
 .col .badge { display: inline-block; font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 6px 14px; border-radius: 999px; margin-bottom: 16px; }
@@ -154,7 +154,7 @@ small.inline { font-size: 19px; color: var(--muted); margin-left: 10px; }
 .path-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .path-row span { background: #222a5c; border-radius: 12px; padding: 12px 20px; font-size: 26px; }
 .path-row i { font-style: normal; color: var(--blue); font-size: 30px; }
-.url { margin-top: 22px; font-family: "SF Mono", Menlo, monospace; font-size: 26px; color: var(--blue); }
+.url { margin-top: 22px; font-family: 'IBM Plex Mono', Menlo, monospace; font-size: 26px; color: var(--blue); }
 
 .title-screen { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 180px; }
 .title-screen .kicker { font-size: 28px; letter-spacing: .14em; text-transform: uppercase; color: var(--blue); font-weight: 600; }

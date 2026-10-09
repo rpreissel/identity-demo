@@ -133,7 +133,7 @@ export const SCENES = [
   },
   {
     id: 's05-clip-app', chapter: 1, kicker: 'In der Demo', title: 'Registrieren in der App',
-    clip: { from: 42, to: 90, box: [360, 196, 1200, 780], crop: CROP },
+    clip: { from: 41.5, to: 89.5, box: [360, 196, 1200, 780], crop: CROP },
     html: `<div class="abs bezel" style="left:352px;top:188px;width:1216px;height:796px"></div>`,
     beats: [
       { t: 'So sieht das in der Demo aus. Links das Smartphone mit der App, rechts erklärt die Demo, was hinter den Kulissen passiert.' },
@@ -192,7 +192,7 @@ export const SCENES = [
   },
   {
     id: 's08-web', chapter: 2, kicker: 'Auf der Website', title: 'Keycloak führt, der Orchestrator entscheidet',
-    clip: { from: 206, to: 242, box: [760, 210, 1040, 676], crop: CROP },
+    clip: { from: 195.5, to: 234.5, box: [760, 210, 1040, 676], crop: CROP },
     html: `
     <div class="abs bezel" style="left:752px;top:202px;width:1056px;height:692px"></div>
     <ul class="abs bullets" style="left:150px;top:250px;width:560px">
@@ -243,7 +243,7 @@ export const SCENES = [
   },
   {
     id: 's10-clip-trace', chapter: 3, kicker: 'Nachvollziehbar', title: 'Der Journey-Trace',
-    clip: { from: 412, to: 420, box: [360, 196, 1200, 780], crop: CROP },
+    clip: { from: 391, to: 399, box: [360, 196, 1200, 780], crop: CROP },
     html: `<div class="abs bezel" style="left:352px;top:188px;width:1216px;height:796px"></div>`,
     beats: [
       { t: 'Nachvollziehbar wird das im Journey-Trace: jeder Schritt mit Zeit, Zustand, Tool und Entscheidung, mitgeschrieben vom Orchestrator selbst.' },

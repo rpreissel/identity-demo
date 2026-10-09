@@ -17,13 +17,13 @@ const DEMO_CSS = `
   body { padding-bottom: 90px !important; }
   .phone { height: 740px !important; }
   #demo-caption { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2147483646; min-height: 72px; padding: 16px 40px;
-    box-sizing: border-box; background: rgba(20, 20, 30, 0.92); color: #fff; font: 22px/1.4 system-ui, sans-serif;
+    box-sizing: border-box; background: rgba(22, 24, 29, 0.94); color: #fff; font: 22px/1.4 'IBM Plex Sans', system-ui, sans-serif;
     text-align: center; pointer-events: none; }
   #demo-caption:empty { display: none; }
   #demo-title { position: fixed; inset: 0; z-index: 2147483647; display: flex; flex-direction: column; justify-content: center;
-    align-items: center; gap: 22px; padding: 40px 60px; box-sizing: border-box; background: #14141e; color: #fff; pointer-events: none;
-    font-family: system-ui, sans-serif; text-align: center; }
-  #demo-title .kicker { font-size: 24px; letter-spacing: 0.08em; text-transform: uppercase; color: #9fb4ff; }
+    align-items: center; gap: 22px; padding: 40px 60px; box-sizing: border-box; background: #16181d; color: #fff; pointer-events: none;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif; text-align: center; border-top: 10px solid var(--card-area, #7fa2ff); }
+  #demo-title .kicker { font-size: 24px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--card-area-text, #9fb4ff); }
   #demo-title .title { font-size: 44px; font-weight: 600; max-width: 1000px; line-height: 1.25; }
   #demo-title .steps { font-size: 30px; line-height: 1.6; color: #d6d9e6; max-width: 960px; text-align: left; }
   #demo-title .steps p { margin: 0 0 14px; }
@@ -32,7 +32,7 @@ const DEMO_CSS = `
   #demo-title .steps b { color: #fff; }
   #demo-title .steps.center, #demo-title .steps p.center { text-align: center; }
   #demo-title svg { width: 1080px; height: auto; }
-  #demo-title svg text { font-family: system-ui, sans-serif; fill: #fff; }
+  #demo-title svg text { font-family: 'IBM Plex Sans', system-ui, sans-serif; fill: #fff; }
   #demo-title svg .box { fill: #1f2033; stroke: #7c8bd6; stroke-width: 2; rx: 10; }
   #demo-title svg .core { fill: #232447; stroke: #9fb4ff; stroke-width: 3; rx: 12; }
   #demo-title svg .sim { fill: #1a1a26; stroke: #8d8fa3; stroke-width: 2; stroke-dasharray: 8 6; rx: 10; }
@@ -137,8 +137,18 @@ function installer(css: string) {
   else start()
 }
 
+/** The demo's areas (index.css): the card's top bar and kicker in the color of the area the task plays in. */
+const AREA_COLORS = {
+  app: ['#2f4bd0', '#8fa2f5'],
+  web: ['#0b7a61', '#5fd0b2'],
+  pv: ['#8c5a00', '#e0b25c'],
+  admin: ['#5b3cc4', '#b3a2f2'],
+} as const
+
 type CardOptions = {
   holdMs?: number
+  /** Where the task plays; without, the card is neutral. */
+  area?: keyof typeof AREA_COLORS
   diagram?: 'flow'
   /** Caption for the page behind the card, said once the card is gone. */
   next?: string
@@ -148,16 +158,19 @@ type CardOptions = {
 
 /** A full-screen card: kicker, title, optional diagram, and body HTML (own markup only, no user data); [say] is spoken. */
 async function card(page: Page, kicker: string, title: string, bodyHtml: string, say: string, options: CardOptions = {}) {
-  await page.evaluate(([k, t, b, d]) => {
+  const [bar, text] = options.area ? AREA_COLORS[options.area] : ['#7fa2ff', '#9fb4ff']
+  await page.evaluate(([k, t, b, d, c, ct]) => {
     document.getElementById('demo-title')?.remove()
     const el = document.createElement('div')
     el.id = 'demo-title'
+    el.style.setProperty('--card-area', c)
+    el.style.setProperty('--card-area-text', ct)
     el.innerHTML = `<div class="kicker"></div><div class="title"></div>${d}<div class="steps"></div>`
     ;(el.querySelector('.kicker') as HTMLElement).textContent = k
     ;(el.querySelector('.title') as HTMLElement).textContent = t
     ;(el.querySelector('.steps') as HTMLElement).innerHTML = b
     document.body.appendChild(el)
-  }, [kicker, title, bodyHtml, options.diagram === 'flow' ? FLOW : ''])
+  }, [kicker, title, bodyHtml, options.diagram === 'flow' ? FLOW : '', bar, text])
   if (!calibration) calibration = clock()
   await page.waitForTimeout(400)
   reveal()
@@ -281,7 +294,7 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   await open(page, '/', () => page.getByRole('link', { name: ui('In der App registrieren') }).waitFor(), '', true)
   await card(page, 'Identity-Demo', 'Die Demo im Browser',
     '<p class="center">Sieben Aufgaben zum Selbst-Ausprobieren.<br>Was dahintersteckt, erklärt das Erklärvideo.</p>',
-    'Willkommen zur Demo. Wir spielen die Aufgaben der Willkommensseite einmal durch, mit echtem Keycloak. '
+    'Willkommen zur Demo. Wir spielen die Aufgaben der Startseite einmal durch, mit echtem Keycloak. '
     + 'Warum das System so gebaut ist, erklärt das Erklärvideo.',
     { stay: true })
   await card(page, 'Was gleich zu sehen ist', 'Sieben Aufgaben',
@@ -290,14 +303,14 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
     + '5. Einen Vorgang mit Einmalkennwort erledigen<br>6. Den Journey-Trace ansehen<br>7. Das Konto löschen</p>',
     'Sieben Aufgaben: registrieren, weitere Verfahren einrichten, auf der Website anmelden und das Sicherheitsniveau anheben, '
     + 'einen Namen ändern, einen Vorgang mit Einmalkennwort, der Journey-Trace und zum Schluss das Konto löschen.',
-    { next: 'Das ist die Willkommensseite der Demo. Sie führt durch dieselben Aufgaben.' })
+    { next: 'Das ist die Startseite der Demo. Oben die Bereiche, jeder in seiner Farbe. Darunter dieselben Aufgaben.' })
 
   // 1) Registrierung in der App
   await open(page, '/app/?intent=register', () => phone(page).getByRole('button', { name: uiPattern('Freischaltcode') }).waitFor(), '', true)
   await card(page, 'Aufgabe 1', 'In der App registrieren',
     '<p class="center">Identifizieren, E-Mail bestätigen, das Gerät als Anmeldeverfahren einrichten.</p>',
     'Aufgabe eins: Wir registrieren uns in der App. Dabei identifizieren wir uns, bestätigen die E-Mail-Adresse und richten das Gerät als Anmeldeverfahren ein.',
-    { next: 'Links die App, so wie sie auf einem Smartphone liefe. Rechts erklärt die Demo, was im Hintergrund passiert. '
+    { area: 'app', next: 'Links die App, so wie sie auf einem Smartphone liefe. Rechts, hinter den Kulissen, erklärt die Demo, was passiert. '
       + 'Zuerst identifizieren wir uns, hier mit dem Freischaltcode aus einem Brief der Versicherung.' })
   await page.getByRole('button', { name: uiPattern('Freischaltcode') }).click()
   await page.waitForTimeout(600)
@@ -324,14 +337,14 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
     await clickFirst(page, [ui('Code senden'), ui('Code bestätigen'), deviceChoice, ui('Weiter'), biometrics], registrationCaptions)
   }
   await expect(welcome()).toBeVisible({ timeout: 15_000 })
-  await caption(page, 'Registriert und angemeldet, auf Sicherheitsniveau zwei: Identifizierung und Gerät. Rechts oben stehen Niveau und Verfahren dieser Sitzung.')
+  await caption(page, 'Registriert und angemeldet, auf Sicherheitsniveau zwei: Identifizierung und Gerät. Rechts in der dunklen Leiste stehen Niveau und Verfahren dieser Sitzung.')
 
   // 2) Sicherheit: QR-Login und Passwort (direkt nach der Registrierung, die Sitzung steht auf loa2)
   hide()
   await card(page, 'Aufgabe 2', 'QR-Code-Anmeldung und Passwort einrichten',
     '<p class="center">Unter „Sicherheit“ weitere Verfahren hinzufügen.</p>',
     'Aufgabe zwei: Wir richten zwei weitere Verfahren ein. Die Anmeldung per QR-Code, mit der die App eine Anmeldung im Browser freigibt, und ein Passwort.',
-    { stay: true })
+    { area: 'app', stay: true })
   // Behind the card: open "Sicherheit", then take the card away.
   await phone(page).getByRole('button', { name: uiPattern('Sicherheit') }).first().click()
   await page.waitForTimeout(1200)
@@ -388,7 +401,7 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
     '<p class="center">Mit dem Passwort auf Niveau 1, für die Gesundheitsdaten Niveau 2.</p>',
     'Aufgabe drei: die Website. Hier meldet echtes Keycloak an. Wir melden uns mit dem Passwort an, das ist Sicherheitsniveau eins. '
     + 'Für die Gesundheitsdaten reicht das nicht. Dann bestätigt die App.',
-    { next: 'Das Kundenportal der Versicherung. „Anmelden“ leitet zu Keycloak weiter, dem Anmeldedienst der Website.' })
+    { area: 'web', next: 'Das Kundenportal der Versicherung. „Anmelden“ leitet zu Keycloak weiter, dem Anmeldedienst der Website.' })
   const passwordMethod = () => page.getByRole('button', { name: ui('Passwort'), exact: true })
   await leave(page, () => webLogin().click(), () => passwordMethod().waitFor({ timeout: 20_000 }),
     'Keycloak zeigt die Verfahren, die der Orchestrator anbietet. Wir wählen das Passwort.')
@@ -434,7 +447,7 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
     '<p class="center">Danach zeigt die App den neuen Namen.</p>',
     'Aufgabe vier: Die Stammdaten der Versicherten liegen im Personenverzeichnis, einem simulierten Fremdsystem. '
     + 'Wir ändern dort den Vornamen und sehen, wie er in der App ankommt.',
-    { next: 'Das Personenverzeichnis. Wir bearbeiten unsere Testperson Max Muster.' })
+    { area: 'pv', next: 'Das Personenverzeichnis. Wir bearbeiten unsere Testperson Max Muster.' })
   await page.getByRole('button', { name: pv('Bearbeiten') }).first().click()
   await page.waitForTimeout(1500)
   const vorname = page.locator('#ext-vorname')
@@ -464,7 +477,7 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
     '<p class="center">Ohne Konto: Ein Brief mit Einmalkennwort genügt für genau diesen Vorgang.</p>',
     'Aufgabe fünf: Nicht jeder hat ein Konto. Für einzelne Vorgänge schickt die Versicherung einen Brief mit einem Einmalkennwort. '
     + 'Damit meldet man sich auf der Website an, aber nur für diesen einen Vorgang.',
-    { next: 'Im Personenverzeichnis stellt die Versicherung eine Einladung aus. Diesmal für Erika Beispiel, die kein Konto hat.' })
+    { area: 'pv', next: 'Im Personenverzeichnis stellt die Versicherung eine Einladung aus. Diesmal für Erika Beispiel, die kein Konto hat.' })
   const erika = (await invitePerson.locator('option', { hasText: 'Erika Beispiel' }).first().textContent()) ?? ''
   await invitePerson.selectOption({ label: erika })
   await page.waitForTimeout(800)
@@ -476,7 +489,7 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   await page.waitForTimeout(1200)
   await caption(page, 'Ausgestellt. Das Verzeichnis speichert nur einen Hash. Das Einmalkennwort im Klartext steht allein im Brief.')
   await open(page, '/briefkasten/', () => page.getByRole('listitem').filter({ hasText: 'Erika Beispiel' }).first().waitFor(),
-    'Der Briefkasten der Demo, hier landet alles, was an Testpersonen verschickt wird. Ganz oben der Brief an Erika mit dem Einmalkennwort.')
+    'Der Briefkasten der Demo, hier landet alles, was an Testpersonen verschickt wird. Ganz oben der Brief an Erika mit dem Einmalkennwort, daneben der Knopf zum Kopieren.')
   const inviteTile = () => page.getByRole('button', { name: ui('Mit Einmalkennwort anmelden') })
   const webLogout = () => page.getByRole('button', { name: ui('Abmelden'), exact: true }).first()
   await open(page, '/web/', () => webLogout().or(inviteTile()).first().waitFor(), '', true)
@@ -504,7 +517,7 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   await leave(page, () => page.getByRole('button', { name: ui('Vorgang beenden') }).click(), () => inviteTile().waitFor({ timeout: 30_000 }),
     'Der Vorgang ist abgeschlossen. Das Einmalkennwort gilt nicht mehr, und Keycloak hat die Sitzung beendet.')
 
-  // 6) Admin: Journey-Trace
+  // 6) Verwaltung: Journey-Trace
   await open(page, '/admin/#journeytrace', async () => {
     await page.waitForTimeout(1500)
     await adminLogin(page)
@@ -513,8 +526,8 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   }, '', true)
   await card(page, 'Aufgabe 6', 'Im Journey-Trace den Verlauf ansehen',
     '<p class="center">Jeder Schritt, vom Orchestrator selbst mitgeschrieben.</p>',
-    'Aufgabe sechs: der Journey-Trace auf der Admin-Seite.',
-    { next: 'Hier steht jeder Schritt jeder Journey: Zeitpunkt, Zustand, Tool und die Entscheidung des Orchestrators. '
+    'Aufgabe sechs: der Journey-Trace in der Verwaltung.',
+    { area: 'admin', next: 'Hier steht jeder Schritt jeder Journey: Zeitpunkt, Zustand, Tool und die Entscheidung des Orchestrators. '
       + 'Die App meldet nichts davon, der Orchestrator schreibt alles selbst mit.' })
   await page.waitForTimeout(2000)
 
@@ -522,7 +535,8 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   await open(page, '/app/', () => phone(page).getByRole('button', { name: ui('Mit diesem Gerät anmelden') }).waitFor(), '', true)
   await card(page, 'Aufgabe 7', 'Das Konto löschen',
     '<p class="center">Unter „Sicherheit“. Danach kennt das Gerät kein Konto mehr.</p>',
-    'Aufgabe sieben: Wir löschen das Konto wieder. Das geht in der App unter „Sicherheit“.')
+    'Aufgabe sieben: Wir löschen das Konto wieder. Das geht in der App unter „Sicherheit“.',
+    { area: 'app' })
   await loginLoop()
   await phone(page).getByRole('button', { name: uiPattern('Sicherheit') }).first().click()
   await page.waitForTimeout(600)
