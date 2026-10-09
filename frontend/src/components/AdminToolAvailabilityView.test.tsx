@@ -91,24 +91,23 @@ describe('AdminToolAvailabilityView', () => {
     render(<AdminToolAvailabilityView />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'enroll-sms@1 sperren' }))
-    fireEvent.click(screen.getByRole('button', { name: '@1 sperren' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sperren' }))
 
     expect(api.setToolAvailability).toHaveBeenCalledWith('enroll-sms@1', 'APP', false, 'manuell gesperrt')
     expect(screen.getByRole('button', { name: 'enroll-sms@2 sperren' })).toBeInTheDocument()
   })
 
-  it('leaves a locked tool out of the order, keeping its place among the others', async () => {
+  it('keeps a locked tool in the order, so it can be placed before it is freed', async () => {
     api.fetchToolAvailability.mockResolvedValue([
       { channel: 'APP', tools: [tool('auth-sms'), tool('auth-kobil', false), tool('auth-password')] },
     ])
     render(<AdminToolAvailabilityView />)
     await editOrder()
 
-    expect(screen.queryByLabelText('auth-kobil nach oben')).not.toBeInTheDocument()
-    fireEvent.click(await screen.findByLabelText('auth-sms nach unten'))
+    fireEvent.click(await screen.findByLabelText('auth-kobil nach oben'))
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
-    expect(api.setToolOrder).toHaveBeenCalledWith('APP', ['auth-password', 'auth-kobil', 'auth-sms'])
+    expect(api.setToolOrder).toHaveBeenCalledWith('APP', ['auth-kobil', 'auth-sms', 'auth-password'])
   })
 
   describe('with tools of two roles in one channel', () => {

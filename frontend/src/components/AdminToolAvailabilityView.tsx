@@ -1,5 +1,5 @@
 import { resolveText, t } from '../texts'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
   fetchToolAvailability,
   setToolAvailability,
@@ -114,7 +114,7 @@ export function AdminToolAvailabilityView() {
           <div className="tool-admin-toolbar">
             <p className="tool-admin-intro">
               {mode === 'order'
-                ? t('Jede Auswahl (anmelden, identifizieren, einrichten) zeigt ihre Verfahren in dieser Reihenfolge. Die Änderungen gelten erst nach „Speichern“; gesperrte Verfahren sind hier ausgeblendet.')
+                ? t('Jede Auswahl (anmelden, identifizieren, einrichten) zeigt ihre Verfahren in dieser Reihenfolge. Die Änderungen gelten erst nach „Speichern“.')
                 : t('Gesperrt wird je Fassung (@1, @2). Wer eine gesperrte Fassung spricht, bekommt das Verfahren nicht angeboten; jeder Client zeigt außerdem nur, was er darstellen kann.')}
             </p>
             {mode === 'order' ? (
@@ -155,18 +155,30 @@ function byRole(tools: ToolAvailabilityEntry[]): [ToolRole, ToolAvailabilityEntr
   return groups
 }
 
-/** The tool's name from the catalog, its id beside it; the id alone when the catalog does not know it. */
-function ToolName({ tool }: { tool: ToolAvailabilityEntry }) {
+/** The tool's name from the catalog with its version right behind it, the id below; the id alone when the catalog does not know it. */
+function ToolName({ tool, version }: { tool: ToolAvailabilityEntry; version?: number }) {
   const entry = catalogEntry(tool.toolId)
   return (
     <span className="tool-admin-name">
-      <span>{entry ? resolveText(entry.name) : tool.toolId}</span>
+      <span>
+        {entry ? resolveText(entry.name) : tool.toolId}
+        {version !== undefined && (
+          <>
+            {'\u00a0'}
+            <VersionBadge version={version} />
+          </>
+        )}
+      </span>
       {entry && <code>{tool.toolId}</code>}
     </span>
   )
 }
 
-/** Which versions this channel offers: one switch per version; locking asks for a reason in place. */
+function VersionBadge({ version }: { version: number }) {
+  return <span className="version-badge">@{version}</span>
+}
+
+/** Which versions this channel offers: a tool with one version is one row, one with several lists them below it; locking asks for a reason in place. */
 function AvailabilityPanel({ channel, run }: { channel: ChannelToolAvailability; run: (a: () => Promise<void>) => void }) {
   const [locking, setLocking] = useState<string | null>(null)
   const [reason, setReason] = useState(() => t('manuell gesperrt'))
@@ -178,6 +190,40 @@ function AvailabilityPanel({ channel, run }: { channel: ChannelToolAvailability;
     })
   }
 
+  /** One version: its label, why it is locked, and its button - or the reason field while locking it. */
+  function versionLine(version: ToolVersionAvailability, label: ReactNode) {
+    return (
+      <>
+        <div className="tool-admin-row">
+          <span className="tool-admin-label">
+            {label}
+            {!version.enabled && <span className="tool-admin-reason">{version.reason ? t('gesperrt: {grund}', { grund: version.reason }) : t('gesperrt')}</span>}
+          </span>
+          {locking !== version.tool && (
+            <button
+              className="secondary small"
+              aria-label={version.enabled ? t('{tool} sperren', { tool: version.tool }) : t('{tool} freigeben', { tool: version.tool })}
+              onClick={() => (version.enabled ? setLocking(version.tool) : run(() => setToolAvailability(version.tool, channel.channel, true)))}
+            >
+              {version.enabled ? t('Sperren…') : t('Freigeben')}
+            </button>
+          )}
+        </div>
+        {locking === version.tool && (
+          <div className="tool-admin-lock">
+            <input aria-label={t('Grund für die Sperre von {tool}', { tool: version.tool })} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
+            <button className="secondary small" onClick={() => setLocking(null)}>
+              {t('Abbrechen')}
+            </button>
+            <button className="small" onClick={() => lock(version)}>
+              {t('Sperren')}
+            </button>
+          </div>
+        )}
+      </>
+    )
+  }
+
   return (
     <div className="tool-admin-panel">
       <div className="tool-admin-grid">
@@ -185,56 +231,28 @@ function AvailabilityPanel({ channel, run }: { channel: ChannelToolAvailability;
           <section key={role} className="tool-admin-group">
             <h4>{ROLE_LABELS[role]}</h4>
             <ul className="tool-admin-rows">
-              {tools.map((tool) => {
-                const lockedVersions = tool.versions.filter((v) => !v.enabled)
-                const editing = tool.versions.find((v) => v.tool === locking)
-                return (
-                  <li key={tool.toolId} className={lockedVersions.length === tool.versions.length ? 'tool-admin-off' : ''}>
+              {tools.map((tool) =>
+                tool.versions.length === 1 ? (
+                  <li key={tool.toolId} className={tool.versions[0].enabled ? '' : 'tool-admin-off'}>
+                    {versionLine(tool.versions[0], <ToolName tool={tool} version={tool.versions[0].version} />)}
+                  </li>
+                ) : (
+                  // Several versions (ADR-51): the tool once, each version on its own line below it.
+                  <li key={tool.toolId} className="tool-admin-multi">
                     <div className="tool-admin-row">
                       <ToolName tool={tool} />
-                      <span className="tool-admin-versions">
-                        {tool.versions.map((version) => (
-                          <button
-                            key={version.tool}
-                            className={`version-switch ${version.enabled ? 'on' : 'off'}`}
-                            aria-pressed={version.enabled}
-                            aria-label={version.enabled ? t('{tool} sperren', { tool: version.tool }) : t('{tool} freigeben', { tool: version.tool })}
-                            title={version.enabled ? t('Freigegeben - klicken zum Sperren') : t('Gesperrt - klicken zum Freigeben')}
-                            onClick={() => (version.enabled ? setLocking(version.tool) : run(() => setToolAvailability(version.tool, channel.channel, true)))}
-                          >
-                            <span aria-hidden="true">{version.enabled ? '●' : '○'}</span> @{version.version}
-                          </button>
-                        ))}
-                      </span>
+                      <span className="tool-admin-count">{t('{anzahl} Fassungen', { anzahl: tool.versions.length })}</span>
                     </div>
-                    {lockedVersions.map((version) => (
-                      <p key={version.tool} className="tool-admin-reason">
-                        @{version.version}: {version.reason ? t('gesperrt: {grund}', { grund: version.reason }) : t('gesperrt')}
-                      </p>
-                    ))}
-                    {editing && (
-                      <div className="tool-admin-lock">
-                        <input
-                          aria-label={t('Grund für die Sperre von {tool}', {
-                            tool: editing.tool,
-                          })}
-                          value={reason}
-                          onChange={(e) => setReason(e.target.value)}
-                          autoFocus
-                        />
-                        <button className="small" onClick={() => lock(editing)}>
-                          {t('@{fassung} sperren', {
-                            fassung: editing.version,
-                          })}
-                        </button>
-                        <button className="secondary small" onClick={() => setLocking(null)}>
-                          {t('Abbrechen')}
-                        </button>
-                      </div>
-                    )}
+                    <ul className="tool-admin-versions">
+                      {tool.versions.map((version) => (
+                        <li key={version.tool} className={version.enabled ? '' : 'tool-admin-off'}>
+                          {versionLine(version, <VersionBadge version={version.version} />)}
+                        </li>
+                      ))}
+                    </ul>
                   </li>
-                )
-              })}
+                ),
+              )}
             </ul>
           </section>
         ))}
@@ -244,11 +262,10 @@ function AvailabilityPanel({ channel, run }: { channel: ChannelToolAvailability;
 }
 
 /**
- * The draft of the order each selection list shows, among the tools it can offer: a fully locked
- * tool is left out and keeps its place. ▲/▼ swap with the neighbour in the draft only.
+ * The draft of the order each selection list shows. A locked tool stays in it, greyed out, so it is
+ * in the right place once it is freed. ▲/▼ swap with the neighbour in the draft only.
  */
 function OrderPanel({ tools, order, onChange }: { tools: ToolAvailabilityEntry[]; order: string[]; onChange: (order: string[]) => void }) {
-  const offered = tools.filter((tool) => tool.versions.some((v) => v.enabled))
 
   function move(group: ToolAvailabilityEntry[], index: number, by: -1 | 1) {
     const next = [...order]
@@ -262,16 +279,17 @@ function OrderPanel({ tools, order, onChange }: { tools: ToolAvailabilityEntry[]
     <div className="tool-admin-panel">
       <div className="tool-admin-grid">
         {/* A list with one tool has no order to set. */}
-        {byRole(offered)
+        {byRole(tools)
           .filter(([, group]) => group.length > 1)
           .map(([role, group]) => (
             <section key={role} className="tool-admin-group">
               <h4>{ROLE_LABELS[role]}</h4>
               <ol className="tool-admin-order">
                 {group.map((tool, index) => (
-                  <li key={tool.toolId}>
+                  <li key={tool.toolId} className={tool.versions.some((v) => v.enabled) ? '' : 'tool-admin-off'}>
                     <span className="tool-admin-rank">{index + 1}</span>
                     <ToolName tool={tool} />
+                    {!tool.versions.some((v) => v.enabled) && <span className="tool-admin-tag">{t('gesperrt')}</span>}
                     <span className="tool-admin-arrows">
                       <button
                         className="secondary small"

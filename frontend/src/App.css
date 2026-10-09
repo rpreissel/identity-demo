@@ -1258,6 +1258,12 @@ button.small,
   gap: 0.5rem;
 }
 
+/* "Speichern" without a change: clearly not available yet. */
+.tool-admin-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 @media (max-width: 600px) {
   .tool-admin-toolbar {
     flex-direction: column;
@@ -1332,36 +1338,55 @@ button.small,
   opacity: 0.55;
 }
 
-.tool-admin-versions {
-  display: inline-flex;
-  gap: 0.35rem;
-}
-
-/* One version's switch: filled when offered, hollow when locked. */
-.version-switch {
-  padding: 0.2rem 0.65rem;
+.version-badge {
+  display: inline;
+  padding: 0 0.4rem;
   border: 1px solid var(--accent-border);
-  border-radius: 999px;
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.version-switch.on {
+  border-radius: 4px;
   background: var(--accent-bg);
   color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  vertical-align: 0.1em;
 }
 
-.version-switch.off {
-  border-style: dashed;
+.tool-admin-off .version-badge {
   border-color: var(--border);
   background: none;
   color: var(--text);
   text-decoration: line-through;
 }
 
+.tool-admin-count {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--text);
+}
+
+/* A tool with several versions: each version indented under the tool, joined by a line. */
+.tool-admin-versions {
+  list-style: none;
+  margin: 0.45rem 0 0 0.35rem;
+  padding: 0 0 0 0.85rem;
+  border-left: 2px solid var(--accent-border);
+}
+
+.tool-admin-versions > li {
+  padding: 0.3rem 0;
+}
+
+
+.tool-admin-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .tool-admin-rows .tool-admin-reason {
+  display: block;
   margin: 0.15rem 0 0;
+  line-height: 1.35;
   font-size: 0.8rem;
   color: var(--text);
 }
@@ -1403,6 +1428,12 @@ button.small,
   background: var(--code-bg);
   font-size: 0.75rem;
   font-weight: 700;
+  color: var(--text);
+}
+
+.tool-admin-tag {
+  flex-shrink: 0;
+  font-size: 0.75rem;
   color: var(--text);
 }
 
