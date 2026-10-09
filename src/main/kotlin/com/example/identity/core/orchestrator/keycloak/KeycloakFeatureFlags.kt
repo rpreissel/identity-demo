@@ -7,12 +7,6 @@ package com.example.identity.core.orchestrator.keycloak
  */
 object KeycloakFeatureFlags {
     /**
-     * Keycloak shows the Keycloakify login theme instead of the FreeMarker one (`LoginThemeSwitch`,
-     * docs/adr/ADR-041-keycloakify-neben-freemarker.md).
-     */
-    const val LOGIN_KEYCLOAKIFY = "keycloak-login-keycloakify"
-
-    /**
      * The web channel's `loa1` asks Keycloak's password instead of the orchestrator's method
      * selection (`Loa1LoginSwitch`, docs/adr/ADR-042-loa1-anmeldung-umschalten.md). Named after the
      * exception, so no row means the realm's initial state.

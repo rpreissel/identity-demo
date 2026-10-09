@@ -140,11 +140,11 @@ einsammelt und wo der fertige Wortlaut liegt.
 - **Keycloak-Java**
   - *Markierung:* `KcText.t("…")`, `KcTexts.of(session, "…")`
   - *Eingesammelt von:* `KcTextCatalog` (ASM)
-  - *Wortlaut liegt in:* `theme/orchestrator/login/messages/messages_<lang>.properties`
-- **Keycloak-Templates**
-  - *Markierung:* `${t.of("…")}`, `${t.of("… {x}", {"x": wert})}`
-  - *Eingesammelt von:* `KcTextCatalog` (mit einem eigenen, strengen Leser, weil FreeMarker keinen
-    öffentlichen Syntaxbaum anbietet)
+  - *Wortlaut liegt in:* `keycloak-theme/messages/messages_<lang>.properties` (der Build hängt sie an
+    die Bundles des Theme-JARs an, [ADR-57](ADR-057-keycloakify-einziges-login-theme.md))
+- **Login-Theme (Keycloakify)**
+  - *Markierung:* `t("…")` in `keycloak-theme/src`
+  - *Eingesammelt von:* `npm run texts:export`, gelesen von `KcTextCatalog`
   - *Wortlaut liegt in:* ebenda
 
 Dazu gelten diese Regeln:

@@ -149,7 +149,7 @@ tasks.build {
 }
 
 // Quellkatalog der eigenen Texte (docs/adr/ADR-033) fuer /translate-texts - Java-Vorlagen (KcText.t,
-// KcTexts.of) und Template-Vorlagen (t.of("...") in den .ftl). Landet beim Wurzelprojekt unter
+// KcTexts.of) und die Vorlagen des Login-Themes (keycloak-theme). Landet beim Wurzelprojekt unter
 // build/texts/keycloak/, neben den Katalogen von Backend und Frontend.
 tasks.register<JavaExec>("exportTexts") {
     group = "texts"
@@ -160,7 +160,6 @@ tasks.register<JavaExec>("exportTexts") {
     systemProperty("texts.keycloakThemeCatalog", rootProject.file("keycloak-theme/build/texts-catalog.json").absolutePath)
     args(
         layout.buildDirectory.dir("classes/java/main").get().asFile.absolutePath,
-        layout.projectDirectory.dir("src/main/resources/theme").asFile.absolutePath,
         rootProject.layout.buildDirectory.dir("texts").get().asFile.absolutePath
     )
 }
@@ -168,7 +167,7 @@ tasks.register<JavaExec>("exportTexts") {
 // toolNamesAreTheAppsOwn vergleicht mit dem Frontend-Katalog (docs/adr/ADR-033).
 tasks.named<Test>("test") {
     dependsOn(":exportFrontendTexts", ":exportKeycloakThemeTexts")
-    // KcTextCatalogTest: die Vorlagen des Keycloakify-Themes gehoeren ins selbe Bundle.
+    // KcTextCatalogTest: die Vorlagen des Login-Themes gehoeren ins selbe Bundle.
     systemProperty("texts.keycloakThemeCatalog", rootProject.file("keycloak-theme/build/texts-catalog.json").absolutePath)
     systemProperty("texts.frontendCatalog", rootProject.file("frontend/build/texts-catalog.json").absolutePath)
 }

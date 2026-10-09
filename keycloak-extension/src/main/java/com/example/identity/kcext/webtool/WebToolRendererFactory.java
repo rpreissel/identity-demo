@@ -21,7 +21,7 @@ public interface WebToolRendererFactory extends ProviderFactory<WebToolRenderer>
 
     /**
      * The page this tool renders, known before rendering, so the page gets exactly the texts its
-     * Keycloakify component uses (ADR-41). {@code null} for a tool that completes on activation.
+     * React page uses (ADR-57). {@code null} for a tool that completes on activation.
      */
     String template();
 

@@ -181,14 +181,12 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
 - **Feature-Flag**: Ein Schalter, mit dem der Betreiber ein Verhalten umstellt, während die
   Anwendung läuft, ohne sie neu zu starten. Beispiele:
   - ob die Registrierung mit dem Einrichten eines Verfahrens beginnt statt mit der Identifizierung,
-  - welches Aussehen die Anmeldeseite von Keycloak hat,
   - ob Keycloak für `loa1` selbst nach dem Passwort fragt.
 
   *Im Code:* `FeatureFlagService`. Die Schalter, die eine Strategie liest, nennt `JourneyFeatureFlag`
-  (`register-enroll-first`). Die Schalter für Keycloak nennt `KeycloakFeatureFlags`
-  (`keycloak-login-keycloakify`, `keycloak-loa1-password`).
-  *Mehr dazu:* [ADR-41](../adr/ADR-041-keycloakify-neben-freemarker.md),
-  [ADR-42](../adr/ADR-042-loa1-anmeldung-umschalten.md).
+  (`register-enroll-first`). Den Schalter für Keycloak nennt `KeycloakFeatureFlags`
+  (`keycloak-loa1-password`).
+  *Mehr dazu:* [ADR-42](../adr/ADR-042-loa1-anmeldung-umschalten.md).
 - **Freischaltcode**: Ein Code, den die Versicherung per Brief schickt und mit dem sich eine Person
   identifizieren kann. Der Code liegt beim Personenverzeichnis. Der Orchestrator fragt ihn dort ab,
   statt eine eigene Kopie zu halten.

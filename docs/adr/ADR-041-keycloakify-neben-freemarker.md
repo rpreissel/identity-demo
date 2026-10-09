@@ -1,6 +1,8 @@
 # ADR-41: Keycloakify läuft neben FreeMarker, der Orchestrator schaltet realmweit um
 
-**Status:** umgesetzt 2026-09.
+**Status:** umgesetzt 2026-09, abgelöst 2026-10-09 durch
+[ADR-57](ADR-057-keycloakify-einziges-login-theme.md): Keycloakify ist das einzige Login-Theme,
+FreeMarker-Theme und Schalter sind entfernt.
 
 **Entscheidung.** Auf der Website führt [Keycloak](../glossar/glossar.md) die Anmeldung und zeigt
 dafür eigene Seiten. Wie diese Seiten aussehen, bestimmt ein Theme, also ein Paket aus Vorlagen,

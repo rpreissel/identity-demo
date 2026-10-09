@@ -15,7 +15,7 @@ import io.mockk.verifyOrder
 import org.springframework.boot.DefaultApplicationArguments
 
 /**
- * The switch's own rules, with the realm write mocked like in [LoginThemeSwitchTest]: realm first,
+ * The switch's own rules, with the realm write mocked: realm first,
  * flag second, and a failed alignment at start never stops the orchestrator. Plus which executions
  * each variant turns on, in which order.
  */

@@ -173,11 +173,10 @@ tasks.named<ProcessResources>("processResources") {
     dependsOn(npmBuild)
 }
 
-// Das Keycloakify-Theme neben dem FreeMarker-Theme (docs/adr/ADR-041-keycloakify-neben-freemarker.md):
-// eigenes npm-Paket, Ergebnis ist ein Theme-JAR fuer /opt/keycloak/providers. keycloakify build
-// packt das JAR mit Maven - mvn muss auf dem PATH liegen.
+// Das Login-Theme (Keycloakify, docs/adr/ADR-057-keycloakify-einziges-login-theme.md): eigenes
+// npm-Paket, Ergebnis ist ein Theme-JAR fuer /opt/keycloak/providers. keycloakify build packt das
+// JAR mit Maven - mvn muss auf dem PATH liegen.
 val keycloakThemeDir = file("keycloak-theme")
-val freemarkerThemeDir = file("keycloak-extension/src/main/resources/theme/orchestrator/login")
 
 val keycloakThemeNpmInstall = tasks.register<Exec>("keycloakThemeNpmInstall") {
     group = "keycloak theme"
@@ -197,15 +196,15 @@ val keycloakThemeBuild = tasks.register<Exec>("keycloakThemeBuild") {
     // scripts/texts-per-page.mjs schreibt beim Build, welche Texte jede Seite braucht.
     inputs.dir(keycloakThemeDir.resolve("scripts"))
     inputs.files(keycloakThemeDir.resolve("index.html"), keycloakThemeDir.resolve("vite.config.ts"), keycloakThemeDir.resolve("package.json"))
-    // Gebuendelt aus dem FreeMarker-Theme: die gemeinsamen Tokens. Die Texte nicht - die setzt die
-    // Extension zur Laufzeit in jede Seite (kcContext.texts).
-    inputs.file(freemarkerThemeDir.resolve("resources/css/tokens.css"))
+    // Die Texte des Orchestrators (von /translate-texts geschrieben) haengt postBuild an die
+    // Message-Bundles im JAR an (scripts/append-messages.mjs).
+    inputs.dir(keycloakThemeDir.resolve("messages"))
     outputs.file(keycloakThemeDir.resolve("dist_keycloak/orchestrator-keycloakify-theme.jar"))
     commandLine("npm", "run", "build-keycloak-theme")
 }
 
-// Die Vorlagen des Keycloakify-Themes (t("...") in keycloak-theme/src) fuer den Katalog des Bundles
-// keycloak - KcTextCatalog der Extension liest sie neben den .ftl-Vorlagen.
+// Die Vorlagen des Login-Themes (t("...") in keycloak-theme/src) fuer den Katalog des Bundles
+// keycloak - KcTextCatalog der Extension liest sie neben den Java-Vorlagen.
 val keycloakThemeTextCatalog = keycloakThemeDir.resolve("build/texts-catalog.json")
 tasks.register<Exec>("exportKeycloakThemeTexts") {
     group = "texts"
@@ -548,15 +547,12 @@ val stageOrchestratorDockerfile = tasks.register<Copy>("stageOrchestratorDockerf
 
 val stageKeycloakArtifact = tasks.register<Copy>("stageKeycloakArtifact") {
     group = "podman"
-    description = "Kopiert Extension-Shadow-Jar, beide Themes, Healthcheck und Dockerfile nach build/podman/keycloak."
+    description = "Kopiert Extension-Shadow-Jar, Theme-JAR, Healthcheck und Dockerfile nach build/podman/keycloak."
     dependsOn(":keycloak-extension:shadowJar")
     from(project(":keycloak-extension").tasks.named("shadowJar")) {
         rename { "identity-demo-keycloak-extension.jar" }
     }
     from(keycloakThemeBuild)
-    from("keycloak-extension/src/main/resources/theme") {
-        into("theme")
-    }
     from("keycloak-extension/healthcheck/JwksHealthCheck.java") {
         into("healthcheck")
     }

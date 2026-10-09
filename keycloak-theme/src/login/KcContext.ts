@@ -1,10 +1,9 @@
 import type { ExtendKcContext } from 'keycloakify/login'
 
 /**
- * The orchestrator's own pages - the same page ids and attributes as the FreeMarker theme
- * (docs/adr/ADR-041-keycloakify-neben-freemarker.md, section 3). Every page also carries `t`, a Java
- * object the FreeMarker templates call; it arrives here empty. What this theme uses instead is
- * `texts`, the same wordings as a plain map (../texts.ts).
+ * The orchestrator's own pages - the page ids and attributes the extension's WebFormRenderer sets
+ * (docs/adr/ADR-057-keycloakify-einziges-login-theme.md). Every page carries `texts`, its wordings
+ * as a plain map (../texts.ts).
  */
 export type KcContextExtension = {
   themeName: string

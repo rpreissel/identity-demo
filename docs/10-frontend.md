@@ -247,8 +247,7 @@ Bildschirm neu suchen.
 
    Die Website macht es ebenso: `tool-email-lookup` wechselt mit `addressAgain` im Code-Schritt
    innerhalb der Seite zur Eingabe der Adresse. `tool-sms-enroll` wechselt immer zur Eingabe der
-   Nummer. In FreeMarker geschieht das per Skript wie bei der Seite für den Freischaltcode, in
-   Keycloakify über den Zustand der Komponente.
+   Nummer, beides über den Zustand der Komponente im Login-Theme.
 2. **Titel und ein kurzer Satz**, was hier zu tun ist. Sagt die Journey, warum der Schritt gerade
    kommt („Bitte bestätigen Sie noch Ihre E-Mail-Adresse“), steht das als einfache Zeile darüber,
    nicht als eigener Kasten.

@@ -1,6 +1,5 @@
 /* Design tokens of the login pages - the one source for colours, shapes and type
-   (docs/adr/ADR-041-keycloakify-neben-freemarker.md, section 4). The FreeMarker theme
-   loads this file via theme.properties; a Keycloakify theme imports the same file.
+   (docs/adr/ADR-057-keycloakify-einziges-login-theme.md). theme.css imports this file.
    No logo, no brand name: only colours, shapes and type. */
 
 :root {

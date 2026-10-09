@@ -27,7 +27,7 @@ class KeycloakSetupEnvironmentTest : BehaviorSpec({
                     "keycloak-setup.variant" to variant,
                     "keycloak-setup.base.realmName" to "Demo",
                     "keycloak-setup.base.realmDisplayName" to "Demo",
-                    "keycloak-setup.base.loginTheme" to "orchestrator",
+                    "keycloak-setup.base.loginTheme" to "orchestrator-keycloakify",
                     "keycloak-setup.base.browserClientId" to "identity-demo-web",
                     "keycloak-setup.base.adminApiClientId" to "orchestrator-admin",
                     "keycloak-setup.base.appTokenClientId" to "orchestrator-app-token",

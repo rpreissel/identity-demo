@@ -1,13 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 import { ui, uiPattern, welcomeHeading } from '../e2e/texts'
-import { adminHeaders, MADE_WITH, ORCHESTRATOR, switchLoa1Login, switchTheme, THEMES } from './admin'
+import { adminHeaders, ORCHESTRATOR, switchLoa1Login } from './admin'
 import { kc } from './texts'
 import { visibleButton } from './website'
 
 /** The app and the website both run on the orchestrator. */
 test.use({ baseURL: ORCHESTRATOR })
 
-// Each theme's run registers the same test person anew.
+// The test registers the test person anew.
 test.beforeEach(async ({ request }) => {
   const reset = await request.post(`${ORCHESTRATOR}/orchestrator/admin/demo-reset`, { headers: adminHeaders })
   expect(reset.status()).toBe(200)
@@ -15,7 +15,6 @@ test.beforeEach(async ({ request }) => {
 })
 
 test.afterAll(async ({ request }) => {
-  await switchTheme(request, 'FREEMARKER')
   const reset = await request.post(`${ORCHESTRATOR}/orchestrator/admin/demo-reset`, { headers: adminHeaders })
   expect(reset.ok()).toBeTruthy()
 })
@@ -66,40 +65,38 @@ async function registerWithDeviceAndSms(page: Page) {
   await expect(phone.getByRole('button', { name: ui('Weiteres Verfahren hinzufügen') })).toBeVisible()
 }
 
-for (const theme of THEMES) {
-  test(`${MADE_WITH[theme]}: a website step-up without a second method there falls back to identifying again`, async ({ browser, page: app, request }) => {
-    await switchTheme(request, theme)
-    await registerWithDeviceAndSms(app)
+test('a website step-up without a second method there falls back to identifying again', async ({ browser, page: app }) => {
+  await registerWithDeviceAndSms(app)
 
-    // The website, in a browser of its own, signed in with SMS: loa1.
-    const web = await (await browser.newContext({ ignoreHTTPSErrors: true, locale: 'de-DE' })).newPage()
-    await web.goto(`${ORCHESTRATOR}/web/`)
-    await web.getByRole('button', { name: ui('Anmelden'), exact: true }).click()
-    await web.getByRole('button', { name: ui('SMS'), exact: true }).click()
-    await visibleButton(web, kc('Weiter')).click()
-    const demoCode = ((await web.getByText(/\d{6}/).first().textContent()) ?? '').replace(/\D/g, '')
-    await web.getByRole('textbox', { name: kc('SMS-Code') }).fill(demoCode)
-    await visibleButton(web, kc('Weiter')).click()
-    const healthData = web.getByRole('button', { name: new RegExp(`^${ui('Gesundheitsdaten')} `) }).first()
-    await healthData.click()
+  // The website, in a browser of its own, signed in with SMS: loa1.
+  const web = await (await browser.newContext({ ignoreHTTPSErrors: true, locale: 'de-DE' })).newPage()
+  await web.goto(`${ORCHESTRATOR}/web/`)
+  await web.getByRole('button', { name: ui('Anmelden'), exact: true }).click()
+  await web.getByRole('button', { name: ui('SMS'), exact: true }).click()
+  await visibleButton(web, kc('Weiter')).click()
+  const demoCode = ((await web.getByText(/\d{6}/).first().textContent()) ?? '').replace(/\D/g, '')
+  await web.getByRole('textbox', { name: kc('SMS-Code') }).fill(demoCode)
+  await visibleButton(web, kc('Weiter')).click()
+  const healthData = web.getByRole('button', { name: new RegExp(`^${ui('Gesundheitsdaten')} `) }).first()
+  await healthData.click()
 
-    await test.step('the step-up asks to identify again instead of showing no method at all', async () => {
-      await web.getByRole('button', { name: ui('Sicher anmelden') }).first().click()
-      // The question says why it is asked, not just yes or no.
-      await expect(web.getByText(ui(
-        'Mit den vorhandenen Anmeldeverfahren ist das geforderte Sicherheitsniveau nicht erreichbar. ' +
-          'Sie können sich stattdessen erneut identifizieren, um es direkt zu erreichen.',
-      ))).toBeVisible()
-      await web.getByRole('button', { name: ui('Erneut identifizieren'), exact: true }).click()
-      await expect(web.getByRole('button', { name: ui('Freischaltcode'), exact: true })).toBeVisible()
-    })
-
-    await test.step('the identification with the Freischaltcode reaches loa2 and opens the health data', async () => {
-      await web.getByRole('button', { name: ui('Freischaltcode'), exact: true }).click()
-      await visibleButton(web, kc('Weiter zur Freischaltcode-Eingabe')).click()
-      await visibleButton(web, kc('Identifizieren')).click()
-      await expect(web.getByRole('heading', { name: ui('Gesundheitsdaten'), level: 1 })).toBeVisible()
-      await expect(web.getByRole('region', { name: ui('Sitzung') }).getByText('loa2', { exact: true })).toBeVisible()
-    })
+  await test.step('the step-up asks to identify again instead of showing no method at all', async () => {
+    await web.getByRole('button', { name: ui('Sicher anmelden') }).first().click()
+    // The question says why it is asked, not just yes or no.
+    await expect(web.getByText(ui(
+      'Mit den vorhandenen Anmeldeverfahren ist das geforderte Sicherheitsniveau nicht erreichbar. ' +
+        'Sie können sich stattdessen erneut identifizieren, um es direkt zu erreichen.',
+    ))).toBeVisible()
+    await web.getByRole('button', { name: ui('Erneut identifizieren'), exact: true }).click()
+    await expect(web.getByRole('button', { name: ui('Freischaltcode'), exact: true })).toBeVisible()
   })
-}
+
+  await test.step('the identification with the Freischaltcode reaches loa2 and opens the health data', async () => {
+    await web.getByRole('button', { name: ui('Freischaltcode'), exact: true }).click()
+    await visibleButton(web, kc('Weiter zur Freischaltcode-Eingabe')).click()
+    await visibleButton(web, kc('Identifizieren')).click()
+    await expect(web.getByRole('heading', { name: ui('Gesundheitsdaten'), level: 1 })).toBeVisible()
+    await expect(web.getByRole('region', { name: ui('Sitzung') }).getByText('loa2', { exact: true })).toBeVisible()
+  })
+})
+

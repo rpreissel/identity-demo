@@ -119,7 +119,7 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
 - **`FAST_ACCESS`** → **Schnellzugang**: die übliche Anmeldung in der App. [Glossar](glossar.md#s)
 - **`JourneyFeatureFlag`**, **`KeycloakFeatureFlags`**, **`FeatureFlagService`** → **Feature-Flag**:
   ein Schalter, mit dem der Betreiber ein Verhalten im laufenden Betrieb umstellt. Beispiele sind
-  `register-enroll-first`, `keycloak-login-keycloakify` und `keycloak-loa1-password`.
+  `register-enroll-first` und `keycloak-loa1-password`.
   [Glossar](glossar.md#f)
 
 ## I

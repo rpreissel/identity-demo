@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 import { ui } from '../e2e/texts'
 import { parseJwtPayload } from '../src/jwt'
-import { MADE_WITH, ORCHESTRATOR, switchLoa1Login, switchTheme, THEMES } from './admin'
+import { ORCHESTRATOR, switchLoa1Login } from './admin'
 import { kc } from './texts'
 
 /**
@@ -9,7 +9,7 @@ import { kc } from './texts'
  * (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md): the register issues an invitation, the
  * person signs in on the website with number and password, the tokens carry the process, the
  * business system ends the process, and the session ends with it. Needs the whole stack running
- * (`podman compose up -d`), like login-theme.spec.ts.
+ * (`podman compose up -d`), like login-pages.spec.ts.
  */
 
 /** Seeded persons (demo_seed): Max and Erika are insured, Paula is known by her Partnernummer only. */
@@ -60,52 +60,45 @@ test.beforeAll(async ({ request }) => {
   await switchLoa1Login(request, 'ORCHESTRATOR')
 })
 
-test.afterAll(async ({ request }) => {
-  await switchTheme(request, 'FREEMARKER')
+test('sign in with a one-time password, end the process, and the password is spent', async ({ page, request }) => {
+  const letter = await issue(request, MAX.personId, 'beitragsrueckerstattung', 'loa1')
+
+  await test.step('sign in with the one-time password', async () => {
+    await openInvitePage(page)
+    // Separators and case do not count.
+    await submitInvite(page, MAX, letter.code.toLowerCase().replace(/-/g, ' '))
+    await expect(page.getByRole('heading', { name: processHeading('Beitragsrückerstattung') })).toBeVisible()
+  })
+
+  await test.step('the tokens carry the process', async () => {
+    const claims = await accessClaims(page)
+    expect(claims.process).toBe('beitragsrueckerstattung')
+    expect(claims.invitation).toBe(letter.invitation)
+    expect(claims.sub).toMatch(FEDERATED_UUID_ID)
+    expect(claims.sub).toContain(letter.invitation)
+    expect(claims.orchestrator_account_id).toBeUndefined()
+    expect(claims.acr).toBe('loa1')
+    expect(claims.amr).toEqual(['invite'])
+    expect(claims.person_id).toBe(MAX.personId)
+    // Only the attributes that attest the identity; the rest is in the ID token.
+    expect(claims.kvnr).toBeUndefined()
+    expect(claims.birth_date).toBeUndefined()
+    expect(claims.family_name).toBeUndefined()
+  })
+
+  await test.step('ending the process ends the session', async () => {
+    // The page stands in for the business system and ends the process at the register.
+    await page.getByRole('button', { name: ui('Vorgang beenden') }).click()
+    await expect(page.getByText(ui('Der Vorgang ist abgeschlossen, Keycloak hat die Sitzung beendet.'))).toBeVisible({ timeout: 15_000 })
+  })
+
+  await test.step('the same password again opens nothing', async () => {
+    await openInvitePage(page)
+    await submitInvite(page, MAX, letter.code)
+    await expect(page.getByText(ui('Nummer oder Einmalkennwort ungueltig'))).toBeVisible()
+  })
 })
 
-for (const theme of THEMES) {
-  test(`${MADE_WITH[theme]}: sign in with a one-time password, end the process, and the password is spent`, async ({ page, request }) => {
-    await switchTheme(request, theme)
-    const letter = await issue(request, MAX.personId, 'beitragsrueckerstattung', 'loa1')
-
-    await test.step('sign in with the one-time password', async () => {
-      await openInvitePage(page)
-      await expect(page.getByText(kc('Erstellt mit {technik}', { technik: MADE_WITH[theme] }))).toBeVisible()
-      // Separators and case do not count.
-      await submitInvite(page, MAX, letter.code.toLowerCase().replace(/-/g, ' '))
-      await expect(page.getByRole('heading', { name: processHeading('Beitragsrückerstattung') })).toBeVisible()
-    })
-
-    await test.step('the tokens carry the process', async () => {
-      const claims = await accessClaims(page)
-      expect(claims.process).toBe('beitragsrueckerstattung')
-      expect(claims.invitation).toBe(letter.invitation)
-      expect(claims.sub).toMatch(FEDERATED_UUID_ID)
-      expect(claims.sub).toContain(letter.invitation)
-      expect(claims.orchestrator_account_id).toBeUndefined()
-      expect(claims.acr).toBe('loa1')
-      expect(claims.amr).toEqual(['invite'])
-      expect(claims.person_id).toBe(MAX.personId)
-      // Only the attributes that attest the identity; the rest is in the ID token.
-      expect(claims.kvnr).toBeUndefined()
-      expect(claims.birth_date).toBeUndefined()
-      expect(claims.family_name).toBeUndefined()
-    })
-
-    await test.step('ending the process ends the session', async () => {
-      // The page stands in for the business system and ends the process at the register.
-      await page.getByRole('button', { name: ui('Vorgang beenden') }).click()
-      await expect(page.getByText(ui('Der Vorgang ist abgeschlossen, Keycloak hat die Sitzung beendet.'))).toBeVisible({ timeout: 15_000 })
-    })
-
-    await test.step('the same password again opens nothing', async () => {
-      await openInvitePage(page)
-      await submitInvite(page, MAX, letter.code)
-      await expect(page.getByText(ui('Nummer oder Einmalkennwort ungueltig'))).toBeVisible()
-    })
-  })
-}
 
 test.describe('signed in on the website', () => {
   // Ends the Keycloak session the test opened.
@@ -114,7 +107,6 @@ test.describe('signed in on the website', () => {
   })
 
   test('the demo picker lists open invitations and fills the Partnernummer of a partner', async ({ page, request }) => {
-    await switchTheme(request, 'FREEMARKER')
     const letter = await issue(request, PAULA.personId, 'bonusprogramm', 'loa2')
 
     await openInvitePage(page)
@@ -132,7 +124,6 @@ test.describe('signed in on the website', () => {
 })
 
 test('an invitation below the level the login asks for opens nothing', async ({ page, request }) => {
-  await switchTheme(request, 'FREEMARKER')
   const letter = await issue(request, ERIKA.personId, 'adressbestaetigung', 'loa1')
 
   // "Sicher anmelden" asks for loa2; the invitation carries loa1.

@@ -32,7 +32,7 @@ Backend- und Frontend-Texte eines Bundles stehen in derselben Datei (die App lä
      in einem anderen Bundle derselben Sprache formuliert ist, bekommt **denselben** Wortlaut (erst dort
      nachsehen, dann übernehmen). `TextTranslationsTest` prüft das.
    - **Bundle `keycloak`** (Login-Seite): Zieldatei ist
-     `keycloak-extension/src/main/resources/theme/orchestrator/login/messages/messages_<lang>.properties`
+     `keycloak-theme/messages/messages_<lang>.properties`
      (gleiches Format, Kopfzeile `# keycloak, <lang> - …`). Prüfung: `./gradlew :keycloak-extension:test`.
 3. Datei schreiben (UTF-8, nach ID sortiert), Format je Eintrag:
    ```

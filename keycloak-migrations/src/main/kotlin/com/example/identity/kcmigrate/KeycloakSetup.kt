@@ -45,10 +45,7 @@ data class RealmSetup(
     val realmName: String,
     /** Anzeigename dieses Realms auf den Login-Seiten. */
     val realmDisplayName: String,
-    /**
-     * Login-Theme des Realms beim Aufbau. Die Formulare der Extension leben darin; zur Laufzeit
-     * schaltet der Orchestrator zwischen diesem und seinem Keycloakify-Kind-Theme um.
-     */
+    /** Login-Theme des Realms (das Keycloakify-Theme aus keycloak-theme/, ADR-57); es zeichnet die Formulare der Extension. */
     val loginTheme: String,
 
     /** Der öffentliche OIDC-Client, mit dem der Browser den Web-Kanal-Login fährt (PKCE, kein Secret). */

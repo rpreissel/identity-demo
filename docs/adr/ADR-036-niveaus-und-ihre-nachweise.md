@@ -57,7 +57,7 @@ Voreinstellung `true` für diese Demo-Instanz). Nur im Demomodus gibt es:
 
 - die Oberflächen der simulierten Fremdsysteme (Personenverzeichnis, KOBIL, Nect), die ohne
   Anmeldung erreichbar sind,
-- die Demo-Schalter für das Login-Theme und für die Anmeldung auf `loa1`.
+- der Demo-Schalter für die Anmeldung auf `loa1`.
 
 Diese Teile sind mit `@DemoSurface` markiert oder liegen im Modul `demo_mode`. Das verlangt ein
 ArchUnit-Test. Nur im Demomodus darf außerdem eine geänderte Migration das Realm neu aufbauen.

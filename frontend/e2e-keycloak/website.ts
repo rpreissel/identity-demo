@@ -12,7 +12,7 @@ export const KEYCLOAK = process.env.KEYCLOAK_URL ?? 'https://localhost:8543'
 /** The password the suite's own registration set: the demo password the page offered. */
 export let registeredPassword = ''
 
-/** The demo's start: no accounts, FreeMarker, the method selection. */
+/** The demo's start: no accounts, the method selection. */
 export async function resetDemo(request: APIRequestContext) {
   const reset = await request.post(`${ORCHESTRATOR}/orchestrator/admin/demo-reset`, { headers: adminHeaders })
   expect(reset.status()).toBe(200)

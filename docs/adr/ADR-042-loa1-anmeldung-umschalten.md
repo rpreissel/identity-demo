@@ -20,7 +20,8 @@ eingeschaltet (`REQUIRED`) oder ausgeschaltet (`DISABLED`).
 **Entscheidung.** Der Web-Kanal hat genau einen Browser-Client. Der Web-Kanal ist die Verbindung, über
 die ein Nutzer im Browser mit dem Orchestrator arbeitet. Was dieser Client auf `loa1` abfragt, schaltet
 der Orchestrator zur Laufzeit um. Er nutzt dafür dasselbe Verfahren wie beim Umschalten des
-Login-Themes, also des Aussehens der Anmeldeseiten ([ADR-41](ADR-041-keycloakify-neben-freemarker.md)).
+Login-Themes, also des Aussehens der Anmeldeseiten ([ADR-41](ADR-041-keycloakify-neben-freemarker.md),
+seit [ADR-57](ADR-057-keycloakify-einziges-login-theme.md) entfallen).
 Zur Wahl stehen die Verfahrensauswahl des Orchestrators (der Standard) und Keycloaks eigenes
 Passwortformular. Der Schalter gilt für das ganze Realm, also für alle Nutzer dieser
 Keycloak-Installation.
@@ -65,7 +66,7 @@ Beide Möglichkeiten stehen fest im selben Flow. Umgeschaltet wird nur, welche d
   aktiv, aber nie keine. Ein `loa1` ganz ohne Authenticator, also ohne prüfenden Schritt, kann so
   nicht entstehen.
 - **Keine neuen Rechte, kein neuer Code in der Extension.** Der Orchestrator schreibt als
-  Migrations-Client `orchestrator-migration`, genau wie beim Login-Theme. (Die Extension ist der
+  Migrations-Client `orchestrator-migration`. (Die Extension ist der
   Code des Projekts, der in Keycloak läuft.)
 - **Der Step-up braucht nichts.** Er läuft über denselben Client und über `loa2`, egal wie `loa1`
   belegt ist.

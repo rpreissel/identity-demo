@@ -48,13 +48,8 @@ public final class KcTexts {
         return out.toString();
     }
 
-    /** What a template calls as {@code t}: {@code ${t.of("Weiter")}}, {@code ${t.of("Demo-Code: {code}", {"code": demoTan})}}. */
-    public static TemplateTexts forTemplates(KeycloakSession session) {
-        return new TemplateTexts(messages(session));
-    }
-
     /**
-     * The same texts for a theme that renders in the browser (Keycloakify), as a plain map. Only the
+     * The texts for the login theme, which renders in the browser (Keycloakify), as a plain map. Only the
      * ids the active theme lists for {@code template} in its theme.properties
      * ({@code orchestratorTexts.<template>=id,...}); without that entry, none. Placeholders stay for
      * the browser. Read at every render, so a reworded messages file shows without a theme rebuild.
@@ -79,22 +74,6 @@ public final class KcTexts {
             if (wording != null) texts.put(id.trim(), wording);
         }
         return texts;
-    }
-
-    public static final class TemplateTexts {
-        private final Properties messages;
-
-        TemplateTexts(Properties messages) {
-            this.messages = messages;
-        }
-
-        public String of(String template) {
-            return resolve(messages, template, Map.of());
-        }
-
-        public String of(String template, Map<String, ?> values) {
-            return resolve(messages, template, values);
-        }
     }
 
     private static Properties messages(KeycloakSession session) {

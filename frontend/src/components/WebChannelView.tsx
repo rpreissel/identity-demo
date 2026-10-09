@@ -1,7 +1,7 @@
 import { t } from '../texts'
 import { Tx } from '../Tx'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { setDemoLoa1Login, setDemoLoginTheme, type KeycloakInfo, type Loa1Login, type LoginTheme } from '../api'
+import { setDemoLoa1Login, type KeycloakInfo, type Loa1Login } from '../api'
 import { createWebOidc, LoginNotCompletedError, SessionEndedError, type TokenSet } from '../webOidc'
 import { parseJwtPayload } from '../jwt'
 import { personenverzeichnisApi, type Vorgang } from '../personenverzeichnisApi'
@@ -91,8 +91,6 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
   const [view, setView] = useState<PortalView>(
     () => readStored(() => sessionStorage, VIEW_KEY, ['home', 'profile', 'security', 'protected', 'process']) ?? 'home',
   )
-  const [loginTheme, setLoginTheme] = useState<LoginTheme>(keycloak.loginTheme)
-  const [themeError, setThemeError] = useState('')
   const [vorgaenge, setVorgaenge] = useState<Vorgang[]>([])
   const completingRef = useRef(false)
 
@@ -128,13 +126,6 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
     setDemoLoa1Login(login)
       .then(() => setLoa1Login(login))
       .catch((err) => setLoa1Error(err instanceof Error ? err.message : String(err)))
-  }
-
-  function chooseTheme(theme: LoginTheme) {
-    setThemeError('')
-    setDemoLoginTheme(theme)
-      .then(() => setLoginTheme(theme))
-      .catch((err) => setThemeError(err instanceof Error ? err.message : String(err)))
   }
 
   function clearMessages() {
@@ -565,28 +556,6 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
                 <UnavailableTools channel="WEB" />
               </div>
             )}
-
-            <div className="card">
-              <h2>{t('Aussehen der Anmeldeseiten')}</h2>
-              <p>{t('Keycloak kann seine Seiten auf zwei Arten zeichnen. Inhalt und Ablauf sind gleich, nur die Technik dahinter unterscheidet sich. Die Wahl gilt sofort für alle Besucher der Demo.')}</p>
-              <div className="client-choice" role="radiogroup" aria-label={t('Aussehen der Anmeldeseiten')}>
-                <label>
-                  <input type="radio" name="login-theme" checked={loginTheme === 'FREEMARKER'} onChange={() => chooseTheme('FREEMARKER')} />
-                  <span>
-                    <strong>FreeMarker</strong>
-                    <span>{t('Keycloaks klassische Seitenvorlagen, auf dem Server erzeugt.')}</span>
-                  </span>
-                </label>
-                <label>
-                  <input type="radio" name="login-theme" checked={loginTheme === 'KEYCLOAKIFY'} onChange={() => chooseTheme('KEYCLOAKIFY')} />
-                  <span>
-                    <strong>Keycloakify</strong>
-                    <span>{t('Dieselben Seiten als React-Oberfläche, im Browser gezeichnet.')}</span>
-                  </span>
-                </label>
-              </div>
-              {themeError && <div className="hint">{themeError}</div>}
-            </div>
 
             {tokens && (
               <div className="card">

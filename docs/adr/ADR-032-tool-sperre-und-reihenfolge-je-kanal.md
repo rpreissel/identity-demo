@@ -87,5 +87,5 @@ Voreinstellung wieder her.
 - **`demoOnly`-Tools** gibt es nur im Demomodus. Das ist eine Eigenschaft des Tools, kein Schalter
   auf der Admin-Seite.
 - **`orchestrator.feature_flag` bleibt ein eigener Speicher.** Dort stehen benannte Schalter, die
-  keine Tools betreffen: „Enrollment zuerst“, Login-Theme und Anmeldung auf `loa1`. Beides in eine
+  keine Tools betreffen: „Enrollment zuerst“ und Anmeldung auf `loa1` (bis ADR-57 auch das Login-Theme). Beides in eine
   Tabelle zu legen, würde zwei verschiedene Dinge unter einen Schlüssel zwingen.

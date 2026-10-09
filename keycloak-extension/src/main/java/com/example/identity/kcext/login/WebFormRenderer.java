@@ -145,8 +145,9 @@ final class WebFormRenderer {
 
     /**
      * The "manage" landing screen: active methods, each with "Entfernen", plus "Neues Verfahren
-     * hinzufügen" and "Fertig". Rows are plain maps: FreeMarker sees Bean getters, not record
-     * accessors, and would render a {@code MethodView} as blank fields.
+     * hinzufügen" and "Fertig". Rows are plain maps: the page's FreeMarker template, which
+     * Keycloakify generates, sees Bean getters, not record accessors, and would serialize a
+     * {@code MethodView} as blank fields.
      */
     static Response methodsListForm(KeycloakSession session, LoginFormsProvider form, AuthenticationSessionModel authSession,
             List<OrchestratorClient.MethodView> methods, String notice) {
@@ -168,13 +169,11 @@ final class WebFormRenderer {
     }
 
     /**
-     * Every orchestrator page gets {@code t} for its German templates, {@code ${t.of("Weiter")}},
-     * resolved in the login's language (ADR-33). And {@code texts}, the wordings the Keycloakify
-     * page uses, as a plain map: that theme renders in the browser and cannot call {@code t} (ADR-41).
+     * Every orchestrator page gets {@code texts}: the wordings its React page uses, resolved in the
+     * login's language (ADR-33), as a plain map - the theme renders in the browser (ADR-57).
      */
     private static LoginFormsProvider withTexts(KeycloakSession session, LoginFormsProvider form, String template) {
-        return form.setAttribute("t", KcTexts.forTemplates(session))
-                .setAttribute("texts", KcTexts.forBrowser(session, template));
+        return form.setAttribute("texts", KcTexts.forBrowser(session, template));
     }
 
     static WebToolRendererFactory rendererFactoryFor(KeycloakSession session, String toolId) {

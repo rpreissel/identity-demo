@@ -1,13 +1,13 @@
 import { createGetKcContextMock } from 'keycloakify/login/KcContext'
 import type { KcContext, KcContextExtension, KcContextExtensionPerPage } from './KcContext'
 import { parseProperties } from '../texts'
-import de from '../../../keycloak-extension/src/main/resources/theme/orchestrator/login/messages/messages_de.properties?raw'
-import en from '../../../keycloak-extension/src/main/resources/theme/orchestrator/login/messages/messages_en.properties?raw'
+import de from '../../messages/messages_de.properties?raw'
+import en from '../../messages/messages_en.properties?raw'
 
 /**
  * Pages without Keycloak, for `npm run dev` and tests: `?page=orchestrator-tool.ftl` picks the
  * page, `?lang=en` the language, the realm is the demo's own. Values mirror what WebFormRenderer
- * sets - `texts` read straight from the FreeMarker theme's messages, as Keycloak would.
+ * sets - `texts` read straight from the theme's messages (keycloak-theme/messages), as Keycloak would.
  */
 const PERSONS =
   '[{"givenNames":"Erika","familyName":"Mustermann","email":"erika@example.org","phoneNumber":"+49 170 0000002","kvnr":"A123456780","personId":"P000000001","birthDate":"1964-08-12","streetAddress":"Heidestraße 17","postalCode":"51147","locality":"Köln","fscCode":"ABCD-1234"}]'

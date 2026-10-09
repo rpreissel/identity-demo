@@ -1,6 +1,6 @@
-/* The look of the FreeMarker theme, rebuilt on the same tokens (docs/adr/ADR-041-keycloakify-neben-freemarker.md,
-   section 4). tokens.css is the FreeMarker theme's own file - one source for both. */
-@import '../../../keycloak-extension/src/main/resources/theme/orchestrator/login/resources/css/tokens.css';
+/* The look of the login pages, built on the design tokens
+   (docs/adr/ADR-057-keycloakify-einziges-login-theme.md). */
+@import './tokens.css';
 
 html,
 body {
@@ -283,7 +283,7 @@ body {
   }
 }
 
-/* ---- Page-specific pieces (as in the FreeMarker theme's orchestrator.css) ---------- */
+/* ---- Page-specific pieces ---------------------------------------------------------- */
 
 .orc-hint {
   display: block;

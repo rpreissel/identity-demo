@@ -7,7 +7,7 @@ import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** The texts a Keycloakify page gets as a plain map (docs/adr/ADR-041-keycloakify-neben-freemarker.md). */
+/** The texts a login page gets as a plain map (docs/adr/ADR-057-keycloakify-einziges-login-theme.md). */
 class KcTextsTest {
 
     /** The shared samples - the same list pins Text.idOf (TextIdTest) and textId (texts.test.tsx). */

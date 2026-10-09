@@ -17,9 +17,7 @@ ARG KEYCLOAK_BASE_IMAGE=quay.io/keycloak/keycloak:26.6.4
 FROM ${KEYCLOAK_BASE_IMAGE}
 
 COPY identity-demo-keycloak-extension.jar /opt/keycloak/providers/identity-demo-keycloak-extension.jar
-COPY theme/orchestrator /opt/keycloak/themes/orchestrator
-# Das Keycloakify-Theme (Eltern-Theme: orchestrator) als Provider-JAR; welches der beiden Themes
-# das Realm zeigt, schaltet der Orchestrator zur Laufzeit (docs/adr/ADR-041-keycloakify-neben-freemarker.md).
+# Das Login-Theme (Keycloakify) als Provider-JAR (docs/adr/ADR-057-keycloakify-einziges-login-theme.md).
 COPY orchestrator-keycloakify-theme.jar /opt/keycloak/providers/orchestrator-keycloakify-theme.jar
 # Healthcheck-Programm (siehe compose.yml) - Single-File-Source-Launch (JEP 330, `java
 # JwksHealthCheck.java`), kein separates javac noetig.

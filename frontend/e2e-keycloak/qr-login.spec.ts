@@ -37,7 +37,7 @@ test.afterAll(async ({ request }) => {
  * The whole QR sign-in across both channels, in two browsers (docs/03-tool-architektur.md,
  * auth-qr-lookup and approve-qr): the website shows a pairing code, the freshly signed-in app
  * takes the code and approves, then shows a confirmation code that the website needs
- * to finish. The waiting page itself is covered in login-theme.spec.ts; this follows the code through.
+ * to finish. The waiting page itself is covered in login-pages.spec.ts; this follows the code through.
  */
 test('the website signs in with the app: pairing code into the app, confirmation code back', async ({ browser, page: app }) => {
   // The app: an account with SMS and password, then the QR opt-in under "Sicherheit".
@@ -56,7 +56,7 @@ test('the website signs in with the app: pairing code into the app, confirmation
   const web = await (await browser.newContext({ ignoreHTTPSErrors: true, locale: 'de-DE' })).newPage()
   await web.goto(loginUrl())
   await web.getByRole('button', { name: ui('Mit App anmelden'), exact: true }).click()
-  const pairingCode = ((await web.locator('.orchestrator-qr-code, .orc-qr-code').textContent()) ?? '').trim()
+  const pairingCode = ((await web.locator('.orc-qr-code').textContent()) ?? '').trim()
   expect(pairingCode).not.toBe('')
 
   // The app approves. Its registration is moments old, so no further proof is asked for: the code comes next.

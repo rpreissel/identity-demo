@@ -9,8 +9,8 @@ import org.keycloak.models.KeycloakSessionFactory;
 public abstract class AbstractWebToolRendererFactory implements WebToolRendererFactory, WebToolRenderer {
 
     /**
-     * Raw JSON of {@code demo.persons}, or {@code "null"} when absent. {@code demo-person-picker.ftl}
-     * embeds it as a JS array literal.
+     * Raw JSON of {@code demo.persons}, or {@code "null"} when absent. The theme's
+     * {@code DemoPersonPicker} parses it.
      */
     protected static String demoPersonsJson(WebToolRenderContext ctx) {
         JsonNode persons = ctx.demo().get("persons");

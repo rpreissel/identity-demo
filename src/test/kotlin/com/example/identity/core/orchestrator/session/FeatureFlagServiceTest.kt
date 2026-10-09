@@ -8,14 +8,13 @@ import io.mockk.every
 import io.mockk.mockk
 import java.time.Clock
 
-/** Keycloak's switches share the flag store with the journey flags but never reach a strategy. */
+/** Keycloak's switch shares the flag store with the journey flags but never reach a strategy. */
 class FeatureFlagServiceTest : BehaviorSpec({
 
-    given("the enroll-first flag and both Keycloak switches are on") {
+    given("the enroll-first flag and the Keycloak switch are on") {
         val repository = mockk<FeatureFlagRepository> {
             every { findByEnabledTrue() } returns listOf(
                 JourneyFeatureFlag.REGISTER_ENROLL_FIRST.key,
-                KeycloakFeatureFlags.LOGIN_KEYCLOAKIFY,
                 KeycloakFeatureFlags.LOA1_PASSWORD
             ).map { FeatureFlag(flagKey = it).apply { enabled = true } }
         }

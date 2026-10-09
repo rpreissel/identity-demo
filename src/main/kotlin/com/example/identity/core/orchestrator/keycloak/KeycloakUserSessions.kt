@@ -36,7 +36,7 @@ fun interface KeycloakUserSessions {
 
 /**
  * Asks the admin API as the migration client ([KeycloakMigrationToken]), like
- * [KeycloakRealmLoginTheme], so `orchestrator-admin` keeps just manage-users.
+ * [KeycloakRealmSessions], so `orchestrator-admin` keeps just manage-users.
  */
 @Component
 @Profile("keycloak")

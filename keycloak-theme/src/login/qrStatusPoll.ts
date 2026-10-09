@@ -1,7 +1,6 @@
 /**
  * The QR waiting page asks the extension's status endpoint in the background and posts its form
- * only once something changed (docs/adr/ADR-045-qr-warteseite-fragt-im-hintergrund.md). The
- * FreeMarker page does the same in a few lines of plain script. Only an explicit `waiting` keeps
+ * only once something changed (docs/adr/ADR-045-qr-warteseite-fragt-im-hintergrund.md). Only an explicit `waiting` keeps
  * the page; an unreachable endpoint is asked again.
  */
 

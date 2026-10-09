@@ -71,8 +71,8 @@ keycloak-setup:
   base:
     realmName: ${KEYCLOAK_REALM:Demo}
     realmDisplayName: Demo
-    # Die Formulare der Extension leben in diesem Theme.
-    loginTheme: orchestrator
+    # Das Login-Theme (Keycloakify, keycloak-theme/): es zeichnet die Seiten der Extension (ADR-57).
+    loginTheme: orchestrator-keycloakify
     browserClientId: identity-demo-web
     adminApiClientId: orchestrator-admin
     appTokenClientId: orchestrator-app-token

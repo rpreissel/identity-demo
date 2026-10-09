@@ -1,5 +1,5 @@
 /**
- * The theme's own texts, like the FreeMarker theme's (ADR-33): the German template stays in the code,
+ * The theme's own texts (ADR-33): the German template stays in the code,
  * `t("Weiter")`, and its id (Java's `KcText.idOf`) is looked up in `kcContext.texts`, which the
  * extension fills per page in the login's language. A page without them shows the template. The
  * template must be a string literal, so `/translate-texts` can collect it.

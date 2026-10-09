@@ -128,7 +128,7 @@ anderen Pfade lässt Spring Security durch, und die Handler prüfen sie selbst.
 **Offene Punkte:**
 
 - **Hinweis** [`DemoSessionsController`](../src/main/kotlin/com/example/identity/core/orchestrator/admin/DemoSessionsController.kt#L19)
-  und die Demo-Schalter für LoA1 und das Login-Theme sind ohne Anmeldung erreichbar. Es gibt sie
+  und der Demo-Schalter für LoA1 sind ohne Anmeldung erreichbar. Es gibt sie
   aber nur im Demomodus.
 - **Hinweis** Die H2-Konsole ist im Demomodus über `openChain` offen. Nur die Voreinstellung von H2,
   `web-allow-others=false`, beschränkt sie auf localhost (`DPoP-demo-9msv`). Außerhalb des
@@ -373,8 +373,6 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
   (`DPoP-demo-rdns`).
 - **Hinweis** Das JWKS für die Prüfung der Antworten nutzt die Voreinstellungen der Bibliothek
   Nimbus, ohne `outageTolerant` (K-6).
-- **Hinweis** JSON wird per `?no_esc` in ein `<script>` der Demo-Personenauswahl geschrieben (K-7,
-  `DPoP-demo-9ppv.11`). Betroffen sind nur Beispieldaten im Demomodus.
 - **Hinweis** Jeder GET auf die Action-URL (die Adresse, an die das Anmeldeformular geschickt wird)
   wird zur Eingabe für das Tool (K-8). Dafür braucht man Aktionscode und Cookie.
 - **Hinweis** Das Zeitfenster für Peer-Auth beträgt 300 s im ganzen Profil `keycloak` statt nur in
@@ -917,7 +915,6 @@ Diese Tabelle fasst alle offenen Punkte der Stationen zusammen.
 | Id des Web-Kanals aus der Tab-Id abgeleitet | Hinweis | 4 | `DPoP-demo-gxis` |
 | Peer-Auth-Zeitfenster 300 s im Profil | Hinweis | 4 | `DPoP-demo-9ppv.13` |
 | QR-Status ohne Mindestintervall | Hinweis | 4 | `DPoP-demo-9ppv.10` |
-| JSON in `<script>` | Hinweis | 4 | `DPoP-demo-9ppv.11` |
 | `acr`-Prüfung der anfragenden Anwendung | Hinweis | 5 | `DPoP-demo-mea0` |
 | Hash des Freischaltcodes ohne Salt (Simulation, Port-Vertrag) | Hinweis | 8 | `DPoP-demo-4xnr` |
 | Fehlendes `demo.mode` bedeutet Demomodus | Hinweis | 13 | `DPoP-demo-davx` |

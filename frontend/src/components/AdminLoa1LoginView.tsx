@@ -6,7 +6,7 @@ import { ApiError, fetchLoa1Login, setLoa1Login, type Loa1Login } from '../api.t
 /**
  * Switches what the web channel's first sign-in page asks for: Keycloak's password or the
  * orchestrator's method selection (docs/adr/ADR-042-loa1-anmeldung-umschalten.md), realm-wide and
- * at once. Built like AdminLoginThemeView; a 404 means "no Keycloak here".
+ * at once. A 404 means "no Keycloak here".
  */
 export function AdminLoa1LoginView() {
   const [login, setLogin] = useState<Loa1Login | null>(null)

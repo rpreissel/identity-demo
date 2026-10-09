@@ -13,8 +13,8 @@ import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 
 /**
- * The runtime switch of what the web channel's `loa1` asks for (ADR-42), built like
- * [LoginThemeSwitch]: the flag is the source of truth, the realm follows it on every [switchTo] and
+ * The runtime switch of what the web channel's `loa1` asks for (ADR-42). The flag is the
+ * source of truth, the realm follows it on every [switchTo] and
  * once at start, because a rebuilt realm starts with the method selection again.
  */
 @Component

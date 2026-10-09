@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { adminHeaders, ORCHESTRATOR, switchTheme } from './admin'
+import { adminHeaders, ORCHESTRATOR } from './admin'
 import { demoValue, loginUrl, registeredPassword, registerTestPerson, resetDemo, visibleButton } from './website'
 import { ui } from '../e2e/texts'
 import { kc } from './texts'
@@ -19,7 +19,6 @@ test.skip(maxAgeSeconds <= 0, 'needs a stack with a short identity.policy.self-s
 
 test.beforeAll(async ({ browser, request }) => {
   await resetDemo(request)
-  await switchTheme(request, 'FREEMARKER')
   const context = await browser.newContext()
   await registerTestPerson(await context.newPage())
   await context.close()
@@ -32,7 +31,7 @@ test.afterAll(async ({ request }) => {
 
 test('changing the password on an older session asks for a fresh proof first', async ({ page }) => {
   test.setTimeout(90_000)
-  const passwordRow = page.locator('.orchestrator-method-row').filter({ hasText: ui('Passwort') })
+  const passwordRow = page.locator('.orc-methods li').filter({ hasText: ui('Passwort') })
   const change = passwordRow.getByRole('button', { name: kc('Ändern'), exact: true })
 
   // Sign in, and reach loa2 through a first change: the password, then SMS on top.

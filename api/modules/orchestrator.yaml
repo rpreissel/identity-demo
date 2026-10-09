@@ -429,18 +429,12 @@ components:
           - KEYCLOAK_PASSWORD
           - ORCHESTRATOR
           type: string
-        loginTheme:
-          enum:
-          - FREEMARKER
-          - KEYCLOAKIFY
-          type: string
         realm:
           type: string
       required:
       - baseUrl
       - browserClientId
       - loa1Login
-      - loginTheme
       - realm
       type: object
     KeycloakInvitationView:
@@ -784,9 +778,8 @@ paths:
     post:
       description: 'Deletes every account, ends every session still live (also one without an account), clears the attempt
         throttles, ends every Keycloak session, restores the preset tool order and locks per channel, the ident-first registration
-        order, the FreeMarker login theme and the orchestrator''s method selection on loa1. No account is created again: the
-        test persons register themselves. The person register (/mock-personenverzeichnis) is a foreign system and stays as
-        it is.'
+        order and the orchestrator''s method selection on loa1. No account is created again: the test persons register themselves.
+        The person register (/mock-personenverzeichnis) is a foreign system and stays as it is.'
       operationId: reset
       responses:
         '200':
@@ -2138,9 +2131,8 @@ paths:
     post:
       description: 'Deletes every account, ends every session still live (also one without an account), clears the attempt
         throttles, ends every Keycloak session, restores the preset tool order and locks per channel, the ident-first registration
-        order, the FreeMarker login theme and the orchestrator''s method selection on loa1. No account is created again: the
-        test persons register themselves. The person register (/mock-personenverzeichnis) is a foreign system and stays as
-        it is.'
+        order and the orchestrator''s method selection on loa1. No account is created again: the test persons register themselves.
+        The person register (/mock-personenverzeichnis) is a foreign system and stays as it is.'
       operationId: resetDemo
       responses:
         '200':

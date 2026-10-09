@@ -20,7 +20,7 @@ enum class Loa1Login {
 /**
  * Switches the `loa1` branch of the `orchestrator-browser` flow between its two sets of executions
  * (keycloak-migrations, V1__realm.kc.kts, V2); which one is wanted is `Loa1LoginSwitch`'s business.
- * Writes as the migration client ([KeycloakMigrationToken]), like [KeycloakRealmLoginTheme].
+ * Writes as the migration client ([KeycloakMigrationToken]), like [KeycloakRealmSessions].
  */
 @Component
 @Profile("keycloak")

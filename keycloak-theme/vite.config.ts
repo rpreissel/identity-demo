@@ -3,9 +3,10 @@ import react from '@vitejs/plugin-react'
 import { keycloakify } from 'keycloakify/vite-plugin'
 import { fileURLToPath } from 'node:url'
 import { themeProperties } from './scripts/texts-per-page.mjs'
+import { appendMessages } from './scripts/append-messages.mjs'
 
-/** The FreeMarker theme next door: source of the shared tokens.css and the messages bundles. */
-const freemarkerTheme = fileURLToPath(new URL('../keycloak-extension/src/main/resources/theme/orchestrator/login', import.meta.url))
+/** The orchestrator's own texts, written by /translate-texts (docs/adr/ADR-033-texte-als-vorlage-im-code.md). */
+const messagesDir = fileURLToPath(new URL('./messages', import.meta.url))
 
 const THEME_NAME = 'orchestrator-keycloakify'
 
@@ -17,16 +18,13 @@ export default defineConfig({
       accountThemeImplementation: 'none',
       // Keycloak 26 only - one jar, named for the image.
       keycloakVersionTargets: { '22-to-25': false, 'all-other-versions': `${THEME_NAME}-theme.jar` },
-      // Parent is the FreeMarker theme: every page without a component here (for now most tool
-      // pages) falls back to its template, and its messages are inherited - so the extension's
-      // KcTexts finds its texts with either theme active (docs/adr/ADR-041-keycloakify-neben-freemarker.md).
       // orchestratorTexts.<pageId> names the texts each React page uses; the extension sends a
-      // page only those (kcContext.texts).
-      extraThemeProperties: ['parent=orchestrator', ...themeProperties(fileURLToPath(new URL('./src', import.meta.url)))],
+      // page only those (kcContext.texts, docs/adr/ADR-057-keycloakify-einziges-login-theme.md).
+      extraThemeProperties: themeProperties(fileURLToPath(new URL('./src', import.meta.url))),
+      // The orchestrator's texts go into the theme's own messages bundles, where the extension's
+      // KcTexts reads them (theme.getEnhancedMessages). Runs in the jar's resources directory.
+      postBuild: async () => appendMessages(messagesDir, 'theme/orchestrator-keycloakify/login/messages'),
     }),
   ],
-  server: {
-    fs: { allow: ['.', freemarkerTheme] },
-  },
 })
 

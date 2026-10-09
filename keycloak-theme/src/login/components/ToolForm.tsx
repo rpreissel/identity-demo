@@ -4,7 +4,7 @@ import { Layout } from '../Layout'
 import { t } from '../../texts'
 
 /**
- * The frame every tool page shares, as in the FreeMarker templates: title, hint, one form posting to
+ * The frame every tool page shares: title, hint, one form posting to
  * Keycloak, and "Weiter" next to a way out that skips field validation: "Zurück" (orchestrator_back,
  * back to the selection) or, with `cancel`, "Abbrechen" (orchestrator_abandon). With `onBack`,
  * "Zurück" stays on the page.

@@ -1,4 +1,4 @@
-// Which of the extension's texts each page of this theme uses (docs/adr/ADR-041-keycloakify-neben-freemarker.md):
+// Which of the extension's texts each page of this theme uses (docs/adr/ADR-057-keycloakify-einziges-login-theme.md):
 // every `t("...")` template of a page component (src/login/pages/OrchestratorSelect.tsx ->
 // orchestrator-select.ftl) and of the local files it imports, read from the parsed source, not by
 // regex. The ids go into theme.properties; the extension's WebFormRenderer sends each page only
@@ -115,7 +115,8 @@ function sources(dir) {
 
 /**
  * Every template of the theme with its locations - for /translate-texts, which words them in the
- * `keycloak` bundle next to the FreeMarker templates (keycloak-extension's KcTextCatalog reads it).
+ * `keycloak` bundle (keycloak-theme/messages) next to the extension's Java templates (keycloak-extension's
+ * KcTextCatalog reads it).
  */
 export function catalog(srcDir) {
   const byTemplate = new Map()

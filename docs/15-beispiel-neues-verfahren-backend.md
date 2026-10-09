@@ -300,7 +300,7 @@ Von Hand erledigt man:
 
 Im Web-Kanal zeigt Keycloak die Schritte eines Tools an. Ein Tool, für das die Erweiterung keinen
 Renderer hat, bietet der Web-Kanal nie an. Ein Renderer ist die Klasse, die aus `stepData` eine
-Anmeldeseite macht. Je Tool baut man drei Teile:
+Anmeldeseite macht. Je Tool baut man zwei Teile:
 
 1. **Renderer** in `keycloak-extension/src/main/java/com/example/identity/kcext/webtool/<modul>/`:
    eine Klasse, die `AbstractWebToolRendererFactory` erweitert. Sie wird eingetragen in
@@ -315,20 +315,17 @@ Anmeldeseite macht. Je Tool baut man drei Teile:
    - Titel und Hinweis der Seite kommen aus dem Katalog (`OrchestratorToolCatalog`). Der Renderer
      nennt sie nicht.
    - Vorbilder: `webtool/identnect/` (Weiterleitung), `webtool/sms/` (Einrichten und Anmelden).
-2. **FreeMarker-Seite** unter `keycloak-extension/src/main/resources/theme/orchestrator/login/`,
-   etwa `tool-totp-enroll.ftl`. FreeMarker ist die Vorlagensprache, mit der Keycloak seine Seiten
-   erzeugt. Die Formularfelder heißen wie die Felder des `PATCH`. Keycloak schickt sie als Eingabe
-   an das Tool. Für `enroll-totp` zeigt die Seite den QR-Code der `otpauth://`-Adresse und das
-   Geheimnis zum Abtippen. Vorbild ist `tool-sms-enroll.ftl`.
-3. **Keycloakify-Seite** im Theme `keycloak-theme/` ([ADR-41](adr/ADR-041-keycloakify-neben-freemarker.md)).
-   Das ist dieselbe Seite noch einmal in React. Dafür braucht man:
+2. **Seite im Login-Theme** `keycloak-theme/` (Keycloakify, [ADR-57](adr/ADR-057-keycloakify-einziges-login-theme.md)),
+   eine React-Komponente. Die Formularfelder heißen wie die Felder des `PATCH`. Keycloak schickt
+   sie als Eingabe an das Tool. Für `enroll-totp` zeigt die Seite den QR-Code der
+   `otpauth://`-Adresse und das Geheimnis zum Abtippen. Dafür braucht man:
    - einen Seitentyp mit den Werten des Renderers in `src/login/KcContext.ts`,
    - eine Komponente unter `src/login/pages/` (Vorbild `ToolSmsEnroll.tsx`),
    - einen Eintrag im `switch` von `src/login/KcPage.tsx`,
    - Beispielwerte in `src/login/mockContext.ts` für die Vorschau.
 
-Die Texte der Seiten stehen als Vorlage im Code: `t.of("…")` in FreeMarker, `t("…")` im Theme. Sie
-werden im Text-Bündel `keycloak` gesammelt.
+Die Texte der Seiten stehen als Vorlage im Code: `t("…")` im Theme. Sie werden im Text-Bündel
+`keycloak` gesammelt.
 
 Prüfen kann man das so:
 
@@ -432,7 +429,7 @@ das so aus:
    neue Fassung als Hinweis, und `publishApiVersion` schreibt sie als veröffentlicht fest. Danach
    ruft man `generateFrontendApiTypes` auf.
 6. **Web-Kanal:** Soll er die neue Fassung verwenden, stellt man `version()` am Renderer um und passt
-   die FreeMarker- und die Keycloakify-Seite an (Abschnitt 6). Die App stellt ihre Fassung selbst
+   die Seite im Login-Theme an (Abschnitt 6). Die App stellt ihre Fassung selbst
    um, sobald sie das Neue anzeigen kann
    ([17-beispiel-neues-verfahren-app.md](17-beispiel-neues-verfahren-app.md) Abschnitt 6). Bis
    dahin bleibt sie bei der alten Fassung.

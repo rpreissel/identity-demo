@@ -469,12 +469,6 @@ function ServerStatus() {
         )}
         {info.keycloak && (
           <li>
-            <span className="label">{t('Anmeldeseiten')}</span>
-            <span className="value">{info.keycloak.loginTheme === 'KEYCLOAKIFY' ? 'Keycloakify (React)' : 'FreeMarker'}</span>
-          </li>
-        )}
-        {info.keycloak && (
-          <li>
             <span className="label">{t('Erste Anmeldeseite')}</span>
             <span className="value">{info.keycloak.loa1Login === 'ORCHESTRATOR' ? t('Gleich alle Verfahren zur Wahl') : t('Erst das Passwort')}</span>
           </li>

@@ -98,8 +98,6 @@ stillschweigend etwas von der Umgebung voraussetzt.
   lädt diese mit `JWKSourceBuilder.create(…).retrying(true)`. Das bedeutet 500 ms Zeitlimit und kein
   `outageTolerant`. Vorschlag: ein eigener `ResourceRetriever` mit 3 s/10 s und Größenlimit, dazu
   `outageTolerant`. Issue: –
-- **K-7 / K-9 (3.) (Hinweis) JSON per `?no_esc` in `<script>`** der Demo-Personenauswahl. Betroffen
-  sind nur Beispieldaten im Demomodus. `DPoP-demo-9ppv.11`
 - **K-8 (Hinweis, bewusst) Jeder GET auf die Action-URL wird zur Eingabe für das Tool**, auch
   `orchestrator_back` und `orchestrator_abandon`. Die Action-URL ist die Adresse, an die das
   Anmeldeformular in Keycloak geschickt wird. Ein Angreifer braucht dafür den Aktionscode und das

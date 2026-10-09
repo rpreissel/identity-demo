@@ -14,7 +14,6 @@ import {
 import { adminAuthHeader, clearAdminCredentials, onAdminLoggedOut, setAdminCredentials } from '../../adminAuth'
 import { ActiveSessionsView } from '../../components/ActiveSessionsView'
 import { AdminLoa1LoginView } from '../../components/AdminLoa1LoginView'
-import { AdminLoginThemeView } from '../../components/AdminLoginThemeView'
 import { AdminRegistrationOrderView } from '../../components/AdminRegistrationOrderView'
 import { AdminToolAvailabilityView } from '../../components/AdminToolAvailabilityView'
 import { ChannelNav, type NavTab } from '../../components/ChannelNav'
@@ -72,7 +71,6 @@ export function AdminApp() {
           <>
             <AdminToolAvailabilityView />
             <AdminRegistrationOrderView />
-            <AdminLoginThemeView />
             <AdminLoa1LoginView />
           </>
         )}
@@ -266,7 +264,7 @@ function AccountsTab() {
               'Löscht alle Konten (samt Geräten, Verfahren und Journey-Trace), setzt die Verfahren je Kanal auf die Voreinstellung ' +
               'zurück (Reihenfolge und Sperren aus {konfig}) und stellt die ' +
               'Registrierungsreihenfolge auf „Identifikation zuerst“. Das Personenverzeichnis (/personenverzeichnis/) ist ein Fremdsystem und ' +
-              'bleibt unverändert. Im Keycloak-Profil stehen die Anmeldeseiten danach wieder auf FreeMarker und „Gleich alle Verfahren zur Wahl“. ' +
+              'bleibt unverändert. Im Keycloak-Profil steht die erste Anmeldeseite danach wieder auf „Gleich alle Verfahren zur Wahl“. ' +
               'Konten legt das Zurücksetzen nicht an: Die Testpersonen registrieren sich selbst.'
             }
             konfig={<code>demo.tool-defaults</code>}

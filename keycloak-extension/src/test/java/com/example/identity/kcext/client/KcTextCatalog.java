@@ -25,14 +25,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * Every own text template of the extension (ADR-33), from three places: the compiled classes
- * ({@code KcText.t}/{@code KcTexts.of}, traced by ASM), the {@code .ftl} files ({@code t.of("...")},
- * read by a strict scanner) and the Keycloakify theme's JSON catalog ({@code npm run texts:export}).
+ * Every own text template of the extension (ADR-33), from two places: the compiled classes
+ * ({@code KcText.t}/{@code KcTexts.of}, traced by ASM) and the login theme's JSON catalog
+ * ({@code npm run texts:export}).
  * A template that is not a string literal is a problem, named by file and line.
  */
 public final class KcTextCatalog {
@@ -42,30 +40,23 @@ public final class KcTextCatalog {
 
     private static final String KC_TEXT = "com/example/identity/kcext/client/KcText";
     private static final String KC_TEXTS = "com/example/identity/kcext/client/KcTexts";
-    private static final Pattern FTL_CALL = Pattern.compile("\\bt\\.of\\(\\s*");
-    private static final Pattern FTL_LITERAL = Pattern.compile("\"((?:[^\"\\\\]|\\\\.)*)\"|'((?:[^'\\\\]|\\\\.)*)'");
 
     public final Map<String, Entry> entries = new LinkedHashMap<>();
     public final List<String> problems = new ArrayList<>();
 
-    public static KcTextCatalog of(Path classesDir, Path themeDir) throws IOException {
+    public static KcTextCatalog of(Path classesDir) throws IOException {
         KcTextCatalog catalog = new KcTextCatalog();
         try (Stream<Path> files = Files.walk(classesDir)) {
             for (Path file : files.filter(f -> f.toString().endsWith(".class")).sorted().toList()) {
                 catalog.scanClass(Files.readAllBytes(file));
             }
         }
-        try (Stream<Path> files = Files.walk(themeDir)) {
-            for (Path file : files.filter(f -> f.toString().endsWith(".ftl")).sorted().toList()) {
-                catalog.scanTemplate(themeDir.relativize(file).toString(), Files.readString(file, StandardCharsets.UTF_8));
-            }
-        }
         return catalog;
     }
 
-    /** The extension as built: main classes and theme sources, located from the working directory Gradle tests run in. */
+    /** The extension as built and the login theme, located from the working directory Gradle tests run in. */
     public static KcTextCatalog extension() throws IOException {
-        KcTextCatalog catalog = of(Path.of("build/classes/java/main"), Path.of("src/main/resources/theme"));
+        KcTextCatalog catalog = of(Path.of("build/classes/java/main"));
         catalog.addKeycloakifyCatalog(keycloakifyCatalog());
         return catalog;
     }
@@ -144,29 +135,12 @@ public final class KcTextCatalog {
         return -1;
     }
 
-    void scanTemplate(String file, String source) {
-        // Comments go, their line breaks stay - so line numbers still match the file.
-        String withoutComments = Pattern.compile("(?s)<#--.*?-->").matcher(source)
-                .replaceAll(m -> "\n".repeat((int) m.group().chars().filter(c -> c == '\n').count()));
-        Matcher call = FTL_CALL.matcher(withoutComments);
-        while (call.find()) {
-            int line = 1 + (int) withoutComments.substring(0, call.start()).chars().filter(c -> c == '\n').count();
-            Matcher literal = FTL_LITERAL.matcher(withoutComments).region(call.end(), withoutComments.length());
-            if (literal.lookingAt()) {
-                String raw = literal.group(1) != null ? literal.group(1) : literal.group(2);
-                add(raw.replaceAll("\\\\(.)", "$1"), "keycloak-extension/…/theme/" + file + ":" + line);
-            } else {
-                problems.add(file + ":" + line + ": t.of(...) needs a string literal (placeholders as {name})");
-            }
-        }
-    }
-
-    /** {@code ./gradlew exportTexts}: args = classes dir, theme dir, output root (writes keycloak/texts_source.properties). */
+    /** {@code ./gradlew exportTexts}: args = classes dir, output root (writes keycloak/texts_source.properties). */
     public static void main(String[] args) throws IOException {
-        KcTextCatalog catalog = of(Path.of(args[0]), Path.of(args[1]));
+        KcTextCatalog catalog = of(Path.of(args[0]));
         catalog.addKeycloakifyCatalog(keycloakifyCatalog());
         if (!catalog.problems.isEmpty()) throw new IllegalStateException(String.join("\n", catalog.problems));
-        Path out = Path.of(args[2], "keycloak", "texts_source.properties");
+        Path out = Path.of(args[1], "keycloak", "texts_source.properties");
         Files.createDirectories(out.getParent());
         StringBuilder text = new StringBuilder("# Quelle: Vorlagen der keycloak-extension - generiert, nicht bearbeiten.\n");
         catalog.entries.values().stream().sorted((a, b) -> a.id().compareTo(b.id())).forEach(e -> {

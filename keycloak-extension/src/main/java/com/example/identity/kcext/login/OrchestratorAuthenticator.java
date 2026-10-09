@@ -299,7 +299,7 @@ public class OrchestratorAuthenticator implements Authenticator {
             // Only something to show; the next authenticate() pass fetches the current options.
             return errorForm(context, error != null ? error : "Die Auswahl der Anmeldemethode ist fehlgeschlagen.");
         }
-        // Through WebFormRenderer like every other page: the template needs t (and Keycloakify texts).
+        // Through WebFormRenderer like every other page: the page needs its texts.
         return errorForm(context, error);
     }
 

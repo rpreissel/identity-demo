@@ -5,13 +5,13 @@ import { fileURLToPath } from 'node:url'
 import { textId } from '../src/texts'
 
 /**
- * The German wording of a login-page template (docs/adr/ADR-033) - the `keycloak` bundle both
- * themes show, looked up by the id KcText.idOf computes.
+ * The German wording of a login-page template (docs/adr/ADR-033) - the `keycloak` bundle the
+ * login pages show, looked up by the id KcText.idOf computes.
  */
 const bundle = (() => {
   const file = join(
     dirname(fileURLToPath(import.meta.url)),
-    '../../keycloak-extension/src/main/resources/theme/orchestrator/login/messages/messages_de.properties',
+    '../../keycloak-theme/messages/messages_de.properties',
   )
   const wordings = new Map<string, string>()
   for (const line of readFileSync(file, 'utf8').split('\n')) {

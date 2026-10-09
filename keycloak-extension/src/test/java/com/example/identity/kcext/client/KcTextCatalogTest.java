@@ -2,8 +2,9 @@ package com.example.identity.kcext.client;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -17,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The extension's own texts (docs/adr/ADR-033): every template is a literal, and every language's
- * theme bundle words each template - nothing left over, the same placeholders. Red means:
+ * bundle (keycloak-theme/messages) words each template - nothing left over, the same placeholders. Red means:
  * {@code /translate-texts <lang>}.
  */
 class KcTextCatalogTest {
@@ -30,22 +31,14 @@ class KcTextCatalogTest {
     }
 
     @Test
-    void theScannerReadsTemplateCallsAndRejectsExpressions() {
-        KcTextCatalog catalog = new KcTextCatalog();
-        catalog.scanTemplate("x.ftl", "<#-- t.of(ignored) -->\n<b>${t.of(\"Weiter\")}</b>\n${t.of(\"Code: {c}\", {\"c\": code})}\n${t.of(label)}");
-        assertEquals(Set.of("Weiter", "Code: {c}"), catalog.entries.keySet());
-        assertEquals(List.of("x.ftl:4: t.of(...) needs a string literal (placeholders as {name})"), catalog.problems);
-    }
-
-    @Test
     void everyLanguageWordsEveryTemplate() throws Exception {
         KcTextCatalog catalog = KcTextCatalog.extension();
         List<String> failures = new ArrayList<>();
         for (String language : List.of("de", "en")) {
             Properties wordings = new Properties();
-            var resource = getClass().getClassLoader().getResourceAsStream("theme/orchestrator/login/messages/messages_" + language + ".properties");
-            if (resource != null) {
-                try (var reader = new InputStreamReader(resource, StandardCharsets.UTF_8)) {
+            Path bundle = Path.of("../keycloak-theme/messages/messages_" + language + ".properties");
+            if (Files.exists(bundle)) {
+                try (var reader = Files.newBufferedReader(bundle, StandardCharsets.UTF_8)) {
                     wordings.load(reader);
                 }
             }

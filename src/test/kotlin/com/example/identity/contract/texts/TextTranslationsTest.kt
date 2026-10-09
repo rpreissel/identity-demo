@@ -31,7 +31,7 @@ class TextTranslationsTest : BehaviorSpec({
     }
 
     fun keycloakWordings(language: String): Map<String, String> {
-        val file = java.nio.file.Path.of("keycloak-extension/src/main/resources/theme/orchestrator/login/messages/messages_$language.properties")
+        val file = java.nio.file.Path.of("keycloak-theme/messages/messages_$language.properties")
         if (!java.nio.file.Files.exists(file)) return emptyMap()
         val properties = Properties().apply { java.nio.file.Files.newBufferedReader(file, Charsets.UTF_8).use { load(it) } }
         return properties.stringPropertyNames().associateWith { properties.getProperty(it) }

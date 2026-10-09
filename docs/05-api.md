@@ -243,9 +243,8 @@ sie:
   Basic mit `demo.admin.*`).
 - Der öffentliche Server-Status unter `/orchestrator/demo/server-info`. Er wird nur gelesen. Zustand
   und Kennzahlen im Block `operations` liefert er nur im Demomodus, also wenn die Anwendung zum
-  Vorführen läuft. Daneben liegen dort die beiden Demo-Schalter für das Login-Theme und für die
-  Anmeldung auf `loa1` ([ADR-41](adr/ADR-041-keycloakify-neben-freemarker.md),
-  [ADR-42](adr/ADR-042-loa1-anmeldung-umschalten.md)) sowie für die Startseite
+  Vorführen läuft. Daneben liegen dort der Demo-Schalter für die Anmeldung auf `loa1`
+  ([ADR-42](adr/ADR-042-loa1-anmeldung-umschalten.md)) sowie für die Startseite
   `GET /orchestrator/demo/sessions` und `POST /orchestrator/demo/reset`. Die Schalter, die
   Sitzungen und das Zurücksetzen gibt es nur im Demomodus (`@DemoSurface`).
 - Die Stellvertreter externer Systeme unter `/mock-*` (`/mock-kobil`,
@@ -1103,7 +1102,7 @@ Abfrage geht an Keycloak, nicht an den Orchestrator
 in [verfahren/qr.md](verfahren/qr.md).
 
 - `GET /realms/{realm}/orchestrator-qr/status?client_id=…&tab_id=…`. Die Adresse steht fertig im
-  Seitenattribut `statusUrl` von `tool-qr-wait`. Beide Themes rufen sie alle zwei Sekunden auf.
+  Seitenattribut `statusUrl` von `tool-qr-wait`. Das Login-Theme ruft sie alle zwei Sekunden auf.
 - **Wer eine Antwort bekommt:** nur der Browser, der das Cookie `AUTH_SESSION_ID` dieser Anmeldung
   hat. Keycloak findet den Durchlauf darüber genauso wie für seine eigenen Seiten. Fehlt etwas
   davon, kommt `404` ohne Inhalt. CORS-Header gibt es nicht.
@@ -1135,7 +1134,7 @@ ohne Nachfrage. „Hinzufügen", „Ändern" und „Entfernen" verlangen aber ei
 sobald der letzte Nachweis älter als fünf Minuten ist. „Ändern" steht nur an Einträgen mit
 `changeable` und ruft `POST .../methods/{id}/changes` auf. Die Seiten von `enroll-password` und
 `enroll-sms` lesen `stepData.replaces` und weisen darauf hin, dass der bisherige Eintrag ersetzt
-wird. Beide Themes zeigen dasselbe.
+wird.
 
 Endet der Ablauf erfolgreich, ruft die Required Action `startEnrollments(...)` auf dem neuen Kanal
 auf. Sie zeigt `next` über dieselbe Zuordnung zu den `WebToolRenderer`n an. Im Frontend baut
@@ -1267,7 +1266,7 @@ denselben Bericht (`ActiveSessions`). Er hat zwei Teile:
    bleiben.
 
 Die Antwort nennt beides (`deletedAccounts`, `endedSessions`). Danach gelten wieder die
-Voreinstellungen für Verfahren, Registrierungsreihenfolge, Login-Theme und Anmeldung auf `loa1`.
+Voreinstellungen für Verfahren, Registrierungsreihenfolge und Anmeldung auf `loa1`.
 
 **Journey-Trace.** Der Journey-Trace hält jeden Schritt einer Journey fest. Er ist eine Ansicht zur
 Fehlersuche und für die Demo und wird 14 Tage aufbewahrt ([Betrieb](07-betrieb.md) Abschnitt 3).

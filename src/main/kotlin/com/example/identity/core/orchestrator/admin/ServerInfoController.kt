@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.admin
 
 import com.example.identity.demo.demo_mode.DemoMode
 import com.example.identity.core.orchestrator.keycloak.Loa1Login
-import com.example.identity.core.orchestrator.keycloak.LoginTheme
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.core.orchestrator.session.FeatureFlagService
 import com.example.identity.core.orchestrator.tool.ToolAvailabilityService
@@ -34,8 +33,6 @@ data class KeycloakInfo(
     val baseUrl: String,
     val realm: String,
     val browserClientId: String,
-    /** Which login theme the realm shows right now (admin page, "Anmeldeseiten"). */
-    val loginTheme: LoginTheme,
     /** What the browser client's loa1 asks for right now (admin page, ADR-42). */
     val loa1Login: Loa1Login,
 )
@@ -85,7 +82,6 @@ class ServerInfoController(
     private val environment: Environment,
     private val featureFlagService: FeatureFlagService,
     private val toolAvailabilityService: ToolAvailabilityService,
-    private val loginThemeSwitch: ObjectProvider<LoginThemeSwitch>,
     private val loa1LoginSwitch: ObjectProvider<Loa1LoginSwitch>,
     private val healthEndpoint: HealthEndpoint,
     private val meterRegistry: MeterRegistry,
@@ -136,7 +132,6 @@ class ServerInfoController(
         baseUrl = environment.getRequiredProperty("keycloak-sync.public-base-url"),
         realm = environment.getRequiredProperty("keycloak-sync.realm"),
         browserClientId = environment.getRequiredProperty("keycloak-web.browser-client-id"),
-        loginTheme = loginThemeSwitch.getObject().current(),
         loa1Login = loa1LoginSwitch.getObject().current(),
     )
 }

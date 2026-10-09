@@ -55,7 +55,7 @@ podman compose up --build
 
 Das startet zwei Container:
 
-- **`keycloak`**: ein echtes Keycloak mit der Erweiterung und beiden Login-Themes. Es ist nur über
+- **`keycloak`**: ein echtes Keycloak mit der Erweiterung und dem Login-Theme. Es ist nur über
   HTTPS erreichbar, auf Port 8543. Beim ersten Start erzeugt es ein selbstsigniertes Zertifikat im
   Volume `keycloak-data`. Das Zertifikat bleibt erhalten, auch wenn das Image neu gebaut wird. Sie
   müssen ihm im Browser also nur einmal vertrauen.

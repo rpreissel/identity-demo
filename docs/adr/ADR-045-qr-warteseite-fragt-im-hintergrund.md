@@ -18,8 +18,7 @@ ab, wenn sich etwas geändert hat:
 - oder die Journey steht nicht mehr in diesem Schritt. (Eine Journey ist der geführte Ablauf, den
   der Nutzer gerade durchläuft.)
 
-Beide Login-Themes, also beide Varianten für das Aussehen der Anmeldeseiten, folgen dabei denselben
-Regeln.
+Das Login-Theme folgt dabei diesen Regeln.
 
 **Warum.** Bisher schickte die Seite alle drei Sekunden ihr leeres Formular ab, um die Entscheidung
 der App abzufragen. Jedes Mal baute Keycloak die ganze Seite neu auf. Das hatte drei Folgen:
@@ -73,8 +72,8 @@ Die Seite im Browser folgt wenigen festen Regeln:
 - **Nichts verschiebt sich.** QR-Code und Pairing-Code bleiben unverändert stehen, bis die Seite
   wechselt.
 
-Die FreeMarker-Vorlage setzt die Regeln als kleines Skript um. Das Keycloakify-Theme setzt sie im
-Modul `qrStatusPoll.ts` um, mit eigenen Tests.
+Das Login-Theme setzt die Regeln im Modul `qrStatusPoll.ts` um, mit eigenen Tests
+(bis [ADR-57](ADR-057-keycloakify-einziges-login-theme.md) auch die FreeMarker-Vorlage als kleines Skript).
 
 ## Erwogene Alternativen
 
