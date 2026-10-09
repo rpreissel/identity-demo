@@ -84,7 +84,6 @@ class KeycloakChannelController(
             assertion = assertion,
             subject = subjectOf(body),
             targetAcr = body.targetAcr,
-            amr = body.amr,
             restoreDataToken = body.restoreData,
             restoreDataKeycloakSessionId = body.kcSessionId,
             availableTools = body.availableTools,

@@ -71,6 +71,21 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
         restTemplate.exchange("http://localhost:$port$url", HttpMethod.PATCH, HttpEntity(body, keycloakHeaders()), mapType)
             .let { it.statusCode shouldBe HttpStatus.OK; it.body!! }
 
+    /** Runs auth-sms on a Web channel through to its end, as Keycloak's authenticator does. */
+    private fun keycloakAuthSms(channelSessionId: ChannelSessionId): Map<String, Any?> {
+        val (tan, activation) = captureMockTan { keycloakPost("/tools/api/auth-sms/v1?channel=$channelSessionId") }
+        return keycloakPatchTool("/tools/api/auth-sms/v1/${activation.nextRaw()["toolSessionId"]}", """{"tan":"$tan"}""")
+    }
+
+    /** Runs auth-password on a Web channel through to its end, as Keycloak's authenticator does. */
+    private fun keycloakAuthPassword(channelSessionId: ChannelSessionId): Map<String, Any?> {
+        val toolSessionId = keycloakPost("/tools/api/auth-password/v1?channel=$channelSessionId").nextRaw()["toolSessionId"]
+        return keycloakPatchTool("/tools/api/auth-password/v1/$toolSessionId", """{"password":"${AccountFixtures.DEMO_PASSWORD}"}""")
+    }
+
+    private fun accountWithSmsAndPassword(): AccountId =
+        accountFixtures.seedAccount(methods = listOf(AccountFixtures.Method.Sms(), AccountFixtures.Method.Password()))
+
     /** The account a channel is bound to, read from its row. */
     private fun accountIdOf(channelSessionId: String): Long = jdbcTemplate.queryForObject(
         "SELECT account_id FROM orchestrator.channel_session WHERE id = ?",
@@ -138,7 +153,7 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = ChannelSessionId(UUID.randomUUID())
                 stubAssertion(channelBinding = channelSessionId.toString())
                 val result = runCatching {
-                    keycloakPatchRaw(channelSessionId, """{"subject":{"type":"account","id":"999999"},"amr":[{"nativeToolId":"kc-sms-form","amrSourceId":"kc-sms-form-exec-1"}]}""")
+                    keycloakPatchRaw(channelSessionId, """{"subject":{"type":"account","id":"999999"}}""")
                 }
 
                 then("it is rejected up front as not found, never as an internal strategy error") {
@@ -233,55 +248,17 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
             }
         }
 
-        given("a step-up channel whose account already reaches loa1 evidence natively") {
-            `when`("PATCH is called again with amr (simulating a native Keycloak authenticator)") {
-                val accountId = accountIdOf(loginAsSeededAccount())
-
-                val keycloakChannelSessionId = ChannelSessionId(UUID.randomUUID())
-                stubAssertion(channelBinding = keycloakChannelSessionId.toString())
-                // sms alone (loa1) does not reach the loa2 floor, but authData already shows the
-                // native evidence.
-                val partial = keycloakPatch(
-                    keycloakChannelSessionId,
-                    """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2","amr":[{"nativeToolId":"kc-sms-form","amrSourceId":"kc-sms-form-exec-1"}]}"""
-                )
-                // A second native factor type (password, KNOWLEDGE) reaches loa2 like two
-                // orchestrator factors would. `amr` is the complete currently valid kc set
-                // (docs/05-api.md Abschnitt 3b), so "sms" is resent. Omitting it would mean it expired.
-                val authenticated = keycloakPatch(
-                    keycloakChannelSessionId,
-                    """{"subject":{"type":"account","id":"$accountId"},"amr":[{"nativeToolId":"kc-sms-form","amrSourceId":"kc-sms-form-exec-1"},{"nativeToolId":"kc-password-form","amrSourceId":"kc-password-form-exec-1"}]}"""
-                )
-
-                then("the merged evidence is reflected in authData and, once sufficient, authenticates") {
-                    (partial["authData"] as Map<*, *>)["acr"] shouldBe "loa1"
-                    // amr maps method -> source (docs/05-api.md Abschnitt 3b). "sms" came from a native
-                    // authenticator, not a tool.
-                    @Suppress("UNCHECKED_CAST")
-                    val partialAmr = (partial["authData"] as Map<String, Any?>)["amr"] as Map<String, String>
-                    partialAmr shouldBe mapOf("sms" to "kc")
-
-                    authenticated.channel()["state"] shouldBe "AUTHENTICATED"
-                    @Suppress("UNCHECKED_CAST")
-                    val finalAmr = (authenticated["authData"] as Map<String, Any?>)["amr"] as Map<String, String>
-                    finalAmr shouldBe mapOf("sms" to "kc", "password" to "kc")
-                }
-            }
-        }
-
         given("a Web step-up to loa2 whose account has no further method usable on the Web") {
             // Like an account registered in the app: the device works only there, and sms is
-            // already proven by Keycloak's own form. Nothing of the account can close the gap here.
+            // proven first. Nothing else of the account can close the gap here.
             `when`("the step-up starts, the user agrees to identify again and does so with the Freischaltcode") {
                 val accountId = accountFixtures.seedAccount(
                     methods = listOf(AccountFixtures.Method.Sms(), AccountFixtures.Method.Device(thumbprint = "key-of-the-app"))
                 )
                 val channelSessionId = ChannelSessionId(UUID.randomUUID())
                 stubAssertion(channelBinding = channelSessionId.toString())
-                val started = keycloakPatch(
-                    channelSessionId,
-                    """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2","amr":[{"nativeToolId":"kc-sms-form","amrSourceId":"kc-sms-form-exec-1"}]}"""
-                )
+                keycloakPatch(channelSessionId, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2"}""")
+                val started = keycloakAuthSms(channelSessionId)
                 val offered = keycloakPost("/orchestrator/api/v1/channels/$channelSessionId/answer", """{"answer":"accept"}""")
                 val identToolSessionId = keycloakPost("/tools/api/ident-fsc/v1?channel=$channelSessionId")
                     .nextRaw()["toolSessionId"] as String
@@ -377,14 +354,13 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
         }
 
         given("a Web login at loa2 whose proofs are restored in a later flow run (docs/04-orchestrierung.md #4)") {
-            val natives = """[{"nativeToolId":"kc-password-form","amrSourceId":"pw-1"},{"nativeToolId":"kc-otp-form","amrSourceId":"otp-1"}]"""
-
-            /** A login at loa2 on a fresh Web channel, and the RestoreData its flow run ends with. */
+            /** A login at loa2 on a fresh Web channel (password and sms), and the RestoreData its flow run ends with. */
             fun loginAtLoa2(accountId: AccountId): Pair<ChannelSessionId, String> {
                 val channelSessionId = ChannelSessionId(UUID.randomUUID())
                 stubAssertion(channelBinding = channelSessionId.toString())
-                keycloakPatch(channelSessionId, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2","amr":$natives}""")
-                    .channel()["state"] shouldBe "AUTHENTICATED"
+                keycloakPatch(channelSessionId, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2"}""")
+                keycloakAuthPassword(channelSessionId)
+                keycloakAuthSms(channelSessionId).channel()["state"] shouldBe "AUTHENTICATED"
                 val token = restTemplate.exchange(
                     "http://localhost:$port/orchestrator/api/v1/kc/channels/$channelSessionId/restore-data?kcSessionId=kc-aged",
                     HttpMethod.GET, HttpEntity<Void>(keycloakHeaders()), mapType
@@ -399,7 +375,7 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
             }
 
             `when`("the next flow run asks for loa2 while the proofs are recent") {
-                val accountId = accountService.createAccountInSetup().accountId
+                val accountId = accountWithSmsAndPassword()
                 val (_, token) = loginAtLoa2(accountId)
                 val resumed = resume(accountId, token)
 
@@ -410,7 +386,7 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
             }
 
             `when`("the next flow run asks for loa2 after the proofs are older than 30 minutes") {
-                val accountId = accountService.createAccountInSetup().accountId
+                val accountId = accountWithSmsAndPassword()
                 val (first, _) = loginAtLoa2(accountId)
                 ageProofs(first.value, minutes = 31)
                 val token = restTemplate.exchange(
@@ -421,9 +397,7 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
 
                 then("they carry only loa1, and a new proof is asked for") {
                     resumed.channel()["state"] shouldNotBe "AUTHENTICATED"
-                    // The account has no method of its own, only Keycloak's native proofs: the
-                    // step-up's way out is identifying again, asked for first (WEB_SELECT_METHOD).
-                    resumed.next()["step"] shouldBe "confirm"
+                    resumed.next()["step"] shouldBe "selectMethod"
                     (resumed["authData"] as Map<*, *>)["acr"] shouldBe "loa1"
                 }
             }

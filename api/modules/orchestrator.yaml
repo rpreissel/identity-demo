@@ -112,19 +112,6 @@ components:
       - accounts
       - entries
       type: object
-    AmrEntry:
-      description: One native authenticator proof - which authenticator TYPE, and which specific execution/instance of it.
-      properties:
-        amrSourceId:
-          example: kc-otp-form-exec-1
-          type: string
-        nativeToolId:
-          example: kc-otp-form
-          type: string
-      required:
-      - amrSourceId
-      - nativeToolId
-      type: object
     AnswerRequest:
       description: 'An answer to whatever the current step is waiting on instead of a tool run (docs/04-orchestrierung.md
         #3) - e.g. "accept"/"decline" for the optional device-binding offer of a lookup login. Which values are valid depends
@@ -343,20 +330,12 @@ components:
       - username
       type: object
     KeycloakChannelUpsertRequest:
-      description: Upsert body for the Keycloak facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). All fields
-        are optional. subject is whom Keycloak already knows (sub vorhanden) - an account binds the channel immediately, once,
-        never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator
-        ACR string, and only raises the channel's floor, never lowers it. amr lists which native Keycloak authenticators (never
-        orchestrator tools) just proved something THIS flow run, one entry per proof - method/loa/factorTypes are resolved
-        server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the Keycloak facade's own mirror of a Tool, not resolved
-        from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged into the channel's
-        evidence and re-checked against the current floor exactly like any other proof; no separate 'combined native acr'
-        field exists, since the orchestrator derives that itself.
+      description: 'Upsert body for the Keycloak facade''s one facade-specific endpoint (docs/05-api.md Abschnitt 3). All
+        fields are optional. subject is whom Keycloak already knows (sub vorhanden) - an account binds the channel immediately,
+        once, never overwritten by a later call. targetAcr is Keycloak''s requested LoA level, already translated into an
+        orchestrator ACR string, and only raises the channel''s floor, never lowers it. Keycloak proves nothing itself: every
+        sign-in step is an orchestrator tool (ADR-58).'
       properties:
-        amr:
-          items:
-            $ref: '#/components/schemas/AmrEntry'
-          type: array
         availableTools:
           description: The Web channel's own declaration of which toolIds its Keycloak theme can render (one com.example.identity.kcext.webtool.WebToolRenderer
             factory per toolId, registered via META-INF/services) - the Keycloak facade's counterpart to the App channel's
@@ -383,9 +362,7 @@ components:
         restoreData:
           description: A signed RestoreData token this same UserSession's channel returned earlier via GET .../restore-data,
             resubmitted verbatim (docs/05-api.md, section 3) - the bulk, one-shot way to seed a brand-new channel with what
-            a PRIOR, unrelated flow run already established, as opposed to subject/amr above which report what THIS flow run
-            just proved. Both are merged into the channel the same way; only restoreData may already be meaningfully old by
-            the time it arrives here. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
+            a PRIOR, unrelated flow run already established. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
           type: string
         subject:
           $ref: ../openapi.yaml#/components/schemas/AuthSubject
@@ -424,17 +401,11 @@ components:
           type: string
         browserClientId:
           type: string
-        loa1Login:
-          enum:
-          - KEYCLOAK_PASSWORD
-          - ORCHESTRATOR
-          type: string
         realm:
           type: string
       required:
       - baseUrl
       - browserClientId
-      - loa1Login
       - realm
       type: object
     KeycloakInvitationView:
@@ -777,9 +748,9 @@ paths:
   /orchestrator/admin/demo-reset:
     post:
       description: 'Deletes every account, ends every session still live (also one without an account), clears the attempt
-        throttles, ends every Keycloak session, restores the preset tool order and locks per channel, the ident-first registration
-        order and the orchestrator''s method selection on loa1. No account is created again: the test persons register themselves.
-        The person register (/mock-personenverzeichnis) is a foreign system and stays as it is.'
+        throttles, ends every Keycloak session, restores the preset tool order and locks per channel, and the ident-first
+        registration order. No account is created again: the test persons register themselves. The person register (/mock-personenverzeichnis)
+        is a foreign system and stays as it is.'
       operationId: reset
       responses:
         '200':
@@ -2130,9 +2101,9 @@ paths:
   /orchestrator/demo/reset:
     post:
       description: 'Deletes every account, ends every session still live (also one without an account), clears the attempt
-        throttles, ends every Keycloak session, restores the preset tool order and locks per channel, the ident-first registration
-        order and the orchestrator''s method selection on loa1. No account is created again: the test persons register themselves.
-        The person register (/mock-personenverzeichnis) is a foreign system and stays as it is.'
+        throttles, ends every Keycloak session, restores the preset tool order and locks per channel, and the ident-first
+        registration order. No account is created again: the test persons register themselves. The person register (/mock-personenverzeichnis)
+        is a foreign system and stays as it is.'
       operationId: resetDemo
       responses:
         '200':

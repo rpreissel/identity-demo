@@ -8,7 +8,7 @@
 > Orchestrator nach. Die Registry wird heute von zwei Listenern genutzt:
 >
 > - `KeycloakAccountRemovalListener` löscht nach dem Ereignis `AccountDeleted` die Daten, die
->   Keycloak selbst zu dem Konto speichert (Sitzungen, Fehlversuche, Zustimmungen).
+>   Keycloak selbst zu dem Konto speichert (Sitzungen, Zustimmungen).
 > - `PersonChangeListener` übernimmt eine Änderung aus dem Personenverzeichnis ins Konto
 >   ([ADR-34](ADR-034-personenverzeichnis-meldet-aenderungen.md)).
 >

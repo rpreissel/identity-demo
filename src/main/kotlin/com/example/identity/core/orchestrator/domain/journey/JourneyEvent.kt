@@ -10,14 +10,6 @@ sealed interface JourneyEvent {
     /** The journey was just created and has to produce its first offer. */
     data object Started : JourneyEvent
 
-    /**
-     * Evidence was reported directly, outside any tool outcome, e.g. by Keycloak's native
-     * authenticators (docs/05-api.md Abschnitt 3b). The channel's
-     * [com.example.identity.core.orchestrator.session.SessionEvidenceRecord] is already updated, so a strategy only
-     * re-checks `ctx.policy.isSatisfied(...)` as after any other proof.
-     */
-    data object EvidenceReported : JourneyEvent
-
     /** A tool finished successfully; [outcome] is what a strategy turns into an [Action]. */
     data class Completed(val tool: Tool, val outcome: ToolOutcome.Completed) : JourneyEvent
 

@@ -27,7 +27,7 @@ zerlegt, und jeder Teil wird für sich eingefroren und geprüft:
   Folgen).
 - **Keycloak-intern** (`/kc/**`): Dieser Teil wird nicht eingefroren. Ein Endpunkt, den nur
   Keycloak aufruft, liegt immer unter `/kc/`. Das gilt auch dann, wenn er zu einem Tool-Modul
-  gehört (`MgmtPasswordController`: `/kc/accounts/{accountId}/password-checks`). Aus demselben
+  gehört. Aus demselben
   Grund fehlt in den Teilen auch die zweite Anmeldeart über [Peer-Auth](../glossar/glossar.md), die
   gemeinsame Endpunkte für Keycloak anbieten. Peer-Auth ist die Art, wie sich Keycloak und
   Orchestrator gegenseitig ausweisen.

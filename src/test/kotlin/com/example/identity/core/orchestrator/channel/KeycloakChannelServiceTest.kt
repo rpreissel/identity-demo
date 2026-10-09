@@ -105,7 +105,6 @@ private class KeycloakChannelFixture {
         accountService = mockk(relaxed = true),
         sessionEvidenceService = mockk(relaxed = true),
         restoreDataCodec = mockk(relaxed = true),
-        nativeAuthenticatorRegistry = mockk(relaxed = true),
         channelSessionRepository = mockk(relaxed = true),
         signInLog = mockk(relaxed = true),
         appTokenSessionService = mockk(relaxed = true),

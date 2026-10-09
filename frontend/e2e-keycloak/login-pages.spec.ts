@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { adminHeaders, ORCHESTRATOR, switchLoa1Login } from './admin'
+import { adminHeaders, ORCHESTRATOR } from './admin'
 import {
   confirmEmailAndSetPassword,
   confirmSms,
@@ -19,8 +19,7 @@ import { kc } from './texts'
 /**
  * The login pages against the real compose stack (docs/adr/ADR-057-keycloakify-einziges-login-theme.md):
  * the theme carries a whole sign-in through. The note in the dark band says the theme, not
- * Keycloak's own pages, drew a page. The pages under test need loa1 on the orchestrator's method selection
- * (ADR-42), so the suite switches it there explicitly. The demo has no accounts of its own, so the
+ * Keycloak's own pages, drew a page. The demo has no accounts of its own, so the
  * suite resets it first and registers the account it signs in with through the website itself.
  */
 
@@ -157,27 +156,10 @@ test('the QR waiting page asks in the background and does not reload', async ({ 
   await expect(page.getByRole('button', { name: ui('Mit App anmelden'), exact: true })).toHaveCount(0)
 })
 
-test.describe('the loa1 switch picks the first page', () => {
-  // The other tests expect the method selection.
-  test.afterEach(async ({ request }) => {
-    await switchLoa1Login(request, 'ORCHESTRATOR')
-  })
+// Keycloak asks for nothing itself (ADR-58): its first page is always the orchestrator's selection.
+test('the first page is the method selection, never a password form of its own', async ({ page }) => {
+  await page.goto(loginUrl())
 
-  test("KEYCLOAK_PASSWORD: Keycloak's password form", async ({ page, request }) => {
-    await switchLoa1Login(request, 'KEYCLOAK_PASSWORD')
-
-    await page.goto(loginUrl())
-
-    await expect(page.locator('input[type="password"]')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'SMS', exact: true })).toHaveCount(0)
-  })
-
-  test('ORCHESTRATOR: the method selection', async ({ page, request }) => {
-    await switchLoa1Login(request, 'KEYCLOAK_PASSWORD')
-    await switchLoa1Login(request, 'ORCHESTRATOR')
-
-    await page.goto(loginUrl())
-
-    await expect(page.getByRole('button', { name: 'SMS', exact: true })).toBeVisible()
-  })
+  await expect(page.getByRole('button', { name: 'SMS', exact: true })).toBeVisible()
+  await expect(page.locator('input[type="password"]')).toHaveCount(0)
 })

@@ -625,18 +625,9 @@ die ein Modul ein anderes Modul oder ein Fremdsystem anspricht, ohne es direkt z
   Die übrigen Stammdaten gibt der Port nie heraus.
 - **`IdentityResolver`**: beantwortet, ob bestätigte Claims zu einem bestehenden Konto gehören
   (`resolve`, `attestedIdentityMatches`). Implementiert von `IdentityMatchingService` (`account`).
-- **`KeycloakToolCalls`**: Tool-Aufrufe, die Keycloak für ein Konto macht, das es schon kennt. Dabei
-  gibt es weder Kanal noch Journey. Ein Beispiel ist das eigene Passwortformular von Keycloak
-  (`MgmtPasswordController` in `auth_password`, [Verfahren `password`](verfahren/password.md)). Der
-  Port prüft, dass die **Peer-Auth-Assertion** genau dieses Konto nennt. Das ist die signierte
-  Anfrage, mit der sich Keycloak beim Orchestrator ausweist. Danach bucht der Port das Ergebnis wie
-  in einer Journey: einen Nachweis auf die Sperre des Kontos, ein Einrichten als Claims und als
-  eingerichtetes Verfahren. Implementiert von `KeycloakToolCallsService` (`orchestrator`). Lehnt ein
-  Modul eine Anfrage wegen des Kontozustands ab, wirft es `InvalidStateException` (`409`).
 - **`PasswordCredentialPort`**: prüft oder ersetzt das Passwort hinter einer `EnrollmentRef`. Er ist
-  für Aufrufer gedacht, die weder Kanal noch Tool-Sitzung haben. Das sind zwei: das Entsperren per
-  Passwort in `auth_kobil` und die Prüfung im Passwortformular von Keycloak
-  (`MgmtPasswordController`). Implementiert in `auth_password`.
+  für Aufrufer gedacht, die keine eigene Tool-Sitzung von `auth_password` haben. Das ist das
+  Entsperren per Passwort in `auth_kobil`. Implementiert in `auth_password`.
 - **`RateLimit`** und **`RateLimits`**: das Zählwerk des Orchestrators, das die Module mitbenutzen
   ([ADR-44](adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)). Eine
   **Mengenbegrenzung** legt fest, wie oft etwas in einem Zeitraum passieren darf. Ein Modul leitet je

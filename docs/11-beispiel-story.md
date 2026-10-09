@@ -177,8 +177,9 @@ Schritten. Es gibt dieselben Journeys und dieselben Tools wie in der App. Es gib
 Unterschiede: Keycloak zeigt die Oberfläche statt der App. Und die Anfragen sind durch eine Sitzung
 abgesichert statt durch einen DPoP-Proof.
 
-Das Kundenportal bietet schon auf der ersten Anmeldeseite alle Verfahren an
-([ADR-42](adr/ADR-042-loa1-anmeldung-umschalten.md)). Mara wählt den QR-Code. Der Browser zeigt den
+Das Kundenportal bietet schon auf der ersten Anmeldeseite alle Verfahren an. Jeden Schritt führt
+der Orchestrator als Tool aus, ein eigenes Passwortformular hat Keycloak nicht
+([ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). Mara wählt den QR-Code. Der Browser zeigt den
 Code (`auth-qr-lookup`) und wartet. Wer Mara ist, weiß dieser Kanal noch nicht. Das stellt sich erst
 heraus, wenn das Handy zustimmt.
 

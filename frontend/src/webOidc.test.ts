@@ -6,7 +6,6 @@ function oidc(overrides: Partial<WebOidcConfig> = {}) {
     baseUrl: 'https://kc.example',
     realm: 'Demo',
     browserClientId: 'identity-demo-web',
-    loa1Login: 'ORCHESTRATOR',
     ...overrides,
   })
 }

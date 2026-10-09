@@ -371,19 +371,6 @@ class JourneyService(
         return advance(journey, channel, JourneyEvent.Answered(answer))
     }
 
-    /**
-     * Syncs [source]'s evidence into a running journey (docs/05-api.md Abschnitt 3b). This is no tool
-     * outcome and knows nothing about Keycloak; the caller names [source]. [updates] is the complete
-     * currently valid set: a method missing here has expired and is dropped. So this runs on every
-     * report. Restored evidence on a fresh channel goes through [start]'s `seedAction` instead.
-     */
-    fun applyEvidenceUpdate(running: RunningJourney, live: LiveChannel, source: String, updates: List<MethodEvidence>) {
-        val journey = running.entity
-        val channel = live.session
-        journeyRecorder.mergeEvidence(journey, channel, source, updates)
-        advance(journey, channel, JourneyEvent.EvidenceReported)
-    }
-
     // Transitions ----------------------------------------------------------------
 
     private fun advance(journey: AuthJourney, channel: ChannelSession, event: JourneyEvent): Step {
@@ -391,26 +378,20 @@ class JourneyService(
         val state = codec.read(journey)
         val ctx = contextFactory.contextFor(journey, channel)
         val transition = strategy.transitionErased(state, event, ctx)
-        // EvidenceReported fires on every upsertChannel, also for a pure re-send of the full set
-        // (docs/05-api.md Abschnitt 3b). Logging it each time would repeat the same entry on every
-        // poll. A real proof always leads to a different state, so nothing real is suppressed.
-        val isNoOpEvidenceUpdate = event is JourneyEvent.EvidenceReported && transition is Transition.To && transition.state == state
-        if (!isNoOpEvidenceUpdate) {
-            // The log shows what routing itself derives, so nextFor stays the one routing authority.
-            val availableTools = routing.availableToolsOf(channel)
-            journeyTraceService.record(channel.forLog(), journey.forLog(), event::class.simpleName!!,
-                journeyState = state::class.simpleName,
-                // acrFloor is what this step was judged against. resolvedAcr is the combined level
-                // of all evidence; a Completed entry's achievedAcr shows only that one tool's
-                // ceiling, so two loa1 factors reaching loa2 would otherwise not show.
-                detail = journeyTraceDetails.eventDetail(event, channel) +
-                    journeyTraceDetails.transitionDetail(transition, journey, channel, state, availableTools) { target ->
-                        routing.nextFor(target, availableTools)
-                    } +
-                    state.logDetail +
-                    mapOf("acrFloor" to ctx.acrFloor, "resolvedAcr" to ctx.policy.resolveAcr(ctx.evidence, ctx.account))
-            )
-        }
+        // The log shows what routing itself derives, so nextFor stays the one routing authority.
+        val availableTools = routing.availableToolsOf(channel)
+        journeyTraceService.record(channel.forLog(), journey.forLog(), event::class.simpleName!!,
+            journeyState = state::class.simpleName,
+            // acrFloor is what this step was judged against. resolvedAcr is the combined level
+            // of all evidence; a Completed entry's achievedAcr shows only that one tool's
+            // ceiling, so two loa1 factors reaching loa2 would otherwise not show.
+            detail = journeyTraceDetails.eventDetail(event, channel) +
+                journeyTraceDetails.transitionDetail(transition, journey, channel, state, availableTools) { target ->
+                    routing.nextFor(target, availableTools)
+                } +
+                state.logDetail +
+                mapOf("acrFloor" to ctx.acrFloor, "resolvedAcr" to ctx.policy.resolveAcr(ctx.evidence, ctx.account))
+        )
         return applyTransition(journey, channel, transition)
     }
 

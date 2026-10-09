@@ -231,7 +231,7 @@ er besteht nie länger als seine Sitzung in Keycloak.
 - [`JourneyActionExecutor.linkDeviceTo`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyActionExecutor.kt#L341)
   verknüpft ein Gerät nur nach Rückfrage neu. Dabei widerruft er jedes Credential, das an den
   Schlüssel gebunden ist.
-- [`KeycloakChannelService.signedOutAtKeycloak`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L64):
+- [`KeycloakChannelService.signedOutAtKeycloak`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L62):
   Eine Abmeldung in Keycloak beendet die Web- und App-Kanäle dieser Sitzung.
 
 **Härtungen:**
@@ -279,10 +279,10 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
   jede Assertion ab („fail-closed“: im Zweifel ablehnen).
 - [`KeycloakChannelAccessGuard`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ChannelAccessGuard.kt#L72):
   Das `channel_binding` muss zum Kanal passen. Eine bekannte Kanal-Id allein reicht nicht.
-- [`KeycloakChannelService.upsertChannel`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L102):
+- [`KeycloakChannelService.upsertChannel`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L100):
   Ein fremdes Subjekt ergibt `409`. RestoreData (ein signierter Zettel mit früheren Nachweisen
-  derselben Sitzung) gilt nur für dasselbe Subjekt. Unbekannte native Tools scheitern.
-- [`KeycloakChannelService.restoreData`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L239)
+  derselben Sitzung) gilt nur für dasselbe Subjekt.
+- [`KeycloakChannelService.restoreData`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L204)
   kürzt die Frist des Kanals auf das Ende der Keycloak-Sitzung. Für Einladungen gibt er nichts
   heraus (I-30).
 - [`RestoreDataCodec.decode`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/RestoreDataCodec.kt#L51)
@@ -301,10 +301,10 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
 - [`PeerAuthAssertionSigner`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/PeerAuthAssertionSigner.java#L21)
   signiert die Assertions. Der Schlüssel ist als Geheimnis der Komponente gespeichert
   ([`OrchestratorSettings.ensureSigningKey`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorSettings.java#L100)).
-- [`OrchestratorClient.send`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorClient.java#L323)
+- [`OrchestratorClient.send`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorClient.java#L338)
   prüft jede Antwort, bevor es den Status auswertet. Die Prüfung der Inhalte steht in
   [`OrchestratorResponseVerifier.checkClaims`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorResponseVerifier.java#L94).
-- [`OrchestratorAuthenticator.handleResponse`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorAuthenticator.java#L142):
+- [`OrchestratorAuthenticator.handleResponse`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorAuthenticator.java#L141):
   Welcher Nutzer angemeldet wird, ergibt sich nur aus dem Subjekt, das der Orchestrator nennt.
 - [`LoginCompletion.judge`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/LoginCompletion.java#L37):
   Eine Anmeldung ist nur fertig, wenn es ein Subjekt gibt, es dasselbe Subjekt ist und das `acr`
@@ -313,13 +313,14 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
   nimmt RestoreData höchstens einmal je Auth-Session an. Er setzt das angefragte Niveau als
   Untergrenze und nimmt keine Einladungen an. Scheitert die Wiederaufnahme, läuft eine normale
   Anmeldung. Ein Fehler gewährt also nichts.
-- [`OrchestratorNotes.stashRestoreDataAtFlowEnd`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L153).
+- [`OrchestratorNotes.stashRestoreDataAtFlowEnd`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L125).
 - [`QrWaitStatusResourceProvider.status`](../keycloak-extension/src/main/java/com/example/identity/kcext/resource/QrWaitStatusResourceProvider.java#L74)
   ist ohne Anmeldung erreichbar. Er verlangt aber das signierte Cookie `AUTH_SESSION_ID` von
   Keycloak und antwortet nur mit `waiting` oder `ready`.
-- [`OrchestratorStorageProvider.isValid`](../keycloak-extension/src/main/java/com/example/identity/kcext/federation/OrchestratorStorageProvider.java#L146):
-  Ist der Orchestrator nicht erreichbar, wirft er einen Fehler, statt `false` zu liefern. Keycloak
-  kann die Nutzer nur lesen, nicht ändern (I-15).
+- [`OrchestratorStorageProvider`](../keycloak-extension/src/main/java/com/example/identity/kcext/federation/OrchestratorStorageProvider.java#L31)
+  liest nur Konten. Er prüft und speichert keine Credentials; jeden Anmeldeschritt führt der
+  Orchestrator als Tool aus ([ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)).
+  Keycloak kann die Nutzer nur lesen, nicht ändern (I-15).
 
 **Härtungen:**
 
@@ -327,9 +328,11 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
   jeder Auswertung (`OrchestratorResponseVerifierTest`, `PeerAuthRoundTripTest`).
 - Jeder Keycloak-Client des Orchestrators hat seinen eigenen Schlüssel (I-16). Das Vertrauen in ein
   selbstsigniertes Zertifikat gilt nie für die ganze JVM (I-17, `KeycloakHttp`).
-- Fehler des Orchestrators zählen nicht als Fehlversuch für den Brute-Force-Schutz von Keycloak.
-  Das gilt auch für Ausfälle und unsignierte Antworten. Die Authenticatoren rufen nie `failure()`
-  auf (K-1, SA-12; `ApiFailureTest`, `NoBruteForceBookingTest`).
+- Keycloaks Brute-Force-Schutz ist aus (`V1__realm`). Keycloak prüft kein Geheimnis, und
+  Fehlversuche zählt allein die Kontosperre des Orchestrators (ADR-44, ADR-58). Der Authenticator
+  ruft trotzdem nie `failure()` auf. So zählte auch ein wieder eingeschalteter Schutz keinen Ausfall
+  und keine unsignierte Antwort als Fehlversuch (K-1, SA-12; `ApiFailureTest`,
+  `NoBruteForceBookingTest`).
 - `LoginCompletion` kennt `loa3`. Ein unbekanntes Ziel-Niveau lässt keine Anmeldung durch (SA-16,
   `LoginCompletionTest`).
 - Das Realm schließt die eigenen Anmeldewege von Keycloak
@@ -364,7 +367,7 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
   `ChannelToolDeclarationIntegrationTest`).
 - Formulardaten (`toolId`, `methodInstanceId`) werden nur als einfaches Pfadsegment
   `[A-Za-z0-9._~-]` übernommen, ohne `.` und `..`
-  ([`OrchestratorClient.segment`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorClient.java#L357),
+  ([`OrchestratorClient.segment`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorClient.java#L374),
   `OrchestratorClientSegmentTest`). Sie können die signierte Adresse also nicht verändern.
 
 **Offene Punkte:**
@@ -378,14 +381,10 @@ Abschnitt 5 „RestoreData als erster Übergang“; [invarianten.md](invarianten
 - **Hinweis** Das Zeitfenster für Peer-Auth beträgt 300 s im ganzen Profil `keycloak` statt nur in
   der Variante `host` (`DPoP-demo-9ppv.13`).
 - **Hinweis** Die Kanal-Id des Web-Kanals wird aus der Tab-Id von Keycloak abgeleitet
-  ([`OrchestratorNotes.channelSessionId`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L77))
+  ([`OrchestratorNotes.channelSessionId`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L75))
   und ist damit vorhersagbar. Für einen Zugriff braucht man trotzdem eine signierte Assertion mit
   passendem `channel_binding` (`DPoP-demo-gxis`).
 - **Hinweis** Der Endpunkt für den QR-Status hat kein Mindestintervall (`DPoP-demo-9ppv.10`).
-- **Bewusst** Anmeldefaktoren, die Keycloak selbst prüft (native Faktoren im `amr`), gelten ohne
-  Obergrenze
-  ([`AcrLevels.HIGHEST`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L146)).
-  Keycloak gilt hier als vertrauenswürdig.
 - **Umgebung** Keycloak und Orchestrator sprechen im compose-Stack über http (`DPoP-demo-ai4x`). Die
   Signaturen in beide Richtungen sichern die Integrität, einschließlich Body und Query. Die
   Vertraulichkeit sichern sie nicht.
@@ -742,7 +741,7 @@ Geheimnisse ins Log gelangen.
 - Kein `println`/`System.out` (geprüft per ArchUnit).
 - Auch Angaben aus abgelehnten DPoP-Proofs und Peer-Auth-Assertions erreichen das Log nur
   gefiltert, auch `alg` und `kid` aus dem Header (SA-11, `OrchestratorExceptionHandlerTest`).
-- Was ein Client in Pfad oder Query schickt (`intent`, `toolId`, `nativeToolId`), erreicht das Log
+- Was ein Client in Pfad oder Query schickt (`intent`, `toolId`), erreicht das Log
   nur ohne Steuer- und Zeilentrennzeichen und auf 200 Zeichen begrenzt
   ([`OrchestratorException.loggable`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/OrchestratorException.kt#L22),
   `OrchestratorExceptionTest`).

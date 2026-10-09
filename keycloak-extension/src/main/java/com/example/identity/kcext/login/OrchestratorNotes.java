@@ -39,8 +39,6 @@ public final class OrchestratorNotes {
     public static final String PENDING_KIND = "orchestrator_pending_kind";
     public static final String PENDING_TOOL_ID = "orchestrator_pending_tool_id";
     public static final String PENDING_TOOL_SESSION_ID = "orchestrator_pending_tool_session_id";
-    /** JSON array of {nativeToolId, amrSourceId} - the full, current set (docs/05-api.md Abschnitt 3b: no delta). */
-    static final String NATIVE_AMR = "orchestrator_native_amr";
     /** Set once restoreData was already submitted this flow run, so a later resume doesn't resend it. */
     static final String RESTORE_SUBMITTED = "orchestrator_restore_submitted";
 
@@ -105,32 +103,6 @@ public final class OrchestratorNotes {
         authSession.removeAuthNote(PENDING_TOOL_ID);
         authSession.removeAuthNote(PENDING_TOOL_SESSION_ID);
         return derived;
-    }
-
-    static List<OrchestratorClient.AmrEntry> nativeAmr(AuthenticationFlowContext context) {
-        String raw = context.getAuthenticationSession().getAuthNote(NATIVE_AMR);
-        List<OrchestratorClient.AmrEntry> entries = new ArrayList<>();
-        if (raw == null || raw.isBlank()) return entries;
-        try {
-            for (JsonNode node : MAPPER.readTree(raw)) {
-                entries.add(new OrchestratorClient.AmrEntry(node.get("nativeToolId").asText(), node.get("amrSourceId").asText()));
-            }
-        } catch (Exception ignored) {
-            // Corrupt note; only appendNativeAmr writes it. Treat as empty.
-        }
-        return entries;
-    }
-
-    /** Appends or replaces (by nativeToolId) one native proof - the full, current set is always resent, never a delta. */
-    static void appendNativeAmr(AuthenticationFlowContext context, String nativeToolId, String amrSourceId) {
-        List<OrchestratorClient.AmrEntry> entries = new ArrayList<>(nativeAmr(context));
-        entries.removeIf(e -> e.nativeToolId().equals(nativeToolId));
-        entries.add(new OrchestratorClient.AmrEntry(nativeToolId, amrSourceId));
-        ArrayNode array = MAPPER.createArrayNode();
-        for (OrchestratorClient.AmrEntry entry : entries) {
-            array.addObject().put("nativeToolId", entry.nativeToolId()).put("amrSourceId", entry.amrSourceId());
-        }
-        context.getAuthenticationSession().setAuthNote(NATIVE_AMR, array.toString());
     }
 
     /**

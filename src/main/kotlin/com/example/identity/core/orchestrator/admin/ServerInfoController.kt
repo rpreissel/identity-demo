@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.admin
 
 import com.example.identity.demo.demo_mode.DemoMode
-import com.example.identity.core.orchestrator.keycloak.Loa1Login
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.core.orchestrator.session.FeatureFlagService
 import com.example.identity.core.orchestrator.tool.ToolAvailabilityService
@@ -10,7 +9,6 @@ import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.health.actuate.endpoint.CompositeHealthDescriptor
 import org.springframework.boot.health.actuate.endpoint.HealthEndpoint
 import org.springframework.core.env.Environment
@@ -33,8 +31,6 @@ data class KeycloakInfo(
     val baseUrl: String,
     val realm: String,
     val browserClientId: String,
-    /** What the browser client's loa1 asks for right now (admin page, ADR-42). */
-    val loa1Login: Loa1Login,
 )
 
 data class ServerInfo(
@@ -82,7 +78,6 @@ class ServerInfoController(
     private val environment: Environment,
     private val featureFlagService: FeatureFlagService,
     private val toolAvailabilityService: ToolAvailabilityService,
-    private val loa1LoginSwitch: ObjectProvider<Loa1LoginSwitch>,
     private val healthEndpoint: HealthEndpoint,
     private val meterRegistry: MeterRegistry,
     private val demoMode: DemoMode,
@@ -132,6 +127,5 @@ class ServerInfoController(
         baseUrl = environment.getRequiredProperty("keycloak-sync.public-base-url"),
         realm = environment.getRequiredProperty("keycloak-sync.realm"),
         browserClientId = environment.getRequiredProperty("keycloak-web.browser-client-id"),
-        loa1Login = loa1LoginSwitch.getObject().current(),
     )
 }

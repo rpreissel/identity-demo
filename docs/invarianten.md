@@ -129,7 +129,7 @@ Nummern stehen in der Liste am Ende.
   - Mechanismus: `sql:ux_auth_method_active_singleton`, `test:DatabaseInvariantConstraintTest` (prüft auch, dass die Liste der Verfahren im SQL zu den Beschreibungen der Verfahren im Code passt), `test:ModelBasedJourneyTest`
 - **I-21 Was eine ersetzte Instanz nachwies und die neue nicht, gilt nicht mehr; jede Passwort-Instanz hat ihren eigenen Nachweis.**
   - Worum es geht: Wer seine SMS-Nummer wechselt, hat danach nur noch die neue Nummer als bestätigt. Die alte zählt nicht mehr. Ein neues Passwort erbt nichts vom alten.
-  - Mechanismus: `test:AccountServiceDbTest`, `test:MgmtPasswordIntegrationTest`
+  - Mechanismus: `test:AccountServiceDbTest`
 - **I-14 Kein Gerätelink zeigt auf ein gelöschtes Konto.**
   - Worum es geht: Wird ein Konto gelöscht, verschwinden auch die Verknüpfungen seiner Geräte. Sonst würde ein Gerät noch auf ein Konto verweisen, das es nicht mehr gibt.
   - Mechanismus: `type:AccountDeletionService` (jede Kontolöschung läuft hierüber, auch die einer abgebrochenen Registrierung, und nimmt die Links mit), `test:ModelBasedJourneyTest`

@@ -189,7 +189,7 @@ danach ordnen, wie sie beginnen:
 | `FAST_ACCESS` | So schnell wie möglich auf diesem Gerät angemeldet sein, und zwar so, dass es auch künftig klappt | `POST /app/channels` (Standard) |
 | `REGISTER` | Sich bewusst frisch identifizieren, auch auf einem schon verknüpften Gerät | `POST /app/channels` mit `intent=register` (App) bzw. `PATCH /kc/channels/{id}` mit `intent=register` (Web, siehe unten) |
 | `LOOKUP_LOGIN` | Ein bestehendes Konto anmelden, ohne das Gerät zu verknüpfen (klassische Anmeldung wie im Web) | `POST /app/channels` mit `intent=lookup_login` |
-| `WEB_SELECT_METHOD` | Alle im Web-Kanal nutzbaren Tools in einem Auswahlschritt (`selectMethod`) anbieten. Um das Ausweichen auf andere Verfahren kümmert sich Keycloak selbst. Gibt es beim Step-up kein passendes Verfahren, bietet die Journey die erneute Identifizierung an (`RE_IDENTIFY`) | Standard-Einstieg des `WEB`-Kanals ([05-api.md](05-api.md) Abschnitt 3b) |
+| `WEB_SELECT_METHOD` | Alle im Web-Kanal nutzbaren Tools in einem Auswahlschritt (`selectMethod`) anbieten. Gibt es beim Step-up kein passendes Verfahren, bietet die Journey die erneute Identifizierung an (`RE_IDENTIFY`) | Standard-Einstieg des `WEB`-Kanals ([05-api.md](05-api.md) Abschnitt 3b) |
 | `STEP_UP` | Das Niveau anheben | nur auf einem Kanal, der `AUTHENTICATED` (angemeldet) ist |
 | `MANAGE_AUTH_METHODS` | Verfahren hinzufügen oder entfernen | nur auf einem Kanal, der `AUTHENTICATED` ist |
 | `CONFIRM_PEER_LOGIN` | Eine wartende Anmeldung im Web per `auth-qr`/`auth-qr-lookup` bestätigen oder ablehnen | `POST /app/channels` mit `intent=confirm_peer_login` **oder** `POST /channels/{id}/peer-logins` auf einem Kanal, der `AUTHENTICATED` ist. Beide Wege prüfen dasselbe |
@@ -697,7 +697,6 @@ Ein **Ereignis** (`JourneyEvent`) ist das, was der Journey gerade passiert ist:
 | `Completed(tool, outcome)` | Ein Tool wurde erfolgreich abgeschlossen. Was das bedeutet, entscheidet hier die Strategie |
 | `Abandoned(tool)` | „Zurück“ oder „Wechseln“: Der Nutzer hat das gestartete Tool ohne Abschluss verworfen |
 | `ActionCompleted` | Die `Action` eines `Perform`-Übergangs (unten) ist ausgeführt. Der `JourneyContext` ist neu aufgebaut |
-| `EvidenceReported` | Ein Nachweis kam außerhalb eines Tools an (eigene Verfahren von Keycloak). Die `SessionEvidence` ist bereits aktualisiert |
 | `SubJourneyFinished(intent, achievedAcr)` | Eine untergeordnete Journey, die als Voraussetzung gestartet wurde, ist fertig |
 | `SubJourneyCancelled(intent)` | Die untergeordnete Journey wurde abgelehnt oder aufgegeben, ohne Ergebnis |
 | `Answered(answer)` | Eine ausdrückliche Antwort auf einen `AnswerableState` (einen Zustand mit Ja/Nein-Frage) statt eines Tools. `answer` ist ein String, kein `Boolean` |
@@ -863,10 +862,9 @@ Der Executor liest, fragt die Regel und schreibt.
 
 ### RestoreData als erster Übergang
 
-Manchmal liefert der Aufrufer schon beim Start einen Nachweis mit. Das ist zum einen RestoreData
-im Web-Kanal ([05-api.md](05-api.md) Abschnitt 3b): ein von Keycloak aufbewahrter Stand früherer
-Nachweise. Zum anderen sind es die Verfahren, die Keycloaks eigene Formulare im laufenden Durchlauf
-schon nachgewiesen haben (`amr`), wenn der Aufruf den Kanal erst anlegt. Beides kommt nie zusammen.
+Manchmal liefert der Aufrufer schon beim Start einen Nachweis mit. Das ist RestoreData im
+Web-Kanal ([05-api.md](05-api.md) Abschnitt 3b): ein von Keycloak aufbewahrter Stand früherer
+Nachweise.
 
 Ein solcher Nachweis ist keine fachliche Entscheidung einer Strategie, sondern nur eine Information
 des Aufrufers. Er läuft deshalb als **erster Übergang** des Automaten. In Statecharts ist das der

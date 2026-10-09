@@ -71,15 +71,13 @@ Was dabei zu bedenken ist:
   Sitzung angemeldet hat; sie steht später im Token. `amr`-Werte und Methodennamen teilen sich einen
   Namensraum. `ident-bank` meldet deshalb etwa `bank-kyc` und nicht `bank`, so wie `ident-nect` den
   Wert `nect-eid` meldet.
-- **Die Methode heißt `totp`, nicht `otp`.** Keycloak bringt ein eigenes OTP-Verfahren mit. Der
-  Orchestrator kennt es als natives Verfahren (`kc-otp-form` mit der Methode `otp`, siehe
-  `NativeAuthenticatorRegistry`). Das neue Tool ist ein anderes Verfahren mit einem anderen
-  Geheimnis und braucht deshalb einen anderen Namen.
-- **Warum überhaupt ein eigenes TOTP, wenn Keycloak eins hat?** [ADR-8](adr/ADR-008-keycloak-fuehrt-seine-eigenen-nativen-schritte-selbst-statt.md)
-  legt fest: Was Keycloak selbst kann, nutzt man. Die App spricht aber nicht mit Keycloak, und
-  dieselbe Authenticator-App soll in beiden Kanälen gelten. Der Grund für das eigene Tool ist hier,
-  dass das Geheimnis nur an einer Stelle liegen soll. Wer nur den Web-Kanal braucht, nimmt das OTP
-  von Keycloak und baut nichts.
+- **Warum ein eigenes TOTP, wenn Keycloak eins hat?** Keycloak führt keine eigenen
+  Anmeldeschritte, und seine Verfahren werden nicht als Tools umhüllt
+  ([ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). Braucht das Projekt ein
+  Verfahren, das Keycloak mitbringt, wird es ein eigenes Tool mit eigenem Geheimnis im
+  Orchestrator. Dann gelten die Regeln des Kontos auch dafür, das Geheimnis liegt nur an einer
+  Stelle, und dieselbe Authenticator-App gilt in beiden Kanälen. Die App spricht ohnehin nicht mit
+  Keycloak.
 - **Niveaus.** TOTP allein beweist Besitz und erreicht `loa1`. Zusammen mit dem Passwort (Wissen)
   erreicht es `loa2`, so wie SMS und Passwort in der Beispiel-Story. Die Obergrenze aus
   [ADR-5](adr/ADR-005-drei-obergrenzen-fuer-das-sicherheitsniveau.md) setzt der Orchestrator durch.

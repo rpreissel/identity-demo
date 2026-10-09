@@ -59,18 +59,6 @@ data class DeviceLinkResponse(
 )
 
 /**
- * One method a native Keycloak authenticator proved in this flow run (docs/05-api.md Abschnitt 3b,
- * ADR-8). Only two ids: method, loa and factor types are fixed per authenticator type and come from
- * [NativeAuthenticatorDescriptor] via [nativeToolId]. [amrSourceId] names this proof instance and
- * stays the same on refreshes, so a refresh is not taken for a new proof.
- */
-@Schema(description = "One native authenticator proof - which authenticator TYPE, and which specific execution/instance of it.")
-data class AmrEntry(
-    @field:Schema(example = "kc-otp-form") val nativeToolId: String,
-    @field:Schema(example = "kc-otp-form-exec-1") val amrSourceId: String
-)
-
-/**
  * What a new Web channel may resume from without re-proving it (docs/05-api.md Abschnitt 3b).
  * [evidence] is the real `SessionEvidence`, not a lossy copy. Fetched from its own endpoint by the
  * authenticator's end-of-flow hook only. On the wire it is always signed by [RestoreDataCodec] and

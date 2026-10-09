@@ -20,7 +20,7 @@ class NoBruteForceBookingTest {
 
     @Test
     void theOrchestratorAuthenticatorsNeverReportAFailedAttempt() throws IOException {
-        for (String file : new String[]{"OrchestratorAuthenticator.java", "OrchestratorUpdateAuthenticator.java"}) {
+        for (String file : new String[]{"OrchestratorAuthenticator.java"}) {
             String source = Files.readString(LOGIN.resolve(file));
             assertFalse(source.contains(".failure("), file + " calls failure()");
             assertFalse(source.contains(".failureChallenge("), file + " calls failureChallenge()");

@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.api.v1.keycloak
 
-import com.example.identity.core.orchestrator.channel.AmrEntry
 import com.example.identity.contract.tool_api.envelope.AuthSubject
 import com.fasterxml.jackson.annotation.JsonInclude
 import io.swagger.v3.oas.annotations.media.Schema
@@ -11,13 +10,8 @@ import io.swagger.v3.oas.annotations.media.Schema
         "(sub vorhanden) - an account binds the channel immediately, once, never overwritten by a " +
         "later call. targetAcr is Keycloak's requested LoA level, already " +
         "translated into an orchestrator ACR string, and only raises the channel's floor, never " +
-        "lowers it. amr lists which native Keycloak authenticators (never orchestrator tools) " +
-        "just proved something THIS flow run, one entry per proof - method/loa/factorTypes are " +
-        "resolved server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the Keycloak facade's " +
-        "own mirror of a Tool, not resolved from the orchestrator's own catalog (which " +
-        "stays entirely ignorant of native authenticators). Merged into the channel's evidence " +
-        "and re-checked against the current floor exactly like any other proof; no separate " +
-        "'combined native acr' field exists, since the orchestrator derives that itself."
+        "lowers it. Keycloak proves nothing itself: every sign-in step is an orchestrator tool " +
+        "(ADR-58)."
 )
 data class KeycloakChannelUpsertRequest(
     @field:Schema(
@@ -29,14 +23,11 @@ data class KeycloakChannelUpsertRequest(
     val subject: AuthSubject? = null,
     @field:Schema(example = "loa2")
     val targetAcr: String? = null,
-    val amr: List<AmrEntry>? = null,
     @field:Schema(
         description = "A signed RestoreData token this same UserSession's channel returned " +
             "earlier via GET .../restore-data, resubmitted verbatim (docs/05-api.md, section 3) - " +
             "the bulk, one-shot way to seed a brand-new channel with what a PRIOR, " +
-            "unrelated flow run already established, as opposed to subject/amr above which " +
-            "report what THIS flow run just proved. Both are merged into the channel the same " +
-            "way; only restoreData may already be meaningfully old by the time it arrives here. " +
+            "unrelated flow run already established. " +
             "Opaque to every caller but the orchestrator itself - see RestoreDataCodec."
     )
     val restoreData: String? = null,

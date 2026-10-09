@@ -1,8 +1,9 @@
 package com.example.identity.core.orchestrator.domain
 
 /**
- * Who proved a method: the orchestrator's own tool, or a native Keycloak authenticator
- * (docs/05-api.md Abschnitt 3b).
+ * Who vouches for a method: the orchestrator's own tool in this channel, or Keycloak's session, from
+ * which an earlier flow run's evidence is carried over (RestoreData, docs/05-api.md Abschnitt 3b).
+ * Keycloak proves nothing itself (ADR-58).
  *
  * Domain vocabulary, not a persistence detail: the policy judges evidence by its origin and must
  * not depend on the session package that stores it.

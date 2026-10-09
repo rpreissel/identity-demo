@@ -179,14 +179,11 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   *Im Code:* `FactorType` mit `KNOWLEDGE`, `POSSESSION`, `INHERENCE`.
   *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 4.
 - **Feature-Flag**: Ein Schalter, mit dem der Betreiber ein Verhalten umstellt, während die
-  Anwendung läuft, ohne sie neu zu starten. Beispiele:
-  - ob die Registrierung mit dem Einrichten eines Verfahrens beginnt statt mit der Identifizierung,
-  - ob Keycloak für `loa1` selbst nach dem Passwort fragt.
-
+  Anwendung läuft, ohne sie neu zu starten. Ein Beispiel ist, ob die Registrierung mit dem
+  Einrichten eines Verfahrens beginnt statt mit der Identifizierung.
   *Im Code:* `FeatureFlagService`. Die Schalter, die eine Strategie liest, nennt `JourneyFeatureFlag`
-  (`register-enroll-first`). Den Schalter für Keycloak nennt `KeycloakFeatureFlags`
-  (`keycloak-loa1-password`).
-  *Mehr dazu:* [ADR-42](../adr/ADR-042-loa1-anmeldung-umschalten.md).
+  (`register-enroll-first`).
+  *Mehr dazu:* [Journey `REGISTER_ENROLL_FIRST`](../journeys/register-enroll-first.md).
 - **Freischaltcode**: Ein Code, den die Versicherung per Brief schickt und mit dem sich eine Person
   identifizieren kann. Der Code liegt beim Personenverzeichnis. Der Orchestrator fragt ihn dort ab,
   statt eine eigene Kopie zu halten.
@@ -489,10 +486,11 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   *Im Code:* `ClaimSource`. Beim Widerruf `RetractionSource`, Spalte `claim_source`.
   *Mehr dazu:* [02-domaenenmodell](../02-domaenenmodell.md) Abschnitt 6,
   [ADR-12](../adr/ADR-012-ein-widerruf-ist-eine-eigene-zeile-mit-eigenem.md).
-- **Quelle eines Nachweises**: Sie sagt, wer ein Verfahren in der Sitzung geprüft hat. Das ist
-  entweder der Orchestrator mit einem eigenen Tool oder Keycloak mit einem eigenen Anmeldeschritt,
-  etwa seinem Passwortformular. Ein Nachweis des Orchestrators zählt nie weniger als eine Meldung
-  von Keycloak. Nicht zu verwechseln mit der Quelle einer Angabe.
+- **Quelle eines Nachweises**: Sie sagt, woher ein Nachweis in der Sitzung stammt. Das ist
+  entweder ein Tool des Orchestrators in diesem Kanal oder Keycloaks Sitzung, die Nachweise eines
+  früheren Anmeldedurchlaufs weitergibt (RestoreData). Keycloak selbst prüft kein Verfahren
+  ([ADR-58](../adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). Nicht zu
+  verwechseln mit der Quelle einer Angabe.
   *Im Code:* `AmrSource` mit `orchestrator` und `kc`.
   *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3b.
 
@@ -664,7 +662,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   *Im Code:* `ChannelType.WEB`. Die Anbindung an Keycloak ist nach der Technik benannt: Klassen
   `Keycloak…` (etwa `KeycloakChannelService`), Pfade `/kc/…`.
   *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3b,
-  [ADR-8](../adr/ADR-008-keycloak-fuehrt-seine-eigenen-nativen-schritte-selbst-statt.md).
+  [ADR-58](../adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md).
 - **Widerruf**: Ein Widerruf nimmt eine Angabe zurück, etwa wenn das Personenverzeichnis meldet, dass
   eine Mitgliedsnummer nicht mehr gilt. Die alte Angabe wird dabei nicht gelöscht. Der Widerruf ist
   ein eigener Eintrag mit eigener Quelle. So bleibt nachvollziehbar, was wann galt.

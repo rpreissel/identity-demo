@@ -57,7 +57,7 @@ public class OrchestratorResumeAuthenticatorFactory implements AuthenticationFlo
     public String getHelpText() {
         return "First step of every orchestrator-driven browser flow run (docs/05-api.md "
                 + "Abschnitt 3) - creates/resumes this run's channel and, on step-up, resubmits RestoreData. Place "
-                + "before auth-cookie so it covers the native-password branch too.";
+                + "before auth-cookie, at the start of the flow.";
     }
 
     @Override

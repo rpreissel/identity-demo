@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component
 
 /**
  * Ends every session in the realm - for the demo only, where all its users are orchestrator
- * accounts. Writes as the migration client, like [KeycloakLoa1Login].
+ * accounts. Writes as the migration client ([KeycloakMigrationToken]).
  */
 @Component
 @Profile("keycloak")

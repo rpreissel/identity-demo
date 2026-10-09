@@ -3,15 +3,11 @@ package com.example.identity.kcext.federation;
 import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.login.OrchestratorNotes;
 import org.keycloak.component.ComponentModel;
-import org.keycloak.credential.CredentialInput;
-import org.keycloak.credential.CredentialInputUpdater;
-import org.keycloak.credential.CredentialInputValidator;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ModelException;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
-import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.storage.ReadOnlyException;
 import org.keycloak.storage.StorageId;
 import org.keycloak.storage.UserStorageProvider;
@@ -27,12 +23,13 @@ import java.util.stream.Stream;
 /**
  * The orchestrator's accounts are Keycloak's users, read through on demand and never copied (ADR-38).
  * Every lookup asks the orchestrator and wraps the answer as an {@link OrchestratorUser}; Keycloak
- * caches it briefly. The password is checked by the orchestrator and never changed or stored here.
+ * caches it briefly. Keycloak checks and stores no credentials: every sign-in step is an orchestrator
+ * tool (ADR-58).
  * Searches return at most one user by exact username, email or account id: nobody pages through
  * millions of users, and no login needs to.
  */
 public class OrchestratorStorageProvider implements UserStorageProvider, UserRegistrationProvider,
-        UserLookupProvider, UserQueryMethodsProvider, CredentialInputValidator, CredentialInputUpdater {
+        UserLookupProvider, UserQueryMethodsProvider {
 
 
     private final KeycloakSession session;
@@ -138,54 +135,6 @@ public class OrchestratorStorageProvider implements UserStorageProvider, UserReg
     public boolean removeUser(RealmModel realm, UserModel user) {
         // UserStorageManager delegates to local storage after this provider approves removal.
         return true;
-    }
-
-    @Override
-    public boolean supportsCredentialType(String credentialType) {
-        return PasswordCredentialModel.TYPE.equals(credentialType);
-    }
-
-    @Override
-    public boolean isConfiguredFor(RealmModel realm, UserModel user, String credentialType) {
-        // Every federated user is meant to have a password (docs/verfahren/password.md); finding out
-        // for sure would cost a round trip.
-        return supportsCredentialType(credentialType);
-    }
-
-    @Override
-    public boolean isValid(RealmModel realm, UserModel user, CredentialInput input) {
-        if (!supportsCredentialType(input.getType())) return false;
-        Long accountId = OrchestratorNotes.accountId(user);
-        if (accountId == null) return false;
-        // Ein Ausfall ist kein falsches Passwort: false zaehlte Keycloaks Brute-Force-Schutz dem
-        // Nutzer an und sperrte bei kurzem Ausfall alle, die sich gerade anmelden.
-        try {
-            return client().verifyPassword(accountId, input.getChallengeResponse());
-        } catch (IOException | InterruptedException e) {
-            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-            throw new ModelException("Orchestrator password verification failed", e);
-        }
-    }
-
-    /**
-     * A password is changed only through the orchestrator's method management, behind its level
-     * check (ADR-38, Nachtrag 2026-10-03). Throwing instead of returning false
-     * keeps Keycloak from storing the password locally, next to the orchestrator's.
-     */
-    @Override
-    public boolean updateCredential(RealmModel realm, UserModel user, CredentialInput input) {
-        if (!supportsCredentialType(input.getType())) return false;
-        throw new ReadOnlyException("Passwords are changed in the orchestrator, not in Keycloak");
-    }
-
-    @Override
-    public void disableCredentialType(RealmModel realm, UserModel user, String credentialType) {
-        // A password cannot be disabled on its own, like with the built-in provider.
-    }
-
-    @Override
-    public Stream<String> getDisableableCredentialTypesStream(RealmModel realm, UserModel user) {
-        return Stream.empty();
     }
 
     @Override

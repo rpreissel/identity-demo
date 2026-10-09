@@ -1,5 +1,5 @@
 import { expect, type APIRequestContext, type Page } from '@playwright/test'
-import { adminHeaders, ORCHESTRATOR, switchLoa1Login } from './admin'
+import { adminHeaders, ORCHESTRATOR } from './admin'
 import { ui } from '../e2e/texts'
 import { kc } from './texts'
 
@@ -12,11 +12,10 @@ export const KEYCLOAK = process.env.KEYCLOAK_URL ?? 'https://localhost:8543'
 /** The password the suite's own registration set: the demo password the page offered. */
 export let registeredPassword = ''
 
-/** The demo's start: no accounts, the method selection. */
+/** The demo's start: no accounts. */
 export async function resetDemo(request: APIRequestContext) {
   const reset = await request.post(`${ORCHESTRATOR}/orchestrator/admin/demo-reset`, { headers: adminHeaders })
   expect(reset.status()).toBe(200)
-  await switchLoa1Login(request, 'ORCHESTRATOR')
 }
 
 /** The demo value a page shows next to its field, e.g. "Demo-Code: 123456" (ADR-28). */

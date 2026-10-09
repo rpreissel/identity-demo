@@ -114,8 +114,7 @@ com.example.identity
 
 - **M1** `orchestrator` — Verwaltet den Zustand von Sitzungen und Journeys, die Regeln und die
   Wiederholungen. Stellt die REST-API der Kanäle bereit, also die Schnittstelle für App und Website.
-  Implementiert die `tool_api`-Ports `ToolJourney`, `Lockouts`, `KeycloakToolCalls`, `DeviceProofs`
-  und `RateLimits`.
+  Implementiert die `tool_api`-Ports `ToolJourney`, `Lockouts`, `DeviceProofs` und `RateLimits`.
 - **M1a** `orchestrator.domain` — Kein eigenes Modulith-Modul, sondern das unterste Paket
   **innerhalb** von `orchestrator`. Es enthält:
   - die gemeinsamen Begriffe (`AuthIntent`, `AmrSource`, `AcrLevels`, `OrchestratorException`,
@@ -181,9 +180,7 @@ Ein Tool ist ein einzelner Schritt in einer Journey, zum Beispiel „SMS-Code pr
   greift es nicht direkt zu.
 - **M6** `auth_password` — Passwort-Verfahren (Tools `enroll-password`, `auth-password`,
   `auth-password-lookup`). Über `requires` am Einrichten setzt es eine bestätigte E-Mail-Adresse
-  voraus (`ClaimRequirement(EMAIL, PROVEN)`) ([Tool-Architektur](03-tool-architektur.md)). Dazu
-  kommen die zustandslosen Endpunkte für das eigene Passwortformular von Keycloak
-  (`MgmtPasswordController`, Port `KeycloakToolCalls`).
+  voraus (`ClaimRequirement(EMAIL, PROVEN)`) ([Tool-Architektur](03-tool-architektur.md)).
 - **M11** `auth_qr` — Anmeldung per QR-Code auf der Website, bestätigt in der App (Tools `enroll-qr`,
   `auth-qr`, `auth-qr-lookup`, `approve-qr`, [`CONFIRM_PEER_LOGIN`](journeys/confirm-peer-login.md)).
   Speichert `QrLoginRequest` selbst und greift nicht auf `account` zu. Eigene `@RestController`.
@@ -422,7 +419,7 @@ Tool-Modulen laufen über den Vertrag `tool_api`.
 - **M-3** — Tool-Module und Orchestrator sind nur über die gemeinsame Schnittstelle (SPI) `tool_api`
   verbunden, nie direkt.
   - *Kriterium:* Konstruktor-Injection nur mit `tool_api`-Interfaces (`ToolJourney`, `Lockouts`,
-    `KeycloakToolCalls`, `AccountDirectory`, `PersonDirectory`, `ActivationCodes`, `Invitations`,
+    `AccountDirectory`, `PersonDirectory`, `ActivationCodes`, `Invitations`,
     `DeviceProofs`, `RateLimits`). Kein Tool-Modul importiert `orchestrator`, und der Orchestrator
     importiert kein Tool-Modul. Es gibt benannte Ausnahmen, jeweils zu einem simulierten
     Fremdsystem: `auth_kobil → kobil`, `ident_nect → nect`, `auth_sms → sms`, `auth_email → mail`

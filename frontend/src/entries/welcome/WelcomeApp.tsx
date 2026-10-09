@@ -441,12 +441,6 @@ function ServerStatus() {
               </a>
             )}
           </li>
-          {info.keycloak && (
-            <li>
-              <span className="start-setting-label">{t('Erste Anmeldeseite')}</span>
-              <strong>{info.keycloak.loa1Login === 'ORCHESTRATOR' ? t('Gleich alle Verfahren zur Wahl') : t('Erst das Passwort')}</strong>
-            </li>
-          )}
           <li>
             <span className="start-setting-label">{t('Registrierungsreihenfolge')}</span>
             <strong>{info.registrationEnrollFirst ? t('Enrollment zuerst') : t('Identifikation zuerst')}</strong>

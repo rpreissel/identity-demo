@@ -6,8 +6,9 @@
 Der `WEB`-Kanal ist die Verbindung der Website zum Orchestrator. Die Website wird dabei über
 Keycloak angebunden, das Produkt, das dort die Anmeldung führt. Mit dem Intent `WEB_SELECT_METHOD`
 beginnt im Web-Kanal jede Anmeldung und jeder Step-up (das Anheben des Sicherheitsniveaus), wenn
-nichts anderes angegeben ist. Mehr dazu in [05-api.md](../05-api.md) Abschnitt 3b und in ADR-8 in
-[12-entscheidungen.md](../12-entscheidungen.md). Der zweite mögliche Einstieg im Web-Kanal ist
+nichts anderes angegeben ist. Jeden Anmeldeschritt führt dabei der Orchestrator als Tool aus;
+Keycloak hat keine eigenen ([ADR-58](../adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)).
+Mehr dazu in [05-api.md](../05-api.md) Abschnitt 3b. Der zweite mögliche Einstieg im Web-Kanal ist
 [`REGISTER`](register.md).
 
 **Ein Zustand für das Angebot.** Die Journey hat einen Zustand für das Angebot. Er bietet alle im
@@ -53,17 +54,14 @@ sich nur im Feld `accountAlreadyKnown`:
   Nach einem Einmalkennwort ist das Subjekt des Kanals die Einladung und kein Konto. Die Journey ist
   dann sofort fertig, denn eine Einladung kann keine weiteren Nachweise sammeln. Verlangt die
   Anmeldung ein höheres Niveau, als die Einladung erreicht, bricht die Journey ab, bevor etwas
-  gebunden wird. Diesen Fall gibt es nur, wenn der Schalter für die `loa1`-Anmeldung auf den
-  Orchestrator gestellt ist ([ADR-42](../adr/ADR-042-loa1-anmeldung-umschalten.md)). Sonst meldet
-  das Passwortformular von Keycloak das Konto schon vorher.
+  gebunden wird.
 - **Step-up** (das Konto ist schon vor Beginn der Journey auf dem Kanal gesetzt): Angeboten werden
   nur Anmelde-Tools für dieses Konto.
 
-**Bei jedem Ereignis neu prüfen.** Bei jedem Ereignis (`Started`, `EvidenceReported`,
-`ActionCompleted`) prüft die Journey erneut, ob die vorhandenen Nachweise reichen. Dann baut sie die
-Kandidatenliste ganz neu auf. Ein Nachweis kann nämlich schon vorliegen, bevor überhaupt etwas
-angeboten wurde. Er kann etwa aus einem eigenen Verfahren von Keycloak stammen oder aus
-RestoreData, einem von Keycloak aufbewahrten Stand früherer Nachweise.
+**Bei jedem Ereignis neu prüfen.** Bei jedem Ereignis (`Started`, `ActionCompleted`) prüft die
+Journey erneut, ob die vorhandenen Nachweise reichen. Dann baut sie die Kandidatenliste ganz neu
+auf. Ein Nachweis kann nämlich schon vorliegen, bevor überhaupt etwas angeboten wurde. Er kann etwa aus RestoreData stammen, einem von Keycloak aufbewahrten Stand
+früherer Nachweise.
 
 **Der Ausweg beim Step-up.** Manchmal bleibt für das Konto kein Anmelde-Tool übrig, das das
 fehlende Niveau liefern kann, oder der Nutzer hat alle abgelehnt. Dann fordert die Journey die

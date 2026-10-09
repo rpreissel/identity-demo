@@ -67,7 +67,6 @@ public final class OrchestratorClient {
             String channelSessionId,
             KcSubject subject,
             String targetAcr,
-            List<AmrEntry> amr,
             String restoreData,
             String durableKcSessionId,
             List<String> availableTools,
@@ -88,14 +87,6 @@ public final class OrchestratorClient {
         if (availableTools != null && !availableTools.isEmpty()) {
             ArrayNode toolsArray = body.putArray("availableTools");
             availableTools.forEach(toolsArray::add);
-        }
-        if (amr != null && !amr.isEmpty()) {
-            ArrayNode amrArray = body.putArray("amr");
-            for (AmrEntry entry : amr) {
-                ObjectNode entryNode = amrArray.addObject();
-                entryNode.put("nativeToolId", entry.nativeToolId());
-                entryNode.put("amrSourceId", entry.amrSourceId());
-            }
         }
         if (restoreData != null) {
             body.put("restoreData", restoreData);
@@ -234,20 +225,6 @@ public final class OrchestratorClient {
     }
 
     /**
-     * Stateless password check for Keycloak's native password credential. There is no channel
-     * here: the account id goes into the URL path, which {@code htu} binds, and the assertion's
-     * {@code channel_binding} claim carries the same account id. The orchestrator's
-     * {@code MgmtPasswordController} checks both match.
-     */
-    public boolean verifyPassword(long accountId, String password) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/kc/accounts/" + accountId + "/password-checks";
-        ObjectNode body = MAPPER.createObjectNode();
-        body.put("password", password);
-        JsonNode response = send("POST", path, String.valueOf(accountId), body);
-        return response.path("valid").asBoolean(false);
-    }
-
-    /**
      * Reports that Keycloak ended session {@code kcSessionId} of {@code subject}, for the sign-in
      * log (ADR-39, ADR-48). The Web channel's logout is Keycloak's own; the orchestrator would not
      * learn of it otherwise. The binding names the account or invitation, as with the lookups.
@@ -260,7 +237,7 @@ public final class OrchestratorClient {
 
     /**
      * The account behind a federated user, read by id; the binding names the account like the
-     * password endpoints do. {@code null} when there is no such account.
+     * sign-out report does. {@code null} when there is no such account.
      */
     public KcAccount accountById(long accountId) throws IOException, InterruptedException {
         return lookup("/orchestrator/api/v1/kc/accounts/" + accountId, String.valueOf(accountId));
@@ -421,10 +398,6 @@ public final class OrchestratorClient {
         }
     }
 
-    public record AmrEntry(String nativeToolId, String amrSourceId) {
-    }
-
-    /** Mirrors AmrEntry (docs/05-api.md Abschnitt 3b) - just the two stable ids, never method/loa directly. */
     public static final class OrchestratorApiException extends IOException {
         final int status;
         final String errorCode;

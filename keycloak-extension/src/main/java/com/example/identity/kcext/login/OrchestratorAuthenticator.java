@@ -56,10 +56,9 @@ public class OrchestratorAuthenticator implements Authenticator {
 
             // The intent only counts on a channel's first call, so a changed intent gets a fresh
             // channel above (docs/04-orchestrierung.md #2).
-            // No native amr and no restoreData here: Resume and Update report those once, when
-            // they happen. Sending them again would only repeat a no-op evidence merge.
+            // No restoreData here: the resume authenticator reports it once, at the start of the run.
             OrchestratorClient.ChannelResponse response = client.upsertChannel(
-                    channelSessionId, subject, targetAcr, List.of(), null, null,
+                    channelSessionId, subject, targetAcr, null, null,
                     WebToolAvailability.renderableTools(context.getSession()), intent
             );
             handleResponse(context, response, null);
@@ -252,7 +251,7 @@ public class OrchestratorAuthenticator implements Authenticator {
     }
 
     /**
-     * The "Registrieren" link appears where the native login form would show it: nobody known yet,
+     * The "Registrieren" link appears where Keycloak's own login form would show it: nobody known yet,
      * registration allowed, and not already inside the registration flow.
      */
     private static boolean offersRegistration(AuthenticationFlowContext context) {

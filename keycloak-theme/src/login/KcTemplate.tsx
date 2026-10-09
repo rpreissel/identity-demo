@@ -6,7 +6,7 @@ import { Layout } from './Layout'
 import { t } from '../texts'
 
 /**
- * The frame for Keycloak's own pages (password form, info, error, expired page ...) - our Layout
+ * The frame for Keycloak's own pages (info, error, expired page ...) - our Layout
  * instead of Keycloakify's PatternFly template, so they look like the orchestrator's pages
  * (docs/adr/ADR-057-keycloakify-einziges-login-theme.md). When the login already knows who signs
  * in (step-up, re-authentication) by its e-mail address, the title stays and a hint under it names

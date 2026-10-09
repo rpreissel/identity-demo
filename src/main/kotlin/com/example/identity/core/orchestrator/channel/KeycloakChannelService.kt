@@ -13,9 +13,6 @@ import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
-import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
-import com.example.identity.core.orchestrator.domain.policy.MethodName
-import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.core.orchestrator.domain.AmrSource
 import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.AppTokenSessionService
@@ -28,7 +25,6 @@ import com.example.identity.core.orchestrator.session.ChannelSessionRepository
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.keycloak.PeerAuthValidationException
-import com.example.identity.contract.tool_api.claims.AcrLevel
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -51,7 +47,6 @@ class KeycloakChannelService(
     private val accountService: AccountService,
     private val sessionEvidenceService: SessionEvidenceService,
     private val restoreDataCodec: RestoreDataCodec,
-    private val nativeAuthenticatorRegistry: NativeAuthenticatorRegistry,
     private val channelSessionRepository: ChannelSessionRepository,
     private val signInLog: SignInLog,
     private val appTokenSessionService: AppTokenSessionService,
@@ -107,7 +102,6 @@ class KeycloakChannelService(
         assertion: PeerAuthAssertion,
         subject: Subject?,
         targetAcr: String?,
-        amr: List<AmrEntry>? = null,
         restoreDataToken: String? = null,
         restoreDataKeycloakSessionId: String? = null,
         availableTools: List<String>? = null,
@@ -118,8 +112,7 @@ class KeycloakChannelService(
         // restoreDataToken carries an earlier flow run's state (docs/05-api.md Abschnitt 3b). decode()
         // checks it is bound to [restoreDataKeycloakSessionId], Keycloak's durable UserSessionModel id,
         // which differs from assertion.channelBinding. A wrong, tampered or expired token yields null,
-        // like "nothing to restore". Restored methods keep their original `source`. It never comes
-        // with a non-empty [amr], so restored and live methods are applied separately below.
+        // like "nothing to restore". Restored methods keep their original `source`.
         val restoreData = restoreDataToken?.let { restoreDataCodec.decode(it, restoreDataKeycloakSessionId) }
         // Keycloak's user and the restore token must name the same subject. Preferring one would let
         // a mis-attributed Keycloak user carry this session's evidence elsewhere. An invitation's
@@ -134,26 +127,6 @@ class KeycloakChannelService(
         val effectiveSubject = subject ?: restoredSubject
         val effectiveAccountId = (effectiveSubject as? Subject.Account)?.id
         val restoredFactors = restoreData?.evidence?.methods.orEmpty()
-        // method/maxAcr/factorTypes are fixed per authenticator type ([NativeAuthenticatorDescriptor]).
-        // An unknown nativeToolId fails fast instead of pricing the proof as nothing.
-        val liveFactors = amr.orEmpty().map { entry ->
-            val descriptor = nativeAuthenticatorRegistry.descriptorFor(entry.nativeToolId)
-                ?: throw OrchestratorException.notFound(Text("Unknown tool"), "nativeToolId=${entry.nativeToolId}")
-            MethodEvidence(
-                MethodName(descriptor.method),
-                AcrLevel.parse(descriptor.maxAcr) ?: AcrLevel.NONE,
-                // Uncapped (docs/05-api.md Abschnitt 3b). The enrolledUnderAcr cap stops an
-                // orchestrator combination from escalating past the enrollment history. Keycloak's
-                // native report is trusted as a whole already, so a cap would only break the rule
-                // that two distinct factor types earn one tier above either alone.
-                AcrLevels.HIGHEST,
-                descriptor.factorTypes,
-                source = AmrSource.KEYCLOAK,
-                // Prefixed with nativeToolId, so the journey trace names the native authenticator.
-                // Stable across re-reports of the same proof, so refresh detection still works.
-                amrSourceId = "${entry.nativeToolId}:${entry.amrSourceId}",
-            )
-        }
         // Fails fast: an unknown accountId would otherwise surface later as an unrelated error.
         if (effectiveAccountId != null && accountService.findAccount(effectiveAccountId) == null) {
             throw OrchestratorException.notFound(Text("Account not found"), "accountId=${effectiveAccountId}")
@@ -203,14 +176,12 @@ class KeycloakChannelService(
 
         targetFloor?.let { sessionManagementService.raiseChannelAcrFloor(channelSessionId, it.value) }
 
-        // On a channel this call created, the entry journey's first decision already sees what
-        // Keycloak vouches for: restored methods (docs/04-orchestrierung.md #8, "RestoreData als
-        // erster Übergang") or, never together with them, what its own authenticators proved in this
-        // run. Deciding without them would offer a way out (a step-up's RE_IDENTIFY) the proofs
-        // already in hand make needless.
-        val liveFactorsSeeded = isFreshChannel && restoredFactors.isEmpty() && liveFactors.isNotEmpty()
-        val seedFactors = if (isFreshChannel) restoredFactors.ifEmpty { liveFactors } else emptyList()
-        var response = if (seedFactors.isNotEmpty()) {
+        // On a channel this call created, the entry journey's first decision already sees the
+        // restored methods (docs/04-orchestrierung.md #8, "RestoreData als erster Übergang").
+        // Deciding without them would offer a way out (a step-up's RE_IDENTIFY) the proofs already
+        // in hand make needless.
+        val seedFactors = if (isFreshChannel) restoredFactors else emptyList()
+        return if (seedFactors.isNotEmpty()) {
             channelService.resumeChannel(
                 sessionManagementService.reloadChannelSession(channelSessionId),
                 Action.ApplyRestoredEvidence(AmrSource.KEYCLOAK, seedFactors)
@@ -218,20 +189,6 @@ class KeycloakChannelService(
         } else {
             channelService.resumeChannel(sessionManagementService.reloadChannelSession(channelSessionId))
         }
-
-        // What a native Keycloak authenticator established in this run (docs/05-api.md Abschnitt 3b,
-        // ADR-8) on a channel that existed before, merged into the same evidence as a tool proof.
-        // There is always a journey by now.
-        if (liveFactors.isNotEmpty() && !liveFactorsSeeded) {
-            val journey = journeyService.findActive(channelSessionId)
-            val channel = LiveChannel.of(sessionManagementService.reloadChannelSession(channelSessionId))
-            if (journey != null && channel != null) {
-                journeyService.applyEvidenceUpdate(journey, channel, AmrSource.KEYCLOAK, liveFactors)
-                response = channelService.resumeChannel(sessionManagementService.reloadChannelSession(channelSessionId))
-            }
-        }
-
-        return response
     }
 
     private fun invitationNotRaised() = OrchestratorException.invalidState(

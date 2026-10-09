@@ -372,24 +372,6 @@ export function setRegistrationOrder(enrollFirst: boolean): Promise<void> {
   return callPlain('PUT', '/orchestrator/admin/registration-order', { enrollFirst })
 }
 
-/** What the web channel's loa1 asks for (docs/adr/ADR-042-loa1-anmeldung-umschalten.md). */
-export type Loa1Login = 'KEYCLOAK_PASSWORD' | 'ORCHESTRATOR'
-
-/** Only under the server's `keycloak` profile - 404s otherwise. */
-export function fetchLoa1Login(): Promise<{ login: Loa1Login }> {
-  return callPlain('GET', `${ADMIN_PATH}/loa1-login`)
-}
-
-/** Realm-wide, from the next sign-in on. */
-export function setLoa1Login(login: Loa1Login): Promise<void> {
-  return callPlain('PUT', `${ADMIN_PATH}/loa1-login`, { login })
-}
-
-/** The same realm-wide switch without an admin login (DemoLoa1LoginController), for the website's demo column. */
-export function setDemoLoa1Login(login: Loa1Login): Promise<void> {
-  return callPlain('PUT', '/orchestrator/demo/loa1-login', { login })
-}
-
 /** Same shape as JourneyTraceResponse, plus who each account id is (register display name). */
 export interface AdminJourneyTraceResponse extends JourneyTraceResponse {
   accounts: { accountId: number; displayName?: string | null }[]
@@ -491,7 +473,6 @@ export interface KeycloakInfo {
   baseUrl: string
   realm: string
   browserClientId: string
-  loa1Login: Loa1Login
 }
 
 export interface ServerInfo {

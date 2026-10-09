@@ -146,7 +146,7 @@ stillschweigend etwas von der Umgebung voraussetzt.
 - **Q-5 (niedrig) Testhelfer mehrfach definiert**, und `IntegrationTestSupport` ist groß. Zusammen
   mit Q-13 (3.) in `DPoP-demo-9ppv.32`.
 - **Q-6 / K-10 (niedrig) Doppelte Verteilungslogik (Dispatch) und Testlücken der Erweiterung.** Ohne
-  Test sind: beide Dispatcher, der Resume- und der Update-Authenticator, `WebFormRenderer` und die
+  Test sind: beide Dispatcher, der Resume-Authenticator, `WebFormRenderer` und die
   meisten Renderer-Factories. `DPoP-demo-9ppv.12`
 - **Q-7 (Hinweis) `ident_eid` ist vom Kover-Tor ausgenommen**, enthält aber Kernlogik
   (`IdentEidFlow`). Das Kover-Tor prüft die Testabdeckung. Vorschlag: den Ausschluss auf

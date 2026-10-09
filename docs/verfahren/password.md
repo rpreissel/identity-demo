@@ -7,8 +7,8 @@ E-Mail-Adresse und dieses Passwort ein. Einen eigenen Benutzernamen gibt es nich
 reicht allein für das niedrigste Niveau `loa1`.
 
 Das Konto wird über seine bestätigte E-Mail-Adresse gefunden. Gespeichert und geprüft wird das
-Passwort nur im Modul `auth_password`. Das gilt auch dann, wenn Keycloak, das auf der Website die
-Anmeldung führt, das Passwort auf seiner eigenen Anmeldeseite abfragt.
+Passwort nur im Modul `auth_password`. Das gilt auch auf der Website, wo Keycloak die Anmeldung
+führt: Auch dort fragt das Tool das Passwort ab, nicht Keycloak.
 
 Begriffe wie Tool, Rolle, Fassung, Faktortyp und Niveau erklärt die
 [Übersicht der Verfahren](README.md). Weitere Begriffe stehen im [Glossar](../glossar/glossar.md).
@@ -86,46 +86,24 @@ Das Modul `auth_password` schützt die Passwörter auf mehreren Wegen:
   Verstoß führt zu `400` mit einem Text, der die Regel nennt. Über Keycloak lässt sich kein
   Passwort setzen.
 
-Über den Port `PasswordCredentialPort` prüft oder ersetzt das Modul das Passwort auch für Aufrufer,
-die keinen Kanal und keine Tool-Sitzung haben. Ein **Port** ist eine fest vereinbarte
-Schnittstelle. Diese Aufrufer sind:
+Über den Port `PasswordCredentialPort` prüft oder ersetzt das Modul das Passwort auch für einen
+Aufrufer ohne eigene Tool-Sitzung von `auth_password`. Ein **Port** ist eine fest vereinbarte
+Schnittstelle. Dieser Aufrufer ist das Entsperren per Passwort in `auth_kobil`
+([Verfahren `kobil`](kobil.md)).
 
-- das Entsperren per Passwort in `auth_kobil` ([Verfahren `kobil`](kobil.md)),
-- Keycloaks Passwortformular (unten).
+## Keycloak prüft kein Passwort
 
-## Von Server zu Server: Keycloaks eigenes Passwort-Credential (`MgmtPasswordController`)
+Auf der Website meldet man sich mit Passwort über dieselben Tools an wie in der App:
+`auth-password-lookup` bzw. `auth-password`. Keycloak zeigt nur die Seite des Tools und hat kein
+eigenes Passwortformular
+([ADR-58](../adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). Die Nutzer-Federation
+(`OrchestratorStorageProvider`) liest nur Konten und prüft oder speichert keine Credentials.
 
-Keycloak fragt auf seiner Anmeldeseite selbst nach dem Passwort. Prüfen lässt es das Passwort aber
-beim Orchestrator. Dieser Aufruf läuft ohne Zustand, ohne Kanal und ohne ToolSession. Keycloaks
-eigene Schnittstelle für Nutzerspeicher (UserStorage-SPI, hier `OrchestratorStorageProvider`) prüft
-und setzt Passwörter für das Konto, das Keycloak über das Nutzerattribut `orchestratorAccountId`
-kennt.
-
-Keycloak weist sich dabei mit derselben `kc-peer-auth`-Signatur aus wie bei den anderen Aufrufen
-von Server zu Server. Mehr dazu in [DPoP-Bindung](../09-dpop.md),
-[12-entscheidungen.md](../12-entscheidungen.md) ADR-7 und [05-api.md](../05-api.md) Abschnitt 3b.
-Allerdings dient `channel_binding` hier einem anderen Zweck: Der Claim enthält die `accountId`,
-und der Server prüft ihn gegen den Pfadparameter.
-
-Die Endpunkte gehören dem Modul `auth_password`. Sie liegen aber wie alles, was nur Keycloak
-aufruft, unter `/kc/` und damit außerhalb des eingefrorenen Vertrags (ADR-50). Sie nehmen nur
-Keycloaks Assertion an, also den signierten Nachweis, dass die Anfrage von Keycloak kommt
-(`@BindingKey(keycloakOnly = true)`). Eine Anfrage mit DPoP-Beweis bekommt `401`.
-
-Das Ergebnis bucht der Orchestrator über den Port `KeycloakToolCalls`, und zwar als Prüfung auf die
-Kontosperre wie in einer Journey. Keycloak ändert ein Passwort nie. Das geht nur über die Verwaltung
-der Verfahren, die vorher das Niveau prüft. Die Erweiterung lehnt Keycloaks „Passwort ändern“ und
-„Passwort zurücksetzen“ ab, statt das Passwort bei sich zu speichern. Das Realm schaltet außerdem
-Keycloaks eigene Required Actions ab (`V7__locked_down_defaults`).
-
-- `POST /orchestrator/api/v1/kc/accounts/{accountId}/password-checks` – prüft `{"password": "..."}`
-  gegen das gespeicherte Credential. Die Antwort ist `{"valid": true|false}`. Jeder Fehlversuch
-  zählt auf dieselbe Kontosperre wie `auth-password` im App-Kanal ([Betrieb](../07-betrieb.md)
-  Abschnitt 4). Ist das Konto gesperrt, ist die Antwort `false`, auch für das richtige Passwort und
-  bei gleichem Zeitaufwand. Zusätzlich hat das Realm Keycloaks eigenen Schutz gegen das Erraten von
-  Passwörtern eingeschaltet.
-
-Die übrigen Endpunkte unter `/kc/` stehen in [05-api.md](../05-api.md) Abschnitt 3b.
+Keycloak ändert ein Passwort nie. Das geht nur über die Verwaltung der Verfahren, die vorher das
+Niveau prüft. Das Realm schaltet Keycloaks eigene Required Actions ab
+(`V7__locked_down_defaults`). Fehlversuche zählt allein die Kontosperre des Orchestrators
+([Betrieb](../07-betrieb.md) Abschnitt 4). Keycloaks eigener Schutz gegen das Erraten von
+Passwörtern ist aus.
 
 ## Fehlerfälle
 

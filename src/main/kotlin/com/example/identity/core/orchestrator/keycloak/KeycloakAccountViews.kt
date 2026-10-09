@@ -37,8 +37,8 @@ class KeycloakAccountViews(
 
     /**
      * Keycloak asks every federation for any name it meets, among them `invitation-<id>` of the
-     * invitation federation (ADR-48) and whatever someone typed into the password form. A name that
-     * is no email address is simply nobody here, not a bad request.
+     * invitation federation (ADR-48). A name that is no email address is simply nobody here, not a
+     * bad request.
      */
     fun byEmail(email: String): KeycloakAccountView? {
         if (Email.parse(email) == null) return null

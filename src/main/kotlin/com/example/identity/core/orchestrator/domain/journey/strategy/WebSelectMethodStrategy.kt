@@ -39,8 +39,8 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
                     ctx.account?.let { reIdentifyOr(ctx, whenNone = Transition.Cancel) } ?: Transition.Cancel
                 }
                 // Started re-checks like any other proof: restored evidence may already satisfy the
-                // floor (docs/04-orchestrierung.md, "RestoreData als erster Übergang"). So do
-                // EvidenceReported and ActionCompleted.
+                // floor (docs/04-orchestrierung.md, "RestoreData als erster Übergang"). So does
+                // ActionCompleted.
                 else -> afterProof(ctx)
             }
 

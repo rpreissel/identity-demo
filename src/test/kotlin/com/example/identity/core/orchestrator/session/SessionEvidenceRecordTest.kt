@@ -44,7 +44,7 @@ class SessionEvidenceRecordTest : BehaviorSpec({
         `when`("Keycloak reports sms") {
             record.replaceForSource(AmrSource.KEYCLOAK, listOf(proof("sms", AmrSource.KEYCLOAK, FactorType.POSSESSION)), TEST_NOW)
 
-            then("sms is tagged kc - it came from a native authenticator, not a tool") {
+            then("sms is tagged kc - Keycloak's session vouches for it, not a tool of this channel") {
                 record.currentAmrSource shouldBe mapOf("sms" to AmrSource.KEYCLOAK)
             }
         }

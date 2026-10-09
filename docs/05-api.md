@@ -237,16 +237,14 @@ Liste von Ausnahmen. Drei Arten von Endpunkten liegen bewusst außerhalb. Abschn
 sie:
 
 - Betriebsendpunkte unter `/orchestrator/admin`. Mit ihnen kann der Betreiber Tools sperren, die
-  Reihenfolge der Registrierung festlegen, die Oberfläche der Keycloak-Anmeldeseiten wählen, die
-  Anmeldung auf `loa1` umschalten, den Journey-Trace aller Konten lesen, aktive Sitzungen ansehen,
-  Konten löschen und die Demo zurücksetzen. Nur diese Endpunkte verlangen eine Anmeldung (HTTP
+  Reihenfolge der Registrierung festlegen, den Journey-Trace aller Konten lesen, aktive Sitzungen
+  ansehen, Konten löschen und die Demo zurücksetzen. Nur diese Endpunkte verlangen eine Anmeldung (HTTP
   Basic mit `demo.admin.*`).
 - Der öffentliche Server-Status unter `/orchestrator/demo/server-info`. Er wird nur gelesen. Zustand
   und Kennzahlen im Block `operations` liefert er nur im Demomodus, also wenn die Anwendung zum
-  Vorführen läuft. Daneben liegen dort der Demo-Schalter für die Anmeldung auf `loa1`
-  ([ADR-42](adr/ADR-042-loa1-anmeldung-umschalten.md)) sowie für die Startseite
-  `GET /orchestrator/demo/sessions` und `POST /orchestrator/demo/reset`. Die Schalter, die
-  Sitzungen und das Zurücksetzen gibt es nur im Demomodus (`@DemoSurface`).
+  Vorführen läuft. Daneben liegen dort für die Startseite `GET /orchestrator/demo/sessions` und
+  `POST /orchestrator/demo/reset`. Die Sitzungen und das Zurücksetzen gibt es nur im Demomodus
+  (`@DemoSurface`).
 - Die Stellvertreter externer Systeme unter `/mock-*` (`/mock-kobil`,
   `/mock-personenverzeichnis`, `/mock-nect`, ADR-31). Sie simulieren in der Demo die Fremdsysteme.
 
@@ -980,11 +978,6 @@ Inhalt der Anfrage (`KeycloakChannelUpsertRequest`, alle Felder optional):
   Kandidaten von `WEB_SELECT_METHOD` ([Orchestrierung](04-orchestrierung.md) Abschnitt 3). Ein
   unbekannter Wert führt zu `400`, bevor sich am Kanal etwas ändert. Er wird nie stillschweigend als
   `none` behandelt.
-- **`amr`**: Eine Liste von `{nativeToolId, amrSourceId}`. Sie nennt, was ein eigenes
-  Keycloak-Verfahren (nie ein Tool des Orchestrators) in DIESEM Anmeldedurchlauf nachgewiesen hat.
-  Verfahren, LoA und Faktortypen ermittelt der Orchestrator selbst auf dem Server, über die
-  `nativeToolId` (`NativeAuthenticatorDescriptor`). Die Liste ist immer die VOLLSTÄNDIGE, derzeit
-  gültige Menge und keine Liste von Änderungen.
 - **`restoreData` / `kcSessionId`**: `restoreData` ist ein signiertes Token aus
   `GET .../restore-data`. Es stammt von einer FRÜHEREN, unabhängigen `ChannelSession` derselben
   Keycloak-Nutzersitzung. Damit gibt Keycloak die Nachweise, die dort erbracht wurden, samt ihrem
@@ -1068,8 +1061,10 @@ Keycloak. Hier gibt es eine für Konten und eine für Einladungen, jede mit eine
 als Komponenten-Id. Keycloak lässt nie zu, dass ein Subjekt die Sitzung eines anderen fortsetzt
 (`LoginCompletion`).
 
-`amr` ordnet jedem Verfahren seine Quelle zu: `"kc"` für eine eigene Angabe Keycloaks,
-`"orchestrator"` für ein abgeschlossenes Tool des Orchestrators. Das ist nur eine Information. Den
+`amr` ordnet jedem Verfahren seine Quelle zu: `"orchestrator"` für ein abgeschlossenes Tool des
+Orchestrators in diesem Kanal, `"kc"` für einen Nachweis, den Keycloaks Sitzung aus einem früheren
+Durchlauf weitergibt (RestoreData). Keycloak selbst prüft kein Verfahren
+([ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). Das ist nur eine Information. Den
 kombinierten `acr` bestimmt ausschließlich der Orchestrator.
 
 #### Welche Tools der Web-Kanal anbietet
@@ -1175,8 +1170,10 @@ findet nur exakte Treffer ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
   ist spätestens dann sichtbar.
 - **Nutzer-Id und `sub`:** `f:<UUID>:<accountId>`. Die Komponenten-Id ist eine feste UUID
   (`USER_STORAGE_COMPONENT_ID`). Eine zufällig neu erzeugte Id würde jedes `sub` ändern.
-- **Was Keycloak selbst hält:** Sitzungen, Fehlversuche (für den Schutz gegen das Durchprobieren
-  von Passwörtern, Brute-Force-Schutz), Zustimmungen und sonstige föderierte Daten eines Nutzers.
+- **Was Keycloak selbst hält:** Sitzungen, Zustimmungen und sonstige föderierte Daten eines
+  Nutzers. Fehlversuche zählt Keycloak nicht. Er prüft selbst kein Geheimnis, und sein
+  Brute-Force-Schutz ist aus ([ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)).
+  Fehlversuche zählt allein die Kontosperre des Orchestrators (ADR-44).
 - **Konto gelöscht:** `KeycloakAccountRemovalListener` löscht genau diese Daten, die Keycloak selbst
   hält (`DELETE /admin/realms/{realm}/orchestrator-accounts/{accountId}`, `AccountRemoval`). Das ist
   das einzige Ereignis eines Kontos, das Keycloak gemeldet wird. Eine Änderung am Konto braucht
@@ -1212,8 +1209,6 @@ oder eine Einladung, die Keycloak schon kennt:
 - Die Kontoabfrage (`/kc/accounts`, [ADR-38](adr/ADR-038-keycloak-liest-konten.md)) und der
   Einladungs-Nutzer (`GET /orchestrator/api/v1/kc/invitations/{invitation}`,
   [Verfahren `invite`](verfahren/invite.md)).
-- `POST /orchestrator/api/v1/kc/accounts/{accountId}/password-checks`: Keycloaks eigene
-  Passwortprüfung über das Modul `auth_password` ([Verfahren `password`](verfahren/password.md)).
 - `POST /orchestrator/api/v1/kc/accounts/{accountId}/sign-outs?kcSessionId=…`: Keycloak meldet
   einen Logout für das Anmeldeprotokoll (ADR-39, Nachtrag). Das Anmeldeprotokoll hält fest, wann
   sich jemand an- und abgemeldet hat. Die Antwort ist `204`. Den Logout im Web-Kanal führt Keycloak
@@ -1266,7 +1261,7 @@ denselben Bericht (`ActiveSessions`). Er hat zwei Teile:
    bleiben.
 
 Die Antwort nennt beides (`deletedAccounts`, `endedSessions`). Danach gelten wieder die
-Voreinstellungen für Verfahren, Registrierungsreihenfolge und Anmeldung auf `loa1`.
+Voreinstellungen für Verfahren und Registrierungsreihenfolge.
 
 **Journey-Trace.** Der Journey-Trace hält jeden Schritt einer Journey fest. Er ist eine Ansicht zur
 Fehlersuche und für die Demo und wird 14 Tage aufbewahrt ([Betrieb](07-betrieb.md) Abschnitt 3).

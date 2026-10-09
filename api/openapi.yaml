@@ -49,19 +49,6 @@ components:
       - id
       - method
       type: object
-    AmrEntry:
-      description: One native authenticator proof - which authenticator TYPE, and which specific execution/instance of it.
-      properties:
-        amrSourceId:
-          example: kc-otp-form-exec-1
-          type: string
-        nativeToolId:
-          example: kc-otp-form
-          type: string
-      required:
-      - amrSourceId
-      - nativeToolId
-      type: object
     AnswerRequest:
       description: 'An answer to whatever the current step is waiting on instead of a tool run (docs/04-orchestrierung.md
         #3) - e.g. "accept"/"decline" for the optional device-binding offer of a lookup login. Which values are valid depends
@@ -81,9 +68,9 @@ components:
         amr:
           additionalProperties:
             type: string
-          description: 'Method -> who proved it: "orchestrator" for a completed orchestrator tool, "kc" for evidence a native
-            Keycloak authenticator already established (docs/05-api.md Abschnitt 3b). Informational only - the orchestrator
-            alone still resolves the combined acr above, regardless of source.'
+          description: 'Method -> who vouches for it: "orchestrator" for a tool completed in this channel, "kc" for evidence
+            carried over from an earlier flow run of the same Keycloak session (RestoreData, docs/05-api.md Abschnitt 3b).
+            Informational only - the orchestrator alone still resolves the combined acr above, regardless of source.'
           example:
             password: kc
             sms: orchestrator
@@ -694,20 +681,12 @@ components:
       - username
       type: object
     KeycloakChannelUpsertRequest:
-      description: Upsert body for the Keycloak facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). All fields
-        are optional. subject is whom Keycloak already knows (sub vorhanden) - an account binds the channel immediately, once,
-        never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator
-        ACR string, and only raises the channel's floor, never lowers it. amr lists which native Keycloak authenticators (never
-        orchestrator tools) just proved something THIS flow run, one entry per proof - method/loa/factorTypes are resolved
-        server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the Keycloak facade's own mirror of a Tool, not resolved
-        from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged into the channel's
-        evidence and re-checked against the current floor exactly like any other proof; no separate 'combined native acr'
-        field exists, since the orchestrator derives that itself.
+      description: 'Upsert body for the Keycloak facade''s one facade-specific endpoint (docs/05-api.md Abschnitt 3). All
+        fields are optional. subject is whom Keycloak already knows (sub vorhanden) - an account binds the channel immediately,
+        once, never overwritten by a later call. targetAcr is Keycloak''s requested LoA level, already translated into an
+        orchestrator ACR string, and only raises the channel''s floor, never lowers it. Keycloak proves nothing itself: every
+        sign-in step is an orchestrator tool (ADR-58).'
       properties:
-        amr:
-          items:
-            $ref: '#/components/schemas/AmrEntry'
-          type: array
         availableTools:
           description: The Web channel's own declaration of which toolIds its Keycloak theme can render (one com.example.identity.kcext.webtool.WebToolRenderer
             factory per toolId, registered via META-INF/services) - the Keycloak facade's counterpart to the App channel's
@@ -734,9 +713,7 @@ components:
         restoreData:
           description: A signed RestoreData token this same UserSession's channel returned earlier via GET .../restore-data,
             resubmitted verbatim (docs/05-api.md, section 3) - the bulk, one-shot way to seed a brand-new channel with what
-            a PRIOR, unrelated flow run already established, as opposed to subject/amr above which report what THIS flow run
-            just proved. Both are merged into the channel the same way; only restoreData may already be meaningfully old by
-            the time it arrives here. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
+            a PRIOR, unrelated flow run already established. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
           type: string
         subject:
           $ref: '#/components/schemas/AuthSubject'
@@ -893,18 +870,6 @@ components:
           type: array
       required:
       - methods
-      type: object
-    MgmtPasswordVerifyRequest:
-      properties:
-        password:
-          type: string
-      type: object
-    MgmtPasswordVerifyResponse:
-      properties:
-        valid:
-          type: boolean
-      required:
-      - valid
       type: object
     MissingFields:
       description: Which inputs this step is still waiting for.
@@ -1997,44 +1962,6 @@ paths:
       summary: The account as Keycloak shows it, by account id
       tags:
       - Keycloak account lookup
-  /orchestrator/api/v1/kc/accounts/{accountId}/password-checks:
-    post:
-      operationId: verify
-      parameters:
-      - in: path
-        name: accountId
-        required: true
-        schema:
-          format: int64
-          type: integer
-      - in: header
-        name: Authorization
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MgmtPasswordVerifyRequest'
-      responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/MgmtPasswordVerifyResponse'
-          description: OK
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - kc-peer-auth: [
-          ]
-      summary: Verify a candidate password against the account's stored credential
-      tags:
-      - Keycloak password management
   /orchestrator/api/v1/kc/accounts/{accountId}/sign-outs:
     post:
       operationId: signedOut
@@ -5591,8 +5518,6 @@ tags:
   name: 'Tool: eID'
 - description: 'Passwort: Einrichtung als Wissensfaktor, Anmeldung und Login ohne DPoP'
   name: 'Tool: Passwort'
-- description: Stateless password verification for Keycloak's native credential
-  name: Keycloak password management
 - description: The App facade's own endpoints - channel creation and the device-link read
   name: App channels
 - description: Oeffentlicher Schluessel, gegen den Keycloak die Antworten des Orchestrators prueft

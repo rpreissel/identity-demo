@@ -68,25 +68,6 @@ export const ActiveMethodViewFactorTypesEnum = {
 export type ActiveMethodViewFactorTypesEnum = typeof ActiveMethodViewFactorTypesEnum[keyof typeof ActiveMethodViewFactorTypesEnum];
 
 /**
- * One native authenticator proof - which authenticator TYPE, and which specific execution/instance of it.
- * @export
- * @interface AmrEntry
- */
-export interface AmrEntry {
-    /**
-     * 
-     * @type {string}
-     * @memberof AmrEntry
-     */
-    amrSourceId: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AmrEntry
-     */
-    nativeToolId: string;
-}
-/**
  * An answer to whatever the current step is waiting on instead of a tool run (docs/04-orchestrierung.md #3) - e.g. "accept"/"decline" for the optional device-binding offer of a lookup login. Which values are valid depends on what next.step is currently offering.
  * @export
  * @interface AnswerRequest
@@ -112,7 +93,7 @@ export interface AuthData {
      */
     acr?: string;
     /**
-     * Method -> who proved it: "orchestrator" for a completed orchestrator tool, "kc" for evidence a native Keycloak authenticator already established (docs/05-api.md Abschnitt 3b). Informational only - the orchestrator alone still resolves the combined acr above, regardless of source.
+     * Method -> who vouches for it: "orchestrator" for a tool completed in this channel, "kc" for evidence carried over from an earlier flow run of the same Keycloak session (RestoreData, docs/05-api.md Abschnitt 3b). Informational only - the orchestrator alone still resolves the combined acr above, regardless of source.
      * @type {{ [key: string]: string; }}
      * @memberof AuthData
      */
@@ -1155,17 +1136,11 @@ export interface KeycloakAccountView {
     username: string;
 }
 /**
- * Upsert body for the Keycloak facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). All fields are optional. subject is whom Keycloak already knows (sub vorhanden) - an account binds the channel immediately, once, never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator ACR string, and only raises the channel's floor, never lowers it. amr lists which native Keycloak authenticators (never orchestrator tools) just proved something THIS flow run, one entry per proof - method/loa/factorTypes are resolved server-side from a NativeAuthenticatorDescriptor (see AmrEntry), the Keycloak facade's own mirror of a Tool, not resolved from the orchestrator's own catalog (which stays entirely ignorant of native authenticators). Merged into the channel's evidence and re-checked against the current floor exactly like any other proof; no separate 'combined native acr' field exists, since the orchestrator derives that itself.
+ * Upsert body for the Keycloak facade's one facade-specific endpoint (docs/05-api.md Abschnitt 3). All fields are optional. subject is whom Keycloak already knows (sub vorhanden) - an account binds the channel immediately, once, never overwritten by a later call. targetAcr is Keycloak's requested LoA level, already translated into an orchestrator ACR string, and only raises the channel's floor, never lowers it. Keycloak proves nothing itself: every sign-in step is an orchestrator tool (ADR-58).
  * @export
  * @interface KeycloakChannelUpsertRequest
  */
 export interface KeycloakChannelUpsertRequest {
-    /**
-     * 
-     * @type {Array<AmrEntry>}
-     * @memberof KeycloakChannelUpsertRequest
-     */
-    amr?: Array<AmrEntry>;
     /**
      * The Web channel's own declaration of which toolIds its Keycloak theme can render (one com.example.identity.kcext.webtool.WebToolRenderer factory per toolId, registered via META-INF/services) - the Keycloak facade's counterpart to the App channel's own availableTools (POST /channels). Only read on this channel's first call (a later upsert resumes the already-persisted set); a channel-anonymous caller that omits this gets none of the orchestrator's tools, never all of them.
      * @type {Array<string>}
@@ -1185,7 +1160,7 @@ export interface KeycloakChannelUpsertRequest {
      */
     kcSessionId?: string;
     /**
-     * A signed RestoreData token this same UserSession's channel returned earlier via GET .../restore-data, resubmitted verbatim (docs/05-api.md, section 3) - the bulk, one-shot way to seed a brand-new channel with what a PRIOR, unrelated flow run already established, as opposed to subject/amr above which report what THIS flow run just proved. Both are merged into the channel the same way; only restoreData may already be meaningfully old by the time it arrives here. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
+     * A signed RestoreData token this same UserSession's channel returned earlier via GET .../restore-data, resubmitted verbatim (docs/05-api.md, section 3) - the bulk, one-shot way to seed a brand-new channel with what a PRIOR, unrelated flow run already established. Opaque to every caller but the orchestrator itself - see RestoreDataCodec.
      * @type {string}
      * @memberof KeycloakChannelUpsertRequest
      */
@@ -1483,32 +1458,6 @@ export interface MethodsResponse {
      * @memberof MethodsResponse
      */
     methods: Array<ActiveMethodView>;
-}
-/**
- * 
- * @export
- * @interface MgmtPasswordVerifyRequest
- */
-export interface MgmtPasswordVerifyRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof MgmtPasswordVerifyRequest
-     */
-    password?: string;
-}
-/**
- * 
- * @export
- * @interface MgmtPasswordVerifyResponse
- */
-export interface MgmtPasswordVerifyResponse {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof MgmtPasswordVerifyResponse
-     */
-    valid: boolean;
 }
 /**
  * Which inputs this step is still waiting for.

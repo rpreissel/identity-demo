@@ -35,8 +35,8 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
   auslösen will. Ausgeführt wird sie vom `JourneyActionExecutor`. [Glossar](glossar.md#a)
 - **`amr`** → die Liste der Verfahren, die der **Nachweis** der Sitzung
   enthält. [Glossar](glossar.md#n)
-- **`AmrSource`** (`orchestrator`, `kc`) → **Quelle eines Nachweises**: wer ein Verfahren in der
-  Sitzung geprüft hat. [Glossar](glossar.md#q)
+- **`AmrSource`** (`orchestrator`, `kc`) → **Quelle eines Nachweises**: woher ein Nachweis in der
+  Sitzung stammt, aus einem Tool oder aus RestoreData von Keycloak. [Glossar](glossar.md#q)
 - **`AnchorAcrFloor`** (`establish`, `replace`) → **Mindestniveau für einen Anker**: welches
   Niveau nötig ist, um einen Anker zu setzen oder zu ändern. [Glossar](glossar.md#m)
 - **`APP`** (`ChannelType.APP`) → **App-Kanal**: der Kanal der App. Jede Anfrage ist
@@ -117,9 +117,9 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
 - **`FactorType`** (`KNOWLEDGE`, `POSSESSION`, `INHERENCE`) → **Faktortyp**: die Art eines
   Beweises, also Wissen, Besitz oder Biometrie. [Glossar](glossar.md#f)
 - **`FAST_ACCESS`** → **Schnellzugang**: die übliche Anmeldung in der App. [Glossar](glossar.md#s)
-- **`JourneyFeatureFlag`**, **`KeycloakFeatureFlags`**, **`FeatureFlagService`** → **Feature-Flag**:
-  ein Schalter, mit dem der Betreiber ein Verhalten im laufenden Betrieb umstellt. Beispiele sind
-  `register-enroll-first` und `keycloak-loa1-password`.
+- **`JourneyFeatureFlag`**, **`FeatureFlagService`** → **Feature-Flag**:
+  ein Schalter, mit dem der Betreiber ein Verhalten im laufenden Betrieb umstellt. Ein Beispiel ist
+  `register-enroll-first`.
   [Glossar](glossar.md#f)
 
 ## I

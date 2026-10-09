@@ -13,7 +13,6 @@ import {
 } from '../../api'
 import { adminAuthHeader, clearAdminCredentials, onAdminLoggedOut, setAdminCredentials } from '../../adminAuth'
 import { ActiveSessionsView } from '../../components/ActiveSessionsView'
-import { AdminLoa1LoginView } from '../../components/AdminLoa1LoginView'
 import { AdminRegistrationOrderView } from '../../components/AdminRegistrationOrderView'
 import { AdminToolAvailabilityView } from '../../components/AdminToolAvailabilityView'
 import { ChannelNav, type NavTab } from '../../components/ChannelNav'
@@ -72,7 +71,6 @@ export function AdminApp() {
             <section className="card admin-card admin-general">
               <h2>{t('Allgemein')}</h2>
               <AdminRegistrationOrderView />
-              <AdminLoa1LoginView />
             </section>
             <AdminToolAvailabilityView />
           </>

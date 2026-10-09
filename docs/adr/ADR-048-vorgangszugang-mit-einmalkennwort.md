@@ -85,6 +85,8 @@ entsteht.
   einem Konto, auch nicht mit dem Konto derselben Person.
 - Sitzungen, SSO (die Anmeldung über mehrere Anwendungen mit einer Sitzung), Refresh, Logout und der
   Schutz gegen Brute-Force-Angriffe funktionieren für einen föderierten Nutzer wie für jeden anderen.
+  Den Brute-Force-Schutz von Keycloak hat
+  [ADR-58](ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md) später abgeschaltet.
 - Beim Refresh verlangt `TokenManager` einen existierenden, aktiven Nutzer. Sonst antwortet er mit
   `invalid_grant` („User disabled“). Eine beendete Einladung beendet ihre Sitzungen damit spätestens
   beim nächsten Token. Die Abmeldung auf das Ereignis `InvitationEnded` beendet sie sofort.
@@ -118,8 +120,8 @@ entsteht.
 - Ebenfalls verworfen:
   - **ein eigener Realm**: Das wäre ein zweiter Aussteller (Issuer), den jeder Fachdienst kennen
     müsste.
-  - **ein eigener Client je Vorgang**: Das ergäbe ein anderes `azp` und widerspräche
-    [ADR-42](ADR-042-loa1-anmeldung-umschalten.md).
+  - **ein eigener Client je Vorgang**: Das ergäbe ein anderes `azp` und widerspräche dem einen
+    Browser-Client aus [ADR-42](ADR-042-loa1-anmeldung-umschalten.md).
   - **die Einschränkung als OAuth-Scope**: Den Scope bestimmt der Client, nicht der Anmeldeweg. Bei
     SSO in einen anderen Client fehlt er.
 - **Transient Users:** Die Funktion ist als EXPERIMENTAL markiert und nur für das Identity Brokering

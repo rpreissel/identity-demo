@@ -43,7 +43,6 @@ class JourneyTraceDetails(
         is JourneyEvent.SubJourneyFinished -> mapOf("subIntent" to event.intent.name, "achievedAcr" to event.achievedAcr)
         is JourneyEvent.SubJourneyCancelled -> mapOf("subIntent" to event.intent.name)
         JourneyEvent.Started -> emptyMap()
-        JourneyEvent.EvidenceReported -> emptyMap()
         JourneyEvent.ActionCompleted -> emptyMap()
     }
 

@@ -87,10 +87,10 @@ data class AuthData(
     @field:Schema(example = "loa2")
     val acr: String? = null,
     @field:Schema(
-        description = "Method -> who proved it: \"orchestrator\" for a completed orchestrator " +
-            "tool, \"kc\" for evidence a native Keycloak authenticator already established " +
-            "(docs/05-api.md Abschnitt 3b). Informational only - the orchestrator alone " +
-            "still resolves the combined acr above, regardless of source.",
+        description = "Method -> who vouches for it: \"orchestrator\" for a tool completed in " +
+            "this channel, \"kc\" for evidence carried over from an earlier flow run of the same " +
+            "Keycloak session (RestoreData, docs/05-api.md Abschnitt 3b). Informational only - the " +
+            "orchestrator alone still resolves the combined acr above, regardless of source.",
         example = "{\"password\": \"kc\", \"sms\": \"orchestrator\"}"
     )
     val amr: Map<String, String>? = null,

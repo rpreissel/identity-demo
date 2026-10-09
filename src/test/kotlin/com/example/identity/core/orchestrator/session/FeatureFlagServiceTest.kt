@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
-import com.example.identity.core.orchestrator.keycloak.KeycloakFeatureFlags
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -15,7 +14,8 @@ class FeatureFlagServiceTest : BehaviorSpec({
         val repository = mockk<FeatureFlagRepository> {
             every { findByEnabledTrue() } returns listOf(
                 JourneyFeatureFlag.REGISTER_ENROLL_FIRST.key,
-                KeycloakFeatureFlags.LOA1_PASSWORD
+                // A flag no strategy reads, e.g. one of an operator switch.
+                "some-operator-switch"
             ).map { FeatureFlag(flagKey = it).apply { enabled = true } }
         }
 

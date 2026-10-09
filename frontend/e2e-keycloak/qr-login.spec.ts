@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { completeRegistration } from '../e2e/journey'
 import { ui, uiPattern } from '../e2e/texts'
-import { adminHeaders, ORCHESTRATOR, switchLoa1Login } from './admin'
+import { adminHeaders, ORCHESTRATOR } from './admin'
 import { kc } from './texts'
 
 const KEYCLOAK = process.env.KEYCLOAK_URL ?? 'https://localhost:8543'
@@ -25,7 +25,6 @@ function loginUrl(): string {
 test.beforeAll(async ({ request }) => {
   const reset = await request.post(`${ORCHESTRATOR}/orchestrator/admin/demo-reset`, { headers: adminHeaders })
   expect(reset.status()).toBe(200)
-  await switchLoa1Login(request, 'ORCHESTRATOR')
 })
 
 test.afterAll(async ({ request }) => {

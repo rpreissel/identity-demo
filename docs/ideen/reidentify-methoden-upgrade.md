@@ -147,8 +147,7 @@ dann genau das erreichte Niveau.
   Bestätigungsseite (`Question.Confirm`). Diese Seite würde auch `OfferMethodUpgrade` richtig
   darstellen, denn sie zeigt nur den Text aus `stepData.prompt`.
 - **Web-Kanal:** Dort läuft die Verwaltung der Verfahren inzwischen als Required Action von
-  Keycloak mit eigener Journey
-  ([ADR-8](../adr/ADR-008-keycloak-fuehrt-seine-eigenen-nativen-schritte-selbst-statt.md)). Eine
+  Keycloak mit eigener Journey ([05-api.md](../05-api.md) Abschnitt 3b). Eine
   Required Action ist ein Schritt, den Keycloak nach der Anmeldung verlangt. Der neue
   HTTP-Endpunkt wäre nicht an einen Kanal gebunden. Einen Knopf zum Identifizieren gibt es im Web
   aber noch nicht. Er müsste in der Seite der Required Action ergänzt werden. Für eine erste

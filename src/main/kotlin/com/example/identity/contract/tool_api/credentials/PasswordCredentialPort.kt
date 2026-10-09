@@ -4,8 +4,8 @@ import com.example.identity.contract.tool_api.EnrollmentRef
 
 
 /**
- * Verify or replace the password behind an [EnrollmentRef], for callers without Channel or
- * ToolSession, e.g. Keycloak's native password login (`OrchestratorPasswordStorageProvider`).
+ * Verify or replace the password behind an [EnrollmentRef], for callers outside the password
+ * tools' own ToolSession, e.g. KOBIL's unlock by password.
  * Uses the same store as the password tools.
  */
 interface PasswordCredentialPort {

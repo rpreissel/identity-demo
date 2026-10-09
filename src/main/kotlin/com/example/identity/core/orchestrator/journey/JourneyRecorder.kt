@@ -46,10 +46,9 @@ class JourneyRecorder(
 
         sessionEvidenceService.attachToChannel(channel, source, updates)
         if (before != after) {
-            // advance() logs the EvidenceReported transition, but not what changed. Without this
-            // entry the trace would stay silent on Keycloak-native factors. snake_case marks an
-            // entry that is no transition.
-            journeyTraceService.record(channel.forLog(), journey.forLog(), "native_evidence_synced",
+            // The transition after it does not show what changed. snake_case marks an entry that
+            // is no transition.
+            journeyTraceService.record(channel.forLog(), journey.forLog(), "evidence_synced",
                 journeyState = codec.read(journey)::class.simpleName,
                 detail = mapOf("source" to source, "methods" to journeyTraceDetails.methodEvidenceDetail(updates))
             )

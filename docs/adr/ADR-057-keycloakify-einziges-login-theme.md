@@ -56,7 +56,7 @@ Die Überschrift heißt `pageTitle`, nicht `title`: Keycloak setzt `title` auf j
 Seitenrahmen (`Layout.tsx`) zeigt immer den Seitentitel, nie den technischen Nutzernamen
 `account-<id>` eines Kontos im Aufbau (ADR-46).
 
-**Keycloaks eigene Seiten** (Passwortformular, Info, erneute Anmeldung …) zeichnet Keycloakify mit
+**Keycloaks eigene Seiten** (Info, erneute Anmeldung …) zeichnet Keycloakify mit
 seinen Standardseiten, aber im Rahmen `KcTemplate.tsx`, also in unserem Layout statt im
 PatternFly-Template. Ihre Klassen bildet `KC_CLASSES` in `KcPage.tsx` auf die des Themes ab. Kennt die
 Anmeldung den Nutzer schon, steht unter dem Titel ein Hinweis wie „Für erika@example.org. Nicht Sie?“, aber nur,

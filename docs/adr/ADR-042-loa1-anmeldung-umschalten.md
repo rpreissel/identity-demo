@@ -2,8 +2,8 @@
 
 **Status:** umgesetzt 2026-09, abgelöst 2026-10-09 durch
 [ADR-58](ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md): Keycloaks Passwortformular und
-damit der Schalter auf `loa1` entfallen. Bis zur Umsetzung (`DPoP-demo-0ntu`) beschreibt diese ADR
-den Code.
+damit der Schalter auf `loa1` entfallen. Seit dessen Umsetzung (`DPoP-demo-0ntu`) beschreibt diese
+ADR nicht mehr den Code.
 
 **Worum es geht.** Wer sich auf der Webseite anmeldet, wird zu Keycloak weitergeleitet, dem Anmeldeserver des
 Projekts. Keycloak fragt dort zuerst nach einem ersten Nachweis. Damit erreicht der Nutzer die

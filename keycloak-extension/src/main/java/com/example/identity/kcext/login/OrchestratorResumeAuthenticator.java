@@ -62,9 +62,9 @@ public class OrchestratorResumeAuthenticator implements AuthenticationFlowCallba
                 }
 
                 // Raise the floor to Keycloak's requested level, so a resumed proof cannot finish
-                // the journey below it. No native amr yet: this runs before any native authenticator.
+                // the journey below it.
                 OrchestratorClient.ChannelResponse response = client.upsertChannel(
-                        newChannelSessionId, subject, OrchestratorNotes.requestedAcr(context), List.of(), restoreData, existingUserSession.getId(),
+                        newChannelSessionId, subject, OrchestratorNotes.requestedAcr(context), restoreData, existingUserSession.getId(),
                         WebToolAvailability.renderableTools(context.getSession()), null
                 );
                 OrchestratorNotes.applyAuthData(authSession, response);

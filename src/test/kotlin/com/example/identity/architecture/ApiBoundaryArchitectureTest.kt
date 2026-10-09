@@ -37,7 +37,6 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
     val guardedByAdminLogin = setOf(
         "com.example.identity.core.orchestrator.admin.AdminAccountsController",
         "com.example.identity.core.orchestrator.admin.AdminJourneyTraceController",
-        "com.example.identity.core.orchestrator.admin.Loa1LoginController",
         "com.example.identity.core.orchestrator.admin.AdminSessionsController",
         "com.example.identity.core.orchestrator.admin.RegistrationOrderController",
         "com.example.identity.core.orchestrator.admin.ToolAvailabilityController",
@@ -54,7 +53,6 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
         "com.example.identity.core.orchestrator.keycloak.OrchestratorClientJwksController" to "public keys Keycloak verifies our client assertions against",
         "com.example.identity.core.orchestrator.keycloak.KeycloakResponseJwksController" to "public key Keycloak verifies our signed answers against",
         "com.example.identity.core.orchestrator.admin.ServerInfoController" to "demo overview under DEMO_API, read-only",
-        "com.example.identity.core.orchestrator.admin.DemoLoa1LoginController" to "demo loa1 switch under DEMO_API (AdminPaths), later hardening (ADR-35)",
         "com.example.identity.core.orchestrator.admin.DemoSessionsController" to "demo reset and session overview for the welcome page under DEMO_API, demo mode only (ADR-36)",
     )
     /** Simulated foreign systems (ADR-35): their own, deliberately unauthenticated demo surface. */
@@ -88,7 +86,6 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
             classes()
                 .that().areAnnotatedWith(RestController::class.java)
                 .and().resideInAnyPackage(*simulatedForeignSystems.toTypedArray())
-                .or().haveFullyQualifiedName("com.example.identity.core.orchestrator.admin.DemoLoa1LoginController")
                 .or().haveFullyQualifiedName("com.example.identity.core.orchestrator.admin.DemoSessionsController")
                 .should().beAnnotatedWith(DemoSurface::class.java)
                 .because("reachable in an instance with real people, each would be a way to take over accounts")

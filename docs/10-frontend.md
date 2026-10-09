@@ -479,8 +479,8 @@ Orchestrators:
     im Demomodus) und die H2-Konsole.
 - **Admin** (`/admin/`): Das ist die Sicht des Betreibers. Sie liegt hinter der Admin-Anmeldung
   (HTTP Basic auf `/orchestrator/admin/**`, `AdminSecurityConfig`). Sie hat diese Reiter:
-  - *Einstellungen*: Oben steht der Block „Allgemein“ mit je einer Zeile und zwei Wahlknöpfen für die
-    Reihenfolge der Registrierung und die erste Anmeldeseite der Website (`SettingRow`). Darunter
+  - *Einstellungen*: Oben steht der Block „Allgemein“ mit einer Zeile und zwei Wahlknöpfen für die
+    Reihenfolge der Registrierung (`SettingRow`). Darunter
     steht eine Tabelle „Verfahren“ je Zugang (App oder Website): eine Gruppenzeile je Auswahlliste,
     eine Zeile je Fassung mit einem An/Aus-Schalter. Beim Ausschalten fragt die Zeile nach dem Grund.
     „Reihenfolge ändern“ öffnet einen Entwurf, der erst mit „Speichern“ gilt.
@@ -547,9 +547,8 @@ Festbreitenschrift steht nur für echte Kennungen. Die Web-Seite nutzt dieselbe 
 Was nur den Client des App-Kanals betrifft (Startniveau, unterstützte Verfahren), steht dort im
 Hintergrund unter „Einstellungen für den nächsten Start“.
 
-Im Web-Kanal wählt man in der Demo-Spalte, womit die Anmeldung beginnt: entweder gleich alle
-Verfahren zur Wahl (Standard) oder erst das Passwort
-([ADR-42](adr/ADR-042-loa1-anmeldung-umschalten.md)). Anfangs gibt es keine Konten. Eine
+Im Web-Kanal beginnt die Anmeldung immer mit der Verfahrensauswahl des Orchestrators
+([ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). Anfangs gibt es keine Konten. Eine
 Testperson registriert sich über „Registrieren“ auf der Anmeldeseite, wie in der App. Bei einem
 Vorgang (Abschnitt 1) zeigt die Demo-Spalte unter den Token-Details die Vorgangs-Marker. Mit Konto
 zeigt die Ansicht „Vorgang“, dass das Token keinen solchen Marker enthält.

@@ -18,8 +18,8 @@ import java.util.UUID
 
 /**
  * The account's sign-in log (ADR-39, addendum): what a sign-in, a failed proof and a sign-out leave
- * behind - from the app channel, and from Keycloak, whose own logouts and password form the
- * orchestrator only learns about because Keycloak reports them. The lockout's entries are checked
+ * behind - from the app channel, and from Keycloak, whose own logouts the orchestrator only learns
+ * about because Keycloak reports them. The lockout's entries are checked
  * with the lock itself in AccountRateLimitIntegrationTest.
  */
 class SignInLogIntegrationTest : IntegrationTestSupport() {
@@ -104,20 +104,6 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
                     (steppedUp.details["amr"] as List<String>) shouldContainAll listOf("sms", "password")
                     @Suppress("UNCHECKED_CAST")
                     (steppedUp.details["tools"] as List<String>) shouldContainAll listOf("auth-sms@1", "auth-password@1")
-                }
-            }
-        }
-
-        given("Keycloak's own password form") {
-            `when`("a wrong password is entered there") {
-                val accountId = seedRegisteredAccount()
-                stubAssertion(accountId.toString())
-                keycloakPost("/orchestrator/api/v1/kc/accounts/$accountId/password-checks", """{"password":"wrong-password-123"}""")
-
-                then("it is a failed sign-in on the Web channel") {
-                    val failed = signInLog.of(accountId).single()
-                    failed.signInType shouldBe "SIGN_IN_FAILED"
-                    failed.channel shouldBe "WEB"
                 }
             }
         }

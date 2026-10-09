@@ -17,29 +17,19 @@ step("realm einstellungen setzen") {
             displayName = setup.realmDisplayName
             // Unter diesem Theme leben die Formulare der keycloak-extension.
             loginTheme = setup.loginTheme
-            // auth-username-password-form (LoA1) akzeptiert auch die E-Mail-Adresse.
-            setLoginWithEmailAllowed(true)
             // Die Login-Sprache bestimmt die Sprache der Orchestrator-Texte (ADR-33).
             setInternationalizationEnabled(true)
             setSupportedLocales(setOf("de", "en"))
             setDefaultLocale("de")
-            // Schutz gegen Passwort-Raten: nach 5 Fehlversuchen in 15 Minuten wartet der User bis
-            // zu 15 Minuten, nie dauerhaft gesperrt. Der Orchestrator zaehlt dieselben Fehlversuche
-            // zusaetzlich auf seine eigene Kontosperre.
-            setBruteForceProtected(true)
-            setFailureFactor(5)
-            setWaitIncrementSeconds(60)
-            setMaxFailureWaitSeconds(900)
-            setMaxDeltaTimeSeconds(900)
-            setPermanentLockout(false)
+            // Kein Brute-Force-Schutz von Keycloak: Keycloak prüft selbst keine Geheimnisse, und die
+            // Authenticators melden keine Fehlversuche. Fehlversuche zählt allein die Kontosperre des
+            // Orchestrators (ADR-44, ADR-58).
         }
     }
     down {
         updateRealm {
             displayName = null
             loginTheme = null
-            setBruteForceProtected(false)
-            setLoginWithEmailAllowed(false)
             setInternationalizationEnabled(false)
             setSupportedLocales(emptySet())
             setDefaultLocale(null)
@@ -78,8 +68,8 @@ step("events aktivieren") {
 
 // Der "orchestrator-browser"-Flow-Baum. Keycloak vergibt die Priority innerhalb einer Flow-Ebene
 // nach Anlage-Reihenfolge, deshalb zählt die Reihenfolge der Schritte. Struktur nach Keycloaks
-// LoA-Subflows: LoA1 = natives Keycloak-Passwort (sofort an den Orchestrator gemeldet) oder, per
-// Schalter im Orchestrator, dessen selectMethod (ADR-42); LoA2 = orchestrator-eigenes selectMethod.
+// LoA-Subflows: jede Stufe fragt allein den Orchestrator (ADR-58). LoA1 = seine Verfahrensauswahl,
+// LoA2 = sein Step-up mit den Verfahren des Kontos.
 
 step("orchestrator-browser flow anlegen") {
     up {
@@ -170,16 +160,14 @@ step("orchestrator-auth-flow subflow anlegen") {
     }
 }
 
-// ── LoA 1: zwei Belegungen, der Orchestrator schaltet zur Laufzeit zwischen ihnen um, indem er die
-// Requirements tauscht (KeycloakLoa1Login, ADR-42). Angelegt wird der Stand, der ohne Schalter gilt:
-// die Verfahrensauswahl des Orchestrators REQUIRED, Keycloaks Passwort DISABLED.
+// ── LoA 1: die Verfahrensauswahl des Orchestrators ─────────────────────────────────────────────
 
 step("orchestrator-loa-1 subflow anlegen") {
     up {
         flows().addExecutionFlow("orchestrator-auth-flow", mapOf(
             "alias" to "orchestrator-loa-1",
             "type" to "basic-flow",
-            "description" to "LoA-1 branch: native Keycloak username/password, or the orchestrator's method selection (switched at runtime)",
+            "description" to "LoA-1 branch: the orchestrator's method selection",
         ))
         setRequirement("orchestrator-auth-flow", childExecution("orchestrator-auth-flow") { it.displayName == "orchestrator-loa-1" }, "CONDITIONAL")
     }
@@ -203,38 +191,8 @@ step("loa-1 condition execution anlegen") {
     }
 }
 
-// Die andere Belegung: natives Keycloak-Passwort. Die accountId liefert die Nutzer-Federation
-// (ADR-38); die Anmeldung wird sofort an den Orchestrator gemeldet, damit LoA-2-Kandidaten
-// "password" ausschließen.
-step("loa-1 password execution anlegen") {
-    up {
-        flows().addExecution("orchestrator-loa-1", mapOf("provider" to "auth-username-password-form"))
-        val id = childExecution("orchestrator-loa-1") { it.providerId == "auth-username-password-form" }
-        setRequirement("orchestrator-loa-1", id, "DISABLED")
-    }
-    down {
-        flows().removeExecution(childExecution("orchestrator-loa-1") { it.providerId == "auth-username-password-form" })
-    }
-}
-
-step("loa-1 report-password execution anlegen") {
-    up {
-        flows().addExecution("orchestrator-loa-1", mapOf("provider" to "orchestrator-update-authenticator"))
-        val id = childExecution("orchestrator-loa-1") { it.providerId == "orchestrator-update-authenticator" }
-        setRequirement("orchestrator-loa-1", id, "DISABLED")
-        // Muss zu NativeAuthenticatorRegistry.kt's "kc-password-form" passen; dort werden
-        // method/maxAcr/factorTypes aufgelöst.
-        flows().newExecutionConfig(id, AuthenticatorConfigRepresentation().apply {
-            alias = "orchestrator-loa-1-report-password"
-            config = mapOf("nativeToolId" to "kc-password-form")
-        }).close()
-    }
-    down {
-        flows().removeExecution(childExecution("orchestrator-loa-1") { it.providerId == "orchestrator-update-authenticator" })
-    }
-}
-
-// Die Belegung ohne Schalter: die Verfahrensauswahl des Orchestrators, darunter auth-qr-lookup.
+// Die Verfahrensauswahl des Orchestrators, darunter auth-qr-lookup (ADR-58: Keycloak führt keine
+// eigenen Anmeldeschritte).
 step("loa-1 orchestrator execution anlegen") {
     up {
         flows().addExecution("orchestrator-loa-1", mapOf("provider" to "orchestrator-authenticator"))

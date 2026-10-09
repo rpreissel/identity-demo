@@ -126,8 +126,8 @@ Ereignis in `SignInLog`. Die Ereignisse und Regeln:
   (`tools`, ADR-51) und der Intent.
   **`STEPPED_UP`**: ein Step-up, also ein nachträglich erhöhtes Niveau, auch als Unter-Journey.
 - **`SIGN_IN_FAILED`**: ein falscher Nachweis für ein bekanntes Konto, mit Verfahren und Tool in
-  seiner Fassung (`tool`; fehlt, wenn Keycloak selbst geprüft hat). Das gilt für die App wie für
-  Keycloaks Passwortformular. **`LOCKED_OUT`**: der Fehlversuch, der die Sperre ausgelöst hat.
+  seiner Fassung (`tool`). Das gilt für die App wie für die Website; Keycloak prüft selbst nichts
+  ([ADR-58](ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). **`LOCKED_OUT`**: der Fehlversuch, der die Sperre ausgelöst hat.
   Beides schreibt `AccountLockoutService`, durch den jeder solche Fehlversuch läuft.
 - **`SIGNED_OUT`**: ein gewollter Logout. In der App läuft er über den Orchestrator. Im Web-Kanal
   meldet ihn Keycloak (Event-Listener `orchestrator-sign-in-log`,

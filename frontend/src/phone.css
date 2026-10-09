@@ -1135,3 +1135,14 @@
 .demo-area .client-choice input {
   accent-color: var(--accent);
 }
+
+/* The website's list of tools it does not offer: a card of its own, gone when the list is empty. */
+.demo-area .web-unavailable:empty {
+  display: none;
+}
+
+.demo-area .web-unavailable > .unavailable-tools {
+  margin: 0;
+  padding-top: 0;
+  border-top: 0;
+}

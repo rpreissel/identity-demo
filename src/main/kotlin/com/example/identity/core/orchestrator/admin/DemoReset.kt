@@ -5,7 +5,6 @@ import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.keycloak.KeycloakRealmSessions
-import com.example.identity.core.orchestrator.keycloak.Loa1Login
 import com.example.identity.core.orchestrator.session.AccountDeletionService
 import com.example.identity.core.orchestrator.session.RateLimitRecordRepository
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
@@ -37,7 +36,6 @@ class DemoReset(
     private val journeyService: JourneyService,
     private val transactionTemplate: TransactionTemplate,
     private val rateLimitRecordRepository: RateLimitRecordRepository,
-    private val loa1LoginSwitch: ObjectProvider<Loa1LoginSwitch>,
     private val keycloakRealmSessions: ObjectProvider<KeycloakRealmSessions>,
     private val clock: Clock,
 ) {
@@ -67,7 +65,6 @@ class DemoReset(
         keycloakRealmSessions.ifAvailable?.logoutAll()
         toolAvailabilityService.applyDefaults()
         featureFlagService.setEnabled(JourneyFeatureFlag.REGISTER_ENROLL_FIRST.key, false)
-        loa1LoginSwitch.ifAvailable?.switchTo(Loa1Login.ORCHESTRATOR)
         return DemoResetResult(deletedAccounts = accountIds.size, endedSessions = liveBefore)
     }
 
@@ -76,7 +73,7 @@ class DemoReset(
 
         /** What the reset does, for the OpenAPI description of both endpoints. */
         const val DESCRIPTION =
-            "Deletes every account, ends every session still live (also one without an account), clears the attempt throttles, ends every Keycloak session, restores the preset tool order and locks per channel, the ident-first registration order and the orchestrator's method selection on loa1. " +
+            "Deletes every account, ends every session still live (also one without an account), clears the attempt throttles, ends every Keycloak session, restores the preset tool order and locks per channel, and the ident-first registration order. " +
                 "No account is created again: the test persons register themselves. The person register (/mock-personenverzeichnis) is a foreign system and stays as it is."
     }
 }

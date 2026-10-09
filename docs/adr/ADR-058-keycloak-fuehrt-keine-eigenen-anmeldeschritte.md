@@ -1,6 +1,7 @@
 # ADR-58: Keycloak führt keine eigenen Anmeldeschritte mehr
 
-**Status:** entschieden 2026-10-09 (Spike `DPoP-demo-i9ni`), Umsetzung offen (`DPoP-demo-0ntu`).
+**Status:** entschieden 2026-10-09 (Spike `DPoP-demo-i9ni`), umgesetzt 2026-10-09 (Issue
+`DPoP-demo-0ntu`).
 Löst [ADR-8](ADR-008-keycloak-fuehrt-seine-eigenen-nativen-schritte-selbst-statt.md) und
 [ADR-42](ADR-042-loa1-anmeldung-umschalten.md) ab.
 
@@ -96,11 +97,30 @@ eigenes Tool hat keinen dieser Nachteile und gilt auch in der App.
 Die vollständige Liste steht im Issue `DPoP-demo-0ntu`:
 
 - In der Extension: `OrchestratorUpdateAuthenticator` und der Teil von
-  `OrchestratorResumeAuthenticator`, der native Nachweise über `restoreData` überträgt.
+  `OrchestratorResumeAuthenticator`, der native Nachweise über `restoreData` überträgt. RestoreData
+  selbst bleibt: Es trägt weiter die Nachweise eines früheren Durchlaufs.
+  `OrchestratorStorageProvider` ist kein `CredentialInputValidator` und kein
+  `CredentialInputUpdater` mehr.
 - Im Realm: die Executions `auth-username-password-form` und `orchestrator-update-authenticator`
-  im Subflow `orchestrator-loa-1` (eine neue Keycloak-Migration).
+  im Subflow `orchestrator-loa-1`. Er hat jetzt nur die LoA-Bedingung und
+  `orchestrator-authenticator`, wie `orchestrator-loa-2`. Dazu Keycloaks Brute-Force-Schutz und die
+  Anmeldung mit E-Mail-Adresse im Passwortformular. Keycloak prüft kein Geheimnis mehr. Fehlversuche
+  zählt allein die Kontosperre des Orchestrators
+  ([ADR-44](ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md)).
 - Im Orchestrator: `KeycloakLoa1Login`, `Loa1LoginSwitch` mit `KeycloakFeatureFlags.LOA1_PASSWORD`,
+  die Admin- und Demo-Endpunkte `loa1-login`, das Feld `loa1Login` im Server-Status,
   `MgmtPasswordController`, `KeycloakToolCalls`, `NativeAuthenticatorRegistry` und `AmrEntry` im
-  Aufruf von `upsertChannel`.
+  Aufruf von `upsertChannel`, mit ihm das Journey-Ereignis `EvidenceReported` und
+  `JourneyService.applyEvidenceUpdate`. Das Zurücksetzen der Demo setzt keinen Schalter für `loa1` mehr.
+- Im Frontend: die Einstellung „Erste Anmeldeseite der Website“ auf der Admin-Seite, die Wahl „So
+  beginnt die Anmeldung“ in der Demo-Spalte der Website und die Kachel „Erste Anmeldeseite“ im
+  Server-Status der Startseite.
 - Im Vertrag fallen nur Routen unter `/kc` weg. Sie gehören nicht zum eingefrorenen Vertrag der App
   ([ADR-50](ADR-050-api-versionierung-umschlag-und-tool.md)).
+
+**Realm direkt in V1 geändert.** Statt einer neuen Keycloak-Migration ist die Realm-Definition
+`V1__realm` selbst geändert. Eine geänderte, schon angewendete Migration lässt den Orchestrator
+beim nächsten Start das Realm löschen und neu aufbauen (`MigrationRunner`, nur im Demomodus;
+sonst bricht der Start ab). Das ist hier vertretbar: Keycloak hält keine eigenen Daten, die
+verloren gehen könnten. Die Nutzer liest er wieder über die Federation, beim nächsten Abgleich.
+Verloren gehen nur offene Sitzungen.

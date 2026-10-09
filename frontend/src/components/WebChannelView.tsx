@@ -1,7 +1,7 @@
 import { t } from '../texts'
 import { Tx } from '../Tx'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { setDemoLoa1Login, type KeycloakInfo, type Loa1Login } from '../api'
+import { type KeycloakInfo } from '../api'
 import { createWebOidc, LoginNotCompletedError, SessionEndedError, type TokenSet } from '../webOidc'
 import { parseJwtPayload } from '../jwt'
 import { personenverzeichnisApi, type Vorgang } from '../personenverzeichnisApi'
@@ -69,9 +69,8 @@ function writeStored(storage: () => Storage, key: string, value: string | null) 
 /**
  * The Web channel as a website in a browser window next to the demo column, like the App channel's
  * phone. A plain customer portal with a normal sign-in and a protected area (loa1 / loa2), both a
- * real browser login against Keycloak (webOidc.ts). How a sign-in starts is a demo setting
- * (ADR-42), realm-wide like the login theme.
- * ADR-8: the orchestrator only hears from Keycloak's server side, never from here.
+ * real browser login against Keycloak (webOidc.ts), whose every step is an orchestrator tool
+ * (ADR-58). The orchestrator only hears from Keycloak's server side, never from here.
  */
 export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
   const {
@@ -86,8 +85,6 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
   const [error, setError] = useState('')
   // "Anmeldung abgebrochen" is the user's own choice, not a failure - shown as a note, not an error.
   const [notice, setNotice] = useState('')
-  const [loa1Login, setLoa1Login] = useState<Loa1Login>(keycloak.loa1Login)
-  const [loa1Error, setLoa1Error] = useState('')
   const [view, setView] = useState<PortalView>(
     () => readStored(() => sessionStorage, VIEW_KEY, ['home', 'profile', 'security', 'protected', 'process']) ?? 'home',
   )
@@ -120,13 +117,6 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
         writeStored(() => sessionStorage, VIEW_KEY, null)
       })
   }, [completeLoginIfRedirected])
-
-  function chooseLoa1Login(login: Loa1Login) {
-    setLoa1Error('')
-    setDemoLoa1Login(login)
-      .then(() => setLoa1Login(login))
-      .catch((err) => setLoa1Error(err instanceof Error ? err.message : String(err)))
-  }
 
   function clearMessages() {
     setError('')
@@ -534,26 +524,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
             }}
           >
             {!tokens && (
-              <div className="card">
-                <h2>{t('So beginnt die Anmeldung')}</h2>
-                <p>{t('Beide Male meldet Keycloak Sie an. Der Unterschied liegt nur in der ersten Anmeldeseite. Das gilt für „Anmelden“ und „Sicher anmelden“, und die Wahl gilt sofort für alle Besucher der Demo.')}</p>
-                <div className="client-choice" role="radiogroup" aria-label={t('So beginnt die Anmeldung')}>
-                  <label>
-                    <input type="radio" name="loa1-login" checked={loa1Login === 'ORCHESTRATOR'} onChange={() => chooseLoa1Login('ORCHESTRATOR')} />
-                    <span>
-                      <strong>{t('Gleich alle Verfahren zur Wahl')}</strong>
-                      <span>{t('Schon die erste Seite bietet alles an: Passwort, Code per SMS oder E-Mail, oder die Bestätigung mit der App per QR-Code.')}</span>
-                    </span>
-                  </label>
-                  <label>
-                    <input type="radio" name="loa1-login" checked={loa1Login === 'KEYCLOAK_PASSWORD'} onChange={() => chooseLoa1Login('KEYCLOAK_PASSWORD')} />
-                    <span>
-                      <strong>{t('Erst das Passwort')}</strong>
-                      <span>{t('Wie auf den meisten Websites: zuerst E-Mail-Adresse und Passwort. Weitere Verfahren kommen erst, wenn mehr Sicherheit verlangt ist.')}</span>
-                    </span>
-                  </label>
-                </div>
-                {loa1Error && <div className="hint">{loa1Error}</div>}
+              <div className="card web-unavailable">
                 <UnavailableTools channel="WEB" />
               </div>
             )}

@@ -148,8 +148,8 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
         val theCtx = webCtx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
         val state = WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-password"))), accountAlreadyKnown = true)
 
-        `when`("Keycloak reports more evidence that still falls short") {
-            val transition = strategy.transition(state, JourneyEvent.EvidenceReported, theCtx)
+        `when`("an action brought evidence that still falls short") {
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
 
             then("it offers the account's auth tools again") {
                 transition shouldBe

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { ui, uiPattern, welcomeHeading } from '../e2e/texts'
-import { adminHeaders, ORCHESTRATOR, switchLoa1Login } from './admin'
+import { adminHeaders, ORCHESTRATOR } from './admin'
 import { kc } from './texts'
 import { visibleButton } from './website'
 
@@ -11,7 +11,6 @@ test.use({ baseURL: ORCHESTRATOR })
 test.beforeEach(async ({ request }) => {
   const reset = await request.post(`${ORCHESTRATOR}/orchestrator/admin/demo-reset`, { headers: adminHeaders })
   expect(reset.status()).toBe(200)
-  await switchLoa1Login(request, 'ORCHESTRATOR')
 })
 
 test.afterAll(async ({ request }) => {

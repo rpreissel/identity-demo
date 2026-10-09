@@ -66,8 +66,8 @@ data class MethodEvidence(
     val factorTypes: Set<FactorType> = emptySet(),
     /**
      * [AmrSource.ORCHESTRATOR] or [AmrSource.KEYCLOAK]. [AuthPolicy] does not read it. Carried here
-     * so it survives a `RestoreData` round-trip; otherwise a native Keycloak report could later
-     * downgrade a method an orchestrator tool proved.
+     * so it survives a `RestoreData` round-trip; otherwise restored evidence could later downgrade a
+     * method an orchestrator tool proved.
      */
     val source: String,
     /**

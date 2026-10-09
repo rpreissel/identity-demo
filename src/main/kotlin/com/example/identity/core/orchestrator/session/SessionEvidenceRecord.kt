@@ -87,7 +87,7 @@ class SessionEvidenceRecord(
 
     /**
      * Each entry's loa (docs/05-api.md Abschnitt 3b), the only figure `AuthPolicy.resolveAcr` prices
-     * from, whether it came from an orchestrator tool or a native Keycloak authenticator.
+     * from, whether an orchestrator tool proved it here or it was restored from Keycloak's session.
      */
     val methodAcr: Map<String, String> get() = methods.associate { it.method to it.loa }
 

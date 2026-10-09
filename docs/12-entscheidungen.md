@@ -68,7 +68,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/). Die Tabelle nennt 
 | [ADR-55](adr/ADR-055-hauptschluessel-je-journey-verfahrensgeheimnisse-versiegelt.md) | Ein Hauptschlüssel je Journey, den das Konto übernimmt; Mobilnummer, PIN, Verfahrensangaben und Anmeldeprotokoll versiegelt; die Demo speichert lesbar mit kurzem Kopf und Prüfwert des Schlüssels, der Modus gehört zur Datenbank |
 | [ADR-56](adr/ADR-056-vault-transit-als-schluesseldienst.md) | Vault Transit ist das Ziel für den Schlüsseldienst hinter `KeyService`; die Demo bleibt bei der Simulation, Keycloaks eigene Schlüssel bleiben bei Keycloak |
 | [ADR-57](adr/ADR-057-keycloakify-einziges-login-theme.md) | Keycloakify ist das einzige Login-Theme; das FreeMarker-Theme und der Schalter zwischen beiden entfallen, die eigenen Texte hängt der Build an die Bundles des Theme-JARs |
-| [ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md) | Keycloak führt keine eigenen Anmeldeschritte mehr: kein Passwortformular, keine gespeicherten Credentials, native Verfahren werden nicht umhüllt, sondern eigene Tools *(entschieden, Umsetzung offen)* |
+| [ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md) | Keycloak führt keine eigenen Anmeldeschritte mehr: kein Passwortformular, keine gespeicherten Credentials, native Verfahren werden nicht umhüllt, sondern eigene Tools |
 
 Die Nummern ADR-4, 13, 23 und 30 fehlen. Ihr Inhalt steht heute an anderer Stelle:
 

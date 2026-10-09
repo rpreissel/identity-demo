@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 import { ui } from '../e2e/texts'
 import { parseJwtPayload } from '../src/jwt'
-import { ORCHESTRATOR, switchLoa1Login } from './admin'
+import { ORCHESTRATOR } from './admin'
 import { kc } from './texts'
 
 /**
@@ -55,10 +55,6 @@ async function accessClaims(page: Page): Promise<Record<string, unknown>> {
 function processHeading(name: string) {
   return ui('Vorgang: {vorgang}').replace('{vorgang}', name)
 }
-
-test.beforeAll(async ({ request }) => {
-  await switchLoa1Login(request, 'ORCHESTRATOR')
-})
 
 test('sign in with a one-time password, end the process, and the password is spent', async ({ page, request }) => {
   const letter = await issue(request, MAX.personId, 'beitragsrueckerstattung', 'loa1')

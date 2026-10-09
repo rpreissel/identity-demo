@@ -22,7 +22,6 @@ class ServerInfoControllerTest : BehaviorSpec({
             environment = MockEnvironment(),
             featureFlagService = mockk<FeatureFlagService>(relaxed = true),
             toolAvailabilityService = toolAvailability,
-            loa1LoginSwitch = mockk(),
             healthEndpoint = healthEndpoint,
             meterRegistry = SimpleMeterRegistry(),
             demoMode = DemoMode(on = false),
