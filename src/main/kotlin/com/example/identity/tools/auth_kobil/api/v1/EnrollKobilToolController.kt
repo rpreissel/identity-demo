@@ -1,6 +1,8 @@
 package com.example.identity.tools.auth_kobil.api.v1
 
 import com.example.identity.tools.auth_kobil.ENROLL_KOBIL_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.auth_kobil.EnrollKobil
 import com.example.identity.tools.auth_kobil.internal.enrollkobil.EnrollKobilToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
@@ -11,6 +13,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -67,8 +70,8 @@ class EnrollKobilToolController(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["fsc"]},
-                      "next": {"type": "tool", "toolId": "enroll-kobil", "step": "activate", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["fsc"]},
+                      "next": {"type": "tool", "toolId": "enroll-kobil", "step": "activate", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"},
                       "stepData": {"kind": "kobil-activation", "missingFields": ["activated", "biometricConsent"], "tenantId": "identity-demo", "kobilUserId": "kob-1a2b3c4d5e6f", "activationCode": "K7M2PQX9", "pin": "40318827", "unlockSecret": "xE1r..."}
                     }
                 """)])]
@@ -92,7 +95,7 @@ class EnrollKobilToolController(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["fsc", "kobil", "biometric"]},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["fsc", "kobil", "biometric"]},
                       "next": {"type": "orchestrator", "context": "authentication", "step": "authenticated"}
                     }
                 """)])]
@@ -111,7 +114,7 @@ class EnrollKobilToolController(
             request?.label,
             masterKey = context::masterKey,
         )
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     @GetMapping("$TOOLS_API/$ENROLL_KOBIL_TOOL_ID/v1/{toolSessionId}")

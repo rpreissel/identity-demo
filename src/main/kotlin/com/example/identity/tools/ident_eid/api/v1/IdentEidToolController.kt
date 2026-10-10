@@ -1,6 +1,9 @@
 package com.example.identity.tools.ident_eid.api.v1
 
 import com.example.identity.tools.ident_eid.IDENT_EID_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.NO_REQUEST_BODY
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.ident_eid.IdentEid
 import com.example.identity.tools.ident_eid.internal.EidPatchFields
 import com.example.identity.tools.ident_eid.internal.IdentEidToolHandler
@@ -12,6 +15,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -58,14 +62,14 @@ class IdentEidToolController(
     @PostMapping("$TOOLS_API/$IDENT_EID_TOOL_ID/v1")
     @Operation(
         summary = "Activate ident-eid",
-        description = "No request body: toolId already carries kind and method.",
+        description = NO_REQUEST_BODY,
         responses = [
             ApiResponse(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                      "next": {"type": "tool", "toolId": "ident-eid", "step": "input", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
+                      "next": {"type": "tool", "toolId": "ident-eid", "step": "input", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"},
                       "stepData": {"kind": "missing-fields", "missingFields": ["familyName", "givenNames", "birthDate", "streetAddress", "postalCode", "locality", "restrictedId"]}
                     }
                 """)])]
@@ -91,14 +95,14 @@ class IdentEidToolController(
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [
                     ExampleObject(name = "After card data - the PIN is missing", value = """
                         {
-                          "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                          "next": {"type": "tool", "toolId": "ident-eid", "step": "input", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                          "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
+                          "next": {"type": "tool", "toolId": "ident-eid", "step": "input", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"},
                           "stepData": {"kind": "missing-fields", "missingFields": ["pin"]}
                         }
                     """),
                     ExampleObject(name = "After pin - attested, the assignment step follows", value = """
                         {
-                          "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
+                          "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
                           "next": {"type": "tool", "toolId": "ident-kvnr", "step": "input"}
                         }
                     """)
@@ -123,7 +127,7 @@ class IdentEidToolController(
         )
         val outcome = handler.patch(context.toolSessionId, fields)
 
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     @GetMapping("$TOOLS_API/$IDENT_EID_TOOL_ID/v1/{toolSessionId}")
@@ -134,8 +138,8 @@ class IdentEidToolController(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                      "next": {"type": "tool", "toolId": "ident-eid", "step": "input", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
+                      "next": {"type": "tool", "toolId": "ident-eid", "step": "input", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"},
                       "stepData": {"kind": "missing-fields", "missingFields": ["pin"]}
                     }
                 """)])]

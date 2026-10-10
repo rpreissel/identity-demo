@@ -13,6 +13,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -83,7 +84,7 @@ class ApproveQrToolController(
         val hasQrEnrollment = accountDirectory.activeEnrollment(accountId, QrModule.method) != null
         val outcome = handler.patch(context.toolSessionId, body.pairingCode, body.decision, accountId, hasQrEnrollment)
 
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     @GetMapping("$TOOLS_API/$APPROVE_QR_TOOL_ID/v1/{toolSessionId}")

@@ -14,7 +14,6 @@ import com.example.identity.tools.auth_sms.internal.SmsSendLimit
 
 import com.example.identity.tools.auth_sms.SmsModule
 import com.example.identity.tools.auth_sms.internal.SMS_ENROLLMENT_TYPE
-import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.TooManyRequestsException
@@ -109,7 +108,7 @@ class EnrollSmsToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: ToolSessionId, version: Int): ToolOutcome {
+    fun read(toolSessionId: ToolSessionId, version: Int): ToolOutcome.InProgress {
         val data = sessions.require<EnrollSmsToolSession>(toolSessionId)
         return outcomeFor(data.toState(toolSessionId), data, version)
     }

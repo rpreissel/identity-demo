@@ -1,6 +1,9 @@
 package com.example.identity.tools.auth_sms.api.v1
 
 import com.example.identity.tools.auth_sms.AUTH_SMS_LOOKUP_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.NO_REQUEST_BODY
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.auth_sms.AuthSmsLookup
 import com.example.identity.tools.auth_sms.SmsModule
 import com.example.identity.tools.auth_sms.internal.authsmslookup.AuthSmsLookupToolHandler
@@ -14,6 +17,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import com.example.identity.contract.tool_api.directory.resolveAccountByEmail
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
@@ -55,14 +59,14 @@ class AuthSmsLookupToolController(
     @PostMapping("$TOOLS_API/$AUTH_SMS_LOOKUP_TOOL_ID/v1")
     @Operation(
         summary = "Activate auth-sms-lookup",
-        description = "No request body: toolId already carries kind and method.",
+        description = NO_REQUEST_BODY,
         responses = [
             ApiResponse(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                      "next": {"type": "tool", "toolId": "auth-sms-lookup", "step": "auth", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
+                      "next": {"type": "tool", "toolId": "auth-sms-lookup", "step": "auth", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"}
                     }
                 """)])]
             )
@@ -86,14 +90,14 @@ class AuthSmsLookupToolController(
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [
                     ExampleObject(name = "After email - TAN sent", value = """
                         {
-                          "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                          "next": {"type": "tool", "toolId": "auth-sms-lookup", "step": "tanInput", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                          "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
+                          "next": {"type": "tool", "toolId": "auth-sms-lookup", "step": "tanInput", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"},
                           "demo": {"tan": "123456"}
                         }
                     """),
                     ExampleObject(name = "After tan - logged in, device-binding offer", value = """
                         {
-                          "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED", "currentAcr": "loa1", "currentAmr": ["sms"]},
+                          "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa1", "currentAmr": ["sms"]},
                           "next": {"type": "orchestrator", "context": "authentication", "step": "offerDeviceBinding"}
                         }
                     """)
@@ -120,7 +124,7 @@ class AuthSmsLookupToolController(
             handler.patch(context.toolSessionId, body.tan)
         }
 
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     @GetMapping("$TOOLS_API/$AUTH_SMS_LOOKUP_TOOL_ID/v1/{toolSessionId}")
@@ -131,8 +135,8 @@ class AuthSmsLookupToolController(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                      "next": {"type": "tool", "toolId": "auth-sms-lookup", "step": "tanInput", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
+                      "next": {"type": "tool", "toolId": "auth-sms-lookup", "step": "tanInput", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"}
                     }
                 """)])]
             )

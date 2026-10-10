@@ -1,6 +1,9 @@
 package com.example.identity.tools.auth_invite.api.v1
 
 import com.example.identity.tools.auth_invite.AUTH_INVITE_LOOKUP_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.NO_REQUEST_BODY
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.auth_invite.AuthInviteLookup
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolController
@@ -10,6 +13,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.directory.normalizeKvnr
 import com.example.identity.contract.tool_api.envelope.TOOLS_API
@@ -57,14 +61,14 @@ class AuthInviteLookupToolController(
     @PostMapping("$TOOLS_API/$AUTH_INVITE_LOOKUP_TOOL_ID/v1")
     @Operation(
         summary = "Activate auth-invite-lookup",
-        description = "No request body: toolId already carries kind and method.",
+        description = NO_REQUEST_BODY,
         responses = [
             ApiResponse(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                      "next": {"type": "tool", "toolId": "auth-invite-lookup", "step": "input", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
+                      "next": {"type": "tool", "toolId": "auth-invite-lookup", "step": "input", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"}
                     }
                 """)])]
             )
@@ -88,7 +92,7 @@ class AuthInviteLookupToolController(
                 description = "Accepted - the channel is signed in for the invitation's process.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED"},
                       "next": {"type": "authenticated"}
                     }
                 """)])]
@@ -109,7 +113,7 @@ class AuthInviteLookupToolController(
         // Folded into the ordinary failure, see Lockouts.isIdentLockedOut.
         val rateLimited = lockouts.isIdentLockedOut(personId)
         val outcome = handler.patch(context.toolSessionId, body.kvnr, body.partnerNumber, body.code, personId, rateLimited)
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     @GetMapping("$TOOLS_API/$AUTH_INVITE_LOOKUP_TOOL_ID/v1/{toolSessionId}")

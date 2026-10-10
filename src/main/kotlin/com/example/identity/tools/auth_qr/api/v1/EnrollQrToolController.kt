@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_qr.api.v1
 
 import com.example.identity.tools.auth_qr.ENROLL_QR_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.NO_REQUEST_BODY
 import com.example.identity.tools.auth_qr.EnrollQr
 import com.example.identity.tools.auth_qr.internal.enrollqr.EnrollQrToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
@@ -11,6 +12,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -42,7 +44,7 @@ class EnrollQrToolController(
     @PostMapping("$TOOLS_API/$ENROLL_QR_TOOL_ID/v1")
     @Operation(
         summary = "Activate enroll-qr",
-        description = "No request body: toolId already carries kind and method.",
+        description = NO_REQUEST_BODY,
         responses = [ApiResponse(responseCode = "201", content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class))])]
     )
     fun activate(
@@ -59,7 +61,7 @@ class EnrollQrToolController(
         context: AuthorizedToolContext
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.patch(context.toolSessionId)
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     @GetMapping("$TOOLS_API/$ENROLL_QR_TOOL_ID/v1/{toolSessionId}")

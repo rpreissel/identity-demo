@@ -171,15 +171,13 @@ fun ToolJourney.activated(
     return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)
 }
 
+/** The answer to a PATCH on a tool session: applies [outcome] and returns the envelope with `200`. */
+fun ToolJourney.applied(context: AuthorizedToolContext, outcome: ToolOutcome): ResponseEntity<ChannelResponse> =
+    ResponseEntity.ok(applyOutcome(context, outcome))
+
 /**
  * The answer to a GET on a tool session: [read] rebuilds the tool's current step while it is still
  * the journey's current tool; otherwise the response shows where the journey is now.
  */
-fun ToolJourney.readResponse(context: ToolContext, read: () -> ToolOutcome): ResponseEntity<ChannelResponse> {
-    val outcome = if (isCurrentTool(context)) {
-        checkNotNull(read() as? ToolOutcome.InProgress) { "read() must return InProgress while the tool is still current" }
-    } else {
-        null
-    }
-    return ResponseEntity.ok(buildReadResponse(context, outcome))
-}
+fun ToolJourney.readResponse(context: ToolContext, read: () -> ToolOutcome.InProgress): ResponseEntity<ChannelResponse> =
+    ResponseEntity.ok(buildReadResponse(context, read.takeIf { isCurrentTool(context) }?.invoke()))

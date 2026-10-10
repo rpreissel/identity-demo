@@ -1,6 +1,9 @@
 package com.example.identity.tools.auth_sms.api.v1
 
 import com.example.identity.tools.auth_sms.AUTH_SMS_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.NO_REQUEST_BODY
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.auth_sms.AuthSms
 import com.example.identity.tools.auth_sms.SmsModule
 import com.example.identity.tools.auth_sms.internal.authsms.AuthSmsToolHandler
@@ -12,6 +15,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -47,14 +51,14 @@ class AuthSmsToolController(
     @PostMapping("$TOOLS_API/$AUTH_SMS_TOOL_ID/v1")
     @Operation(
         summary = "Activate auth-sms",
-        description = "No request body: toolId already carries kind and method.",
+        description = NO_REQUEST_BODY,
         responses = [
             ApiResponse(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa1"},
-                      "next": {"type": "tool", "toolId": "auth-sms", "step": "auth", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa1"},
+                      "next": {"type": "tool", "toolId": "auth-sms", "step": "auth", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"}
                     }
                 """)])]
             )
@@ -63,7 +67,8 @@ class AuthSmsToolController(
     fun activate(
         context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
-    ): ResponseEntity<ChannelResponse> {        val outcome = handler.start(context.toolSessionId, toolJourney.requireEnrollment(context, SmsModule))
+    ): ResponseEntity<ChannelResponse> {
+        val outcome = handler.start(context.toolSessionId, toolJourney.requireEnrollment(context, SmsModule))
 
         return toolJourney.activated(context, outcome, uriBuilder)
     }
@@ -77,7 +82,7 @@ class AuthSmsToolController(
                 description = "Correct TAN - the step-up is satisfied, channel settles into authenticated.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["password", "sms"]},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["password", "sms"]},
                       "next": {"type": "orchestrator", "context": "authentication", "step": "authenticated"}
                     }
                 """)])]
@@ -91,7 +96,7 @@ class AuthSmsToolController(
         val body = request ?: AuthSmsPatchRequest()
         val outcome = handler.patch(context.toolSessionId, body.tan)
 
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     @GetMapping("$TOOLS_API/$AUTH_SMS_TOOL_ID/v1/{toolSessionId}")
@@ -102,8 +107,8 @@ class AuthSmsToolController(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa1"},
-                      "next": {"type": "tool", "toolId": "auth-sms", "step": "auth", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa1"},
+                      "next": {"type": "tool", "toolId": "auth-sms", "step": "auth", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"}
                     }
                 """)])]
             )

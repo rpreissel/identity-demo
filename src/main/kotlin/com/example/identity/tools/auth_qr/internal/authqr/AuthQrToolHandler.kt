@@ -57,7 +57,7 @@ class AuthQrToolHandler(
      * `closed`: only the next PATCH reports that outcome to the journey (docs/verfahren/qr.md).
      */
     @Transactional(readOnly = true)
-    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+    fun read(toolSessionId: ToolSessionId): ToolOutcome.InProgress {
         val data = sessions.require<AuthQrToolSession>(toolSessionId)
         val pairingCode = checkNotNull(data.pairingCode)
         return when (browserSide.advance(pairingCode, null)) {

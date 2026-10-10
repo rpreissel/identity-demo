@@ -76,7 +76,7 @@ class EnrollDeviceToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+    fun read(toolSessionId: ToolSessionId): ToolOutcome.InProgress {
         sessions.require<EnrollDeviceToolSession>(toolSessionId)
         return outcomeFor()
     }

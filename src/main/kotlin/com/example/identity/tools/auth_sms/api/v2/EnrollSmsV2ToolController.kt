@@ -1,6 +1,8 @@
 package com.example.identity.tools.auth_sms.api.v2
 
 import com.example.identity.tools.auth_sms.ENROLL_SMS_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.auth_sms.EnrollSms
 import com.example.identity.tools.auth_sms.SmsModule
 import com.example.identity.tools.auth_sms.internal.enrollsms.EnrollSmsToolHandler
@@ -12,6 +14,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -62,8 +65,8 @@ class EnrollSmsV2ToolController(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
-                      "next": {"type": "tool", "toolId": "enroll-sms", "step": "enroll", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "REGISTERING"},
+                      "next": {"type": "tool", "toolId": "enroll-sms", "step": "enroll", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"},
                       "stepData": {"kind": "enroll-sms", "missingFields": ["phoneNumber", "consent"], "replaces": false}
                     }
                 """)])]
@@ -89,15 +92,15 @@ class EnrollSmsV2ToolController(
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [
                     ExampleObject(name = "phoneNumber without consent - nothing sent", value = """
                         {
-                          "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
-                          "next": {"type": "tool", "toolId": "enroll-sms", "step": "enroll", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                          "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "REGISTERING"},
+                          "next": {"type": "tool", "toolId": "enroll-sms", "step": "enroll", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"},
                           "stepData": {"kind": "enroll-sms", "missingFields": ["phoneNumber", "consent"], "replaces": false}
                         }
                     """),
                     ExampleObject(name = "After phoneNumber and consent - TAN sent", value = """
                         {
-                          "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
-                          "next": {"type": "tool", "toolId": "enroll-sms", "step": "tanInput", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                          "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "REGISTERING"},
+                          "next": {"type": "tool", "toolId": "enroll-sms", "step": "tanInput", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"},
                           "demo": {"tan": "123456"}
                         }
                     """)
@@ -111,7 +114,7 @@ class EnrollSmsV2ToolController(
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: EnrollSmsV2PatchRequest()
         val outcome = handler.patch(context.toolSessionId, context.version, body.phoneNumber, body.tan, body.consent, masterKey = context::masterKey)
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     @GetMapping("$TOOLS_API/$ENROLL_SMS_TOOL_ID/v2/{toolSessionId}")
@@ -122,8 +125,8 @@ class EnrollSmsV2ToolController(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
-                      "next": {"type": "tool", "toolId": "enroll-sms", "step": "tanInput", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "REGISTERING"},
+                      "next": {"type": "tool", "toolId": "enroll-sms", "step": "tanInput", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"}
                     }
                 """)])]
             )

@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.api.v1.tool
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolJourney
@@ -47,7 +48,7 @@ class LeaveToolController(private val toolJourney: ToolJourney) {
                 description = "auth-sms abandoned during a fallback chain - offers the other loa2 candidates.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa1"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa1"},
                       "next": {"type": "orchestrator", "context": "auth", "step": "selectMethod"},
                       "stepData": {"kind": "select-method", "options": ["auth-password", "auth-device"]}
                     }
@@ -77,7 +78,7 @@ class LeaveToolController(private val toolJourney: ToolJourney) {
                 description = "Back from ident-fsc during registration - both identification methods are offered again.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
                       "next": {"type": "orchestrator", "context": "registration", "step": "selectIdentificationMethod"},
                       "stepData": {"kind": "select-method", "options": ["ident-fsc", "ident-eid", "ident-nect"]}
                     }

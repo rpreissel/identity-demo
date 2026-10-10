@@ -114,7 +114,7 @@ class ApproveQrToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+    fun read(toolSessionId: ToolSessionId): ToolOutcome.InProgress {
         val pairingCode = sessions.require<ApproveQrToolSession>(toolSessionId).pairingCode
             ?: return ToolOutcome.InProgress(nextStep = "input", stepData = MissingFields(listOf("pairingCode")))
         // This tool session only ever approves for its own channel's account - an approved request

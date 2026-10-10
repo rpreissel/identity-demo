@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_email.api.v1
 
 import com.example.identity.tools.auth_email.ENROLL_EMAIL_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.auth_email.EnrollEmail
 import com.example.identity.tools.auth_email.internal.enrollemail.EnrollEmailToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
@@ -47,7 +48,7 @@ class EnrollEmailToolController(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED"},
                       "next": {"type": "orchestrator", "context": "authentication", "step": "done"}
                     }
                 """)])]

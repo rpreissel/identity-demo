@@ -51,7 +51,7 @@ class AuthDeviceToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+    fun read(toolSessionId: ToolSessionId): ToolOutcome.InProgress {
         sessions.require<AuthDeviceToolSession>(toolSessionId)
         return outcomeFor()
     }

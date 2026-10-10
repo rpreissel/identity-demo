@@ -138,7 +138,7 @@ data class ChannelResponse(
  * (docs/03-tool-architektur.md #7).
  */
 data class JourneyDebugStep(
-    @field:Schema(example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+    @field:Schema(example = "$EXAMPLE_CHANNEL_SESSION_ID")
     val journeyId: String,
     @field:Schema(example = "DELETE_ACCOUNT")
     val intent: String,

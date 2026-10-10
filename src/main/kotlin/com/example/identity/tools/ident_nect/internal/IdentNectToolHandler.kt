@@ -102,7 +102,7 @@ class IdentNectToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+    fun read(toolSessionId: ToolSessionId): ToolOutcome.InProgress {
         val caseId = checkNotNull(sessions.require<IdentNectToolSession>(toolSessionId).caseId)
         return redirect(caseId, nect.jumpUrl(caseId))
     }

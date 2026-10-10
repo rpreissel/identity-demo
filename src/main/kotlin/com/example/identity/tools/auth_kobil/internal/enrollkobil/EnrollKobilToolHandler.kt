@@ -126,7 +126,7 @@ class EnrollKobilToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+    fun read(toolSessionId: ToolSessionId): ToolOutcome.InProgress {
         return outcomeFor(sessions.require<EnrollKobilToolSession>(toolSessionId))
     }
 

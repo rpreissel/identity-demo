@@ -1,6 +1,8 @@
 package com.example.identity.core.orchestrator.api.v1.channel
 
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.core.orchestrator.channel.ChannelService
 import com.example.identity.core.orchestrator.channel.MethodsResponse
 import com.example.identity.core.orchestrator.channel.TokenResponse
@@ -65,7 +67,7 @@ class ChannelCreationController(
                 description = "New channel - an unrecognized device lands on the identification choice.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
                       "next": {"type": "orchestrator", "context": "registration", "step": "selectIdentificationMethod"},
                       "stepData": {"kind": "select-method", "options": ["ident-fsc", "ident-eid"]}
                     }
@@ -107,8 +109,8 @@ class ChannelController(
                 description = "Resumed mid-step-up, waiting on an SMS TAN.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa1"},
-                      "next": {"type": "tool", "toolId": "auth-sms", "step": "auth", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa1"},
+                      "next": {"type": "tool", "toolId": "auth-sms", "step": "auth", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"}
                     }
                 """)])]
             )
@@ -131,7 +133,7 @@ class ChannelController(
                 description = "loa3 requested, current evidence (loa2) doesn't satisfy it - offers the candidate methods.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa2"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa2"},
                       "next": {"type": "orchestrator", "context": "auth", "step": "selectMethod"},
                       "stepData": {"kind": "select-method", "options": ["auth-sms", "auth-password", "auth-device"]}
                     }
@@ -157,7 +159,7 @@ class ChannelController(
                 description = "A cancelled REGISTER journey restarts the same entry intent from scratch.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
                       "next": {"type": "tool", "toolId": "ident-fsc", "step": "input"}
                     }
                 """)])]
@@ -223,7 +225,7 @@ class ChannelController(
                 description = "Device binding accepted after a lookup login - journey settles into authenticated.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED", "currentAcr": "loa1", "currentAmr": ["password"]},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa1", "currentAmr": ["password"]},
                       "next": {"type": "orchestrator", "context": "authentication", "step": "authenticated"}
                     }
                 """)])]
@@ -278,7 +280,7 @@ class ChannelController(
                 description = "Already AUTHENTICATED with sms+password - offered the still-missing methods.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["sms", "password"]},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["sms", "password"]},
                       "next": {"type": "orchestrator", "context": "enrollment", "step": "selectMethod"},
                       "stepData": {"kind": "select-method", "options": ["enroll-device", "confirm-email"]}
                     }
@@ -305,7 +307,7 @@ class ChannelController(
                 description = "Already at loa2 - approve-qr offered directly.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa2"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa2"},
                       "next": {"type": "tool", "toolId": "approve-qr", "step": "input"}
                     }
                 """)])]
@@ -337,7 +339,7 @@ class ChannelController(
                 description = "Confirmation prompt for the account deletion.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED"},
                       "next": {"type": "orchestrator", "context": "prompt", "step": "confirm"},
                       "stepData": {"kind": "confirm", "prompt": {"kind": "Confirm", "title": "Account wirklich löschen?", "confirmLabel": "Account löschen", "cancelLabel": "Abbrechen", "destructive": true}}
                     }
@@ -366,7 +368,7 @@ class ChannelController(
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
                       "channel": {
-                        "channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED",
+                        "channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED",
                         "currentAcr": "loa1", "currentAmr": ["password"],
                         "activeMethods": [{"id": "7f3e2b1a-0c9d-4e8f-8a1b-2c3d4e5f6a7b", "method": "password"}]
                       },
@@ -398,7 +400,7 @@ class ChannelController(
                 description = "The password is about to be changed - its enrollment is the one tool on offer.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["sms", "password"]},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["sms", "password"]},
                       "next": {"type": "tool", "toolId": "enroll-password", "step": "enroll"}
                     }
                 """)])]
@@ -429,7 +431,7 @@ class ChannelController(
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
                       "channel": {
-                        "channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED",
+                        "channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED",
                         "currentAcr": "loa2", "currentAmr": ["fsc"]
                       },
                       "next": {"type": "orchestrator", "context": "authentication", "step": "authenticated"}

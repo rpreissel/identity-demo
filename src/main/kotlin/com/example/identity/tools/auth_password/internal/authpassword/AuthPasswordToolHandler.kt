@@ -53,7 +53,7 @@ class AuthPasswordToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+    fun read(toolSessionId: ToolSessionId): ToolOutcome.InProgress {
         sessions.require<AuthPasswordToolSession>(toolSessionId)
         return outcomeFor()
     }

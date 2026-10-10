@@ -168,7 +168,7 @@ class AuthKobilToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: ToolSessionId, passwordAvailable: Boolean): ToolOutcome =
+    fun read(toolSessionId: ToolSessionId, passwordAvailable: Boolean): ToolOutcome.InProgress =
         inProgress(stateOf(toolSessionId, loadSession(toolSessionId), passwordAvailable))
 
     private fun loadSession(toolSessionId: ToolSessionId): AuthKobilToolSession =

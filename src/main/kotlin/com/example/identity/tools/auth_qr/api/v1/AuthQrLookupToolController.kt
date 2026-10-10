@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_qr.api.v1
 
 import com.example.identity.tools.auth_qr.AUTH_QR_LOOKUP_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.NO_REQUEST_BODY
 import com.example.identity.tools.auth_qr.AuthQrLookup
 import com.example.identity.tools.auth_qr.internal.authqrlookup.AuthQrLookupToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
@@ -11,6 +12,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -43,7 +45,7 @@ class AuthQrLookupToolController(
     @PostMapping("$TOOLS_API/$AUTH_QR_LOOKUP_TOOL_ID/v1")
     @Operation(
         summary = "Activate auth-qr-lookup",
-        description = "No request body: toolId already carries kind and method.",
+        description = NO_REQUEST_BODY,
         responses = [ApiResponse(responseCode = "201", content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class))])]
     )
     fun activate(
@@ -66,7 +68,7 @@ class AuthQrLookupToolController(
         context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.patch(context.toolSessionId, request?.confirmationCode)
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     @GetMapping("$TOOLS_API/$AUTH_QR_LOOKUP_TOOL_ID/v1/{toolSessionId}")

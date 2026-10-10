@@ -1,6 +1,8 @@
 package com.example.identity.tools.ident_nect.api.v1
 
 import com.example.identity.tools.ident_nect.IDENT_NECT_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.ident_nect.IdentNect
 import com.example.identity.tools.ident_nect.internal.IdentNectToolHandler
 import com.example.identity.contract.tool_api.envelope.TOOLS_API
@@ -12,6 +14,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import com.fasterxml.jackson.annotation.JsonAlias
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
@@ -76,8 +79,8 @@ class IdentNectToolController(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                      "next": {"type": "tool", "toolId": "ident-nect", "step": "redirect", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
+                      "next": {"type": "tool", "toolId": "ident-nect", "step": "redirect", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"},
                       "stepData": {"kind": "nect-redirect", "jumpUrl": "/nect/?case=5b1c2d3e-0000-4000-8000-000000000001", "caseId": "5b1c2d3e-0000-4000-8000-000000000001"}
                     }
                 """)])]
@@ -102,7 +105,7 @@ class IdentNectToolController(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(name = "Attested, the assignment question follows", value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "REGISTERING"},
                       "next": {"type": "orchestrator", "context": "prompt", "step": "confirm"},
                       "stepData": {"kind": "confirm", "prompt": {"kind": "Confirm", "title": "Konto Ihrer Versichertennummer zuordnen?"}}
                     }
@@ -116,7 +119,7 @@ class IdentNectToolController(
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: IdentNectPatchRequest()
         val outcome = handler.patch(context.toolSessionId, body.caseId, body.retry == true, body.returnUri?.takeIf { it.isNotBlank() })
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     @GetMapping("$TOOLS_API/$IDENT_NECT_TOOL_ID/v1/{toolSessionId}")

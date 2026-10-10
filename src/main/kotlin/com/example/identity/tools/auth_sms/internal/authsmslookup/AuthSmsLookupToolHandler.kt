@@ -109,7 +109,7 @@ class AuthSmsLookupToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+    fun read(toolSessionId: ToolSessionId): ToolOutcome.InProgress {
         return outcomeFor(sessions.require<AuthSmsLookupToolSession>(toolSessionId).toState(toolSessionId))
     }
 

@@ -1,6 +1,9 @@
 package com.example.identity.tools.auth_password.api.v1
 
 import com.example.identity.tools.auth_password.ENROLL_PASSWORD_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.NO_REQUEST_BODY
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.auth_password.EnrollPassword
 import com.example.identity.tools.auth_password.PasswordModule
 import com.example.identity.tools.auth_password.internal.enrollpassword.EnrollPasswordToolHandler
@@ -12,6 +15,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -49,14 +53,14 @@ class EnrollPasswordToolController(
     @PostMapping("$TOOLS_API/$ENROLL_PASSWORD_TOOL_ID/v1")
     @Operation(
         summary = "Activate enroll-password",
-        description = "No request body: toolId already carries kind and method.",
+        description = NO_REQUEST_BODY,
         responses = [
             ApiResponse(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
-                      "next": {"type": "tool", "toolId": "enroll-password", "step": "enroll", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "REGISTERING"},
+                      "next": {"type": "tool", "toolId": "enroll-password", "step": "enroll", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"}
                     }
                 """)])]
             )
@@ -79,7 +83,7 @@ class EnrollPasswordToolController(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["email", "password"]},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["email", "password"]},
                       "next": {"type": "orchestrator", "context": "authentication", "step": "authenticated"}
                     }
                 """)])]
@@ -93,7 +97,7 @@ class EnrollPasswordToolController(
         val body = request ?: EnrollPasswordPatchRequest()
         val outcome = handler.patch(context.toolSessionId, body.password)
 
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     @GetMapping("$TOOLS_API/$ENROLL_PASSWORD_TOOL_ID/v1/{toolSessionId}")
@@ -104,8 +108,8 @@ class EnrollPasswordToolController(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "REGISTERING"},
-                      "next": {"type": "tool", "toolId": "enroll-password", "step": "enroll", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "REGISTERING"},
+                      "next": {"type": "tool", "toolId": "enroll-password", "step": "enroll", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"}
                     }
                 """)])]
             )

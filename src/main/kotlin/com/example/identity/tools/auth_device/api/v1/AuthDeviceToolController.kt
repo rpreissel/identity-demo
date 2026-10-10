@@ -1,6 +1,9 @@
 package com.example.identity.tools.auth_device.api.v1
 
 import com.example.identity.tools.auth_device.AUTH_DEVICE_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.NO_REQUEST_BODY
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.auth_device.AuthDevice
 import com.example.identity.tools.auth_device.DeviceModule
 import com.example.identity.tools.auth_device.internal.authdevice.AuthDeviceToolHandler
@@ -13,6 +16,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -48,14 +52,14 @@ class AuthDeviceToolController(
     @PostMapping("$TOOLS_API/$AUTH_DEVICE_TOOL_ID/v1")
     @Operation(
         summary = "Activate auth-device",
-        description = "No request body: toolId already carries kind and method.",
+        description = NO_REQUEST_BODY,
         responses = [
             ApiResponse(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                      "next": {"type": "tool", "toolId": "auth-device", "step": "auth", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
+                      "next": {"type": "tool", "toolId": "auth-device", "step": "auth", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"}
                     }
                 """)])]
             )
@@ -64,7 +68,8 @@ class AuthDeviceToolController(
     fun activate(
         context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
-    ): ResponseEntity<ChannelResponse> {        val outcome = handler.start(context.toolSessionId, toolJourney.requireEnrollment(context, DeviceModule))
+    ): ResponseEntity<ChannelResponse> {
+        val outcome = handler.start(context.toolSessionId, toolJourney.requireEnrollment(context, DeviceModule))
 
         return toolJourney.activated(context, outcome, uriBuilder)
     }
@@ -78,7 +83,7 @@ class AuthDeviceToolController(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["device"]},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["device"]},
                       "next": {"type": "orchestrator", "context": "authentication", "step": "authenticated"}
                     }
                 """)])]
@@ -93,7 +98,7 @@ class AuthDeviceToolController(
         val proof = deviceProofs.validate(request?.deviceProof, httpRequest)
         val outcome = handler.patch(context.toolSessionId, proof.publicKey, proof.userVerification)
 
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     @GetMapping("$TOOLS_API/$AUTH_DEVICE_TOOL_ID/v1/{toolSessionId}")
@@ -104,8 +109,8 @@ class AuthDeviceToolController(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                      "next": {"type": "tool", "toolId": "auth-device", "step": "auth", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"}
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
+                      "next": {"type": "tool", "toolId": "auth-device", "step": "auth", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"}
                     }
                 """)])]
             )

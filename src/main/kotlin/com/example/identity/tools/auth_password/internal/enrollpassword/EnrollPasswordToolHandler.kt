@@ -11,7 +11,6 @@ import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentR
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollment
 
 import com.example.identity.tools.auth_password.internal.PASSWORD_ENROLLMENT_TYPE
-import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.tools.auth_password.PASSWORD_EXISTS_MARKER
@@ -70,7 +69,7 @@ class EnrollPasswordToolHandler(
     }
 
     @Transactional(readOnly = true)
-    fun read(toolSessionId: ToolSessionId): ToolOutcome {
+    fun read(toolSessionId: ToolSessionId): ToolOutcome.InProgress {
         return outcomeFor(sessions.require<EnrollPasswordToolSession>(toolSessionId))
     }
 

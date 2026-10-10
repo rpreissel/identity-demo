@@ -1,6 +1,8 @@
 package com.example.identity.tools.auth_kobil.api.v1
 
 import com.example.identity.tools.auth_kobil.AUTH_KOBIL_TOOL_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.auth_kobil.AuthKobil
 import com.example.identity.tools.auth_kobil.KobilModule
 import com.example.identity.contract.tool_api.ids.AccountId
@@ -15,6 +17,7 @@ import com.example.identity.contract.tool_api.AuthorizedToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import com.example.identity.contract.tool_api.readResponse
 import com.example.identity.contract.tool_api.activated
+import com.example.identity.contract.tool_api.applied
 import com.example.identity.contract.tool_api.ToolOutcome
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
@@ -66,8 +69,8 @@ class AuthKobilToolController(
                 responseCode = "201",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                      "next": {"type": "tool", "toolId": "auth-kobil", "step": "unlock", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
+                      "next": {"type": "tool", "toolId": "auth-kobil", "step": "unlock", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"},
                       "stepData": {"kind": "kobil-unlock", "unlockOptions": ["biometric", "password"], "tenantId": "identity-demo", "kobilUserId": "kob-1a2b3c4d5e6f"}
                     }
                 """)])]
@@ -95,8 +98,8 @@ class AuthKobilToolController(
                 description = "Released",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
-                      "next": {"type": "tool", "toolId": "auth-kobil", "step": "otp", "toolSessionId": "9c858901-8a57-4791-81fe-4c455b099bc9"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
+                      "next": {"type": "tool", "toolId": "auth-kobil", "step": "otp", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"},
                       "stepData": {"kind": "kobil-otp", "missingFields": ["otp"], "tenantId": "identity-demo", "kobilUserId": "kob-1a2b3c4d5e6f", "kobilPin": "40318827"}
                     }
                 """)])]
@@ -131,7 +134,7 @@ class AuthKobilToolController(
                 responseCode = "200",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["kobil", "biometric"]},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa2", "currentAmr": ["kobil", "biometric"]},
                       "next": {"type": "orchestrator", "context": "authentication", "step": "authenticated"}
                     }
                 """)])]
@@ -143,7 +146,7 @@ class AuthKobilToolController(
         context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val outcome = handler.patch(context.toolSessionId, request?.otp)
-        return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
+        return toolJourney.applied(context, outcome)
     }
 
     /**

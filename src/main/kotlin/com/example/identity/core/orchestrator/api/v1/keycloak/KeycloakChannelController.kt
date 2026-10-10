@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.api.v1.keycloak
 
 import com.example.identity.core.orchestrator.keycloak.peerAuthBodySha256
+import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.core.orchestrator.keycloak.peerAuthTarget
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
@@ -58,7 +59,7 @@ class KeycloakChannelController(
                 description = "First call for a fresh Keycloak flow run - offers every Keycloak-usable method.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "state": "ANONYMOUS"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
                       "next": {"type": "orchestrator", "context": "auth", "step": "selectMethod"},
                       "stepData": {"kind": "select-method", "options": ["ident-fsc", "auth-password"]}
                     }
