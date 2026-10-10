@@ -1,13 +1,14 @@
 import { resolveText, t } from '../../texts'
 import { Tx } from '../../Tx'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { computeJwkThumbprint, getOrCreateDpopKeyPair, resetDpopKeyPair, type DpopKeyPair } from '../../dpop.ts'
 import '../../App.css'
 import '../../phone.css'
 import type { ActiveMethodView, ChannelResponse, DemoInfo, DeviceLinkResponse, Next, StepData } from '../../types'
 import { confirmPromptOf, stepDataOf } from '../../types'
 import { getUIComponent } from '../../routing.ts'
-import { enrollmentToolFor, explainToolStep, knownToolIds, metaFor, renderToolStep } from '../../tools/registry'
+import { explainAppStep } from './appStepExplanation'
+import { enrollmentToolFor, knownToolIds, metaFor, renderToolStep } from '../../tools/registry'
 import type { ToolRenderContext } from '../../tools/types'
 import {
   abandonTool,
@@ -97,6 +98,11 @@ function enrollmentChoiceRows(order: string[], options: string[], setUp: { accou
     rows,
     setUp: rows.filter((toolId) => has(setUp.device, toolId) || (!options.includes(toolId) && has(setUp.account, toolId))),
   }
+}
+
+/** The journey reached its end: the orchestrator reports the channel authenticated. */
+function isJourneyOver(next: Next | undefined | null): boolean {
+  return next?.type === 'orchestrator' && next.context === 'authentication' && next.step === 'authenticated'
 }
 
 export function AppChannelApp() {
@@ -230,7 +236,7 @@ export function AppChannelApp() {
     setNext(response.next)
     setStepData(response.stepData)
     setCarriedMessage(undefined)
-    const journeyOver = response.next?.type === 'orchestrator' && response.next.context === 'authentication' && response.next.step === 'authenticated'
+    const journeyOver = isJourneyOver(response.next)
     setOutcomeNotice(journeyOver ? pendingOutcomeNoticeRef.current : undefined)
     if (journeyOver) pendingOutcomeNoticeRef.current = undefined
     setDemo(response.demo)
@@ -454,7 +460,7 @@ export function AppChannelApp() {
   const loadingSecurityDetailsRef = useRef(false)
   useEffect(() => {
     if (!dpop || !channelSessionId) return
-    if (next?.type !== 'orchestrator' || next.context !== 'authentication' || next.step !== 'authenticated') return
+    if (!isJourneyOver(next)) return
     if (currentAcr !== undefined) return
     if (loadingSecurityDetailsRef.current) return
     loadingSecurityDetailsRef.current = true
@@ -563,16 +569,34 @@ export function AppChannelApp() {
     }
   }
 
-  /** Keeps the DPoP key but ends this session on the backend. The user picks the next start. */
-  async function handleLogout() {
+  /**
+   * One call on this channel: clears the last error, shows the answer, and words a failure with
+   * [failure]. Without a key or channel there is nothing to call.
+   */
+  async function onChannel(failure: string, call: (dpop: DpopKeyPair, channelSessionId: string) => Promise<ChannelResponse>) {
     if (!dpop || !channelSessionId) return
     try {
       setError('')
-      const response = await startLogout(dpop, channelSessionId)
-      applyResponse(response)
+      applyResponse(await call(dpop, channelSessionId))
     } catch (err) {
-      setError(describeError(t('Abmelden fehlgeschlagen'), err))
+      setError(describeError(failure, err))
     }
+  }
+
+  /** {@link onChannel} for a call on the running tool. */
+  async function onTool(failure: string, call: (dpop: DpopKeyPair, tool: NonNullable<typeof activeTool>) => Promise<ChannelResponse>) {
+    if (!dpop || !activeTool) return
+    try {
+      setError('')
+      applyResponse(await call(dpop, activeTool))
+    } catch (err) {
+      setError(describeError(failure, err))
+    }
+  }
+
+  /** Keeps the DPoP key but ends this session on the backend. The user picks the next start. */
+  function handleLogout() {
+    return onChannel(t('Abmelden fehlgeschlagen'), (dpop, channelSessionId) => startLogout(dpop, channelSessionId))
   }
 
   /**
@@ -580,15 +604,8 @@ export function AppChannelApp() {
    * STEP_UP_IN_PROGRESS and `next` points at an AUTH tool, rendered as in LOGIN. A 410 (level
    * unreachable with the enrolled methods) surfaces via the normal error path.
    */
-  async function handleStepUp(requiredAcr: string) {
-    if (!dpop || !channelSessionId) return
-    try {
-      setError('')
-      const response = await raiseRequiredAcr(dpop, channelSessionId, requiredAcr)
-      applyResponse(response)
-    } catch (err) {
-      setError(describeError(t('Step-up fehlgeschlagen'), err))
-    }
+  function handleStepUp(requiredAcr: string) {
+    return onChannel(t('Step-up fehlgeschlagen'), (dpop, channelSessionId) => raiseRequiredAcr(dpop, channelSessionId, requiredAcr))
   }
 
   /**
@@ -596,80 +613,43 @@ export function AppChannelApp() {
    * (device-binding offer, account-deletion confirmation, ...). Both answers continue the journey -
    * declining is a valid outcome, not a cancel.
    */
-  async function handleAnswer(accept: boolean) {
-    if (!dpop || !channelSessionId) return
-    try {
-      setError('')
+  function handleAnswer(accept: boolean) {
+    return onChannel(t('Antwort fehlgeschlagen'), (dpop, channelSessionId) => {
       // A declined question on the way (e.g. the re-identification) ends the wish.
       if (!accept) pendingOutcomeNoticeRef.current = undefined
-      const response = await answerPrompt(dpop, channelSessionId, accept)
-      applyResponse(response)
-    } catch (err) {
-      setError(describeError(t('Antwort fehlgeschlagen'), err))
-    }
+      return answerPrompt(dpop, channelSessionId, accept)
+    })
   }
 
   /** Voluntary enrollment on an AUTHENTICATED channel; the auto-activate effect picks up the tool. */
-  async function handleAddMethod() {
-    if (!dpop || !channelSessionId) return
-    try {
-      setError('')
-      const response = await startManageMethods(dpop, channelSessionId)
-      applyResponse(response)
-    } catch (err) {
-      setError(describeError(t('Hinzufügen fehlgeschlagen'), err))
-    }
+  function handleAddMethod() {
+    return onChannel(t('Hinzufügen fehlgeschlagen'), (dpop, channelSessionId) => startManageMethods(dpop, channelSessionId))
   }
 
   /**
    * Confirms a WEB-channel QR login from this authenticated channel. Gates on loa2 (step-up first
    * if needed), then approve-qr, like the cold-entry 'confirmPeerLogin' start.
    */
-  async function handlePeerLogin() {
-    if (!dpop || !channelSessionId) return
-    try {
-      setError('')
-      const response = await startPeerLogin(dpop, channelSessionId)
-      applyResponse(response)
-    } catch (err) {
-      setError(describeError(t('Web-Login-Bestätigung fehlgeschlagen'), err))
-    }
+  function handlePeerLogin() {
+    return onChannel(t('Web-Login-Bestätigung fehlgeschlagen'), (dpop, channelSessionId) => startPeerLogin(dpop, channelSessionId))
   }
 
-  async function handleDeactivateMethod(methodInstanceId: string) {
-    if (!dpop || !channelSessionId) return
-    try {
-      setError('')
-      const response = await deactivateMethod(dpop, channelSessionId, methodInstanceId)
-      applyResponse(response)
-    } catch (err) {
-      setError(describeError(t('Deaktivieren fehlgeschlagen'), err))
-    }
+  function handleDeactivateMethod(methodInstanceId: string) {
+    return onChannel(t('Deaktivieren fehlgeschlagen'), (dpop, channelSessionId) => deactivateMethod(dpop, channelSessionId, methodInstanceId))
   }
 
   /** Starts changing a method in place; step-up, re-confirmation and the enrollment follow via next/stepData. */
-  async function handleChangeMethod(methodInstanceId: string) {
-    if (!dpop || !channelSessionId) return
-    try {
-      setError('')
+  function handleChangeMethod(methodInstanceId: string) {
+    return onChannel(t('Ändern fehlgeschlagen'), async (dpop, channelSessionId) => {
       const response = await changeMethod(dpop, channelSessionId, methodInstanceId)
       pendingOutcomeNoticeRef.current = t('Anmeldeverfahren geändert.')
-      applyResponse(response)
-    } catch (err) {
-      setError(describeError(t('Ändern fehlgeschlagen'), err))
-    }
+      return response
+    })
   }
 
   /** Starts the account-deletion journey; confirmation and re-authentication follow via next/stepData. */
-  async function handleDeleteAccount() {
-    if (!dpop || !channelSessionId) return
-    try {
-      setError('')
-      const response = await startAccountDeletion(dpop, channelSessionId)
-      applyResponse(response)
-    } catch (err) {
-      setError(describeError(t('Konto löschen fehlgeschlagen'), err))
-    }
+  function handleDeleteAccount() {
+    return onChannel(t('Konto löschen fehlgeschlagen'), (dpop, channelSessionId) => startAccountDeletion(dpop, channelSessionId))
   }
 
   /**
@@ -678,28 +658,16 @@ export function AppChannelApp() {
    * choice comes back. The sticky bar's "Zurück" is [handleBack] instead: back to the selection
    * without declining anything. Abbrechen ends the whole journey.
    */
-  async function handleAbandonTool() {
-    if (!dpop || !activeTool) return
-    try {
-      setError('')
+  function handleAbandonTool() {
+    return onTool(t('Wechsel fehlgeschlagen'), (dpop, tool) => {
       pendingOutcomeNoticeRef.current = undefined
-      const response = await abandonTool(dpop, activeTool.toolSessionId, activeTool.toolId)
-      applyResponse(response)
-    } catch (err) {
-      setError(describeError(t('Wechsel fehlgeschlagen'), err))
-    }
+      return abandonTool(dpop, tool.toolSessionId, tool.toolId)
+    })
   }
 
   /** "Zurück": back to the selection, the running tool still on it - nothing is declined. */
-  async function handleBack() {
-    if (!dpop || !activeTool) return
-    try {
-      setError('')
-      const response = await backFromTool(dpop, activeTool.toolSessionId, activeTool.toolId)
-      applyResponse(response)
-    } catch (err) {
-      setError(describeError(t('Zurück fehlgeschlagen'), err))
-    }
+  function handleBack() {
+    return onTool(t('Zurück fehlgeschlagen'), (dpop, tool) => backFromTool(dpop, tool.toolSessionId, tool.toolId))
   }
 
   /** Nothing proven yet, so nothing to lose: end the journey and go back to the start screen. */
@@ -708,15 +676,11 @@ export function AppChannelApp() {
     handleClearChannel()
   }
 
-  async function handleCancel() {
-    if (!dpop || !channelSessionId) return
-    try {
+  function handleCancel() {
+    return onChannel(t('Abbrechen fehlgeschlagen'), (dpop, channelSessionId) => {
       pendingOutcomeNoticeRef.current = undefined
-      const response = await cancelJourney(dpop, channelSessionId)
-      applyResponse(response)
-    } catch (err) {
-      setError(describeError(t('Abbrechen fehlgeschlagen'), err))
-    }
+      return cancelJourney(dpop, channelSessionId)
+    })
   }
 
   /**
@@ -747,7 +711,7 @@ export function AppChannelApp() {
 
   const uiComponent = getUIComponent(next)
   // Nothing to cancel before a process even started, or once it's already finished.
-  const canCancel = !!next && !(next.type === 'orchestrator' && next.context === 'authentication' && next.step === 'authenticated')
+  const canCancel = !!next && !isJourneyOver(next)
   // While a tool awaits input or the user picks one (select-method), other actions only compete
   // with Abbrechen.
   const inToolMode = !!activeTool || uiComponent === 'select-method'
@@ -792,60 +756,7 @@ export function AppChannelApp() {
         }
       : undefined
 
-  // The demo column's "why / what / who" for whatever the phone shows right now (StepExplanation):
-  // a tool step explains itself (ToolModule.explain), the orchestrator's own screens are explained here.
-  const stepExplanation = ((): { idleReason?: string; does: string; actor: string; details?: ReactNode; technical?: string } | undefined => {
-    if (toolCtx) {
-      const explained = explainToolStep(toolCtx.toolId, toolCtx.step)
-      return explained && { ...explained, technical: `Tool ${toolCtx.toolId} · ${toolCtx.step}` }
-    }
-    const technical = next?.type === 'orchestrator' ? `Orchestrator ${next.context} · ${next.step}` : undefined
-    if (!channelSessionId) {
-      if (pendingPairingCode) {
-        return {
-          idleReason: t('Die App wurde über den QR-Code eines Browsers geöffnet.'),
-          does: t('Bestätigen eröffnet eine Sitzung beim Orchestrator, um die wartende Anmeldung im Browser freizugeben.'),
-          actor: t('Sie. Noch läuft keine Sitzung.'),
-        }
-      }
-      return deviceLink?.linked
-        ? {
-            idleReason: t('Dieses Gerät ist mit einem Konto verbunden - deshalb bietet die App gleich das Anmelden an.'),
-            does: t('Anmelden eröffnet eine Sitzung beim Orchestrator, der das Verfahren dieses Geräts vorschlägt.'),
-            actor: t('Sie. Noch läuft keine Sitzung.'),
-          }
-        : {
-            idleReason: t('Dieses Gerät gehört noch zu keinem Konto.'),
-            does: t('Anmelden sucht ein bestehendes Konto, Registrieren legt ein neues an. Beides eröffnet eine Sitzung beim Orchestrator.'),
-            actor: t('Sie. Noch läuft keine Sitzung.'),
-          }
-    }
-    if (uiComponent === 'select-method') {
-      return {
-        does: t('Der Orchestrator zeigt die Verfahren, die dieser Schritt zulässt - nur solche, die diese App kann und die noch nicht abgelehnt wurden.'),
-        actor: t('Sie wählen. Der Orchestrator wartet.'),
-        // Only here does "not offered" explain something: why a method is missing from this choice.
-        details: <UnavailableTools channel="APP" availableTools={availableTools} />,
-        technical,
-      }
-    }
-    if (uiComponent === 'prompt') {
-      return {
-        does: t('Eine Ja/Nein-Rückfrage des Orchestrators. Ihr Text kommt vom Backend, damit er sich ohne neue App-Version ändern lässt.'),
-        actor: t('Sie antworten. Der Orchestrator wartet.'),
-        technical,
-      }
-    }
-    if (uiComponent === 'authentication-completed') {
-      return {
-        idleReason: t('Die Anmeldung ist abgeschlossen, gerade läuft kein Vorgang.'),
-        does: t('Die App ruft Daten mit ihrem AccessToken ab. Das Token ist an den Schlüssel der App gebunden (DPoP) und nützt ohne ihn nichts.'),
-        actor: t('Sie. Sicherheitsniveau erhöhen, Verfahren ändern oder Abmelden starten je einen neuen Vorgang.'),
-        technical,
-      }
-    }
-    return undefined
-  })()
+  const stepExplanation = explainAppStep({ toolCtx, next, channelSessionId, pendingPairingCode, deviceLink, uiComponent, availableTools })
 
   // The frame's own way out of a step, in the quiet row on top of the phone's sheet.
   const stepNav = ((inToolMode && ((activeTool && (innerBack || alternativesCount > 0)) || canCancel)) || leavesToStart) && (
