@@ -31,14 +31,12 @@ const KEY_LABELS: Record<string, string> = {
   accountId: 'Account',
   enrollmentRef: 'Enrollment',
   subIntent: 'Sub-Intent',
-  effect: 'Effect',
   answer: 'Answer',
   methodInstanceId: 'Method ID',
   label: 'Label',
   acrFloor: 'ACR Floor',
   amrSourceId: 'AMR Source',
   loa: 'LoA',
-  source: 'Source',
   methods: 'Methods',
 }
 

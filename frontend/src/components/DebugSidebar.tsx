@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Disclosure } from './Disclosure'
 import type { ActiveMethodView } from '../types'
+import { t } from '../texts'
 
 export interface DebugEvent {
   id: number
@@ -42,22 +43,22 @@ function withoutDemo(value: unknown): unknown {
 export function DebugSidebar({ channel, log }: DebugSidebarProps) {
   const [showDemo, setShowDemo] = useState(false)
   return (
-    <Disclosure summary="Request Einblicke" lazy>
+    <Disclosure summary={t('Request Einblicke')} lazy>
       <div className="request-log">
-        <p className="request-log__intro">Jeder API-Aufruf, den die Oberfläche gerade macht - so sieht das Backend-Protokoll live aus.</p>
+        <p className="request-log__intro">{t('Jeder API-Aufruf, den die Oberfläche gerade macht - so sieht das Backend-Protokoll live aus.')}</p>
 
         <label className="request-log__toggle">
           <input type="checkbox" checked={showDemo} onChange={(e) => setShowDemo(e.target.checked)} />
-          Demo-Infos einblenden (accountId, personId, Journey-Kette, TAN/Passwort-Vorbelegung)
+          {t('Demo-Infos einblenden (accountId, personId, Journey-Kette, TAN/Passwort-Vorbelegung)')}
         </label>
 
         <section>
-          <h3>Kanal</h3>
+          <h3>{t('Kanal')}</h3>
           <pre>{JSON.stringify(showDemo ? channel : withoutDemo(channel), null, 2)}</pre>
         </section>
 
         <section>
-          <h3>Verlauf ({log.length})</h3>
+          <h3>{t('Verlauf ({anzahl})', { anzahl: log.length })}</h3>
           <ul className="debug-log">
             {log.map((entry) => (
               <li key={entry.id}>
@@ -67,19 +68,19 @@ export function DebugSidebar({ channel, log }: DebugSidebarProps) {
                 </div>
                 {entry.request !== undefined && (
                   <div className="debug-log-block">
-                    <span className="debug-log-block-label">Request</span>
+                    <span className="debug-log-block-label">{t('Request')}</span>
                     <pre>{JSON.stringify(entry.request, null, 2)}</pre>
                   </div>
                 )}
                 {entry.response !== undefined && (
                   <div className="debug-log-block">
-                    <span className="debug-log-block-label">Response</span>
+                    <span className="debug-log-block-label">{t('Response')}</span>
                     <pre>{JSON.stringify(showDemo ? entry.response : withoutDemo(entry.response), null, 2)}</pre>
                   </div>
                 )}
                 {entry.error && (
                   <div className="debug-log-block">
-                    <span className="debug-log-block-label">Fehler</span>
+                    <span className="debug-log-block-label">{t('Fehler')}</span>
                     <pre>{entry.error}</pre>
                   </div>
                 )}

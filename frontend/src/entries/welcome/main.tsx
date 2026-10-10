@@ -1,16 +1,6 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import '../../index.css'
+import { boot } from '../../boot'
 import { APP_TEXTS, loadAllTexts } from '../../texts'
 
 // Texts first, then the app: the backend sends text references only, and the app's own t("...")
 // calls - module-level ones included (tool labels) - must find their wordings when they run.
-void loadAllTexts(APP_TEXTS)
-  .then(() => import('./WelcomeApp.tsx'))
-  .then(({ WelcomeApp }) =>
-    createRoot(document.getElementById('root')!).render(
-      <StrictMode>
-        <WelcomeApp />
-      </StrictMode>,
-    ),
-  )
+boot(loadAllTexts(APP_TEXTS), () => import('./WelcomeApp.tsx').then((m) => m.WelcomeApp))
