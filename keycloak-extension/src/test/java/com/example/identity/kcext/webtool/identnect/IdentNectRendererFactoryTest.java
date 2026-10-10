@@ -23,7 +23,7 @@ class IdentNectRendererFactoryTest {
             new OrchestratorSettings("http://orchestrator:8080", "http://localhost:8080", "iss", "aud", null);
 
     private static WebToolRenderContext context(Map<String, JsonNode> stepData) {
-        return new WebToolRenderContext("ident-nect", "redirect", stepData, Map.of(), null, SETTINGS, Set.of(), null);
+        return new WebToolRenderContext("ident-nect", "redirect", stepData, Map.of(), null, SETTINGS, Set.of(), null, null);
     }
 
     @Test

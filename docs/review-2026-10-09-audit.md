@@ -197,7 +197,7 @@ idempotent. Alternativ „Verfahren verwalten“ als Intent über den `Orchestra
 
 ## 3. Architektur
 
-### AU-9 (niedrig) ADR-58 auf der Passwortseite nicht ganz umgesetzt
+### AU-9 (niedrig, behoben) ADR-58 auf der Passwortseite nicht ganz umgesetzt
 
 `DPoP-demo-8x0p.5`
 
@@ -212,6 +212,13 @@ fehlt:
 
 - Die Felder auszeichnen: `username`/`email`, `current-password` und `new-password`.
 - Der Renderer von `auth-password-lookup` belegt `email` aus `login_hint` vor.
+
+**Behebung (2026-10-10):** wie vorgeschlagen.
+
+- `WebToolRenderContext` trägt den `login_hint` des Clients.
+- `PasswordLookupRendererFactory` reicht ihn als `loginHint` an die Seite
+  (`PasswordLookupRendererFactoryTest`).
+- Die drei Passwortseiten setzen `autoComplete`. `Field` bleibt sonst bei `off`.
 
 ### AU-10 (niedrig) SA-27 ist neu zu bewerten
 
@@ -528,4 +535,5 @@ Diese Bereiche zeigen keinen neuen Befund:
 |---|---|---|
 | AU-1 | Sitzungsnachweise nur für ein Konto je Keycloak-Sitzung | `DPoP-demo-8x0p.1` |
 | AU-2 | Widerrufene Verfahren kommen nicht über `flow-end` zurück | `DPoP-demo-8x0p.2` |
+| AU-9 | Passwortseiten mit `login_hint` und Markup für Passwort-Manager | `DPoP-demo-8x0p.5` |
 | AU-4 bis AU-8 | Kleine Härtungen an Sitzungsnachweisen, Schlüsseln und Federation; AU-7 nur für App-Tokens | `DPoP-demo-8x0p.4` |

@@ -33,6 +33,8 @@ public class PasswordLookupRendererFactory extends AbstractWebToolRendererFactor
         return form
                 .setAttribute("demoPassword", demoPassword != null ? demoPassword.asText() : null)
                 .setAttribute("demoPersonsJson", demoPersonsJson(ctx))
+                // Keycloak's own form filled the username from login_hint; this page takes over that duty (ADR-58).
+                .setAttribute("loginHint", ctx.loginHint())
                 .createForm(template());
     }
 }

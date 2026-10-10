@@ -8,7 +8,7 @@ export function ToolPasswordAuth({ kcContext }: { kcContext: PageContext<'tool-p
   const { pageTitle: title, hint, demoPassword } = kcContext
   return (
     <ToolForm kcContext={kcContext} title={title} hint={hint}>
-      <Field id="password" type="password" label={t('Passwort')} hint={demoPassword && t('Demo-Passwort: {wert}', { wert: demoPassword })} />
+      <Field id="password" type="password" label={t('Passwort')} autoComplete="current-password" hint={demoPassword && t('Demo-Passwort: {wert}', { wert: demoPassword })} />
     </ToolForm>
   )
 }

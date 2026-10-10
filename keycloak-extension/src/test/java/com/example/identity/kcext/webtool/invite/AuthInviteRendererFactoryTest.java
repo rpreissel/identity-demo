@@ -38,7 +38,7 @@ class AuthInviteRendererFactoryTest {
     }
 
     private static WebToolRenderContext context(String step, Map<String, JsonNode> demo) {
-        return new WebToolRenderContext("auth-invite-lookup", step, Map.of(), demo, null, null, Set.of(), null);
+        return new WebToolRenderContext("auth-invite-lookup", step, Map.of(), demo, null, null, Set.of(), null, null);
     }
 
     @Test

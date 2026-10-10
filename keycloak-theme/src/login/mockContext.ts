@@ -30,7 +30,7 @@ const { getKcContextMock } = createGetKcContextMock({
     'orchestrator-error.ftl': {
       message: { type: 'error', summary: 'Die Anmeldung ist gerade nicht möglich.' },
     },
-    'tool-password-lookup.ftl': { toolId: 'auth-password-lookup', pageTitle: 'Passwort', hint: 'E-Mail-Adresse und Passwort', demoPassword: 'demo1234', demoPersonsJson: PERSONS },
+    'tool-password-lookup.ftl': { toolId: 'auth-password-lookup', pageTitle: 'Passwort', hint: 'E-Mail-Adresse und Passwort', demoPassword: 'demo1234', demoPersonsJson: PERSONS, loginHint: 'max.mustermann@example.com' },
     'tool-password-enroll.ftl': { toolId: 'enroll-password', pageTitle: 'Passwort', hint: 'Eigenes Passwort festlegen', demoPassword: 'Demo1234!' },
     'tool-email-auth.ftl': { toolId: 'auth-email', pageTitle: 'E-Mail', hint: 'Code an die bestätigte E-Mail-Adresse', demoTan: '482913' },
     'tool-email-lookup.ftl': { toolId: 'confirm-email', pageTitle: 'E-Mail', hint: 'E-Mail-Adresse + Bestätigungscode', step: 'codeInput', demoTan: '482913', addressAgain: true, demoPersonsJson: PERSONS },

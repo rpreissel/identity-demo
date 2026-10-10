@@ -85,7 +85,9 @@ eigenes Tool hat keinen dieser Nachteile und gilt auch in der App.
   über Keycloak. Braucht das Projekt sie, werden sie Journeys. Keycloak durfte das Passwort aber
   schon bisher nicht ändern.
 - **Was das Formular von selbst konnte, muss die Tool-Seite können**: das Vorbelegen über
-  `login_hint` und ein Markup, das Passwort-Manager erkennen.
+  `login_hint` und ein Markup, das Passwort-Manager erkennen. (Nachtrag 2026-10-10: umgesetzt. Die
+  Seite von `auth-password-lookup` belegt die E-Mail-Adresse aus `login_hint` vor, und die
+  Passwortseiten zeichnen ihre Felder mit `username`, `current-password` und `new-password` aus.)
 - **Jeder erste Schritt öffnet einen Kanal beim Orchestrator.** Das sind ein paar Aufrufe mehr als
   beim nativen Formular. Ausfallsicherer war das Formular nicht, denn auch dort prüfte der
   Orchestrator das Passwort.

@@ -27,7 +27,8 @@ export type KcContextExtensionPerPage = {
   'tool-password-auth.ftl': ToolPage & { demoPassword?: string }
   /** replaces: the account already has a password, this run changes it. */
   'tool-password-enroll.ftl': ToolPage & { demoPassword?: string; replaces?: boolean }
-  'tool-password-lookup.ftl': ToolPage & WithPersons & { demoPassword?: string }
+  /** loginHint: the client's login_hint, filled into the e-mail field. */
+  'tool-password-lookup.ftl': ToolPage & WithPersons & { demoPassword?: string; loginHint?: string }
   'tool-email-auth.ftl': ToolPage & { demoTan?: string }
   'tool-email-lookup.ftl': ToolPage & WithPersons & { step: string; demoTan?: string; addressAgain?: boolean }
   'tool-sms-auth.ftl': ToolPage & { demoTan?: string }

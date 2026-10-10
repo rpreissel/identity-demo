@@ -9,7 +9,7 @@ export function ToolPasswordEnroll({ kcContext }: { kcContext: PageContext<'tool
   return (
     <ToolForm kcContext={kcContext} title={title} hint={hint}>
       {replaces && <p className="orc-hint">{t('Das neue Passwort ersetzt Ihr bisheriges, sobald Sie fertig sind.')}</p>}
-      <Field id="password" type="password" label={t('Neues Passwort')} hint={demoPassword && t('Demo-Passwort: {wert}', { wert: demoPassword })} />
+      <Field id="password" type="password" label={t('Neues Passwort')} autoComplete="new-password" hint={demoPassword && t('Demo-Passwort: {wert}', { wert: demoPassword })} />
     </ToolForm>
   )
 }

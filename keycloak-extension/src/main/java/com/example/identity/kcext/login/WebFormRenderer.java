@@ -12,6 +12,7 @@ import com.example.identity.kcext.webtool.WebToolRendererFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.forms.login.LoginFormsProvider;
+import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
@@ -94,7 +95,8 @@ final class WebFormRenderer {
             WebToolRenderContext ctx = new WebToolRenderContext(
                     next.toolId(), next.step(), response.stepData(), response.demo(), effectiveError,
                     OrchestratorSettings.of(session), submittedFields,
-                    QrWaitStatusResourceProvider.statusUrl(session, authSession)
+                    QrWaitStatusResourceProvider.statusUrl(session, authSession),
+                    authSession.getClientNote(OIDCLoginProtocol.LOGIN_HINT_PARAM)
             );
             Response rendered = renderer.render(built, ctx);
             if (rendered != null) return rendered;

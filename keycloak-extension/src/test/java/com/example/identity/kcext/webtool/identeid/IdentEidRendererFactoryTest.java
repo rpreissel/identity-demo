@@ -22,7 +22,7 @@ class IdentEidRendererFactoryTest {
 
     private static WebToolRenderContext context(List<String> missingFields, Set<String> submittedFields) {
         Map<String, JsonNode> stepData = missingFields == null ? Map.of() : Map.of("missingFields", JSON.valueToTree(missingFields));
-        return new WebToolRenderContext("ident-eid", "input", stepData, Map.of(), null, null, submittedFields, null);
+        return new WebToolRenderContext("ident-eid", "input", stepData, Map.of(), null, null, submittedFields, null, null);
     }
 
     @Test

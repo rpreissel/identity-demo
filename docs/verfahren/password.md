@@ -97,7 +97,11 @@ Auf der Website meldet man sich mit Passwort über dieselben Tools an wie in der
 `auth-password-lookup` bzw. `auth-password`. Keycloak zeigt nur die Seite des Tools und hat kein
 eigenes Passwortformular
 ([ADR-58](../adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). Die Nutzer-Federation
-(`OrchestratorStorageProvider`) liest nur Konten und prüft oder speichert keine Credentials.
+(`OrchestratorStorageProvider`) liest nur Konten und prüft oder speichert keine Credentials; ein
+Credential, das ein Admin setzen will, lehnt sie ab. Was Keycloaks Formular von selbst konnte,
+leistet die Tool-Seite: `auth-password-lookup` belegt die E-Mail-Adresse aus dem `login_hint` des
+Clients vor, und die Felder tragen `autocomplete="username"`, `current-password` bzw.
+`new-password`, sodass Passwort-Manager sie erkennen.
 
 Keycloak ändert ein Passwort nie. Das geht nur über die Verwaltung der Verfahren, die vorher das
 Niveau prüft. Das Realm schaltet Keycloaks eigene Required Actions ab
