@@ -14,7 +14,7 @@ import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.directory.normalizeKvnr
 import com.example.identity.contract.tool_api.envelope.TOOLS_API
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
-import com.example.identity.tools.auth_invite.internal.AuthInviteToolHandler
+import com.example.identity.tools.auth_invite.internal.AuthInviteLookupToolHandler
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -45,8 +45,8 @@ data class AuthInvitePatchRequest(
 @RestController
 @Tag(name = "Tool: Einmalkennwort", description = "KVNR or Partnernummer plus a one-time password for one process")
 @SecurityRequirement(name = "dpop")
-class AuthInviteToolController(
-    private val handler: AuthInviteToolHandler,
+class AuthInviteLookupToolController(
+    private val handler: AuthInviteLookupToolHandler,
     private val personDirectory: PersonDirectory,
     private val toolJourney: ToolJourney,
     private val lockouts: Lockouts

@@ -148,7 +148,7 @@ stillschweigend etwas von der Umgebung voraussetzt.
 
 ## 4. Codequalität und Tests
 
-- **Q-4 (niedrig) `!!` auf dem gerade geprüften Feld** in `AuthInviteFlow` und
+- **Q-4 (niedrig) `!!` auf dem gerade geprüften Feld** in `AuthInviteLookupFlow` und
   `AuthPasswordLookupFlow`. Insgesamt gibt es 21 `!!`. Zusammen mit Q-8 (3.) in `DPoP-demo-9ppv.27`.
 - **Q-5 (niedrig) Testhelfer mehrfach definiert**, und `IntegrationTestSupport` ist groß. Zusammen
   mit Q-13 (3.) in `DPoP-demo-9ppv.32`.

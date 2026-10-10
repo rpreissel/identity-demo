@@ -599,7 +599,7 @@ eigenen QR-Code unterschiebt. Jeder Wechsel des Zustands ist ein bedingtes `UPDA
 ([`completeIfConfirmed`](../src/main/kotlin/com/example/identity/tools/auth_qr/internal/QrLoginRequestRepository.kt#L51),
 [`countWrongConfirmation`](../src/main/kotlin/com/example/identity/tools/auth_qr/internal/QrLoginRequestRepository.kt#L65)).
 So gewinnt immer nur eine Anfrage, und nach drei falschen Codes ist die Anfrage ungültig.
-[`ConfirmQrLoginToolHandler.patch`](../src/main/kotlin/com/example/identity/tools/auth_qr/internal/confirmqrlogin/ConfirmQrLoginToolHandler.kt#L53)
+[`ApproveQrToolHandler.patch`](../src/main/kotlin/com/example/identity/tools/auth_qr/internal/approveqr/ApproveQrToolHandler.kt#L53)
 verlangt, dass das QR-Verfahren eingeschaltet ist und das erwartete Konto bestätigt.
 [`QrLoginBrowserSide.advance`](../src/main/kotlin/com/example/identity/tools/auth_qr/internal/QrLoginBrowserSide.kt#L46)
 lehnt eine Wiederholung nach `COMPLETED` ab.
@@ -621,7 +621,7 @@ Das Entsperrgeheimnis (256 Bit) liegt dort nur als Hash
 gibt die PIN für 120 s frei, und zwar nur in dieser einen Antwort.
 
 **Vorgangszugang** ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md),
-[`AuthInviteToolHandler.patch`](../src/main/kotlin/com/example/identity/tools/auth_invite/internal/AuthInviteToolHandler.kt#L38),
+[`AuthInviteLookupToolHandler.patch`](../src/main/kotlin/com/example/identity/tools/auth_invite/internal/AuthInviteLookupToolHandler.kt#L38),
 [`Einladungen.redeem`](../src/main/kotlin/com/example/identity/simulation/personenverzeichnis/Einladungen.kt#L109)):
 Das Einmalkennwort hat etwa 59 Bit und wird nie gespeichert. Die Id ist ein SHA-256 über Person,
 Kennwort und Vorgang. Der Vergleich läuft in konstanter Zeit. Ein gesperrter, ein unbekannter und

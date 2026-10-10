@@ -3,7 +3,7 @@ package com.example.identity.tools.auth_qr.api.v1
 import com.example.identity.tools.auth_qr.APPROVE_QR_TOOL_ID
 import com.example.identity.tools.auth_qr.ApproveQr
 import com.example.identity.tools.auth_qr.QrModule
-import com.example.identity.tools.auth_qr.internal.confirmqrlogin.ConfirmQrLoginToolHandler
+import com.example.identity.tools.auth_qr.internal.approveqr.ApproveQrToolHandler
 import com.example.identity.contract.tool_api.directory.AccountDirectory
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolController
@@ -44,8 +44,8 @@ data class ConfirmQrLoginActivateRequest(
 @RestController
 @Tag(name = "Tool: QR-Login")
 @SecurityRequirement(name = "dpop")
-class ConfirmQrLoginToolController(
-    private val handler: ConfirmQrLoginToolHandler,
+class ApproveQrToolController(
+    private val handler: ApproveQrToolHandler,
     private val accountDirectory: AccountDirectory,
     private val toolJourney: ToolJourney
 ) : ToolController {

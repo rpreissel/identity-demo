@@ -16,7 +16,7 @@ internal sealed interface AuthInviteDecision {
  * staged between calls. `kvnr` stands for "a number" and is missing only when neither is given,
  * as in `ident-fsc`.
  */
-internal object AuthInviteFlow {
+internal object AuthInviteLookupFlow {
 
     val ALL_FIELDS = listOf("kvnr", "code")
 

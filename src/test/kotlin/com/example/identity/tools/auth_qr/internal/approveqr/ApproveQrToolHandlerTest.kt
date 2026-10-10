@@ -1,4 +1,4 @@
-package com.example.identity.tools.auth_qr.internal.confirmqrlogin
+package com.example.identity.tools.auth_qr.internal.approveqr
 
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
@@ -38,14 +38,14 @@ private val CONFIRMING = AccountId(99L)
 private class Fixture(expectedAccountId: AccountId?) {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
     val digest = ConfirmationCodeDigest("test-pepper", TEST_CLOCK)
-    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, ConfirmQrLoginToolSession(pairingCode = PAIRING)) }
+    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, ApproveQrToolSession(pairingCode = PAIRING)) }
     val approvedHash = slot<String>()
     val requests = mockk<QrLoginRequestRepository>().also {
         every { it.findById(PAIRING) } returns Optional.of(QrLoginRequest(pairingCode = PAIRING, expectedAccountId = expectedAccountId, createdAt = TEST_NOW))
         every { it.approveIfPending(PAIRING, CONFIRMING, capture(approvedHash), any(), any()) } returns 1
         every { it.denyIfPending(PAIRING, any()) } returns 1
     }
-    val handler = ConfirmQrLoginToolHandler(sessions, requests, digest, clock = TEST_CLOCK)
+    val handler = ApproveQrToolHandler(sessions, requests, digest, clock = TEST_CLOCK)
 
     fun withRequestAlreadyDecided() = apply {
         every { requests.denyIfPending(PAIRING, any()) } returns 0
@@ -68,7 +68,7 @@ private class Fixture(expectedAccountId: AccountId?) {
  * app when it can never satisfy the web side's `auth-qr` step-up (matching the late check in
  * [com.example.identity.tools.auth_qr.internal.authqr.AuthQrToolHandler]).
  */
-class ConfirmQrLoginToolHandlerTest : BehaviorSpec({
+class ApproveQrToolHandlerTest : BehaviorSpec({
 
     given("a pairing opened for account 42, and account 99 with an active qr enrollment") {
         val f = Fixture(expectedAccountId = AccountId(42L))

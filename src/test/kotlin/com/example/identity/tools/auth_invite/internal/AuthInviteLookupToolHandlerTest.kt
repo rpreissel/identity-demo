@@ -34,19 +34,19 @@ private val wrongCodeAnswer = Text("Nummer oder Einmalkennwort ungueltig")
 /** One active tool session; the register opens [GRANT] for [PERSON] with [CODE] and nothing else. */
 private class Fixture {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, AuthInviteToolSession()) }
+    val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, AuthInviteLookupToolSession()) }
     val invitations = mockk<Invitations>().also {
         every { it.redeem(any(), any()) } returns null
         every { it.redeem(PartnerNumber(PERSON), CODE) } returns GRANT
     }
-    val handler = AuthInviteToolHandler(sessions, invitations)
+    val handler = AuthInviteLookupToolHandler(sessions, invitations)
 }
 
 /**
  * Pure unit test without Spring. The rule under test: a code alone opens nothing, and a rate-limited
  * person, an unknown number and a wrong code look the same.
  */
-class AuthInviteToolHandlerTest : BehaviorSpec({
+class AuthInviteLookupToolHandlerTest : BehaviorSpec({
 
     given("no auth-invite-lookup tool session yet") {
         val f = Fixture()

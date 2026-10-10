@@ -19,14 +19,14 @@ import org.springframework.transaction.annotation.Transactional
  * to the person named.
  */
 @Component
-class AuthInviteToolHandler(
+class AuthInviteLookupToolHandler(
     private val sessions: ToolSessionData,
     private val invitations: Invitations,
 ) {
 
     @Transactional
     fun start(toolSessionId: ToolSessionId): ToolOutcome {
-        sessions.save(toolSessionId, AuthInviteToolSession())
+        sessions.save(toolSessionId, AuthInviteLookupToolSession())
         return outcomeFor()
     }
 
@@ -36,9 +36,9 @@ class AuthInviteToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, kvnr: String?, partnerNumber: String?, code: String?, personId: PartnerNumber?, rateLimited: Boolean): ToolOutcome {
-        sessions.require<AuthInviteToolSession>(toolSessionId)
+        sessions.require<AuthInviteLookupToolSession>(toolSessionId)
 
-        return when (val decision = AuthInviteFlow.decide(AuthInviteInput(kvnr, partnerNumber, code))) {
+        return when (val decision = AuthInviteLookupFlow.decide(AuthInviteInput(kvnr, partnerNumber, code))) {
             is AuthInviteDecision.Incomplete -> outcomeFor(decision.missingFields)
             is AuthInviteDecision.Check -> {
                 val grant = if (personId != null && !rateLimited) invitations.redeem(personId, decision.code) else null
@@ -56,12 +56,12 @@ class AuthInviteToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        sessions.require<AuthInviteToolSession>(toolSessionId)
+        sessions.require<AuthInviteLookupToolSession>(toolSessionId)
         return outcomeFor()
     }
 
-    private fun outcomeFor(missingFields: List<String> = AuthInviteFlow.ALL_FIELDS): ToolOutcome.InProgress {
-        val (step, fields) = AuthInviteFlow.describe(missingFields)
+    private fun outcomeFor(missingFields: List<String> = AuthInviteLookupFlow.ALL_FIELDS): ToolOutcome.InProgress {
+        val (step, fields) = AuthInviteLookupFlow.describe(missingFields)
         return ToolOutcome.InProgress(nextStep = step, stepData = fields)
     }
 }

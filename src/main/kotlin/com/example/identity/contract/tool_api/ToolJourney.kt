@@ -30,8 +30,8 @@ import java.net.URI
  * activates nothing (enforced by `ApiBoundaryArchitectureTest`).
  */
 interface ToolContext {
-    /** The toolId this context was obtained for. */
-    val toolId: String
+    /** The tool this context was obtained for. */
+    val toolId: ToolId
     /** The version of the tool's contract the client speaks, as its path names it (ADR-51). */
     val version: Int
     val toolSessionId: ToolSessionId

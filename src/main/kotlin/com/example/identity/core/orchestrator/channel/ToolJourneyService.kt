@@ -72,7 +72,7 @@ class ToolJourneyService(
     private val demoDisclosure: DemoDisclosure
 ) : ToolJourney {
     data class Context(
-        override val toolId: String,
+        override val toolId: ToolId,
         override val version: Int,
         override val toolSessionId: ToolSessionId,
         val journeyId: JourneyId,
@@ -123,7 +123,7 @@ class ToolJourneyService(
         val toolSession = sessionManagementService.createToolSession(journey.journeyId, TOOL_TTL)
         journeyService.activate(journey, live, descriptor, toolSession.id)
         return Activation(Context(
-            toolId = toolId,
+            toolId = ToolId(toolId),
             version = tool.version,
             toolSessionId = toolSession.id,
             journeyId = journey.journeyId,
@@ -200,7 +200,7 @@ class ToolJourneyService(
         val channel = channelAccessGuard.requireChannel(journey.channelSessionId, bindingKeyRef)
         requireDeclaredVersion(tool, channel)
         return Context(
-            toolId = tool.toolId.value,
+            toolId = tool.toolId,
             version = tool.version,
             toolSessionId = toolSessionId,
             journeyId = journey.journeyId,
@@ -244,7 +244,7 @@ class ToolJourneyService(
     override fun isCurrentTool(context: ToolContext): Boolean {
         val ctx = context.data()
         val journey = resolveJourney(ctx)
-        return journeyService.isCurrent(journey, ToolId(ctx.toolId), ctx.toolSessionId)
+        return journeyService.isCurrent(journey, ctx.toolId, ctx.toolSessionId)
     }
 
     /**
@@ -264,7 +264,7 @@ class ToolJourneyService(
         val live = resolveChannel(ctx, journey)
         val channel = live.session
         sessionManagementService.endToolSession(ctx.toolSessionId, ToolSessionStatus.ABANDONED)
-        val step = move(journey, live, toolRegistry.toolOf(ToolId(ctx.toolId)))
+        val step = move(journey, live, toolRegistry.toolOf(ctx.toolId))
         return ChannelResponse(
             channel = responseAssembler.buildChannelBlock(channel),
             next = step.next,
@@ -285,7 +285,7 @@ class ToolJourneyService(
         val journey = resolveJourney(ctx)
         val live = resolveChannel(ctx, journey)
         val channel = live.session
-        val descriptor = toolRegistry.toolOf(ToolId(ctx.toolId))
+        val descriptor = toolRegistry.toolOf(ctx.toolId)
         // An activation checks the lock but books nothing; only [loadCurrent] books.
         chargeRateLimits(channel.accountId, channel.channel?.name, descriptor, "${ctx.toolId}@${ctx.version}", outcome, booked = context !is Activation)
         // A completed tool is done for good, even while the journey still names it as active.
@@ -365,7 +365,7 @@ class ToolJourneyService(
         val journey = resolveJourney(ctx)
         val channel = resolveChannel(ctx, journey).session
         val next = if (freshOutcome != null) {
-            Next.tool(ctx.toolId, freshOutcome.nextStep, ctx.toolSessionId)
+            Next.tool(ctx.toolId.value, freshOutcome.nextStep, ctx.toolSessionId)
         } else {
             journeyService.nextOf(journey, channel)
         }

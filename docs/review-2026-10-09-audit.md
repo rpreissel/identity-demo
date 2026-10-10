@@ -380,6 +380,26 @@ Die Punkte sind nach Nutzen für die Verständlichkeit geordnet. Aufwand: k = kl
   - Die fünf reinen Schlüssel-Delegates aus `AccountService` (532 Zeilen) gehören in eine Fassade
     `JourneyKeys`.
 
+**Stand der Behebung im Backend (2026-10-10, `DPoP-demo-8x0p.8`):**
+
+- **V-B1:** erledigt. Entfernt sind `keycloakOnly`, `InvalidStateException`, die vier Methoden ohne
+  Aufrufer und `AcrLevels.rank/levelAt/min`. `SessionEvidence.from` bleibt; es trägt die
+  Test-Fixture `fromNow`.
+- **V-B2:** erledigt für die Codes. `tool_api.otp.OneTimeCodes` ist eine Klasse ohne Bean, also
+  gilt M-2 weiter. `TanGenerator`, `EmailCodeGenerator` und `ConfirmationCodeDigest` sind je Modul
+  eine Bean darauf. Offen bleiben die gleichen Send-Limits und Lookup-Flows von SMS und E-Mail.
+- **V-B3:** erledigt. Am `Tool` heißt es nur noch `onePerDevice`.
+- **V-B4:** erledigt. Die vier Handler nutzen `requireEnrollment`, und vier Cleanups sind
+  `RowEnrollmentCleanup`. `sealText` für Rufnummer und PIN ist nicht umgesetzt.
+- **V-B5:** teilweise.
+  - Umbenannt: `ApproveQr…` (Handler, Session, Controller, Paket `approveqr`),
+    `AuthInviteLookup…` (Handler, Flow, Session, Controller) und `IdentNectToolSession`. Die
+    DTO-Namen `ConfirmQrLogin…Request` bleiben, weil sie zum veröffentlichten Vertrag gehören.
+  - `ToolContext.toolId` ist jetzt eine `ToolId`.
+  - Zurückgestellt: `MethodInstanceId` und ACR als Typ statt `String`. Beide stecken in
+    persistierten Journey-Zuständen (`ManageAuthMethodsState`), ein Typwechsel ändert deren
+    Serialisierung.
+
 ### Keycloak-Erweiterung
 
 `DPoP-demo-8x0p.10`
@@ -576,4 +596,5 @@ Diese Bereiche zeigen keinen neuen Befund:
 | AU-11 | Reste des alten Wegs in Doku und Kommentaren, Korrekturen an den offenen Befunden | `DPoP-demo-8x0p.7` |
 | AU-3 | „Verfahren verwalten“ meldet seine Nachweise an die Sitzung | `DPoP-demo-8x0p.3` |
 | AU-10 | Kontosperre bucht einen Versuch vor der Prüfung | `DPoP-demo-8x0p.6` |
+| V-B1 bis V-B5 | Toter Code, `OneTimeCodes`, `onePerDevice`, `requireEnrollment`, Namen (teilweise) | `DPoP-demo-8x0p.8` |
 | AU-4 bis AU-8 | Kleine Härtungen an Sitzungsnachweisen, Schlüsseln und Federation; AU-7 nur für App-Tokens | `DPoP-demo-8x0p.4` |

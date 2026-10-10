@@ -40,14 +40,14 @@ class IdentNectToolHandlerTest : BehaviorSpec({
     val handler = IdentNectToolHandler(sessions, nect)
 
     /** The session as the handler last saved it. */
-    fun stored(toolSessionId: ToolSessionId): IdNectToolSession = sessions.stored(toolSessionId)
+    fun stored(toolSessionId: ToolSessionId): IdentNectToolSession = sessions.stored(toolSessionId)
     val source = ClaimSource(tool("ident-nect").toolId.value)
 
     /** A tool session waiting for a fresh case; returns both ids. */
     fun waitingForCase(): Pair<ToolSessionId, UUID> {
         val toolSessionId = ToolSessionId(UUID.randomUUID())
         val caseId = UUID.randomUUID()
-        sessions.save(toolSessionId, IdNectToolSession(caseId = caseId))
+        sessions.save(toolSessionId, IdentNectToolSession(caseId = caseId))
         return toolSessionId to caseId
     }
 
@@ -96,7 +96,7 @@ class IdentNectToolHandlerTest : BehaviorSpec({
             val toolSessionId = ToolSessionId(UUID.randomUUID())
             val oldCase = UUID.randomUUID()
             val newCase = UUID.randomUUID()
-            sessions.save(toolSessionId, IdNectToolSession(caseId = oldCase, returnUri = actionUrl))
+            sessions.save(toolSessionId, IdentNectToolSession(caseId = oldCase, returnUri = actionUrl))
             every { nect.createCase(actionUrl, NECT_REQUESTED) } returns NectCaseRef(newCase, "/nect/?case=$newCase")
             val outcome = webHandler.patch(toolSessionId, caseId = oldCase, retry = true)
 
@@ -111,7 +111,7 @@ class IdentNectToolHandlerTest : BehaviorSpec({
             val oldCase = UUID.randomUUID()
             val newCase = UUID.randomUUID()
             val freshUrl = "https://kc.test/realms/Demo/login-actions/authenticate?session_code=c2&execution=e1&client_id=web&tab_id=t1"
-            sessions.save(toolSessionId, IdNectToolSession(caseId = oldCase, returnUri = actionUrl))
+            sessions.save(toolSessionId, IdentNectToolSession(caseId = oldCase, returnUri = actionUrl))
             every { nect.createCase(freshUrl, NECT_REQUESTED) } returns NectCaseRef(newCase, "/nect/?case=$newCase")
             val outcome = webHandler.patch(toolSessionId, caseId = oldCase, retry = true, returnUri = freshUrl)
 
@@ -123,7 +123,7 @@ class IdentNectToolHandlerTest : BehaviorSpec({
 
         `when`("a retry names an address outside the prefixes") {
             val toolSessionId = ToolSessionId(UUID.randomUUID())
-            sessions.save(toolSessionId, IdNectToolSession(caseId = UUID.randomUUID(), returnUri = actionUrl))
+            sessions.save(toolSessionId, IdentNectToolSession(caseId = UUID.randomUUID(), returnUri = actionUrl))
             val result = runCatching { webHandler.patch(toolSessionId, caseId = null, retry = true, returnUri = "https://attacker.example/return") }
 
             then("it is rejected as bad input, and no case is opened") {

@@ -63,7 +63,7 @@ class IdentNectToolHandler(
     fun start(toolSessionId: ToolSessionId, returnUri: String? = null): ToolOutcome {
         val callbackUri = acceptedReturnUri(returnUri)
         val case = nect.createCase(callbackUri, NECT_REQUESTED)
-        sessions.save(toolSessionId, IdNectToolSession(caseId = case.caseId, returnUri = returnUri))
+        sessions.save(toolSessionId, IdentNectToolSession(caseId = case.caseId, returnUri = returnUri))
         return redirect(case.caseId, case.jumpUrl)
     }
 
@@ -74,7 +74,7 @@ class IdentNectToolHandler(
      */
     @Transactional
     fun patch(toolSessionId: ToolSessionId, caseId: UUID?, retry: Boolean, returnUri: String? = null): ToolOutcome {
-        val data = sessions.require<IdNectToolSession>(toolSessionId)
+        val data = sessions.require<IdentNectToolSession>(toolSessionId)
         if (retry) {
             val nextReturnUri = if (returnUri != null) acceptedReturnUri(returnUri) else data.returnUri
             val case = nect.createCase(nextReturnUri ?: NECT_CALLBACK_URI, NECT_REQUESTED)
@@ -103,7 +103,7 @@ class IdentNectToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome {
-        val caseId = checkNotNull(sessions.require<IdNectToolSession>(toolSessionId).caseId)
+        val caseId = checkNotNull(sessions.require<IdentNectToolSession>(toolSessionId).caseId)
         return redirect(caseId, nect.jumpUrl(caseId))
     }
 
