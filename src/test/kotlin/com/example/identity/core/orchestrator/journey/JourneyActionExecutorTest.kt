@@ -128,6 +128,7 @@ private class SelfLockoutFixture(floor: AcrLevel) {
     val executor = JourneyActionExecutor(
         journeyRepository = mockk(relaxed = true),
         accountService = accountService,
+        journeyKeys = mockk(relaxed = true),
         identityResolver = mockk(relaxed = true),
         appTokenSessionService = mockk(relaxed = true),
         sessionEvidenceService = mockk(relaxed = true),
@@ -188,6 +189,7 @@ private fun executor(
 ) = JourneyActionExecutor(
     journeyRepository = mockk(relaxed = true),
     accountService = mockk(relaxed = true),
+    journeyKeys = mockk(relaxed = true),
     identityResolver = mockk(relaxed = true),
     appTokenSessionService = mockk(relaxed = true),
     sessionEvidenceService = sessionEvidenceService,

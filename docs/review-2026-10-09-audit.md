@@ -399,6 +399,19 @@ Die Punkte sind nach Nutzen für die Verständlichkeit geordnet. Aufwand: k = kl
   - Zurückgestellt: `MethodInstanceId` und ACR als Typ statt `String`. Beide stecken in
     persistierten Journey-Zuständen (`ManageAuthMethodsState`), ein Typwechsel ändert deren
     Serialisierung.
+- **V-B6:** erledigt bis auf die OpenAPI-Interfaces.
+  - `ToolJourney.applied` ersetzt 23 gleiche Zeilen.
+  - Handler-`read()` liefert `ToolOutcome.InProgress`, und `readResponse` braucht keinen Cast mehr.
+  - Die Beispielwerte stehen als Konstanten in `envelope/ApiExamples.kt`. Das OpenAPI-Dokument ist
+    unverändert.
+- **V-B7:** erledigt. `ToolStep` ersetzt das Paar, außer in `EnrollKobilFlow`: Dessen Schrittdaten
+  kommen aus der Session.
+- **V-B8:** erledigt für die Nullbarkeit. Die Marker-Sessions bleiben, denn `sessions.require`
+  prüft auch den Typ der Arbeitsdaten.
+- **V-B9:** erledigt bis auf `signedOutAtKeycloak`.
+  - `upsertChannel` ist in `restoredEvidence`, `openWebChannel` und `bindWebChannel` geschnitten.
+  - `ChannelService` antwortet über `respondAfter` und `startIntent`.
+  - Die fünf Schlüssel-Methoden stehen in der Fassade `JourneyKeys`.
 
 ### Keycloak-Erweiterung
 
@@ -597,4 +610,5 @@ Diese Bereiche zeigen keinen neuen Befund:
 | AU-3 | „Verfahren verwalten“ meldet seine Nachweise an die Sitzung | `DPoP-demo-8x0p.3` |
 | AU-10 | Kontosperre bucht einen Versuch vor der Prüfung | `DPoP-demo-8x0p.6` |
 | V-B1 bis V-B5 | Toter Code, `OneTimeCodes`, `onePerDevice`, `requireEnrollment`, Namen (teilweise) | `DPoP-demo-8x0p.8` |
+| V-B6 bis V-B9 | `applied`, `ToolStep`, Nullbarkeit, kürzere Funktionen, `JourneyKeys` | `DPoP-demo-8x0p.9` |
 | AU-4 bis AU-8 | Kleine Härtungen an Sitzungsnachweisen, Schlüsseln und Federation; AU-7 nur für App-Tokens | `DPoP-demo-8x0p.4` |

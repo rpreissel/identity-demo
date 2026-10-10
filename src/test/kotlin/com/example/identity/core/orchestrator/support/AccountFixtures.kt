@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.support
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.core.account.JourneyKeys
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollment
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
 import com.example.identity.tools.auth_password.internal.PasswordHasher
@@ -10,7 +11,6 @@ import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
 import com.example.identity.core.account.AccountService
 import com.example.identity.tools.auth_device.internal.DeviceEnrollment
 import com.example.identity.tools.auth_device.internal.DeviceEnrollmentRepository
-import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollment
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
 import com.example.identity.core.orchestrator.session.SessionManagementService
 import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
@@ -34,6 +34,7 @@ import java.time.Instant
 @Component
 class AccountFixtures(
     private val accountService: AccountService,
+    private val journeyKeys: JourneyKeys,
     private val personDirectory: PersonDirectory,
     private val passwordEnrollmentRepository: AuthPasswordEnrollmentRepository,
     private val smsEnrollmentRepository: AuthSmsEnrollmentRepository,
@@ -127,7 +128,7 @@ class AccountFixtures(
         val instanceId = UUID.randomUUID()
         when (method) {
             is Method.Sms -> {
-                val enrollment = smsEnrollmentRepository.save(smsNumbers.newEnrollment(method.phoneNumber, accountService.masterKeyOf(accountId), Instant.now()))
+                val enrollment = smsEnrollmentRepository.save(smsNumbers.newEnrollment(method.phoneNumber, journeyKeys.masterKeyOf(accountId), Instant.now()))
                 accountService.recordClaims(
                     accountId,
                     listOf(Claim(PHONE_NUMBER_ATTRIBUTE, method.phoneNumber, ENROLL_SMS_SOURCE, AcrLevel.LOA1)),

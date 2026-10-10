@@ -1,6 +1,8 @@
 package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.core.orchestrator.journey.JourneyEndedException
+import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
+import com.example.identity.core.orchestrator.journey.Step
 import com.example.identity.contract.tool_api.ToolVersion
 import com.example.identity.contract.tool_api.InvalidInputException
 import com.example.identity.contract.tool_api.ids.AccountId
@@ -210,9 +212,20 @@ class ChannelService(
         return startEntryJourney(live, seedAction)
     }
 
+    /** Starts [intent] on a live channel that may start it, and answers with its first step. */
+    private fun startIntent(channelSessionId: ChannelSessionId, bindingKeyRef: String, intent: AuthIntent, seed: JourneyState? = null): ChannelResponse {
+        val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
+        requireStartable(live, intent)
+        return respondAfter(channelSessionId, journeyService.start(live, intent, seed = seed))
+    }
+
+    /** The channel as the journey left it, with the journey's next [step]. */
+    private fun respondAfter(channelSessionId: ChannelSessionId, step: Step): ChannelResponse =
+        responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)
+
     private fun startEntryJourney(channel: LiveChannel, seedAction: Action? = null): ChannelResponse {
         val step = journeyService.startEntryJourney(channel, seedAction)
-        return responseAssembler.respond(sessionManagementService.reloadChannelSession(channel.session.id), step.next, step.stepData)
+        return respondAfter(channel.session.id, step)
     }
 
     fun raiseRequiredAcr(channelSessionId: ChannelSessionId, bindingKeyRef: String, requiredAcr: String): ChannelResponse {
@@ -234,7 +247,7 @@ class ChannelService(
             targetAcr = floor,
             startingAcr = authPolicy.resolveAcr(currentEvidence(refreshed), account)
         )
-        return responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)
+        return respondAfter(channelSessionId, step)
     }
 
     /** Abandons the running journey and offers a fresh start where applicable. */
@@ -260,7 +273,7 @@ class ChannelService(
             journeyService.cancel(activeJourney, channel)
         }
         val step = journeyService.start(channel, AuthIntent.LOGOUT)
-        return responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)
+        return respondAfter(channelSessionId, step)
     }
 
     /**
@@ -334,10 +347,7 @@ class ChannelService(
     }
 
     private fun startManage(channelSessionId: ChannelSessionId, bindingKeyRef: String, wish: ManageAuthMethodsState): ChannelResponse {
-        val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
-        requireStartable(live, AuthIntent.MANAGE_AUTH_METHODS)
-        val step = journeyService.start(live, AuthIntent.MANAGE_AUTH_METHODS, seed = wish)
-        return responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)
+        return startIntent(channelSessionId, bindingKeyRef, AuthIntent.MANAGE_AUTH_METHODS, seed = wish)
     }
 
     /**
@@ -346,13 +356,10 @@ class ChannelService(
      * [ConfirmPeerLoginState.Requested].
      */
     fun startPeerLogin(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
-        val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
-        requireStartable(live, AuthIntent.CONFIRM_PEER_LOGIN)
-        val step = journeyService.start(
-            live, AuthIntent.CONFIRM_PEER_LOGIN,
+        return startIntent(
+            channelSessionId, bindingKeyRef, AuthIntent.CONFIRM_PEER_LOGIN,
             seed = ConfirmPeerLoginState.Requested(startedAuthenticated = true)
         )
-        return responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)
     }
 
     /**
@@ -360,10 +367,7 @@ class ChannelService(
      * then the deletion (docs/05-api.md #3a, "Konto löschen").
      */
     fun startDeleteAccount(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
-        val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
-        requireStartable(live, AuthIntent.DELETE_ACCOUNT)
-        val step = journeyService.start(live, AuthIntent.DELETE_ACCOUNT)
-        return responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)
+        return startIntent(channelSessionId, bindingKeyRef, AuthIntent.DELETE_ACCOUNT)
     }
 
     /** Applies [AuthIntent.startRefusal] before a signed-in user's journey starts on [channel]. */
@@ -384,7 +388,7 @@ class ChannelService(
         val active = journeyService.findActive(channelSessionId)
             ?: throw OrchestratorException.invalidState(Text("No active journey for this channel"))
         val step = journeyService.answer(active, channel, answer)
-        return responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)
+        return respondAfter(channelSessionId, step)
     }
 
     private fun currentEvidence(channel: ChannelSession): SessionEvidence =

@@ -11,6 +11,7 @@ import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
+import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
@@ -118,98 +119,107 @@ class KeycloakChannelService(
         // Checked before anything changes, so a rejected level leaves the channel as it was.
         val targetFloor = targetAcr?.let(::requestedAcr)
         kcSessionId?.let(::requireKcSessionId)
-        // What earlier flow runs of the same Keycloak session proved (ADR-59), each with its
-        // original age.
-        val restored = kcSessionId?.let { keycloakSessionEvidenceRepository.findLive(it, clock.instant()) }.orEmpty()
-        // A session's evidence counts only as a whole for the one account that signed in there.
-        // Rows of several accounts are refused, never filtered: which of them is right is unknown.
-        val restoredOwners = restored.map { it.accountId }.distinct()
-        if (restoredOwners.size > 1) {
-            throw OrchestratorException.invalidState(
-                Text("Die Sitzung gehört zu einem anderen Konto"),
-                "kcSessionId holds evidence of ${restoredOwners.size} accounts"
-            )
-        }
-        // Keycloak's user and the session's evidence must name the same account. Preferring one
-        // would let a mis-attributed Keycloak user carry this session's evidence elsewhere. An
-        // invitation's evidence is never stored (ADR-48), so restored evidence never belongs to one.
-        val restoredSubject = restoredOwners.singleOrNull()?.let { Subject.Account(AccountId(it)) }
-        if (subject != null && restoredSubject != null && subject != restoredSubject) {
-            throw OrchestratorException.invalidState(
-                Text("Die Sitzung gehört zu einem anderen Konto"),
-                "subject=${subject::class.simpleName} restored.accountId=${restoredSubject.id}"
-            )
-        }
-        val effectiveSubject = subject ?: restoredSubject
+        val restored = restoredEvidence(kcSessionId, subject)
+        val effectiveSubject = subject ?: restored.owner
         val effectiveAccountId = (effectiveSubject as? Subject.Account)?.id
         // Fails fast: an unknown accountId would otherwise surface later as an unrelated error.
         val account = effectiveAccountId?.let {
             accountService.findAccount(it) ?: throw OrchestratorException.notFound(Text("Account not found"), "accountId=$it")
         }
-        // A proof of a method the account no longer has counts for nothing, however it got into the
-        // session: a tab ending after a revocation writes it back. An identification is no method.
-        val activeMethods = account?.activeAuthenticationMethods.orEmpty().map { it.method }.toSet()
-        val restoredFactors = restored.map { it.toMethodEvidence() }
-            .filter { it.axis != EvidenceAxis.AUTHENTICATOR || it.method.value in activeMethods }
 
         val isFreshChannel = sessionManagementService.findChannelSessionById(channelSessionId) == null
         if (isFreshChannel) {
-            // A new channel is bound to the channel id the extension signed for
-            // (OrchestratorClient.upsertChannel), not to any validly signed value.
-            if (assertion.channelBinding != channelSessionId.toString()) {
-                throw PeerAuthValidationException("Peer-auth channel_binding does not name this channel")
-            }
-            // A process access is not raised (ADR-48): its session asks for a level only a new
-            // flow run of its own could give, and an invitation binds only through its own proof.
-            if (effectiveSubject is Subject.Invitation) throw invitationNotRaised()
-            sessionManagementService.createWebChannelSession(
-                channelSessionId,
-                assertion.channelBinding,
-                effectiveAccountId,
-                CHANNEL_TTL,
-                // The Web channel's declaration of what it can render, taken verbatim like the App
-                // channel's availableTools, never widened to the whole catalog.
-                channelService.catalogToolsOf(availableTools.orEmpty()),
-                entryIntentFor(intent)
-            )
+            openWebChannel(channelSessionId, assertion, effectiveSubject, availableTools, intent)
         } else {
-            // A guessed channelSessionId is not enough: the assertion must carry this channel's
-            // binding (docs/02-domaenenmodell.md Abschnitt 1).
-            val channel = keycloakChannelAccessGuard.requireChannel(channelSessionId, assertion)
-            // Step-up (docs/05-api.md Abschnitt 3b): binds the channel to the account Keycloak knows,
-            // once. A request naming another subject - another account, or an account where an
-            // invitation signed in, or the reverse - is a mismatch, not a rebind (I-5).
-            val bound = channel.subject
-            if (effectiveSubject is Subject.Invitation && bound != effectiveSubject) throw invitationNotRaised()
-            if (effectiveSubject != null && bound != null && bound != effectiveSubject) {
-                throw OrchestratorException.invalidState(
-                    Text("Die Sitzung gehört zu einem anderen Konto"),
-                    "channel=${bound::class.simpleName} requested=${effectiveSubject::class.simpleName}"
-                )
-            }
-            // Only an account binds here; an invitation binds only through its own proof.
-            if (effectiveAccountId != null && bound == null) {
-                channel.subject = Subject.Account(effectiveAccountId)
-                sessionManagementService.updateChannelSession(channel)
-            }
+            bindWebChannel(channelSessionId, assertion, effectiveSubject)
         }
-
         targetFloor?.let { sessionManagementService.raiseChannelAcrFloor(channelSessionId, it.value) }
 
         // On a channel this call created, the entry journey's first decision already sees the
         // restored methods (docs/04-orchestrierung.md #8, "Übernommene Nachweise als erster Übergang").
         // Deciding without them would offer a way out (a step-up's RE_IDENTIFY) the proofs already
-        // in hand make needless.
-        val seedFactors = if (isFreshChannel) restoredFactors else emptyList()
-        return if (seedFactors.isNotEmpty()) {
-            channelService.resumeChannel(
-                sessionManagementService.reloadChannelSession(channelSessionId),
-                Action.ApplyRestoredEvidence(seedFactors)
-            )
-        } else {
-            channelService.resumeChannel(sessionManagementService.reloadChannelSession(channelSessionId))
+        // in hand make needless. A proof of a method the account no longer has counts for nothing,
+        // however it got into the session; an identification is no method.
+        val activeMethods = account?.activeAuthenticationMethods.orEmpty().map { it.method }.toSet()
+        val seed = restored.factors
+            .filter { it.axis != EvidenceAxis.AUTHENTICATOR || it.method.value in activeMethods }
+            .takeIf { isFreshChannel && it.isNotEmpty() }
+            ?.let(Action::ApplyRestoredEvidence)
+        return channelService.resumeChannel(sessionManagementService.reloadChannelSession(channelSessionId), seed)
+    }
+
+    /** What earlier flow runs of Keycloak session [kcSessionId] proved (ADR-59), and whose it is. */
+    private class RestoredEvidence(val owner: Subject.Account?, val factors: List<MethodEvidence>)
+
+    /**
+     * The session's live rows, each with its original age. They count only as a whole for the one
+     * account that signed in there: rows of several accounts are refused, never filtered, since
+     * which of them is right is unknown. Keycloak's user [subject] must be that account too;
+     * preferring one would let a mis-attributed Keycloak user carry the evidence elsewhere. An
+     * invitation's evidence is never stored (ADR-48), so restored evidence never belongs to one.
+     */
+    private fun restoredEvidence(kcSessionId: String?, subject: Subject?): RestoredEvidence {
+        val rows = kcSessionId?.let { keycloakSessionEvidenceRepository.findLive(it, clock.instant()) }.orEmpty()
+        val owners = rows.map { it.accountId }.distinct()
+        if (owners.size > 1) throw otherAccount("kcSessionId holds evidence of ${owners.size} accounts")
+        val owner = owners.singleOrNull()?.let { Subject.Account(AccountId(it)) }
+        if (subject != null && owner != null && subject != owner) {
+            throw otherAccount("subject=${subject::class.simpleName} restored.accountId=${owner.id}")
+        }
+        return RestoredEvidence(owner, rows.map { it.toMethodEvidence() })
+    }
+
+    /** A new Web channel under the id Keycloak chose for this flow run. */
+    private fun openWebChannel(
+        channelSessionId: ChannelSessionId,
+        assertion: PeerAuthAssertion,
+        subject: Subject?,
+        availableTools: List<String>?,
+        intent: String?,
+    ) {
+        // Bound to the channel id the extension signed for (OrchestratorClient.upsertChannel), not
+        // to any validly signed value.
+        if (assertion.channelBinding != channelSessionId.toString()) {
+            throw PeerAuthValidationException("Peer-auth channel_binding does not name this channel")
+        }
+        // A process access is not raised (ADR-48): its session asks for a level only a new flow run
+        // of its own could give, and an invitation binds only through its own proof.
+        if (subject is Subject.Invitation) throw invitationNotRaised()
+        sessionManagementService.createWebChannelSession(
+            channelSessionId,
+            assertion.channelBinding,
+            (subject as? Subject.Account)?.id,
+            CHANNEL_TTL,
+            // The Web channel's declaration of what it can render, taken verbatim like the App
+            // channel's availableTools, never widened to the whole catalog.
+            channelService.catalogToolsOf(availableTools.orEmpty()),
+            entryIntentFor(intent)
+        )
+    }
+
+    /**
+     * Step-up on an existing channel (docs/05-api.md Abschnitt 3b): binds it to the account Keycloak
+     * knows, once. A request naming another subject - another account, or an account where an
+     * invitation signed in, or the reverse - is a mismatch, not a rebind (I-5).
+     */
+    private fun bindWebChannel(channelSessionId: ChannelSessionId, assertion: PeerAuthAssertion, subject: Subject?) {
+        // A guessed channelSessionId is not enough: the assertion must carry this channel's binding
+        // (docs/02-domaenenmodell.md Abschnitt 1).
+        val channel = keycloakChannelAccessGuard.requireChannel(channelSessionId, assertion)
+        val bound = channel.subject
+        if (subject is Subject.Invitation && bound != subject) throw invitationNotRaised()
+        if (subject != null && bound != null && bound != subject) {
+            throw otherAccount("channel=${bound::class.simpleName} requested=${subject::class.simpleName}")
+        }
+        // Only an account binds here; an invitation binds only through its own proof.
+        if (subject is Subject.Account && bound == null) {
+            channel.subject = subject
+            sessionManagementService.updateChannelSession(channel)
         }
     }
+
+    private fun otherAccount(detail: String) =
+        OrchestratorException.invalidState(Text("Die Sitzung gehört zu einem anderen Konto"), detail)
 
     private fun invitationNotRaised() = OrchestratorException.invalidState(
         Text("Dieses Einmalkennwort genuegt dem verlangten Sicherheitsniveau nicht"),
@@ -231,10 +241,7 @@ class KeycloakChannelService(
         // proofs count for the other. The channel keeps its old session id as well.
         val owner = channel.accountId
         if (owner != null && keycloakSessionEvidenceRepository.holdsOtherAccount(kcSessionId, owner.value)) {
-            throw OrchestratorException.invalidState(
-                Text("Die Sitzung gehört zu einem anderen Konto"),
-                "flow-end named a Keycloak session holding evidence of another account"
-            )
+            throw otherAccount("flow-end named a Keycloak session holding evidence of another account")
         }
         // Every completed Keycloak flow run makes this call, so it records the durable session id
         // without a separate write path. [sessionExpiresAt] is the latest end of that session

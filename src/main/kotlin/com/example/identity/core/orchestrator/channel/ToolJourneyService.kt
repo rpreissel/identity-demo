@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.core.orchestrator.journey.JourneyEndedException
+import com.example.identity.core.account.JourneyKeys
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.MasterKeyId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
@@ -64,6 +65,7 @@ class ToolJourneyService(
     private val channelAccessGuard: ChannelAccessGuard,
     private val toolRegistry: ToolHandlerRegistry,
     private val accountService: AccountService,
+    private val journeyKeys: JourneyKeys,
     private val accountLockoutService: AccountLockoutService,
     private val personLockoutService: PersonLockoutService,
     private val responseAssembler: ChannelResponseAssembler,
@@ -141,10 +143,10 @@ class ToolJourneyService(
      * request and the account adopts it when it binds (`JourneyActionExecutor.bindAccount`).
      */
     private fun masterKeyFor(channel: ChannelSession): MasterKeyId {
-        channel.accountId?.let { return accountService.masterKeyOf(it) }
+        channel.accountId?.let { return journeyKeys.masterKeyOf(it) }
         // A key the channel still names but that is gone or owned elsewhere is not this journey's.
-        channel.journeyKeyId?.takeIf(accountService::isPendingJourneyKey)?.let { return it }
-        val key = accountService.newJourneyKey()
+        channel.journeyKeyId?.takeIf(journeyKeys::isPendingJourneyKey)?.let { return it }
+        val key = journeyKeys.newJourneyKey()
         channel.journeyKeyId = key
         sessionManagementService.updateChannelSession(channel)
         return key

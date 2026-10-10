@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.retention
 
 import com.example.identity.core.orchestrator.domain.ChannelState
+import com.example.identity.core.account.JourneyKeys
 import com.example.identity.core.orchestrator.session.AccountDeletionService
 import com.example.identity.core.account.AccountService
 import io.micrometer.core.instrument.MeterRegistry
@@ -44,6 +45,7 @@ class RetentionJob(
     private val rateLimitRecordRepository: RateLimitRecordRepository,
     private val dataKeyRepository: DataKeyRepository,
     private val accountService: AccountService,
+    private val journeyKeys: JourneyKeys,
     private val accountDeletionService: AccountDeletionService,
     private val meterRegistry: MeterRegistry,
     private val clock: Clock,
@@ -66,7 +68,7 @@ class RetentionJob(
         // Keys of days whose rows are all gone (ADR-53): what still lies under them is unreadable now.
         countDeleted("data_key", dataKeyRepository.deleteByRetireAfterBefore(now))
         // Journey keys no account adopted (ADR-55): the channels that could name them are gone by now.
-        countDeleted("master_key", accountService.deleteJourneyKeysCreatedBefore(now.minus(CHANNEL_SESSION_RETENTION)))
+        countDeleted("master_key", journeyKeys.deleteJourneyKeysCreatedBefore(now.minus(CHANNEL_SESSION_RETENTION)))
         // What ended Keycloak sessions proved (ADR-59): their end is the rows' expiry.
         countDeleted("keycloak_session_evidence", keycloakSessionEvidenceRepository.deleteExpired(now))
         countDeleted("journey_trace", journeyTraceEntries)
