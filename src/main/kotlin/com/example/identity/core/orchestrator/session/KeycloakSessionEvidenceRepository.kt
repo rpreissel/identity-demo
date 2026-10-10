@@ -42,16 +42,17 @@ interface KeycloakSessionEvidenceRepository : JpaRepository<KeycloakSessionEvide
     )
 
     /**
-     * Replaces a session's proof of [method] only with a younger one, so an older proof finishing
-     * later never pushes a fresh one out. One statement: its row lock orders two tabs ending at once.
+     * Replaces a session's proof of [method] only with a younger one of the same account, so an
+     * older proof finishing later never pushes a fresh one out. One statement: its row lock orders
+     * two tabs ending at once.
      */
     @Modifying
     @Query(
         value = """
             UPDATE orchestrator.keycloak_session_evidence SET
-                account_id = :accountId, loa = :loa, enrolled_under_acr = :enrolledUnderAcr,
+                loa = :loa, enrolled_under_acr = :enrolledUnderAcr,
                 factor_types = :factorTypes, amr_source_id = :amrSourceId, axis = :axis, proven_at = :provenAt
-            WHERE kc_session_id = :kcSessionId AND method = :method AND proven_at <= :provenAt
+            WHERE kc_session_id = :kcSessionId AND method = :method AND account_id = :accountId AND proven_at <= :provenAt
         """,
         nativeQuery = true,
     )
@@ -71,6 +72,10 @@ interface KeycloakSessionEvidenceRepository : JpaRepository<KeycloakSessionEvide
     @Modifying
     @Query("UPDATE KeycloakSessionEvidence e SET e.expiresAt = :expiresAt WHERE e.id.kcSessionId = :kcSessionId")
     fun extend(@Param("kcSessionId") kcSessionId: String, @Param("expiresAt") expiresAt: Instant)
+
+    /** Whether [kcSessionId] holds a row of another account than [accountId], live or not. */
+    @Query("SELECT COUNT(e) > 0 FROM KeycloakSessionEvidence e WHERE e.id.kcSessionId = :kcSessionId AND e.accountId <> :accountId")
+    fun holdsOtherAccount(@Param("kcSessionId") kcSessionId: String, @Param("accountId") accountId: Long): Boolean
 
     @Query("SELECT e FROM KeycloakSessionEvidence e WHERE e.id.kcSessionId = :kcSessionId AND e.expiresAt > :now")
     fun findLive(@Param("kcSessionId") kcSessionId: String, @Param("now") now: Instant): List<KeycloakSessionEvidence>

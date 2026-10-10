@@ -117,12 +117,21 @@ class KeycloakChannelService(
         // Checked before anything changes, so a rejected level leaves the channel as it was.
         val targetFloor = targetAcr?.let(::requestedAcr)
         // What earlier flow runs of the same Keycloak session proved (ADR-59), each with its
-        // original age. The rows of a session all belong to the account that signed in there.
+        // original age.
         val restored = kcSessionId?.let { keycloakSessionEvidenceRepository.findLive(it, clock.instant()) }.orEmpty()
+        // A session's evidence counts only as a whole for the one account that signed in there.
+        // Rows of several accounts are refused, never filtered: which of them is right is unknown.
+        val restoredOwners = restored.map { it.accountId }.distinct()
+        if (restoredOwners.size > 1) {
+            throw OrchestratorException.invalidState(
+                Text("Die Sitzung gehört zu einem anderen Konto"),
+                "kcSessionId holds evidence of ${restoredOwners.size} accounts"
+            )
+        }
         // Keycloak's user and the session's evidence must name the same account. Preferring one
         // would let a mis-attributed Keycloak user carry this session's evidence elsewhere. An
         // invitation's evidence is never stored (ADR-48), so restored evidence never belongs to one.
-        val restoredSubject = restored.firstOrNull()?.let { Subject.Account(AccountId(it.accountId)) }
+        val restoredSubject = restoredOwners.singleOrNull()?.let { Subject.Account(AccountId(it)) }
         if (subject != null && restoredSubject != null && subject != restoredSubject) {
             throw OrchestratorException.invalidState(
                 Text("Die Sitzung gehört zu einem anderen Konto"),
@@ -208,6 +217,16 @@ class KeycloakChannelService(
      */
     fun flowEnded(channelSessionId: ChannelSessionId, assertion: PeerAuthAssertion, kcSessionId: String, sessionExpiresAt: Instant? = null) {
         val channel = keycloakChannelAccessGuard.requireChannel(channelSessionId, assertion)
+        // A Keycloak session belongs to one user. Rows of another account mean this report names a
+        // session the channel's account never signed in to; joining them would let one account's
+        // proofs count for the other. The channel keeps its old session id as well.
+        val owner = channel.accountId
+        if (owner != null && keycloakSessionEvidenceRepository.holdsOtherAccount(kcSessionId, owner.value)) {
+            throw OrchestratorException.invalidState(
+                Text("Die Sitzung gehört zu einem anderen Konto"),
+                "flow-end named a Keycloak session holding evidence of another account"
+            )
+        }
         // Every completed Keycloak flow run makes this call, so it records the durable session id
         // without a separate write path. [sessionExpiresAt] is the latest end of that session
         // without further activity: the channel does not outlive it (ADR-43).

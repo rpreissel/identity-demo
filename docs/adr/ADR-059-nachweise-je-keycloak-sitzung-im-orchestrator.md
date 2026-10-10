@@ -34,9 +34,16 @@ soll.
   jüngeren Nachweis (`updateIfYounger`). Alle Zeilen der Sitzung enden mit `sessionExpiresAt`.
   Nennt Keycloak keinen Wert, enden sie nach 12 Stunden. Ein Kanal einer Einladung legt nichts ab
   ([ADR-48](ADR-048-vorgangszugang-mit-einmalkennwort.md)).
+- **Ein Konto je Sitzung.** Alle Zeilen einer Sitzung gehören dem Konto, das sich dort angemeldet
+  hat. Die Extension meldet am Ende nur eine Sitzung desselben Nutzers wie der Durchlauf. Hat ein
+  anderer Tab inzwischen einen anderen Nutzer angemeldet, meldet sie nichts. Keycloak lehnt einen
+  solchen Durchlauf erst nach der Meldung ab. Der Orchestrator lehnt `flow-end` mit `409` ab, wenn
+  die Sitzung schon Zeilen eines anderen Kontos hat. `updateIfYounger` ändert nur Zeilen desselben
+  Kontos.
 - **Nächster Durchlauf.** `OrchestratorResumeAuthenticator` schickt im ersten `PATCH` nur die
   `kcSessionId`. Der Orchestrator liest die Zeilen der Sitzung, die noch nicht abgelaufen sind. Nennt
-  Keycloak ein anderes Konto als die Zeilen, antwortet er mit `409`. Ein neuer Kanal übernimmt die
+  Keycloak ein anderes Konto als die Zeilen, oder gehören die Zeilen mehreren Konten, antwortet er mit
+  `409`. Ein neuer Kanal übernimmt die
   Nachweise mit `Action.ApplyRestoredEvidence`, vor der ersten Entscheidung der Journey
   ([04-orchestrierung.md](../04-orchestrierung.md) Abschnitt 8). Jeder Nachweis behält seinen
   Zeitpunkt.

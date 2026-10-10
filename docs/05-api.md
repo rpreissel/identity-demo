@@ -985,7 +985,7 @@ Inhalt der Anfrage (`KeycloakChannelUpsertRequest`, alle Felder optional):
   Ein neu angelegter Kanal übernimmt diese Nachweise samt ihrem Zeitpunkt. Für Niveaus über `loa1`
   zählen sie nur 30 Minuten ([Orchestrierung](04-orchestrierung.md) Abschnitt 4). Eine unbekannte
   oder abgelaufene Sitzung bringt keine Nachweise mit. Gehören die Nachweise einem anderen Konto
-  als `subject`, antwortet der Orchestrator mit `409`.
+  als `subject` oder mehreren Konten, antwortet der Orchestrator mit `409`.
 - **`availableTools`**: Welche `toolId`s das Keycloak-Theme, also die Gestaltung der
   Anmeldeseiten, darstellen kann. Dafür gibt es je Tool einen `WebToolRenderer`. Der Orchestrator
   liest das Feld nur beim ersten Aufruf. Es ist das Gegenstück zu `availableTools` bei
@@ -999,7 +999,9 @@ einzigen Aufruf: den, den Keycloak am Ende eines erfolgreichen Anmeldeablaufs ma
 (`OrchestratorNotes.reportFlowEnd`). Die Antwort ist `204`. Der Orchestrator legt die Nachweise
 dieses Kanals unter der `kcSessionId` ab, eine Zeile je Verfahren. Fehlt eine Zeile, legt er sie an.
 Eine vorhandene Zeile ersetzt er nur durch einen jüngeren Nachweis. So überschreiben sich zwei Tabs
-derselben Sitzung nicht. Bei einem SPÄTEREN Step-up schickt Keycloak nur die `kcSessionId` im ersten
+derselben Sitzung nicht. Eine Sitzung nimmt nur Nachweise eines Kontos auf: Hat sie schon Zeilen
+eines anderen Kontos, antwortet der Orchestrator mit `409` und legt nichts ab. Die Extension meldet
+deshalb nur eine Sitzung, deren Nutzer der angemeldete Nutzer des Durchlaufs ist. Bei einem SPÄTEREN Step-up schickt Keycloak nur die `kcSessionId` im ersten
 `PATCH`. Bleibt der Aufruf aus, beginnt ein späterer Step-up ohne diese Nachweise. Die Anmeldung
 selbst scheitert daran nicht.
 

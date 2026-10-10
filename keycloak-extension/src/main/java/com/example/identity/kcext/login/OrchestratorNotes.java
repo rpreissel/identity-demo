@@ -124,6 +124,11 @@ public final class OrchestratorNotes {
         try {
             RealmModel realm = authSession.getParentSession().getRealm();
             UserSessionModel existing = resolveExistingUserSession(session, realm);
+            UserModel runUser = authSession.getAuthenticatedUser();
+            if (!sessionBelongsToRun(existing == null ? null : existing.getUser().getId(), runUser == null ? null : runUser.getId())) {
+                log.warnf("Not reporting the end of channel %s: the browser's session belongs to another user", channelSessionId);
+                return;
+            }
             String durableSessionId = existing != null ? existing.getId() : authSession.getParentSession().getId();
             long sessionExpiresAt = SessionEnd.epochSecond(realm, existing, Time.currentTime());
             client.flowEnded(channelSessionId, durableSessionId, sessionExpiresAt);
@@ -132,6 +137,16 @@ public final class OrchestratorNotes {
             // earlier proofs (docs/05-api.md Abschnitt 3b), never a broken login.
             log.warnf(e, "Failed to report the end of the flow run for channel %s", channelSessionId);
         }
+    }
+
+    /**
+     * Whether the session the identity cookie names at the end of a run may receive the run's proofs.
+     * The cookie can have changed since the run started (another tab signed in). Keycloak refuses
+     * such a run only after the end-of-flow hook, so reporting it would file one user's proofs under
+     * another user's session. Without a cookie, Keycloak creates the session for this run.
+     */
+    static boolean sessionBelongsToRun(String sessionUserId, String runUserId) {
+        return sessionUserId == null || sessionUserId.equals(runUserId);
     }
 
     /**

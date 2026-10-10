@@ -99,6 +99,12 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
     private fun accountWithSmsAndPassword(): AccountId =
         accountFixtures.seedAccount(methods = listOf(AccountFixtures.Method.Sms(), AccountFixtures.Method.Password()))
 
+    /** A second person with the same methods, for a session two accounts touch. */
+    private fun otherAccountWithSmsAndPassword(): AccountId = accountFixtures.seedAccount(
+        kvnr = "B987654321", name = "Beispiel", vorname = "Erika", email = "erika.beispiel@example.com",
+        methods = listOf(AccountFixtures.Method.Sms(), AccountFixtures.Method.Password())
+    )
+
     /** The account a channel is bound to, read from its row. */
     private fun accountIdOf(channelSessionId: String): Long = jdbcTemplate.queryForObject(
         "SELECT account_id FROM orchestrator.channel_session WHERE id = ?",
@@ -512,6 +518,51 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                 }
 
                 then("it is refused, the evidence stays with its account") {
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
+                }
+            }
+
+            `when`("a run of another account reports its end in a session holding the first account's proofs") {
+                val owner = accountWithSmsAndPassword()
+                loginAtLoa2(owner, "kc-shared")
+                val intruder = otherAccountWithSmsAndPassword()
+                val intruderChannel = ChannelSessionId(UUID.randomUUID())
+                stubAssertion(channelBinding = intruderChannel.toString())
+                keycloakPatch(intruderChannel, """{"subject":{"type":"account","id":"$intruder"},"targetAcr":"loa1"}""")
+                keycloakAuthSms(intruderChannel)
+                val result = runCatching {
+                    restTemplate.exchange(
+                        "http://localhost:$port/orchestrator/api/v1/kc/channels/$intruderChannel/flow-end?kcSessionId=kc-shared",
+                        HttpMethod.POST, HttpEntity<Void>(keycloakHeaders()), String::class.java
+                    )
+                }
+                val owners = jdbcTemplate.queryForList(
+                    "SELECT DISTINCT account_id FROM orchestrator.keycloak_session_evidence WHERE kc_session_id = 'kc-shared'", Long::class.java
+                )
+
+                then("it is refused and the session keeps only the first account's proofs") {
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
+                    owners shouldBe listOf(owner.value)
+                }
+            }
+
+            `when`("a session holds proofs of two accounts and a run of one of them starts") {
+                val first = accountWithSmsAndPassword()
+                loginAtLoa2(first, "kc-mixed")
+                val second = otherAccountWithSmsAndPassword()
+                // Rows of two accounts in one session, as only a write path without the owner check leaves them.
+                jdbcTemplate.update(
+                    """
+                    INSERT INTO orchestrator.keycloak_session_evidence
+                        (kc_session_id, method, account_id, loa, enrolled_under_acr, factor_types, amr_source_id, axis, proven_at, expires_at)
+                    SELECT kc_session_id, 'kobil', ?, loa, enrolled_under_acr, factor_types, amr_source_id, axis, proven_at, expires_at
+                    FROM orchestrator.keycloak_session_evidence WHERE kc_session_id = 'kc-mixed' AND method = 'sms'
+                    """.trimIndent(),
+                    second.value
+                )
+                val result = runCatching { resume(first, "kc-mixed") }
+
+                then("it is refused instead of taking over any of them") {
                     shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
                 }
             }
