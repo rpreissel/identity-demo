@@ -10,7 +10,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import com.nimbusds.jose.jwk.ECKey;
+
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLEncoder;
+import java.net.http.HttpHeaders;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -48,7 +55,7 @@ public final class OrchestratorClient {
     private final PeerAuthAssertionSigner signer;
     private final OrchestratorResponseVerifier verifier;
 
-  public   OrchestratorClient(String baseUrl, String issuer, String audience, com.nimbusds.jose.jwk.ECKey signingKey) {
+    public OrchestratorClient(String baseUrl, String issuer, String audience, ECKey signingKey) {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.signer = new PeerAuthAssertionSigner(issuer, audience, signingKey);
         // The orchestrator answers as the audience of our assertions, addressed to their issuer (us).
@@ -71,7 +78,7 @@ public final class OrchestratorClient {
             List<String> availableTools,
             String intent
     ) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/kc/channels/" + channelSessionId;
+        String path = "/orchestrator/api/v1/kc/channels/" + segment(channelSessionId);
         ObjectNode body = MAPPER.createObjectNode();
         if (subject != null) {
             ObjectNode subjectNode = body.putObject("subject");
@@ -99,7 +106,7 @@ public final class OrchestratorClient {
      * seconds) caps the channel's expiry and ends that evidence (ADR-43).
      */
     public void flowEnded(String channelSessionId, String durableKcSessionId, long sessionExpiresAt) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/kc/channels/" + channelSessionId + "/flow-end?kcSessionId=" + urlEncode(durableKcSessionId)
+        String path = "/orchestrator/api/v1/kc/channels/" + segment(channelSessionId) + "/flow-end?kcSessionId=" + urlEncode(durableKcSessionId)
                 + "&sessionExpiresAt=" + sessionExpiresAt;
         send("POST", path, channelSessionId, null);
     }
@@ -110,7 +117,7 @@ public final class OrchestratorClient {
      * binding-key guard accepts a peer-auth assertion like a DPoP proof.
      */
     public ChannelResponse startEnrollments(String channelSessionId) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/enrollments";
+        String path = "/orchestrator/api/v1/channels/" + segment(channelSessionId) + "/enrollments";
         return ChannelResponse.from(send("POST", path, channelSessionId, MAPPER.createObjectNode()));
     }
 
@@ -119,7 +126,7 @@ public final class OrchestratorClient {
      * (docs/05-api.md, "Anmeldeverfahren verwalten im Web-Kanal").
      */
     public List<MethodView> getMethods(String channelSessionId) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/methods";
+        String path = "/orchestrator/api/v1/channels/" + segment(channelSessionId) + "/methods";
         JsonNode response = send("GET", path, channelSessionId, null);
         List<MethodView> methods = new ArrayList<>();
         response.path("methods").forEach(m -> methods.add(MethodView.from(m)));
@@ -204,7 +211,7 @@ public final class OrchestratorClient {
      * journey restarts the channel's entry journey; the response's {@code next} says what to render.
      */
     public ChannelResponse abandonJourney(String channelSessionId) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/journey";
+        String path = "/orchestrator/api/v1/channels/" + segment(channelSessionId) + "/journey";
         return ChannelResponse.from(send("DELETE", path, channelSessionId, null));
     }
 
@@ -213,7 +220,7 @@ public final class OrchestratorClient {
      * (next.context=prompt, next.step=confirm). {@code answer} is {@code "accept"} or {@code "decline"}.
      */
     public ChannelResponse answer(String channelSessionId, String answer) throws IOException, InterruptedException {
-        String path = "/orchestrator/api/v1/channels/" + channelSessionId + "/answer";
+        String path = "/orchestrator/api/v1/channels/" + segment(channelSessionId) + "/answer";
         ObjectNode body = MAPPER.createObjectNode();
         body.put("answer", answer);
         return ChannelResponse.from(send("POST", path, channelSessionId, body));
@@ -282,21 +289,10 @@ public final class OrchestratorClient {
      * the login page says, so nobody on the hop may choose them.
      */
     TextsAnswer texts(String language, String etag) throws IOException, InterruptedException {
-        String url = baseUrl + "/orchestrator/api/v1/texts/" + urlEncode(language);
-        String assertion = signer.sign("GET", url, TEXTS_BINDING, new byte[0]);
-        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
-                .timeout(TIMEOUT)
-                .header("Authorization", "Bearer " + assertion)
-                .GET();
-        if (etag != null) builder.header("If-None-Match", etag);
-        Answer response = exchange(builder.build());
-        verifier.verify(
-                response.headers().firstValue(OrchestratorResponseVerifier.HEADER).orElse(null),
-                PeerAuthAssertionSigner.jtiOf(assertion),
-                response.statusCode(),
-                response.body());
+        Answer response = signedExchange("GET", baseUrl + "/orchestrator/api/v1/texts/" + urlEncode(language), TEXTS_BINDING, null,
+                etag == null ? Map.of() : Map.of("If-None-Match", etag));
         return new TextsAnswer(response.statusCode(), response.headers().firstValue("ETag").orElse(""),
-                new String(response.body(), java.nio.charset.StandardCharsets.UTF_8));
+                new String(response.body(), StandardCharsets.UTF_8));
     }
 
     private static final String TEXTS_BINDING = "texts";
@@ -314,14 +310,14 @@ public final class OrchestratorClient {
     /** Upper bound for an orchestrator answer, read before its signature is checked. */
     static final int MAX_RESPONSE_BYTES = 1 << 20;
 
-    private record Answer(int statusCode, java.net.http.HttpHeaders headers, byte[] body) {
+    private record Answer(int statusCode, HttpHeaders headers, byte[] body) {
     }
 
     /** Reads at most {@link #MAX_RESPONSE_BYTES}; a longer answer is an error, not a heap to fill. */
     private Answer exchange(HttpRequest request) throws IOException, InterruptedException {
-        HttpResponse<java.io.InputStream> response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        HttpResponse<InputStream> response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
         byte[] body;
-        try (java.io.InputStream in = response.body()) {
+        try (InputStream in = response.body()) {
             body = in.readNBytes(MAX_RESPONSE_BYTES + 1);
         }
         if (body.length > MAX_RESPONSE_BYTES) {
@@ -330,29 +326,10 @@ public final class OrchestratorClient {
         return new Answer(response.statusCode(), response.headers(), body);
     }
 
-    private JsonNode send(String method, String path, String channelSessionId, JsonNode body) throws IOException, InterruptedException {
-        String url = baseUrl + path;
-        byte[] payload = body == null ? new byte[0] : body.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        String assertion = signer.sign(method, url, channelSessionId, payload);
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(TIMEOUT)
-                .header("Authorization", "Bearer " + assertion)
-                .header("Content-Type", "application/json");
-        // The very bytes body_sha256 was computed over.
-        HttpRequest.BodyPublisher publisher = body == null
-                ? HttpRequest.BodyPublishers.noBody()
-                : HttpRequest.BodyPublishers.ofByteArray(payload);
-        builder.method(method, publisher);
-
-        Answer response = exchange(builder.build());
-        // Before anything in the answer is believed - error or not.
-        verifier.verify(
-                response.headers().firstValue(OrchestratorResponseVerifier.HEADER).orElse(null),
-                PeerAuthAssertionSigner.jtiOf(assertion),
-                response.statusCode(),
-                response.body());
-        String answer = new String(response.body(), java.nio.charset.StandardCharsets.UTF_8);
+    private JsonNode send(String method, String path, String binding, JsonNode body) throws IOException, InterruptedException {
+        byte[] payload = body == null ? null : body.toString().getBytes(StandardCharsets.UTF_8);
+        Answer response = signedExchange(method, baseUrl + path, binding, payload, Map.of("Content-Type", "application/json"));
+        String answer = new String(response.body(), StandardCharsets.UTF_8);
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new OrchestratorApiException(response.statusCode(), answer);
         }
@@ -360,6 +337,29 @@ public final class OrchestratorClient {
             return MAPPER.createObjectNode();
         }
         return MAPPER.readTree(answer);
+    }
+
+    /**
+     * One signed request and its verified answer. The assertion binds [binding] and the body's bytes
+     * ([payload], none for null); the answer is believed only once its signature checks out, error
+     * or not.
+     */
+    private Answer signedExchange(String method, String url, String binding, byte[] payload, Map<String, String> headers)
+            throws IOException, InterruptedException {
+        String assertion = signer.sign(method, url, binding, payload == null ? new byte[0] : payload);
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
+                .timeout(TIMEOUT)
+                .header("Authorization", "Bearer " + assertion);
+        headers.forEach(builder::header);
+        // The very bytes body_sha256 was computed over.
+        builder.method(method, payload == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofByteArray(payload));
+        Answer response = exchange(builder.build());
+        verifier.verify(
+                response.headers().firstValue(OrchestratorResponseVerifier.HEADER).orElse(null),
+                PeerAuthAssertionSigner.jtiOf(assertion),
+                response.statusCode(),
+                response.body());
+        return response;
     }
 
     /**
@@ -373,10 +373,10 @@ public final class OrchestratorClient {
         return value;
     }
 
-    private static final java.util.regex.Pattern SEGMENT = java.util.regex.Pattern.compile("[A-Za-z0-9._~-]{1,128}");
+    private static final Pattern SEGMENT = Pattern.compile("[A-Za-z0-9._~-]{1,128}");
 
     private static String urlEncode(String value) {
-        return java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8);
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     /** Mirrors ActiveMethodView (tool_api/Envelope.kt) - id/method/label, nothing more. */
@@ -395,28 +395,23 @@ public final class OrchestratorClient {
 
     public static final class OrchestratorApiException extends IOException {
         final int status;
-        final String errorCode;
         /** What the user is told - a text reference, resolved per login language ({@link #message}). */
         final JsonNode text;
 
-      public   OrchestratorApiException(int status, String body) {
+        public OrchestratorApiException(int status, String body) {
             super("Orchestrator call failed: " + status + " " + body);
             this.status = status;
-            String parsedCode = null;
             JsonNode parsedText = null;
             // Field names from the generated contract model, so a rename breaks the compile. Read as
             // a tree rather than as that model: its enum rejects a code this build does not know,
             // and the contract says a client must expect new codes.
             try {
                 JsonNode node = MAPPER.readTree(body);
-                String errorField = com.example.identity.kcext.api.model.ErrorResponse.JSON_PROPERTY_ERROR;
                 String textField = com.example.identity.kcext.api.model.ErrorResponse.JSON_PROPERTY_TEXT;
-                if (node.hasNonNull(errorField)) parsedCode = node.get(errorField).asText();
                 if (node.hasNonNull(textField)) parsedText = node.get(textField);
-            } catch (Exception ignored) {
+            } catch (JsonProcessingException ignored) {
                 // Not JSON - no text to show; callers fall back to their own.
             }
-            this.errorCode = parsedCode;
             this.text = parsedText;
         }
 

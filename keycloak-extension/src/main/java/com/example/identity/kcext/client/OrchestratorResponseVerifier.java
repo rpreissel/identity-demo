@@ -10,15 +10,12 @@ import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
 import com.nimbusds.jose.proc.SecurityContext;
-import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -105,7 +102,7 @@ final class OrchestratorResponseVerifier {
         if (!(signedStatus instanceof Number number) || number.intValue() != status) {
             throw new OrchestratorResponseRejectedException("status does not match");
         }
-        if (!Objects.equals(sha256(body), claims.getStringClaim("body_sha256"))) {
+        if (!Objects.equals(PeerAuthAssertionSigner.sha256(body), claims.getStringClaim("body_sha256"))) {
             throw new OrchestratorResponseRejectedException("body does not match");
         }
         long now = System.currentTimeMillis();
@@ -119,13 +116,6 @@ final class OrchestratorResponseVerifier {
         }
     }
 
-    private static String sha256(byte[] body) {
-        try {
-            return Base64URL.encode(MessageDigest.getInstance("SHA-256").digest(body)).toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
-    }
 
     /** An answer that cannot be shown to be the orchestrator's - handled like no answer at all. */
     static final class OrchestratorResponseRejectedException extends IOException {
