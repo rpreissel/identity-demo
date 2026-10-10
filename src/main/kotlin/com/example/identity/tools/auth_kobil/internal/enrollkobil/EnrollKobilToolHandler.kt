@@ -74,8 +74,8 @@ class EnrollKobilToolHandler(
         biometricConsent: Boolean?,
         bindingKeyRef: String,
         label: String?,
-        /** The key the kept PIN is sealed under (ADR-55); the context names it. */
-        masterKeyId: MasterKeyId,
+        /** The key the kept PIN is sealed under (ADR-55), asked only when the enrollment is stored. */
+        masterKey: () -> MasterKeyId,
     ): ToolOutcome {
         val session = sessions.require<EnrollKobilToolSession>(toolSessionId)
         val user = KobilUserRef(session.kobilTenantId, session.kobilUserId)
@@ -91,8 +91,8 @@ class EnrollKobilToolHandler(
                 // Idempotent: a repeated confirmation of the same activation must reuse the row
                 // rather than violate the UNIQUE constraint on kobil_user_id.
                 val enrollment = enrollmentRepository.findByKobilUserId(session.kobilUserId)
-                    ?: enrollmentRepository.save(
-                        KobilEnrollment(
+                    ?: masterKey().let { masterKeyId ->
+                        enrollmentRepository.save(KobilEnrollment(
                             kobilTenantId = session.kobilTenantId,
                             kobilUserId = session.kobilUserId,
                             kobilDeviceId = decision.deviceId,
@@ -103,8 +103,8 @@ class EnrollKobilToolHandler(
                             bindingKeyRef = bindingKeyRef,
                             label = label,
                             createdAt = clock.instant(),
-                        )
-                    )
+                        ))
+                    }
                 // The activation secrets have done their job: the PIN now lives in the credential,
                 // the unlock secret only as its hash. Nothing keeps them in the tool session until
                 // it ends, which may be up to 24 h away.

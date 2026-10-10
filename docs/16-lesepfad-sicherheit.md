@@ -354,9 +354,9 @@ Abschnitt 8 „Übernommene Nachweise als erster Übergang“;
   - Die Projekt-Clients haben kein `offline_access`.
 
   Das prüft `LockedDownDefaultsMigrationTest` gegen den compose-Stack. Die Federation (die
-  Nutzerquelle, über die Keycloak Konten beim Orchestrator liest) lehnt jede Passwortänderung ab,
-  statt Keycloak das Passwort lokal speichern zu lassen (`OrchestratorStorageProviderTest`, ADR-38
-  Nachtrag).
+  Nutzerquelle, über die Keycloak Konten beim Orchestrator liest) lehnt jedes Credential ab, auch
+  ein „Reset password“ in der Admin-Konsole. So speichert Keycloak kein Passwort lokal
+  (`OrchestratorStorageProviderTest`, ADR-38 Nachtrag, ADR-58).
 - Der Bootstrap-Client mit dem Recht `create-realm` holt seine `jwks-url` nur über https oder über
   Loopback (SA-20, `MigrationClientJwksUrlTest`).
 - Ein Niveau über `loa1` beruht nur auf Nachweisen der letzten 30 Minuten. Das gilt auch, wenn

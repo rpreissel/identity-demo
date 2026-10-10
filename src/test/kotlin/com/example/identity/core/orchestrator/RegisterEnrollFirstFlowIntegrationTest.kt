@@ -107,19 +107,17 @@ class RegisterEnrollFirstFlowIntegrationTest : IntegrationTestSupport() {
                 val channelSessionId = post("/orchestrator/api/v1/app/channels", """{"intent":"register","availableTools":["enroll-sms@1","enroll-password@1"]}""").channel()["channelSessionId"] as String
                 val enrollToolSessionId = post("/tools/api/enroll-sms/v1?channel=$channelSessionId").nextRaw()["toolSessionId"] as String
                 captureMockTan { patch("/tools/api/enroll-sms/v1/$enrollToolSessionId", """{"phoneNumber":"+49 170 1234567"}""") }
-                val firstKey = jdbcTemplate.queryForObject("SELECT journey_key_id FROM orchestrator.channel_session WHERE id = ?", UUID::class.java, UUID.fromString(channelSessionId))
+                val keyAfterNumber = jdbcTemplate.queryForObject("SELECT journey_key_id FROM orchestrator.channel_session WHERE id = ?", UUID::class.java, UUID.fromString(channelSessionId))
                 delete("/orchestrator/api/v1/channels/$channelSessionId/journey")
                 enrollSms(channelSessionId)
 
-                then("the first key was the journey's, nobody's, and the cancel made the channel forget it") {
-                    firstKey.shouldNotBeNull()
-                    jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account.master_key WHERE key_id = ? AND account_id IS NULL", Int::class.java, firstKey) shouldBe 1
+                then("the number alone created no key: only the completed enrollment asks for one") {
+                    keyAfterNumber.shouldBeNull()
                 }
 
-                then("the account owns the second journey's key as its primary one, and the number lies under it") {
+                then("the account owns the journey's key as its primary one, and the number lies under it") {
                     val accountId = theAccount().accountId
                     val primary = jdbcTemplate.queryForObject("SELECT key_id FROM account.master_key WHERE account_id = ? AND primary_key = TRUE", UUID::class.java, accountId.value)
-                    primary shouldNotBe firstKey
                     jdbcTemplate.queryForObject("SELECT key_id FROM auth_sms.enrollment", UUID::class.java) shouldBe primary
                     jdbcTemplate.queryForObject("SELECT journey_key_id FROM orchestrator.channel_session WHERE id = ?", UUID::class.java, UUID.fromString(channelSessionId)) shouldBe primary
                 }

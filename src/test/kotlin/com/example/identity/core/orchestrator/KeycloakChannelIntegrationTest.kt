@@ -531,6 +531,24 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                 }
             }
 
+            `when`("a flow run reports its end with a session id longer than the column") {
+                val accountId = accountWithSmsAndPassword()
+                val channelSessionId = ChannelSessionId(UUID.randomUUID())
+                stubAssertion(channelBinding = channelSessionId.toString())
+                keycloakPatch(channelSessionId, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa1"}""")
+                keycloakAuthPassword(channelSessionId)
+                val result = runCatching {
+                    restTemplate.exchange(
+                        "http://localhost:$port/orchestrator/api/v1/kc/channels/$channelSessionId/flow-end?kcSessionId=${"x".repeat(65)}",
+                        HttpMethod.POST, HttpEntity<Void>(keycloakHeaders()), String::class.java
+                    )
+                }
+
+                then("it is rejected as bad input, never silently dropped") {
+                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.BAD_REQUEST
+                }
+            }
+
             `when`("Keycloak reports the logout of the session") {
                 val accountId = accountWithSmsAndPassword()
                 loginAtLoa2(accountId, "kc-logout")

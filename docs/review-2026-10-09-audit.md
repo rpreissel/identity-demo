@@ -145,7 +145,7 @@ widerspricht ADR-59, wonach jeder Durchlauf seine Nachweise meldet.
 idempotent. Alternativ „Verfahren verwalten“ als Intent über den `OrchestratorAuthenticator` führen
 (siehe V-E1). Damit ist auch K-3 gelöst.
 
-### AU-4 bis AU-8 (Hinweise) Kleine Härtungen
+### AU-4 bis AU-8 (Hinweise, behoben bis auf einen Teil von AU-7) Kleine Härtungen
 
 `DPoP-demo-8x0p.4`
 
@@ -173,6 +173,27 @@ idempotent. Alternativ „Verfahren verwalten“ als Intent über den `Orchestra
   keine Account-Konsole. [16-lesepfad-sicherheit.md](16-lesepfad-sicherheit.md) behauptet aber
   noch, die Federation lehne jede Passwortänderung ab. Vorschlag: einen minimalen Updater behalten,
   der `ReadOnlyException` wirft, oder den Lesepfad korrigieren.
+
+**Behebung (2026-10-10):**
+
+- **AU-4:** `flowEnded` legt Nachweise ohne Zeitpunkt nicht ab. `MethodEvidenceRow.of` verlangt
+  einen Zeitpunkt.
+- **AU-5:** `kcSessionId` wird an `upsertChannel` und `flowEnded` geprüft: leer oder länger als
+  die Spalte ergibt `400` (Test in `KeycloakChannelIntegrationTest`). Der `catch` bleibt, er
+  kann jetzt nur noch eine Zeile treffen, die ein anderer Tab geschrieben hat.
+- **AU-6:** `masterKey()` steht nur noch am `AuthorizedToolContext`. Die Einschreibungen von SMS
+  und KOBIL fragen ihn erst beim Speichern ab (`masterKey: () -> MasterKeyId`). Ein Abbruch nach
+  der Eingabe der Rufnummer legt deshalb keinen Schlüssel mehr an
+  (`RegisterEnrollFirstFlowIntegrationTest`).
+- **AU-7, für die App-Tokens:** Die Zusatzdaten enthalten die Id der App-Sitzung. Ein Token, das
+  sich so nicht öffnen lässt, gilt als nicht vorhanden; die Sitzung holt ein neues bei Keycloak.
+  Das gilt auch für Tokens, die vor der Änderung versiegelt wurden (Test in
+  `WorkingDataEncryptionDbTest`).
+- **AU-7, offen für Rufnummer und KOBIL-PIN:** Beim Versiegeln steht die Zeilen-Id noch nicht
+  fest, und vorhandene Einschreibungen ließen sich nach einem Formatwechsel nicht mehr öffnen. Das
+  braucht eine Umstellung mit Migration der vorhandenen Zeilen.
+- **AU-8:** Die Federation ist wieder `CredentialInputUpdater` und lehnt jedes Credential mit
+  `ReadOnlyException` ab (`OrchestratorStorageProviderTest`). Lesepfad und ADR-58 sind angepasst.
 
 ## 3. Architektur
 
@@ -507,3 +528,4 @@ Diese Bereiche zeigen keinen neuen Befund:
 |---|---|---|
 | AU-1 | Sitzungsnachweise nur für ein Konto je Keycloak-Sitzung | `DPoP-demo-8x0p.1` |
 | AU-2 | Widerrufene Verfahren kommen nicht über `flow-end` zurück | `DPoP-demo-8x0p.2` |
+| AU-4 bis AU-8 | Kleine Härtungen an Sitzungsnachweisen, Schlüsseln und Federation; AU-7 nur für App-Tokens | `DPoP-demo-8x0p.4` |

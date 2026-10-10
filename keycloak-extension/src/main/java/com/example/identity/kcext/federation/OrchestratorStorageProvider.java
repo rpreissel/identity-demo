@@ -3,6 +3,8 @@ package com.example.identity.kcext.federation;
 import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.login.OrchestratorNotes;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.credential.CredentialInput;
+import org.keycloak.credential.CredentialInputUpdater;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ModelException;
@@ -24,12 +26,13 @@ import java.util.stream.Stream;
  * The orchestrator's accounts are Keycloak's users, read through on demand and never copied (ADR-38).
  * Every lookup asks the orchestrator and wraps the answer as an {@link OrchestratorUser}; Keycloak
  * caches it briefly. Keycloak checks and stores no credentials: every sign-in step is an orchestrator
- * tool (ADR-58).
+ * tool (ADR-58). As a {@link CredentialInputUpdater} it refuses every credential, so neither an admin
+ * nor a required action can leave one in Keycloak's own store.
  * Searches return at most one user by exact username, email or account id: nobody pages through
  * millions of users, and no login needs to.
  */
 public class OrchestratorStorageProvider implements UserStorageProvider, UserRegistrationProvider,
-        UserLookupProvider, UserQueryMethodsProvider {
+        UserLookupProvider, UserQueryMethodsProvider, CredentialInputUpdater {
 
 
     private final KeycloakSession session;
@@ -135,6 +138,29 @@ public class OrchestratorStorageProvider implements UserStorageProvider, UserReg
     public boolean removeUser(RealmModel realm, UserModel user) {
         // UserStorageManager delegates to local storage after this provider approves removal.
         return true;
+    }
+
+    @Override
+    public boolean supportsCredentialType(String credentialType) {
+        return true;
+    }
+
+    /**
+     * Throws rather than returning false: false would let Keycloak's built-in provider store the
+     * credential locally, next to the orchestrator's methods.
+     */
+    @Override
+    public boolean updateCredential(RealmModel realm, UserModel user, CredentialInput input) {
+        throw new ReadOnlyException("Credentials are managed by the orchestrator, not in Keycloak");
+    }
+
+    @Override
+    public void disableCredentialType(RealmModel realm, UserModel user, String credentialType) {
+    }
+
+    @Override
+    public Stream<String> getDisableableCredentialTypesStream(RealmModel realm, UserModel user) {
+        return Stream.empty();
     }
 
     @Override

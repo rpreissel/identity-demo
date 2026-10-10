@@ -15,7 +15,9 @@ er gehört. Ein Konto hat einen **primären** Schlüssel, unter dem Claims (ADR-
 (ADR-53) liegen. Ein Verfahrensmodul schreibt seine Zeile aber, bevor das Konto zwingend
 existiert: Der Orchestrator legt ein Konto beim Übernehmen des Verfahrens auch nachträglich an.
 Deshalb bekommt eine Journey ohne Konto einen eigenen Schlüssel, sobald ein Tool ihn anfordert
-(`ToolContext.masterKey()`), und der Kanal merkt sich ihn (`channel_session.journey_key_id`).
+(`AuthorizedToolContext.masterKey()`), und der Kanal merkt sich ihn (`channel_session.journey_key_id`).
+Ein Tool fordert ihn erst an, wenn es das Geheimnis speichert, also beim Abschluss der Einschreibung.
+Ein Lesezugriff kann keinen Schlüssel anlegen.
 Bindet die Journey ein Konto, übernimmt es den Schlüssel: als primären, wenn es noch keinen hat,
 sonst als weiteren, unter dem bleibt, was vorher versiegelt wurde. Ein Konto, das aus einer
 Identifizierung entsteht, bekommt den Journey-Schlüssel direkt als primären.

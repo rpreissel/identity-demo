@@ -40,14 +40,15 @@ data class MethodEvidenceRow(
     val provenAt: Instant,
 ) {
     companion object {
-        fun of(evidence: MethodEvidence, now: Instant) = MethodEvidenceRow(
+        /** Only a proof of known age; see [MethodEvidence.provenAt]. */
+        fun of(evidence: MethodEvidence) = MethodEvidenceRow(
             method = evidence.method.value,
             loa = evidence.loa.value,
             enrolledUnderAcr = evidence.enrolledUnderAcr?.value,
             factorTypes = evidence.factorTypes.joinToString(",") { it.name },
             amrSourceId = evidence.amrSourceId,
             axis = evidence.axis.name,
-            provenAt = evidence.provenAt ?: now,
+            provenAt = checkNotNull(evidence.provenAt) { "a stored proof needs its time" },
         )
     }
 }

@@ -4,6 +4,9 @@ import com.example.identity.contract.tool_api.kms.AccountSealer
 import com.example.identity.core.account.AccountDataCipher
 import io.mockk.every
 import io.mockk.mockk
+import com.example.identity.contract.tool_api.ids.AccountId
+import java.time.Instant
+import java.util.UUID
 
 /**
  * The vault over a cipher that seals nothing, so unit tests read and write tokens as plain
@@ -29,3 +32,7 @@ var AppTokenSession.refreshToken: String?
     set(value) {
         sealedRefreshToken = value?.toByteArray()
     }
+
+/** An [AppTokenSession] as the repository hands it out: with its id, which binds its tokens. */
+fun storedAppTokenSession(accountId: AccountId?, keycloakSessionId: String? = null, now: Instant) =
+    AppTokenSession(accountId = accountId, keycloakSessionId = keycloakSessionId, now = now).apply { appTokenSessionId = UUID.randomUUID() }

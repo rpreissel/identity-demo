@@ -106,7 +106,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
 
         `when`("the app confirms activation with biometric consent") {
             val toolSessionId = activating("kob-a")
-            val outcome = handler.patch(toolSessionId, activated = true, biometricConsent = true, bindingKeyRef = "jkt-a", label = "Mein Handy", masterKeyId = keyId)
+            val outcome = handler.patch(toolSessionId, activated = true, biometricConsent = true, bindingKeyRef = "jkt-a", label = "Mein Handy", masterKey = { keyId })
 
             then("it enrolls with kobil and biometric, and reports binding key and device for later reads") {
                 outcome shouldBe ToolOutcome.Completed.Enrolled(
@@ -136,7 +136,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
 
         `when`("the app confirms activation without biometric consent") {
             val toolSessionId = activating("kob-b")
-            val outcome = handler.patch(toolSessionId, activated = true, biometricConsent = false, bindingKeyRef = "jkt-b", label = null, masterKeyId = keyId)
+            val outcome = handler.patch(toolSessionId, activated = true, biometricConsent = false, bindingKeyRef = "jkt-b", label = null, masterKey = { keyId })
 
             then("it enrolls with kobil and pin, possession plus knowledge") {
                 val enrolled = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Enrolled>()
@@ -158,7 +158,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
 
         `when`("the app confirms the same activation again") {
             val toolSessionId = activating("kob-again")
-            val outcome = handler.patch(toolSessionId, activated = true, biometricConsent = false, bindingKeyRef = "jkt", label = null, masterKeyId = keyId)
+            val outcome = handler.patch(toolSessionId, activated = true, biometricConsent = false, bindingKeyRef = "jkt", label = null, masterKey = { keyId })
 
             then("it reuses the existing row instead of writing a second one") {
                 outcome.shouldBeInstanceOf<ToolOutcome.Completed.Enrolled>().enrollmentRef shouldBe EnrollmentRef(KOBIL_ENROLLMENT_TYPE, "77")
@@ -172,7 +172,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
 
         `when`("the app claims it has activated") {
             val toolSessionId = activating("kob-pending")
-            val outcome = handler.patch(toolSessionId, activated = true, biometricConsent = true, bindingKeyRef = "jkt", label = null, masterKeyId = keyId)
+            val outcome = handler.patch(toolSessionId, activated = true, biometricConsent = true, bindingKeyRef = "jkt", label = null, masterKey = { keyId })
 
             then("it stays at step activate and writes no credential, since the device id comes only from KOBIL") {
                 outcome.shouldBeInstanceOf<ToolOutcome.InProgress>().nextStep shouldBe "activate"
@@ -185,7 +185,7 @@ class EnrollKobilToolHandlerTest : BehaviorSpec({
         val toolSessionId = activating("kob-idle")
 
         `when`("the app reports it has not activated") {
-            val outcome = handler.patch(toolSessionId, activated = false, biometricConsent = null, bindingKeyRef = "jkt", label = null, masterKeyId = keyId)
+            val outcome = handler.patch(toolSessionId, activated = false, biometricConsent = null, bindingKeyRef = "jkt", label = null, masterKey = { keyId })
 
             then("it stays at step activate without asking KOBIL") {
                 outcome.shouldBeInstanceOf<ToolOutcome.InProgress>().nextStep shouldBe "activate"

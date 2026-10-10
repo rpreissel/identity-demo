@@ -31,8 +31,10 @@ einzeln gelöscht, sondern mit der Tool-Sitzung nach `tool-session.retention`. D
 Sie gehören zu einem Konto und sind ein Zwischenspeicher, kein Nachweis. Deshalb:
 
 - Verschlüsselt **unter dem Hauptschlüssel des Kontos** (ADR-52), über einen eigenen abgeleiteten
-  Teilschlüssel, mit dem Zweck (`app-token:access`, `app-token:refresh`) als geprüften Zusatzdaten.
-  Ein Refresh-Token lässt sich nicht als Access-Token vorlegen.
+  Teilschlüssel, mit dem Zweck (`app-token:access`, `app-token:refresh`) und der Id der App-Sitzung
+  als geprüften Zusatzdaten. Ein Refresh-Token lässt sich nicht als Access-Token vorlegen und nicht
+  in eine andere Sitzung desselben Kontos kopieren. Ein Token, das sich so nicht öffnen lässt, gilt
+  als nicht vorhanden; die Sitzung holt ein neues bei Keycloak.
 - `AppTokenVault` ist die eine Stelle, die liest und schreibt. Leeren braucht keinen Schlüssel.
 - Mit dem Konto verschwindet der Hauptschlüssel, und mit ihm jedes Token in Sicherungen.
 

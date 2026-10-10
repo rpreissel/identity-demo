@@ -42,13 +42,6 @@ interface ToolContext {
      * running journey), or `null` while nobody is known yet.
      */
     val accountId: AccountId?
-    /**
-     * The master key a tool seals its long-lived secrets under (`kms.AccountSealing`, ADR-55): the
-     * account's own key, or - asked for the first time on a channel without an account - a key
-     * created for this journey, which the account adopts when it binds. Only a tool that stores a
-     * secret asks; a login or identification never creates a key.
-     */
-    fun masterKey(): MasterKeyId
 }
 
 /**
@@ -57,7 +50,15 @@ interface ToolContext {
  * existing one against the journey's active tool. So a controller cannot apply an outcome for an
  * unverified session.
  */
-interface AuthorizedToolContext : ToolContext
+interface AuthorizedToolContext : ToolContext {
+    /**
+     * The master key a tool seals its long-lived secrets under (`kms.AccountSealing`, ADR-55): the
+     * account's own key, or - asked for the first time on a channel without an account - a key
+     * created for this journey, which the account adopts when it binds. Only a tool that stores a
+     * secret asks, and only when it stores it; a read never creates a key.
+     */
+    fun masterKey(): MasterKeyId
+}
 
 /**
  * An [AuthorizedToolContext] whose session this request created. The only kind

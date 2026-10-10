@@ -56,8 +56,8 @@ class EnrollSmsToolHandler(
      * journey, since nothing was guessed.
      */
     @Transactional
-    /** [masterKeyId] is the key the confirmed number is sealed under (ADR-55); the context names it. */
-    fun patch(toolSessionId: ToolSessionId, version: Int, phoneNumber: String?, tan: String?, consent: Boolean? = null, masterKeyId: MasterKeyId): ToolOutcome {
+    /** [masterKey] names the key the confirmed number is sealed under (ADR-55); asked only on completion. */
+    fun patch(toolSessionId: ToolSessionId, version: Int, phoneNumber: String?, tan: String?, consent: Boolean? = null, masterKey: () -> MasterKeyId): ToolOutcome {
         val data = sessions.require<EnrollSmsToolSession>(toolSessionId)
         val input = EnrollSmsInput(phoneNumber, tan, consent)
 
@@ -92,7 +92,7 @@ class EnrollSmsToolHandler(
 
             is EnrollSmsDecision.Complete -> {
                 sendLimit.received(decision.phoneNumber)
-                val enrollment = enrollmentRepository.save(numbers.newEnrollment(decision.phoneNumber, masterKeyId, createdAt = clock.instant()))
+                val enrollment = enrollmentRepository.save(numbers.newEnrollment(decision.phoneNumber, masterKey(), createdAt = clock.instant()))
                 ToolOutcome.Completed.Enrolled(
                     enrollmentRef = EnrollmentRef(type = SMS_ENROLLMENT_TYPE, id = enrollment.id.toString()),
                     claims = listOf(

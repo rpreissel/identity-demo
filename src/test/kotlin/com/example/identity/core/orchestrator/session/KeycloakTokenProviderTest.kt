@@ -45,7 +45,7 @@ private const val EXISTING_REFRESH = "existing-refresh"
 class KeycloakTokenProviderTest : BehaviorSpec({
 
     given("an AccessToken that still has well over minValiditySeconds left") {
-        val fixture = KeycloakTokenFixture(AppTokenSession(accountId = AccountId(42L), now = TEST_NOW).apply {
+        val fixture = KeycloakTokenFixture(storedAppTokenSession(accountId = AccountId(42L), now = TEST_NOW).apply {
             accessToken = "existing-token"; accessExpiresAt = TEST_NOW.plusSeconds(300)
         })
 
@@ -106,7 +106,7 @@ class KeycloakTokenProviderTest : BehaviorSpec({
     given("the first token of a login, with evidence the policy rates loa2") {
         val accountId = AccountId(7)
         val sessionEvidenceId = SessionEvidenceId(UUID.randomUUID())
-        val fixture = KeycloakTokenFixture(AppTokenSession(accountId = accountId, now = TEST_NOW).apply {
+        val fixture = KeycloakTokenFixture(storedAppTokenSession(accountId = accountId, now = TEST_NOW).apply {
             accessToken = "stale"; accessExpiresAt = TEST_NOW.minusSeconds(5)
             this.sessionEvidenceId = sessionEvidenceId
         })
@@ -143,7 +143,7 @@ class KeycloakTokenProviderTest : BehaviorSpec({
     }
 
     given("a first token that Keycloak refuses to mint (ADR-43)") {
-        val fixture = KeycloakTokenFixture(AppTokenSession(accountId = AccountId(9L), now = TEST_NOW))
+        val fixture = KeycloakTokenFixture(storedAppTokenSession(accountId = AccountId(9L), now = TEST_NOW))
         every { fixture.keycloak.requestAccountToken(AccountId(9L), any(), any(), null) } throws badRequest("invalid_request")
 
         `when`("a token is requested") {
@@ -221,14 +221,14 @@ private class KeycloakTokenFixture(val session: AppTokenSession) {
 
 /** An expired AccessToken of an open Keycloak session, renewable until [refreshExpiresAt]. */
 private fun expiredWithRefreshUntil(refreshExpiresAt: Instant) =
-    AppTokenSession(accountId = AccountId(3L), keycloakSessionId = KEYCLOAK_SESSION, now = TEST_NOW).apply {
+    storedAppTokenSession(accountId = AccountId(3L), keycloakSessionId = KEYCLOAK_SESSION, now = TEST_NOW).apply {
         accessToken = "stale"; accessExpiresAt = TEST_NOW.minusSeconds(5)
         refreshToken = EXISTING_REFRESH; this.refreshExpiresAt = refreshExpiresAt
     }
 
 /** What a step-up leaves behind: no cached tokens, but the Keycloak session and its [window]. */
 private fun afterStepUp(window: Instant) =
-    AppTokenSession(accountId = AccountId(5L), keycloakSessionId = KEYCLOAK_SESSION, now = TEST_NOW).apply { refreshExpiresAt = window }
+    storedAppTokenSession(accountId = AccountId(5L), keycloakSessionId = KEYCLOAK_SESSION, now = TEST_NOW).apply { refreshExpiresAt = window }
 
 /** A Keycloak-shaped access token: signed, carrying the session id as `sid`. */
 private fun keycloakToken(sid: String): String = SignedJWT(

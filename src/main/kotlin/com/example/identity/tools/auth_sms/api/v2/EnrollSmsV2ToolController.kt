@@ -110,7 +110,7 @@ class EnrollSmsV2ToolController(
         context: AuthorizedToolContext,
     ): ResponseEntity<ChannelResponse> {
         val body = request ?: EnrollSmsV2PatchRequest()
-        val outcome = handler.patch(context.toolSessionId, context.version, body.phoneNumber, body.tan, body.consent, masterKeyId = context.masterKey())
+        val outcome = handler.patch(context.toolSessionId, context.version, body.phoneNumber, body.tan, body.consent, masterKey = context::masterKey)
         return ResponseEntity.ok(toolJourney.applyOutcome(context, outcome))
     }
 

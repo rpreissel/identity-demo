@@ -221,7 +221,7 @@ class TokenServiceTest : BehaviorSpec({
  */
 private class TokenServiceFixture(session: AppTokenSession?) {
     val appTokenSessionId: UUID = UUID.randomUUID()
-    val session: AppTokenSession = session ?: AppTokenSession(accountId = AccountId(0L), now = TEST_NOW)
+    val session: AppTokenSession = session ?: storedAppTokenSession(accountId = AccountId(0L), now = TEST_NOW)
     val repository = mockk<AppTokenSessionRepository> {
         every { findById(appTokenSessionId) } returns Optional.ofNullable(session)
         every { save(any()) } answers { firstArg() }
@@ -244,7 +244,7 @@ private fun appTokenSession(
     accessExpiresAt: Instant? = null,
     refreshToken: String? = null,
     refreshExpiresAt: Instant? = null,
-) = AppTokenSession(
+) = storedAppTokenSession(
     accountId = accountId,
     // A context with a refresh window belongs to a login whose session is open.
     keycloakSessionId = refreshExpiresAt?.let { "${TokenService.MOCK_SESSION_PREFIX}test" },

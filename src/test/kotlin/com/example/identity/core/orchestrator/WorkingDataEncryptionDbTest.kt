@@ -2,6 +2,7 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.retention.RetentionJob
+import com.example.identity.core.orchestrator.session.AppTokenSession
 import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
 import com.example.identity.core.orchestrator.session.AppTokenVault
 import com.example.identity.core.orchestrator.session.DataKey
@@ -93,6 +94,21 @@ class WorkingDataEncryptionDbTest : IntegrationTestSupport() {
                     val raw = jdbcTemplate.queryForObject("SELECT access_token FROM orchestrator.app_token_session WHERE id = ?", ByteArray::class.java, appTokenSessionId)!!
                     String(raw, Charsets.ISO_8859_1) shouldNotContain "eyJ"
                     appTokenVault.accessTokenOf(appTokenSessionRepository.findById(appTokenSessionId).get())!! shouldStartWith "eyJ"
+                }
+            }
+
+            `when`("its sealed token is copied into another session of the same account") {
+                val channel = UUID.fromString(loginAsSeededAccount())
+                val appTokenSessionId = jdbcTemplate.queryForObject(
+                    "SELECT app_token_session_id FROM orchestrator.channel_session WHERE id = ?", UUID::class.java, channel
+                )!!
+                val original = appTokenSessionRepository.findById(appTokenSessionId).get()
+                val other = appTokenSessionRepository.saveAndFlush(AppTokenSession(accountId = original.accountId, now = Instant.now()))
+                other.sealedAccessToken = original.sealedAccessToken
+                val copied = appTokenVault.accessTokenOf(other)
+
+                then("it does not open there") {
+                    copied shouldBe null
                 }
             }
         }

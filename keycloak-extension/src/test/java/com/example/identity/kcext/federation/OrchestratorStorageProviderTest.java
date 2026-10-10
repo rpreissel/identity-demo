@@ -2,10 +2,11 @@ package com.example.identity.kcext.federation;
 
 import org.junit.jupiter.api.Test;
 import org.keycloak.component.ComponentModel;
-import org.keycloak.credential.CredentialInputUpdater;
 import org.keycloak.credential.CredentialInputValidator;
 import org.keycloak.models.ModelException;
+import org.keycloak.models.UserCredentialModel;
 import org.keycloak.representations.idm.ComponentRepresentation;
+import org.keycloak.storage.ReadOnlyException;
 
 import static com.example.identity.kcext.KcTestFixtures.component;
 import static com.example.identity.kcext.KcTestFixtures.unreachableOrchestrator;
@@ -26,14 +27,19 @@ class OrchestratorStorageProviderTest {
         assertThrows(ModelException.class, () -> provider.getUserByUsername(null, "max@example.com"));
     }
 
-    /**
-     * Keycloak checks and stores no credentials (ADR-58): without these interfaces it can neither
-     * validate a password through the federation nor keep one of its own next to the orchestrator's.
-     */
+    /** Keycloak checks no credentials through the federation (ADR-58). */
     @Test
-    void keycloakNeitherChecksNorStoresCredentialsThroughTheFederation() {
+    void keycloakChecksNoCredentialsThroughTheFederation() {
         assertFalse(provider instanceof CredentialInputValidator);
-        assertFalse(provider instanceof CredentialInputUpdater);
+    }
+
+    /** An admin's "reset password" must not leave a Keycloak password next to the orchestrator's methods. */
+    @Test
+    void keycloakStoresNoCredentialOfItsOwn() {
+        assertThrows(ReadOnlyException.class,
+                () -> provider.updateCredential(null, null, UserCredentialModel.password("geheim")));
+        assertThrows(ReadOnlyException.class,
+                () -> provider.updateCredential(null, null, UserCredentialModel.otp("totp", "123456")));
     }
 
     /**

@@ -117,6 +117,7 @@ class KeycloakChannelService(
     ): ChannelResponse {
         // Checked before anything changes, so a rejected level leaves the channel as it was.
         val targetFloor = targetAcr?.let(::requestedAcr)
+        kcSessionId?.let(::requireKcSessionId)
         // What earlier flow runs of the same Keycloak session proved (ADR-59), each with its
         // original age.
         val restored = kcSessionId?.let { keycloakSessionEvidenceRepository.findLive(it, clock.instant()) }.orEmpty()
@@ -221,6 +222,7 @@ class KeycloakChannelService(
      * one row per method, and caps the channel at the session's end [sessionExpiresAt] (ADR-43).
      */
     fun flowEnded(channelSessionId: ChannelSessionId, assertion: PeerAuthAssertion, kcSessionId: String, sessionExpiresAt: Instant? = null) {
+        requireKcSessionId(kcSessionId)
         // An ended channel reports nothing: it may have ended with the logout of this very session,
         // and its proofs would outlive it.
         val channel = LiveChannel.require(keycloakChannelAccessGuard.requireChannel(channelSessionId, assertion)).session
@@ -252,10 +254,12 @@ class KeycloakChannelService(
         val methods = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }?.methods.orEmpty()
             .map { it.toMethodEvidence() }
             .filter { it.axis != EvidenceAxis.AUTHENTICATOR || it.method.value in activeMethods }
+            // A proof of unknown age counts only up to loa1. Stored, it would come back with a time.
+            .filter { it.provenAt != null }
         if (methods.isEmpty()) return
         val now = clock.instant()
         val expiresAt = sessionExpiresAt ?: now.plus(SESSION_EVIDENCE_FALLBACK_TTL)
-        methods.map { MethodEvidenceRow.of(it, now) }.forEach { row ->
+        methods.map(MethodEvidenceRow::of).forEach { row ->
             // Created in its own transaction; a tab that ends at the same moment may have won.
             try {
                 keycloakSessionEvidenceInitializer.createIfAbsent(kcSessionId, accountId.value, row, expiresAt)
@@ -281,5 +285,12 @@ class KeycloakChannelService(
 
         // Only when Keycloak names no session end: as long as Keycloak's longest SSO session.
         private val SESSION_EVIDENCE_FALLBACK_TTL: Duration = Duration.ofHours(12)
+
+        // The column width of `kc_session_id`. Checked up front: a longer id would fail on insert,
+        // which the duplicate-row path below cannot tell from a row another tab wrote.
+        private const val KC_SESSION_ID_MAX_LENGTH = 64
+
+        private fun requireKcSessionId(kcSessionId: String) =
+            require(kcSessionId.isNotBlank() && kcSessionId.length <= KC_SESSION_ID_MAX_LENGTH) { "kcSessionId is blank or too long" }
     }
 }

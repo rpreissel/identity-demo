@@ -94,7 +94,7 @@ private class AppTokenIssuerFixture(issuedAt: Instant?, windowEnd: Instant?, wit
     }
     val tokenProvider = mockk<TokenProvider>()
     private val appTokenSessionService = mockk<AppTokenSessionService> {
-        every { getAppTokenSession(appTokenSessionId) } returns AppTokenSession(accountId = AccountId(7L), now = TEST_NOW).apply {
+        every { getAppTokenSession(appTokenSessionId) } returns storedAppTokenSession(accountId = AccountId(7L), now = TEST_NOW).apply {
             accessToken = issuedAt?.let { PlainJWT(JWTClaimsSet.Builder().issueTime(Date.from(it)).build()).serialize() }
             refreshExpiresAt = windowEnd
         }

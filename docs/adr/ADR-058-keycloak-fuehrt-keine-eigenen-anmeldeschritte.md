@@ -101,8 +101,9 @@ Die vollständige Liste steht im Issue `DPoP-demo-0ntu`:
   selbst bleibt: Es trägt weiter die Nachweise eines früheren Durchlaufs. (Nachtrag: Seit
   [ADR-59](ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md) legt der Orchestrator diese
   Nachweise selbst je Keycloak-Sitzung ab. Das Token entfällt.)
-  `OrchestratorStorageProvider` ist kein `CredentialInputValidator` und kein
-  `CredentialInputUpdater` mehr.
+  `OrchestratorStorageProvider` ist kein `CredentialInputValidator` mehr. (Nachtrag 2026-10-10: Er
+  bleibt `CredentialInputUpdater`, aber nur, um jedes Credential mit `ReadOnlyException` abzulehnen.
+  Ohne ihn speicherte Keycloaks eingebauter Provider ein Passwort, das ein Admin setzt, lokal.)
 - Im Realm: die Executions `auth-username-password-form` und `orchestrator-update-authenticator`
   im Subflow `orchestrator-loa-1`. Er hat jetzt nur die LoA-Bedingung und
   `orchestrator-authenticator`, wie `orchestrator-loa-2`. Dazu Keycloaks Brute-Force-Schutz und die

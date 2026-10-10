@@ -85,7 +85,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
         f.withSession(EnrollSmsToolSession())
 
         `when`("submitting a valid phone number") {
-            val outcome = f.handler.patch(f.toolSessionId, version = 1, phoneNumber = "+49 170 1234567", tan = null, masterKeyId = f.keyId)
+            val outcome = f.handler.patch(f.toolSessionId, version = 1, phoneNumber = "+49 170 1234567", tan = null, masterKey = { f.keyId })
             val sms = f.gateway.outbox().single()
 
             then("it texts a TAN to the normalized number and asks for it at step tanInput, revealing it as the demo value") {
@@ -113,7 +113,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
         `when`("a phone number comes without the consent") {
             val f = Fixture()
             f.withSession(EnrollSmsToolSession())
-            val outcome = f.handler.patch(f.toolSessionId, version = 2, phoneNumber = "+49 170 1234567", tan = null, masterKeyId = f.keyId)
+            val outcome = f.handler.patch(f.toolSessionId, version = 2, phoneNumber = "+49 170 1234567", tan = null, masterKey = { f.keyId })
 
             then("no SMS goes out and the consent is still missing") {
                 f.gateway.outbox() shouldBe emptyList()
@@ -124,7 +124,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
         `when`("a phone number comes with the consent") {
             val f = Fixture()
             f.withSession(EnrollSmsToolSession())
-            val outcome = f.handler.patch(f.toolSessionId, version = 2, phoneNumber = "+49 170 1234567", tan = null, consent = true, masterKeyId = f.keyId)
+            val outcome = f.handler.patch(f.toolSessionId, version = 2, phoneNumber = "+49 170 1234567", tan = null, consent = true, masterKey = { f.keyId })
             val sms = f.gateway.outbox().single()
 
             then("the TAN goes out, and the run remembers the consent for a corrected number") {
@@ -139,7 +139,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
         f.withSession(EnrollSmsToolSession())
 
         `when`("submitting that number") {
-            val result = runCatching { f.handler.patch(f.toolSessionId, version = 1, phoneNumber = "+49 170 9999999", tan = null, masterKeyId = f.keyId) }
+            val result = runCatching { f.handler.patch(f.toolSessionId, version = 1, phoneNumber = "+49 170 9999999", tan = null, masterKey = { f.keyId }) }
 
             then("it refuses with 429 - nothing was guessed, the caller chose the number") {
                 shouldThrow<TooManyRequestsException> { result.getOrThrow() }
@@ -163,7 +163,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
         )
 
         `when`("confirming with the correct TAN") {
-            val outcome = f.handler.patch(f.toolSessionId, version = 1, phoneNumber = null, tan = issued.plainTan, masterKeyId = f.keyId)
+            val outcome = f.handler.patch(f.toolSessionId, version = 1, phoneNumber = null, tan = issued.plainTan, masterKey = { f.keyId })
 
             // The confirmed number is an assertion about the subject, so it reaches the account's
             // claim log (AccountService.recordClaims) - in its normalized form, not as typed.
