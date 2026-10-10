@@ -21,7 +21,7 @@ So ist dieses Dokument zu lesen:
   einschließlich Theme.
 - **Schwere:** wie in [offene-befunde.md](offene-befunde.md) (mittel, niedrig, Hinweis).
 - **Prüfung:** Jeder Befund ist am Code nachvollzogen. Am laufenden System ist keiner
-  reproduziert. Bei AU-1 und AU-3 gehört das vor die Behebung.
+  reproduziert. Die Behebungen sind gegen den compose-Stack geprüft (Abschnitt 7).
 - **Issues:** Alle Befunde hängen am Epic `DPoP-demo-8x0p`.
 - **Stand der Behebung:** Abschnitt 8 führt auf, was seit dem Audit behoben ist. Bei jedem
   behobenen Befund steht „behoben“ in der Überschrift.
@@ -99,7 +99,8 @@ Angreifer vermischt ein Kontowechsel in zwei Tabs eines Browsers die Nachweise.
 Ein Rest bleibt: Zwei Konten, die gleichzeitig in eine bis dahin leere Sitzung schreiben, kommen
 beide an der Prüfung beim Schreiben vorbei. Dann greift die Prüfung beim Lesen und verweigert die
 Übernahme. Den Fall kann nur ein fehlerhafter Aufrufer auslösen, denn eine Keycloak-Sitzung gehört
-genau einem Nutzer. Am laufenden System mit zwei Tabs ist die Behebung nicht geprüft.
+genau einem Nutzer. Den Angriff mit zwei Tabs stellt keine E2E-Suite nach; die Keycloak-Suite läuft
+mit der Behebung grün.
 
 ### AU-2 (niedrig, behoben) Ein widerrufenes Verfahren kommt über `flow-end` zurück
 
@@ -147,8 +148,8 @@ idempotent. Alternativ „Verfahren verwalten“ als Intent über den `Orchestra
 
 **Behebung (2026-10-10):** Die Required Action ruft beim Abschluss („done“) `reportFlowEnd` für
 ihren Kanal. Der Aufruf ist idempotent; der Orchestrator prüft dabei wie sonst das Konto der Sitzung.
-Einen Test der Required Action gibt es weiter nicht (Q-6/K-10). Am laufenden System ist die Änderung
-nicht geprüft.
+Einen eigenen Test der Required Action gibt es weiter nicht (Q-6/K-10). Gegen den compose-Stack
+laufen `change-method.spec.ts` und `fresh-proof.spec.ts` grün, die beide durch sie führen.
 
 ### AU-4 bis AU-8 (Hinweise, behoben bis auf einen Teil von AU-7) Kleine Härtungen
 
@@ -455,8 +456,8 @@ Die Punkte sind nach Nutzen für die Verständlichkeit geordnet. Aufwand: k = kl
   gemeinsamen Schritte: aktivieren mit `activationFields`, einen Schritt posten mit Query und
   `actionFields`, das Tool merken, Auswahl und Antwort prüfen. Damit ist K-3 erledigt. Die Required
   Action nimmt einen Rücksprung von außen (GET auf die Action-URL) in ihrer Challenge an. Ihre
-  `context.failure()` bleiben (`DPoP-demo-rdns`). Am laufenden System ist die Required Action nicht
-  geprüft, und eigene Tests hat sie weiter keine.
+  `context.failure()` bleiben (`DPoP-demo-rdns`). Eigene Tests hat sie weiter keine. Gegen den
+  compose-Stack laufen die Specs grün, die durch sie führen.
 - **V-E2:** erledigt.
   - `KcAccount` und `KcInvitation` lesen die generierten `KeycloakAccountView` und
     `KeycloakInvitationView`. Verfahrensliste und Tool-Katalog bleiben bei der Hand-Lesart: Ihre
@@ -625,10 +626,15 @@ die im Frontend noch nicht.
 5. **Personensperre (SA-27, Rest):** Sie zählt weiter erst nach dem Versuch. Das bleibt ein
    benanntes Restrisiko.
 
-Am laufenden System, also mit Keycloak und zwei echten Tabs, ist keine der Änderungen geprüft.
-Geprüft sind sie mit `./gradlew test` und `:keycloak-extension:test`, den Theme-Tests und den
-Typprüfungen. Vor einem Einsatz gehört `npm run test:e2e-keycloak` gegen den compose-Stack dazu,
-vor allem für AU-1, AU-3 und V-E1.
+**Geprüft am 2026-10-10:**
+
+- `./gradlew test` und `:keycloak-extension:test`, die Theme-Tests und die Typprüfungen.
+- Mit neu gebauten Images gegen den compose-Stack:
+  - `test:e2e:keycloak`: 12 bestanden, 1 übersprungen.
+  - `fresh-proof.spec.ts` mit kurzer Frist (`SELF_SERVICE_MAX_AGE=PT10S`): bestanden.
+  - `test:e2e`: 9 bestanden.
+- Den Angriff aus AU-1 (zwei Tabs, zwei Konten) stellt keine Suite nach. Er ist nur durch die
+  Integrationstests abgedeckt.
 
 ## 8. Stand der Behebung
 
