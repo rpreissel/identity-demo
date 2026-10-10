@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_password.internal.authpassword
 import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.credentials.requireEnrollment
 import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
@@ -9,8 +10,6 @@ import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentR
 import com.example.identity.tools.auth_password.internal.PASSWORD_ENROLLMENT_TYPE
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.ToolOutcome
-import com.example.identity.contract.tool_api.UnresolvableReferenceException
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -27,14 +26,7 @@ class AuthPasswordToolHandler(
 
     @Transactional
     fun start(toolSessionId: ToolSessionId, enrollmentRef: EnrollmentRef): ToolOutcome {
-        if (enrollmentRef.type != PASSWORD_ENROLLMENT_TYPE) {
-            throw UnresolvableReferenceException(Text("Unerwarteter Enrollment-Typ"), "type=${enrollmentRef.type}")
-        }
-        val enrollmentId = enrollmentRef.id.toLongOrNull()
-            ?: throw UnresolvableReferenceException(Text("Ungueltige Enrollment-Referenz"), "id=${enrollmentRef.id}")
-        if (!enrollmentRepository.existsById(enrollmentId)) {
-            throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "id=${enrollmentRef.id}")
-        }
+        enrollmentRepository.requireEnrollment(enrollmentRef, PASSWORD_ENROLLMENT_TYPE)
 
         sessions.save(toolSessionId, AuthPasswordToolSession(enrollmentRefId = enrollmentRef.id))
         return outcomeFor()
@@ -48,9 +40,7 @@ class AuthPasswordToolHandler(
         return when (val decision = AuthPasswordFlow.decide(AuthPasswordInput(password))) {
             AuthPasswordDecision.Unchanged -> outcomeFor()
             is AuthPasswordDecision.Check -> {
-                // Gone during the tool session (removed on another channel): no wrong guess, nothing to count.
-                val enrollment = data.enrollmentRefId?.toLongOrNull()?.let { enrollmentRepository.findByIdOrNull(it) }
-                    ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "toolSession=$toolSessionId")
+                val enrollment = enrollmentRepository.requireEnrollment(data.enrollmentRefId, toolSessionId)
 
                 if (PasswordHasher.matches(decision.password, enrollment.passwordHash)) {
                     PasswordHasher.upgrade(enrollment, decision.password)

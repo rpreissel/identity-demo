@@ -1,16 +1,7 @@
 package com.example.identity.tools.auth_qr.internal
 
-import com.example.identity.contract.tool_api.credentials.EnrollmentCleanup
-import com.example.identity.contract.tool_api.EnrollmentRef
+import com.example.identity.contract.tool_api.credentials.RowEnrollmentCleanup
 import org.springframework.stereotype.Component
 
 @Component
-class QrOptInCleanup(
-    private val qrOptInRepository: QrOptInRepository
-) : EnrollmentCleanup {
-    override val enrollmentType = QR_OPTIN_ENROLLMENT_TYPE
-
-    override fun delete(enrollmentRef: EnrollmentRef) {
-        qrOptInRepository.deleteById(enrollmentRef.id.toLong())
-    }
-}
+class QrOptInCleanup(repository: QrOptInRepository) : RowEnrollmentCleanup(QR_OPTIN_ENROLLMENT_TYPE, repository)

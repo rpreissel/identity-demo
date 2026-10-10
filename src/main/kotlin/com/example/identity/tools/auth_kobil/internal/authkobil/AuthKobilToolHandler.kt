@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_kobil.internal.authkobil
 
 import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.credentials.requireEnrollment
 import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_kobil.KobilModule
@@ -21,7 +22,6 @@ import com.example.identity.contract.tool_api.device.UserVerification
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.ToolOutcome
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -174,8 +174,6 @@ class AuthKobilToolHandler(
     private fun loadSession(toolSessionId: ToolSessionId): AuthKobilToolSession =
         sessions.require<AuthKobilToolSession>(toolSessionId)
 
-    /** Gone (removed on another channel) or never there: no wrong guess, nothing to count, as in auth-sms. */
     private fun loadEnrollment(toolSessionId: ToolSessionId, session: AuthKobilToolSession): KobilEnrollment =
-        session.enrollmentRefId?.toLongOrNull()?.let { enrollmentRepository.findByIdOrNull(it) }
-            ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "toolSession=$toolSessionId")
+        enrollmentRepository.requireEnrollment(session.enrollmentRefId, toolSessionId)
 }

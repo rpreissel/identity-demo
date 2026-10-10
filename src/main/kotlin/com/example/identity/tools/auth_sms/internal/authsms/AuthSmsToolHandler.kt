@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.authsms
 import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.credentials.requireEnrollment
 import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.simulation.sms.SmsGateway
@@ -13,8 +14,6 @@ import com.example.identity.tools.auth_sms.internal.SMS_ENROLLMENT_TYPE
 import com.example.identity.tools.auth_sms.internal.SmsNumbers
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.ToolOutcome
-import com.example.identity.contract.tool_api.UnresolvableReferenceException
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -34,13 +33,7 @@ class AuthSmsToolHandler(
 
     @Transactional
     fun start(toolSessionId: ToolSessionId, enrollmentRef: EnrollmentRef): ToolOutcome {
-        if (enrollmentRef.type != SMS_ENROLLMENT_TYPE) {
-            throw UnresolvableReferenceException(Text("Unerwarteter Enrollment-Typ"), "type=${enrollmentRef.type}")
-        }
-        val enrollmentId = enrollmentRef.id.toLongOrNull()
-            ?: throw UnresolvableReferenceException(Text("Ungueltige Enrollment-Referenz"), "id=${enrollmentRef.id}")
-        val enrollment = enrollmentRepository.findByIdOrNull(enrollmentId)
-            ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "id=${enrollmentRef.id}")
+        val enrollment = enrollmentRepository.requireEnrollment(enrollmentRef, SMS_ENROLLMENT_TYPE)
 
         val phoneNumber = numbers.phoneNumberOf(enrollment)
         // The channel already knows the account, so saying "too many" reveals nothing.
@@ -70,10 +63,7 @@ class AuthSmsToolHandler(
             AuthSmsDecision.Unchanged -> outcomeFor(state)
             AuthSmsDecision.WrongTan -> ToolOutcome.Failed.KnownAccountAuth(Text("TAN ungueltig oder abgelaufen"))
             AuthSmsDecision.Complete -> {
-                // Gone during the tool session (removed on another channel): a right TAN for a
-                // method that no longer exists proves nothing.
-                val enrollment = data.enrollmentRefId?.toLongOrNull()?.let { enrollmentRepository.findByIdOrNull(it) }
-                    ?: throw UnresolvableReferenceException(Text("Anmeldeverfahren nicht gefunden"), "toolSession=$toolSessionId")
+                val enrollment = enrollmentRepository.requireEnrollment(data.enrollmentRefId, toolSessionId)
                 sendLimit.received(numbers.phoneNumberOf(enrollment))
                 ToolOutcome.Completed.Authenticated()
             }
