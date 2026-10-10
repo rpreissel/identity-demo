@@ -284,12 +284,13 @@ Abschnitt 8 „Übernommene Nachweise als erster Übergang“;
 - [`KeycloakChannelService.upsertChannel`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L108):
   Ein fremdes Subjekt ergibt `409`. Die Nachweise früherer Durchläufe derselben Keycloak-Sitzung
   (`kcSessionId`) übernimmt nur ein neuer Kanal desselben Kontos. Gehören sie einem anderen Konto
-  oder mehreren Konten, gibt es ebenfalls `409`.
+  oder mehreren Konten, gibt es ebenfalls `409`. Nachweise von Verfahren, die das Konto nicht mehr
+  hat, übernimmt er nicht.
 - [`KeycloakChannelService.flowEnded`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L218)
   lehnt eine Sitzung mit Zeilen eines anderen Kontos ab (`409`). Es kürzt die Frist des Kanals auf
   das Ende der Keycloak-Sitzung. Es legt die Nachweise des Kanals je Sitzung und Verfahren ab und
-  ersetzt einen Nachweis nur durch einen jüngeren desselben Kontos. Für Einladungen legt es nichts
-  ab (I-30).
+  ersetzt einen Nachweis nur durch einen jüngeren desselben Kontos. Ein beendeter Kanal und ein
+  inzwischen widerrufenes Verfahren schreiben nichts. Für Einladungen legt es nichts ab (I-30).
 - [`KeycloakSessionEvidenceRepository`](../src/main/kotlin/com/example/identity/core/orchestrator/session/KeycloakSessionEvidenceRepository.kt#L15)
   liest nur Zeilen, die noch nicht abgelaufen sind. Sie enden mit der Keycloak-Sitzung, mit ihrer
   Abmeldung, mit dem Widerruf des Verfahrens und mit dem Löschen des Kontos.

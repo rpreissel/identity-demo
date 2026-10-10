@@ -23,8 +23,8 @@ So ist dieses Dokument zu lesen:
 - **Prüfung:** Jeder Befund ist am Code nachvollzogen. Am laufenden System ist keiner
   reproduziert. Bei AU-1 und AU-3 gehört das vor die Behebung.
 - **Issues:** Alle Befunde hängen am Epic `DPoP-demo-8x0p`.
-- **Stand der Behebung:** AU-1 ist am 2026-10-10 behoben (Abschnitt 2). Die übrigen Befunde sind
-  offen.
+- **Stand der Behebung:** Abschnitt 8 führt auf, was seit dem Audit behoben ist. Bei jedem
+  behobenen Befund steht „behoben“ in der Überschrift.
 
 ---
 
@@ -101,7 +101,7 @@ beide an der Prüfung beim Schreiben vorbei. Dann greift die Prüfung beim Lesen
 Übernahme. Den Fall kann nur ein fehlerhafter Aufrufer auslösen, denn eine Keycloak-Sitzung gehört
 genau einem Nutzer. Am laufenden System mit zwei Tabs ist die Behebung nicht geprüft.
 
-### AU-2 (niedrig) Ein widerrufenes Verfahren kommt über `flow-end` zurück
+### AU-2 (niedrig, behoben) Ein widerrufenes Verfahren kommt über `flow-end` zurück
 
 `DPoP-demo-8x0p.2`
 
@@ -122,6 +122,15 @@ Sitzungsende.
 - Zusätzlich `flowEnded` für einen beendeten Kanal ablehnen und nicht mehr aktive Verfahren
   überspringen.
 - Ein Test „Widerruf, danach `flow-end` eines offenen Tabs“.
+
+**Behebung (2026-10-10):** wie vorgeschlagen.
+
+- `upsertChannel` übernimmt nur Nachweise von Verfahren, die beim Konto noch aktiv sind.
+  Identifizierungen (Achse `IDENTITY`) sind keine Verfahren und bleiben.
+- `flowEnded` lehnt einen beendeten Kanal ab (`LiveChannel`, `409`) und schreibt nur Verfahren, die
+  noch aktiv sind.
+- Zwei neue Fälle in `KeycloakChannelIntegrationTest`: ein Tab, der nach dem Widerruf endet, und
+  eine verwaiste Zeile eines widerrufenen Verfahrens.
 
 ### AU-3 (Hinweis) „Verfahren verwalten“ meldet seine Nachweise nicht
 
@@ -491,3 +500,10 @@ Diese Bereiche zeigen keinen neuen Befund:
 6. **V-E2:** löst A-3.
 7. **V-F1 bis V-F3 im Frontend.**
 8. **Der Rest nach Gelegenheit.**
+
+## 8. Stand der Behebung
+
+| Befund | Commit-Thema | Issue |
+|---|---|---|
+| AU-1 | Sitzungsnachweise nur für ein Konto je Keycloak-Sitzung | `DPoP-demo-8x0p.1` |
+| AU-2 | Widerrufene Verfahren kommen nicht über `flow-end` zurück | `DPoP-demo-8x0p.2` |

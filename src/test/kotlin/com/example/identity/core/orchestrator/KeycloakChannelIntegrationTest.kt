@@ -490,6 +490,47 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                 }
             }
 
+            `when`("a tab still open while the sms method is revoked ends its flow run afterwards") {
+                val accountId = accountWithSmsAndPassword()
+                val lateTab = ChannelSessionId(UUID.randomUUID())
+                stubAssertion(channelBinding = lateTab.toString())
+                keycloakPatch(lateTab, """{"subject":{"type":"account","id":"$accountId"},"targetAcr":"loa2"}""")
+                keycloakAuthPassword(lateTab)
+                keycloakAuthSms(lateTab)
+                val sms = accountService.findAccount(accountId)!!.authenticationMethods.first { it.active && it.method == "sms" }
+                accountDeletionService.revokeMethod(accountId, sms.id)
+                flowEnd(lateTab, "kc-late-tab")
+                val methods = jdbcTemplate.queryForList(
+                    "SELECT method FROM orchestrator.keycloak_session_evidence WHERE kc_session_id = 'kc-late-tab'", String::class.java
+                )
+
+                then("the revoked method's proof is not written back") {
+                    methods shouldBe listOf("password")
+                }
+            }
+
+            `when`("the session still holds a proof of a method the account no longer has") {
+                val accountId = accountWithSmsAndPassword()
+                loginAtLoa2(accountId, "kc-stale")
+                val sms = accountService.findAccount(accountId)!!.authenticationMethods.first { it.active && it.method == "sms" }
+                accountDeletionService.revokeMethod(accountId, sms.id)
+                // A row the revocation did not see, as a write racing it leaves behind.
+                jdbcTemplate.update(
+                    """
+                    INSERT INTO orchestrator.keycloak_session_evidence
+                        (kc_session_id, method, account_id, loa, enrolled_under_acr, factor_types, amr_source_id, axis, proven_at, expires_at)
+                    SELECT kc_session_id, 'sms', account_id, 'loa2', enrolled_under_acr, 'POSSESSION', 'auth-sms', axis, proven_at, expires_at
+                    FROM orchestrator.keycloak_session_evidence WHERE kc_session_id = 'kc-stale' AND method = 'password'
+                    """.trimIndent()
+                )
+                val resumed = resume(accountId, "kc-stale")
+
+                then("a later run does not take it over") {
+                    resumed.channel()["state"] shouldNotBe "AUTHENTICATED"
+                    (resumed["authData"] as Map<*, *>)["acr"] shouldBe "loa1"
+                }
+            }
+
             `when`("Keycloak reports the logout of the session") {
                 val accountId = accountWithSmsAndPassword()
                 loginAtLoa2(accountId, "kc-logout")

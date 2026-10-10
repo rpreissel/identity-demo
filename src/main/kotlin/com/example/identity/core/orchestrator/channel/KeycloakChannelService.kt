@@ -10,6 +10,7 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.domain.journey.Action
+import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
@@ -140,11 +141,15 @@ class KeycloakChannelService(
         }
         val effectiveSubject = subject ?: restoredSubject
         val effectiveAccountId = (effectiveSubject as? Subject.Account)?.id
-        val restoredFactors = restored.map { it.toMethodEvidence() }
         // Fails fast: an unknown accountId would otherwise surface later as an unrelated error.
-        if (effectiveAccountId != null && accountService.findAccount(effectiveAccountId) == null) {
-            throw OrchestratorException.notFound(Text("Account not found"), "accountId=${effectiveAccountId}")
+        val account = effectiveAccountId?.let {
+            accountService.findAccount(it) ?: throw OrchestratorException.notFound(Text("Account not found"), "accountId=$it")
         }
+        // A proof of a method the account no longer has counts for nothing, however it got into the
+        // session: a tab ending after a revocation writes it back. An identification is no method.
+        val activeMethods = account?.activeAuthenticationMethods.orEmpty().map { it.method }.toSet()
+        val restoredFactors = restored.map { it.toMethodEvidence() }
+            .filter { it.axis != EvidenceAxis.AUTHENTICATOR || it.method.value in activeMethods }
 
         val isFreshChannel = sessionManagementService.findChannelSessionById(channelSessionId) == null
         if (isFreshChannel) {
@@ -216,7 +221,9 @@ class KeycloakChannelService(
      * one row per method, and caps the channel at the session's end [sessionExpiresAt] (ADR-43).
      */
     fun flowEnded(channelSessionId: ChannelSessionId, assertion: PeerAuthAssertion, kcSessionId: String, sessionExpiresAt: Instant? = null) {
-        val channel = keycloakChannelAccessGuard.requireChannel(channelSessionId, assertion)
+        // An ended channel reports nothing: it may have ended with the logout of this very session,
+        // and its proofs would outlive it.
+        val channel = LiveChannel.require(keycloakChannelAccessGuard.requireChannel(channelSessionId, assertion)).session
         // A Keycloak session belongs to one user. Rows of another account mean this report names a
         // session the channel's account never signed in to; joining them would let one account's
         // proofs count for the other. The channel keeps its old session id as well.
@@ -240,11 +247,15 @@ class KeycloakChannelService(
         // it would count for whatever account that run signs in (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
         if (channel.invitation != null) return
         val accountId = channel.accountId ?: return
+        // Only methods the account still has: one revoked while this tab ran stays revoked (ADR-59).
+        val activeMethods = accountService.findAccount(accountId)?.activeAuthenticationMethods.orEmpty().map { it.method }.toSet()
         val methods = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }?.methods.orEmpty()
+            .map { it.toMethodEvidence() }
+            .filter { it.axis != EvidenceAxis.AUTHENTICATOR || it.method.value in activeMethods }
         if (methods.isEmpty()) return
         val now = clock.instant()
         val expiresAt = sessionExpiresAt ?: now.plus(SESSION_EVIDENCE_FALLBACK_TTL)
-        methods.map { MethodEvidenceRow.of(it.toMethodEvidence(), now) }.forEach { row ->
+        methods.map { MethodEvidenceRow.of(it, now) }.forEach { row ->
             // Created in its own transaction; a tab that ends at the same moment may have won.
             try {
                 keycloakSessionEvidenceInitializer.createIfAbsent(kcSessionId, accountId.value, row, expiresAt)

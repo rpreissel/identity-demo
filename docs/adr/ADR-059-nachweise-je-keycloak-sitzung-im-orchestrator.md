@@ -49,7 +49,10 @@ soll.
   Zeitpunkt.
 - **Löschen.** Die Abmeldung in Keycloak löscht alle Zeilen der Sitzung. `RetentionJob` löscht
   abgelaufene Zeilen. Der Widerruf eines Verfahrens löscht seine Zeilen in allen Sitzungen des
-  Kontos. Das Löschen des Kontos löscht alle seine Zeilen.
+  Kontos. Das Löschen des Kontos löscht alle seine Zeilen. Damit ein Tab, der danach endet, nichts
+  zurückbringt, schreibt `flow-end` nur Verfahren, die das Konto noch hat, und ein beendeter Kanal
+  schreibt gar nichts (`409`). Beim Übernehmen zählen ebenfalls nur Nachweise noch aktiver
+  Verfahren. Identifizierungen sind keine Verfahren und bleiben.
 
 ## Warum
 
