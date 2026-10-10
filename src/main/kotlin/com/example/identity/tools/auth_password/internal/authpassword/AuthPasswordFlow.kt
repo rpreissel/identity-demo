@@ -1,8 +1,8 @@
 package com.example.identity.tools.auth_password.internal.authpassword
 
 import com.example.identity.tools.auth_password.DEMO_PASSWORD
+import com.example.identity.contract.tool_api.ToolStep
 import com.example.identity.contract.tool_api.MissingFields
-import com.example.identity.contract.tool_api.StepData
 
 /** What one PATCH submitted. */
 internal data class AuthPasswordInput(val password: String? = null)
@@ -23,7 +23,7 @@ internal object AuthPasswordFlow {
         input.password?.let { AuthPasswordDecision.Check(it) } ?: AuthPasswordDecision.Unchanged
 
     /** Same derivation for start/patch/read - one place turns the state into `next.step`/`stepData`. */
-    fun describe(): Pair<String, StepData> = "auth" to MissingFields(listOf("password"))
+    fun describe(): ToolStep = ToolStep("auth", MissingFields(listOf("password")))
 
     /** The fixed demo password, so a tester never has to remember one - never part of the step. */
     fun demo(): Map<String, Any?> = mapOf("password" to DEMO_PASSWORD)

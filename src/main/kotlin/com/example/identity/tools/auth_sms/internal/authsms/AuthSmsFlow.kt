@@ -1,10 +1,10 @@
 package com.example.identity.tools.auth_sms.internal.authsms
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.ToolStep
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import java.time.Instant
 import com.example.identity.contract.tool_api.MissingFields
-import com.example.identity.contract.tool_api.StepData
 
 private const val STEP_AUTH = "auth"
 private const val FIELD_TAN = "tan"
@@ -18,7 +18,7 @@ internal data class AuthSmsState(val issuedTanHash: String, val tanExpiresAt: In
     val missingFields: List<String> get() = listOf(FIELD_TAN)
 
     /** Same derivation for start/patch/read - one place turns this state into `next.step`/`stepData`. */
-    fun describe(): Pair<String, StepData> = step to MissingFields(missingFields)
+    fun describe(): ToolStep = ToolStep(step, MissingFields(missingFields))
 
     companion object {
         /** Turns [AuthSmsToolSession]'s persisted columns back into a [AuthSmsState]. */

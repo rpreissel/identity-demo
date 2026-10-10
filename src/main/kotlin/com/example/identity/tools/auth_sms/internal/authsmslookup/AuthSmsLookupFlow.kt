@@ -1,11 +1,11 @@
 package com.example.identity.tools.auth_sms.internal.authsmslookup
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.ToolStep
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import java.time.Instant
 import com.example.identity.contract.tool_api.MissingFields
-import com.example.identity.contract.tool_api.StepData
 
 private const val STEP_AUTH = "auth"
 private const val STEP_TAN_INPUT = "tanInput"
@@ -24,7 +24,7 @@ internal sealed interface AuthSmsLookupState {
     val demo: Map<String, Any?> get() = emptyMap()
 
     /** Same derivation for start/patch/read - one place turns this state into `next.step`/`stepData`. */
-    fun describe(): Pair<String, StepData> = step to MissingFields(missingFields)
+    fun describe(): ToolStep = ToolStep(step, MissingFields(missingFields))
 
     data object AwaitingEmail : AuthSmsLookupState {
         override val step = STEP_AUTH

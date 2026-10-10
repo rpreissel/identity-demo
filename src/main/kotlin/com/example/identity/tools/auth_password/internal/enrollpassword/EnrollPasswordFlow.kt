@@ -1,10 +1,10 @@
 package com.example.identity.tools.auth_password.internal.enrollpassword
 
 import com.example.identity.tools.auth_password.internal.PasswordPolicy
+import com.example.identity.contract.tool_api.ToolStep
 
 import com.example.identity.tools.auth_password.DEMO_PASSWORD
 import com.example.identity.tools.auth_password.api.v1.EnrollPasswordStep
-import com.example.identity.contract.tool_api.StepData
 
 /**
  * Single-shot flow (docs/03-tool-architektur.md #6, the optional Flow pattern): a chosen password
@@ -29,7 +29,7 @@ internal object EnrollPasswordFlow {
     }
 
     /** Same derivation for start/patch/read - one place turns the state into `next.step`/`stepData`. */
-    fun describe(replaces: Boolean): Pair<String, StepData> = "enroll" to EnrollPasswordStep(listOf("password"), replaces)
+    fun describe(replaces: Boolean): ToolStep = ToolStep("enroll", EnrollPasswordStep(listOf("password"), replaces))
 
     /** The fixed demo password, so a tester never has to remember one - never part of the step. */
     fun demo(): Map<String, Any?> = mapOf("password" to DEMO_PASSWORD)

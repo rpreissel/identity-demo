@@ -82,8 +82,7 @@ class EnrollDeviceToolHandler(
     }
 
     private fun outcomeFor(): ToolOutcome.InProgress {
-        val (step, fields) = EnrollDeviceState.describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields)
+        return EnrollDeviceState.describe().inProgress()
     }
 
     private fun factorTypesFor(userVerification: UserVerification): Set<FactorType> = when (userVerification) {

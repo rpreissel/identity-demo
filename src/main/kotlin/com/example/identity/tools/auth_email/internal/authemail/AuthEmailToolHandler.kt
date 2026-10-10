@@ -49,8 +49,7 @@ class AuthEmailToolHandler(
         sessions.save(toolSessionId, AuthEmailToolSession(issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt))
         mailServer.sendCode(email, issued.plain)
 
-        val (step, fields) = AuthEmailState(issued.hash, issued.expiresAt).describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plain))
+        return AuthEmailState(issued.hash, issued.expiresAt).describe().inProgress(mapOf("tan" to issued.plain))
     }
 
     /**
@@ -77,8 +76,7 @@ class AuthEmailToolHandler(
     }
 
     private fun outcomeFor(state: AuthEmailState): ToolOutcome.InProgress {
-        val (step, fields) = state.describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields)
+        return state.describe().inProgress()
     }
 
     private fun AuthEmailToolSession.toState(toolSessionId: ToolSessionId): AuthEmailState = AuthEmailState.of(

@@ -1,7 +1,7 @@
 package com.example.identity.tools.auth_invite.internal
 
 import com.example.identity.contract.tool_api.MissingFields
-import com.example.identity.contract.tool_api.StepData
+import com.example.identity.contract.tool_api.ToolStep
 
 /** What one PATCH of auth-invite-lookup carries. The number is either the KVNR or the Partnernummer. */
 internal data class AuthInviteInput(val kvnr: String? = null, val partnerNumber: String? = null, val code: String? = null)
@@ -28,5 +28,5 @@ internal object AuthInviteLookupFlow {
         return if (missing.isEmpty()) AuthInviteDecision.Check(input.code!!) else AuthInviteDecision.Incomplete(missing)
     }
 
-    fun describe(missingFields: List<String> = ALL_FIELDS): Pair<String, StepData> = "auth" to MissingFields(missingFields)
+    fun describe(missingFields: List<String> = ALL_FIELDS): ToolStep = ToolStep("auth", MissingFields(missingFields))
 }

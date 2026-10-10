@@ -49,8 +49,7 @@ class AuthSmsToolHandler(
 
         // demoTan: this is a demo, not a real SMS gateway - showing it in the UI means testers
         // don't need server-log access (docs/verfahren/sms.md).
-        val (step, fields) = AuthSmsState(issued.hash, issued.expiresAt).describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plain))
+        return AuthSmsState(issued.hash, issued.expiresAt).describe().inProgress(mapOf("tan" to issued.plain))
     }
 
     /** Called directly by AuthSmsToolController, not generically dispatched (docs/08-projektrahmen.md A11). */
@@ -76,8 +75,7 @@ class AuthSmsToolHandler(
     }
 
     private fun outcomeFor(state: AuthSmsState): ToolOutcome.InProgress {
-        val (step, fields) = state.describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields)
+        return state.describe().inProgress()
     }
 
     private fun AuthSmsToolSession.toState(toolSessionId: ToolSessionId): AuthSmsState = AuthSmsState.of(

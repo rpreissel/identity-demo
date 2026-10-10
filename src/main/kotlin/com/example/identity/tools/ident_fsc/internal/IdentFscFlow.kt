@@ -1,8 +1,8 @@
 package com.example.identity.tools.ident_fsc.internal
 
 import com.example.identity.contract.tool_api.values.PartnerNumber
+import com.example.identity.contract.tool_api.ToolStep
 import java.security.MessageDigest
-import com.example.identity.contract.tool_api.StepData
 import com.example.identity.contract.tool_api.MissingFields
 import java.time.LocalDate
 
@@ -125,7 +125,7 @@ internal object IdentFscFlow {
     )
 
     /** Same derivation for start/patch/read - one place turns a state into `next.step`/`stepData`. */
-    fun describe(state: IdentFscState): Pair<String, StepData> = "input" to MissingFields(missingFields(state))
+    fun describe(state: IdentFscState): ToolStep = ToolStep("input", MissingFields(missingFields(state)))
 
     /** [identifier] is the KVNR, or the Partnernummer for a Partner. */
     fun evidenceHash(identifier: String, fscHash: String): String = "sha256:" + hash("$identifier:$fscHash")

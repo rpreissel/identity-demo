@@ -1,11 +1,11 @@
 package com.example.identity.tools.auth_kobil.internal.authkobil
 
 import com.example.identity.simulation.kobil.KobilOtpVerification
+import com.example.identity.contract.tool_api.ToolStep
 import com.example.identity.simulation.kobil.KobilRisk
 import com.example.identity.contract.tool_api.device.UserVerification
 import com.example.identity.tools.auth_kobil.api.v1.KobilOtpStep
 import com.example.identity.tools.auth_kobil.api.v1.KobilUnlockStep
-import com.example.identity.contract.tool_api.StepData
 
 /**
  * The two steps of auth-kobil: in `unlock` the client proves it may have the PIN, in `otp` it
@@ -14,7 +14,7 @@ import com.example.identity.contract.tool_api.StepData
 internal sealed interface AuthKobilState {
     val step: String
 
-    fun describe(): Pair<String, StepData>
+    fun describe(): ToolStep
 
     /**
      * [options] are the ways this credential can actually be unlocked; a missing means would only
@@ -29,15 +29,15 @@ internal sealed interface AuthKobilState {
     ) : AuthKobilState {
         override val step get() = "unlock"
 
-        override fun describe(): Pair<String, StepData> =
-            step to KobilUnlockStep(options, tenantId, kobilUserId)
+        override fun describe(): ToolStep =
+            ToolStep(step, KobilUnlockStep(options, tenantId, kobilUserId))
     }
 
     data class AwaitingOtp(val tenantId: String, val kobilUserId: String) : AuthKobilState {
         override val step get() = "otp"
 
-        override fun describe(): Pair<String, StepData> =
-            step to KobilOtpStep(listOf("otp"), tenantId, kobilUserId)
+        override fun describe(): ToolStep =
+            ToolStep(step, KobilOtpStep(listOf("otp"), tenantId, kobilUserId))
     }
 }
 

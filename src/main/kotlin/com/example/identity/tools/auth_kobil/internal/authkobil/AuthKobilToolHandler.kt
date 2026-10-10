@@ -125,8 +125,7 @@ class AuthKobilToolHandler(
     }
 
     private fun inProgress(state: AuthKobilState): ToolOutcome.InProgress {
-        val (step, fields) = state.describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields)
+        return state.describe().inProgress()
     }
 
     /** Redeems the one-time password at KOBIL and decides on the assertion behind it. */

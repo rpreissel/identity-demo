@@ -74,7 +74,6 @@ class EnrollPasswordToolHandler(
     }
 
     private fun outcomeFor(data: EnrollPasswordToolSession): ToolOutcome.InProgress {
-        val (step, fields) = EnrollPasswordFlow.describe(data.replaces)
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = EnrollPasswordFlow.demo())
+        return EnrollPasswordFlow.describe(data.replaces).inProgress(EnrollPasswordFlow.demo())
     }
 }

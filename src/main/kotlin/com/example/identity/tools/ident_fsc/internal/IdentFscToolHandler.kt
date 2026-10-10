@@ -131,8 +131,7 @@ class IdentFscToolHandler(
     }
 
     private fun outcomeFor(state: IdentFscState): ToolOutcome.InProgress {
-        val (step, fields) = IdentFscFlow.describe(state)
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields)
+        return IdentFscFlow.describe(state).inProgress()
     }
 
     private fun IdentFscToolSession.toState(): IdentFscState = IdentFscState(kvnr, partnerNumber, familyName, givenNames, birthDate, fscHash, personId)

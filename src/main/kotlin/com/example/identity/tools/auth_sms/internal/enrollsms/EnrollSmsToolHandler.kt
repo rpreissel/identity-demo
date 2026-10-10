@@ -114,8 +114,7 @@ class EnrollSmsToolHandler(
     }
 
     private fun outcomeFor(state: EnrollSmsState, data: EnrollSmsToolSession, version: Int): ToolOutcome.InProgress {
-        val (step, fields) = state.describe(data.replaces, needsConsent(data, version))
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields)
+        return state.describe(data.replaces, needsConsent(data, version)).inProgress()
     }
 
     /** Version 2 asks for the consent once per run; version 1 never (entfällt mit v1). */

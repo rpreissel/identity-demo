@@ -57,8 +57,7 @@ class AuthDeviceToolHandler(
     }
 
     private fun outcomeFor(): ToolOutcome.InProgress {
-        val (step, fields) = AuthDeviceState.describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields)
+        return AuthDeviceState.describe().inProgress()
     }
 
     private fun factorTypesFor(userVerification: UserVerification): Set<FactorType> = when (userVerification) {

@@ -1,7 +1,7 @@
 package com.example.identity.tools.auth_password.internal.authpasswordlookup
 
 import com.example.identity.tools.auth_password.DEMO_PASSWORD
-import com.example.identity.contract.tool_api.StepData
+import com.example.identity.contract.tool_api.ToolStep
 import com.example.identity.contract.tool_api.MissingFields
 
 /**
@@ -32,8 +32,8 @@ internal object AuthPasswordLookupFlow {
     }
 
     /** Same derivation for start/patch/read - one place turns missing fields into `next.step`/`stepData`. */
-    fun describe(missingFields: List<String> = listOf("email", "password")): Pair<String, StepData> =
-        "auth" to MissingFields(missingFields)
+    fun describe(missingFields: List<String> = listOf("email", "password")): ToolStep =
+        ToolStep("auth", MissingFields(missingFields))
 
     /** Prefilled demo values, never part of the step (docs/05-api.md, `demo`). */
     fun demo(): Map<String, Any?> = mapOf("password" to DEMO_PASSWORD)

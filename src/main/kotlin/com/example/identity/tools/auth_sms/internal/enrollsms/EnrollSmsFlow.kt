@@ -1,11 +1,11 @@
 package com.example.identity.tools.auth_sms.internal.enrollsms
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.ToolStep
 import com.example.identity.contract.tool_api.values.PhoneNumber
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import java.time.Instant
 import com.example.identity.tools.auth_sms.api.v1.EnrollSmsStep
-import com.example.identity.contract.tool_api.StepData
 
 private const val STEP_ENROLL = "enroll"
 private const val STEP_TAN_INPUT = "tanInput"
@@ -26,8 +26,8 @@ internal sealed interface EnrollSmsState {
      * Same derivation for start/patch/read - one place turns this state into `next.step`/`stepData`.
      * [needsConsent]: the consent still has to come with the number (version 2, ADR-51).
      */
-    fun describe(replaces: Boolean, needsConsent: Boolean): Pair<String, StepData> =
-        step to EnrollSmsStep(if (needsConsent && this is AwaitingPhoneNumber) missingFields + FIELD_CONSENT else missingFields, replaces)
+    fun describe(replaces: Boolean, needsConsent: Boolean): ToolStep =
+        ToolStep(step, EnrollSmsStep(if (needsConsent && this is AwaitingPhoneNumber) missingFields + FIELD_CONSENT else missingFields, replaces))
 
     data object AwaitingPhoneNumber : EnrollSmsState {
         override val step = STEP_ENROLL

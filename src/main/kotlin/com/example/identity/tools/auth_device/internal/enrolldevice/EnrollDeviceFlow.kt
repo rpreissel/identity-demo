@@ -1,8 +1,8 @@
 package com.example.identity.tools.auth_device.internal.enrolldevice
 
 import com.example.identity.contract.tool_api.device.DevicePublicKey
+import com.example.identity.contract.tool_api.ToolStep
 import com.example.identity.contract.tool_api.device.UserVerification
-import com.example.identity.contract.tool_api.StepData
 
 /**
  * Single-shot flow (docs/03-tool-architektur.md #6): the device proof arrives already verified, so
@@ -12,7 +12,7 @@ internal data object EnrollDeviceState {
     val step: String get() = "enroll"
 
     /** No `stepData` needed: the fields come from a signed device API call, not a form the client fills incrementally. */
-    fun describe(): Pair<String, StepData?> = step to null
+    fun describe(): ToolStep = ToolStep(step, null)
 }
 
 internal data class EnrollDeviceInput(val devicePublicKey: DevicePublicKey, val userVerification: UserVerification, val deviceBindingKeyRef: String, val label: String?)

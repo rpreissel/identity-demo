@@ -1,9 +1,9 @@
 package com.example.identity.tools.ident_eid.internal
 
 import com.example.identity.contract.tool_api.directory.ClaimedIdentity
+import com.example.identity.contract.tool_api.ToolStep
 import java.security.MessageDigest
 import java.time.LocalDate
-import com.example.identity.contract.tool_api.StepData
 import com.example.identity.contract.tool_api.MissingFields
 
 /**
@@ -95,7 +95,7 @@ internal object IdentEidFlow {
     }
 
     /** Same derivation for start/patch/read - one place turns a state into `next.step`/`stepData`. */
-    fun describe(state: IdentEidState): Pair<String, StepData> = "input" to MissingFields(missingFields(state))
+    fun describe(state: IdentEidState): ToolStep = ToolStep("input", MissingFields(missingFields(state)))
 
     /**
      * A hash of what the card showed, so the audit trail can prove what was seen without keeping it

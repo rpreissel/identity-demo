@@ -59,7 +59,6 @@ class AuthPasswordToolHandler(
     }
 
     private fun outcomeFor(): ToolOutcome.InProgress {
-        val (step, fields) = AuthPasswordFlow.describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = AuthPasswordFlow.demo())
+        return AuthPasswordFlow.describe().inProgress(AuthPasswordFlow.demo())
     }
 }

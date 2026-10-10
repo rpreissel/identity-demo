@@ -61,7 +61,6 @@ class AuthInviteLookupToolHandler(
     }
 
     private fun outcomeFor(missingFields: List<String> = AuthInviteLookupFlow.ALL_FIELDS): ToolOutcome.InProgress {
-        val (step, fields) = AuthInviteLookupFlow.describe(missingFields)
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields)
+        return AuthInviteLookupFlow.describe(missingFields).inProgress()
     }
 }

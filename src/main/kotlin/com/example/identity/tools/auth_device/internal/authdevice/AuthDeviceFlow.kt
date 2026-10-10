@@ -1,7 +1,7 @@
 package com.example.identity.tools.auth_device.internal.authdevice
 
 import com.example.identity.contract.tool_api.device.UserVerification
-import com.example.identity.contract.tool_api.StepData
+import com.example.identity.contract.tool_api.ToolStep
 
 /**
  * Single-shot flow (docs/03-tool-architektur.md #6): the proof arrives already verified, so the only
@@ -11,7 +11,7 @@ internal data object AuthDeviceState {
     val step: String get() = "auth"
 
     /** No `stepData` needed: the proof comes from a signed device API call, not a form. */
-    fun describe(): Pair<String, StepData?> = step to null
+    fun describe(): ToolStep = ToolStep(step, null)
 }
 
 internal sealed interface AuthDeviceDecision {

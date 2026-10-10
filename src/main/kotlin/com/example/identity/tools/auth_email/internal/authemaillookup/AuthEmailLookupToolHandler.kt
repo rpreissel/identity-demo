@@ -102,8 +102,7 @@ class AuthEmailLookupToolHandler(
     }
 
     private fun outcomeFor(state: AuthEmailLookupState): ToolOutcome.InProgress {
-        val (step, fields) = state.describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = state.demo)
+        return state.describe().inProgress(state.demo)
     }
 
     private fun AuthEmailLookupToolSession.toState(toolSessionId: ToolSessionId): AuthEmailLookupState = AuthEmailLookupState.of(

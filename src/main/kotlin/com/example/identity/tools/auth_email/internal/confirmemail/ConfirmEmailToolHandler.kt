@@ -96,8 +96,7 @@ class ConfirmEmailToolHandler(
     }
 
     private fun outcomeFor(state: ConfirmEmailState): ToolOutcome.InProgress {
-        val (step, fields) = state.describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = state.demo)
+        return state.describe().inProgress(state.demo)
     }
 
     private fun ConfirmEmailToolSession.toState(toolSessionId: ToolSessionId): ConfirmEmailState = ConfirmEmailState.of(

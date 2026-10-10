@@ -97,8 +97,7 @@ class IdentEidToolHandler(
     }
 
     private fun outcomeFor(state: IdentEidState): ToolOutcome.InProgress {
-        val (step, fields) = IdentEidFlow.describe(state)
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields)
+        return IdentEidFlow.describe(state).inProgress()
     }
 
     private fun IdentEidToolSession.toState(): IdentEidState =

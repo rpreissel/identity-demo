@@ -114,8 +114,7 @@ class AuthSmsLookupToolHandler(
     }
 
     private fun outcomeFor(state: AuthSmsLookupState): ToolOutcome.InProgress {
-        val (step, fields) = state.describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = state.demo)
+        return state.describe().inProgress(state.demo)
     }
 
     private fun AuthSmsLookupToolSession.toState(toolSessionId: ToolSessionId): AuthSmsLookupState = AuthSmsLookupState.of(
