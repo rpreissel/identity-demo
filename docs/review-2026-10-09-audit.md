@@ -36,10 +36,10 @@ Passwortprüfer sind vollständig entfernt. Die Kapitel 04, 06, 09, `journeys/`,
 Invarianten sind nachgezogen. Die Modulgrenzen halten, und die Tool-Module sind sehr gleichförmig
 gebaut.
 
-Handlungsbedarf besteht vor allem an der neuen Tabelle `orchestrator.keycloak_session_evidence`
-(ADR-59). Der Code nimmt an, dass alle Zeilen einer Keycloak-Sitzung demselben Konto gehören und
-nur aktive Verfahren nennen. Erzwungen wurde beides nicht (AU-1, AU-2). AU-1 ist inzwischen
-behoben. Dazu kommen zwei Folgen von
+Handlungsbedarf bestand vor allem an der neuen Tabelle `orchestrator.keycloak_session_evidence`
+(ADR-59). Der Code nahm an, dass alle Zeilen einer Keycloak-Sitzung demselben Konto gehören und
+nur aktive Verfahren nennen. Erzwungen wurde beides nicht (AU-1, AU-2). Beides ist inzwischen
+behoben; was noch offen ist, steht in Abschnitt 7. Dazu kommen zwei Folgen von
 ADR-58 auf der Passwortseite (AU-9, AU-10).
 
 Beim Code fallen drei Muster auf:
@@ -605,17 +605,30 @@ Diese Bereiche zeigen keinen neuen Befund:
   Kontolöschung. Einladungen legen nichts ab, und zwei gleichzeitige Tabs schreiben getrennte
   Zeilen.
 
-## 7. Empfohlene Reihenfolge
+## 7. Was noch offen ist
 
-1. **Sicherheit:** AU-2, an derselben Stelle wie das behobene AU-1. Zuerst ein fehlschlagender
-   Test, dann die Prüfungen in `flowEnded` und `upsertChannel`.
-2. **Die Folgen von ADR-58:** AU-9, AU-10 und AU-8.
-3. **Schnelle Aufräumarbeiten:** V-B1, V-B3, V-E4, V-F5 und AU-11.
-4. **V-E1 zusammen mit AU-3:** schließt K-3 und den Dispatch-Teil von Q-6.
-5. **V-B2, V-B4 und V-B6:** der größte Abbau von Kopien im Backend.
-6. **V-E2:** löst A-3.
-7. **V-F1 bis V-F3 im Frontend.**
-8. **Der Rest nach Gelegenheit.**
+Stand 2026-10-10. Alle Befunde zu Sicherheit und Architektur (AU-1 bis AU-11) sind behoben, AU-7
+und AU-10 mit einem benannten Rest. Die Vereinfachungen in Backend und Erweiterung sind umgesetzt,
+die im Frontend noch nicht.
+
+1. **Frontend und Theme:** V-F1 bis V-F6 (`DPoP-demo-8x0p.11`).
+2. **AU-7, Rest:** Rufnummer und KOBIL-PIN an ihre Zeile binden. Das braucht eine Migration der
+   vorhandenen Einschreibungen (`DPoP-demo-8x0p.12`).
+3. **Backend, Rest:**
+   - `MethodInstanceId` und ACR als Typ; beide stecken in persistierten Journey-Zuständen.
+   - Die Send-Limits und Lookup-Flows von SMS und E-Mail teilen (`DPoP-demo-8x0p.13`).
+4. **Erweiterung, Rest:**
+   - deklarative Renderer-Factories,
+   - die Sicht-Records in eigene Dateien,
+   - Checkstyle `UnusedImports`,
+   - Tests der Required Action (`DPoP-demo-8x0p.14`).
+5. **Personensperre (SA-27, Rest):** Sie zählt weiter erst nach dem Versuch. Das bleibt ein
+   benanntes Restrisiko.
+
+Am laufenden System, also mit Keycloak und zwei echten Tabs, ist keine der Änderungen geprüft.
+Geprüft sind sie mit `./gradlew test` und `:keycloak-extension:test`, den Theme-Tests und den
+Typprüfungen. Vor einem Einsatz gehört `npm run test:e2e-keycloak` gegen den compose-Stack dazu,
+vor allem für AU-1, AU-3 und V-E1.
 
 ## 8. Stand der Behebung
 
@@ -623,11 +636,11 @@ Diese Bereiche zeigen keinen neuen Befund:
 |---|---|---|
 | AU-1 | Sitzungsnachweise nur für ein Konto je Keycloak-Sitzung | `DPoP-demo-8x0p.1` |
 | AU-2 | Widerrufene Verfahren kommen nicht über `flow-end` zurück | `DPoP-demo-8x0p.2` |
-| AU-9 | Passwortseiten mit `login_hint` und Markup für Passwort-Manager | `DPoP-demo-8x0p.5` |
-| AU-11 | Reste des alten Wegs in Doku und Kommentaren, Korrekturen an den offenen Befunden | `DPoP-demo-8x0p.7` |
 | AU-3 | „Verfahren verwalten“ meldet seine Nachweise an die Sitzung | `DPoP-demo-8x0p.3` |
+| AU-4 bis AU-8 | Kleine Härtungen an Sitzungsnachweisen, Schlüsseln und Federation; AU-7 nur für App-Tokens | `DPoP-demo-8x0p.4` |
+| AU-9 | Passwortseiten mit `login_hint` und Markup für Passwort-Manager | `DPoP-demo-8x0p.5` |
 | AU-10 | Kontosperre bucht einen Versuch vor der Prüfung | `DPoP-demo-8x0p.6` |
+| AU-11 | Reste des alten Wegs in Doku und Kommentaren, Korrekturen an den offenen Befunden | `DPoP-demo-8x0p.7` |
 | V-B1 bis V-B5 | Toter Code, `OneTimeCodes`, `onePerDevice`, `requireEnrollment`, Namen (teilweise) | `DPoP-demo-8x0p.8` |
 | V-B6 bis V-B9 | `applied`, `ToolStep`, Nullbarkeit, kürzere Funktionen, `JourneyKeys` | `DPoP-demo-8x0p.9` |
 | V-E1 bis V-E4 | `ToolSteps`, Paket `model`, Zyklen geprüft, `OrchestratorClient` aufgeräumt | `DPoP-demo-8x0p.10` |
-| AU-4 bis AU-8 | Kleine Härtungen an Sitzungsnachweisen, Schlüsseln und Federation; AU-7 nur für App-Tokens | `DPoP-demo-8x0p.4` |
