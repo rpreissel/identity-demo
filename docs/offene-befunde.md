@@ -8,6 +8,10 @@ Bewertungen:
 - aus der vierten Bewertung (2026-09-29),
 - aus dem Sicherheitsaudit (2026-10-03).
 
+Die Befunde des Audits vom 2026-10-09 stehen noch in einer eigenen Datei,
+[review-2026-10-09-audit.md](review-2026-10-09-audit.md). Ihr Abschnitt 5 nennt Einträge dieser
+Liste, die inzwischen erledigt oder falsch beschrieben sind.
+
 Die Liste wurde am 2026-10-04 mit dem Code abgeglichen. Was erledigt ist, steht hier nicht mehr. Es
 ist in der Git-Historie und in den geschlossenen Issues nachzulesen (Epics `DPoP-demo-9ppv`,
 `DPoP-demo-updm`, `DPoP-demo-164n`).
