@@ -49,7 +49,7 @@ class AuthSmsLookupFlowTest : BehaviorSpec({
         }
 
         `when`("the correct tan was submitted") {
-            val decision = AuthSmsLookupFlow.decideTan(state, issued.plainTan, tanGenerator)
+            val decision = AuthSmsLookupFlow.decideTan(state, issued.plain, tanGenerator)
 
             then("it completes for that account") {
                 decision shouldBe AuthSmsLookupDecision.Complete(AccountId(42L))
@@ -62,7 +62,7 @@ class AuthSmsLookupFlowTest : BehaviorSpec({
         val state = AuthSmsLookupState.AwaitingTan(accountId = null, issued.hash, issued.expiresAt)
 
         `when`("the tan that would have matched a real account is submitted") {
-            val decision = AuthSmsLookupFlow.decideTan(state, issued.plainTan, tanGenerator)
+            val decision = AuthSmsLookupFlow.decideTan(state, issued.plain, tanGenerator)
 
             then("it still fails - there is no account to complete for") {
                 decision shouldBe AuthSmsLookupDecision.WrongTan(null)

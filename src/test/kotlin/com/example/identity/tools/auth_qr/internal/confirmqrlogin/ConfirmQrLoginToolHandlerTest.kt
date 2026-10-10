@@ -37,7 +37,7 @@ private val CONFIRMING = AccountId(99L)
  */
 private class Fixture(expectedAccountId: AccountId?) {
     val toolSessionId: ToolSessionId = ToolSessionId(UUID.randomUUID())
-    val digest = ConfirmationCodeDigest("test-pepper")
+    val digest = ConfirmationCodeDigest("test-pepper", TEST_CLOCK)
     val sessions = InMemoryToolSessionData().also { it.save(toolSessionId, ConfirmQrLoginToolSession(pairingCode = PAIRING)) }
     val approvedHash = slot<String>()
     val requests = mockk<QrLoginRequestRepository>().also {
@@ -57,7 +57,7 @@ private class Fixture(expectedAccountId: AccountId?) {
             QrLoginRequest(pairingCode = PAIRING, expectedAccountId = null, createdAt = TEST_NOW).apply {
                 status = QrLoginStatus.APPROVED
                 resolvingAccountId = account
-                confirmationCodeHash = digest.of("482913")
+                confirmationCodeHash = digest.digest("482913")
             }
         )
     }
@@ -182,5 +182,5 @@ private fun ToolOutcome.shouldShowConfirmationCode(f: Fixture) {
     step.nextStep shouldBe "showCode"
     val code = step.stepData.shouldBeInstanceOf<QrPairingStep>().confirmationCode.shouldNotBeNull()
     code shouldMatch Regex("\\d{6}")
-    f.approvedHash.captured shouldBe f.digest.of(code)
+    f.approvedHash.captured shouldBe f.digest.digest(code)
 }

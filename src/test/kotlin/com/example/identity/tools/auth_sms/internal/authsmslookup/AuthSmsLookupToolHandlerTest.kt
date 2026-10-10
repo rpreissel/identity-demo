@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.authsmslookup
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
+import com.example.identity.contract.tool_api.otp.OneTimeCodes
 import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.tools.auth_sms.internal.SmsNumbers
 import com.example.identity.core.account.application.ClaimCryptoFixture
@@ -72,7 +73,7 @@ private class Fixture {
     }
 
     /** Puts a pending TAN for [accountId] into the session and returns it. */
-    fun withPendingTan(accountId: AccountId?): TanGenerator.Issued = tans.issue().also { issued ->
+    fun withPendingTan(accountId: AccountId?): OneTimeCodes.Issued = tans.issue().also { issued ->
         sessions.save(toolSessionId, AuthSmsLookupToolSession(accountId, issued.hash, issued.expiresAt))
     }
 }
@@ -153,7 +154,7 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
         val issued = f.withPendingTan(ACCOUNT)
 
         `when`("confirming with the correct TAN") {
-            val outcome = f.handler.patch(f.toolSessionId, issued.plainTan)
+            val outcome = f.handler.patch(f.toolSessionId, issued.plain)
 
             then("it authenticates for that account at its tool's own level and factors") {
                 outcome shouldBe ToolOutcome.Completed.Authenticated(
@@ -186,7 +187,7 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
         val issued = f.withPendingTan(ACCOUNT)
 
         `when`("submitting even the issued TAN") {
-            val outcome = f.handler.patch(f.toolSessionId, issued.plainTan)
+            val outcome = f.handler.patch(f.toolSessionId, issued.plain)
 
             then("it fails like a wrong TAN, without checking it") {
                 outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder TAN ungueltig"), attempted = null)
@@ -199,7 +200,7 @@ class AuthSmsLookupToolHandlerTest : BehaviorSpec({
         val issued = f.withPendingTan(null)
 
         `when`("submitting even the issued TAN") {
-            val outcome = f.handler.patch(f.toolSessionId, issued.plainTan)
+            val outcome = f.handler.patch(f.toolSessionId, issued.plain)
 
             then("it fails with the same wording and names no account to charge") {
                 outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder TAN ungueltig"), attempted = null)

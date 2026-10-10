@@ -173,7 +173,7 @@ Ein Tool ist ein einzelner Schritt in einer Journey, zum Beispiel „SMS-Code pr
 - **M3** `auth_sms` — SMS-Verfahren (Tools `enroll-sms`, `auth-sms`, `auth-sms-lookup`). Eigene
   `@RestController`.
 - **M7** `auth_email` — E-Mail-Verfahren (Tools `confirm-email`, `enroll-email`, `auth-email`,
-  `auth-email-lookup`) mit eigenem `EmailCodeGenerator`. Hängt nur von `tool_api` ab: Es liest
+  `auth-email-lookup`) mit eigenem `EmailCodeGenerator` (auf `tool_api.otp.OneTimeCodes`). Hängt nur von `tool_api` ab: Es liest
   Account-IDs und Ankerwerte über `AccountDirectory` und liefert `EMAIL`-Claims. Auf `account`
   greift es nicht direkt zu.
 - **M6** `auth_password` — Passwort-Verfahren (Tools `enroll-password`, `auth-password`,

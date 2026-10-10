@@ -104,7 +104,7 @@ class EnrollSmsFlowTest : BehaviorSpec({
         }
 
         `when`("the correct tan was submitted") {
-            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(tan = issued.plainTan), tanGenerator)
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(tan = issued.plain), tanGenerator)
 
             then("the enrollment completes for this phone number") {
                 decision shouldBe EnrollSmsDecision.Complete("+491701234567")
@@ -112,7 +112,7 @@ class EnrollSmsFlowTest : BehaviorSpec({
         }
 
         `when`("a different phone number AND the still-valid tan for the old one were submitted together") {
-            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "+49 171 9999999", tan = issued.plainTan), tanGenerator)
+            val decision = EnrollSmsFlow.decide(state, EnrollSmsInput(phoneNumber = "+49 171 9999999", tan = issued.plain), tanGenerator)
 
             then("the new number wins - a changed number invalidates whatever TAN was pending for the old one") {
                 decision shouldBe EnrollSmsDecision.SendTan("+491719999999")

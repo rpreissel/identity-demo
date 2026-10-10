@@ -77,7 +77,7 @@ class ConfirmQrLoginToolHandler(
                 val confirmationCode = PairingCodeGenerator.confirmationCode()
                 val now = clock.instant()
                 val rows = qrLoginRequestRepository.approveIfPending(
-                    resolvedCode, accountId, confirmationCodeDigest.of(confirmationCode), now, now.plus(CONFIRMATION_TTL)
+                    resolvedCode, accountId, confirmationCodeDigest.digest(confirmationCode), now, now.plus(CONFIRMATION_TTL)
                 )
                 if (rows == 1) {
                     // The one and only time the plaintext leaves the server - it is stored as a hash.

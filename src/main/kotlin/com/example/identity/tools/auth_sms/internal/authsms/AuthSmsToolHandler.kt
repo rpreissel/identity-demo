@@ -52,12 +52,12 @@ class AuthSmsToolHandler(
             toolSessionId,
             AuthSmsToolSession(enrollmentRefId = enrollmentRef.id, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt),
         )
-        smsGateway.sendTan(phoneNumber, issued.plainTan)
+        smsGateway.sendTan(phoneNumber, issued.plain)
 
         // demoTan: this is a demo, not a real SMS gateway - showing it in the UI means testers
         // don't need server-log access (docs/verfahren/sms.md).
         val (step, fields) = AuthSmsState(issued.hash, issued.expiresAt).describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plainTan))
+        return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plain))
     }
 
     /** Called directly by AuthSmsToolController, not generically dispatched (docs/08-projektrahmen.md A11). */

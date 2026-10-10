@@ -73,7 +73,7 @@ class ConfirmEmailFlowTest : BehaviorSpec({
         }
 
         `when`("the correct code was submitted") {
-            val decision = ConfirmEmailFlow.decide(state, ConfirmEmailInput(code = issued.plainCode), emailCodeGenerator)
+            val decision = ConfirmEmailFlow.decide(state, ConfirmEmailInput(code = issued.plain), emailCodeGenerator)
 
             then("the enrollment completes for this email") {
                 decision shouldBe ConfirmEmailDecision.Complete("max@example.com")
@@ -81,7 +81,7 @@ class ConfirmEmailFlowTest : BehaviorSpec({
         }
 
         `when`("a different email AND the still-valid code for the old one were submitted together") {
-            val decision = ConfirmEmailFlow.decide(state, ConfirmEmailInput(email = "other@example.com", code = issued.plainCode), emailCodeGenerator)
+            val decision = ConfirmEmailFlow.decide(state, ConfirmEmailInput(email = "other@example.com", code = issued.plain), emailCodeGenerator)
 
             then("the new email wins - a changed address invalidates whatever code was pending for the old one") {
                 decision shouldBe ConfirmEmailDecision.RequestCode("other@example.com")

@@ -28,7 +28,7 @@ private class Fixture(
     confirmationAttempts: Int = 0,
     expiresAt: Instant = TEST_NOW.plusSeconds(60),
 ) {
-    val digest = ConfirmationCodeDigest("test-pepper")
+    val digest = ConfirmationCodeDigest("test-pepper", TEST_CLOCK)
     val request = QrLoginRequest(pairingCode = PAIRING, expectedAccountId = expectedAccountId, createdAt = TEST_NOW).apply {
         this.status = status
         this.resolvingAccountId = resolvingAccountId
@@ -39,7 +39,7 @@ private class Fixture(
         every { it.findById(any()) } returns Optional.empty()
         every { it.findById(PAIRING) } returns Optional.of(request)
         every { it.completeIfConfirmed(PAIRING, any(), any()) } returns 0
-        every { it.completeIfConfirmed(PAIRING, digest.of(RIGHT_CODE), any()) } returns 1
+        every { it.completeIfConfirmed(PAIRING, digest.digest(RIGHT_CODE), any()) } returns 1
         every { it.countWrongConfirmation(PAIRING, any()) } returns 1
     }
     val browserSide = QrLoginBrowserSide(requests, digest, clock = TEST_CLOCK)

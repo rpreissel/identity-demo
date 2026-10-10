@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_email.internal.authemail
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.otp.OneTimeCodes
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.AccountId
@@ -52,7 +53,7 @@ private class Fixture {
     }
 
     /** Persists a pending code for [toolSessionId] and returns it. */
-    fun withPendingCode(): EmailCodeGenerator.Issued = codes.issue().also { issued ->
+    fun withPendingCode(): OneTimeCodes.Issued = codes.issue().also { issued ->
         sessions.save(toolSessionId, AuthEmailToolSession(issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt))
     }
 }
@@ -114,7 +115,7 @@ class AuthEmailToolHandlerTest : BehaviorSpec({
         val issued = f.withPendingCode()
 
         `when`("confirming with the correct code") {
-            val outcome = f.handler.patch(f.toolSessionId, issued.plainCode, f.accountId)
+            val outcome = f.handler.patch(f.toolSessionId, issued.plain, f.accountId)
 
             then("it authenticates at its tool's own level and factors") {
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()

@@ -52,7 +52,7 @@ class QrLoginBrowserSide(
             QrLoginStatus.APPROVED -> when {
                 expired -> State.Failed(EXPIRED)
                 confirmationCode.isNullOrBlank() -> State.EnterCode
-                requests.completeIfConfirmed(pairingCode, confirmationCodeDigest.of(confirmationCode), now) == 1 ->
+                requests.completeIfConfirmed(pairingCode, confirmationCodeDigest.digest(confirmationCode), now) == 1 ->
                     State.Confirmed(
                         checkNotNull(request.resolvingAccountId) { "APPROVED QrLoginRequest without resolvingAccountId" },
                         request.expectedAccountId

@@ -66,14 +66,14 @@ class ConfirmEmailToolHandler(
                         toolSessionId,
                         data.copy(email = decision.email, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt),
                     )
-                    mailServer.sendCode(decision.email, issued.plainCode)
+                    mailServer.sendCode(decision.email, issued.plain)
 
                     val state = ConfirmEmailState.AwaitingCode(decision.email, issued.hash, issued.expiresAt)
                     val (step, fields) = state.describe()
                     // demoTan: reuses the existing demo-value plumbing (docs/05-api.md #1's `demo`
                     // object) - this is a demo, not a real mail gateway, and a second field for
                     // "the other kind of demo code" would be unnecessary special-casing.
-                    ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plainCode))
+                    ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plain))
                 }
             }
 

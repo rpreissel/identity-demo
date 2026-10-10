@@ -31,7 +31,7 @@ class AuthEmailFlowTest : BehaviorSpec({
         }
 
         `when`("the correct code was submitted") {
-            val decision = AuthEmailFlow.decide(state, AuthEmailInput(issued.plainCode), emailCodeGenerator)
+            val decision = AuthEmailFlow.decide(state, AuthEmailInput(issued.plain), emailCodeGenerator)
 
             then("it completes") {
                 decision shouldBe AuthEmailDecision.Complete

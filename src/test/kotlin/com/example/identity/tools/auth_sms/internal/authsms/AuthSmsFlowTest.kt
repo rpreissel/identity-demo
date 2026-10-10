@@ -31,7 +31,7 @@ class AuthSmsFlowTest : BehaviorSpec({
         }
 
         `when`("the correct tan was submitted") {
-            val decision = AuthSmsFlow.decide(state, AuthSmsInput(issued.plainTan), tanGenerator)
+            val decision = AuthSmsFlow.decide(state, AuthSmsInput(issued.plain), tanGenerator)
 
             then("it completes") {
                 decision shouldBe AuthSmsDecision.Complete

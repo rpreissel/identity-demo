@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_email.internal.confirmemail
 
 import com.example.identity.contract.tool_api.ids.ToolSessionId
+import com.example.identity.contract.tool_api.otp.OneTimeCodes
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
@@ -43,7 +44,7 @@ private class Fixture {
     }
 
     /** Persists a pending code for [address] and returns it. */
-    fun withPendingCode(address: String): EmailCodeGenerator.Issued = codes.issue().also { issued ->
+    fun withPendingCode(address: String): OneTimeCodes.Issued = codes.issue().also { issued ->
         sessions.save(toolSessionId, ConfirmEmailToolSession(email = address, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt))
     }
 }
@@ -107,7 +108,7 @@ class ConfirmEmailToolHandlerTest : BehaviorSpec({
         val issued = f.withPendingCode("max@example.com")
 
         `when`("confirming with the correct code") {
-            val outcome = f.handler.patch(f.toolSessionId, email = null, code = issued.plainCode)
+            val outcome = f.handler.patch(f.toolSessionId, email = null, code = issued.plain)
 
             then("it attests the address without creating a credential") {
                 outcome shouldBe ToolOutcome.Completed.Attested(

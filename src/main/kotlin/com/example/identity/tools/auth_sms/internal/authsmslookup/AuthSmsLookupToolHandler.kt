@@ -72,8 +72,8 @@ class AuthSmsLookupToolHandler(
         // Only actually "send" (and reveal a demoTan for) an SMS when the email really resolved
         // to an account with an active sms method - otherwise there is nothing to send to.
         return if (enrollment != null) {
-            smsGateway.sendTan(enrollment, issued.plainTan)
-            ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plainTan))
+            smsGateway.sendTan(enrollment, issued.plain)
+            ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plain))
         } else {
             ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = state.demo)
         }

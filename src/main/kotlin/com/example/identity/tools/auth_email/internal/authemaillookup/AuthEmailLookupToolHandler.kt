@@ -63,8 +63,8 @@ class AuthEmailLookupToolHandler(
         // Only actually "send" (and reveal a demo code for) an email when it really resolved to
         // a confirmed account address - otherwise there is nothing to send to.
         return if (confirmedEmail != null) {
-            mailServer.sendCode(confirmedEmail, issued.plainCode)
-            ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plainCode))
+            mailServer.sendCode(confirmedEmail, issued.plain)
+            ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plain))
         } else {
             ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = state.demo)
         }

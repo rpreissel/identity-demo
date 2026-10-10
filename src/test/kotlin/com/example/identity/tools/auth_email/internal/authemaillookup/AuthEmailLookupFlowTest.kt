@@ -46,7 +46,7 @@ class AuthEmailLookupFlowTest : BehaviorSpec({
         }
 
         `when`("the correct code was submitted") {
-            val decision = AuthEmailLookupFlow.decideCode(state, issued.plainCode, emailCodeGenerator)
+            val decision = AuthEmailLookupFlow.decideCode(state, issued.plain, emailCodeGenerator)
 
             then("it completes for that account") {
                 decision shouldBe AuthEmailLookupDecision.Complete(AccountId(42L))
@@ -59,7 +59,7 @@ class AuthEmailLookupFlowTest : BehaviorSpec({
         val state = AuthEmailLookupState.AwaitingCode(accountId = null, issued.hash, issued.expiresAt)
 
         `when`("the code that would have matched a real account is submitted") {
-            val decision = AuthEmailLookupFlow.decideCode(state, issued.plainCode, emailCodeGenerator)
+            val decision = AuthEmailLookupFlow.decideCode(state, issued.plain, emailCodeGenerator)
 
             then("it still fails - there is no account to complete for") {
                 decision shouldBe AuthEmailLookupDecision.WrongCode(null)

@@ -81,13 +81,13 @@ class EnrollSmsToolHandler(
                         consented = data.consented || consent == true,
                     ),
                 )
-                smsGateway.sendTan(decision.phoneNumber, issued.plainTan)
+                smsGateway.sendTan(decision.phoneNumber, issued.plain)
 
                 val state = EnrollSmsState.AwaitingTan(decision.phoneNumber, issued.hash, issued.expiresAt)
                 val (step, fields) = state.describe(data.replaces, needsConsent = false)
                 // demoTan: this is a demo, not a real SMS gateway - showing it in the UI means
                 // testers don't need server-log access (docs/verfahren/sms.md).
-                ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plainTan))
+                ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plain))
             }
 
             is EnrollSmsDecision.Complete -> {

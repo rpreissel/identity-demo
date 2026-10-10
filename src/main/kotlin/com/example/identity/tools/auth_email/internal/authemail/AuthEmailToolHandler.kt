@@ -47,10 +47,10 @@ class AuthEmailToolHandler(
         }
         val issued = emailCodeGenerator.issue()
         sessions.save(toolSessionId, AuthEmailToolSession(issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt))
-        mailServer.sendCode(email, issued.plainCode)
+        mailServer.sendCode(email, issued.plain)
 
         val (step, fields) = AuthEmailState(issued.hash, issued.expiresAt).describe()
-        return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plainCode))
+        return ToolOutcome.InProgress(nextStep = step, stepData = fields, demo = mapOf("tan" to issued.plain))
     }
 
     /**

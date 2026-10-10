@@ -136,7 +136,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
         every { accountDirectory.anchorValue(AccountId(42L), AttributeType.EMAIL) } returns "max@example.com"
 
         `when`("confirming with the correct code") {
-            val outcome = handler.patch(toolSessionId, issued.plainCode)
+            val outcome = handler.patch(toolSessionId, issued.plain)
 
             then("it authenticates for that account at its tool's own level and factors") {
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
@@ -166,7 +166,7 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
         sessions.save(toolSessionId, AuthEmailLookupToolSession(accountId = null, issuedCodeHash = issued.hash, codeExpiresAt = issued.expiresAt))
 
         `when`("submitting even the issued code") {
-            val outcome = handler.patch(toolSessionId, issued.plainCode)
+            val outcome = handler.patch(toolSessionId, issued.plain)
 
             then("it fails with the same wording and names no account to charge") {
                 outcome shouldBe ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder Code ungueltig"), attempted = null)

@@ -580,9 +580,9 @@ damit die Antwortzeit nichts verrät. Ein Passwort hat höchstens 128 Zeichen
 Die Anmeldung per Lookup antwortet immer gleich mit „E-Mail oder Passwort ungültig“
 ([`AuthPasswordLookupToolHandler.patch`](../src/main/kotlin/com/example/identity/tools/auth_password/internal/authpasswordlookup/AuthPasswordLookupToolHandler.kt#L42)).
 
-**SMS und E-Mail** ([`TanGenerator`](../src/main/kotlin/com/example/identity/tools/auth_sms/internal/TanGenerator.kt#L21),
-[`matches`](../src/main/kotlin/com/example/identity/tools/auth_sms/internal/TanGenerator.kt#L40),
-[`EmailCodeGenerator.matches`](../src/main/kotlin/com/example/identity/tools/auth_email/internal/EmailCodeGenerator.kt#L40)):
+**SMS und E-Mail** ([`OneTimeCodes`](../src/main/kotlin/com/example/identity/contract/tool_api/otp/OneTimeCodes.kt#L18),
+[`matches`](../src/main/kotlin/com/example/identity/contract/tool_api/otp/OneTimeCodes.kt#L37),
+von `TanGenerator`, `EmailCodeGenerator` und `ConfirmationCodeDigest` geteilt):
 Der Code hat sechs Ziffern aus `SecureRandom`. Gespeichert wird er als HMAC-SHA256 mit einem
 Pepper (einem geheimen Zusatzwert des Servers). Er ist 5 Minuten gültig, und der Vergleich läuft in
 konstanter Zeit. Eine falsche TAN

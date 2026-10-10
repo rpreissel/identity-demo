@@ -163,7 +163,7 @@ class EnrollSmsToolHandlerTest : BehaviorSpec({
         )
 
         `when`("confirming with the correct TAN") {
-            val outcome = f.handler.patch(f.toolSessionId, version = 1, phoneNumber = null, tan = issued.plainTan, masterKey = { f.keyId })
+            val outcome = f.handler.patch(f.toolSessionId, version = 1, phoneNumber = null, tan = issued.plain, masterKey = { f.keyId })
 
             // The confirmed number is an assertion about the subject, so it reaches the account's
             // claim log (AccountService.recordClaims) - in its normalized form, not as typed.

@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_sms.internal.authsms
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
+import com.example.identity.contract.tool_api.otp.OneTimeCodes
 import com.example.identity.tools.auth_sms.internal.SmsNumbers
 import com.example.identity.core.account.application.ClaimCryptoFixture
 import com.example.identity.contract.tool_api.ids.ToolSessionId
@@ -54,7 +55,7 @@ private class Fixture {
     }
 
     /** Persists a pending TAN for [toolSessionId], bound to [enrollmentRefId], and returns it. */
-    fun withPendingTan(enrollmentRefId: String): TanGenerator.Issued = tans.issue().also { issued ->
+    fun withPendingTan(enrollmentRefId: String): OneTimeCodes.Issued = tans.issue().also { issued ->
         sessions.save(toolSessionId, AuthSmsToolSession(enrollmentRefId = enrollmentRefId, issuedTanHash = issued.hash, tanExpiresAt = issued.expiresAt))
     }
 }
@@ -125,7 +126,7 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
         val issued = f.withPendingTan("1")
 
         `when`("confirming with the correct TAN") {
-            val outcome = f.handler.patch(f.toolSessionId, issued.plainTan)
+            val outcome = f.handler.patch(f.toolSessionId, issued.plain)
 
             then("it authenticates at its tool's own level and factors") {
                 val authenticated = outcome.shouldBeInstanceOf<ToolOutcome.Completed.Authenticated>()
@@ -145,7 +146,7 @@ class AuthSmsToolHandlerTest : BehaviorSpec({
         val issued = f.withPendingTan("7")
 
         `when`("the right TAN arrives") {
-            val result = runCatching { f.handler.patch(f.toolSessionId, issued.plainTan) }
+            val result = runCatching { f.handler.patch(f.toolSessionId, issued.plain) }
 
             then("it authenticates nobody and counts nothing: the reference is unresolvable") {
                 shouldThrow<UnresolvableReferenceException> { result.getOrThrow() }
