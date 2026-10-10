@@ -188,10 +188,9 @@ lassen sich mit `bd show` anzeigen.
 außerhalb des Demomodus ist es der einzige Weg zu einer Identifizierung.
 
 **Offene Befunde im Kern:** Sie sind in [offene-befunde.md](offene-befunde.md) gesammelt, dort
-stehen auch die Restrisiken. Ein Punkt muss vor einer produktiven Passwortanmeldung per Lookup
-erledigt sein: Die Sperre für Konto und Person muss einen Versuch vor der Prüfung zählen, nicht erst
-danach ([07-betrieb.md](07-betrieb.md) Abschnitt 4, „Restrisiko: parallele Versuche“,
-`DPoP-demo-164n.29`).
+stehen auch die Restrisiken. Die Kontosperre zählt einen Versuch vor der Prüfung
+([07-betrieb.md](07-betrieb.md) Abschnitt 4, „Kontosperre: vorab gebucht“); damit ist die
+Passwortanmeldung per Lookup gegen parallele Versuche geschützt.
 
 ---
 

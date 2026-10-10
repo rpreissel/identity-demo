@@ -696,10 +696,9 @@ Namensraum. Jede Änderung an einem Zähler ist ein einziges `UPDATE`.
 
 - **Niedrig** Ein erfolgreicher Vorgangszugang setzt den Zähler der Person nicht zurück (A-5, kein
   Issue).
-- **Niedrig, bewusst** Die Kontosperre prüft zuerst und zählt danach. Parallele Versuche über
-  mehrere Kanäle kommen deshalb alle durch die Prüfung, bevor der fünfte Versuch gezählt ist. Das
-  bleibt ein Restrisiko, bis eine Passwortanmeldung per Lookup produktiv geht
-  ([07-betrieb.md](07-betrieb.md) Abschnitt 4, SA-27, `DPoP-demo-164n.29`).
+- **Hinweis, bewusst** Die Personensperre prüft zuerst und zählt danach. Die Kontosperre bucht
+  einen Versuch vorab, die Personensperre nicht. Freischaltcode und Einmalkennwort sind zu lang zum
+  Raten ([07-betrieb.md](07-betrieb.md) Abschnitt 4, SA-27).
 - **Niedrig** Fehlgeschlagene QR-Suchen haben keinen eigenen Zähler
   ([verfahren/qr.md](verfahren/qr.md), „Sicherheit des Pairing-Codes“).
 
@@ -914,7 +913,7 @@ Diese Tabelle fasst alle offenen Punkte der Stationen zusammen.
 | Lookup verrät über Demo-TAN und Versanddauer, ob ein Konto existiert | niedrig | 7 | `DPoP-demo-36xz` |
 | Nect-`retry` ohne Budget, Fälle werden nicht aufgeräumt (S-2) | niedrig | 8, 12 | – |
 | Personenzähler nach erfolgreichem Vorgangszugang (A-5) | niedrig | 9 | – |
-| Kontosperre prüft vor dem Versuch, zählt danach (SA-27) | bewusst | 9 | `DPoP-demo-164n.29` |
+| Personensperre prüft vor dem Versuch, zählt danach (SA-27, Rest) | bewusst | 9 | – |
 | CSP, Refresh-Token und `state` im Frontend | niedrig | 11 | `DPoP-demo-dm2j` |
 | Id des Web-Kanals aus der Tab-Id abgeleitet | Hinweis | 4 | `DPoP-demo-gxis` |
 | Peer-Auth-Zeitfenster 300 s im Profil | Hinweis | 4 | `DPoP-demo-9ppv.13` |

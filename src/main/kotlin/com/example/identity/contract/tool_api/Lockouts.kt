@@ -17,6 +17,14 @@ interface Lockouts {
      */
     fun isLockedOut(accountId: AccountId?): Boolean
 
+    /**
+     * Books one attempt on [accountId] right before a tool checks a secret against it; `false` if
+     * the account is locked, and then nothing is booked. The check and the count are one step, so
+     * parallel attempts cannot all pass before the fifth counts (docs/07-betrieb.md #4). A tool
+     * that books names the account in its outcome; the orchestrator does not count it again.
+     */
+    fun admitAttempt(accountId: AccountId): Boolean
+
     /** Whether [personId] is locked after failed IDENT attempts. `null` answers `false`. */
     fun isIdentLockedOut(personId: PartnerNumber?): Boolean
 }

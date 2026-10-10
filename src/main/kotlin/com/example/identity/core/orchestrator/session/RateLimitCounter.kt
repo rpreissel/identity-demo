@@ -41,6 +41,25 @@ class RateLimitCounter(
         }
     }
 
+    /**
+     * Counts an attempt before it is made, unless [subject] is locked. The attempt is a failure from
+     * here on: a success resets the counter, an attempt that guessed nothing is taken back with
+     * [refundAttempt].
+     *
+     * @return false if [subject] is locked; nothing is counted then.
+     */
+    fun admitAttempt(scope: RateLimitScope, subject: String, maxFailures: Int, lockout: Duration): Boolean {
+        val now = clock.instant()
+        val lockUntil = now.plus(lockout)
+        if (repository.bookAttempt(scope.name, subject, maxFailures, lockUntil, now) == 1) return true
+        ensureRow(scope.name, subject)
+        return (repository.bookAttempt(scope.name, subject, maxFailures, lockUntil, now) == 1).also { if (!it) countBlocked(scope.name) }
+    }
+
+    fun refundAttempt(scope: RateLimitScope, subject: String, maxFailures: Int) {
+        repository.refundAttempt(scope.name, subject, maxFailures, clock.instant())
+    }
+
     fun reset(scope: RateLimitScope, subject: String) = reset(scope.name, subject)
 
     /** [scope] is a [RateLimitScope] name or a module budget's namespace. */

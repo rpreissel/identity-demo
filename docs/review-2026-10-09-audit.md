@@ -220,7 +220,7 @@ fehlt:
   (`PasswordLookupRendererFactoryTest`).
 - Die drei Passwortseiten setzen `autoComplete`. `Field` bleibt sonst bei `off`.
 
-### AU-10 (niedrig) SA-27 ist neu zu bewerten
+### AU-10 (niedrig, behoben für die Kontosperre) SA-27 ist neu zu bewerten
 
 `DPoP-demo-8x0p.6`
 
@@ -234,6 +234,27 @@ Damit bleibt als Grenze nur die Kontosperre, die vor dem Versuch prüft und erst
 Vorschlag: den Versuch vorab buchen (`DPoP-demo-164n.29`) und die Stellen in
 [offene-befunde.md](offene-befunde.md) Abschnitt 6, [07-betrieb.md](07-betrieb.md) Abschnitt 4 und
 im Lesepfad angleichen.
+
+**Behebung (2026-10-10):** Die Kontosperre bucht einen Versuch vor der Prüfung.
+
+- **Buchen:** `RateLimitCounter.admitAttempt` prüft die Sperre und zählt in einer Anweisung.
+  - Tools mit bekanntem Konto buchen in `ToolJourneyService.loadCurrent`.
+  - Lookup-Tools buchen über den neuen Port `Lockouts.admitAttempt`: der Passwort-Lookup im
+    Controller, SMS- und E-Mail-Lookup im Handler vor der Prüfung von TAN oder Code.
+- **Abrechnen:** Ein Fehlversuch wird nur noch protokolliert, ein Erfolg setzt zurück.
+- **Zurückbuchen:** Ein Schritt eines Tools mit bekanntem Konto, der nichts prüft (`InProgress`,
+  `NothingGuessed`), bucht zurück (`refundAttempt`). Eine Aktivierung bucht nichts und bucht deshalb
+  auch nichts zurück.
+- **Tests:**
+  - `RateLimitCounterConcurrencyDbTest`: Von acht gleichzeitigen Versuchen kommen genau fünf
+    durch, und eine Rückbuchung hebt die Sperre auf, die sie ausgelöst hat.
+  - `AccountLockoutServiceTest` und `AuthSmsLookupToolHandlerTest`: Ein gesperrtes Konto sieht aus
+    wie eine falsche TAN.
+  - `AccountRateLimitIntegrationTest` läuft unverändert grün.
+- **Doku:** nachgezogen in [07-betrieb.md](07-betrieb.md) Abschnitt 4, Kapitel 14, im Lesepfad und
+  in [offene-befunde.md](offene-befunde.md).
+- **Offen:** Die Personensperre zählt weiter erst nach dem Versuch. Das bleibt als benanntes
+  Restrisiko stehen.
 
 ### AU-11 (Hinweis) Reste des alten Wegs in Doku und Kommentaren
 
@@ -536,4 +557,5 @@ Diese Bereiche zeigen keinen neuen Befund:
 | AU-1 | Sitzungsnachweise nur für ein Konto je Keycloak-Sitzung | `DPoP-demo-8x0p.1` |
 | AU-2 | Widerrufene Verfahren kommen nicht über `flow-end` zurück | `DPoP-demo-8x0p.2` |
 | AU-9 | Passwortseiten mit `login_hint` und Markup für Passwort-Manager | `DPoP-demo-8x0p.5` |
+| AU-10 | Kontosperre bucht einen Versuch vor der Prüfung | `DPoP-demo-8x0p.6` |
 | AU-4 bis AU-8 | Kleine Härtungen an Sitzungsnachweisen, Schlüsseln und Federation; AU-7 nur für App-Tokens | `DPoP-demo-8x0p.4` |

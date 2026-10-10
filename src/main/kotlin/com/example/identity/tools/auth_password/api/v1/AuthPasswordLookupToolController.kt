@@ -101,8 +101,8 @@ class AuthPasswordLookupToolController(
         // email or no active password method; the handler treats that like a wrong password.
         val resolved = body.email?.let { accountDirectory.resolveAccountByEmail(it) }
         // A rate-limited account becomes null like an unknown address. A 423 here would tell an
-        // attacker which addresses have accounts.
-        val accountId = resolved.takeUnless { lockouts.isLockedOut(it) }
+        // attacker which addresses have accounts. A request with a password books its attempt first.
+        val accountId = resolved?.takeIf { if (body.password != null) lockouts.admitAttempt(it) else !lockouts.isLockedOut(it) }
         val enrollmentRef = accountId?.let { accountDirectory.activeEnrollment(it, PasswordModule.method) }
         val outcome = handler.patch(context.toolSessionId, body.email, body.password, accountId, enrollmentRef)
 

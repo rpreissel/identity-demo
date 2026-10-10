@@ -17,7 +17,7 @@ import java.time.Duration
 
 /**
  * Unit test of [AccountLockoutService] with the counter and the sign-in log mocked. Checks the
- * ACCOUNT scope and that a lockout is logged only by the failure that tripped it.
+ * ACCOUNT scope, the booking before a check, and the logging of a failure and its lockout.
  */
 class AccountLockoutServiceTest : BehaviorSpec({
 
@@ -61,61 +61,79 @@ class AccountLockoutServiceTest : BehaviorSpec({
         }
     }
 
-    given("an unlocked account whose next failure trips the lock") {
+    given("an account the counter admits one more attempt for") {
+        val counter = mockk<RateLimitCounter>()
+        every { counter.admitAttempt(RateLimitScope.ACCOUNT, key, any(), any()) } returns true
+        justRun { counter.refundAttempt(RateLimitScope.ACCOUNT, key, any()) }
+        val service = AccountLockoutService(counter, mockk(relaxed = true), clock = TEST_CLOCK)
+
+        `when`("an attempt is booked") {
+            val admitted = service.admitAttempt(accountId)
+
+            then("it books with the service's limit and lockout duration") {
+                admitted shouldBe true
+                verify(exactly = 1) { counter.admitAttempt(RateLimitScope.ACCOUNT, key, 5, Duration.ofMinutes(15)) }
+            }
+        }
+
+        `when`("a booked attempt that checked nothing is given back") {
+            service.refund(accountId)
+
+            then("it takes it back under the same limit") {
+                verify(exactly = 1) { counter.refundAttempt(RateLimitScope.ACCOUNT, key, 5) }
+            }
+        }
+    }
+
+    given("an account the counter admits no attempt for") {
+        val counter = mockk<RateLimitCounter>()
+        every { counter.admitAttempt(RateLimitScope.ACCOUNT, key, any(), any()) } returns false
+        val service = AccountLockoutService(counter, mockk(relaxed = true), clock = TEST_CLOCK)
+
+        `when`("a known-account tool asks for an attempt") {
+            val result = runCatching { service.requireAttempt(accountId) }
+
+            then("it refuses with ACCOUNT_LOCKED") {
+                shouldThrow<OrchestratorException> { result.getOrThrow() }.code shouldBe ErrorCode.ACCOUNT_LOCKED
+            }
+        }
+    }
+
+    given("a booked attempt whose failure tripped the lock") {
         val counter = mockk<RateLimitCounter>()
         val signInLog = mockk<SignInLog>(relaxed = true)
         val lockedUntil = TEST_NOW.plus(Duration.ofMinutes(15))
-        every { counter.lockedUntil(RateLimitScope.ACCOUNT, key) } returnsMany listOf(null, lockedUntil)
-        justRun { counter.recordFailure(RateLimitScope.ACCOUNT, key, any(), any()) }
+        every { counter.lockedUntil(RateLimitScope.ACCOUNT, key) } returns lockedUntil
         val service = AccountLockoutService(counter, signInLog, clock = TEST_CLOCK)
 
-        `when`("a failure is recorded") {
+        `when`("the failure is recorded") {
             service.recordFailure(accountId, "APP", "sms", "auth-sms@1")
 
-            then("it counts the failure with the service's limit and lockout duration") {
-                verify(exactly = 1) { counter.recordFailure(RateLimitScope.ACCOUNT, key, 5, Duration.ofMinutes(15)) }
+            then("it does not count again: the booking counted") {
+                verify(exactly = 0) { counter.recordFailure(any(), any(), any(), any()) }
             }
 
             then("it logs the failed sign-in") {
                 verify(exactly = 1) { signInLog.signInFailed(accountId, "APP", "sms", "auth-sms@1") }
             }
 
-            then("it logs the lockout this failure caused") {
+            then("it logs the lockout") {
                 verify(exactly = 1) { signInLog.lockedOut(accountId, "APP", lockedUntil) }
             }
         }
     }
 
-    given("an account already locked before the failure") {
+    given("a booked attempt whose failure stays below the limit") {
         val counter = mockk<RateLimitCounter>()
         val signInLog = mockk<SignInLog>(relaxed = true)
-        val lockedUntil = TEST_NOW.plus(Duration.ofMinutes(10))
-        every { counter.lockedUntil(RateLimitScope.ACCOUNT, key) } returnsMany listOf(lockedUntil, lockedUntil)
-        justRun { counter.recordFailure(RateLimitScope.ACCOUNT, key, any(), any()) }
+        every { counter.lockedUntil(RateLimitScope.ACCOUNT, key) } returns TEST_NOW.minus(Duration.ofMinutes(1))
         val service = AccountLockoutService(counter, signInLog, clock = TEST_CLOCK)
 
-        `when`("a failure is recorded") {
+        `when`("the failure is recorded") {
             service.recordFailure(accountId, "WEB", "password", "auth-password@1")
 
-            then("it logs the failed sign-in but no second lockout") {
+            then("it logs the failed sign-in and no lockout, an old lock included") {
                 verify(exactly = 1) { signInLog.signInFailed(accountId, "WEB", "password", "auth-password@1") }
-                verify(exactly = 0) { signInLog.lockedOut(any(), any(), any()) }
-            }
-        }
-    }
-
-    given("an unlocked account whose failure stays below the limit") {
-        val counter = mockk<RateLimitCounter>()
-        val signInLog = mockk<SignInLog>(relaxed = true)
-        every { counter.lockedUntil(RateLimitScope.ACCOUNT, key) } returns null
-        justRun { counter.recordFailure(RateLimitScope.ACCOUNT, key, any(), any()) }
-        val service = AccountLockoutService(counter, signInLog, clock = TEST_CLOCK)
-
-        `when`("a failure is recorded") {
-            service.recordFailure(accountId, "APP", "sms", "auth-sms@1")
-
-            then("it logs the failed sign-in and no lockout") {
-                verify(exactly = 1) { signInLog.signInFailed(accountId, "APP", "sms", "auth-sms@1") }
                 verify(exactly = 0) { signInLog.lockedOut(any(), any(), any()) }
             }
         }

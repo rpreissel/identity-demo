@@ -1,5 +1,6 @@
 package com.example.identity.tools.auth_email.internal.authemaillookup
 import com.example.identity.contract.tool_api.ToolSessionData
+import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted
@@ -28,6 +29,7 @@ class AuthEmailLookupToolHandler(
     private val emailCodeGenerator: EmailCodeGenerator,
     private val mailServer: MailServer,
     private val sendLimit: EmailSendLimit,
+    private val lockouts: Lockouts,
 ) {
 
     @Transactional
@@ -72,6 +74,10 @@ class AuthEmailLookupToolHandler(
     @Transactional
     fun patch(toolSessionId: ToolSessionId, code: String?): ToolOutcome {
         val data = sessions.require<AuthEmailLookupToolSession>(toolSessionId)
+        // A code is checked only after its attempt is booked. A locked account looks like a wrong code.
+        if (code != null && data.accountId != null && !lockouts.admitAttempt(data.accountId)) {
+            return ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder Code ungueltig"), attempted = null)
+        }
 
         return when (val decision = AuthEmailLookupFlow.decideCode(data.toState(toolSessionId), code, emailCodeGenerator)) {
             is AuthEmailLookupDecision.Unchanged -> outcomeFor(decision.state)

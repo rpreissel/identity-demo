@@ -1,6 +1,7 @@
 package com.example.identity.tools.auth_email.internal.authemaillookup
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
@@ -37,7 +38,8 @@ class AuthEmailLookupToolHandlerTest : BehaviorSpec({
     val emailCodeGenerator = EmailCodeGenerator("test-pepper", clock = TEST_CLOCK)
     val sendLimit = mockk<EmailSendLimit>(relaxed = true).also { every { it.trySend(any()) } returns true }
     val mailServer = MailServer(clock = TEST_CLOCK)
-    val handler = AuthEmailLookupToolHandler(sessions, accountDirectory, emailCodeGenerator, mailServer, sendLimit)
+    val lockouts = mockk<Lockouts> { every { admitAttempt(any()) } returns true }
+    val handler = AuthEmailLookupToolHandler(sessions, accountDirectory, emailCodeGenerator, mailServer, sendLimit, lockouts)
 
     // What every unresolved submission answers: the code step, no demo code, nothing naming an account.
     val neutralAnswer = ToolOutcome.InProgress(nextStep = "codeInput", stepData = MissingFields(listOf("code")), demo = emptyMap())

@@ -190,11 +190,9 @@ stillschweigend etwas von der Umgebung voraussetzt.
 
 ## 6. Bewusst in Kauf genommen
 
-- **SA-27 Die Konto- und Personensperre prüft vor dem Versuch und zählt danach.** Parallele Versuche
-  über mehrere Kanäle kommen alle durch die Prüfung, bevor der fünfte Versuch gezählt ist. Praktisch
-  betrifft das Passwörter, und die sind durch `PasswordPolicy` und Argon2 geschützt. Das muss
-  nachgeholt werden, bevor eine Passwortanmeldung per Lookup produktiv geht
-  ([07-betrieb.md](07-betrieb.md) Abschnitt 4). `DPoP-demo-164n.29` (zurückgestellt)
+- **SA-27 (Rest) Die Personensperre prüft vor dem Versuch und zählt danach.** Die Kontosperre bucht
+  seit dem Audit vom 2026-10-09 vorab (AU-10). Für Personen bleibt es dabei: Freischaltcode und
+  Einmalkennwort sind zu lang zum Raten ([07-betrieb.md](07-betrieb.md) Abschnitt 4).
 - **S-7 `auth-invite` und `ident-fsc`: Eine unbekannte Nummer kostet nichts, eine bekannte
   antwortet messbar anders.** Ein Angreifer kann also erkennen, ob eine Nummer existiert. Das
   Kennwort selbst lässt sich aber nicht erraten. Zusammen mit `DPoP-demo-36xz`.

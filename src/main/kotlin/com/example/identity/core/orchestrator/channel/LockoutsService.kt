@@ -16,6 +16,8 @@ class LockoutsService(
     override fun isLockedOut(accountId: AccountId?): Boolean =
         accountId?.let { accountLockoutService.isLocked(it) } ?: false
 
+    override fun admitAttempt(accountId: AccountId): Boolean = accountLockoutService.admitAttempt(accountId)
+
     override fun isIdentLockedOut(personId: PartnerNumber?): Boolean =
         personId?.let { personLockoutService.isLocked(it) } ?: false
 }

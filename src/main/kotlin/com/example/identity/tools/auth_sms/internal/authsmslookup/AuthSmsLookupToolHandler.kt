@@ -4,6 +4,7 @@ import com.example.identity.contract.tool_api.require
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted
+import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.simulation.sms.SmsGateway
 import com.example.identity.contract.texts.Text
 import com.example.identity.tools.auth_sms.internal.TanGenerator
@@ -35,6 +36,7 @@ class AuthSmsLookupToolHandler(
     private val sendLimit: SmsSendLimit,
     private val accountDirectory: AccountDirectory,
     private val numbers: SmsNumbers,
+    private val lockouts: Lockouts,
 ) {
 
     @Transactional
@@ -81,6 +83,10 @@ class AuthSmsLookupToolHandler(
     @Transactional
     fun patch(toolSessionId: ToolSessionId, tan: String?): ToolOutcome {
         val data = sessions.require<AuthSmsLookupToolSession>(toolSessionId)
+        // A TAN is checked only after its attempt is booked. A locked account looks like a wrong TAN.
+        if (tan != null && data.accountId != null && !lockouts.admitAttempt(data.accountId)) {
+            return ToolOutcome.Failed.AccountLookupAuth(Text("E-Mail oder TAN ungueltig"), attempted = null)
+        }
 
         return when (val decision = AuthSmsLookupFlow.decideTan(data.toState(toolSessionId), tan, tanGenerator)) {
             is AuthSmsLookupDecision.Unchanged -> outcomeFor(decision.state)

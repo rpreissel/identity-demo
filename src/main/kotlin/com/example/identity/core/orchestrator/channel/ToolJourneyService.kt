@@ -183,9 +183,11 @@ class ToolJourneyService(
         val context = loadContext(toolSessionId, bindingKeyRef, tool)
         requireCurrentTool(context)
         // On every attempt, not only at activation: a session opened before the lock must not keep
-        // guessing, nor sign in with the right password while the account is locked (07-betrieb #4).
+        // guessing, nor sign in with the right password while the account is locked. Booked before
+        // the tool checks anything, so parallel attempts cannot outrun the count (07-betrieb #4);
+        // [chargeRateLimits] settles it.
         if (toolRegistry.toolOf(tool.toolId).role == ToolRole.KNOWN_ACCOUNT_AUTH) {
-            context.accountId?.let { accountLockoutService.assertNotLocked(it) }
+            context.accountId?.let { accountLockoutService.requireAttempt(it) }
         }
         return context
     }
@@ -284,7 +286,8 @@ class ToolJourneyService(
         val live = resolveChannel(ctx, journey)
         val channel = live.session
         val descriptor = toolRegistry.toolOf(ToolId(ctx.toolId))
-        chargeRateLimits(channel.accountId, channel.channel?.name, descriptor, "${ctx.toolId}@${ctx.version}", outcome)
+        // An activation checks the lock but books nothing; only [loadCurrent] books.
+        chargeRateLimits(channel.accountId, channel.channel?.name, descriptor, "${ctx.toolId}@${ctx.version}", outcome, booked = context !is Activation)
         // A completed tool is done for good, even while the journey still names it as active.
         if (outcome is ToolOutcome.Completed) sessionManagementService.endToolSession(ctx.toolSessionId, ToolSessionStatus.DONE)
 
@@ -307,13 +310,17 @@ class ToolJourneyService(
     }
 
     /**
-     * Charges the brute-force counter matching what this tool attempted. A failure names its
-     * subject by its variant ([ToolOutcome.Failed]); a success resets the same counter. A lookup
-     * login's subject comes from the outcome, since the channel's account is bound only later.
+     * Settles the brute-force counters for what this tool attempted. An account attempt was booked
+     * before the check ([loadCurrent], or the lookup tool via `Lockouts.admitAttempt`): a failure only
+     * logs it, a success resets the counter, and a known-account step that checked nothing gives it
+     * back. A person's attempt is counted here. A lookup login's subject comes from the outcome,
+     * since the channel's account is bound only later.
      */
-    private fun chargeRateLimits(channelAccountId: AccountId?, channelType: String?, descriptor: Tool, toolVersion: String, outcome: ToolOutcome) {
+    private fun chargeRateLimits(channelAccountId: AccountId?, channelType: String?, descriptor: Tool, toolVersion: String, outcome: ToolOutcome, booked: Boolean) {
+        val bookedAccount = channelAccountId.takeIf { booked && descriptor.role == ToolRole.KNOWN_ACCOUNT_AUTH }
         when (outcome) {
-            is ToolOutcome.InProgress -> Unit
+            // A resent code or a step without a secret: no guess was made.
+            is ToolOutcome.InProgress -> bookedAccount?.let { accountLockoutService.refund(it) }
 
             // An outcome of another role's kind would charge the wrong counter or take the wrong
             // action: a contract error of the tool module, not a user error.
@@ -333,7 +340,7 @@ class ToolJourneyService(
                     // person's account outright.
                     is ToolOutcome.Failed.Identification -> outcome.attemptedPersonId?.let { personLockoutService.recordFailure(it) }
                     // Nothing of an existing account was guessed; the ToolSession's own limits bound it.
-                    is ToolOutcome.Failed.NothingGuessed -> Unit
+                    is ToolOutcome.Failed.NothingGuessed -> bookedAccount?.let { accountLockoutService.refund(it) }
                 }
             }
 

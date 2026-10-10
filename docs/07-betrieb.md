@@ -572,24 +572,27 @@ Diese vier sind die **Sperren** bzw. sperrenähnlichen Zähler des Orchestrators
 gelten für Rateversuche gegen ein Konto oder eine Person, über alle Tools und Kanäle hinweg. Nur ein
 Erfolg setzt sie zurück. Manche Tools finden ihr Subjekt (das Konto oder die Person) selbst, nämlich
 die Anmeldung per Lookup und die Identifizierung. Diese Tools lesen die Sperren über den Port
-`Lockouts`. Schreiben kann sie nur der Orchestrator, und zwar aus dem `Failed`-Ergebnis des Tools.
+`Lockouts`.
 
-**Restrisiko: parallele Versuche.** `ACCOUNT` und `PERSON` werden vor einem Versuch nur gelesen. Gezählt
-wird erst nach dem Ergebnis. Treffen Versuche gleichzeitig über mehrere Kanäle ein, bestehen deshalb
-alle die Prüfung, bevor der fünfte Fehlversuch zählt. Die Grenze von fünf Fehlversuchen je
-15 Minuten gilt dann nur ungefähr.
+**Kontosperre: vorab gebucht.** Ein Versuch gegen ein Konto wird gezählt, bevor das Geheimnis geprüft
+wird, und zwar in derselben Anweisung, die die Sperre prüft (`RateLimitCounter.admitAttempt`).
+Parallele Versuche über mehrere Kanäle kommen deshalb nicht an der Grenze vorbei: Von acht
+gleichzeitigen Versuchen kommen genau fünf durch (`RateLimitCounterConcurrencyDbTest`).
 
-Praktisch betrifft das nur das Raten von Passwörtern:
+- Ein Tool mit bekanntem Konto bucht bei jedem `PATCH` (`ToolJourneyService.loadCurrent`). Ist das
+  Konto gesperrt, folgt `423`.
+- Ein Lookup-Tool bucht selbst über `Lockouts.admitAttempt`, direkt vor der Prüfung von Passwort,
+  TAN oder Code. Ist das Konto gesperrt, sieht die Antwort aus wie ein falsches Geheimnis.
+- Ein Fehlversuch ist damit schon gezählt. Der Orchestrator schreibt ihn nur noch ins
+  Anmeldeprotokoll. Ein Erfolg setzt den Zähler zurück.
+- Ein Schritt eines Tools mit bekanntem Konto, der nichts prüft (etwa ein neu angeforderter Code),
+  bucht den Versuch zurück. Scheitert eine Anfrage nach der Buchung mit einem Fehler, bleibt der
+  Versuch gezählt: im Zweifel gegen den Angreifer.
 
-- Codes sind schon durch das Budget der Journey und das Versandlimit begrenzt.
-- Freischaltcode und Einmalkennwort sind zu lang zum Raten.
-- Ein Passwort ist durch `PasswordPolicy` und die Rechenkosten von Argon2 geschützt.
-
-Das ist bewusst so gelassen. Den Versuch vorab zu buchen, würde den Port `Lockouts` ändern. Außerdem
-bräuchte es ein Zurückbuchen für Zwischenschritte ohne Prüfung. Bevor eine Passwortanmeldung per
-Lookup produktiv eingesetzt wird, gehört der Versuch vorab gebucht
-([14](14-stand-und-weg-zur-produktion.md) Abschnitt 5). Bis dahin begrenzt eine Ratenbegrenzung je
-Absender am Eingang (Proxy oder WAF) solche Häufungen gleichzeitiger Anfragen (`DPoP-demo-164n.29`).
+**Restrisiko: Personensperre.** `PERSON` wird vor einem Versuch nur gelesen und erst nach dem
+Ergebnis gezählt. Parallele Versuche bestehen deshalb alle die Prüfung, bevor der fünfte zählt.
+Praktisch ist das ohne Wirkung: Freischaltcode und Einmalkennwort sind zu lang zum Raten, und ein
+Versuch mit Code ist durch das Budget der Journey und das Versandlimit begrenzt.
 
 ### Die Versandlimits der Tool-Module
 

@@ -76,6 +76,56 @@ interface RateLimitRecordRepository : JpaRepository<RateLimitRecord, RateLimitRe
         @Param("now") now: Instant
     ): Int
 
+    /**
+     * [incrementFailure] for an attempt not yet made: counts it only while the subject is not
+     * locked, in the same statement. So the check and the count cannot be split by a parallel
+     * attempt (docs/07-betrieb.md #4).
+     *
+     * @return 0 when no counter row exists yet, or the subject is locked.
+     */
+    @Modifying
+    @Query(
+        """
+            update RateLimitRecord t
+               set t.failedCount = case when t.lockedUntil <= :now then 1 else t.failedCount + 1 end,
+                   t.lockedUntil = case
+                       when (case when t.lockedUntil <= :now then 1 else t.failedCount + 1 end) >= :maxFailures then :lockUntil
+                       when t.lockedUntil <= :now then null
+                       else t.lockedUntil end,
+                   t.updatedAt = :now
+             where t.id.scope = :scope and t.id.subject = :subject
+               and (t.lockedUntil is null or t.lockedUntil <= :now)
+        """
+    )
+    fun bookAttempt(
+        @Param("scope") scope: String,
+        @Param("subject") subject: String,
+        @Param("maxFailures") maxFailures: Int,
+        @Param("lockUntil") lockUntil: Instant,
+        @Param("now") now: Instant
+    ): Int
+
+    /**
+     * Takes back one attempt [bookAttempt] counted but that guessed nothing. A lock that booking
+     * tripped goes with it once the count is below [maxFailures] again.
+     */
+    @Modifying
+    @Query(
+        """
+            update RateLimitRecord t
+               set t.failedCount = case when t.failedCount > 0 then t.failedCount - 1 else 0 end,
+                   t.lockedUntil = case when t.failedCount - 1 < :maxFailures then null else t.lockedUntil end,
+                   t.updatedAt = :now
+             where t.id.scope = :scope and t.id.subject = :subject and t.failedCount > 0
+        """
+    )
+    fun refundAttempt(
+        @Param("scope") scope: String,
+        @Param("subject") subject: String,
+        @Param("maxFailures") maxFailures: Int,
+        @Param("now") now: Instant
+    ): Int
+
     @Modifying
     @Query(
         """
