@@ -74,6 +74,9 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
 
             if ("list".equals(pendingKind)) {
                 if ("done".equals(form.getFirst("action"))) {
+                    // This runs after the flow's end-of-flow hook: a step-up made here reaches the
+                    // session only through a report of its own (ADR-59). The report is idempotent.
+                    OrchestratorNotes.reportFlowEnd(context.getSession(), authSession, client, LOG);
                     context.success();
                     return;
                 }

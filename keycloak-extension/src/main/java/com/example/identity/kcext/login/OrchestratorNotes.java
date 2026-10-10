@@ -114,7 +114,8 @@ public final class OrchestratorNotes {
 
     /**
      * The end-of-flow hook, called from {@link OrchestratorResumeAuthenticator#onTopFlowSuccess} once
-     * the whole top-level flow is done: tells the orchestrator which Keycloak session this channel
+     * the whole top-level flow is done, and again when {@link OrchestratorManageMethodsRequiredAction}
+     * finishes after it: tells the orchestrator which Keycloak session this channel
      * belongs to, so it records what the channel proved for that session (ADR-59). On a first login
      * no UserSessionModel exists yet; Keycloak creates it with the parent session's id.
      */

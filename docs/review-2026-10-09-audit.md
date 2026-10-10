@@ -132,7 +132,7 @@ Sitzungsende.
 - Zwei neue Fälle in `KeycloakChannelIntegrationTest`: ein Tab, der nach dem Widerruf endet, und
   eine verwaiste Zeile eines widerrufenen Verfahrens.
 
-### AU-3 (Hinweis) „Verfahren verwalten“ meldet seine Nachweise nicht
+### AU-3 (Hinweis, behoben) „Verfahren verwalten“ meldet seine Nachweise nicht
 
 `DPoP-demo-8x0p.3`
 
@@ -144,6 +144,11 @@ widerspricht ADR-59, wonach jeder Durchlauf seine Nachweise meldet.
 **Vorschlag:** Beim Abschluss der Required Action noch einmal `reportFlowEnd` rufen; der Aufruf ist
 idempotent. Alternativ „Verfahren verwalten“ als Intent über den `OrchestratorAuthenticator` führen
 (siehe V-E1). Damit ist auch K-3 gelöst.
+
+**Behebung (2026-10-10):** Die Required Action ruft beim Abschluss („done“) `reportFlowEnd` für
+ihren Kanal. Der Aufruf ist idempotent; der Orchestrator prüft dabei wie sonst das Konto der Sitzung.
+Einen Test der Required Action gibt es weiter nicht (Q-6/K-10). Am laufenden System ist die Änderung
+nicht geprüft.
 
 ### AU-4 bis AU-8 (Hinweise, behoben bis auf einen Teil von AU-7) Kleine Härtungen
 
@@ -557,5 +562,6 @@ Diese Bereiche zeigen keinen neuen Befund:
 | AU-1 | Sitzungsnachweise nur für ein Konto je Keycloak-Sitzung | `DPoP-demo-8x0p.1` |
 | AU-2 | Widerrufene Verfahren kommen nicht über `flow-end` zurück | `DPoP-demo-8x0p.2` |
 | AU-9 | Passwortseiten mit `login_hint` und Markup für Passwort-Manager | `DPoP-demo-8x0p.5` |
+| AU-3 | „Verfahren verwalten“ meldet seine Nachweise an die Sitzung | `DPoP-demo-8x0p.3` |
 | AU-10 | Kontosperre bucht einen Versuch vor der Prüfung | `DPoP-demo-8x0p.6` |
 | AU-4 bis AU-8 | Kleine Härtungen an Sitzungsnachweisen, Schlüsseln und Federation; AU-7 nur für App-Tokens | `DPoP-demo-8x0p.4` |

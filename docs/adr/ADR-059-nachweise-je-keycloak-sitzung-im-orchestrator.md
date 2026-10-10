@@ -34,6 +34,9 @@ soll.
   jüngeren Nachweis (`updateIfYounger`). Alle Zeilen der Sitzung enden mit `sessionExpiresAt`.
   Nennt Keycloak keinen Wert, enden sie nach 12 Stunden. Ein Kanal einer Einladung legt nichts ab
   ([ADR-48](ADR-048-vorgangszugang-mit-einmalkennwort.md)).
+- **Verfahren verwalten.** Die Required Action läuft erst nach dem Ende des Flows. Was sie
+  nachweist, etwa einen Step-up auf `loa2`, meldet sie beim Abschluss mit einem eigenen `flow-end`
+  desselben Kanals.
 - **Ein Konto je Sitzung.** Alle Zeilen einer Sitzung gehören dem Konto, das sich dort angemeldet
   hat. Die Extension meldet am Ende nur eine Sitzung desselben Nutzers wie der Durchlauf. Hat ein
   anderer Tab inzwischen einen anderen Nutzer angemeldet, meldet sie nichts. Keycloak lehnt einen
