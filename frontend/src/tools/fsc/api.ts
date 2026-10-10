@@ -1,3 +1,4 @@
+import type { IdentFscPatchRequest } from '../../generated/models'
 import { submitViaPatch } from '../shared/defaultApi'
 import type { ToolRenderContext } from '../types'
 
@@ -14,5 +15,5 @@ export interface FscFields {
 
 /** Any subset: the backend merges each PATCH onto what it already has (docs/verfahren/fsc.md). */
 export function submitFsc(ctx: ToolRenderContext, fields: Partial<FscFields>) {
-  return submitViaPatch(ctx, fields)
+  return submitViaPatch(ctx, fields satisfies IdentFscPatchRequest)
 }

@@ -1,10 +1,11 @@
+import type { AuthKobilPatchRequest, EnrollKobilPatchRequest } from '../../generated/models'
 import { describeError, postToolSubResource } from '../../api'
 import { submitViaPatch } from '../shared/defaultApi'
 import type { ToolRenderContext } from '../types'
 import { t } from '../../texts'
 
 /** enroll-kobil's confirmation and auth-kobil's OTP are both ordinary step submissions. */
-export function submitKobilStep(ctx: ToolRenderContext, body: Record<string, unknown>) {
+export function submitKobilStep(ctx: ToolRenderContext, body: AuthKobilPatchRequest | EnrollKobilPatchRequest) {
   return submitViaPatch(ctx, body)
 }
 

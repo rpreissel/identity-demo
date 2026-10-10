@@ -1,3 +1,4 @@
+import type { IdentEidPatchRequest } from '../../generated/models'
 import { submitViaPatch } from '../shared/defaultApi'
 import type { ToolRenderContext } from '../types'
 
@@ -20,5 +21,5 @@ export interface EidFields extends EidCard {
 
 /** Any subset: the backend merges each PATCH onto what it already has (docs/verfahren/eid.md). */
 export function submitEid(ctx: ToolRenderContext, fields: Partial<EidFields>) {
-  return submitViaPatch(ctx, fields)
+  return submitViaPatch(ctx, fields satisfies IdentEidPatchRequest)
 }

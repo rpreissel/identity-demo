@@ -258,7 +258,7 @@ export function patchTool(
   dpop: DpopKeyPair,
   toolSessionId: string,
   toolId: string,
-  body: Record<string, unknown>
+  body: object
 ): Promise<ChannelResponse> {
   return call(dpop, 'PATCH', toolSessionPath(toolSessionId, toolId), body)
 }

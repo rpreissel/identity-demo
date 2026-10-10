@@ -1,3 +1,4 @@
+import type { IdentKvnrPatchRequest } from '../../generated/models'
 import { submitViaPatch } from '../shared/defaultApi'
 import type { ToolModule } from '../types'
 import { IdentKvnrForm } from './IdentKvnrForm'
@@ -24,7 +25,7 @@ export const identKvnr: ToolModule = {
     if (ctx.step === 'input') {
       return (
         <IdentKvnrForm
-          onSubmit={(identifier) => submitViaPatch(ctx, identifier)}
+          onSubmit={(identifier) => submitViaPatch(ctx, identifier satisfies IdentKvnrPatchRequest)}
           onSkip={ctx.onSkip}
           skipLabel={SKIP_LABEL}
           error={attemptError(ctx)}

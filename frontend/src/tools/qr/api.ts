@@ -1,12 +1,13 @@
+import type { ConfirmQrLoginPatchRequest } from '../../generated/models'
 import { submitViaPatch } from '../shared/defaultApi'
 import type { ToolRenderContext } from '../types'
 
 export function submitPairingCode(ctx: ToolRenderContext, pairingCode: string) {
-  return submitViaPatch(ctx, { pairingCode })
+  return submitViaPatch(ctx, { pairingCode } satisfies ConfirmQrLoginPatchRequest)
 }
 
 export function submitDecision(ctx: ToolRenderContext, decision: 'accept' | 'reject' | 'done') {
-  return submitViaPatch(ctx, { decision })
+  return submitViaPatch(ctx, { decision } satisfies ConfirmQrLoginPatchRequest)
 }
 
 export function confirmEnrollQr(ctx: ToolRenderContext) {

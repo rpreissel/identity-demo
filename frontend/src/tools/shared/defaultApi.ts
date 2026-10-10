@@ -5,9 +5,10 @@ import { t } from '../../texts'
 /**
  * Default "finish this step via PATCH" implementation: a convenience a tool's own api.ts may
  * re-export (e.g. tools/sms/api.ts), not a contract every tool must use. The one place `ctx.proof`
- * is read, so every tool's render() stays free of how the call is signed.
+ * is read, so every tool's render() stays free of how the call is signed. Each tool checks its body
+ * against its generated request type (`satisfies`), so a renamed field fails the type check.
  */
-export function submitViaPatch(ctx: ToolRenderContext, body: Record<string, unknown>) {
+export function submitViaPatch(ctx: ToolRenderContext, body: object) {
   if (!ctx.toolSessionId) return
   return patchTool(ctx.proof.dpop, ctx.toolSessionId, ctx.toolId, body).then(ctx.onResult).catch((err) => ctx.onError(describeError(t('Anfrage fehlgeschlagen'), err)))
 }
