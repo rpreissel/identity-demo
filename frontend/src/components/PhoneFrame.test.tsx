@@ -83,7 +83,7 @@ describe('tool form sources', () => {
     let checked = 0
     for (const [file, source] of Object.entries(sources)) {
       for (const tag of source.match(/<button[^>]*type="submit"[^>]*>/g) ?? []) {
-        expect(tag, file).toMatch(/\bform="[^"]+"/)
+        expect(tag, file).toMatch(/\bform=("[^"]+"|\{[^}]+\})/)
         checked++
       }
     }
