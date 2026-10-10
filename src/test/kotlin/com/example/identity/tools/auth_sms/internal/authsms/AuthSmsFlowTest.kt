@@ -1,11 +1,9 @@
 package com.example.identity.tools.auth_sms.internal.authsms
 
-import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.TEST_CLOCK
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import java.util.UUID
 
 class AuthSmsFlowTest : BehaviorSpec({
 
@@ -35,16 +33,6 @@ class AuthSmsFlowTest : BehaviorSpec({
 
             then("it completes") {
                 decision shouldBe AuthSmsDecision.Complete
-            }
-        }
-    }
-
-    given("the persisted hash and expiry of a pending TAN") {
-        `when`("the state is rebuilt from them") {
-            val rebuilt = AuthSmsState.of(ToolSessionId(UUID.randomUUID()), issued.hash, issued.expiresAt)
-
-            then("it is the pending TAN's state") {
-                rebuilt shouldBe state
             }
         }
     }

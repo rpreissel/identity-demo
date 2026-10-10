@@ -1,6 +1,5 @@
 package com.example.identity.tools.auth_sms.internal.authsms
 
-import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.ToolStep
 import com.example.identity.tools.auth_sms.internal.TanGenerator
 import java.time.Instant
@@ -20,13 +19,6 @@ internal data class AuthSmsState(val issuedTanHash: String, val tanExpiresAt: In
     /** Same derivation for start/patch/read - one place turns this state into `next.step`/`stepData`. */
     fun describe(): ToolStep = ToolStep(step, MissingFields(missingFields))
 
-    companion object {
-        /** Turns [AuthSmsToolSession]'s persisted columns back into a [AuthSmsState]. */
-        fun of(toolSessionId: ToolSessionId, issuedTanHash: String?, tanExpiresAt: Instant?): AuthSmsState = AuthSmsState(
-            checkNotNull(issuedTanHash) { "auth-sms tool data $toolSessionId without issuedTanHash" },
-            checkNotNull(tanExpiresAt) { "auth-sms tool data $toolSessionId without tanExpiresAt" }
-        )
-    }
 }
 
 /** What one PATCH submitted. */

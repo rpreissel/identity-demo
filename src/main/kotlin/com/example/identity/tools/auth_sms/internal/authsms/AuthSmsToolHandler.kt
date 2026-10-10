@@ -56,7 +56,7 @@ class AuthSmsToolHandler(
     @Transactional
     fun patch(toolSessionId: ToolSessionId, tan: String?): ToolOutcome {
         val data = sessions.require<AuthSmsToolSession>(toolSessionId)
-        val state = data.toState(toolSessionId)
+        val state = data.toState()
 
         return when (AuthSmsFlow.decide(state, AuthSmsInput(tan), tanGenerator)) {
             AuthSmsDecision.Unchanged -> outcomeFor(state)
@@ -71,16 +71,12 @@ class AuthSmsToolHandler(
 
     @Transactional(readOnly = true)
     fun read(toolSessionId: ToolSessionId): ToolOutcome.InProgress {
-        return outcomeFor(sessions.require<AuthSmsToolSession>(toolSessionId).toState(toolSessionId))
+        return outcomeFor(sessions.require<AuthSmsToolSession>(toolSessionId).toState())
     }
 
     private fun outcomeFor(state: AuthSmsState): ToolOutcome.InProgress {
         return state.describe().inProgress()
     }
 
-    private fun AuthSmsToolSession.toState(toolSessionId: ToolSessionId): AuthSmsState = AuthSmsState.of(
-        toolSessionId = toolSessionId,
-        issuedTanHash = issuedTanHash,
-        tanExpiresAt = tanExpiresAt
-    )
+    private fun AuthSmsToolSession.toState(): AuthSmsState = AuthSmsState(issuedTanHash, tanExpiresAt)
 }

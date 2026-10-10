@@ -5,7 +5,7 @@ import java.time.Instant
 
 /** The working data of one auth-kobil run, kept through `ToolSessionData`. */
 internal data class AuthKobilToolSession(
-    val enrollmentRefId: String? = null,
+    val enrollmentRefId: String,
     /**
      * Null until the PIN has been released; then the access means that unlocked it. One nullable
      * value instead of a flag beside a path name, so the two cannot disagree. It is also the
