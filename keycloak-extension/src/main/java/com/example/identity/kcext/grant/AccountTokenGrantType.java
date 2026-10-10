@@ -3,10 +3,6 @@ package com.example.identity.kcext.grant;
 import com.example.identity.kcext.federation.AccountUsers;
 
 import com.example.identity.kcext.login.OrchestratorNotes;
-import com.nimbusds.jose.crypto.ECDSAVerifier;
-import com.nimbusds.jose.jwk.ECKey;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 import org.keycloak.OAuthErrorException;
@@ -28,8 +24,6 @@ import org.keycloak.services.managers.UserSessionManager;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.RootAuthenticationSessionModel;
 
-import java.text.ParseException;
-import java.util.List;
 import java.util.Set;
 
 /**

@@ -12,7 +12,6 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
-import java.util.List;
 
 /**
  * Runs first in {@code orchestrator-browser}, inside its own small subflow so that

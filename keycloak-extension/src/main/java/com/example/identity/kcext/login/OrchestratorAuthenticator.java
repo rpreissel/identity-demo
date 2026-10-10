@@ -4,7 +4,6 @@ import com.example.identity.kcext.client.KcTexts;
 import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.federation.KcSubject;
 import com.example.identity.kcext.webtool.WebToolAvailability;
-import com.example.identity.kcext.webtool.WebToolRendererFactory;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
@@ -13,20 +12,18 @@ import org.keycloak.authentication.Authenticator;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
-import org.keycloak.models.UserProvider;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * The kc facade's Keycloak-side driver (docs/05-api.md Abschnitt 3b). Handles initial login and
  * step-up alike and renders whatever the orchestrator names as {@code next}. Config properties:
- * {@code toolId} (static pre-selection of an account-independent tool), {@code targetAcr} (this
- * execution's LoA as orchestrator ACR) and {@code intent} (entry intent of a fresh channel, empty
- * means {@code web_select_method}; docs/04-orchestrierung.md #2).
+ * {@code targetAcr} (this execution's LoA as orchestrator ACR) and {@code intent} (entry intent of a
+ * fresh channel, empty means {@code web_select_method}; docs/04-orchestrierung.md #2).
  */
 public class OrchestratorAuthenticator implements Authenticator {
 
@@ -42,17 +39,14 @@ public class OrchestratorAuthenticator implements Authenticator {
     public void authenticate(AuthenticationFlowContext context) {
         try {
             // Read up front: the intent also decides which channel this run talks to.
-            String intent = context.getAuthenticatorConfig() == null ? null
-                    : context.getAuthenticatorConfig().getConfig().get("intent");
+            String intent = config(context, "intent");
             String channelSessionId = OrchestratorNotes.channelSessionIdFor(context.getAuthenticationSession(), intent);
             // Taken from context.getUser(), not from an existing UserSessionModel: on a step-up the
             // cookie authenticator already attached the user before this flow run has a session.
             KcSubject subject = KcSubject.of(context.getUser());
             // Keycloak's requested level wins; the static config is the fallback without acr_values.
-            String staticTargetAcr = context.getAuthenticatorConfig() == null ? null
-                    : context.getAuthenticatorConfig().getConfig().get("targetAcr");
             String targetAcr = OrchestratorNotes.requestedAcr(context);
-            if (targetAcr == null) targetAcr = staticTargetAcr;
+            if (targetAcr == null) targetAcr = config(context, "targetAcr");
 
             // The intent only counts on a channel's first call, so a changed intent gets a fresh
             // channel above (docs/04-orchestrierung.md #2).
@@ -91,47 +85,38 @@ public class OrchestratorAuthenticator implements Authenticator {
                     context.cancelLogin();
                     return;
                 } else {
-                    String selectedToolId = form.getFirst("toolId");
-                    if (selectedToolId == null || selectedToolId.isBlank()) {
+                    String selectedToolId = ToolSteps.selectedTool(form);
+                    if (selectedToolId == null) {
                         context.challenge(errorForm(context, KcTexts.of(context.getSession(), "Bitte eine Methode auswählen.")));
                         return;
                     }
                     response = activateTool(context, selectedToolId);
                 }
             } else if ("confirm".equals(pendingKind)) {
-                String answer = form.getFirst("orchestrator_answer");
-                if (!"accept".equals(answer) && !"decline".equals(answer)) {
+                String answer = ToolSteps.answer(form);
+                if (answer == null) {
                     context.challenge(errorForm(context, KcTexts.of(context.getSession(), "Bitte eine Antwort auswählen.")));
                     return;
                 }
                 response = client.answer(channelSessionId, answer);
             } else {
-                String toolId = authSession.getAuthNote(OrchestratorNotes.PENDING_TOOL_ID);
-                String toolSessionId = authSession.getAuthNote(OrchestratorNotes.PENDING_TOOL_SESSION_ID);
-                if (toolId == null || toolSessionId == null) {
+                // A return from outside is a GET on the action URL: its query is the tool's input.
+                ToolSteps.Submitted submitted = ToolSteps.submit(context.getSession(), client, channelSessionId, authSession,
+                        form, context.getUriInfo().getQueryParameters(), actionUrl(context));
+                if (submitted == null) {
                     unavailable(context);
                     return;
                 }
-                // A return from outside is a GET on the action URL: its query is the tool's input.
-                form = OrchestratorNextDispatch.withQueryParams(form, context.getUriInfo().getQueryParameters());
-                WebToolRendererFactory factory = WebFormRenderer.rendererFactoryFor(context.getSession(), toolId);
-                if (factory != null) {
-                    factory.actionFields(form::getFirst, () -> context.getActionUrl(context.generateAccessCode()).toString())
-                            .forEach(form::putSingle);
-                }
-                response = OrchestratorNextDispatch.dispatchToolAction(client, channelSessionId, toolId,
-                        WebToolAvailability.versionOf(context.getSession(), toolId), toolSessionId, form);
+                response = submitted.response();
+                form = submitted.form();
             }
             handleResponse(context, response, form);
         } catch (OrchestratorClient.OrchestratorApiException e) {
             LOG.infof("Orchestrator tool call failed: %s", e.getMessage());
             // Never failureChallenge: Keycloak's brute-force protection would book it against the
             // user. The orchestrator counts real attempts itself (docs/adr/ADR-044).
-            if (ApiFailure.of(e.status()) == ApiFailure.REJECTED) {
-                context.challenge(currentChallenge(context, e.message(context.getSession())));
-            } else {
-                context.challenge(errorForm(context, KcTexts.of(context.getSession(), "Anmeldung derzeit nicht möglich.")));
-            }
+            String message = ApiFailure.of(e.status()) == ApiFailure.REJECTED ? e.message(context.getSession()) : null;
+            context.challenge(errorForm(context, message != null ? message : KcTexts.of(context.getSession(), "Anmeldung derzeit nicht möglich.")));
         } catch (Exception e) {
             LOG.error("OrchestratorAuthenticator.action failed", e);
             unavailable(context);
@@ -154,9 +139,7 @@ public class OrchestratorAuthenticator implements Authenticator {
             context.setUser(user);
             authSession.setAuthenticatedUser(user);
         }
-        String certifiedAcr = context.getAuthenticatorConfig() == null ? null
-                : context.getAuthenticatorConfig().getConfig().get("targetAcr");
-        LoginCompletion.Verdict verdict = LoginCompletion.judge(response, knownSubject, certifiedAcr);
+        LoginCompletion.Verdict verdict = LoginCompletion.judge(response, knownSubject, config(context, "targetAcr"));
         if (verdict instanceof LoginCompletion.Refuse refuse) {
             LOG.errorf("Orchestrator answer refused for channel %s: %s", response.channelSessionId(), refuse.reason());
             unavailable(context);
@@ -172,37 +155,19 @@ public class OrchestratorAuthenticator implements Authenticator {
 
         OrchestratorNextDispatch.Outcome outcome = OrchestratorNextDispatch.classify(next, response);
         if (outcome instanceof OrchestratorNextDispatch.Select select) {
-            String staticToolId = context.getAuthenticatorConfig() == null ? null
-                    : context.getAuthenticatorConfig().getConfig().get("toolId");
             List<String> options = select.options();
-            LOG.debugf("Orchestrator method selection: configured toolId='%s', options=%s",
-                    staticToolId, options);
-            if (staticToolId != null && !staticToolId.isBlank()) {
-                try {
-                    OrchestratorClient.ChannelResponse activated = activateTool(context, staticToolId);
-                    handleResponse(context, activated, lastForm);
-                    return;
-                } catch (OrchestratorClient.OrchestratorApiException e) {
-                    LOG.warnf(e, "Static tool pre-selection '%s' failed", staticToolId);
-                    context.challenge(errorForm(context, KcTexts.of(context.getSession(), "Das konfigurierte Anmeldeverfahren ist derzeit nicht verfügbar.")));
-                    return;
-                } catch (Exception e) {
-                    LOG.error("Static tool pre-selection '" + staticToolId + "' failed", e);
-                    unavailable(context);
-                    return;
-                }
-            }
             if (options.isEmpty()) {
                 // A step-up without any way out ends at the orchestrator with its reason (Abort), so
                 // an empty selection means the setup offers nothing here: tell the admin, not the user.
-                LOG.warnf("Orchestrator offered no method for channel %s; check the tool locks and the LoA execution's toolId",
+                LOG.warnf("Orchestrator offered no method for channel %s; check the tool locks",
                         response.channelSessionId());
                 context.challenge(errorForm(context,
                         KcTexts.of(context.getSession(), "Für diese Anmeldung steht gerade kein Verfahren zur Verfügung. Bitte versuchen Sie es später noch einmal.")));
                 return;
             }
             authSession.setAuthNote(OrchestratorNotes.PENDING_KIND, "select");
-            context.challenge(selectForm(context, options, response, null));
+            context.challenge(WebFormRenderer.selectForm(context.getSession(), context.form(), authSession, options, response,
+                    offersRegistration(context)));
             return;
         }
 
@@ -222,17 +187,15 @@ public class OrchestratorAuthenticator implements Authenticator {
                 }
                 return;
             }
-            authSession.setAuthNote(OrchestratorNotes.PENDING_KIND, "tool");
-            authSession.setAuthNote(OrchestratorNotes.PENDING_TOOL_ID, tool.next().toolId());
-            authSession.setAuthNote(OrchestratorNotes.PENDING_TOOL_SESSION_ID, tool.next().toolSessionId());
-            context.challenge(WebFormRenderer.toolForm(context.getSession(), context.form(), authSession, tool.next(), response, null,
+            ToolSteps.remember(authSession, tool.next());
+            context.challenge(WebFormRenderer.toolForm(context.getSession(), context.form(), authSession, tool.next(), response,
                     lastForm == null ? Set.of() : lastForm.keySet()));
             return;
         }
 
         if (outcome instanceof OrchestratorNextDispatch.Confirm confirm) {
             authSession.setAuthNote(OrchestratorNotes.PENDING_KIND, "confirm");
-            context.challenge(WebFormRenderer.confirmForm(context.getSession(), context.form(), authSession, confirm.prompt(), null));
+            context.challenge(WebFormRenderer.confirmForm(context.getSession(), context.form(), authSession, confirm.prompt()));
             return;
         }
 
@@ -242,40 +205,23 @@ public class OrchestratorAuthenticator implements Authenticator {
     }
 
     /**
-     * {@code response} is null on the retry path ({@link #currentChallenge}); the page then shows a
-     * generic heading.
-     */
-    private Response selectForm(AuthenticationFlowContext context, List<String> options, OrchestratorClient.ChannelResponse response, String error) {
-        return WebFormRenderer.selectForm(context.getSession(), context.form(), context.getAuthenticationSession(), options, response, error,
-                offersRegistration(context));
-    }
-
-    /**
      * The "Registrieren" link appears where Keycloak's own login form would show it: nobody known yet,
      * registration allowed, and not already inside the registration flow.
      */
     private static boolean offersRegistration(AuthenticationFlowContext context) {
-        String intent = context.getAuthenticatorConfig() == null ? null
-                : context.getAuthenticatorConfig().getConfig().get("intent");
+        String intent = config(context, "intent");
         return context.getUser() == null
                 && context.getRealm().isRegistrationAllowed()
                 && !"register".equalsIgnoreCase(intent);
     }
 
-    /**
-     * Activates a tool with what its renderer asks to send along - for most tools nothing, for one
-     * that sends the user away the action URL of this step as the address to come back to.
-     */
     private OrchestratorClient.ChannelResponse activateTool(AuthenticationFlowContext context, String toolId) throws IOException, InterruptedException {
-        WebToolRendererFactory factory = WebFormRenderer.rendererFactoryFor(context.getSession(), toolId);
-        Map<String, String> fields = factory == null ? Map.of()
-                : factory.activationFields(() -> context.getActionUrl(context.generateAccessCode()).toString());
-        return client.activateTool(OrchestratorNotes.channelSessionId(context), toolId,
-                WebToolAvailability.versionOf(context.getSession(), toolId), fields);
+        return ToolSteps.activate(context.getSession(), client, OrchestratorNotes.channelSessionId(context), toolId, actionUrl(context));
     }
 
-    private Response toolForm(AuthenticationFlowContext context, OrchestratorClient.Next next, OrchestratorClient.ChannelResponse response, String error) {
-        return WebFormRenderer.toolForm(context.getSession(), context.form(), context.getAuthenticationSession(), next, response, error);
+    /** A fresh action URL of this step: Keycloak's action code is single-use. */
+    private static Supplier<String> actionUrl(AuthenticationFlowContext context) {
+        return () -> context.getActionUrl(context.generateAccessCode()).toString();
     }
 
     /**
@@ -291,15 +237,9 @@ public class OrchestratorAuthenticator implements Authenticator {
         return WebFormRenderer.errorForm(context.getSession(), context.form(), context.getAuthenticationSession(), message);
     }
 
-    private Response currentChallenge(AuthenticationFlowContext context, String error) {
-        AuthenticationSessionModel authSession = context.getAuthenticationSession();
-        String pendingKind = authSession.getAuthNote(OrchestratorNotes.PENDING_KIND);
-        if ("select".equals(pendingKind)) {
-            // Only something to show; the next authenticate() pass fetches the current options.
-            return errorForm(context, error != null ? error : "Die Auswahl der Anmeldemethode ist fehlgeschlagen.");
-        }
-        // Through WebFormRenderer like every other page: the page needs its texts.
-        return errorForm(context, error);
+    /** This execution's config value [key], or null without a config. */
+    private static String config(AuthenticationFlowContext context, String key) {
+        return context.getAuthenticatorConfig() == null ? null : context.getAuthenticatorConfig().getConfig().get(key);
     }
 
     @Override

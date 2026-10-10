@@ -1,9 +1,9 @@
 package com.example.identity.kcext.login;
 
-import com.example.identity.kcext.webtool.WebToolAvailability;
 import com.example.identity.kcext.client.KcTexts;
 import com.example.identity.kcext.client.OrchestratorClient;
 import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.MultivaluedHashMap;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.InitiatedActionSupport;
 import org.keycloak.authentication.RequiredActionContext;
@@ -11,6 +11,8 @@ import org.keycloak.authentication.RequiredActionProvider;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
 import java.util.List;
+import java.util.function.Supplier;
+import java.util.Set;
 
 /**
  * Web-Kanal-Selbstbedienung "Anmeldeverfahren verwalten" (docs/05-api.md, "Anmeldeverfahren
@@ -52,7 +54,15 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
     @Override
     public void requiredActionChallenge(RequiredActionContext context) {
         try {
-            String channelSessionId = OrchestratorNotes.channelSessionId(context.getAuthenticationSession());
+            AuthenticationSessionModel authSession = context.getAuthenticationSession();
+            String channelSessionId = OrchestratorNotes.channelSessionId(authSession);
+            // A return from outside (ADR-47) is a GET on the action URL with the tool's input in the
+            // query; Keycloak answers a GET of a required action with its challenge.
+            if ("tool".equals(authSession.getAuthNote(OrchestratorNotes.PENDING_KIND))
+                    && !OrchestratorNextDispatch.withQueryParams(null, context.getUriInfo().getQueryParameters()).isEmpty()) {
+                submitTool(context, channelSessionId, new MultivaluedHashMap<>());
+                return;
+            }
             renderList(context, channelSessionId, null);
         } catch (OrchestratorClient.OrchestratorApiException e) {
             LOG.warnf("getMethods failed: %s", e.getMessage());
@@ -82,19 +92,19 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
                 }
                 if ("add".equals(form.getFirst("action"))) {
                     authSession.setAuthNote(PENDING_ACTION, "add");
-                    handleResponse(context, client.startEnrollments(channelSessionId), true, false);
+                    handleResponse(context, client.startEnrollments(channelSessionId), true, false, Set.of());
                     return;
                 }
                 String changeInstanceId = form.getFirst("changeMethodInstanceId");
                 if (changeInstanceId != null && !changeInstanceId.isBlank()) {
                     authSession.setAuthNote(PENDING_ACTION, "change");
-                    handleResponse(context, client.changeMethod(channelSessionId, changeInstanceId), true, false);
+                    handleResponse(context, client.changeMethod(channelSessionId, changeInstanceId), true, false, Set.of());
                     return;
                 }
                 String methodInstanceId = form.getFirst("removeMethodInstanceId");
                 if (methodInstanceId != null && !methodInstanceId.isBlank()) {
                     authSession.setAuthNote(PENDING_ACTION, "remove");
-                    handleResponse(context, client.deactivateMethod(channelSessionId, methodInstanceId), true, false);
+                    handleResponse(context, client.deactivateMethod(channelSessionId, methodInstanceId), true, false, Set.of());
                     return;
                 }
                 renderList(context, channelSessionId, null);
@@ -111,34 +121,25 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
                     renderList(context, channelSessionId, KcTexts.of(context.getSession(), "Abgebrochen."));
                     return;
                 }
-                String selectedToolId = form.getFirst("toolId");
-                if (selectedToolId == null || selectedToolId.isBlank()) {
+                String selectedToolId = ToolSteps.selectedTool(form);
+                if (selectedToolId == null) {
                     context.challenge(WebFormRenderer.errorForm(context.getSession(), context.form(), authSession, KcTexts.of(context.getSession(), "Bitte eine Methode auswählen.")));
                     return;
                 }
-                response = client.activateTool(channelSessionId, selectedToolId, WebToolAvailability.versionOf(context.getSession(), selectedToolId));
-                handleResponse(context, response, false, false);
+                response = ToolSteps.activate(context.getSession(), client, channelSessionId, selectedToolId, actionUrl(context));
+                handleResponse(context, response, false, false, Set.of());
                 return;
             } else if ("confirm".equals(pendingKind)) {
-                String answer = form.getFirst("orchestrator_answer");
-                if (!"accept".equals(answer) && !"decline".equals(answer)) {
+                String answer = ToolSteps.answer(form);
+                if (answer == null) {
                     context.challenge(WebFormRenderer.errorForm(context.getSession(), context.form(), authSession, KcTexts.of(context.getSession(), "Bitte eine Antwort auswählen.")));
                     return;
                 }
                 response = client.answer(channelSessionId, answer);
-                handleResponse(context, response, false, "decline".equals(answer));
+                handleResponse(context, response, false, "decline".equals(answer), Set.of());
                 return;
             } else {
-                String toolId = authSession.getAuthNote(OrchestratorNotes.PENDING_TOOL_ID);
-                String toolSessionId = authSession.getAuthNote(OrchestratorNotes.PENDING_TOOL_SESSION_ID);
-                if (toolId == null || toolSessionId == null) {
-                    context.failure();
-                    return;
-                }
-                boolean toolAbandoned = "true".equals(form.getFirst("orchestrator_abandon"));
-                response = OrchestratorNextDispatch.dispatchToolAction(client, channelSessionId, toolId,
-                        WebToolAvailability.versionOf(context.getSession(), toolId), toolSessionId, form);
-                handleResponse(context, response, false, toolAbandoned);
+                submitTool(context, channelSessionId, form);
             }
         } catch (OrchestratorClient.OrchestratorApiException e) {
             LOG.infof("Orchestrator tool call failed: %s", e.getMessage());
@@ -148,6 +149,23 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
             LOG.error("OrchestratorManageMethodsRequiredAction.processAction failed", e);
             context.failure();
         }
+    }
+
+    /** Posts the shown tool's step, as {@link ToolSteps#submit}; without a tool session there is nothing to post. */
+    private void submitTool(RequiredActionContext context, String channelSessionId, MultivaluedMap<String, String> form) throws Exception {
+        ToolSteps.Submitted submitted = ToolSteps.submit(context.getSession(), client, channelSessionId, context.getAuthenticationSession(),
+                form, context.getUriInfo().getQueryParameters(), actionUrl(context));
+        if (submitted == null) {
+            renderList(context, channelSessionId, null);
+            return;
+        }
+        boolean toolAbandoned = "true".equals(submitted.form().getFirst("orchestrator_abandon"));
+        handleResponse(context, submitted.response(), false, toolAbandoned, submitted.form().keySet());
+    }
+
+    /** A fresh action URL of this step: Keycloak's action code is single-use. */
+    private static Supplier<String> actionUrl(RequiredActionContext context) {
+        return () -> context.getActionUrl(context.generateCode()).toString();
     }
 
     private void renderList(RequiredActionContext context, String channelSessionId, String notice) throws Exception {
@@ -163,8 +181,10 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
      *                  which end in the same {@code next=null} response.
      * @param aborted   true when the user backed out (tool "Abbrechen" or a declined prompt); an
      *                  abort can also end in {@code next=null} and must not read as completed.
+     * @param submittedFields the fields of the post this response answers, for the tool page.
      */
-    private void handleResponse(RequiredActionContext context, OrchestratorClient.ChannelResponse response, boolean firstCall, boolean aborted) throws Exception {
+    private void handleResponse(RequiredActionContext context, OrchestratorClient.ChannelResponse response, boolean firstCall, boolean aborted,
+            Set<String> submittedFields) throws Exception {
         AuthenticationSessionModel authSession = context.getAuthenticationSession();
         String channelSessionId = OrchestratorNotes.channelSessionId(authSession);
 
@@ -194,7 +214,7 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
                 return;
             }
             authSession.setAuthNote(OrchestratorNotes.PENDING_KIND, "select");
-            context.challenge(WebFormRenderer.selectForm(context.getSession(), context.form(), authSession, options, response, null, false));
+            context.challenge(WebFormRenderer.selectForm(context.getSession(), context.form(), authSession, options, response, false));
             return;
         }
 
@@ -202,25 +222,23 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
             if (tool.autoActivate()) {
                 // Single-candidate auto-activation, as in OrchestratorAuthenticator.
                 try {
-                    OrchestratorClient.ChannelResponse activated = client.activateTool(channelSessionId, tool.next().toolId(),
-                            WebToolAvailability.versionOf(context.getSession(), tool.next().toolId()));
-                    handleResponse(context, activated, false, false);
+                    OrchestratorClient.ChannelResponse activated = ToolSteps.activate(context.getSession(), client, channelSessionId,
+                            tool.next().toolId(), actionUrl(context));
+                    handleResponse(context, activated, false, false, submittedFields);
                 } catch (OrchestratorClient.OrchestratorApiException e) {
                     LOG.warnf("Auto-activation of '%s' failed: %s", tool.next().toolId(), e.getMessage());
                     context.challenge(WebFormRenderer.errorForm(context.getSession(), context.form(), authSession, KcTexts.of(context.getSession(), "Anmeldung derzeit nicht möglich.")));
                 }
                 return;
             }
-            authSession.setAuthNote(OrchestratorNotes.PENDING_KIND, "tool");
-            authSession.setAuthNote(OrchestratorNotes.PENDING_TOOL_ID, tool.next().toolId());
-            authSession.setAuthNote(OrchestratorNotes.PENDING_TOOL_SESSION_ID, tool.next().toolSessionId());
-            context.challenge(WebFormRenderer.toolForm(context.getSession(), context.form(), authSession, tool.next(), response, null));
+            ToolSteps.remember(authSession, tool.next());
+            context.challenge(WebFormRenderer.toolForm(context.getSession(), context.form(), authSession, tool.next(), response, submittedFields));
             return;
         }
 
         if (outcome instanceof OrchestratorNextDispatch.Confirm confirm) {
             authSession.setAuthNote(OrchestratorNotes.PENDING_KIND, "confirm");
-            context.challenge(WebFormRenderer.confirmForm(context.getSession(), context.form(), authSession, confirm.prompt(), null));
+            context.challenge(WebFormRenderer.confirmForm(context.getSession(), context.form(), authSession, confirm.prompt()));
             return;
         }
 

@@ -3,9 +3,6 @@ package com.example.identity.kcext.login;
 import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.federation.AccountUsers;
 import com.example.identity.kcext.token.OrchestratorAcrAmrMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.authenticators.util.AcrStore;
@@ -17,25 +14,21 @@ import org.keycloak.models.UserSessionModel;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * All auth- and user-session note keys of this plugin and the small JSON bookkeeping around them, so
- * the authenticators agree on the same shapes.
+ * All auth- and user-session note keys of this plugin and the helpers around them, so the
+ * authenticators and the required action agree on the same notes.
  */
 public final class OrchestratorNotes {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /** This flow run's channelSessionId, derived once and reused by every step of the same run. */
     public static final String CHANNEL_SESSION_ID = "orchestrator_channel_session_id";
     /** The entry intent CHANNEL_SESSION_ID was opened for ("" = the default login/step-up) - see {@link #channelSessionIdFor}. */
     static final String CHANNEL_INTENT = "orchestrator_channel_intent";
-    /** Which pending step this authenticator is currently showing - "select" or "tool". */
+    /** Which page the run currently shows: "select", "tool", "confirm" or, in the required action, "list". */
     public static final String PENDING_KIND = "orchestrator_pending_kind";
     public static final String PENDING_TOOL_ID = "orchestrator_pending_tool_id";
     public static final String PENDING_TOOL_SESSION_ID = "orchestrator_pending_tool_session_id";

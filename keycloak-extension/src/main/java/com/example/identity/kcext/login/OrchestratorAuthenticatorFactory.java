@@ -51,19 +51,11 @@ public class OrchestratorAuthenticatorFactory implements AuthenticatorFactory {
     @Override
     public String getHelpText() {
         return "Drives the orchestrator's kc-facade (docs/05-api.md Abschnitt 3b) - offers "
-                + "every orchestrator tool this account can use, or (with 'Static tool id' set) always "
-                + "activates one directly instead of showing a selection.";
+                + "every orchestrator tool this account can use.";
     }
 
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
-        ProviderConfigProperty toolId = new ProviderConfigProperty();
-        toolId.setName("toolId");
-        toolId.setLabel("Static tool id");
-        toolId.setType(ProviderConfigProperty.STRING_TYPE);
-        toolId.setHelpText("Only valid for account-independent tools (e.g. ident-fsc). Leave empty for "
-                + "step-up executions - their candidates are account-specific (docs/04-orchestrierung.md Abschnitt 3, WEB_SELECT_METHOD).");
-
         ProviderConfigProperty targetAcr = new ProviderConfigProperty();
         targetAcr.setName("targetAcr");
         targetAcr.setLabel("Target ACR");
@@ -82,7 +74,7 @@ public class OrchestratorAuthenticatorFactory implements AuthenticatorFactory {
                 + "identification + enrollment instead (docs/04-orchestrierung.md #2/#3). Any other value "
                 + "is rejected by the orchestrator.");
 
-        return List.of(toolId, targetAcr, intent);
+        return List.of(targetAcr, intent);
     }
 
     @Override

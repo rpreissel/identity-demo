@@ -45,12 +45,9 @@ final class WebFormRenderer {
     private WebFormRenderer() {
     }
 
-    /**
-     * [offerRegistration]: render Keycloak's registration link below the choices. {@code response}
-     * is null on a retry path; the page then shows a generic heading.
-     */
+    /** [offerRegistration]: render Keycloak's registration link below the choices. */
     static Response selectForm(KeycloakSession session, LoginFormsProvider form, AuthenticationSessionModel authSession,
-            List<String> options, OrchestratorClient.ChannelResponse response, String error, boolean offerRegistration) {
+            List<String> options, OrchestratorClient.ChannelResponse response, boolean offerRegistration) {
         Map<String, String> optionLabels = new LinkedHashMap<>();
         for (String option : options) {
             WebToolRendererFactory factory = rendererFactoryFor(session, option);
@@ -58,9 +55,9 @@ final class WebFormRenderer {
         }
         // The backend names each selection screen (docs/04-orchestrierung.md #6); these are
         // different screens and must not collapse into one generic heading.
-        String backendTitle = response != null ? OrchestratorTexts.resolve(session, response.stepData().get("title")) : null;
+        String backendTitle = OrchestratorTexts.resolve(session, response.stepData().get("title"));
         String title = backendTitle != null ? backendTitle : KcTexts.of(session, "Anmeldemethode wählen");
-        String description = response != null ? OrchestratorTexts.resolve(session, response.stepData().get("description")) : null;
+        String description = OrchestratorTexts.resolve(session, response.stepData().get("description"));
         var built = withTexts(session, form, SELECT_PAGE)
                 .setAuthenticationSession(authSession)
                 .setAttribute(PAGE_TITLE, title)
@@ -68,20 +65,13 @@ final class WebFormRenderer {
                 .setAttribute("options", options)
                 .setAttribute("optionLabels", optionLabels)
                 .setAttribute("offerRegistration", offerRegistration);
-        if (error != null) built.setError(error);
         return built.createForm(SELECT_PAGE);
     }
 
+    /** [submittedFields]: the fields of the post this page answers, see {@link WebToolRenderContext}. */
     static Response toolForm(KeycloakSession session, LoginFormsProvider form, AuthenticationSessionModel authSession,
-            OrchestratorClient.Next next, OrchestratorClient.ChannelResponse response, String error) {
-        return toolForm(session, form, authSession, next, response, error, Set.of());
-    }
-
-    static Response toolForm(KeycloakSession session, LoginFormsProvider form, AuthenticationSessionModel authSession,
-            OrchestratorClient.Next next, OrchestratorClient.ChannelResponse response, String error,
-            Set<String> submittedFields) {
-        String stepError = OrchestratorTexts.resolve(session, response.stepDataError());
-        String effectiveError = error != null ? error : stepError;
+            OrchestratorClient.Next next, OrchestratorClient.ChannelResponse response, Set<String> submittedFields) {
+        String effectiveError = OrchestratorTexts.resolve(session, response.stepDataError());
 
         WebToolRenderer renderer = session.getProvider(WebToolRenderer.class, next.toolId());
         if (renderer != null) {
@@ -119,9 +109,9 @@ final class WebFormRenderer {
 
     /**
      * The generic yes/no prompt (next.context=prompt, next.step=confirm, stepData.prompt): title,
-     * description and the two labels. {@code prompt} is null on a retry path, as in {@link #toolForm}.
+     * description and the two labels.
      */
-    static Response confirmForm(KeycloakSession session, LoginFormsProvider form, AuthenticationSessionModel authSession, JsonNode prompt, String error) {
+    static Response confirmForm(KeycloakSession session, LoginFormsProvider form, AuthenticationSessionModel authSession, JsonNode prompt) {
         String title = orDefault(prompt != null ? OrchestratorTexts.resolve(session, prompt.get("title")) : null, KcTexts.of(session, "Bestätigung erforderlich"));
         String confirmLabel = orDefault(prompt != null ? OrchestratorTexts.resolve(session, prompt.get("confirmLabel")) : null, KcTexts.of(session, "Ja"));
         String cancelLabel = orDefault(prompt != null ? OrchestratorTexts.resolve(session, prompt.get("cancelLabel")) : null, KcTexts.of(session, "Nein"));
@@ -133,7 +123,6 @@ final class WebFormRenderer {
                 .setAttribute("confirmLabel", confirmLabel)
                 .setAttribute("cancelLabel", cancelLabel);
         if (description != null) built.setAttribute("description", description);
-        if (error != null) built.setError(error);
         return built.createForm(CONFIRM_PAGE);
     }
 
