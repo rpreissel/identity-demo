@@ -261,7 +261,7 @@ im Lesepfad angleichen.
 - **Offen:** Die Personensperre zählt weiter erst nach dem Versuch. Das bleibt als benanntes
   Restrisiko stehen.
 
-### AU-11 (Hinweis) Reste des alten Wegs in Doku und Kommentaren
+### AU-11 (Hinweis, behoben) Reste des alten Wegs in Doku und Kommentaren
 
 `DPoP-demo-8x0p.7`
 
@@ -282,6 +282,15 @@ im Lesepfad angleichen.
   - Veraltet sind auch `AuthIntent.WEB_SELECT_METHOD` („Keycloak drives the rest natively“), die
     KDoc von `SessionEvidence` („or Keycloak proved“) und `PasswordCredentialPortImpl`.
   - `ToolJourney.kt:72` nennt `buildReadResponse` statt `readResponse`.
+
+**Behebung (2026-10-10):**
+
+- Die Doku-Stellen in 05, `verfahren/password.md`, ADR-26 (Nachtrag) und 08 Abschnitt 3 sind
+  nachgezogen.
+- Die KDocs sind korrigiert. `PasswordCredentialPort.setNew` ist entfallen; die Test-Fixture legt
+  das Passwort direkt an.
+- Der Verweis in `BindingKey` fällt mit `keycloakOnly` weg (V-B1).
+- Die Korrekturen aus Abschnitt 5 sind in [offene-befunde.md](offene-befunde.md) eingearbeitet.
 
 ### AU-12 (Hinweis) Ein Nachweis in drei Formen, ein Subjekt in vier
 
@@ -478,6 +487,8 @@ Häufiger sind zwei andere Muster:
 
 ## 5. Korrekturen an offene-befunde.md
 
+Am 2026-10-10 in [offene-befunde.md](offene-befunde.md) eingearbeitet (AU-11).
+
 | Eintrag | Stand am 2026-10-09 |
 |---|---|
 | Abschnitt 7 „Passwortwechsel“ | Erledigt: Die Verfahrensverwaltung bietet `enroll-password` als „ersetzen“ an (`/methods/{id}/changes`, `replaces`). Offen bleiben `164n.27` und `164n.28`. |
@@ -562,6 +573,7 @@ Diese Bereiche zeigen keinen neuen Befund:
 | AU-1 | Sitzungsnachweise nur für ein Konto je Keycloak-Sitzung | `DPoP-demo-8x0p.1` |
 | AU-2 | Widerrufene Verfahren kommen nicht über `flow-end` zurück | `DPoP-demo-8x0p.2` |
 | AU-9 | Passwortseiten mit `login_hint` und Markup für Passwort-Manager | `DPoP-demo-8x0p.5` |
+| AU-11 | Reste des alten Wegs in Doku und Kommentaren, Korrekturen an den offenen Befunden | `DPoP-demo-8x0p.7` |
 | AU-3 | „Verfahren verwalten“ meldet seine Nachweise an die Sitzung | `DPoP-demo-8x0p.3` |
 | AU-10 | Kontosperre bucht einen Versuch vor der Prüfung | `DPoP-demo-8x0p.6` |
 | AU-4 bis AU-8 | Kleine Härtungen an Sitzungsnachweisen, Schlüsseln und Federation; AU-7 nur für App-Tokens | `DPoP-demo-8x0p.4` |

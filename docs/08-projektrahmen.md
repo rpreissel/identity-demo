@@ -106,7 +106,7 @@ com.example.identity
 ├── tools/        ident_fsc, ident_eid, ident_kvnr, ident_nect,
 │                 auth_sms, auth_email, auth_password, auth_qr, auth_device, auth_kobil,
 │                 auth_invite
-├── simulation/   personenverzeichnis, kobil, nect, sms, mail
+├── simulation/   personenverzeichnis, kobil, nect, sms, mail, kms
 └── demo/         demo_mode, demo_seed
 ```
 
@@ -416,9 +416,9 @@ Tool-Modulen laufen über den Vertrag `tool_api`.
     reine Verträge ohne Bean (`ToolApiArchitectureTest`).
 - **M-3** — Tool-Module und Orchestrator sind nur über die gemeinsame Schnittstelle (SPI) `tool_api`
   verbunden, nie direkt.
-  - *Kriterium:* Konstruktor-Injection nur mit `tool_api`-Interfaces (`ToolJourney`, `Lockouts`,
-    `AccountDirectory`, `PersonDirectory`, `ActivationCodes`, `Invitations`,
-    `DeviceProofs`, `RateLimits`). Kein Tool-Modul importiert `orchestrator`, und der Orchestrator
+  - *Kriterium:* Konstruktor-Injection nur mit `tool_api`-Interfaces (`ToolJourney`,
+    `ToolSessionData`, `Lockouts`, `AccountDirectory`, `PersonDirectory`, `ActivationCodes`,
+    `Invitations`, `DeviceProofs`, `RateLimits`, `PasswordCredentialPort`, `AccountSealing`). Kein Tool-Modul importiert `orchestrator`, und der Orchestrator
     importiert kein Tool-Modul. Es gibt benannte Ausnahmen, jeweils zu einem simulierten
     Fremdsystem: `auth_kobil → kobil`, `ident_nect → nect`, `auth_sms → sms`, `auth_email → mail`
     (die letzten beiden sind der simulierte SMS-Anbieter und der Mailserver mit Postausgang).
@@ -444,7 +444,7 @@ Paket `domain` des Moduls. Für dieses Paket gilt:
   nie umgekehrt.
 
 Verträge anderer Module darf `domain` benutzen (`tool_api`, `texts`, im Orchestrator auch die
-Lesesicht `account.AccountProfile`). Beide Regeln prüft ArchUnit, ein Werkzeug für Architekturtests:
+Lesesichten `account.AccountProfile` und `account.AuthMethodView`). Beide Regeln prüft ArchUnit, ein Werkzeug für Architekturtests:
 `OrchestratorArchitectureTest` für `orchestrator.domain` und `AccountArchitectureTest` für
 `account.domain`. Ein Verstoß lässt den Build scheitern.
 

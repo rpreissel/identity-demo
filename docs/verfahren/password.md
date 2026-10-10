@@ -86,8 +86,8 @@ Das Modul `auth_password` schützt die Passwörter auf mehreren Wegen:
   Verstoß führt zu `400` mit einem Text, der die Regel nennt. Über Keycloak lässt sich kein
   Passwort setzen.
 
-Über den Port `PasswordCredentialPort` prüft oder ersetzt das Modul das Passwort auch für einen
-Aufrufer ohne eigene Tool-Sitzung von `auth_password`. Ein **Port** ist eine fest vereinbarte
+Über den Port `PasswordCredentialPort` prüft das Modul das Passwort auch für einen Aufrufer ohne
+eigene Tool-Sitzung von `auth_password`. Ein **Port** ist eine fest vereinbarte
 Schnittstelle. Dieser Aufrufer ist das Entsperren per Passwort in `auth_kobil`
 ([Verfahren `kobil`](kobil.md)).
 

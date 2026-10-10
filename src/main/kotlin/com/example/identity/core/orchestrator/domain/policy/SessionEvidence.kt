@@ -77,9 +77,9 @@ data class MethodEvidence(
 )
 
 /**
- * What this session has already proven (docs/04-orchestrierung.md #4). Source-agnostic: whether an
- * orchestrator tool or Keycloak proved a method (docs/05-api.md Abschnitt 3b) does not matter to
- * [AuthPolicy]. The caller has already resolved each method's loa and factor types.
+ * What this session has already proven (docs/04-orchestrierung.md #4): proofs of this channel and
+ * proofs taken over from its Keycloak session (ADR-59) alike. The caller has already resolved each
+ * method's loa and factor types.
  */
 data class SessionEvidence(
     val methods: List<MethodEvidence>,

@@ -26,8 +26,8 @@ enum class AuthIntent {
 
     /**
      * Entry intent for the Keycloak facade (docs/04-orchestrierung.md Abschnitt 3): offers every Keycloak-usable
-     * tool as one `selectMethod` step, without fallback chain or enrollment. Keycloak drives the rest
-     * natively. Serves initial login (resolves an account like [LOOKUP_LOGIN]) and step-up (account
+     * tool as one `selectMethod` step, without fallback chain or enrollment; Keycloak only renders
+     * the tools' pages (ADR-58). Serves initial login (resolves an account like [LOOKUP_LOGIN]) and step-up (account
      * pre-set on the channel).
      */
     WEB_SELECT_METHOD,

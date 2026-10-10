@@ -715,7 +715,7 @@ Leerlauf-Fenster und damit auch die Frist des Kanals. Lehnt Keycloak ab, endet d
 
 `minValiditySeconds` wirkt in beiden Profilen gleich. Es gibt eine Ausnahme: Ein Step-up, der die
 gesammelten Nachweise der Sitzung (`SessionEvidence`) verändert
-(`SessionEvidenceService.applyEvidence`/`applyEvidenceUpdate`), verwirft das zwischengespeicherte
+(`SessionEvidenceService.applyEvidence`), verwirft das zwischengespeicherte
 Token ausdrücklich. Die Sitzung und ihr Fenster bleiben dabei erhalten.
 
 **Ablauf der Anmeldung**: In zwei Fällen entsteht nie eine neue Sitzung: wenn das Sitzungsfenster

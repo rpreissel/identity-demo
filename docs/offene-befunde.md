@@ -9,8 +9,8 @@ Bewertungen:
 - aus dem Sicherheitsaudit (2026-10-03).
 
 Die Befunde des Audits vom 2026-10-09 stehen noch in einer eigenen Datei,
-[review-2026-10-09-audit.md](review-2026-10-09-audit.md). Ihr Abschnitt 5 nennt Einträge dieser
-Liste, die inzwischen erledigt oder falsch beschrieben sind.
+[review-2026-10-09-audit.md](review-2026-10-09-audit.md). Die Korrekturen aus ihrem Abschnitt 5
+sind hier eingearbeitet.
 
 Die Liste wurde am 2026-10-04 mit dem Code abgeglichen. Was erledigt ist, steht hier nicht mehr. Es
 ist in der Git-Historie und in den geschlossenen Issues nachzulesen (Epics `DPoP-demo-9ppv`,
@@ -43,12 +43,12 @@ stillschweigend etwas von der Umgebung voraussetzt.
 
 ## 1. Sicherheit im Kern
 
-- **S-2 (niedrig) `ident-nect`: `retry` ohne Budget, Nect-Fälle ohne Aufbewahrung.**
+- **S-2 (niedrig) `ident-nect`: `retry` ohne Budget.**
   Das Tool `ident-nect` identifiziert eine Person über den Anbieter Nect. `IdentNectToolHandler.patch`
-  legt bei jedem `retry` einen neuen Fall an, ohne die Versuche zu zählen. Die Tabelle
-  `nect.ident_case` räumt niemand auf. Vorschlag: ein `RateLimit` des Moduls (etwa 3 Versuche je
-  ToolSession und 10 Minuten, danach `429`) und ein Aufräumjob, der alte Fälle nach `createdAt`
-  löscht. Issue: –
+  legt bei jedem `retry` einen neuen Fall an, ohne die Versuche zu zählen. Vorschlag: ein `RateLimit`
+  des Moduls (etwa 3 Versuche je ToolSession und 10 Minuten, danach `429`). Die Fälle in
+  `nect.ident_case` gehören dem simulierten Nect und unterliegen nicht unseren Aufbewahrungsregeln
+  ([08-projektrahmen.md](08-projektrahmen.md), M17). Issue: –
 - **S-3 (3.) (niedrig) Die DPoP-Replay-Tabelle wächst vor Kanal- und Drosselprüfung.** Jeder
   DPoP-Proof (der signierte Beleg, den die App mit jeder Anfrage schickt) wird in einer Tabelle
   gespeichert, damit er sich nicht wiederverwenden lässt. Jeder syntaktisch gültige Proof schreibt
@@ -95,8 +95,9 @@ stillschweigend etwas von der Umgebung voraussetzt.
   Für `ident-nect` fehlt damit die Rücksprungadresse. Ein erneuter Nect-Versuch an dieser Stelle (K-2
   der vierten Bewertung) verwendet deshalb eine Adresse, die schon verbraucht ist. Die Ursache ist,
   dass es zwei Dispatcher gibt. `DPoP-demo-9ppv.12`
-- **Fehlerpfade des Authenticators (niedrig)** zeigen teils die allgemeine Fehlerseite von Keycloak.
-  `DPoP-demo-rdns`
+- **Fehlerpfade der Required Action (niedrig)** zeigen die allgemeine Fehlerseite von Keycloak:
+  `OrchestratorManageMethodsRequiredAction` ruft `context.failure()`. Der Authenticator tut das
+  nicht mehr. `DPoP-demo-rdns`
 - **K-6 (Hinweis) Antwort-JWKS mit Nimbus-Voreinstellungen.** Die Keycloak-Erweiterung prüft die
   Antworten des Orchestrators mit dessen öffentlichen Schlüsseln (JWKS). `OrchestratorResponseVerifier`
   lädt diese mit `JWKSourceBuilder.create(…).retrying(true)`. Das bedeutet 500 ms Zeitlimit und kein
@@ -127,11 +128,13 @@ stillschweigend etwas von der Umgebung voraussetzt.
   kommen in ein eigenes Paket ohne Abhängigkeiten. Dazu kommt die ArchUnit-Regel `beFreeOfCycles` im
   Build der Erweiterung. Issue: –
 - **A-6 (Hinweis) Die Erweiterung liest die Uhr selbst** (`PeerAuthAssertionSigner`,
-  `OrchestratorResponseVerifier`, `OrchestratorSettings`). Die Zeitregeln der Peer-Auth lassen sich
+  `OrchestratorResponseVerifier`, `OrchestratorSettings`, dazu die Caches in `OrchestratorTexts` und
+  `OrchestratorToolCatalog` und `OrchestratorNotes`). Die Zeitregeln der Peer-Auth lassen sich
   dort nur mit echten Wartezeiten testen. Vorschlag: `Clock` als Konstruktorparameter. Issue: –
 - **A-7 (Hinweis) Drei Formen für „wer“ in `tool_api`** (`Subject`, `Attempted`, `AuthSubject`).
-  Fachlich sind sie verschieden. Aber `Subject.Invitation.hash` neben der „Id der Einladung“ ist
-  verwirrend. Issue: –
+  Fachlich sind sie verschieden; die Einladung trägt inzwischen ihre `InvitationId`. Dazu kommen
+  `KcSubject` in der Erweiterung und das Spaltenpaar `accountId`/`invitation` in der Persistenz.
+  Issue: –
 - **A-8 (Hinweis) Die Prüfung von Assertion und `channel_binding` ist in den kc-Controllern
   wiederholt** (`KeycloakAccountLookupController`, `KeycloakInvitationLookupController`,
   `KeycloakSignOutController`). Vorschlag: ein gemeinsamer Helfer am `PeerAuthValidator`. Issue: –
@@ -149,9 +152,11 @@ stillschweigend etwas von der Umgebung voraussetzt.
   `AuthPasswordLookupFlow`. Insgesamt gibt es 21 `!!`. Zusammen mit Q-8 (3.) in `DPoP-demo-9ppv.27`.
 - **Q-5 (niedrig) Testhelfer mehrfach definiert**, und `IntegrationTestSupport` ist groß. Zusammen
   mit Q-13 (3.) in `DPoP-demo-9ppv.32`.
-- **Q-6 / K-10 (niedrig) Doppelte Verteilungslogik (Dispatch) und Testlücken der Erweiterung.** Ohne
-  Test sind: beide Dispatcher, der Resume-Authenticator, `WebFormRenderer` und die
-  meisten Renderer-Factories. `DPoP-demo-9ppv.12`
+- **Q-6 / K-10 (niedrig) Doppelte Verteilungslogik (Dispatch) und Testlücken der Erweiterung.** Die
+  Einordnung des nächsten Schritts ist entdoppelt (`OrchestratorNextDispatch`), die Behandlung der
+  Antworten steht in Authenticator und Required Action noch doppelt. Ohne Test sind: die Required
+  Action, der Resume-Authenticator, `WebFormRenderer` und die meisten Renderer-Factories.
+  `DPoP-demo-9ppv.12`
 - **Q-7 (Hinweis) `ident_eid` ist vom Kover-Tor ausgenommen**, enthält aber Kernlogik
   (`IdentEidFlow`). Das Kover-Tor prüft die Testabdeckung. Vorschlag: den Ausschluss auf
   `simulation.*` beschränken. Issue: –
@@ -207,9 +212,8 @@ stillschweigend etwas von der Umgebung voraussetzt.
 
 ## 7. Offene Entscheidungen des Inhabers
 
-- **Passwortwechsel:** Soll die Verfahrensverwaltung `enroll-password` bei aktivem Passwort als
-  „ersetzen“ anbieten? Davon hängen drei weitere Schritte ab:
-  - eine Required Action `orchestrator-change-password`,
+- **Passwortwechsel:** Die Verfahrensverwaltung bietet `enroll-password` bei aktivem Passwort als
+  „ersetzen“ an ([verfahren/password.md](verfahren/password.md)). Offen sind noch:
   - der Anstoß durch den Admin per `execute-actions-email` (`DPoP-demo-164n.27`),
   - die Account-Konsole für föderierte Nutzer, also Nutzer, die Keycloak beim Orchestrator
     nachliest (`DPoP-demo-164n.28`).

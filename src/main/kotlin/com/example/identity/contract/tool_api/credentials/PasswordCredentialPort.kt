@@ -4,9 +4,8 @@ import com.example.identity.contract.tool_api.EnrollmentRef
 
 
 /**
- * Verify or replace the password behind an [EnrollmentRef], for callers outside the password
- * tools' own ToolSession, e.g. KOBIL's unlock by password.
- * Uses the same store as the password tools.
+ * Verifies the password behind an [EnrollmentRef], for callers outside the password tools' own
+ * ToolSession, e.g. KOBIL's unlock by password. Uses the same store as the password tools.
  */
 interface PasswordCredentialPort {
     /**
@@ -14,9 +13,6 @@ interface PasswordCredentialPort {
      * Implementations run the same constant-cost check for `null`, so timing reveals nothing.
      */
     fun verify(enrollmentRef: EnrollmentRef?, candidate: String): Boolean
-
-    /** Hashes and stores [password] as a brand-new enrollment, returning its reference. */
-    fun setNew(password: String): EnrollmentRef
 
     companion object {
         /**

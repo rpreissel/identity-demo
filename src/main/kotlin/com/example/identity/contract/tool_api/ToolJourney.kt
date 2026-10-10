@@ -70,7 +70,7 @@ interface ActivationToolContext : AuthorizedToolContext
  * The journey as a tool controller sees it: activation, binding checks, transitions and the
  * response envelope. A controller gets a context
  * ([beginActivation], [loadCurrent] or [loadContext]), runs its own logic to a [ToolOutcome], and
- * calls [applyOutcome] (writes) or [buildReadResponse] (reads).
+ * answers through [activated] (activation), [applyOutcome] (writes) or [readResponse] (reads).
  */
 interface ToolJourney {
     /**

@@ -57,7 +57,9 @@ jede Ergänzung zweimal. Wenn man generiert, kann es gar keine Abweichung geben.
 - Der Eintrag `servers` wird aus der Spec entfernt. Er enthielte den zufälligen Port des Tests und
   sagt nichts über den Vertrag aus.
 - In der Keycloak-Erweiterung werden drei Dinge noch von Hand geparst: `restoreData`, die Liste der
-  Verfahren und die Passwortprüfung.
+  Verfahren und die Passwortprüfung. (Nachtrag 2026-10-10: `restoreData` und die Passwortprüfung
+  sind mit ADR-58 und ADR-59 entfallen. Von Hand gelesen werden noch die Liste der Verfahren, die
+  Konten und Einladungen der Federation und der Tool-Katalog.)
 
 ## Geschichte
 

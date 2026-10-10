@@ -1,6 +1,9 @@
 package com.example.identity.core.orchestrator.support
 
 import com.example.identity.contract.tool_api.ids.AccountId
+import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollment
+import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
+import com.example.identity.tools.auth_password.internal.PasswordHasher
 import com.example.identity.tools.auth_sms.internal.SmsNumbers
 import com.example.identity.tools.auth_sms.PHONE_NUMBER as PHONE_NUMBER_ATTRIBUTE
 import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
@@ -11,7 +14,6 @@ import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollment
 import com.example.identity.tools.auth_sms.internal.AuthSmsEnrollmentRepository
 import com.example.identity.core.orchestrator.session.SessionManagementService
 import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
-import com.example.identity.contract.tool_api.credentials.PasswordCredentialPort
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -33,7 +35,7 @@ import java.time.Instant
 class AccountFixtures(
     private val accountService: AccountService,
     private val personDirectory: PersonDirectory,
-    private val passwordCredentialPort: PasswordCredentialPort,
+    private val passwordEnrollmentRepository: AuthPasswordEnrollmentRepository,
     private val smsEnrollmentRepository: AuthSmsEnrollmentRepository,
     private val smsNumbers: SmsNumbers,
     private val deviceEnrollmentRepository: DeviceEnrollmentRepository,
@@ -143,7 +145,8 @@ class AccountFixtures(
 
             is Method.Password -> accountService.addAuthenticationMethod(
                 accountId, "password",
-                passwordCredentialPort.setNew(method.password),
+                passwordEnrollmentRepository.save(AuthPasswordEnrollment(passwordHash = PasswordHasher.hash(method.password), createdAt = Instant.now()))
+                    .let { EnrollmentRef("auth_password.enrollment", it.id.toString()) },
                 enrolledUnderAcr = ENROLLED_UNDER_ACR.value,
                 enrolledUnderAmr = listOf("fsc"),
                 instanceId = instanceId

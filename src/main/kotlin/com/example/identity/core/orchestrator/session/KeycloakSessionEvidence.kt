@@ -25,8 +25,8 @@ data class KeycloakSessionEvidenceId(
 /**
  * One method a Keycloak session has proven (ADR-59): a new Web channel of the same session takes
  * these rows over instead of proving them again. One row per session and method, so two tabs that
- * finish at once write different rows and neither overwrites the other. Written only by
- * [KeycloakSessionEvidenceRepository.upsert], read and deleted here.
+ * finish at once write different rows and neither overwrites the other. Written only through
+ * [KeycloakSessionEvidenceRepository.insert] and [KeycloakSessionEvidenceRepository.updateIfYounger].
  */
 @Entity
 @Table(schema = "orchestrator", name = "keycloak_session_evidence")
