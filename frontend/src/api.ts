@@ -1,4 +1,5 @@
 import { ADMIN_PATH, adminAuthHeader, clearAdminCredentials } from './adminAuth'
+import { errorMessage } from './errorMessage'
 import type { ToolCatalogEntry } from './generated/models'
 import { createDpopProof, type DpopKeyPair } from './dpop'
 import type { ActiveMethodView, ChannelResponse, DeviceLinkResponse, ErrorResponse, IdTokenClaims, JourneyTraceResponse, TokenResponse } from './types'
@@ -79,7 +80,7 @@ async function call<T>(dpop: DpopKeyPair, method: string, path: string, body?: u
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   } catch (err) {
-    notifyApiCall({ method, path, requestBody: body, error: err instanceof Error ? err.message : String(err) })
+    notifyApiCall({ method, path, requestBody: body, error: errorMessage(err) })
     throw err
   }
   if (!response.ok) {
@@ -331,10 +332,13 @@ async function callPlain<T>(method: string, path: string, body?: unknown): Promi
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   if (admin && response.status === 401) clearAdminCredentials()
-  if (!response.ok) throw new ApiError(response.status, undefined, `${method} ${path} failed: ${response.status}`)
   // A Kotlin `Unit`-returning controller method (e.g. every admin PUT) answers 200 with an empty
   // body, not 204. Reading as text and parsing only a non-empty body covers both.
   const text = await response.text()
+  if (!response.ok) {
+    const { errorCode, message } = parseErrorBody(text, `${method} ${path} failed: ${response.status}`)
+    throw new ApiError(response.status, errorCode, message)
+  }
   return (text === '' ? undefined : JSON.parse(text)) as T
 }
 
@@ -515,5 +519,5 @@ export function describeError(prefix: string, err: unknown): string {
       : ''
     return `${prefix}: ${err.message}${hint}`
   }
-  return `${prefix}: ${err instanceof Error ? err.message : String(err)}`
+  return `${prefix}: ${errorMessage(err)}`
 }

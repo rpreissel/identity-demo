@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { errorMessage } from '../../errorMessage'
 import { login } from '../../kobilSdk'
 import { t } from '../../texts'
 import { StepActions } from '../../components/PhoneFrame'
@@ -43,7 +44,7 @@ export function KobilOtpStep({
     started.current = true
     login({ tenantId, userId: kobilUserId }, kobilPin)
       .then(({ otp }) => onSubmit({ otp }))
-      .catch((err) => setSdkError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setSdkError(errorMessage(err)))
   }, [tenantId, kobilUserId, kobilPin, onSubmit])
 
   return (

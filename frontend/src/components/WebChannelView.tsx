@@ -1,4 +1,6 @@
 import { t } from '../texts'
+import { ErrorCard } from './ErrorCard'
+import { errorMessage } from '../errorMessage'
 import { Tx } from '../Tx'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { type KeycloakInfo } from '../api'
@@ -110,7 +112,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
       })
       .catch((err) => {
         if (err instanceof LoginNotCompletedError && err.cancelled) setNotice(err.message)
-        else setError(err instanceof Error ? err.message : String(err))
+        else setError(errorMessage(err))
       })
       .finally(() => {
         completingRef.current = false
@@ -127,7 +129,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
   function login(acrValue: '1' | '2', thenShow: PortalView = 'home') {
     clearMessages()
     writeStored(() => sessionStorage, VIEW_KEY, thenShow)
-    redirectToLogin(acrValue).catch((err) => setError(err instanceof Error ? err.message : String(err)))
+    redirectToLogin(acrValue).catch((err) => setError(errorMessage(err)))
   }
 
   function refresh() {
@@ -145,7 +147,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
           setView('home')
           setNotice(err.message)
         } else {
-          setError(err instanceof Error ? err.message : String(err))
+          setError(errorMessage(err))
         }
       })
   }
@@ -153,13 +155,13 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
   function stepUp(thenShow: PortalView) {
     clearMessages()
     writeStored(() => sessionStorage, VIEW_KEY, thenShow)
-    redirectToStepUp().catch((err) => setError(err instanceof Error ? err.message : String(err)))
+    redirectToStepUp().catch((err) => setError(errorMessage(err)))
   }
 
   function manageMethods() {
     clearMessages()
     writeStored(() => sessionStorage, VIEW_KEY, 'security')
-    redirectToManageMethods().catch((err) => setError(err instanceof Error ? err.message : String(err)))
+    redirectToManageMethods().catch((err) => setError(errorMessage(err)))
   }
 
   /**
@@ -244,7 +246,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(errorMessage(err))
     }
   }
 
@@ -478,7 +480,7 @@ export function WebChannelView({ keycloak }: { keycloak: KeycloakInfo }) {
                     <StepExplanation {...explanation} />
                   </Demo>
                   {notice && <div className="hint">{notice}</div>}
-                  {error && <div className="error-card">{error}</div>}
+                  {error && <ErrorCard>{error}</ErrorCard>}
                   {tokens ? signedIn[process ? 'process' : view] : signedOut}
                 </main>
               </div>

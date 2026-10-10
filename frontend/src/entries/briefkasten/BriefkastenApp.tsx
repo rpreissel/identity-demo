@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { ErrorCard } from '../../components/ErrorCard'
 import '../../App.css'
 import { ChannelNav } from '../../components/ChannelNav'
 import { AreaHead, SimBand } from '../../components/SimBand'
@@ -147,7 +148,7 @@ export function BriefkastenApp() {
             ))}
           </div>
         </AreaHead>
-        {error && <div className="card error-card"><h2>{t('Fehler')}</h2><p>{error}</p></div>}
+        {error && <ErrorCard title={t('Fehler')}>{error}</ErrorCard>}
         {shown.length === 0 ? (
           <p className="area-empty">{t('Noch nichts verschickt.')}</p>
         ) : (

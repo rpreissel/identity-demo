@@ -1,4 +1,5 @@
 import { t } from '../texts'
+import { errorMessage } from '../errorMessage'
 import { useEffect, useState } from 'react'
 import { fetchRegistrationOrder, setRegistrationOrder } from '../api.ts'
 import { SettingRow } from './SettingRow'
@@ -16,7 +17,7 @@ export function AdminRegistrationOrderView() {
   function reload() {
     fetchRegistrationOrder()
       .then((state) => setEnrollFirst(state.enrollFirst))
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setError(errorMessage(err)))
   }
 
   useEffect(reload, [])
@@ -27,7 +28,7 @@ export function AdminRegistrationOrderView() {
       await setRegistrationOrder(order === 'enroll')
       reload()
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(errorMessage(err))
     }
   }
 

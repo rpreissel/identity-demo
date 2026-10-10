@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { ErrorCard } from '../../components/ErrorCard'
 import '../../App.css'
 import {
   checkAdminLogin,
@@ -129,7 +130,7 @@ function LoginForm({ onLoggedIn }: { onLoggedIn: () => void }) {
           onChange={(e) => setPassword(e.target.value)}
         />
       </div>
-      {error && <p className="error-card">{error}</p>}
+      {error && <ErrorCard>{error}</ErrorCard>}
       <div className="form-actions">
         <button type="submit">{t('Anmelden')}</button>
       </div>
@@ -161,7 +162,7 @@ function SessionsTab() {
             'Je Liste die zehn neuesten.',
         )}
       </p>
-      {error && <p className="error-card">{error}</p>}
+      {error && <ErrorCard>{error}</ErrorCard>}
       {report ? <ActiveSessionsView report={report} /> : !error && <p>{t('Lädt…')}</p>}
       <div className="form-actions">
         <button className="secondary" onClick={reload}>
@@ -201,7 +202,7 @@ function AccountsTab() {
     <>
       <div className="card">
         <h2>{t('Konten')}</h2>
-        {error && <p className="error-card">{error}</p>}
+        {error && <ErrorCard>{error}</ErrorCard>}
         {notice && <p className="hint">{notice}</p>}
         {accounts === null ? (
           // A failed load already says so above - "Lädt…" next to it would claim it is still trying.

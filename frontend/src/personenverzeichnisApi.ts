@@ -1,5 +1,5 @@
-import { ApiError } from './api'
-import { PERSONENVERZEICHNIS_TEXTS, resolveText } from './texts'
+import { mockApi } from './mockApi'
+import { PERSONENVERZEICHNIS_TEXTS } from './texts'
 
 /**
  * The simulated person register's own API (`/mock-personenverzeichnis`, ADR-31) - not this application's
@@ -62,22 +62,7 @@ export interface Einladung {
   offen: boolean
 }
 
-const BASE = '/mock-personenverzeichnis'
-
-async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const response = await fetch(BASE + path, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
-  const text = await response.text()
-  const parsed = text === '' ? undefined : JSON.parse(text)
-  if (!response.ok) {
-    // The register answers in its own form ({"error": <text reference>}), not with our ErrorResponse.
-    throw new ApiError(response.status, undefined, parsed?.error ? resolveText(parsed.error, PERSONENVERZEICHNIS_TEXTS) : `${method} ${path}: ${response.status}`)
-  }
-  return parsed as T
-}
+const call = mockApi('/mock-personenverzeichnis', PERSONENVERZEICHNIS_TEXTS)
 
 export const personenverzeichnisApi = {
   personen: () => call<RegisterPerson[]>('GET', '/personen'),

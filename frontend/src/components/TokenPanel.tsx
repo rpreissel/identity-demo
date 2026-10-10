@@ -1,4 +1,5 @@
 import { t } from '../texts'
+import { errorMessage } from '../errorMessage'
 import { useEffect, useRef, useState } from 'react'
 import type { DpopKeyPair } from '../dpop.ts'
 import { getToken } from '../api.ts'
@@ -47,7 +48,7 @@ export function TokenPanel({ dpop, channelSessionId, onRefreshed }: TokenPanelPr
         setToken(loaded)
         onLoaded?.()
       })
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setError(errorMessage(err)))
       .finally(onSettled)
   }
 

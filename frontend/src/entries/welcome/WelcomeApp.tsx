@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { ErrorCard } from '../../components/ErrorCard'
 import '../../App.css'
 import {
   describeError,
@@ -284,7 +285,7 @@ function DemoReset() {
             'Die Testpersonen im Personenverzeichnis bleiben, sie können sich danach neu registrieren.',
         )}
       </p>
-      {error && <p className="error-card">{error}</p>}
+      {error && <ErrorCard>{error}</ErrorCard>}
       {result && <p className="hint">{result}</p>}
       {step === 'confirm' || step === 'running' ? (
         <>

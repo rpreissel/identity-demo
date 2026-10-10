@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { ErrorCard } from '../../components/ErrorCard'
 import '../../App.css'
 import { ChannelNav, type NavTab } from '../../components/ChannelNav'
 import { AreaHead, SimBand } from '../../components/SimBand'
@@ -78,7 +79,7 @@ export function PersonenverzeichnisApp() {
         {t('Was Sie hier ändern, meldet es an die Konten - und über sie an Keycloak.')}
       </SimBand>
       <main className="area-page">
-        {error && <div className="card error-card"><h2>{t('Fehler')}</h2><p>{error}</p></div>}
+        {error && <ErrorCard title={t('Fehler')}>{error}</ErrorCard>}
         {tab === 'personen' && <PersonenTab personen={personen} onChanged={reload} onError={setError} />}
         {tab === 'freischaltcodes' && <FreischaltcodesTab personen={personen} onError={setError} />}
         {tab === 'einladungen' && <EinladungenTab personen={personen} onError={setError} />}

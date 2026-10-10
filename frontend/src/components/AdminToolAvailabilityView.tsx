@@ -1,4 +1,6 @@
 import { resolveText, t } from '../texts'
+import { ErrorCard } from './ErrorCard'
+import { errorMessage } from '../errorMessage'
 import { useEffect, useState, type ReactNode } from 'react'
 import {
   fetchToolAvailability,
@@ -49,7 +51,7 @@ export function AdminToolAvailabilityView() {
   function reload() {
     fetchToolAvailability()
       .then(setChannels)
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setError(errorMessage(err)))
   }
 
   useEffect(reload, [])
@@ -60,7 +62,7 @@ export function AdminToolAvailabilityView() {
       await action()
       reload()
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(errorMessage(err))
     }
   }
 
@@ -131,7 +133,7 @@ export function AdminToolAvailabilityView() {
           </div>
         )}
       </div>
-      {error && <p className="error-card">{error}</p>}
+      {error && <ErrorCard>{error}</ErrorCard>}
       {channels === null
         ? !error && <p>{t('Lädt…')}</p>
         : current &&

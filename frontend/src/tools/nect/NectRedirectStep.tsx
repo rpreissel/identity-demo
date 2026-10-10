@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { ErrorCard } from '../../components/ErrorCard'
 import { stepDataOf } from '../../types'
 import { attemptError } from '../stepData'
 import type { ToolRenderContext } from '../types'
@@ -35,7 +36,7 @@ export function NectRedirectStep({ ctx }: { ctx: ToolRenderContext }) {
             'automatisch hierher zurück. Eine Zuordnung per Versichertennummer oder Partnernummer ist ein eigener Schritt danach.',
         )}
       </p>
-      {error && <div className="error-card">{error}</div>}
+      {error && <ErrorCard>{error}</ErrorCard>}
       <StepActions>
         {redirect ? (
           <button type="button" onClick={() => window.location.assign(redirect.jumpUrl)}>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { errorMessage } from '../../errorMessage'
 import { activate } from '../../kobilSdk'
 import { storeUnlockSecret } from '../../kobilUnlockSecret'
 import { t } from '../../texts'
@@ -50,7 +51,7 @@ export function KobilEnrollForm({
       if (biometricConsent && unlockSecret) storeUnlockSecret(kobilUserId, unlockSecret)
       onSubmit({ activated: true, biometricConsent, label: label.trim() || t('Mein Handy') })
     } catch (err) {
-      setSdkError(err instanceof Error ? err.message : String(err))
+      setSdkError(errorMessage(err))
     } finally {
       setBusy(false)
     }

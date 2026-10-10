@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { ErrorCard } from '../../components/ErrorCard'
 import '../../App.css'
 import { ChannelNav } from '../../components/ChannelNav'
 import { SimBand } from '../../components/SimBand'
@@ -128,7 +129,7 @@ export function NectApp() {
             <span>{t('Ausweis prüfen')}</span>
           </span>
         </div>
-        {error && <div className="card error-card"><h2>{t('Fehler')}</h2><p>{error}</p></div>}
+        {error && <ErrorCard title={t('Fehler')}>{error}</ErrorCard>}
         {caseId && view && view.status !== 'OPEN' && (
           <section className="nect-card">
             <h1>{t('Vorgang bereits beendet')}</h1>
