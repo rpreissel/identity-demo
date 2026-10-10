@@ -510,6 +510,29 @@ Die Punkte sind nach Nutzen für die Verständlichkeit geordnet. Aufwand: k = kl
     - `KcPage` wählt die Seite per `switch` statt über eine Tabelle.
     - Demo-Personen gehen als JSON-String mit `"null"` als Platzhalter an die Seite.
 
+**Stand der Behebung im Frontend (2026-10-10, `DPoP-demo-8x0p.11`):**
+
+- **V-F1:** erledigt. `OneTimeCodeForm`, `EmailEntryForm` und `ValueThenCodeStep` in
+  `tools/shared`. Die Seiten von SMS und E-Mail sind nur noch ihre Texte.
+- **V-F2:** teilweise.
+  - `onChannel` und `onTool` ersetzen die zwölf gleichen Handler.
+  - `isJourneyOver` ersetzt die dreifache Prüfung.
+  - Die Schritterklärung ist ausgelagert (`explainAppStep`).
+  - Offen sind der Hook `useAppChannel` mit Reducer, die Demo-Spalte als eigene Komponente und
+    `useWebSession`.
+- **V-F3:** erledigt bis auf `adminApi.ts`. Neu sind `mockApi`, `errorMessage` und `ErrorCard` mit
+  `role="alert"`, und `callPlain` liest jetzt den Fehlertext des Servers.
+- **V-F4:** erledigt. Jede `tools/*/api.ts` prüft ihren Body mit `satisfies` gegen den generierten
+  Request-Typ.
+- **V-F5:** erledigt für das Frontend. oxlint prüft `react/exhaustive-deps`, die zehn Ausnahmen
+  wirken damit. Das Theme hat weiter keinen Linter.
+- **V-F6:** teilweise.
+  - Erledigt: `boot` für alle Seiten, die Debug-Texte über `t()` (7 neue Texte, de/en), die toten
+    Labels.
+  - Offen: die gemeinsame `textId`-Logik von Frontend und Theme sowie die Theme-Punkte (Codefeld,
+    Demo-Personen als JSON-String).
+  - Die Seitenwahl in `KcPage` bleibt ein `switch`, denn er grenzt den Typ je Seite ein.
+
 ### Kommentare (Stichproben)
 
 Geschichte im Kommentar ist im Hauptcode selten. Ausnahme: `keycloak-extension/build.gradle.kts:73`
@@ -649,4 +672,5 @@ die im Frontend noch nicht.
 | AU-11 | Reste des alten Wegs in Doku und Kommentaren, Korrekturen an den offenen Befunden | `DPoP-demo-8x0p.7` |
 | V-B1 bis V-B5 | Toter Code, `OneTimeCodes`, `onePerDevice`, `requireEnrollment`, Namen (teilweise) | `DPoP-demo-8x0p.8` |
 | V-B6 bis V-B9 | `applied`, `ToolStep`, Nullbarkeit, kürzere Funktionen, `JourneyKeys` | `DPoP-demo-8x0p.9` |
+| V-F1 bis V-F6 | gemeinsame Formulare, `onChannel`, `mockApi`, `ErrorCard`, typisierte Bodys, `boot` | `DPoP-demo-8x0p.11` |
 | V-E1 bis V-E4 | `ToolSteps`, Paket `model`, Zyklen geprüft, `OrchestratorClient` aufgeräumt | `DPoP-demo-8x0p.10` |
