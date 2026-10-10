@@ -47,14 +47,13 @@ class DpopBindingKeyResolver(
             "@BindingKey resolution requires a servlet request"
         }
         val annotation = parameter.getParameterAnnotation(BindingKey::class.java)
-        return bindingKeyOf(request, keycloakOnly = annotation?.keycloakOnly == true, dpopOnly = annotation?.dpopOnly == true)
+        return bindingKeyOf(request, dpopOnly = annotation?.dpopOnly == true)
     }
 
     /** The caller's binding key from the request's DPoP proof or peer-auth assertion. */
-    fun bindingKeyOf(request: HttpServletRequest, keycloakOnly: Boolean = false, dpopOnly: Boolean = false): String {
+    fun bindingKeyOf(request: HttpServletRequest, dpopOnly: Boolean = false): String {
         val dpopProof = request.getHeader("DPoP")
         if (dpopProof != null) {
-            if (keycloakOnly) throw PeerAuthValidationException("Only Keycloak's peer-auth assertion is accepted here")
             val proof = dpopValidator.validate(dpopProof, request.method, buildRequestUrl(request))
             return jwkThumbprintService.computeThumbprint(proof.publicKey)
         }

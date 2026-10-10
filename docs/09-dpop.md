@@ -221,7 +221,7 @@ ist und welchem Konto das Gerät gehört, steht jeweils an anderer Stelle.
   - Stimmt der Nutzer zu, wird zusätzlich **jedes** Credential des bisherigen Kontos deaktiviert, das
     an diesen Schlüssel gebunden ist. Sein Datensatz im Tool-Modul wird gelöscht
     (`AccountDeletionService.revokeMethod`). Heute sind das `device` und `kobil`.
-    `JourneyActionExecutor` findet sie über `Tool.boundToCallerKey`, nie über eine Liste von
+    `JourneyActionExecutor` findet sie über `Tool.onePerDevice`, nie über eine Liste von
     `toolId`s.
   - Lehnt der Nutzer ab, bricht die Journey ab, und die alte Verknüpfung bleibt bestehen.
 

@@ -255,11 +255,11 @@ class Tool internal constructor(
     /** The highest level this tool can achieve: always its module's. */
     val maxAcr: AcrLevel get() = module.maxAcr
 
-    /** Several active instances may coexist on one account ([ToolModule.onePerDevice]). */
-    val allowsMultipleInstances: Boolean get() = module.onePerDevice
-
-    /** The credential lives on one caller key ([ToolModule.onePerDevice]). */
-    val boundToCallerKey: Boolean get() = module.onePerDevice
+    /**
+     * One credential per device ([ToolModule.onePerDevice]): it lives on one caller key, and several
+     * instances may coexist on one account.
+     */
+    val onePerDevice: Boolean get() = module.onePerDevice
 
     /** See [ToolModule.demoOnly]. */
     val demoOnly: DemoOnly? get() = module.demoOnly
@@ -288,7 +288,7 @@ class Tool internal constructor(
      * account: a device is bound to one account at a time (docs/09-dpop.md).
      */
     fun usableByCaller(boundKeyRef: String?, callerBindingKeyRef: String?, linkedAccountId: AccountId?, accountId: AccountId): Boolean =
-        !boundToCallerKey || (module.livesOn(boundKeyRef, callerBindingKeyRef) && linkedAccountId == accountId)
+        !onePerDevice || (module.livesOn(boundKeyRef, callerBindingKeyRef) && linkedAccountId == accountId)
 
     /** [version] of this tool, or `null` if the server does not serve it. */
     fun inVersion(version: Int): ToolVersion? = ToolVersion(toolId, version).takeIf { version in versions }

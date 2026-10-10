@@ -64,12 +64,12 @@ internal object CandidateTools {
 
     /**
      * The auth tool for a credential that lives on this device, if the account has one
-     * ([Tool.boundToCallerKey]). It is the fastest offer and the only one that can succeed
+     * ([Tool.onePerDevice]). It is the fastest offer and the only one that can succeed
      * without further input.
      */
     fun preferredDeviceAuth(account: AccountProfile, ctx: JourneyContext): ToolId? {
         val deviceAuthTools = ctx.catalog.tools()
-            .filter { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.boundToCallerKey }
+            .filter { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.onePerDevice }
         val preferred = deviceAuthTools.firstOrNull { descriptor ->
             account.activeAuthenticationMethods.any {
                 it.method == descriptor.method && descriptor.usableByCaller(it.boundKeyRef, ctx.bindingKeyRef, ctx.linkedAccountId, account.accountId)

@@ -102,7 +102,7 @@ anderen Pfade lässt Spring Security durch, und die Handler prüfen sie selbst.
 - [`DpopBindingKeyResolver.bindingKeyOf`](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/DpopBindingKeyResolver.kt#L52)
   ermittelt, an welchen Schlüssel eine Anfrage gebunden ist. Aus einem DPoP-Header wird der
   Thumbprint, also ein Fingerabdruck des Schlüssels. Sonst wird aus einer Peer-Auth-Assertion
-  `kc:<channel_binding>`. Endpunkte mit `keycloakOnly` lehnen DPoP ab. Endpunkte mit `dpopOnly`
+  `kc:<channel_binding>`. Endpunkte mit `dpopOnly`
   (App-Kanal anlegen, Geräteverknüpfung) lehnen eine Assertion ab (SA-19,
   `DpopBindingKeyResolverTest`).
 - [`ToolContextResolver.resolveArgument`](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/ToolContextResolver.kt#L45):

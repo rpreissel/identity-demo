@@ -35,10 +35,6 @@ class OrchestratorException(
         fun processGone(text: Text, detail: String? = null) =
             OrchestratorException(ErrorCode.PROCESS_GONE, text, detail)
 
-        /** Required level unreachable with the account's current methods (docs/04-orchestrierung.md #1). */
-        fun processAborted(text: Text, detail: String? = null) =
-            OrchestratorException(ErrorCode.PROCESS_ABORTED, text, detail)
-
         /**
          * Account-level brute-force rate limit tripped (AccountLockoutService). Only raised where the
          * caller already knows the account. A lookup-based tool folds its lock into its ordinary

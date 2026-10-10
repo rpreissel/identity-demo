@@ -5,7 +5,6 @@ import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Subject
-import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import org.springframework.data.repository.findByIdOrNull
@@ -13,7 +12,6 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Duration
-import java.util.UUID
 import com.example.identity.core.orchestrator.domain.AcrLevels
 
 @Service
@@ -80,14 +78,6 @@ class SessionManagementService(
         return channelSessionRepository.save(session)
     }
 
-    fun updateChannelState(channelSessionId: ChannelSessionId, newState: ChannelState) {
-        channelSessionRepository.findByChannelSessionId(channelSessionId)?.let { session ->
-            session.state = newState
-            session.touch(clock.instant())
-            channelSessionRepository.save(session)
-        }
-    }
-
     /**
      * Only raises, never lowers (docs/05-api.md, step-ups). Compared against the effective floor,
      * so an explicit "loa1" cannot undercut the implicit loa2 baseline.
@@ -96,15 +86,6 @@ class SessionManagementService(
         channelSessionRepository.findByChannelSessionId(channelSessionId)?.let { session ->
             val effectiveFloor = session.acrFloor ?: AcrLevels.DEFAULT_REQUIRED_ACR.value
             session.acrFloor = AcrLevels.max(effectiveFloor, requiredAcr)
-            session.touch(clock.instant())
-            channelSessionRepository.save(session)
-        }
-    }
-
-    fun bindAccountAndAppTokenSession(channelSessionId: ChannelSessionId, accountId: AccountId, appTokenSessionId: UUID) {
-        channelSessionRepository.findByChannelSessionId(channelSessionId)?.let { session ->
-            session.subject = accountId?.let(Subject::Account)
-            session.appTokenSessionId = appTokenSessionId
             session.touch(clock.instant())
             channelSessionRepository.save(session)
         }

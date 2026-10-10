@@ -9,7 +9,6 @@ import com.example.identity.core.orchestrator.session.ChannelSessionEndedExcepti
 import com.example.identity.contract.tool_api.directory.IdentityConflictException
 import com.example.identity.contract.tool_api.InvalidInputException
 import com.example.identity.contract.tool_api.TooManyRequestsException
-import com.example.identity.contract.tool_api.InvalidStateException
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import org.hibernate.exception.ConstraintViolationException
 import org.slf4j.LoggerFactory
@@ -121,18 +120,11 @@ class OrchestratorExceptionHandler {
         return respond(ErrorCode.INVALID_STATE_TRANSITION, Text("Diese Identität gehört bereits zu einem anderen Konto."))
     }
 
-    /** Fachlich unverarbeitbar, kein Nutzereingabefehler (unknown enrollmentRef) - docs/07-betrieb.md #1: 422. */
+    /** Not processable, but no input error (an unknown enrollmentRef): 422 (docs/07-betrieb.md #1). */
     @ExceptionHandler(UnresolvableReferenceException::class)
     fun handleUnresolvableReference(e: UnresolvableReferenceException): ResponseEntity<ErrorResponse> {
         log.info("{}: {}", ErrorCode.UNRESOLVABLE_REFERENCE, e.message)
         return respond(ErrorCode.UNRESOLVABLE_REFERENCE, e.text)
-    }
-
-    /** A tool module refused what does not fit the account's state: 409, like `invalidState`. */
-    @ExceptionHandler(InvalidStateException::class)
-    fun handleInvalidState(e: InvalidStateException): ResponseEntity<ErrorResponse> {
-        log.info("{}: {}", ErrorCode.INVALID_STATE_TRANSITION, e.message)
-        return respond(ErrorCode.INVALID_STATE_TRANSITION, e.text)
     }
 
     /** A tool module's own budget refused a repeat (ADR-44): 429, like the orchestrator's own limits. */

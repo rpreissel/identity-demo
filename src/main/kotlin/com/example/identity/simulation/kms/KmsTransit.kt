@@ -94,9 +94,6 @@ class KmsTransit(
     }
 
     @Transactional(readOnly = true)
-    fun keyInfo(name: String): KmsKeyInfo = infoOf(existing(name))
-
-    @Transactional(readOnly = true)
     override fun findKey(name: String): KmsKeyInfo? = keys.findById(name).orElse(null)?.let(::infoOf)
 
     @Transactional(readOnly = true)

@@ -108,7 +108,7 @@ class DefaultAuthPolicy(
             .filter { it.role == ToolRole.ENROLLMENT }
             // Singleton methods disappear once active; multi-instance methods (device) stay, so a
             // new device can add its own instance.
-            .filter { it.method !in activeMethods || it.allowsMultipleInstances }
+            .filter { it.method !in activeMethods || it.onePerDevice }
             .filter { it.requires.all { requirement -> requiresSatisfied(requirement, account) } }
             .map { it.toolId }
     }

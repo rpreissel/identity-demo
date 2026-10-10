@@ -35,8 +35,8 @@ class BindingKeyOpenApiConfig {
 
     /**
      * Declares the proofs an endpoint accepts: a `DPoP` header or a peer-auth assertion (two
-     * entries mean OR), only the assertion for `keycloakOnly`, only the proof for `dpopOnly`. Per operation, because endpoints
-     * without `@BindingKey` need neither.
+     * entries mean OR), only the proof for `dpopOnly`. Per operation, because endpoints without
+     * `@BindingKey` need neither.
      */
     @Bean
     fun bindingKeySecurityCustomizer(): OperationCustomizer = OperationCustomizer { operation, handlerMethod ->
@@ -47,11 +47,8 @@ class BindingKeyOpenApiConfig {
             operation.parameters = listOf(idParameter.required(true).schema(StringSchema().format("uuid"))) + operation.parameters.orEmpty()
             operation.security = listOf(SecurityRequirement().addList(DPOP_SCHEME), SecurityRequirement().addList(PEER_AUTH_SCHEME))
         } else if (bindingKey != null) {
-            operation.security = when {
-                bindingKey.keycloakOnly -> listOf(SecurityRequirement().addList(PEER_AUTH_SCHEME))
-                bindingKey.dpopOnly -> listOf(SecurityRequirement().addList(DPOP_SCHEME))
-                else -> listOf(SecurityRequirement().addList(DPOP_SCHEME), SecurityRequirement().addList(PEER_AUTH_SCHEME))
-            }
+            operation.security = if (bindingKey.dpopOnly) listOf(SecurityRequirement().addList(DPOP_SCHEME))
+                else listOf(SecurityRequirement().addList(DPOP_SCHEME), SecurityRequirement().addList(PEER_AUTH_SCHEME))
         }
         operation
     }
