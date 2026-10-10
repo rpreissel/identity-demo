@@ -1,7 +1,8 @@
 package com.example.identity.kcext.resource;
 
+import com.example.identity.kcext.model.SessionNotes;
+
 import com.example.identity.kcext.client.OrchestratorClient;
-import com.example.identity.kcext.login.OrchestratorNotes;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -116,7 +117,7 @@ class QrWaitStatusResourceProviderTest {
     static Stream<Map<String, String>> notAQrWaitingPage() {
         return Stream.of(
                 waitingNotes("auth-sms"),
-                Map.of(OrchestratorNotes.CHANNEL_SESSION_ID, CHANNEL, OrchestratorNotes.PENDING_KIND, "select"));
+                Map.of(SessionNotes.CHANNEL_SESSION_ID, CHANNEL, SessionNotes.PENDING_KIND, "select"));
     }
 
     @ParameterizedTest
@@ -170,10 +171,10 @@ class QrWaitStatusResourceProviderTest {
 
     private static Map<String, String> waitingNotes(String toolId) {
         Map<String, String> notes = new HashMap<>();
-        notes.put(OrchestratorNotes.CHANNEL_SESSION_ID, CHANNEL);
-        notes.put(OrchestratorNotes.PENDING_KIND, "tool");
-        notes.put(OrchestratorNotes.PENDING_TOOL_ID, toolId);
-        notes.put(OrchestratorNotes.PENDING_TOOL_SESSION_ID, TOOL_SESSION);
+        notes.put(SessionNotes.CHANNEL_SESSION_ID, CHANNEL);
+        notes.put(SessionNotes.PENDING_KIND, "tool");
+        notes.put(SessionNotes.PENDING_TOOL_ID, toolId);
+        notes.put(SessionNotes.PENDING_TOOL_SESSION_ID, TOOL_SESSION);
         return notes;
     }
 

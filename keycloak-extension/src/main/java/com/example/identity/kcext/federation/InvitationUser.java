@@ -1,5 +1,9 @@
 package com.example.identity.kcext.federation;
 
+import com.example.identity.kcext.model.KcSubject;
+
+import com.example.identity.kcext.model.KcInvitation;
+
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;

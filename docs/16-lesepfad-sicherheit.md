@@ -105,7 +105,7 @@ anderen Pfade lässt Spring Security durch, und die Handler prüfen sie selbst.
   `kc:<channel_binding>`. Endpunkte mit `dpopOnly`
   (App-Kanal anlegen, Geräteverknüpfung) lehnen eine Assertion ab (SA-19,
   `DpopBindingKeyResolverTest`).
-- [`ToolContextResolver.resolveArgument`](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/ToolContextResolver.kt#L45):
+- [`ToolContextResolver.resolveArgument`](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/ToolContextResolver.kt#L48):
   Die `toolId` kommt aus dem Controller, nie vom Client.
 - [`ReadinessGateFilter`](../src/main/kotlin/com/example/identity/core/orchestrator/ReadinessGateFilter.kt#L16)
   antwortet mit 503, bis der Dienst bereit ist.
@@ -121,7 +121,7 @@ anderen Pfade lässt Spring Security durch, und die Handler prüfen sie selbst.
   im Demomodus (`springdoc.api-docs.enabled: ${demo.mode}`). `ProductionModeCheck` lehnt es ab,
   diese Einstellung zu überschreiben. Der Demomodus ist der Schalter, der alles nur zum Vorführen
   Gedachte einschaltet.
-- [`ServerInfoController`](../src/main/kotlin/com/example/identity/core/orchestrator/admin/ServerInfoController.kt#L83)
+- [`ServerInfoController`](../src/main/kotlin/com/example/identity/core/orchestrator/admin/ServerInfoController.kt#L77)
   ist ohne Anmeldung erreichbar, weil der Web-Kanal daraus seine Keycloak-Adresse liest. Zustand,
   Zähler und Latenzen (`operations`) gibt er nur im Demomodus heraus (`ServerInfoControllerTest`).
 
@@ -286,7 +286,7 @@ Abschnitt 8 „Übernommene Nachweise als erster Übergang“;
   (`kcSessionId`) übernimmt nur ein neuer Kanal desselben Kontos. Gehören sie einem anderen Konto
   oder mehreren Konten, gibt es ebenfalls `409`. Nachweise von Verfahren, die das Konto nicht mehr
   hat, übernimmt er nicht.
-- [`KeycloakChannelService.flowEnded`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L218)
+- [`KeycloakChannelService.flowEnded`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L234)
   lehnt eine Sitzung mit Zeilen eines anderen Kontos ab (`409`). Es kürzt die Frist des Kanals auf
   das Ende der Keycloak-Sitzung. Es legt die Nachweise des Kanals je Sitzung und Verfahren ab und
   ersetzt einen Nachweis nur durch einen jüngeren desselben Kontos. Ein beendeter Kanal und ein
@@ -305,13 +305,13 @@ Abschnitt 8 „Übernommene Nachweise als erster Übergang“;
 
 **Code in der Keycloak-Erweiterung:**
 
-- [`PeerAuthAssertionSigner`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/PeerAuthAssertionSigner.java#L21)
+- [`PeerAuthAssertionSigner`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/PeerAuthAssertionSigner.java#L26)
   signiert die Assertions. Der Schlüssel ist als Geheimnis der Komponente gespeichert
   ([`OrchestratorSettings.ensureSigningKey`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorSettings.java#L100)).
-- [`OrchestratorClient.send`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorClient.java#L333)
+- [`OrchestratorClient.send`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorClient.java#L340)
   prüft jede Antwort, bevor es den Status auswertet. Die Prüfung der Inhalte steht in
-  [`OrchestratorResponseVerifier.checkClaims`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorResponseVerifier.java#L94).
-- [`OrchestratorAuthenticator.handleResponse`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorAuthenticator.java#L141):
+  [`OrchestratorResponseVerifier.checkClaims`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorResponseVerifier.java#L91).
+- [`OrchestratorAuthenticator.handleResponse`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorAuthenticator.java#L128):
   Welcher Nutzer angemeldet wird, ergibt sich nur aus dem Subjekt, das der Orchestrator nennt.
 - [`LoginCompletion.judge`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/LoginCompletion.java#L37):
   Eine Anmeldung ist nur fertig, wenn es ein Subjekt gibt, es dasselbe Subjekt ist und das `acr`
@@ -320,12 +320,12 @@ Abschnitt 8 „Übernommene Nachweise als erster Übergang“;
   nennt dem Orchestrator nur die Id der Keycloak-Sitzung, die das Identitäts-Cookie belegt. Er setzt
   das angefragte Niveau als Untergrenze und nimmt keine Einladungen an. Scheitert die Wiederaufnahme, läuft eine normale
   Anmeldung. Ein Fehler gewährt also nichts.
-- [`OrchestratorNotes.reportFlowEnd`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L121)
+- [`OrchestratorNotes.reportFlowEnd`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L108)
   meldet am Ende eines Durchlaufs, zu welcher Keycloak-Sitzung der Kanal gehört.
 - [`QrWaitStatusResourceProvider.status`](../keycloak-extension/src/main/java/com/example/identity/kcext/resource/QrWaitStatusResourceProvider.java#L74)
   ist ohne Anmeldung erreichbar. Er verlangt aber das signierte Cookie `AUTH_SESSION_ID` von
   Keycloak und antwortet nur mit `waiting` oder `ready`.
-- [`OrchestratorStorageProvider`](../keycloak-extension/src/main/java/com/example/identity/kcext/federation/OrchestratorStorageProvider.java#L31)
+- [`OrchestratorStorageProvider`](../keycloak-extension/src/main/java/com/example/identity/kcext/federation/OrchestratorStorageProvider.java#L37)
   liest nur Konten. Er prüft und speichert keine Credentials; jeden Anmeldeschritt führt der
   Orchestrator als Tool aus ([ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)).
   Keycloak kann die Nutzer nur lesen, nicht ändern (I-15).
@@ -371,11 +371,11 @@ Abschnitt 8 „Übernommene Nachweise als erster Übergang“;
 - Ein unbekanntes `targetAcr` ergibt `400`, bevor sich am Kanal etwas ändert. Es wird nie still zu
   `none` (`KeycloakChannelIntegrationTest`).
 - `availableTools` wird mit dem Katalog abgeglichen, nur Tools aus dem Katalog bleiben übrig
-  ([`ChannelService.catalogToolsOf`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ChannelService.kt#L104),
+  ([`ChannelService.catalogToolsOf`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ChannelService.kt#L110),
   `ChannelToolDeclarationIntegrationTest`).
 - Formulardaten (`toolId`, `methodInstanceId`) werden nur als einfaches Pfadsegment
   `[A-Za-z0-9._~-]` übernommen, ohne `.` und `..`
-  ([`OrchestratorClient.segment`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorClient.java#L369),
+  ([`OrchestratorClient.segment`](../keycloak-extension/src/main/java/com/example/identity/kcext/client/OrchestratorClient.java#L380),
   `OrchestratorClientSegmentTest`). Sie können die signierte Adresse also nicht verändern.
 
 **Offene Punkte:**
@@ -389,7 +389,7 @@ Abschnitt 8 „Übernommene Nachweise als erster Übergang“;
 - **Hinweis** Das Zeitfenster für Peer-Auth beträgt 300 s im ganzen Profil `keycloak` statt nur in
   der Variante `host` (`DPoP-demo-9ppv.13`).
 - **Hinweis** Die Kanal-Id des Web-Kanals wird aus der Tab-Id von Keycloak abgeleitet
-  ([`OrchestratorNotes.channelSessionId`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L71))
+  ([`OrchestratorNotes.channelSessionId`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L49))
   und ist damit vorhersagbar. Für einen Zugriff braucht man trotzdem eine signierte Assertion mit
   passendem `channel_binding` (`DPoP-demo-gxis`).
 - **Hinweis** Der Endpunkt für den QR-Status hat kein Mindestintervall (`DPoP-demo-9ppv.10`).
@@ -419,21 +419,21 @@ I-32.
 - [`AcrLevel`](../src/main/kotlin/com/example/identity/contract/tool_api/claims/AcrLevel.kt#L10):
   Ein unbekanntes Niveau hat Rang 0.
 - In der Richtlinie für Sicherheitsniveaus:
-  [`DefaultAuthPolicy.resolveAcr`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/policy/DefaultAuthPolicy.kt#L31)
-  (Alterung), [`isSatisfied`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/policy/DefaultAuthPolicy.kt#L60),
-  [`cappedAcr`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/policy/DefaultAuthPolicy.kt#L168),
-  [`combinedAcr`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/policy/DefaultAuthPolicy.kt#L190),
-  [`authCandidates`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/policy/DefaultAuthPolicy.kt#L109).
-- [`Tool.staysWithin`](../src/main/kotlin/com/example/identity/contract/tool_api/Tool.kt#L246)
-  und [`ToolJourneyService.checkStaysWithin`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L367):
+  [`DefaultAuthPolicy.resolveAcr`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/policy/DefaultAuthPolicy.kt#L38)
+  (Alterung), [`isSatisfied`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/policy/DefaultAuthPolicy.kt#L67),
+  [`cappedAcr`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/policy/DefaultAuthPolicy.kt#L175),
+  [`combinedAcr`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/policy/DefaultAuthPolicy.kt#L197),
+  [`authCandidates`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/policy/DefaultAuthPolicy.kt#L116).
+- [`Tool.staysWithin`](../src/main/kotlin/com/example/identity/contract/tool_api/Tool.kt#L282)
+  und [`ToolJourneyService.checkStaysWithin`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L424):
   Ein Ergebnis über `maxAcr` oder außerhalb der Faktortypen des Tools ist ein harter Fehler.
 - [`CredentialRules.levelToWriteUnder`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/journey/CredentialRules.kt#L28)
   und [`proofLevel`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/journey/CredentialRules.kt#L37).
-  Angewandt werden sie in [`performAdoptCredential`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyActionExecutor.kt#L225)
-  und [`performAcceptProof`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyActionExecutor.kt#L283).
+  Angewandt werden sie in [`performAdoptCredential`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyActionExecutor.kt#L229)
+  und [`performAcceptProof`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyActionExecutor.kt#L289).
 - Weitergabe an Keycloak: [`ChannelResponseAssembler.authDataFor`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ChannelResponseAssembler.kt#L70)
   und [`KeycloakTokenProvider.requestAccountToken`](../src/main/kotlin/com/example/identity/core/orchestrator/session/KeycloakTokenProvider.kt#L91).
-  In Keycloak: [`AccountTokenGrantType.process`](../keycloak-extension/src/main/java/com/example/identity/kcext/grant/AccountTokenGrantType.java#L61),
+  In Keycloak: [`AccountTokenGrantType.process`](../keycloak-extension/src/main/java/com/example/identity/kcext/grant/AccountTokenGrantType.java#L56),
   [`AccountTokenClaims`](../keycloak-extension/src/main/java/com/example/identity/kcext/grant/AccountTokenClaims.java#L11),
   [`OrchestratorAcrAmrMapper.setClaim`](../keycloak-extension/src/main/java/com/example/identity/kcext/token/OrchestratorAcrAmrMapper.java#L69).
 
@@ -443,7 +443,7 @@ I-32.
   zusammengerechnet. Ab `loa3` muss die MFA innerhalb einer Achse liegen, also nur aus
   Identifizierung oder nur aus Anmeldefaktoren bestehen.
 - Gerätegebundene Verfahren werden nur auf dem verknüpften Gerät angeboten
-  ([`Tool.usableByCaller`](../src/main/kotlin/com/example/identity/contract/tool_api/Tool.kt#L254)).
+  ([`Tool.usableByCaller`](../src/main/kotlin/com/example/identity/contract/tool_api/Tool.kt#L290)).
 - Der eigene Grant in Keycloak nimmt nur bekannte Werte für `acr` und `amr` an, die dem Muster
   `[a-z0-9_-]+` folgen. Er gilt nur für einen vertraulichen Client mit einem eigenen Attribut. Eine
   Sitzung setzt er nur für denselben Nutzer fort.
@@ -482,13 +482,13 @@ zählt genau einmal.
   verfügbaren.
 - [`isCurrent`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyService.kt#L293),
   [`applyOutcome`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyService.kt#L306),
-  [`chargeAttempt`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyService.kt#L526)
-  (Budget von 3 Versuchen) und [`fallBack`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyService.kt#L555)
+  [`chargeAttempt`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyService.kt#L510)
+  (Budget von 3 Versuchen) und [`fallBack`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyService.kt#L540)
   (ein abgebrochener Step-up wird nie `AUTHENTICATED`).
-- [`ToolJourneyService.beginActivation`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L100),
-  [`validatePreconditions`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L132),
-  [`loadCurrent`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L154)
-  und [`applyOutcome`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L233)
+- [`ToolJourneyService.beginActivation`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L109),
+  [`validatePreconditions`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L160),
+  [`loadCurrent`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L184)
+  und [`applyOutcome`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L285)
   (danach steht der Tool-Durchlauf, die ToolSession, auf `DONE`).
 - [`ToolAvailabilityService`](../src/main/kotlin/com/example/identity/core/orchestrator/tool/ToolAvailabilityService.kt#L21)
   verwaltet die Sperre je Fassung und die Reihenfolge je Tool, beides je Kanal. `demoOnly`-Tools
@@ -537,11 +537,11 @@ Konten nie zusammen. Nur ein vorläufiges Konto wird in das gefundene Konto übe
   ist die einzige Stelle, die Anker schreibt.
 - [`IdentityMatchingService.resolve`](../src/main/kotlin/com/example/identity/core/account/application/IdentityMatchingService.kt#L48),
   [`attestedIdentityMatches`](../src/main/kotlin/com/example/identity/core/account/application/IdentityMatchingService.kt#L67),
-  [`resolveByAnchor`](../src/main/kotlin/com/example/identity/core/account/application/IdentityMatchingService.kt#L102).
+  [`resolveByAnchor`](../src/main/kotlin/com/example/identity/core/account/application/IdentityMatchingService.kt#L99).
 - [`AccountMerge.decide`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/journey/AccountRules.kt#L78),
-  [`accountOfProof`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/journey/AccountRules.kt#L131),
-  [`performRecordIdentification`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyActionExecutor.kt#L108),
-  [`AccountService.absorbDisposableAccount`](../src/main/kotlin/com/example/identity/core/account/AccountService.kt#L172).
+  [`accountOfProof`](../src/main/kotlin/com/example/identity/core/orchestrator/domain/journey/AccountRules.kt#L136),
+  [`performRecordIdentification`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyActionExecutor.kt#L111),
+  [`AccountService.absorbDisposableAccount`](../src/main/kotlin/com/example/identity/core/account/AccountService.kt#L180).
 
 **Härtungen:**
 
@@ -586,7 +586,7 @@ von `TanGenerator`, `EmailCodeGenerator` und `ConfirmationCodeDigest` geteilt):
 Der Code hat sechs Ziffern aus `SecureRandom`. Gespeichert wird er als HMAC-SHA256 mit einem
 Pepper (einem geheimen Zusatzwert des Servers). Er ist 5 Minuten gültig, und der Vergleich läuft in
 konstanter Zeit. Eine falsche TAN
-([`WrongTan`](../src/main/kotlin/com/example/identity/tools/auth_sms/internal/authsms/AuthSmsToolHandler.kt#L68))
+([`WrongTan`](../src/main/kotlin/com/example/identity/tools/auth_sms/internal/authsms/AuthSmsToolHandler.kt#L63))
 macht die TAN nicht ungültig. Das Budget der Journey begrenzt die Versuche je TAN aber auf drei.
 Versendet werden höchstens 3 Codes je 10 Minuten je Nummer oder Adresse
 ([`SmsSendLimit`](../src/main/kotlin/com/example/identity/tools/auth_sms/internal/SmsSendLimit.kt#L16),
@@ -652,7 +652,7 @@ Simulationen und `demoOnly`.
   Bei rund 40 Bit lässt er sich aus einer Kopie der Datenbank offline erraten. Der Port-Vertrag
   sollte nennen, was ein echtes System hier leisten muss (`DPoP-demo-4xnr`).
 - **Hinweis** Die eID-Simulation prüft eine feste Test-PIN
-  ([`IdentEidFlow`](../src/main/kotlin/com/example/identity/tools/ident_eid/internal/IdentEidFlow.kt#L132)).
+  ([`IdentEidFlow`](../src/main/kotlin/com/example/identity/tools/ident_eid/internal/IdentEidFlow.kt#L42)).
   Sie ist nur im Demomodus verfügbar.
 
 ---
@@ -672,12 +672,12 @@ Namensraum. Jede Änderung an einem Zähler ist ein einziges `UPDATE`.
   (der Namensraum folgt aus der Klasse) und [`ModuleRateLimits`](../src/main/kotlin/com/example/identity/core/orchestrator/session/ModuleRateLimits.kt#L20)
   (die Schlüssel sind HMACs mit dem Pepper).
 - [`RateLimitCounter.recordFailure`](../src/main/kotlin/com/example/identity/core/orchestrator/session/RateLimitCounter.kt#L35),
-  [`recordWindowedAttempt`](../src/main/kotlin/com/example/identity/core/orchestrator/session/RateLimitCounter.kt#L62)
+  [`recordWindowedAttempt`](../src/main/kotlin/com/example/identity/core/orchestrator/session/RateLimitCounter.kt#L70)
   (lehnt im Zweifel ab, „fail-closed“) und [`RateLimitRecordRepository.incrementFailure`](../src/main/kotlin/com/example/identity/core/orchestrator/session/RateLimitRecordRepository.kt#L51).
 - [`AccountLockoutService`](../src/main/kotlin/com/example/identity/core/orchestrator/session/AccountLockoutService.kt#L22)
   und [`PersonLockoutService`](../src/main/kotlin/com/example/identity/core/orchestrator/session/PersonLockoutService.kt#L16)
   sperren jeweils nach 5 Fehlversuchen für 15 Minuten.
-- [`ToolJourneyService.chargeRateLimits`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L266).
+- [`ToolJourneyService.chargeRateLimits`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ToolJourneyService.kt#L321).
 
 **Härtungen:**
 
@@ -801,7 +801,7 @@ Diese Station zeigt, was beim Löschen eines Kontos passiert und wie lange Daten
 
 **Code:**
 
-- [`performDeleteAccount`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyActionExecutor.kt#L359)
+- [`performDeleteAccount`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyActionExecutor.kt#L365)
   prüft das verlangte Niveau unmittelbar vor dem Löschen noch einmal.
 - [`AccountDeletionService.deleteAccount`](../src/main/kotlin/com/example/identity/core/orchestrator/session/AccountDeletionService.kt#L41)
   löscht Credentials, Gerätelinks, Kanäle, Tokens, Evidenz und das Journey-Protokoll (Trace). Den
@@ -837,7 +837,7 @@ Start bricht ab, solange noch eine Demo-Voreinstellung gesetzt ist.
 - [`DemoMode`](../src/main/kotlin/com/example/identity/demo/demo_mode/DemoMode.kt#L18)
   mit `@OnlyInDemoMode`/`@OutsideDemoMode`;
   [`@DemoSurface`](../src/main/kotlin/com/example/identity/demo/demo_mode/DemoSurface.kt#L13).
-- [`ProductionModeCheck.violations`](../src/main/kotlin/com/example/identity/core/orchestrator/ProductionModeCheck.kt#L40)
+- [`ProductionModeCheck.violations`](../src/main/kotlin/com/example/identity/core/orchestrator/ProductionModeCheck.kt#L51)
   prüft beim Start:
   - das Admin-Passwort ist als Hash hinterlegt,
   - die H2-Konsole ist aus,

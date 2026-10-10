@@ -1,8 +1,10 @@
 package com.example.identity.kcext.client;
 
-import com.example.identity.kcext.federation.KcAccount;
-import com.example.identity.kcext.federation.KcInvitation;
-import com.example.identity.kcext.federation.KcSubject;
+import com.example.identity.kcext.api.model.KeycloakAccountView;
+import com.example.identity.kcext.api.model.KeycloakInvitationView;
+import com.example.identity.kcext.model.KcAccount;
+import com.example.identity.kcext.model.KcInvitation;
+import com.example.identity.kcext.model.KcSubject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -261,7 +263,7 @@ public final class OrchestratorClient {
      */
     public KcInvitation invitationById(String invitation) throws IOException, InterruptedException {
         try {
-            return KcInvitation.from(send("GET", "/orchestrator/api/v1/kc/invitations/" + urlEncode(invitation), invitation, null));
+            return KcInvitation.from(view(send("GET", "/orchestrator/api/v1/kc/invitations/" + urlEncode(invitation), invitation, null), KeycloakInvitationView.class));
         } catch (OrchestratorApiException e) {
             if (e.status == 404) return null;
             throw e;
@@ -273,10 +275,19 @@ public final class OrchestratorClient {
 
     private KcAccount lookup(String path, String binding) throws IOException, InterruptedException {
         try {
-            return KcAccount.from(send("GET", path, binding, null));
+            return KcAccount.from(view(send("GET", path, binding, null), KeycloakAccountView.class));
         } catch (OrchestratorApiException e) {
             if (e.status == 404) return null;
             throw e;
+        }
+    }
+
+    /** An answer read as its contract model; one that does not fit is the orchestrator's error, not ours. */
+    private static <T> T view(JsonNode json, Class<T> type) {
+        try {
+            return MAPPER.treeToValue(json, type);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Antwort des Orchestrators passt nicht zum Vertrag", e);
         }
     }
 
@@ -379,8 +390,11 @@ public final class OrchestratorClient {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    /** Mirrors ActiveMethodView (tool_api/Envelope.kt) - id/method/label, nothing more. */
-    /** {@code changeable}: the orchestrator says this method can be changed in place. */
+    /**
+     * Mirrors ActiveMethodView (tool_api/Envelope.kt), read by hand: the model's factor types are an
+     * enum that would refuse a type this build does not know. {@code changeable}: the method can be
+     * changed in place.
+     */
     public record MethodView(String id, String method, String label, boolean changeable) {
         public static MethodView from(JsonNode json) {
             JsonNode labelNode = json.get("label");

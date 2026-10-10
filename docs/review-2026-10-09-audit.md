@@ -449,6 +449,24 @@ Die Punkte sind nach Nutzen für die Verständlichkeit geordnet. Aufwand: k = kl
     Konstruktor in `AbstractWebToolRendererFactory` und die Helfer `demoText` und `stepFlag`
     machen jede Factory zum Einzeiler.
 
+**Stand der Behebung in der Erweiterung (2026-10-10, `DPoP-demo-8x0p.10`):**
+
+- **V-E1:** erledigt mit kleinerem Schnitt. Statt einer Port-Schnittstelle trägt `ToolSteps` die
+  gemeinsamen Schritte: aktivieren mit `activationFields`, einen Schritt posten mit Query und
+  `actionFields`, das Tool merken, Auswahl und Antwort prüfen. Damit ist K-3 erledigt. Die Required
+  Action nimmt einen Rücksprung von außen (GET auf die Action-URL) in ihrer Challenge an. Ihre
+  `context.failure()` bleiben (`DPoP-demo-rdns`). Am laufenden System ist die Required Action nicht
+  geprüft, und eigene Tests hat sie weiter keine.
+- **V-E2:** erledigt.
+  - `KcAccount` und `KcInvitation` lesen die generierten `KeycloakAccountView` und
+    `KeycloakInvitationView`. Verfahrensliste und Tool-Katalog bleiben bei der Hand-Lesart: Ihre
+    Modelle haben Enums, die neue Werte ablehnen würden.
+  - Die Wire-Records, die Notiz-Namen und die Suche nach der Komponente stehen im Paket `model`.
+  - `ExtensionArchitectureTest` prüft `beFreeOfCycles`. Damit ist A-3 erledigt.
+- **V-E3:** erledigt bis auf das Verschieben der Sicht-Records in eigene Dateien.
+- **V-E4:** erledigt bis auf die deklarativen Renderer-Factories und Checkstyle. Entfernt sind die
+  Option `toolId`, `toolForm`, `currentChallenge`, die `error`-Parameter und ungenutzte Imports.
+
 ### Frontend und Theme
 
 `DPoP-demo-8x0p.11`
@@ -611,4 +629,5 @@ Diese Bereiche zeigen keinen neuen Befund:
 | AU-10 | Kontosperre bucht einen Versuch vor der Prüfung | `DPoP-demo-8x0p.6` |
 | V-B1 bis V-B5 | Toter Code, `OneTimeCodes`, `onePerDevice`, `requireEnrollment`, Namen (teilweise) | `DPoP-demo-8x0p.8` |
 | V-B6 bis V-B9 | `applied`, `ToolStep`, Nullbarkeit, kürzere Funktionen, `JourneyKeys` | `DPoP-demo-8x0p.9` |
+| V-E1 bis V-E4 | `ToolSteps`, Paket `model`, Zyklen geprüft, `OrchestratorClient` aufgeräumt | `DPoP-demo-8x0p.10` |
 | AU-4 bis AU-8 | Kleine Härtungen an Sitzungsnachweisen, Schlüsseln und Federation; AU-7 nur für App-Tokens | `DPoP-demo-8x0p.4` |

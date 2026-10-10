@@ -1,8 +1,7 @@
 package com.example.identity.kcext.login;
 
 import com.example.identity.kcext.client.OrchestratorClient;
-import com.example.identity.kcext.federation.AccountUsers;
-import com.example.identity.kcext.token.OrchestratorAcrAmrMapper;
+import com.example.identity.kcext.model.SessionNotes;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.authenticators.util.AcrStore;
@@ -15,7 +14,6 @@ import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.sessions.AuthenticationSessionModel;
 
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -25,24 +23,19 @@ import java.util.UUID;
 public final class OrchestratorNotes {
 
     /** This flow run's channelSessionId, derived once and reused by every step of the same run. */
-    public static final String CHANNEL_SESSION_ID = "orchestrator_channel_session_id";
+    public static final String CHANNEL_SESSION_ID = SessionNotes.CHANNEL_SESSION_ID;
     /** The entry intent CHANNEL_SESSION_ID was opened for ("" = the default login/step-up) - see {@link #channelSessionIdFor}. */
     static final String CHANNEL_INTENT = "orchestrator_channel_intent";
     /** Which page the run currently shows: "select", "tool", "confirm" or, in the required action, "list". */
-    public static final String PENDING_KIND = "orchestrator_pending_kind";
-    public static final String PENDING_TOOL_ID = "orchestrator_pending_tool_id";
-    public static final String PENDING_TOOL_SESSION_ID = "orchestrator_pending_tool_session_id";
+    public static final String PENDING_KIND = SessionNotes.PENDING_KIND;
+    public static final String PENDING_TOOL_ID = SessionNotes.PENDING_TOOL_ID;
+    public static final String PENDING_TOOL_SESSION_ID = SessionNotes.PENDING_TOOL_SESSION_ID;
 
-    /**
-     * Copied into the UserSessionModel at session creation. Public because the App channel's custom
-     * grant ({@link com.example.identity.kcext.grant.AccountTokenGrantType}) writes them too;
-     * {@link OrchestratorAcrAmrMapper} reads them for either origin.
-     */
-    public static final String USER_SESSION_NOTE_ACR = "orchestrator_acr";
-    public static final String USER_SESSION_NOTE_AMR = "orchestrator_amr";
+    public static final String USER_SESSION_NOTE_ACR = SessionNotes.USER_SESSION_NOTE_ACR;
+    public static final String USER_SESSION_NOTE_AMR = SessionNotes.USER_SESSION_NOTE_AMR;
 
     /** The orchestrator accountId, once known - a durable Keycloak user attribute, read back on every later step-up. */
-    public static final String USER_ATTR_ACCOUNT_ID = AccountUsers.ACCOUNT_ID_ATTRIBUTE;
+    public static final String USER_ATTR_ACCOUNT_ID = SessionNotes.ACCOUNT_ID_ATTRIBUTE;
 
     private OrchestratorNotes() {
     }
@@ -158,8 +151,7 @@ public final class OrchestratorNotes {
     }
 
     public static Long accountId(UserModel user) {
-        String value = user == null ? null : user.getFirstAttribute(USER_ATTR_ACCOUNT_ID);
-        return value == null || value.isBlank() ? null : Long.parseLong(value);
+        return SessionNotes.accountId(user);
     }
 
     // Numeric Condition-LoA level to orchestrator ACR, like the per-execution "targetAcr" configs in
@@ -173,14 +165,8 @@ public final class OrchestratorNotes {
         return acr == null ? -1 : ACR_RANK.getOrDefault(acr, -1);
     }
 
-    // Every level the orchestrator can certify. More than the browser flow can ask for
-    // (LOA_TO_ACR): loa3 comes only from an identification in the App (ident-eid, ident-nect),
-    // never from a Condition-LoA subflow here.
-    private static final Set<String> ORCHESTRATOR_ACRS = Set.of("loa1", "loa2", "loa3");
-
-    /** Ob {@code acr} eines der Niveaus ist, die der Orchestrator bescheinigen kann. */
     public static boolean isKnownAcr(String acr) {
-        return ORCHESTRATOR_ACRS.contains(acr);
+        return SessionNotes.isKnownAcr(acr);
     }
 
     /**

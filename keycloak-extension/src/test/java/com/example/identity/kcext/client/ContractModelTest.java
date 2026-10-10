@@ -1,6 +1,6 @@
 package com.example.identity.kcext.client;
 
-import com.example.identity.kcext.federation.KcSubject;
+import com.example.identity.kcext.model.KcSubject;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

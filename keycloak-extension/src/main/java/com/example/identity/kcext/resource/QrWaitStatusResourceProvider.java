@@ -1,9 +1,10 @@
 package com.example.identity.kcext.resource;
 
+import com.example.identity.kcext.model.SessionNotes;
+
 import com.example.identity.kcext.webtool.WebToolAvailability;
 import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.client.OrchestratorSettings;
-import com.example.identity.kcext.login.OrchestratorNotes;
 import com.example.identity.kcext.webtool.qr.AuthQrLookupRendererFactory;
 import com.example.identity.kcext.webtool.qr.AuthQrRendererFactory;
 import jakarta.ws.rs.GET;
@@ -118,10 +119,10 @@ public class QrWaitStatusResourceProvider implements RealmResourceProvider {
      * report what happened.
      */
     static State state(AuthenticationSessionModel authSession, ToolReader reader) {
-        String toolId = authSession.getAuthNote(OrchestratorNotes.PENDING_TOOL_ID);
-        String toolSessionId = authSession.getAuthNote(OrchestratorNotes.PENDING_TOOL_SESSION_ID);
-        String channelSessionId = authSession.getAuthNote(OrchestratorNotes.CHANNEL_SESSION_ID);
-        if (!"tool".equals(authSession.getAuthNote(OrchestratorNotes.PENDING_KIND))
+        String toolId = authSession.getAuthNote(SessionNotes.PENDING_TOOL_ID);
+        String toolSessionId = authSession.getAuthNote(SessionNotes.PENDING_TOOL_SESSION_ID);
+        String channelSessionId = authSession.getAuthNote(SessionNotes.CHANNEL_SESSION_ID);
+        if (!"tool".equals(authSession.getAuthNote(SessionNotes.PENDING_KIND))
                 || !QR_TOOLS.contains(toolId) || toolSessionId == null || channelSessionId == null) {
             return State.READY;
         }

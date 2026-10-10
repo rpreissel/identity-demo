@@ -1,6 +1,7 @@
 package com.example.identity.kcext.client;
 
-import com.example.identity.kcext.federation.OrchestratorStorageProviderFactory;
+import com.example.identity.kcext.model.OrchestratorComponent;
+
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.Curve;
@@ -92,7 +93,7 @@ public record OrchestratorSettings(
 
     /**
      * Legt den Signaturschluessel an, falls er fehlt. Aufgerufen aus
-     * {@link OrchestratorStorageProviderFactory#validateConfiguration}, also beim Anlegen oder Aendern
+     * {@code OrchestratorStorageProviderFactory.validateConfiguration}, also beim Anlegen oder Aendern
      * der Komponente; Keycloak speichert das ergaenzte Modell mit. Nicht beim ersten Lesen: Keycloak
      * instanziiert den Provider bei jeder User-Anlage, und parallele Anlagen scheitern dann an der
      * optimistischen Sperre auf COMPONENT_CONFIG.
@@ -139,9 +140,9 @@ public record OrchestratorSettings(
      */
     public static OrchestratorSettings of(KeycloakSession session) {
         RealmModel realm = session.getContext().getRealm();
-        return from(OrchestratorStorageProviderFactory.componentIn(realm)
+        return from(OrchestratorComponent.in(realm)
                 .orElseThrow(() -> new IllegalStateException(
-                        "User-Storage-Komponente '" + OrchestratorStorageProviderFactory.PROVIDER_ID
+                        "User-Storage-Komponente '" + OrchestratorComponent.PROVIDER_ID
                                 + "' fehlt im Realm '" + realm.getName()
                                 + "' - ohne sie hat diese Extension keine Konfiguration")));
     }

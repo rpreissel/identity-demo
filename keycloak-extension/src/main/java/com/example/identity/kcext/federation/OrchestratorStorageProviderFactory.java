@@ -1,5 +1,6 @@
 package com.example.identity.kcext.federation;
 
+import com.example.identity.kcext.model.OrchestratorComponent;
 import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.client.OrchestratorSettings;
 import org.keycloak.Config;
@@ -8,11 +9,9 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.RealmModel;
 import org.keycloak.provider.ProviderConfigProperty;
-import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.UserStorageProviderFactory;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Factory fuer {@link OrchestratorStorageProvider} und zugleich die Komponente, an der die
@@ -21,17 +20,8 @@ import java.util.Optional;
  */
 public class OrchestratorStorageProviderFactory implements UserStorageProviderFactory<OrchestratorStorageProvider> {
 
-    public static final String PROVIDER_ID = "orchestrator";
+    public static final String PROVIDER_ID = OrchestratorComponent.PROVIDER_ID;
 
-    /**
-     * Die Komponente dieses Realms, gesucht ueber die providerId, weil ihre Id je Umgebung variiert.
-     * Leer, solange die Migration sie nicht angelegt hat.
-     */
-    public static Optional<ComponentModel> componentIn(RealmModel realm) {
-        return realm.getStorageProviders(UserStorageProvider.class)
-                .filter(component -> PROVIDER_ID.equals(component.getProviderId()))
-                .findFirst();
-    }
 
     @Override
     public String getId() {

@@ -1,6 +1,7 @@
 package com.example.identity.kcext.grant;
 
-import com.example.identity.kcext.login.OrchestratorNotes;
+import com.example.identity.kcext.model.SessionNotes;
+
 
 import java.util.regex.Pattern;
 
@@ -21,7 +22,7 @@ final class AccountTokenClaims {
      * oder eine kommagetrennte Liste von Methodennamen.
      */
     static String problem(String acr, String amr) {
-        if (acr != null && !acr.isBlank() && !OrchestratorNotes.isKnownAcr(acr)) {
+        if (acr != null && !acr.isBlank() && !SessionNotes.isKnownAcr(acr)) {
             return "Unknown " + AccountTokenGrantType.ACR_PARAM;
         }
         if (amr != null && !amr.isEmpty()) {

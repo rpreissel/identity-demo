@@ -1,7 +1,7 @@
 package com.example.identity.kcext.token;
 
-import com.example.identity.kcext.login.OrchestratorAuthenticator;
-import com.example.identity.kcext.login.OrchestratorNotes;
+import com.example.identity.kcext.model.SessionNotes;
+
 import org.keycloak.models.ClientSessionContext;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
@@ -68,11 +68,11 @@ public class OrchestratorAcrAmrMapper extends AbstractOIDCProtocolMapper impleme
     @Override
     protected void setClaim(IDToken token, ProtocolMapperModel mappingModel, UserSessionModel userSession,
                              KeycloakSession keycloakSession, ClientSessionContext clientSessionCtx) {
-        String acr = userSession.getNote(OrchestratorNotes.USER_SESSION_NOTE_ACR);
+        String acr = userSession.getNote(SessionNotes.USER_SESSION_NOTE_ACR);
         if (acr != null) {
             token.setAcr(acr);
         }
-        String amr = userSession.getNote(OrchestratorNotes.USER_SESSION_NOTE_AMR);
+        String amr = userSession.getNote(SessionNotes.USER_SESSION_NOTE_AMR);
         if (amr != null && !amr.isBlank()) {
             List<String> methods = Arrays.asList(amr.split(","));
             token.getOtherClaims().put("amr", methods);

@@ -1,5 +1,7 @@
 package com.example.identity.kcext.federation;
 
+import com.example.identity.kcext.model.KcInvitation;
+
 import com.example.identity.kcext.client.OrchestratorClient;
 
 import java.io.IOException;

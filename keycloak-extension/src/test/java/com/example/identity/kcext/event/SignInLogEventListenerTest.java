@@ -7,7 +7,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.keycloak.events.EventType;
 
-import com.example.identity.kcext.federation.KcSubject;
+import com.example.identity.kcext.model.KcSubject;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

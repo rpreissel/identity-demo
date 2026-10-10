@@ -1,5 +1,9 @@
 package com.example.identity.kcext.federation;
 
+import com.example.identity.kcext.model.KcSubject;
+
+import com.example.identity.kcext.model.KcInvitation;
+
 import org.junit.jupiter.api.Test;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.storage.ReadOnlyException;
@@ -49,7 +53,7 @@ class InvitationUserTest {
 
     @Test
     void itsSubjectIsTheInvitation() {
-        assertEquals(KcSubject.invitation("9f86d081"), KcSubject.of(user(true)));
+        assertEquals(KcSubject.invitation("9f86d081"), Subjects.of(user(true)));
     }
 
     @Test

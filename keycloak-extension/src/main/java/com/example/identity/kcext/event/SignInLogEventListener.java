@@ -1,10 +1,11 @@
 package com.example.identity.kcext.event;
 
+import com.example.identity.kcext.model.OrchestratorComponent;
+
 import com.example.identity.kcext.client.OrchestratorClient;
 import com.example.identity.kcext.client.OrchestratorSettings;
 import com.example.identity.kcext.federation.InvitationStorageProviderFactory;
-import com.example.identity.kcext.federation.KcSubject;
-import com.example.identity.kcext.federation.OrchestratorStorageProviderFactory;
+import com.example.identity.kcext.model.KcSubject;
 import org.jboss.logging.Logger;
 import org.keycloak.Config;
 import org.keycloak.events.Event;
@@ -43,7 +44,7 @@ public class SignInLogEventListener implements EventListenerProvider {
             return;
         }
         RealmModel realm = session.realms().getRealm(event.getRealmId());
-        var component = realm == null ? null : OrchestratorStorageProviderFactory.componentIn(realm).orElse(null);
+        var component = realm == null ? null : OrchestratorComponent.in(realm).orElse(null);
         if (component == null) {
             return;
         }

@@ -1,7 +1,10 @@
 package com.example.identity.kcext.federation;
 
+import com.example.identity.kcext.model.KcAccount;
+
+import com.example.identity.kcext.model.SessionNotes;
+
 import com.example.identity.kcext.client.OrchestratorClient;
-import com.example.identity.kcext.login.OrchestratorNotes;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialInputUpdater;
@@ -90,7 +93,7 @@ public class OrchestratorStorageProvider implements UserStorageProvider, UserReg
 
     @Override
     public Stream<UserModel> searchForUserByUserAttributeStream(RealmModel realm, String attrName, String attrValue) {
-        if (!OrchestratorNotes.USER_ATTR_ACCOUNT_ID.equals(attrName)) return Stream.empty();
+        if (!SessionNotes.ACCOUNT_ID_ATTRIBUTE.equals(attrName)) return Stream.empty();
         return Stream.ofNullable(getUserById(realm, StorageId.keycloakId(model, attrValue)));
     }
 

@@ -1,8 +1,10 @@
 package com.example.identity.kcext.login;
 
+import com.example.identity.kcext.federation.Subjects;
+
 import com.example.identity.kcext.client.KcTexts;
 import com.example.identity.kcext.client.OrchestratorClient;
-import com.example.identity.kcext.federation.KcSubject;
+import com.example.identity.kcext.model.KcSubject;
 import com.example.identity.kcext.webtool.WebToolAvailability;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
@@ -43,7 +45,7 @@ public class OrchestratorAuthenticator implements Authenticator {
             String channelSessionId = OrchestratorNotes.channelSessionIdFor(context.getAuthenticationSession(), intent);
             // Taken from context.getUser(), not from an existing UserSessionModel: on a step-up the
             // cookie authenticator already attached the user before this flow run has a session.
-            KcSubject subject = KcSubject.of(context.getUser());
+            KcSubject subject = Subjects.of(context.getUser());
             // Keycloak's requested level wins; the static config is the fallback without acr_values.
             String targetAcr = OrchestratorNotes.requestedAcr(context);
             if (targetAcr == null) targetAcr = config(context, "targetAcr");
@@ -125,10 +127,10 @@ public class OrchestratorAuthenticator implements Authenticator {
 
     private void handleResponse(AuthenticationFlowContext context, OrchestratorClient.ChannelResponse response, MultivaluedMap<String, String> lastForm) {
         AuthenticationSessionModel authSession = context.getAuthenticationSession();
-        KcSubject knownSubject = KcSubject.of(context.getUser());
+        KcSubject knownSubject = Subjects.of(context.getUser());
 
         if (response.authDataSubject() != null && context.getUser() == null) {
-            UserModel user = response.authDataSubject().findUser(context.getSession(), context.getRealm());
+            UserModel user = Subjects.findUser(response.authDataSubject(), context.getSession(), context.getRealm());
             if (user == null) {
                 // The orchestrator just named this subject - not finding it is an inconsistency,
                 // never a reason to invent a user (Keycloak creates no users).

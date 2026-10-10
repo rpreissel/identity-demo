@@ -1,8 +1,9 @@
 package com.example.identity.kcext.grant;
 
+import com.example.identity.kcext.model.SessionNotes;
+
 import com.example.identity.kcext.federation.AccountUsers;
 
-import com.example.identity.kcext.login.OrchestratorNotes;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 import org.keycloak.OAuthErrorException;
@@ -107,10 +108,10 @@ public class AccountTokenGrantType extends OAuth2GrantTypeBase {
         // The same note keys the Web channel writes, read by OrchestratorAcrAmrMapper. Only the
         // orchestrator's own client gets here; AccountTokenClaims has checked the form of the values.
         if (acr != null && !acr.isBlank()) {
-            userSession.setNote(OrchestratorNotes.USER_SESSION_NOTE_ACR, acr);
+            userSession.setNote(SessionNotes.USER_SESSION_NOTE_ACR, acr);
         }
         if (amr != null) {
-            userSession.setNote(OrchestratorNotes.USER_SESSION_NOTE_AMR, amr);
+            userSession.setNote(SessionNotes.USER_SESSION_NOTE_AMR, amr);
         }
         event.session(userSession);
 

@@ -1,7 +1,9 @@
 package com.example.identity.kcext.login;
 
+import com.example.identity.kcext.federation.Subjects;
+
 import com.example.identity.kcext.client.OrchestratorClient;
-import com.example.identity.kcext.federation.KcSubject;
+import com.example.identity.kcext.model.KcSubject;
 import com.example.identity.kcext.webtool.WebToolAvailability;
 import org.jboss.logging.Logger;
 import org.keycloak.authentication.AuthenticationFlowCallback;
@@ -43,7 +45,7 @@ public class OrchestratorResumeAuthenticator implements AuthenticationFlowCallba
             var existingUserSession = OrchestratorNotes.resolveExistingUserSession(context.getSession(), context.getRealm());
             // A process access has nothing to resume: its evidence never travels (ADR-48), and the
             // orchestrator does not raise it.
-            if (existingUserSession != null && KcSubject.of(existingUserSession.getUser()) instanceof KcSubject s
+            if (existingUserSession != null && Subjects.of(existingUserSession.getUser()) instanceof KcSubject s
                     && s.kind() == KcSubject.Kind.INVITATION) {
                 context.success();
                 return;
@@ -54,7 +56,7 @@ public class OrchestratorResumeAuthenticator implements AuthenticationFlowCallba
                 String newChannelSessionId = OrchestratorNotes.channelSessionId(context);
 
                 // context.getUser() is not set yet this early; the UserSessionModel carries the user.
-                KcSubject subject = KcSubject.of(existingUserSession.getUser());
+                KcSubject subject = Subjects.of(existingUserSession.getUser());
 
                 // Raise the floor to Keycloak's requested level, so a taken-over proof cannot finish
                 // the journey below it. On the channel's first call the orchestrator seeds it with what

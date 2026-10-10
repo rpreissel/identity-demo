@@ -90,11 +90,6 @@ stillschweigend etwas von der Umgebung voraussetzt.
 
 ## 2. Keycloak-Erweiterung und -Anbindung
 
-- **K-3 (niedrig) Die Verfahrensverwaltung aktiviert Tools ohne Renderer-Felder.**
-  `OrchestratorManageMethodsRequiredAction` ruft weder `activationFields` noch `actionFields` auf.
-  Für `ident-nect` fehlt damit die Rücksprungadresse. Ein erneuter Nect-Versuch an dieser Stelle (K-2
-  der vierten Bewertung) verwendet deshalb eine Adresse, die schon verbraucht ist. Die Ursache ist,
-  dass es zwei Dispatcher gibt. `DPoP-demo-9ppv.12`
 - **Fehlerpfade der Required Action (niedrig)** zeigen die allgemeine Fehlerseite von Keycloak:
   `OrchestratorManageMethodsRequiredAction` ruft `context.failure()`. Der Authenticator tut das
   nicht mehr. `DPoP-demo-rdns`
@@ -122,11 +117,6 @@ stillschweigend etwas von der Umgebung voraussetzt.
 
 ## 3. Architektur
 
-- **A-3 (niedrig) Die Paketaufteilung der Erweiterung hat Zyklen und keine Prüfregel.** Diese Pakete
-  hängen gegenseitig voneinander ab: `client ↔ federation`, `federation ↔ login`,
-  `login ↔ resource`, `login ↔ token`. Vorschlag: Die Datenklassen für den Austausch (Wire-Records)
-  kommen in ein eigenes Paket ohne Abhängigkeiten. Dazu kommt die ArchUnit-Regel `beFreeOfCycles` im
-  Build der Erweiterung. Issue: –
 - **A-6 (Hinweis) Die Erweiterung liest die Uhr selbst** (`PeerAuthAssertionSigner`,
   `OrchestratorResponseVerifier`, `OrchestratorSettings`, dazu die Caches in `OrchestratorTexts` und
   `OrchestratorToolCatalog` und `OrchestratorNotes`). Die Zeitregeln der Peer-Auth lassen sich
@@ -152,11 +142,10 @@ stillschweigend etwas von der Umgebung voraussetzt.
   `AuthPasswordLookupFlow`. Insgesamt gibt es 21 `!!`. Zusammen mit Q-8 (3.) in `DPoP-demo-9ppv.27`.
 - **Q-5 (niedrig) Testhelfer mehrfach definiert**, und `IntegrationTestSupport` ist groß. Zusammen
   mit Q-13 (3.) in `DPoP-demo-9ppv.32`.
-- **Q-6 / K-10 (niedrig) Doppelte Verteilungslogik (Dispatch) und Testlücken der Erweiterung.** Die
-  Einordnung des nächsten Schritts ist entdoppelt (`OrchestratorNextDispatch`), die Behandlung der
-  Antworten steht in Authenticator und Required Action noch doppelt. Ohne Test sind: die Required
-  Action, der Resume-Authenticator, `WebFormRenderer` und die meisten Renderer-Factories.
-  `DPoP-demo-9ppv.12`
+- **Q-6 / K-10 (niedrig) Testlücken der Erweiterung.** Die Verteilung ist entdoppelt: die
+  Einordnung des nächsten Schritts in `OrchestratorNextDispatch`, die Tool-Schritte in `ToolSteps`.
+  Ohne Test sind weiter: die Required Action, der Resume-Authenticator, `WebFormRenderer` und die
+  meisten Renderer-Factories. `DPoP-demo-9ppv.12`
 - **Q-7 (Hinweis) `ident_eid` ist vom Kover-Tor ausgenommen**, enthält aber Kernlogik
   (`IdentEidFlow`). Das Kover-Tor prüft die Testabdeckung. Vorschlag: den Ausschluss auf
   `simulation.*` beschränken. Issue: –

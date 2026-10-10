@@ -64,6 +64,8 @@ dependencies {
     // KcTextCatalog: eigene Nutzertexte aus den kompilierten Klassen einsammeln (docs/adr/ADR-033).
     testImplementation(libs.asm.tree)
     testImplementation(libs.asm.analysis)
+    // ExtensionArchitectureTest: die Pakete der Erweiterung bleiben frei von Zyklen.
+    testImplementation(libs.archunit)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 

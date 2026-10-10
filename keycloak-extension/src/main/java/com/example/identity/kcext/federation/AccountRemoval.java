@@ -1,5 +1,9 @@
 package com.example.identity.kcext.federation;
 
+import com.example.identity.kcext.model.KcAccount;
+
+import com.example.identity.kcext.model.OrchestratorComponent;
+
 import jakarta.ws.rs.DELETE;
 import org.keycloak.models.session.UserSessionPersisterProvider;
 import jakarta.ws.rs.Path;
@@ -44,7 +48,7 @@ public final class AccountRemoval {
         @Path("{accountId}")
         public Response remove(@PathParam("accountId") long accountId) {
             auth.users().requireManage();
-            ComponentModel component = OrchestratorStorageProviderFactory.componentIn(realm)
+            ComponentModel component = OrchestratorComponent.in(realm)
                     .orElseThrow(() -> new IllegalStateException("No orchestrator user federation in realm " + realm.getName()));
             // The user as far as its id goes - there is no account left to read anything else from.
             OrchestratorUser gone = new OrchestratorUser(session, realm, component,

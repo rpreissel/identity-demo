@@ -1,5 +1,7 @@
 package com.example.identity.kcext.federation;
 
+import com.example.identity.kcext.model.KcAccount;
+
 import org.junit.jupiter.api.Test;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.storage.ReadOnlyException;

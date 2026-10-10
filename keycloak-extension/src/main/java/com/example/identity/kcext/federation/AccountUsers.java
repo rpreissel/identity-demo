@@ -1,5 +1,8 @@
 package com.example.identity.kcext.federation;
 
+import com.example.identity.kcext.model.SessionNotes;
+import com.example.identity.kcext.model.OrchestratorComponent;
+
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
@@ -12,14 +15,14 @@ import org.keycloak.storage.StorageId;
  */
 public final class AccountUsers {
 
-    public static final String ACCOUNT_ID_ATTRIBUTE = "orchestratorAccountId";
+    public static final String ACCOUNT_ID_ATTRIBUTE = SessionNotes.ACCOUNT_ID_ATTRIBUTE;
 
     private AccountUsers() {
     }
 
     /** The account's Keycloak user, or {@code null} if there is no such account. */
     public static UserModel findByAccountId(KeycloakSession session, RealmModel realm, String accountId) {
-        return OrchestratorStorageProviderFactory.componentIn(realm)
+        return OrchestratorComponent.in(realm)
                 .map(component -> session.users().getUserById(realm, StorageId.keycloakId(component, accountId)))
                 .orElse(null);
     }
