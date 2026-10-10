@@ -1,20 +1,19 @@
 # Offene Befunde
 
 Ein **Befund** ist ein Problem oder eine Schwäche, die eine Bewertung des Projekts gefunden hat.
-Diese Seite sammelt alle Befunde, die noch offen sind, an einer Stelle. Sie stammen aus drei
+Diese Seite sammelt alle Befunde, die noch offen sind, an einer Stelle. Sie stammen aus vier
 Bewertungen:
 
 - aus der dritten Bewertung (2026-09-27),
 - aus der vierten Bewertung (2026-09-29),
-- aus dem Sicherheitsaudit (2026-10-03).
+- aus dem Sicherheitsaudit (2026-10-03),
+- aus dem Audit zu Sicherheit, Architektur und Codequalität (2026-10-09).
 
-Die Befunde des Audits vom 2026-10-09 stehen noch in einer eigenen Datei,
-[review-2026-10-09-audit.md](review-2026-10-09-audit.md). Die Korrekturen aus ihrem Abschnitt 5
-sind hier eingearbeitet.
-
-Die Liste wurde am 2026-10-04 mit dem Code abgeglichen. Was erledigt ist, steht hier nicht mehr. Es
-ist in der Git-Historie und in den geschlossenen Issues nachzulesen (Epics `DPoP-demo-9ppv`,
-`DPoP-demo-updm`, `DPoP-demo-164n`).
+Die Liste wurde am 2026-10-04 mit dem Code abgeglichen, die Einträge des Audits vom 2026-10-09 am
+2026-10-10. Was erledigt ist, steht hier nicht mehr. Es ist in der Git-Historie und in den
+geschlossenen Issues nachzulesen (Epics `DPoP-demo-9ppv`, `DPoP-demo-updm`, `DPoP-demo-164n`,
+`DPoP-demo-8x0p`). Der Bericht des Audits vom 2026-10-09 mit seinem Prüfumfang und dem Stand der
+Behebung steht in der Git-Historie (`docs/review-2026-10-09-audit.md`, zuletzt im Commit `de24c9c`).
 
 Am Ende stehen in Abschnitt 8 die erkannten, bewusst zurückgestellten Verbesserungen. Sie sind keine
 Befunde einer Bewertung. Es sind Entscheidungen über Architektur oder Infrastruktur, die noch
@@ -25,7 +24,9 @@ So ist die Liste zu lesen:
 - **Kürzel:** Jeder Befund behält das Kürzel aus der Bewertung, in der er gefunden wurde. Doku,
   Issues und der [Lesepfad Sicherheit](16-lesepfad-sicherheit.md) verweisen mit diesen Kürzeln
   darauf. `S-`, `K-`, `A-` und `Q-` ohne Zusatz stammen aus der vierten Bewertung. Mit dem Zusatz
-  „(3.)“ stammen sie aus der dritten Bewertung. `SA-` stammt aus dem Sicherheitsaudit.
+  „(3.)“ stammen sie aus der dritten Bewertung. `SA-` stammt aus dem Sicherheitsaudit. `AU-` und
+  `V-` stammen aus dem Audit vom 2026-10-09: `AU-` für Sicherheit und Architektur, `V-B`, `V-E`
+  und `V-F` für Vereinfachungen in Backend, Erweiterung und Frontend.
 - **Schwere:** wie in den Bewertungen.
   - *mittel:* Eine Sicherheitszusage gilt nicht, und ein Missbrauch ist realistisch.
   - *niedrig:* Die Wirkung ist begrenzt.
@@ -87,6 +88,12 @@ stillschweigend etwas von der Umgebung voraussetzt.
 - **Hinweis: Der Freischaltcode liegt im simulierten Personenverzeichnis als Hash ohne Salt.** Der
   Port-Vertrag, also die Beschreibung der Schnittstelle zum Fremdsystem, sollte nennen, was ein
   echtes System hier leisten muss. `DPoP-demo-4xnr`
+- **AU-7 (Hinweis) Rufnummer und KOBIL-PIN sind nicht an ihre Zeile gebunden.** Die Zusatzdaten
+  (AAD) beim Versiegeln nennen Schlüssel und Zweck, nicht die Zeile. Wer in die Datenbank schreiben
+  kann, kann deshalb innerhalb eines Kontos versiegelte Werte desselben Zwecks zwischen zwei
+  Einschreibungen tauschen. Die App-Tokens sind schon an ihre Sitzung gebunden. Für Rufnummer und PIN
+  steht die Zeilen-Id beim Versiegeln noch nicht fest, und die vorhandenen Einschreibungen brauchen
+  eine Migration. `DPoP-demo-8x0p.12`
 
 ## 2. Keycloak-Erweiterung und -Anbindung
 
@@ -128,6 +135,14 @@ stillschweigend etwas von der Umgebung voraussetzt.
 - **A-8 (Hinweis) Die Prüfung von Assertion und `channel_binding` ist in den kc-Controllern
   wiederholt** (`KeycloakAccountLookupController`, `KeycloakInvitationLookupController`,
   `KeycloakSignOutController`). Vorschlag: ein gemeinsamer Helfer am `PeerAuthValidator`. Issue: –
+- **AU-12 (Hinweis) Ein Nachweis in drei Formen.** Seit ADR-59 wird `MethodEvidence` dreimal
+  abgebildet: als JSON in `MethodEvidenceRecord`, als Spalten in `KeycloakSessionEvidence` und als
+  Strings in `MethodEvidenceRow`, jeweils mit eigener Umwandlung von `factorTypes`, `axis` und
+  `loa`. `KeycloakSessionEvidenceRepository` erbt von `JpaRepository` und bietet damit `save` an,
+  obwohl seine KDoc keinen Lese-Ändern-Schreiben-Weg zusagt. `AuthData.amr` ist eine Map mit dem
+  festen Wert `"orchestrator"`. Vorschlag: `MethodEvidenceRow` streichen, das Repository von
+  `Repository<…>` ableiten, `amr` mit der nächsten Fassung des Umschlags als Liste.
+  `DPoP-demo-8x0p.16`
 - **Aus der dritten Bewertung:**
   - A-7: Modulabhängigkeiten per Test prüfen (`DPoP-demo-9ppv.15`).
   - A-8: tote Enum-Werte und CHECKs für Zustände (`9ppv.16`).
@@ -154,6 +169,30 @@ stillschweigend etwas von der Umgebung voraussetzt.
   fehlerfrei. Ein nächtlicher Job mit `podman compose` wäre der Weg. Issue: –
 - **Q-10 (Hinweis) `RegisterStrategy.transition` mit 71 Zeilen**, ein `when` über acht Zustände. Es
   besteht kein Handlungsbedarf.
+- **V-B (Hinweis) Rest der Vereinfachungen im Backend.**
+  - `methodInstanceId` und ACR als eigene Typen statt `String`. Beide stecken in persistierten
+    Journey-Zuständen (`ManageAuthMethodsState`), ein Typwechsel ändert deren Serialisierung.
+  - Die gleichen Send-Limits und Lookup-Flows von SMS und E-Mail teilen.
+
+  `DPoP-demo-8x0p.13`
+- **V-E (Hinweis) Rest in der Keycloak-Erweiterung.**
+  - deklarative Renderer-Factories (Konstruktor mit Id, Fassung und Template)
+  - die Sicht-Records von `OrchestratorClient` in eigene Dateien
+  - Checkstyle `UnusedImports`
+
+  Die fehlenden Tests der Required Action gehören zu Q-6/K-10. `DPoP-demo-8x0p.14`
+- **V-F (Hinweis) Rest im Frontend und Theme.**
+  - `AppChannelApp` mit einem Hook `useAppChannel` (Reducer) und der Demo-Spalte als eigener
+    Komponente, dazu `useWebSession` für `WebChannelView`
+  - `adminApi.ts` neben der DPoP-API
+  - die Texthash-Logik (`textId`) zwischen Frontend und Theme teilen
+  - im Theme ein Codefeld mit Demo-Hinweis und die Demo-Personen als Liste statt als JSON-String
+  - ein Linter für das Theme
+
+  `DPoP-demo-8x0p.15`
+- **Hinweis: Kommentare in gemischter Sprache.** Deutsche Kommentare stehen in sonst englischem Code,
+  etwa in `KeycloakSetupEnvironment.kt`, `KeycloakResponseSigning.kt` und `AppChannelApp.tsx`.
+  `keycloak-extension/build.gradle.kts` erzählt Geschichte („Vorher … Jetzt …“). Issue: –
 - **Aus der dritten Bewertung:**
   - Q-5: `auth_email` löst das Konto im Controller auf (`DPoP-demo-9ppv.24`).
   - Q-6: QR-Controller mit OpenAPI-Beispielen (`9ppv.25`).

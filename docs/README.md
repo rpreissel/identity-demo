@@ -93,8 +93,6 @@ Aufgaben der Willkommensseite im Browser vor:
   Schwachstellen.
 - **[Offene Befunde](offene-befunde.md)**: Was ist aus den Bewertungen noch offen? Befunde zu
   Sicherheit, Keycloak, Architektur und Codequalität, Restrisiken und offene Entscheidungen.
-- **[Audit 2026-10-09](review-2026-10-09-audit.md)**: Was hat das jüngste Audit nach ADR-58 und
-  ADR-59 gefunden? Befunde zu Sicherheit und Architektur, Vorschläge zur Vereinfachung des Codes.
 
 ## Nachschlagen
 

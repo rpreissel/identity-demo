@@ -909,9 +909,9 @@ Diese Tabelle fasst alle offenen Punkte der Stationen zusammen.
 | Replay-Tabelle wächst vor der Prüfung von Kanal und Drosselung | niedrig | 2 | `DPoP-demo-9ppv.1` |
 | Web-Kanal ist `AUTHENTICATED` vor der Keycloak-Sitzung; Abmeldung nur best effort | niedrig | 3 | `DPoP-demo-oe06` |
 | Gerätelink ohne Fremdschlüssel (I-14) | niedrig | 3 | `DPoP-demo-hwc6` |
-| Fehlerpfade des Authenticators | niedrig | 4 | `DPoP-demo-rdns` |
+| Fehlerpfade der Required Action „Verfahren verwalten“ | niedrig | 4 | `DPoP-demo-rdns` |
 | Lookup verrät über Demo-TAN und Versanddauer, ob ein Konto existiert | niedrig | 7 | `DPoP-demo-36xz` |
-| Nect-`retry` ohne Budget, Fälle werden nicht aufgeräumt (S-2) | niedrig | 8, 12 | – |
+| Nect-`retry` ohne Budget (S-2) | niedrig | 8 | – |
 | Personenzähler nach erfolgreichem Vorgangszugang (A-5) | niedrig | 9 | – |
 | Personensperre prüft vor dem Versuch, zählt danach (SA-27, Rest) | bewusst | 9 | – |
 | CSP, Refresh-Token und `state` im Frontend | niedrig | 11 | `DPoP-demo-dm2j` |
@@ -920,6 +920,7 @@ Diese Tabelle fasst alle offenen Punkte der Stationen zusammen.
 | QR-Status ohne Mindestintervall | Hinweis | 4 | `DPoP-demo-9ppv.10` |
 | `acr`-Prüfung der anfragenden Anwendung | Hinweis | 5 | `DPoP-demo-mea0` |
 | Hash des Freischaltcodes ohne Salt (Simulation, Port-Vertrag) | Hinweis | 8 | `DPoP-demo-4xnr` |
+| Rufnummer und KOBIL-PIN nicht an ihre Zeile gebunden (AU-7) | Hinweis | 10 | `DPoP-demo-8x0p.12` |
 | Fehlendes `demo.mode` bedeutet Demomodus | Hinweis | 13 | `DPoP-demo-davx` |
 | Admin-Passwort von Keycloak nicht im Startcheck | Hinweis | 13 | `DPoP-demo-9ppv.3` |
 | Keine DPoP-Nonce | bewusst | 2 | – |
