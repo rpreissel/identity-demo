@@ -517,18 +517,30 @@ test('Aufgaben der Demo im Browser', async ({ page, context }) => {
   await leave(page, () => page.getByRole('button', { name: ui('Vorgang beenden') }).click(), () => inviteTile().waitFor({ timeout: 30_000 }),
     'Der Vorgang ist abgeschlossen. Das Einmalkennwort gilt nicht mehr, und Keycloak hat die Sitzung beendet.')
 
-  // 6) Verwaltung: Journey-Trace
+  // 6) Verwaltung: Journey-Trace - nach der Person suchen, eine Journey öffnen
+  const traceSearch = page.getByRole('searchbox')
   await open(page, '/admin/#journeytrace', async () => {
     await page.waitForTimeout(1500)
     await adminLogin(page)
-    await page.getByText('Maximilian Muster', { exact: false }).first().waitFor({ timeout: 20_000 }).catch(() => undefined)
-    await page.waitForTimeout(1500)
+    await traceSearch.waitFor({ timeout: 20_000 })
+    await page.waitForTimeout(1000)
   }, '', true)
   await card(page, 'Aufgabe 6', 'Im Journey-Trace den Verlauf ansehen',
     '<p class="center">Jeder Schritt, vom Orchestrator selbst mitgeschrieben.</p>',
     'Aufgabe sechs: der Journey-Trace in der Verwaltung.',
-    { area: 'admin', next: 'Hier steht jeder Schritt jeder Journey: Zeitpunkt, Zustand, Tool und die Entscheidung des Orchestrators. '
-      + 'Die App meldet nichts davon, der Orchestrator schreibt alles selbst mit.' })
+    { area: 'admin', next: 'Der Journey-Trace sucht nach einer Person, zum Beispiel über ihre E-Mail-Adresse. '
+      + 'Die App meldet nichts davon, der Orchestrator schreibt jeden Schritt selbst mit.' })
+  await traceSearch.pressSequentially('max.mustermann@example.com', { delay: 60 })
+  await page.waitForTimeout(600)
+  const webRow = page.locator('.jt-results tbody tr', { hasText: ui('Website') }).first()
+  await leave(page, () => page.getByRole('button', { name: ui('Suchen'), exact: true }).click(), () => webRow.waitFor({ timeout: 20_000 }),
+    'Alle Journeys dieses Kontos: in der App und auf der Website, mit Ergebnis und Zahl der Schritte.')
+  await webRow.locator('.jt-link').click()
+  const steps = page.locator('.jt-steps').first()
+  await steps.waitFor({ timeout: 20_000 })
+  await steps.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'smooth' }))
+  await page.waitForTimeout(800)
+  await caption(page, 'Eine Anmeldung auf der Website, Schritt für Schritt: welches Verfahren lief, was der Orchestrator daraus geschlossen hat, und welches Niveau am Ende stand.')
   await page.waitForTimeout(2000)
 
   // 7) Konto löschen

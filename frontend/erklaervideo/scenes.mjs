@@ -257,9 +257,9 @@ export const SCENES = [
       <small class="what">Orchestrator, Konto, Verfahren, Keycloak-Erweiterung</small>
       <ul>
         <li data-b="1" data-d="5.2">Invarianten mit Testnachweis</li>
-        <li data-b="1" data-d="6.5">46 Architekturentscheidungen</li>
+        <li data-b="1" data-d="6.5">über 50 Architekturentscheidungen</li>
         <li data-b="1" data-d="7.6">Sicherheitsaudit: hohe und mittlere Befunde bearbeitet</li>
-        <li data-b="1" data-d="9.0">~32 000 Zeilen Kotlin, über 250 Testdateien</li>
+        <li data-b="1" data-d="9.0">über 30 000 Zeilen Kotlin, über 250 Testdateien</li>
       </ul>
     </div>
     <div class="abs col st-sim" style="left:700px;top:240px;width:520px;height:500px" data-b="2">
@@ -275,7 +275,7 @@ export const SCENES = [
     <div class="abs banner bad" style="left:150px;top:780px;width:1620px" data-b="3" data-d="3.6">Noch keine echten Personendaten</div>`,
     beats: [
       { t: 'Wo steht das Projekt? Es gibt drei Bereiche mit verschiedenem Anspruch.' },
-      { t: 'Der Backend-Kern samt Keycloak-Erweiterung ist produktionsreif gemeint und so geprüft: Invarianten mit Testnachweis, sechsundvierzig dokumentierte Architekturentscheidungen und ein Sicherheitsaudit, dessen hohe und mittlere Befunde bearbeitet sind.' },
+      { t: 'Der Backend-Kern samt Keycloak-Erweiterung ist produktionsreif gemeint und so geprüft: Invarianten mit Testnachweis, über fünfzig dokumentierte Architekturentscheidungen und ein Sicherheitsaudit, dessen hohe und mittlere Befunde bearbeitet sind.' },
       { t: 'Die Fremdsysteme sind simuliert. Verfahren, deren Niveau nur auf einer Simulation beruht, laufen ausschließlich im Demomodus.' },
       { t: 'Frontends und Betriebsumgebung sind Vorführrahmen. Deshalb gilt: noch keine echten Personendaten.' },
     ],
