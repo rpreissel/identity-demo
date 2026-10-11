@@ -792,165 +792,600 @@ a.method-choice:active {
   color: #dc2626;
 }
 
-.journey-trace-channel {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border);
+/* Journey-Trace (admin page): search, result list, one channel's steps. The step categories carry
+   their own colours, told apart by lightness too, not hue alone. */
+.journey-trace-card {
+  --jt-lifecycle: #5b6070;
+  --jt-tool: #2f4bd0;
+  --jt-failure: #b4410c;
+  --jt-sub: #6d3fc0;
+  --jt-action: #0b7a61;
+  --jt-success: #13703a;
 }
 
-.journey-trace-channel:first-of-type {
-  margin-top: 1rem;
-  padding-top: 0;
-  border-top: none;
-}
-
-.journey-trace-channel h3 {
-  margin: 0 0 0.75rem;
-}
-
-.journey-trace-channel-header {
+.jt-search {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 0.75rem;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin: 1rem 0;
 }
 
-.journey-trace-channel-header h3 {
+.jt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.jt-field--wide {
+  flex: 1 1 16rem;
+}
+
+.jt-field input,
+.jt-field select {
+  min-height: 2.5rem;
+  font-weight: 400;
+}
+
+.jt-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.jt-choices p {
+  flex-basis: 100%;
   margin: 0;
 }
 
-.journey-trace-channel-type {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  border: 1px solid var(--accent-border);
-  background: var(--accent-bg);
-  color: var(--accent);
-  font-size: 0.75rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.journey-trace-journey {
-  margin-bottom: 1rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-.journey-trace-journey-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-/* Sub-journeys (docs/04-orchestrierung.md #7) are nested (see renderJourneyNode) with an accent
-   border back to their parent, so a step-up's re-identification reads as part of the flow. */
-.journey-trace-journey--nested {
-  border-left: 3px solid var(--accent-border);
-  background: var(--accent-bg);
-}
-
-.journey-trace-journey-header--sub {
-  justify-content: flex-start;
-}
-
-.journey-trace-sub-marker {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--accent);
-}
-
-.journey-trace-table-scroll {
+.jt-results-scroll {
   overflow-x: auto;
 }
 
-.journey-trace-table {
+.jt-results {
   width: 100%;
   border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.jt-results th {
+  text-align: left;
+  font-size: 0.75rem;
+  color: var(--muted);
+  padding: 0.4rem 0.75rem 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.jt-results td {
+  padding: 0.45rem 0.75rem 0.45rem 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.jt-results tr[aria-selected='true'] td {
+  background: var(--accent-bg);
+}
+
+.jt-link {
+  background: none;
+  border: 0;
+  padding: 0.35rem 0;
+  min-height: 0;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.jt-results-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.75rem 0 1.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.jt-mono,
+.jt-tech {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.jt-tech {
+  font-size: 0.72rem;
+  color: var(--muted);
+  background: var(--code-bg);
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+}
+
+.jt-muted {
+  color: var(--muted);
   font-size: 0.85rem;
 }
 
-.journey-trace-table th {
-  text-align: left;
-  padding: 0.4rem 0.75rem 0.4rem 0;
-  font-size: 0.75rem;
-  color: var(--text);
-  border-bottom: 1px solid var(--border);
+.jt-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
   white-space: nowrap;
-}
-
-.journey-trace-table td {
-  padding: 0.5rem 0.75rem 0.5rem 0;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
-}
-
-.journey-trace-table tr:last-child td {
-  border-bottom: none;
-}
-
-.journey-trace-time {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  color: var(--text);
-}
-
-.journey-trace-tool {
-  font-family: var(--mono);
+  background: var(--code-bg);
   color: var(--text-h);
-  white-space: nowrap;
 }
 
-.journey-trace-state {
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  color: var(--accent);
-  white-space: nowrap;
+.jt-pill--succeeded {
+  background: #e3f2e8;
+  color: #106a33;
 }
 
-.journey-trace-detail-chips {
+.jt-pill--failed {
+  background: #fbe9e1;
+  color: #9a3412;
+}
+
+.jt-pill--cancelled,
+.jt-pill--logged_out {
+  background: #eceef1;
+  color: #454b56;
+}
+
+.jt-pill--open {
+  background: #fff4d6;
+  color: #7a5300;
+}
+
+.jt-pill--sub {
+  background: #f1eafe;
+  color: #5b21b6;
+}
+
+.jt-channel {
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+}
+
+.jt-channel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+}
+
+.jt-channel-header h3 {
+  margin: 0;
+}
+
+.jt-channel-header .jt-pill {
+  margin-left: 0;
+}
+
+.jt-channel-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.jt-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.jt-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  background: var(--surface);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+}
+
+.jt-category[aria-pressed='false'] {
+  background: var(--code-bg);
+  color: var(--muted);
+}
+
+.jt-category[aria-pressed='false'] .jt-step-dot {
+  background: #b8bdc6;
+}
+
+.jt-journey {
+  margin: 1rem 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.jt-journey--focus {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.jt-journey--sub {
+  margin: 0.25rem 0 0.5rem 2.5rem;
+  border-style: dashed;
+  border-color: #b9a2f0;
+}
+
+.jt-journey-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--code-bg);
+}
+
+.jt-journey--sub > .jt-journey-header {
+  background: #f7f3ff;
+}
+
+.jt-journey-header h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.jt-journey-header .jt-pill {
+  margin-left: 0;
+}
+
+.jt-none {
+  margin: 0;
+  padding: 0.6rem 1rem;
+}
+
+.jt-steps {
   list-style: none;
   margin: 0;
+  padding: 0;
+}
+
+.jt-steps--channel {
+  margin: 1rem 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.jt-sub-slot {
+  border-top: 1px solid var(--border);
+  padding: 0.25rem 0.75rem 0.25rem 0;
+}
+
+.jt-step {
+  --jt-color: var(--jt-lifecycle);
+  display: grid;
+  grid-template-columns: 5.5rem 1rem minmax(0, 1fr) 11rem auto;
+  gap: 0 0.75rem;
+  align-items: start;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.jt-steps > .jt-step:first-child {
+  border-top: 0;
+}
+
+.jt-step--tool {
+  --jt-color: var(--jt-tool);
+}
+
+.jt-step--failure {
+  --jt-color: var(--jt-failure);
+}
+
+.jt-step--subJourney {
+  --jt-color: var(--jt-sub);
+}
+
+.jt-step--action {
+  --jt-color: var(--jt-action);
+}
+
+.jt-step-dot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  margin-top: 0.35rem;
+  border-radius: 50%;
+  background: var(--jt-color);
+}
+
+.jt-category .jt-step-dot {
+  margin-top: 0;
+}
+
+.jt-step-time {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding-top: 0.15rem;
+}
+
+.jt-step-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.jt-step-decision {
+  margin-top: 0.2rem;
+  font-size: 0.875rem;
+}
+
+.jt-step-decision--success {
+  color: var(--jt-success);
+  font-weight: 500;
+}
+
+.jt-step-decision--subJourney {
+  color: var(--jt-sub);
+  font-weight: 500;
+}
+
+.jt-step-decision--failure {
+  color: var(--jt-failure);
+  font-weight: 500;
+}
+
+.jt-tags {
+  list-style: none;
+  margin: 0.45rem 0 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
 }
 
-.journey-trace-detail-chips li {
-  display: flex;
-  align-items: stretch;
-  overflow: hidden;
+.jt-tags li {
+  display: inline-flex;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  border: 1px solid var(--accent-border);
+  overflow: hidden;
   font-size: 0.78rem;
+  cursor: help;
 }
 
-.journey-trace-chip-label {
+.jt-tag-label {
   padding: 0.15rem 0.45rem;
-  background: var(--accent-bg);
-  color: var(--accent);
-  font-weight: 600;
-  font-size: 0.68rem;
+  background: var(--code-bg);
+  color: var(--text);
   white-space: nowrap;
 }
 
-.journey-trace-chip-value {
+.jt-tag-value {
   padding: 0.15rem 0.5rem;
   font-family: var(--mono);
   color: var(--text-h);
-  /* Wraps instead of an ellipsis: a long value (e.g. "methods" with a toolId:amrSourceId per entry)
-     stays fully readable. */
-  max-width: 28rem;
-  white-space: normal;
   word-break: break-word;
+}
+
+.jt-step-details dl {
+  margin: 0.5rem 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.jt-step-details dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.jt-step-details dt code {
+  font-size: 0.7rem;
+}
+
+.jt-step-details dd {
+  margin: 0.1rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.jt-step-details .jt-tag-value {
+  padding: 0;
+}
+
+.jt-tag-explanation {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.jt-step-details pre {
+  font-size: 0.75rem;
+}
+
+.jt-step-state {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.jt-step-state strong {
+  color: var(--text-h);
+  font-weight: 500;
+  font-size: 0.82rem;
+}
+
+.jt-step-state code {
+  font-size: 0.7rem;
+}
+
+@media (max-width: 760px) {
+  .jt-step {
+    grid-template-columns: 4.5rem 1rem minmax(0, 1fr);
+  }
+
+  .jt-step-state,
+  .jt-step-toggle {
+    grid-column: 3;
+    margin-top: 0.4rem;
+    justify-self: start;
+  }
+
+  .jt-journey--sub {
+    margin-left: 0.75rem;
+  }
+}
+
+/* Admin account view: search, then one account in tabs. Shares the journey trace's search,
+   table and pill styles (jt-*). */
+.ac-account {
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+  padding-top: 1.25rem;
+}
+
+.ac-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.ac-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ac-title h3 {
+  margin: 0;
+}
+
+.ac-title .jt-pill {
+  margin-left: 0;
+}
+
+.ac-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ac-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ac-tab {
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  margin-bottom: -1px;
+  min-height: 2.75rem;
+  padding: 0 0.9rem;
+  color: var(--muted);
+}
+
+.ac-tab[aria-selected='true'] {
+  color: var(--text-h);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+.ac-kv {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.ac-kv dt {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.ac-kv dd {
+  margin: 0.15rem 0 0;
+}
+
+.ac-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.ac-toolbar p {
+  margin: 0;
+  max-width: 48rem;
+}
+
+.ac-retracted td {
+  color: var(--muted);
+}
+
+.ac-retracted .ac-value {
+  text-decoration: line-through;
+}
+
+.ac-erased {
+  font-style: italic;
+  color: var(--muted);
+}
+
+.ac-history-row td {
+  background: var(--code-bg);
+}
+
+.ac-history {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ac-history-step {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  gap: 0.6rem;
+}
+
+.ac-history-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-top: 0.35rem;
+  border-radius: 50%;
+  background: #5b3cc4;
+}
+
+.ac-history-step--retraction .ac-history-dot {
+  background: #b4410c;
+}
+
+.ac-history-step--anchor .ac-history-dot {
+  background: #0b7a61;
 }
 
 pre {

@@ -109,9 +109,12 @@ Intents.
 
 Schließlich protokolliert das System jeden Schritt, den ein Nutzer durchläuft. Das Protokoll heißt
 **Journey-Trace** und ist einsehbar. Es zeigt, welches Verfahren wann angeboten, angenommen oder
-abgelehnt wurde und welches Niveau am Ende erreicht war. Für eine fachliche Frage oder eine Frage
-der Revision („Warum konnte dieser Nutzer sein Konto ohne erneute Prüfung löschen?“) muss man also
-nichts aus verteilten Systemlogs zusammensuchen.
+abgelehnt wurde und welches Niveau am Ende erreicht war. Wer eine fachliche Frage klären will („Warum
+konnte dieser Nutzer sein Konto ohne erneute Prüfung löschen?“), muss also nichts aus verteilten
+Systemlogs zusammensuchen. Der Journey-Trace ist ein Ablaufprotokoll für Fehlersuche und Support und
+wird 14 Tage aufbewahrt. Den Beleg für die Revision liefert das Änderungsprotokoll des Kontos
+(`account.change_log`, [ADR-39](adr/ADR-039-was-eine-kontoloeschung-ueberlebt.md)), das sogar das
+Löschen des Kontos überdauert.
 
 Ein konkretes Beispiel, das eine Person durch mehrere dieser Intents führt, steht in
 [11-beispiel-story.md](11-beispiel-story.md). Insgesamt folgt aus diesem Aufbau:

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import com.example.identity.core.orchestrator.domain.AcrLevels
 
 @Service
@@ -97,6 +98,12 @@ class SessionManagementService(
     fun findLinkedAccountId(bindingKeyRef: String): AccountId? =
         deviceAccountLinkRepository.findByIdOrNull(bindingKeyRef)?.accountId
 
+    /** The devices linked to [accountId], oldest link first - for the operator's account view. */
+    fun linkedDevicesOf(accountId: AccountId): List<LinkedDevice> =
+        deviceAccountLinkRepository.findByAccountIdOrderByCreatedAt(accountId).map {
+            LinkedDevice(checkNotNull(it.bindingKeyRef), checkNotNull(it.createdAt), checkNotNull(it.updatedAt))
+        }
+
     /** Idempotent: called every time a channel reaches AUTHENTICATED, regardless of intent. */
     fun linkDeviceToAccount(bindingKeyRef: String, accountId: AccountId) {
         val existing = deviceAccountLinkRepository.findByIdOrNull(bindingKeyRef)
@@ -137,3 +144,6 @@ class SessionManagementService(
         }
     }
 }
+
+/** One device linked to an account: its binding key and when the link was made and last renewed. */
+data class LinkedDevice(val bindingKeyRef: String, val linkedAt: Instant, val lastLinkedAt: Instant)

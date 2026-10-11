@@ -2,7 +2,7 @@ import { ADMIN_PATH, adminAuthHeader, clearAdminCredentials } from './adminAuth'
 import { errorMessage } from './errorMessage'
 import type { ToolCatalogEntry } from './generated/models'
 import { createDpopProof, type DpopKeyPair } from './dpop'
-import type { ActiveMethodView, ChannelResponse, DeviceLinkResponse, ErrorResponse, IdTokenClaims, JourneyTraceResponse, TokenResponse } from './types'
+import type { ActiveMethodView, ChannelResponse, DeviceLinkResponse, ErrorResponse, AccountDetails, AccountLookup, IdTokenClaims, JourneyTraceChannel, JourneyTracePage, JourneyTraceSearch, TokenResponse } from './types'
 import { ErrorResponseErrorEnum } from './generated/models'
 import { resolveText, t } from './texts'
 import { toolVersionOf } from './tools/registry'
@@ -376,25 +376,36 @@ export function setRegistrationOrder(enrollFirst: boolean): Promise<void> {
   return callPlain('PUT', '/orchestrator/admin/registration-order', { enrollFirst })
 }
 
-/** Same shape as JourneyTraceResponse, plus who each account id is (register display name). */
-export interface AdminJourneyTraceResponse extends JourneyTraceResponse {
-  accounts: { accountId: number; displayName?: string | null }[]
+/** One page of the operator's journey search; [search.cursor] continues a previous page. */
+export function searchAdminJourneys(search: JourneyTraceSearch): Promise<JourneyTracePage> {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(search)) {
+    if (value !== undefined && value !== null && value !== '') params.set(key, String(value))
+  }
+  return callPlain('GET', `${ADMIN_PATH}/journey-trace/journeys?${params}`)
 }
 
-export function fetchAdminJourneyTrace(limit = 500): Promise<AdminJourneyTraceResponse> {
-  return callPlain('GET', `${ADMIN_PATH}/journey-trace?limit=${limit}`)
+/**
+ * The accounts behind an email address, KVNR, partner number, Versicherungsnummer or account
+ * number. A POST, so the value stays out of URLs and access logs.
+ */
+export function lookupAdminAccount(query: string): Promise<AccountLookup> {
+  return callPlain('POST', `${ADMIN_PATH}/account-lookups`, { query })
 }
 
-export interface AdminAccount {
-  accountId: number
-  personId?: number | null
-  displayName?: string | null
-  email?: string | null
-  methods: string[]
+/** One account in detail: anchors, the whole claim log (values masked), methods, devices and both logs. */
+export function fetchAdminAccountDetails(accountId: number): Promise<AccountDetails> {
+  return callPlain('GET', `${ADMIN_PATH}/accounts/${accountId}/details`)
 }
 
-export function fetchAdminAccounts(): Promise<AdminAccount[]> {
-  return callPlain('GET', `${ADMIN_PATH}/accounts`)
+/** The full claim values by claim id. A separate call, logged in the backend with who read them. */
+export function fetchAdminClaimValues(accountId: number): Promise<{ values: Record<string, string> }> {
+  return callPlain('POST', `${ADMIN_PATH}/accounts/${accountId}/claim-values`)
+}
+
+/** Every entry of one channel, oldest first: its journeys, their sub-journeys, its journey-less events. */
+export function fetchAdminChannelTrace(channelSessionId: string): Promise<JourneyTraceChannel> {
+  return callPlain('GET', `${ADMIN_PATH}/journey-trace/channel-sessions/${encodeURIComponent(channelSessionId)}`)
 }
 
 export function deleteAdminAccount(accountId: number): Promise<void> {

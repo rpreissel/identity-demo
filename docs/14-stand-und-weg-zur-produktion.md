@@ -305,11 +305,13 @@ Der Orchestrator verweigert den Start mit `deployment.instances=multiple` und ne
    `app_token_session.keycloak_session_id`. Diese Spalte hat keinen Index. Weitere Spalten ohne
    Index sind `channel_session.invitation` und `change_log.lookup_key_id`. Über die letzte liest der
    Orchestrator bei jedem Start die ganze Tabelle.
-7. **Admin-Listen laden alle Konten.** Die Kontoliste zum Journey-Trace
-   (`AdminJourneyTraceController`) lädt alle Konto-Ids und danach für jedes Konto den Namen beim
-   Personenverzeichnis. Sie ist nicht auf den Demomodus beschränkt. Im Demomodus tun
-   `AdminAccountsController`, `KeycloakRealmSessions` und `DemoReset` dasselbe. Nötig ist eine
-   Suche oder seitenweises Laden.
+7. **Admin-Listen laden alle Konten.** Im Demomodus laden `AdminAccountsController`,
+   `KeycloakRealmSessions` und `DemoReset` alle Konto-Ids und danach für jedes Konto den Namen beim
+   Personenverzeichnis. Nötig ist eine Suche oder seitenweises Laden. Der Journey-Trace tut das
+   nicht mehr: Er sucht seitenweise und benennt nur die Konten der Antwort
+   ([05-api.md](05-api.md), Journey-Trace). Offen ist dort nur, dass Anliegen und Ergebnis erst
+   nach dem Lesen filtern; ein seltenes Anliegen ohne Konto oder Kanal kann mehrere Seiten
+   brauchen.
 8. **Massenänderungen im Personenverzeichnis.** Ändern sich viele Personen auf einmal, etwa
    Millionen zum Jahreswechsel, arbeitet ein einziger Thread die Ereignisse ab. Seine Warteschlange
    hat keine Grenze, und jedes Ereignis schreibt mehrmals. Durchsatz und Reihenfolge über mehrere

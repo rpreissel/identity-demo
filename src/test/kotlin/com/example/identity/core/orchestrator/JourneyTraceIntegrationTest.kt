@@ -1,16 +1,21 @@
 package com.example.identity.core.orchestrator
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.web.client.HttpClientErrorException
 import java.time.Instant
 
 /**
  * The per-step journey trace (docs/04-orchestrierung.md), distinct from the account's audit trail.
- * Read through the operator's view across all accounts (`GET /orchestrator/admin/journey-trace`),
- * narrowed to the channel under test.
+ * Read through the operator's views (`/orchestrator/admin/journey-trace/...`): one channel's entries
+ * and the search over journeys.
  */
 class JourneyTraceIntegrationTest : IntegrationTestSupport() {
 
@@ -18,11 +23,24 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
         beforeScenario { stubDpopWithFakeJwk() }
     }
 
+    private fun adminGet(path: String): ResponseEntity<Map<String, Any?>> =
+        restTemplate.exchange("http://localhost:$port/orchestrator/admin/journey-trace$path", HttpMethod.GET, HttpEntity<Void>(adminHeaders()), mapType)
+
     @Suppress("UNCHECKED_CAST")
     private fun logOf(channelSessionId: String): List<Map<String, Any?>> =
-        (restTemplate.exchange(
-            "http://localhost:$port/orchestrator/admin/journey-trace", HttpMethod.GET, HttpEntity<Void>(adminHeaders()), mapType
-        ).body!!["entries"] as List<Map<String, Any?>>).filter { it["channelSessionId"] == channelSessionId }
+        adminGet("/channel-sessions/$channelSessionId").body!!["entries"] as List<Map<String, Any?>>
+
+    private fun search(query: String): Map<String, Any?> = adminGet("/journeys?$query").body!!
+
+    @Suppress("UNCHECKED_CAST")
+    private fun Map<String, Any?>.journeys(): List<Map<String, Any?>> = this["journeys"] as List<Map<String, Any?>>
+
+    private fun registerAndLogOut(): String {
+        val channelSessionId = registerAndAuthenticate()
+        post("/orchestrator/api/v1/channels/$channelSessionId/logouts")
+        post("/orchestrator/api/v1/channels/$channelSessionId/answer", """{"answer":"accept"}""")
+        return channelSessionId
+    }
 
     @Suppress("UNCHECKED_CAST")
     private fun Map<String, Any?>.detail(): Map<String, Any?> = this["detail"] as Map<String, Any?>
@@ -40,9 +58,9 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
                     entries.all { it["channelType"] == "APP" } shouldBe true
                     entries.all { (it["intent"] as String).isNotBlank() } shouldBe true
                 }
-                then("the entries come newest first") {
+                then("the entries come oldest first, as the steps happened") {
                     val times = entries.map { Instant.parse(it["createdAt"] as String) }
-                    times shouldBe times.sortedDescending()
+                    times shouldBe times.sorted()
                 }
                 then("the journey's start, the tool's activation and its completion are recorded") {
                     entries.any { it["eventType"] == "Started" } shouldBe true
@@ -93,6 +111,69 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
 
                 then("the logout itself still shows up in the journey trace") {
                     entries.single { it["eventType"] == "LOGGED_OUT" }["channelType"] shouldBe "APP"
+                }
+            }
+        }
+
+        given("a channel that registered and then logged out") {
+            `when`("searching the journeys of that channel") {
+                val channelSessionId = registerAndLogOut()
+                val journeys = search("channelSessionId=$channelSessionId").journeys()
+                val entries = logOf(channelSessionId)
+
+                then("each journey is one line, newest start first, with its steps counted") {
+                    journeys.first()["intent"] shouldBe "LOGOUT"
+                    journeys.forEach { journey ->
+                        journey["stepCount"] shouldBe entries.count { it["journeyId"] == journey["journeyId"] }
+                    }
+                }
+                then("the registration reads as succeeded and is attributed to its account") {
+                    val registration = journeys.last { it["parentJourneyId"] == null }
+                    registration["outcome"] shouldBe "SUCCEEDED"
+                    registration["accountId"].shouldNotBeNull()
+                }
+            }
+
+            `when`("paging one journey at a time") {
+                val channelSessionId = registerAndLogOut()
+                val first = search("channelSessionId=$channelSessionId&limit=1")
+                val second = search("channelSessionId=$channelSessionId&limit=1&cursor=${first["nextCursor"]}")
+
+                then("the second page continues where the first stopped") {
+                    first.journeys().single()["intent"] shouldBe "LOGOUT"
+                    first["nextCursor"].shouldNotBeNull()
+                    second.journeys().single()["journeyId"] shouldNotBe first.journeys().single()["journeyId"]
+                }
+            }
+
+            `when`("filtering by intent across all channels") {
+                registerAndLogOut()
+                val journeys = search("intent=LOGOUT").journeys()
+
+                then("only journeys of that intent come back") {
+                    journeys.shouldNotBeEmpty()
+                    journeys.all { it["intent"] == "LOGOUT" } shouldBe true
+                }
+            }
+
+            `when`("searching by the account the channel resolved") {
+                val channelSessionId = registerAndLogOut()
+                val accountId = logOf(channelSessionId).first()["accountId"]
+                val journeys = search("accountId=$accountId").journeys()
+
+                then("the channel's journeys are found, also those started before the account was known") {
+                    journeys.map { it["channelSessionId"] }.toSet() shouldBe setOf(channelSessionId)
+                    journeys.size shouldBe search("channelSessionId=$channelSessionId").journeys().size
+                }
+            }
+        }
+
+        given("a cursor this service did not write") {
+            `when`("searching with it") {
+                val refused = runCatching { adminGet("/journeys?cursor=nonsense") }
+
+                then("the search is refused as bad input") {
+                    shouldThrow<HttpClientErrorException> { refused.getOrThrow() }.statusCode shouldBe HttpStatus.BAD_REQUEST
                 }
             }
         }

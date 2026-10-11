@@ -6,6 +6,7 @@ import com.example.identity.core.orchestrator.session.AccountDeletionService
 import com.example.identity.core.account.AccountService
 import io.micrometer.core.instrument.MeterRegistry
 import com.example.identity.core.orchestrator.journey.AuthJourneyRepository
+import com.example.identity.core.orchestrator.journeytrace.JOURNEY_TRACE_RETENTION
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceRepository
 import com.example.identity.core.orchestrator.session.RateLimitRecordRepository
 import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
@@ -159,12 +160,6 @@ class RetentionJob(
         private val TERMINAL_STATES = ChannelState.entries.filter { it.isTerminal }
         /** As long as [JOURNEY_TRACE_RETENTION], which is read per channel session, and no longer. */
         private val CHANNEL_SESSION_RETENTION: Duration = Duration.ofDays(14)
-
-        /**
-         * The highest-volume table, one row per journey step. It is a debugging trace, not the
-         * change log (`account.change_log`, ADR-39), so it need not outlive the channel sessions.
-         */
-        private val JOURNEY_TRACE_RETENTION: Duration = Duration.ofDays(14)
 
         /**
          * Far beyond the longest rate limit window or lockout (15 minutes), so a sweep never shortens

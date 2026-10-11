@@ -35,6 +35,7 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
 
         /** Controllers without `@BindingKey`, by the protection they rely on instead. */
     val guardedByAdminLogin = setOf(
+        "com.example.identity.core.orchestrator.admin.AdminAccountDetailsController",
         "com.example.identity.core.orchestrator.admin.AdminAccountsController",
         "com.example.identity.core.orchestrator.admin.AdminJourneyTraceController",
         "com.example.identity.core.orchestrator.admin.AdminSessionsController",

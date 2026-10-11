@@ -5,18 +5,21 @@ import {
   checkAdminLogin,
   deleteAdminAccount,
   describeError,
-  fetchAdminAccounts,
-  fetchAdminJourneyTrace,
+  fetchAdminAccountDetails,
+  fetchAdminClaimValues,
+  fetchAdminChannelTrace,
   fetchAdminSessions,
+  lookupAdminAccount,
   resetDemo,
+  searchAdminJourneys,
   type ActiveSessionsReport,
-  type AdminAccount,
 } from '../../api'
 import { adminAuthHeader, clearAdminCredentials, onAdminLoggedOut, setAdminCredentials } from '../../adminAuth'
 import { ActiveSessionsView } from '../../components/ActiveSessionsView'
 import { AdminRegistrationOrderView } from '../../components/AdminRegistrationOrderView'
 import { AdminToolAvailabilityView } from '../../components/AdminToolAvailabilityView'
 import { ChannelNav, type NavTab } from '../../components/ChannelNav'
+import { AdminAccountView } from '../../components/AdminAccountView'
 import { JourneyTraceView } from '../../components/JourneyTraceView'
 import { useHashTab } from '../../useHashTab'
 import { t } from '../../texts'
@@ -39,6 +42,8 @@ const TABS: NavTab<Tab>[] = [
 export function AdminApp() {
   const [loggedIn, setLoggedIn] = useState(() => adminAuthHeader() !== null)
   const [tab, setTab] = useHashTab<Tab>(TAB_KEYS, 'einstellungen')
+  /** The account "Journey-Trace öffnen" in the account view asked for. */
+  const [traceAccountId, setTraceAccountId] = useState<number | undefined>(undefined)
 
   useEffect(() => onAdminLoggedOut(() => setLoggedIn(false)), [])
 
@@ -66,7 +71,7 @@ export function AdminApp() {
           </button>
         }
       />
-      <div className={tab === 'journeytrace' ? 'web-page web-page-wide' : 'web-page'}>
+      <div className={tab === 'journeytrace' || tab === 'konten' ? 'web-page web-page-wide' : 'web-page'}>
         {tab === 'einstellungen' && (
           <>
             <section className="card admin-card admin-general">
@@ -77,10 +82,22 @@ export function AdminApp() {
           </>
         )}
         {tab === 'journeytrace' && (
-          <JourneyTraceView fetchLog={fetchAdminJourneyTrace} />
+          <JourneyTraceView
+            search={searchAdminJourneys}
+            fetchChannel={fetchAdminChannelTrace}
+            lookupAccount={lookupAdminAccount}
+            initialAccountId={traceAccountId}
+          />
         )}
         {tab === 'sitzungen' && <SessionsTab />}
-        {tab === 'konten' && <AccountsTab />}
+        {tab === 'konten' && (
+          <AccountsTab
+            onOpenTrace={(accountId) => {
+              setTraceAccountId(accountId)
+              setTab('journeytrace')
+            }}
+          />
+        )}
       </div>
     </div>
   )
@@ -173,26 +190,21 @@ function SessionsTab() {
   )
 }
 
-function AccountsTab() {
-  const [accounts, setAccounts] = useState<AdminAccount[] | null>(null)
+/**
+ * The account view (search, then one account in detail) and, for the demo, the reset. Deleting an
+ * account is demo-only in the backend (AdminAccountsController).
+ */
+function AccountsTab({ onOpenTrace }: { onOpenTrace: (accountId: number) => void }) {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   // Two-step confirmation inline instead of window.confirm (which would block the page).
-  const [confirming, setConfirming] = useState<number | 'reset' | null>(null)
-
-  const reload = useCallback(() => {
-    fetchAdminAccounts()
-      .then(setAccounts)
-      .catch((err) => setError(describeError(t('Konten laden fehlgeschlagen'), err)))
-  }, [])
-  useEffect(reload, [reload])
+  const [confirming, setConfirming] = useState(false)
 
   async function run(action: () => Promise<string>) {
     try {
       setError(null)
       setNotice(await action())
-      setConfirming(null)
-      reload()
+      setConfirming(false)
     } catch (err) {
       setError(describeError(t('Aktion fehlgeschlagen'), err))
     }
@@ -200,63 +212,13 @@ function AccountsTab() {
 
   return (
     <>
-      <div className="card">
-        <h2>{t('Konten')}</h2>
-        {error && <ErrorCard>{error}</ErrorCard>}
-        {notice && <p className="hint">{notice}</p>}
-        {accounts === null ? (
-          // A failed load already says so above - "Lädt…" next to it would claim it is still trying.
-          !error && <p>{t('Lädt…')}</p>
-        ) : accounts.length === 0 ? (
-          <p>{t('Keine Konten.')}</p>
-        ) : (
-          <div className="journey-trace-table-scroll">
-            <table className="journey-trace-table">
-              <thead>
-                <tr>
-                  <th>{t('Konto')}</th>
-                  <th>{t('Person')}</th>
-                  <th>{t('E-Mail')}</th>
-                  <th>{t('Verfahren')}</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {accounts.map((a) => (
-                  <tr key={a.accountId}>
-                    <td>{a.accountId}</td>
-                    <td>{a.displayName ?? (a.personId == null ? t('Interessent (keine Person zugeordnet)') : t('Person {id}', { id: a.personId }))}</td>
-                    <td>{a.email ?? '–'}</td>
-                    <td>{a.methods.length > 0 ? a.methods.join(', ') : '–'}</td>
-                    <td>
-                      {confirming === a.accountId ? (
-                        <span className="value-with-action">
-                          <button
-                            className="destructive small"
-                            onClick={() => run(async () => {
-                              await deleteAdminAccount(a.accountId)
-                              return t('Konto {id} gelöscht.', { id: a.accountId })
-                            })}
-                          >
-                            {t('Wirklich löschen')}
-                          </button>
-                          <button className="secondary small" onClick={() => setConfirming(null)}>
-                            {t('Abbrechen')}
-                          </button>
-                        </span>
-                      ) : (
-                        <button className="secondary small" onClick={() => setConfirming(a.accountId)}>
-                          {t('Löschen')}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <AdminAccountView
+        lookupAccount={lookupAdminAccount}
+        fetchDetails={fetchAdminAccountDetails}
+        fetchClaimValues={fetchAdminClaimValues}
+        deleteAccount={deleteAdminAccount}
+        onOpenTrace={onOpenTrace}
+      />
 
       <div className="card">
         <h2>{t('Demo zurücksetzen')}</h2>
@@ -272,7 +234,9 @@ function AccountsTab() {
             konfig={<code>demo.tool-defaults</code>}
           />
         </p>
-        {confirming === 'reset' ? (
+        {error && <ErrorCard>{error}</ErrorCard>}
+        {notice && <p className="hint">{notice}</p>}
+        {confirming ? (
           <div className="form-actions">
             <button
               className="destructive"
@@ -283,12 +247,12 @@ function AccountsTab() {
             >
               {t('Ja, alles zurücksetzen')}
             </button>
-            <button className="secondary" onClick={() => setConfirming(null)}>
+            <button className="secondary" onClick={() => setConfirming(false)}>
               {t('Abbrechen')}
             </button>
           </div>
         ) : (
-          <button className="secondary" onClick={() => setConfirming('reset')}>
+          <button className="secondary" onClick={() => setConfirming(true)}>
             {t('Demo zurücksetzen…')}
           </button>
         )}

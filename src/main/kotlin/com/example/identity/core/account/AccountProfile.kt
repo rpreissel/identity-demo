@@ -18,7 +18,9 @@ data class AuthMethodView(
     /** What of this instance may be shown on the device it lives on (e.g. the KOBIL phone id). */
     val reference: String?,
     val enrollmentRef: EnrollmentRef,
-    val label: String? = null
+    val label: String? = null,
+    /** When the instance was deactivated; null while it is active. */
+    val deactivatedAt: Instant? = null
 )
 
 data class AccountProfile(

@@ -69,15 +69,96 @@ components:
       required:
       - channels
       type: object
-    AdminAccountLabel:
+    AdminAccountDetails:
+      properties:
+        accountId:
+          format: int64
+          type: integer
+        anchors:
+          items:
+            $ref: '#/components/schemas/AnchorRecord'
+          type: array
+        changeLog:
+          description: The account's change log (ADR-39), oldest first; it outlives the account.
+          items:
+            $ref: '#/components/schemas/ChangeLogRecord'
+          type: array
+        claims:
+          items:
+            $ref: '#/components/schemas/AdminClaim'
+          type: array
+        createdAt:
+          format: date-time
+          type: string
+        devices:
+          items:
+            $ref: '#/components/schemas/LinkedDevice'
+          type: array
+        displayName:
+          type: string
+        methods:
+          items:
+            $ref: '#/components/schemas/AdminMethod'
+          type: array
+        retractions:
+          items:
+            $ref: '#/components/schemas/RetractionRecord'
+          type: array
+        role:
+          enum:
+          - INSURED
+          - PARTNER
+          - PROSPECT
+          type: string
+        signIns:
+          items:
+            $ref: '#/components/schemas/SignInRecord'
+          type: array
+      required:
+      - accountId
+      - anchors
+      - changeLog
+      - claims
+      - devices
+      - methods
+      - retractions
+      - role
+      - signIns
+      type: object
+    AdminAccountLookupRequest:
+      properties:
+        query:
+          type: string
+      required:
+      - query
+      type: object
+    AdminAccountLookupResponse:
+      properties:
+        matches:
+          items:
+            $ref: '#/components/schemas/AdminAccountMatch'
+          type: array
+      required:
+      - matches
+      type: object
+    AdminAccountMatch:
       properties:
         accountId:
           format: int64
           type: integer
         displayName:
           type: string
+        matchedBy:
+          enum:
+          - EMAIL
+          - KVNR
+          - PARTNER_NUMBER
+          - MEMBER_NUMBER
+          - ACCOUNT_NUMBER
+          type: string
       required:
       - accountId
+      - matchedBy
       type: object
     AdminAccountView:
       properties:
@@ -98,19 +179,83 @@ components:
       - accountId
       - methods
       type: object
-    AdminJourneyTraceResponse:
+    AdminClaim:
       properties:
-        accounts:
-          items:
-            $ref: '#/components/schemas/AdminAccountLabel'
-          type: array
-        entries:
-          items:
-            $ref: '#/components/schemas/JourneyTraceEntryView'
-          type: array
+        attributeType:
+          type: string
+        claimSource:
+          type: string
+        establishedAcr:
+          type: string
+        establishedAt:
+          format: date-time
+          type: string
+        id:
+          format: int64
+          type: integer
+        maskedValue:
+          type: string
+        method:
+          type: string
+        readable:
+          type: boolean
+        retraction:
+          $ref: '#/components/schemas/RetractionRecord'
       required:
-      - accounts
-      - entries
+      - attributeType
+      - establishedAt
+      - id
+      - readable
+      type: object
+    AdminClaimValues:
+      properties:
+        values:
+          additionalProperties:
+            type: string
+          type: object
+      required:
+      - values
+      type: object
+    AdminMethod:
+      properties:
+        active:
+          type: boolean
+        boundKeyRef:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        deactivatedAt:
+          format: date-time
+          type: string
+        enrolledUnderAcr:
+          type: string
+        id:
+          type: string
+        label:
+          type: string
+        method:
+          type: string
+      required:
+      - active
+      - id
+      - method
+      type: object
+    AnchorRecord:
+      properties:
+        attributeType:
+          type: string
+        establishedAcr:
+          type: string
+        establishedAt:
+          format: date-time
+          type: string
+        value:
+          type: string
+      required:
+      - attributeType
+      - establishedAt
+      - value
       type: object
     AnswerRequest:
       description: 'An answer to whatever the current step is waiting on instead of a tool run (docs/04-orchestrierung.md
@@ -134,6 +279,30 @@ components:
       required:
       - method
       - reference
+      type: object
+    ChangeLogRecord:
+      properties:
+        accountId:
+          format: int64
+          type: integer
+        acr:
+          type: string
+        changeType:
+          type: string
+        details:
+          additionalProperties: {
+            }
+          type: object
+        occurredAt:
+          format: date-time
+          type: string
+        subject:
+          type: string
+      required:
+      - accountId
+      - changeType
+      - details
+      - occurredAt
       type: object
     ChannelCreateRequest:
       description: 'requiredAcr is a lower bound only. Always creates a brand-new ChannelSession for this device (docs/02-domaenenmodell.md
@@ -181,6 +350,34 @@ components:
           type: string
       required:
       - requiredAcr
+      type: object
+    ChannelSessionTrace:
+      properties:
+        accountId:
+          format: int64
+          type: integer
+        channelSessionId:
+          format: uuid
+          type: string
+        channelType:
+          type: string
+        displayName:
+          type: string
+        entries:
+          items:
+            $ref: '#/components/schemas/JourneyTraceEntryView'
+          type: array
+        journeys:
+          items:
+            $ref: '#/components/schemas/JourneyTraceSummary'
+          type: array
+        truncated:
+          type: boolean
+      required:
+      - channelSessionId
+      - entries
+      - journeys
+      - truncated
       type: object
     ChannelToolAvailability:
       properties:
@@ -301,6 +498,70 @@ components:
       - createdAt
       - detail
       - eventType
+      type: object
+    JourneyTracePage:
+      properties:
+        journeys:
+          items:
+            $ref: '#/components/schemas/JourneyTraceSummary'
+          type: array
+        nextCursor:
+          type: string
+        searchedUntil:
+          format: date-time
+          type: string
+      required:
+      - journeys
+      type: object
+    JourneyTraceSummary:
+      properties:
+        accountId:
+          format: int64
+          type: integer
+        channelSessionId:
+          format: uuid
+          type: string
+        channelType:
+          type: string
+        displayName:
+          type: string
+        failedAttempts:
+          format: int32
+          type: integer
+        intent:
+          type: string
+        journeyId:
+          format: uuid
+          type: string
+        lastActivityAt:
+          format: date-time
+          type: string
+        outcome:
+          enum:
+          - SUCCEEDED
+          - FAILED
+          - CANCELLED
+          - LOGGED_OUT
+          - OPEN
+          type: string
+        parentJourneyId:
+          format: uuid
+          type: string
+        startedAt:
+          format: date-time
+          type: string
+        stepCount:
+          format: int32
+          type: integer
+      required:
+      - channelSessionId
+      - failedAttempts
+      - intent
+      - journeyId
+      - lastActivityAt
+      - outcome
+      - startedAt
+      - stepCount
       type: object
     KeycloakAccountView:
       properties:
@@ -472,6 +733,21 @@ components:
       required:
       - clients
       type: object
+    LinkedDevice:
+      properties:
+        bindingKeyRef:
+          type: string
+        lastLinkedAt:
+          format: date-time
+          type: string
+        linkedAt:
+          format: date-time
+          type: string
+      required:
+      - bindingKeyRef
+      - lastLinkedAt
+      - linkedAt
+      type: object
     MethodsResponse:
       description: 'The account''s active authentication methods (docs/05-api.md #3a). Never contains fsc.'
       properties:
@@ -525,6 +801,26 @@ components:
       required:
       - enrollFirst
       type: object
+    RetractionRecord:
+      properties:
+        attributeType:
+          type: string
+        id:
+          format: int64
+          type: integer
+        reason:
+          type: string
+        retractedAt:
+          format: date-time
+          type: string
+        source:
+          type: string
+      required:
+      - attributeType
+      - id
+      - retractedAt
+      - source
+      type: object
     ServerInfo:
       properties:
         demoMode:
@@ -543,6 +839,26 @@ components:
       - demoMode
       - disabledTools
       - registrationEnrollFirst
+      type: object
+    SignInRecord:
+      properties:
+        acr:
+          type: string
+        channel:
+          type: string
+        details:
+          additionalProperties: {
+            }
+          type: object
+        occurredAt:
+          format: date-time
+          type: string
+        signInType:
+          type: string
+      required:
+      - details
+      - occurredAt
+      - signInType
       type: object
     TokenResponse:
       description: Mock Keycloak AccessToken (a spec-shaped unsecured JWT, alg=none - parse and display its payload, no verification
@@ -689,6 +1005,32 @@ info:
   version: v1
 openapi: 3.1.0
 paths:
+  /orchestrator/admin/account-lookups:
+    post:
+      description: Indexed lookups only; each match names what it matched (`matchedBy`). Names are not searchable.
+      operationId: lookupAccount
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminAccountLookupRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AdminAccountLookupResponse'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Find the accounts behind an email address, KVNR, partner number, Versicherungsnummer or account number
+      tags:
+      - 'Admin: account details'
   /orchestrator/admin/accounts:
     get:
       operationId: accounts
@@ -733,6 +1075,61 @@ paths:
       summary: Delete one account
       tags:
       - 'Admin: accounts'
+  /orchestrator/admin/accounts/{accountId}/claim-values:
+    post:
+      description: Logged with the operator and the account id.
+      operationId: claimValues
+      parameters:
+      - in: path
+        name: accountId
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AdminClaimValues'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: The full values of an account's claims
+      tags:
+      - 'Admin: account details'
+  /orchestrator/admin/accounts/{accountId}/details:
+    get:
+      description: Anchors, the whole claim log with retractions (values masked), methods incl. removed ones, linked devices,
+        change log and sign-in log. 404 when the account does not exist.
+      operationId: details
+      parameters:
+      - in: path
+        name: accountId
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/AdminAccountDetails'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: One account in detail
+      tags:
+      - 'Admin: account details'
   /orchestrator/admin/demo-reset:
     post:
       description: 'Deletes every account, ends every session still live (also one without an account), clears the attempt
@@ -756,24 +1153,23 @@ paths:
       summary: Put the demo back to its start
       tags:
       - 'Admin: accounts'
-  /orchestrator/admin/journey-trace:
+  /orchestrator/admin/journey-trace/channel-sessions/{channelSessionId}:
     get:
-      description: At most `limit` entries (1-2000), newest first.
-      operationId: recent
+      description: 'Every entry of the channel, oldest first: its journeys, their sub-journeys and its journey-less events.'
+      operationId: channelSession
       parameters:
-      - in: query
-        name: limit
-        required: false
+      - in: path
+        name: channelSessionId
+        required: true
         schema:
-          default: 500
-          format: int32
-          type: integer
+          format: uuid
+          type: string
       responses:
         '200':
           content:
             '*/*':
               schema:
-                $ref: '#/components/schemas/AdminJourneyTraceResponse'
+                $ref: '#/components/schemas/ChannelSessionTrace'
           description: OK
         default:
           content:
@@ -781,7 +1177,99 @@ paths:
               schema:
                 $ref: ../openapi.yaml#/components/schemas/ErrorResponse
           description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      summary: Newest journey-trace entries across all accounts
+      summary: One channel's journey trace
+      tags:
+      - 'Admin: journey trace'
+  /orchestrator/admin/journey-trace/journeys:
+    get:
+      description: 'Journeys newest start first, at most `limit` (1-200). Account, channel or journey narrow the search; `from`/`to`
+        default to the 14 days the trace is kept. Intent and outcome filter after reading, so a page may hold fewer than `limit`:
+        `searchedUntil` says how far back it got, `nextCursor` continues there.'
+      operationId: journeys
+      parameters:
+      - in: query
+        name: accountId
+        required: false
+        schema:
+          format: int64
+          type: integer
+      - in: query
+        name: channelSessionId
+        required: false
+        schema:
+          format: uuid
+          type: string
+      - in: query
+        name: journeyId
+        required: false
+        schema:
+          format: uuid
+          type: string
+      - in: query
+        name: intent
+        required: false
+        schema:
+          enum:
+          - FAST_ACCESS
+          - REGISTER
+          - LOOKUP_LOGIN
+          - WEB_SELECT_METHOD
+          - STEP_UP
+          - MANAGE_AUTH_METHODS
+          - CONFIRM_PEER_LOGIN
+          - DELETE_ACCOUNT
+          - LOGOUT
+          - RE_IDENTIFY
+          type: string
+      - in: query
+        name: outcome
+        required: false
+        schema:
+          enum:
+          - SUCCEEDED
+          - FAILED
+          - CANCELLED
+          - LOGGED_OUT
+          - OPEN
+          type: string
+      - in: query
+        name: from
+        required: false
+        schema:
+          format: date-time
+          type: string
+      - in: query
+        name: to
+        required: false
+        schema:
+          format: date-time
+          type: string
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/JourneyTracePage'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
+          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
+      summary: Search journeys
       tags:
       - 'Admin: journey trace'
   /orchestrator/admin/registration-order:
@@ -2267,6 +2755,8 @@ tags:
   name: 'Admin: registration order'
 - description: Facade-neutral channel resource - shared by every facade that creates one
   name: Channels
+- description: Find an account and inspect its claims, anchors, methods and logs
+  name: 'Admin: account details'
 - description: The Keycloak facade's one facade-specific endpoint - upsert channel + advance journey
   name: Keycloak channels
 - description: Gerätebindung über den externen Dienstleister KOBIL

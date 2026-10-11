@@ -108,10 +108,9 @@ export type ChannelResponse = Omit<Wire.ChannelResponse, 'stepData' | 'demo'> & 
 }
 
 /**
- * One row of the per-step journey trace (admin page, `GET /orchestrator/admin/journey-trace`),
- * distinct from the minimized orchestrator.session_event audit trail. Demo/debug only, grouped
- * client-side by channelSessionId/journeyId. Hand-written: operator endpoints are not part of the
- * app contract.
+ * One row of the per-step journey trace (admin page, `/orchestrator/admin/journey-trace/...`),
+ * distinct from the account's change log. For debugging and the demo. Hand-written, like the
+ * types below: operator endpoints are not part of the app contract.
  */
 export interface JourneyTraceEntryView {
   channelSessionId: string
@@ -128,7 +127,153 @@ export interface JourneyTraceEntryView {
   createdAt: string
 }
 
-export type JourneyTraceResponse = { entries: JourneyTraceEntryView[] }
+/** How a journey ended, read by the backend from its last entry (JourneyTraceOutcome). */
+export type JourneyTraceOutcome = 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'LOGGED_OUT' | 'OPEN'
+
+/** One journey as a line of the search result. */
+export interface JourneyTraceSummary {
+  journeyId: string
+  /** Set when this journey ran as another's precondition. */
+  parentJourneyId?: string
+  channelSessionId: string
+  channelType?: string
+  accountId?: number
+  displayName?: string | null
+  intent: string
+  startedAt: string
+  lastActivityAt: string
+  stepCount: number
+  failedAttempts: number
+  outcome: JourneyTraceOutcome
+}
+
+/** What the operator searches for (`GET .../journey-trace/journeys`). */
+export interface JourneyTraceSearch {
+  accountId?: number
+  channelSessionId?: string
+  journeyId?: string
+  intent?: string
+  outcome?: JourneyTraceOutcome
+  from?: string
+  to?: string
+  cursor?: string
+  limit?: number
+}
+
+/**
+ * Intent and outcome filter after reading, so a page may hold fewer than asked: [searchedUntil]
+ * says how far back it got, [nextCursor] continues there (absent when nothing older is left).
+ */
+export interface JourneyTracePage {
+  journeys: JourneyTraceSummary[]
+  nextCursor?: string | null
+  searchedUntil?: string | null
+}
+
+/** What an account lookup value matched (`POST .../journey-trace/account-lookups`). */
+export type AccountMatchKind = 'EMAIL' | 'KVNR' | 'PARTNER_NUMBER' | 'MEMBER_NUMBER' | 'ACCOUNT_NUMBER'
+
+export interface AccountMatch {
+  accountId: number
+  displayName?: string | null
+  matchedBy: AccountMatchKind
+}
+
+/** Empty when no account holds the value; more than one when eight digits match two ways. */
+export interface AccountLookup {
+  matches: AccountMatch[]
+}
+
+/** The three roles of an account: insured with us, known as a person, or neither. */
+export type AccountRole = 'INSURED' | 'PARTNER' | 'PROSPECT'
+
+/** A value the account is found by, unique across accounts. */
+export interface AccountAnchor {
+  attributeType: string
+  value: string
+  establishedAcr?: string | null
+  establishedAt: string
+}
+
+/** A withdrawn value; it carries no value of its own. */
+export interface AccountRetraction {
+  id: number
+  attributeType: string
+  /** ACCOUNT_MANAGEMENT, ACCOUNT_HOLDER, PERSON_DIRECTORY or OPERATOR. */
+  source: string
+  reason?: string | null
+  retractedAt: string
+}
+
+/** One entry of the claim log; [maskedValue] shows the first characters, [readable] is false once the value is erased. */
+export interface AccountClaim {
+  id: number
+  attributeType: string
+  maskedValue?: string | null
+  readable: boolean
+  /** `person_directory`, `self-reported` or the id of the tool that proved it. */
+  claimSource?: string | null
+  establishedAcr?: string | null
+  /** The method whose enrollment asserted it; absent for identification. */
+  method?: string | null
+  establishedAt: string
+  retraction?: AccountRetraction | null
+}
+
+export interface AccountMethod {
+  id: string
+  method: string
+  label?: string | null
+  active: boolean
+  enrolledUnderAcr?: string | null
+  boundKeyRef?: string | null
+  createdAt?: string | null
+  deactivatedAt?: string | null
+}
+
+export interface AccountDevice {
+  bindingKeyRef: string
+  linkedAt: string
+  lastLinkedAt: string
+}
+
+export interface AccountLogEntry {
+  changeType?: string
+  signInType?: string
+  subject?: string | null
+  channel?: string | null
+  acr?: string | null
+  details: Record<string, unknown>
+  occurredAt: string
+}
+
+/** `GET /orchestrator/admin/accounts/{id}/details`. */
+export interface AccountDetails {
+  accountId: number
+  displayName?: string | null
+  role: AccountRole
+  createdAt?: string | null
+  anchors: AccountAnchor[]
+  claims: AccountClaim[]
+  retractions: AccountRetraction[]
+  methods: AccountMethod[]
+  devices: AccountDevice[]
+  changeLog: AccountLogEntry[]
+  signIns: AccountLogEntry[]
+}
+
+/** Every entry of one channel, oldest first. */
+export interface JourneyTraceChannel {
+  channelSessionId: string
+  channelType?: string
+  accountId?: number
+  displayName?: string | null
+  entries: JourneyTraceEntryView[]
+  /** One summary per journey in entries, by the same rule as the search. */
+  journeys: JourneyTraceSummary[]
+  /** More entries than one answer carries; the oldest are shown. */
+  truncated: boolean
+}
 
 /**
  * App-Kanal AccessToken (docs/05-api.md #3a): je nach Backend-Profil ein unsecured JWT (alg=none)

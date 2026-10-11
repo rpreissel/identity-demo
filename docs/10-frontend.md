@@ -484,13 +484,30 @@ Orchestrators:
     steht eine Tabelle „Verfahren“ je Zugang (App oder Website): eine Gruppenzeile je Auswahlliste,
     eine Zeile je Fassung mit einem An/Aus-Schalter. Beim Ausschalten fragt die Zeile nach dem Grund.
     „Reihenfolge ändern“ öffnet einen Entwurf, der erst mit „Speichern“ gilt.
-  - *Journey-Trace* über alle Konten und Geräte, mit laufender Aktualisierung.
+  - *Journey-Trace* über alle Konten und Geräte. Oben steht eine Suche. Ein Feld nimmt E-Mail-Adresse,
+    KVNR, Partnernummer, Versicherungsnummer, Kontonummer oder die ID einer Journey oder
+    Gerätesitzung. Die Person findet das Backend über einen Index, nie über eine Liste aller Konten;
+    passen acht Ziffern auf eine Versicherungsnummer und eine Kontonummer zugleich, wählt man aus.
+    Namen sind nicht suchbar. Dazu kommen Anliegen, Ergebnis und Zeitraum. Ohne Eingabe zeigt sie die Journeys der letzten 24 Stunden, seitenweise mit „Ältere
+    laden“. Ein Klick auf eine Journey öffnet ihre Gerätesitzung als Zeitleiste. Jeder Schritt
+    steht dort als Satz („SMS fehlgeschlagen“), darunter die Entscheidung („weiter zu …“) und die
+    Angaben als beschriftete Tags mit Erklärung. Eine Sub-Journey steht eingerückt direkt unter dem
+    Schritt, der sie verlangt hat. Die Schritte lassen sich nach Text und Art filtern. „Technische
+    Namen“ blendet `eventType`, Zustand und Ids ein, „Details“ die Rohdaten. Live aktualisiert wird
+    nur die geöffnete Gerätesitzung.
   - *Sitzungen* zeigt die aktiven Sitzungen. Die Seite liest sie beim Öffnen und bei
     „Aktualisieren“. Sie zeigt je Kanal die Anzahl und die zehn neuesten Sitzungen des
     Orchestrators. Mit Keycloak zeigt sie außerdem dessen offene Sitzungen, getrennt nach Website
     und App, jeweils mit der Sitzung des Orchestrators, zu der sie gehören. Dieselbe Ansicht
     (`ActiveSessionsView`) zeigt die Startseite vor dem Zurücksetzen.
-  - *Konten*: Konten löschen, Demo zurücksetzen.
+  - *Konten*: Oben steht eine Suche wie im Journey-Trace (E-Mail-Adresse, KVNR, Partnernummer,
+    Versicherungsnummer oder Kontonummer), keine Liste aller Konten. Das gefundene Konto zeigt Name,
+    Rolle und „gefunden über …“ und hat fünf Reiter: *Übersicht*, *Angaben* (jede Angabe mit
+    Quelle, Niveau und Verfahren; zurückgezogene durchgestrichen, nach der Frist gelöschte als nicht
+    lesbar; ein Klick auf die Angabe zeigt ihre Geschichte), *Anker*, *Verfahren und Geräte* und
+    *Protokolle* (Änderungs- und Anmeldeprotokoll). Werte stehen gekürzt da, bis man „Werte
+    anzeigen“ wählt; das protokolliert das Backend. „Journey-Trace öffnen“ springt in den Trace,
+    nach dem Konto gefiltert. Konto löschen und Demo zurücksetzen gibt es nur im Demomodus.
 - **Personenverzeichnis** (`/personenverzeichnis/`): das simulierte **Fremdsystem** (ADR-31) mit
   Personen, Freischaltcodes und Einladungen mit Einmalkennwort. Einladungen kann man dort
   ausstellen, den Vorgang abschließen oder sie widerrufen. Fachlich spricht die Seite nur

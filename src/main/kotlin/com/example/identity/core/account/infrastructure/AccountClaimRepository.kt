@@ -14,6 +14,9 @@ import org.springframework.stereotype.Repository
 @Repository
 interface AccountClaimRepository : JpaRepository<AccountClaim, Long> {
 
+    /** The whole claim log of one account, retracted rows included - for the operator's account view. */
+    fun findByAccountIdOrderByEstablishedAt(accountId: AccountId?): List<AccountClaim>
+
     /** Everything one method instance ever asserted - the retraction path's only query. */
     fun findByAuthMethodId(authMethodId: UUID): List<AccountClaim>
 

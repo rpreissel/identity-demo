@@ -237,8 +237,8 @@ Liste von Ausnahmen. Drei Arten von Endpunkten liegen bewusst außerhalb. Abschn
 sie:
 
 - Betriebsendpunkte unter `/orchestrator/admin`. Mit ihnen kann der Betreiber Tools sperren, die
-  Reihenfolge der Registrierung festlegen, den Journey-Trace aller Konten lesen, aktive Sitzungen
-  ansehen, Konten löschen und die Demo zurücksetzen. Nur diese Endpunkte verlangen eine Anmeldung (HTTP
+  Reihenfolge der Registrierung festlegen, den Journey-Trace aller Konten lesen, ein Konto suchen
+  und im Detail ansehen, aktive Sitzungen ansehen, Konten löschen und die Demo zurücksetzen. Nur diese Endpunkte verlangen eine Anmeldung (HTTP
   Basic mit `demo.admin.*`).
 - Der öffentliche Server-Status unter `/orchestrator/demo/server-info`. Er wird nur gelesen. Zustand
   und Kennzahlen im Block `operations` liefert er nur im Demomodus, also wenn die Anwendung zum
@@ -1275,8 +1275,49 @@ Voreinstellungen für Verfahren und Registrierungsreihenfolge.
 **Journey-Trace.** Der Journey-Trace hält jeden Schritt einer Journey fest. Er ist eine Ansicht zur
 Fehlersuche und für die Demo und wird 14 Tage aufbewahrt ([Betrieb](07-betrieb.md) Abschnitt 3).
 Ein Revisionsprotokoll ist er nicht; das ist `account.change_log`. Der Journey-Trace gehört nicht
-zum App-Vertrag. Es gibt ihn nur als Betriebsendpunkt `GET /orchestrator/admin/journey-trace`
-(hinter der Admin-Anmeldung, über alle Konten und Kanäle).
+zum App-Vertrag. Es gibt ihn nur über zwei Betriebsendpunkte hinter der Admin-Anmeldung, über alle
+Konten und Kanäle:
+
+- `GET /orchestrator/admin/journey-trace/journeys` sucht Journeys, die neuesten Starts zuerst. Eine
+  Zeile je Journey nennt Anliegen, Person, Kanal, Dauer, Zahl der Schritte und Fehlversuche und das
+  Ergebnis (`SUCCEEDED`, `FAILED`, `CANCELLED`, `LOGGED_OUT`, `OPEN`), das der Orchestrator aus dem
+  letzten Eintrag der Journey liest. Eingrenzen lässt sich nach Konto (`accountId`), Kanal
+  (`channelSessionId`), Journey (`journeyId`) und Zeitraum (`from`, `to`, höchstens die 14 Tage, die
+  der Trace aufbewahrt wird). Geblättert wird über `nextCursor`. Die Suche liest zuerst die
+  Start-Einträge, je Journey einen, und danach nur die Schritte der gefundenen Journeys. Eine Seite
+  kostet deshalb bei 20 Mio. Konten so viel wie in der Demo. Anliegen (`intent`) und Ergebnis
+  (`outcome`) stehen erst nach dem Lesen fest und filtern danach. Eine Seite liest dafür höchstens
+  2.000 Starts und enthält dann womöglich weniger Treffer als verlangt. `searchedUntil` nennt, wie
+  weit sie zurückgekommen ist.
+- `GET /orchestrator/admin/journey-trace/channel-sessions/{channelSessionId}` liefert alle Einträge
+  eines Kanals, die ältesten zuerst, und je Journey dieselbe Zusammenfassung wie die Suche. Die
+  Admin-Seite setzt daraus jede Sub-Journey hinter den Schritt der Eltern-Journey, der sie verlangt
+  hat.
+
+Namen aus dem Personenverzeichnis holt der Orchestrator nur für die Konten der Antwort, nie für
+alle Konten.
+
+**Konten suchen und ansehen.** Diese Endpunkte gibt es auch außerhalb des Demomodus, denn der
+Support braucht sie im Betrieb. Eine Liste aller Konten gibt es nicht.
+
+- `POST /orchestrator/admin/account-lookups` findet zu E-Mail-Adresse, KVNR, Partnernummer,
+  Versicherungsnummer oder Kontonummer das Konto, jeweils mit einem Zugriff über einen Index. Jeder
+  Treffer nennt, worüber er gefunden wurde (`matchedBy`). Acht Ziffern können Versicherungsnummer
+  und Kontonummer zugleich sein; dann gibt es zwei Treffer. Der Wert steht im Body, nicht in der
+  URL, damit er nicht in Zugriffsprotokollen landet. Namen sind nicht suchbar: Sie liegen nur im
+  Personenverzeichnis, das keine Namenssuche anbietet, und sind nicht eindeutig. Die Admin-Seite
+  nutzt diese Suche im Reiter *Konten* und im Journey-Trace.
+- `GET /orchestrator/admin/accounts/{accountId}/details` liefert, was das Konto weiß: die Rolle
+  (abgeleitet aus den Ankern), die Anker, das ganze Claim-Log mit jeder Rücknahme, die sie aufhebt,
+  die Verfahren samt entfernten, die verknüpften Geräte, das Änderungsprotokoll und das
+  Anmeldeprotokoll. Die Werte der Angaben kommen gekürzt (die ersten zwei Zeichen). Ein Wert, dessen
+  Schlüssel nach Ablauf der Frist gelöscht ist ([ADR-52](adr/ADR-052-umschlagverschluesselung-des-claim-logs.md)),
+  steht als nicht lesbar da; die Zeile bleibt.
+- `POST /orchestrator/admin/accounts/{accountId}/claim-values` liefert die vollen Werte. Der
+  Orchestrator schreibt dazu ins Log, wer die Werte welches Kontos gelesen hat, nie die Werte selbst.
+
+Das Konto liest der Orchestrator über `AccountInspection` im Kontomodul. Andere Leser sehen nur die
+gültigen Angaben (`ClaimLedger`); dieser zeigt auch die Geschichte.
 
 ### Stellvertreter externer Systeme
 

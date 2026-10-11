@@ -324,6 +324,9 @@ class AccountService(
 
     /** For the demo admin pages only; the login path must not depend on a full list (10 million+ accounts). */
     @Transactional(readOnly = true)
+    /** When the account was created, for the operator's account view. */
+    fun createdAt(accountId: AccountId): Instant? = accountRepository.findAccount(accountId)?.createdAt
+
     fun allAccountIds(): List<AccountId> = accountRepository.findAllIds()
 
     /**
@@ -491,7 +494,8 @@ class AccountService(
         boundKeyRef = boundKeyRef,
         reference = sealedReference?.let { String(checkNotNull(cipher).open(REFERENCE, it)) },
         enrollmentRef = enrollmentRef,
-        label = sealedLabel?.let { String(checkNotNull(cipher).open(LABEL, it)) }
+        label = sealedLabel?.let { String(checkNotNull(cipher).open(LABEL, it)) },
+        deactivatedAt = deactivatedAt
     )
 
     private companion object {

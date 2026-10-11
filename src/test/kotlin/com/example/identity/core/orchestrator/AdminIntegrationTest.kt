@@ -111,13 +111,13 @@ class AdminIntegrationTest : IntegrationTestSupport() {
 
                 val accounts = adminList("/orchestrator/admin/accounts")
                 @Suppress("UNCHECKED_CAST")
-                val logAccounts = adminGet("/orchestrator/admin/journey-trace?limit=200")["accounts"] as List<Map<String, Any?>>
+                val journeys = adminGet("/orchestrator/admin/journey-trace/journeys?limit=200")["journeys"] as List<Map<String, Any?>>
 
                 then("the account is listed") {
                     accounts.map { it["displayName"] } shouldContain "Max Muster"
                 }
-                then("the log across all accounts attributes its journey") {
-                    logAccounts.map { it["displayName"] } shouldContain "Max Muster"
+                then("the journey search across all accounts names its person") {
+                    journeys.map { it["displayName"] } shouldContain "Max Muster"
                 }
             }
 
@@ -131,19 +131,6 @@ class AdminIntegrationTest : IntegrationTestSupport() {
                 then("it is gone from the list") {
                     deleted shouldBe HttpStatus.NO_CONTENT
                     remaining shouldNotContain accountId
-                }
-            }
-        }
-
-        given("an account that never ran a journey") {
-            `when`("the operator reads the log") {
-                val accountId = seedRegisteredAccount()
-
-                @Suppress("UNCHECKED_CAST")
-                val accounts = adminGet("/orchestrator/admin/journey-trace")["accounts"] as List<Map<String, Any?>>
-
-                then("the log's person filter still offers it") {
-                    accounts.map { (it["accountId"] as Number).toLong() } shouldContain accountId.value
                 }
             }
         }

@@ -7,4 +7,7 @@ import org.springframework.stereotype.Repository
 @Repository
 interface DeviceAccountLinkRepository : JpaRepository<DeviceAccountLink, String> {
     fun deleteByAccountId(accountId: AccountId?)
+
+    /** The devices linked to one account, for the operator's account view. */
+    fun findByAccountIdOrderByCreatedAt(accountId: AccountId?): List<DeviceAccountLink>
 }
