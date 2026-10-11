@@ -23,6 +23,9 @@ Begriffe wie Journey, Tool oder Niveau erklärt das [Glossar](../glossar/glossar
 - [Abschied von alten Fassungen](tool-versionen.md): Eine alte Fassung eines Tools beobachten und
   ausbauen und alten Clients sagen, dass sie aktualisieren müssen. Die zweite Fassung selbst ist
   gebaut (`enroll-sms@2`, ADR-51).
+- [Keycloak behalten oder eigener Provider](keycloak-oder-eigener-provider.md): Keycloak ist nur
+  noch OIDC-Fassade und Token-Aussteller. Ob das die Kopplung wert ist, hängt daran, ob weitere
+  Clients, auch Apps von Partnern, dieselben Konten nutzen sollen. „Alles nach Keycloak“ ist abgehakt.
 - [Die App als native Hülle](app-als-native-huelle.md): Ein dünnes macOS-Programm ohne Xcode zeigt
   `/app/` in einer `WKWebView`. Es signiert mit Schlüsseln in der Secure Enclave und mit echtem
   Touch ID. Oberfläche und Backend bleiben unverändert.
