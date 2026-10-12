@@ -12,8 +12,8 @@ eigenen Meldekette mit eigener Vertrauensgrenze (ADR-39). Eine Abmeldung an ande
 Account-Konsole, ein weiterer Client derselben Sitzung) erreicht den Orchestrator auf demselben Weg.
 
 **Stand: Abwägung, nicht entschieden** (Stand 2026-10-12). Setzt voraus, dass das Standardprofil ohne
-Keycloak entfällt (Abschnitt 3). Vor dem Bau ist ein Spike gegen ein echtes Keycloak nötig
-(Abschnitt 4, Punkte 1 und 2).
+Keycloak entfällt (Abschnitt 3). Der Spike gegen das Realm ist gelaufen (Abschnitt 7,
+`DPoP-demo-vw1v`): Der Backchannel kommt in allen drei Fällen an, auch für die App-Sitzung.
 
 ---
 
@@ -68,17 +68,17 @@ jeder Start Podman (`podman compose up keycloak`, `bootRunKc`).
 
 Nach Gewicht geordnet.
 
-1. **Bekommt die App-Sitzung überhaupt einen Backchannel?** Keycloak benachrichtigt nur Clients,
-   die in der Sitzung eine Client-Sitzung haben. Ob der eigene Grant für `orchestrator-app-token`
-   eine anlegt, ist ungeprüft. Ohne sie bleibt für die App nur der Weg von heute.
-2. **Löst die Admin-API einen Backchannel aus?** Davon geht der Vorschlag aus (Keycloak ruft bei
-   einer Abmeldung über die Admin-API die Back-Channel-Logouts der Clients). Für die eingesetzte
-   Version zu bestätigen.
+1. ~~**Bekommt die App-Sitzung überhaupt einen Backchannel?**~~ Ja. Der eigene Grant legt eine
+   Client-Sitzung für `orchestrator-app-token` an (Spike, Abschnitt 7).
+2. ~~**Löst die Admin-API einen Backchannel aus?**~~ Ja, sowohl `DELETE …/sessions/{id}` als auch
+   `POST …/users/{id}/logout` (Spike, Abschnitt 7).
 3. **Kein Aufruf an Keycloak in der eigenen Transaktion.** Keycloak ruft den Backchannel noch
-   während des Admin-Aufrufs zurück. Hält der Orchestrator dabei die Zeile des Kanals, wartet der
+   während des Admin-Aufrufs zurück, synchron (im Spike dauerte `DELETE` so lange wie der
+   Endpunkt). Hält der Orchestrator dabei die Zeile des Kanals, wartet der
    Rückruf auf die Sperre und der Admin-Aufruf auf den Rückruf. Der Aufruf läuft deshalb wie heute
    nach dem Commit (`KeycloakSessionLogoutListener`).
-4. **Zustellung ohne Wiederholung.** Keycloak ruft den Backchannel einmal. Geht er verloren, lebt
+4. **Zustellung ohne Wiederholung.** Keycloak ruft den Backchannel einmal. Ist der Endpunkt nicht
+   erreichbar, gelingt die Abmeldung trotzdem, Keycloak protokolliert nur einen Fehler (Spike). Geht er verloren, lebt
    der App-Kanal bis zur nächsten Erneuerung oder bis zu seiner Frist (ADR-43 Abschnitt 5). Heute
    endet er in derselben Transaktion. Deshalb sollte der Orchestrator einen Kanal, dessen Abmeldung
    er selbst anstößt, auch selbst beenden. Der Backchannel ist für ihn dann eine Bestätigung, nicht
@@ -131,10 +131,36 @@ Nach Gewicht geordnet.
 - `KeycloakSessionLogoutListener` als Auslöser über die Admin-API.
 - `signedOutAtKeycloak` als einziger Ort, an dem eine von Keycloak gemeldete Abmeldung ankommt.
 
-## 7) Nächster Schritt
+## 7) Spike gegen das Realm (2026-10-12)
 
-Ein Spike gegen das Realm, ohne Umbau im Orchestrator: `backchannel_logout_url` an beiden Clients
-auf einen Endpunkt, der nur protokolliert. Dann je einmal im Web abmelden, in der App abmelden und
-eine Sitzung in der Admin-Konsole beenden. Das beantwortet die Punkte 1 und 2. Fällt Punkt 1
-negativ aus, bleibt die Idee für das Web sinnvoll (die eigene Meldekette ablösen). Die App behält
-dann ihren Weg ohne Journey über die harte Abmeldung.
+Aufbau: Compose-Stack (Keycloak 26.6.4), an beiden Clients per Admin-API eine
+`backchannel_logout_url` auf einen Endpunkt, der nur protokolliert, mit
+`backchannel_logout_session_required`. Der Orchestrator blieb unverändert. Danach wurde die
+Einstellung wieder entfernt.
+
+| Fall | Auslöser | Backchannel |
+|---|---|---|
+| Web, Abmeldung im Browser | `end_session_endpoint` (Event `LOGOUT`) | ja, an `identity-demo-web` |
+| Web, Einladung beendet | Orchestrator `POST …/users/{id}/logout` (kein Event `LOGOUT`) | ja, an `identity-demo-web` |
+| App, Journey `LOGOUT` | Orchestrator `DELETE …/sessions/{id}` | ja, an `orchestrator-app-token` |
+| App, Sitzung direkt beendet | Admin-API `DELETE …/sessions/{id}` | ja, an `orchestrator-app-token` |
+
+Befunde:
+
+- Das `logout_token` ist `typ: logout+jwt`, RS256 mit dem Realm-Schlüssel, mit `iss`, `aud` (der
+  Client), `sub`, `sid`, `jti`, `iat`, `exp` (zwei Minuten) und `events`. Die `sid` ist die
+  Keycloak-Sitzungskennung, also dieselbe wie in `AppTokenSession.keycloakSessionId` und
+  `durableKeycloakSessionId`. Punkt 6 lässt sich damit wie vorgeschlagen über `sid` lösen.
+- `sub` hat die Form `f:<componentId>:<externalId>`, für Konten mit der Kontonummer, für
+  Einladungen mit einem Hash.
+- Der Aufruf ist synchron: Mit einem Endpunkt, der drei Sekunden wartet, dauerte `DELETE
+  …/sessions/{id}` drei Sekunden (Punkt 3).
+- Ist der Endpunkt nicht erreichbar, antwortet `DELETE` trotzdem mit `204`. Keycloak protokolliert
+  den Fehler (`ResourceAdminManager.logoutClientSessionWithBackchannelLogoutUrl`) und wiederholt
+  nicht (Punkt 4).
+- Nebenbefund zur Lücke von heute: Wer eine App-Sitzung in der Admin-Konsole beendet, erzeugt kein
+  Event `LOGOUT`. Der Orchestrator erfährt davon heute nichts, der App-Kanal lebt bis zur nächsten
+  Erneuerung weiter. Mit dem Backchannel wäre das geschlossen.
+
+Damit steht dem Vorschlag von Keycloaks Seite nichts entgegen. Offen bleiben die Punkte 3 bis 7,
+die alle auf der Seite des Orchestrators liegen.
