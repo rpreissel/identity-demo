@@ -1,0 +1,140 @@
+# Idee: Abmeldung nur über Keycloak, keine `LOGOUT`-Journey mehr
+
+**Worum es geht.** Die Abmeldung läuft heute in den beiden Kanälen auf verschiedenen Wegen. In der
+App ist sie eine eigene Journey (`AuthIntent.LOGOUT`) mit einer Rückfrage. Im Web ist sie Keycloaks
+eigener Logout, und der Orchestrator erfährt davon über einen selbst gebauten Event-Listener. Die
+Idee: Beide Kanäle melden sich über Keycloak ab. Der Orchestrator erfährt das Ende nur noch über den
+standardisierten [OIDC Back-Channel Logout](https://openid.net/specs/openid-connect-backchannel-1_0.html).
+Die Abmeldung steht dann nur noch im Audit-Log (SignInLog), eine Journey gibt es dafür nicht mehr.
+
+**Warum das wichtig ist.** Ein Weg statt zwei, und dieser Weg ist Keycloaks Standard statt einer
+eigenen Meldekette mit eigener Vertrauensgrenze (ADR-39). Eine Abmeldung an anderer Stelle (Admin-Konsole,
+Account-Konsole, ein weiterer Client derselben Sitzung) erreicht den Orchestrator auf demselben Weg.
+
+**Stand: Abwägung, nicht entschieden** (Stand 2026-10-12). Setzt voraus, dass das Standardprofil ohne
+Keycloak entfällt (Abschnitt 3). Vor dem Bau ist ein Spike gegen ein echtes Keycloak nötig
+(Abschnitt 4, Punkte 1 und 2).
+
+---
+
+## 1) Heute
+
+**App.** `AppChannelApp` ruft `POST /channels/{id}/logouts`. `ChannelService.startLogout` startet die
+Journey `LOGOUT` ([Katalog](../journeys/logout.md)). Sie stellt eine Rückfrage. Nach Zustimmung folgt
+`Transition.Logout`, und `ChannelSessionLifecycle.end` beendet den Kanal, schreibt die Abmeldung ins
+SignInLog und veröffentlicht `KeycloakSessionEnded`. Nach dem Commit beendet
+`KeycloakSessionLogoutListener` die Keycloak-Sitzung über die Admin-API.
+
+**Web.** `WebChannelView.logout` verwirft die Tokens und leitet auf Keycloaks
+`end_session_endpoint`. Keycloak erzeugt das Event `LOGOUT`. `SignInLogEventListener` in der
+Extension meldet es nach dem Commit an `KeycloakSignOutController`. Von dort ruft der Orchestrator
+`KeycloakChannelService.signedOutAtKeycloak`, das laufende Journeys abbricht, die Kanäle der Sitzung
+beendet und die Abmeldung schreibt ([ADR-43](../adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)
+Abschnitt 3).
+
+## 2) Der Vorschlag
+
+- **Web:** Der Web-Client in Keycloak bekommt eine `backchannel_logout_url` auf den Orchestrator,
+  mit `backchannel_logout_session_required`, damit das Token die `sid` trägt. Der Logout im Browser
+  bleibt, wie er ist.
+- **App:** Die App hat keinen eigenen Keycloak-Client, ihre Sitzung gehört dem Client
+  `orchestrator-app-token` ([ADR-9](../adr/ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md)).
+  „Über Keycloak“ heißt hier: Die App ruft einen schlichten Abmelde-Endpunkt des Orchestrators. Der
+  Orchestrator beendet die Sitzung über die Admin-API (`KeycloakAdminClient.logoutSession`, gibt es
+  schon). Keycloak benachrichtigt daraufhin über den Backchannel. Derselbe Client bekommt dafür ebenfalls
+  eine `backchannel_logout_url`.
+- **Ein Eingang:** Ein neuer Endpunkt nimmt das `logout_token` an, prüft es (Signatur gegen das
+  JWKS des Realms, `iss`, `aud`, `events`, `sid`, `jti`) und ruft `signedOutAtKeycloak` mit der `sid`
+  auf.
+- **Rückfrage:** „Wirklich abmelden?“ wird ein Dialog im UI, in beiden Kanälen gleich.
+
+## 3) Voraussetzung: Standardprofil streichen
+
+Ohne Keycloak gibt es keinen Backchannel. Bliebe das Standardprofil, gäbe es weiter zwei Wege zum
+Ende eines Kanals. Das Profil zu streichen, lohnt sich auch für sich:
+
+- Ohne Keycloak läuft nur die halbe Anwendung, der Web-Kanal fehlt ganz
+  ([13-ausfuehren.md](../13-ausfuehren.md)).
+- Die Weichen `@Profile("keycloak")` / `@Profile("!keycloak")` entfallen, ebenso die Prüfung auf
+  `MockTokenProvider` in `ProductionModeCheck` und die Sätze „ohne Keycloak gilt …“ in der Doku.
+
+Was bleiben sollte: ein Ersatz für Keycloak in den Tests. Die rund 40 Integrationstests laufen heute
+ohne Keycloak, und das CI baut nur mit `./gradlew build`. `MockTokenProvider` zieht nach `src/test`.
+Für die Abmeldung ruft der Test-Ersatz `signedOutAtKeycloak` direkt, so wie es der Backchannel täte.
+Die Browsertests in `frontend/e2e` ziehen nach `frontend/e2e-keycloak`. Der Preis: Lokal braucht
+jeder Start Podman (`podman compose up keycloak`, `bootRunKc`).
+
+## 4) Offene Punkte
+
+Nach Gewicht geordnet.
+
+1. **Bekommt die App-Sitzung überhaupt einen Backchannel?** Keycloak benachrichtigt nur Clients,
+   die in der Sitzung eine Client-Sitzung haben. Ob der eigene Grant für `orchestrator-app-token`
+   eine anlegt, ist ungeprüft. Ohne sie bleibt für die App nur der Weg von heute.
+2. **Löst die Admin-API einen Backchannel aus?** Davon geht der Vorschlag aus (Keycloak ruft bei
+   einer Abmeldung über die Admin-API die Back-Channel-Logouts der Clients). Für die eingesetzte
+   Version zu bestätigen.
+3. **Kein Aufruf an Keycloak in der eigenen Transaktion.** Keycloak ruft den Backchannel noch
+   während des Admin-Aufrufs zurück. Hält der Orchestrator dabei die Zeile des Kanals, wartet der
+   Rückruf auf die Sperre und der Admin-Aufruf auf den Rückruf. Der Aufruf läuft deshalb wie heute
+   nach dem Commit (`KeycloakSessionLogoutListener`).
+4. **Zustellung ohne Wiederholung.** Keycloak ruft den Backchannel einmal. Geht er verloren, lebt
+   der App-Kanal bis zur nächsten Erneuerung oder bis zu seiner Frist (ADR-43 Abschnitt 5). Heute
+   endet er in derselben Transaktion. Deshalb sollte der Orchestrator einen Kanal, dessen Abmeldung
+   er selbst anstößt, auch selbst beenden. Der Backchannel ist für ihn dann eine Bestätigung, nicht
+   der Auslöser. Für das Web ändert sich nichts, auch der heutige Listener liefert ohne Garantie.
+5. **Doppelte Meldung.** Beendet der Orchestrator selbst (App-Abmeldung, `DELETE_ACCOUNT`,
+   `CONFIRM_PEER_LOGIN`, alle über `Transition.Logout`), kommt die Meldung danach noch einmal über
+   den Backchannel. `signedOutAtKeycloak` deckt das heute schon ab: Für ein gelöschtes Konto bricht
+   es ab, und eine App-Sitzung, deren `AppTokenSession` die `sid` noch nennt, gilt als schon
+   geschrieben. `ChannelSessionLifecycle.end` leert die Tokens, behält aber die Zeile. Ein Test muss
+   das festhalten, denn ohne die Zeile entstünde ein zweiter Eintrag, fälschlich als `WEB`.
+6. **Vom Token zum Konto.** `sub` im `logout_token` ist die Keycloak-Kennung
+   `f:<componentId>:<externalId>`. Diese Zerlegung macht heute die Extension (`StorageId`). Besser
+   löst der Orchestrator nur über `sid` auf: Kanäle (`durableKeycloakSessionId`), `AppTokenSession`
+   und die Nachweise je Sitzung ([ADR-59](../adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md))
+   kennen sie. Für eine Web-Sitzung ohne laufenden Kanal ist zu prüfen, ob die Nachweise je Sitzung
+   das Konto oder die Einladung ([ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md))
+   lange genug kennen.
+7. **Wer abgemeldet hat.** Das `logout_token` unterscheidet nicht zwischen Nutzer, Admin und
+   Orchestrator. Heute steht im SignInLog immer `endedBy = HOLDER`, es geht also nichts verloren.
+   Soll das Audit-Log das später unterscheiden, muss der Orchestrator seine eigenen Abmeldungen
+   vorher notieren.
+
+## 5) Bewusst in Kauf genommen
+
+- **Kein Eintrag im Journey-Trace.** Die Journey war eine einzige Ja/Nein-Frage, dort gibt es wenig
+  zu sehen. Für „wann hat sich wer abgemeldet“ ist das SignInLog die richtige Quelle. Der Support
+  sieht ein Abmelden mitten in einer Journey dann nur noch neben dem Trace. Abhilfe bei Bedarf: Die
+  Trace-Ansicht zeigt den Eintrag aus dem SignInLog mit an.
+- **Rückfrage nur im UI.** Eine Rückfrage vor der Abmeldung ist reine Bedienung, kein Zustand des
+  Servers. Das Web hat heute gar keine.
+- **Ablauf ohne Backchannel.** Läuft die Sitzung ab (SSO idle/max), ruft Keycloak keinen
+  Backchannel auf. Das ist heute auch so und durch das Sitzungsfenster geregelt (ADR-43
+  Abschnitt 2).
+
+## 6) Was wegfällt, was bleibt
+
+**Fällt weg:**
+
+- Journey und Endpunkt: `AuthIntent.LOGOUT`, `LogoutStrategy`, `ChannelService.startLogout`,
+  `POST /channels/{id}/logouts`, `startLogout` im Frontend und [logout.md](../journeys/logout.md)
+  samt Tests und Diagramm.
+- Die alte Meldekette: `SignInLogEventListener`, `OrchestratorClient.reportSignOut` und
+  `KeycloakSignOutController` samt der Assertion nach ADR-39.
+- Das Standardprofil (Abschnitt 3).
+
+**Bleibt:**
+
+- `Transition.Logout` für `DELETE_ACCOUNT` und `CONFIRM_PEER_LOGIN`.
+- Die harte Abmeldung (`ChannelService.logout`) als Abmelde-Endpunkt der App.
+- `KeycloakSessionLogoutListener` als Auslöser über die Admin-API.
+- `signedOutAtKeycloak` als einziger Ort, an dem eine von Keycloak gemeldete Abmeldung ankommt.
+
+## 7) Nächster Schritt
+
+Ein Spike gegen das Realm, ohne Umbau im Orchestrator: `backchannel_logout_url` an beiden Clients
+auf einen Endpunkt, der nur protokolliert. Dann je einmal im Web abmelden, in der App abmelden und
+eine Sitzung in der Admin-Konsole beenden. Das beantwortet die Punkte 1 und 2. Fällt Punkt 1
+negativ aus, bleibt die Idee für das Web sinnvoll (die eigene Meldekette ablösen). Die App behält
+dann ihren Weg ohne Journey über die harte Abmeldung.

@@ -31,3 +31,7 @@ Begriffe wie Journey, Tool oder Niveau erklärt das [Glossar](../glossar/glossar
 - [Die App als native Hülle](app-als-native-huelle.md): Ein dünnes macOS-Programm ohne Xcode zeigt
   `/app/` in einer `WKWebView`. Es signiert mit Schlüsseln in der Secure Enclave und mit echtem
   Touch ID. Oberfläche und Backend bleiben unverändert.
+- [Abmeldung nur über Keycloak](logout-ueber-keycloak.md): Beide Kanäle melden sich über Keycloak
+  ab, der Orchestrator erfährt es per OIDC Back-Channel Logout. Die Journey `LOGOUT` und die eigene
+  Meldekette der Extension fallen weg, die Abmeldung steht nur im SignInLog. Setzt voraus, dass das
+  Standardprofil ohne Keycloak entfällt.
