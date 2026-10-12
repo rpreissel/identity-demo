@@ -26,6 +26,8 @@ Begriffe wie Journey, Tool oder Niveau erklärt das [Glossar](../glossar/glossar
 - [Keycloak behalten oder eigener Provider](keycloak-oder-eigener-provider.md): Keycloak ist nur
   noch OIDC-Fassade und Token-Aussteller. Ob das die Kopplung wert ist, hängt daran, ob weitere
   Clients, auch Apps von Partnern, dieselben Konten nutzen sollen. „Alles nach Keycloak“ ist abgehakt.
+  Abschnitt 7 zeigt, wie Partner-Apps die Anmeldung erreichen: OIDC, Bestätigung durch die
+  Versicherungs-App auf demselben Gerät (Basis `device`, nicht `qr`), Passkey, CIBA.
 - [Die App als native Hülle](app-als-native-huelle.md): Ein dünnes macOS-Programm ohne Xcode zeigt
   `/app/` in einer `WKWebView`. Es signiert mit Schlüsseln in der Secure Enclave und mit echtem
   Touch ID. Oberfläche und Backend bleiben unverändert.
