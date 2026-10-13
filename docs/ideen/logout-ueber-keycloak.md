@@ -22,7 +22,7 @@ laufen mit dem Test-Ersatz aus `src/testFixtures` (`bootRunE2e`), weil das CI ke
 ## 1) Heute
 
 **App.** `AppChannelApp` ruft `POST /channels/{id}/logouts`. `ChannelService.startLogout` startet die
-Journey `LOGOUT` ([Katalog](../journeys/logout.md)). Sie stellt eine Rückfrage. Nach Zustimmung folgt
+Journey `LOGOUT` (bis ADR-60 im Journey-Katalog). Sie stellt eine Rückfrage. Nach Zustimmung folgt
 `Transition.Logout`, und `ChannelSessionLifecycle.end` beendet den Kanal, schreibt die Abmeldung ins
 SignInLog und veröffentlicht `KeycloakSessionEnded`. Nach dem Commit beendet
 `KeycloakSessionLogoutListener` die Keycloak-Sitzung über die Admin-API.
@@ -120,7 +120,7 @@ Nach Gewicht geordnet.
 **Fällt weg:**
 
 - Journey und Endpunkt: `AuthIntent.LOGOUT`, `LogoutStrategy`, `ChannelService.startLogout`,
-  `POST /channels/{id}/logouts`, `startLogout` im Frontend und [logout.md](../journeys/logout.md)
+  `POST /channels/{id}/logouts`, `startLogout` im Frontend und `journeys/logout.md`
   samt Tests und Diagramm.
 - Die alte Meldekette: `SignInLogEventListener`, `OrchestratorClient.reportSignOut` und
   `KeycloakSignOutController` samt der Assertion nach ADR-39.
