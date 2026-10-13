@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { completeRegistration } from './journey'
-import { ui, welcomeHeading } from './texts'
+import { ui } from './texts'
 
 /**
  * "Dieses Gerät zurücksetzen" on a linked device's start screen: like reinstalling the app, the
@@ -11,12 +11,9 @@ test('resetting a linked device leads to the start screen of an unknown device',
   await completeRegistration(page)
   const phone = page.locator('.phone')
 
-  // Once on the welcome, once more to answer the backend's own "really sign out?" prompt.
+  // Once on the welcome, once more to answer the app's own "really sign out?".
   await phone.getByRole('button', { name: ui('Abmelden'), exact: true }).click()
-  // The prompt replaces the welcome - wait for that, or the second click hits the welcome's own
-  // button again (it did on the slower CI machine).
-  await expect(phone.getByRole('heading', { name: welcomeHeading })).toBeHidden()
-  await phone.getByRole('button', { name: ui('Abmelden'), exact: true }).click()
+  await phone.getByRole('button', { name: ui('Jetzt abmelden'), exact: true }).click()
   // Signing out lands straight on the start screen - no page in between.
   await expect(phone.getByRole('button', { name: ui('Anderes Konto benutzen') })).toBeVisible()
 

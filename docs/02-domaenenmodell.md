@@ -180,7 +180,7 @@ stateDiagram-v2
   STEP_UP_IN_PROGRESS --> AUTHENTICATED: erreichtes acr >= gefordertes acr, in derselben Sitzung
   STEP_UP_IN_PROGRESS --> AUTHENTICATED: Abbruch
   STEP_UP_IN_PROGRESS --> EXPIRED: Keycloak-Sitzung inzwischen abgelaufen
-  AUTHENTICATED --> LOGGED_OUT: Abmelden, in der App oder in Keycloak
+  AUTHENTICATED --> LOGGED_OUT: Abmelden in der App, oder Keycloak meldet das Ende der Sitzung
   AUTHENTICATED --> EXPIRED: Keycloak-Sitzung abgelaufen
   LOGGED_OUT --> [*]
   EXPIRED --> [*]
@@ -207,8 +207,7 @@ lässt höchstens eine der beiden Spalten gefüllt zu.
 
 **Lebensdauer.** Bis zur Anmeldung gilt für den Kanal eine feste Frist: in der App 24 Stunden, im
 Web ein Anmeldedurchlauf von 30 Minuten. Mit dem Wechsel nach `AUTHENTICATED` öffnet der Kanal
-genau eine Keycloak-Sitzung. Im Standardprofil, also ohne echtes Keycloak, ist das eine simulierte
-Sitzung. Ab dann ist `expiresAt` das Sitzungsfenster, das Keycloak meldet. Es ergibt sich aus den
+genau eine Keycloak-Sitzung. Ab dann ist `expiresAt` das Sitzungsfenster, das Keycloak meldet. Es ergibt sich aus den
 Einstellungen „SSO idle“ und „SSO max“ des Realms; ein **Realm** ist ein abgeschlossener Bereich in
 Keycloak mit eigenen Einstellungen. Der Kanal lebt also nie länger als seine Sitzung, und eine
 zweite Sitzung bekommt er nicht
@@ -258,7 +257,7 @@ Die folgenden Aufzählungstypen kommen im Modell immer wieder vor:
 - `ChannelState`: `ANONYMOUS`, `REGISTERING`, `AUTHENTICATED`, `STEP_UP_REQUIRED`,
   `STEP_UP_IN_PROGRESS`, `LOGGED_OUT`, `EXPIRED`. Das sind die Zustände des Kanals aus Abschnitt 3.
 - `AuthIntent`: `FAST_ACCESS`, `REGISTER`, `LOOKUP_LOGIN`, `WEB_SELECT_METHOD`, `STEP_UP`,
-  `MANAGE_AUTH_METHODS`, `CONFIRM_PEER_LOGIN`, `DELETE_ACCOUNT`, `LOGOUT`, `RE_IDENTIFY`. Ein
+  `MANAGE_AUTH_METHODS`, `CONFIRM_PEER_LOGIN`, `DELETE_ACCOUNT`, `RE_IDENTIFY`. Ein
   Intent beschreibt, was der Nutzer erreichen will, *und* den Weg dorthin
   ([Orchestrierung](04-orchestrierung.md) Abschnitt 2). `DELETE_ACCOUNT` und `MANAGE_AUTH_METHODS`
   setzen einen Kanal voraus, der schon `AUTHENTICATED` ist. Was das Löschen verlangt, steht in

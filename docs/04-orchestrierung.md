@@ -25,7 +25,6 @@ fachlichen Ziel seinen Namen im System zu:
 | Anmeldeverfahren hinzufügen oder entfernen | `MANAGE_AUTH_METHODS` |
 | Das Konto unwiderruflich löschen | `DELETE_ACCOUNT` |
 | Eine QR-Anmeldung auf einem anderen Gerät bestätigen | `CONFIRM_PEER_LOGIN` |
-| Sich abmelden, nach einer Rückfrage | `LOGOUT` |
 | Sich erneut identifizieren, wenn nichts anderes mehr hilft | `RE_IDENTIFY` |
 
 Angenommen, jemand hat eine fachliche Frage, etwa: „Darf man X löschen, ohne sich frisch
@@ -197,7 +196,6 @@ danach ordnen, wie sie beginnen:
 | `MANAGE_AUTH_METHODS` | Verfahren hinzufügen oder entfernen | nur auf einem Kanal, der `AUTHENTICATED` ist |
 | `CONFIRM_PEER_LOGIN` | Eine wartende Anmeldung im Web per `auth-qr`/`auth-qr-lookup` bestätigen oder ablehnen | `POST /app/channels` mit `intent=confirm_peer_login` **oder** `POST /channels/{id}/peer-logins` auf einem Kanal, der `AUTHENTICATED` ist. Beide Wege prüfen dasselbe |
 | `DELETE_ACCOUNT` | Das Konto unwiderruflich löschen | nur auf einem Kanal, der `AUTHENTICATED` ist |
-| `LOGOUT` | Abmelden nach einer Rückfrage | nur auf einem Kanal, der `AUTHENTICATED` ist |
 | `RE_IDENTIFY` | Erneute Identifizierung als gemeinsam genutzte Sub-Journey | nie direkt, nur über `RequireSubJourney` |
 
 **`CONFIRM_PEER_LOGIN` ohne bestehende Sitzung.** Startet `CONFIRM_PEER_LOGIN` ohne bestehende
@@ -319,7 +317,6 @@ Journey nachschlagen, ohne alle zu laden.
 | `MANAGE_AUTH_METHODS` | [manage-auth-methods.md](journeys/manage-auth-methods.md) |
 | `CONFIRM_PEER_LOGIN` | [confirm-peer-login.md](journeys/confirm-peer-login.md) |
 | `DELETE_ACCOUNT` | [delete-account.md](journeys/delete-account.md) |
-| `LOGOUT` | [logout.md](journeys/logout.md) |
 | `REGISTER`, Experiment „Erst Anmeldeverfahren einrichten“ | [register-enroll-first.md](journeys/register-enroll-first.md) |
 | Lebenszyklus, unabhängig vom Intent | [02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 3, „Lebenszyklus der AuthJourney“ |
 
@@ -715,7 +712,9 @@ Ein **Übergang** (`Transition`) ist das, was als Nächstes passieren soll:
 - **`Cancel`** — Der Nutzer gibt auf. Das ist wie ein ausdrücklicher Abbruch und kein Fehler.
 - **`Perform(action, resumeState)`** — die `Action` ausführen und die Journey danach bei
   `resumeState` mit `ActionCompleted` fortsetzen.
-- **`Logout`** — den Kanal endgültig beenden (`LOGGED_OUT`, Endzustand).
+- **`Logout`** — den Kanal endgültig beenden (`LOGGED_OUT`, Endzustand). Das tun `DELETE_ACCOUNT`
+  und `CONFIRM_PEER_LOGIN`. Die Abmeldung selbst ist keine Journey, sondern
+  `DELETE /channels/{id}` ([ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)).
 - **`Abort(reason)`** — Es geht gar nicht weiter (410). Das bedeutet nie bloß „keine Kandidaten
   mehr“.
 

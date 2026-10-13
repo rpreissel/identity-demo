@@ -9,7 +9,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
-import com.example.identity.core.orchestrator.domain.journey.state.LogoutState
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
@@ -93,7 +92,6 @@ internal object DemoStepReason {
         DeleteAccountState.ConfirmPending -> Text("Löschen ist endgültig - deshalb zuerst eine Rückfrage.")
         is DeleteAccountState.ConfirmationRequired -> Text("Vor dem Löschen muss ein Verfahren frisch bestätigt werden - ein alter Nachweis reicht nicht.")
 
-        LogoutState.ConfirmPending -> Text("Abmelden beendet die Sitzung - deshalb eine Rückfrage.")
 
         is ConfirmPeerLoginState.Requested -> Text("Ein Browser wartet auf Freigabe durch dieses Gerät. Zuerst wird geprüft, ob diese Sitzung dafür sicher genug ist.")
         is ConfirmPeerLoginState.ConfirmationRequired -> Text("Bevor dieses Gerät einen Browser freigibt, muss ein Verfahren frisch bestätigt werden.")

@@ -25,3 +25,10 @@ ident-nect:
 identity:
   encryption:
     enabled: true
+
+# Back-Channel Logout gegen ein Test-Realm: LogoutTokens signiert, der Spy auf KeycloakRealmJwkSource
+# kennt den Schluessel (IntegrationTestSupport.backchannelLogout).
+keycloak:
+  backchannel-logout:
+    issuer: https://kc.test/realms/Demo
+    audiences: identity-demo-web,orchestrator-app-token

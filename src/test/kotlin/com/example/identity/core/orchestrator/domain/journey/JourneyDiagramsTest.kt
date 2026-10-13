@@ -6,7 +6,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccount
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
-import com.example.identity.core.orchestrator.domain.journey.state.LogoutState
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
@@ -78,7 +77,6 @@ class JourneyDiagramsTest : BehaviorSpec({
             Diagram(ManageAuthMethodsState::class, "manage-auth-methods"),
             Diagram(ConfirmPeerLoginState::class, "confirm-peer-login"),
             Diagram(DeleteAccountState::class, "delete-account"),
-            Diagram(LogoutState::class, "logout"),
             Diagram(ReIdentifyState::class, "re-identify"),
         )
     }

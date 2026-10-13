@@ -552,11 +552,7 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
             `when`("Keycloak reports the logout of the session") {
                 val accountId = accountWithSmsAndPassword()
                 loginAtLoa2(accountId, "kc-logout")
-                stubAssertion(channelBinding = accountId.toString())
-                restTemplate.exchange(
-                    "http://localhost:$port/orchestrator/api/v1/kc/accounts/$accountId/sign-outs?kcSessionId=kc-logout",
-                    HttpMethod.POST, HttpEntity<Void>(keycloakHeaders()), String::class.java
-                )
+                backchannelLogout("kc-logout")
                 val rows = jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM orchestrator.keycloak_session_evidence WHERE kc_session_id = 'kc-logout'", Int::class.java
                 )

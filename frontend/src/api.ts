@@ -139,12 +139,7 @@ export function cancelJourney(dpop: DpopKeyPair, channelSessionId: string): Prom
   return call(dpop, 'DELETE', `/orchestrator/api/v1/channels/${channelSessionId}/journey`)
 }
 
-/** Starts a LOGOUT journey with a confirmation prompt (interactive clients). */
-export function startLogout(dpop: DpopKeyPair, channelSessionId: string): Promise<ChannelResponse> {
-  return call(dpop, 'POST', `/orchestrator/api/v1/channels/${channelSessionId}/logouts`)
-}
-
-/** Direct logout without confirmation (non-interactive clients, hard logout). */
+/** Ends the channel and its Keycloak session. No journey: an interactive client asks before it calls. */
 export function logoutChannel(dpop: DpopKeyPair, channelSessionId: string): Promise<void> {
   return call(dpop, 'DELETE', `/orchestrator/api/v1/channels/${channelSessionId}`)
 }

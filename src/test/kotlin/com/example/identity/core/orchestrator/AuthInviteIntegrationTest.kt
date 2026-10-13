@@ -179,33 +179,19 @@ class AuthInviteIntegrationTest : IntegrationTestSupport() {
                     """{"kvnr":"A123456789","code":"${issued.code}"}""")
                 // The end of the flow run tells the channel its durable Keycloak session.
                 keycloakCall(HttpMethod.POST, "/orchestrator/api/v1/kc/channels/$channelSessionId/flow-end?kcSessionId=kc-invite-session")
-                stubAssertion(issued.invitation.value)
-                val reported = keycloakCall(HttpMethod.POST,
-                    "/orchestrator/api/v1/kc/invitations/${issued.invitation}/sign-outs?kcSessionId=kc-invite-session")
+                val reported = backchannelLogout("kc-invite-session")
                 val state = jdbcTemplate.queryForObject(
                     "SELECT state FROM orchestrator.channel_session WHERE id = ?", String::class.java, channelSessionId.value)
                 val log = signInLog.ofInvitation(issued.invitation)
 
                 then("the channel ends with it") {
-                    reported.statusCode shouldBe HttpStatus.NO_CONTENT
+                    reported.statusCode shouldBe HttpStatus.OK
                     state shouldBe "LOGGED_OUT"
                 }
 
                 then("the sign-in log holds the sign-in and the sign-out of the invitation") {
                     log.map { it.signInType } shouldBe listOf("SIGNED_IN", "SIGNED_OUT")
                     log.first().acr shouldBe "loa1"
-                }
-            }
-
-            `when`("the report names another invitation than the assertion") {
-                val issued = issue(PartnerNumber("P000000001"), "loa1")
-                stubAssertion("another-invitation")
-                val result = runCatching {
-                    keycloakCall(HttpMethod.POST, "/orchestrator/api/v1/kc/invitations/${issued.invitation}/sign-outs?kcSessionId=kc-invite-session")
-                }
-
-                then("it is refused") {
-                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.UNAUTHORIZED
                 }
             }
         }

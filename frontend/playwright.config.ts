@@ -5,9 +5,10 @@ import { dirname } from 'path'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 /**
- * The real end-to-end suite against the Spring Boot backend + built frontend, no mocks: real DPoP
- * WebCrypto proofs in a real browser, real HTTP, real server state. Keep it small; anything
- * expressible with a mocked api.ts belongs in *.test.tsx.
+ * The end-to-end suite against the Spring Boot backend + built frontend: real DPoP WebCrypto proofs
+ * in a real browser, real HTTP, real server state. Only Keycloak is a stand-in (src/testFixtures,
+ * `bootRunE2e`), so the suite runs where there is none, in CI. Keep it small; anything expressible
+ * with a mocked api.ts belongs in *.test.tsx.
  */
 // Not the dev port (8080, application.yml): this suite owns its server, and a dev instance
 // running there serves the file-based dev DB. Not 8090/8091 either: the local OpenShift test pod
@@ -34,7 +35,7 @@ export default defineConfig({
     // silently ignore the SPRING_DATASOURCE_URL below and hit the dev file DB.
     // A short limit for the fresh proof, so fresh-proof.spec.ts can outwait it; every other spec
     // acts within seconds of its registration and never meets it.
-    command: `./gradlew bootRun --args='--server.port=${E2E_PORT} --management.server.port=0 --identity.policy.self-service-max-age=PT${SELF_SERVICE_MAX_AGE_SECONDS}S'`,
+    command: `./gradlew bootRunE2e --args='--server.port=${E2E_PORT} --management.server.port=0 --identity.policy.self-service-max-age=PT${SELF_SERVICE_MAX_AGE_SECONDS}S'`,
     cwd: dirname(__dirname),
     url: `http://localhost:${E2E_PORT}`,
     reuseExistingServer: false,

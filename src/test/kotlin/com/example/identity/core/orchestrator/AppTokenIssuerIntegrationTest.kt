@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator
 
-import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.channel.KeycloakChannelService
 import com.nimbusds.jwt.PlainJWT
 import io.kotest.assertions.throwables.shouldThrow
@@ -19,9 +18,9 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * ADR-43 in the default profile, where the mock token service plays Keycloak's role: reaching
- * AUTHENTICATED opens the session, the channel lives exactly as long as the session window, and a
- * sign-out Keycloak reports ends the App channel whose login held that session.
+ * ADR-43 with the test stand-in playing Keycloak's role: reaching AUTHENTICATED opens the session,
+ * the channel lives exactly as long as the session window, and a sign-out Keycloak reports ends the
+ * App channel whose login held that session.
  */
 class AppTokenIssuerIntegrationTest : IntegrationTestSupport() {
 
@@ -161,7 +160,7 @@ class AppTokenIssuerIntegrationTest : IntegrationTestSupport() {
                 jdbcTemplate.update("UPDATE orchestrator.app_token_session SET keycloak_session_id = 'kc-session-1' WHERE id = ?", appTokenSessionId(signedOut))
                 jdbcTemplate.update("UPDATE orchestrator.app_token_session SET keycloak_session_id = 'kc-session-2' WHERE id = ?", appTokenSessionId(other))
 
-                keycloakChannelService.signedOutAtKeycloak(Subject.Account(accountId), "kc-session-1")
+                keycloakChannelService.signedOutAtKeycloak("kc-session-1")
                 val tokenAfterSignOut = runCatching { get("/orchestrator/api/v1/channels/$signedOut/token") }
 
                 then("that App channel ends and hands out no token") {

@@ -47,10 +47,9 @@ test('KOBIL set up with biometrics signs in again on the same device', async ({ 
   }
   await expect(welcome).toBeVisible({ timeout: 10_000 })
 
-  // Sign out (welcome, then the backend's "really?"), and in again on this device.
+  // Sign out (welcome, then the app's "really?"), and in again on this device.
   await phone.getByRole('button', { name: ui('Abmelden'), exact: true }).click()
-  await expect(welcome).toBeHidden()
-  await phone.getByRole('button', { name: ui('Abmelden'), exact: true }).click()
+  await phone.getByRole('button', { name: ui('Jetzt abmelden'), exact: true }).click()
   await phone.getByRole('button', { name: ui('Mit diesem Gerät anmelden') }).click()
 
   // The device's own credential is offered at once, and the stored secret unlocks it.

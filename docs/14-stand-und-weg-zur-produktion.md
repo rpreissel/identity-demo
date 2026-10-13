@@ -301,10 +301,11 @@ Der Orchestrator verweigert den Start mit `deployment.instances=multiple` und ne
    und sortiert nach `account.created_at`. Diese Spalte hat keinen Index. Bei 20 Millionen Konten
    liest die Abfrage jede Stunde die ganze Tabelle. Danach folgt je gefundenem Konto eine weitere
    Abfrage.
-6. **Fehlender Index beim Abmelden.** Bei jeder Abmeldung in Keycloak sucht der Orchestrator über
-   `app_token_session.keycloak_session_id`. Diese Spalte hat keinen Index. Weitere Spalten ohne
-   Index sind `channel_session.invitation` und `change_log.lookup_key_id`. Über die letzte liest der
-   Orchestrator bei jedem Start die ganze Tabelle.
+6. **Fehlende Indizes.** Die Spalten, über die der Back-Channel Logout sucht
+   (`app_token_session.keycloak_session_id`, `channel_session.kc_durable_session_id`), haben seit
+   der Flyway-Migration V52 einen Index. Ohne Index sind noch `channel_session.invitation` und
+   `change_log.lookup_key_id`. Über die letzte liest der Orchestrator bei jedem Start die ganze
+   Tabelle.
 7. **Admin-Listen laden alle Konten.** Im Demomodus laden `AdminAccountsController`,
    `KeycloakRealmSessions` und `DemoReset` alle Konto-Ids und danach für jedes Konto den Namen beim
    Personenverzeichnis. Nötig ist eine Suche oder seitenweises Laden. Der Journey-Trace tut das
@@ -353,8 +354,8 @@ abgelaufene Partition wird als Ganzes entfernt.
 - Sitzungen, Journeys, Zähler für Sperren und Mengenbegrenzungen und QR-Anfragen liegen in der
   Datenbank, die Signaturschlüssel des Orchestrators im Schlüsseldienst. Sie würden also auch über
   mehrere Instanzen hinweg funktionieren.
-- Keycloak ruft den Orchestrator nicht bei jeder Anmeldung auf, sondern nur bei einer Abmeldung. Es
-  fragt auch nicht regelmäßig nach.
+- Keycloak ruft den Orchestrator nicht bei jeder Anmeldung auf, sondern nur bei einer Abmeldung
+  (Back-Channel Logout, synchron im Abmelde-Aufruf). Es fragt auch nicht regelmäßig nach.
 - Eine Suche über die Nutzer-Federation liefert nie eine Liste, höchstens einen Treffer.
 - Die Sperre auf der Konto-Zeile ist optimistisch und greift nur bei Änderungen am Konto, nicht bei
   der Anmeldung.

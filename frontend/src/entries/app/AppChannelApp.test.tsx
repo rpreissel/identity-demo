@@ -433,6 +433,45 @@ describe('cancelling a step-up', () => {
   })
 })
 
+describe('logging out', () => {
+  async function signedIn() {
+    api.getDeviceLink.mockResolvedValue({ linked: true, accountId: 42 })
+    api.createChannel.mockResolvedValue(channelResponse({ channel: channel('AUTHENTICATED', { hasProvenFactor: true }), next: AUTHENTICATED_NEXT }))
+    api.logoutChannel.mockResolvedValue(undefined)
+    render(<AppChannelApp />)
+    const user = userEvent.setup()
+    await tapFirst(user, 'Mit diesem Gerät anmelden')
+    await user.click(await screen.findByRole('button', { name: 'Abmelden' }))
+    return user
+  }
+
+  it('asks first, and the backend hears nothing before the answer', async () => {
+    await signedIn()
+
+    expect(await screen.findByText('Wirklich abmelden?')).toBeInTheDocument()
+    expect(api.logoutChannel).not.toHaveBeenCalled()
+  })
+
+  it('ends the channel on the backend once confirmed, and forgets it', async () => {
+    const user = await signedIn()
+
+    await user.click(await screen.findByRole('button', { name: 'Jetzt abmelden' }))
+
+    await waitFor(() => expect(api.logoutChannel).toHaveBeenCalledTimes(1))
+    expect(window.localStorage.getItem('identity-demo-channel-session-id')).toBeNull()
+  })
+
+  it('stays signed in when the question is declined', async () => {
+    const user = await signedIn()
+
+    await user.click(await screen.findByRole('button', { name: 'Abbrechen' }))
+
+    expect(screen.queryByText('Wirklich abmelden?')).not.toBeInTheDocument()
+    expect(api.logoutChannel).not.toHaveBeenCalled()
+    expect(window.localStorage.getItem('identity-demo-channel-session-id')).toBe('chan-1')
+  })
+})
+
 describe('discarding a registration, without demo mode', () => {
   it('asks once the backend reports an account under construction (REGISTERING) and ends on the start screen', async () => {
     const enrolling = channelResponse({

@@ -118,7 +118,7 @@ Die Frage nach den Clients bei Schritt 2 in Kapitel 14 ausdrücklich stellen, be
 Extension und Theme investiert wird. Kommen weitere Clients, bleibt Keycloak, und die Investition
 geht in die Kopplung und in die Härtung des Realms (Abschnitt 6). Bleibt es bei Website und App und
 ist Keycloak nicht ohnehin der Identity-Provider der Organisation, lohnt ein Spike mit Spring
-Authorization Server im Profil ohne Keycloak: `TokenService` durch den Provider ersetzen, den
+Authorization Server: `KeycloakTokenProvider` durch den Provider ersetzen, den
 Web-Kanal über ihn anmelden und messen, was an Extension, Theme und Anbindung wegfällt.
 
 **Zwischenweg, nur als Migrationspfad.** Der Orchestrator wird OIDC-Provider, und Keycloak brokert

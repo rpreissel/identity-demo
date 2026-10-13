@@ -262,22 +262,7 @@ class ChannelService(
     }
 
     /**
-     * Starts a LOGOUT journey with a confirmation prompt, on AUTHENTICATED channels only. The
-     * logout happens when the user confirms via POST .../answer.
-     */
-    fun startLogout(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
-        val channel = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
-        requireStartable(channel, AuthIntent.LOGOUT)
-        val activeJourney = journeyService.findActive(channelSessionId)
-        if (activeJourney != null) {
-            journeyService.cancel(activeJourney, channel)
-        }
-        val step = journeyService.start(channel, AuthIntent.LOGOUT)
-        return respondAfter(channelSessionId, step)
-    }
-
-    /**
-     * Hard logout without confirmation: cancels any running journey and ends the channel for good
+     * The logout, without a journey: cancels any running journey and ends the channel for good
      * (docs/02-domaenenmodell.md #3). Unlike [cancelActiveJourney], it is never resurrected.
      */
     fun logout(channelSessionId: ChannelSessionId, bindingKeyRef: String) {

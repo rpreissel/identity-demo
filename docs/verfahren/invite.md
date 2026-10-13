@@ -87,8 +87,8 @@ die Einladung abgeschlossen, widerrufen oder abgelaufen ist.
 
 `authData.subject` ist dann `{"type": "invitation", "id": "<Hash>"}`. Ein Kanal, der nicht schon der
 Einladung gehört, lässt sich mit diesem Subjekt nicht übernehmen ([05-api.md](../05-api.md)
-Abschnitt 3b). Die Abmeldung meldet Keycloak über
-`POST /orchestrator/api/v1/kc/invitations/{invitation}/sign-outs` (ebenda).
+Abschnitt 3b). Die Abmeldung meldet Keycloak per Back-Channel Logout
+(`POST /orchestrator/api/v1/kc/backchannel-logout`, ebenda).
 
 ## Grenzen eines Einladungs-Kanals
 

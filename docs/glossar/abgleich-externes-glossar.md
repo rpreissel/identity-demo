@@ -192,7 +192,7 @@ Im Code: `.claude/skills/translate-texts/prompts/de.md` (Übersetzungsvorgabe).
   verlangt `loa2`, bei einem nie identifizierten Konto `loa1`. Ein Niveau über
   `loa1` zählt dabei nur, wenn sein Nachweis höchstens 30 Minuten alt ist. Einen Anker ändern
   verlangt immer `loa2`.
-  Im Code: `core/orchestrator/session/TokenService.kt` (Tokens ohne Keycloak);
+  Im Code: `core/orchestrator/session/TokenService.kt` (die Claims hinter den Tokens);
   `core/account/application/PersonChangeListener.kt`;
   `core/orchestrator/domain/policy/DefaultAuthPolicy.kt`. In der Doku: [API](../05-api.md),
   Abschnitt 3a „ID-Token-Claims“ und Abschnitt 3b „Was in welchem Token steht“. Mehr dazu in ADR-34

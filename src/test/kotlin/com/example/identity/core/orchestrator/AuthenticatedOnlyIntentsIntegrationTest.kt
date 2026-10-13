@@ -9,7 +9,7 @@ import java.util.UUID
 
 /**
  * Which intents a channel may start before it is logged in (docs/04-orchestrierung.md, intent
- * table): STEP_UP, MANAGE_AUTH_METHODS, DELETE_ACCOUNT and LOGOUT only on an AUTHENTICATED channel,
+ * table): STEP_UP, MANAGE_AUTH_METHODS and DELETE_ACCOUNT only on an AUTHENTICATED channel,
  * RE_IDENTIFY never directly. Ended channels are [CancelLogoutIntegrationTest]'s subject.
  */
 class AuthenticatedOnlyIntentsIntegrationTest : IntegrationTestSupport() {
@@ -38,7 +38,6 @@ class AuthenticatedOnlyIntentsIntegrationTest : IntegrationTestSupport() {
             Triple("removing a method", "MANAGE_AUTH_METHODS") { id: String -> delete("/orchestrator/api/v1/channels/$id/methods/sms-1") },
             Triple("retracting the email address", "MANAGE_AUTH_METHODS") { id: String -> delete("/orchestrator/api/v1/channels/$id/attributes/email") },
             Triple("an account deletion", "DELETE_ACCOUNT") { id: String -> post("/orchestrator/api/v1/channels/$id/account-deletions") },
-            Triple("a logout", "LOGOUT") { id: String -> post("/orchestrator/api/v1/channels/$id/logouts") },
         ).forEach { (move, intent, request) ->
             given("an anonymous channel whose entry journey is running") {
                 `when`("$move is requested") {
@@ -74,7 +73,7 @@ class AuthenticatedOnlyIntentsIntegrationTest : IntegrationTestSupport() {
         }
 
         // Only entry intents open a channel; RE_IDENTIFY is reached only through RequireSubJourney.
-        listOf("step_up", "manage_auth_methods", "delete_account", "logout", "re_identify").forEach { intent ->
+        listOf("step_up", "manage_auth_methods", "delete_account", "re_identify").forEach { intent ->
             given("a device without a channel") {
                 `when`("a channel is opened with intent=$intent") {
                     val result = runCatching { post("/orchestrator/api/v1/app/channels", """{"intent":"$intent"}""") }

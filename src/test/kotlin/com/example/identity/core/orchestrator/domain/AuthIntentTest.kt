@@ -13,7 +13,7 @@ class AuthIntentTest : BehaviorSpec({
     val webEntries = setOf(AuthIntent.WEB_SELECT_METHOD, AuthIntent.REGISTER)
     val inSession = setOf(
         AuthIntent.STEP_UP, AuthIntent.MANAGE_AUTH_METHODS, AuthIntent.CONFIRM_PEER_LOGIN,
-        AuthIntent.DELETE_ACCOUNT, AuthIntent.LOGOUT
+        AuthIntent.DELETE_ACCOUNT
     )
 
     given("every intent and channel type") {
@@ -68,10 +68,9 @@ class AuthIntentTest : BehaviorSpec({
 
     given("a process access, signed in without an account (ADR-48)") {
         `when`("it starts an intent from within its session") {
-            then("only LOGOUT and STEP_UP may start; the account intents are refused") {
+            then("only STEP_UP may start; the account intents are refused") {
                 inSession.associateWith { it.startRefusal(ChannelState.AUTHENTICATED, hasAccount = false) } shouldBe mapOf(
                     AuthIntent.STEP_UP to null,
-                    AuthIntent.LOGOUT to null,
                     AuthIntent.MANAGE_AUTH_METHODS to AuthIntent.StartRefusal.NO_ACCOUNT,
                     AuthIntent.CONFIRM_PEER_LOGIN to AuthIntent.StartRefusal.NO_ACCOUNT,
                     AuthIntent.DELETE_ACCOUNT to AuthIntent.StartRefusal.NO_ACCOUNT

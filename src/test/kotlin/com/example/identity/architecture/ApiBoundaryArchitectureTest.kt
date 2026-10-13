@@ -1,6 +1,7 @@
 package com.example.identity.architecture
 
 import com.example.identity.demo.demo_mode.DemoSurface
+import com.example.identity.core.orchestrator.keycloak.LogoutTokenValidator
 import com.example.identity.core.orchestrator.keycloak.PeerAuthValidator
 import com.example.identity.contract.tool_api.BindingKey
 import com.example.identity.contract.tool_api.ToolController
@@ -45,8 +46,11 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
     val guardedByPeerAuth = setOf(
         "com.example.identity.core.orchestrator.api.v1.keycloak.KeycloakChannelController",
         "com.example.identity.core.orchestrator.api.v1.keycloak.KeycloakAccountLookupController",
-        "com.example.identity.core.orchestrator.api.v1.keycloak.KeycloakSignOutController",
         "com.example.identity.core.orchestrator.api.v1.keycloak.KeycloakInvitationLookupController",
+    )
+    /** Keycloak's back channel: the realm-signed `logout_token` is the credential (OIDC Back-Channel Logout). */
+    val guardedByLogoutToken = setOf(
+        "com.example.identity.core.orchestrator.api.v1.keycloak.BackchannelLogoutController",
     )
     val publicByDesign = mapOf(
         "com.example.identity.core.orchestrator.api.v1.TextsController" to "the wordings every client renders, before any channel exists",
@@ -58,7 +62,7 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
     )
     /** Simulated foreign systems (ADR-35): their own, deliberately unauthenticated demo surface. */
     val simulatedForeignSystems = setOf("com.example.identity.simulation..")
-    val exempt = guardedByAdminLogin + guardedByPeerAuth + publicByDesign.keys
+    val exempt = guardedByAdminLogin + guardedByPeerAuth + guardedByLogoutToken + publicByDesign.keys
 
     // A ToolContext parameter is resolved with the same proof and checked against the channel.
     val haveBindingKey = object : ArchCondition<JavaMethod>("have a @BindingKey or a ToolContext parameter") {
@@ -128,6 +132,15 @@ class ApiBoundaryArchitectureTest : BehaviorSpec({
             classes()
                 .that(namedIn(guardedByPeerAuth))
                 .should().dependOnClassesThat().areAssignableTo(PeerAuthValidator::class.java)
+                .check(MAIN_CLASSES)
+        }
+    }
+
+    given("the controllers exempt because a realm-signed logout_token guards them") {
+        then("they actually validate it") {
+            classes()
+                .that(namedIn(guardedByLogoutToken))
+                .should().dependOnClassesThat().areAssignableTo(LogoutTokenValidator::class.java)
                 .check(MAIN_CLASSES)
         }
     }

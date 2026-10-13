@@ -101,7 +101,7 @@ function RealTag({ real }: { real: boolean }) {
 function GetStarted({ keycloak }: { keycloak: boolean | null }) {
   const webMissing = (
     <span className="task-note">
-      <Tx text="Nur mit Keycloak ({befehl})" befehl={<code>./gradlew bootRunKc</code>} />
+      <Tx text="Nur mit Keycloak ({befehl})" befehl={<code>./gradlew bootRun</code>} />
     </span>
   )
   return (
@@ -191,9 +191,8 @@ function GetStarted({ keycloak }: { keycloak: boolean | null }) {
                   <strong>{t('Website nicht verfügbar')}</strong>
                   <span>
                     <Tx
-                      text="Nur mit echtem Keycloak - Server mit Profil {profil} starten ({befehl})"
-                      profil={<code>keycloak</code>}
-                      befehl={<code>./gradlew bootRunKc</code>}
+                      text="Nur mit echtem Keycloak - Server mit Keycloak starten ({befehl})"
+                      befehl={<code>./gradlew bootRun</code>}
                     />
                   </span>
                 </div>
@@ -218,7 +217,7 @@ function GetStarted({ keycloak }: { keycloak: boolean | null }) {
             <li>{t('Der Orchestrator: Journeys, Konten, Verfahren, Tokens')}</li>
             <li>{t('Die DPoP-Signaturen - der Geräteschlüssel entsteht per WebCrypto im Browser')}</li>
             <li>
-              <Tx text="Keycloak und der Website-Login (OIDC mit PKCE) - nur mit Profil {profil}" profil={<code>keycloak</code>} />
+              {t('Keycloak und der Website-Login (OIDC mit PKCE)')}
             </li>
             <li>{t('Die Sicherheitsniveaus (loa1 bis loa3) und der Step-up')}</li>
           </ul>

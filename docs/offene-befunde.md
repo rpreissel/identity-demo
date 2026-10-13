@@ -111,8 +111,9 @@ stillschweigend etwas von der Umgebung voraussetzt.
   Cookie. Möglichkeit: das nur für Tools mit `activationFields` zulassen. Issue: –
 - **K-8 (3.) (Hinweis) QR-Status-Endpunkt ohne Mindestintervall.** Der Endpunkt lässt sich beliebig
   oft abfragen. `DPoP-demo-9ppv.10`
-- **K-14 (3.) (Hinweis) Peer-Auth-Fenster 300 s im Profil `keycloak`** statt nur in der Variante
-  `host`. Peer-Auth heißt, dass sich Keycloak und Orchestrator mit signierten Nachrichten gegenseitig
+- **K-14 (3.) (Hinweis) Peer-Auth-Fenster 300 s im ganzen Betrieb mit Keycloak** statt nur in der
+  Variante `host`; dasselbe gilt für das Fenster des `logout_token`
+  ([ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)). Peer-Auth heißt, dass sich Keycloak und Orchestrator mit signierten Nachrichten gegenseitig
   ausweisen. `DPoP-demo-9ppv.13`
 - **Hinweis: Die Kanal-Id des Web-Kanals ist aus der Tab-Id abgeleitet** und damit vorhersagbar. Für
   einen Zugriff braucht man trotzdem eine signierte Assertion von Keycloak mit passendem
@@ -133,8 +134,8 @@ stillschweigend etwas von der Umgebung voraussetzt.
   `KcSubject` in der Erweiterung und das Spaltenpaar `accountId`/`invitation` in der Persistenz.
   Issue: –
 - **A-8 (Hinweis) Die Prüfung von Assertion und `channel_binding` ist in den kc-Controllern
-  wiederholt** (`KeycloakAccountLookupController`, `KeycloakInvitationLookupController`,
-  `KeycloakSignOutController`). Vorschlag: ein gemeinsamer Helfer am `PeerAuthValidator`. Issue: –
+  wiederholt** (`KeycloakAccountLookupController`, `KeycloakInvitationLookupController`).
+  Vorschlag: ein gemeinsamer Helfer am `PeerAuthValidator`. Issue: –
 - **AU-12 (Hinweis) Ein Nachweis in drei Formen.** Seit ADR-59 wird `MethodEvidence` dreimal
   abgebildet: als JSON in `MethodEvidenceRecord`, als Spalten in `KeycloakSessionEvidence` und als
   Strings in `MethodEvidenceRow`, jeweils mit eigener Umwandlung von `factorTypes`, `axis` und

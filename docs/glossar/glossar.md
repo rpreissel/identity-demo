@@ -516,10 +516,6 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   *Im Code:* `AccountLockoutService`, `PersonLockoutService`, gezählt vom `RateLimitCounter`.
   *Mehr dazu:* [ADR-44](../adr/ADR-044-zaehlwerk-im-orchestrator-regeln-in-den-modulen.md),
   [07-betrieb](../07-betrieb.md) Abschnitt 4.
-- **Standardprofil**: Die Betriebsart, in der der Orchestrator ohne Keycloak läuft, etwa beim
-  Entwickeln. Dann gibt es nur den App-Kanal, und die Tokens stellt der Orchestrator selbst aus. Mit
-  dem Profil `keycloak` kommen Keycloak und der Web-Kanal dazu.
-  *Mehr dazu:* [13-ausfuehren](../13-ausfuehren.md).
 - **Step-up**: Ein schon angemeldeter Nutzer beweist zusätzlich etwas, um ein höheres Niveau zu
   erreichen, etwa bevor er sein Konto löschen darf. Er bleibt dabei in derselben Sitzung. Ein
   Vorgangszugang lässt sich auf diese Weise nicht aufwerten.
@@ -551,6 +547,13 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   *Mehr dazu:* [ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
 
 ## T
+
+- **Test-Ersatz für Keycloak**: Was in den Tests an die Stelle von Keycloak tritt: ein simulierter
+  Token-Dienst, der unsignierte Tokens ausstellt. Er liegt in `src/testFixtures` und kommt nie ins
+  ausgelieferte Jar; der Orchestrator selbst läuft immer mit Keycloak.
+  *Im Code:* `MockTokenProvider`, `AlwaysReadyState`.
+  *Mehr dazu:* [13-ausfuehren](../13-ausfuehren.md),
+  [ADR-60](../adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md).
 
 - **Token**: Ein signierter Beleg über die Anmeldung, den ein Nutzer danach bei Fachdiensten
   vorlegt. Er nennt das Konto oder die Einladung, das Niveau (`acr`) und die Verfahren (`amr`).

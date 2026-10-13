@@ -43,7 +43,7 @@ Nur die Kapitel öffnen, die man für die Aufgabe braucht.
 ```
 
 Im Verzeichnis `frontend`: `npm test` (Vitest), `npx tsc -b` (Typen; Vitest prüft keine),
-`npm run lint`, `npm run test:e2e` (Playwright, startet selbst ein Backend auf Port 8091).
+`npm run lint`, `npm run test:e2e` (Playwright, startet selbst ein Backend ohne Keycloak auf Port 8095, `bootRunE2e`).
 Einzelheiten: [13-ausfuehren.md](13-ausfuehren.md) Abschnitt 7.
 
 ## 5) Stolperstellen

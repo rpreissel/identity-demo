@@ -84,6 +84,20 @@ repositories {
     mavenCentral()
 }
 
+// src/testFixtures: what stands in for Keycloak where there is none (backend tests, bootRunE2e).
+// It never reaches the boot jar, so the delivered server always needs Keycloak. A plain source set
+// on the classes directories, not the java-test-fixtures plugin: that one puts the main jar on the
+// test classpath, and TextCatalog reads the templates from the classes directory.
+val testFixtures: SourceSet by sourceSets.creating {
+    compileClasspath += sourceSets["main"].output
+    runtimeClasspath += sourceSets["main"].output
+}
+sourceSets["test"].compileClasspath += testFixtures.output
+sourceSets["test"].runtimeClasspath += testFixtures.output
+// The stand-ins are server code like the rest: same libraries, same runtime.
+configurations["testFixturesImplementation"].extendsFrom(configurations["implementation"])
+configurations["testFixturesRuntimeOnly"].extendsFrom(configurations["runtimeOnly"])
+
 dependencies {
     implementation(project(":keycloak-migrations"))
     implementation(libs.spring.boot.starter.web)
@@ -258,20 +272,17 @@ tasks.named<Delete>("clean") {
     delete(file("src/main/resources/static"))
 }
 
-// `./gradlew bootRunKc` - same as bootRun, just with the `keycloak` profile active (real Keycloak
-// via podman compose, see compose.yml/docs/05-api.md Abschnitt 3; without it there is no Web
-// channel at all). Equivalent to `bootRun --args='--spring.profiles.active=keycloak'`,
-// just without having to remember/retype that every time.
-tasks.register<org.springframework.boot.gradle.tasks.run.BootRun>("bootRunKc") {
+// `./gradlew bootRunE2e` - the server for the browser tests in frontend/e2e (playwright.config.ts),
+// with the Keycloak stand-ins from src/testFixtures instead of a Keycloak. The CI has none. Any
+// other start runs with the `keycloak` profile (application.yml, spring.profiles.default).
+tasks.register<org.springframework.boot.gradle.tasks.run.BootRun>("bootRunE2e") {
     group = "application"
-    description = "Runs the app with the 'keycloak' Spring profile active (real Keycloak via podman compose)."
-    classpath = sourceSets["main"].runtimeClasspath
-    // Hardcoded rather than derived from the "bootRun" task's own resolved mainClass: reading a
-    // Provider off another task creates an implicit Gradle task dependency, which for "bootRun"
-    // itself means actually EXECUTING it (launching the app under the default profile) as a
-    // "configuration" step - it blocks, so bootRunKc would never even start.
+    description = "Runs the app for the browser tests, without Keycloak (stand-ins from src/testFixtures)."
+    classpath = sourceSets["testFixtures"].runtimeClasspath
+    // Hardcoded rather than read from bootRun: reading a Provider off another task makes Gradle
+    // execute that task first, and bootRun does not end.
     mainClass.set("com.example.identity.IdentityApplicationKt")
-    systemProperty("spring.profiles.active", "keycloak")
+    systemProperty("spring.profiles.active", "e2e")
 }
 
 tasks.withType<Test> {

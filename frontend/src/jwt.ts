@@ -1,6 +1,6 @@
 /**
- * Decodes the payload of a header.payload.signature JWT for display. No verification: the token
- * here is unsecured (alg=none) anyway.
+ * Decodes the payload of a header.payload.signature JWT for display. No verification: the backend
+ * verifies, the browser only shows.
  */
 export function parseJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split('.')

@@ -17,9 +17,10 @@ import org.springframework.mock.env.MockEnvironment
  */
 class KeycloakSetupEnvironmentTest : BehaviorSpec({
 
-    fun environmentWith(variant: String, profile: String = "keycloak"): MockEnvironment {
+    /** [profile] active; without one, keycloak is the default profile, as in application.yml. */
+    fun environmentWith(variant: String, profile: String? = "keycloak"): MockEnvironment {
         val env = MockEnvironment()
-        env.setActiveProfiles(profile)
+        if (profile != null) env.setActiveProfiles(profile) else env.setDefaultProfiles("keycloak")
         env.propertySources.addFirst(
             MapPropertySource(
                 "test-setup",
@@ -78,6 +79,24 @@ class KeycloakSetupEnvironmentTest : BehaviorSpec({
             then("the browser gets the public address, not the variant's server-to-server one") {
                 env.getProperty("keycloak-sync.public-base-url") shouldBe "https://localhost:8543"
             }
+
+            then("a logout_token is expected from the public realm address, its keys fetched internally, for both clients") {
+                env.getProperty("keycloak.backchannel-logout.issuer") shouldBe "https://localhost:8543/realms/Demo"
+                env.getProperty("keycloak.backchannel-logout.jwks-uri") shouldBe "https://keycloak:8443/realms/Demo/protocol/openid-connect/certs"
+                env.getProperty("keycloak.backchannel-logout.audiences") shouldBe "identity-demo-web,orchestrator-app-token"
+            }
+        }
+    }
+
+    given("no active profile, so keycloak as the default profile") {
+        val env = environmentWith("compose", profile = null)
+
+        `when`("the environment is post-processed") {
+            KeycloakSetupEnvironment().postProcessEnvironment(env, SpringApplication())
+
+            then("it derives the values as under an active keycloak profile") {
+                env.getProperty("keycloak-sync.base-url") shouldBe "https://keycloak:8443"
+            }
         }
     }
 
@@ -93,13 +112,13 @@ class KeycloakSetupEnvironmentTest : BehaviorSpec({
         }
     }
 
-    given("the default profile instead of the keycloak profile") {
-        val env = environmentWith("compose", profile = "default")
+    given("another profile instead of keycloak, as in the tests") {
+        val env = environmentWith("compose", profile = "test")
 
         `when`("the environment is post-processed") {
             KeycloakSetupEnvironment().postProcessEnvironment(env, SpringApplication())
 
-            then("it stays out - the default profile's own kc.* values (empty issuer) are left alone") {
+            then("it stays out - that profile's own kc.* values (empty issuer) are left alone") {
                 env.getProperty("keycloak-sync.base-url").shouldBeNull()
             }
         }

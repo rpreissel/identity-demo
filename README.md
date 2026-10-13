@@ -27,25 +27,21 @@ Die Videos liegen in Git LFS. Auf GitHub lassen sie sich direkt abspielen; zum A
 
 ## In fünf Minuten starten
 
-Sie brauchen JDK 21 und Node.js mit npm. Ohne Keycloak genügt ein Befehl:
-
-```bash
-./gradlew bootRun
-```
-
-Öffnen Sie danach die Willkommensseite unter <http://localhost:8080/>. Von dort führen Kacheln zur
-App, zum Personenverzeichnis, zum Briefkasten und zur Admin-Seite (Anmeldung `admin` / `admin`).
-
-Mit Keycloak, also auch mit der Anmeldung auf der Website, brauchen Sie zusätzlich Podman:
+Sie brauchen JDK 21, Node.js mit npm und Podman. Der Orchestrator läuft immer mit Keycloak:
 
 ```bash
 ./gradlew build
 podman compose up --build
 ```
 
-Die Willkommensseite liegt wieder unter <http://localhost:8080/>. Keycloak läuft unter
-<https://localhost:8543> mit einem selbstsignierten Zertifikat, dem Ihr Browser einmal vertrauen
-muss.
+Öffnen Sie danach die Willkommensseite unter <http://localhost:8080/>. Von dort führen Kacheln zur
+App, zur Website, zum Personenverzeichnis, zum Briefkasten und zur Admin-Seite (Anmeldung `admin` /
+`admin`). Keycloak läuft unter <https://localhost:8543> mit einem selbstsignierten Zertifikat, dem
+Ihr Browser einmal vertrauen muss.
+
+Beim Entwickeln ist es schneller, nur Keycloak im Container und den Orchestrator auf dem Rechner zu
+starten: `podman compose up keycloak` und `./gradlew bootRun`
+([docs/13-ausfuehren.md](docs/13-ausfuehren.md)).
 
 ## Was Sie ausprobieren können
 

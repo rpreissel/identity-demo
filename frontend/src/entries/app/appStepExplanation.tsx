@@ -72,7 +72,7 @@ export function explainAppStep({ toolCtx, next, channelSessionId, pendingPairing
     return {
       idleReason: t('Die Anmeldung ist abgeschlossen, gerade läuft kein Vorgang.'),
       does: t('Die App ruft Daten mit ihrem AccessToken ab. Das Token ist an den Schlüssel der App gebunden (DPoP) und nützt ohne ihn nichts.'),
-      actor: t('Sie. Sicherheitsniveau erhöhen, Verfahren ändern oder Abmelden starten je einen neuen Vorgang.'),
+      actor: t('Sie. Sicherheitsniveau erhöhen und Verfahren ändern starten je einen neuen Vorgang, Abmelden beendet die Sitzung sofort.'),
       technical,
     }
   }

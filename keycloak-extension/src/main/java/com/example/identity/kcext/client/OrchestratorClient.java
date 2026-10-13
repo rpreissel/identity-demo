@@ -229,19 +229,8 @@ public final class OrchestratorClient {
     }
 
     /**
-     * Reports that Keycloak ended session {@code kcSessionId} of {@code subject}, for the sign-in
-     * log (ADR-39, ADR-48). The Web channel's logout is Keycloak's own; the orchestrator would not
-     * learn of it otherwise. The binding names the account or invitation, as with the lookups.
-     */
-    public void reportSignOut(KcSubject subject, String kcSessionId) throws IOException, InterruptedException {
-        String collection = subject.kind() == KcSubject.Kind.ACCOUNT ? "accounts" : "invitations";
-        String path = "/orchestrator/api/v1/kc/" + collection + "/" + urlEncode(subject.id()) + "/sign-outs?kcSessionId=" + urlEncode(kcSessionId);
-        send("POST", path, subject.id(), null);
-    }
-
-    /**
-     * The account behind a federated user, read by id; the binding names the account like the
-     * sign-out report does. {@code null} when there is no such account.
+     * The account behind a federated user, read by id; the binding names the account.
+     * {@code null} when there is no such account.
      */
     public KcAccount accountById(long accountId) throws IOException, InterruptedException {
         return lookup("/orchestrator/api/v1/kc/accounts/" + accountId, String.valueOf(accountId));

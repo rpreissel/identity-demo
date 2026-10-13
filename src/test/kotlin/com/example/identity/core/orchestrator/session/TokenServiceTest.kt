@@ -34,9 +34,10 @@ private const val MOCK_ISSUER = "mock-keycloak"
 private const val MOCK_AUDIENCE = "identity-demo-orchestrator"
 
 /**
- * Unit test of [TokenService]'s mock token issuance: the three branches of `tokenFor` (still
- * valid, silent refresh, full re-issuance) and the AccessToken's JWT shape. `acr` is stubbed to a
- * fixed "loa2"; the combination logic belongs to `DefaultAuthPolicyTest`.
+ * Unit test of [TokenService]'s claims and of the test stand-in [MockTokenProvider] built on them:
+ * the three branches of `tokenFor` (still valid, silent refresh, full re-issuance) and the
+ * AccessToken's JWT shape. `acr` is stubbed to a fixed "loa2"; the combination logic belongs to
+ * `DefaultAuthPolicyTest`.
  */
 class TokenServiceTest : BehaviorSpec({
 
@@ -102,7 +103,7 @@ class TokenServiceTest : BehaviorSpec({
 
             then("both are issued, and the login's one session is opened") {
                 fixture.session.refreshToken.shouldNotBeNull()
-                fixture.session.keycloakSessionId!! shouldStartWith TokenService.MOCK_SESSION_PREFIX
+                fixture.session.keycloakSessionId!! shouldStartWith MockTokenProvider.MOCK_SESSION_PREFIX
                 result.refreshExpiresAt.isAfter(TEST_NOW) shouldBe true
             }
         }
@@ -176,7 +177,7 @@ class TokenServiceTest : BehaviorSpec({
         )
 
         `when`("resolving the ID-token claims") {
-            val claims = fixture.service.idClaims(fixture.appTokenSessionId)
+            val claims = fixture.tokenService.idClaims(fixture.appTokenSessionId)
 
             then("the fachliche claim set carries account and person identifiers, not just the raw session state") {
                 claims["sub"] shouldBe "7"
@@ -192,7 +193,7 @@ class TokenServiceTest : BehaviorSpec({
         val fixture = interessent(mapOf(AttributeType.GIVEN_NAMES to "Erika", AttributeType.FAMILY_NAME to "Musterfrau"))
 
         `when`("resolving the ID-token claims") {
-            val claims = fixture.service.idClaims(fixture.appTokenSessionId)
+            val claims = fixture.tokenService.idClaims(fixture.appTokenSessionId)
 
             then("the name falls back to the account's own attested claims, personId stays absent") {
                 claims["personId"] shouldBe null
@@ -206,7 +207,7 @@ class TokenServiceTest : BehaviorSpec({
         val fixture = interessent(emptyMap())
 
         `when`("resolving the ID-token claims") {
-            val claims = fixture.service.idClaims(fixture.appTokenSessionId)
+            val claims = fixture.tokenService.idClaims(fixture.appTokenSessionId)
 
             then("the name is null - not a placeholder") {
                 claims["name"] shouldBe null
@@ -235,7 +236,8 @@ private class TokenServiceFixture(session: AppTokenSession?) {
     private val authPolicy = mockk<AuthPolicy> { every { resolveAcr(any(), any()) } returns AcrLevel.LOA2 }
     val accountService = mockk<AccountService>(relaxed = true)
     val personDirectory = mockk<PersonDirectory>(relaxed = true)
-    val service = TokenService(repository, sessionEvidenceService, authPolicy, accountService, personDirectory, plainTokenVault, clock = TEST_CLOCK)
+    val tokenService = TokenService(repository, sessionEvidenceService, authPolicy, accountService, personDirectory)
+    val service = MockTokenProvider(repository, tokenService, plainTokenVault, clock = TEST_CLOCK)
 }
 
 private fun appTokenSession(
@@ -247,7 +249,7 @@ private fun appTokenSession(
 ) = storedAppTokenSession(
     accountId = accountId,
     // A context with a refresh window belongs to a login whose session is open.
-    keycloakSessionId = refreshExpiresAt?.let { "${TokenService.MOCK_SESSION_PREFIX}test" },
+    keycloakSessionId = refreshExpiresAt?.let { "${MockTokenProvider.MOCK_SESSION_PREFIX}test" },
     now = TEST_NOW
 ).apply {
     this.accessToken = accessToken

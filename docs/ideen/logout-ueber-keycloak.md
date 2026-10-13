@@ -11,9 +11,11 @@ Die Abmeldung steht dann nur noch im Audit-Log (SignInLog), eine Journey gibt es
 eigenen Meldekette mit eigener Vertrauensgrenze (ADR-39). Eine Abmeldung an anderer Stelle (Admin-Konsole,
 Account-Konsole, ein weiterer Client derselben Sitzung) erreicht den Orchestrator auf demselben Weg.
 
-**Stand: Abwägung, nicht entschieden** (Stand 2026-10-12). Setzt voraus, dass das Standardprofil ohne
-Keycloak entfällt (Abschnitt 3). Der Spike gegen das Realm ist gelaufen (Abschnitt 7,
-`DPoP-demo-vw1v`): Der Backchannel kommt in allen drei Fällen an, auch für die App-Sitzung.
+**Stand: umgesetzt** (2026-10-12, Epic `DPoP-demo-j2xd`), entschieden in
+[ADR-60](../adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md). Die ADR gilt; dieses
+Dokument bleibt als Abwägung mit dem Spike (Abschnitt 7) stehen. Eine Abweichung vom Vorschlag in
+Abschnitt 3: Die Browsertests in `frontend/e2e` ziehen nicht nach `frontend/e2e-keycloak`. Sie
+laufen mit dem Test-Ersatz aus `src/testFixtures` (`bootRunE2e`), weil das CI kein Keycloak hat.
 
 ---
 

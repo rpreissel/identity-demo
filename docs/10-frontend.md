@@ -119,9 +119,10 @@ Daraus folgt für Sie als Frontend-Entwickler:
   Smartphone. Welche Verfahren er darstellen kann, gibt der Client selbst an. Der Betreiber kann sie
   je Kanal auf der Admin-Seite sperren und ordnen.
 - **Web-Kanal** (`/web/`): Das ist der echte Ablauf mit Keycloak im Browser, ebenfalls ohne Reiter.
-  Es gibt ihn nur mit dem Spring-Profil `keycloak`. Ohne dieses Profil zeigt `/web/` einen Hinweis
-  statt einer Anmeldung, und die Kachel auf der Startseite ist ausgeschaltet. Beides entscheidet das
-  Frontend anhand von `server-info.keycloak`; ohne Profil ist dieser Wert `null`.
+  Der Orchestrator läuft immer mit Keycloak. Nur der Server der Browsertests (`bootRunE2e`) hat
+  keins; dann zeigt `/web/` einen Hinweis statt einer Anmeldung, und die Kachel auf der Startseite
+  ist ausgeschaltet. Beides entscheidet das Frontend anhand von `server-info.keycloak`, das dort
+  `null` ist.
 
   Derselbe Block sagt dem Browser auch, wo Keycloak zu finden ist: die öffentliche Adresse, den
   Realm (einen abgeschlossenen Bereich in Keycloak) und die Client-ID. Diese Werte stammen aus dem
@@ -474,7 +475,7 @@ Orchestrators:
     verlinkt den Quellcode, den Einstieg in die Doku ([01-ueberblick.md](01-ueberblick.md)) und die
     [Beispiel-Story](11-beispiel-story.md).
   - *Server-Status* liest nur das öffentliche `GET /orchestrator/demo/server-info`. Er zeigt das
-    Keycloak-Profil, die Reihenfolge der Registrierung und die gesperrten Tools als Kacheln. Im
+    Keycloak-Anbindung, die Reihenfolge der Registrierung und die gesperrten Tools als Kacheln. Im
     Demomodus kommen der Gesamtzustand, je Prüfung eine Kachel und die Kennzahlen dazu. Darunter stehen die Werkzeuge für Entwickler: die Swagger-UI (nur
     im Demomodus) und die H2-Konsole.
 - **Admin** (`/admin/`): Das ist die Sicht des Betreibers. Sie liegt hinter der Admin-Anmeldung
@@ -578,7 +579,7 @@ zeigt die Ansicht „Vorgang“, dass das Token keinen solchen Marker enthält.
   - *Kriterium:* Dafür gibt es drei Knöpfe mit verschiedener Wirkung:
     - „Geräte-Kennung neu erzeugen“ (Demo-Spalte, „Aktionen der Demo“, ohne aktiven Kanal) tauscht den DPoP-Schlüssel aus und vergisst dabei die gemerkte `channelSessionId`. Einen Kanal startet der Knopf nicht.
     - „Sitzung vergessen“ (ebenda) vergisst nur die lokal gemerkte `channelSessionId`, ohne das Backend aufzurufen.
-    - „Abmelden“ beendet den Kanal auf dem Server ([API](05-api.md), Abmelden) und legt **keinen** neuen Kanal automatisch an. Der Knopf ist nur sichtbar, wenn der Kanal `AUTHENTICATED` ist.
+    - „Abmelden“ fragt im Telefon nach („Wirklich abmelden?“, Knopf „Jetzt abmelden“), beendet den Kanal dann auf dem Server (`DELETE /channels/{id}`, [API](05-api.md), Logout) und legt **keinen** neuen Kanal automatisch an. Die Rückfrage ist eine Sache der App, keine Journey ([ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)). Der Knopf ist nur sichtbar, wenn der Kanal `AUTHENTICATED` ist.
 - **FE-11** — Nach erfolgreicher Anmeldung werden `accountId` und `personId` angezeigt.
   - *Kriterium:* Die Werte stammen aus dem Objekt `demo` der Antwort
 - **FE-13** — Beim Anlegen eines Kanals lässt sich `requiredAcr` wählen, also das Niveau, das der Kanal erreichen soll.

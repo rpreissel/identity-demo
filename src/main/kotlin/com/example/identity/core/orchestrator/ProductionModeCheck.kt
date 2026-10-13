@@ -4,7 +4,7 @@ import com.example.identity.core.account.ChangeLogLookupKeys
 import com.example.identity.core.account.ClaimEncryptionKeys
 import com.example.identity.core.account.DataKeyWrapping
 import com.example.identity.core.orchestrator.session.DataKeyRepository
-import com.example.identity.core.orchestrator.session.MockTokenProvider
+import com.example.identity.core.orchestrator.session.KeycloakTokenProvider
 import com.example.identity.core.orchestrator.session.TokenProvider
 import com.example.identity.demo.demo_mode.DemoMode
 import org.slf4j.LoggerFactory
@@ -54,9 +54,9 @@ class ProductionModeCheck(
         } else if (HASH_ENCODERS.none { adminPassword.startsWith(it) }) {
             add("demo.admin.password ist kein Hash. Angeben als {bcrypt}..., {argon2}..., {scrypt}... oder {pbkdf2}..., nicht im Klartext oder als {noop}.")
         }
-        // Ohne das Profil keycloak stellt der Mock-TokenService unsignierte Tokens aus, die jeder faelschen kann.
-        if (tokenProvider is MockTokenProvider) {
-            add("Das Profil keycloak ist nicht aktiv - der App-Kanal gaebe unsignierte Mock-Tokens aus (SPRING_PROFILES_ACTIVE=keycloak).")
+        // Jeder andere TokenProvider ist ein Test-Ersatz (src/testFixtures) mit unsignierten Tokens, die jeder faelschen kann.
+        if (tokenProvider !is KeycloakTokenProvider) {
+            add("Die Tokens stellt nicht Keycloak aus (${tokenProvider.javaClass.simpleName}) - das Profil keycloak ist nicht aktiv.")
         }
         if (h2Console) add("spring.h2.console.enabled ist an - die Konsole liest und schreibt die ganze Datenbank. Abschalten.")
         if (apiDocs) add("springdoc.api-docs.enabled ist an - /v3/api-docs nennt jedem ohne Anmeldung alle Endpunkte. Abschalten.")

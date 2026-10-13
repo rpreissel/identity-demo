@@ -128,9 +128,10 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      # Die Suite startet ihren eigenen Server auf Port 8091 mit frischer In-Memory-DB
-      # (playwright.config.ts). Ein laufender Dienst wird also nicht vorausgesetzt, aber der
-      # Vite-Build muss in src/main/resources/static liegen, bevor bootRun ihn ausliefert.
+      # Die Suite startet ihren eigenen Server auf Port 8095 mit frischer In-Memory-DB und dem
+      # Keycloak-Ersatz aus src/testFixtures (bootRunE2e, playwright.config.ts). Ein laufender Dienst
+      # wird also nicht vorausgesetzt, aber der Vite-Build muss in src/main/resources/static liegen,
+      # bevor bootRunE2e ihn ausliefert.
       - name: Frontend bauen
         run: ./gradlew npmBuild
 

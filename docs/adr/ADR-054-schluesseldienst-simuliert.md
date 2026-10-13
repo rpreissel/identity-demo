@@ -40,7 +40,7 @@ Version tragen, alte weiter lesbar bleiben, und was ein zurückgezogener Schlüs
 
 Die Simulation ist ein Fremdsystem, kein Sicherheitsgewinn: Ihr Material liegt in derselben
 Datenbank wie die Daten. `ProductionModeCheck` verweigert deshalb außerhalb des Demomodus den
-Start, solange der Schlüsseldienst die Simulation ist, so wie er den Mock-Token-Provider ablehnt.
+Start, solange der Schlüsseldienst die Simulation ist, so wie er einen Token-Dienst ablehnt, der nicht Keycloak ist.
 
 **Wie unser Code den Dienst sieht.**
 

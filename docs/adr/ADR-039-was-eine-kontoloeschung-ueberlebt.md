@@ -130,9 +130,8 @@ Ereignis in `SignInLog`. Die Ereignisse und Regeln:
   ([ADR-58](ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). **`LOCKED_OUT`**: der Fehlversuch, der die Sperre ausgelöst hat.
   Beides schreibt `AccountLockoutService`, durch den jeder solche Fehlversuch läuft.
 - **`SIGNED_OUT`**: ein gewollter Logout. In der App läuft er über den Orchestrator. Im Web-Kanal
-  meldet ihn Keycloak (Event-Listener `orchestrator-sign-in-log`,
-  `POST …/kc/accounts/{accountId}/sign-outs`), und zwar nach dem Commit und ohne den Logout
-  aufzuhalten. Läuft eine Sitzung einfach ab, ist das kein Ereignis.
+  meldet ihn Keycloak per OIDC Back-Channel Logout (`POST …/kc/backchannel-logout`, [ADR-60](ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)), und
+  zwar ohne den Logout aufzuhalten. Läuft eine Sitzung einfach ab, ist das kein Ereignis.
 - **Kein Nachweis über die Löschung hinaus**: Das Protokoll gehört zum Konto (Fremdschlüssel,
   `ON DELETE CASCADE`) und wird 6 Monate aufbewahrt (`account.sign-in-log.retention-months`,
   `SignInLogRetention`). Eine Anmeldehistorie sind Verhaltensdaten, kein Beleg.

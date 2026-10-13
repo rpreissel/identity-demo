@@ -165,7 +165,6 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
 - **`loa1`**, **`loa2`**, **`loa3`** → die Werte des **Niveaus**. [Glossar](glossar.md#n)
 - **`loa2-max-age`** (`identity.policy.…`) → wie lange ein **Nachweis** für ein Niveau über
   `loa1` zählt, nämlich 30 Minuten. [Glossar](glossar.md#n)
-- **`LOGOUT`** → der **Intent** zum Abmelden, bei dem der Nutzer das Abmelden bestätigt. [Glossar](glossar.md#i)
 - **`LOOKUP_LOGIN`** → **Anmeldung** über die E-Mail-Adresse, wenn kein Gerät mit
   dem Konto verknüpft ist. [Glossar](glossar.md#a)
 

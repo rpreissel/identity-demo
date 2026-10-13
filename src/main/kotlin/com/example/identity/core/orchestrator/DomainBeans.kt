@@ -8,7 +8,6 @@ import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPee
 import com.example.identity.core.orchestrator.domain.journey.strategy.DeleteAccountStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.WebSelectMethodStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.LogoutStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyStrategy
@@ -51,8 +50,6 @@ class DomainBeans {
     @Bean
     fun webSelectMethodStrategy(): IntentStrategy<*> = WebSelectMethodStrategy()
 
-    @Bean
-    fun logoutStrategy(): IntentStrategy<*> = LogoutStrategy()
 
     @Bean
     fun lookupLoginStrategy(): IntentStrategy<*> = LookupLoginStrategy()

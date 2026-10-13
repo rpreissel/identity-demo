@@ -228,7 +228,7 @@ function AccountsTab({ onOpenTrace }: { onOpenTrace: (accountId: number) => void
               'Löscht alle Konten (samt Geräten, Verfahren und Journey-Trace), setzt die Verfahren je Kanal auf die Voreinstellung ' +
               'zurück (Reihenfolge und Sperren aus {konfig}) und stellt die ' +
               'Registrierungsreihenfolge auf „Identifikation zuerst“. Das Personenverzeichnis (/personenverzeichnis/) ist ein Fremdsystem und ' +
-              'bleibt unverändert. Im Keycloak-Profil steht die erste Anmeldeseite danach wieder auf „Gleich alle Verfahren zur Wahl“. ' +
+              'bleibt unverändert. In Keycloak steht die erste Anmeldeseite danach wieder auf „Gleich alle Verfahren zur Wahl“. ' +
               'Konten legt das Zurücksetzen nicht an: Die Testpersonen registrieren sich selbst.'
             }
             konfig={<code>demo.tool-defaults</code>}

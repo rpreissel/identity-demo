@@ -33,5 +33,6 @@ Begriffe wie Journey, Tool oder Niveau erklärt das [Glossar](../glossar/glossar
   Touch ID. Oberfläche und Backend bleiben unverändert.
 - [Abmeldung nur über Keycloak](logout-ueber-keycloak.md): Beide Kanäle melden sich über Keycloak
   ab, der Orchestrator erfährt es per OIDC Back-Channel Logout. Die Journey `LOGOUT` und die eigene
-  Meldekette der Extension fallen weg, die Abmeldung steht nur im SignInLog. Setzt voraus, dass das
-  Standardprofil ohne Keycloak entfällt.
+  Meldekette der Extension fallen weg, die Abmeldung steht nur im SignInLog; das Standardprofil
+  ohne Keycloak entfällt. Umgesetzt, siehe
+  [ADR-60](../adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md).

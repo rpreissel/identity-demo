@@ -7,7 +7,7 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * The session behind an authenticated APP channel: Keycloak's, or the mock's in the default profile
+ * The session behind an authenticated APP channel: Keycloak's, or the test stand-in's in tests
  * (ADR-43). Every token it hands out moves the channel's expiry to the session window the provider
  * reports, so the channel never outlives the session. Not `@Transactional` itself: a
  * [SessionExpiredException] must not mark the caller's transaction for rollback.

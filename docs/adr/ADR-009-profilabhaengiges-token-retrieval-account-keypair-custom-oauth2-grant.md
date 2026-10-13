@@ -104,3 +104,7 @@ hier als spätere Härtung zurückgestellt. Umgesetzt ist das mit
 [ADR-25](ADR-025-die-keycloak-konfiguration-steht-im-realm-nicht-in.md). Früher beschrieb diese ADR
 auch den Profilschalter und die Attribute, die damals nach Keycloak gespiegelt wurden. Beides steht
 jetzt in den oben genannten Kapiteln.
+
+**Nachtrag 2026-10-12.** Den Profilschalter gibt es nicht mehr ([ADR-60](ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)): Der Orchestrator läuft immer
+mit Keycloak, und der Token kommt immer über den Grant dieser ADR. Das simulierte Token stellt nur
+noch der Test-Ersatz in `src/testFixtures` aus, in den Backend-Tests und den Browsertests.

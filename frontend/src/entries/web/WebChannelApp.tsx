@@ -41,15 +41,15 @@ function WebChannelUnavailable() {
       <h2>{t('Web-Kanal nicht verfügbar')}</h2>
       <p>
         <Tx
-          text="Der Web-Kanal meldet sich an einem echten Keycloak an. Der Server läuft gerade ohne das Spring-Profil {profil}, es gibt also kein Keycloak, an dem man sich anmelden könnte."
-          profil={<code>keycloak</code>}
+          text="Der Web-Kanal meldet sich an einem echten Keycloak an. Dieser Server läuft ohne Keycloak, mit dem Ersatz für die Browsertests ({befehl})."
+          befehl={<code>./gradlew bootRunE2e</code>}
         />
       </p>
       <p className="hint">
         <Tx
           text="Starten mit {keycloak} und {server}."
-          keycloak={<code>podman-compose up -d keycloak</code>}
-          server={<code>./gradlew bootRunKc</code>}
+          keycloak={<code>podman compose up -d keycloak</code>}
+          server={<code>./gradlew bootRun</code>}
         />
       </p>
     </div>

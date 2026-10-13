@@ -152,8 +152,8 @@ genauso wie die Antwort (`KeycloakChannelUpsertRequest.subject`). Gehört ein Ka
 anderen Subjekt, lehnt der Orchestrator die Anfrage mit `409` ab. So wird eine Einladung nie
 unbemerkt zu einem Konto.
 
-Keycloak meldet auch die Abmeldung eines Einladungs-Nutzers
-(`POST …/kc/invitations/{id}/sign-outs`). Diese Meldung beendet die Web-Kanäle der Sitzung.
+Keycloak meldet auch die Abmeldung eines Einladungs-Nutzers, seit [ADR-60](ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md) per Back-Channel Logout
+(`POST …/kc/backchannel-logout`). Diese Meldung beendet die Web-Kanäle der Sitzung.
 
 Das Anmeldeprotokoll (`account.sign_in_log`) führt Vorgangszugänge als Zeilen der Einladung statt
 eines Kontos (`ck_sign_in_log_one_subject`). Diese Zeilen bleiben nur für die Aufbewahrungsfrist des

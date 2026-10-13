@@ -1,7 +1,8 @@
 # Ausführen und bauen
 
-Dieses Kapitel beschreibt, wie Sie die Demo auf dem eigenen Rechner starten, bauen und testen. Es
-gibt dafür mehrere Wege: mit und ohne Keycloak, in Podman-Containern oder direkt auf dem Rechner.
+Dieses Kapitel beschreibt, wie Sie die Demo auf dem eigenen Rechner starten, bauen und testen. Der
+Orchestrator läuft immer mit Keycloak, entweder beide in Podman-Containern oder Keycloak im Container
+und der Orchestrator direkt auf dem Rechner.
 
 Was für den Betrieb außerhalb der Demo gilt, steht in [07-betrieb.md](07-betrieb.md). Dazu gehören
 der Fehlervertrag, die Aufbewahrung, die Pflichtwerte außerhalb des Demomodus und die Kennzahlen.
@@ -14,7 +15,7 @@ in Abschnitt 7.
 
 - **JDK 21** und **Node.js 22 mit npm** auf dem Rechner. Das sind dieselben Versionen wie in der CI.
   Gradle ruft npm selbst auf, um das Frontend und das Keycloak-Theme zu bauen.
-- **Podman** mit `podman compose`. Das brauchen Sie nur für die Varianten mit Keycloak. Auf macOS
+- **Podman** mit `podman compose`, für Keycloak. Nur die Tests kommen ohne aus. Auf macOS
   läuft Podman in einer virtuellen Maschine (Podman Machine). Diese VM bindet nur das Verzeichnis
   `/Users` ein. Bind-Mounts aus `/tmp` funktionieren dort deshalb nicht. `compose.yml` nutzt aus
   diesem Grund benannte Volumes (`keycloak-data`, `orchestrator-data`). Bleiben Sie auch bei eigenen
@@ -30,21 +31,12 @@ in Abschnitt 7.
 
 ---
 
-## 2) Drei Arten zu starten
+## 2) Zwei Arten zu starten
 
-Welche Art Sie wählen, hängt davon ab, ob Sie den Web-Kanal brauchen. Der Web-Kanal ist die
-Anmeldung im Browser über Keycloak. Der App-Kanal funktioniert auch ohne Keycloak.
-
-### Ohne Keycloak (am schnellsten)
-
-```bash
-./gradlew bootRun
-```
-
-Dieser Befehl startet den Orchestrator im Standardprofil auf Port 8080. Podman ist nicht nötig. Es
-gibt dann den App-Kanal. Im Demomodus (`DEMO_MODE`, Standard `true`) gibt es außerdem das
-Personenverzeichnis, die Nect-Simulation und die Admin-Seite. Der Web-Kanal ist abgeschaltet: `/web/`
-zeigt einen Hinweis, und die Kachel auf der Willkommensseite ist ausgeschaltet.
+Der Orchestrator braucht Keycloak: `keycloak` ist sein Default-Profil
+(`spring.profiles.default`, `application-keycloak.yml`). Den simulierten Token-Dienst, der früher
+einen Start ohne Keycloak erlaubte, gibt es nur noch als Test-Ersatz (Abschnitt 7,
+[ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)).
 
 ### Alles in Containern
 
@@ -59,7 +51,7 @@ Das startet zwei Container:
   HTTPS erreichbar, auf Port 8543. Beim ersten Start erzeugt es ein selbstsigniertes Zertifikat im
   Volume `keycloak-data`. Das Zertifikat bleibt erhalten, auch wenn das Image neu gebaut wird. Sie
   müssen ihm im Browser also nur einmal vertrauen.
-- **`orchestrator`**: Port 8080, mit dem Profil `keycloak` und der H2-Datenbankdatei im Volume
+- **`orchestrator`**: Port 8080, mit der H2-Datenbankdatei im Volume
   `orchestrator-data`. Der Orchestrator wartet selbst, bis Keycloak antwortet. Dann wendet er alle
   Migrationen aus dem Modul `keycloak-migrations` an (`KeycloakMigrationRunnerStartup`). Dadurch
   entsteht das Realm, also der Bereich in Keycloak mit den Nutzern, Clients und Einstellungen dieser
@@ -75,14 +67,12 @@ startet:
 
 ```bash
 podman compose up keycloak
-./gradlew bootRunKc
+./gradlew bootRun
 ```
 
-`bootRunKc` ist `bootRun` mit dem Profil `keycloak` (`application-keycloak.yml`). Der Orchestrator
-spricht Keycloak dann unter `https://localhost:8543` an. Ein einfaches `bootRun` bliebe im
-Standardprofil und würde das Keycloak aus Compose gar nicht nutzen. Anders als im Container
-funktioniert hier, wie bei `bootRun`, auch die H2-Konsole. Die Begründung steht in Abschnitt 3,
-„H2-Konsole: nur beim Host-Start“.
+Der Orchestrator spricht Keycloak dann unter `https://localhost:8543` an (Variante `host`, Abschnitt
+6). Anders als im Container funktioniert hier auch die H2-Konsole. Die Begründung steht in Abschnitt
+3, „H2-Konsole: nur beim Host-Start“.
 
 ### Frontend mit Neuladen beim Speichern
 
@@ -103,7 +93,7 @@ gleichzeitig laufen.
 
 - **Willkommensseite**: <http://localhost:8080/>. Von dort führen Kacheln zu allen anderen Seiten.
 - **App-Kanal**: <http://localhost:8080/app/>
-- **Web-Kanal**: <http://localhost:8080/web/> (nur mit Keycloak)
+- **Web-Kanal**: <http://localhost:8080/web/>
 - **Admin-Seite**: <http://localhost:8080/admin/>, Anmeldung mit `admin` / `admin` (`demo.admin` in
   `application.yml`)
 - **Personenverzeichnis** (simuliertes Fremdsystem): <http://localhost:8080/personenverzeichnis/>
@@ -275,7 +265,7 @@ auftritt.
 
 `KEYCLOAK_SETUP_VARIANT` wählt die Variante:
 
-- **`host`**: Der Orchestrator läuft per `./gradlew bootRunKc` auf dem Rechner, nur Keycloak im
+- **`host`**: Der Orchestrator läuft per `./gradlew bootRun` auf dem Rechner, nur Keycloak im
   Container.
 - **`compose`**: Beide laufen im Compose-Netz. `compose.yml` setzt diesen Wert selbst.
 - **`openshift`**: der Prototyp in `openshift/identity-demo.yaml`, ein Pod mit zwei Containern, die
@@ -306,6 +296,10 @@ Backend und Keycloak-Erweiterung:
 ./gradlew :test --tests '*ModelBasedJourneyTest' -PmodelSeeds=1000   # gründliche Zufallssuche
 ./gradlew build                       # alles bauen und alle Tests ausführen
 ```
+
+Die Backend-Tests brauchen kein Keycloak. Sie laufen im Profil `test` mit dem Test-Ersatz aus
+`src/testFixtures` (siehe `test:e2e` unten). Ein `logout_token` von Keycloak stellt
+`LogoutTokens` nach, signiert mit einem Schlüssel, den der Spy auf `KeycloakRealmJwkSource` kennt.
 
 `quickTest` ist für einen schnellen Zwischenstand beim Entwickeln gedacht. Jeder Spec mit
 `@SpringBootTest` wird dabei als ignoriert gemeldet, auch wenn er die Annotation über
@@ -347,15 +341,22 @@ Frontend (im Verzeichnis `frontend`):
 npm test                      # Komponententests mit Vitest
 npm run lint                  # oxlint
 npx tsc -b                    # Typprüfung (Vitest prüft keine Typen)
-npm run test:e2e              # Playwright gegen das echte Backend
+npm run test:e2e              # Playwright gegen das Backend, Keycloak durch den Test-Ersatz
 npm run test:e2e:keycloak     # Playwright gegen die Login-Seiten von Keycloak
 ```
 
 ### `test:e2e`
 
-**`test:e2e`** startet selbst einen Orchestrator per `./gradlew bootRun` auf Port 8095 mit einer
+**`test:e2e`** startet selbst einen Orchestrator per `./gradlew bootRunE2e` auf Port 8095 mit einer
 frischen Datenbank im Arbeitsspeicher. Ein Orchestrator auf Port 8080 und der lokale OpenShift-Pod
 auf 8090/8091 stören also nicht.
+
+`bootRunE2e` startet den Orchestrator ohne Keycloak, mit dem Test-Ersatz aus `src/testFixtures`
+(Profil `e2e`). Dieses Source-Set enthält den simulierten Token-Dienst (`MockTokenProvider`) und
+`AlwaysReadyState`. Es ist auch im Klassenpfad der Backend-Tests, kommt aber nie ins ausgelieferte
+Jar: Der ausgelieferte Orchestrator startet ohne Keycloak gar nicht. So läuft die Suite auch im CI,
+das kein Keycloak hat. Die App bekommt dort unsignierte Mock-Tokens (`alg=none`,
+`iss=mock-keycloak`), und den Web-Kanal gibt es nicht.
 
 Die Suite prüft nur, was allein im Browser sichtbar wird. Die Logik dahinter decken die
 Integrationstests ab. Geprüft werden:

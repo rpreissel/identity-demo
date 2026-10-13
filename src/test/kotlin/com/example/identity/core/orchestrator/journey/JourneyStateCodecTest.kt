@@ -5,7 +5,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLo
 import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
-import com.example.identity.core.orchestrator.domain.journey.state.LogoutState
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
@@ -36,7 +35,6 @@ class JourneyStateCodecTest : BehaviorSpec({
         ManageAuthMethodsState::class to setOf("AddRequested", "RemoveRequested", "Enrolling", "RetractAttributeRequested", "ConfirmationRequired", "ChangeRequested", "Changing"),
         ConfirmPeerLoginState::class to setOf("Requested", "ConfirmationRequired", "Confirming", "OfferLogout"),
         DeleteAccountState::class to setOf("ConfirmPending", "ConfirmationRequired"),
-        LogoutState::class to setOf("ConfirmPending"),
         ReIdentifyState::class to setOf("OfferReIdent", "Identifying"),
     )
 
@@ -54,7 +52,7 @@ class JourneyStateCodecTest : BehaviorSpec({
                 RegisterEnrollFirstState::class to AuthIntent.REGISTER, LookupLoginState::class to AuthIntent.LOOKUP_LOGIN,
                 WebSelectMethodState::class to AuthIntent.WEB_SELECT_METHOD, StepUpState::class to AuthIntent.STEP_UP,
                 ManageAuthMethodsState::class to AuthIntent.MANAGE_AUTH_METHODS, ConfirmPeerLoginState::class to AuthIntent.CONFIRM_PEER_LOGIN,
-                DeleteAccountState::class to AuthIntent.DELETE_ACCOUNT, LogoutState::class to AuthIntent.LOGOUT,
+                DeleteAccountState::class to AuthIntent.DELETE_ACCOUNT,
                 ReIdentifyState::class to AuthIntent.RE_IDENTIFY,
             )
             JourneyStateCodec.STATE_ROOTS.forEach { root ->

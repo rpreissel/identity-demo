@@ -35,10 +35,10 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
     @Suppress("UNCHECKED_CAST")
     private fun Map<String, Any?>.journeys(): List<Map<String, Any?>> = this["journeys"] as List<Map<String, Any?>>
 
-    private fun registerAndLogOut(): String {
+    /** A registration, then a second journey on the same channel: the account deletion's confirmation. */
+    private fun registerAndStartDeletion(): String {
         val channelSessionId = registerAndAuthenticate()
-        post("/orchestrator/api/v1/channels/$channelSessionId/logouts")
-        post("/orchestrator/api/v1/channels/$channelSessionId/answer", """{"answer":"accept"}""")
+        post("/orchestrator/api/v1/channels/$channelSessionId/account-deletions")
         return channelSessionId
     }
 
@@ -104,8 +104,7 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
             `when`("logging out") {
                 // A real run, not a seeded account: only an actual journey writes the trace.
                 val channelSessionId = registerAndAuthenticate()
-                post("/orchestrator/api/v1/channels/$channelSessionId/logouts")
-                post("/orchestrator/api/v1/channels/$channelSessionId/answer", """{"answer":"accept"}""")
+                deleteNoContent("/orchestrator/api/v1/channels/$channelSessionId")
 
                 val entries = logOf(channelSessionId)
 
@@ -115,14 +114,14 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
             }
         }
 
-        given("a channel that registered and then logged out") {
+        given("a channel that registered and then started an account deletion") {
             `when`("searching the journeys of that channel") {
-                val channelSessionId = registerAndLogOut()
+                val channelSessionId = registerAndStartDeletion()
                 val journeys = search("channelSessionId=$channelSessionId").journeys()
                 val entries = logOf(channelSessionId)
 
                 then("each journey is one line, newest start first, with its steps counted") {
-                    journeys.first()["intent"] shouldBe "LOGOUT"
+                    journeys.first()["intent"] shouldBe "DELETE_ACCOUNT"
                     journeys.forEach { journey ->
                         journey["stepCount"] shouldBe entries.count { it["journeyId"] == journey["journeyId"] }
                     }
@@ -135,29 +134,29 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
             }
 
             `when`("paging one journey at a time") {
-                val channelSessionId = registerAndLogOut()
+                val channelSessionId = registerAndStartDeletion()
                 val first = search("channelSessionId=$channelSessionId&limit=1")
                 val second = search("channelSessionId=$channelSessionId&limit=1&cursor=${first["nextCursor"]}")
 
                 then("the second page continues where the first stopped") {
-                    first.journeys().single()["intent"] shouldBe "LOGOUT"
+                    first.journeys().single()["intent"] shouldBe "DELETE_ACCOUNT"
                     first["nextCursor"].shouldNotBeNull()
                     second.journeys().single()["journeyId"] shouldNotBe first.journeys().single()["journeyId"]
                 }
             }
 
             `when`("filtering by intent across all channels") {
-                registerAndLogOut()
-                val journeys = search("intent=LOGOUT").journeys()
+                registerAndStartDeletion()
+                val journeys = search("intent=DELETE_ACCOUNT").journeys()
 
                 then("only journeys of that intent come back") {
                     journeys.shouldNotBeEmpty()
-                    journeys.all { it["intent"] == "LOGOUT" } shouldBe true
+                    journeys.all { it["intent"] == "DELETE_ACCOUNT" } shouldBe true
                 }
             }
 
             `when`("searching by the account the channel resolved") {
-                val channelSessionId = registerAndLogOut()
+                val channelSessionId = registerAndStartDeletion()
                 val accountId = logOf(channelSessionId).first()["accountId"]
                 val journeys = search("accountId=$accountId").journeys()
 

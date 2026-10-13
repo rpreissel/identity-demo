@@ -231,8 +231,10 @@ er besteht nie länger als seine Sitzung in Keycloak.
 - [`JourneyActionExecutor.linkDeviceTo`](../src/main/kotlin/com/example/identity/core/orchestrator/journey/JourneyActionExecutor.kt#L341)
   verknüpft ein Gerät nur nach Rückfrage neu. Dabei widerruft er jedes Credential, das an den
   Schlüssel gebunden ist.
-- [`KeycloakChannelService.signedOutAtKeycloak`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L68):
-  Eine Abmeldung in Keycloak beendet die Web- und App-Kanäle dieser Sitzung.
+- [`KeycloakChannelService.signedOutAtKeycloak`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L70):
+  Eine Abmeldung in Keycloak beendet die Web- und App-Kanäle dieser Sitzung. Welche das sind, sagt
+  allein die `sid` des geprüften `logout_token`; eine Sitzung, die der Orchestrator nicht kennt,
+  beendet nichts. Die Abmeldung steht genau einmal im Anmeldeprotokoll.
 
 **Härtungen:**
 
@@ -247,8 +249,9 @@ er besteht nie länger als seine Sitzung in Keycloak.
 **Offene Punkte:**
 
 - **Niedrig** Der Web-Kanal steht nach dem letzten Schritt schon auf `AUTHENTICATED`, bevor
-  Keycloak die Sitzung anlegt. Die Meldung einer Abmeldung und `flow-end` werden nur nach
-  bestem Bemühen („best effort“) zugestellt (`DPoP-demo-oe06`).
+  Keycloak die Sitzung anlegt. Der Back-Channel Logout und `flow-end` werden nur nach bestem
+  Bemühen („best effort“) zugestellt; Keycloak wiederholt einen verlorenen Back-Channel nicht
+  (`DPoP-demo-oe06`). Den App-Kanal betrifft das nicht, er beendet seine Abmeldung selbst.
 - **Niedrig** I-14 (kein Gerätelink auf ein gelöschtes Konto) ist nicht durch einen Fremdschlüssel
   in der Datenbank abgesichert (`DPoP-demo-hwc6`).
 
@@ -300,8 +303,16 @@ Abschnitt 8 „Übernommene Nachweise als erster Übergang“;
   signiert nur Antworten auf Assertions, die
   [`PeerAuthValidator.verify`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/PeerAuthValidator.kt#L54)
   annimmt. Diese Prüfung umfasst alles außer der Einmaligkeit.
-- [`KeycloakSignOutController`](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/keycloak/KeycloakSignOutController.kt#L32):
-  Das `channel_binding` muss das adressierte Konto oder die adressierte Einladung sein.
+- [`BackchannelLogoutController`](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/keycloak/BackchannelLogoutController.kt#L25)
+  ist der einzige `/kc/`-Endpunkt ohne Peer-Auth-Assertion. Sein Ausweis ist das `logout_token`, das
+  das Realm signiert ([ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)).
+  [`LogoutTokenValidator`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/LogoutTokenValidator.kt#L32)
+  prüft Signatur (nur Signaturschlüssel des Realms, RS256/PS256/ES256), `typ=logout+jwt`, `iss`,
+  `aud`, `iat`, `exp`, das Logout-Event, `sid` und dass kein `nonce` darin steht, und verbraucht
+  die `jti` (`bcl:`). Ein abgelehntes Token bekommt `400 invalid_request` ohne Grund.
+  `ApiBoundaryArchitectureTest` verlangt, dass der Controller den Validator nutzt. Tomcat nimmt
+  Formulare nur bis 64 KB an (`server.tomcat.max-http-form-post-size`), wie
+  `RequestBodyLimitFilter` jeden anderen Body.
 
 **Code in der Keycloak-Erweiterung:**
 
@@ -386,8 +397,8 @@ Abschnitt 8 „Übernommene Nachweise als erster Übergang“;
   Nimbus, ohne `outageTolerant` (K-6).
 - **Hinweis** Jeder GET auf die Action-URL (die Adresse, an die das Anmeldeformular geschickt wird)
   wird zur Eingabe für das Tool (K-8). Dafür braucht man Aktionscode und Cookie.
-- **Hinweis** Das Zeitfenster für Peer-Auth beträgt 300 s im ganzen Profil `keycloak` statt nur in
-  der Variante `host` (`DPoP-demo-9ppv.13`).
+- **Hinweis** Das Zeitfenster für Peer-Auth und für das `logout_token` beträgt 300 s im ganzen
+  Betrieb mit Keycloak statt nur in der Variante `host` (`DPoP-demo-9ppv.13`).
 - **Hinweis** Die Kanal-Id des Web-Kanals wird aus der Tab-Id von Keycloak abgeleitet
   ([`OrchestratorNotes.channelSessionId`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L49))
   und ist damit vorhersagbar. Für einen Zugriff braucht man trotzdem eine signierte Assertion mit
@@ -855,8 +866,9 @@ Start bricht ab, solange noch eine Demo-Voreinstellung gesetzt ist.
 **Härtungen:**
 
 - `ProductionModeCheck` akzeptiert als Admin-Passwort nur echte Hashes (`{bcrypt}`, `{argon2}`,
-  `{scrypt}`, `{pbkdf2}`, kein `{noop}`). Außerdem startet der Dienst nicht ohne das Profil
-  `keycloak`. Ohne dieses Profil würde er unsignierte Mock-Tokens ausgeben (SA-13, SA-15).
+  `{scrypt}`, `{pbkdf2}`, kein `{noop}`). Außerdem startet der Dienst nur, wenn Keycloak die Tokens
+  ausstellt (`KeycloakTokenProvider`). Der Test-Ersatz mit unsignierten Mock-Tokens liegt in
+  `src/testFixtures` und gehört nicht zum ausgelieferten Jar (SA-13, SA-15).
 - Auf OpenShift ist die H2-Konsole aus (SA-14,
   [13-ausfuehren.md](13-ausfuehren.md) Abschnitt 3, „H2-Konsole: nur beim Host-Start“).
 - Tests: `ProductionModeCheckTest`, `DemoModeSwitchTest`.
@@ -907,7 +919,7 @@ Diese Tabelle fasst alle offenen Punkte der Stationen zusammen.
 | Offener Punkt | Schwere | Station | Issue |
 |---|---|---|---|
 | Replay-Tabelle wächst vor der Prüfung von Kanal und Drosselung | niedrig | 2 | `DPoP-demo-9ppv.1` |
-| Web-Kanal ist `AUTHENTICATED` vor der Keycloak-Sitzung; Abmeldung nur best effort | niedrig | 3 | `DPoP-demo-oe06` |
+| Web-Kanal ist `AUTHENTICATED` vor der Keycloak-Sitzung; Back-Channel Logout nur best effort | niedrig | 3 | `DPoP-demo-oe06` |
 | Gerätelink ohne Fremdschlüssel (I-14) | niedrig | 3 | `DPoP-demo-hwc6` |
 | Fehlerpfade der Required Action „Verfahren verwalten“ | niedrig | 4 | `DPoP-demo-rdns` |
 | Lookup verrät über Demo-TAN und Versanddauer, ob ein Konto existiert | niedrig | 7 | `DPoP-demo-36xz` |

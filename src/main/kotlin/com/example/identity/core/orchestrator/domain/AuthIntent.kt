@@ -50,9 +50,6 @@ enum class AuthIntent {
     /** Delete the account itself, after a fresh re-confirmation. Only on an AUTHENTICATED channel. */
     DELETE_ACCOUNT,
 
-    /** Log out with a confirmation prompt. Only on an AUTHENTICATED channel. */
-    LOGOUT,
-
     /**
      * "No active method reaches the target - re-identify instead?" Never an entry intent. Reached as
      * another intent's [Transition.RequireSubJourney] once no active method can close the ACR gap.
@@ -72,7 +69,7 @@ enum class AuthIntent {
             FAST_ACCESS, LOOKUP_LOGIN, CONFIRM_PEER_LOGIN -> setOf(ChannelType.APP)
             REGISTER -> setOf(ChannelType.APP, ChannelType.WEB)
             WEB_SELECT_METHOD -> setOf(ChannelType.WEB)
-            STEP_UP, MANAGE_AUTH_METHODS, DELETE_ACCOUNT, LOGOUT, RE_IDENTIFY -> emptySet()
+            STEP_UP, MANAGE_AUTH_METHODS, DELETE_ACCOUNT, RE_IDENTIFY -> emptySet()
         }
 
     /** The intents a client may name when entering a channel; [CONFIRM_PEER_LOGIN] also runs on an open one. */
@@ -85,13 +82,13 @@ enum class AuthIntent {
      */
     val startsOnLoggedInChannel: Boolean
         get() = when (this) {
-            STEP_UP, MANAGE_AUTH_METHODS, CONFIRM_PEER_LOGIN, DELETE_ACCOUNT, LOGOUT -> true
+            STEP_UP, MANAGE_AUTH_METHODS, CONFIRM_PEER_LOGIN, DELETE_ACCOUNT -> true
             FAST_ACCESS, REGISTER, LOOKUP_LOGIN, WEB_SELECT_METHOD, RE_IDENTIFY -> false
         }
 
     /**
      * Acts on the account itself. A process access (one-time password, ADR-48) is signed in without
-     * an account and serves only its process, so it may log out but not manage, delete or confirm.
+     * an account and serves only its process, so it may raise its level but not manage, delete or confirm.
      */
     val requiresAccount: Boolean
         get() = this == MANAGE_AUTH_METHODS || this == CONFIRM_PEER_LOGIN || this == DELETE_ACCOUNT

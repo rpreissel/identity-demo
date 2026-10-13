@@ -23,9 +23,8 @@ nicht, wenn die erste abgelaufen ist. Dann endet der Kanal. Ein Step-up bleibt m
 hebt eine bestehende Anmeldung auf ein höheres Sicherheitsniveau. Er hebt dabei `acr` und `amr` in
 derselben Sitzung an. (`acr` ist das erreichte Niveau, `amr` die Liste der benutzten Verfahren.)
 
-Im Standardprofil ohne Keycloak übernimmt der simulierte Token-Dienst (`TokenService`) die Rolle
-von Keycloak. Seine Sitzung beginnt ebenfalls mit `AUTHENTICATED`, ihr Fenster ist 30 Minuten
-Leerlauf.
+In den Tests übernimmt der Test-Ersatz (`MockTokenProvider`, `src/testFixtures`) die Rolle von
+Keycloak. Seine Sitzung beginnt ebenfalls mit `AUTHENTICATED`, ihr Fenster ist 30 Minuten Leerlauf.
 
 **Warum.** Bisher bekam der App-Kanal seine Keycloak-Sitzung erst, wenn er zum ersten Mal ein Token
 abrief. Danach lebte er 24 Stunden, auch wenn Keycloak die Sitzung schon beendet hatte. Ein Kanal
@@ -78,8 +77,8 @@ Anmeldung.
   - Die Abmeldung auf einem Gerät beendete die Sitzung für alle Geräte.
   - Ein Step-up auf einem Gerät hob das `acr` der Tokens auf dem anderen Gerät.
   - Nach einem Step-up konnte unbemerkt eine zweite Sitzung entstehen.
-- **Ohne Keycloak** vergibt `TokenService` beim ersten Token eine eigene Sitzungskennung
-  (`mock-session-…`) und verhält sich sonst gleich.
+- **Der Test-Ersatz** vergibt beim ersten Token eine eigene Sitzungskennung (`mock-session-…`) und
+  verhält sich sonst gleich.
 
 ## 2) Die Frist folgt dem Sitzungsfenster
 
@@ -120,9 +119,10 @@ Keycloak-Sitzung. Dieses Fenster lässt sich durch Aktivität verlängern.
 
 ## 3) Abmeldung in Keycloak beendet beide Kanäle
 
-Meldet sich ein Nutzer in Keycloak ab, meldet Keycloak das an den Orchestrator
-(`SignInLogEventListener` → `KeycloakChannelService.signedOutAtKeycloak`). Dann enden alle noch
-laufenden Kanäle dieser Sitzung:
+Endet eine Sitzung in Keycloak, meldet Keycloak das an den Orchestrator, per OIDC Back-Channel
+Logout (`BackchannelLogoutController` → `KeycloakChannelService.signedOutAtKeycloak`, [ADR-60](ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)). Das
+gilt für jede Abmeldung, auch eine über die Admin-API. Dann enden alle noch laufenden Kanäle dieser
+Sitzung:
 
 - die Web-Kanäle mit dieser `durableKeycloakSessionId`,
 - der App-Kanal, dessen `AppTokenSession.keycloakSessionId` diese Sitzung nennt.
@@ -166,3 +166,9 @@ Zwei Fälle deckt die Regel nicht vollständig ab:
   Frist.
 
 Beides ist in [invarianten.md](../invarianten.md) als Lücke der Regel I-23 geführt.
+
+**Nachtrag 2026-10-12.** Mit [ADR-60](ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md) meldet Keycloak das Ende einer Sitzung per OIDC Back-Channel
+Logout statt über den Event-Listener der Extension (Abschnitt 3). Damit erreicht auch eine
+Abmeldung über die Admin-API den Orchestrator. Abschnitt 5 gilt weiter: Keycloak wiederholt einen
+verlorenen Back-Channel nicht. Der Orchestrator läuft nicht mehr ohne Keycloak; den simulierten
+Token-Dienst gibt es nur noch als Test-Ersatz.

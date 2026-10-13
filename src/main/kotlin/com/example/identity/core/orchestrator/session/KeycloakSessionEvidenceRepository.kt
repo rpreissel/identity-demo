@@ -77,6 +77,10 @@ interface KeycloakSessionEvidenceRepository : JpaRepository<KeycloakSessionEvide
     @Query("SELECT COUNT(e) > 0 FROM KeycloakSessionEvidence e WHERE e.id.kcSessionId = :kcSessionId AND e.accountId <> :accountId")
     fun holdsOtherAccount(@Param("kcSessionId") kcSessionId: String, @Param("accountId") accountId: Long): Boolean
 
+    /** The account behind session [kcSessionId], expired evidence included: whom a logout of it concerns. */
+    @Query("SELECT DISTINCT e.accountId FROM KeycloakSessionEvidence e WHERE e.id.kcSessionId = :kcSessionId")
+    fun accountsOf(@Param("kcSessionId") kcSessionId: String): List<Long>
+
     @Query("SELECT e FROM KeycloakSessionEvidence e WHERE e.id.kcSessionId = :kcSessionId AND e.expiresAt > :now")
     fun findLive(@Param("kcSessionId") kcSessionId: String, @Param("now") now: Instant): List<KeycloakSessionEvidence>
 

@@ -75,7 +75,6 @@ export function intentLabel(intent: string | undefined): string {
   const key = INTENT_DIAGRAM_KEY[intent]
   if (key) return JOURNEY_DIAGRAMS[key].title
   if (intent === 'WEB_SELECT_METHOD') return t('Anmeldung im Browser')
-  if (intent === 'LOGOUT') return t('Abmelden')
   return intent
 }
 

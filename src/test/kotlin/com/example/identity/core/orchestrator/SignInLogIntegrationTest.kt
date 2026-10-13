@@ -1,25 +1,22 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.SignInLog
-import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
+import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
+import com.example.identity.core.orchestrator.domain.policy.MethodName
+import com.example.identity.core.orchestrator.session.KeycloakSessionEvidenceInitializer
+import com.example.identity.core.orchestrator.session.MethodEvidenceRow
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.shouldBe
-import io.mockk.every
-import io.kotest.assertions.throwables.shouldThrow
-import org.springframework.web.client.HttpClientErrorException
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpEntity
-import org.springframework.http.HttpHeaders
-import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import java.time.Instant
-import java.util.UUID
 
 /**
  * The account's sign-in log (ADR-39, addendum): what a sign-in, a failed proof and a sign-out leave
- * behind - from the app channel, and from Keycloak, whose own logouts the orchestrator only learns
- * about because Keycloak reports them. The lockout's entries are checked
+ * behind - from the app channel, and from Keycloak, whose own logouts the orchestrator learns about
+ * over the back channel. The lockout's entries are checked
  * with the lock itself in AccountRateLimitIntegrationTest.
  */
 class SignInLogIntegrationTest : IntegrationTestSupport() {
@@ -38,20 +35,14 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
 
     private fun typesOf(accountId: AccountId) = signInLog.of(accountId).map { it.signInType }
 
-    private fun stubAssertion(binding: String) {
-        every { peerAuthValidator.validate(any(), any(), any(), any()) } returns
-            PeerAuthAssertion(jti = UUID.randomUUID().toString(), issuedAt = Instant.now(), channelBinding = binding, subject = null)
-    }
+    @Autowired
+    private lateinit var keycloakSessionEvidence: KeycloakSessionEvidenceInitializer
 
-    private fun keycloakPost(path: String, body: String? = null) =
-        restTemplate.exchange(
-            "http://localhost:$port$path", HttpMethod.POST,
-            HttpEntity(body, HttpHeaders().apply {
-                set("Authorization", "Bearer mock-peer-auth-token")
-                set("Content-Type", "application/json")
-            }),
-            String::class.java
-        )
+    /** A Web sign-in into Keycloak session [kcSessionId], as far as the orchestrator records it (ADR-59). */
+    private fun holdKeycloakSession(kcSessionId: String, accountId: AccountId) {
+        val method = MethodEvidence(MethodName("password"), AcrLevel.LOA1, amrSourceId = "auth-password", provenAt = Instant.now())
+        keycloakSessionEvidence.createIfAbsent(kcSessionId, accountId.value, MethodEvidenceRow.of(method), Instant.now().plusSeconds(1800))
+    }
 
     init {
         given("a returning user on the app") {
@@ -108,34 +99,87 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
             }
         }
 
-        given("a logout that only Keycloak saw") {
-            `when`("Keycloak reports it for the account its assertion is bound to") {
+        given("a logout that only Keycloak saw, of a session the orchestrator holds evidence for") {
+            `when`("Keycloak reports it over the back channel") {
                 val accountId = seedRegisteredAccount()
-                stubAssertion(accountId.toString())
-                val response = keycloakPost("/orchestrator/api/v1/kc/accounts/$accountId/sign-outs?kcSessionId=kc-session-1")
+                holdKeycloakSession("kc-session-1", accountId)
+                val response = backchannelLogout("kc-session-1")
 
                 then("the report is accepted") {
-                    response.statusCode shouldBe HttpStatus.NO_CONTENT
+                    response.statusCode shouldBe HttpStatus.OK
                 }
-                then("it is logged as a sign-out on the Web channel") {
+                then("it is logged once, as a sign-out on the Web channel") {
                     val signedOut = signInLog.of(accountId).single()
                     signedOut.signInType shouldBe "SIGNED_OUT"
                     signedOut.channel shouldBe "WEB"
                 }
             }
 
-            `when`("Keycloak reports it with an assertion bound to another account") {
+            `when`("the same logout_token arrives a second time") {
                 val accountId = seedRegisteredAccount()
-                stubAssertion("someone-else")
-                val result = runCatching {
-                    keycloakPost("/orchestrator/api/v1/kc/accounts/$accountId/sign-outs?kcSessionId=kc-session-1")
-                }
+                holdKeycloakSession("kc-session-1", accountId)
+                val token = LogoutTokens.signed("kc-session-1")
+                backchannelLogout("kc-session-1", token)
+                val replay = backchannelLogout("kc-session-1", token)
 
-                then("the report is refused") {
-                    shouldThrow<HttpClientErrorException> { result.getOrThrow() }
+                then("the replay is refused and nothing more is logged") {
+                    replay.statusCode shouldBe HttpStatus.BAD_REQUEST
+                    signInLog.of(accountId).size shouldBe 1
                 }
-                then("nothing is logged") {
+            }
+
+            `when`("a logout_token signed with a key the realm never published arrives") {
+                val accountId = seedRegisteredAccount()
+                holdKeycloakSession("kc-session-1", accountId)
+                val response = backchannelLogout("kc-session-1", LogoutTokens.signed("kc-session-1", signingKey = LogoutTokens.foreignKey()))
+
+                then("it is refused, without saying why, and nothing is logged") {
+                    response.statusCode shouldBe HttpStatus.BAD_REQUEST
+                    response.body shouldBe """{"error":"invalid_request"}"""
                     signInLog.of(accountId) shouldBe emptyList()
+                }
+            }
+        }
+
+        given("a valid logout_token sent in the address instead of the body") {
+            `when`("it arrives") {
+                val accountId = seedRegisteredAccount()
+                holdKeycloakSession("kc-session-1", accountId)
+                val response = backchannelLogout("kc-session-1", inQuery = true)
+
+                then("it is refused and nothing is logged") {
+                    response.statusCode shouldBe HttpStatus.BAD_REQUEST
+                    signInLog.of(accountId) shouldBe emptyList()
+                }
+            }
+        }
+
+        given("a session the orchestrator knows nothing of") {
+            `when`("Keycloak reports its logout") {
+                val accountId = seedRegisteredAccount()
+                val response = backchannelLogout("kc-session-unknown")
+
+                then("it is accepted and nothing is logged") {
+                    response.statusCode shouldBe HttpStatus.OK
+                    signInLog.of(accountId) shouldBe emptyList()
+                }
+            }
+        }
+
+        given("a user who signed out on the app") {
+            `when`("Keycloak then reports the end of that login's session") {
+                val channelSessionId = loginAsSeededAccount()
+                val accountId = accountOf(channelSessionId)
+                val kcSessionId = jdbcTemplate.queryForObject(
+                    "SELECT a.keycloak_session_id FROM orchestrator.channel_session c JOIN orchestrator.app_token_session a " +
+                        "ON a.id = c.app_token_session_id WHERE c.id = CAST(? AS UUID)", String::class.java, channelSessionId
+                )!!
+                deleteNoContent("/orchestrator/api/v1/channels/$channelSessionId")
+                val response = backchannelLogout(kcSessionId)
+
+                then("the confirmation adds no second sign-out") {
+                    response.statusCode shouldBe HttpStatus.OK
+                    typesOf(accountId) shouldBe listOf("SIGNED_IN", "SIGNED_OUT")
                 }
             }
         }

@@ -1,6 +1,10 @@
 spring:
   application:
     name: identity-demo
+  profiles:
+    # Der Orchestrator laeuft immer mit Keycloak (application-keycloak.yml). Ohne Keycloak laufen nur
+    # die Tests und die Browsertests, mit dem Ersatz aus src/testFixtures (docs/13-ausfuehren.md).
+    default: keycloak
   task:
     execution:
       # Boots eigener Async-Pool bleibt Default, obwohl es mit personChangeExecutor einen weiteren
@@ -134,6 +138,10 @@ tool-session:
 
 server:
   port: 8080
+  tomcat:
+    # Tomcat liest Formulare selbst, an RequestBodyLimitFilter vorbei. Die einzige Formular-Anfrage
+    # ist der Back-Channel Logout von Keycloak; dieselbe Grenze wie fuer jeden Body.
+    max-http-form-post-size: 64KB
 
 # Log-Kontext je Anfrage (LoggingContextFilter, docs/07-betrieb.md Abschnitt 7): Anfrage-Id und
 # die Sitzungs-Id aus dem Pfad in jeder Zeile. Im Betrieb strukturiert als ECS-JSON einschalten:
@@ -179,16 +187,24 @@ springdoc:
 keycloak:
   peer-auth:
     # docs/05-api.md Abschnitt 3b / docs/12-entscheidungen.md ADR-7: one signed JWT per Keycloak facade request.
-    # Ohne Profil `keycloak` gibt es keinen Aussteller: issuer und jwks-uri bleiben leer, die
-    # Keycloak-Fassade weist damit jede Assertion ab (KeycloakJwkSource kennt keinen Schluessel) - der
-    # Web-Kanal existiert nur mit echtem Keycloak. Im Profil `keycloak` setzt
-    # KeycloakSetupEnvironment beide Werte aus dem Parametersatz.
+    # KeycloakSetupEnvironment setzt issuer und jwks-uri aus dem Parametersatz. In den Tests bleiben
+    # sie leer, und die Keycloak-Fassade weist jede Assertion ab (KeycloakJwkSource kennt keinen Schluessel).
     issuer: ""
     audience: identity-demo-orchestrator
     jwks-uri: ""
     jwks-cache-ttl-seconds: 600
     max-clock-skew-seconds: 30
     max-age-seconds: 30
+  # OIDC Back-Channel Logout (BackchannelLogoutController). Wie oben setzt KeycloakSetupEnvironment
+  # issuer, jwks-uri und audiences; leer weist der Endpunkt jedes logout_token ab.
+  backchannel-logout:
+    issuer: ""
+    jwks-uri: ""
+    audiences: ""
+    jwks-cache-ttl-seconds: 600
+    max-clock-skew-seconds: 30
+    # Keycloak stellt das Token im selben Aufruf aus, in dem es abmeldet; laenger braucht es nicht.
+    max-age-seconds: 120
 
 dpop:
   proof:

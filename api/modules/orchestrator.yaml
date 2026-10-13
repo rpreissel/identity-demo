@@ -1218,7 +1218,6 @@ paths:
           - MANAGE_AUTH_METHODS
           - CONFIRM_PEER_LOGIN
           - DELETE_ACCOUNT
-          - LOGOUT
           - RE_IDENTIFY
           type: string
       - in: query
@@ -1497,9 +1496,9 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}:
     delete:
       description: 'Ends this channel for good (docs/02-domaenenmodell.md #3: AUTHENTICATED -> LOGGED_OUT, terminal) - cancels
-        any active process and discards the AppTokenSession. For interactive clients prefer POST .../logouts which shows a
-        confirmation prompt first. Never resumes on this channelSessionId afterwards; call POST .../channels again for a new
-        session (a known device still skips straight to LOGIN there).'
+        any active process, discards the AppTokenSession and ends its Keycloak session. No journey and no confirmation: an
+        interactive client asks before it calls. Never resumes on this channelSessionId afterwards; call POST .../channels
+        again for a new session (a known device still skips straight to LOGIN there).'
       operationId: logout
       parameters:
       - in: path
@@ -1522,7 +1521,7 @@ paths:
           ]
       - kc-peer-auth: [
           ]
-      summary: Log out (direct, no confirmation)
+      summary: Log out
       tags:
       - Channels
     get:
@@ -1862,40 +1861,6 @@ paths:
       - kc-peer-auth: [
           ]
       summary: Cancel the current journey
-      tags:
-      - Channels
-  /orchestrator/api/v1/channels/{channelSessionId}/logouts:
-    post:
-      description: Channel must already be AUTHENTICATED. Starts a LOGOUT journey with a confirmation prompt (next.context=prompt,
-        next.step=confirm, stepData.prompt). On accept (via POST .../answer) the channel ends for good (AUTHENTICATED -> LOGGED_OUT,
-        terminal). On decline the channel stays AUTHENTICATED. Analogous to POST .../account-deletions.
-      operationId: startLogout
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: ../openapi.yaml#/components/schemas/ChannelResponse
-          description: Confirmation prompt for the logout.
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      - kc-peer-auth: [
-          ]
-      summary: Start a confirmed logout
       tags:
       - Channels
   /orchestrator/api/v1/channels/{channelSessionId}/methods:
@@ -2261,41 +2226,43 @@ paths:
       summary: The account as Keycloak shows it, by account id
       tags:
       - Keycloak account lookup
-  /orchestrator/api/v1/kc/accounts/{accountId}/sign-outs:
+  /orchestrator/api/v1/kc/backchannel-logout:
     post:
-      operationId: signedOut
-      parameters:
-      - in: path
-        name: accountId
-        required: true
-        schema:
-          format: int64
-          type: integer
-      - in: query
-        name: kcSessionId
-        required: true
-        schema:
-          type: string
-      - in: header
-        name: Authorization
-        required: false
-        schema:
-          type: string
+      operationId: backchannelLogout
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                logout_token:
+                  type: string
+              type: object
       responses:
-        '204':
+        '200':
+          content:
+            '*/*':
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
           description: Recorded - no body.
+        '400':
+          content:
+            '*/*':
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+          description: The logout_token was refused (error=invalid_request).
         default:
           content:
             application/json:
               schema:
                 $ref: ../openapi.yaml#/components/schemas/ErrorResponse
           description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - kc-peer-auth: [
-          ]
-      summary: Keycloak ended one session of this account
+      summary: Keycloak ended one session
       tags:
-      - Keycloak sign-out
+      - Keycloak back-channel logout
   /orchestrator/api/v1/kc/channels/{channelSessionId}:
     patch:
       description: 'Upsert semantics (docs/05-api.md Abschnitt 3b): creates the channel on first call under this Keycloak-chosen
@@ -2430,40 +2397,6 @@ paths:
       summary: The invitation as Keycloak shows it, as a user of its own
       tags:
       - Keycloak invitation lookup
-  /orchestrator/api/v1/kc/invitations/{invitation}/sign-outs:
-    post:
-      operationId: invitationSignedOut
-      parameters:
-      - in: path
-        name: invitation
-        required: true
-        schema:
-          type: string
-      - in: query
-        name: kcSessionId
-        required: true
-        schema:
-          type: string
-      - in: header
-        name: Authorization
-        required: false
-        schema:
-          type: string
-      responses:
-        '204':
-          description: Recorded - no body.
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: ../openapi.yaml#/components/schemas/ErrorResponse
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - kc-peer-auth: [
-          ]
-      summary: Keycloak ended one session of this invitation
-      tags:
-      - Keycloak sign-out
   /orchestrator/api/v1/kc/response-jwks/.well-known/jwks.json:
     get:
       operationId: keycloakResponseJwks
@@ -2779,8 +2712,6 @@ tags:
   name: 'Tool: QR-Login'
 - description: List and delete accounts, reset the demo
   name: 'Admin: accounts'
-- description: Keycloak reports a logout for the sign-in log
-  name: Keycloak sign-out
 - description: 'SMS-TAN: Einrichtung als Faktor, Anmeldung und Login ohne DPoP'
   name: 'Tool: SMS'
 - description: Read-only server status for the welcome page
@@ -2795,6 +2726,8 @@ tags:
   name: 'Admin: tool availability'
 - description: Oeffentlicher Schluessel, gegen den Keycloak die Antworten des Orchestrators prueft
   name: Keycloak-Kanal
+- description: Keycloak reports an ended session
+  name: Keycloak back-channel logout
 - description: 'E-Mail: Bestaetigung der Adresse, Anmeldung und Login ohne DPoP'
   name: 'Tool: E-Mail'
 - description: Read-through invitation lookup for Keycloak's user federation

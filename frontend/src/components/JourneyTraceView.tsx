@@ -27,7 +27,7 @@ interface Props {
 
 const INTENTS = [
   'FAST_ACCESS', 'REGISTER', 'LOOKUP_LOGIN', 'WEB_SELECT_METHOD', 'STEP_UP', 'MANAGE_AUTH_METHODS', 'CONFIRM_PEER_LOGIN',
-  'DELETE_ACCOUNT', 'LOGOUT',
+  'DELETE_ACCOUNT',
 ]
 const OUTCOMES: JourneyTraceOutcome[] = ['SUCCEEDED', 'FAILED', 'CANCELLED', 'LOGGED_OUT', 'OPEN']
 /** Hours back; the trace itself is kept 14 days. */

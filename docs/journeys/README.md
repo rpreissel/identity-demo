@@ -16,7 +16,6 @@ Abschnitt 3.
 - [`RE_IDENTIFY`](re-identify.md)
 - [`MANAGE_AUTH_METHODS`](manage-auth-methods.md)
 - [`CONFIRM_PEER_LOGIN`](confirm-peer-login.md)
-- [`LOGOUT`](logout.md)
 - [`DELETE_ACCOUNT`](delete-account.md)
 - [Lebenszyklus, unabhängig vom Intent](lebenszyklus-unabhaengig-vom-intent.md): Diese Datei
   verweist nur auf [02-domaenenmodell.md](../02-domaenenmodell.md) Abschnitt 3. Dort steht das

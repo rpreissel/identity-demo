@@ -127,10 +127,9 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
         }
 
         given("an authenticated channel") {
-            `when`("the user confirms an interactive logout and then opens a new channel") {
+            `when`("the user logs out and then opens a new channel") {
                 val channelSessionId = loginAsSeededAccount()
-                val logoutPrompt = post("/orchestrator/api/v1/channels/$channelSessionId/logouts")
-                post("/orchestrator/api/v1/channels/$channelSessionId/answer", """{"answer":"accept"}""")
+                deleteNoContent("/orchestrator/api/v1/channels/$channelSessionId")
                 val loggedOutChannel = get("/orchestrator/api/v1/channels/$channelSessionId")
 
                 val newChannel = post("/orchestrator/api/v1/app/channels")
@@ -138,10 +137,6 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
                 val authenticated = authenticateViaSms(newChannelSessionId)
                 val afterLogin = get("/orchestrator/api/v1/channels/$newChannelSessionId")
 
-                then("the logout asks for confirmation first, the channel still authenticated") {
-                    logoutPrompt.channel()["state"] shouldBe "AUTHENTICATED"
-                    logoutPrompt.next() shouldBe mapOf("type" to "orchestrator", "context" to "prompt", "step" to "confirm")
-                }
                 then("the old channel stays LOGGED_OUT with no next step and is never re-derived") {
                     loggedOutChannel.channel()["state"] shouldBe "LOGGED_OUT"
                     loggedOutChannel["next"].shouldBeNull()
@@ -160,7 +155,7 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
                 }
             }
 
-            `when`("it is logged out directly (DELETE)") {
+            `when`("it is logged out") {
                 val channelSessionId = loginAsSeededAccount()
                 get("/orchestrator/api/v1/channels/$channelSessionId/token")
                 val appTokenSessionId = appTokenSessionOf(channelSessionId)
@@ -170,7 +165,7 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
                 then("the logout goes through") {
                     logout shouldBe HttpStatus.NO_CONTENT
                 }
-                then("its RefreshToken is discarded as well, the same way as the confirmed logout") {
+                then("its RefreshToken is discarded as well") {
                     jdbcTemplate.queryForObject(
                         "SELECT COUNT(*) FROM orchestrator.app_token_session WHERE id = ? AND refresh_token IS NULL",
                         Int::class.java, appTokenSessionId
@@ -211,7 +206,6 @@ class CancelLogoutIntegrationTest : IntegrationTestSupport() {
             "method management" to ({ id: String -> "/orchestrator/api/v1/channels/$id/enrollments" } to "{}"),
             "a peer login" to ({ id: String -> "/orchestrator/api/v1/channels/$id/peer-logins" } to "{}"),
             "an account deletion" to ({ id: String -> "/orchestrator/api/v1/channels/$id/account-deletions" } to "{}"),
-            "a logout" to ({ id: String -> "/orchestrator/api/v1/channels/$id/logouts" } to "{}"),
             "a tool" to ({ id: String -> "/tools/api/auth-sms/v1?channel=$id" } to "{}"),
         )
         mapOf("LOGGED_OUT" to allMoves, "EXPIRED" to allMoves.takeLast(1)).forEach { (finalState, moves) ->

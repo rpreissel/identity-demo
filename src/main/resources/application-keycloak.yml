@@ -1,7 +1,7 @@
-# Profile fuer den echten Web-/Keycloak-Kanal (docs/05-api.md Abschnitt 3b), gegen das per
-# podman-compose gestartete Keycloak. Ohne dieses Profil gibt es keinen Web-Kanal.
-# Start: `podman-compose up --build` (compose.yml) fuer Keycloak, parallel dazu
-# `./gradlew bootRunKc` (bootRun mit aktivem Profil keycloak) fuer den Orchestrator selbst.
+# Der Betrieb mit Keycloak (docs/05-api.md Abschnitt 3b). Das Profil ist die Voreinstellung
+# (application.yml, spring.profiles.default); ohne es laufen nur Tests und Browsertests.
+# Start: `podman compose up keycloak` (compose.yml) fuer Keycloak, parallel dazu
+# `./gradlew bootRun` fuer den Orchestrator selbst.
 #
 # WO HIER WAS STEHT: Realm-Name und Keycloak-Adresse stehen NICHT mehr in
 # diesem Profil, sondern ausschliesslich im Parametersatz unten (keycloak-setup).
@@ -30,6 +30,9 @@ keycloak:
     # unten), und es gilt nur fuer die Verbindungen zu Keycloak (KeycloakHttp).
     max-clock-skew-seconds: 300
     max-age-seconds: 300
+  backchannel-logout:
+    # issuer/jwks-uri/audiences: abgeleitet (siehe oben). Dieselbe Drift wie bei peer-auth.
+    max-clock-skew-seconds: 300
 
 # Admin-Zugang des Orchestrators (KeycloakAdminClient): beendet Sitzungen, raeumt nach einer
 # Kontoloeschung auf (KeycloakAccountRemovalListener) und ruft den Konto-Grant. Keycloak liest die
@@ -91,7 +94,7 @@ keycloak-setup:
     trustSelfSignedCertificate: false
   variants:
     host:
-      # Orchestrator laeuft auf dem Host (./gradlew bootRunKc), nur Keycloak im Container: der Weg
+      # Orchestrator laeuft auf dem Host (./gradlew bootRun), nur Keycloak im Container: der Weg
       # dorthin geht ueber den gemappten Port, der Rueckweg ueber host.containers.internal -
       # Podman Machine (gvproxy, macOS) loest den Namen selbst auf. Auf reinem Linux-Podman ohne
       # Machine-VM braucht es dafuer eine eigene Variante mit der tatsaechlichen Host-IP.

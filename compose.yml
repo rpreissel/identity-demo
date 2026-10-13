@@ -49,7 +49,7 @@ services:
       # dieses JWKS pruefen - der einzige Extension-Wert, der nicht im Realm steht (ADR-25), weil es
       # beim Start noch keins gibt.
       # host.containers.internal statt "orchestrator": so traegt derselbe Wert beide Betriebsarten -
-      # Orchestrator per bootRunKc auf dem Host (dann laeuft nur dieser Service) wie auch als
+      # Orchestrator per bootRun auf dem Host (dann laeuft nur dieser Service) wie auch als
       # Container unten, der Port 8080 ohnehin auf dem Host veroeffentlicht. Podman Machine loest den
       # Namen selbst auf (siehe Kommentar weiter unten); per ORCHESTRATOR_CLIENT_JWKS_URL
       # ueberschreibbar. Nur interne Adressen: wer unter dieser URL antwortet, kann Tokens dieses

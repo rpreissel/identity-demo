@@ -13,13 +13,6 @@ interface ReadinessState {
     val isReady: Boolean
 }
 
-/** Default-Profil (ohne Keycloak) hat keine Migrationen abzuwarten - immer bereit. */
-@Component
-@Profile("!keycloak")
-class AlwaysReadyState : ReadinessState {
-    override val isReady = true
-}
-
 /**
  * Startet als "nicht bereit", schon beim Erzeugen der Bean und damit vor dem Oeffnen des Ports.
  * So gibt es kein Fenster mit offenem Port ohne Gate.

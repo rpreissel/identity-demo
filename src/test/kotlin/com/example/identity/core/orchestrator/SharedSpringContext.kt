@@ -2,6 +2,7 @@ package com.example.identity.core.orchestrator
 
 import com.example.identity.core.orchestrator.dpop.DpopValidator
 import com.example.identity.core.orchestrator.dpop.JwkThumbprintService
+import com.example.identity.core.orchestrator.keycloak.KeycloakRealmJwkSource
 import com.example.identity.core.orchestrator.keycloak.PeerAuthValidator
 import com.example.identity.core.orchestrator.session.TokenProvider
 import com.ninjasquad.springmockk.MockkSpyBean
@@ -31,4 +32,8 @@ abstract class SharedSpringContext(body: BehaviorSpec.() -> Unit = {}) : Behavio
 
     @MockkSpyBean
     protected lateinit var tokenProvider: TokenProvider
+
+    /** Knows no key in tests (no realm); a spec stubs the one its logout tokens are signed with. */
+    @MockkSpyBean
+    protected lateinit var keycloakRealmJwkSource: KeycloakRealmJwkSource
 }

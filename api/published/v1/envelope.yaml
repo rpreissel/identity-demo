@@ -68,11 +68,11 @@ components:
         amr:
           additionalProperties:
             type: string
-          description: 'Method -> who proved it: "orchestrator" for a completed orchestrator tool, "kc" for evidence a native
-            Keycloak authenticator already established (docs/05-api.md Abschnitt 3). Informational only - the orchestrator
-            alone still resolves the combined acr above, regardless of source.'
+          description: 'The proven methods, each mapped to "orchestrator": every proof is an orchestrator tool''s, also one
+            taken over from an earlier flow run of the same Keycloak session (ADR-58, ADR-59). The map shape stays for compatibility.
+            Informational only - the orchestrator alone resolves the combined acr above.'
           example:
-            password: kc
+            password: orchestrator
             sms: orchestrator
           type: object
         subject:
@@ -198,7 +198,7 @@ components:
       properties:
         authData:
           $ref: '#/components/schemas/AuthData'
-          description: WEB channels only (docs/05-api.md Abschnitt 3) - never present for APP.
+          description: WEB channels only (docs/05-api.md Abschnitt 3b) - never present for APP.
         channel:
           $ref: '#/components/schemas/ChannelBlock'
         demo:
@@ -397,7 +397,7 @@ components:
       - kind
       - message
     MethodsResponse:
-      description: 'The account''s active authentication methods (docs/05-api.md #2). Never contains fsc.'
+      description: 'The account''s active authentication methods (docs/05-api.md #3a). Never contains fsc.'
       properties:
         methods:
           items:
@@ -658,9 +658,9 @@ paths:
   /orchestrator/api/v1/channels/{channelSessionId}:
     delete:
       description: 'Ends this channel for good (docs/02-domaenenmodell.md #3: AUTHENTICATED -> LOGGED_OUT, terminal) - cancels
-        any active process and discards the AppTokenSession. For interactive clients prefer POST .../logouts which shows a
-        confirmation prompt first. Never resumes on this channelSessionId afterwards; call POST .../channels again for a new
-        session (a known device still skips straight to LOGIN there).'
+        any active process, discards the AppTokenSession and ends its Keycloak session. No journey and no confirmation: an
+        interactive client asks before it calls. Never resumes on this channelSessionId afterwards; call POST .../channels
+        again for a new session (a known device still skips straight to LOGIN there).'
       operationId: logout
       parameters:
       - in: path
@@ -681,11 +681,11 @@ paths:
       security:
       - dpop: [
           ]
-      summary: Log out (direct, no confirmation)
+      summary: Log out
       tags:
       - Channels
     get:
-      description: 'The guaranteed resume entry point (docs/05-api.md #2): next always reflects the currently due step.'
+      description: 'The guaranteed resume entry point (docs/05-api.md #3a): next always reflects the currently due step.'
       operationId: getChannel
       parameters:
       - in: path
@@ -1009,42 +1009,10 @@ paths:
       summary: Cancel the current journey
       tags:
       - Channels
-  /orchestrator/api/v1/channels/{channelSessionId}/logouts:
-    post:
-      description: Channel must already be AUTHENTICATED. Starts a LOGOUT journey with a confirmation prompt (next.context=prompt,
-        next.step=confirm, stepData.prompt). On accept (via POST .../answer) the channel ends for good (AUTHENTICATED -> LOGGED_OUT,
-        terminal). On decline the channel stays AUTHENTICATED. Analogous to POST .../account-deletions.
-      operationId: startLogout
-      parameters:
-      - in: path
-        name: channelSessionId
-        required: true
-        schema:
-          format: uuid
-          type: string
-      responses:
-        '200':
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ChannelResponse'
-          description: Confirmation prompt for the logout.
-        default:
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Error. `error` names the case; its HTTP status is fixed per code (see ErrorResponse).
-      security:
-      - dpop: [
-          ]
-      summary: Start a confirmed logout
-      tags:
-      - Channels
   /orchestrator/api/v1/channels/{channelSessionId}/methods:
     get:
       description: 'The methods collection as a real readable resource - identical data to ChannelResponse''s activeMethods
-        (docs/05-api.md #2), just addressable on its own. Never includes fsc (identification is recorded as an IDENTIFIED
+        (docs/05-api.md #3a), just addressable on its own. Never includes fsc (identification is recorded as an IDENTIFIED
         entry in the account change log, not in authenticationMethods). Empty list, not an error, when no account is known
         yet for this channel.'
       operationId: getMethods

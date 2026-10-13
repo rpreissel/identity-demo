@@ -29,8 +29,8 @@ function formatRemaining(expiresAt: string): string {
 }
 
 /**
- * App-Kanal AccessToken, vom Orchestrator geholt (docs/05-api.md #3a): je nach Backend-Profil ein
- * Mock-JWT oder ein echtes Keycloak-Token, diese Ansicht unterscheidet sie nicht. Loads its own
+ * App-Kanal AccessToken, vom Orchestrator geholt (docs/05-api.md #3a): ein Keycloak-Token, in den
+ * Browsertests das Mock-JWT des Test-Ersatzes; diese Ansicht unterscheidet sie nicht. Loads its own
  * data. The backend decides on every getToken() whether to mint a new token; this panel never
  * sees a RefreshToken value, only its expiry.
  */

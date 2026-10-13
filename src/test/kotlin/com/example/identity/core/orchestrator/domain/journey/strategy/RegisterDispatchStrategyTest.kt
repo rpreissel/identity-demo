@@ -4,7 +4,7 @@ import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
-import com.example.identity.core.orchestrator.domain.journey.state.LogoutState
+import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrollFirstState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
@@ -68,7 +68,7 @@ class RegisterDispatchStrategyTest : BehaviorSpec({
 
     given("a state of another intent") {
         `when`("an event arrives") {
-            val result = runCatching { strategy.transition(LogoutState.ConfirmPending, JourneyEvent.Started, flagOff) }
+            val result = runCatching { strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Started, flagOff) }
 
             then("it refuses the foreign state with IllegalStateException") {
                 shouldThrow<IllegalStateException> { result.getOrThrow() }

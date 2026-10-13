@@ -22,7 +22,7 @@ import {
   getChannel,
   getDeviceLink,
   getTool,
-  startLogout,
+  logoutChannel,
   onApiCall,
   raiseRequiredAcr,
   startAccountDeletion,
@@ -139,6 +139,7 @@ export function AppChannelApp() {
   // fällt auf ANONYMOUS zurück, und das vorläufige Konto wird samt einer schon enthaltenen
   // eID-Bezeugung gelöscht. Das darf kein Klick nebenbei sein.
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+  const [confirmingLogout, setConfirmingLogout] = useState(false)
   // Whether this session has already proven something (backend ChannelBlock.hasProvenFactor) -
   // only then does leaving a registration throw anything away, and only then is it worth asking.
   const [hasProvenFactor, setHasProvenFactor] = useState(false)
@@ -594,9 +595,22 @@ export function AppChannelApp() {
     }
   }
 
-  /** Keeps the DPoP key but ends this session on the backend. The user picks the next start. */
+  /** Asks first (logoutQuestion); the logout itself is no journey on the backend. */
   function handleLogout() {
-    return onChannel(t('Abmelden fehlgeschlagen'), (dpop, channelSessionId) => startLogout(dpop, channelSessionId))
+    setConfirmingLogout(true)
+  }
+
+  /** Keeps the DPoP key but ends this session on the backend. The user picks the next start. */
+  async function handleConfirmedLogout() {
+    setConfirmingLogout(false)
+    if (!dpop || !channelSessionId) return
+    try {
+      setError('')
+      await logoutChannel(dpop, channelSessionId)
+      handleClearChannel()
+    } catch (err) {
+      setError(describeError(t('Abmelden fehlgeschlagen'), err))
+    }
   }
 
   /**
@@ -824,6 +838,18 @@ export function AppChannelApp() {
     </div>
   )
 
+  // Wie die Rückfrage zum Verwerfen: Solange sie offen ist, gibt es nur diese eine Entscheidung.
+  const logoutQuestion = confirmingLogout && (
+    <div className="phone__bar-question">
+      <p><strong>{t('Wirklich abmelden?')}</strong></p>
+      <p>{t('Ihre aktuelle Sitzung wird beendet. Um erneut zuzugreifen, müssen Sie sich wieder anmelden.')}</p>
+      <div className="form-actions">
+        <button onClick={() => setConfirmingLogout(false)}>{t('Abbrechen')}</button>
+        <button className="secondary destructive-text" onClick={handleConfirmedLogout}>{t('Jetzt abmelden')}</button>
+      </div>
+    </div>
+  )
+
   return (
     <DemoProvider>
       {(demoTargets) => (
@@ -831,7 +857,7 @@ export function AppChannelApp() {
           <ChannelNav area="app" />
           <div className="app-stage">
             <div className="app-stage__phone">
-              <PhoneFrame title="Demo" footer={discardQuestion || undefined}>
+              <PhoneFrame title="Demo" footer={logoutQuestion || discardQuestion || undefined}>
                 {stepNav}
                 {stepExplanation && (
                   <Demo>

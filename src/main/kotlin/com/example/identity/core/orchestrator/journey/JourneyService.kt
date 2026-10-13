@@ -220,7 +220,8 @@ class JourneyService(
     }
 
     /** Ends the channel's login and with it its Keycloak session ([ChannelSessionLifecycle.end]). */
-    fun endSession(channel: LiveChannel, finalState: ChannelState) = sessionLifecycle.end(channel.session, finalState)
+    fun endSession(channel: LiveChannel, finalState: ChannelState, endedAtKeycloak: Boolean = false) =
+        sessionLifecycle.end(channel.session, finalState, endedAtKeycloak)
 
     /** Cancels [running] and every ancestor suspended for it, so nothing of the chain is left waiting. */
     private fun cancelChain(running: AuthJourney, channel: ChannelSession) {

@@ -484,9 +484,7 @@ Zusammenführen von Protokolleinträgen und der Revision. Der Client gibt sie ni
   einen **Step-up** aus: Ein schon angemeldeter Nutzer beweist noch etwas, um ein höheres Niveau zu
   erreichen.
 - Journey abbrechen: `DELETE .../{channelSessionId}/journey` (ohne Inhalt)
-- Abmelden mit Bestätigung (startet eine Journey): `POST .../{channelSessionId}/logouts` (ohne
-  Inhalt)
-- Sofort abmelden: `DELETE .../{channelSessionId}` (ohne Inhalt)
+- Abmelden: `DELETE .../{channelSessionId}` (ohne Inhalt)
 - Eingerichtete Verfahren lesen: `GET .../{channelSessionId}/methods`
 - Verfahren hinzufügen (startet das Einrichten): `POST .../{channelSessionId}/enrollments` (ohne
   Inhalt)
@@ -643,32 +641,27 @@ verlassene Web-Kanal läuft nach seiner Lebensdauer von selbst ab.
 
 #### Logout
 
-Es gibt zwei Varianten:
-
-- **Abmelden mit Bestätigung** (bevorzugt): `POST .../{channelSessionId}/logouts` startet eine
-  `LOGOUT`-Journey mit einer Rückfrage ([Orchestrierung](04-orchestrierung.md) Abschnitt 3). Stimmt
-  der Nutzer über `POST .../answer` zu, wird der Kanal `LOGGED_OUT`.
-- **Sofort abmelden** (für Clients ohne Rückfrage): `DELETE /channels/{channelSessionId}` beendet
-  den Kanal direkt (`AUTHENTICATED → LOGGED_OUT`, Endzustand, `204`). Ein laufender Ablauf wird
-  dabei abgebrochen, und die `AppTokenSession` wird verworfen.
+`DELETE /channels/{channelSessionId}` beendet den Kanal (`AUTHENTICATED → LOGGED_OUT`,
+Endzustand, `204`). Die Abmeldung ist keine Journey
+([ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)): Eine Rückfrage stellt der
+Client selbst, bevor er den Endpunkt ruft. Ein laufender Ablauf wird abgebrochen, die Tokens der
+`AppTokenSession` werden verworfen, und nach dem Commit beendet der Orchestrator die
+Keycloak-Sitzung dieses Kanals über die Admin-API (`KeycloakSessionLogoutListener`). Das
+Anmeldeprotokoll bekommt die Abmeldung genau einmal. Keycloak meldet das Ende der Sitzung danach
+noch per Back-Channel (Abschnitt 3b); für einen schon beendeten Kanal ändert das nichts.
 
 Die Geräteverknüpfung bleibt nutzbar (`DeviceAccountLink`, [DPoP-Bindung](09-dpop.md) Abschnitt 3).
-
-Beide Abmeldewege, die bestätigte Abmeldung (`POST .../logouts`) und die direkte (`DELETE`), laufen
-über dieselbe Funktion (`JourneyService.endSession`). Sie verwirft die Tokens und beendet die
-Keycloak-Sitzung dieses Kanals.
 
 #### AccessToken (`GET .../{channelSessionId}/token`)
 
 **Nur im `APP`-Kanal** (ADR-9): Ein `WEB`-Kanal hat nie eine `AppTokenSession` und braucht auch
 keine. `ChannelService.getToken` prüft deshalb zuerst den Kanaltyp und weist einen `WEB`-Kanal mit
-`409 INVALID_STATE_TRANSITION` ab. Für `APP` entscheidet der `TokenProvider` je nach Profil, woher
-das Token kommt:
+`409 INVALID_STATE_TRANSITION` ab. Für `APP` holt der `TokenProvider` das Token bei Keycloak:
 
-- **Profil `keycloak`** (`KeycloakTokenProvider`): Er liefert ein echtes AccessToken, das Keycloak
+- **`KeycloakTokenProvider`**: Er liefert ein echtes AccessToken, das Keycloak
   signiert hat. Es enthält echte Claims `acr` und `amr` (über `OrchestratorAcrAmrMapper`, wie im
   Web-Kanal). Claims sind die einzelnen Angaben in einem Token: `acr` nennt das Niveau, `amr` die
-  Verfahren. Es gibt vier Fälle, aufgebaut wie `TokenService.tokenFor`:
+  Verfahren. Es gibt vier Fälle:
   1. Das Token ist noch lange genug gültig: Der Orchestrator gibt es unverändert zurück.
   2. Es läuft bald ab, und ACR und AMR sind unverändert: Der Orchestrator erneuert es über Keycloaks
      `refresh_token`-Grant. Ein Grant ist eine festgelegte Art, bei Keycloak ein Token anzufordern.
@@ -691,8 +684,9 @@ das Token kommt:
   also jeder App-Kanal, hat ihre eigene Keycloak-Sitzung. Das gilt auch, wenn mehrere Geräte zum
   selben Konto gehören
   ([ADR-43](adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md)).
-- **Standardprofil** (`MockTokenProvider`), also der Orchestrator ohne Keycloak: Er liefert das
-  Mock-JWT aus `TokenService` (`alg=none`, `iss=mock-keycloak`).
+- **Ohne Keycloak**, nur in den Backend-Tests und den Browsertests (`bootRunE2e`): Der Test-Ersatz
+  `MockTokenProvider` aus `src/testFixtures` liefert ein Mock-JWT (`alg=none`, `iss=mock-keycloak`).
+  Er gehört nicht zum ausgelieferten Jar ([13-ausfuehren.md](13-ausfuehren.md) Abschnitt 7).
 
 **Die Sitzung entsteht mit der Anmeldung.** Das erste Token holt nicht der Client. Es entsteht
 schon beim Übergang nach `AUTHENTICATED` (`JourneyService.finish` → `AppTokenIssuer`). Lehnt
@@ -713,7 +707,7 @@ aktivieren, Tool-Schritt, zurück, anderes Verfahren, Antwort. Das verlängert K
 Leerlauf-Fenster und damit auch die Frist des Kanals. Lehnt Keycloak ab, endet der Kanal als
 `EXPIRED`, und die Interaktion bekommt `410 PROCESS_GONE`.
 
-`minValiditySeconds` wirkt in beiden Profilen gleich. Es gibt eine Ausnahme: Ein Step-up, der die
+`minValiditySeconds` wirkt bei Keycloak und beim Test-Ersatz gleich. Es gibt eine Ausnahme: Ein Step-up, der die
 gesammelten Nachweise der Sitzung (`SessionEvidence`) verändert
 (`SessionEvidenceService.applyEvidence`), verwirft das zwischengespeicherte
 Token ausdrücklich. Die Sitzung und ihr Fenster bleiben dabei erhalten.
@@ -721,13 +715,12 @@ Token ausdrücklich. Die Sitzung und ihr Fenster bleiben dabei erhalten.
 **Ablauf der Anmeldung**: In zwei Fällen entsteht nie eine neue Sitzung: wenn das Sitzungsfenster
 abgelaufen ist, und wenn Keycloak eine Erneuerung oder Fortsetzung ablehnt, weil die Sitzung
 beendet ist. Die Anmeldung ist dann vorbei. Der Kanal endet als `EXPIRED`, seine Tokens werden
-verworfen, und die Antwort ist `410 PROCESS_GONE` („bitte neu anmelden“). Im Profil `keycloak`
-gelten Keycloaks eigene Grenzen (SSO idle/max). Im Standardprofil übernimmt `TokenService` die
-Aufgabe von Keycloak: Er vergibt beim ersten Token eine eigene Sitzungs-Id, und jede Erneuerung
-verschiebt das Fenster um 30 Minuten. Er wirkt also als Grenze für Leerlauf.
+verworfen, und die Antwort ist `410 PROCESS_GONE` („bitte neu anmelden“). Es gelten Keycloaks
+eigene Grenzen (SSO idle/max). Der Test-Ersatz ahmt sie nach: Er vergibt beim ersten Token eine
+eigene Sitzungs-Id, und jede Erneuerung verschiebt das Fenster um 30 Minuten.
 
-Meldet Keycloak, dass diese Sitzung abgemeldet wurde (`POST .../kc/accounts/{accountId}/sign-outs`,
-Abschnitt 3b), endet der App-Kanal ebenfalls als `LOGGED_OUT`.
+Meldet Keycloak per Back-Channel, dass diese Sitzung beendet ist (Abschnitt 3b), etwa weil sie in
+der Admin-Konsole abgemeldet wurde, endet der App-Kanal ebenfalls als `LOGGED_OUT`.
 
 #### ID-Token-Claims (`GET .../{channelSessionId}/idclaims`)
 
@@ -853,7 +846,6 @@ nicht angelegt. Verwendet wird `Prompt` für:
 
 - die Frage nach der Geräteverknüpfung bei der Anmeldung über die E-Mail-Adresse,
 - die Bestätigung beim Löschen des Kontos,
-- die Bestätigung beim Abmelden,
 - `ReIdentifyState.OfferReIdent` vor der Sub-Journey `RE_IDENTIFY`
   ([Orchestrierung](04-orchestrierung.md)).
 
@@ -892,7 +884,7 @@ nie identifiziertes Konto nur loa1 ([Orchestrierung](04-orchestrierung.md) Absch
 5. Jede `ChannelSession`, die je an dieses Konto gebunden war, setzt der Server auf `LOGGED_OUT`.
    Ein anderes angemeldetes Gerät braucht danach einen neuen `POST /channels`.
 6. Nach dem erfolgreichen Abschluss lautet die Antwort `channel.state="LOGGED_OUT"` ohne `next`. Das
-   ist dieselbe Form wie bei einem normalen Logout.
+   ist dieselbe Form, die ein Client bei jedem Ende des Kanals sieht.
 
 #### Anmeldung über die E-Mail-Adresse (`auth-sms-lookup` / `auth-password-lookup` / `auth-email-lookup`, „Login ohne DPoP")
 
@@ -1036,7 +1028,7 @@ erstellt. Es enthält:
   sich der Orchestrator gegen wiederholt eingespielte Anfragen. Er nutzt dafür denselben
   Zwischenspeicher wie bei DPoP ([09-dpop.md](09-dpop.md)), aber mit einem eigenen Namensraum `kc:`
   und einem eigenen Zeitfenster (`keycloak.peer-auth.max-clock-skew-seconds`/`max-age-seconds`, im
-  Profil `keycloak` je 300 Sekunden),
+  Betrieb mit Keycloak je 300 Sekunden),
 - die Kanalbindung dieses Anmeldedurchlaufs (Claim `channel_binding`). Die Kanalbindung ordnet die
   Anfrage einem bestimmten Kanal zu; `KeycloakChannelAccessGuard` prüft sie gegen diesen Kanal. Bei
   den Aufrufen ohne Kanal (unten, „Endpunkte unter `/kc/`“) enthält `channel_binding` stattdessen
@@ -1218,20 +1210,25 @@ oder eine Einladung, die Keycloak schon kennt:
 - Die Kontoabfrage (`/kc/accounts`, [ADR-38](adr/ADR-038-keycloak-liest-konten.md)) und der
   Einladungs-Nutzer (`GET /orchestrator/api/v1/kc/invitations/{invitation}`,
   [Verfahren `invite`](verfahren/invite.md)).
-- `POST /orchestrator/api/v1/kc/accounts/{accountId}/sign-outs?kcSessionId=…`: Keycloak meldet
-  einen Logout für das Anmeldeprotokoll (ADR-39, Nachtrag). Das Anmeldeprotokoll hält fest, wann
-  sich jemand an- und abgemeldet hat. Die Antwort ist `204`. Den Logout im Web-Kanal führt Keycloak
-  allein durch. Sein Event-Listener `orchestrator-sign-in-log` ruft diesen Endpunkt nach dem Commit
-  auf und wartet nicht auf das Ergebnis. Kanäle, die zu dieser Keycloak-Sitzung gehörten, enden
-  damit, im Web-Kanal wie im App-Kanal (ADR-43). `channel_binding` ist hier die `accountId`.
-- `POST /orchestrator/api/v1/kc/invitations/{invitation}/sign-outs?kcSessionId=…`: dasselbe für
-  einen Vorgangszugang (ADR-48). Die Web-Kanäle dieser Keycloak-Sitzung enden, und das
-  Anmeldeprotokoll bekommt eine Zeile für die Einladung. Die Antwort ist `204`. `channel_binding`
-  ist die Id der Einladung.
+- `POST /orchestrator/api/v1/kc/backchannel-logout`: Keycloak meldet das Ende einer Sitzung nach
+  [OIDC Back-Channel Logout 1.0](https://openid.net/specs/openid-connect-backchannel-1_0.html)
+  ([ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)). Die Clients
+  `identity-demo-web` und `orchestrator-app-token` nennen diese Adresse (Keycloak-Migration V9).
+  Keycloak ruft sie für jede beendete Sitzung, gleich wer abgemeldet hat: der Nutzer auf der
+  Website, die Admin-Konsole oder der Orchestrator selbst über die Admin-API. Der Aufruf ist ein
+  Formular mit `logout_token`. Anders als die übrigen `/kc/`-Endpunkte trägt er keine
+  Peer-Auth-Assertion; das Token signiert das Realm selbst. `LogoutTokenValidator` prüft Signatur
+  (Schlüssel aus `.../protocol/openid-connect/certs`), `typ=logout+jwt`, `iss` (die öffentliche
+  Realm-Adresse), `aud` (einer der beiden Clients), `iat`, `exp`, das Logout-Event, die `sid` und
+  dass kein `nonce` darin steht, und verbraucht die `jti` (Namensraum `bcl:`). Die Antwort ist
+  `200`; ein abgelehntes Token bekommt `400` mit `{"error":"invalid_request"}`, ohne Grund.
+  `signedOutAtKeycloak` beendet dann alle laufenden Kanäle dieser `sid` (ADR-43), im Web-Kanal wie
+  im App-Kanal, und das Anmeldeprotokoll bekommt die Abmeldung genau einmal, auch für einen
+  Vorgangszugang (ADR-48). Eine Sitzung, die der Orchestrator nicht kennt, beantwortet er mit
+  `200`, ohne etwas zu schreiben.
 
-**Offen:** Noch nicht entschieden ist, wie der Logout im Web-Kanal funktionieren soll. Die Frage
-ist, ob ein Client `DELETE /channels/{id}` für `WEB`-Kanäle selbst aufrufen darf oder ob nur
-Keycloak den Logout auslöst.
+Ein Client ruft `DELETE /channels/{id}` nur für den App-Kanal. Die Website meldet sich bei Keycloak
+ab (`end_session_endpoint`), und ihre Kanäle enden über den Back-Channel.
 
 ---
 
@@ -1250,7 +1247,7 @@ denselben Bericht (`ActiveSessions`). Er hat zwei Teile:
   noch `EXPIRED` sind und deren `expiresAt` in der Zukunft liegt. Sie werden je Kanaltyp gezählt
   (`APP`, `WEB` = Website). Dazu kommen die zehn neuesten mit Zustand, Konto und Anzeigename aus dem
   Personenverzeichnis.
-- **Keycloak** (nur mit Profil `keycloak`): die offenen Sitzungen des Browser-Clients und des
+- **Keycloak**: die offenen Sitzungen des Browser-Clients und des
   App-Token-Clients. Der Orchestrator liest sie über die Admin-API von Keycloak, als
   `orchestrator-migration`. Je Client stehen dort die Anzahl und die zehn neuesten Sitzungen, jeweils
   mit dem Kanal, der dazugehört. Im App-Kanal findet der Orchestrator ihn über

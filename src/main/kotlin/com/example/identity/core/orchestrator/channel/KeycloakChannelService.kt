@@ -29,6 +29,7 @@ import com.example.identity.core.orchestrator.keycloak.PeerAuthValidationExcepti
 import com.example.identity.core.orchestrator.session.KeycloakSessionEvidenceInitializer
 import com.example.identity.core.orchestrator.session.KeycloakSessionEvidenceRepository
 import com.example.identity.core.orchestrator.session.MethodEvidenceRow
+import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import java.time.Clock
 import java.time.Duration
@@ -59,51 +60,48 @@ class KeycloakChannelService(
     private val signInLog: SignInLog,
     private val appTokenSessionService: AppTokenSessionService,
 ) {
+    private val log = LoggerFactory.getLogger(KeycloakChannelService::class.java)
 
     /**
-     * Keycloak ended session [kcSessionId] of [subject]; the logout is Keycloak's
-     * (docs/07-betrieb.md Abschnitt 3). Every live channel of that session ends with it (ADR-43):
-     * the WEB channels of its flow runs and, for an account, the APP channel whose login holds
-     * it. Ending writes the sign-out. Without a live channel a Web sign-out is written directly. An
-     * unknown account is nothing to log; an invitation always is (ADR-48).
+     * Keycloak ended session [kcSessionId] (Back-Channel Logout, docs/05-api.md Abschnitt 3b). Every
+     * live channel of that session ends with it (ADR-43): the WEB channels of its flow runs and the
+     * APP channel whose login holds it. Ending writes the sign-out and asks Keycloak nothing more. A Web session without a live
+     * channel is written here, once: a channel that already ended as LOGGED_OUT, or an App login,
+     * wrote it itself. A session the orchestrator knows nothing of is nothing to log.
      */
-    fun signedOutAtKeycloak(subject: Subject, kcSessionId: String) {
+    fun signedOutAtKeycloak(kcSessionId: String) {
+        val evidenceAccount = keycloakSessionEvidenceRepository.accountsOf(kcSessionId).singleOrNull()
         // The session is gone, and so is what it proved: a later sign-in starts from nothing.
         keycloakSessionEvidenceRepository.deleteBySession(kcSessionId)
-        val appLogins = when (subject) {
-            is Subject.Account -> {
-                if (accountService.findAccount(subject.id) == null) return
-                appTokenSessionService.findByKeycloakSessionId(kcSessionId).mapNotNull { it.appTokenSessionId }.toSet()
+        val appLogins = appTokenSessionService.findByKeycloakSessionId(kcSessionId)
+        val webChannels = channelSessionRepository.findByDurableKeycloakSessionIdIn(listOf(kcSessionId))
+            .filter { it.channel == ChannelType.WEB }
+        val appChannels = appLogins.mapNotNull { it.appTokenSessionId }.toSet().takeIf { it.isNotEmpty() }
+            ?.let { channelSessionRepository.findByAppTokenSessionIdIn(it) }.orEmpty()
+            .filter { it.channel == ChannelType.APP }
+        // Every live channel of the session ends, whoever it works for: the sid alone decides (ADR-43).
+        val live = (webChannels + appChannels).mapNotNull { LiveChannel.of(it) }
+        if (live.isNotEmpty()) {
+            if (live.mapNotNull { it.session.subject }.distinct().size > 1) {
+                log.warn("Keycloak session ended with live channels of more than one subject")
             }
-            // A process access exists only in the Web channel.
-            is Subject.Invitation -> emptySet()
-        }
-        val channels = when (subject) {
-            is Subject.Account -> channelSessionRepository.findByAccountId(subject.id)
-            is Subject.Invitation -> channelSessionRepository.findByInvitation(subject.id)
-        }
-        val live = channels
-            .filter {
-                when (it.channel) {
-                    ChannelType.WEB -> it.durableKeycloakSessionId == kcSessionId
-                    ChannelType.APP -> it.appTokenSessionId in appLogins
-                    null -> false
-                }
-            }
-            .mapNotNull { LiveChannel.of(it) }
-        if (live.isEmpty()) {
-            // An App login's session ends only after its channel did, and that end was written.
-            if (appLogins.isEmpty()) {
-                when (subject) {
-                    is Subject.Account -> signInLog.signedOut(subject.id, ChannelType.WEB.name, endedBy = "HOLDER")
-                    is Subject.Invitation -> signInLog.invitationSignedOut(subject.id, ChannelType.WEB.name, endedBy = "HOLDER")
-                }
-            }
-        } else {
             live.forEach { channel ->
                 journeyService.findActive(channel.session.id)?.let { journeyService.cancel(it, channel) }
-                journeyService.endSession(channel, ChannelState.LOGGED_OUT)
+                journeyService.endSession(channel, ChannelState.LOGGED_OUT, endedAtKeycloak = true)
             }
+            return
+        }
+        val subject = webChannels.firstNotNullOfOrNull { it.subject }
+            ?: appLogins.firstNotNullOfOrNull { it.accountId }?.let(Subject::Account)
+            ?: evidenceAccount?.let { Subject.Account(AccountId(it)) }
+            ?: return
+        if (subject is Subject.Account && accountService.findAccount(subject.id) == null) return
+        // An App login's session ends only after its channel did, and that end was written.
+        val alreadyWritten = appLogins.isNotEmpty() || webChannels.any { it.state == ChannelState.LOGGED_OUT }
+        if (alreadyWritten) return
+        when (subject) {
+            is Subject.Account -> signInLog.signedOut(subject.id, ChannelType.WEB.name, endedBy = "HOLDER")
+            is Subject.Invitation -> signInLog.invitationSignedOut(subject.id, ChannelType.WEB.name, endedBy = "HOLDER")
         }
     }
 

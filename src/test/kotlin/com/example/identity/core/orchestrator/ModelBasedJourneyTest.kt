@@ -1,7 +1,5 @@
 package com.example.identity.core.orchestrator
 
-import com.example.identity.contract.tool_api.ids.AccountId
-import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.channel.KeycloakChannelService
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.PlainJWT
@@ -122,7 +120,7 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
                 UUID.fromString(channel)
             ).firstOrNull() ?: return null
             return runCatching {
-                keycloakChannelService.signedOutAtKeycloak(Subject.Account(AccountId((login["ACCOUNT_ID"] as Number).toLong())), login["KEYCLOAK_SESSION_ID"] as String)
+                keycloakChannelService.signedOutAtKeycloak(login["KEYCLOAK_SESSION_ID"] as String)
             }.fold({ sessionGone += channel; null }, { "sign-out failed: $it" })
         }
 

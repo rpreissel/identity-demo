@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.bind.Binder
 import org.springframework.boot.EnvironmentPostProcessor
 import org.springframework.core.Ordered
 import org.springframework.core.env.ConfigurableEnvironment
+import org.springframework.core.env.Profiles
 import org.springframework.core.env.MapPropertySource
 
 /**
@@ -24,7 +25,8 @@ class KeycloakSetupEnvironment : EnvironmentPostProcessor, Ordered {
     override fun getOrder() = Ordered.HIGHEST_PRECEDENCE + 20
 
     override fun postProcessEnvironment(environment: ConfigurableEnvironment, application: SpringApplication) {
-        if (PROFILE !in environment.activeProfiles) return
+        // acceptsProfiles, not activeProfiles: keycloak is the default profile and then not listed as active.
+        if (!environment.acceptsProfiles(Profiles.of(PROFILE))) return
         val setup = resolve(environment)
         val realms = "${setup.access.keycloakBaseUrl}/realms/${setup.realm.realmName}"
         environment.propertySources.addFirst(
@@ -52,6 +54,11 @@ class KeycloakSetupEnvironment : EnvironmentPostProcessor, Ordered {
                     "keycloak.peer-auth.issuer" to setup.realm.peerAuthIssuer,
                     "keycloak.peer-auth.audience" to setup.realm.peerAuthAudience,
                     "keycloak.peer-auth.jwks-uri" to "$realms/orchestrator-jwks/.well-known/jwks.json",
+                    // Back-Channel Logout: das logout_token signiert das Realm selbst. Sein iss ist die
+                    // oeffentliche Adresse (KC_HOSTNAME), seine Schluessel holt der Orchestrator intern.
+                    "keycloak.backchannel-logout.issuer" to "${setup.access.publicKeycloakBaseUrl}/realms/${setup.realm.realmName}",
+                    "keycloak.backchannel-logout.jwks-uri" to "$realms/protocol/openid-connect/certs",
+                    "keycloak.backchannel-logout.audiences" to "${setup.realm.browserClientId},${setup.realm.appTokenClientId}",
                 ),
             ),
         )

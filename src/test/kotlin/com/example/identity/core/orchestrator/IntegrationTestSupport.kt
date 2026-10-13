@@ -152,6 +152,33 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
         every { jwkThumbprintService.computeThumbprint(fakeJwk) } answers { currentBindingKeyRef }
     }
 
+    /**
+     * Keycloak's back-channel logout of session [sid], as Keycloak would send it: a `logout_token`
+     * signed with the realm key [LogoutTokens] stands in for. Returns the status and body as sent.
+     */
+    protected fun backchannelLogout(
+        sid: String,
+        token: String = LogoutTokens.signed(sid),
+        inQuery: Boolean = false,
+    ): org.springframework.http.ResponseEntity<String> {
+        every { keycloakRealmJwkSource.find(LogoutTokens.KID) } returns LogoutTokens.publicKey
+        val form = HttpHeaders().apply { contentType = org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED }
+        val param = "logout_token=${java.net.URLEncoder.encode(token, Charsets.UTF_8)}"
+        return plainRestTemplate.exchange(
+            "http://localhost:$port/orchestrator/api/v1/kc/backchannel-logout" + (if (inQuery) "?$param" else ""),
+            HttpMethod.POST,
+            HttpEntity(if (inQuery) "" else param, form),
+            String::class.java
+        )
+    }
+
+    /** No status check, no exception on 4xx: the back-channel answers are what a test asserts. */
+    private val plainRestTemplate = RestTemplate(HttpComponentsClientHttpRequestFactory()).apply {
+        errorHandler = object : org.springframework.web.client.ResponseErrorHandler {
+            override fun hasError(response: org.springframework.http.client.ClientHttpResponse) = false
+        }
+    }
+
     protected fun headers(): HttpHeaders = HttpHeaders().apply {
         set("DPoP", "mock-dpop-token")
         set("Content-Type", "application/json")

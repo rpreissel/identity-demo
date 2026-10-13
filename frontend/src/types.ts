@@ -276,8 +276,8 @@ export interface JourneyTraceChannel {
 }
 
 /**
- * App-Kanal AccessToken (docs/05-api.md #3a): je nach Backend-Profil ein unsecured JWT (alg=none)
- * oder ein echtes, von Keycloak signiertes Token; hier nur zum Anzeigen geparst, nie verifiziert.
+ * App-Kanal AccessToken (docs/05-api.md #3a): von Keycloak signiert, in den Browsertests ein
+ * unsecured JWT (alg=none) des Test-Ersatzes; hier nur zum Anzeigen geparst, nie verifiziert.
  * refreshToken is not part of this shape: it is a credential and never leaves the backend, only
  * its expiry does.
  */

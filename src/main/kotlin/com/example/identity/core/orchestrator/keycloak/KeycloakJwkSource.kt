@@ -1,75 +1,23 @@
 package com.example.identity.core.orchestrator.keycloak
 
 import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.jwk.JWKSet
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
-import java.net.URI
 import java.time.Clock
-import java.time.Instant
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
 
-/**
- * Fetches and caches Keycloak's JWKS for peer-auth verification (ADR-7). An unknown `kid` triggers
- * a refetch, so key rotation needs no restart. At most once per [MIN_REFETCH_INTERVAL], so made-up
- * `kid`s cannot turn every request into a fetch.
- */
+/** The extension's peer-auth keys (ADR-7): what Keycloak signs its facade requests with. */
 @Component
 class KeycloakJwkSource(
-    @Value("\${keycloak.peer-auth.jwks-uri}") private val jwksUri: String,
-    @Value("\${keycloak.peer-auth.jwks-cache-ttl-seconds:600}") private val cacheTtlSeconds: Long,
-    private val clock: Clock,
+    @Value("\${keycloak.peer-auth.jwks-uri}") jwksUri: String,
+    @Value("\${keycloak.peer-auth.jwks-cache-ttl-seconds:600}") cacheTtlSeconds: Long,
+    clock: Clock,
     // Only under the `keycloak` profile; without it the JVM defaults apply.
-    private val keycloakHttp: KeycloakHttp? = null,
+    keycloakHttp: KeycloakHttp? = null,
 ) {
-    private val lock = ReentrantLock()
-    private var cached: JWKSet? = null
-    private var cachedAt: Instant = Instant.EPOCH
-    private var lastFetchAt: Instant = Instant.EPOCH
-
-    /** Null for an unknown kid - and for every kid when no issuer is configured (blank jwks-uri, no `keycloak` profile). */
-    fun find(kid: String): JWK? {
-        if (jwksUri.isBlank()) return null
-        val known = currentSet().getKeyByKeyId(kid)
-        if (known != null) return known
-        // Unknown kid: maybe a just-rotated key, worth one refetch unless the set is fresh.
-        return refreshUnlessRecent().getKeyByKeyId(kid)
+    private val jwks = CachedJwks(jwksUri, cacheTtlSeconds, clock, keycloakHttp) { message, cause ->
+        if (cause == null) PeerAuthValidationException(message) else PeerAuthValidationException(message, cause)
     }
 
-    private fun currentSet(): JWKSet = lock.withLock {
-        val existing = cached
-        if (existing != null && clock.instant().isBefore(cachedAt.plusSeconds(cacheTtlSeconds))) existing else fetchAndCache()
-    }
-
-    private fun refreshUnlessRecent(): JWKSet = lock.withLock { fetchAndCache() }
-
-    /**
-     * At most one fetch per [MIN_REFETCH_INTERVAL], failed ones included: while Keycloak does not
-     * answer, requests do not queue up behind the lock for a fetch each. A failed fetch keeps the
-     * last good set; without one, the assertion is rejected.
-     */
-    private fun fetchAndCache(): JWKSet {
-        val existing = cached
-        if (clock.instant().isBefore(lastFetchAt.plus(MIN_REFETCH_INTERVAL))) {
-            return existing ?: throw PeerAuthValidationException("Keycloak JWKS unavailable")
-        }
-        lastFetchAt = clock.instant()
-        val fetched = try {
-            keycloakHttp?.let { JWKSet.parse(it.getText(jwksUri, SIZE_LIMIT_BYTES)) }
-                ?: JWKSet.load(URI.create(jwksUri).toURL(), CONNECT_TIMEOUT_MS, READ_TIMEOUT_MS, SIZE_LIMIT_BYTES)
-        } catch (e: Exception) {
-            return existing ?: throw PeerAuthValidationException("Keycloak JWKS fetch failed", e)
-        }
-        cached = fetched
-        cachedAt = clock.instant()
-        return fetched
-    }
-
-    private companion object {
-        val MIN_REFETCH_INTERVAL: java.time.Duration = java.time.Duration.ofSeconds(30)
-        const val CONNECT_TIMEOUT_MS = 3_000
-        const val READ_TIMEOUT_MS = 10_000
-        const val SIZE_LIMIT_BYTES = 64 * 1024
-    }
+    /** Null for an unknown kid - and for every kid when no issuer is configured (blank jwks-uri). */
+    fun find(kid: String): JWK? = jwks.find(kid)
 }

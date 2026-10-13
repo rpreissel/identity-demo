@@ -336,10 +336,13 @@ Die Tabellen verweisen aufeinander. Beim Aufräumen gelten dafür diese Regeln:
   oben.
 - **`WEB`-Kanäle haben dieselbe Aufbewahrungsfrist wie alle anderen.** Die Abmeldung im Web-Kanal
   (der Anmeldung im Browser) gehört Keycloak ([05-api.md](05-api.md) Abschnitt 3b). Keycloak meldet
-  sie dem Orchestrator (`SignInLogEventListener` → `KeycloakChannelService.signedOutAtKeycloak`). Das
-  beendet sofort die noch laufenden Kanäle dieser Sitzung, sowohl den Web- als auch den App-Kanal.
-  Bei einem Vorgangszugang (ADR-48) beendet es die Web-Kanäle der Einladung. Der Orchestrator fragt
-  Keycloak dafür nicht ab.
+  jedes Sitzungsende per Back-Channel Logout (`BackchannelLogoutController` →
+  `KeycloakChannelService.signedOutAtKeycloak`,
+  [ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)). Das beendet sofort die noch
+  laufenden Kanäle dieser Sitzung, sowohl den Web- als auch den App-Kanal. Bei einem Vorgangszugang
+  (ADR-48) beendet es die Web-Kanäle der Einladung. Der Orchestrator fragt Keycloak dafür nicht ab.
+  Die `AppTokenSession` behält nach der Abmeldung ihre `keycloakSessionId` bis zur
+  Aufbewahrungsfrist: Daran erkennt der Back-Channel, dass die Abmeldung schon geschrieben ist.
 - **Ein angemeldeter Kanal lebt so lange wie seine Keycloak-Sitzung**
   ([02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 3, „Lebensdauer“). Die Aufbewahrungsfrist
   oben beginnt entsprechend früher.
@@ -351,7 +354,7 @@ Die Tabellen verweisen aufeinander. Beim Aufräumen gelten dafür diese Regeln:
   - SSO max 10 Stunden (Sitzung insgesamt),
   - `sslRequired=external`.
 
-  Die ersten beiden Werte gleichen den Fristen von `TokenService` im Standardprofil.
+  Der erste Wert gleicht der Frist des Test-Ersatzes (`MockTokenProvider`, nur in Tests).
 
   Ein erreichtes Sicherheitsniveau loa2 gilt 30 Minuten (`loa-max-age` des LoA-2-Subflows). Danach
   übernimmt Keycloak es nicht mehr aus der SSO-Sitzung, und eine Anfrage mit `acr_values=2`
@@ -381,7 +384,7 @@ funktioniert es:
   anderen und darf wiederholt werden. Eine eigene Warteschlange mit fester Reihenfolge ist deshalb
   nicht nötig.
 - Offene Zeilen werden nach fünf Minuten erneut zugestellt (`spring.modulith.events.staleness.*`),
-  ebenso beim Neustart. Im Profil `keycloak` geschieht das erst nach den Keycloak-Migrationen
+  ebenso beim Neustart. Das geschieht erst nach den Keycloak-Migrationen
   (`KeycloakMigrationRunnerStartup`), nicht parallel dazu. Denn wenn der Demomodus das Realm neu
   aufbaut, liefe eine Löschung sonst gegen ein Realm, das gerade umgebaut wird.
 - Der Orchestrator ruft Keycloak mit einem zwischengespeicherten Token des Admin-Clients auf. Lehnt
@@ -473,8 +476,9 @@ dann alle offenen Punkte auf einmal. Diese Punkte müssen erfüllt sein:
 
 - `demo.admin.password` ist gesetzt und nicht `admin`. Es liegt als Hash vor (`{bcrypt}…`,
   `{argon2}…`, `{scrypt}…` oder `{pbkdf2}…`), nicht im Klartext und nicht als `{noop}`.
-- Das Profil `keycloak` ist aktiv (`SPRING_PROFILES_ACTIVE=keycloak`). Ohne dieses Profil gäbe der
-  App-Kanal unsignierte Mock-Tokens aus, die jeder fälschen kann.
+- Die Tokens des App-Kanals stellt Keycloak aus (`KeycloakTokenProvider`). Ein anderer
+  `TokenProvider` ist ein Test-Ersatz mit unsignierten Tokens, die jeder fälschen kann. Im
+  ausgelieferten Jar gibt es keinen; die Prüfung fängt einen Build ab, der ihn trotzdem enthält.
 - `spring.h2.console.enabled=false`.
 - `springdoc.api-docs.enabled=false`. Die Voreinstellung folgt `demo.mode`. Sonst zeigten Swagger-UI
   und `/v3/api-docs` jedem ohne Anmeldung alle Endpunkte. Der API-Vertrag liegt ohnehin in `api/`.
