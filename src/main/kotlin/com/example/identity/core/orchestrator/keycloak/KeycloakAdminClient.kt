@@ -44,10 +44,15 @@ class KeycloakAdminClient(
     /**
      * Ends one Keycloak session: the App-channel logout for the session the account-token grant
      * created (docs/07-betrieb.md Abschnitt 3). Deliberately not `users/{id}/logout`, which would
-     * also end the account's Web-channel browser sessions. Callers treat it as best-effort.
+     * also end the account's Web-channel browser sessions. Idempotent: a session Keycloak no longer
+     * knows (`404`) has ended already, so a retry after a lost answer succeeds.
      */
     fun logoutSession(keycloakSessionId: String) {
-        asAdmin { it.delete().uri("/admin/realms/{realm}/sessions/{sessionId}", realm, keycloakSessionId).retrieve().toBodilessEntity() }
+        try {
+            asAdmin { it.delete().uri("/admin/realms/{realm}/sessions/{sessionId}", realm, keycloakSessionId).retrieve().toBodilessEntity() }
+        } catch (_: HttpClientErrorException.NotFound) {
+            // Ended already - by expiry, the admin console, or an earlier attempt of this call.
+        }
     }
 
     /**

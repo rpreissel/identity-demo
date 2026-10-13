@@ -72,15 +72,16 @@ class ChannelSessionLifecycle(
      * Keycloak session; the Web channel's logout stays Keycloak's (docs/07-betrieb.md Abschnitt 3).
      * [endedAtKeycloak]: Keycloak reported this end itself (back channel), so asking it to end the
      * session again would only call back into a logout Keycloak is still running.
+     * [recordSignOut] false: another channel of the same Keycloak session writes the one sign-out.
      */
-    fun end(channel: ChannelSession, finalState: ChannelState, endedAtKeycloak: Boolean = false) {
+    fun end(channel: ChannelSession, finalState: ChannelState, endedAtKeycloak: Boolean = false, recordSignOut: Boolean = true) {
         check(finalState.isTerminal) { "endSession needs a terminal state, got $finalState" }
         // Only a sign-out someone asked for is one - an expiry is not an event (ADR-39, addendum).
-        if (finalState == ChannelState.LOGGED_OUT) journeyRecorder.recordSignOut(channel, endedBy = "HOLDER")
+        if (finalState == ChannelState.LOGGED_OUT && recordSignOut) journeyRecorder.recordSignOut(channel, endedBy = "HOLDER")
         channel.appTokenSessionId?.let { appTokenSessionService.getAppTokenSession(it) }?.let { tokenSession ->
             if (channel.channel == ChannelType.APP && !endedAtKeycloak) {
                 // Published, not called: the Admin API call would hold the transaction open across
-                // a network round trip. KeycloakSessionLogoutListener runs after commit.
+                // a network round trip. KeycloakSessionLogoutListener runs after commit, asynchronously.
                 tokenSession.keycloakSessionId?.let { eventPublisher.publishEvent(KeycloakSessionEnded(it)) }
             }
             tokenSession.sealedRefreshToken = null

@@ -92,9 +92,14 @@ falschen Daten.
 
 ## Eine Ausnahme
 
-`KeycloakSessionLogoutListener` bleibt ein einfacher `@TransactionalEventListener` ohne Registry.
-Der Grund: Eine Sitzung in Keycloak, die nicht beendet wurde, läuft nach wenigen Minuten von selbst
-ab. Die Daten, die Keycloak zu einem gelöschten Konto speichert, blieben dagegen liegen, wenn niemand
-sie löscht. Nur der zweite Fall braucht deshalb eine Wiederholung.
+`KeycloakSessionLogoutListener` war ein einfacher `@TransactionalEventListener` ohne Registry.
+Begründet war das damit, dass eine nicht beendete Keycloak-Sitzung von selbst abläuft.
+
+**Nachtrag 2026-10-13.** Die Ausnahme entfällt. Seit
+[ADR-60](ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md) beantwortet Keycloak das Beenden
+einer Sitzung mit einem Back-Channel-Aufruf an den Orchestrator. Der synchrone Listener hielt dabei
+die Datenbankverbindung der Abmeldung. Er ist jetzt ein `@ApplicationModuleListener` wie die
+anderen: asynchron, mit Wiederholung, und das Beenden ist idempotent (`404` gilt als erledigt). Eine
+Keycloak-Sitzung läuft auch nicht nach Minuten ab, sondern erst nach SSO idle oder SSO max.
 
 Mehr dazu in [07-betrieb.md](../07-betrieb.md), Abschnitt 3a.

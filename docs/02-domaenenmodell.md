@@ -180,6 +180,7 @@ stateDiagram-v2
   STEP_UP_IN_PROGRESS --> AUTHENTICATED: erreichtes acr >= gefordertes acr, in derselben Sitzung
   STEP_UP_IN_PROGRESS --> AUTHENTICATED: Abbruch
   STEP_UP_IN_PROGRESS --> EXPIRED: Keycloak-Sitzung inzwischen abgelaufen
+  STEP_UP_IN_PROGRESS --> LOGGED_OUT: Abmelden, bricht den Step-up ab
   AUTHENTICATED --> LOGGED_OUT: Abmelden in der App, oder Keycloak meldet das Ende der Sitzung
   AUTHENTICATED --> EXPIRED: Keycloak-Sitzung abgelaufen
   LOGGED_OUT --> [*]

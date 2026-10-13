@@ -646,7 +646,7 @@ Endzustand, `204`). Die Abmeldung ist keine Journey
 ([ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)): Eine Rückfrage stellt der
 Client selbst, bevor er den Endpunkt ruft. Ein laufender Ablauf wird abgebrochen, die Tokens der
 `AppTokenSession` werden verworfen, und nach dem Commit beendet der Orchestrator die
-Keycloak-Sitzung dieses Kanals über die Admin-API (`KeycloakSessionLogoutListener`). Das
+Keycloak-Sitzung dieses Kanals asynchron über die Admin-API (`KeycloakSessionLogoutListener`). Das
 Anmeldeprotokoll bekommt die Abmeldung genau einmal. Keycloak meldet das Ende der Sitzung danach
 noch per Back-Channel (Abschnitt 3b); für einen schon beendeten Kanal ändert das nichts.
 
@@ -1027,8 +1027,8 @@ erstellt. Es enthält:
 - `jti` und `iat`, also eine eindeutige Kennung und den Zeitpunkt der Ausstellung. Damit schützt
   sich der Orchestrator gegen wiederholt eingespielte Anfragen. Er nutzt dafür denselben
   Zwischenspeicher wie bei DPoP ([09-dpop.md](09-dpop.md)), aber mit einem eigenen Namensraum `kc:`
-  und einem eigenen Zeitfenster (`keycloak.peer-auth.max-clock-skew-seconds`/`max-age-seconds`, im
-  Betrieb mit Keycloak je 300 Sekunden),
+  und einem eigenen Zeitfenster (`keycloak.peer-auth.max-clock-skew-seconds`/`max-age-seconds`, je
+  30 Sekunden, nur in den lokalen Varianten 300; [13-ausfuehren.md](13-ausfuehren.md) Abschnitt 6),
 - die Kanalbindung dieses Anmeldedurchlaufs (Claim `channel_binding`). Die Kanalbindung ordnet die
   Anfrage einem bestimmten Kanal zu; `KeycloakChannelAccessGuard` prüft sie gegen diesen Kanal. Bei
   den Aufrufen ohne Kanal (unten, „Endpunkte unter `/kc/`“) enthält `channel_binding` stattdessen

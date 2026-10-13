@@ -40,6 +40,8 @@ class KeycloakSetupEnvironmentTest : BehaviorSpec({
                     "keycloak-setup.base.keycloakBaseUrl" to "https://localhost:8543",
                     "keycloak-setup.base.publicKeycloakBaseUrl" to "https://localhost:8543",
                     "keycloak-setup.base.trustSelfSignedCertificate" to "false",
+                    "keycloak-setup.base.clockSkewToleranceSeconds" to "30",
+                    "keycloak-setup.variants.compose.clockSkewToleranceSeconds" to "300",
                     "keycloak-setup.variants.compose.trustSelfSignedCertificate" to "true",
                     "keycloak-setup.variants.remote.keycloakBaseUrl" to "https://keycloak.example.org",
                     "keycloak-setup.variants.compose.keycloakBaseUrl" to "https://keycloak:8443",
@@ -80,6 +82,12 @@ class KeycloakSetupEnvironmentTest : BehaviorSpec({
                 env.getProperty("keycloak-sync.public-base-url") shouldBe "https://localhost:8543"
             }
 
+            then("the local variant widens the clock skew for peer-auth and the logout_token alike") {
+                env.getProperty("keycloak.peer-auth.max-clock-skew-seconds") shouldBe "300"
+                env.getProperty("keycloak.peer-auth.max-age-seconds") shouldBe "300"
+                env.getProperty("keycloak.backchannel-logout.max-clock-skew-seconds") shouldBe "300"
+            }
+
             then("a logout_token is expected from the public realm address, its keys fetched internally, for both clients") {
                 env.getProperty("keycloak.backchannel-logout.issuer") shouldBe "https://localhost:8543/realms/Demo"
                 env.getProperty("keycloak.backchannel-logout.jwks-uri") shouldBe "https://keycloak:8443/realms/Demo/protocol/openid-connect/certs"
@@ -108,6 +116,12 @@ class KeycloakSetupEnvironmentTest : BehaviorSpec({
 
             then("Keycloak's certificate is not trusted") {
                 env.getProperty("keycloak-tls.trust-self-signed") shouldBe "false"
+            }
+
+            then("the clock skew stays at the base's 30 seconds, the peer-auth age at its own 30") {
+                env.getProperty("keycloak.peer-auth.max-clock-skew-seconds") shouldBe "30"
+                env.getProperty("keycloak.peer-auth.max-age-seconds") shouldBe "30"
+                env.getProperty("keycloak.backchannel-logout.max-clock-skew-seconds") shouldBe "30"
             }
         }
     }

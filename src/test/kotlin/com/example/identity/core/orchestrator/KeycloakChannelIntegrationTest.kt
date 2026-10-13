@@ -562,6 +562,26 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                 }
             }
 
+            `when`("Keycloak reports the logout of a session open in two tabs") {
+                val accountId = accountWithSmsAndPassword()
+                val first = loginAtLoa2(accountId, "kc-two-tabs")
+                val second = loginAtLoa2(accountId, "kc-two-tabs")
+                backchannelLogout("kc-two-tabs")
+                val states = listOf(first, second).map {
+                    jdbcTemplate.queryForObject("SELECT state FROM orchestrator.channel_session WHERE id = ?", String::class.java, it.value)
+                }
+                val signOuts = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM account.sign_in_log WHERE account_id = ? AND sign_in_type = 'SIGNED_OUT'", Int::class.java, accountId.value
+                )
+
+                then("both tabs end") {
+                    states shouldBe listOf("LOGGED_OUT", "LOGGED_OUT")
+                }
+                then("the sign-in log holds one sign-out for the one session") {
+                    signOuts shouldBe 1
+                }
+            }
+
             `when`("a later run of the session names another account") {
                 val accountId = accountWithSmsAndPassword()
                 loginAtLoa2(accountId, "kc-owner")

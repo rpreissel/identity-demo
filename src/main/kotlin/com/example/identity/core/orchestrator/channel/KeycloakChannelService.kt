@@ -85,9 +85,13 @@ class KeycloakChannelService(
             if (live.mapNotNull { it.session.subject }.distinct().size > 1) {
                 log.warn("Keycloak session ended with live channels of more than one subject")
             }
+            // One session, one sign-out: several tabs of it are several channels, not several logouts.
+            val recorded = mutableSetOf<Subject?>()
             live.forEach { channel ->
                 journeyService.findActive(channel.session.id)?.let { journeyService.cancel(it, channel) }
-                journeyService.endSession(channel, ChannelState.LOGGED_OUT, endedAtKeycloak = true)
+                journeyService.endSession(
+                    channel, ChannelState.LOGGED_OUT, endedAtKeycloak = true, recordSignOut = recorded.add(channel.session.subject),
+                )
             }
             return
         }

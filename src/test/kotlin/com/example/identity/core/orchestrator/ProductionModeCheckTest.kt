@@ -41,6 +41,7 @@ class ProductionModeCheckTest : BehaviorSpec({
         usesDemoLookupSecret: Boolean = false,
         orphanedLookupKeyIds: Set<String> = emptySet(),
         apiDocs: Boolean = false,
+        clockSkewSeconds: Long = 30,
         tokenProvider: TokenProvider = mockk<KeycloakTokenProvider>(),
     ) = ProductionModeCheck(
         DemoMode(demoMode),
@@ -49,7 +50,7 @@ class ProductionModeCheckTest : BehaviorSpec({
             every { orphanedKeyIds() } returns orphanedLookupKeyIds
         },
         adminPassword, h2Console, otpPepper, lookupSecret, trustSelfSigned, keycloakBaseUrl, orchestratorBaseUrlForKeycloak, apiDocs,
-        tokenProvider,
+        clockSkewSeconds, tokenProvider,
         mockk<ClaimEncryptionKeys> {
             every { kmsSimulated() } returns kmsSimulated
             every { encryptionDisabled() } returns encryptionDisabled
@@ -90,13 +91,14 @@ class ProductionModeCheckTest : BehaviorSpec({
             val result = runCatching {
                 check(
                     adminPassword = "admin", h2Console = true, otpPepper = "", lookupSecret = "short", kmsSimulated = true, trustSelfSigned = true,
-                    keycloakBaseUrl = "http://keycloak:8080", orchestratorBaseUrlForKeycloak = "http://orchestrator:8080", apiDocs = true
+                    keycloakBaseUrl = "http://keycloak:8080", orchestratorBaseUrlForKeycloak = "http://orchestrator:8080", apiDocs = true,
+                    clockSkewSeconds = 300,
                 )
             }
 
             then("it refuses to start and names each of them at once") {
                 val failure = shouldThrow<IllegalStateException> { result.getOrThrow() }
-                listOf("demo.admin.password", "spring.h2.console", "springdoc.api-docs", "otp-pepper", "lookup-secret", "Modul kms", "trustSelfSignedCertificate", "http://keycloak", "http://orchestrator").forEach {
+                listOf("demo.admin.password", "spring.h2.console", "springdoc.api-docs", "otp-pepper", "lookup-secret", "Modul kms", "trustSelfSignedCertificate", "http://keycloak", "http://orchestrator", "clockSkewToleranceSeconds").forEach {
                     failure.message!! shouldContain it
                 }
             }

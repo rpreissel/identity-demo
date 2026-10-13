@@ -107,6 +107,12 @@ data class KeycloakAccess(
      * Verbindungen zu Keycloak. Die Basis setzt `false`, eine Variante muss es einschalten.
      */
     val trustSelfSignedCertificate: Boolean,
+    /**
+     * Wie weit die Uhren von Keycloak und Orchestrator auseinander liegen dürfen, in Sekunden: für
+     * Peer-Auth-Assertions und `logout_token`. Die Basis setzt 30; nur eine lokale Variante, deren
+     * Container-VM nach dem Schlafen des Rechners nachgeht, darf es weiter fassen.
+     */
+    val clockSkewToleranceSeconds: Int,
 ) {
     companion object {
         val FIELD_NAMES = fieldNamesOf(KeycloakAccess::class)
@@ -149,6 +155,8 @@ private fun parse(field: KParameter, raw: String): Any =
         List::class -> raw.split(",").map(String::trim).filter(String::isNotEmpty)
         Boolean::class -> raw.trim().toBooleanStrictOrNull()
             ?: error("Feld \"${field.name}\" erwartet true oder false, nicht \"$raw\"")
+        Int::class -> raw.trim().toIntOrNull()?.takeIf { it >= 0 }
+            ?: error("Feld \"${field.name}\" erwartet eine Zahl ab 0, nicht \"$raw\"")
         else -> raw
     }
 

@@ -6,13 +6,17 @@ import java.net.URI
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 /**
  * A JWKS from Keycloak, fetched and cached. An unknown `kid` triggers a refetch, so key rotation
  * needs no restart. At most once per [MIN_REFETCH_INTERVAL], so made-up `kid`s cannot turn every
- * request into a fetch. [unavailable] builds the caller's own exception when there is no set at all.
+ * request into a fetch. One fetch at a time and never under the lock: while Keycloak is slow, a
+ * caller with a set keeps working with it, only a caller without any set waits for the fetch.
+ * [unavailable] builds the caller's own exception when there is no set at all.
  */
 class CachedJwks(
     private val jwksUri: String,
@@ -25,6 +29,7 @@ class CachedJwks(
     private var cached: JWKSet? = null
     private var cachedAt: Instant = Instant.EPOCH
     private var lastFetchAt: Instant = Instant.EPOCH
+    private var inFlight: CompletableFuture<JWKSet>? = null
 
     /** Null for an unknown kid, and for every kid when no address is configured. */
     fun find(kid: String): JWK? {
@@ -32,37 +37,63 @@ class CachedJwks(
         val known = currentSet().getKeyByKeyId(kid)
         if (known != null) return known
         // Unknown kid: maybe a just-rotated key, worth one refetch unless the set is fresh.
-        return refreshUnlessRecent().getKeyByKeyId(kid)
+        return refresh().getKeyByKeyId(kid)
     }
 
-    private fun currentSet(): JWKSet = lock.withLock {
-        val existing = cached
-        if (existing != null && clock.instant().isBefore(cachedAt.plusSeconds(cacheTtlSeconds))) existing else fetchAndCache()
+    private fun currentSet(): JWKSet {
+        val fresh = lock.withLock { cached?.takeIf { clock.instant().isBefore(cachedAt.plusSeconds(cacheTtlSeconds)) } }
+        return fresh ?: refresh()
     }
-
-    private fun refreshUnlessRecent(): JWKSet = lock.withLock { fetchAndCache() }
 
     /**
      * At most one fetch per [MIN_REFETCH_INTERVAL], failed ones included: while Keycloak does not
-     * answer, requests do not queue up behind the lock for a fetch each. A failed fetch keeps the
-     * last good set; without one, the token is rejected.
+     * answer, requests do not each start a fetch. A failed fetch keeps the last good set; without
+     * one, the token is rejected.
      */
-    private fun fetchAndCache(): JWKSet {
-        val existing = cached
-        if (clock.instant().isBefore(lastFetchAt.plus(MIN_REFETCH_INTERVAL))) {
-            return existing ?: throw unavailable("Keycloak JWKS unavailable", null)
+    private fun refresh(): JWKSet {
+        var existing: JWKSet? = null
+        var flight: CompletableFuture<JWKSet>? = null
+        var leader = false
+        lock.withLock {
+            existing = cached
+            flight = inFlight
+            if (flight == null) {
+                if (clock.instant().isBefore(lastFetchAt.plus(MIN_REFETCH_INTERVAL))) {
+                    return existing ?: throw unavailable("Keycloak JWKS unavailable", null)
+                }
+                lastFetchAt = clock.instant()
+                flight = CompletableFuture<JWKSet>().also { inFlight = it }
+                leader = true
+            }
         }
-        lastFetchAt = clock.instant()
-        val fetched = try {
-            keycloakHttp?.let { JWKSet.parse(it.getText(jwksUri, SIZE_LIMIT_BYTES)) }
-                ?: JWKSet.load(URI.create(jwksUri).toURL(), CONNECT_TIMEOUT_MS, READ_TIMEOUT_MS, SIZE_LIMIT_BYTES)
+        val running = checkNotNull(flight)
+        if (!leader) {
+            existing?.let { return it }
+            return try {
+                running.get(CONNECT_TIMEOUT_MS + READ_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+            } catch (e: Exception) {
+                throw unavailable("Keycloak JWKS unavailable", e)
+            }
+        }
+        return try {
+            val fetched = fetch()
+            lock.withLock {
+                cached = fetched
+                cachedAt = clock.instant()
+                inFlight = null
+            }
+            running.complete(fetched)
+            fetched
         } catch (e: Exception) {
-            return existing ?: throw unavailable("Keycloak JWKS fetch failed", e)
+            lock.withLock { inFlight = null }
+            running.completeExceptionally(e)
+            existing ?: throw unavailable("Keycloak JWKS fetch failed", e)
         }
-        cached = fetched
-        cachedAt = clock.instant()
-        return fetched
     }
+
+    private fun fetch(): JWKSet =
+        keycloakHttp?.let { JWKSet.parse(it.getText(jwksUri, SIZE_LIMIT_BYTES)) }
+            ?: JWKSet.load(URI.create(jwksUri).toURL(), CONNECT_TIMEOUT_MS, READ_TIMEOUT_MS, SIZE_LIMIT_BYTES)
 
     private companion object {
         val MIN_REFETCH_INTERVAL: Duration = Duration.ofSeconds(30)

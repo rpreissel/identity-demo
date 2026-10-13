@@ -412,9 +412,12 @@ Zwei Dinge sollten Sie wissen:
   ist unverändert aus dem Jar `spring-modulith-events-jdbc` übernommen. Beim Wechsel auf eine neue
   Version von Modulith muss man sie mit der Datei im neuen Jar vergleichen.
 
-`KeycloakSessionLogoutListener` nutzt die Registry bewusst nicht. Eine Sitzung in Keycloak, die nicht
-beendet wurde, läuft nach wenigen Minuten von selbst ab. Die Sitzungen eines gelöschten Kontos laufen
-dagegen nicht von selbst ab. Nur der zweite Fall braucht deshalb eine Wiederholung.
+Auch `KeycloakSessionLogoutListener` nutzt die Registry: Er beendet nach einer App-Abmeldung die
+Keycloak-Sitzung. Er läuft asynchron, weil Keycloak den Aufruf mit einem Back-Channel Logout an den
+Orchestrator beantwortet ([ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)).
+Hielte die Abmeldung dabei ihre Datenbankverbindung, warteten bei vielen gleichzeitigen Abmeldungen
+die Rückrufe auf eine freie Verbindung. Ein fehlgeschlagener Aufruf wird wiederholt; eine Sitzung,
+die Keycloak schon nicht mehr kennt (`404`), gilt als beendet.
 
 ## 3b) Das System läuft als eine einzige Instanz
 
@@ -479,6 +482,9 @@ dann alle offenen Punkte auf einmal. Diese Punkte müssen erfüllt sein:
 - Die Tokens des App-Kanals stellt Keycloak aus (`KeycloakTokenProvider`). Ein anderer
   `TokenProvider` ist ein Test-Ersatz mit unsignierten Tokens, die jeder fälschen kann. Im
   ausgelieferten Jar gibt es keinen; die Prüfung fängt einen Build ab, der ihn trotzdem enthält.
+- Die erlaubte Uhrabweichung zu Keycloak ist höchstens 60 s (`clockSkewToleranceSeconds` der
+  Keycloak-Variante, [13-ausfuehren.md](13-ausfuehren.md) Abschnitt 6). Mehr verlängert, wie lange
+  eine abgefangene Peer-Auth-Assertion oder ein `logout_token` gilt.
 - `spring.h2.console.enabled=false`.
 - `springdoc.api-docs.enabled=false`. Die Voreinstellung folgt `demo.mode`. Sonst zeigten Swagger-UI
   und `/v3/api-docs` jedem ohne Anmeldung alle Endpunkte. Der API-Vertrag liegt ohnehin in `api/`.

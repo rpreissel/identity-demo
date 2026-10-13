@@ -42,13 +42,13 @@ Token-Dienst. Dort gab es keinen Web-Kanal, und jede Regel zur Sitzung brauchte 
 4. **Die Abmeldung ist keine Journey.** Der Intent `LOGOUT`, sein Zustand und
    `POST .../channels/{id}/logouts` entfallen. Die App meldet sich mit `DELETE .../channels/{id}` ab,
    nach einer Rückfrage in ihrer eigenen Oberfläche. Der Orchestrator beendet den Kanal selbst, in
-   derselben Transaktion, und lässt die Keycloak-Sitzung nach dem Commit beenden
-   (`KeycloakSessionLogoutListener`). Der Back-Channel bestätigt das danach nur noch. Umgekehrt
+   derselben Transaktion, und lässt die Keycloak-Sitzung nach dem Commit asynchron beenden
+   (`KeycloakSessionLogoutListener`, über die Event Publication Registry mit Wiederholung). Der Back-Channel bestätigt das danach nur noch. Umgekehrt
    ruft ein Ende, das Keycloak selbst gemeldet hat, Keycloak nicht noch einmal an
    (`ChannelSessionLifecycle.end(..., endedAtKeycloak = true)`): Keycloak wartet in diesem Moment
    noch auf die Antwort des Back-Channels.
 5. **Die Abmeldung steht genau einmal im Anmeldeprotokoll.** Ein Kanal, der als `LOGGED_OUT` endet,
-   schreibt sie selbst. Eine Web-Sitzung ohne laufenden Kanal schreibt `signedOutAtKeycloak`, außer
+   schreibt sie selbst; haben mehrere Tabs dieselbe Sitzung, schreibt nur der erste. Eine Web-Sitzung ohne laufenden Kanal schreibt `signedOutAtKeycloak`, außer
    ein Kanal dieser Sitzung endete schon als `LOGGED_OUT` oder eine App-Anmeldung hält sie. Die
    `AppTokenSession` behält dafür ihre `keycloakSessionId`, wenn die Abmeldung ihre Tokens leert.
 6. **Der Orchestrator läuft immer mit Keycloak.** `keycloak` ist das Default-Profil

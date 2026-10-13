@@ -59,6 +59,11 @@ class KeycloakSetupEnvironment : EnvironmentPostProcessor, Ordered {
                     "keycloak.backchannel-logout.issuer" to "${setup.access.publicKeycloakBaseUrl}/realms/${setup.realm.realmName}",
                     "keycloak.backchannel-logout.jwks-uri" to "$realms/protocol/openid-connect/certs",
                     "keycloak.backchannel-logout.audiences" to "${setup.realm.browserClientId},${setup.realm.appTokenClientId}",
+                    // Uhrabweichung je Variante: im Betrieb eng, nur lokal weit (DPoP-demo-3feg).
+                    // Eine Assertion, deren Uhr nachgeht, wirkt um die Abweichung aelter.
+                    "keycloak.peer-auth.max-clock-skew-seconds" to setup.access.clockSkewToleranceSeconds.toString(),
+                    "keycloak.peer-auth.max-age-seconds" to maxOf(PEER_AUTH_MAX_AGE_SECONDS, setup.access.clockSkewToleranceSeconds).toString(),
+                    "keycloak.backchannel-logout.max-clock-skew-seconds" to setup.access.clockSkewToleranceSeconds.toString(),
                 ),
             ),
         )
@@ -76,5 +81,6 @@ class KeycloakSetupEnvironment : EnvironmentPostProcessor, Ordered {
 
     private companion object {
         const val PROFILE = "keycloak"
+        const val PEER_AUTH_MAX_AGE_SECONDS = 30
     }
 }

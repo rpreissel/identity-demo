@@ -28,6 +28,7 @@ class ProductionModeCheck(
     @Value("\${keycloak-migrate.base-url:}") private val keycloakBaseUrl: String,
     @Value("\${keycloak-setup.orchestrator-base-url:}") private val orchestratorBaseUrlForKeycloak: String,
     @Value("\${springdoc.api-docs.enabled:true}") private val apiDocs: Boolean,
+    @Value("\${keycloak.peer-auth.max-clock-skew-seconds:30}") private val keycloakClockSkewSeconds: Long,
     private val tokenProvider: TokenProvider,
     private val encryptionKeys: ClaimEncryptionKeys,
     private val dataKeyWrapping: DataKeyWrapping,
@@ -77,6 +78,9 @@ class ProductionModeCheck(
         if (encryptionKeys.encryptionDisabled()) {
             add("identity.encryption.enabled ist aus - Werte laegen lesbar in den Tabellen, nur mit dem Namen des Schluessels davor. Ein Demo-Schalter, nicht fuer echte Personen.")
         }
+        if (keycloakClockSkewSeconds > MAX_CLOCK_SKEW_SECONDS) {
+            add("Die erlaubte Uhrabweichung zu Keycloak ist $keycloakClockSkewSeconds s (clockSkewToleranceSeconds) - hoechstens $MAX_CLOCK_SKEW_SECONDS s, sonst gilt eine abgefangene Assertion oder ein logout_token entsprechend laenger.")
+        }
         if (trustSelfSigned) add("Das Zertifikat von Keycloak wird nicht geprueft (trustSelfSignedCertificate). Ein vertrauenswuerdiges Zertifikat verwenden.")
         if (keycloakBaseUrl.isNotBlank() && !keycloakBaseUrl.startsWith("https://")) {
             add("Keycloak wird ueber $keycloakBaseUrl erreicht, nicht ueber https.")
@@ -101,6 +105,8 @@ class ProductionModeCheck(
             "Schluesseldienst nicht mehr auspackt - die Daten darunter sind nicht mehr lesbar (Schluessel identity-kek, zurueckgezogene Versionen)."
 
     private companion object {
+        /** Mehr braucht ein Betrieb mit synchronisierten Uhren nicht (DPoP-demo-3feg). */
+        const val MAX_CLOCK_SKEW_SECONDS = 60L
         const val DEMO_ADMIN_PASSWORD = "admin"
 
         /** Spring's ids for real password hashes; `{noop}` is plain text in disguise. */

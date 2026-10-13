@@ -39,6 +39,11 @@ class KeycloakAdminClientTest : BehaviorSpec({
                 ex.sendResponseHeaders(if (token in accepted) 204 else 401, -1)
                 ex.close()
             }
+            createContext("/admin/realms/demo/sessions/") { ex ->
+                logouts += ex.requestURI.path
+                ex.sendResponseHeaders(if (ex.requestURI.path.endsWith("/gone")) 404 else 204, -1)
+                ex.close()
+            }
             createContext("/admin/realms/demo/users/") { ex ->
                 logouts += ex.requestURI.path
                 ex.sendResponseHeaders(204, -1)
@@ -83,6 +88,21 @@ class KeycloakAdminClientTest : BehaviorSpec({
                 result.isFailure shouldBe true
                 keycloak.tokensIssued.get() shouldBe 2
                 keycloak.deletes.size shouldBe 2
+            }
+        }
+    }
+
+    given("an App login whose Keycloak session has ended already") {
+        val keycloak = FakeKeycloak(accepted = setOf("t1"))
+        afterSpec { keycloak.server.stop(0) }
+        val listener = KeycloakSessionLogoutListener(client(keycloak))
+
+        `when`("its logout is delivered (again)") {
+            val result = runCatching { listener.onChannelLoggedOut(KeycloakSessionEnded("gone")) }
+
+            then("Keycloak's 404 counts as done, so the publication completes instead of retrying forever") {
+                result.isSuccess shouldBe true
+                keycloak.logouts shouldBe listOf("/admin/realms/demo/sessions/gone")
             }
         }
     }

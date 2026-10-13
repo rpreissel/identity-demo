@@ -272,7 +272,10 @@ auftritt.
   sich das Netz teilen. Aufbau und Ausrollen beschreibt [openshift/README.md](../openshift/README.md).
 
 Alle Varianten stehen in `application-keycloak.yml` unter `keycloak-setup.variants`, die gemeinsamen
-Werte unter `keycloak-setup.base`. Jede Variante nennt nur die Werte, in denen sie abweicht. Eine
+Werte unter `keycloak-setup.base`. Jede Variante nennt nur die Werte, in denen sie abweicht. So
+erlauben nur `host` und `compose` eine Uhrabweichung von 300 s zwischen Keycloak und Orchestrator
+(`clockSkewToleranceSeconds`), weil die Podman-Machine-VM auf macOS nach dem Schlafen des Rechners
+nachgeht. Die Basis und damit `openshift` bleiben bei 30 s. Eine
 weitere Umgebung ist dort ein neuer Eintrag und keine Codeänderung. Die Werte für die Keycloak-Seite
 werden als Konfiguration der Komponente `orchestrator` im Realm gespeichert (in der Admin-Konsole
 unter „User federation“). Dort liest die Erweiterung sie zur Laufzeit.

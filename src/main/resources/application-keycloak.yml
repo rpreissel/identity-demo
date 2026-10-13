@@ -21,18 +21,11 @@ keycloak:
   peer-auth:
     # issuer/audience/jwks-uri: abgeleitet (siehe oben).
     jwks-cache-ttl-seconds: 600
-    # Grosszuegig statt der Default-30s: die Podman-Machine-VM (macOS) auf diesem Rechner driftet
-    # merklich schneller als in 30s tolerierbar, sobald der Host kurz schlaeft - ein reines
-    # Lokal-Testing-Problem dieser Umgebung, kein Sicherheitsanspruch dieses Profils.
-    #
     # Der Fetch der JWKS (wie auch der Account-Sync) laeuft ueber HTTPS gegen das selbstsignierte
     # start-dev-Zertifikat; ob ihm vertraut wird, sagt die Variante (trustSelfSignedCertificate,
     # unten), und es gilt nur fuer die Verbindungen zu Keycloak (KeycloakHttp).
-    max-clock-skew-seconds: 300
-    max-age-seconds: 300
-  backchannel-logout:
-    # issuer/jwks-uri/audiences: abgeleitet (siehe oben). Dieselbe Drift wie bei peer-auth.
-    max-clock-skew-seconds: 300
+    # max-clock-skew-seconds und max-age-seconds: abgeleitet aus clockSkewToleranceSeconds der
+    # Variante (unten), ebenso das Fenster von keycloak.backchannel-logout.
 
 # Admin-Zugang des Orchestrators (KeycloakAdminClient): beendet Sitzungen, raeumt nach einer
 # Kontoloeschung auf (KeycloakAccountRemovalListener) und ruft den Konto-Grant. Keycloak liest die
@@ -92,6 +85,9 @@ keycloak-setup:
     # Ob dem Zertifikat von keycloakBaseUrl ungeprueft vertraut wird - nur fuer die Verbindungen zu
     # Keycloak, nie JVM-weit (KeycloakHttp). Aus, bis eine Variante es ausdruecklich einschaltet.
     trustSelfSignedCertificate: false
+    # Erlaubte Uhrabweichung fuer Peer-Auth und logout_token. 30 s im Betrieb; nur die lokalen
+    # Varianten erlauben mehr (ProductionModeCheck weist mehr als 60 s ausserhalb der Demo ab).
+    clockSkewToleranceSeconds: 30
   variants:
     host:
       # Orchestrator laeuft auf dem Host (./gradlew bootRun), nur Keycloak im Container: der Weg
@@ -102,6 +98,8 @@ keycloak-setup:
       keycloakBaseUrl: https://localhost:8543
       # start-dev-Zertifikat aus keycloak-extension/Dockerfile, selbstsigniert.
       trustSelfSignedCertificate: true
+      # Die Podman-Machine-VM (macOS) geht nach dem Schlafen des Rechners merklich nach.
+      clockSkewToleranceSeconds: 300
     compose:
       # Beide im compose-Netz: direkt ueber die Service-Namen, ohne Umweg ueber gemappte Ports.
       # publicKeycloakBaseUrl bleibt die Host-Adresse - von dort holt der Browser sein Token.
@@ -109,6 +107,7 @@ keycloak-setup:
       keycloakBaseUrl: https://keycloak:8443
       # Wie host: selbstsigniert, und das Zertifikat nennt nur localhost, nicht "keycloak".
       trustSelfSignedCertificate: true
+      clockSkewToleranceSeconds: 300
     openshift:
       # Prototyp openshift/identity-demo.yaml: EIN Pod, beide Container teilen sich das Netz - intern
       # also localhost und reines HTTP (der Verkehr verlaesst den Pod nie). Keycloak lauscht auf 8081,

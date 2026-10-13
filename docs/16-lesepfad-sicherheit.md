@@ -397,8 +397,9 @@ Abschnitt 8 „Übernommene Nachweise als erster Übergang“;
   Nimbus, ohne `outageTolerant` (K-6).
 - **Hinweis** Jeder GET auf die Action-URL (die Adresse, an die das Anmeldeformular geschickt wird)
   wird zur Eingabe für das Tool (K-8). Dafür braucht man Aktionscode und Cookie.
-- **Hinweis** Das Zeitfenster für Peer-Auth und für das `logout_token` beträgt 300 s im ganzen
-  Betrieb mit Keycloak statt nur in der Variante `host` (`DPoP-demo-9ppv.13`).
+- Die erlaubte Uhrabweichung für Peer-Auth und für das `logout_token` kommt aus der Variante
+  (`clockSkewToleranceSeconds`): 30 s, nur lokal (`host`, `compose`) 300 s.
+  `ProductionModeCheck` weist außerhalb der Demo mehr als 60 s ab.
 - **Hinweis** Die Kanal-Id des Web-Kanals wird aus der Tab-Id von Keycloak abgeleitet
   ([`OrchestratorNotes.channelSessionId`](../keycloak-extension/src/main/java/com/example/identity/kcext/login/OrchestratorNotes.java#L49))
   und ist damit vorhersagbar. Für einen Zugriff braucht man trotzdem eine signierte Assertion mit
@@ -928,7 +929,6 @@ Diese Tabelle fasst alle offenen Punkte der Stationen zusammen.
 | Personensperre prüft vor dem Versuch, zählt danach (SA-27, Rest) | bewusst | 9 | – |
 | CSP, Refresh-Token und `state` im Frontend | niedrig | 11 | `DPoP-demo-dm2j` |
 | Id des Web-Kanals aus der Tab-Id abgeleitet | Hinweis | 4 | `DPoP-demo-gxis` |
-| Peer-Auth-Zeitfenster 300 s im Profil | Hinweis | 4 | `DPoP-demo-9ppv.13` |
 | QR-Status ohne Mindestintervall | Hinweis | 4 | `DPoP-demo-9ppv.10` |
 | `acr`-Prüfung der anfragenden Anwendung | Hinweis | 5 | `DPoP-demo-mea0` |
 | Hash des Freischaltcodes ohne Salt (Simulation, Port-Vertrag) | Hinweis | 8 | `DPoP-demo-4xnr` |
