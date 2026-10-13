@@ -40,7 +40,7 @@ class FreshProofStrategyTest : BehaviorSpec({
 
     val strategy = FreshProofStrategy()
     fun start(requiredAcr: AcrLevel = AcrLevel.LOA2, purpose: FreshProofState.Purpose = FreshProofState.Purpose.DELETE_ACCOUNT) =
-        FreshProofState.Start(requiredAcr, AcrLevel.LOA1, purpose)
+        FreshProofState.Start(requiredAcr, purpose)
 
     given("Start, the session does not yet carry the required loa2") {
         val acc = account(method("sms", AcrLevel.LOA1))
@@ -142,7 +142,7 @@ class FreshProofStrategyTest : BehaviorSpec({
     }
 
     given("Reproving, more than one offered candidate") {
-        val state = FreshProofState.Reproving(AcrLevel.LOA2, AcrLevel.LOA1, FreshProofState.Purpose.MANAGE_METHODS, Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
+        val state = FreshProofState.Reproving(AcrLevel.LOA2, FreshProofState.Purpose.MANAGE_METHODS, Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
 
         `when`("one candidate is abandoned") {
             val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), ctx())
@@ -161,7 +161,7 @@ class FreshProofStrategyTest : BehaviorSpec({
     }
 
     given("Reproving, a single offered candidate") {
-        val state = FreshProofState.Reproving(AcrLevel.LOA2, AcrLevel.LOA1, FreshProofState.Purpose.PEER_LOGIN, Offer(listOf(ToolId("auth-sms"))))
+        val state = FreshProofState.Reproving(AcrLevel.LOA2, FreshProofState.Purpose.PEER_LOGIN, Offer(listOf(ToolId("auth-sms"))))
 
         `when`("the last offered candidate is abandoned") {
             val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), ctx())
@@ -189,7 +189,7 @@ class FreshProofStrategyTest : BehaviorSpec({
     given("the wording each purpose brings") {
         val offer = Offer(listOf(ToolId("auth-sms")))
         then("every purpose has a title and a description of its own") {
-            FreshProofState.Purpose.entries.map { FreshProofState.Reproving(AcrLevel.LOA2, AcrLevel.LOA1, it, offer).selectionTitle }.toSet().size shouldBe FreshProofState.Purpose.entries.size
+            FreshProofState.Purpose.entries.map { FreshProofState.Reproving(AcrLevel.LOA2, it, offer).selectionTitle }.toSet().size shouldBe FreshProofState.Purpose.entries.size
         }
     }
 })

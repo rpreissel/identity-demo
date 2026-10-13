@@ -25,7 +25,7 @@ class ReIdentifyStrategy : IntentStrategy<ReIdentifyState> {
     override val intent = AuthIntent.RE_IDENTIFY
 
     /** Never entered without a target; only reachable as a sub-journey, which seeds the real one. */
-    override fun initialState(ctx: JourneyContext): ReIdentifyState = ReIdentifyState.OfferReIdent(ctx.acrFloor, startingAcr = AcrLevel.NONE)
+    override fun initialState(ctx: JourneyContext): ReIdentifyState = ReIdentifyState.OfferReIdent(ctx.acrFloor)
 
     override fun transition(state: ReIdentifyState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
@@ -41,20 +41,14 @@ class ReIdentifyStrategy : IntentStrategy<ReIdentifyState> {
 
             is ReIdentifyState.Identifying -> when (event) {
                 is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
-                is JourneyEvent.Completed -> Transition.Perform(proofAction(event), resumeState = state)
+                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // Identity confirmed - this identification's own maxAcr already IS the achieved level.
                 else -> Transition.Authenticated
             }
         }
 
-    private fun proofAction(event: JourneyEvent.Completed): Action = when (val outcome = event.outcome) {
-        is ToolOutcome.Completed.Identified -> Action.RecordIdentification(event.tool, outcome)
-        is ToolOutcome.Completed.Authenticated, is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-            event.notOffered("RE_IDENTIFY")
-    }
-
     /** Null when no identification tool can reach the target (anymore). */
     private fun offerIdentifying(offer: ReIdentifyState.OfferReIdent, ctx: JourneyContext): Transition? =
         CandidateTools.forReIdentification(offer.targetAcr, ctx).takeIf { it.isNotEmpty() }
-            ?.let { Transition.To(ReIdentifyState.Identifying(offer.targetAcr, offer.startingAcr, Offer(it), wording = offer.wording)) }
+            ?.let { Transition.To(ReIdentifyState.Identifying(offer.targetAcr, Offer(it), wording = offer.wording)) }
 }

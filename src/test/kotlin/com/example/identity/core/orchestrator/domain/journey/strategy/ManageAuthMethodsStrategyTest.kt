@@ -72,7 +72,7 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
                 transition shouldBe
                     Transition.RequireSubJourney(
                         AuthIntent.FRESH_PROOF,
-                        seedWith = FreshProofState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1, FreshProofState.Purpose.MANAGE_METHODS),
+                        seedWith = FreshProofState.forSubJourney(AcrLevel.LOA2, FreshProofState.Purpose.MANAGE_METHODS),
                         resumeWith = ManageAuthMethodsState.AddRequested
                     )
             }
@@ -291,22 +291,6 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
             then("adopts the credential - binding the already known device again is a harmless no-op") {
                 transition shouldBe
                     Transition.Perform(Action.AdoptCredential(tool("enroll-sms"), outcome), resumeState = state)
-            }
-        }
-
-        `when`("a tool completes Identified") {
-            val event = JourneyEvent.Completed(tool("ident-fsc"), identifiedOutcome())
-            val result = runCatching { strategy.transition(state, event, ctx()) }
-            then("Identified is not offered by this intent") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-            }
-        }
-
-        `when`("a tool completes Authenticated") {
-            val event = JourneyEvent.Completed(tool("auth-sms"), ToolOutcome.Completed.Authenticated(amr = listOf("sms")))
-            val result = runCatching { strategy.transition(state, event, ctx()) }
-            then("Authenticated is not offered by this intent") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
 

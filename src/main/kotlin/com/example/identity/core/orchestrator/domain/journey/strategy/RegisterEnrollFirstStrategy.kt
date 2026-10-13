@@ -67,15 +67,8 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
 
     private inline fun mandatory(state: OfferingState, event: JourneyEvent, next: () -> Transition): Transition = when (event) {
         is JourneyEvent.Abandoned -> reoffer(state)
-        is JourneyEvent.Completed -> Transition.Perform(adoptCredential(event), resumeState = state)
+        is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
         else -> next()
-    }
-
-    private fun adoptCredential(event: JourneyEvent.Completed): Action = when (val outcome = event.outcome) {
-        is ToolOutcome.Completed.Enrolled -> Action.AdoptCredential(event.tool, outcome)
-        // Confirming the address: claims and anchor, no credential, no device binding.
-        is ToolOutcome.Completed.Attested -> Action.AdoptAttestation(event.tool, outcome)
-        else -> event.notOffered("REGISTER (Enrollment zuerst) - only ENROLLMENT and ATTESTATION tools ever are")
     }
 
     /**
@@ -150,7 +143,6 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
                 // The default wording ("erneut", "nicht erreichbar") is wrong for a new account.
                 seedWith = ReIdentifyState.forSubJourney(
                     targetAcr = ctx.acrFloor,
-                    startingAcr = ctx.currentAcr,
                     wording = ReIdentifyState.Wording.OPTIONAL_IDENTIFICATION
                 ),
                 resumeWith = RegisterEnrollFirstState.EnrollFirstStart

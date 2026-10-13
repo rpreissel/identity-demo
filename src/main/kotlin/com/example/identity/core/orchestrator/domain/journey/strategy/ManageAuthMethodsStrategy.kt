@@ -45,7 +45,7 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
 
             is ManageAuthMethodsState.Changing -> when (event) {
                 is JourneyEvent.Abandoned -> Transition.Cancel
-                is JourneyEvent.Completed -> Transition.Perform(proofAction(event, admittedAt = state.admittedAt), resumeState = state)
+                is JourneyEvent.Completed -> Transition.Perform(event.action(admittedAt = state.admittedAt), resumeState = state)
                 // The new credential was adopted and replaced the old one.
                 else -> Transition.Authenticated
             }
@@ -54,7 +54,7 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
                 // Backing out means picking a different method; the full choice comes back.
                 // Giving up entirely is DELETE .../journey.
                 is JourneyEvent.Abandoned -> reoffer(state)
-                is JourneyEvent.Completed -> Transition.Perform(proofAction(event), resumeState = state)
+                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // The enrollment just ran - one successful enrollment ends this intent.
                 else -> Transition.Authenticated
             }
@@ -78,7 +78,7 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
         }
         return Transition.RequireSubJourney(
             AuthIntent.FRESH_PROOF,
-            seedWith = FreshProofState.forSubJourney(requiredAcr, ctx.currentAcr, FreshProofState.Purpose.MANAGE_METHODS),
+            seedWith = FreshProofState.forSubJourney(requiredAcr, FreshProofState.Purpose.MANAGE_METHODS),
             resumeWith = wish,
         )
     }
@@ -106,16 +106,6 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
         val offered = listOfNotNull(tool?.toolId).filter { it in ctx.availableTools }
         return if (offered.isEmpty()) Transition.Abort(Text("Dieses Anmeldeverfahren lässt sich hier nicht ändern"))
         else Transition.To(ManageAuthMethodsState.Changing(Offer(offered), wish.methodInstanceId, admittedAt = ctx.currentAcr))
-    }
-
-    /**
-     * Voluntary enrollment on an authenticated channel. Binding the known device again is a
-     * harmless no-op that keeps a new device credential reachable next time.
-     */
-    private fun proofAction(event: JourneyEvent.Completed, admittedAt: AcrLevel? = null): Action = when (val outcome = event.outcome) {
-        is ToolOutcome.Completed.Enrolled -> Action.AdoptCredential(event.tool, outcome, admittedAt)
-        is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Authenticated, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-            event.notOffered("MANAGE")
     }
 
     private fun offerEnrollment(ctx: JourneyContext): Transition {

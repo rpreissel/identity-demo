@@ -42,20 +42,13 @@ class ConfirmPeerLoginStrategy : IntentStrategy<ConfirmPeerLoginState> {
             is ConfirmPeerLoginState.Confirming -> when (event) {
                 // Backing out is not declining the wish; the only candidate comes back.
                 is JourneyEvent.Abandoned -> reoffer(state)
-                is JourneyEvent.Completed -> Transition.Perform(proofAction(event), resumeState = state)
+                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // The approval ran; the channel stays signed in. A channel that logged in only for
                 // the approval is asked by the app whether to log out again (ADR-60).
                 is JourneyEvent.ActionCompleted -> Transition.Authenticated
                 else -> error("Confirming does not understand $event")
             }
         }
-
-    private fun proofAction(event: JourneyEvent.Completed): Action = when (val outcome = event.outcome) {
-        is ToolOutcome.Completed.Approved -> Action.RecordApproval(event.tool, outcome)
-        is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Enrolled,
-        is ToolOutcome.Completed.Authenticated, is ToolOutcome.Completed.Attested ->
-            event.notOffered("CONFIRM_PEER_LOGIN")
-    }
 
     private fun confirming(ctx: JourneyContext) = ConfirmPeerLoginState.Confirming(Offer(CandidateTools.forPeerApproval(ctx)))
 
@@ -67,7 +60,7 @@ class ConfirmPeerLoginStrategy : IntentStrategy<ConfirmPeerLoginState> {
         if (ctx.account == null) return Transition.Abort(Text("Dieses Gerät ist noch keinem Konto zugeordnet - bitte zuerst regulär anmelden."))
         return Transition.RequireSubJourney(
             AuthIntent.FRESH_PROOF,
-            seedWith = FreshProofState.forSubJourney(REQUIRED_ACR, ctx.currentAcr, FreshProofState.Purpose.PEER_LOGIN),
+            seedWith = FreshProofState.forSubJourney(REQUIRED_ACR, FreshProofState.Purpose.PEER_LOGIN),
             resumeWith = ConfirmPeerLoginState.Requested,
         )
     }

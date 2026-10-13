@@ -727,7 +727,10 @@ er `transition(resumeState, ActionCompleted, frischerCtx)` erneut auf. Das wiede
 bis eine Strategie nicht wieder `Perform` liefert. Auf dieser Wiederholung beruhen alle besonderen
 Wege:
 
-- Ein abgeschlossenes Tool: `is Completed -> Perform(actionFürOutcome, resumeState = state)`,
+- Ein abgeschlossenes Tool: `is Completed -> Perform(event.action(), resumeState = state)`. Welche
+  `Action` ein Ergebnis bedeutet, steht an einer Stelle (`Action.of(tool, outcome)`): Ein Tool, das
+  nicht angeboten war, kommt hier nie an, denn `JourneyService.activate` lässt nur angebotene zu.
+  Dann
   gefolgt von `is ActionCompleted -> <weitere Logik>` im selben Zustand. Diese zweistufige Form
   gilt für jeden Intent, der Tools anbietet.
 - `Action.LinkDevice`, `Action.RevokeAuthMethod` und `Action.DeleteAccount`: Die Strategie liefert

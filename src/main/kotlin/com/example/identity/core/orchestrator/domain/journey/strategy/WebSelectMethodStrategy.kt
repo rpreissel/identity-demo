@@ -61,23 +61,11 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
         if (outcome is ToolOutcome.Completed.Authenticated && outcome.subject is Subject.Invitation &&
             event.tool.levelOf(outcome) < ctx.acrFloor
         ) return insufficientInvitation()
-        return Transition.Perform(proofAction(event), resumeState = state)
+        return Transition.Perform(event.action(), resumeState = state)
     }
 
     private fun insufficientInvitation() =
         Transition.Abort(Text("Dieses Einmalkennwort genuegt dem verlangten Sicherheitsniveau nicht"))
-
-    /**
-     * Which account the proof names is decided at execution time
-     * ([com.example.identity.core.orchestrator.domain.journey.accountOfProof]). Other outcomes mean a tool ran
-     * that was never offered.
-     */
-    private fun proofAction(event: JourneyEvent.Completed): Action =
-        when (val outcome = event.outcome) {
-            is ToolOutcome.Completed.Authenticated -> Action.AcceptProof(event.tool, outcome)
-            is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-                event.notOffered("WEB_SELECT_METHOD")
-        }
 
     private fun afterProof(ctx: JourneyContext): Transition {
         // A process access is complete with its one proof; it has nothing else to offer.
@@ -98,8 +86,8 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
         if (CandidateTools.forReIdentification(ctx.acrFloor, ctx).isNotEmpty()) {
             Transition.RequireSubJourney(
                 AuthIntent.RE_IDENTIFY,
-                seedWith = ReIdentifyState.forSubJourney(ctx.acrFloor, ctx.currentAcr),
-                resumeWith = WebSelectMethodState.AfterIdentification(accountAlreadyKnown = true)
+                seedWith = ReIdentifyState.forSubJourney(ctx.acrFloor),
+                resumeWith = WebSelectMethodState.AfterIdentification
             )
         } else {
             whenNone

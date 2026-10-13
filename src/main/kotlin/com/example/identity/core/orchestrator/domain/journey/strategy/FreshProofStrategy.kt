@@ -30,7 +30,7 @@ class FreshProofStrategy : IntentStrategy<FreshProofState> {
 
     /** Never entered without a seed; only reachable as a sub-journey ([FreshProofState.forSubJourney]). */
     override fun initialState(ctx: JourneyContext): FreshProofState =
-        FreshProofState.forSubJourney(ctx.acrFloor, ctx.currentAcr, FreshProofState.Purpose.GENERIC)
+        FreshProofState.forSubJourney(ctx.acrFloor, FreshProofState.Purpose.GENERIC)
 
     override fun transition(state: FreshProofState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
@@ -75,6 +75,6 @@ class FreshProofStrategy : IntentStrategy<FreshProofState> {
         val candidates = CandidateTools.forReconfirmation(ctx.requireAccount(), ctx)
         // Unreachable on an authenticated channel; abort rather than pass silently.
         return if (candidates.isEmpty()) Transition.Abort(Text("Kein aktiver Faktor zur erneuten Bestaetigung verfuegbar"))
-        else Transition.To(FreshProofState.Reproving(state.requiredAcr, state.startingAcr, state.purpose, Offer(candidates)))
+        else Transition.To(FreshProofState.Reproving(state.requiredAcr, state.purpose, Offer(candidates)))
     }
 }

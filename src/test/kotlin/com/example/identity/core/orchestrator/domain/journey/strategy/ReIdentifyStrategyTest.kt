@@ -35,7 +35,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
     val strategy = ReIdentifyStrategy()
 
     given("Identifying, one offered candidate") {
-        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, AcrLevel.LOA1, Offer(listOf(ToolId("ident-fsc"))))
+        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, Offer(listOf(ToolId("ident-fsc"))))
 
         `when`("the tool completes with Identified") {
             val outcome = identifiedOutcome()
@@ -47,21 +47,6 @@ class ReIdentifyStrategyTest : BehaviorSpec({
             }
         }
 
-        `when`("the tool completes with Authenticated") {
-            val event = JourneyEvent.Completed(tool("ident-fsc"), ToolOutcome.Completed.Authenticated(amr = listOf("fsc")))
-            val result = runCatching { strategy.transition(state, event, ctx()) }
-            then("Authenticated is not offered by this intent") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-            }
-        }
-
-        `when`("the tool completes with Enrolled") {
-            val event = JourneyEvent.Completed(tool("ident-fsc"), ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("fsc", "ref")))
-            val result = runCatching { strategy.transition(state, event, ctx()) }
-            then("Enrolled is not offered by this intent") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-            }
-        }
     }
 
     given("OfferReIdent, with an IDENT tool that could still reach the target") {
@@ -75,7 +60,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
             ),
             acrFloor = AcrLevel.LOA2
         )
-        val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2, AcrLevel.LOA1)
+        val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2)
 
         `when`("accepted") {
             val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
@@ -84,7 +69,6 @@ class ReIdentifyStrategyTest : BehaviorSpec({
                 val to = transition.state
                 to.shouldBeInstanceOf<ReIdentifyState.Identifying>()
                 to.targetAcr shouldBe AcrLevel.LOA2
-                to.startingAcr shouldBe AcrLevel.LOA1
                 to.offered shouldContainExactly listOf(ToolId("ident-fsc"))
             }
         }
@@ -123,7 +107,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
             ),
             acrFloor = AcrLevel.LOA2
         )
-        val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2, AcrLevel.LOA1)
+        val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2)
 
         `when`("accepted") {
             val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
@@ -136,7 +120,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
     given("Identifying, more than one candidate offered") {
         val acc = account(method("sms", AcrLevel.LOA2))
         val theCtx = ctx(account = acc)
-        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, AcrLevel.LOA1, Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"))))
+        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"))))
 
         `when`("one is abandoned but another remains") {
             val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("ident-fsc")), theCtx)
@@ -157,7 +141,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
     given("Identifying, the other candidate already declined") {
         val theCtx = ctx(account = account(method("sms", AcrLevel.LOA2)))
         val offer = Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid")), declined = setOf(ToolId("ident-eid")))
-        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, AcrLevel.LOA1, offer)
+        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, offer)
 
         `when`("the last remaining candidate is abandoned too") {
             val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("ident-fsc")), theCtx)

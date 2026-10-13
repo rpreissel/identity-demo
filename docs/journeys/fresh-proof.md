@@ -24,8 +24,8 @@ stateDiagram-v2
   Finished --> [*]
 ```
 
-**Was der Aufrufer vorgibt.** `FreshProofState.forSubJourney(requiredAcr, startingAcr, purpose)`:
-das verlangte Niveau, das Niveau der Sitzung beim Start und den Zweck (`Purpose`). Der Zweck
+**Was der Aufrufer vorgibt.** `FreshProofState.forSubJourney(requiredAcr, purpose)`: das
+verlangte Niveau und den Zweck (`Purpose`). Der Zweck
 bestimmt die Wortwahl der Auswahlseite und, ob ein Step-up die erneute Identifizierung als Ausweg
 anbieten darf. Für `CONFIRM_PEER_LOGIN` darf er das nicht: Wer einen fremden Login bestätigt, soll
 sich dafür keine frische Identität verschaffen können. Was der Nachweis danach erlaubt, entscheidet

@@ -47,21 +47,6 @@ class StepUpStrategyTest : BehaviorSpec({
             }
         }
 
-        `when`("the tool completes with Identified") {
-            val event = JourneyEvent.Completed(tool("auth-sms"), identifiedOutcome())
-            val result = runCatching { strategy.transition(state, event, ctx()) }
-            then("Identified is not offered by this intent") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-            }
-        }
-
-        `when`("the tool completes with Enrolled") {
-            val event = JourneyEvent.Completed(tool("auth-sms"), ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref")))
-            val result = runCatching { strategy.transition(state, event, ctx()) }
-            then("Enrolled is not offered by this intent") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-            }
-        }
     }
 
     given("Start, an active method that can still help reach the target") {
@@ -89,7 +74,7 @@ class StepUpStrategyTest : BehaviorSpec({
             then("requires the shared RE_IDENTIFY sub-journey instead of aborting") {
                 transition shouldBe Transition.RequireSubJourney(
                     AuthIntent.RE_IDENTIFY,
-                    seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1),
+                    seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
                     resumeWith = StepUpState.Start(AcrLevel.LOA2, AcrLevel.LOA1)
                 )
             }
@@ -192,9 +177,23 @@ class StepUpStrategyTest : BehaviorSpec({
                 transition shouldBe
                     Transition.RequireSubJourney(
                         AuthIntent.RE_IDENTIFY,
-                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1),
+                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
                         resumeWith = StepUpState.Start(AcrLevel.LOA2, AcrLevel.LOA1)
                     )
+            }
+        }
+    }
+
+    given("AuthChoice of a run with a reason, re-identification could still help") {
+        val acc = account(method("sms", AcrLevel.LOA2))
+        val state = StepUpState.AuthChoice(AcrLevel.LOA2, AcrLevel.LOA1, Offer(listOf(ToolId("auth-sms"))), reason = StepUpState.Reason.PEER_LOGIN)
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
+
+        `when`("the last offered candidate is abandoned") {
+            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), theCtx)
+            then("the run resumes with its whole goal - the reason survives the detour") {
+                transition.shouldBeInstanceOf<Transition.RequireSubJourney>().resumeWith shouldBe
+                    StepUpState.Start(AcrLevel.LOA2, AcrLevel.LOA1, allowReIdentification = true, reason = StepUpState.Reason.PEER_LOGIN)
             }
         }
     }

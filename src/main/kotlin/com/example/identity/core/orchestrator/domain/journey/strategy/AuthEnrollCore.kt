@@ -28,22 +28,6 @@ import com.example.identity.contract.tool_api.ToolOutcome
  */
 internal object AuthEnrollCore {
 
-    /** An outcome maps to one Action; what it means is decided by its handler from live context. */
-    fun proofAction(event: JourneyEvent.Completed): Action = when (val outcome = event.outcome) {
-        // The account may be brand new or an existing one found again by KVNR; both are the
-        // same decision here, which is why registration needs no state of its own.
-        is ToolOutcome.Completed.Identified -> Action.RecordIdentification(event.tool, outcome)
-        // A real credential now exists on this device, so recognizing the device costs
-        // nothing and saves the next login: bind it.
-        is ToolOutcome.Completed.Enrolled -> Action.AdoptCredential(event.tool, outcome)
-        // A device-bound tool never resolves the account itself - it could only have been
-        // offered once the account was already known.
-        is ToolOutcome.Completed.Authenticated -> Action.AcceptProof(event.tool, outcome)
-        // Claims only: no credential, and the device is not bound, since nothing lives on it.
-        is ToolOutcome.Completed.Attested -> Action.AdoptAttestation(event.tool, outcome)
-        is ToolOutcome.Completed.Approved -> event.notOffered("FAST_ACCESS/REGISTER")
-    }
-
     /** After a proof: done, another factor via [AuthChoice], or else [offerEnrollment]. */
     fun afterProof(ctx: JourneyContext, resumeAtStart: JourneyState): Transition {
         val account = ctx.requireAccount()
@@ -95,7 +79,7 @@ internal object AuthEnrollCore {
             return if (CandidateTools.forReIdentification(reidentTarget, ctx).isNotEmpty()) {
                 Transition.RequireSubJourney(
                     AuthIntent.RE_IDENTIFY,
-                    seedWith = ReIdentifyState.forSubJourney(reidentTarget, ctx.currentAcr),
+                    seedWith = ReIdentifyState.forSubJourney(reidentTarget),
                     resumeWith = resumeAtStart
                 )
             } else {
@@ -112,7 +96,7 @@ internal object AuthEnrollCore {
         return if (CandidateTools.forReIdentification(ctx.acrFloor, ctx).isNotEmpty()) {
             Transition.RequireSubJourney(
                 AuthIntent.RE_IDENTIFY,
-                seedWith = ReIdentifyState.forSubJourney(ctx.acrFloor, ctx.currentAcr),
+                seedWith = ReIdentifyState.forSubJourney(ctx.acrFloor),
                 resumeWith = resumeAtStart
             )
         } else {

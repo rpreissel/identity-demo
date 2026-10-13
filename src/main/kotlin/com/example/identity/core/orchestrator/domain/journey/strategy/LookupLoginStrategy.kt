@@ -85,16 +85,8 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
         if (outcome is ToolOutcome.Completed.Authenticated && outcome.subject is Subject.Invitation) {
             return Transition.Abort(Text("Ein Einmalkennwort gilt nur auf der Website"))
         }
-        return Transition.Perform(proofAction(event), resumeState = state)
+        return Transition.Perform(event.action(), resumeState = state)
     }
-
-    /** Only authentication tools are offered; any other outcome means a tool ran that was never offered. */
-    private fun proofAction(event: JourneyEvent.Completed): Action =
-        when (val outcome = event.outcome) {
-            is ToolOutcome.Completed.Authenticated -> Action.AcceptProof(event.tool, outcome)
-            is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-                event.notOffered("LOGIN_LOOKUP")
-        }
 
     /**
      * Checks the channel's acrFloor, since finishing sets AUTHENTICATED unconditionally. There is no
@@ -119,7 +111,7 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
         return if (CandidateTools.forReIdentification(ctx.acrFloor, ctx).isNotEmpty()) {
             Transition.RequireSubJourney(
                 AuthIntent.RE_IDENTIFY,
-                seedWith = ReIdentifyState.forSubJourney(ctx.acrFloor, ctx.currentAcr),
+                seedWith = ReIdentifyState.forSubJourney(ctx.acrFloor),
                 resumeWith = LookupLoginState.Start
             )
         } else {

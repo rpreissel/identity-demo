@@ -66,26 +66,6 @@ class LookupLoginStrategyTest : BehaviorSpec({
             }
         }
 
-        `when`("the tool completes Identified") {
-            val event = JourneyEvent.Completed(tool("auth-sms-lookup"), identifiedOutcome())
-            val result = runCatching { strategy.transition(state, event, ctx()) }
-            then("Identified is not offered by any state of this intent") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-            }
-        }
-
-        `when`("the tool completes Enrolled") {
-            val result = runCatching {
-                strategy.transition(
-                    state,
-                    JourneyEvent.Completed(tool("auth-sms-lookup"), ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))),
-                    ctx()
-                )
-            }
-            then("Enrolled is not offered by any state of this intent") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-            }
-        }
     }
 
     given("Credential, auth-invite-lookup offered in the App") {
@@ -242,7 +222,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
                 transition shouldBe
                     Transition.RequireSubJourney(
                         AuthIntent.RE_IDENTIFY,
-                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1),
+                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
                         resumeWith = LookupLoginState.Start
                     )
             }

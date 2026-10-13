@@ -91,15 +91,6 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
             }
         }
 
-        `when`("an enrollment outcome arrives, which this intent never offers") {
-            val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("auth_password.enrollment", "1"))
-            val result = runCatching { strategy.transition(state, JourneyEvent.Completed(tool("enroll-password"), outcome), webCtx()) }
-
-            then("it fails loudly with IllegalStateException") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-            }
-        }
-
         `when`("one of several offered tools is abandoned") {
             val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms-lookup")), webCtx())
 
@@ -173,8 +164,8 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
             then("it requires RE_IDENTIFY and resumes where the offer is built anew") {
                 transition shouldBe Transition.RequireSubJourney(
                     AuthIntent.RE_IDENTIFY,
-                    seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1),
-                    resumeWith = WebSelectMethodState.AfterIdentification(accountAlreadyKnown = true)
+                    seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
+                    resumeWith = WebSelectMethodState.AfterIdentification
                 )
             }
         }
@@ -212,7 +203,7 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
     }
 
     given("AfterIdentification, back from RE_IDENTIFY") {
-        val state = WebSelectMethodState.AfterIdentification(accountAlreadyKnown = true)
+        val state = WebSelectMethodState.AfterIdentification
 
         `when`("the identification reached the floor") {
             val identified = evidence(listOf("sms", "fsc"), setOf(FactorType.POSSESSION), account = smsAndDevice)

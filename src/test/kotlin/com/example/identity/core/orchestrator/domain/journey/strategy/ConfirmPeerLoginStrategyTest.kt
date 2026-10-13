@@ -38,9 +38,9 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
     val strategy = ConfirmPeerLoginStrategy()
 
     // loa2 plus a recent proof, with no way out through re-identification, resuming at the parked wish.
-    fun peerLoginProof(startingAcr: AcrLevel) = Transition.RequireSubJourney(
+    val peerLoginProof = Transition.RequireSubJourney(
         AuthIntent.FRESH_PROOF,
-        seedWith = FreshProofState.forSubJourney(AcrLevel.LOA2, startingAcr, FreshProofState.Purpose.PEER_LOGIN),
+        seedWith = FreshProofState.forSubJourney(AcrLevel.LOA2, FreshProofState.Purpose.PEER_LOGIN),
         resumeWith = ConfirmPeerLoginState.Requested
     )
 
@@ -69,7 +69,7 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
         `when`("the journey starts") {
             val transition = strategy.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
             then("parks the wish and requires loa2 plus a fresh proof, without re-identification as a way out") {
-                transition shouldBe peerLoginProof(AcrLevel.LOA1)
+                transition shouldBe peerLoginProof
                 FreshProofState.Purpose.PEER_LOGIN.allowReIdentification shouldBe false
                 FreshProofState.Purpose.PEER_LOGIN.stepUpReason shouldBe StepUpState.Reason.PEER_LOGIN
             }
@@ -84,7 +84,7 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
         `when`("the journey starts") {
             val transition = strategy.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
             then("the required level is not lowered - still loa2") {
-                transition shouldBe peerLoginProof(AcrLevel.LOA1)
+                transition shouldBe peerLoginProof
             }
         }
     }

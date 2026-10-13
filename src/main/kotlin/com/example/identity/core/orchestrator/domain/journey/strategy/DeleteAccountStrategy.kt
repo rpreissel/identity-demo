@@ -52,7 +52,7 @@ class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
 
     private fun requireFreshProof(ctx: JourneyContext): Transition = Transition.RequireSubJourney(
         AuthIntent.FRESH_PROOF,
-        seedWith = FreshProofState.forSubJourney(Action.DeleteAccount.requiredAcr(ctx.requireAccount()), ctx.currentAcr, FreshProofState.Purpose.DELETE_ACCOUNT),
+        seedWith = FreshProofState.forSubJourney(Action.DeleteAccount.requiredAcr(ctx.requireAccount()), FreshProofState.Purpose.DELETE_ACCOUNT),
         resumeWith = DeleteAccountState.ConfirmPending,
     )
 }

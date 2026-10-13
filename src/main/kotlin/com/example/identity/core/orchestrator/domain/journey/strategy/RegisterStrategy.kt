@@ -42,7 +42,7 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
             is RegisterState.Identifying -> when (event) {
                 // Abandoning the last identification offer is giving up on the journey, not an error.
                 is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
-                is JourneyEvent.Completed -> Transition.Perform(AuthEnrollCore.proofAction(event), resumeState = state)
+                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // No isSatisfied check: identification alone clears most floors and would let a
                 // run finish without a durable credential.
                 else -> afterIdentification(ctx)
@@ -50,7 +50,7 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
 
             is AuthChoice -> when (event) {
                 is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { afterAuthDeclined(ctx, it) }
-                is JourneyEvent.Completed -> Transition.Perform(AuthEnrollCore.proofAction(event), resumeState = state)
+                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // No factor-kind or email obligation: a rediscovered, set-up account finishing here
                 // is an ordinary login, not a fresh registration.
                 else -> AuthEnrollCore.afterProof(ctx, resumeAtStart = RegisterState.Start)
@@ -90,7 +90,7 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
 
     private inline fun mandatory(state: OfferingState, event: JourneyEvent, next: () -> Transition): Transition = when (event) {
         is JourneyEvent.Abandoned -> reoffer(state)
-        is JourneyEvent.Completed -> Transition.Perform(AuthEnrollCore.proofAction(event), resumeState = state)
+        is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
         else -> next()
     }
 

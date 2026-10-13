@@ -83,7 +83,7 @@ class DeleteAccountStrategyTest : BehaviorSpec({
                 transition shouldBe
                     Transition.RequireSubJourney(
                         AuthIntent.FRESH_PROOF,
-                        seedWith = FreshProofState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1, FreshProofState.Purpose.DELETE_ACCOUNT),
+                        seedWith = FreshProofState.forSubJourney(AcrLevel.LOA2, FreshProofState.Purpose.DELETE_ACCOUNT),
                         resumeWith = DeleteAccountState.ConfirmPending
                     )
             }

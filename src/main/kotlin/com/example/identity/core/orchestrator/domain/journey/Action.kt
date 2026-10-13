@@ -110,4 +110,19 @@ sealed interface Action {
          */
         fun requiredAcr(account: AccountProfile?): AcrLevel = selfServiceAcrFloor(account)
     }
+
+    companion object {
+        /**
+         * The one action a completed tool's outcome stands for. What it means is decided by its
+         * handler from live context, never by the caller (see the variants). A tool that was not
+         * offered never completes here: `JourneyService.activate` admits only offered tools.
+         */
+        fun of(tool: Tool, outcome: ToolOutcome.Completed, admittedAt: AcrLevel? = null): Action = when (outcome) {
+            is ToolOutcome.Completed.Identified -> RecordIdentification(tool, outcome)
+            is ToolOutcome.Completed.Attested -> AdoptAttestation(tool, outcome)
+            is ToolOutcome.Completed.Enrolled -> AdoptCredential(tool, outcome, admittedAt)
+            is ToolOutcome.Completed.Authenticated -> AcceptProof(tool, outcome)
+            is ToolOutcome.Completed.Approved -> RecordApproval(tool, outcome)
+        }
+    }
 }

@@ -414,7 +414,7 @@ class RegisterStrategyTest : BehaviorSpec({
                 transition shouldBe
                     Transition.RequireSubJourney(
                         AuthIntent.RE_IDENTIFY,
-                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1),
+                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
                         resumeWith = RegisterState.Start
                     )
             }

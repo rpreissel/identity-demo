@@ -30,19 +30,11 @@ sealed interface ReIdentifyState : JourneyState {
          * The seed for [com.example.identity.core.orchestrator.domain.journey.Transition.RequireSubJourney],
          * so callers never construct [OfferReIdent] themselves.
          */
-        fun forSubJourney(targetAcr: AcrLevel, startingAcr: AcrLevel, wording: Wording? = null): ReIdentifyState =
-            OfferReIdent(targetAcr, startingAcr, wording)
+        fun forSubJourney(targetAcr: AcrLevel, wording: Wording? = null): ReIdentifyState = OfferReIdent(targetAcr, wording)
     }
-
-    /**
-     * The channel's acr right before this sub-journey started: `"none"` before login, a real level
-     * for an authenticated channel. The cancel path reads it to fall back correctly either way.
-     */
-    val startingAcr: AcrLevel
 
     data class OfferReIdent(
         override val targetAcr: AcrLevel,
-        override val startingAcr: AcrLevel,
         override val wording: Wording? = null
     ) : ReIdentifyState, AnswerableState {
         override val question: Question
@@ -68,7 +60,6 @@ sealed interface ReIdentifyState : JourneyState {
 
     data class Identifying(
         override val targetAcr: AcrLevel,
-        override val startingAcr: AcrLevel,
         override val offer: Offer,
         override val wording: Wording? = null
     ) : ReIdentifyState, OfferingState {

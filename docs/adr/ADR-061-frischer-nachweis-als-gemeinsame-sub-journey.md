@@ -15,8 +15,8 @@ frischer Nachweis“ stand dreimal im Code, mit drei Gelegenheiten, voneinander 
 **Entscheidung.** Die Prüfung ist eine eigene Sub-Journey, `FRESH_PROOF`
 ([Katalog](../journeys/fresh-proof.md)):
 
-- Ein Intent fordert sie per `Transition.RequireSubJourney` an und gibt dabei das verlangte Niveau,
-  das Niveau der Sitzung beim Start und seinen Zweck mit (`FreshProofState.forSubJourney`). Der
+- Ein Intent fordert sie per `Transition.RequireSubJourney` an und gibt dabei das verlangte Niveau
+  und seinen Zweck mit (`FreshProofState.forSubJourney`). Der
   Zweck (`Purpose`) bestimmt die Wortwahl der Auswahlseite und, ob ein Step-up darin die erneute
   Identifizierung anbieten darf.
 - Die Sub-Journey prüft erst das Niveau (sonst `STEP_UP` als Sub-Journey der Sub-Journey), dann die

@@ -9,16 +9,13 @@ import com.example.identity.contract.texts.Text
  */
 sealed interface WebSelectMethodState : JourneyState {
 
-    /**
-     * Whether the account was already known when this offer was built (a Web step-up,
-     * docs/04-orchestrierung.md Abschnitt 3). Decides how a `Completed.Authenticated` outcome is
-     * read: the outcome's own account, or only the already-bound one.
-     */
-    val accountAlreadyKnown: Boolean
-
     data class SelectMethod(
         override val offer: Offer,
-        override val accountAlreadyKnown: Boolean
+        /**
+         * The account was known when this offer was built (a Web step-up): wording and trace only.
+         * Which account a proof names is decided at execution time (`accountOfProof`).
+         */
+        val accountAlreadyKnown: Boolean
     ) : WebSelectMethodState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val selectionContext: String get() = "auth"
@@ -40,9 +37,7 @@ sealed interface WebSelectMethodState : JourneyState {
      * its own, because the fresh identification may already close the gap and the offer has to be
      * built anew.
      */
-    data class AfterIdentification(
-        override val accountAlreadyKnown: Boolean
-    ) : WebSelectMethodState, ToolFreeState {
+    data object AfterIdentification : WebSelectMethodState, ToolFreeState {
         override val selectionContext: String get() = "auth"
     }
 }

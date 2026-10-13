@@ -12,9 +12,6 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 sealed interface FreshProofState : JourneyState {
     val requiredAcr: AcrLevel
 
-    /** The channel's acr right before this sub-journey started, for the step-up it may require. */
-    val startingAcr: AcrLevel
-
     val purpose: Purpose
 
     /**
@@ -37,14 +34,12 @@ sealed interface FreshProofState : JourneyState {
          * The seed for [com.example.identity.core.orchestrator.domain.journey.Transition.RequireSubJourney],
          * so callers never construct [Start] themselves.
          */
-        fun forSubJourney(requiredAcr: AcrLevel, startingAcr: AcrLevel, purpose: Purpose): FreshProofState =
-            Start(requiredAcr, startingAcr, purpose)
+        fun forSubJourney(requiredAcr: AcrLevel, purpose: Purpose): FreshProofState = Start(requiredAcr, purpose)
     }
 
     /** The check itself, and the state parked while the step-up it required runs. */
     data class Start(
         override val requiredAcr: AcrLevel,
-        override val startingAcr: AcrLevel,
         override val purpose: Purpose,
     ) : FreshProofState, ToolFreeState {
         override val selectionContext: String get() = "auth"
@@ -57,7 +52,6 @@ sealed interface FreshProofState : JourneyState {
      */
     data class Reproving(
         override val requiredAcr: AcrLevel,
-        override val startingAcr: AcrLevel,
         override val purpose: Purpose,
         override val offer: Offer,
     ) : FreshProofState, OfferingState {

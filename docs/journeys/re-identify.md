@@ -37,7 +37,7 @@ stateDiagram-v2
 `AnswerableState`, also ein Zustand mit einer Ja/Nein-Frage. Die erneute Identifizierung beginnt
 deshalb nie, ohne dass der Nutzer es merkt.
 
-`Identifying` enthält das Zielniveau (`targetAcr`), das Niveau beim Start (`startingAcr`), das
+`Identifying` enthält das Zielniveau (`targetAcr`), das
 Angebot und die bisherigen Ablehnungen. Für sich allein erreicht `ident-fsc` das Niveau `loa2`.
 `ident-eid` und `ident-nect` erreichen `loa3`.
 
@@ -49,7 +49,7 @@ ist er falsch.
 Deshalb hat `ReIdentifyState` ein optionales Feld `wording` vom Typ `Wording`. Heute gibt es dafür
 nur den Wert `OPTIONAL_IDENTIFICATION`. Das Feld wählt Titel, Beschreibung und Knopftexte von
 `OfferReIdent` und `Identifying`. Gesetzt wird es über
-`forSubJourney(targetAcr, startingAcr, wording)`, und nur dieser eine Aufrufer belegt es. Bleibt
+`forSubJourney(targetAcr, wording)`, und nur dieser eine Aufrufer belegt es. Bleibt
 es `null`, gilt der Standardtext. Das folgt demselben Muster wie `reason` in
 `StepUpState.forSubJourney`.
 

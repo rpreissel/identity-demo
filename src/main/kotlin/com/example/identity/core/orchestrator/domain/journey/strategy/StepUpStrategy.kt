@@ -50,7 +50,7 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
             }
 
             is StepUpState.AuthChoice -> when (event) {
-                is JourneyEvent.Completed -> Transition.Perform(proofAction(event), resumeState = state)
+                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) {
                     offerReIdentOrGiveUp(state.goal, ctx, whenNone = Transition.Cancel)
                 }
@@ -58,12 +58,6 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
                 else -> finishOrContinue(state.goal, ctx)
             }
         }
-
-    private fun proofAction(event: JourneyEvent.Completed): Action = when (val outcome = event.outcome) {
-        is ToolOutcome.Completed.Authenticated -> Action.AcceptProof(event.tool, outcome)
-        is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-            event.notOffered("STEP_UP")
-    }
 
     private fun finishOrContinue(goal: Goal, ctx: JourneyContext): Transition =
         if (ctx.policy.isSatisfied(ctx.evidence, goal.targetAcr, ctx.requireAccount())) Transition.Authenticated
@@ -97,9 +91,9 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
         if (goal.allowReIdentification && CandidateTools.forReIdentification(goal.targetAcr, ctx).isNotEmpty()) {
             Transition.RequireSubJourney(
                 AuthIntent.RE_IDENTIFY,
-                // ctx.currentAcr, not the possibly stale startingAcr of this run.
-                seedWith = ReIdentifyState.forSubJourney(goal.targetAcr, ctx.currentAcr),
-                resumeWith = StepUpState.Start(goal.targetAcr, goal.startingAcr)
+                seedWith = ReIdentifyState.forSubJourney(goal.targetAcr),
+                // The whole goal, or the run would forget on return why and how it may step up.
+                resumeWith = StepUpState.Start(goal.targetAcr, goal.startingAcr, goal.allowReIdentification, goal.reason)
             )
         } else {
             whenNone

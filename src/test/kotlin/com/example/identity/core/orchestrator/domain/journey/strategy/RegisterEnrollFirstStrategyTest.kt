@@ -39,11 +39,10 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
 
     // Mirrors the literal RegisterEnrollFirstStrategy.offerIdentificationOrFinish builds: its closing
     // offer needs its own wording (never identified before), not RE_IDENTIFY's shared default text.
-    fun optionalIdentification(startingAcr: AcrLevel) = Transition.RequireSubJourney(
+    val optionalIdentification = Transition.RequireSubJourney(
         AuthIntent.RE_IDENTIFY,
         seedWith = ReIdentifyState.forSubJourney(
             targetAcr = AcrLevel.LOA1,
-            startingAcr = startingAcr,
             wording = ReIdentifyState.Wording.OPTIONAL_IDENTIFICATION
         ),
         resumeWith = RegisterEnrollFirstState.EnrollFirstStart
@@ -86,24 +85,6 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
                 val transition = strategy.transition(state, event, ctx())
                 then("performs ${action::class.simpleName} and resumes in the same state") {
                     transition shouldBe Transition.Perform(action, resumeState = state)
-                }
-            }
-        }
-    }
-
-    given("EnrollFirstEnrolling, a tool that neither enrolls nor attests reports back") {
-        val state = RegisterEnrollFirstState.EnrollFirstEnrolling(Offer(listOf(ToolId("enroll-sms"))))
-
-        listOf(
-            JourneyEvent.Completed(tool("ident-fsc"), identifiedOutcome()),
-            JourneyEvent.Completed(tool("auth-sms"), ToolOutcome.Completed.Authenticated(amr = listOf("sms"))),
-            JourneyEvent.Completed(tool("approve-qr"), ToolOutcome.Completed.Approved())
-        ).forEach { event ->
-            `when`("it completes with ${event.outcome::class.simpleName}") {
-                val result = runCatching { strategy.transition(state, event, ctx()) }
-
-                then("the outcome is refused - this journey never offers such a tool") {
-                    shouldThrow<IllegalStateException> { result.getOrThrow() }
                 }
             }
         }
@@ -288,7 +269,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("offers the optional identification step - no second round for the device binding") {
-                transition shouldBe optionalIdentification(startingAcr = AcrLevel.LOA1)
+                transition shouldBe optionalIdentification
             }
         }
     }
@@ -305,7 +286,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("offers the optional identification step - no password on top") {
-                transition shouldBe optionalIdentification(startingAcr = AcrLevel.LOA2)
+                transition shouldBe optionalIdentification
             }
         }
     }
