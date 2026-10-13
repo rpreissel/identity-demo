@@ -1,8 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
@@ -13,7 +12,6 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.policy.Reachability
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -55,15 +53,8 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
                 else -> AuthEnrollCore.afterProof(ctx, resumeAtStart = RegisterState.Start)
             }
 
-            is RegisterState.ConfirmDeviceRebind -> when (event) {
-                is JourneyEvent.Answered -> when (event.answer) {
-                    ANSWER_ACCEPT -> Transition.Perform(Action.LinkDevice, resumeState = state)
-                    ANSWER_DECLINE -> Transition.Cancel
-                    else -> event.notUnderstood("ConfirmDeviceRebind")
-                }
-                is JourneyEvent.ActionCompleted -> afterIdentification(ctx)
-                else -> error("ConfirmDeviceRebind only accepts JourneyEvent.Answered")
-            }
+            // Declining is giving up: no method is offered on a device that stays someone else's.
+            is DeviceLinkQuestion -> state.deviceLinkAnswered(event, whenDeclined = { Transition.Cancel }) { afterIdentification(ctx) }
 
             is RegisterState.Assigning -> when (event) {
                 // Backing out is the "not now" (DeclinePolicy.OPTIONAL): the run carries on as prospect (ADR-10).
@@ -113,8 +104,8 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
         val account = ctx.requireAccount()
         // Device linked to another account ("Zweitaccount", docs/04-orchestrierung.md #2): ask
         // first, before any method is offered.
-        if (ctx.linkedAccountId != null && ctx.linkedAccountId != account.accountId) {
-            return Transition.To(RegisterState.ConfirmDeviceRebind)
+        if (ctx.deviceLinkedElsewhere()) {
+            return Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND_OR_CANCEL))
         }
         // An account found again may already have what it needs: prove an existing method.
         if (ctx.policy.reachability(account, ctx.acrFloor) is Reachability.Reachable) {

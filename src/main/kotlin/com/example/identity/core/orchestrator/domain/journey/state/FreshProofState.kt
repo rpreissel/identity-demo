@@ -41,9 +41,7 @@ sealed interface FreshProofState : JourneyState {
     data class Start(
         override val requiredAcr: AcrLevel,
         override val purpose: Purpose,
-    ) : FreshProofState, ToolFreeState {
-        override val selectionContext: String get() = "auth"
-    }
+    ) : FreshProofState, ToolFreeState
 
     /**
      * Re-prove any one active factor, fresh

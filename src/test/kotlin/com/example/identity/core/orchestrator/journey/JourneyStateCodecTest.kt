@@ -28,9 +28,9 @@ class JourneyStateCodecTest : BehaviorSpec({
 
     val persistedNames = mapOf(
         FastAccessState::class to setOf("Start", "PreferredAuth", "AuthChoice", "Enrolling"),
-        RegisterState::class to setOf("Start", "Identifying", "ConfirmDeviceRebind", "Assigning", "ConfirmingEmail", "SecondFactorKindObligation", "AuthChoice", "Enrolling"),
+        RegisterState::class to setOf("Start", "Identifying", "DeviceLinkQuestion", "Assigning", "ConfirmingEmail", "SecondFactorKindObligation", "AuthChoice", "Enrolling"),
         RegisterEnrollFirstState::class to setOf("EnrollFirstStart", "EnrollFirstAttestingEmail", "EnrollFirstEnrollingSms", "EnrollFirstEnrolling", "EnrollFirstConfirmingEmail", "EnrollFirstSecondFactorKindObligation", "EnrollFirstConfirmDeviceRebind"),
-        LookupLoginState::class to setOf("Start", "Credential", "AdditionalFactor", "OfferBinding", "ConfirmDeviceRebind"),
+        LookupLoginState::class to setOf("Start", "Credential", "AdditionalFactor", "DeviceLinkQuestion"),
         WebSelectMethodState::class to setOf("SelectMethod", "AfterIdentification"),
         StepUpState::class to setOf("Start", "AuthChoice"),
         ManageAuthMethodsState::class to setOf("AddRequested", "RemoveRequested", "Enrolling", "RetractAttributeRequested", "ChangeRequested", "Changing"),

@@ -15,9 +15,7 @@ sealed interface RegisterEnrollFirstState : JourneyState {
      * The journey's beginning and the resume marker for the closing, optional RE_IDENTIFY
      * sub-journey; the arriving event tells them apart. Never rendered with an offer of its own.
      */
-    data object EnrollFirstStart : RegisterEnrollFirstState, ToolFreeState {
-        override val selectionContext: String get() = "enrollment"
-    }
+    data object EnrollFirstStart : RegisterEnrollFirstState, ToolFreeState
 
     /**
      * This device is linked to a different account, so the implicit binding was skipped (never a
@@ -26,13 +24,8 @@ sealed interface RegisterEnrollFirstState : JourneyState {
      * lookup tools.
      */
     data object EnrollFirstConfirmDeviceRebind : RegisterEnrollFirstState, AnswerableState {
-        override val question: Question get() = Question.Confirm(
-            title = Text("Dieses Gerät ist bereits einem anderen Konto zugeordnet"),
-            description = Text("Wenn Sie fortfahren, wird dieses Gerät künftig nur noch Ihrem neuen Konto zugeordnet. Das bisher verbundene Konto muss sich beim nächsten Mal auf diesem Gerät erneut identifizieren. Ohne Zuordnung bleibt Ihr neues Konto nutzbar - Sie melden sich dann künftig über E-Mail und Passwort an."),
-            confirmLabel = Text("Gerät neu zuordnen"),
-            cancelLabel = Text("Ohne Zuordnung fortfahren"),
-            destructive = true
-        )
+        // The same words as the shared question; see DeviceLinkQuestion for why this is a state of its own.
+        override val question: Question get() = DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND).question
     }
 
     /**

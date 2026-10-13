@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.journey.JourneyEndedException
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.journey.Step
@@ -13,7 +14,6 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.OrchestratorException
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
@@ -194,10 +194,10 @@ class ChannelService(
 
     /**
      * Resumes the channel and its active journey. [KeycloakChannelService] reuses it for the Keycloak facade's
-     * upsert (docs/05-api.md Abschnitt 3b). [seedAction] matters only when a fresh journey starts
-     * (see [JourneyService.start]).
+     * upsert (docs/05-api.md Abschnitt 3b). [restoredEvidence] matters only when a fresh journey
+     * starts (see [JourneyService.start]).
      */
-    internal fun resumeChannel(channel: ChannelSession, seedAction: Action? = null): ChannelResponse {
+    internal fun resumeChannel(channel: ChannelSession, restoredEvidence: List<MethodEvidence>? = null): ChannelResponse {
         // An ended channel (docs/02-domaenenmodell.md #3) is only shown, never resumed, so an old
         // channelSessionId cannot open a fresh login on a dead channel.
         val live = LiveChannel.of(channel) ?: return responseAssembler.respond(channel)
@@ -209,7 +209,7 @@ class ChannelService(
         }
         if (channel.state == ChannelState.AUTHENTICATED) return responseAssembler.respond(channel)
 
-        return startEntryJourney(live, seedAction)
+        return startEntryJourney(live, restoredEvidence)
     }
 
     /** Starts [intent] on a live channel that may start it, and answers with its first step. */
@@ -223,8 +223,8 @@ class ChannelService(
     private fun respondAfter(channelSessionId: ChannelSessionId, step: Step): ChannelResponse =
         responseAssembler.respond(sessionManagementService.reloadChannelSession(channelSessionId), step.next, step.stepData)
 
-    private fun startEntryJourney(channel: LiveChannel, seedAction: Action? = null): ChannelResponse {
-        val step = journeyService.startEntryJourney(channel, seedAction)
+    private fun startEntryJourney(channel: LiveChannel, restoredEvidence: List<MethodEvidence>? = null): ChannelResponse {
+        val step = journeyService.startEntryJourney(channel, restoredEvidence)
         return respondAfter(channel.session.id, step)
     }
 

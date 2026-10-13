@@ -11,7 +11,8 @@ teilt sie mit [`FAST_ACCESS`](fast-access.md): `AuthChoice` und `Enrolling`. Nur
 diese Zustände:
 
 - `Identifying` (identifizieren),
-- `ConfirmDeviceRebind` (Rückfrage, ob das Gerät neu verknüpft werden soll),
+- `DeviceLinkQuestion` (Rückfrage, ob das Gerät neu verknüpft werden soll; der Zustand ist mit
+  [`LOOKUP_LOGIN`](lookup-login.md) geteilt),
 - `Assigning` (einer Person im Personenverzeichnis zuordnen),
 - `ConfirmingEmail` (E-Mail-Adresse bestätigen),
 - `SecondFactorKindObligation` (Pflicht zu einem Verfahren einer zweiten Faktorart).
@@ -23,7 +24,7 @@ identifizieren, startet sie als vorgeschalteter Schritt (siehe [`FAST_ACCESS`](f
 (`DeviceAccountLink`) schon mit einem Konto verbunden sein. Es kann sein, dass die Identifizierung
 ein **anderes** Konto findet als dieses („Zweitaccount“). Dann wird die Geräteverknüpfung nicht
 stillschweigend überschrieben. `afterIdentification` prüft diesen Fall als Allererstes, noch bevor
-ein Anmeldeverfahren angeboten wird. Dann wechselt die Journey nach `ConfirmDeviceRebind` und fragt
+ein Anmeldeverfahren angeboten wird. Dann wechselt die Journey nach `DeviceLinkQuestion` (Wortlaut `REBIND_OR_CANCEL`) und fragt
 den Nutzer:
 
 - Stimmt der Nutzer zu (`accept`), wird das Gerät neu verknüpft (`Action.LinkDevice`). Dabei wird
@@ -60,13 +61,13 @@ stateDiagram-v2
   Start --> [*]: keines verfügbar - Abort
   Identifying --> Identifying: ein Tool abgelehnt, weitere übrig
   Identifying --> [*]: alle abgelehnt - Cancel
-  Identifying --> ConfirmDeviceRebind: Identität festgestellt, Gerät bereits mit anderem Konto verknüpft
-  ConfirmDeviceRebind --> AuthChoice: Zustimmung - Gerät neu verknüpft, weiter wie nach der Identifizierung
-  ConfirmDeviceRebind --> [*]: Ablehnung - Journey bricht ab, alte Verknüpfung bleibt
+  Identifying --> DeviceLinkQuestion: Identität festgestellt, Gerät bereits mit anderem Konto verknüpft
+  DeviceLinkQuestion --> AuthChoice: Zustimmung - Gerät neu verknüpft, weiter wie nach der Identifizierung
+  DeviceLinkQuestion --> [*]: Ablehnung - Journey bricht ab, alte Verknüpfung bleibt
   Identifying --> AuthChoice: Identität festgestellt, Konto bereits ausreichend eingerichtet
   Identifying --> Assigning: Identität bestätigt, aber keine Person aus dem Personenverzeichnis zugeordnet (ident-eid, ident-nect)
   Assigning --> AuthChoice: zugeordnet, gefundenes Konto bereits ausreichend eingerichtet
-  Assigning --> ConfirmDeviceRebind: zugeordnet, gefundenes Konto ist nicht das des Geräts
+  Assigning --> DeviceLinkQuestion: zugeordnet, gefundenes Konto ist nicht das des Geräts
   Assigning --> ConfirmingEmail: Zuordnung erledigt oder übersprungen, E-Mail-Pflicht offen
   Assigning --> Enrolling: Zuordnung erledigt oder übersprungen, E-Mail bereits bestätigt
   Identifying --> ConfirmingEmail: Identität festgestellt, Konto muss etwas einrichten, E-Mail-Pflicht offen

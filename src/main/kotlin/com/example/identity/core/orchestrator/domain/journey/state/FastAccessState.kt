@@ -10,9 +10,7 @@ import com.example.identity.contract.tool_api.ToolId
  */
 sealed interface FastAccessState : JourneyState {
 
-    data object Start : FastAccessState, ToolFreeState {
-        override val selectionContext: String get() = "auth"
-    }
+    data object Start : FastAccessState, ToolFreeState
 
     /** Linked device with a matching device method: exactly one default suggestion. */
     data class PreferredAuth(val toolId: ToolId, override val active: ToolRef? = null) : FastAccessState {

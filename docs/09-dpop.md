@@ -189,7 +189,7 @@ ist und welchem Konto das Gerät gehört, steht jeweils an anderer Stelle.
   nötige Information liegt, und beide werden an genau einer Stelle zusammengeführt:
   - *Will dieser Ablauf verknüpfen?* Das sagt `AuthIntent.bindsDeviceImplicitly`. Nur
     `LOOKUP_LOGIN` will es nicht, weil genau diesen Intent Leute wählen, die nicht wiedererkannt
-    werden wollen. Er fragt stattdessen nach (`OfferBinding` → `Perform(LinkDevice, …)`). Die Frage
+    werden wollen. Er fragt stattdessen nach (`DeviceLinkQuestion` → `Perform(LinkDevice, …)`). Die Frage
     nach dem Kanal kann diese Eigenschaft nicht mitbeantworten: `REGISTER` läuft auf APP *und* WEB
     und wäre dann keine Konstante mehr.
   - *Gibt es hier ein Gerät?* Das ergibt sich aus dem Kanal, und der Executor prüft es an einer Stelle. Die
@@ -217,7 +217,7 @@ ist und welchem Konto das Gerät gehört, steht jeweils an anderer Stelle.
   höchstens ein Konto. Was passiert, wenn sich auf einem bereits verknüpften Gerät jemand anderes
   neu ausweist (`intent=register`, „Zweitaccount“, siehe [`REGISTER`](journeys/register.md))?
   - Die Verknüpfung wird nicht unbemerkt überschrieben. Sie wird erst nach einer Rückfrage
-    übertragen (`RegisterState.ConfirmDeviceRebind`).
+    übertragen (`DeviceLinkQuestion`, Wortlaut `REBIND_OR_CANCEL`).
   - Stimmt der Nutzer zu, wird zusätzlich **jedes** Credential des bisherigen Kontos deaktiviert, das
     an diesen Schlüssel gebunden ist. Sein Datensatz im Tool-Modul wird gelöscht
     (`AccountDeletionService.revokeMethod`). Heute sind das `device` und `kobil`.

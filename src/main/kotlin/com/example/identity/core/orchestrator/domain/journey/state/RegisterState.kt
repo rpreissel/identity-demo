@@ -10,9 +10,7 @@ import com.example.identity.contract.texts.Text
  */
 sealed interface RegisterState : JourneyState {
 
-    data object Start : RegisterState, ToolFreeState {
-        override val selectionContext: String get() = "auth"
-    }
+    data object Start : RegisterState, ToolFreeState
 
     companion object {
         /**
@@ -35,22 +33,6 @@ sealed interface RegisterState : JourneyState {
         override val selectionStep: String get() = "selectIdentificationMethod"
         override val selectionTitle: Text get() = Text("Identifikation erforderlich")
         override val selectionDescription: Text get() = Text("Bitte identifizieren Sie sich, um Ihr Konto zu finden oder ein neues anzulegen.")
-    }
-
-    /**
-     * The just-identified account differs from the one this device is linked to
-     * (docs/04-orchestrierung.md #2, "Zweitaccount"). Asked right after identification, before any
-     * method is offered; the link is never overwritten silently.
-     * Carries no account id: `Action.LinkDevice` reads the account from the live session.
-     */
-    data object ConfirmDeviceRebind : RegisterState, AnswerableState {
-        override val question: Question get() = Question.Confirm(
-            title = Text("Dieses Gerät ist bereits einem anderen Konto zugeordnet"),
-            description = Text("Wenn Sie fortfahren, wird dieses Gerät künftig nur noch diesem Konto zugeordnet. Das bisher verbundene Konto muss sich beim nächsten Mal auf diesem Gerät erneut identifizieren."),
-            confirmLabel = Text("Gerät neu zuordnen"),
-            cancelLabel = Text("Abbrechen"),
-            destructive = true
-        )
     }
 
     /**

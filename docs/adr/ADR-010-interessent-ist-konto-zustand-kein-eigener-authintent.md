@@ -45,7 +45,7 @@ eines Kontos, neben Versichertem und Partner. Alle drei Rollen ergeben sich aus 
 ist ein Intent.
 
 **Kosten**: Was nur für Interessenten gilt, steht als Verzweigung in den bestehenden Strategien (wie
-bei `ConfirmDeviceRebind`) und nicht in einer eigenen Strategie. Die Strategien enthalten dadurch mehr
+bei `DeviceLinkQuestion`) und nicht in einer eigenen Strategie. Die Strategien enthalten dadurch mehr
 Fallunterscheidungen.
 
 ---

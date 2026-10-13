@@ -9,7 +9,6 @@ import com.example.identity.core.orchestrator.session.id
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.OrchestratorException
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.domain.AuthIntent
@@ -146,7 +145,6 @@ class KeycloakChannelService(
         val seed = restored.factors
             .filter { it.axis != EvidenceAxis.AUTHENTICATOR || it.method.value in activeMethods }
             .takeIf { isFreshChannel && it.isNotEmpty() }
-            ?.let(Action::ApplyRestoredEvidence)
         return channelService.resumeChannel(sessionManagementService.reloadChannelSession(channelSessionId), seed)
     }
 

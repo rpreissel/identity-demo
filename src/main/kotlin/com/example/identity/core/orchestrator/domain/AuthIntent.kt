@@ -19,7 +19,7 @@ enum class AuthIntent {
     /**
      * Log into an existing account without a paired device (classic web login). The one intent that
      * does not link the device as a side effect ([bindsDeviceImplicitly]). It asks first
-     * (`LookupLoginState.OfferBinding`): people choose it because they do not want to be recognized
+     * (`DeviceLinkQuestion`): people choose it because they do not want to be recognized
      * next time.
      */
     LOOKUP_LOGIN,

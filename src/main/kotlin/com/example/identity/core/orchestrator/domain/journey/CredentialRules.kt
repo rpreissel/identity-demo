@@ -45,7 +45,7 @@ fun proofLevel(active: List<AuthMethodView>, module: ToolModule, bindingKeyRef: 
  * Whether succeeding at [intent] links this device to [accountId] on its own. Never as a rebind:
  * an ordinary flow is consent to be recognized next time, not to take the device away from another
  * account (which also revokes that account's device credentials). A rebind needs an explicit
- * answer (`ConfirmDeviceRebind`).
+ * answer (`DeviceLinkQuestion`).
  */
 fun linksDeviceImplicitly(intent: AuthIntent, linkedTo: AccountId?, accountId: AccountId): Boolean =
     intent.bindsDeviceImplicitly && (linkedTo == null || linkedTo == accountId)

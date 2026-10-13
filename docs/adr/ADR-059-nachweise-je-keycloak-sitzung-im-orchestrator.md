@@ -47,7 +47,7 @@ soll.
   `kcSessionId`. Der Orchestrator liest die Zeilen der Sitzung, die noch nicht abgelaufen sind. Nennt
   Keycloak ein anderes Konto als die Zeilen, oder gehören die Zeilen mehreren Konten, antwortet er mit
   `409`. Ein neuer Kanal übernimmt die
-  Nachweise mit `Action.ApplyRestoredEvidence`, vor der ersten Entscheidung der Journey
+  Nachweise als Übergang `Entry` (`JourneyService.start(restoredEvidence)`), vor der ersten Entscheidung der Journey
   ([04-orchestrierung.md](../04-orchestrierung.md) Abschnitt 8). Jeder Nachweis behält seinen
   Zeitpunkt.
 - **Löschen.** Die Abmeldung in Keycloak löscht alle Zeilen der Sitzung. `RetentionJob` löscht

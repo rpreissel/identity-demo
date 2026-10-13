@@ -518,7 +518,7 @@ erkennt. Die Geräteverknüpfung speichert, welches Smartphone zu welchem Konto 
   So lässt sich ein zweites Konto anlegen. Es kann sein, dass die neue Identifizierung zu einem
   anderen Konto führt als zu dem, mit dem das Gerät bisher verknüpft ist. Dann fragt der Kanal noch
   vor jeder Auswahl eines Verfahrens nach, ob die bestehende Geräteverknüpfung (`DeviceAccountLink`)
-  ersetzt werden soll (`RegisterState.ConfirmDeviceRebind`).
+  ersetzt werden soll (`DeviceLinkQuestion`).
   - Stimmt der Nutzer zu, wird das Gerät neu verknüpft. Das bisherige Geräte-Credential des alten
     Kontos (`enroll-device`) für genau diesen Schlüssel wird deaktiviert bzw. gelöscht.
   - Lehnt er ab, endet die Journey regulär, ohne Fehler, wie bei `DELETE .../journey`. Die alte

@@ -36,9 +36,7 @@ sealed interface StepUpState : JourneyState {
         val allowReIdentification: Boolean = true,
         /** Carried into [AuthChoice]; see [StepUpState.forSubJourney]. */
         val reason: Reason? = null
-    ) : StepUpState, ToolFreeState {
-        override val selectionContext: String get() = "auth"
-    }
+    ) : StepUpState, ToolFreeState
 
     data class AuthChoice(
         override val targetAcr: AcrLevel,

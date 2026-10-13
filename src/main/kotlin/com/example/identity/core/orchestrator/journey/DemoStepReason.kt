@@ -1,5 +1,6 @@
-package com.example.identity.core.orchestrator.domain.journey
+package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.state.AnswerableState
@@ -45,10 +46,10 @@ internal object DemoStepReason {
     }
 
     /**
-     * What this position of the journey is for, as opposed to [explain]'s "why this tool". One case
-     * per concrete state and no `else`, so a new state without a purpose does not compile.
+     * What this position of the journey is for, as opposed to [explain]'s "why this tool". Demo
+     * text, so a state without one shows none rather than forcing words into the domain.
      */
-    fun purpose(state: JourneyState): Text = when (state) {
+    fun purpose(state: JourneyState): Text? = when (state) {
         is AuthChoice -> Text("Das Konto ist bekannt. Jetzt fehlt der Nachweis, dass Sie es sind - mit einem Verfahren, das schon eingerichtet ist.")
         is Enrolling -> Text("Das Konto hat noch kein Verfahren, das für künftige Anmeldungen reicht - deshalb wird jetzt eines eingerichtet.")
 
@@ -57,7 +58,6 @@ internal object DemoStepReason {
 
         RegisterState.Start -> Text("Eine Registrierung beginnt immer mit der Frage, wer Sie sind.")
         is RegisterState.Identifying -> Text("Für ein Konto muss feststehen, wer Sie sind - deshalb zuerst eine Identifizierung.")
-        RegisterState.ConfirmDeviceRebind -> Text("Dieses Gerät gehört schon zu einem anderen Konto - bevor es umgehängt wird, wird gefragt.")
         is RegisterState.Assigning -> Text("Die Identität steht fest. Mit der Versichertennummer lässt sie sich einer versicherten Person zuordnen - freiwillig.")
         is RegisterState.ConfirmingEmail -> Text("Ein neues Konto braucht eine bestätigte E-Mail-Adresse - sie ist Voraussetzung für ein Passwort.")
         is RegisterState.SecondFactorKindObligation -> Text("Damit Sie Ihre Anmeldeverfahren später verwalten können, braucht das Konto noch ein Verfahren anderer Art als die schon eingerichteten. Die Liste zeigt, welche hier passen.")
@@ -73,8 +73,10 @@ internal object DemoStepReason {
         LookupLoginState.Start -> Text("Anmeldung ohne Gerätebindung: Das Konto wird erst über Ihre Angaben gesucht.")
         is LookupLoginState.Credential -> Text("Anmeldung ohne Gerätebindung: E-Mail-Adresse oder Handynummer finden das Konto, das Verfahren beweist, dass Sie es sind.")
         is LookupLoginState.AdditionalFactor -> Text("Der erste Nachweis reicht nicht für das verlangte Sicherheitsniveau - ein zweites Verfahren fehlt.")
-        LookupLoginState.OfferBinding -> Text("Anmeldung geschafft. Jetzt wird gefragt, ob dieses Gerät sich das Konto merken soll.")
-        LookupLoginState.ConfirmDeviceRebind -> Text("Dieses Gerät gehört schon zu einem anderen Konto - bevor es umgehängt wird, wird gefragt.")
+        is DeviceLinkQuestion -> when (state.wording) {
+            DeviceLinkQuestion.Wording.OFFER -> Text("Anmeldung geschafft. Jetzt wird gefragt, ob dieses Gerät sich das Konto merken soll.")
+            else -> Text("Dieses Gerät gehört schon zu einem anderen Konto - bevor es umgehängt wird, wird gefragt.")
+        }
 
         is StepUpState.Start -> stepUpPurpose(state.targetAcr, state.startingAcr)
         is StepUpState.AuthChoice -> stepUpPurpose(state.targetAcr, state.startingAcr)
@@ -103,7 +105,7 @@ internal object DemoStepReason {
 
         // AnswerableState is not sealed, so the compiler asks for this case; it only catches a
         // yes/no state added without a purpose of its own.
-        is AnswerableState -> Text("Der Orchestrator wartet auf Ihre Antwort auf eine Rückfrage.")
+        is AnswerableState -> null
     }
 
     private fun stepUpPurpose(target: AcrLevel, starting: AcrLevel) = Text(

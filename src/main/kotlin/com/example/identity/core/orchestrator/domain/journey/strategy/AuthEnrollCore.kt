@@ -3,23 +3,18 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.account.AccountProfile
-import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
-import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.toEnrollAbortMessage
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
-import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.policy.Reachability
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
  * The logic [FastAccessStrategy] and [RegisterStrategy] share for [AuthChoice] and [Enrolling]. A
@@ -76,13 +71,7 @@ internal object AuthEnrollCore {
     fun offerEnrollment(account: AccountProfile, ctx: JourneyContext, emailObligation: Boolean, resumeAtStart: JourneyState): Transition {
         if (!ctx.policy.isSatisfied(ctx.evidence, ENROLLMENT_FLOOR_ACR, account)) {
             val reidentTarget = AcrLevel.max(ENROLLMENT_FLOOR_ACR, ctx.acrFloor)
-            return if (CandidateTools.forReIdentification(reidentTarget, ctx).isNotEmpty()) {
-                Transition.RequireSubJourney(
-                    AuthIntent.RE_IDENTIFY,
-                    seedWith = ReIdentifyState.forSubJourney(reidentTarget),
-                    resumeWith = resumeAtStart
-                )
-            } else {
+            return reIdentifyOr(reidentTarget, ctx, resumeWith = resumeAtStart) {
                 Transition.Abort(
                     Text("Fuer die Einrichtung eines neuen Anmeldeverfahrens ist eine frische Identifizierung (mindestens loa2) erforderlich, aktuell ist aber keine Identifizierungsmethode verfuegbar.")
                 )
@@ -93,13 +82,7 @@ internal object AuthEnrollCore {
         if (candidates.isNotEmpty()) {
             return Transition.To(Enrolling(Offer(candidates), emailObligation = emailObligation))
         }
-        return if (CandidateTools.forReIdentification(ctx.acrFloor, ctx).isNotEmpty()) {
-            Transition.RequireSubJourney(
-                AuthIntent.RE_IDENTIFY,
-                seedWith = ReIdentifyState.forSubJourney(ctx.acrFloor),
-                resumeWith = resumeAtStart
-            )
-        } else {
+        return reIdentifyOr(ctx.acrFloor, ctx, resumeWith = resumeAtStart) {
             // Reachable here means a channel-local reason, e.g. every remaining tool disabled.
             Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toEnrollAbortMessage())
         }

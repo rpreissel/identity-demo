@@ -144,7 +144,7 @@ stillschweigend etwas von der Umgebung voraussetzt.
   - A-7: Modulabhängigkeiten per Test prüfen (`DPoP-demo-9ppv.15`).
   - A-8: tote Enum-Werte und CHECKs für Zustände (`9ppv.16`).
   - A-11: gemeinsame Wurzel der REGISTER-Zustände (`9ppv.19`).
-  - A-13: `DemoStepReason` aus dem Fachkern entfernen (`9ppv.21`).
+  - A-13: `DemoStepReason` aus dem Fachkern entfernen (`9ppv.21`) – erledigt 2026-10-13, liegt in `journey/`.
   - A-14: nur `InvalidInputException` wird zu `400` (`9ppv.22`).
   - K-5: ArchUnit-Regel „keine Transaktion um Keycloak-Aufrufe“ (`9ppv.7`).
 

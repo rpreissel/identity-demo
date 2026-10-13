@@ -4,9 +4,6 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.account.AccountProfile
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -14,14 +11,12 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrollFirstState
 import com.example.identity.core.orchestrator.domain.journey.toEnrollAbortMessage
 import com.example.identity.core.orchestrator.domain.policy.Reachability
 import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
  * REGISTER, "Enrollment zuerst" (docs/journeys/register-enroll-first.md). Reached only through
@@ -52,16 +47,9 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
             // The email obligation is already discharged here.
             is RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation -> completedOr(state, event) { afterEnrollment(ctx, emailObligation = false) }
 
-            is RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind -> when (event) {
-                is JourneyEvent.Answered -> when (event.answer) {
-                    ANSWER_ACCEPT -> Transition.Perform(Action.LinkDevice, resumeState = state)
-                    // The account stays usable through the lookup tools, just not recognized here.
-                    ANSWER_DECLINE -> Transition.Authenticated
-                    else -> event.notUnderstood("EnrollFirstConfirmDeviceRebind")
-                }
-                is JourneyEvent.ActionCompleted -> Transition.Authenticated
-                else -> error("EnrollFirstConfirmDeviceRebind only accepts JourneyEvent.Answered")
-            }
+            // Declined, the account stays usable through the lookup tools, just not recognized here.
+            is RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind ->
+                state.deviceLinkAnswered(event, whenDeclined = { Transition.Authenticated }) { Transition.Authenticated }
         }
 
     /**
@@ -130,17 +118,8 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
      * sub-journey. Declining or having nothing to offer finishes the registration.
      */
     private fun offerIdentificationOrFinish(ctx: JourneyContext): Transition =
-        if (CandidateTools.forReIdentification(ctx.acrFloor, ctx).isNotEmpty()) {
-            Transition.RequireSubJourney(
-                AuthIntent.RE_IDENTIFY,
-                // The default wording ("erneut", "nicht erreichbar") is wrong for a new account.
-                seedWith = ReIdentifyState.forSubJourney(
-                    targetAcr = ctx.acrFloor,
-                    wording = ReIdentifyState.Wording.OPTIONAL_IDENTIFICATION
-                ),
-                resumeWith = RegisterEnrollFirstState.EnrollFirstStart
-            )
-        } else {
+        // The default wording ("erneut", "nicht erreichbar") is wrong for a new account.
+        reIdentifyOr(ctx.acrFloor, ctx, resumeWith = RegisterEnrollFirstState.EnrollFirstStart, wording = ReIdentifyState.Wording.OPTIONAL_IDENTIFICATION) {
             finishOrOfferRebind(ctx)
         }
 
@@ -149,15 +128,12 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
      * ([RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind]). A Web channel has no
      * device, so `linkedAccountId` is null and this falls through.
      */
-    private fun finishOrOfferRebind(ctx: JourneyContext): Transition {
-        val accountId = ctx.account?.accountId
-        val linkedElsewhere = ctx.linkedAccountId != null && ctx.linkedAccountId != accountId
-        return if (accountId != null && linkedElsewhere) {
+    private fun finishOrOfferRebind(ctx: JourneyContext): Transition =
+        if (ctx.account != null && ctx.deviceLinkedElsewhere()) {
             Transition.To(RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind)
         } else {
             Transition.Authenticated
         }
-    }
 
     /** Enrollment tools for one method name, found through the catalog, never a fixed toolId. */
     private fun enrollmentCandidatesFor(method: String, ctx: JourneyContext): List<ToolId> =

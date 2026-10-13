@@ -1,10 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -14,14 +13,13 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
-import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
 import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
  * Log into an existing account without a paired device (docs/journeys/lookup-login.md): the user
  * names an identifier and proves a credential. There is no identification state, and the device
- * link arises only from [LookupLoginState.OfferBinding], after the user agrees.
+ * link arises only from [DeviceLinkQuestion], after the user agrees.
  */
 class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
 
@@ -53,24 +51,13 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
             is LookupLoginState.AdditionalFactor -> proving(state, event, ctx)
 
             // The journey ends either way; only ANSWER_ACCEPT links the device.
-            is LookupLoginState.OfferBinding -> deviceLinkAnswered(state, "OfferBinding", event)
-            is LookupLoginState.ConfirmDeviceRebind -> deviceLinkAnswered(state, "ConfirmDeviceRebind", event)
+            is DeviceLinkQuestion -> state.deviceLinkAnswered(event, whenDeclined = { Transition.Authenticated }) { Transition.Authenticated }
         }
 
     private fun proving(state: OfferingState, event: JourneyEvent, ctx: JourneyContext): Transition = when (event) {
         is JourneyEvent.Completed -> completed(event, state)
         is JourneyEvent.OfferExhausted -> Transition.Cancel
         else -> settleOrRaise(ctx)
-    }
-
-    private fun deviceLinkAnswered(state: LookupLoginState, name: String, event: JourneyEvent): Transition = when (event) {
-        is JourneyEvent.Answered -> when (event.answer) {
-            ANSWER_ACCEPT -> Transition.Perform(Action.LinkDevice, resumeState = state)
-            ANSWER_DECLINE -> Transition.Authenticated
-            else -> event.notUnderstood(name)
-        }
-        is JourneyEvent.ActionCompleted -> Transition.Authenticated
-        else -> error("$name only accepts JourneyEvent.Answered")
     }
 
     /**
@@ -98,22 +85,16 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
             // Unlinked: offer the link. Linked elsewhere: warn before rebinding. Linked here:
             // nothing to ask.
             return when (ctx.linkedAccountId) {
-                null -> Transition.To(LookupLoginState.OfferBinding)
+                null -> Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.OFFER))
                 account.accountId -> Transition.Authenticated
-                else -> Transition.To(LookupLoginState.ConfirmDeviceRebind)
+                else -> Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND))
             }
         }
         val candidates = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
         if (candidates.isNotEmpty()) {
             return Transition.To(LookupLoginState.AdditionalFactor(Offer(candidates)))
         }
-        return if (CandidateTools.forReIdentification(ctx.acrFloor, ctx).isNotEmpty()) {
-            Transition.RequireSubJourney(
-                AuthIntent.RE_IDENTIFY,
-                seedWith = ReIdentifyState.forSubJourney(ctx.acrFloor),
-                resumeWith = LookupLoginState.Start
-            )
-        } else {
+        return reIdentifyOr(ctx.acrFloor, ctx, resumeWith = LookupLoginState.Start) {
             Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
         }
     }

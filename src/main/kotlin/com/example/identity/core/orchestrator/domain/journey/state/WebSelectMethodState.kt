@@ -38,7 +38,5 @@ sealed interface WebSelectMethodState : JourneyState {
      * its own, because the fresh identification may already close the gap and the offer has to be
      * built anew.
      */
-    data object AfterIdentification : WebSelectMethodState, ToolFreeState {
-        override val selectionContext: String get() = "auth"
-    }
+    data object AfterIdentification : WebSelectMethodState, ToolFreeState
 }

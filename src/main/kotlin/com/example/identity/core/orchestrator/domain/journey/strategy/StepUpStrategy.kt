@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -8,12 +7,10 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
  * Raise the level of an already authenticated session (docs/journeys/step-up.md). When no active
@@ -84,15 +81,10 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
      * Offers re-identification if allowed ([StepUpState.Start.allowReIdentification]) and able to
      * close the gap; [whenNone] otherwise.
      */
-    private fun offerReIdentOrGiveUp(goal: Goal, ctx: JourneyContext, whenNone: Transition): Transition =
-        if (goal.allowReIdentification && CandidateTools.forReIdentification(goal.targetAcr, ctx).isNotEmpty()) {
-            Transition.RequireSubJourney(
-                AuthIntent.RE_IDENTIFY,
-                seedWith = ReIdentifyState.forSubJourney(goal.targetAcr),
-                // The whole goal, or the run would forget on return why and how it may step up.
-                resumeWith = StepUpState.Start(goal.targetAcr, goal.startingAcr, goal.allowReIdentification, goal.reason)
-            )
-        } else {
-            whenNone
-        }
+    private fun offerReIdentOrGiveUp(goal: Goal, ctx: JourneyContext, whenNone: Transition): Transition {
+        if (!goal.allowReIdentification) return whenNone
+        // The whole goal, or the run would forget on return why and how it may step up.
+        val resume = StepUpState.Start(goal.targetAcr, goal.startingAcr, goal.allowReIdentification, goal.reason)
+        return reIdentifyOr(goal.targetAcr, ctx, resumeWith = resume) { whenNone }
+    }
 }

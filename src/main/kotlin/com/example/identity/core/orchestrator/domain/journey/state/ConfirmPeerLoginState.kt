@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.AuthIntent
 
 /**
  * Approve or decline a Web-channel login waiting on this account's peer approval
@@ -17,9 +16,7 @@ sealed interface ConfirmPeerLoginState : JourneyState {
      * strategy aborts instead of falling into registration. No extra "confirm this?" prompt: the
      * step-up screen explains the request ([StepUpState.Reason.PEER_LOGIN]) and offers "Abbrechen".
      */
-    data object Requested : ConfirmPeerLoginState, ToolFreeState {
-        override val selectionContext: String get() = "enrollment"
-    }
+    data object Requested : ConfirmPeerLoginState, ToolFreeState
 
     /**
      * loa2 satisfied: the peer-approval tools are the candidates (today only `approve-qr`). An

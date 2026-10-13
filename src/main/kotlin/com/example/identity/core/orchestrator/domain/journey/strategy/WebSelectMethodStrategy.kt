@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -8,7 +7,6 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
 import com.example.identity.contract.texts.Text
@@ -34,7 +32,7 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
         when (state) {
             is WebSelectMethodState.SelectMethod -> when (event) {
                 is JourneyEvent.Completed -> completed(state, event, ctx)
-                is JourneyEvent.OfferExhausted -> ctx.account?.let { reIdentifyOr(ctx, whenNone = Transition.Cancel) } ?: Transition.Cancel
+                is JourneyEvent.OfferExhausted -> ctx.account?.let { reIdentifyOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.AfterIdentification) { Transition.Cancel } } ?: Transition.Cancel
                 // Started re-checks like any other proof: restored evidence may already satisfy the
                 // floor (docs/04-orchestrierung.md, "Übernommene Nachweise als erster Übergang"). So does
                 // ActionCompleted.
@@ -75,20 +73,10 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
         if (account == null || next.offer.offered.isNotEmpty()) return Transition.To(next)
         // No method of this account can close the gap here: identifying again can, as in STEP_UP.
         // Failing that, say why instead of handing Keycloak an empty selection.
-        return reIdentifyOr(ctx, whenNone = Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage()))
-    }
-
-    /** `RE_IDENTIFY` when an identification can reach the floor on this channel, [whenNone] otherwise. */
-    private fun reIdentifyOr(ctx: JourneyContext, whenNone: Transition): Transition =
-        if (CandidateTools.forReIdentification(ctx.acrFloor, ctx).isNotEmpty()) {
-            Transition.RequireSubJourney(
-                AuthIntent.RE_IDENTIFY,
-                seedWith = ReIdentifyState.forSubJourney(ctx.acrFloor),
-                resumeWith = WebSelectMethodState.AfterIdentification
-            )
-        } else {
-            whenNone
+        return reIdentifyOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.AfterIdentification) {
+            Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
         }
+    }
 
     private fun selectMethod(ctx: JourneyContext) =
         WebSelectMethodState.SelectMethod(Offer(candidatesFor(ctx)), accountAlreadyKnown = ctx.account != null)

@@ -131,6 +131,12 @@ sealed interface ToolFreeState : JourneyState {
     override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
     override val active: ToolRef? get() = null
     override fun withActive(active: ToolRef?): JourneyState = this
+
+    /**
+     * Never routed to: a decision point or a parked wish is left again in the step that reads it,
+     * so the value only satisfies the interface. A question ([AnswerableState]) names its screen.
+     */
+    override val selectionContext: String get() = "auth"
 }
 
 /**

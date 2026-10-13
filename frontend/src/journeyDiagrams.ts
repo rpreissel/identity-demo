@@ -186,7 +186,7 @@ export const CURRENT_STEP_BY_STATE_TYPE: Partial<Record<keyof typeof JOURNEY_DIA
     Start: { index: 0 },
     Credential: { index: 0 },
     AdditionalFactor: { index: 0 },
-    OfferBinding: { index: 1 },
+    DeviceLinkQuestion: { index: 1 },
   },
   stepUp: {
     Start: { index: 0 },

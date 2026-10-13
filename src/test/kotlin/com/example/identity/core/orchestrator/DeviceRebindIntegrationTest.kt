@@ -19,7 +19,7 @@ import java.util.UUID
 
 /**
  * REGISTER on a device linked to a different account (docs/04-orchestrierung.md #2, "Zweitaccount")
- * asks before overwriting `DeviceAccountLink` (RegisterState.ConfirmDeviceRebind), right after
+ * asks before overwriting `DeviceAccountLink` (`DeviceLinkQuestion`, wording REBIND_OR_CANCEL), right after
  * identification. Accepting rebinds and revokes the old account's device credential; declining
  * leaves the old binding untouched. Real ECDSA signing, as in DeviceBindingIntegrationTest.
  */

@@ -18,26 +18,18 @@ sealed interface ManageAuthMethodsState : JourneyState {
      * checked (FRESH_PROOF). So the wish survives the detour: after proving, the user need not act again.
      * [com.example.identity.core.orchestrator.domain.journey.JourneyLifecycle.SUSPENDED] says it is waiting.
      */
-    data object AddRequested : Wish, ToolFreeState {
-        override val selectionContext: String get() = "enrollment"
-    }
+    data object AddRequested : Wish, ToolFreeState
 
-    data class RemoveRequested(val methodInstanceId: String) : Wish, ToolFreeState {
-        override val selectionContext: String get() = "enrollment"
-    }
+    data class RemoveRequested(val methodInstanceId: String) : Wish, ToolFreeState
 
     /**
      * The wish to withdraw an account attribute (a confirmed address), gated like [RemoveRequested]:
      * it is destructive self-service too and can take credentials with it.
      */
-    data class RetractAttributeRequested(val attributeType: AttributeType) : Wish, ToolFreeState {
-        override val selectionContext: String get() = "enrollment"
-    }
+    data class RetractAttributeRequested(val attributeType: AttributeType) : Wish, ToolFreeState
 
     /** The wish to change one credential in place (a new password, a new number), gated like the others. */
-    data class ChangeRequested(val methodInstanceId: String) : Wish, ToolFreeState {
-        override val selectionContext: String get() = "enrollment"
-    }
+    data class ChangeRequested(val methodInstanceId: String) : Wish, ToolFreeState
 
     /**
      * The one enrollment that replaces [methodInstanceId] is running. Backing out ends the wish;

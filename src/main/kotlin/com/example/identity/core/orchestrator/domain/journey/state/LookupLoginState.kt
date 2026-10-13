@@ -10,9 +10,7 @@ import com.example.identity.contract.texts.Text
  */
 sealed interface LookupLoginState : JourneyState {
 
-    data object Start : LookupLoginState, ToolFreeState {
-        override val selectionContext: String get() = "auth"
-    }
+    data object Start : LookupLoginState, ToolFreeState
 
     data class Credential(
         override val offer: Offer
@@ -37,34 +35,5 @@ sealed interface LookupLoginState : JourneyState {
         override val selectionContext: String get() = "auth"
         override val selectionTitle: Text get() = Text("Zusätzlicher Faktor erforderlich")
         override val selectionDescription: Text get() = Text("Ihre bisherige Anmeldung reicht für das geforderte Sicherheitsniveau nicht aus. Bitte bestätigen Sie einen weiteren Faktor.")
-    }
-
-    /**
-     * Explicit and optional: "recognize this device for future logins?". A durable device link must
-     * not arise as a side effect of a login the user chose because it has no device binding.
-     * Carries no account id: `Action.LinkDevice` reads the account from the live session.
-     */
-    data object OfferBinding : LookupLoginState, AnswerableState {
-        override val question: Question get() = Question.Confirm(
-            title = Text("Dieses Gerät merken?"),
-            description = Text("Wenn Sie zustimmen, erkennt der Dienst dieses Gerät beim nächsten Mal wieder und Sie müssen Ihre E-Mail-Adresse nicht erneut eingeben. Sie können auch ohne Verknüpfung fortfahren – dann melden Sie sich künftig wieder über E-Mail und Passwort an."),
-            confirmLabel = Text("Gerät merken"),
-            cancelLabel = Text("Ohne Verknüpfung fortfahren")
-        )
-    }
-
-    /**
-     * A lookup login resolved a different account than the one this device is bound to. Accepting
-     * overwrites that durable link, so the prompt says so; declining still logs in without rebinding.
-     * Carries no account id: `Action.LinkDevice` reads the account from the live session.
-     */
-    data object ConfirmDeviceRebind : LookupLoginState, AnswerableState {
-        override val question: Question get() = Question.Confirm(
-            title = Text("Dieses Gerät ist bereits einem anderen Konto zugeordnet"),
-            description = Text("Wenn Sie fortfahren, wird dieses Gerät künftig nur noch diesem Konto zugeordnet. Das bisher verbundene Konto muss sich beim nächsten Mal auf diesem Gerät erneut identifizieren."),
-            confirmLabel = Text("Gerät neu zuordnen"),
-            cancelLabel = Text("Ohne Verknüpfung fortfahren"),
-            destructive = true
-        )
     }
 }

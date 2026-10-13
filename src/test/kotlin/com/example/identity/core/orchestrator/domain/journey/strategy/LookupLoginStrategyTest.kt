@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.InvitationId
@@ -16,11 +17,9 @@ import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginSt
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -131,7 +130,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
             val event = JourneyEvent.SubJourneyFinished(AuthIntent.RE_IDENTIFY, achievedAcr = AcrLevel.LOA2)
             val transition = strategy.transition(LookupLoginState.Start, event, theCtx)
             then("delegates to the same settle-or-raise check as any other proof") {
-                transition shouldBe Transition.To(LookupLoginState.OfferBinding)
+                transition shouldBe Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.OFFER))
             }
         }
     }
@@ -157,7 +156,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
             val transition = strategy.transition(smsLookupCredential, JourneyEvent.ActionCompleted, theCtx)
             then("offers the optional device-binding prompt, the device being linked to nobody") {
                 transition shouldBe
-                    Transition.To(LookupLoginState.OfferBinding)
+                    Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.OFFER))
             }
         }
     }
@@ -183,7 +182,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
             val transition = strategy.transition(smsLookupCredential, JourneyEvent.ActionCompleted, theCtx)
 
             then("warns before rebinding the device - never rebinds silently") {
-                transition shouldBe Transition.To(LookupLoginState.ConfirmDeviceRebind)
+                transition shouldBe Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND))
             }
         }
     }
@@ -236,8 +235,8 @@ class LookupLoginStrategyTest : BehaviorSpec({
         }
     }
 
-    given("OfferBinding") {
-        val state = LookupLoginState.OfferBinding
+    given("DeviceLinkQuestion, the device linked to nobody") {
+        val state = DeviceLinkQuestion(DeviceLinkQuestion.Wording.OFFER)
 
         `when`("accepted") {
             val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_ACCEPT), ctx())
@@ -276,8 +275,8 @@ class LookupLoginStrategyTest : BehaviorSpec({
         }
     }
 
-    given("ConfirmDeviceRebind, the device linked to a different account") {
-        val state = LookupLoginState.ConfirmDeviceRebind
+    given("DeviceLinkQuestion, the device linked to a different account") {
+        val state = DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND)
 
         `when`("accepted") {
             val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_ACCEPT), ctx())

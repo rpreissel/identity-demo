@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.policy.fromNow
@@ -208,14 +209,14 @@ class RegisterStrategyTest : BehaviorSpec({
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("asks for confirmation first, before offering any method - never silently rebinds") {
                 transition shouldBe
-                    Transition.To(RegisterState.ConfirmDeviceRebind)
+                    Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND_OR_CANCEL))
             }
         }
     }
 
-    given("ConfirmDeviceRebind, the device still linked to another account") {
+    given("DeviceLinkQuestion, the device still linked to another account") {
         val acc = account(method("sms", AcrLevel.LOA1))
-        val state = RegisterState.ConfirmDeviceRebind
+        val state = DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND_OR_CANCEL)
         val conflicting = ctx(account = acc, acrFloor = AcrLevel.LOA1, linkedAccountId = AccountId(999L))
 
         `when`("accepted") {
@@ -234,12 +235,12 @@ class RegisterStrategyTest : BehaviorSpec({
         }
     }
 
-    given("ConfirmDeviceRebind, the device now linked to this account") {
+    given("DeviceLinkQuestion, the device now linked to this account") {
         val acc = account(method("sms", AcrLevel.LOA1))
         val resolved = ctx(account = acc, acrFloor = AcrLevel.LOA1, linkedAccountId = acc.accountId)
 
         `when`("resumed after linking the device (ActionCompleted)") {
-            val transition = strategy.transition(RegisterState.ConfirmDeviceRebind, JourneyEvent.ActionCompleted, resolved)
+            val transition = strategy.transition(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND_OR_CANCEL), JourneyEvent.ActionCompleted, resolved)
             then("re-runs afterIdentification - now without a conflict") {
                 transition shouldBe
                     Transition.To(AuthChoice(Offer(listOf(ToolId("auth-sms")))))
@@ -330,7 +331,7 @@ class RegisterStrategyTest : BehaviorSpec({
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
 
             then("asks before rebinding the device, the same check as after identification (ADR-20)") {
-                transition shouldBe Transition.To(RegisterState.ConfirmDeviceRebind)
+                transition shouldBe Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND_OR_CANCEL))
             }
         }
     }

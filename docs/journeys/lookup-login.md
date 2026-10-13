@@ -23,22 +23,18 @@ stateDiagram-v2
   Credential --> Credential: ein Tool abgelehnt, weitere übrig
   Credential --> [*]: alle abgelehnt - Cancel
   Credential --> AdditionalFactor: Nachweis erbracht, acrFloor noch nicht erreicht
-  Credential --> OfferBinding: Nachweis erbracht, acrFloor erreicht, Gerät mit keinem Konto verknüpft
+  Credential --> DeviceLinkQuestion: Nachweis erbracht, acrFloor erreicht, Gerät mit keinem oder einem anderen Konto verknüpft
   Credential --> Finished: Nachweis erbracht, acrFloor erreicht, Gerät schon mit diesem Konto verknüpft
-  Credential --> ConfirmDeviceRebind: Nachweis erbracht, acrFloor erreicht, Gerät war mit einem anderen Konto verknüpft
   AdditionalFactor --> AdditionalFactor: ein Tool abgelehnt, weitere übrig
   AdditionalFactor --> [*]: alle abgelehnt - Cancel
   Credential --> RE_IDENTIFY: Nachweis erbracht, kein kombinierbares Verfahren übrig, erneute Identifizierung möglich
-  AdditionalFactor --> OfferBinding: acrFloor erreicht, Gerät mit keinem Konto verknüpft
+  AdditionalFactor --> DeviceLinkQuestion: acrFloor erreicht, Gerät mit keinem oder einem anderen Konto verknüpft
   AdditionalFactor --> Finished: acrFloor erreicht, Gerät schon mit diesem Konto verknüpft
-  AdditionalFactor --> ConfirmDeviceRebind: acrFloor erreicht, Gerät war mit einem anderen Konto verknüpft
   AdditionalFactor --> RE_IDENTIFY: kein kombinierbares Verfahren übrig, erneute Identifizierung möglich
   RE_IDENTIFY --> Start: Identität bestätigt (SubJourneyFinished)
   RE_IDENTIFY --> [*]: abgelehnt oder nicht möglich (Cancel/Abort)
-  OfferBinding --> Finished: Nutzer stimmt zu -> Gerät wird wiedererkannt
-  OfferBinding --> Finished: Nutzer lehnt ab -> keine Verknüpfung
-  ConfirmDeviceRebind --> Finished: Nutzer stimmt zu -> Gerät wird neu verknüpft
-  ConfirmDeviceRebind --> Finished: Nutzer lehnt ab -> Anmeldung und alte Verknüpfung bleiben
+  DeviceLinkQuestion --> Finished: Nutzer stimmt zu -> Gerät wird (neu) verknüpft
+  DeviceLinkQuestion --> Finished: Nutzer lehnt ab -> Anmeldung ohne (neue) Verknüpfung
   Finished --> [*]
 
   note right of Credential
@@ -52,16 +48,18 @@ stateDiagram-v2
   end note
 ```
 
-**Das Gerät wiedererkennen.** Nach dem Nachweis stellt `OfferBinding` eine freiwillige Frage:
+**Das Gerät wiedererkennen.** Nach dem Nachweis stellt `DeviceLinkQuestion` (Wortlaut `OFFER`) eine
+freiwillige Frage:
 „Dieses Gerät für künftige Anmeldungen wiedererkennen?“ Dafür implementiert der Zustand das
 allgemeine Markierungs-Interface `AnswerableState` (Orchestrierung, Abschnitt 8). So erkennt der
-gemeinsame Mechanismus den Zustand als Frage, ohne `LookupLoginState.OfferBinding` zu kennen.
+gemeinsame Mechanismus den Zustand als Frage, ohne `DeviceLinkQuestion` zu kennen. Der Zustand ist
+mit `REGISTER` geteilt; was Zustimmen und Ablehnen bewirken, entscheidet jede Strategie selbst.
 
 Je nachdem, wem das Gerät gerade zugeordnet ist, geht es verschieden weiter:
 
-- Gehört das Gerät bereits einem anderen Konto als dem gerade angemeldeten, wechselt die Journey nach
-  `ConfirmDeviceRebind`. Dort läuft dieselbe Ja/Nein-Frage, zusammen mit dem Hinweis, dass die alte
-  Verknüpfung verloren geht. Lehnt der Nutzer ab, entfällt nur das neue Verknüpfen. Die Anmeldung
+- Gehört das Gerät bereits einem anderen Konto als dem gerade angemeldeten, stellt
+  `DeviceLinkQuestion` dieselbe Ja/Nein-Frage im Wortlaut `REBIND`, zusammen mit dem Hinweis, dass die
+  alte Verknüpfung verloren geht. Lehnt der Nutzer ab, entfällt nur das neue Verknüpfen. Die Anmeldung
   selbst bleibt bestehen.
 - Ist das Gerät schon mit genau diesem Konto verknüpft, gibt es nichts zu fragen. Die Journey endet
   direkt mit einer erfolgreichen Anmeldung.

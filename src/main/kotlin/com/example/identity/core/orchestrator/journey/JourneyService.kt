@@ -11,7 +11,6 @@ import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.DemoStepReason
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -95,19 +94,20 @@ class JourneyService(
 
     /**
      * Starts a journey and produces its first offer. [seed] names the concrete wish (a step-up
-     * target, a method to remove); without it [IntentStrategy.initialState] applies. [seedAction]
-     * is a logged entry transition that runs before `initialState()`, so the strategy already sees
-     * its effect (docs/04-orchestrierung.md #8, "Übernommene Nachweise als erster Übergang").
+     * target, a method to remove); without it [IntentStrategy.initialState] applies. [restoredEvidence],
+     * what the same Keycloak session proved before (ADR-59), is applied as a logged entry transition
+     * before `initialState()`, so the strategy already sees it (docs/04-orchestrierung.md #8,
+     * "Übernommene Nachweise als erster Übergang").
      * Only on a [LiveChannel]: an ended channel never gets a journey again (docs/invarianten.md I-1).
      */
     fun start(
         channel: LiveChannel,
         intent: AuthIntent,
         seed: JourneyState? = null,
-        seedAction: Action? = null
+        restoredEvidence: List<MethodEvidence>? = null
     ): Step {
         keepSessionAlive(channel)
-        return startJourney(channel.session, intent, seed, parentJourneyId = null, seedAction = seedAction)
+        return startJourney(channel.session, intent, seed, parentJourneyId = null, restoredEvidence = restoredEvidence)
     }
 
     private fun startJourney(
@@ -115,7 +115,7 @@ class JourneyService(
         intent: AuthIntent,
         seed: JourneyState?,
         parentJourneyId: JourneyId?,
-        seedAction: Action?
+        restoredEvidence: List<MethodEvidence>?
     ): Step {
         // One running journey per channel (docs/invarianten.md I-3). A new top-level journey
         // replaces the whole running chain. A sub-journey is the legitimate exception: its parent
@@ -135,16 +135,16 @@ class JourneyService(
             sessionManagementService.updateChannelSession(channel)
         }
         val strategy = strategyFor(intent)
-        // Placeholder for the NOT NULL state columns. It is rewritten after seedAction has run, so
-        // no strategy observes it.
+        // Placeholder for the NOT NULL state columns. It is rewritten once the restored evidence
+        // is in, so no strategy observes it.
         codec.write(journey, seed ?: strategy.initialState(contextFactory.contextFor(journey, channel)))
-        journeyRepository.save(journey) // journeyId exists from here on, for seedAction's own logging/events.
+        journeyRepository.save(journey) // journeyId exists from here on, for the entry transition's log line.
 
-        seedAction?.let { action ->
-            // Anfangs-Übergang: von keiner Strategie entschieden, aber wie jeder Übergang geloggt.
-            journeyTraceService.record(channel.forLog(), journey.forLog(), "Entry", detail = journeyTraceDetails.actionDetail(action, journey, channel))
-            actionExecutor.perform(journey, channel, action)
-            // Re-derive, so initialState() sees the seed's effect (e.g. restored evidence).
+        restoredEvidence?.let { methods ->
+            // The entry transition: decided by no strategy, but logged like every transition.
+            journeyTraceService.record(channel.forLog(), journey.forLog(), "Entry", detail = mapOf("methods" to journeyTraceDetails.methodEvidenceDetail(methods)))
+            journeyRecorder.restoreEvidence(channel, methods)
+            // Re-derive, so initialState() sees the restored evidence.
             codec.write(journey, seed ?: strategy.initialState(contextFactory.contextFor(journey, channel)))
             journeyRepository.save(journey)
         }
@@ -158,17 +158,17 @@ class JourneyService(
 
     /**
      * Starts or restarts the intent this channel was entered with. The intent lives on the channel
-     * so neither resume nor cancel has to guess it from leftover state. [seedAction] as in [start].
+     * so neither resume nor cancel has to guess it from leftover state. [restoredEvidence] as in [start].
      */
-    fun startEntryJourney(channel: LiveChannel, seedAction: Action? = null): Step = startEntryJourney(channel.session, seedAction)
+    fun startEntryJourney(channel: LiveChannel, restoredEvidence: List<MethodEvidence>? = null): Step = startEntryJourney(channel.session, restoredEvidence)
 
-    private fun startEntryJourney(channel: ChannelSession, seedAction: Action?): Step {
+    private fun startEntryJourney(channel: ChannelSession, restoredEvidence: List<MethodEvidence>?): Step {
         // REGISTERING is never stored: it shows an account still being set up (ChannelState.shownWith).
         if (channel.state != ChannelState.AUTHENTICATED) {
             channel.state = ChannelState.ANONYMOUS
             sessionManagementService.updateChannelSession(channel)
         }
-        return startJourney(channel, channel.entryIntent, seed = null, parentJourneyId = null, seedAction = seedAction)
+        return startJourney(channel, channel.entryIntent, seed = null, parentJourneyId = null, restoredEvidence = restoredEvidence)
     }
 
     /** The running journey of this channel, if any. A suspended parent is not it. */
@@ -439,7 +439,7 @@ class JourneyService(
         // Flushed before the child row: the database allows one STARTED journey per channel
         // (ux_journey_running_per_channel), and the child insert would otherwise come first.
         journeyRepository.saveAndFlush(journey)
-        return startJourney(channel, transition.intent, seed = transition.seedWith, parentJourneyId = journey.journeyId, seedAction = null)
+        return startJourney(channel, transition.intent, seed = transition.seedWith, parentJourneyId = journey.journeyId, restoredEvidence = null)
     }
 
     /** Resumes at resumeState against a fresh context, because the action has just changed what the old one showed. */
@@ -472,7 +472,7 @@ class JourneyService(
             return advance(parent, channel, JourneyEvent.SubJourneyCancelled(journey.requireIntent()))
         }
         cancelJourney(journey, channel)
-        return if (channel.state == ChannelState.AUTHENTICATED) Step(Next.AUTHENTICATED) else startEntryJourney(channel, seedAction = null)
+        return if (channel.state == ChannelState.AUTHENTICATED) Step(Next.AUTHENTICATED) else startEntryJourney(channel, restoredEvidence = null)
     }
 
     private fun finish(journey: AuthJourney, channel: ChannelSession): Step {

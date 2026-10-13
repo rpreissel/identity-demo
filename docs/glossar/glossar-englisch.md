@@ -151,7 +151,7 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
 - **`keycloak-migrations`** → das Modul, das das **Realm** in Keycloak anlegt und
   seine Einstellungen pflegt. [Glossar](glossar.md#r)
 - **`KeycloakSessionEvidence`** (Tabelle `orchestrator.keycloak_session_evidence`),
-  **`ApplyRestoredEvidence`** → **Übernommene Nachweise**: was frühere Anmeldevorgänge derselben
+  **`restoredEvidence`** → **Übernommene Nachweise**: was frühere Anmeldevorgänge derselben
   Keycloak-Sitzung bewiesen haben, je Sitzung und Verfahren. [Glossar](glossar.md#u)
 - **`keycloakSessionId`**, **`UserSessionModel`** → **Keycloak-Sitzung**: die Sitzung,
   die Keycloak für einen angemeldeten Nutzer führt. [Glossar](glossar.md#k)
