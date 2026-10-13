@@ -139,7 +139,10 @@ export function AppChannelApp() {
   // fällt auf ANONYMOUS zurück, und das vorläufige Konto wird samt einer schon enthaltenen
   // eID-Bezeugung gelöscht. Das darf kein Klick nebenbei sein.
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
-  const [confirmingLogout, setConfirmingLogout] = useState(false)
+  /** 'logout': the Abmelden button asks; 'afterPeerLogin': a channel opened only to confirm a login asks whether to stay. */
+  const [confirmingLogout, setConfirmingLogout] = useState<false | 'logout' | 'afterPeerLogin'>(false)
+  /** A cold confirm_peer_login entry: once its journey is over, the app asks about logging out (ADR-60). */
+  const coldPeerLoginRef = useRef(false)
   // Whether this session has already proven something (backend ChannelBlock.hasProvenFactor) -
   // only then does leaving a registration throw anything away, and only then is it worth asking.
   const [hasProvenFactor, setHasProvenFactor] = useState(false)
@@ -238,6 +241,10 @@ export function AppChannelApp() {
     setStepData(response.stepData)
     setCarriedMessage(undefined)
     const journeyOver = isJourneyOver(response.next)
+    if (journeyOver && coldPeerLoginRef.current) {
+      coldPeerLoginRef.current = false
+      if (response.channel.state === 'AUTHENTICATED') setConfirmingLogout('afterPeerLogin')
+    }
     setOutcomeNotice(journeyOver ? pendingOutcomeNoticeRef.current : undefined)
     if (journeyOver) pendingOutcomeNoticeRef.current = undefined
     setDemo(response.demo)
@@ -528,6 +535,7 @@ export function AppChannelApp() {
       }
       const intent =
         mode === 'auto' ? undefined : mode === 'login' ? 'lookup_login' : mode === 'confirmPeerLogin' ? 'confirm_peer_login' : mode
+      coldPeerLoginRef.current = mode === 'confirmPeerLogin'
       const response = await createChannel(dpop, requiredAcr || undefined, intent, availableTools)
       applyResponse(response)
     } catch (err) {
@@ -544,6 +552,8 @@ export function AppChannelApp() {
 
   /** Local only: forgets the remembered channelSessionId and resets all channel state. No backend call. */
   function handleClearChannel() {
+    coldPeerLoginRef.current = false
+    setConfirmingLogout(false)
     forgetChannelSessionId()
     setRememberedChannelSessionId(null)
     clearChannelState()
@@ -597,7 +607,7 @@ export function AppChannelApp() {
 
   /** Asks first (logoutQuestion); the logout itself is no journey on the backend. */
   function handleLogout() {
-    setConfirmingLogout(true)
+    setConfirmingLogout('logout')
   }
 
   /** Keeps the DPoP key but ends this session on the backend. The user picks the next start. */
@@ -841,10 +851,21 @@ export function AppChannelApp() {
   // Wie die Rückfrage zum Verwerfen: Solange sie offen ist, gibt es nur diese eine Entscheidung.
   const logoutQuestion = confirmingLogout && (
     <div className="phone__bar-question">
-      <p><strong>{t('Wirklich abmelden?')}</strong></p>
-      <p>{t('Ihre aktuelle Sitzung wird beendet. Um erneut zuzugreifen, müssen Sie sich wieder anmelden.')}</p>
+      {confirmingLogout === 'afterPeerLogin' ? (
+        <>
+          <p><strong>{t('Jetzt abmelden?')}</strong></p>
+          <p>{t('Dieses Gerät war vor der Bestätigung nicht angemeldet - nur für diese eine Bestätigung wurde es kurz angemeldet. Jetzt wieder abmelden, oder angemeldet bleiben?')}</p>
+        </>
+      ) : (
+        <>
+          <p><strong>{t('Wirklich abmelden?')}</strong></p>
+          <p>{t('Ihre aktuelle Sitzung wird beendet. Um erneut zuzugreifen, müssen Sie sich wieder anmelden.')}</p>
+        </>
+      )}
       <div className="form-actions">
-        <button onClick={() => setConfirmingLogout(false)}>{t('Abbrechen')}</button>
+        <button onClick={() => setConfirmingLogout(false)}>
+          {confirmingLogout === 'afterPeerLogin' ? t('Angemeldet bleiben') : t('Abbrechen')}
+        </button>
         <button className="secondary destructive-text" onClick={handleConfirmedLogout}>{t('Jetzt abmelden')}</button>
       </div>
     </div>

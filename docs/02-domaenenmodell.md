@@ -258,7 +258,7 @@ Die folgenden Aufzählungstypen kommen im Modell immer wieder vor:
 - `ChannelState`: `ANONYMOUS`, `REGISTERING`, `AUTHENTICATED`, `STEP_UP_REQUIRED`,
   `STEP_UP_IN_PROGRESS`, `LOGGED_OUT`, `EXPIRED`. Das sind die Zustände des Kanals aus Abschnitt 3.
 - `AuthIntent`: `FAST_ACCESS`, `REGISTER`, `LOOKUP_LOGIN`, `WEB_SELECT_METHOD`, `STEP_UP`,
-  `MANAGE_AUTH_METHODS`, `CONFIRM_PEER_LOGIN`, `DELETE_ACCOUNT`, `RE_IDENTIFY`. Ein
+  `MANAGE_AUTH_METHODS`, `CONFIRM_PEER_LOGIN`, `DELETE_ACCOUNT`, `FRESH_PROOF`, `RE_IDENTIFY`. Ein
   Intent beschreibt, was der Nutzer erreichen will, *und* den Weg dorthin
   ([Orchestrierung](04-orchestrierung.md) Abschnitt 2). `DELETE_ACCOUNT` und `MANAGE_AUTH_METHODS`
   setzen einen Kanal voraus, der schon `AUTHENTICATED` ist. Was das Löschen verlangt, steht in

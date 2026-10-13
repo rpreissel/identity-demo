@@ -241,6 +241,33 @@ describe('entry by URL intent (docs/10-frontend.md #6, FE-18)', () => {
     expect(window.location.search).toBe('')
   })
 
+  it('asks whether to stay signed in once a cold confirm_peer_login is through, and stays on "Angemeldet bleiben"', async () => {
+    window.history.replaceState(null, '', '/?intent=confirm_peer_login&pairingCode=AB3D-7KQ2')
+    // The approval ran through: the server leaves the channel signed in and asks nothing (ADR-60).
+    api.createChannel.mockResolvedValue(channelResponse({ channel: channel('AUTHENTICATED', { hasProvenFactor: true }), next: AUTHENTICATED_NEXT }))
+
+    render(<AppChannelApp />)
+    const user = userEvent.setup()
+
+    expect(await screen.findByText('Jetzt abmelden?')).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'Angemeldet bleiben' }))
+    expect(screen.queryByText('Jetzt abmelden?')).not.toBeInTheDocument()
+    expect(api.logoutChannel).not.toHaveBeenCalled()
+    expect(window.localStorage.getItem('identity-demo-channel-session-id')).toBe('chan-1')
+  })
+
+  it('does not ask after confirming over a channel that was signed in already', async () => {
+    rememberChannel()
+    window.history.replaceState(null, '', '/?intent=confirm_peer_login&pairingCode=AB3D-7KQ2')
+    api.getChannel.mockResolvedValue(channelResponse({ channel: channel('AUTHENTICATED', { currentAcr: 'loa2' }), next: AUTHENTICATED_NEXT }))
+    api.startPeerLogin.mockResolvedValue(channelResponse({ channel: channel('AUTHENTICATED', { currentAcr: 'loa2' }), next: AUTHENTICATED_NEXT }))
+
+    render(<AppChannelApp />)
+
+    await waitFor(() => expect(api.startPeerLogin).toHaveBeenCalledWith(expect.anything(), 'chan-1'))
+    expect(screen.queryByText('Jetzt abmelden?')).not.toBeInTheDocument()
+  })
+
   it('confirms over the channel already authenticated instead of creating a new one', async () => {
     rememberChannel()
     window.history.replaceState(null, '', '/?intent=confirm_peer_login&pairingCode=AB3D-7KQ2')

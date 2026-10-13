@@ -343,7 +343,7 @@ class ChannelService(
     fun startPeerLogin(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
         return startIntent(
             channelSessionId, bindingKeyRef, AuthIntent.CONFIRM_PEER_LOGIN,
-            seed = ConfirmPeerLoginState.Requested(startedAuthenticated = true)
+            seed = ConfirmPeerLoginState.Requested
         )
     }
 

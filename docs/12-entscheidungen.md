@@ -71,6 +71,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/). Die Tabelle nennt 
 | [ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md) | Keycloak führt keine eigenen Anmeldeschritte mehr: kein Passwortformular, keine gespeicherten Credentials, native Verfahren werden nicht umhüllt, sondern eigene Tools |
 | [ADR-59](adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md) | Die Nachweise einer Keycloak-Sitzung liegen im Orchestrator, eine Zeile je Sitzung und Verfahren; das signierte RestoreData-Token entfällt, parallele Tabs verlieren keine Nachweise mehr |
 | [ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md) | Keycloak meldet jedes Sitzungsende per OIDC Back-Channel Logout, die Abmeldung ist keine Journey mehr; der Orchestrator läuft immer mit Keycloak, der Token-Ersatz liegt nur noch in `src/testFixtures` |
+| [ADR-61](adr/ADR-061-frischer-nachweis-als-gemeinsame-sub-journey.md) | Niveau und frischer Nachweis vor einer Aktion am Konto sind die gemeinsame Sub-Journey `FRESH_PROOF`; `DELETE_ACCOUNT`, `MANAGE_AUTH_METHODS` und `CONFIRM_PEER_LOGIN` behalten nur ihren Zweck |
 
 Die Nummern ADR-4, 13, 23 und 30 fehlen. Ihr Inhalt steht heute an anderer Stelle:
 

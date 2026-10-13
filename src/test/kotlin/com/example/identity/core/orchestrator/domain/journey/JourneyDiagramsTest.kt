@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey
 
+import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
@@ -78,6 +79,7 @@ class JourneyDiagramsTest : BehaviorSpec({
             Diagram(ConfirmPeerLoginState::class, "confirm-peer-login"),
             Diagram(DeleteAccountState::class, "delete-account"),
             Diagram(ReIdentifyState::class, "re-identify"),
+            Diagram(FreshProofState::class, "fresh-proof"),
         )
     }
 }

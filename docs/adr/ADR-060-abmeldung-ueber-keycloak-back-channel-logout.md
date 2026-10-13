@@ -97,3 +97,8 @@ Token-Dienst. Dort gab es keinen Web-Kanal, und jede Regel zur Sitzung brauchte 
   als Ereignis `LOGGED_OUT` des Kanals.
 - **Wer abgemeldet hat, sagt das `logout_token` nicht.** Das Anmeldeprotokoll schreibt weiter
   `endedBy = HOLDER`.
+
+**Nachtrag 2026-10-13.** Dieselbe Regel gilt für `CONFIRM_PEER_LOGIN`: Der Zustand `OfferLogout`,
+der nach einer Bestätigung auf einem nur dafür geöffneten Kanal „Jetzt abmelden?“ fragte, entfällt.
+Die Journey endet `AUTHENTICATED`; die App stellt die Frage und ruft `DELETE /channels/{id}`
+(`DPoP-demo-iz8g`).

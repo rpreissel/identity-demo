@@ -358,6 +358,9 @@ Beide Wege führen zum selben `next` ([`CONFIRM_PEER_LOGIN`](journeys/confirm-pe
 - Ist `loa2` bereits erreicht, aber nicht in diesem Durchlauf, muss der Nutzer zusätzlich mit einem
   beliebigen aktiven Verfahren erneut nachweisen, dass er es ist. Die App bestätigt nie
   automatisch, nur weil schon Nachweise vorhanden sind.
+- Nach der Freigabe ist der Kanal angemeldet. Kam die App über den Startbildschirm, also ohne
+  bestehende Anmeldung, fragt sie im Telefon „Jetzt abmelden?“ mit „Angemeldet bleiben“ und
+  „Jetzt abmelden“. Das ist dieselbe Rückfrage wie beim Abmelden (FE-10), kein Zustand der Journey.
 
 In der Demo gelangt der Pairing-Code über den Demo-Link der Web-Seite in die App (Abschnitt 6).
 

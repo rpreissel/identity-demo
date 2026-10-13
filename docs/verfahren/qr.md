@@ -77,9 +77,10 @@ Abschnitt 3a, „Peer-Login bestätigen“, Schritte 1 bis 3). Danach geht es so
    nur in dieser einen Antwort. Gespeichert wird nur sein Hash. Nach einem Neuladen zeigt
    `showCode` ihn nicht mehr.
    `PATCH .../approve-qr` mit `{"decision":"done"}` beendet den Schritt:
-   `next={"type":"orchestrator","context":"authentication","step":"authenticated"}`. War der Kanal
-   vor diesem Aufruf noch nicht `AUTHENTICATED`, fragt die Antwort vorher per `Prompt` („Jetzt
-   abmelden?"), ob der Kanal angemeldet bleiben soll. `reject` liefert stattdessen `stepData.error`
+   `next={"type":"orchestrator","context":"authentication","step":"authenticated"}`. War die App
+   vor der Bestätigung nicht angemeldet, fragt sie danach selbst („Jetzt abmelden?"), ob der Kanal
+   angemeldet bleiben soll ([ADR-60](../adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)).
+   `reject` liefert stattdessen `stepData.error`
    („Vom Nutzer abgelehnt"). Ein eigenes `ToolOutcome` braucht die Ablehnung nicht.
 
 ## Der Browser wartet: `auth-qr` / `auth-qr-lookup`

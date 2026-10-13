@@ -51,6 +51,13 @@ enum class AuthIntent {
     DELETE_ACCOUNT,
 
     /**
+     * "This action needs the level and a recent proof": the sub-journey every self-service action
+     * runs first (docs/journeys/fresh-proof.md, ADR-61). Never an entry intent, never started
+     * directly; reached only as another intent's [Transition.RequireSubJourney].
+     */
+    FRESH_PROOF,
+
+    /**
      * "No active method reaches the target - re-identify instead?" Never an entry intent. Reached as
      * another intent's [Transition.RequireSubJourney] once no active method can close the ACR gap.
      * Which account a fresh identification may lead to is decided by the handler of
@@ -69,7 +76,7 @@ enum class AuthIntent {
             FAST_ACCESS, LOOKUP_LOGIN, CONFIRM_PEER_LOGIN -> setOf(ChannelType.APP)
             REGISTER -> setOf(ChannelType.APP, ChannelType.WEB)
             WEB_SELECT_METHOD -> setOf(ChannelType.WEB)
-            STEP_UP, MANAGE_AUTH_METHODS, DELETE_ACCOUNT, RE_IDENTIFY -> emptySet()
+            STEP_UP, MANAGE_AUTH_METHODS, DELETE_ACCOUNT, FRESH_PROOF, RE_IDENTIFY -> emptySet()
         }
 
     /** The intents a client may name when entering a channel; [CONFIRM_PEER_LOGIN] also runs on an open one. */
@@ -83,7 +90,7 @@ enum class AuthIntent {
     val startsOnLoggedInChannel: Boolean
         get() = when (this) {
             STEP_UP, MANAGE_AUTH_METHODS, CONFIRM_PEER_LOGIN, DELETE_ACCOUNT -> true
-            FAST_ACCESS, REGISTER, LOOKUP_LOGIN, WEB_SELECT_METHOD, RE_IDENTIFY -> false
+            FAST_ACCESS, REGISTER, LOOKUP_LOGIN, WEB_SELECT_METHOD, FRESH_PROOF, RE_IDENTIFY -> false
         }
 
     /**

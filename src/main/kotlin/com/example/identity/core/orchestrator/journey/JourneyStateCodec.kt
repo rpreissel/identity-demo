@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
@@ -61,7 +62,7 @@ class JourneyStateCodec {
         val STATE_ROOTS: List<KClass<out JourneyState>> = listOf(
             FastAccessState::class, RegisterState::class, RegisterEnrollFirstState::class, LookupLoginState::class,
             WebSelectMethodState::class, StepUpState::class, ManageAuthMethodsState::class,
-            ConfirmPeerLoginState::class, DeleteAccountState::class, ReIdentifyState::class,
+            ConfirmPeerLoginState::class, DeleteAccountState::class, FreshProofState::class, ReIdentifyState::class,
         )
 
         /** The instantiable states under [root], through nested sealed levels. */
@@ -78,6 +79,7 @@ class JourneyStateCodec {
         AuthIntent.MANAGE_AUTH_METHODS -> ManageAuthMethodsState::class.java
         AuthIntent.CONFIRM_PEER_LOGIN -> ConfirmPeerLoginState::class.java
         AuthIntent.DELETE_ACCOUNT -> DeleteAccountState::class.java
+        AuthIntent.FRESH_PROOF -> FreshProofState::class.java
         AuthIntent.RE_IDENTIFY -> ReIdentifyState::class.java
     }
 }

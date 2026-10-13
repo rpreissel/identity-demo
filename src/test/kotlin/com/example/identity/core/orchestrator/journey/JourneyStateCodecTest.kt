@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
@@ -32,9 +33,10 @@ class JourneyStateCodecTest : BehaviorSpec({
         LookupLoginState::class to setOf("Start", "Credential", "AdditionalFactor", "OfferBinding", "ConfirmDeviceRebind"),
         WebSelectMethodState::class to setOf("SelectMethod", "AfterIdentification"),
         StepUpState::class to setOf("Start", "AuthChoice"),
-        ManageAuthMethodsState::class to setOf("AddRequested", "RemoveRequested", "Enrolling", "RetractAttributeRequested", "ConfirmationRequired", "ChangeRequested", "Changing"),
-        ConfirmPeerLoginState::class to setOf("Requested", "ConfirmationRequired", "Confirming", "OfferLogout"),
-        DeleteAccountState::class to setOf("ConfirmPending", "ConfirmationRequired"),
+        ManageAuthMethodsState::class to setOf("AddRequested", "RemoveRequested", "Enrolling", "RetractAttributeRequested", "ChangeRequested", "Changing"),
+        ConfirmPeerLoginState::class to setOf("Requested", "Confirming"),
+        DeleteAccountState::class to setOf("ConfirmPending"),
+        FreshProofState::class to setOf("Start", "Reproving"),
         ReIdentifyState::class to setOf("OfferReIdent", "Identifying"),
     )
 
@@ -52,7 +54,7 @@ class JourneyStateCodecTest : BehaviorSpec({
                 RegisterEnrollFirstState::class to AuthIntent.REGISTER, LookupLoginState::class to AuthIntent.LOOKUP_LOGIN,
                 WebSelectMethodState::class to AuthIntent.WEB_SELECT_METHOD, StepUpState::class to AuthIntent.STEP_UP,
                 ManageAuthMethodsState::class to AuthIntent.MANAGE_AUTH_METHODS, ConfirmPeerLoginState::class to AuthIntent.CONFIRM_PEER_LOGIN,
-                DeleteAccountState::class to AuthIntent.DELETE_ACCOUNT,
+                DeleteAccountState::class to AuthIntent.DELETE_ACCOUNT, FreshProofState::class to AuthIntent.FRESH_PROOF,
                 ReIdentifyState::class to AuthIntent.RE_IDENTIFY,
             )
             JourneyStateCodec.STATE_ROOTS.forEach { root ->

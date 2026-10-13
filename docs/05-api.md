@@ -817,7 +817,9 @@ Action von Keycloak (Abschnitt 3b).
   loa1. Das Ändern eines Eintrags verlangt außerdem mindestens das Niveau, unter dem der Eintrag
   eingerichtet wurde. Reicht das nicht, enthält die Antwort statt der Aktion einen Step-up-Schritt.
   Danach ruft der Client den Endpunkt erneut auf.
-- Dieselben vier Aufrufe verlangen außerdem einen frischen Nachweis. Ist der jüngste Nachweis der
+- Dieselben vier Aufrufe verlangen außerdem einen frischen Nachweis. Schwelle und Frische prüft die
+  Sub-Journey `FRESH_PROOF` ([fresh-proof.md](journeys/fresh-proof.md),
+  [ADR-61](adr/ADR-061-frischer-nachweis-als-gemeinsame-sub-journey.md)); im Journey-Trace erscheint sie als eigene Journey. Ist der jüngste Nachweis der
   Sitzung älter als fünf Minuten (`identity.policy.self-service-max-age`), enthält die Antwort statt
   der Aktion eine erneute Bestätigung. Dafür genügt ein **beliebiges** aktives `auth-*`-Verfahren.
   Gibt es mehrere, kommt eine Auswahl mit `next={"context":"auth","step":"selectMethod"}`. Ist der
@@ -860,8 +862,8 @@ nie identifiziertes Konto nur loa1 ([Orchestrierung](04-orchestrierung.md) Absch
    sofort die Rückfrage: `next={"type":"orchestrator","context":"prompt","step":"confirm"}`, dazu
    `stepData.prompt` mit `destructive: true`.
 2. `POST .../answer` mit `{"answer":"accept"}`. (Mit `"decline"` bricht der Ablauf ab wie bei einem
-   gewöhnlichen Abbruch, zurück auf `AUTHENTICATED`.) Erst jetzt prüft der Orchestrator die
-   Schwelle. Reicht das aktuelle Niveau nicht, liefert die Antwort einen Step-up-Schritt. Danach
+   gewöhnlichen Abbruch, zurück auf `AUTHENTICATED`.) Erst jetzt startet die Sub-Journey
+   `FRESH_PROOF` ([fresh-proof.md](journeys/fresh-proof.md)) und prüft die Schwelle. Reicht das aktuelle Niveau nicht, liefert die Antwort einen Step-up-Schritt. Danach
    ruft der Client `account-deletions` erneut auf.
 3. Reichte das Niveau schon vorher, kommt es auf das Alter des jüngsten Nachweises der Sitzung an.
    Ist er älter als fünf Minuten (`identity.policy.self-service-max-age`), folgt ein frischer
@@ -920,7 +922,7 @@ oder lehnt ihn ab. Angestoßen hat diesen Web-Login ein `auth-qr` bzw. `auth-qr-
 - `POST /channels/{channelSessionId}/peer-logins` (ohne Inhalt): auf einem Kanal, der bereits
   `AUTHENTICATED` ist.
 
-Beide durchlaufen dieselbe Prüfung:
+Beide durchlaufen dieselbe Prüfung, die Sub-Journey `FRESH_PROOF` ([fresh-proof.md](journeys/fresh-proof.md)):
 
 1. Über die Geräteverknüpfung (`DeviceAccountLink`) ist kein Konto bekannt (das ist nur ohne
    bestehende Sitzung möglich): Die Antwort ist `410`. Der Ablauf weicht nie auf Identifizierung
@@ -934,7 +936,9 @@ Beide durchlaufen dieselbe Prüfung:
    Schritt 2 erst ein Step-up stattfinden, zählt dessen Nachweis bereits als der geforderte.
 4. `approve-qr` wird gestartet. Die Aufrufe dieses Tools und die Gegenseite im Browser
    (`auth-qr`/`auth-qr-lookup`) stehen auf der Seite des Verfahrens:
-   [verfahren/qr.md](verfahren/qr.md).
+   [verfahren/qr.md](verfahren/qr.md). Danach ist der Kanal `AUTHENTICATED`, auf beiden Einstiegen.
+   Ob ein nur dafür geöffneter Kanal angemeldet bleibt, fragt der Client; der Server stellt keine
+   Rückfrage mehr ([ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)).
 
 ### 3b) Web-Kanal
 

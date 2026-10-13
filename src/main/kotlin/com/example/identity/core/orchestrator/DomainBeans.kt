@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.core.orchestrator.domain.journey.strategy.FreshProofStrategy
 import com.example.identity.core.orchestrator.domain.ToolCatalog
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
@@ -59,6 +60,9 @@ class DomainBeans {
 
     @Bean
     fun reIdentifyStrategy(): IntentStrategy<*> = ReIdentifyStrategy()
+
+    @Bean
+    fun freshProofStrategy(): IntentStrategy<*> = FreshProofStrategy()
 
     @Bean
     fun registerDispatchStrategy(): IntentStrategy<*> = RegisterDispatchStrategy()

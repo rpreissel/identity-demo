@@ -47,11 +47,11 @@ class ConfirmPeerLoginFlowIntegrationTest : IntegrationTestSupport() {
                     // docs/invarianten.md I-4
                     cancelled.channel()["state"] shouldNotBe "AUTHENTICATED"
                 }
-                then("both the confirmation and its step-up are cancelled; the parent is not left SUSPENDED") {
+                then("the confirmation, its fresh-proof check and the step-up are all cancelled; no parent is left SUSPENDED") {
                     jdbcTemplate.queryForObject(
                         "SELECT COUNT(*) FROM orchestrator.auth_journey WHERE channel_session_id = ? AND lifecycle = 'CANCELLED'",
                         Int::class.java, UUID.fromString(channelSessionId)
-                    ) shouldBe 2
+                    ) shouldBe 3
                 }
             }
 

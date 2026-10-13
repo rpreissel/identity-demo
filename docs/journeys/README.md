@@ -14,6 +14,7 @@ Abschnitt 3.
 - [`WEB_SELECT_METHOD`](web-select-method.md)
 - [`STEP_UP`](step-up.md)
 - [`RE_IDENTIFY`](re-identify.md)
+- [`FRESH_PROOF`](fresh-proof.md)
 - [`MANAGE_AUTH_METHODS`](manage-auth-methods.md)
 - [`CONFIRM_PEER_LOGIN`](confirm-peer-login.md)
 - [`DELETE_ACCOUNT`](delete-account.md)

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.declineTool
@@ -20,9 +21,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 /**
  * Delete the account of an already authenticated channel (docs/journeys/delete-account.md). The
  * yes/no question comes first; only after "yes" does the gate at [Action.DeleteAccount.requiredAcr]
- * apply. A step-up or any other recent proof of the session counts as the fresh proof; otherwise
- * one active factor is re-proven. That re-proof authorizes only this one action, so it is not
- * recorded as `MethodEvidence`.
+ * apply, together with the fresh proof, both as the `FRESH_PROOF` sub-journey (ADR-61).
  */
 class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
 
@@ -34,64 +33,26 @@ class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
         when (state) {
             is DeleteAccountState.ConfirmPending -> when (event) {
                 is JourneyEvent.Answered -> when (event.answer) {
-                    // The gate applies only after "yes".
-                    ANSWER_ACCEPT -> gate(ctx) ?: confirmFreshness(state, ctx)
+                    // Level and freshness are checked only after "yes".
+                    ANSWER_ACCEPT -> requireFreshProof(ctx)
                     ANSWER_DECLINE -> Transition.Cancel
                     else -> event.notUnderstood("ConfirmPending")
                 }
-                // Resumed after the gate's step-up. Falling short cancels: offerReconfirmation()
-                // accepts any factor at any level and would bypass the gate.
-                is JourneyEvent.SubJourneyFinished if event.intent == AuthIntent.STEP_UP &&
-                    (event.achievedAcr ?: AcrLevel.NONE) >= Action.DeleteAccount.requiredAcr(ctx.requireAccount()) ->
-                    Transition.Perform(Action.DeleteAccount, resumeState = state)
-                is JourneyEvent.SubJourneyFinished -> Transition.Cancel
-                // The gate's step-up was declined.
+                // Only this journey's own proof counts; any other sub-journey is never assumed to be it.
+                is JourneyEvent.SubJourneyFinished ->
+                    if (event.intent == AuthIntent.FRESH_PROOF) Transition.Perform(Action.DeleteAccount, resumeState = state) else Transition.Cancel
+                // The proof was declined somewhere along the way.
                 is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
-                // The delete after the step-up ran; end the channel.
+                // The delete ran; end the channel.
                 is JourneyEvent.ActionCompleted -> Transition.Logout
                 // Started: always present the prompt, unconditionally.
                 else -> Transition.To(state)
             }
-
-            is DeleteAccountState.ConfirmationRequired -> when (event) {
-                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
-                // Any active factor suffices; straight to the delete, without Action.AcceptProof.
-                is JourneyEvent.Completed -> when (event.outcome) {
-                    is ToolOutcome.Completed.Authenticated ->
-                        Transition.Perform(Action.DeleteAccount, resumeState = state)
-                    is ToolOutcome.Completed.Identified, is ToolOutcome.Completed.Enrolled, is ToolOutcome.Completed.Approved, is ToolOutcome.Completed.Attested ->
-                        event.notOffered("DELETE_ACCOUNT")
-                }
-                // The delete just ran - end the channel.
-                is JourneyEvent.ActionCompleted -> Transition.Logout
-                else -> error("ConfirmationRequired does not understand $event")
-            }
         }
 
-    /** Null once the session already carries loa2 and the caller may proceed. */
-    private fun gate(ctx: JourneyContext): Transition? {
-        val account = ctx.requireAccount()
-        val requiredAcr = Action.DeleteAccount.requiredAcr(account)
-        if (ctx.policy.isSatisfied(ctx.evidence, requiredAcr, account)) return null
-        return Transition.RequireSubJourney(
-            AuthIntent.STEP_UP,
-            seedWith = StepUpState.forSubJourney(requiredAcr, ctx.currentAcr),
-            resumeWith = DeleteAccountState.ConfirmPending
-        )
-    }
-
-    /** Deletes at once on a recent proof, else asks for one. */
-    private fun confirmFreshness(state: DeleteAccountState, ctx: JourneyContext): Transition =
-        if (ctx.policy.hasFreshProof(ctx.evidence)) Transition.Perform(Action.DeleteAccount, resumeState = state)
-        else offerReconfirmation(ctx)
-
-    private fun offerReconfirmation(ctx: JourneyContext): Transition {
-        val candidates = CandidateTools.forReconfirmation(ctx.requireAccount(), ctx)
-        // Unreachable on an authenticated channel; abort rather than delete silently.
-        return if (candidates.isEmpty()) {
-            Transition.Abort(Text("Kein aktiver Faktor zur erneuten Bestaetigung verfuegbar"))
-        } else {
-            Transition.To(DeleteAccountState.ConfirmationRequired(Offer(candidates)))
-        }
-    }
+    private fun requireFreshProof(ctx: JourneyContext): Transition = Transition.RequireSubJourney(
+        AuthIntent.FRESH_PROOF,
+        seedWith = FreshProofState.forSubJourney(Action.DeleteAccount.requiredAcr(ctx.requireAccount()), ctx.currentAcr, FreshProofState.Purpose.DELETE_ACCOUNT),
+        resumeWith = DeleteAccountState.ConfirmPending,
+    )
 }

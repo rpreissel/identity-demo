@@ -17,6 +17,7 @@ export const JOURNEY_DIAGRAMS: Record<
   | 'manageMethods'
   | 'deleteAccount'
   | 'reIdentify'
+  | 'freshProof'
   | 'confirmPeerLogin'
   | 'webLoginLoa1'
   | 'webLoginLoa2'
@@ -93,14 +94,21 @@ export const JOURNEY_DIAGRAMS: Record<
   },
   manageMethods: {
     title: t('Anmeldeverfahren verwalten'),
-    // Every wish (add, change, remove) clears the level first, then needs a proof of the last five
-    // minutes (ManageAuthMethodsStrategy). A step-up on the "Nein" branch already is that proof.
-    steps: [t('Niveau ausreichend?'), t('Nachweis frisch? Sonst bestätigen'), t('Einrichten, ändern oder entfernen'), t('Fertig')],
+    // Every wish (add, change, remove) first runs the FRESH_PROOF sub-journey: level, then a proof
+    // of the last five minutes (ManageAuthMethodsStrategy). Nothing left to add asks for nothing.
+    steps: [t('Frischer Nachweis (Sub-Journey)'), t('Einrichten, ändern oder entfernen'), t('Fertig')],
+  },
+  freshProof: {
+    title: t('Frischer Nachweis'),
+    // The FreshProofState names, shared by DELETE_ACCOUNT, MANAGE_AUTH_METHODS and
+    // CONFIRM_PEER_LOGIN (ADR-61): the level first, then a proof of the last five minutes; a
+    // step-up on the "Nein" branch already is that proof.
+    steps: [t('Niveau ausreichend?'), t('Nachweis frisch?'), t('Faktor erneut bestätigen'), t('Bestätigt')],
     branch: {
       atIndex: 0,
       mainLabel: t('Ja'),
       label: t('Nein'),
-      steps: [t('Step-up (Faktor bestätigen)'), t('Einrichten, ändern oder entfernen'), t('Fertig')],
+      steps: [t('Step-up (Faktor bestätigen)'), t('Bestätigt')],
     },
   },
   reIdentify: {
@@ -117,30 +125,16 @@ export const JOURNEY_DIAGRAMS: Record<
   },
   confirmPeerLogin: {
     title: t('Anmeldung im Browser bestätigen'),
-    // Same anti-self-escalation gate as manageMethods: loa2 first. The "Nein" branch covers both
-    // starting points, a cold entry and a loa1 channel; both run the same STEP_UP sub-journey.
-    // There is no separate "log in first" step, and never identification or registration
-    // (AuthIntent.CONFIRM_PEER_LOGIN).
-    steps: [t('Bereits bei loa2?'), t('Web-Login bestätigen'), t('Bestätigt')],
-    branch: {
-      atIndex: 0,
-      mainLabel: t('Ja'),
-      label: t('Nein'),
-      steps: [t('Anmelden bzw. Step-up (Faktor bestätigen)'), t('Web-Login bestätigen'), t('Bestätigt')],
-    },
+    // Same anti-self-escalation gate as manageMethods, as the FRESH_PROOF sub-journey: loa2 and a
+    // recent proof first, for a cold entry and a loa1 channel alike. There is no separate "log in
+    // first" step, and never identification or registration (AuthIntent.CONFIRM_PEER_LOGIN).
+    steps: [t('Frischer Nachweis (Sub-Journey)'), t('Web-Login bestätigen'), t('Bestätigt')],
   },
   deleteAccount: {
     title: t('Konto löschen'),
-    // The yes/no confirmation always comes first; the loa2 gate applies only once accepted
-    // (DeleteAccountStrategy). A step-up there already is the fresh proof of a factor, and so is
-    // any proof of the last five minutes: the re-confirmation step is then skipped.
-    steps: [t('Löschen bestätigen'), t('Niveau ausreichend?'), t('Faktor erneut bestätigen'), t('Gelöscht')],
-    branch: {
-      atIndex: 1,
-      mainLabel: t('Ja'),
-      label: t('Nein'),
-      steps: [t('Step-up (Faktor bestätigen)'), t('Gelöscht')],
-    },
+    // The yes/no confirmation always comes first; level and fresh proof follow only once accepted,
+    // as the FRESH_PROOF sub-journey (DeleteAccountStrategy).
+    steps: [t('Löschen bestätigen'), t('Frischer Nachweis (Sub-Journey)'), t('Gelöscht')],
   },
     // Kein Journey-Schritt des Orchestrators: Der Browser spricht hier nur mit Keycloak (webOidc.ts).
     // Als Diagramm gezeigt, damit der Web-Kanal-Einstieg dieselbe Vorschau wie der App-Kanal bekommt.
@@ -203,9 +197,8 @@ export const CURRENT_STEP_BY_STATE_TYPE: Partial<Record<keyof typeof JOURNEY_DIA
     ChangeRequested: { index: 0 },
     RemoveRequested: { index: 0 },
     RetractAttributeRequested: { index: 0 },
-    ConfirmationRequired: { index: 1 },
-    Enrolling: { index: 2 },
-    Changing: { index: 2 },
+    Enrolling: { index: 1 },
+    Changing: { index: 1 },
   },
   confirmPeerLogin: {
     Requested: { index: 0 },
@@ -213,7 +206,10 @@ export const CURRENT_STEP_BY_STATE_TYPE: Partial<Record<keyof typeof JOURNEY_DIA
   },
   deleteAccount: {
     ConfirmPending: { index: 0 },
-    ConfirmationRequired: { index: 2 },
+  },
+  freshProof: {
+    Start: { index: 0 },
+    Reproving: { index: 2 },
   },
   reIdentify: {
     OfferReIdent: { index: 0 },
@@ -230,6 +226,7 @@ export const INTENT_DIAGRAM_KEY: Record<string, keyof typeof JOURNEY_DIAGRAMS> =
   MANAGE_AUTH_METHODS: 'manageMethods',
   DELETE_ACCOUNT: 'deleteAccount',
   RE_IDENTIFY: 'reIdentify',
+  FRESH_PROOF: 'freshProof',
   CONFIRM_PEER_LOGIN: 'confirmPeerLogin',
 }
 

@@ -1218,6 +1218,7 @@ paths:
           - MANAGE_AUTH_METHODS
           - CONFIRM_PEER_LOGIN
           - DELETE_ACCOUNT
+          - FRESH_PROOF
           - RE_IDENTIFY
           type: string
       - in: query

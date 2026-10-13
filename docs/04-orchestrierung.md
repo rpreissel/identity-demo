@@ -26,6 +26,7 @@ fachlichen Ziel seinen Namen im System zu:
 | Das Konto unwiderruflich löschen | `DELETE_ACCOUNT` |
 | Eine QR-Anmeldung auf einem anderen Gerät bestätigen | `CONFIRM_PEER_LOGIN` |
 | Sich erneut identifizieren, wenn nichts anderes mehr hilft | `RE_IDENTIFY` |
+| Vor einer Aktion am Konto das Niveau und einen frischen Nachweis sicherstellen | `FRESH_PROOF` |
 
 Angenommen, jemand hat eine fachliche Frage, etwa: „Darf man X löschen, ohne sich frisch
 auszuweisen?“ Die Antwort steht dann in genau *einem* dieser Bausteine (Abschnitt 3). Sie ist nicht
@@ -197,15 +198,15 @@ danach ordnen, wie sie beginnen:
 | `CONFIRM_PEER_LOGIN` | Eine wartende Anmeldung im Web per `auth-qr`/`auth-qr-lookup` bestätigen oder ablehnen | `POST /app/channels` mit `intent=confirm_peer_login` **oder** `POST /channels/{id}/peer-logins` auf einem Kanal, der `AUTHENTICATED` ist. Beide Wege prüfen dasselbe |
 | `DELETE_ACCOUNT` | Das Konto unwiderruflich löschen | nur auf einem Kanal, der `AUTHENTICATED` ist |
 | `RE_IDENTIFY` | Erneute Identifizierung als gemeinsam genutzte Sub-Journey | nie direkt, nur über `RequireSubJourney` |
+| `FRESH_PROOF` | Niveau und frischer Nachweis vor einer Aktion am Konto, als gemeinsam genutzte Sub-Journey | nie direkt, nur über `RequireSubJourney` |
 
 **`CONFIRM_PEER_LOGIN` ohne bestehende Sitzung.** Startet `CONFIRM_PEER_LOGIN` ohne bestehende
 Sitzung, bietet er nie eine Identifizierung oder Registrierung an. Ist über die
 Geräteverknüpfung (`DeviceAccountLink`) kein Konto bekannt, bricht die Journey sofort ab (410). Ist
-ein Konto bekannt, gilt eine feste Schwelle von `loa2`. Der Nutzer muss sie per `STEP_UP` erreichen.
-Anders als bei `MANAGE_AUTH_METHODS` gibt es dabei keinen Ausweg über eine erneute Identifizierung
-(`allowReIdentification = false`). Reichte das Niveau schon *vor* diesem Durchlauf, verlangt
-`CONFIRM_PEER_LOGIN` zusätzlich einen frischen Nachweis, so wie `DELETE_ACCOUNT` (eigener Abschnitt
-unten).
+ein Konto bekannt, gilt eine feste Schwelle von `loa2` und ein frischer Nachweis, beides als
+Sub-Journey [`FRESH_PROOF`](journeys/fresh-proof.md), so wie bei `DELETE_ACCOUNT` und
+`MANAGE_AUTH_METHODS` ([ADR-61](adr/ADR-061-frischer-nachweis-als-gemeinsame-sub-journey.md)). Anders als dort gibt es im Step-up darin keinen Ausweg
+über eine erneute Identifizierung (`Purpose.PEER_LOGIN`).
 
 **`REGISTER`** ist ein eigener Intent mit eigener Journey (`RegisterState`). Er schlägt nicht in der
 Geräteverknüpfung (`DeviceAccountLink`) nach und bietet nie eine schon bestehende
@@ -314,6 +315,7 @@ Journey nachschlagen, ohne alle zu laden.
 | `WEB_SELECT_METHOD` | [web-select-method.md](journeys/web-select-method.md) |
 | `STEP_UP` | [step-up.md](journeys/step-up.md) |
 | `RE_IDENTIFY` | [re-identify.md](journeys/re-identify.md) |
+| `FRESH_PROOF` | [fresh-proof.md](journeys/fresh-proof.md) |
 | `MANAGE_AUTH_METHODS` | [manage-auth-methods.md](journeys/manage-auth-methods.md) |
 | `CONFIRM_PEER_LOGIN` | [confirm-peer-login.md](journeys/confirm-peer-login.md) |
 | `DELETE_ACCOUNT` | [delete-account.md](journeys/delete-account.md) |
@@ -684,8 +686,9 @@ Step-up vor der Anmeldung.
 
 Eine Sub-Journey mit vorgegebenem Zielniveau beginnt nicht über die SPI. Sie beginnt über die
 Fabrikmethode im Companion ihres Zustands (`StepUpState.forSubJourney(...)`,
-`ReIdentifyState.forSubJourney(...)`, `RegisterState.forSubJourney()`). Als Sub-Journey laufen
-`STEP_UP`, `RE_IDENTIFY` und `REGISTER`.
+`ReIdentifyState.forSubJourney(...)`, `FreshProofState.forSubJourney(...)`,
+`RegisterState.forSubJourney()`). Als Sub-Journey laufen `STEP_UP`, `RE_IDENTIFY`, `FRESH_PROOF`
+und `REGISTER`; `FRESH_PROOF` ruft seinerseits `STEP_UP`.
 
 `transition()` ist die einzige Methode, die überhaupt etwas entscheidet.
 
@@ -729,7 +732,7 @@ Wege:
   gilt für jeden Intent, der Tools anbietet.
 - `Action.LinkDevice`, `Action.RevokeAuthMethod` und `Action.DeleteAccount`: Die Strategie liefert
   `Perform`, statt selbst zu verknüpfen oder zu löschen (`LookupLoginState.OfferBinding`,
-  `ManageAuthMethodsState.RemoveRequested`, `DeleteAccountState.ConfirmationRequired`).
+  `ManageAuthMethodsState.RemoveRequested`, `DeleteAccountState.ConfirmPending`).
 - Übernommene Nachweise ([05-api.md](05-api.md) Abschnitt 3b): Das ist kein `JourneyEvent`,
   sondern der erste Übergang des Automaten. Mehr dazu unten.
 
@@ -771,8 +774,8 @@ Das ist die Regel hinter allen Punkten oben. Nach ihr entscheidet sich auch jede
 Zweifelsfall. Sie unterscheidet zwei Arten von festgehaltenen Werten:
 
 - Ein festgehaltener Wert ist **richtig**, wenn er eine Vergangenheit festhält, die sich später
-  nicht mehr feststellen lässt. Beispiele sind `ConfirmPeerLoginState.startedAuthenticated`,
-  `StepUpState.startingAcr`, `MethodEvidence` als Nachweis und die Felder im Protokoll.
+  nicht mehr feststellen lässt. Beispiele sind `StepUpState.startingAcr`, `MethodEvidence` als
+  Nachweis und die Felder im Protokoll.
 - Er ist **falsch**, wenn er einen aktuellen Stand festschreibt, der bei der Ausführung neu gelesen
   werden müsste. Schwellen und `accountId`-Felder, die die Strategie in Zustände schreibt, gehören
   ausnahmslos in diese zweite Gruppe.

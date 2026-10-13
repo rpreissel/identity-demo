@@ -14,28 +14,20 @@ stateDiagram-v2
   [*] --> RetractAttributeRequested: Attribut zurücknehmen (DELETE .../attributes/email)
   [*] --> ChangeRequested: Verfahren ändern (POST .../methods/{id}/changes)
 
-  AddRequested --> AddRequested: Step-up nötig, danach erneut geprüft
-  ChangeRequested --> ChangeRequested: Step-up nötig, danach erneut geprüft
-  RemoveRequested --> RemoveRequested: Step-up nötig, danach erneut geprüft
-  RetractAttributeRequested --> RetractAttributeRequested: Step-up nötig, danach erneut geprüft
+  AddRequested --> Finished: nichts mehr einzurichten - kein Nachweis nötig
+  AddRequested --> FRESH_PROOF: selfServiceAcrFloor und frischer Nachweis
+  RemoveRequested --> FRESH_PROOF: selfServiceAcrFloor und frischer Nachweis
+  RetractAttributeRequested --> FRESH_PROOF: selfServiceAcrFloor und frischer Nachweis
+  ChangeRequested --> [*]: Eintrag nicht änderbar -> Abort
+  ChangeRequested --> FRESH_PROOF: Niveau des alten Eintrags und frischer Nachweis
 
-  AddRequested --> Enrolling: selfServiceAcrFloor erreicht, Nachweis frisch
-  AddRequested --> Finished: selfServiceAcrFloor erreicht, aber nichts mehr einzurichten
-  RemoveRequested --> Finished: selfServiceAcrFloor erreicht, Nachweis frisch, Verfahren samt abhängiger Verfahren widerrufen
-  RetractAttributeRequested --> Finished: selfServiceAcrFloor erreicht, Nachweis frisch, Attribut zurückgenommen, abhängige Verfahren entfallen mit
+  FRESH_PROOF --> [*]: SubJourneyCancelled -> Cancel
+  FRESH_PROOF --> Enrolling: SubJourneyFinished, Wunsch war Hinzufügen
+  FRESH_PROOF --> Changing: SubJourneyFinished, Wunsch war Ändern
+  FRESH_PROOF --> Finished: SubJourneyFinished, Verfahren widerrufen bzw. Attribut zurückgenommen
 
-  AddRequested --> ConfirmationRequired: letzter Nachweis älter als die Frist
-  RemoveRequested --> ConfirmationRequired: letzter Nachweis älter als die Frist
-  RetractAttributeRequested --> ConfirmationRequired: letzter Nachweis älter als die Frist
-  ChangeRequested --> ConfirmationRequired: letzter Nachweis älter als die Frist
-  ChangeRequested --> Changing: Niveau des alten Eintrags erreicht, Nachweis frisch
-  ConfirmationRequired --> Changing: Nachweis erbracht, Wunsch war Ändern
   Changing --> [*]: Tool abgebrochen -> Cancel, der alte Eintrag bleibt
   Changing --> Finished: neu eingerichtet, der neue Eintrag ersetzt den alten
-  ConfirmationRequired --> ConfirmationRequired: ein Tool abgelehnt, weitere übrig
-  ConfirmationRequired --> [*]: alle abgelehnt -> Cancel
-  ConfirmationRequired --> Enrolling: Nachweis erbracht, Wunsch war Hinzufügen
-  ConfirmationRequired --> Finished: Nachweis erbracht, Verfahren widerrufen bzw. Attribut zurückgenommen
   Enrolling --> Enrolling: anderes Tool gewählt
   Enrolling --> Finished: ein Verfahren eingerichtet
   Finished --> [*]
@@ -52,10 +44,10 @@ stateDiagram-v2
 `RemoveRequested` enthalten dafür die `methodInstanceId`, also welcher Eintrag gemeint ist.
 `RetractAttributeRequested` enthält den `attributeType`.
 
-Derselbe Zustand gilt vor der Prüfung gegen die geforderte Schwelle (`selfServiceAcrFloor`). Er gilt
-auch, während er auf einen Step-up wartet, also auf das Anheben des Sicherheitsniveaus. Lehnt der
-Nutzer den Step-up ab, endet die Journey (`Cancel`). Derselbe Step-up wird nicht erneut angeboten.
-`Enrolling` enthält das Angebot und die bisherigen Ablehnungen.
+Derselbe Zustand gilt, während die Sub-Journey [`FRESH_PROOF`](fresh-proof.md) die geforderte
+Schwelle (`selfServiceAcrFloor`) und die Frische des Nachweises prüft, samt einem Step-up, wenn das
+Niveau fehlt ([ADR-61](../adr/ADR-061-frischer-nachweis-als-gemeinsame-sub-journey.md)). Lehnt der Nutzer dort ab, endet die Journey (`Cancel`). Derselbe
+Nachweis wird nicht erneut verlangt. `Enrolling` enthält das Angebot und die bisherigen Ablehnungen.
 
 **Ändern ist erneutes Einrichten.** `ChangeRequested` nennt den Eintrag, der ersetzt werden soll.
 `Changing` bietet genau ein Tool an: das `enroll-*`-Tool dieses Verfahrens. Der neue Eintrag
@@ -70,34 +62,32 @@ im Tool zeigt deshalb eine Auswahl mit diesem einen Verfahren und „Abbrechen�
   (`changeable`). Ein Aufruf für ein anderes Verfahren wird mit `409` abgelehnt.
 - **Niveau.** Die Schwelle ist das höhere von zwei Niveaus: `selfServiceAcrFloor` und das Niveau,
   unter dem der alte Eintrag eingerichtet wurde (`enrolledUnderAcr`). Ein Ändern stuft also nie
-  herab. Reicht die Sitzung nicht, folgt der Step-up. Erreicht dabei kein Verfahren das Niveau,
-  bietet der Step-up die Re-Identifizierung an. `Changing` hält das Niveau fest, das die Sitzung bei
-  dieser Prüfung hatte. Der neue Eintrag wird mindestens unter diesem Niveau gespeichert. Das gilt
+  herab. Reicht die Sitzung nicht, folgt in `FRESH_PROOF` der Step-up. Erreicht dabei kein
+  Verfahren das Niveau, bietet der Step-up die Re-Identifizierung an. `Changing` hält das Niveau
+  fest, das die Sitzung nach dieser Prüfung hatte. Der neue Eintrag wird mindestens unter diesem Niveau gespeichert. Das gilt
   auch, wenn die Nachweise der Sitzung während der Eingabe altern
   (`Action.AdoptCredential.admittedAt`).
 - **Was das Tool weiß.** Das Einrichtungs-Tool kennt den Wunsch nicht. Es fragt beim Start, ob das
   Konto schon ein Credential seines Verfahrens hat (`ToolJourney.findEnrollment`). Das meldet es in
   seinem `stepData` (`replaces`).
 
-**Frischer Nachweis.** Nach der Schwelle prüft jeder Wunsch, ob der jüngste Nachweis der Sitzung
-höchstens fünf Minuten alt ist (`AuthPolicy.hasFreshProof`, wie bei
-[`DELETE_ACCOUNT`](delete-account.md)). Ist er älter, hält `ConfirmationRequired` den Wunsch fest.
-Der Zustand bietet dann jedes aktive Verfahren zur erneuten Bestätigung an, egal welches Niveau es
-erreicht. Der Nachweis aus einem Step-up, der gerade lief, ist schon frisch.
+**Frischer Nachweis.** Nach der Schwelle verlangt `FRESH_PROOF`, dass der jüngste Nachweis der
+Sitzung höchstens fünf Minuten alt ist, wie bei [`DELETE_ACCOUNT`](delete-account.md). Ist er
+älter, bietet die Sub-Journey jedes aktive Verfahren zur erneuten Bestätigung an, egal welches
+Niveau es erreicht. Der Nachweis aus einem Step-up, der gerade darin lief, ist schon frisch.
 
-Der Nachweis in `ConfirmationRequired` erlaubt genau diesen einen Wunsch. Er wird nie zu einem
-Nachweis der Sitzung. Lehnt der Nutzer alle Verfahren ab, endet die Journey, und nichts ist
-geändert. Gibt es nichts mehr einzurichten, endet das Hinzufügen ohne Nachfrage.
+Dieser Nachweis erlaubt genau diesen einen Wunsch. Er wird nie zu einem Nachweis der Sitzung.
+Lehnt der Nutzer alle Verfahren ab, endet die Journey, und nichts ist geändert. Gibt es nichts
+mehr einzurichten, endet das Hinzufügen ohne jede Nachfrage, auch ohne Prüfung des Niveaus.
 
 **Ein Verfahren je Journey.** `MANAGE_AUTH_METHODS` ist der einzige Intent ohne Zielniveau in der
 Richtlinie. Die Journey endet, sobald **ein** Verfahren erfolgreich eingerichtet ist, unabhängig vom
 erreichten Niveau. Für ein zweites Verfahren beginnt eine neue Journey.
 
-**Der Wunsch bleibt beim Step-up erhalten.** Dass die Journey wartet, erkennt man an
+**Der Wunsch bleibt bei der Prüfung erhalten.** Dass die Journey wartet, erkennt man an
 `JourneyLifecycle.SUSPENDED` (pausiert) und an der `parentJourneyId` der Kind-Journey, also am
-Verweis des Step-ups auf die wartende Journey. Deshalb geht der Wunsch beim Step-up nicht verloren.
-Ist der Step-up fertig, wird derselbe Zustand erneut ausgewertet. Er prüft die Vorbedingung noch
-einmal und führt dann aus, was ursprünglich verlangt war.
+Verweis von `FRESH_PROOF` auf die wartende Journey. Deshalb geht der Wunsch nicht verloren. Meldet
+die Sub-Journey ihr Ende, führt derselbe Zustand aus, was ursprünglich verlangt war.
 
 **Welches Niveau verlangt wird.** Die Vorbedingung folgt derselben Überlegung wie die Begrenzung
 durch `enrolledUnderAcr` (Orchestrierung, Abschnitt 4): Niemand soll sich selbst mehr Rechte

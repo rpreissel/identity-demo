@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey
 
+import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.state.AnswerableState
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
@@ -78,6 +79,9 @@ internal object DemoStepReason {
         is StepUpState.Start -> stepUpPurpose(state.targetAcr, state.startingAcr)
         is StepUpState.AuthChoice -> stepUpPurpose(state.targetAcr, state.startingAcr)
 
+        is FreshProofState.Start -> Text("Vor diesem Schritt wird geprüft, ob die Sitzung Sicherheitsniveau {ziel} hat und ihr letzter Nachweis frisch ist.", "ziel" to state.requiredAcr.value)
+        is FreshProofState.Reproving -> Text("Der letzte Nachweis dieser Sitzung ist älter als fünf Minuten - vor dem nächsten Schritt muss ein Verfahren frisch bestätigt werden.")
+
         is ReIdentifyState.OfferReIdent -> Text("Kein vorhandenes Verfahren erreicht Sicherheitsniveau {ziel} - bleibt nur, sich neu auszuweisen.", "ziel" to state.targetAcr.value)
         is ReIdentifyState.Identifying -> Text("Neu ausweisen für Sicherheitsniveau {ziel} - es muss dieselbe Person herauskommen wie im Konto.", "ziel" to state.targetAcr.value)
 
@@ -86,17 +90,13 @@ internal object DemoStepReason {
         is ManageAuthMethodsState.RetractAttributeRequested -> Text("Sie wollen eine bestätigte Angabe zurücknehmen - das verlangt Sicherheitsniveau 2 in dieser Sitzung.")
         is ManageAuthMethodsState.ChangeRequested -> Text("Sie wollen ein Verfahren ändern - das verlangt mindestens das Sicherheitsniveau, unter dem es eingerichtet wurde.")
         is ManageAuthMethodsState.Changing -> Text("Das Verfahren wird neu eingerichtet - der bisherige Eintrag bleibt, bis der neue fertig ist.")
-        is ManageAuthMethodsState.ConfirmationRequired -> Text("Der letzte Nachweis dieser Sitzung ist älter als fünf Minuten - vor der Änderung muss ein Verfahren frisch bestätigt werden.")
         is ManageAuthMethodsState.Enrolling -> Text("Sicherheitsniveau 2 ist erreicht - jetzt wird das neue Verfahren eingerichtet.")
 
         DeleteAccountState.ConfirmPending -> Text("Löschen ist endgültig - deshalb zuerst eine Rückfrage.")
-        is DeleteAccountState.ConfirmationRequired -> Text("Vor dem Löschen muss ein Verfahren frisch bestätigt werden - ein alter Nachweis reicht nicht.")
 
 
         is ConfirmPeerLoginState.Requested -> Text("Ein Browser wartet auf Freigabe durch dieses Gerät. Zuerst wird geprüft, ob diese Sitzung dafür sicher genug ist.")
-        is ConfirmPeerLoginState.ConfirmationRequired -> Text("Bevor dieses Gerät einen Browser freigibt, muss ein Verfahren frisch bestätigt werden.")
         is ConfirmPeerLoginState.Confirming -> Text("Diese Sitzung ist sicher genug - jetzt geben Sie die wartende Anmeldung im Browser frei.")
-        ConfirmPeerLoginState.OfferLogout -> Text("Der Browser ist freigegeben. Diese Sitzung wurde nur dafür eröffnet - deshalb die Frage, ob sie offen bleiben soll.")
 
         is WebSelectMethodState.SelectMethod -> Text("Die Anmeldeseite verlangt einen Nachweis - angeboten wird jedes Verfahren, das im Browser geht.")
         is WebSelectMethodState.AfterIdentification -> Text("Zurück von der erneuten Identifizierung: Reicht sie für das verlangte Niveau, ist die Anmeldung fertig, sonst wird neu angeboten.")

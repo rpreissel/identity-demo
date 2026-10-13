@@ -30,55 +30,39 @@ Sicherheitsniveau anhebt. Dieser Step-up erklärt selbst, warum gefragt wird, un
 stateDiagram-v2
   [*] --> Requested
   Requested --> [*]: kein Konto bekannt -> Abort (410)
-  Requested --> STEP_UP: loa2 noch nicht erreicht
-  STEP_UP --> Requested: SubJourneyFinished, loa2 nicht erreicht -> erneut prüfen
-  STEP_UP --> Confirming: SubJourneyFinished, loa2 erreicht - zählt als der geforderte neue Nachweis
-  STEP_UP --> [*]: SubJourneyCancelled -> Cancel
-  Requested --> ConfirmationRequired: loa2 bereits erreicht, letzter Nachweis älter als die Frist
-  Requested --> Confirming: loa2 bereits erreicht, letzter Nachweis jung genug
-  ConfirmationRequired --> ConfirmationRequired: ein Tool abgelehnt, weitere übrig
-  ConfirmationRequired --> [*]: alle abgelehnt -> Cancel
-  ConfirmationRequired --> Confirming: Nachweis erbracht
+  Requested --> FRESH_PROOF: loa2 und frischer Nachweis, ohne erneute Identifizierung als Ausweg
+  FRESH_PROOF --> Confirming: SubJourneyFinished
+  FRESH_PROOF --> [*]: SubJourneyCancelled -> Cancel
   Confirming --> Confirming: approve-qr abgebrochen, kommt zurück
-  Confirming --> Finished: bestätigt oder abgelehnt, Kanal war schon vorher angemeldet
-  Confirming --> OfferLogout: bestätigt oder abgelehnt, Kanal wurde nur für diese Bestätigung angemeldet
-  OfferLogout --> [*]: zugestimmt -> Abmeldung
-  OfferLogout --> Finished: abgelehnt -> angemeldet bleiben
+  Confirming --> Finished: bestätigt oder abgelehnt
   Finished --> [*]
 ```
 
-Je nach Zustand des Kanals beginnt die Journey an einer von drei Stellen (Punkte 1 bis 3). Danach
-laufen immer dieselben Schritte (Punkte 4 bis 6):
+Die Journey läuft in drei Schritten, für einen kalt geöffneten und einen angemeldeten Kanal gleich:
 
-1. **Der Kanal ist noch nicht angemeldet.** Angeboten wird nur die Anmeldung am Konto des
-   gekoppelten Geräts. Ist eine Geräteverknüpfung (`DeviceAccountLink`) bekannt, läuft derselbe
-   Step-up auf `loa2` wie in Punkt 2, mit den Anmelde-Tools dieses Kontos. Das ist der
-   `STEP_UP`-Zweig im Diagramm. Identifizierung und Registrierung werden **nicht** angeboten. Ohne
-   `DeviceAccountLink` endet die Journey sofort mit `Abort`, ohne etwas anzubieten.
-2. **Der Kanal ist angemeldet, aber unter `loa2`.** Dann läuft ein Step-up mit dem festen Ziel
-   `loa2`. Anders als bei `MANAGE_AUTH_METHODS` gibt es keinen Ausweg über eine erneute
-   Identifizierung (`allowReIdentification = false`). Auch für Konten, die nie identifiziert wurden,
-   wird die Schwelle nicht gesenkt. Der Nachweis aus dem Step-up zählt bereits als der neue
-   Nachweis, den Punkt 3 verlangt. Im Diagramm ist das der Pfeil `STEP_UP --> Confirming`. Geprüft
-   wird das über `SubJourneyFinished.achievedAcr`.
-3. **Der Kanal steht bereits auf `loa2` oder höher** (unabhängig von dieser Journey). Dann gilt
-   dieselbe Frist wie bei `DELETE_ACCOUNT` und `MANAGE_AUTH_METHODS`. Ist der jüngste Nachweis der
-   Sitzung höchstens fünf Minuten alt (`AuthPolicy.hasFreshProof`), geht es direkt weiter. Sonst
-   weist der Nutzer neu nach, dass er es ist. Dafür reicht jedes aktive Verfahren, egal welches
-   Niveau es erreicht (`CandidateTools.forReconfirmation`). Erst danach wird `approve-qr` angeboten
-   (`ConfirmationRequired`). Dieser Nachweis wird nicht als dauerhafter Nachweis der Sitzung
-   (`MethodEvidence`) gespeichert. Er erlaubt nur diese eine Bestätigung.
-4. Danach wird `approve-qr` gestartet (`Confirming`). Es ist der einzige Kandidat. Geht der Nutzer
+1. **Ohne Konto geht nichts.** Ist über die Geräteverknüpfung (`DeviceAccountLink`) kein Konto
+   bekannt, endet die Journey sofort mit `Abort`. Identifizierung und Registrierung werden **nicht**
+   angeboten.
+2. **`loa2` und ein frischer Nachweis**, als Sub-Journey [`FRESH_PROOF`](fresh-proof.md)
+   ([ADR-61](../adr/ADR-061-frischer-nachweis-als-gemeinsame-sub-journey.md)). Die Schwelle ist fest `loa2`, auch für Konten, die nie identifiziert wurden.
+   Reicht das Niveau nicht, läuft darin ein Step-up, und anders als bei `MANAGE_AUTH_METHODS` ohne
+   Ausweg über eine erneute Identifizierung (`Purpose.PEER_LOGIN`): Wer einen fremden Login
+   bestätigt, soll sich dafür keine frische Identität verschaffen können. Reichte das Niveau schon,
+   gilt dieselbe Frist wie bei `DELETE_ACCOUNT`: Ist der jüngste Nachweis älter als fünf Minuten,
+   weist der Nutzer ein beliebiges aktives Verfahren neu nach. Dieser Nachweis erlaubt nur diese
+   eine Bestätigung und wird nie zum Nachweis der Sitzung.
+3. Danach wird `approve-qr` gestartet (`Confirming`). Es ist der einzige Kandidat. Geht der Nutzer
    dort zurück (`Abandoned`), lehnt er die Anfrage damit nicht ab. Er kommt nur wieder zum selben
    Kandidaten.
-5. `approve-qr` hat nach der Freigabe einen dritten Schritt `showCode`. Die App zeigt dort den
+4. `approve-qr` hat nach der Freigabe einen dritten Schritt `showCode`. Die App zeigt dort den
    Bestätigungscode, den der Nutzer in den wartenden Browser tippt. Erst damit ist der Browser
    angemeldet ([Verfahren `qr`](../verfahren/qr.md), Abschnitt „Sicherheit des Pairing-Codes“).
    `done` schließt das Tool ab.
-6. Das Ziel ist erreicht, sobald das Tool `Completed` oder `Failed` meldet. Die Kandidatenliste wird
-   danach nicht noch einmal angeboten. Die Journey endet mit diesem einen Tool. War der Kanal vorher
-   nicht angemeldet, fragt `OfferLogout`, ob er angemeldet bleiben soll. `OfferLogout` ist ein
-   `AnswerableState`, also ein Zustand mit einer Ja/Nein-Frage.
+5. Das Ziel ist erreicht, sobald das Tool `Completed` oder `Failed` meldet. Die Kandidatenliste wird
+   danach nicht noch einmal angeboten. Die Journey endet mit diesem einen Tool, und der Kanal ist
+   `AUTHENTICATED`. War die App vorher nicht angemeldet, fragt sie selbst, ob der Kanal angemeldet
+   bleiben soll, und meldet sich sonst per `DELETE /channels/{id}` ab. Diese Frage ist Bedienung,
+   kein Zustand der Journey ([ADR-60](../adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)).
 
 **Der Pairing-Code.** Der Pairing-Code ist die kurze Zeichenfolge, die der Browser neben dem
 QR-Code zeigt. Er wird **nicht** beim Anlegen des Kanals übergeben. Er ist ein Eingabefeld im ersten

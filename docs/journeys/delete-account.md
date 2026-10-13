@@ -15,15 +15,9 @@ Frage technisch aussieht, beschreibt [05-api.md](../05-api.md) im Abschnitt „D
 stateDiagram-v2
   [*] --> ConfirmPending
   ConfirmPending --> [*]: abgelehnt -> Cancel
-  ConfirmPending --> ConfirmationRequired: Niveau erreicht, letzter Nachweis älter als die Frist
-  ConfirmPending --> Finished: Niveau erreicht, letzter Nachweis jung genug -> Konto gelöscht, Abmeldung
-  ConfirmPending --> STEP_UP: gefordertes Niveau noch nicht erreicht
-  STEP_UP --> ConfirmPending: SubJourneyFinished mit ausreichendem Niveau -> sofort Perform(DeleteAccount)
-  STEP_UP --> [*]: SubJourneyFinished unter dem geforderten Niveau -> Cancel
-  STEP_UP --> [*]: SubJourneyCancelled -> Cancel
-  ConfirmationRequired --> ConfirmationRequired: ein Tool abgelehnt, weitere übrig
-  ConfirmationRequired --> [*]: alle abgelehnt -> Cancel
-  ConfirmationRequired --> Finished: Nachweis erbracht -> Konto gelöscht, Abmeldung
+  ConfirmPending --> FRESH_PROOF: zugestimmt -> Niveau und frischer Nachweis
+  FRESH_PROOF --> Finished: SubJourneyFinished -> Konto gelöscht, Abmeldung
+  FRESH_PROOF --> [*]: SubJourneyCancelled -> Cancel
   Finished --> [*]
 ```
 
@@ -35,11 +29,11 @@ Zustimmung gilt dieselbe Schwelle wie bei [`MANAGE_AUTH_METHODS`](manage-auth-me
 
 **Nur mit frischem Nachweis.** Ein Nachweis ist das, was der Nutzer in dieser Sitzung bewiesen hat,
 etwa ein richtig eingegebenes Passwort. Gelöscht wird nur mit einem frischen Nachweis: Der jüngste
-Nachweis der Sitzung darf höchstens fünf Minuten alt sein (`AuthPolicy.hasFreshProof`,
-`identity.policy.self-service-max-age`). Ist er älter, weist der Nutzer noch einmal ein Verfahren
-nach. Das kann jedes aktive Verfahren sein, egal welches Niveau es erreicht. So wird ein Konto nie
-aus einer Sitzung heraus gelöscht, die schon länger offen ist. Musste vorher ein Step-up laufen,
-zählt dessen Nachweis bereits als frisch.
+Nachweis der Sitzung darf höchstens fünf Minuten alt sein. Ist er älter, weist der Nutzer noch
+einmal ein beliebiges aktives Verfahren nach. So wird ein Konto nie aus einer Sitzung heraus
+gelöscht, die schon länger offen ist. Niveau und Frische prüft nicht diese Journey, sondern die
+gemeinsame Sub-Journey [`FRESH_PROOF`](fresh-proof.md) ([ADR-61](../adr/ADR-061-frischer-nachweis-als-gemeinsame-sub-journey.md)); sie startet erst nach
+der Zustimmung.
 
 **Wie gelöscht wird.** Der letzte Übergang ist
 `Transition.Perform(Action.DeleteAccount, resumeState = ConfirmPending)`. Die Strategie entscheidet
@@ -50,6 +44,6 @@ Mechanismus. Wird die Journey anschließend mit `ActionCompleted` fortgesetzt, w
 Unmittelbar vor der Ausführung prüft `JourneyActionExecutor` `requiredAcr(account)` noch einmal.
 Das entspricht der Prüfung vor `Action.RevokeAuthMethod`, ob sich der Nutzer aussperren würde.
 
-Der Nachweis in `ConfirmationRequired` führt direkt zu `Action.DeleteAccount` und nie über
-`Action.AcceptProof`. Er erlaubt genau diese eine Löschung. Er wird nie als dauerhafter Nachweis der
-Sitzung gespeichert (`MethodEvidence`, siehe Orchestrierung, Abschnitt 8).
+Der Nachweis aus `FRESH_PROOF` erlaubt genau diese eine Löschung. Er wird nie als dauerhafter
+Nachweis der Sitzung gespeichert (`MethodEvidence`, siehe Orchestrierung, Abschnitt 8). Meldet
+eine andere Sub-Journey ihr Ende, löscht die Journey nicht, sondern endet mit `Cancel`.
