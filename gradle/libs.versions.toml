@@ -1,6 +1,6 @@
 [versions]
 java = "21"
-kotlin = "2.4.20"
+kotlin = "2.4.21"
 spring-boot = "4.1.1"
 # Ueber Spring Boots Stand hinaus angehoben, bis ein Boot-Patch sie mitbringt: Tomcat und Jackson
 # tragen in Boots Versionen bekannte Sicherheitsmeldungen (OSV; die CI prueft per OSV-Scanner).
@@ -18,7 +18,7 @@ asm = "9.9.1"
 archunit = "1.4.2"
 mockk = "1.14.11"
 springmockk = "5.0.1"
-kover = "0.9.9"
+kover = "0.9.11"
 openapi-generator = "7.18.0"
 openapi-diff = "2.1.7"
 # Eine Version fuer beide Seiten der Peer-Auth-Signatur: keycloak-extension signiert, der
