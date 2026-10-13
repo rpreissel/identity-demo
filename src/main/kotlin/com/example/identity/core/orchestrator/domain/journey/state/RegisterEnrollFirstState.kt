@@ -43,6 +43,7 @@ sealed interface RegisterEnrollFirstState : JourneyState {
         override val offer: Offer
     ) : RegisterEnrollFirstState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
         override val selectionContext: String get() = "enrollment"
         override val selectionTitle: Text get() = Text("E-Mail-Adresse bestätigen")
         override val selectionDescription: Text get() = Text("Zuerst wird Ihre E-Mail-Adresse bestätigt - Ihr Konto wird darüber gefunden. SMS folgt danach, die Identifikation ist optional und kommt erst zum Schluss.")
@@ -53,6 +54,7 @@ sealed interface RegisterEnrollFirstState : JourneyState {
         override val offer: Offer
     ) : RegisterEnrollFirstState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
         override val selectionContext: String get() = "enrollment"
         override val selectionTitle: Text get() = Text("SMS als Anmeldeverfahren einrichten")
         override val selectionDescription: Text get() = Text("Danach wird SMS als zweites Anmeldeverfahren eingerichtet - die Identifikation ist optional und kommt erst zum Schluss.")
@@ -66,6 +68,7 @@ sealed interface RegisterEnrollFirstState : JourneyState {
         override val offer: Offer
     ) : RegisterEnrollFirstState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
         override val selectionContext: String get() = "enrollment"
         override val selectionTitle: Text get() = Text("Anmeldeverfahren einrichten")
         override val selectionDescription: Text get() = Text("Richten Sie ein Anmeldeverfahren ein - die Identifikation ist optional und folgt erst danach.")
@@ -75,6 +78,7 @@ sealed interface RegisterEnrollFirstState : JourneyState {
         override val offer: Offer
     ) : RegisterEnrollFirstState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
         override val selectionContext: String get() = "enrollment"
         override val selectionTitle: Text get() = Text("E-Mail-Bestätigung ausstehend")
         override val selectionDescription: Text get() = Text("Ihre E-Mail-Adresse muss noch bestätigt werden - Ihr Konto wird darüber gefunden.")
@@ -85,6 +89,7 @@ sealed interface RegisterEnrollFirstState : JourneyState {
         override val offer: Offer
     ) : RegisterEnrollFirstState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
         override val selectionContext: String get() = "enrollment"
         override val selectionTitle: Text get() = Text("Weiteres Anmeldeverfahren einrichten")
         override val selectionDescription: Text get() = Text("Damit Sie Ihre Anmeldeverfahren später verwalten können, braucht das Konto noch ein Verfahren anderer Art als die schon eingerichteten. Die Liste zeigt, welche hier passen.")

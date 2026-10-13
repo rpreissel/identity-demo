@@ -18,6 +18,7 @@ sealed interface WebSelectMethodState : JourneyState {
         val accountAlreadyKnown: Boolean
     ) : WebSelectMethodState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
         override val selectionContext: String get() = "auth"
         // A step-up must say why it asks again. Keycloak shows the known e-mail address where the
         // heading would be, so the description carries the reason on its own.

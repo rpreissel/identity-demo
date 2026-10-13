@@ -30,6 +30,7 @@ sealed interface RegisterState : JourneyState {
         override val offer: Offer
     ) : RegisterState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
         override val selectionContext: String get() = "registration"
         override val selectionStep: String get() = "selectIdentificationMethod"
         override val selectionTitle: Text get() = Text("Identifikation erforderlich")
@@ -62,6 +63,8 @@ sealed interface RegisterState : JourneyState {
         override val offer: Offer
     ) : RegisterState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        // Backing out is the "not now": the run carries on as prospect (ADR-10).
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.OPTIONAL
         override val selectionContext: String get() = "registration"
         override val selectionTitle: Text get() = Text("Konto zuordnen")
         override val selectionDescription: Text get() =
@@ -77,6 +80,7 @@ sealed interface RegisterState : JourneyState {
         override val offer: Offer
     ) : RegisterState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
         override val selectionContext: String get() = "enrollment"
         override val selectionTitle: Text get() = Text("E-Mail-Bestätigung ausstehend")
         override val selectionDescription: Text get() = Text("Ihre E-Mail-Adresse muss noch bestätigt werden - Ihr Konto wird darüber gefunden.")
@@ -92,6 +96,7 @@ sealed interface RegisterState : JourneyState {
         override val offer: Offer
     ) : RegisterState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
         override val selectionContext: String get() = "enrollment"
         override val selectionTitle: Text get() = Text("Weiteres Anmeldeverfahren einrichten")
         override val selectionDescription: Text get() = Text("Damit Sie Ihre Anmeldeverfahren später verwalten können, braucht das Konto noch ein Verfahren anderer Art als die schon eingerichteten. Die Liste zeigt, welche hier passen.")

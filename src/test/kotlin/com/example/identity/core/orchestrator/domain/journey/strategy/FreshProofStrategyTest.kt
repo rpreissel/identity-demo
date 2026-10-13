@@ -144,13 +144,6 @@ class FreshProofStrategyTest : BehaviorSpec({
     given("Reproving, more than one offered candidate") {
         val state = FreshProofState.Reproving(AcrLevel.LOA2, FreshProofState.Purpose.MANAGE_METHODS, Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
 
-        `when`("one candidate is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), ctx())
-            then("keeps the choice among the rest") {
-                transition shouldBe Transition.To(state.declining(ToolId("auth-sms")))
-            }
-        }
-
         `when`("any active factor is re-proven") {
             val event = JourneyEvent.Completed(tool("auth-sms"), ToolOutcome.Completed.Authenticated(amr = listOf("sms")))
             val transition = strategy.transition(state, event, ctx())
@@ -164,7 +157,8 @@ class FreshProofStrategyTest : BehaviorSpec({
         val state = FreshProofState.Reproving(AcrLevel.LOA2, FreshProofState.Purpose.PEER_LOGIN, Offer(listOf(ToolId("auth-sms"))))
 
         `when`("the last offered candidate is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), ctx())
+            val exhausted = state.declining(ToolId("auth-sms"))
+            val transition = strategy.transition(exhausted as FreshProofState, JourneyEvent.OfferExhausted(exhausted.declined), ctx())
             then("cancels - nothing passes just because every option was declined") {
                 transition shouldBe Transition.Cancel
             }

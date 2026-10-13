@@ -50,7 +50,7 @@ export function stepCategory(entry: JourneyTraceEntryView): StepCategory {
   if (decision === 'RequireSubJourney' || entry.eventType === 'SubJourneyFinished' || entry.eventType === 'SubJourneyCancelled') {
     return 'subJourney'
   }
-  if (['TOOL_ACTIVATED', 'Completed', 'Abandoned', 'Back'].includes(entry.eventType)) return 'tool'
+  if (['TOOL_ACTIVATED', 'Completed', 'Abandoned', 'OfferExhausted', 'Back'].includes(entry.eventType)) return 'tool'
   if (entry.eventType === 'Answered' || entry.eventType === 'ActionCompleted' || entry.eventType === 'Entry' || decision === 'Perform') {
     return 'action'
   }
@@ -133,6 +133,8 @@ export function stepTitle(entry: JourneyTraceEntryView): string {
       return t('{verfahren} fehlgeschlagen', { verfahren: tool })
     case 'Abandoned':
       return t('{verfahren} abgelehnt, anderes Verfahren gewünscht', { verfahren: tool })
+    case 'OfferExhausted':
+      return t('Alle angebotenen Verfahren abgelehnt')
     case 'Back':
       return t('Zurück aus {verfahren}', { verfahren: tool })
     case 'Answered':

@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
@@ -40,7 +39,7 @@ class ReIdentifyStrategy : IntentStrategy<ReIdentifyState> {
             }
 
             is ReIdentifyState.Identifying -> when (event) {
-                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
+                is JourneyEvent.OfferExhausted -> Transition.Cancel
                 is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // Identity confirmed - this identification's own maxAcr already IS the achieved level.
                 else -> Transition.Authenticated

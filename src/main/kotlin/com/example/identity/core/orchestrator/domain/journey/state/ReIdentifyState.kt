@@ -64,6 +64,7 @@ sealed interface ReIdentifyState : JourneyState {
         override val wording: Wording? = null
     ) : ReIdentifyState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
         override val selectionContext: String get() = "auth"
         override val selectionTitle: Text get() = when (wording) {
             Wording.OPTIONAL_IDENTIFICATION -> Text("Identifikation (optional)")

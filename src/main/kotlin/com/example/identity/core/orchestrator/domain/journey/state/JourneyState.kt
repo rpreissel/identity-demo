@@ -71,8 +71,27 @@ data class Offer(
 }
 
 /** Shared shape of every state that offers a set of tools and remembers what was declined. */
+/**
+ * The kind of an offer, read when the user backs out of a tool (docs/04-orchestrierung.md, "Zwei
+ * Sorten von Übergang"). Declared on the state, not decided by the strategy, so the kind is visible
+ * where the offer is; [OfferingState.afterAbandoning] answers backing out from it.
+ */
+enum class DeclinePolicy {
+    /** The obligation stands: the full offer comes back, the declined tool included. */
+    MANDATORY,
+
+    /** Declining narrows the offer; once nothing is left, the strategy names the next, costlier way. */
+    FALLBACK,
+
+    /** The whole step may be skipped: the first backing out already hands over to the strategy. */
+    OPTIONAL,
+}
+
 sealed interface OfferingState : JourneyState {
     val offer: Offer
+
+    /** What backing out of a tool means here; see [DeclinePolicy]. */
+    val declinePolicy: DeclinePolicy
 
     /** This state holding [offer] instead. */
     fun withOffer(offer: Offer): OfferingState

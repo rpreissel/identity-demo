@@ -5,7 +5,6 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -60,7 +59,7 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
 
     private fun proving(state: OfferingState, event: JourneyEvent, ctx: JourneyContext): Transition = when (event) {
         is JourneyEvent.Completed -> completed(event, state)
-        is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
+        is JourneyEvent.OfferExhausted -> Transition.Cancel
         else -> settleOrRaise(ctx)
     }
 

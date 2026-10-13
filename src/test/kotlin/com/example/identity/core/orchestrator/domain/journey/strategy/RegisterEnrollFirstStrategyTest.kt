@@ -139,18 +139,6 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         }
     }
 
-    given("EnrollFirstAttestingEmail, the mandatory email step offered") {
-        val state = RegisterEnrollFirstState.EnrollFirstAttestingEmail(Offer(listOf(ToolId("confirm-email"))))
-
-        `when`("the tool is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("confirm-email")), ctx())
-            then("re-offers the same mandatory step, no skipping ahead to SMS") {
-                transition shouldBe
-                    Transition.To(state.withActive(null))
-            }
-        }
-    }
-
     given("EnrollFirstEnrollingSms, floor reached, but email is still unconfirmed") {
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = false)
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
@@ -161,18 +149,6 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
             then("falls into the normal obligation cascade - email is always obligatory here") {
                 transition shouldBe
                     Transition.To(RegisterEnrollFirstState.EnrollFirstConfirmingEmail(Offer(listOf(ToolId("confirm-email")))))
-            }
-        }
-    }
-
-    given("EnrollFirstEnrollingSms, the mandatory SMS step offered") {
-        val state = RegisterEnrollFirstState.EnrollFirstEnrollingSms(Offer(listOf(ToolId("enroll-sms"))))
-
-        `when`("the tool is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("enroll-sms")), ctx())
-            then("re-offers the same mandatory step") {
-                transition shouldBe
-                    Transition.To(state.withActive(null))
             }
         }
     }
@@ -191,18 +167,6 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
             then("finishes all the same") {
                 transition shouldBe
                     Transition.Authenticated
-            }
-        }
-    }
-
-    given("Enrolling, more than one offered candidate") {
-        val state = RegisterEnrollFirstState.EnrollFirstEnrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("confirm-email"))))
-
-        `when`("a tool is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("enroll-sms")), ctx())
-            then("re-offers the FULL choice - this is a mandatory state, not a fallback") {
-                transition shouldBe
-                    Transition.To(state.withActive(null))
             }
         }
     }

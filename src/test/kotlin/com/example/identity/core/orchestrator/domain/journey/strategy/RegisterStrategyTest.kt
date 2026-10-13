@@ -131,23 +131,12 @@ class RegisterStrategyTest : BehaviorSpec({
         }
     }
 
-    given("Identifying, more than one offered candidate") {
-        val state = RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"))))
-
-        `when`("one is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("ident-fsc")), ctx())
-            then("keeps the choice among the rest") {
-                transition shouldBe
-                    Transition.To(state.withOffer(state.offer.copy(declined = setOf(ToolId("ident-fsc")))))
-            }
-        }
-    }
-
     given("Identifying, one offered candidate") {
         val state = RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc"))))
 
         `when`("the last offered candidate is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("ident-fsc")), ctx())
+            val exhausted = state.declining(ToolId("ident-fsc"))
+            val transition = strategy.transition(exhausted as RegisterState, JourneyEvent.OfferExhausted(exhausted.declined), ctx())
             then("gives up - the whole journey cancels, this is not an error") {
                 transition shouldBe Transition.Cancel
             }
@@ -291,8 +280,8 @@ class RegisterStrategyTest : BehaviorSpec({
         val state = RegisterState.Assigning(Offer(listOf(ToolId("ident-kvnr"))))
 
         `when`("the assignment is backed out of (\"not now\")") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("ident-kvnr")), theCtx)
-
+            val exhausted = state.declining(ToolId("ident-kvnr"))
+            val transition = strategy.transition(exhausted as RegisterState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
             then("the registration carries on unbound and offers enrollment (ADR-10)") {
                 val enrolling = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<Enrolling>()
                 enrolling.emailObligation shouldBe true
@@ -351,25 +340,11 @@ class RegisterStrategyTest : BehaviorSpec({
         val state = AuthChoice(Offer(listOf(ToolId("auth-sms"))))
 
         `when`("the last candidate is abandoned") {
-            val transition = strategy.transition(
-                state,
-                JourneyEvent.Abandoned(tool("auth-sms")),
-                ctx(account = acc, channel = ChannelType.WEB)
+            val exhausted = state.declining(ToolId("auth-sms"))
+            val transition = strategy.transition(exhausted as RegisterState, JourneyEvent.OfferExhausted(exhausted.declined), ctx(account = acc, channel = ChannelType.WEB)
             )
             then("falls back to identification again, not to enrollment - never wrapped with the factor-kind obligation") {
                 transition shouldBe Transition.To(RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"), ToolId("ident-nect")))))
-            }
-        }
-    }
-
-    given("ConfirmingEmail") {
-        val state = RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email"))))
-
-        `when`("abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("confirm-email")), ctx())
-            then("re-offers the same full choice - the obligation itself is never waived by backing out") {
-                transition shouldBe
-                    Transition.To(state.withActive(null))
             }
         }
     }
@@ -387,17 +362,6 @@ class RegisterStrategyTest : BehaviorSpec({
             then("asks for a method of another factor kind") {
                 transition shouldBe
                     Transition.To(RegisterState.SecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS)))
-            }
-        }
-    }
-
-    given("Enrolling") {
-        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), emailObligation = true)
-
-        `when`("abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), ctx())
-            then("re-offers the same full choice, the tool just backed out of included") {
-                transition shouldBe Transition.To(state.withActive(null))
             }
         }
     }
@@ -613,18 +577,6 @@ class RegisterStrategyTest : BehaviorSpec({
             then("the discharged email obligation falls through to the still-open factor-kind obligation, not straight to Authenticated") {
                 transition shouldBe
                     Transition.To(RegisterState.SecondFactorKindObligation(Offer(listOf(ToolId("enroll-password")))))
-            }
-        }
-    }
-
-    given("SecondFactorKindObligation") {
-        val state = RegisterState.SecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS))
-
-        `when`("abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("enroll-password")), ctx(availableTools = StrategyTestFixtures.appTools))
-            then("re-offers the same full choice - the obligation itself is never waived by backing out") {
-                transition shouldBe
-                    Transition.To(state.withActive(null))
             }
         }
     }

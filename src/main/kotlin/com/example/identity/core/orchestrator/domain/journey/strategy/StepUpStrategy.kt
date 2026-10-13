@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -51,9 +50,7 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
 
             is StepUpState.AuthChoice -> when (event) {
                 is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
-                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) {
-                    offerReIdentOrGiveUp(state.goal, ctx, whenNone = Transition.Cancel)
-                }
+                is JourneyEvent.OfferExhausted -> offerReIdentOrGiveUp(state.goal, ctx, whenNone = Transition.Cancel)
                 // ActionCompleted: re-check with the fresh, post-proof context.
                 else -> finishOrContinue(state.goal, ctx)
             }

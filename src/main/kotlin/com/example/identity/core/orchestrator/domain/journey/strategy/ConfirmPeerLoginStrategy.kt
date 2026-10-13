@@ -3,7 +3,6 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -40,8 +39,6 @@ class ConfirmPeerLoginStrategy : IntentStrategy<ConfirmPeerLoginState> {
             }
 
             is ConfirmPeerLoginState.Confirming -> when (event) {
-                // Backing out is not declining the wish; the only candidate comes back.
-                is JourneyEvent.Abandoned -> reoffer(state)
                 is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // The approval ran; the channel stays signed in. A channel that logged in only for
                 // the approval is asked by the app whether to log out again (ADR-60).

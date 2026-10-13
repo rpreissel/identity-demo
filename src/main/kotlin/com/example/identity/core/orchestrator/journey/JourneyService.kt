@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.core.orchestrator.domain.journey.narrowedBy
+import com.example.identity.core.orchestrator.domain.journey.afterAbandoning
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
@@ -376,9 +378,21 @@ class JourneyService(
 
     private fun advance(journey: AuthJourney, channel: ChannelSession, event: JourneyEvent): Step {
         val strategy = strategyFor(journey.requireIntent())
-        val state = codec.read(journey)
+        var state = codec.read(journey)
+        var event = event
         val ctx = contextFactory.contextFor(journey, channel)
-        val transition = strategy.transitionErased(state, event, ctx)
+        var transition: Transition? = null
+        // An offer answers backing out itself (DeclinePolicy); the strategy only hears that the
+        // offer is exhausted, with everything declined.
+        if (event is JourneyEvent.Abandoned && state is OfferingState) {
+            val own = state.afterAbandoning(event.tool.toolId, ctx.availableTools)
+            if (own != null) transition = Transition.To(own)
+            else {
+                state = state.narrowedBy(event.tool.toolId)
+                event = JourneyEvent.OfferExhausted((state as OfferingState).declined)
+            }
+        }
+        transition = transition ?: strategy.transitionErased(state, event, ctx)
         // The log shows what routing itself derives, so nextFor stays the one routing authority.
         val availableTools = routing.availableToolsOf(channel)
         journeyTraceService.record(channel.forLog(), journey.forLog(), event::class.simpleName!!,

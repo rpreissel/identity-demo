@@ -122,14 +122,6 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         val theCtx = ctx(account = acc)
         val state = ReIdentifyState.Identifying(AcrLevel.LOA2, Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"))))
 
-        `when`("one is abandoned but another remains") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("ident-fsc")), theCtx)
-            then("advances, marking only that one declined") {
-                transition shouldBe
-                    Transition.To(state.declining(ToolId("ident-fsc")))
-            }
-        }
-
         `when`("resumed after recording the proof (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("finishes directly - the identification's own maxAcr already IS the achieved level") {
@@ -144,7 +136,8 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         val state = ReIdentifyState.Identifying(AcrLevel.LOA2, offer)
 
         `when`("the last remaining candidate is abandoned too") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("ident-fsc")), theCtx)
+            val exhausted = state.declining(ToolId("ident-fsc"))
+            val transition = strategy.transition(exhausted as ReIdentifyState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
             then("cancels - giving up here is not an error") {
                 transition shouldBe Transition.Cancel
             }

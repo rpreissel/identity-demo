@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
@@ -47,7 +46,7 @@ class FreshProofStrategy : IntentStrategy<FreshProofState> {
             }
 
             is FreshProofState.Reproving -> when (event) {
-                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
+                is JourneyEvent.OfferExhausted -> Transition.Cancel
                 // Any active factor suffices; no Action.AcceptProof, so nothing of it is recorded.
                 is JourneyEvent.Completed -> when (event.outcome) {
                     is ToolOutcome.Completed.Authenticated -> Transition.Authenticated

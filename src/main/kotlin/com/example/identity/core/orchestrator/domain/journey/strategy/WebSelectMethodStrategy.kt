@@ -7,7 +7,6 @@ import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
-import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
@@ -35,9 +34,7 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
         when (state) {
             is WebSelectMethodState.SelectMethod -> when (event) {
                 is JourneyEvent.Completed -> completed(state, event, ctx)
-                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) {
-                    ctx.account?.let { reIdentifyOr(ctx, whenNone = Transition.Cancel) } ?: Transition.Cancel
-                }
+                is JourneyEvent.OfferExhausted -> ctx.account?.let { reIdentifyOr(ctx, whenNone = Transition.Cancel) } ?: Transition.Cancel
                 // Started re-checks like any other proof: restored evidence may already satisfy the
                 // floor (docs/04-orchestrierung.md, "Übernommene Nachweise als erster Übergang"). So does
                 // ActionCompleted.

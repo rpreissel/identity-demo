@@ -55,6 +55,7 @@ sealed interface StepUpState : JourneyState {
         val additionalFactorRound: Boolean = false
     ) : StepUpState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
         override val selectionContext: String get() = "auth"
         override val selectionTitle: Text get() = Text("Erhöhte Sicherheit erforderlich")
         override val selectionDescription: Text get() {

@@ -39,6 +39,7 @@ class JourneyTraceDetails(
         is JourneyEvent.Completed -> mapOf("toolId" to event.tool.toolId, "tool" to channel.declaredVersionOf(event.tool.toolId.value), "method" to event.tool.method) +
             outcomeDetail(event.tool, event.outcome)
         is JourneyEvent.Abandoned -> mapOf("toolId" to event.tool.toolId, "tool" to channel.declaredVersionOf(event.tool.toolId.value))
+        is JourneyEvent.OfferExhausted -> mapOf("declined" to event.declined.map { it.value })
         is JourneyEvent.Answered -> mapOf("answer" to event.answer)
         is JourneyEvent.SubJourneyFinished -> mapOf("subIntent" to event.intent.name, "achievedAcr" to event.achievedAcr)
         is JourneyEvent.SubJourneyCancelled -> mapOf("subIntent" to event.intent.name)

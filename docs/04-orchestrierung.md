@@ -282,8 +282,15 @@ behandeln alle Zustände gleich: Er bringt die Journey weiter. Verschieden ist n
   volle Angebot kommt zurück, auch das gerade verworfene Tool. Nur wer die Pflicht erfüllt, kommt
   weiter.
 
+- Ein **optionaler Zustand** ist ein Sonderfall des Ausweichens: Das erste Ablehnen überspringt den
+  ganzen Schritt, auch wenn noch weitere Tools angeboten wären (die Zuordnung zur Person in
+  `REGISTER`).
+
 Beide Sorten kommen in derselben Menge von Zuständen vor, etwa in `FAST_ACCESS`. Welche Sorte ein
-Zustand ist, muss im Code sichtbar sein.
+Zustand ist, steht am Zustand selbst (`OfferingState.declinePolicy`: `MANDATORY`, `FALLBACK`,
+`OPTIONAL`), und der Zustand beantwortet das Ablehnen selbst (`OfferingState.afterAbandoning`).
+Die Strategie erfährt nur, dass ein Angebot erschöpft ist (`JourneyEvent.OfferExhausted`), und
+nennt dann den nächsten Weg ([ADR-62](adr/ADR-062-ablehnen-entscheidet-der-zustand.md)).
 
 ### Tool
 
@@ -698,7 +705,8 @@ Ein **Ereignis** (`JourneyEvent`) ist das, was der Journey gerade passiert ist:
 |---|---|
 | `Started` | Die Journey wurde gerade angelegt und braucht ihr erstes Angebot |
 | `Completed(tool, outcome)` | Ein Tool wurde erfolgreich abgeschlossen. Was das bedeutet, entscheidet hier die Strategie |
-| `Abandoned(tool)` | „Zurück“ oder „Wechseln“: Der Nutzer hat das gestartete Tool ohne Abschluss verworfen |
+| `Abandoned(tool)` | „Zurück“ oder „Wechseln“: Der Nutzer hat das gestartete Tool ohne Abschluss verworfen. Einen Angebots-Zustand beantwortet das der Zustand selbst (Abschnitt 3); eine Strategie sieht es nur in einem Zustand ohne Angebot |
+| `OfferExhausted(declined)` | Jedes angebotene Tool wurde abgelehnt, oder ein optionaler Schritt wurde übersprungen. Nur Ausweich- und optionale Zustände sehen es; die Strategie nennt dann den nächsten Weg |
 | `ActionCompleted` | Die `Action` eines `Perform`-Übergangs (unten) ist ausgeführt. Der `JourneyContext` ist neu aufgebaut |
 | `SubJourneyFinished(intent, achievedAcr)` | Eine untergeordnete Journey, die als Voraussetzung gestartet wurde, ist fertig |
 | `SubJourneyCancelled(intent)` | Die untergeordnete Journey wurde abgelehnt oder aufgegeben, ohne Ergebnis |

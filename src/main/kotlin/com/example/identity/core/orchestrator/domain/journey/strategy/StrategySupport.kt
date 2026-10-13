@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
+import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -7,10 +8,13 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 
 /**
- * On a mandatory state, backing out of a tool is not declining it: the obligation stands, so the
- * full choice comes back. Only fallback states accumulate `declined`.
+ * A mandatory step: a completed tool is adopted, anything else asks [next] where to go. Backing out
+ * never reaches a strategy here ([com.example.identity.core.orchestrator.domain.journey.state.DeclinePolicy.MANDATORY]).
  */
-internal fun reoffer(state: JourneyState): Transition = Transition.To(state.withActive(null))
+internal inline fun completedOr(state: OfferingState, event: JourneyEvent, next: () -> Transition): Transition = when (event) {
+    is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
+    else -> next()
+}
 
 /** The action this completed tool stands for ([Action.of]); `admittedAt` only for a change in place. */
 internal fun JourneyEvent.Completed.action(admittedAt: AcrLevel? = null): Action = Action.of(tool, outcome, admittedAt)

@@ -27,6 +27,8 @@ sealed interface ConfirmPeerLoginState : JourneyState {
      */
     data class Confirming(override val offer: Offer) : ConfirmPeerLoginState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        // Backing out is not declining the wish; the only candidate comes back.
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
         override val selectionContext: String get() = "auth"
         override val selectionTitle: Text get() = Text("Web-Login bestätigen")
         override val selectionDescription: Text

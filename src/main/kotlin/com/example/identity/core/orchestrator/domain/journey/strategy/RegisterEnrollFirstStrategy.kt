@@ -44,14 +44,13 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
                 else -> offerEmailConfirmation(ctx)
             }
 
-            // Every offering state here is mandatory: backing out re-offers, a completed tool is
-            // adopted, and only the next step differs.
-            is RegisterEnrollFirstState.EnrollFirstAttestingEmail -> mandatory(state, event) { offerSmsEnrollment(ctx) }
-            is RegisterEnrollFirstState.EnrollFirstEnrollingSms -> mandatory(state, event) { afterForcedEnrollment(ctx) }
-            is RegisterEnrollFirstState.EnrollFirstEnrolling -> mandatory(state, event) { afterEnrollment(ctx, emailObligation = true) }
-            is RegisterEnrollFirstState.EnrollFirstConfirmingEmail -> mandatory(state, event) { afterEnrollment(ctx, emailObligation = false) }
+            // Every offering state here is mandatory: a completed tool is adopted, only the next step differs.
+            is RegisterEnrollFirstState.EnrollFirstAttestingEmail -> completedOr(state, event) { offerSmsEnrollment(ctx) }
+            is RegisterEnrollFirstState.EnrollFirstEnrollingSms -> completedOr(state, event) { afterForcedEnrollment(ctx) }
+            is RegisterEnrollFirstState.EnrollFirstEnrolling -> completedOr(state, event) { afterEnrollment(ctx, emailObligation = true) }
+            is RegisterEnrollFirstState.EnrollFirstConfirmingEmail -> completedOr(state, event) { afterEnrollment(ctx, emailObligation = false) }
             // The email obligation is already discharged here.
-            is RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation -> mandatory(state, event) { afterEnrollment(ctx, emailObligation = false) }
+            is RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation -> completedOr(state, event) { afterEnrollment(ctx, emailObligation = false) }
 
             is RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind -> when (event) {
                 is JourneyEvent.Answered -> when (event.answer) {
@@ -64,12 +63,6 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
                 else -> error("EnrollFirstConfirmDeviceRebind only accepts JourneyEvent.Answered")
             }
         }
-
-    private inline fun mandatory(state: OfferingState, event: JourneyEvent, next: () -> Transition): Transition = when (event) {
-        is JourneyEvent.Abandoned -> reoffer(state)
-        is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
-        else -> next()
-    }
 
     /**
      * Mandatory step 1: confirm the address, which is account infrastructure (lookup tools,

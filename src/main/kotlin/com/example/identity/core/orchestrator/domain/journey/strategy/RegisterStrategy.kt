@@ -4,7 +4,6 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -40,8 +39,8 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
             }
 
             is RegisterState.Identifying -> when (event) {
-                // Abandoning the last identification offer is giving up on the journey, not an error.
-                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { Transition.Cancel }
+                // Declining the last identification offer is giving up on the journey, not an error.
+                is JourneyEvent.OfferExhausted -> Transition.Cancel
                 is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // No isSatisfied check: identification alone clears most floors and would let a
                 // run finish without a durable credential.
@@ -49,7 +48,7 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
             }
 
             is AuthChoice -> when (event) {
-                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { afterAuthDeclined(ctx, it) }
+                is JourneyEvent.OfferExhausted -> afterAuthDeclined(ctx, event.declined)
                 is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // No factor-kind or email obligation: a rediscovered, set-up account finishing here
                 // is an ordinary login, not a fresh registration.
@@ -67,8 +66,8 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
             }
 
             is RegisterState.Assigning -> when (event) {
-                // Backing out is the "not now": the run carries on as prospect (ADR-10).
-                is JourneyEvent.Abandoned -> continueAfterAssignment(ctx)
+                // Backing out is the "not now" (DeclinePolicy.OPTIONAL): the run carries on as prospect (ADR-10).
+                is JourneyEvent.OfferExhausted -> continueAfterAssignment(ctx)
                 // The executor reads the account in hand at execution time.
                 is JourneyEvent.Completed if event.outcome is ToolOutcome.Completed.Identified ->
                     Transition.Perform(Action.RecordIdentification(event.tool, event.outcome), resumeState = state)
@@ -80,19 +79,12 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
                 else -> continueAfterAssignment(ctx)
             }
 
-            // Mandatory states: backing out re-offers, a completed tool is adopted, and only the
-            // next step differs.
-            is RegisterState.ConfirmingEmail -> mandatory(state, event) { afterEnrollment(ctx, emailObligation = false) }
-            is Enrolling -> mandatory(state, event) { afterEnrollment(ctx, state.emailObligation) }
+            // Mandatory steps: a completed tool is adopted, and only the next step differs.
+            is RegisterState.ConfirmingEmail -> completedOr(state, event) { afterEnrollment(ctx, emailObligation = false) }
+            is Enrolling -> completedOr(state, event) { afterEnrollment(ctx, state.emailObligation) }
             // The email obligation is already discharged here.
-            is RegisterState.SecondFactorKindObligation -> mandatory(state, event) { afterEnrollment(ctx, emailObligation = false) }
+            is RegisterState.SecondFactorKindObligation -> completedOr(state, event) { afterEnrollment(ctx, emailObligation = false) }
         }
-
-    private inline fun mandatory(state: OfferingState, event: JourneyEvent, next: () -> Transition): Transition = when (event) {
-        is JourneyEvent.Abandoned -> reoffer(state)
-        is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
-        else -> next()
-    }
 
     // Offers -------------------------------------------------------------------
 

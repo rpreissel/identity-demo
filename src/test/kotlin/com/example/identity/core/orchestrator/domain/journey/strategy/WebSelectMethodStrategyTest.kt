@@ -91,21 +91,14 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
             }
         }
 
-        `when`("one of several offered tools is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms-lookup")), webCtx())
-
-            then("it keeps the choice among the rest") {
-                transition shouldBe Transition.To(state.declining(ToolId("auth-sms-lookup")))
-            }
-        }
     }
 
     given("SelectMethod with a single offered tool") {
         val state = WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-sms-lookup"))), accountAlreadyKnown = false)
 
         `when`("that tool is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms-lookup")), webCtx())
-
+            val exhausted = state.declining(ToolId("auth-sms-lookup"))
+            val transition = strategy.transition(exhausted as WebSelectMethodState, JourneyEvent.OfferExhausted(exhausted.declined), webCtx())
             then("it cancels") {
                 transition shouldBe Transition.Cancel
             }
@@ -193,8 +186,8 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
         val state = WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-password"))), accountAlreadyKnown = true)
 
         `when`("that last tool is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-password")), theCtx)
-
+            val exhausted = state.declining(ToolId("auth-password"))
+            val transition = strategy.transition(exhausted as WebSelectMethodState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
             then("it offers identifying again instead of giving up") {
                 transition.shouldBeInstanceOf<Transition.RequireSubJourney>()
                 transition.intent shouldBe AuthIntent.RE_IDENTIFY

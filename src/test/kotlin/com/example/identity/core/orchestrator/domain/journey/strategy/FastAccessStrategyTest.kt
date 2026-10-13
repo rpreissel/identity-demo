@@ -160,36 +160,14 @@ class FastAccessStrategyTest : BehaviorSpec({
         }
     }
 
-    given("AuthChoice, more than one offered candidate") {
-        val state = AuthChoice(Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
-        val acc = account(method("sms", AcrLevel.LOA2), method("password", AcrLevel.LOA2))
-        `when`("one candidate is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), ctx(account = acc))
-            then("keeps the run in AuthChoice with the rest still offered") {
-                transition shouldBe
-                    Transition.To(state.declining(ToolId("auth-sms")))
-            }
-        }
-    }
-
     given("AuthChoice, a single offered candidate") {
         val acc = account(method("sms", AcrLevel.LOA2))
         `when`("the last offered candidate is abandoned") {
-            val transition = strategy.transition(AuthChoice(Offer(listOf(ToolId("auth-sms")))), JourneyEvent.Abandoned(tool("auth-sms")), ctx(account = acc))
+            val exhausted = AuthChoice(Offer(listOf(ToolId("auth-sms")))).declining(ToolId("auth-sms"))
+            val transition = strategy.transition(exhausted as FastAccessState, JourneyEvent.OfferExhausted(exhausted.declined), ctx(account = acc))
             then("hands off to REGISTER's own journey, same as an account with nothing usable at all") {
                 transition shouldBe
                     Transition.RequireSubJourney(AuthIntent.REGISTER, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
-            }
-        }
-    }
-
-    given("Enrolling, reached inline after a proof left the floor unsatisfied with nothing else to try") {
-        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = false)
-
-        `when`("abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), ctx())
-            then("re-offers the same full choice, the tool just backed out of included") {
-                transition shouldBe Transition.To(state.withActive(null))
             }
         }
     }

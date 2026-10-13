@@ -3,7 +3,6 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -44,16 +43,14 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
             }
 
             is ManageAuthMethodsState.Changing -> when (event) {
-                is JourneyEvent.Abandoned -> Transition.Cancel
+                is JourneyEvent.OfferExhausted -> Transition.Cancel
                 is JourneyEvent.Completed -> Transition.Perform(event.action(admittedAt = state.admittedAt), resumeState = state)
                 // The new credential was adopted and replaced the old one.
                 else -> Transition.Authenticated
             }
 
             is ManageAuthMethodsState.Enrolling -> when (event) {
-                // Backing out means picking a different method; the full choice comes back.
-                // Giving up entirely is DELETE .../journey.
-                is JourneyEvent.Abandoned -> reoffer(state)
+                // Giving up entirely is DELETE .../journey; backing out only re-offers.
                 is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // The enrollment just ran - one successful enrollment ends this intent.
                 else -> Transition.Authenticated

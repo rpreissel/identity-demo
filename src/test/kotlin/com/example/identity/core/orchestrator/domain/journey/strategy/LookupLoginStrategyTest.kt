@@ -136,23 +136,12 @@ class LookupLoginStrategyTest : BehaviorSpec({
         }
     }
 
-    given("Credential, more than one offered candidate") {
-        val state = LookupLoginState.Credential(Offer(listOf(ToolId("auth-sms-lookup"), ToolId("auth-email-lookup"))))
-
-        `when`("one is abandoned, another remains") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms-lookup")), ctx())
-            then("advances, marking only that one declined") {
-                transition shouldBe
-                    Transition.To(state.declining(ToolId("auth-sms-lookup")))
-            }
-        }
-    }
-
     given("Credential, a single offered candidate") {
         val state = smsLookupCredential
 
         `when`("the last offered candidate is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms-lookup")), ctx())
+            val exhausted = state.declining(ToolId("auth-sms-lookup"))
+            val transition = strategy.transition(exhausted as LookupLoginState, JourneyEvent.OfferExhausted(exhausted.declined), ctx())
             then("cancels - giving up on the very first proof is not an error") {
                 transition shouldBe Transition.Cancel
             }

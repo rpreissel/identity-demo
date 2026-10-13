@@ -6,7 +6,6 @@ import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
-import com.example.identity.core.orchestrator.domain.journey.declineTool
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
@@ -40,13 +39,12 @@ class FastAccessStrategy : IntentStrategy<FastAccessState> {
             }
 
             is AuthChoice -> when (event) {
-                is JourneyEvent.Abandoned -> declineTool(state, event.tool.toolId, ctx) { afterAuthDeclined(ctx, it) }
+                is JourneyEvent.OfferExhausted -> afterAuthDeclined(ctx, event.declined)
                 is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 else -> AuthEnrollCore.afterProof(ctx, resumeAtStart = FastAccessState.Start)
             }
 
             is Enrolling -> when (event) {
-                is JourneyEvent.Abandoned -> reoffer(state)
                 is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // FAST_ACCESS never sets emailObligation, so this never reaches ConfirmingEmail.
                 else -> AuthEnrollCore.afterEnrollment(ctx, state.emailObligation, resumeAtStart = FastAccessState.Start)

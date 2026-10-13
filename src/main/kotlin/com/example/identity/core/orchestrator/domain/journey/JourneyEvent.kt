@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey
 
+import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -13,8 +14,19 @@ sealed interface JourneyEvent {
     /** A tool finished successfully; [outcome] is what a strategy turns into an [Action]. */
     data class Completed(val tool: Tool, val outcome: ToolOutcome.Completed) : JourneyEvent
 
-    /** "Back"/"Switch": the user abandoned an activated tool without finishing it. */
+    /**
+     * "Back"/"Switch": the user abandoned an activated tool without finishing it. An offering state
+     * answers this itself by its [com.example.identity.core.orchestrator.domain.journey.state.DeclinePolicy];
+     * a strategy sees it only for a state without an offer (e.g. `FastAccessState.PreferredAuth`).
+     */
     data class Abandoned(val tool: Tool) : JourneyEvent
+
+    /**
+     * The offer is used up: every tool was declined, or an optional step was backed out of. Only a
+     * `FALLBACK` or `OPTIONAL` state sees it, with the full [declined] set; a mandatory offer simply
+     * comes back without any event reaching the strategy.
+     */
+    data class OfferExhausted(val declined: Set<ToolId>) : JourneyEvent
 
     /**
      * A [Transition.Perform]'s [Action] finished; the [JourneyContext] is fresh. Every state named

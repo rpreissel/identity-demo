@@ -251,7 +251,8 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
         val state = ManageAuthMethodsState.Changing(Offer(listOf(ToolId("enroll-password"))), "password-instance", admittedAt = AcrLevel.LOA2)
 
         `when`("the tool is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("enroll-password")), ctx())
+            val exhausted = state.declining(ToolId("enroll-password"))
+            val transition = strategy.transition(exhausted as ManageAuthMethodsState, JourneyEvent.OfferExhausted(exhausted.declined), ctx())
             then("cancels - nothing else is offered, the old password stays") {
                 transition shouldBe Transition.Cancel
             }
@@ -275,14 +276,6 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
 
     given("Enrolling, several candidates offered") {
         val state = ManageAuthMethodsState.Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))))
-
-        `when`("a tool is abandoned") {
-            val transition = strategy.transition(state, JourneyEvent.Abandoned(tool("auth-sms")), ctx())
-            then("stays in Enrolling with the full choice back - not a decline, just picking differently") {
-                transition shouldBe
-                    Transition.To(state.withActive(null))
-            }
-        }
 
         `when`("a method is enrolled") {
             val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))

@@ -56,6 +56,7 @@ sealed interface FreshProofState : JourneyState {
         override val offer: Offer,
     ) : FreshProofState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
         // selectionContext names the kind of offer, not the intent.
         override val selectionContext: String get() = "auth"
         override val selectionTitle: Text get() = when (purpose) {
