@@ -5,9 +5,11 @@ import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
 plugins {
-    kotlin("jvm") version "2.4.20"
-    kotlin("plugin.spring") version "2.4.20"
-    kotlin("plugin.jpa") version "2.4.20"
+    // Versionen aus gradle/libs.versions.toml: ein fester Wert hier wiche bei jedem Update des
+    // Catalogs ab, und Gradle lehnt ein Plugin in zwei Versionen ab.
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.spring)
+    alias(libs.plugins.kotlin.jpa)
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.dependency.management)
     alias(libs.plugins.kover)
