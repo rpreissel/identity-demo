@@ -2,9 +2,9 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.emailAttestation
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import io.kotest.core.spec.style.BehaviorSpec
@@ -23,7 +23,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.Offer
 class BookingTest : BehaviorSpec({
 
     given("an identification tool reported a person") {
-        val event = JourneyEvent.Completed(tool("ident-fsc"), identifiedOutcome())
+        val event = Completion(tool("ident-fsc"), identifiedOutcome())
 
         `when`("the action is chosen") {
             val action = Action.of(event.tool, event.outcome)
@@ -36,7 +36,7 @@ class BookingTest : BehaviorSpec({
 
     given("an enrollment tool created a credential") {
         val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
-        val event = JourneyEvent.Completed(tool("enroll-sms"), outcome)
+        val event = Completion(tool("enroll-sms"), outcome)
 
         `when`("the action is chosen") {
             val action = Action.of(event.tool, event.outcome)
@@ -58,7 +58,7 @@ class BookingTest : BehaviorSpec({
 
     given("an auth tool proved an existing credential") {
         val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("sms"))
-        val event = JourneyEvent.Completed(tool("auth-sms"), outcome)
+        val event = Completion(tool("auth-sms"), outcome)
 
         `when`("the action is chosen") {
             val action = Action.of(event.tool, event.outcome)
@@ -80,7 +80,7 @@ class BookingTest : BehaviorSpec({
 
     given("an attesting tool confirmed an address") {
         val outcome = emailAttestation()
-        val event = JourneyEvent.Completed(tool("confirm-email"), outcome)
+        val event = Completion(tool("confirm-email"), outcome)
 
         `when`("the action is chosen") {
             val action = Action.of(event.tool, event.outcome)
@@ -93,7 +93,7 @@ class BookingTest : BehaviorSpec({
 
     given("a peer-login tool approved another channel's login") {
         val outcome = ToolOutcome.Completed.Approved()
-        val event = JourneyEvent.Completed(tool("approve-qr"), outcome)
+        val event = Completion(tool("approve-qr"), outcome)
 
         `when`("the action is chosen") {
             val action = Action.of(event.tool, event.outcome)
@@ -104,3 +104,6 @@ class BookingTest : BehaviorSpec({
         }
     }
 })
+
+/** A completed tool run as the service books it. */
+private data class Completion(val tool: Tool, val outcome: ToolOutcome.Completed)

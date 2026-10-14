@@ -707,12 +707,14 @@ und `REGISTER`; `FRESH_PROOF` ruft seinerseits `STEP_UP`.
 
 `transition()` ist die einzige Methode, die überhaupt etwas entscheidet.
 
-Ein **Ereignis** (`JourneyEvent`) ist das, was der Journey gerade passiert ist:
+Ein **Ereignis** (`JourneyEvent`) ist das, was der Journey gerade passiert ist: Ein erfolgreich abgeschlossenes Tool
+ist kein Ereignis: Was dabei verbucht wird, sagt der Zustand (`JourneyState.booking`), der
+`JourneyService` verbucht es ohne die Strategie, und sie hört danach nur `ActionCompleted`. Im
+Journey-Trace steht es weiter als Eintrag „Completed“.
 
 | Event | Bedeutung |
 |---|---|
 | `Started` | Die Journey wurde gerade angelegt und braucht ihr erstes Angebot |
-| `Completed(tool, outcome)` | Ein Tool wurde erfolgreich abgeschlossen. Was dabei verbucht wird, sagt der Zustand (`JourneyState.booking`), und der `JourneyService` verbucht es; die Strategie hört danach nur `ActionCompleted` |
 | `Abandoned(tool)` | „Zurück“ oder „Wechseln“: Der Nutzer hat das gestartete Tool ohne Abschluss verworfen. Einen Angebots-Zustand beantwortet das der Zustand selbst (Abschnitt 3); eine Strategie sieht es nur in einem Zustand ohne Angebot |
 | `OfferExhausted(declined)` | Jedes angebotene Tool wurde abgelehnt, oder ein optionaler Schritt wurde übersprungen. Nur Ausweich- und optionale Zustände sehen es; die Strategie nennt dann den nächsten Weg |
 | `ActionCompleted` | Die `Action` eines `Perform`-Übergangs (unten) ist ausgeführt. Der `JourneyContext` ist neu aufgebaut |

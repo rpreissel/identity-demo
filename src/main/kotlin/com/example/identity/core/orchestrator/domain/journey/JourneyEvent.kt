@@ -3,16 +3,12 @@ package com.example.identity.core.orchestrator.domain.journey
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.Tool
-import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.core.orchestrator.domain.AuthIntent
 
 /** What just happened to the journey. */
 sealed interface JourneyEvent {
     /** The journey was just created and has to produce its first offer. */
     data object Started : JourneyEvent
-
-    /** A tool finished successfully; [outcome] is what a strategy turns into an [Action]. */
-    data class Completed(val tool: Tool, val outcome: ToolOutcome.Completed) : JourneyEvent
 
     /**
      * "Back"/"Switch": the user abandoned an activated tool without finishing it. An offering state

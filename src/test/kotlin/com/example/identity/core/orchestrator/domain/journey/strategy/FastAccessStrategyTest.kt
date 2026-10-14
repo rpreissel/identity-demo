@@ -3,7 +3,6 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterStrategy
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -229,6 +228,3 @@ class FastAccessStrategyTest : BehaviorSpec({
         }
     }
 })
-
-/** One row of the completed-tool table: the state, the completion it receives, the action it performs. */
-private data class FastAccessCompletion(val state: FastAccessState, val event: JourneyEvent.Completed, val action: Action)

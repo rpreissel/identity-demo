@@ -328,8 +328,18 @@ class JourneyService(
 
         is ToolOutcome.Failed -> chargeAttempt(journey, channel, tool, outcome)
 
-        // The strategy decides what the outcome means; applyTransition executes the resulting Action.
-        is ToolOutcome.Completed -> advance(journey, channel, JourneyEvent.Completed(tool, outcome))
+        is ToolOutcome.Completed -> complete(journey, channel, tool, outcome)
+    }
+
+    /**
+     * A completed tool books what its state says ([JourneyState.booking]); no strategy is asked.
+     * The strategy hears only the [JourneyEvent.ActionCompleted] that follows.
+     */
+    private fun complete(journey: AuthJourney, channel: ChannelSession, tool: Tool, outcome: ToolOutcome.Completed): Step {
+        val state = codec.read(journey)
+        val transition = Transition.Perform(state.booking(tool, outcome), resumeState = state)
+        recordStep(journey, channel, "Completed", journeyTraceDetails.completedDetail(tool, outcome, channel), state, transition)
+        return applyTransition(journey, channel, transition)
     }
 
     /**
@@ -396,30 +406,38 @@ class JourneyService(
                 event = JourneyEvent.OfferExhausted((state as OfferingState).declined)
             }
         }
-        // A completed tool books what its state says; the strategy hears only ActionCompleted.
-        if (event is JourneyEvent.Completed) {
-            val booking = state.booking(event.tool, event.outcome)
-            transition = Transition.Perform(booking, resumeState = state)
-        }
         // A cancelled precondition cancels the journey that waited on it; only an optional
         // sub-journey's end is left to the strategy (RequireSubJourney.optional).
         if (event is JourneyEvent.SubJourneyCancelled && !event.optional) transition = Transition.Cancel
         transition = transition ?: strategy.transitionErased(state, event, ctx)
+        recordStep(journey, channel, event::class.simpleName!!, journeyTraceDetails.eventDetail(event, channel), state, transition, ctx)
+        return applyTransition(journey, channel, transition)
+    }
+
+    /** One trace line per decision: what happened, in which state, and what follows from it. */
+    private fun recordStep(
+        journey: AuthJourney,
+        channel: ChannelSession,
+        event: String,
+        eventDetail: Map<String, Any?>,
+        state: JourneyState,
+        transition: Transition,
+        ctx: JourneyContext = contextFactory.contextFor(journey, channel),
+    ) {
         // The log shows what routing itself derives, so nextFor stays the one routing authority.
         val availableTools = routing.availableToolsOf(channel)
-        journeyTraceService.record(channel.forLog(), journey.forLog(), event::class.simpleName!!,
+        journeyTraceService.record(channel.forLog(), journey.forLog(), event,
             journeyState = state::class.simpleName,
             // acrFloor is what this step was judged against. resolvedAcr is the combined level
             // of all evidence; a Completed entry's achievedAcr shows only that one tool's
             // ceiling, so two loa1 factors reaching loa2 would otherwise not show.
-            detail = journeyTraceDetails.eventDetail(event, channel) +
+            detail = eventDetail +
                 journeyTraceDetails.transitionDetail(transition, journey, channel, state, availableTools) { target ->
                     routing.nextFor(target, availableTools)
                 } +
                 state.logDetail +
                 mapOf("acrFloor" to ctx.acrFloor, "resolvedAcr" to ctx.policy.resolveAcr(ctx.evidence, ctx.account))
         )
-        return applyTransition(journey, channel, transition)
     }
 
     private fun applyTransition(journey: AuthJourney, channel: ChannelSession, transition: Transition): Step = when (transition) {

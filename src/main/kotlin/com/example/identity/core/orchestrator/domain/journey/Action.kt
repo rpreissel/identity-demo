@@ -10,7 +10,7 @@ import com.example.identity.core.orchestrator.domain.AuthIntent
 /**
  * A named side effect a strategy decided, wrapped in a [Transition.Perform] for `JourneyService` to
  * execute; the strategy never acts itself. Some variants carry what a just-completed tool
- * established ([JourneyEvent.Completed]), the rest are a strategy's own actions.
+ * established (booked by its state, `JourneyState.booking`), the rest are a strategy's own actions.
  *
  * Only [RecordIdentification] and [AdoptAttestation] can land on an account other than the one
  * bound to the channel, and both go through the same gate in `JourneyActionExecutor`. Which

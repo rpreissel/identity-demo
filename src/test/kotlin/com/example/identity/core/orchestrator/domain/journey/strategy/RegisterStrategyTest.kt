@@ -548,6 +548,3 @@ class RegisterStrategyTest : BehaviorSpec({
         }
     }
 })
-
-/** One row of the completed-tool table: the state, the completion it receives, the action it performs. */
-private data class RegisterCompletion(val state: RegisterState, val event: JourneyEvent.Completed, val action: Action)

@@ -5,7 +5,6 @@ import java.time.Duration
 import com.example.identity.core.orchestrator.domain.policy.provenAt
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.TEST_NOW
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -14,15 +13,11 @@ import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.ToolOutcome
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
@@ -143,21 +138,6 @@ class FreshProofStrategyTest : BehaviorSpec({
             val transition = strategy.transition(exhausted as FreshProofState, JourneyEvent.OfferExhausted(exhausted.declined), ctx())
             then("cancels - nothing passes just because every option was declined") {
                 transition shouldBe Transition.Cancel
-            }
-        }
-
-        `when`("an outcome this sub-journey never offers arrives: Identified") {
-            val result = runCatching { strategy.transition(state, JourneyEvent.Completed(tool("ident-fsc"), identifiedOutcome()), ctx()) }
-            then("fails loudly rather than silently passing") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-            }
-        }
-
-        `when`("an outcome this sub-journey never offers arrives: Enrolled") {
-            val event = JourneyEvent.Completed(tool("auth-sms"), ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref")))
-            val result = runCatching { strategy.transition(state, event, ctx()) }
-            then("fails loudly") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
     }

@@ -36,8 +36,6 @@ class JourneyTraceDetails(
      * (ADR-51), and how the outcome or answer read.
      */
     fun eventDetail(event: JourneyEvent, channel: ChannelSession): Map<String, Any?> = when (event) {
-        is JourneyEvent.Completed -> mapOf("toolId" to event.tool.toolId, "tool" to channel.declaredVersionOf(event.tool.toolId.value), "method" to event.tool.method) +
-            outcomeDetail(event.tool, event.outcome)
         is JourneyEvent.Abandoned -> mapOf("toolId" to event.tool.toolId, "tool" to channel.declaredVersionOf(event.tool.toolId.value))
         is JourneyEvent.OfferExhausted -> mapOf("declined" to event.declined.map { it.value })
         is JourneyEvent.Answered -> mapOf("answer" to event.answer)
@@ -46,6 +44,11 @@ class JourneyTraceDetails(
         JourneyEvent.Started -> emptyMap()
         JourneyEvent.ActionCompleted -> emptyMap()
     }
+
+    /** A completed tool run, which is booked without an event (`JourneyService.complete`). */
+    fun completedDetail(tool: Tool, outcome: ToolOutcome.Completed, channel: ChannelSession): Map<String, Any?> =
+        mapOf("toolId" to tool.toolId, "tool" to channel.declaredVersionOf(tool.toolId.value), "method" to tool.method) +
+            outcomeDetail(tool, outcome)
 
     /** The variant-specific fields of a completed tool run, besides the common ones. */
     private fun outcomeDetail(tool: Tool, outcome: ToolOutcome.Completed): Map<String, Any?> {

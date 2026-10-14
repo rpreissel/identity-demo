@@ -28,7 +28,6 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
 
     override fun transition(state: StepUpState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
-            // Nothing is activatable here, so no Completed event arrives.
             is StepUpState.Start -> when (event) {
                 // Re-check whether the fresh proof already closes the gap before offering again.
                 is JourneyEvent.SubJourneyFinished -> finishOrContinue(state.goal, ctx)
