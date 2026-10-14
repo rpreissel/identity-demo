@@ -63,7 +63,7 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
      */
     private fun settleOrRaise(ctx: JourneyContext): Transition {
         val account = ctx.requireAccount()
-        if (ctx.policy.isSatisfied(ctx.evidence, ctx.acrFloor, account)) {
+        if (ctx hasReached ctx.acrFloor) {
             // Unlinked: offer the link. Linked elsewhere: warn before rebinding. Linked here:
             // nothing to ask.
             return when (ctx.linkedAccountId) {

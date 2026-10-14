@@ -12,7 +12,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
-import com.example.identity.core.orchestrator.domain.policy.Reachability
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ToolId
 
@@ -26,7 +25,7 @@ internal object AuthEnrollCore {
     /** After a proof: done, another factor via [AuthChoice], or else [offerEnrollment]. */
     fun afterProof(ctx: JourneyContext, resumeAtStart: JourneyState): Transition {
         val account = ctx.requireAccount()
-        if (ctx.policy.isSatisfied(ctx.evidence, ctx.acrFloor, account)) return Transition.Authenticated
+        if (ctx hasReached ctx.acrFloor) return Transition.Authenticated
 
         val candidates = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
         if (candidates.isNotEmpty()) return Transition.To(AuthChoice(Offer(candidates)))
@@ -52,8 +51,7 @@ internal object AuthEnrollCore {
     fun afterEnrollment(ctx: JourneyContext, emailObligation: Boolean, resumeAtStart: JourneyState, enforceEnrollmentFloor: Boolean = true): Transition {
         val account = ctx.requireAccount()
         if (emailObligation) confirmEmail(account, ctx)?.let { return it }
-        val reachable = ctx.policy.reachability(account, ctx.acrFloor) is Reachability.Reachable
-        if (!reachable || !ctx.policy.isSatisfied(ctx.evidence, ctx.acrFloor, account)) {
+        if (!(ctx canReach ctx.acrFloor) || !(ctx hasReached ctx.acrFloor)) {
             return offerEnrollment(account, ctx, emailObligation, resumeAtStart, enforceEnrollmentFloor)
         }
         return Transition.Authenticated
@@ -85,7 +83,7 @@ internal object AuthEnrollCore {
         resumeAtStart: JourneyState,
         enforceEnrollmentFloor: Boolean = true
     ): Transition {
-        if (enforceEnrollmentFloor && !ctx.policy.isSatisfied(ctx.evidence, ENROLLMENT_FLOOR_ACR, account)) {
+        if (enforceEnrollmentFloor && !(ctx hasReached ENROLLMENT_FLOOR_ACR)) {
             val reidentTarget = maxOf(ENROLLMENT_FLOOR_ACR, ctx.acrFloor)
             return reIdentifyOr(reidentTarget, ctx, resumeWith = resumeAtStart) {
                 Transition.Abort(
@@ -111,7 +109,7 @@ internal object AuthEnrollCore {
      * one adds a kind, so the covered set only grows and the obligation cannot repeat forever.
      */
     fun secondFactorKindCandidates(account: AccountProfile, ctx: JourneyContext): List<ToolId> {
-        if (ctx.policy.reachability(account, ENROLLMENT_FLOOR_ACR) is Reachability.Reachable) return emptyList()
+        if (ctx canReach ENROLLMENT_FLOOR_ACR) return emptyList()
         val covered = CandidateTools.factorKindsOf(account, ctx)
         if (covered.size >= 2) return emptyList()
         return CandidateTools.forMissingFactorKind(account, covered, ctx)

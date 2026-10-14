@@ -46,11 +46,11 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
         // was already checked on acceptance (InvitationAcceptance); this catches what the level
         // alone does not say, such as a second factor the floor demands.
         if (ctx.invitation != null) {
-            return if (ctx.policy.isSatisfied(ctx.evidence, ctx.acrFloor, null)) Transition.Authenticated
+            return if (ctx hasReached ctx.acrFloor) Transition.Authenticated
             else Transition.Abort(InvitationAcceptance.Refusal.BELOW_REQUIRED_LEVEL.text)
         }
         val account = ctx.account
-        if (account != null && ctx.policy.isSatisfied(ctx.evidence, ctx.acrFloor, account)) return Transition.Authenticated
+        if (account != null && ctx hasReached ctx.acrFloor) return Transition.Authenticated
         val next = selectMethod(ctx)
         if (account == null || next.offer.offered.isNotEmpty()) return Transition.To(next)
         // No method of this account can close the gap here: identifying again can, as in STEP_UP.

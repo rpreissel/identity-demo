@@ -6,6 +6,7 @@ import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
+import com.example.identity.core.orchestrator.domain.policy.Reachability
 import com.example.identity.core.orchestrator.domain.ToolCatalog
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ToolId
@@ -62,4 +63,13 @@ data class JourneyContext(
 
     /** The ACR this channel's evidence resolves to right now, e.g. a sub-journey's `startingAcr`. */
     val currentAcr: AcrLevel get() = policy.resolveAcr(evidence, account)
+
+    /**
+     * Has this session already proven [acr] (level and factors) for the account in hand? Without an
+     * account, as for a process access, only the evidence counts.
+     */
+    infix fun hasReached(acr: AcrLevel): Boolean = policy.isSatisfied(evidence, acr, account)
+
+    /** Could the account in hand reach [acr] in a future login with the methods it has now? */
+    infix fun canReach(acr: AcrLevel): Boolean = policy.reachability(requireAccount(), acr) is Reachability.Reachable
 }

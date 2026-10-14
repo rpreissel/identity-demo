@@ -43,7 +43,7 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
         }
 
     private fun finishOrContinue(goal: Goal, ctx: JourneyContext): Transition =
-        if (ctx.policy.isSatisfied(ctx.evidence, goal.targetAcr, ctx.requireAccount())) Transition.Authenticated
+        if (ctx hasReached goal.targetAcr) Transition.Authenticated
         else offerAuth(goal, ctx)
 
     private fun offerAuth(goal: Goal, ctx: JourneyContext): Transition {

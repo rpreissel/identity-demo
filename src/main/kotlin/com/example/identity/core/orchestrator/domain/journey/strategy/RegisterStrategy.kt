@@ -15,7 +15,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
-import com.example.identity.core.orchestrator.domain.policy.Reachability
 
 /**
  * REGISTER (docs/journeys/register.md): identify first, then confirm the address and set up methods.
@@ -125,7 +124,7 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
             return Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND_OR_CANCEL))
         }
         // An account found again may already have what it needs: prove an existing method.
-        if (ctx.policy.reachability(account, ctx.acrFloor) is Reachability.Reachable) {
+        if (ctx canReach ctx.acrFloor) {
             val candidates = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
             if (candidates.isNotEmpty()) return Transition.To(AuthChoice(Offer(candidates)))
         }

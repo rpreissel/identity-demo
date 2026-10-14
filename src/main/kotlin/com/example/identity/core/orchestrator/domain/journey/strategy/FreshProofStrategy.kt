@@ -53,8 +53,7 @@ class FreshProofStrategy : IntentStrategy<FreshProofState> {
 
     /** Null once the session already carries [FreshProofState.requiredAcr] and the caller may proceed. */
     private fun gate(state: FreshProofState.Start, ctx: JourneyContext): Transition? {
-        val account = ctx.requireAccount()
-        if (ctx.policy.isSatisfied(ctx.evidence, state.requiredAcr, account)) return null
+        if (ctx hasReached state.requiredAcr) return null
         return Transition.RequireSubJourney(
             AuthIntent.STEP_UP,
             seedWith = StepUpState.forSubJourney(
