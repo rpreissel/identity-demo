@@ -8,21 +8,53 @@ package com.example.identity.core.orchestrator.domain
  * Not a description of what a run turned out to be. Whether a run was a registration or a login is
  * an observation about the path taken, not a goal chosen up front. So there is no
  * REGISTRATION/LOGIN pair here.
+ *
+ * One row per intent, every property named: a new intent has to decide each of them, as a missing
+ * one would silently inherit a default (a wrong [linksDeviceWithoutAsking] is destructive).
+ *
+ * @property entry How a client opens a new channel with this intent; `null` for an intent reached
+ *   only from within a session.
+ * @property inSession How a signed-in user starts it within the session (docs/04-orchestrierung.md
+ *   Abschnitt 2), never as a sub-journey; `null` if not at all. [CONFIRM_PEER_LOGIN] has both.
+ * @property raisesLevel Raises the level of a login, direct or as another journey's precondition.
+ *   While it runs on a signed-in channel, the channel shows STEP_UP_IN_PROGRESS; when it finishes,
+ *   the sign-in log records a step-up (ADR-39).
+ * @property linksDeviceWithoutAsking Whether succeeding on an APP channel links this device to the
+ *   account as a side effect (`DeviceAccountLink`, docs/09-dpop.md #3), or whether the intent asks
+ *   first. Only [LOOKUP_LOGIN] asks. A property of the intent, not a flag on each Action: it never
+ *   varies within an intent. A wrong `true` is destructive, because a link that moves to another
+ *   account revokes that account's device credentials for this key. Answers only whether the intent
+ *   wants to bind; whether there is a device at all is checked once in
+ *   `JourneyActionExecutor.linkDeviceTo`.
  */
-enum class AuthIntent {
+enum class AuthIntent(
+    val entry: Entry?,
+    val inSession: InSession?,
+    val raisesLevel: Boolean,
+    val linksDeviceWithoutAsking: Boolean,
+) {
     /** Into a login on this device as fast as possible, in a way that works again next time. */
-    FAST_ACCESS,
+    FAST_ACCESS(
+        entry = Entry(APP, withDeviceAccount = true), inSession = null,
+        raisesLevel = false, linksDeviceWithoutAsking = true,
+    ),
 
     /** Deliberately fresh identification, even on an already linked device. */
-    REGISTER,
+    REGISTER(
+        entry = Entry(APP_OR_WEB, withDeviceAccount = false), inSession = null,
+        raisesLevel = false, linksDeviceWithoutAsking = true,
+    ),
 
     /**
      * Log into an existing account without a paired device (classic web login). The one intent that
-     * does not link the device as a side effect ([bindsDeviceImplicitly]). It asks first
+     * does not link the device as a side effect ([linksDeviceWithoutAsking]). It asks first
      * (`DeviceLinkQuestion`): people choose it because they do not want to be recognized
      * next time.
      */
-    LOOKUP_LOGIN,
+    LOOKUP_LOGIN(
+        entry = Entry(APP, withDeviceAccount = false), inSession = null,
+        raisesLevel = false, linksDeviceWithoutAsking = false,
+    ),
 
     /**
      * Entry intent for the Keycloak facade (docs/04-orchestrierung.md Abschnitt 3): offers every Keycloak-usable
@@ -30,13 +62,22 @@ enum class AuthIntent {
      * the tools' pages (ADR-58). Serves initial login (resolves an account like [LOOKUP_LOGIN]) and step-up (account
      * pre-set on the channel).
      */
-    WEB_SELECT_METHOD,
+    WEB_SELECT_METHOD(
+        entry = Entry(WEB, withDeviceAccount = false), inSession = null,
+        raisesLevel = false, linksDeviceWithoutAsking = true,
+    ),
 
     /** Raise the level. Only on an AUTHENTICATED channel. */
-    STEP_UP,
+    STEP_UP(
+        entry = null, inSession = InSession(needsAccount = false),
+        raisesLevel = true, linksDeviceWithoutAsking = true,
+    ),
 
     /** Add or remove authentication methods. Only on an AUTHENTICATED channel. */
-    MANAGE_AUTH_METHODS,
+    MANAGE_AUTH_METHODS(
+        entry = null, inSession = InSession(needsAccount = true),
+        raisesLevel = false, linksDeviceWithoutAsking = true,
+    ),
 
     /**
      * Approve or decline a web login that an `auth-qr`/`auth-qr-lookup` pairing is waiting on. The
@@ -45,17 +86,26 @@ enum class AuthIntent {
      * device's known account (`DeviceAccountLink`). Without a known account the run aborts; it never
      * falls back to identification or registration.
      */
-    CONFIRM_PEER_LOGIN,
+    CONFIRM_PEER_LOGIN(
+        entry = Entry(APP, withDeviceAccount = true), inSession = InSession(needsAccount = true),
+        raisesLevel = false, linksDeviceWithoutAsking = true,
+    ),
 
     /** Delete the account itself, after a fresh re-confirmation. Only on an AUTHENTICATED channel. */
-    DELETE_ACCOUNT,
+    DELETE_ACCOUNT(
+        entry = null, inSession = InSession(needsAccount = true),
+        raisesLevel = false, linksDeviceWithoutAsking = true,
+    ),
 
     /**
      * "This action needs the level and a recent proof": the sub-journey every self-service action
      * runs first (docs/journeys/fresh-proof.md, ADR-61). Never an entry intent, never started
      * directly; reached only as another intent's [Transition.RequireSubJourney].
      */
-    FRESH_PROOF,
+    FRESH_PROOF(
+        entry = null, inSession = null,
+        raisesLevel = false, linksDeviceWithoutAsking = true,
+    ),
 
     /**
      * "No active method reaches the target - re-identify instead?" Never an entry intent. Reached as
@@ -63,101 +113,41 @@ enum class AuthIntent {
      * Which account a fresh identification may lead to is decided by the handler of
      * `Action.RecordIdentification`, not here (see [ReIdentifyStrategy]).
      */
-    RE_IDENTIFY;
+    RE_IDENTIFY(
+        entry = null, inSession = null,
+        raisesLevel = false, linksDeviceWithoutAsking = true,
+    );
 
     /**
-     * The channel types a client may open with this intent (docs/04-orchestrierung.md Abschnitt 2).
-     * FAST_ACCESS, LOOKUP_LOGIN and CONFIRM_PEER_LOGIN assume an App channel with device binding;
-     * WEB_SELECT_METHOD is Keycloak's own entry. Empty for every intent reached only from within a
-     * session.
+     * Opens a new channel on [on] (docs/04-orchestrierung.md Abschnitt 2). FAST_ACCESS, LOOKUP_LOGIN
+     * and CONFIRM_PEER_LOGIN assume an App channel with device binding; WEB_SELECT_METHOD is
+     * Keycloak's own entry. [withDeviceAccount]: an APP channel starts from the account this device
+     * is linked to (`DeviceAccountLink`), when opened and again after a cancel. One rule for both,
+     * or a cancelled cold CONFIRM_PEER_LOGIN would lose its account. REGISTER and LOOKUP_LOGIN mean
+     * "not the account this device already knows".
      */
-    val entryChannels: Set<ChannelType>
-        get() = when (this) {
-            FAST_ACCESS, LOOKUP_LOGIN, CONFIRM_PEER_LOGIN -> setOf(ChannelType.APP)
-            REGISTER -> setOf(ChannelType.APP, ChannelType.WEB)
-            WEB_SELECT_METHOD -> setOf(ChannelType.WEB)
-            STEP_UP, MANAGE_AUTH_METHODS, DELETE_ACCOUNT, FRESH_PROOF, RE_IDENTIFY -> emptySet()
-        }
-
-    /** The intents a client may name when entering a channel; [CONFIRM_PEER_LOGIN] also runs on an open one. */
-    val isEntryIntent: Boolean
-        get() = entryChannels.isNotEmpty()
+    data class Entry(val on: Set<ChannelType>, val withDeviceAccount: Boolean)
 
     /**
-     * Started by a signed-in user from within a session, never as a sub-journey
-     * (docs/04-orchestrierung.md Abschnitt 2). Only on an AUTHENTICATED channel; see [startRefusal].
+     * Started by a signed-in user, only on an AUTHENTICATED channel; see [startRefusal].
+     * [needsAccount]: acts on the account itself. A process access (one-time password, ADR-48) is
+     * signed in without an account and serves only its process, so it may raise its level but not
+     * manage, delete or confirm.
      */
-    val startsOnLoggedInChannel: Boolean
-        get() = when (this) {
-            STEP_UP, MANAGE_AUTH_METHODS, CONFIRM_PEER_LOGIN, DELETE_ACCOUNT -> true
-            FAST_ACCESS, REGISTER, LOOKUP_LOGIN, WEB_SELECT_METHOD, FRESH_PROOF, RE_IDENTIFY -> false
-        }
-
-    /**
-     * Raises the level of a login, direct or as another journey's precondition. While it runs on a
-     * signed-in channel, the channel shows STEP_UP_IN_PROGRESS; when it finishes, the sign-in log
-     * records a step-up (ADR-39).
-     */
-    val raisesLevel: Boolean
-        get() = when (this) {
-            STEP_UP -> true
-            FAST_ACCESS, REGISTER, LOOKUP_LOGIN, WEB_SELECT_METHOD, MANAGE_AUTH_METHODS, CONFIRM_PEER_LOGIN,
-            DELETE_ACCOUNT, FRESH_PROOF, RE_IDENTIFY -> false
-        }
-
-    /**
-     * Acts on the account itself. A process access (one-time password, ADR-48) is signed in without
-     * an account and serves only its process, so it may raise its level but not manage, delete or confirm.
-     */
-    val requiresAccount: Boolean
-        get() = when (this) {
-            MANAGE_AUTH_METHODS, CONFIRM_PEER_LOGIN, DELETE_ACCOUNT -> true
-            FAST_ACCESS, REGISTER, LOOKUP_LOGIN, WEB_SELECT_METHOD, STEP_UP, FRESH_PROOF, RE_IDENTIFY -> false
-        }
+    data class InSession(val needsAccount: Boolean)
 
     /**
      * Why this intent may not start on an open channel in [state], or null if it may. The one place
      * that decides "only on an AUTHENTICATED channel" for every intent a signed-in user starts.
      */
     fun startRefusal(state: ChannelState?, hasAccount: Boolean): StartRefusal? = when {
-        !startsOnLoggedInChannel -> StartRefusal.NOT_STARTABLE_IN_SESSION
+        inSession == null -> StartRefusal.NOT_STARTABLE_IN_SESSION
         state != ChannelState.AUTHENTICATED -> StartRefusal.NOT_LOGGED_IN
-        requiresAccount && !hasAccount -> StartRefusal.NO_ACCOUNT
+        inSession.needsAccount && !hasAccount -> StartRefusal.NO_ACCOUNT
         else -> null
     }
 
     enum class StartRefusal { NOT_STARTABLE_IN_SESSION, NOT_LOGGED_IN, NO_ACCOUNT }
-
-    /**
-     * An APP channel entered with this intent starts from the account this device is linked to
-     * (`DeviceAccountLink`), when opened and again after a cancel. One rule for both, or a cancelled
-     * cold CONFIRM_PEER_LOGIN would lose its account. REGISTER and LOOKUP_LOGIN mean "not the account
-     * this device already knows".
-     */
-    val startsFromDeviceLink: Boolean
-        get() = when (this) {
-            FAST_ACCESS, CONFIRM_PEER_LOGIN -> true
-            REGISTER, LOOKUP_LOGIN, WEB_SELECT_METHOD, STEP_UP, MANAGE_AUTH_METHODS, DELETE_ACCOUNT, FRESH_PROOF, RE_IDENTIFY -> false
-        }
-
-    /**
-     * Whether succeeding on an APP channel links this device to the account as a side effect
-     * (`DeviceAccountLink`, docs/09-dpop.md #3), or whether the intent asks first. Only
-     * [LOOKUP_LOGIN] asks.
-     *
-     * A property of the intent, not a flag on each Action: it never varies within an intent. A
-     * wrong `true` is destructive, because a link that moves to another account revokes that
-     * account's device credentials for this key.
-     *
-     * Answers only whether the intent wants to bind. Whether there is a device at all depends on
-     * the channel and is checked once in `JourneyActionExecutor.linkDeviceTo`.
-     */
-    val bindsDeviceImplicitly: Boolean
-        get() = when (this) {
-            LOOKUP_LOGIN -> false
-            FAST_ACCESS, REGISTER, WEB_SELECT_METHOD, STEP_UP, MANAGE_AUTH_METHODS, CONFIRM_PEER_LOGIN, DELETE_ACCOUNT,
-            FRESH_PROOF, RE_IDENTIFY -> true
-        }
 
     companion object {
         /**
@@ -174,7 +164,12 @@ enum class AuthIntent {
                     ChannelType.WEB -> WEB_SELECT_METHOD
                 }
             }
-            return entries.firstOrNull { channel in it.entryChannels && it.name.equals(value, ignoreCase = true) }
+            return entries.firstOrNull { it.entry != null && channel in it.entry.on && it.name.equals(value, ignoreCase = true) }
         }
     }
 }
+
+// Shorthands for the entry channels in the table above.
+private val APP = setOf(ChannelType.APP)
+private val WEB = setOf(ChannelType.WEB)
+private val APP_OR_WEB = setOf(ChannelType.APP, ChannelType.WEB)

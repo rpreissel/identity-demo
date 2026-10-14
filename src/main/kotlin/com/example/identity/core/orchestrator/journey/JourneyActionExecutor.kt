@@ -91,10 +91,10 @@ class JourneyActionExecutor(
             is Action.AdoptAttestation -> performAdoptAttestation(journey, channel, action)
             is Action.AdoptCredential -> demoNotice = performAdoptCredential(journey, channel, action)
             is Action.AcceptProof -> performAcceptProof(journey, channel, action)
-            // The tool already wrote its own effect (QrLoginRequest). A peer approval proves nothing
-            // on this channel (no amr, on no evidence axis), so this bookkeeping never changes its evidence.
             // Writes nothing by design: the proof is for the caller's one action (FRESH_PROOF).
             is Action.Reconfirm -> Unit
+            // The tool already wrote its own effect (QrLoginRequest). A peer approval proves nothing
+            // on this channel (no amr, on no evidence axis), so this bookkeeping never changes its evidence.
             is Action.RecordApproval -> journeyRecorder.recordToolCompletion(journey, channel, action.tool, action.outcome, action.tool.levelOf(action.outcome))
             is Action.RevokeAuthMethod -> removeMethod(journey, channel, action.methodInstanceId)
             is Action.RetractAttribute -> performRetractAttribute(journey, channel, action.attributeType)
@@ -334,7 +334,7 @@ class JourneyActionExecutor(
 
     /**
      * The device link that follows from success, unlike the one the user asks for
-     * ([performLinkDevice]). It is a property of the intent ([AuthIntent.bindsDeviceImplicitly]).
+     * ([performLinkDevice]). It is a property of the intent ([AuthIntent.linksDeviceWithoutAsking]).
      */
     private fun linkDeviceIfIntentImplies(journey: AuthJourney, channel: ChannelSession, accountId: AccountId) {
         val intent = journey.requireIntent()

@@ -85,7 +85,7 @@ class ChannelService(
             ?: throw OrchestratorException.invalidState(Text("Dieser Vorgang kann keinen Kanal eroeffnen"), "intent=${intent}")
 
         // CONFIRM_PEER_LOGIN depends on the link like FAST_ACCESS: without one its strategy aborts.
-        val linkedAccountId = if (entryIntent.startsFromDeviceLink) {
+        val linkedAccountId = if (entryIntent.entry?.withDeviceAccount == true) {
             sessionManagementService.findLinkedAccountId(bindingKeyRef)
         } else {
             null

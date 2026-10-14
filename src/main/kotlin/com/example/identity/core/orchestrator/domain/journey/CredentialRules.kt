@@ -49,7 +49,7 @@ fun proofLevel(active: List<AuthMethodView>, module: ToolModule, bindingKeyRef: 
  * answer (`DeviceLinkQuestion`).
  */
 fun linksDeviceImplicitly(intent: AuthIntent, linkedTo: AccountId?, accountId: AccountId): Boolean =
-    intent.bindsDeviceImplicitly && (linkedTo == null || linkedTo == accountId)
+    intent.linksDeviceWithoutAsking && (linkedTo == null || linkedTo == accountId)
 
 /**
  * The active methods of [account] whose credential lives on [bindingKeyRef], i.e. those that stop

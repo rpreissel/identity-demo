@@ -684,10 +684,10 @@ gestartete Journey beginnt. `stateRoots` nennt die `sealed`-Wurzeln ihrer Zustä
 danach liest `JourneyStateCodec` den gespeicherten Zustand zurück.
 
 **Kein Code fragt nach einem bestimmten Intent.** Was an einem Intent hängt, ist eine Eigenschaft
-von `AuthIntent` mit einem `when` über alle Intents (`entryChannels`, `startsOnLoggedInChannel`,
-`raisesLevel`, `requiresAccount`, `startsFromDeviceLink`, `bindsDeviceImplicitly`). Ein neuer
-Intent bringt seine Strategie mit, und der Compiler verlangt bei jeder dieser Eigenschaften eine
-Entscheidung. Einen Intent nennen darf nur, wer ihn startet: ein Endpunkt oder eine Strategie, die
+von `AuthIntent`, als Tabelle mit einer Zeile je Intent: wie er gestartet wird (`entry`: öffnet einen
+Kanal, `inSession`: in einer Sitzung) sowie `raisesLevel` und `linksDeviceWithoutAsking`. Ein neuer
+Intent bringt seine Strategie mit und eine neue Zeile; Standardwerte gibt es nicht, also verlangt
+der Compiler bei jeder Eigenschaft eine Entscheidung. Einen Intent nennen darf nur, wer ihn startet: ein Endpunkt oder eine Strategie, die
 ihn als Sub-Journey anfordert.
 
 **Wohin der Kanal bei einem Abbruch zurückfällt,** entscheidet keine Strategie. Der Kanal kehrt zu

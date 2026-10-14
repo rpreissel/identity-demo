@@ -187,7 +187,7 @@ ist und welchem Konto das Gerät gehört, steht jeweils an anderer Stelle.
   jeder Action wäre deshalb eine Konstante des Intents, die man überall neu und womöglich falsch
   setzen könnte. Stattdessen gibt es zwei unabhängige Fragen. Jede wird dort beantwortet, wo die
   nötige Information liegt, und beide werden an genau einer Stelle zusammengeführt:
-  - *Will dieser Ablauf verknüpfen?* Das sagt `AuthIntent.bindsDeviceImplicitly`. Nur
+  - *Will dieser Ablauf verknüpfen?* Das sagt `AuthIntent.linksDeviceWithoutAsking`. Nur
     `LOOKUP_LOGIN` will es nicht, weil genau diesen Intent Leute wählen, die nicht wiedererkannt
     werden wollen. Er fragt stattdessen nach (`DeviceLinkQuestion` → `Perform(LinkDevice, …)`). Die Frage
     nach dem Kanal kann diese Eigenschaft nicht mitbeantworten: `REGISTER` läuft auf APP *und* WEB
@@ -198,7 +198,7 @@ ist und welchem Konto das Gerät gehört, steht jeweils an anderer Stelle.
 - **Neu verknüpft wird nur mit Zustimmung. Das stellt der Aufbau sicher, nicht die Sorgfalt im
   Einzelfall.** Es gibt zwei Wege zu einer Geräteverknüpfung, und nur einer darf ein Gerät neu
   verknüpfen:
-  - Der *implizite* Weg: Ein Ablauf war erfolgreich, und `AuthIntent.bindsDeviceImplicitly` ist
+  - Der *implizite* Weg: Ein Ablauf war erfolgreich, und `AuthIntent.linksDeviceWithoutAsking` ist
     gesetzt. Dieser Weg verknüpft nur, wenn der Schlüssel noch frei ist oder schon auf dasselbe
     Konto zeigt. Zeigt er auf ein fremdes Konto, geschieht gar nichts. Der implizite Weg verknüpft
     ein Gerät nie still neu und widerruft nie fremde Credentials (Zugangsdaten eines

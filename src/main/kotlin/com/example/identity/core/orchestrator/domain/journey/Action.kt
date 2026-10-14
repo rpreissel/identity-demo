@@ -35,7 +35,7 @@ sealed interface Action {
 
     /**
      * A new credential was enrolled. Whether this also links the device is not a field here; it
-     * follows from [AuthIntent.bindsDeviceImplicitly] and, for a Web channel, from there being
+     * follows from [AuthIntent.linksDeviceWithoutAsking] and, for a Web channel, from there being
      * no device. [replaces]: the method instance a change in place replaces. The new credential is
      * then written under at least that instance's level, even if the session's proofs aged while
      * the user typed: a change never lowers a credential, and its gate made the session prove that

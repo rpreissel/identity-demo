@@ -605,7 +605,7 @@ class JourneyService(
             // the next journey on this channel gets its own (ADR-55).
             channel.journeyKeyId = null
             val abandonedAccountId = channel.accountId
-            channel.subject = if (channel.entryIntent.startsFromDeviceLink && channel.bindingKeyRef != null) {
+            channel.subject = if (channel.entryIntent.entry?.withDeviceAccount == true && channel.bindingKeyRef != null) {
                 sessionManagementService.findLinkedAccountId(channel.bindingKeyRef!!)?.let(Subject::Account)
             } else {
                 null
