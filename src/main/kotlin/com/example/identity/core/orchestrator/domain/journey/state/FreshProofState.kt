@@ -1,6 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
+import com.example.identity.contract.tool_api.Tool
+import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.contract.tool_api.claims.AcrLevel
 
 /**
@@ -54,6 +57,10 @@ sealed interface FreshProofState : JourneyState {
         override val offer: Offer,
     ) : FreshProofState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        // Authorizes the caller's one action only, so it never becomes the session's evidence.
+        override fun booking(tool: Tool, outcome: ToolOutcome.Completed): Action =
+            if (outcome is ToolOutcome.Completed.Authenticated) Action.Reconfirm(tool, outcome)
+            else error("${tool.toolId} is not offered by Reproving")
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
         // selectionContext names the kind of offer, not the intent.
         override val selectionContext: String get() = "auth"

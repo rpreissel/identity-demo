@@ -33,21 +33,16 @@ class FastAccessStrategy : IntentStrategy<FastAccessState> {
             }
             is FastAccessState.PreferredAuth -> when (event) {
                 is JourneyEvent.Abandoned -> afterAuthDeclined(ctx, alreadyDeclined = setOf(state.toolId))
-                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 else -> AuthEnrollCore.afterProof(ctx, resumeAtStart = FastAccessState.Start)
             }
 
             is AuthChoice -> when (event) {
                 is JourneyEvent.OfferExhausted -> afterAuthDeclined(ctx, event.declined)
-                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 else -> AuthEnrollCore.afterProof(ctx, resumeAtStart = FastAccessState.Start)
             }
 
-            is Enrolling -> when (event) {
-                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
-                // FAST_ACCESS never sets emailObligation, so this never reaches ConfirmingEmail.
-                else -> AuthEnrollCore.afterEnrollment(ctx, state.emailObligation, resumeAtStart = FastAccessState.Start)
-            }
+            // FAST_ACCESS never sets emailObligation, so this never reaches ConfirmingEmail.
+            is Enrolling -> AuthEnrollCore.afterEnrollment(ctx, state.emailObligation, resumeAtStart = FastAccessState.Start)
         }
 
     // Offers -------------------------------------------------------------------

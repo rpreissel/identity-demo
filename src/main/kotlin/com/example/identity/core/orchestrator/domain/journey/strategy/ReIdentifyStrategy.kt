@@ -11,8 +11,6 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
-import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
  * "No active method reaches the target, re-identify instead?" (docs/journeys/re-identify.md).
@@ -41,7 +39,6 @@ class ReIdentifyStrategy : IntentStrategy<ReIdentifyState> {
 
             is ReIdentifyState.Identifying -> when (event) {
                 is JourneyEvent.OfferExhausted -> Transition.Cancel
-                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // Identity confirmed - this identification's own maxAcr already IS the achieved level.
                 else -> Transition.Authenticated
             }

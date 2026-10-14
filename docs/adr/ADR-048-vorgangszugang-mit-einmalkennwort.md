@@ -168,3 +168,9 @@ Eine Einladung bindet einen Kanal nur durch ihren eigenen Nachweis, nie durch da
 Keycloak nennt. Der Resume-Schritt, der sonst eine frühere Sitzung wiederherstellt, überspringt
 Einladungssitzungen, denn dort gibt es nichts wiederherzustellen. Wer ein höheres Niveau braucht,
 braucht eine Einladung mit diesem Niveau.
+
+**Nachtrag 2026-10-14.** Beide Regeln für einen Nachweis, der eine Einladung nennt, stehen an einer
+Stelle: `InvitationAcceptance` (nur im Web-Kanal; nur, wenn er allein das verlangte Niveau
+erreicht). Geprüft wird beim Binden der Einladung (`JourneyActionExecutor.acceptInvitation`), bevor
+etwas geschrieben wird. Bisher prüften `LOOKUP_LOGIN` und `WEB_SELECT_METHOD` je eine davon selbst
+(`DPoP-demo-tj11`).

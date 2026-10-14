@@ -12,8 +12,6 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.selfServiceAcrFloor
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
-import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
-import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.account.AuthMethodView
 
@@ -41,17 +39,13 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
 
             is ManageAuthMethodsState.Changing -> when (event) {
                 is JourneyEvent.OfferExhausted -> Transition.Cancel
-                is JourneyEvent.Completed -> Transition.Perform(event.action(admittedAt = state.admittedAt), resumeState = state)
                 // The new credential was adopted and replaced the old one.
                 else -> Transition.Authenticated
             }
 
-            is ManageAuthMethodsState.Enrolling -> when (event) {
-                // Giving up entirely is DELETE .../journey; backing out only re-offers.
-                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
-                // The enrollment just ran - one successful enrollment ends this intent.
-                else -> Transition.Authenticated
-            }
+            // The enrollment just ran - one successful enrollment ends this intent. Backing out only
+            // re-offers (MANDATORY); giving up entirely is DELETE .../journey.
+            is ManageAuthMethodsState.Enrolling -> Transition.Authenticated
         }
 
     /**
@@ -99,7 +93,7 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
         val tool = changeTarget(wish, ctx)?.let { ctx.catalog.changeToolOf(it.method) }
         val offered = listOfNotNull(tool?.toolId).filter { it in ctx.availableTools }
         return if (offered.isEmpty()) Transition.Abort(Text("Dieses Anmeldeverfahren lässt sich hier nicht ändern"))
-        else Transition.To(ManageAuthMethodsState.Changing(Offer(offered), wish.methodInstanceId, admittedAt = ctx.currentAcr))
+        else Transition.To(ManageAuthMethodsState.Changing(Offer(offered), wish.methodInstanceId))
     }
 
     private fun offerEnrollment(ctx: JourneyContext): Transition {

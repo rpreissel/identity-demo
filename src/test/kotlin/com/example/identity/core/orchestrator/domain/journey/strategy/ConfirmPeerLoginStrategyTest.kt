@@ -5,8 +5,6 @@ import java.time.Duration
 import com.example.identity.core.orchestrator.domain.policy.provenAt
 import com.example.identity.TEST_NOW
 import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -16,15 +14,11 @@ import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.ToolOutcome
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
@@ -115,14 +109,6 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1))
         val theCtx = ctx(account = acc)
         val state = ConfirmPeerLoginState.Confirming(CONFIRM_OFFER)
-        `when`("the approval just ran (Completed)") {
-            val outcome = ToolOutcome.Completed.Approved()
-            val event = JourneyEvent.Completed(tool("approve-qr"), outcome)
-            val transition = strategy.transition(state, event, theCtx)
-            then("performs RecordApproval") {
-                transition shouldBe Transition.Perform(Action.RecordApproval(tool("approve-qr"), outcome), resumeState = state)
-            }
-        }
 
         `when`("the approval has been recorded (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)

@@ -7,22 +7,26 @@ import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.emailAttestation
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import com.example.identity.contract.tool_api.claims.AcrLevel
+import com.example.identity.contract.tool_api.ToolId
+import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
+import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
+import com.example.identity.core.orchestrator.domain.journey.state.Offer
 
 /**
- * Unit test of [action] ([Action.of]), the one outcome-to-action mapping every strategy uses. The
- * strategy tests only check that each offering state hands a completed tool to it.
+ * What a completed tool books ([com.example.identity.core.orchestrator.domain.journey.state.JourneyState.booking]):
+ * [Action.of] for every state, except the two that say otherwise. `JourneyService` performs it
+ * before any strategy hears of the tool.
  */
-class CompletedActionTest : BehaviorSpec({
+class BookingTest : BehaviorSpec({
 
     given("an identification tool reported a person") {
         val event = JourneyEvent.Completed(tool("ident-fsc"), identifiedOutcome())
 
         `when`("the action is chosen") {
-            val action = event.action()
+            val action = Action.of(event.tool, event.outcome)
 
             then("it records the identification, which finds or creates the account") {
                 action shouldBe Action.RecordIdentification(tool("ident-fsc"), identifiedOutcome())
@@ -35,18 +39,19 @@ class CompletedActionTest : BehaviorSpec({
         val event = JourneyEvent.Completed(tool("enroll-sms"), outcome)
 
         `when`("the action is chosen") {
-            val action = event.action()
+            val action = Action.of(event.tool, event.outcome)
 
             then("it adopts the credential") {
                 action shouldBe Action.AdoptCredential(tool("enroll-sms"), outcome)
             }
         }
 
-        `when`("the action is chosen for a change in place, admitted at loa2") {
-            val action = event.action(admittedAt = AcrLevel.LOA2)
+        `when`("it completed while changing a password in place") {
+            val changing = ManageAuthMethodsState.Changing(Offer(listOf(ToolId("enroll-sms"))), methodInstanceId = "old-instance")
+            val action = changing.booking(event.tool, outcome)
 
-            then("the credential is adopted under that level") {
-                action shouldBe Action.AdoptCredential(tool("enroll-sms"), outcome, admittedAt = AcrLevel.LOA2)
+            then("the credential is adopted as the replacement of the old one, so it is never written lower") {
+                action shouldBe Action.AdoptCredential(tool("enroll-sms"), outcome, replaces = "old-instance")
             }
         }
     }
@@ -56,10 +61,19 @@ class CompletedActionTest : BehaviorSpec({
         val event = JourneyEvent.Completed(tool("auth-sms"), outcome)
 
         `when`("the action is chosen") {
-            val action = event.action()
+            val action = Action.of(event.tool, event.outcome)
 
             then("it accepts the proof") {
                 action shouldBe Action.AcceptProof(tool("auth-sms"), outcome)
+            }
+        }
+
+        `when`("it completed as FRESH_PROOF's re-proof") {
+            val reproving = FreshProofState.Reproving(AcrLevel.LOA2, FreshProofState.Purpose.GENERIC, Offer(listOf(ToolId("auth-sms"))))
+            val action = reproving.booking(event.tool, outcome)
+
+            then("it only reconfirms: the proof is for the caller's one action and never the session's evidence") {
+                action shouldBe Action.Reconfirm(tool("auth-sms"), outcome)
             }
         }
     }
@@ -69,7 +83,7 @@ class CompletedActionTest : BehaviorSpec({
         val event = JourneyEvent.Completed(tool("confirm-email"), outcome)
 
         `when`("the action is chosen") {
-            val action = event.action()
+            val action = Action.of(event.tool, event.outcome)
 
             then("it adopts the attestation, without a credential") {
                 action shouldBe Action.AdoptAttestation(tool("confirm-email"), outcome)
@@ -82,7 +96,7 @@ class CompletedActionTest : BehaviorSpec({
         val event = JourneyEvent.Completed(tool("approve-qr"), outcome)
 
         `when`("the action is chosen") {
-            val action = event.action()
+            val action = Action.of(event.tool, event.outcome)
 
             then("it records the approval - the tool already wrote it, this only audits") {
                 action shouldBe Action.RecordApproval(tool("approve-qr"), outcome)

@@ -19,18 +19,13 @@ import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifySta
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.APP_SECOND_FACTOR_KINDS
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.emailAttestation
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.ToolOutcome
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
@@ -46,48 +41,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 class RegisterStrategyTest : BehaviorSpec({
 
     val strategy = RegisterStrategy()
-
-    val smsProof = ToolOutcome.Completed.Authenticated(amr = listOf("sms"))
-    val smsEnrollment = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
-    val passwordEnrollment = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("password", "ref"))
-
-    // Every offering state hands a completed tool to AuthEnrollCore.proofAction and resumes where it was.
-    listOf(
-        RegisterCompletion(
-            RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc")))),
-            JourneyEvent.Completed(tool("ident-fsc"), identifiedOutcome()),
-            Action.RecordIdentification(tool("ident-fsc"), identifiedOutcome())
-        ),
-        RegisterCompletion(
-            AuthChoice(Offer(listOf(ToolId("auth-sms")))),
-            JourneyEvent.Completed(tool("auth-sms"), smsProof),
-            Action.AcceptProof(tool("auth-sms"), smsProof)
-        ),
-        RegisterCompletion(
-            RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email")))),
-            JourneyEvent.Completed(tool("confirm-email"), emailAttestation()),
-            Action.AdoptAttestation(tool("confirm-email"), emailAttestation())
-        ),
-        RegisterCompletion(
-            Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = true),
-            JourneyEvent.Completed(tool("enroll-sms"), smsEnrollment),
-            Action.AdoptCredential(tool("enroll-sms"), smsEnrollment)
-        ),
-        RegisterCompletion(
-            RegisterState.SecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS)),
-            JourneyEvent.Completed(tool("enroll-password"), passwordEnrollment),
-            Action.AdoptCredential(tool("enroll-password"), passwordEnrollment)
-        )
-    ).forEach { (state, event, action) ->
-        given("${state::class.simpleName}, its offered tool about to complete") {
-            `when`("the tool completes") {
-                val transition = strategy.transition(state, event, ctx())
-                then("performs ${action::class.simpleName} and resumes in the same state") {
-                    transition shouldBe Transition.Perform(action, resumeState = state)
-                }
-            }
-        }
-    }
 
     given("Start, even with a linked device credential and other active methods") {
         val acc = account(method("sms", AcrLevel.LOA2))
@@ -278,24 +231,6 @@ class RegisterStrategyTest : BehaviorSpec({
             then("the registration carries on unbound and offers enrollment (ADR-10)") {
                 val enrolling = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<Enrolling>()
                 enrolling.emailObligation shouldBe true
-            }
-        }
-
-        `when`("ident-kvnr finds the person in the register") {
-            val found = identifiedOutcome()
-            val transition = strategy.transition(state, JourneyEvent.Completed(tool("ident-kvnr"), found), theCtx)
-
-            then("records the identification and resumes here") {
-                transition shouldBe Transition.Perform(Action.RecordIdentification(tool("ident-kvnr"), found), resumeState = state)
-            }
-        }
-
-        `when`("a tool completes with anything but an identification") {
-            val enrolled = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("kvnr", "ref"))
-            val result = runCatching { strategy.transition(state, JourneyEvent.Completed(tool("ident-kvnr"), enrolled), theCtx) }
-
-            then("fails loudly - the assignment step offers nothing else") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
     }

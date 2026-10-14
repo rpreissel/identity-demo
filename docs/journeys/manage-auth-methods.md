@@ -63,10 +63,11 @@ im Tool zeigt deshalb eine Auswahl mit diesem einen Verfahren und „Abbrechen�
 - **Niveau.** Die Schwelle ist das höhere von zwei Niveaus: `selfServiceAcrFloor` und das Niveau,
   unter dem der alte Eintrag eingerichtet wurde (`enrolledUnderAcr`). Ein Ändern stuft also nie
   herab. Reicht die Sitzung nicht, folgt in `FRESH_PROOF` der Step-up. Erreicht dabei kein
-  Verfahren das Niveau, bietet der Step-up die Re-Identifizierung an. `Changing` hält das Niveau
-  fest, das die Sitzung nach dieser Prüfung hatte. Der neue Eintrag wird mindestens unter diesem Niveau gespeichert. Das gilt
-  auch, wenn die Nachweise der Sitzung während der Eingabe altern
-  (`Action.AdoptCredential.admittedAt`).
+  Verfahren das Niveau, bietet der Step-up die Re-Identifizierung an. `Changing` verbucht die
+  Einrichtung als Ersatz des alten Eintrags (`Action.AdoptCredential.replaces`). Der neue Eintrag
+  wird deshalb mindestens unter dem Niveau des alten gespeichert, auch wenn die Nachweise der
+  Sitzung während der Eingabe altern. Nur eine Änderung nennt den ersetzten Eintrag; wird ein
+  Verfahren auf anderem Weg ersetzt, erbt das neue nichts.
 - **Was das Tool weiß.** Das Einrichtungs-Tool kennt den Wunsch nicht. Es fragt beim Start, ob das
   Konto schon ein Credential seines Verfahrens hat (`ToolJourney.findEnrollment`). Das meldet es in
   seinem `stepData` (`replaces`).

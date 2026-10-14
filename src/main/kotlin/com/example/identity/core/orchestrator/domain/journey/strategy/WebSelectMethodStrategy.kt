@@ -11,8 +11,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMeth
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.Subject
-import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
  * The Web entry intent (docs/journeys/web-select-method.md): one `selectMethod` step listing every
@@ -32,7 +30,6 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
     override fun transition(state: WebSelectMethodState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is WebSelectMethodState.SelectMethod -> when (event) {
-                is JourneyEvent.Completed -> completed(state, event, ctx)
                 is JourneyEvent.OfferExhausted -> ctx.account?.let { reIdentifyOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.AfterIdentification) { Transition.Cancel } } ?: Transition.Cancel
                 // Started re-checks like any other proof: restored evidence may already satisfy the
                 // floor (docs/04-orchestrierung.md, "Übernommene Nachweise als erster Übergang"). So does
@@ -43,18 +40,6 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
             // The identification may already close the gap; otherwise the offer is built anew.
             is WebSelectMethodState.AfterIdentification -> afterProof(ctx)
         }
-
-    /**
-     * A one-time password below the level this login asks for is refused before anything is bound:
-     * the invitation is what it is, and no other tool could raise a session that has no account.
-     */
-    private fun completed(state: WebSelectMethodState.SelectMethod, event: JourneyEvent.Completed, ctx: JourneyContext): Transition {
-        val outcome = event.outcome
-        if (outcome is ToolOutcome.Completed.Authenticated && outcome.subject is Subject.Invitation &&
-            event.tool.levelOf(outcome) < ctx.acrFloor
-        ) return insufficientInvitation()
-        return Transition.Perform(event.action(), resumeState = state)
-    }
 
     private fun insufficientInvitation() =
         Transition.Abort(Text("Dieses Einmalkennwort genuegt dem verlangten Sicherheitsniveau nicht"))

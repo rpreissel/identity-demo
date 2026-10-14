@@ -36,14 +36,15 @@ sealed interface Action {
     /**
      * A new credential was enrolled. Whether this also links the device is not a field here; it
      * follows from [AuthIntent.bindsDeviceImplicitly] and, for a Web channel, from there being
-     * no device. [admittedAt]: the session's level when the journey admitted this enrollment, for a
-     * change in place. The credential is then written under at least that level, even if the
-     * session's proofs aged while the user typed; a change never lowers a credential.
+     * no device. [replaces]: the method instance a change in place replaces. The new credential is
+     * then written under at least that instance's level, even if the session's proofs aged while
+     * the user typed: a change never lowers a credential, and its gate made the session prove that
+     * level. Only a change names it; a singleton replaced any other way inherits nothing.
      */
     data class AdoptCredential(
         val tool: Tool,
         val outcome: ToolOutcome.Completed.Enrolled,
-        val admittedAt: AcrLevel? = null
+        val replaces: String? = null
     ) : Action
 
     /**
@@ -62,6 +63,12 @@ sealed interface Action {
      * auditing. This channel's own evidence does not change.
      */
     data class RecordApproval(val tool: Tool, val outcome: ToolOutcome.Completed.Approved) : Action
+
+    /**
+     * A credential was proven again, for the one action that asked for it (`FRESH_PROOF`). Nothing
+     * is written: it never becomes the session's evidence, so it cannot raise or prolong the login.
+     */
+    data class Reconfirm(val tool: Tool, val outcome: ToolOutcome.Completed.Authenticated) : Action
 
     /**
      * Revoke one authentication method of the account this session holds. The credential itself
@@ -106,10 +113,10 @@ sealed interface Action {
          * handler from live context, never by the caller (see the variants). A tool that was not
          * offered never completes here: `JourneyService.activate` admits only offered tools.
          */
-        fun of(tool: Tool, outcome: ToolOutcome.Completed, admittedAt: AcrLevel? = null): Action = when (outcome) {
+        fun of(tool: Tool, outcome: ToolOutcome.Completed): Action = when (outcome) {
             is ToolOutcome.Completed.Identified -> RecordIdentification(tool, outcome)
             is ToolOutcome.Completed.Attested -> AdoptAttestation(tool, outcome)
-            is ToolOutcome.Completed.Enrolled -> AdoptCredential(tool, outcome, admittedAt)
+            is ToolOutcome.Completed.Enrolled -> AdoptCredential(tool, outcome)
             is ToolOutcome.Completed.Authenticated -> AcceptProof(tool, outcome)
             is ToolOutcome.Completed.Approved -> RecordApproval(tool, outcome)
         }

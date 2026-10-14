@@ -712,7 +712,7 @@ Ein **Ereignis** (`JourneyEvent`) ist das, was der Journey gerade passiert ist:
 | Event | Bedeutung |
 |---|---|
 | `Started` | Die Journey wurde gerade angelegt und braucht ihr erstes Angebot |
-| `Completed(tool, outcome)` | Ein Tool wurde erfolgreich abgeschlossen. Was das bedeutet, entscheidet hier die Strategie |
+| `Completed(tool, outcome)` | Ein Tool wurde erfolgreich abgeschlossen. Was dabei verbucht wird, sagt der Zustand (`JourneyState.booking`), und der `JourneyService` verbucht es; die Strategie hört danach nur `ActionCompleted` |
 | `Abandoned(tool)` | „Zurück“ oder „Wechseln“: Der Nutzer hat das gestartete Tool ohne Abschluss verworfen. Einen Angebots-Zustand beantwortet das der Zustand selbst (Abschnitt 3); eine Strategie sieht es nur in einem Zustand ohne Angebot |
 | `OfferExhausted(declined)` | Jedes angebotene Tool wurde abgelehnt, oder ein optionaler Schritt wurde übersprungen. Nur Ausweich- und optionale Zustände sehen es; die Strategie nennt dann den nächsten Weg |
 | `ActionCompleted` | Die `Action` eines `Perform`-Übergangs (unten) ist ausgeführt. Der `JourneyContext` ist neu aufgebaut |
@@ -746,12 +746,15 @@ er `transition(resumeState, ActionCompleted, frischerCtx)` erneut auf. Das wiede
 bis eine Strategie nicht wieder `Perform` liefert. Auf dieser Wiederholung beruhen alle besonderen
 Wege:
 
-- Ein abgeschlossenes Tool: `is Completed -> Perform(event.action(), resumeState = state)`. Welche
-  `Action` ein Ergebnis bedeutet, steht an einer Stelle (`Action.of(tool, outcome)`): Ein Tool, das
-  nicht angeboten war, kommt hier nie an, denn `JourneyService.activate` lässt nur angebotene zu.
-  Dann
-  gefolgt von `is ActionCompleted -> <weitere Logik>` im selben Zustand. Diese zweistufige Form
-  gilt für jeden Intent, der Tools anbietet.
+- Ein abgeschlossenes Tool: Das sieht keine Strategie. Der `JourneyService` fragt den Zustand, was
+  es verbucht (`JourneyState.booking`, sonst `Action.of`), führt das als `Perform` aus und ruft die
+  Strategie mit `ActionCompleted` im selben Zustand. Zwei Zustände weichen ab:
+  `ManageAuthMethodsState.Changing` verbucht die Einrichtung als Ersatz des alten Verfahrens
+  (`AdoptCredential.replaces`), `FreshProofState.Reproving` verbucht nur `Reconfirm`, das nichts
+  schreibt. Ein Tool, das nicht angeboten war, kommt hier nie an, denn `JourneyService.activate`
+  lässt nur angebotene zu. Ob ein Nachweis, der eine Einladung nennt, den Kanal anmelden darf,
+  entscheidet `InvitationAcceptance` beim Binden der Einladung ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md));
+  lehnt sie ab, endet die Journey wie bei `Abort`.
 - `Action.LinkDevice`, `Action.RevokeAuthMethod` und `Action.DeleteAccount`: Die Strategie liefert
   `Perform`, statt selbst zu verknüpfen oder zu löschen (`DeviceLinkQuestion`,
   `ManageAuthMethodsState.RemoveRequested`, `DeleteAccountState.ConfirmPending`).

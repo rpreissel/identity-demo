@@ -135,6 +135,8 @@ export function stepTitle(entry: JourneyTraceEntryView): string {
       return t('{verfahren} abgelehnt, anderes Verfahren gewünscht', { verfahren: tool })
     case 'OfferExhausted':
       return t('Alle angebotenen Verfahren abgelehnt')
+    case 'InvitationRefused':
+      return t('Einmalkennwort nicht angenommen')
     case 'Back':
       return t('Zurück aus {verfahren}', { verfahren: tool })
     case 'Answered':

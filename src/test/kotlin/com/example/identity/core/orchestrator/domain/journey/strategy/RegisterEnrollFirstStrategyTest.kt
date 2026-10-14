@@ -12,16 +12,11 @@ import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrol
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.APP_SECOND_FACTOR_KINDS
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.emailAttestation
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.ToolOutcome
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
@@ -49,48 +44,6 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         // Declining it finishes the registration instead of cancelling it.
         optional = true,
     )
-
-    val smsEnrollment = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
-    val passwordEnrollment = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("password", "ref"))
-
-    // Every state here is mandatory and maps a completed tool the same way: an enrollment adopts the
-    // credential, an attestation the address. The run resumes where it was.
-    listOf(
-        EnrollFirstCompletion(
-            RegisterEnrollFirstState.EnrollFirstAttestingEmail(Offer(listOf(ToolId("confirm-email")))),
-            JourneyEvent.Completed(tool("confirm-email"), emailAttestation()),
-            Action.AdoptAttestation(tool("confirm-email"), emailAttestation())
-        ),
-        EnrollFirstCompletion(
-            RegisterEnrollFirstState.EnrollFirstEnrollingSms(Offer(listOf(ToolId("enroll-sms")))),
-            JourneyEvent.Completed(tool("enroll-sms"), smsEnrollment),
-            Action.AdoptCredential(tool("enroll-sms"), smsEnrollment)
-        ),
-        EnrollFirstCompletion(
-            RegisterEnrollFirstState.EnrollFirstEnrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password")))),
-            JourneyEvent.Completed(tool("enroll-password"), passwordEnrollment),
-            Action.AdoptCredential(tool("enroll-password"), passwordEnrollment)
-        ),
-        EnrollFirstCompletion(
-            RegisterEnrollFirstState.EnrollFirstConfirmingEmail(Offer(listOf(ToolId("confirm-email")))),
-            JourneyEvent.Completed(tool("confirm-email"), emailAttestation()),
-            Action.AdoptAttestation(tool("confirm-email"), emailAttestation())
-        ),
-        EnrollFirstCompletion(
-            RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS)),
-            JourneyEvent.Completed(tool("enroll-password"), passwordEnrollment),
-            Action.AdoptCredential(tool("enroll-password"), passwordEnrollment)
-        )
-    ).forEach { (state, event, action) ->
-        given("${state::class.simpleName}, its offered tool about to complete") {
-            `when`("the tool completes") {
-                val transition = strategy.transition(state, event, ctx())
-                then("performs ${action::class.simpleName} and resumes in the same state") {
-                    transition shouldBe Transition.Perform(action, resumeState = state)
-                }
-            }
-        }
-    }
 
     given("Start, no account known yet") {
         `when`("started") {

@@ -19,10 +19,8 @@ import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTe
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.ToolOutcome
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -38,38 +36,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 class FastAccessStrategyTest : BehaviorSpec({
 
     val strategy = FastAccessStrategy()
-
-    val deviceProof = ToolOutcome.Completed.Authenticated(amr = listOf("device"))
-    val smsProof = ToolOutcome.Completed.Authenticated(amr = listOf("sms"))
-    val smsEnrollment = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
-
-    // Every offering state hands a completed tool to AuthEnrollCore.proofAction and resumes where it was.
-    listOf(
-        FastAccessCompletion(
-            FastAccessState.PreferredAuth(ToolId("auth-device")),
-            JourneyEvent.Completed(tool("auth-device"), deviceProof),
-            Action.AcceptProof(tool("auth-device"), deviceProof)
-        ),
-        FastAccessCompletion(
-            AuthChoice(Offer(listOf(ToolId("auth-sms")))),
-            JourneyEvent.Completed(tool("auth-sms"), smsProof),
-            Action.AcceptProof(tool("auth-sms"), smsProof)
-        ),
-        FastAccessCompletion(
-            Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = false),
-            JourneyEvent.Completed(tool("enroll-sms"), smsEnrollment),
-            Action.AdoptCredential(tool("enroll-sms"), smsEnrollment)
-        )
-    ).forEach { (state, event, action) ->
-        given("${state::class.simpleName}, its offered tool about to complete") {
-            `when`("the tool completes") {
-                val transition = strategy.transition(state, event, ctx())
-                then("performs ${action::class.simpleName} and resumes in the same state") {
-                    transition shouldBe Transition.Perform(action, resumeState = state)
-                }
-            }
-        }
-    }
 
     given("Start, no account known yet (unrecognized device)") {
         `when`("the journey starts") {

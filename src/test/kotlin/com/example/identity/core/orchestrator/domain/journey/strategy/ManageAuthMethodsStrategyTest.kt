@@ -12,10 +12,8 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
-import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -24,7 +22,6 @@ import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
@@ -194,7 +191,6 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
                 val next = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<ManageAuthMethodsState.Changing>()
                 next.offered shouldBe listOf(ToolId("enroll-password"))
                 next.methodInstanceId shouldBe "password-instance"
-                next.admittedAt shouldBe AcrLevel.LOA2
             }
         }
 
@@ -227,7 +223,7 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
     }
 
     given("Changing the password") {
-        val state = ManageAuthMethodsState.Changing(Offer(listOf(ToolId("enroll-password"))), "password-instance", admittedAt = AcrLevel.LOA2)
+        val state = ManageAuthMethodsState.Changing(Offer(listOf(ToolId("enroll-password"))), "password-instance")
 
         `when`("the tool is abandoned") {
             val exhausted = state.declining(ToolId("enroll-password"))
@@ -239,9 +235,9 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
 
         `when`("the new password is enrolled") {
             val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("password", "ref"))
-            val transition = strategy.transition(state, JourneyEvent.Completed(tool("enroll-password"), outcome), ctx())
-            then("adopts the credential under the level the change was admitted at, whatever the session carries by now") {
-                transition shouldBe Transition.Perform(Action.AdoptCredential(tool("enroll-password"), outcome, admittedAt = AcrLevel.LOA2), resumeState = state)
+            then("it is booked as the replacement of the old one, which it is never written below") {
+                state.booking(tool("enroll-password"), outcome) shouldBe
+                    Action.AdoptCredential(tool("enroll-password"), outcome, replaces = "password-instance")
             }
         }
 
@@ -255,16 +251,6 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
 
     given("Enrolling, several candidates offered") {
         val state = ManageAuthMethodsState.Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))))
-
-        `when`("a method is enrolled") {
-            val outcome = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
-            val event = JourneyEvent.Completed(tool("enroll-sms"), outcome)
-            val transition = strategy.transition(state, event, ctx())
-            then("adopts the credential - binding the already known device again is a harmless no-op") {
-                transition shouldBe
-                    Transition.Perform(Action.AdoptCredential(tool("enroll-sms"), outcome), resumeState = state)
-            }
-        }
 
         `when`("resumed after adopting (ActionCompleted)") {
             val transition = strategy.transition(state, JourneyEvent.ActionCompleted, ctx())

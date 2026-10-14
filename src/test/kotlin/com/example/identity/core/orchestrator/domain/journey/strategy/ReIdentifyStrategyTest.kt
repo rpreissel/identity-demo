@@ -6,20 +6,16 @@ import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentify
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.ToolOutcome
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -36,16 +32,6 @@ class ReIdentifyStrategyTest : BehaviorSpec({
 
     given("Identifying, one offered candidate") {
         val state = ReIdentifyState.Identifying(AcrLevel.LOA2, Offer(listOf(ToolId("ident-fsc"))))
-
-        `when`("the tool completes with Identified") {
-            val outcome = identifiedOutcome()
-            val event = JourneyEvent.Completed(tool("ident-fsc"), outcome)
-            val transition = strategy.transition(state, event, ctx())
-            then("always confirms the caller's already-known account, never adopts a different one") {
-                transition shouldBe
-                    Transition.Perform(Action.RecordIdentification(tool("ident-fsc"), outcome), resumeState = state)
-            }
-        }
 
     }
 

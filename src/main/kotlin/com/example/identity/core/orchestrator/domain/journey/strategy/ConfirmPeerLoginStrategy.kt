@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -11,9 +10,7 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
-import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
  * Approve or decline a Web-channel `auth-qr`/`auth-qr-lookup` pairing
@@ -36,7 +33,6 @@ class ConfirmPeerLoginStrategy : IntentStrategy<ConfirmPeerLoginState> {
             }
 
             is ConfirmPeerLoginState.Confirming -> when (event) {
-                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // The approval ran; the channel stays signed in. A channel that logged in only for
                 // the approval is asked by the app whether to log out again (ADR-60).
                 is JourneyEvent.ActionCompleted -> Transition.Authenticated

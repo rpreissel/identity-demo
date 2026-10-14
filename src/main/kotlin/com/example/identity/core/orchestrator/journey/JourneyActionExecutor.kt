@@ -20,6 +20,7 @@ import com.example.identity.core.orchestrator.domain.journey.AccountMerge
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.ChannelType
+import com.example.identity.core.orchestrator.domain.InvitationAcceptance
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.account.RetractionSource
@@ -53,7 +54,8 @@ import com.example.identity.core.orchestrator.domain.AuthIntent
  * It never calls back into the machine, so [JourneyService.applyTransition] stays the only recursion.
  */
 @Component
-@Transactional
+// A refused invitation has written nothing; JourneyService ends the journey and commits that.
+@Transactional(noRollbackFor = [InvitationRefusedException::class])
 class JourneyActionExecutor(
     private val journeyRepository: AuthJourneyRepository,
     private val accountService: AccountService,
@@ -91,6 +93,8 @@ class JourneyActionExecutor(
             is Action.AcceptProof -> performAcceptProof(journey, channel, action)
             // The tool already wrote its own effect (QrLoginRequest). A peer approval proves nothing
             // on this channel (no amr, on no evidence axis), so this bookkeeping never changes its evidence.
+            // Writes nothing by design: the proof is for the caller's one action (FRESH_PROOF).
+            is Action.Reconfirm -> Unit
             is Action.RecordApproval -> journeyRecorder.recordToolCompletion(journey, channel, action.tool, action.outcome, action.tool.levelOf(action.outcome))
             is Action.RevokeAuthMethod -> removeMethod(journey, channel, action.methodInstanceId)
             is Action.RetractAttribute -> performRetractAttribute(journey, channel, action.attributeType)
@@ -243,7 +247,7 @@ class JourneyActionExecutor(
         val methodInstanceId = UUID.randomUUID()
         // The level the session had before this completion (ADR-5, see levelToWriteUnder).
         val sessionAcr = authPolicy.resolveAcr(coreEvidence, accountService.findAccount(accountId))
-        val enrolledUnderAcr = levelToWriteUnder(action.admittedAt?.let { AcrLevel.max(it, sessionAcr) } ?: sessionAcr)
+        val enrolledUnderAcr = levelToWriteUnder(action.replaces?.let { AcrLevel.max(replacedLevel(accountId, it), sessionAcr) } ?: sessionAcr)
         // The claims are recorded under that level, since an anchor write is priced against it.
         // The order is safe: resolveAcr reads only the evidence, not the account.
         accountService.recordClaims(
@@ -301,6 +305,13 @@ class JourneyActionExecutor(
         journeyRecorder.recordToolCompletion(journey, channel, action.tool, authenticated, effectiveAcr)
     }
 
+    /** The level the instance a change replaces was enrolled under; it must still be active. */
+    private fun replacedLevel(accountId: AccountId, methodInstanceId: String): AcrLevel {
+        val replaced = loadAccount(accountId).activeAuthenticationMethods.firstOrNull { it.id == methodInstanceId }
+            ?: throw OrchestratorException.processGone(Text("Dieses Anmeldeverfahren lässt sich nicht ändern"), "methodInstanceId=$methodInstanceId")
+        return AcrLevel.parse(replaced.enrolledUnderAcr) ?: AcrLevel.NONE
+    }
+
     /**
      * A one-time password names an invitation instead of an account
      * (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md): it becomes the channel's subject, and no account
@@ -309,8 +320,8 @@ class JourneyActionExecutor(
      * replace the first.
      */
     private fun acceptInvitation(journey: AuthJourney, channel: ChannelSession, action: Action.AcceptProof, invitation: InvitationId) {
-        // Web only for now: the App's journeys and tokens know no subject other than an account.
-        check(channel.channel == ChannelType.WEB) { "A one-time password signs in on the Web channel only" }
+        InvitationAcceptance.refusal(channel.channel, action.tool.levelOf(action.outcome), contextFactory.acrFloorOf(channel))
+            ?.let { throw InvitationRefusedException(it) }
         check(action.tool.role == ToolRole.ACCOUNT_LOOKUP_AUTH) { "Only a lookup tool may name an invitation" }
         check(channel.accountId == null && channel.invitation == null && channel.sessionEvidenceId == null) {
             "A process access needs a channel without a subject"

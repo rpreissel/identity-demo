@@ -3,8 +3,6 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.contract.tool_api.ids.InvitationId
-import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginStrategy
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
@@ -22,8 +20,6 @@ import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTe
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.ToolOutcome
-import com.example.identity.contract.texts.Text
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -55,43 +51,9 @@ class LookupLoginStrategyTest : BehaviorSpec({
     given("Credential, the account-resolving lookup tool offered") {
         val state = smsLookupCredential
 
-        `when`("the tool completes Authenticated with its own account (the first, account-resolving proof)") {
-            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("sms"), subject = Subject.Account(AccountId(42L)))
-            val event = JourneyEvent.Completed(tool("auth-sms-lookup"), outcome)
-            val transition = strategy.transition(state, event, ctx())
-            then("trusts the tool's own account") {
-                transition shouldBe
-                    Transition.Perform(Action.AcceptProof(tool("auth-sms-lookup"), outcome), resumeState = state)
-            }
-        }
-
     }
 
-    given("Credential, auth-invite-lookup offered in the App") {
-        val state = LookupLoginState.Credential(Offer(listOf(ToolId("auth-invite-lookup"))))
 
-        `when`("a one-time password proves an invitation, not an account") {
-            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("invite"), subject = Subject.Invitation(InvitationId("a".repeat(64))))
-            val transition = strategy.transition(state, JourneyEvent.Completed(tool("auth-invite-lookup"), outcome), ctx())
-            then("aborts before anything is bound: process access is for the website only (ADR-48)") {
-                transition shouldBe Transition.Abort(Text("Ein Einmalkennwort gilt nur auf der Website"))
-            }
-        }
-    }
-
-    given("AdditionalFactor") {
-        val state = LookupLoginState.AdditionalFactor(Offer(listOf(ToolId("auth-sms"))))
-
-        `when`("a tool completes Authenticated (any further proof)") {
-            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("sms"))
-            val event = JourneyEvent.Completed(tool("auth-sms"), outcome)
-            val transition = strategy.transition(state, event, ctx())
-            then("never trusts a submitted account") {
-                transition shouldBe
-                    Transition.Perform(Action.AcceptProof(tool("auth-sms"), outcome), resumeState = state)
-            }
-        }
-    }
 
     given("Start, with lookup-capable tools available") {
         `when`("started") {

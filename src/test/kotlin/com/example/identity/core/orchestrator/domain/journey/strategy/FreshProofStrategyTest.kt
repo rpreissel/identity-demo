@@ -5,15 +5,11 @@ import java.time.Duration
 import com.example.identity.core.orchestrator.domain.policy.provenAt
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.TEST_NOW
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
@@ -130,10 +126,9 @@ class FreshProofStrategyTest : BehaviorSpec({
     given("Reproving, more than one offered candidate") {
         val state = FreshProofState.Reproving(AcrLevel.LOA2, FreshProofState.Purpose.MANAGE_METHODS, Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
 
-        `when`("any active factor is re-proven") {
-            val event = JourneyEvent.Completed(tool("auth-sms"), ToolOutcome.Completed.Authenticated(amr = listOf("sms")))
-            val transition = strategy.transition(state, event, ctx())
-            then("is done - one proof, at any level, and never itself recorded as MethodEvidence (no Perform)") {
+        `when`("any active factor was re-proven (booked as Reconfirm, ActionCompleted)") {
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, ctx())
+            then("is done - one proof, at any level, and never itself recorded as MethodEvidence") {
                 transition shouldBe Transition.Authenticated
             }
         }

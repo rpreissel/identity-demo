@@ -1,7 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.texts.Text
-import com.example.identity.contract.tool_api.claims.AcrLevel
+import com.example.identity.contract.tool_api.Tool
+import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.contract.tool_api.claims.AttributeType
 
 /**
@@ -33,15 +35,17 @@ sealed interface ManageAuthMethodsState : JourneyState {
 
     /**
      * The one enrollment that replaces [methodInstanceId] is running. Backing out ends the wish;
-     * the old credential stays until the new one is adopted. [admittedAt] is the session's level
-     * when the gate was cleared: what the new credential is written under at least.
+     * the old credential stays until the new one is adopted, and the new one is never written
+     * under a lower level ([Action.AdoptCredential.replaces]).
      */
     data class Changing(
         override val offer: Offer,
         val methodInstanceId: String,
-        val admittedAt: AcrLevel
     ) : ManageAuthMethodsState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
+        override fun booking(tool: Tool, outcome: ToolOutcome.Completed): Action =
+            if (outcome is ToolOutcome.Completed.Enrolled) Action.AdoptCredential(tool, outcome, replaces = methodInstanceId)
+            else error("${tool.toolId} is not offered by Changing")
         // One tool only: backing out ends the change, the old entry stays.
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
         override val selectionContext: String get() = "enrollment"

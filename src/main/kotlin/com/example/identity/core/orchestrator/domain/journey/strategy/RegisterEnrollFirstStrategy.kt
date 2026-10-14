@@ -41,12 +41,12 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
             }
 
             // Every offering state here is mandatory: a completed tool is adopted, only the next step differs.
-            is RegisterEnrollFirstState.EnrollFirstAttestingEmail -> completedOr(state, event) { offerSmsEnrollment(ctx) }
-            is RegisterEnrollFirstState.EnrollFirstEnrollingSms -> completedOr(state, event) { afterForcedEnrollment(ctx) }
-            is RegisterEnrollFirstState.EnrollFirstEnrolling -> completedOr(state, event) { afterEnrollment(ctx, emailObligation = true) }
-            is RegisterEnrollFirstState.EnrollFirstConfirmingEmail -> completedOr(state, event) { afterEnrollment(ctx, emailObligation = false) }
+            is RegisterEnrollFirstState.EnrollFirstAttestingEmail -> offerSmsEnrollment(ctx)
+            is RegisterEnrollFirstState.EnrollFirstEnrollingSms -> afterForcedEnrollment(ctx)
+            is RegisterEnrollFirstState.EnrollFirstEnrolling -> afterEnrollment(ctx, emailObligation = true)
+            is RegisterEnrollFirstState.EnrollFirstConfirmingEmail -> afterEnrollment(ctx, emailObligation = false)
             // The email obligation is already discharged here.
-            is RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation -> completedOr(state, event) { afterEnrollment(ctx, emailObligation = false) }
+            is RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation -> afterEnrollment(ctx, emailObligation = false)
 
             // Declined, the account stays usable through the lookup tools, just not recognized here.
             is RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind ->

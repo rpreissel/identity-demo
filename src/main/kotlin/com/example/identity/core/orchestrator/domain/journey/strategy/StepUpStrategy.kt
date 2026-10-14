@@ -45,7 +45,6 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
             }
 
             is StepUpState.AuthChoice -> when (event) {
-                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 is JourneyEvent.OfferExhausted -> offerReIdentOrGiveUp(state.goal, ctx, whenNone = Transition.Cancel)
                 // ActionCompleted: re-check with the fresh, post-proof context.
                 else -> finishOrContinue(state.goal, ctx)

@@ -124,7 +124,7 @@ class JourneyTraceDetails(
         is Action.RecordIdentification, is Action.AdoptAttestation -> emptyMap()
         is Action.AdoptCredential -> emptyMap()
         is Action.AcceptProof -> emptyMap()
-        is Action.RecordApproval -> emptyMap()
+        is Action.RecordApproval, is Action.Reconfirm -> emptyMap()
         is Action.RevokeAuthMethod -> {
             val accountId = channel.accountId
             val target = accountId?.let { accountService.findAccount(it) }

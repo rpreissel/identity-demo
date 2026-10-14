@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -14,7 +13,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.policy.Reachability
-import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.ToolId
 
 /**
@@ -39,7 +37,6 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
             is RegisterState.Identifying -> when (event) {
                 // Declining the last identification offer is giving up on the journey, not an error.
                 is JourneyEvent.OfferExhausted -> Transition.Cancel
-                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // No isSatisfied check: identification alone clears most floors and would let a
                 // run finish without a durable credential.
                 else -> afterIdentification(ctx)
@@ -47,7 +44,6 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
 
             is AuthChoice -> when (event) {
                 is JourneyEvent.OfferExhausted -> afterAuthDeclined(ctx, event.declined)
-                is JourneyEvent.Completed -> Transition.Perform(event.action(), resumeState = state)
                 // No factor-kind or email obligation: a rediscovered, set-up account finishing here
                 // is an ordinary login, not a fresh registration.
                 else -> AuthEnrollCore.afterProof(ctx, resumeAtStart = RegisterState.Start)
@@ -59,10 +55,6 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
             is RegisterState.Assigning -> when (event) {
                 // Backing out is the "not now" (DeclinePolicy.OPTIONAL): the run carries on as prospect (ADR-10).
                 is JourneyEvent.OfferExhausted -> continueAfterAssignment(ctx)
-                // The executor reads the account in hand at execution time.
-                is JourneyEvent.Completed if event.outcome is ToolOutcome.Completed.Identified ->
-                    Transition.Perform(Action.RecordIdentification(event.tool, event.outcome), resumeState = state)
-                is JourneyEvent.Completed -> event.notOffered("the assignment step")
                 // Back through afterIdentification: the assignment may have moved this run to
                 // another account (ADR-20), which must pass the same checks (device link, existing
                 // methods). The assignment offer is not repeated, since the person is bound now.
@@ -71,10 +63,10 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
             }
 
             // Mandatory steps: a completed tool is adopted, and only the next step differs.
-            is RegisterState.ConfirmingEmail -> completedOr(state, event) { afterEnrollment(ctx, emailObligation = false) }
-            is Enrolling -> completedOr(state, event) { afterEnrollment(ctx, state.emailObligation) }
+            is RegisterState.ConfirmingEmail -> afterEnrollment(ctx, emailObligation = false)
+            is Enrolling -> afterEnrollment(ctx, state.emailObligation)
             // The email obligation is already discharged here.
-            is RegisterState.SecondFactorKindObligation -> completedOr(state, event) { afterEnrollment(ctx, emailObligation = false) }
+            is RegisterState.SecondFactorKindObligation -> afterEnrollment(ctx, emailObligation = false)
         }
 
     // Offers -------------------------------------------------------------------

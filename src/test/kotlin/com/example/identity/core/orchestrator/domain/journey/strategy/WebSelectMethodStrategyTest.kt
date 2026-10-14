@@ -1,17 +1,12 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.contract.tool_api.Subject
-import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.ChannelType
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
@@ -23,7 +18,6 @@ import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTe
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.webTools
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
@@ -79,15 +73,6 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
 
             then("it keeps offering the lookup-login tools") {
                 transition shouldBe Transition.To(WebSelectMethodState.SelectMethod(Offer(state.offer.offered), accountAlreadyKnown = false))
-            }
-        }
-
-        `when`("a lookup tool authenticates") {
-            val outcome = ToolOutcome.Completed.Authenticated(amr = listOf("password"), subject = Subject.Account(AccountId(1L)))
-            val transition = strategy.transition(state, JourneyEvent.Completed(tool("auth-password-lookup"), outcome), webCtx())
-
-            then("it performs AcceptProof and resumes in the same state") {
-                transition shouldBe Transition.Perform(Action.AcceptProof(tool("auth-password-lookup"), outcome), resumeState = state)
             }
         }
 

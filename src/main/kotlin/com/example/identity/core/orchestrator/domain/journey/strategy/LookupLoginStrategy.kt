@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
-import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.AuthIntent
@@ -14,7 +13,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
-import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
  * Log into an existing account without a paired device (docs/journeys/lookup-login.md): the user
@@ -54,23 +52,8 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
         }
 
     private fun proving(state: OfferingState, event: JourneyEvent, ctx: JourneyContext): Transition = when (event) {
-        is JourneyEvent.Completed -> completed(event, state)
         is JourneyEvent.OfferExhausted -> Transition.Cancel
         else -> settleOrRaise(ctx)
-    }
-
-    /**
-     * A one-time password opens a process access on the website only (ADR-48): the App channel's
-     * journeys and tokens know no subject other than an account. The tool is switched off for the
-     * App by default; should an App announce it anyway, the journey ends with a clear refusal
-     * instead of binding an invitation it cannot serve.
-     */
-    private fun completed(event: JourneyEvent.Completed, state: OfferingState): Transition {
-        val outcome = event.outcome
-        if (outcome is ToolOutcome.Completed.Authenticated && outcome.subject is Subject.Invitation) {
-            return Transition.Abort(Text("Ein Einmalkennwort gilt nur auf der Website"))
-        }
-        return Transition.Perform(event.action(), resumeState = state)
     }
 
     /**

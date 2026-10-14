@@ -3,6 +3,9 @@ package com.example.identity.core.orchestrator.domain.journey.state
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.ToolId
+import com.example.identity.contract.tool_api.Tool
+import com.example.identity.contract.tool_api.ToolOutcome
+import com.example.identity.core.orchestrator.domain.journey.Action
 
 /**
  * The position on the path, together with the attributes that hold at this position
@@ -21,6 +24,13 @@ sealed interface JourneyState {
 
     /** The tool that is actually running, once one has been activated. */
     val active: ToolRef?
+
+    /**
+     * What a tool completed in this state books: usually what its outcome stands for ([Action.of]).
+     * `JourneyService` performs it before the strategy hears anything, so a strategy only ever sees
+     * [com.example.identity.core.orchestrator.domain.journey.JourneyEvent.ActionCompleted].
+     */
+    fun booking(tool: Tool, outcome: ToolOutcome.Completed): Action = Action.of(tool, outcome)
 
     /** `next.context` of the orchestrator-owned page this state maps to. */
     val selectionContext: String

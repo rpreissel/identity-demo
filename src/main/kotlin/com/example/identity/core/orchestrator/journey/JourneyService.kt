@@ -394,6 +394,11 @@ class JourneyService(
                 event = JourneyEvent.OfferExhausted((state as OfferingState).declined)
             }
         }
+        // A completed tool books what its state says; the strategy hears only ActionCompleted.
+        if (event is JourneyEvent.Completed) {
+            val booking = state.booking(event.tool, event.outcome)
+            transition = Transition.Perform(booking, resumeState = state)
+        }
         // A cancelled precondition cancels the journey that waited on it; only an optional
         // sub-journey's end is left to the strategy (RequireSubJourney.optional).
         if (event is JourneyEvent.SubJourneyCancelled && !event.optional) transition = Transition.Cancel
@@ -450,7 +455,14 @@ class JourneyService(
 
     /** Resumes at resumeState against a fresh context, because the action has just changed what the old one showed. */
     private fun perform(journey: AuthJourney, channel: ChannelSession, transition: Transition.Perform): Step {
-        val demoNotice = actionExecutor.perform(journey, channel, transition.action)
+        val demoNotice = try {
+            actionExecutor.perform(journey, channel, transition.action)
+        } catch (e: InvitationRefusedException) {
+            // The trace says why the journey ended, as for any other Abort.
+            journeyTraceService.record(channel.forLog(), journey.forLog(), "InvitationRefused",
+                detail = mapOf("decision" to "Abort", "reason" to e.refusal.text))
+            return applyTransition(journey, channel, Transition.Abort(e.refusal.text))
+        }
         codec.write(journey, transition.resumeState)
         val step = advance(journey, channel, JourneyEvent.ActionCompleted)
         return if (demoNotice == null) step else step.copy(demo = step.demo.orEmpty() + demoNotice)
