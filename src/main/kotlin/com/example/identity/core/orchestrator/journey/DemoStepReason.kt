@@ -65,8 +65,7 @@ internal object DemoStepReason {
         RegisterEnrollFirstState.EnrollFirstStart -> Text("Registrierung mit Einrichtung zuerst: Wer Sie sind, kann später noch geklärt werden.")
         RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind -> Text("Dieses Gerät gehört schon zu einem anderen Konto - bevor es umgehängt wird, wird gefragt.")
         is RegisterEnrollFirstState.EnrollFirstAttestingEmail -> Text("Registrierung mit Einrichtung zuerst: Pflichtschritt 1 ist eine bestätigte E-Mail-Adresse.")
-        is RegisterEnrollFirstState.EnrollFirstEnrollingSms -> Text("Registrierung mit Einrichtung zuerst: Pflichtschritt 2 ist eine Handynummer für SMS.")
-        is RegisterEnrollFirstState.EnrollFirstEnrolling -> Text("E-Mail und SMS reichen noch nicht für das verlangte Sicherheitsniveau - ein weiteres Verfahren fehlt.")
+        is RegisterEnrollFirstState.EnrollFirstEnrolling -> Text("Registrierung mit Einrichtung zuerst: Das Konto braucht ein Anmeldeverfahren, das das verlangte Sicherheitsniveau erreicht.")
         is RegisterEnrollFirstState.EnrollFirstConfirmingEmail -> Text("Ein neues Konto braucht eine bestätigte E-Mail-Adresse - sie ist Voraussetzung für ein Passwort.")
         is RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation -> Text("Damit Sie Ihre Anmeldeverfahren später verwalten können, braucht das Konto noch ein Verfahren anderer Art als die schon eingerichteten. Die Liste zeigt, welche hier passen.")
 

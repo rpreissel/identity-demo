@@ -391,6 +391,16 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
     }
 
+    given("no account yet (a registration before its first method)") {
+        `when`("enrollment candidates are resolved") {
+            val offered = policy.enrollmentCandidates(candidates(nothingProven, AcrLevel.LOA2, account = null))
+
+            then("every enrollment tool is offered, as for an account without methods") {
+                offered shouldContainExactlyInAnyOrder listOf(ToolId("enroll-sms"), ToolId("enroll-passkey"))
+            }
+        }
+    }
+
     given("an account with sms enrolled under loa1") {
         val acc = account(method("sms", enrolledUnderAcr = AcrLevel.LOA1))
 

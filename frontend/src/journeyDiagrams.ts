@@ -177,7 +177,6 @@ export const CURRENT_STEP_BY_STATE_TYPE: Partial<Record<keyof typeof JOURNEY_DIA
   registerEnrollFirst: {
     EnrollFirstStart: { index: 0 },
     EnrollFirstAttestingEmail: { index: 0 },
-    EnrollFirstEnrollingSms: { index: 1 },
     EnrollFirstEnrolling: { index: 1 },
     EnrollFirstConfirmingEmail: { index: 0 },
     EnrollFirstSecondFactorKindObligation: { index: 2 },

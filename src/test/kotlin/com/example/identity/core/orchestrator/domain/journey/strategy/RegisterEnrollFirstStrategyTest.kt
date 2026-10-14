@@ -18,6 +18,7 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -55,55 +56,27 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         }
     }
 
-    given("Start, email enrollment tool unavailable right now (admin-disabled)") {
+    given("Start, email attestation tool unavailable right now (admin-disabled)") {
         val theCtx = ctx(account = null, availableTools = StrategyTestFixtures.allToolIds - ToolId("confirm-email"))
 
         `when`("started") {
             val transition = strategy.transition(RegisterEnrollFirstState.EnrollFirstStart, JourneyEvent.Started, theCtx)
-            then("skips straight to the mandatory SMS step instead of blocking the journey") {
-                transition shouldBe
-                    Transition.To(RegisterEnrollFirstState.EnrollFirstEnrollingSms(Offer(listOf(ToolId("enroll-sms")))))
-            }
-        }
-    }
-
-    given("Start, neither email nor SMS enrollment tool available") {
-        val theCtx = ctx(account = null, availableTools = StrategyTestFixtures.allToolIds - ToolId("confirm-email") - ToolId("enroll-sms"))
-
-        `when`("started") {
-            val transition = strategy.transition(RegisterEnrollFirstState.EnrollFirstStart, JourneyEvent.Started, theCtx)
-            then("falls back to the old free-choice-among-everything offer instead of crashing on a missing account") {
+            then("skips to the free choice of a method instead of blocking or crashing on the missing account") {
                 val next = transition.shouldBeInstanceOf<Transition.To>().state
                 next.shouldBeInstanceOf<RegisterEnrollFirstState.EnrollFirstEnrolling>().offered shouldContainExactlyInAnyOrder
-                    listOf(ToolId("enroll-device"), ToolId("enroll-kobil"), ToolId("enroll-qr"))
+                    listOf(ToolId("enroll-sms"), ToolId("enroll-device"), ToolId("enroll-kobil"), ToolId("enroll-qr"))
             }
         }
     }
 
-    given("EnrollFirstAttestingEmail, an account whose email is confirmed") {
-        val acc = account(method("email", AcrLevel.LOA1), emailConfirmed = true)
-        val theCtx = ctx(account = acc, evidence = evidence(listOf("email"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
+    given("EnrollFirstAttestingEmail, no account created yet") {
         val state = RegisterEnrollFirstState.EnrollFirstAttestingEmail(Offer(listOf(ToolId("confirm-email"))))
 
         `when`("resumed after adopting the attestation (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
-            then("moves on to the mandatory SMS step - not to the free-choice menu") {
-                transition shouldBe
-                    Transition.To(RegisterEnrollFirstState.EnrollFirstEnrollingSms(Offer(listOf(ToolId("enroll-sms")))))
-            }
-        }
-    }
-
-    given("EnrollFirstEnrollingSms, floor reached, but email is still unconfirmed") {
-        val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = false)
-        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
-        val state = RegisterEnrollFirstState.EnrollFirstEnrollingSms(Offer(listOf(ToolId("enroll-sms"))))
-
-        `when`("resumed after adopting the credential (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
-            then("falls into the normal obligation cascade - email is always obligatory here") {
-                transition shouldBe
-                    Transition.To(RegisterEnrollFirstState.EnrollFirstConfirmingEmail(Offer(listOf(ToolId("confirm-email")))))
+            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, ctx(account = null))
+            then("moves on to the free choice of a method - no method is prescribed") {
+                val next = transition.shouldBeInstanceOf<Transition.To>().state
+                next.shouldBeInstanceOf<RegisterEnrollFirstState.EnrollFirstEnrolling>().offered shouldContain ToolId("enroll-sms")
             }
         }
     }

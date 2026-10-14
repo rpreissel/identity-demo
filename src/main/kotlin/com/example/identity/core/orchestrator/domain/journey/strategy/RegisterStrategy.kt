@@ -13,7 +13,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.policy.Reachability
-import com.example.identity.contract.tool_api.ToolId
 
 /**
  * REGISTER, ident first (docs/journeys/register.md). Reached only through
@@ -43,7 +42,8 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
             }
 
             is AuthChoice -> when (event) {
-                is JourneyEvent.OfferExhausted -> afterAuthDeclined(ctx, event.declined)
+                // Nothing else provable is left: identification is the only way forward.
+                is JourneyEvent.OfferExhausted -> AuthEnrollCore.remainingAuthOr(ctx, event.declined) { offerIdentification(ctx) }
                 // No factor-kind or email obligation: a rediscovered, set-up account finishing here
                 // is an ordinary login, not a fresh registration.
                 else -> AuthEnrollCore.afterProof(ctx, resumeAtStart = RegisterState.Start)
@@ -78,18 +78,6 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
         } else {
             Transition.To(RegisterState.Identifying(Offer(idents)))
         }
-    }
-
-    /** Nothing else provable is left: identification is the only way forward. */
-    private fun afterAuthDeclined(ctx: JourneyContext, alreadyDeclined: Set<ToolId>): Transition {
-        val account = ctx.account
-        if (account != null) {
-            val remaining = CandidateTools.forAuth(account, ctx.acrFloor, ctx) - alreadyDeclined
-            if (remaining.isNotEmpty()) {
-                return Transition.To(AuthChoice(Offer(remaining)))
-            }
-        }
-        return offerIdentification(ctx)
     }
 
     private fun afterIdentification(ctx: JourneyContext): Transition {

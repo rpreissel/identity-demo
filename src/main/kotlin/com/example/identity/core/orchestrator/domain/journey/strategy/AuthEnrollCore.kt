@@ -36,6 +36,15 @@ internal object AuthEnrollCore {
     }
 
     /**
+     * After declining an auth offer: the account's remaining auth tools without the [declined] ones,
+     * or [whenNone] when nothing provable is left (or there is no account yet).
+     */
+    inline fun remainingAuthOr(ctx: JourneyContext, declined: Set<ToolId>, whenNone: () -> Transition): Transition {
+        val remaining = ctx.account?.let { CandidateTools.forAuth(it, ctx.acrFloor, ctx) - declined }.orEmpty()
+        return if (remaining.isNotEmpty()) Transition.To(AuthChoice(Offer(remaining))) else whenNone()
+    }
+
+    /**
      * [emailObligation] is normally discharged before any enrollment ([confirmEmail]). It is
      * re-checked here for the case that no attesting tool was available back then. Only
      * [RegisterStrategy] passes `true`.

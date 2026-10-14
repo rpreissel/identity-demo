@@ -28,31 +28,24 @@ Schalter aus. Lesen und setzen lässt er sich über
 
 **Grundidee:** Zum Start ist kein Konto nötig. Das Konto entsteht erst, wenn das erste Verfahren
 fertig eingerichtet ist, und nicht schon bei der Identifizierung. Das erledigt die allgemeine Aktion
-`Action.AdoptCredential` im `JourneyService`. Bis dahin rechnet die Strategie mit einem
-Platzhalter-Konto. Es existiert nur im Arbeitsspeicher und wird nie gespeichert
-(`AccountProfile(accountId = -1, ...)`).
+`Action.AdoptCredential` im `JourneyService`. Bis dahin fragt die Strategie die
+Einrichtungs-Kandidaten ohne Konto ab (`CandidateTools.forEnrollment(account = null, …)`): Dann ist
+noch kein Verfahren aktiv.
 
-**Feste Reihenfolge: erst E-Mail, dann SMS.** In der normalen Variante (`RegisterState`,
-`AuthEnrollCore`) wählt der Nutzer frei. Diese Variante verlangt dagegen eine feste Reihenfolge:
+**Zuerst die E-Mail-Adresse.** Der erste Schritt ist fest: Der Nutzer bestätigt seine
+E-Mail-Adresse (`EnrollFirstAttestingEmail`). Das ist ein `ATTESTATION`-Schritt, der eine Angabe
+bestätigt, und kein Einrichten eines Verfahrens. Er lässt sich nicht überspringen; wer ablehnt
+(`Abandoned`), bekommt ihn erneut angeboten. Hat der Betreiber das Tool gesperrt, entfällt der
+Schritt, und die Journey bleibt nicht stehen.
 
-1. Zuerst bestätigt der Nutzer seine E-Mail-Adresse (`EnrollFirstAttestingEmail`). Das ist ein
-   `ATTESTATION`-Schritt, der eine Angabe bestätigt, und kein Einrichten eines Verfahrens.
-2. Danach richtet er SMS ein (`EnrollFirstEnrollingSms`).
-
-Beide Schritte lassen sich nicht überspringen. Wer ablehnt (`Abandoned`), bekommt denselben Schritt
-erneut angeboten. Hat der Betreiber eines der beiden Tools gesperrt, entfällt nur dieser Schritt.
-Die Journey bleibt dadurch nicht stehen.
-
-**Danach die üblichen Pflichten.** Danach gelten dieselben Pflichten wie in der normalen Variante
-(Orchestrierung, Abschnitt 5), in dieser Reihenfolge:
+**Danach freie Wahl.** Ein bestimmtes Verfahren schreibt die Variante nicht vor. Der Nutzer wählt
+aus allen Einrichtungs-Tools (`EnrollFirstEnrolling`), wie in der normalen Variante. Welche
+Verfahren das Konto am Ende hat, regeln die üblichen Pflichten (Orchestrierung, Abschnitt 5), in
+dieser Reihenfolge:
 
 - ein weiteres Verfahren, falls das Niveau nicht reicht,
 - dann die E-Mail-Bestätigung,
 - dann die Pflicht zu einem Verfahren einer zweiten Faktorart.
-
-`EnrollFirstEnrolling` übernimmt alles, was E-Mail und SMS nicht abdecken, etwa ein höheres
-Sicherheitsniveau. Es ist außerdem der Startzustand, wenn beim Start weder E-Mail noch SMS
-verfügbar waren.
 
 **Die Identifizierung am Ende.** Erst wenn alle Pflichten erfüllt sind, wird die Identifizierung
 **einmal angeboten, aber nie erzwungen**. Das geschieht über die Sub-Journey `RE_IDENTIFY`
@@ -82,16 +75,10 @@ Anmeldung per E-Mail-Adresse voll nutzbar ([09-dpop.md](../09-dpop.md) Abschnitt
 stateDiagram-v2
   [*] --> EnrollFirstStart
   EnrollFirstStart --> EnrollFirstAttestingEmail: Start - die Adresse kommt zuerst
-  EnrollFirstStart --> EnrollFirstEnrollingSms: Start, kein Bestätigungs-Tool verfügbar
-  EnrollFirstStart --> EnrollFirstEnrolling: Start, weder E-Mail- noch SMS-Tool verfügbar
+  EnrollFirstStart --> EnrollFirstEnrolling: Start, kein Bestätigungs-Tool verfügbar
   EnrollFirstAttestingEmail --> EnrollFirstAttestingEmail: abgelehnt - derselbe Schritt wird erneut angeboten
-  EnrollFirstAttestingEmail --> EnrollFirstEnrollingSms: E-Mail bestätigt
-  EnrollFirstEnrollingSms --> EnrollFirstEnrollingSms: abgelehnt - derselbe Schritt wird erneut angeboten
-  EnrollFirstEnrollingSms --> EnrollFirstEnrolling: SMS eingerichtet, aber Niveau reicht noch nicht
-  EnrollFirstEnrollingSms --> EnrollFirstConfirmingEmail: SMS eingerichtet, Niveau erreicht, E-Mail-Pflicht noch offen
-  EnrollFirstEnrollingSms --> EnrollFirstSecondFactorKindObligation: SMS eingerichtet, Niveau erreicht, E-Mail bereits bestätigt, loa2 sonst nicht erreichbar, nur eine Faktorart aktiv
-  EnrollFirstEnrollingSms --> RE_IDENTIFY: SMS eingerichtet, Niveau erreicht, keine Pflicht offen - Identifizierung wird angeboten
-  EnrollFirstEnrolling --> EnrollFirstEnrolling: Verfahren eingerichtet, Niveau reicht noch nicht
+  EnrollFirstAttestingEmail --> EnrollFirstEnrolling: E-Mail bestätigt
+  EnrollFirstEnrolling --> EnrollFirstEnrolling: abgelehnt - derselbe Schritt wird erneut angeboten, oder Verfahren eingerichtet, Niveau reicht noch nicht
   EnrollFirstEnrolling --> EnrollFirstConfirmingEmail: Niveau erreicht, E-Mail-Pflicht noch offen
   EnrollFirstEnrolling --> EnrollFirstSecondFactorKindObligation: Niveau erreicht, E-Mail bereits bestätigt, loa2 sonst nicht erreichbar, nur eine Faktorart aktiv
   EnrollFirstEnrolling --> RE_IDENTIFY: Niveau erreicht, keine Pflicht offen - Identifizierung wird angeboten

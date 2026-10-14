@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.InvitationAcceptance
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
@@ -9,7 +10,6 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
-import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.ToolId
 
 /**
@@ -41,13 +41,13 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
             is WebSelectMethodState.AfterIdentification -> afterProof(ctx)
         }
 
-    private fun insufficientInvitation() =
-        Transition.Abort(Text("Dieses Einmalkennwort genuegt dem verlangten Sicherheitsniveau nicht"))
-
     private fun afterProof(ctx: JourneyContext): Transition {
-        // A process access is complete with its one proof; it has nothing else to offer.
+        // A process access is complete with its one proof; it has nothing else to offer. Its level
+        // was already checked on acceptance (InvitationAcceptance); this catches what the level
+        // alone does not say, such as a second factor the floor demands.
         if (ctx.invitation != null) {
-            return if (ctx.policy.isSatisfied(ctx.evidence, ctx.acrFloor, null)) Transition.Authenticated else insufficientInvitation()
+            return if (ctx.policy.isSatisfied(ctx.evidence, ctx.acrFloor, null)) Transition.Authenticated
+            else Transition.Abort(InvitationAcceptance.Refusal.BELOW_REQUIRED_LEVEL.text)
         }
         val account = ctx.account
         if (account != null && ctx.policy.isSatisfied(ctx.evidence, ctx.acrFloor, account)) return Transition.Authenticated

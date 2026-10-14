@@ -102,8 +102,9 @@ class DefaultAuthPolicy(
     }
 
     override fun enrollmentCandidates(ctx: CandidateContext): List<ToolId> {
-        val account = checkNotNull(ctx.account) { "enrollmentCandidates requires an account in CandidateContext" }
-        val activeMethods = account.activeAuthenticationMethods.map { it.method }.toSet()
+        // Without an account (a registration before its first method) nothing is active yet.
+        val account = ctx.account
+        val activeMethods = account?.activeAuthenticationMethods.orEmpty().map { it.method }.toSet()
         return toolRegistry.tools()
             .filter { it.role == ToolRole.ENROLLMENT }
             // Singleton methods disappear once active; multi-instance methods (device) stay, so a

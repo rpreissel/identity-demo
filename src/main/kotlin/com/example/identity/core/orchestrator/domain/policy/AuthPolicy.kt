@@ -37,7 +37,10 @@ interface AuthPolicy {
      */
     fun reachability(account: AccountProfile, requiredAcr: AcrLevel): Reachability
 
-    /** Which ENROLL tools would close the gap toward requiredAcr? */
+    /**
+     * Which ENROLL tools would close the gap toward requiredAcr? Also answers without an account,
+     * for a registration that has not created one yet.
+     */
     fun enrollmentCandidates(ctx: CandidateContext): List<ToolId>
 
     /**

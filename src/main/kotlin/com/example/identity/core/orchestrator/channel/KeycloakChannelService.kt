@@ -8,6 +8,7 @@ import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.account.AccountService
+import com.example.identity.core.orchestrator.domain.InvitationAcceptance
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
@@ -222,7 +223,7 @@ class KeycloakChannelService(
         OrchestratorException.invalidState(Text("Die Sitzung gehört zu einem anderen Konto"), detail)
 
     private fun invitationNotRaised() = OrchestratorException.invalidState(
-        Text("Dieses Einmalkennwort genuegt dem verlangten Sicherheitsniveau nicht"),
+        InvitationAcceptance.Refusal.BELOW_REQUIRED_LEVEL.text,
         "invitation session asked for a flow run of its own"
     )
 

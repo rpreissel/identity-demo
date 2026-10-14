@@ -94,7 +94,8 @@ internal object CandidateTools {
             method != null && descriptor.usableByCaller(method.boundKeyRef, ctx.bindingKeyRef, ctx.linkedAccountId, account.accountId)
         }
 
-    fun forEnrollment(account: AccountProfile, targetAcr: AcrLevel, ctx: JourneyContext): List<ToolId> =
+    /** [account] is null for a registration that has not created its account yet. */
+    fun forEnrollment(account: AccountProfile?, targetAcr: AcrLevel, ctx: JourneyContext): List<ToolId> =
         ctx.filterAvailable(ctx.policy.enrollmentCandidates(ctx.candidateContext(targetAcr, account)))
 
     /** The factor kinds the account's active methods cover, read from their enrollment descriptors. */

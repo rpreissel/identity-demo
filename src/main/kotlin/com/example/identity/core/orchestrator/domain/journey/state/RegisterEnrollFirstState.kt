@@ -39,23 +39,12 @@ sealed interface RegisterEnrollFirstState : JourneyState {
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
         override val selectionContext: String get() = "enrollment"
         override val selectionTitle: Text get() = Text("E-Mail-Adresse bestätigen")
-        override val selectionDescription: Text get() = Text("Zuerst wird Ihre E-Mail-Adresse bestätigt - Ihr Konto wird darüber gefunden. SMS folgt danach, die Identifikation ist optional und kommt erst zum Schluss.")
-    }
-
-    /** Mandatory second step after [EnrollFirstAttestingEmail], equally non-skippable. */
-    data class EnrollFirstEnrollingSms(
-        override val offer: Offer
-    ) : RegisterEnrollFirstState, OfferingState {
-        override fun withOffer(offer: Offer) = copy(offer = offer)
-        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
-        override val selectionContext: String get() = "enrollment"
-        override val selectionTitle: Text get() = Text("SMS als Anmeldeverfahren einrichten")
-        override val selectionDescription: Text get() = Text("Danach wird SMS als zweites Anmeldeverfahren eingerichtet - die Identifikation ist optional und kommt erst zum Schluss.")
+        override val selectionDescription: Text get() = Text("Zuerst wird Ihre E-Mail-Adresse bestätigt - Ihr Konto wird darüber gefunden. Danach richten Sie ein Anmeldeverfahren ein, die Identifikation ist optional und kommt erst zum Schluss.")
     }
 
     /**
-     * Fallback when the ACR floor is still not reached after email and SMS, or when neither was
-     * available at the start.
+     * The free choice of a method after the email step, and again while the ACR floor is not
+     * reached.
      */
     data class EnrollFirstEnrolling(
         override val offer: Offer

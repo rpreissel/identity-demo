@@ -1,9 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -15,13 +13,11 @@ import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifySta
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrollFirstState
 import com.example.identity.core.orchestrator.domain.journey.toEnrollAbortMessage
 import com.example.identity.core.orchestrator.domain.policy.Reachability
-import com.example.identity.contract.tool_api.ToolRole
-import com.example.identity.contract.tool_api.ToolId
 
 /**
  * REGISTER, "Enrollment zuerst" (docs/journeys/register-enroll-first.md). Reached only through
- * [RegisterDispatchStrategy]. Mandatory order: email confirmation, then SMS, then the optional
- * identification ([offerIdentificationOrFinish]). A device linked to another account is asked
+ * [RegisterDispatchStrategy]. Mandatory order: email confirmation, then a method of the user's choice, then the
+ * optional identification ([offerIdentificationOrFinish]). A device linked to another account is asked
  * about at the end ([finishOrOfferRebind]), once the account may have an identity to name.
  */
 class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
@@ -41,8 +37,7 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
             }
 
             // Every offering state here is mandatory: a completed tool is adopted, only the next step differs.
-            is RegisterEnrollFirstState.EnrollFirstAttestingEmail -> offerSmsEnrollment(ctx)
-            is RegisterEnrollFirstState.EnrollFirstEnrollingSms -> afterForcedEnrollment(ctx)
+            is RegisterEnrollFirstState.EnrollFirstAttestingEmail -> afterEmailStep(ctx)
             is RegisterEnrollFirstState.EnrollFirstEnrolling -> afterEnrollment(ctx, emailObligation = true)
             is RegisterEnrollFirstState.EnrollFirstConfirmingEmail -> afterEnrollment(ctx, emailObligation = false)
             // The email obligation is already discharged here.
@@ -55,31 +50,24 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
 
     /**
      * Mandatory step 1: confirm the address, which is account infrastructure (lookup tools,
-     * `enroll-password`), not a login method. Falls through to step 2 if no attesting tool is available.
+     * `enroll-password`), not a login method. Skipped if no attesting tool is available.
      */
     private fun offerEmailConfirmation(ctx: JourneyContext): Transition {
         val candidates = CandidateTools.forAttestation(AttributeType.EMAIL, ctx)
-        return if (candidates.isNotEmpty()) Transition.To(RegisterEnrollFirstState.EnrollFirstAttestingEmail(Offer(candidates))) else offerSmsEnrollment(ctx)
-    }
-
-    /** Mandatory step 2; falls through to [afterForcedEnrollment] if no SMS tool is available. */
-    private fun offerSmsEnrollment(ctx: JourneyContext): Transition {
-        val candidates = enrollmentCandidatesFor(SMS_METHOD, ctx)
-        return if (candidates.isNotEmpty()) Transition.To(RegisterEnrollFirstState.EnrollFirstEnrollingSms(Offer(candidates))) else afterForcedEnrollment(ctx)
+        return if (candidates.isNotEmpty()) Transition.To(RegisterEnrollFirstState.EnrollFirstAttestingEmail(Offer(candidates))) else afterEmailStep(ctx)
     }
 
     /**
-     * Both mandatory steps are done or skipped. With an account, the obligation cascade continues;
-     * without one (neither tool was available), a free choice among all enrollment tools follows.
+     * The email step is done or skipped. With an account, the obligation cascade continues; without
+     * one, a free choice among all enrollment tools follows. Which methods the account ends up with
+     * is left to the cascade (level, then a second factor kind), not prescribed here.
      */
-    private fun afterForcedEnrollment(ctx: JourneyContext): Transition =
+    private fun afterEmailStep(ctx: JourneyContext): Transition =
         if (ctx.account != null) afterEnrollment(ctx, emailObligation = true) else offerEnrollment(ctx)
 
+    /** No account exists yet; it is created on the first completed enrollment. */
     private fun offerEnrollment(ctx: JourneyContext): Transition {
-        // No account exists yet. The candidate query reads only methods and emailConfirmed, so an
-        // unpersisted blank placeholder is enough.
-        val blankAccount = AccountProfile(accountId = AccountId(-1), personId = null, authenticationMethods = emptyList())
-        val candidates = CandidateTools.forEnrollment(blankAccount, ctx.acrFloor, ctx)
+        val candidates = CandidateTools.forEnrollment(account = null, ctx.acrFloor, ctx)
         return if (candidates.isNotEmpty()) {
             Transition.To(RegisterEnrollFirstState.EnrollFirstEnrolling(Offer(candidates)))
         } else {
@@ -135,15 +123,4 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
         } else {
             Transition.Authenticated
         }
-
-    /** Enrollment tools for one method name, found through the catalog, never a fixed toolId. */
-    private fun enrollmentCandidatesFor(method: String, ctx: JourneyContext): List<ToolId> =
-        ctx.catalog.tools()
-            .filter { it.role == ToolRole.ENROLLMENT && it.method == method }
-            .map { it.toolId }
-            .filter { it in ctx.availableTools }
-
-    private companion object {
-        const val SMS_METHOD = "sms"
-    }
 }

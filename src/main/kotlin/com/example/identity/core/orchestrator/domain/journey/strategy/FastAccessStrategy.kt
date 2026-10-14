@@ -11,7 +11,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
-import com.example.identity.contract.tool_api.ToolId
 
 /**
  * Into a login on this device as fast as possible, and in a way that works again next time
@@ -32,12 +31,13 @@ class FastAccessStrategy : IntentStrategy<FastAccessState> {
                 else -> firstOffer(ctx)
             }
             is FastAccessState.PreferredAuth -> when (event) {
-                is JourneyEvent.Abandoned -> afterAuthDeclined(ctx, alreadyDeclined = setOf(state.toolId))
+                is JourneyEvent.Abandoned -> AuthEnrollCore.remainingAuthOr(ctx, declined = setOf(state.toolId)) { requireRegister() }
                 else -> AuthEnrollCore.afterProof(ctx, resumeAtStart = FastAccessState.Start)
             }
 
             is AuthChoice -> when (event) {
-                is JourneyEvent.OfferExhausted -> afterAuthDeclined(ctx, event.declined)
+                // Nothing else provable is left on this device: hand off to a fresh identification.
+                is JourneyEvent.OfferExhausted -> AuthEnrollCore.remainingAuthOr(ctx, event.declined) { requireRegister() }
                 else -> AuthEnrollCore.afterProof(ctx, resumeAtStart = FastAccessState.Start)
             }
 
@@ -52,18 +52,6 @@ class FastAccessStrategy : IntentStrategy<FastAccessState> {
         CandidateTools.preferredDeviceAuth(account, ctx)?.let { return Transition.To(FastAccessState.PreferredAuth(it)) }
         val candidates = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
         return if (candidates.isNotEmpty()) Transition.To(AuthChoice(Offer(candidates))) else requireRegister()
-    }
-
-    /** Nothing (or nothing else) provable is left on this device: hand off to a fresh identification. */
-    private fun afterAuthDeclined(ctx: JourneyContext, alreadyDeclined: Set<ToolId>): Transition {
-        val account = ctx.account
-        if (account != null) {
-            val remaining = CandidateTools.forAuth(account, ctx.acrFloor, ctx) - alreadyDeclined
-            if (remaining.isNotEmpty()) {
-                return Transition.To(AuthChoice(Offer(remaining)))
-            }
-        }
-        return requireRegister()
     }
 
     /**
