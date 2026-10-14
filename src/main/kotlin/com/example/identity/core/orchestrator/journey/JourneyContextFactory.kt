@@ -14,6 +14,7 @@ import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import org.springframework.stereotype.Component
 import com.example.identity.core.orchestrator.domain.FeatureFlagProvider
+import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 
 /**
  * The reading phase of a transition: gathers what a strategy may look at (account, evidence,
@@ -45,9 +46,12 @@ class JourneyContextFactory(
             policy = authPolicy,
             catalog = toolRegistry,
             availableTools = routing.availableToolsOf(channel),
-            featureFlags = featureFlagProviders.flatMapTo(mutableSetOf()) { it.activeFlags() }
+            featureFlags = journey.featureFlags
         )
     }
+
+    /** The switches active right now; a journey takes them over once, when it starts. */
+    fun activeFeatureFlags(): Set<JourneyFeatureFlag> = featureFlagProviders.flatMapTo(mutableSetOf()) { it.activeFlags() }
 
     fun acrFloorOf(channel: ChannelSession): AcrLevel =
         channel.acrFloor?.let(AcrLevel::parse) ?: AcrLevels.DEFAULT_REQUIRED_ACR

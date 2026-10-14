@@ -497,7 +497,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   Dann bestätigt er seine E-Mail-Adresse und richtet so lange Verfahren ein, bis das verlangte Niveau
   erreicht ist. Ein Schalter lässt die Registrierung auch mit dem Einrichten eines Verfahrens
   beginnen (Experiment „Enrollment zuerst“). Die Identifizierung wird dann nur noch angeboten.
-  *Im Code:* Intent `REGISTER`, Varianten `RegisterStrategy` und `RegisterEnrollFirstStrategy`.
+  *Im Code:* Intent `REGISTER`, `RegisterStrategy`; die Variante schaltet `JourneyFeatureFlag.REGISTER_ENROLL_FIRST`.
   *Mehr dazu:* [journeys/register](../journeys/register.md).
 
 ## S

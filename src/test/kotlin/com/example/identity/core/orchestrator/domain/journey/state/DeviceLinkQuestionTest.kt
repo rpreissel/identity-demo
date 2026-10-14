@@ -21,9 +21,5 @@ class DeviceLinkQuestionTest : BehaviorSpec({
             rebind.cancelLabel shouldBe offer.cancelLabel
             rebind.copy(cancelLabel = rebindOrCancel.cancelLabel) shouldBe rebindOrCancel
         }
-
-        then("the 'Enrollment zuerst' twin asks the same rebind question") {
-            RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind.question shouldBe rebind
-        }
     }
 })

@@ -519,7 +519,7 @@ E-Mail-Adresse, dann ein ausreichendes Anmeldeverfahren. Die Bestätigung ist ke
 sondern eine Grundlage des Kontos. Drei Tools finden das Konto über die E-Mail-Adresse, und
 `enroll-password` setzt sie voraus. Käme die Bestätigung später, könnte `enroll-password` im ersten
 Angebot von `Enrolling` nicht auftauchen. Dieselbe Reihenfolge gilt im Experiment „Erst
-Anmeldeverfahren einrichten“ (`EnrollFirstAttestingEmail`,
+Anmeldeverfahren einrichten“ (dort ist `ConfirmingEmail` der erste Schritt,
 [register-enroll-first.md](journeys/register-enroll-first.md)).
 
 Ist kein Tool zum Bestätigen verfügbar, weil der Betreiber es gesperrt hat, wird der Schritt
@@ -551,7 +551,7 @@ nie `FAST_ACCESS`.
 Die Bestätigung der E-Mail-Adresse ist kein Einrichtungsschritt
 ([ADR-17](adr/ADR-017-adresse-bestaetigen-und-e-mail-login-einrichten-sind.md)). Deshalb gilt
 die Pflicht in **beiden** Kanälen und auch im Experiment „Erst Anmeldeverfahren einrichten“
-(`EnrollFirstSecondFactorKindObligation`). `RegisterStrategy` setzt dafür am Ergebnis von
+(derselbe Zustand `SecondFactorKindObligation`). `RegisterStrategy` setzt dafür am Ergebnis von
 `AuthEnrollCore.afterEnrollment` an. Anders als `AuthChoice` und `Enrolling` gehört dieser Zustand
 allein zu `RegisterState`.
 
@@ -798,7 +798,7 @@ Das ist die Regel hinter allen Punkten oben. Nach ihr entscheidet sich auch jede
 Zweifelsfall. Sie unterscheidet zwei Arten von festgehaltenen Werten:
 
 - Ein festgehaltener Wert ist **richtig**, wenn er eine Vergangenheit festhält, die sich später
-  nicht mehr feststellen lässt. Beispiele sind `StepUpState.startingAcr`, `MethodEvidence` als
+  nicht mehr feststellen lässt. Beispiele sind `StepUpState.Goal.startingAcr`, `MethodEvidence` als
   Nachweis und die Felder im Protokoll.
 - Er ist **falsch**, wenn er einen aktuellen Stand festschreibt, der bei der Ausführung neu gelesen
   werden müsste. Schwellen und `accountId`-Felder, die die Strategie in Zustände schreibt, gehören

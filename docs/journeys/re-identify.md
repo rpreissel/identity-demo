@@ -15,7 +15,7 @@ Ablauf, den andere Journeys starten. Diese Journeys fordern sie an:
   Kontos das fehlende Niveau liefern kann.
 - [`REGISTER`](register.md), und zwar über `AuthEnrollCore.offerEnrollment`, wenn ein neues
   Verfahren erst nach einer erneuten Identifizierung eingerichtet werden darf.
-- Das Experiment „Erst Anmeldeverfahren einrichten“ (`RegisterEnrollFirstStrategy`, siehe
+- Das Experiment „Erst Anmeldeverfahren einrichten“ (`RegisterStrategy`, siehe
   [register-enroll-first.md](register-enroll-first.md)).
 
 Es gibt nur diese eine Umsetzung und nicht sechs fast gleiche. `RE_IDENTIFY` ist nie der Einstieg
@@ -43,7 +43,7 @@ Angebot und die bisherigen Ablehnungen. Für sich allein erreicht `ident-fsc` da
 
 **Eigener Text für das Experiment.** Der Standardtext lautet „Sicherheitsniveau mit den
 vorhandenen Anmeldeverfahren nicht erreichbar“. Er passt nur für `FAST_ACCESS`, `LOOKUP_LOGIN`,
-`STEP_UP` und `WEB_SELECT_METHOD`. Für das abschließende Angebot von `RegisterEnrollFirstStrategy`
+`STEP_UP` und `WEB_SELECT_METHOD`. Für das abschließende Angebot im Experiment „Erst Anmeldeverfahren einrichten“
 ist er falsch.
 
 Deshalb hat `ReIdentifyState` ein optionales Feld `wording` vom Typ `Wording`. Heute gibt es dafür

@@ -1,4 +1,4 @@
-import { CURRENT_STEP_BY_STATE_TYPE, INTENT_DIAGRAM_KEY, JOURNEY_DIAGRAMS, diagramKeyForState } from './journeyDiagrams'
+import { CURRENT_STEP_BY_STATE_TYPE, INTENT_DIAGRAM_KEY, JOURNEY_DIAGRAMS } from './journeyDiagrams'
 import { language, resolveText, t, type TextRef } from './texts'
 import { catalogEntry } from './toolCatalog'
 import { metaFor } from './tools/registry'
@@ -81,7 +81,7 @@ export function intentLabel(intent: string | undefined): string {
 /** The diagram box a journey state stands for; the state's own name where no box is drawn for it. */
 export function stateLabel(intent: string | undefined, state: string | undefined): string {
   if (!state) return '–'
-  const key = intent ? diagramKeyForState(intent, state) : undefined
+  const key = intent ? INTENT_DIAGRAM_KEY[intent] : undefined
   const step = key ? CURRENT_STEP_BY_STATE_TYPE[key]?.[state] : undefined
   if (!key || !step) return state
   const spec = JOURNEY_DIAGRAMS[key]

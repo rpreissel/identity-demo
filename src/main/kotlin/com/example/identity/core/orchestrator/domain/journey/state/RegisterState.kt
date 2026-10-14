@@ -12,6 +12,12 @@ sealed interface RegisterState : JourneyState {
 
     data object Start : RegisterState, ToolFreeState
 
+    /**
+     * "Enrollment zuerst" only: where the run resumes once the closing, optional identification
+     * (`RE_IDENTIFY`) returns, however it ended.
+     */
+    data object Closing : RegisterState, ToolFreeState
+
     companion object {
         /**
          * The seed for [com.example.identity.core.orchestrator.domain.journey.Transition.RequireSubJourney],

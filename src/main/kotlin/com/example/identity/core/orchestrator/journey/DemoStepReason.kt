@@ -15,7 +15,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginSt
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
-import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrollFirstState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -56,18 +55,13 @@ internal object DemoStepReason {
         FastAccessState.Start -> Text("Automatisch anmelden: die App nimmt den schnellsten Weg, den dieses Gerät erlaubt. Ohne verknüpftes Konto führt er über eine Registrierung.")
         is FastAccessState.PreferredAuth -> Text("Dieses Gerät ist mit einem Konto verbunden - der schnellste Weg ist das Verfahren dieses Geräts.")
 
-        RegisterState.Start -> Text("Eine Registrierung beginnt immer mit der Frage, wer Sie sind.")
+        RegisterState.Start -> Text("Eine Registrierung beginnt mit der Frage, wer Sie sind - im Experiment „Einrichtung zuerst“ mit der E-Mail-Adresse.")
+        RegisterState.Closing -> Text("Registrierung mit Einrichtung zuerst: Das Konto ist eingerichtet, die Identifizierung wurde freiwillig angeboten.")
         is RegisterState.Identifying -> Text("Für ein Konto muss feststehen, wer Sie sind - deshalb zuerst eine Identifizierung.")
         is RegisterState.Assigning -> Text("Die Identität steht fest. Mit der Versichertennummer lässt sie sich einer versicherten Person zuordnen - freiwillig.")
         is RegisterState.ConfirmingEmail -> Text("Ein neues Konto braucht eine bestätigte E-Mail-Adresse - sie ist Voraussetzung für ein Passwort.")
         is RegisterState.SecondFactorKindObligation -> Text("Damit Sie Ihre Anmeldeverfahren später verwalten können, braucht das Konto noch ein Verfahren anderer Art als die schon eingerichteten. Die Liste zeigt, welche hier passen.")
 
-        RegisterEnrollFirstState.EnrollFirstStart -> Text("Registrierung mit Einrichtung zuerst: Wer Sie sind, kann später noch geklärt werden.")
-        RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind -> Text("Dieses Gerät gehört schon zu einem anderen Konto - bevor es umgehängt wird, wird gefragt.")
-        is RegisterEnrollFirstState.EnrollFirstAttestingEmail -> Text("Registrierung mit Einrichtung zuerst: Pflichtschritt 1 ist eine bestätigte E-Mail-Adresse.")
-        is RegisterEnrollFirstState.EnrollFirstEnrolling -> Text("Registrierung mit Einrichtung zuerst: Das Konto braucht ein Anmeldeverfahren, das das verlangte Sicherheitsniveau erreicht.")
-        is RegisterEnrollFirstState.EnrollFirstConfirmingEmail -> Text("Ein neues Konto braucht eine bestätigte E-Mail-Adresse - sie ist Voraussetzung für ein Passwort.")
-        is RegisterEnrollFirstState.EnrollFirstSecondFactorKindObligation -> Text("Damit Sie Ihre Anmeldeverfahren später verwalten können, braucht das Konto noch ein Verfahren anderer Art als die schon eingerichteten. Die Liste zeigt, welche hier passen.")
 
         LookupLoginState.Start -> Text("Anmeldung ohne Gerätebindung: Das Konto wird erst über Ihre Angaben gesucht.")
         is LookupLoginState.Credential -> Text("Anmeldung ohne Gerätebindung: E-Mail-Adresse oder Handynummer finden das Konto, das Verfahren beweist, dass Sie es sind.")
@@ -77,8 +71,7 @@ internal object DemoStepReason {
             else -> Text("Dieses Gerät gehört schon zu einem anderen Konto - bevor es umgehängt wird, wird gefragt.")
         }
 
-        is StepUpState.Start -> stepUpPurpose(state.targetAcr, state.startingAcr)
-        is StepUpState.AuthChoice -> stepUpPurpose(state.targetAcr, state.startingAcr)
+        is StepUpState -> stepUpPurpose(state.goal.targetAcr, state.goal.startingAcr)
 
         is FreshProofState.Start -> Text("Vor diesem Schritt wird geprüft, ob die Sitzung Sicherheitsniveau {ziel} hat und ihr letzter Nachweis frisch ist.", "ziel" to state.requiredAcr.value)
         is FreshProofState.Reproving -> Text("Der letzte Nachweis dieser Sitzung ist älter als fünf Minuten - vor dem nächsten Schritt muss ein Verfahren frisch bestätigt werden.")

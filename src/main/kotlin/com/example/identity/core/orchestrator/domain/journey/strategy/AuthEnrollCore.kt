@@ -47,14 +47,14 @@ internal object AuthEnrollCore {
     /**
      * [emailObligation] is normally discharged before any enrollment ([confirmEmail]). It is
      * re-checked here for the case that no attesting tool was available back then. Only
-     * [RegisterStrategy] passes `true`.
+     * [RegisterStrategy] passes `true`. [enforceEnrollmentFloor] as in [offerEnrollment].
      */
-    fun afterEnrollment(ctx: JourneyContext, emailObligation: Boolean, resumeAtStart: JourneyState): Transition {
+    fun afterEnrollment(ctx: JourneyContext, emailObligation: Boolean, resumeAtStart: JourneyState, enforceEnrollmentFloor: Boolean = true): Transition {
         val account = ctx.requireAccount()
         if (emailObligation) confirmEmail(account, ctx)?.let { return it }
         val reachable = ctx.policy.reachability(account, ctx.acrFloor) is Reachability.Reachable
         if (!reachable || !ctx.policy.isSatisfied(ctx.evidence, ctx.acrFloor, account)) {
-            return offerEnrollment(account, ctx, emailObligation = false, resumeAtStart)
+            return offerEnrollment(account, ctx, emailObligation, resumeAtStart, enforceEnrollmentFloor)
         }
         return Transition.Authenticated
     }
@@ -75,10 +75,17 @@ internal object AuthEnrollCore {
      * Never offers a new method below [ENROLLMENT_FLOOR_ACR]: a credential keeps the level the
      * session had when it was enrolled (ADR-5), so a loa1 session would create a loa1 credential
      * forever that a later step-up rejects. Fixed at loa2, not the channel's floor. Below it, a fresh
-     * identification is offered. "Enrollment zuerst" accepts the loa1 cap on purpose.
+     * identification is offered. "Enrollment zuerst" accepts the loa1 cap on purpose and passes
+     * [enforceEnrollmentFloor] `false`: there the identification comes last, optionally.
      */
-    fun offerEnrollment(account: AccountProfile, ctx: JourneyContext, emailObligation: Boolean, resumeAtStart: JourneyState): Transition {
-        if (!ctx.policy.isSatisfied(ctx.evidence, ENROLLMENT_FLOOR_ACR, account)) {
+    fun offerEnrollment(
+        account: AccountProfile,
+        ctx: JourneyContext,
+        emailObligation: Boolean,
+        resumeAtStart: JourneyState,
+        enforceEnrollmentFloor: Boolean = true
+    ): Transition {
+        if (enforceEnrollmentFloor && !ctx.policy.isSatisfied(ctx.evidence, ENROLLMENT_FLOOR_ACR, account)) {
             val reidentTarget = AcrLevel.max(ENROLLMENT_FLOOR_ACR, ctx.acrFloor)
             return reIdentifyOr(reidentTarget, ctx, resumeWith = resumeAtStart) {
                 Transition.Abort(

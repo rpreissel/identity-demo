@@ -19,6 +19,7 @@ import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.UUID
 import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 
 /**
  * One run of one [AuthIntent]: a guided path with a goal (docs/04-orchestrierung.md #3). Belongs
@@ -78,6 +79,17 @@ class AuthJourney(
     /** Whether its parent carries on if this sub-journey is cancelled (`Transition.RequireSubJourney.optional`). */
     @Column(name = "optional_for_parent", nullable = false)
     var optionalForParent: Boolean = false
+
+    /**
+     * The [JourneyFeatureFlag]s active when this journey started, as their keys. A running journey
+     * keeps them, so flipping a switch only affects journeys started afterwards.
+     */
+    @Column(name = "feature_flags", nullable = false, length = 500)
+    var featureFlagKeys: String = ""
+
+    var featureFlags: Set<JourneyFeatureFlag>
+        get() = featureFlagKeys.split(',').filter { it.isNotEmpty() }.mapNotNull(JourneyFeatureFlag::ofKey).toSet()
+        set(value) { featureFlagKeys = value.joinToString(",") { it.key } }
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant? = createdAt

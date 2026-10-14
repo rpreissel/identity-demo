@@ -233,8 +233,8 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
   [Glossar](glossar.md#m)
 - **`RE_IDENTIFY`** → **Erneute Identifizierung**, nur als Sub-Journey. [Glossar](glossar.md#e)
 - **`REGISTER`** → **Registrierung**. [Glossar](glossar.md#r)
-- **`RegisterEnrollFirstStrategy`** → die Variante „Enrollment zuerst“ der **Registrierung**.
-  [Glossar](glossar.md#r)
+- **`REGISTER_ENROLL_FIRST`** (`JourneyFeatureFlag`) → schaltet die Variante „Enrollment zuerst“
+  der **Registrierung** ein. [Glossar](glossar.md#r)
 - **`RetractionSource`** (Spalte `claim_source` des Widerrufs) → die **Quelle** eines **Widerrufs**.
   [Glossar](glossar.md#q)
 

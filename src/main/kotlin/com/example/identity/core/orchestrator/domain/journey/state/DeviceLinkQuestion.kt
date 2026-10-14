@@ -9,10 +9,6 @@ import com.example.identity.contract.texts.Text
  * its own, shared by [LookupLoginState] and [RegisterState]. Only the [wording] is here; what
  * accepting and declining lead to is each strategy's (`deviceLinkAnswered`). Carries no account
  * id: `Action.LinkDevice` reads the account from the live session.
- *
- * Not a [RegisterEnrollFirstState]: `RegisterDispatchStrategy` tells the two REGISTER variants
- * apart by state type, so [RegisterEnrollFirstState.EnrollFirstConfirmDeviceRebind] stays a state
- * of its own, with the [Wording.REBIND] question.
  */
 data class DeviceLinkQuestion(val wording: Wording) : LookupLoginState, RegisterState, AnswerableState {
 

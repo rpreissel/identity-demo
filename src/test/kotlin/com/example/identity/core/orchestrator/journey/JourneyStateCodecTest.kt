@@ -9,7 +9,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMeth
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
-import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrollFirstState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.AuthIntent
@@ -29,8 +28,7 @@ class JourneyStateCodecTest : BehaviorSpec({
 
     val persistedNames = mapOf(
         FastAccessState::class to setOf("Start", "PreferredAuth", "AuthChoice", "Enrolling"),
-        RegisterState::class to setOf("Start", "Identifying", "DeviceLinkQuestion", "Assigning", "ConfirmingEmail", "SecondFactorKindObligation", "AuthChoice", "Enrolling"),
-        RegisterEnrollFirstState::class to setOf("EnrollFirstStart", "EnrollFirstAttestingEmail", "EnrollFirstEnrolling", "EnrollFirstConfirmingEmail", "EnrollFirstSecondFactorKindObligation", "EnrollFirstConfirmDeviceRebind"),
+        RegisterState::class to setOf("Start", "Closing", "Identifying", "DeviceLinkQuestion", "Assigning", "ConfirmingEmail", "SecondFactorKindObligation", "AuthChoice", "Enrolling"),
         LookupLoginState::class to setOf("Start", "Credential", "AdditionalFactor", "DeviceLinkQuestion"),
         WebSelectMethodState::class to setOf("SelectMethod", "AfterIdentification"),
         StepUpState::class to setOf("Start", "AuthChoice"),

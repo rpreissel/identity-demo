@@ -96,7 +96,7 @@ class JourneyTraceDetails(
             "decision" to "RequireSubJourney", "subIntent" to transition.intent.name,
             // Log only: both seed types carry a targetAcr under unrelated interfaces.
             "targetAcr" to when (val seed = transition.seedWith) {
-                is StepUpState -> seed.targetAcr
+                is StepUpState -> seed.goal.targetAcr
                 is ReIdentifyState -> seed.targetAcr
                 else -> null
             }

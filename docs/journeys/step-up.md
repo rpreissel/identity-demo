@@ -29,7 +29,8 @@ stateDiagram-v2
   end note
 ```
 
-**Was die Zustände enthalten.** Jeder Zustand enthält diese vier Felder:
+**Was die Zustände enthalten.** Beide Zustände tragen dasselbe Ziel (`StepUpState.Goal`), vom
+Start bis zum Ende unverändert. Es hat vier Felder:
 
 - `targetAcr` ist das Niveau, das dieser eine Lauf erreichen soll. Es ist nicht die dauerhafte
   Untergrenze des Kanals (Orchestrierung, Abschnitt 4).

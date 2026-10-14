@@ -9,6 +9,8 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
+import com.example.identity.core.orchestrator.domain.journey.state.StepUpState.Goal
+import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 import com.example.identity.contract.tool_api.claims.AcrLevel
 
@@ -18,22 +20,11 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
  */
 class StepUpStrategy : IntentStrategy<StepUpState> {
 
-    /** What both states carry through the whole run, so the helpers take it as one value. */
-    private data class Goal(
-        val targetAcr: AcrLevel,
-        val startingAcr: AcrLevel,
-        val allowReIdentification: Boolean,
-        val reason: StepUpState.Reason?
-    )
-
-    private val StepUpState.Start.goal get() = Goal(targetAcr, startingAcr, allowReIdentification, reason)
-    private val StepUpState.AuthChoice.goal get() = Goal(targetAcr, startingAcr, allowReIdentification, reason)
-
     override val intent = AuthIntent.STEP_UP
     override val stateRoots = listOf(StepUpState::class)
 
     /** Never entered without a target; only reachable as a sub-journey, which seeds the real one. */
-    override fun initialState(ctx: JourneyContext): StepUpState = StepUpState.Start(ctx.acrFloor, startingAcr = AcrLevel.NONE)
+    override fun initialState(ctx: JourneyContext): StepUpState = StepUpState.Start(AcrLevel.NONE upTo ctx.acrFloor)
 
     override fun transition(state: StepUpState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
@@ -63,10 +54,7 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
             // additional factor (StepUpState.AuthChoice.additionalFactorRound).
             val additionalFactorRound = ctx.evidence.methods.any { it.axis == EvidenceAxis.AUTHENTICATOR }
             return Transition.To(
-                StepUpState.AuthChoice(
-                    goal.targetAcr, goal.startingAcr, Offer(candidates), goal.allowReIdentification,
-                    reason = goal.reason, additionalFactorRound = additionalFactorRound
-                )
+                StepUpState.AuthChoice(goal, Offer(candidates), additionalFactorRound = additionalFactorRound)
             )
         }
         return offerReIdentOrGiveUp(
@@ -76,13 +64,12 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
     }
 
     /**
-     * Offers re-identification if allowed ([StepUpState.Start.allowReIdentification]) and able to
+     * Offers re-identification if allowed ([Goal.allowReIdentification]) and able to
      * close the gap; [whenNone] otherwise.
      */
     private fun offerReIdentOrGiveUp(goal: Goal, ctx: JourneyContext, whenNone: Transition): Transition {
         if (!goal.allowReIdentification) return whenNone
         // The whole goal, or the run would forget on return why and how it may step up.
-        val resume = StepUpState.Start(goal.targetAcr, goal.startingAcr, goal.allowReIdentification, goal.reason)
-        return reIdentifyOr(goal.targetAcr, ctx, resumeWith = resume) { whenNone }
+        return reIdentifyOr(goal.targetAcr, ctx, resumeWith = StepUpState.Start(goal)) { whenNone }
     }
 }

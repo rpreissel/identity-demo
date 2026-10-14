@@ -23,6 +23,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.AnswerableSta
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
+import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.core.orchestrator.domain.journey.state.ToolRef
 import com.example.identity.contract.tool_api.envelope.JourneyDebugStep
 import com.example.identity.contract.tool_api.envelope.Next
@@ -129,6 +130,7 @@ class JourneyService(
         journey.accountId = channel.accountId
         journey.parentJourneyId = parentJourneyId
         journey.optionalForParent = optionalForParent
+        journey.featureFlags = contextFactory.activeFeatureFlags()
         // Raising the level shows on the channel, direct or as a precondition. Only on a logged-in
         // channel: STEP_UP_IN_PROGRESS promises that cancelling leads back to AUTHENTICATED, which a
         // cold entry (a peer-login confirmation on a fresh channel) never was.
@@ -156,7 +158,7 @@ class JourneyService(
 
     /** Starts STEP_UP toward [targetAcr], entered directly by the App channel's step-up trigger. */
     fun startTowardAcr(channel: LiveChannel, targetAcr: AcrLevel, startingAcr: AcrLevel): Step =
-        start(channel, AuthIntent.STEP_UP, seed = StepUpState.forSubJourney(targetAcr, startingAcr))
+        start(channel, AuthIntent.STEP_UP, seed = StepUpState.forSubJourney(startingAcr upTo targetAcr))
 
     /**
      * Starts or restarts the intent this channel was entered with. The intent lives on the channel

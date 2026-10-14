@@ -43,7 +43,7 @@ data class JourneyContext(
      */
     val availableTools: Set<ToolId>,
     /**
-     * Runtime feature flags currently enabled ([JourneyFeatureFlag] names them). Resolved here because a
+     * Runtime feature flags enabled when this journey started ([JourneyFeatureFlag] names them). Resolved here because a
      * strategy never depends on a `@Service` itself.
      */
     val featureFlags: Set<JourneyFeatureFlag> = emptySet(),

@@ -5,19 +5,18 @@
 
 Die normale Registrierung beschreibt [`REGISTER`](register.md).
 
-Dies ist eine zweite, eigenständige Variante der Registrierung (`REGISTER`). Sie dreht die
+Dies ist eine zweite Variante der Registrierung (`REGISTER`). Sie dreht die
 Reihenfolge um: Der Nutzer richtet zuerst Anmeldeverfahren ein, und die Identifizierung wird erst
 am Ende angeboten.
 
-**Eigene Zustände, eigene Strategie.** Die Variante hat eigene Zustände (`RegisterEnrollFirstState`)
-und eine eigene Strategie. Keiner dieser Zustände wird mit `RegisterState`, `AuthChoice` oder
-`Enrolling` geteilt.
+**Dieselbe Strategie, dieselben Zustände.** Beide Varianten laufen in `RegisterStrategy` und nutzen
+dieselben Zustände (`RegisterState`, `Enrolling`, `DeviceLinkQuestion`). Die Strategie fragt an
+wenigen Stellen den Schalter: beim Start (Adresse statt Identifizierung), vor dem Einrichten (keine
+loa2-Untergrenze) und am Ende (freiwillige Identifizierung, dann die Gerätefrage).
 
-**Wie die Variante gewählt wird.** Unter `AuthIntent.REGISTER` ist nur ein einziges Spring-Bean
-registriert, `RegisterDispatchStrategy`. Es wählt für jede **neue** Journey einmal zwischen beiden
-Varianten. Welche Variante eine laufende Journey nutzt, ergibt sich danach allein aus ihrem
-Zustandstyp (`is RegisterEnrollFirstState` oder `is RegisterState`). Der Schalter wird dafür nie
-erneut gelesen.
+**Wie die Variante gewählt wird.** Jede Journey übernimmt beim Start die aktiven Schalter
+(`AuthJourney.featureFlags`) und behält sie bis zum Ende. Stellt der Betreiber den Schalter um, gilt
+das erst für danach gestartete Registrierungen; eine laufende wechselt nie die Variante.
 
 **Der Schalter.** Eingeschaltet wird die Variante über einen Schalter, den der Betreiber zur
 Laufzeit umstellen kann (`JourneyFeatureFlag.REGISTER_ENROLL_FIRST`, `"register-enroll-first"`).
@@ -33,13 +32,13 @@ Einrichtungs-Kandidaten ohne Konto ab (`CandidateTools.forEnrollment(account = n
 noch kein Verfahren aktiv.
 
 **Zuerst die E-Mail-Adresse.** Der erste Schritt ist fest: Der Nutzer bestätigt seine
-E-Mail-Adresse (`EnrollFirstAttestingEmail`). Das ist ein `ATTESTATION`-Schritt, der eine Angabe
+E-Mail-Adresse (`ConfirmingEmail`). Das ist ein `ATTESTATION`-Schritt, der eine Angabe
 bestätigt, und kein Einrichten eines Verfahrens. Er lässt sich nicht überspringen; wer ablehnt
 (`Abandoned`), bekommt ihn erneut angeboten. Hat der Betreiber das Tool gesperrt, entfällt der
 Schritt, und die Journey bleibt nicht stehen.
 
 **Danach freie Wahl.** Ein bestimmtes Verfahren schreibt die Variante nicht vor. Der Nutzer wählt
-aus allen Einrichtungs-Tools (`EnrollFirstEnrolling`), wie in der normalen Variante. Welche
+aus allen Einrichtungs-Tools (`Enrolling`), wie in der normalen Variante. Welche
 Verfahren das Konto am Ende hat, regeln die üblichen Pflichten (Orchestrierung, Abschnitt 5), in
 dieser Reihenfolge:
 
@@ -62,7 +61,7 @@ nie ein Anmeldeverfahren eingerichtet wurde.
 
 **Rückfrage zum Gerät am Ende.** Das Smartphone kann schon mit einem anderen Konto verknüpft sein.
 Dann fragt diese Variante erst am **Ende** der Journey, nach der freiwilligen Identifizierung, ob
-es neu verknüpft werden soll (`EnrollFirstConfirmDeviceRebind`).
+es neu verknüpft werden soll (`DeviceLinkQuestion` mit dem Wortlaut `REBIND`).
 
 Der Grund für diesen späten Zeitpunkt: Die normale Variante identifiziert zuerst und kann direkt
 danach fragen. Hier verknüpft die Journey dagegen beim ersten eingerichteten Verfahren. Zu diesem
@@ -73,28 +72,26 @@ Anmeldung per E-Mail-Adresse voll nutzbar ([09-dpop.md](../09-dpop.md) Abschnitt
 
 ```mermaid
 stateDiagram-v2
-  [*] --> EnrollFirstStart
-  EnrollFirstStart --> EnrollFirstAttestingEmail: Start - die Adresse kommt zuerst
-  EnrollFirstStart --> EnrollFirstEnrolling: Start, kein Bestätigungs-Tool verfügbar
-  EnrollFirstAttestingEmail --> EnrollFirstAttestingEmail: abgelehnt - derselbe Schritt wird erneut angeboten
-  EnrollFirstAttestingEmail --> EnrollFirstEnrolling: E-Mail bestätigt
-  EnrollFirstEnrolling --> EnrollFirstEnrolling: abgelehnt - derselbe Schritt wird erneut angeboten, oder Verfahren eingerichtet, Niveau reicht noch nicht
-  EnrollFirstEnrolling --> EnrollFirstConfirmingEmail: Niveau erreicht, E-Mail-Pflicht noch offen
-  EnrollFirstEnrolling --> EnrollFirstSecondFactorKindObligation: Niveau erreicht, E-Mail bereits bestätigt, loa2 sonst nicht erreichbar, nur eine Faktorart aktiv
-  EnrollFirstEnrolling --> RE_IDENTIFY: Niveau erreicht, keine Pflicht offen - Identifizierung wird angeboten
-  EnrollFirstConfirmingEmail --> EnrollFirstSecondFactorKindObligation: E-Mail bestätigt, loa2 sonst nicht erreichbar, nur eine Faktorart aktiv
-  EnrollFirstConfirmingEmail --> RE_IDENTIFY: E-Mail bestätigt, keine weitere Pflicht offen
-  EnrollFirstSecondFactorKindObligation --> RE_IDENTIFY: Verfahren anderer Art eingerichtet
+  [*] --> Start
+  Start --> ConfirmingEmail: Start - die Adresse kommt zuerst
+  Start --> Enrolling: Start, kein Bestätigungs-Tool verfügbar
+  ConfirmingEmail --> ConfirmingEmail: abgelehnt - derselbe Schritt wird erneut angeboten
+  ConfirmingEmail --> Enrolling: E-Mail bestätigt - freie Wahl eines Verfahrens
+  Enrolling --> Enrolling: abgelehnt - derselbe Schritt wird erneut angeboten, oder Verfahren eingerichtet, Niveau reicht noch nicht
+  Enrolling --> SecondFactorKindObligation: Niveau erreicht, loa2 sonst nicht erreichbar, nur eine Faktorart aktiv
+  Enrolling --> RE_IDENTIFY: Niveau erreicht, keine Pflicht offen - Identifizierung wird angeboten
+  SecondFactorKindObligation --> RE_IDENTIFY: Verfahren anderer Art eingerichtet
 
-  RE_IDENTIFY --> EnrollFirstStart: zugestimmt und identifiziert, oder abgelehnt (SubJourneyFinished/Cancelled)
+  RE_IDENTIFY --> Closing: zugestimmt und identifiziert, oder abgelehnt (SubJourneyFinished/Cancelled)
   RE_IDENTIFY --> [*]: Person gehört bereits zu einem anderen, echten Konto - 409
-  EnrollFirstStart --> EnrollFirstConfirmDeviceRebind: fertig, aber dieses Gerät gehört einem ANDEREN Konto
-  EnrollFirstStart --> Finished: fertig
-  EnrollFirstConfirmDeviceRebind --> Finished: zugestimmt - Gerät neu verknüpft, gerätegebundene Credentials des alten Kontos widerrufen
-  EnrollFirstConfirmDeviceRebind --> Finished: abgelehnt - angemeldet, aber ohne Geräteverknüpfung
+  Enrolling --> Finished: keine Identifizierung anzubieten (vorher ggf. DeviceLinkQuestion)
+  Closing --> DeviceLinkQuestion: fertig, aber dieses Gerät gehört einem ANDEREN Konto
+  Closing --> Finished: fertig
+  DeviceLinkQuestion --> Finished: zugestimmt - Gerät neu verknüpft, gerätegebundene Credentials des alten Kontos widerrufen
+  DeviceLinkQuestion --> Finished: abgelehnt - angemeldet, aber ohne Geräteverknüpfung
   Finished --> [*]
 
-  note right of EnrollFirstConfirmDeviceRebind
+  note right of DeviceLinkQuestion
     Bewusst hier am ENDE und nicht
     dort, wo die Verknüpfung sonst
     entsteht: Beim ersten

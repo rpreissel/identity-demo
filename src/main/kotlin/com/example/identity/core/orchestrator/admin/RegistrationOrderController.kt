@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RestController
 data class RegistrationOrderState(val enrollFirst: Boolean)
 
 /**
- * Runtime toggle for REGISTER's "Enrollment zuerst" order (`RegisterDispatchStrategy`): applies to
- * every new REGISTER journey. A named endpoint rather than a generic flag API: the meaning is the
+ * Runtime toggle for REGISTER's "Enrollment zuerst" order (`JourneyFeatureFlag.REGISTER_ENROLL_FIRST`,
+ * read by `RegisterStrategy`): applies to every REGISTER journey started afterwards. A named endpoint rather than a generic flag API: the meaning is the
  * contract, the feature flag only its storage.
  */
 @RestController

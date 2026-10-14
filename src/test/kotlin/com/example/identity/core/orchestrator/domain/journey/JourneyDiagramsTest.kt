@@ -10,7 +10,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMeth
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
-import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrollFirstState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.journey.JourneyStateCodec
@@ -55,14 +54,15 @@ class JourneyDiagramsTest : BehaviorSpec({
                 withClue("Unbekannte Knoten - umbenannt, entfernt, oder als `state \"…\" as X` zu deklarieren") { unknown.shouldBeEmpty() }
             }
 
-            then("$doc.md shows every state its intent has") {
+            if (entries.all { it.showsAll }) then("$doc.md shows every state its intent has") {
                 withClue("Zustände, die im Code existieren, aber im Diagramm fehlen") { (states - drawn).shouldBeEmpty() }
             }
         }
     }
 }) {
     /** Which sealed root is documented in which file. */
-    class Diagram(val root: KClass<out JourneyState>, val doc: String)
+    /** [showsAll] false: [doc] draws one variant of the intent, so it may leave states out. */
+    class Diagram(val root: KClass<out JourneyState>, val doc: String, val showsAll: Boolean = true)
 
     companion object {
         /** `Finished` is drawn but never stored: a journey ends by a transition (docs/04-orchestrierung.md #3). */
@@ -71,7 +71,7 @@ class JourneyDiagramsTest : BehaviorSpec({
         val DIAGRAMS = listOf(
             Diagram(FastAccessState::class, "fast-access"),
             Diagram(RegisterState::class, "register"),
-            Diagram(RegisterEnrollFirstState::class, "register-enroll-first"),
+            Diagram(RegisterState::class, "register-enroll-first", showsAll = false),
             Diagram(LookupLoginState::class, "lookup-login"),
             Diagram(WebSelectMethodState::class, "web-select-method"),
             Diagram(StepUpState::class, "step-up"),

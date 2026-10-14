@@ -65,10 +65,10 @@ export const JOURNEY_DIAGRAMS: Record<
   },
   registerEnrollFirst: {
     title: t('Neues Konto anlegen (Einrichtung zuerst, Experiment)'),
-    // RegisterEnrollFirstState (admin-umschaltbar, AdminRegistrationOrderView): eigene Zustände
-    // (EnrollFirst*), mit RegisterState teilt es nur RE_IDENTIFY am Ende. Feste Reihenfolge: E-Mail,
-    // SMS, ein Verfahren anderer Art (alle Pflicht), erst danach optional identifizieren.
-    steps: [t('E-Mail bestätigen'), t('SMS einrichten'), t('Verfahren anderer Art einrichten'), t('Angemeldet')],
+    // Dieselben Zustände wie REGISTER (admin-umschaltbar, AdminRegistrationOrderView): erst die
+    // E-Mail, dann ein Verfahren nach Wahl und ggf. eines anderer Art, erst danach optional
+    // identifizieren.
+    steps: [t('E-Mail bestätigen'), t('Verfahren einrichten'), t('Verfahren anderer Art einrichten'), t('Angemeldet')],
     branch: {
       atIndex: 2,
       mainLabel: t('Nein'),
@@ -174,13 +174,6 @@ export const CURRENT_STEP_BY_STATE_TYPE: Partial<Record<keyof typeof JOURNEY_DIA
     Enrolling: { index: 2 },
     SecondFactorKindObligation: { index: 2 },
   },
-  registerEnrollFirst: {
-    EnrollFirstStart: { index: 0 },
-    EnrollFirstAttestingEmail: { index: 0 },
-    EnrollFirstEnrolling: { index: 1 },
-    EnrollFirstConfirmingEmail: { index: 0 },
-    EnrollFirstSecondFactorKindObligation: { index: 2 },
-  },
   login: {
     Start: { index: 0 },
     Credential: { index: 0 },
@@ -230,23 +223,13 @@ export const INTENT_DIAGRAM_KEY: Record<string, keyof typeof JOURNEY_DIAGRAMS> =
 }
 
 /**
- * REGISTER has two runtime-toggled strategies sharing one AuthIntent (AdminRegistrationOrderView).
- * Only the reported `stateType` tells them apart: RegisterEnrollFirstState's states are prefixed
- * `EnrollFirst*`. Every other intent maps 1:1 via INTENT_DIAGRAM_KEY.
- */
-export function diagramKeyForState(intent: string, stateType: string): keyof typeof JOURNEY_DIAGRAMS | undefined {
-  if (intent === 'REGISTER' && stateType.startsWith('EnrollFirst')) return 'registerEnrollFirst'
-  return INTENT_DIAGRAM_KEY[intent]
-}
-
-/**
  * Which JOURNEY_DIAGRAMS entry describes what runs right now: the innermost journey's intent, as
  * the backend reports it. Never the entry the user clicked: a channel runs several journeys one
  * after another. Used for JourneyStructureView's hints and the context line, so both agree.
  */
 export function currentJourneyDiagramKey(journeys: JourneyDebugStep[] | undefined): keyof typeof JOURNEY_DIAGRAMS | undefined {
   const innermost = journeys?.at(-1)
-  return innermost ? diagramKeyForState(innermost.intent, innermost.stateType) : undefined
+  return innermost ? INTENT_DIAGRAM_KEY[innermost.intent] : undefined
 }
 
 /**

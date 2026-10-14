@@ -10,6 +10,7 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
+import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 
@@ -56,7 +57,9 @@ class FreshProofStrategy : IntentStrategy<FreshProofState> {
         if (ctx.policy.isSatisfied(ctx.evidence, state.requiredAcr, account)) return null
         return Transition.RequireSubJourney(
             AuthIntent.STEP_UP,
-            seedWith = StepUpState.forSubJourney(state.requiredAcr, ctx.currentAcr, state.purpose.allowReIdentification, state.purpose.stepUpReason),
+            seedWith = StepUpState.forSubJourney(
+                (ctx.currentAcr upTo state.requiredAcr).copy(allowReIdentification = state.purpose.allowReIdentification, reason = state.purpose.stepUpReason)
+            ),
             resumeWith = state,
         )
     }

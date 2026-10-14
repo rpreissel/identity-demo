@@ -4,18 +4,33 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.claims.AcrLevel
 
 sealed interface StepUpState : JourneyState {
-    /** The goal of this run, distinct from the channel's durable `acrFloor`. */
-    val targetAcr: AcrLevel
+    /** What the run is for; both states carry it unchanged from start to finish. */
+    val goal: Goal
+
+    /**
+     * From [startingAcr] to [targetAcr], usually written `startingAcr upTo targetAcr`. [targetAcr] is
+     * the goal of this run, distinct from the channel's durable `acrFloor`.
+     * [allowReIdentification]: whether a dead end may fall back to offering `RE_IDENTIFY`. False
+     * for CONFIRM_PEER_LOGIN's gate: a peer approval must never let someone acquire a fresh identity
+     * just to confirm someone else's login. True by default, because re-identification is an
+     * equally valid path to loa2 (docs/04-orchestrierung.md #4), not a lesser fallback.
+     * [reason] lets a caller say why this run exists; `null` keeps the generic wording. A [Reason],
+     * not text, because the state is persisted and wording must change without touching stored
+     * journeys.
+     */
+    data class Goal(
+        val startingAcr: AcrLevel,
+        val targetAcr: AcrLevel,
+        val allowReIdentification: Boolean = true,
+        val reason: Reason? = null
+    )
 
     companion object {
         /**
          * The seed for [com.example.identity.core.orchestrator.domain.journey.Transition.RequireSubJourney]
-         * when STEP_UP runs as a precondition (docs/04-orchestrierung.md #7). [reason] lets the caller
-         * say why this run exists; `null` keeps the generic wording. A [Reason], not text, because the
-         * state is persisted and wording must change without touching stored journeys.
+         * when STEP_UP runs as a precondition (docs/04-orchestrierung.md #7).
          */
-        fun forSubJourney(targetAcr: AcrLevel, startingAcr: AcrLevel, allowReIdentification: Boolean = true, reason: Reason? = null): StepUpState =
-            Start(targetAcr, startingAcr, allowReIdentification, reason)
+        fun forSubJourney(goal: Goal): StepUpState = Start(goal)
     }
 
     /** Why a caller needs this step-up, when it has more to say than the generic wording. */
@@ -24,27 +39,11 @@ sealed interface StepUpState : JourneyState {
         PEER_LOGIN
     }
 
-    data class Start(
-        override val targetAcr: AcrLevel,
-        val startingAcr: AcrLevel,
-        /**
-         * Whether a dead end here may fall back to offering `RE_IDENTIFY`. False for
-         * CONFIRM_PEER_LOGIN's gate: a peer approval must never let someone acquire a fresh identity
-         * just to confirm someone else's login. True by default, because re-identification is an
-         * equally valid path to loa2 (docs/04-orchestrierung.md #4), not a lesser fallback.
-         */
-        val allowReIdentification: Boolean = true,
-        /** Carried into [AuthChoice]; see [StepUpState.forSubJourney]. */
-        val reason: Reason? = null
-    ) : StepUpState, ToolFreeState
+    data class Start(override val goal: Goal) : StepUpState, ToolFreeState
 
     data class AuthChoice(
-        override val targetAcr: AcrLevel,
-        val startingAcr: AcrLevel,
+        override val goal: Goal,
         override val offer: Offer,
-        val allowReIdentification: Boolean = true,
-        /** See [StepUpState.forSubJourney]. */
-        val reason: Reason? = null,
         /**
          * True once this run already proved one authenticator-axis factor. The text then says that
          * a factor of another kind is needed; two identical screens in a row read as being stuck.
@@ -57,7 +56,7 @@ sealed interface StepUpState : JourneyState {
         override val selectionContext: String get() = "auth"
         override val selectionTitle: Text get() = Text("Erhöhte Sicherheit erforderlich")
         override val selectionDescription: Text get() {
-            val base = when (reason) {
+            val base = when (goal.reason) {
                 // The first screen a peer approval without loa2 sees, so it carries the whole
                 // context, including "Abbrechen" as the way out.
                 Reason.PEER_LOGIN -> Text(
@@ -79,3 +78,6 @@ sealed interface StepUpState : JourneyState {
         }
     }
 }
+
+/** A step-up goal from this level to [target]: `AcrLevel.LOA1 upTo AcrLevel.LOA2`. */
+infix fun AcrLevel.upTo(target: AcrLevel): StepUpState.Goal = StepUpState.Goal(startingAcr = this, targetAcr = target)

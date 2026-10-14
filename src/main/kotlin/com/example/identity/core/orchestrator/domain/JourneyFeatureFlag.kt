@@ -3,7 +3,8 @@ package com.example.identity.core.orchestrator.domain
 /**
  * A runtime switch a strategy may read off [JourneyContext.featureFlags]. One generic set instead of
  * a `JourneyContext` property per flag. `JourneyService` fills it; a strategy never holds the flag
- * service itself (see `IntentStrategy`). [key] is the flag's row in the store, which Keycloak's
+ * service itself (see `IntentStrategy`). A journey takes the switches over once, at its start, and
+ * keeps them: flipping one never changes a running journey midway. [key] is the flag's row in the store, which Keycloak's
  * switches (`KeycloakFeatureFlags`) share without ever reaching a strategy.
  */
 enum class JourneyFeatureFlag(val key: String) {

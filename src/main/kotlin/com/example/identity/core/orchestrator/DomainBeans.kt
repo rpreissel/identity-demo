@@ -12,7 +12,7 @@ import com.example.identity.core.orchestrator.domain.journey.strategy.WebSelectM
 import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterDispatchStrategy
+import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterStrategy
 import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpStrategy
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
@@ -24,9 +24,6 @@ import java.time.Duration
  * Wires the domain's rule objects into Spring, so the domain itself carries no framework
  * annotation (docs/adr/ADR-040-fachkern-im-paket-domain.md). Also the one place that lists which
  * intent strategies exist - `JourneyService` checks at startup that every `AuthIntent` has one.
- *
- * `RegisterStrategy` and `RegisterEnrollFirstStrategy` are deliberately not listed: REGISTER is
- * served by `RegisterDispatchStrategy`, which holds both (only one strategy per intent).
  */
 @Configuration(proxyBeanMethods = false)
 class DomainBeans {
@@ -65,7 +62,7 @@ class DomainBeans {
     fun freshProofStrategy(): IntentStrategy<*> = FreshProofStrategy()
 
     @Bean
-    fun registerDispatchStrategy(): IntentStrategy<*> = RegisterDispatchStrategy()
+    fun registerStrategy(): IntentStrategy<*> = RegisterStrategy()
 
     @Bean
     fun stepUpStrategy(): IntentStrategy<*> = StepUpStrategy()

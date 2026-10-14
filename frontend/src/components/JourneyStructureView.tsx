@@ -4,7 +4,7 @@ import type { JourneyDebugStep, Next } from '../types'
 import { shorten } from '../format'
 import { Disclosure } from './Disclosure'
 import { DiagramTrigger } from './DiagramHint'
-import { CURRENT_STEP_BY_STATE_TYPE, diagramKeyForState, JOURNEY_DIAGRAMS } from '../journeyDiagrams'
+import { CURRENT_STEP_BY_STATE_TYPE, INTENT_DIAGRAM_KEY, JOURNEY_DIAGRAMS } from '../journeyDiagrams'
 
 interface JourneyStructureViewProps {
   channelSessionId?: string
@@ -64,7 +64,7 @@ export function JourneyStructureView({ channelSessionId, channelState, journeys,
   const levels: Level[] = []
 
   journeys?.forEach((j, index) => {
-    const diagramKey = diagramKeyForState(j.intent, j.stateType)
+    const diagramKey = INTENT_DIAGRAM_KEY[j.intent]
     // Only the innermost (actually active) journey has a "current step" to point at - a SUSPENDED
     // parent is parked waiting on its sub-journey, its own diagram has nothing to highlight.
     const isInnermost = index === journeys.length - 1

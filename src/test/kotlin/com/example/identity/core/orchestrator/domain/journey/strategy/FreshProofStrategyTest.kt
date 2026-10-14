@@ -11,6 +11,7 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
+import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
@@ -48,7 +49,7 @@ class FreshProofStrategyTest : BehaviorSpec({
                 transition shouldBe
                     Transition.RequireSubJourney(
                         AuthIntent.STEP_UP,
-                        seedWith = StepUpState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1),
+                        seedWith = StepUpState.forSubJourney(AcrLevel.LOA1 upTo AcrLevel.LOA2),
                         resumeWith = start()
                     )
             }
@@ -58,7 +59,7 @@ class FreshProofStrategyTest : BehaviorSpec({
             val transition = strategy.transition(start(purpose = FreshProofState.Purpose.PEER_LOGIN), JourneyEvent.Started, theCtx)
             then("the step-up offers no re-identification as a way out and explains the peer login") {
                 transition.shouldBeInstanceOf<Transition.RequireSubJourney>().seedWith shouldBe
-                    StepUpState.forSubJourney(AcrLevel.LOA2, AcrLevel.LOA1, allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN)
+                    StepUpState.forSubJourney((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN))
             }
         }
 

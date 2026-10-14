@@ -90,6 +90,11 @@ stateDiagram-v2
   SecondFactorKindObligation --> Finished: Verfahren anderer Art eingerichtet (etwa Passwort oder Gerätebindung)
   Finished --> [*]
 
+  Start --> ConfirmingEmail: nur Experiment „Einrichtung zuerst“ - die Adresse kommt zuerst
+  SecondFactorKindObligation --> RE_IDENTIFY: nur „Einrichtung zuerst“ - Identifizierung freiwillig zum Schluss
+  RE_IDENTIFY --> Closing: nur „Einrichtung zuerst“ - zurück, wie auch immer beendet
+  Closing --> Finished: nur „Einrichtung zuerst“ (vorher ggf. DeviceLinkQuestion)
+
   note right of AuthChoice
     Gemeinsam mit FAST_ACCESS
     genutzt. Nie mit der Pflicht zur
@@ -166,6 +171,7 @@ ist. Dann läuft der Nachweis über `AuthChoice`/`afterProof` und nicht über
 `Enrolling`/`afterEnrollment`. Die Pflicht zur zweiten Faktorart und die E-Mail-Pflicht gelten dann
 **nicht**.
 
-Es gibt eine zweite Variante dieser Journey: das Experiment „Erst Anmeldeverfahren einrichten“
-(`RegisterEnrollFirstStrategy`). Es richtet zuerst Verfahren ein und bietet die Identifizierung erst
-am Ende an. Beschrieben ist es in [register-enroll-first.md](register-enroll-first.md).
+Es gibt eine zweite Variante dieser Journey: das Experiment „Erst Anmeldeverfahren einrichten“.
+Es nutzt dieselbe Strategie und dieselben Zustände, richtet aber zuerst Verfahren ein und bietet die
+Identifizierung erst am Ende an. Die mit „nur Experiment“ beschrifteten Übergänge oben gehören zu
+ihm. Beschrieben ist es in [register-enroll-first.md](register-enroll-first.md).
