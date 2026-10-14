@@ -109,14 +109,6 @@ class RegisterStrategyTest : BehaviorSpec({
                     Transition.To(RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"), ToolId("ident-nect")))))
             }
         }
-
-        `when`("a RE_IDENTIFY sub-journey was declined (SubJourneyCancelled)") {
-            val event = JourneyEvent.SubJourneyCancelled(AuthIntent.RE_IDENTIFY)
-            val transition = strategy.transition(RegisterState.Start, event, ctx())
-            then("gives up on its own rather than re-requesting the identical RE_IDENTIFY again") {
-                transition shouldBe Transition.Cancel
-            }
-        }
     }
 
     given("Start, the fresh evidence already reaches the floor") {

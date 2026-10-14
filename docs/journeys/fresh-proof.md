@@ -47,3 +47,14 @@ Sub-Journey und nie über `Action.AcceptProof`: Er wird nie als Nachweis der Sit
 **Was zurückkommt.** Der Aufrufer erhält `SubJourneyFinished(FRESH_PROOF)` und führt dann aus, was
 er wollte; bei `SubJourneyCancelled` endet auch er. Ins Anmeldeprotokoll schreibt `FRESH_PROOF`
 nichts, nur ein Step-up darin schreibt seinen eigenen Eintrag.
+
+**Wie lange der Nachweis trägt.** Geprüft wird einmal, wenn `FRESH_PROOF` beginnt, nicht noch
+einmal, wenn der Aufrufer handelt. Für einen Aufrufer, der sofort handelt, ist das gleich: `DELETE_ACCOUNT`
+löscht, `MANAGE_AUTH_METHODS` entfernt eine Methode oder zieht eine Angabe zurück, im selben
+Schritt. Wer danach ein Verfahren anbietet, bei dem der Nutzer selbst weitermacht, lässt ihm Zeit:
+eine neue Methode einrichten oder eine ändern (`MANAGE_AUTH_METHODS`), einen fremden Login
+bestätigen (`CONFIRM_PEER_LOGIN`). Diese Zeit begrenzt nur die Lebensdauer der Journey (60 Minuten
+ab ihrem Start). Die Frische sagt also: Wer die geschützte Aktion beginnt, hat sich vor kurzem
+ausgewiesen. Sie sagt nicht, dass das beim Abschluss noch so ist. Ein Nachweis aus `Reproving`
+steht nirgends, nur der Übergang zum Aufrufer zeugt von ihm; eine zweite Prüfung beim Abschluss
+bräuchte deshalb einen Zeitpunkt im Zustand des Aufrufers.

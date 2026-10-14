@@ -13,6 +13,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrol
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.journey.strategy.ALL_INTENT_STRATEGIES
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
@@ -40,26 +41,23 @@ class JourneyStateCodecTest : BehaviorSpec({
         ReIdentifyState::class to setOf("OfferReIdent", "Identifying"),
     )
 
-    given("every sealed root a journey is read back as") {
-        then("its states' type names are exactly the persisted ones") {
-            JourneyStateCodec.STATE_ROOTS.associateWith { root -> JourneyStateCodec.concreteStates(root).map { it.simpleName }.toSet() } shouldBe persistedNames
+    val codec = JourneyStateCodec(ALL_INTENT_STRATEGIES)
+
+    given("the strategies the codec reads with") {
+        then("there is one for every intent") {
+            ALL_INTENT_STRATEGIES.map { it.intent }.toSet() shouldBe AuthIntent.entries.toSet()
+        }
+        then("their states' type names are exactly the persisted ones") {
+            ALL_INTENT_STRATEGIES.flatMap { it.stateRoots }
+                .associateWith { root -> JourneyStateCodec.concreteStates(root).map { it.simpleName }.toSet() } shouldBe persistedNames
         }
     }
 
     given("every state without fields") {
         then("it survives a write and a read under its own intent") {
-            val codec = JourneyStateCodec()
-            val intentOf = mapOf(
-                FastAccessState::class to AuthIntent.FAST_ACCESS, RegisterState::class to AuthIntent.REGISTER,
-                RegisterEnrollFirstState::class to AuthIntent.REGISTER, LookupLoginState::class to AuthIntent.LOOKUP_LOGIN,
-                WebSelectMethodState::class to AuthIntent.WEB_SELECT_METHOD, StepUpState::class to AuthIntent.STEP_UP,
-                ManageAuthMethodsState::class to AuthIntent.MANAGE_AUTH_METHODS, ConfirmPeerLoginState::class to AuthIntent.CONFIRM_PEER_LOGIN,
-                DeleteAccountState::class to AuthIntent.DELETE_ACCOUNT, FreshProofState::class to AuthIntent.FRESH_PROOF,
-                ReIdentifyState::class to AuthIntent.RE_IDENTIFY,
-            )
-            JourneyStateCodec.STATE_ROOTS.forEach { root ->
-                JourneyStateCodec.concreteStates(root).mapNotNull { it.objectInstance }.forEach { state ->
-                    val journey = AuthJourney(channelSessionId = ChannelSessionId(UUID.randomUUID()), intent = intentOf.getValue(root), createdAt = Instant.now())
+            ALL_INTENT_STRATEGIES.forEach { strategy ->
+                strategy.stateRoots.flatMap(JourneyStateCodec::concreteStates).mapNotNull { it.objectInstance }.forEach { state ->
+                    val journey = AuthJourney(channelSessionId = ChannelSessionId(UUID.randomUUID()), intent = strategy.intent, createdAt = Instant.now())
                     codec.write(journey, state)
                     journey.stateType shouldBe state.javaClass.simpleName
                     codec.read(journey) shouldBe state

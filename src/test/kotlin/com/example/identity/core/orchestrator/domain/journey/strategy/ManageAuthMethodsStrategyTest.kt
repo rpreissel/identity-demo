@@ -78,25 +78,11 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
             }
         }
 
-        `when`("resumed after the proof was declined (SubJourneyCancelled)") {
-            val transition = strategy.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.SubJourneyCancelled(AuthIntent.FRESH_PROOF), theCtx)
-            then("gives up on the wish rather than requiring the identical proof again") {
-                transition shouldBe Transition.Cancel
-            }
-        }
-
         `when`("resumed after the proof is in (SubJourneyFinished)") {
             val transition = strategy.transition(ManageAuthMethodsState.AddRequested, proven, theCtx)
             then("offers the enrollment candidates") {
                 val next = transition.shouldBeInstanceOf<Transition.To>().state
                 next.shouldBeInstanceOf<ManageAuthMethodsState.Enrolling>().offered shouldContainExactlyInAnyOrder ENROLLABLE_BESIDES_SMS
-            }
-        }
-
-        `when`("a different sub-journey entirely finishes - never assumed to be the proof") {
-            val transition = strategy.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.SubJourneyFinished(AuthIntent.STEP_UP, AcrLevel.LOA2), theCtx)
-            then("cancels") {
-                transition shouldBe Transition.Cancel
             }
         }
     }
@@ -223,13 +209,6 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
             val transition = strategy.transition(ManageAuthMethodsState.ChangeRequested("gone"), JourneyEvent.Started, theCtx)
             then("aborts") {
                 transition.shouldBeInstanceOf<Transition.Abort>()
-            }
-        }
-
-        `when`("resumed after the proof was declined (SubJourneyCancelled)") {
-            val transition = strategy.transition(wish, JourneyEvent.SubJourneyCancelled(AuthIntent.FRESH_PROOF), theCtx)
-            then("gives up on the wish") {
-                transition shouldBe Transition.Cancel
             }
         }
     }

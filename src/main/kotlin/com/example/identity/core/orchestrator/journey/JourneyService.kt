@@ -115,7 +115,8 @@ class JourneyService(
         intent: AuthIntent,
         seed: JourneyState?,
         parentJourneyId: JourneyId?,
-        restoredEvidence: List<MethodEvidence>?
+        restoredEvidence: List<MethodEvidence>?,
+        optionalForParent: Boolean = false,
     ): Step {
         // One running journey per channel (docs/invarianten.md I-3). A new top-level journey
         // replaces the whole running chain. A sub-journey is the legitimate exception: its parent
@@ -127,10 +128,11 @@ class JourneyService(
         val journey = AuthJourney(channel.channelSessionId, intent, now.plus(JOURNEY_TTL), now)
         journey.accountId = channel.accountId
         journey.parentJourneyId = parentJourneyId
-        // A step-up shows on the channel, direct or as a precondition. Only on a logged-in channel:
-        // STEP_UP_IN_PROGRESS promises that cancelling leads back to AUTHENTICATED, which a cold
-        // entry (a peer-login confirmation on a fresh channel) never was.
-        if (intent == AuthIntent.STEP_UP && channel.state == ChannelState.AUTHENTICATED) {
+        journey.optionalForParent = optionalForParent
+        // Raising the level shows on the channel, direct or as a precondition. Only on a logged-in
+        // channel: STEP_UP_IN_PROGRESS promises that cancelling leads back to AUTHENTICATED, which a
+        // cold entry (a peer-login confirmation on a fresh channel) never was.
+        if (intent.raisesLevel && channel.state == ChannelState.AUTHENTICATED) {
             channel.state = ChannelState.STEP_UP_IN_PROGRESS
             sessionManagementService.updateChannelSession(channel)
         }
@@ -392,6 +394,9 @@ class JourneyService(
                 event = JourneyEvent.OfferExhausted((state as OfferingState).declined)
             }
         }
+        // A cancelled precondition cancels the journey that waited on it; only an optional
+        // sub-journey's end is left to the strategy (RequireSubJourney.optional).
+        if (event is JourneyEvent.SubJourneyCancelled && !event.optional) transition = Transition.Cancel
         transition = transition ?: strategy.transitionErased(state, event, ctx)
         // The log shows what routing itself derives, so nextFor stays the one routing authority.
         val availableTools = routing.availableToolsOf(channel)
@@ -439,7 +444,8 @@ class JourneyService(
         // Flushed before the child row: the database allows one STARTED journey per channel
         // (ux_journey_running_per_channel), and the child insert would otherwise come first.
         journeyRepository.saveAndFlush(journey)
-        return startJourney(channel, transition.intent, seed = transition.seedWith, parentJourneyId = journey.journeyId, restoredEvidence = null)
+        return startJourney(channel, transition.intent, seed = transition.seedWith, parentJourneyId = journey.journeyId, restoredEvidence = null,
+            optionalForParent = transition.optional)
     }
 
     /** Resumes at resumeState against a fresh context, because the action has just changed what the old one showed. */
@@ -469,7 +475,7 @@ class JourneyService(
             markCancelled(journey, channel)
             parent.lifecycle = JourneyLifecycle.STARTED
             journeyRepository.save(parent)
-            return advance(parent, channel, JourneyEvent.SubJourneyCancelled(journey.requireIntent()))
+            return advance(parent, channel, JourneyEvent.SubJourneyCancelled(journey.requireIntent(), journey.optionalForParent))
         }
         cancelJourney(journey, channel)
         return if (channel.state == ChannelState.AUTHENTICATED) Step(Next.AUTHENTICATED) else startEntryJourney(channel, restoredEvidence = null)
@@ -481,16 +487,21 @@ class JourneyService(
         journeyRepository.saveAndFlush(journey)
         val parent = journey.parentJourneyId?.let { journeyRepository.findByJourneyId(it) }
             ?.takeIf { it.lifecycle == JourneyLifecycle.SUSPENDED }
+        // The sign-in log mirrors the channel: SIGNED_IN is the moment it becomes signed in, so a
+        // journey on a channel that already is (CONFIRM_PEER_LOGIN from within a session) adds none.
+        val signsIn = parent == null && channel.state?.isLoggedIn != true
         // Before the sign-in log: a login whose session is gone is no sign-in.
         if (parent == null) openLoginSession(channel)
+        val acr = contextFactory.currentAcrOf(channel)
         // Before the parent handoff: a step-up that a parent journey waited on is a step-up too.
-        journeyRecorder.recordSignIn(journey, channel, contextFactory.currentAcrOf(channel))
+        if (journey.requireIntent().raisesLevel) journeyRecorder.recordStepUp(channel, acr)
+        else if (signsIn) journeyRecorder.recordSignIn(journey, channel, acr)
 
         if (parent != null) {
             // The parent picks up exactly where it was parked, so the original wish survives.
             parent.lifecycle = JourneyLifecycle.STARTED
             journeyRepository.save(parent)
-            return advance(parent, channel, JourneyEvent.SubJourneyFinished(journey.requireIntent(), contextFactory.currentAcrOf(channel)))
+            return advance(parent, channel, JourneyEvent.SubJourneyFinished(journey.requireIntent(), acr))
         }
 
         channel.state = ChannelState.AUTHENTICATED

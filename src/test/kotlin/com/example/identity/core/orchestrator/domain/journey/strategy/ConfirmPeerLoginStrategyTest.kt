@@ -109,22 +109,6 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
                 transition shouldBe Transition.To(ConfirmPeerLoginState.Confirming(CONFIRM_OFFER))
             }
         }
-
-        `when`("a different sub-journey entirely finishes - never assumed to be the proof") {
-            val event = JourneyEvent.SubJourneyFinished(AuthIntent.STEP_UP, achievedAcr = AcrLevel.LOA2)
-            val transition = strategy.transition(ConfirmPeerLoginState.Requested, event, ctx())
-            then("cancels instead of confirming on someone else's say-so") {
-                transition shouldBe Transition.Cancel
-            }
-        }
-
-        `when`("the proof was declined (SubJourneyCancelled)") {
-            val event = JourneyEvent.SubJourneyCancelled(AuthIntent.FRESH_PROOF)
-            val transition = strategy.transition(ConfirmPeerLoginState.Requested, event, ctx())
-            then("cancels the whole wish - not re-requested forever") {
-                transition shouldBe Transition.Cancel
-            }
-        }
     }
 
     given("Confirming, account known") {

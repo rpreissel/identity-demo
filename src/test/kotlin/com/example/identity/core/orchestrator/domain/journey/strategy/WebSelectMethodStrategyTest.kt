@@ -207,14 +207,5 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
                 transition shouldBe Transition.Authenticated
             }
         }
-
-        `when`("the identification was declined") {
-            val theCtx = webCtx(account = smsAndDevice, evidence = smsProven, acrFloor = AcrLevel.LOA2)
-            val transition = strategy.transition(state, JourneyEvent.SubJourneyCancelled(AuthIntent.RE_IDENTIFY), theCtx)
-
-            then("it gives up rather than asking the same question again") {
-                transition shouldBe Transition.Cancel
-            }
-        }
     }
 })

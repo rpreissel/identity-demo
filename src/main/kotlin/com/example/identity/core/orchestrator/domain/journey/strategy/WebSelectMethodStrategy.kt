@@ -25,6 +25,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
 
     override val intent = AuthIntent.WEB_SELECT_METHOD
+    override val stateRoots = listOf(WebSelectMethodState::class)
 
     override fun initialState(ctx: JourneyContext): WebSelectMethodState = selectMethod(ctx)
 
@@ -39,12 +40,8 @@ class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
                 else -> afterProof(ctx)
             }
 
-            is WebSelectMethodState.AfterIdentification -> when (event) {
-                // Without new evidence, offering RE_IDENTIFY again would only ask the same question.
-                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
-                // The identification may already close the gap; otherwise the offer is built anew.
-                else -> afterProof(ctx)
-            }
+            // The identification may already close the gap; otherwise the offer is built anew.
+            is WebSelectMethodState.AfterIdentification -> afterProof(ctx)
         }
 
     /**

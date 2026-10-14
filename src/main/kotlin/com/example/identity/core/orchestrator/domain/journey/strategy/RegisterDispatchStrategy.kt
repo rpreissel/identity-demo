@@ -9,6 +9,7 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterEnrollFirstState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
+import kotlin.reflect.KClass
 
 /**
  * The one strategy registered for [AuthIntent.REGISTER]: there is one strategy per intent, so it
@@ -22,6 +23,9 @@ class RegisterDispatchStrategy : IntentStrategy<JourneyState> {
     private val enrollFirst = RegisterEnrollFirstStrategy()
 
     override val intent: AuthIntent = AuthIntent.REGISTER
+
+    /** Ident first, then "Enrollment zuerst"; their state names do not overlap. */
+    override val stateRoots: List<KClass<out JourneyState>> = identFirst.stateRoots + enrollFirst.stateRoots
 
     /**
      * The flag is read only here. A running journey's variant follows from its state type, so

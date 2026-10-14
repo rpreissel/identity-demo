@@ -114,22 +114,6 @@ class DeleteAccountStrategyTest : BehaviorSpec({
             }
         }
 
-        `when`("a different sub-journey entirely finishes - never assumed to be the proof") {
-            val event = JourneyEvent.SubJourneyFinished(AuthIntent.STEP_UP, achievedAcr = AcrLevel.LOA3)
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, event, theCtx)
-            then("does not delete") {
-                transition shouldBe Transition.Cancel
-            }
-        }
-
-        `when`("the proof was declined (SubJourneyCancelled)") {
-            val event = JourneyEvent.SubJourneyCancelled(AuthIntent.FRESH_PROOF)
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, event, theCtx)
-            then("does not delete - and does not ask again forever") {
-                transition shouldBe Transition.Cancel
-            }
-        }
-
         `when`("the delete just ran (ActionCompleted)") {
             val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.ActionCompleted, theCtx)
             then("ends the channel for good") {

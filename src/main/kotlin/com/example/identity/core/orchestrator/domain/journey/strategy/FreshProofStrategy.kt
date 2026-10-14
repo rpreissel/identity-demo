@@ -22,10 +22,13 @@ import com.example.identity.core.orchestrator.domain.journey.state.FreshProofSta
  * (docs/journeys/fresh-proof.md, ADR-61). A step-up this sub-journey required counts as the fresh
  * proof; any other recent proof of the session does too; otherwise one active factor is re-proven.
  * That re-proof authorizes the caller's one action only, so it is not recorded as `MethodEvidence`.
+ * Freshness is checked once, when this sub-journey starts; a caller that offers a tool afterwards
+ * gives the user until the journey expires to finish it (docs/journeys/fresh-proof.md).
  */
 class FreshProofStrategy : IntentStrategy<FreshProofState> {
 
     override val intent = AuthIntent.FRESH_PROOF
+    override val stateRoots = listOf(FreshProofState::class)
 
     /** Never entered without a seed; only reachable as a sub-journey ([FreshProofState.forSubJourney]). */
     override fun initialState(ctx: JourneyContext): FreshProofState =
@@ -34,14 +37,12 @@ class FreshProofStrategy : IntentStrategy<FreshProofState> {
     override fun transition(state: FreshProofState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is FreshProofState.Start -> when (event) {
-                // The step-up reached the level: that is the fresh proof. Short of it, nothing less may
+                // The step-up (the only sub-journey requested here) reached the level: that is the fresh proof. Short of it, nothing less may
                 // stand in, or a session stuck below the level would pass via the very factor that
                 // could not reach it.
                 is JourneyEvent.SubJourneyFinished ->
-                    if (event.intent == AuthIntent.STEP_UP && (event.achievedAcr ?: AcrLevel.NONE) >= state.requiredAcr) Transition.Authenticated
+                    if ((event.achievedAcr ?: AcrLevel.NONE) >= state.requiredAcr) Transition.Authenticated
                     else Transition.Cancel
-                // A declined step-up ends the wish instead of re-requesting it forever.
-                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
                 else -> gate(state, ctx) ?: freshness(state, ctx)
             }
 

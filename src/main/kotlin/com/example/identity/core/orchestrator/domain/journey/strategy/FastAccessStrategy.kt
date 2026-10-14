@@ -20,6 +20,7 @@ import com.example.identity.contract.tool_api.ToolId
 class FastAccessStrategy : IntentStrategy<FastAccessState> {
 
     override val intent: AuthIntent = AuthIntent.FAST_ACCESS
+    override val stateRoots = listOf(FastAccessState::class)
 
     override fun initialState(ctx: JourneyContext): FastAccessState = FastAccessState.Start
 
@@ -28,8 +29,6 @@ class FastAccessStrategy : IntentStrategy<FastAccessState> {
             is FastAccessState.Start -> when (event) {
                 // Re-check whether the fresh proof already closes the gap before offering again.
                 is JourneyEvent.SubJourneyFinished -> AuthEnrollCore.afterProof(ctx, resumeAtStart = FastAccessState.Start)
-                // No new evidence - re-deriving would just re-request the same sub-journey again.
-                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
                 else -> firstOffer(ctx)
             }
             is FastAccessState.PreferredAuth -> when (event) {

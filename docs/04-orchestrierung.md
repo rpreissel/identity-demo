@@ -680,7 +680,15 @@ beschreiben sich die Tools selbst, hier die Intents.
 Jede Strategie ist ein Moore-Automat für ihren eigenen Zustandstyp, also ein Zustandsautomat, der
 aus Zustand und Ereignis den nächsten Schritt bestimmt. Sie hat die Methode
 `transition(state, event, ctx)` und dazu `initialState(ctx)`. `initialState` sagt, wo eine direkt
-gestartete Journey beginnt.
+gestartete Journey beginnt. `stateRoots` nennt die `sealed`-Wurzeln ihrer Zustände, meist eine;
+danach liest `JourneyStateCodec` den gespeicherten Zustand zurück.
+
+**Kein Code fragt nach einem bestimmten Intent.** Was an einem Intent hängt, ist eine Eigenschaft
+von `AuthIntent` mit einem `when` über alle Intents (`entryChannels`, `startsOnLoggedInChannel`,
+`raisesLevel`, `requiresAccount`, `startsFromDeviceLink`, `bindsDeviceImplicitly`). Ein neuer
+Intent bringt seine Strategie mit, und der Compiler verlangt bei jeder dieser Eigenschaften eine
+Entscheidung. Einen Intent nennen darf nur, wer ihn startet: ein Endpunkt oder eine Strategie, die
+ihn als Sub-Journey anfordert.
 
 **Wohin der Kanal bei einem Abbruch zurückfällt,** entscheidet keine Strategie. Der Kanal kehrt zu
 dem Anmeldestand zurück, den er vor der Journey hatte. War er angemeldet (`ChannelState.isLoggedIn`,
@@ -708,23 +716,26 @@ Ein **Ereignis** (`JourneyEvent`) ist das, was der Journey gerade passiert ist:
 | `Abandoned(tool)` | „Zurück“ oder „Wechseln“: Der Nutzer hat das gestartete Tool ohne Abschluss verworfen. Einen Angebots-Zustand beantwortet das der Zustand selbst (Abschnitt 3); eine Strategie sieht es nur in einem Zustand ohne Angebot |
 | `OfferExhausted(declined)` | Jedes angebotene Tool wurde abgelehnt, oder ein optionaler Schritt wurde übersprungen. Nur Ausweich- und optionale Zustände sehen es; die Strategie nennt dann den nächsten Weg |
 | `ActionCompleted` | Die `Action` eines `Perform`-Übergangs (unten) ist ausgeführt. Der `JourneyContext` ist neu aufgebaut |
-| `SubJourneyFinished(intent, achievedAcr)` | Eine untergeordnete Journey, die als Voraussetzung gestartet wurde, ist fertig |
-| `SubJourneyCancelled(intent)` | Die untergeordnete Journey wurde abgelehnt oder aufgegeben, ohne Ergebnis |
+| `SubJourneyFinished(intent, achievedAcr)` | Eine untergeordnete Journey, die als Voraussetzung gestartet wurde, ist fertig. Es ist immer die, die dieser Zustand angefordert hat; `intent` steht nur für den Journey-Trace da |
+| `SubJourneyCancelled(intent)` | Die untergeordnete Journey wurde abgelehnt oder aufgegeben, ohne Ergebnis. Dann bricht der `JourneyService` die wartende Journey ab, ohne die Strategie zu fragen. Nur eine Sub-Journey, die die Strategie als optional angefordert hat (`RequireSubJourney(optional = true)`, bisher die abschließende Identifizierung von „Enrollment zuerst“), meldet sich mit diesem Ereignis bei ihr zurück (`optional`) |
 | `Answered(answer)` | Eine ausdrückliche Antwort auf einen `AnswerableState` (einen Zustand mit Ja/Nein-Frage) statt eines Tools. `answer` ist ein String, kein `Boolean` |
 
 Ein **Übergang** (`Transition`) ist das, was als Nächstes passieren soll:
 
 - **`To(state)`** — weiter zu diesem Zustand. Er bringt sein Angebot selbst mit.
-- **`RequireSubJourney(intent, seedWith, resumeWith)`** — zuerst `intent` laufen lassen, beginnend
-  bei `seedWith`, und danach hier bei `resumeWith` weitermachen. `seedWith` baut die anfordernde
+- **`RequireSubJourney(intent, seedWith, resumeWith, optional)`** — zuerst `intent` laufen lassen,
+  beginnend bei `seedWith`, und danach hier bei `resumeWith` weitermachen. Wird die Sub-Journey
+  abgebrochen, bricht diese Journey mit ab, außer die Anforderung war `optional`; dann entscheidet
+  die Strategie. Die Aussage gilt je Anforderung und steht an der Sub-Journey
+  (`auth_journey.optional_for_parent`). `seedWith` baut die anfordernde
   Strategie über die Fabrikmethode des Zielzustands, z. B. `StepUpState.forSubJourney(...)`.
 - **`Authenticated`** — Ziel erreicht. Die Journey ist damit abgeschlossen und wird nicht weiter
   verwendet.
 - **`Cancel`** — Der Nutzer gibt auf. Das ist wie ein ausdrücklicher Abbruch und kein Fehler.
 - **`Perform(action, resumeState)`** — die `Action` ausführen und die Journey danach bei
   `resumeState` mit `ActionCompleted` fortsetzen.
-- **`Logout`** — den Kanal endgültig beenden (`LOGGED_OUT`, Endzustand). Das tun `DELETE_ACCOUNT`
-  und `CONFIRM_PEER_LOGIN`. Die Abmeldung selbst ist keine Journey, sondern
+- **`Logout`** — den Kanal endgültig beenden (`LOGGED_OUT`, Endzustand). Das tut nur
+  `DELETE_ACCOUNT`. Die Abmeldung selbst ist keine Journey, sondern
   `DELETE /channels/{id}` ([ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md)).
 - **`Abort(reason)`** — Es geht gar nicht weiter (410). Das bedeutet nie bloß „keine Kandidaten
   mehr“.

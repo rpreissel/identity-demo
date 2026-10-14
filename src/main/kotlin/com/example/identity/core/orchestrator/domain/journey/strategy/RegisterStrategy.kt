@@ -24,6 +24,7 @@ import com.example.identity.contract.tool_api.ToolId
 class RegisterStrategy : IntentStrategy<RegisterState> {
 
     override val intent: AuthIntent = AuthIntent.REGISTER
+    override val stateRoots = listOf(RegisterState::class)
 
     override fun initialState(ctx: JourneyContext): RegisterState = RegisterState.Start
 
@@ -32,7 +33,6 @@ class RegisterStrategy : IntentStrategy<RegisterState> {
             is RegisterState.Start -> when (event) {
                 // A RE_IDENTIFY sub-journey from offerEnrollment finished: re-check.
                 is JourneyEvent.SubJourneyFinished -> AuthEnrollCore.afterProof(ctx, resumeAtStart = RegisterState.Start)
-                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
                 else -> offerIdentification(ctx)
             }
 

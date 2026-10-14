@@ -35,8 +35,8 @@ sealed interface JourneyEvent {
     data object ActionCompleted : JourneyEvent
 
     /**
-     * A sub-journey finished. [intent] names which one, so a parent never mistakes a second
-     * sub-journey for the first. [SubJourneyCancelled] is a separate type, not a flag: a resumed
+     * A sub-journey finished. It is always the one the resumed state requested; [intent] is there
+     * for the journey trace. [SubJourneyCancelled] is a separate type, not a flag: a resumed
      * state that re-derived its next step from evidence alone would re-request the sub-journey it
      * was just declined, forever. The compiler forces both arms.
      */
@@ -44,9 +44,11 @@ sealed interface JourneyEvent {
 
     /**
      * The sub-journey was abandoned without achieving anything, so there is no acr to report.
-     * [intent] names which one, as in [SubJourneyFinished].
+     * [intent] names which one, as in [SubJourneyFinished]. A strategy only sees it for a
+     * sub-journey it requested as [Transition.RequireSubJourney.optional]; any other cancels the
+     * waiting journey in `JourneyService`.
      */
-    data class SubJourneyCancelled(val intent: AuthIntent) : JourneyEvent
+    data class SubJourneyCancelled(val intent: AuthIntent, val optional: Boolean) : JourneyEvent
 
     /**
      * An explicit answer to what an [AnswerableState] is waiting on (`JourneyService.answer`). A

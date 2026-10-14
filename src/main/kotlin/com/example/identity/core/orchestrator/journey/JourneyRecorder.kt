@@ -7,7 +7,6 @@ import com.example.identity.core.account.SignInLog
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.domain.policy.MethodName
 import com.example.identity.core.orchestrator.domain.policy.evidenceAxis
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.session.SessionEvidenceService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -90,25 +89,32 @@ class JourneyRecorder(
     }
 
     /**
-     * The sign-in log's view of a finished journey (ADR-39): an entry journey is a sign-in, a
-     * step-up a step-up, anything else records nothing. [acr] is the level the session holds now.
+     * The channel has just become signed in (ADR-39). [acr] is the level the session holds now;
+     * [journey] names the intent that got it there.
      */
     fun recordSignIn(journey: AuthJourney, channel: ChannelSession, acr: AcrLevel) {
-        val intent = journey.intent ?: return
-        val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
-        val amr = evidence?.currentAmr.orEmpty()
-        // The orchestrator tools behind it, in the version this client spoke (ADR-51).
-        val tools = evidence?.methods.orEmpty()
-            .mapNotNull { it.amrSourceId?.let(channel::declaredVersionOf) }
-            .distinct()
+        val (amr, tools) = proofsOf(channel)
         when (val subject = channel.subject ?: return) {
-            is Subject.Account -> when {
-                intent == AuthIntent.STEP_UP -> signInLog.steppedUp(subject.id, channel.channel?.name, acr.value, amr, tools)
-                intent.isEntryIntent -> signInLog.signedIn(subject.id, channel.channel?.name, acr.value, amr, tools, intent.name)
-            }
+            is Subject.Account -> signInLog.signedIn(subject.id, channel.channel?.name, acr.value, amr, tools, journey.requireIntent().name)
             // A process access has one proof and no step-up (ADR-48).
             is Subject.Invitation -> signInLog.invitationSignedIn(subject.id, channel.channel?.name, acr.value, amr, tools)
         }
+    }
+
+    /** A step-up finished, also one a parent journey waited on. [acr] is the level the session holds now. */
+    fun recordStepUp(channel: ChannelSession, acr: AcrLevel) {
+        val subject = channel.subject as? Subject.Account ?: return
+        val (amr, tools) = proofsOf(channel)
+        signInLog.steppedUp(subject.id, channel.channel?.name, acr.value, amr, tools)
+    }
+
+    /** The session's methods, and the orchestrator tools behind them in the version this client spoke (ADR-51). */
+    private fun proofsOf(channel: ChannelSession): Pair<List<String>, List<String>> {
+        val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
+        val tools = evidence?.methods.orEmpty()
+            .mapNotNull { it.amrSourceId?.let(channel::declaredVersionOf) }
+            .distinct()
+        return evidence?.currentAmr.orEmpty() to tools
     }
 
     /** A session the holder ended on purpose. An expiry is not recorded. */

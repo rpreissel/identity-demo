@@ -45,7 +45,9 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
             targetAcr = AcrLevel.LOA1,
             wording = ReIdentifyState.Wording.OPTIONAL_IDENTIFICATION
         ),
-        resumeWith = RegisterEnrollFirstState.EnrollFirstStart
+        resumeWith = RegisterEnrollFirstState.EnrollFirstStart,
+        // Declining it finishes the registration instead of cancelling it.
+        optional = true,
     )
 
     val smsEnrollment = ToolOutcome.Completed.Enrolled(enrollmentRef = EnrollmentRef("sms", "ref"))
@@ -163,7 +165,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         }
 
         `when`("resumed after it was declined or abandoned (SubJourneyCancelled)") {
-            val transition = strategy.transition(RegisterEnrollFirstState.EnrollFirstStart, JourneyEvent.SubJourneyCancelled(AuthIntent.RE_IDENTIFY), ctx())
+            val transition = strategy.transition(RegisterEnrollFirstState.EnrollFirstStart, JourneyEvent.SubJourneyCancelled(AuthIntent.RE_IDENTIFY, optional = true), ctx())
             then("finishes all the same") {
                 transition shouldBe
                     Transition.Authenticated

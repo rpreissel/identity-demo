@@ -34,10 +34,9 @@ stateDiagram-v2
   SelectMethod --> RE_IDENTIFY: Step-up, kein Verfahren übrig oder alle abgelehnt, Identifizierung möglich
   SelectMethod --> [*]: Step-up, kein Verfahren übrig, keine Identifizierung möglich -> Abort mit Grund
   RE_IDENTIFY --> AfterIdentification: Identität bestätigt (SubJourneyFinished)
-  RE_IDENTIFY --> AfterIdentification: abgelehnt (SubJourneyCancelled)
+  RE_IDENTIFY --> [*]: abgelehnt (SubJourneyCancelled) -> Cancel
   AfterIdentification --> Finished: Niveau erreicht
   AfterIdentification --> SelectMethod: Niveau noch nicht erreicht - Angebot neu aufgebaut
-  AfterIdentification --> [*]: Identifizierung abgelehnt -> Cancel
 ```
 
 **Zwei Fälle, ein Zustand.** Derselbe Zustand bedient zwei Fälle im Web-Kanal. Sie unterscheiden

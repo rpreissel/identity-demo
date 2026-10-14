@@ -24,6 +24,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
 
     override val intent = AuthIntent.LOOKUP_LOGIN
+    override val stateRoots = listOf(LookupLoginState::class)
 
     override fun initialState(ctx: JourneyContext): LookupLoginState = LookupLoginState.Start
 
@@ -32,8 +33,6 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
             is LookupLoginState.Start -> when (event) {
                 // Re-check whether the fresh proof already closes the gap before offering again.
                 is JourneyEvent.SubJourneyFinished -> settleOrRaise(ctx)
-                // No new evidence - re-deriving would just re-request the same RE_IDENTIFY again.
-                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
                 else -> {
                     // Every tool that resolves the account itself; authCandidates would need an
                     // account, which does not exist yet.

@@ -79,20 +79,6 @@ class FreshProofStrategyTest : BehaviorSpec({
                 transition shouldBe Transition.Cancel
             }
         }
-
-        `when`("a different sub-journey entirely finishes - never assumed to be the step-up") {
-            val transition = strategy.transition(start(), JourneyEvent.SubJourneyFinished(AuthIntent.RE_IDENTIFY, achievedAcr = AcrLevel.LOA3), theCtx)
-            then("cancels") {
-                transition shouldBe Transition.Cancel
-            }
-        }
-
-        `when`("the step-up was declined (SubJourneyCancelled)") {
-            val transition = strategy.transition(start(), JourneyEvent.SubJourneyCancelled(AuthIntent.STEP_UP), theCtx)
-            then("cancels instead of re-requesting it forever") {
-                transition shouldBe Transition.Cancel
-            }
-        }
     }
 
     given("Start, a level the account already satisfies") {

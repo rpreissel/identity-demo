@@ -75,6 +75,10 @@ class AuthJourney(
     @Column(name = "parent_journey_id")
     var parentJourneyId: JourneyId? = null
 
+    /** Whether its parent carries on if this sub-journey is cancelled (`Transition.RequireSubJourney.optional`). */
+    @Column(name = "optional_for_parent", nullable = false)
+    var optionalForParent: Boolean = false
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant? = createdAt
 

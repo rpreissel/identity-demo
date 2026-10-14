@@ -26,17 +26,14 @@ import com.example.identity.core.account.AuthMethodView
 class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
 
     override val intent = AuthIntent.MANAGE_AUTH_METHODS
+    override val stateRoots = listOf(ManageAuthMethodsState::class)
 
     override fun initialState(ctx: JourneyContext): ManageAuthMethodsState = ManageAuthMethodsState.AddRequested
 
     override fun transition(state: ManageAuthMethodsState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is ManageAuthMethodsState.Wish -> when (event) {
-                // Only this journey's own proof counts; any other sub-journey is never assumed to be it.
-                is JourneyEvent.SubJourneyFinished ->
-                    if (event.intent == AuthIntent.FRESH_PROOF) carryOut(state, ctx) else Transition.Cancel
-                // A declined proof ends the wish instead of re-requesting it forever.
-                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
+                is JourneyEvent.SubJourneyFinished -> carryOut(state, ctx)
                 // A removal or a retraction resumes in its wish, which then finishes.
                 is JourneyEvent.ActionCompleted -> Transition.Authenticated
                 else -> requireFreshProof(state, ctx)

@@ -103,14 +103,6 @@ class LookupLoginStrategyTest : BehaviorSpec({
                 to.offered shouldContainExactly listOf(ToolId("auth-sms-lookup"), ToolId("auth-email-lookup"), ToolId("auth-password-lookup"), ToolId("auth-qr-lookup"), ToolId("auth-invite-lookup"))
             }
         }
-
-        `when`("a RE_IDENTIFY sub-journey was declined instead (SubJourneyCancelled)") {
-            val event = JourneyEvent.SubJourneyCancelled(AuthIntent.RE_IDENTIFY)
-            val transition = strategy.transition(LookupLoginState.Start, event, ctx())
-            then("gives up on its own rather than re-requesting the identical RE_IDENTIFY again") {
-                transition shouldBe Transition.Cancel
-            }
-        }
     }
 
     given("Start, but none of the lookup-capable tools are available client-side") {

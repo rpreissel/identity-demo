@@ -94,11 +94,26 @@ enum class AuthIntent {
         }
 
     /**
+     * Raises the level of a login, direct or as another journey's precondition. While it runs on a
+     * signed-in channel, the channel shows STEP_UP_IN_PROGRESS; when it finishes, the sign-in log
+     * records a step-up (ADR-39).
+     */
+    val raisesLevel: Boolean
+        get() = when (this) {
+            STEP_UP -> true
+            FAST_ACCESS, REGISTER, LOOKUP_LOGIN, WEB_SELECT_METHOD, MANAGE_AUTH_METHODS, CONFIRM_PEER_LOGIN,
+            DELETE_ACCOUNT, FRESH_PROOF, RE_IDENTIFY -> false
+        }
+
+    /**
      * Acts on the account itself. A process access (one-time password, ADR-48) is signed in without
      * an account and serves only its process, so it may raise its level but not manage, delete or confirm.
      */
     val requiresAccount: Boolean
-        get() = this == MANAGE_AUTH_METHODS || this == CONFIRM_PEER_LOGIN || this == DELETE_ACCOUNT
+        get() = when (this) {
+            MANAGE_AUTH_METHODS, CONFIRM_PEER_LOGIN, DELETE_ACCOUNT -> true
+            FAST_ACCESS, REGISTER, LOOKUP_LOGIN, WEB_SELECT_METHOD, STEP_UP, FRESH_PROOF, RE_IDENTIFY -> false
+        }
 
     /**
      * Why this intent may not start on an open channel in [state], or null if it may. The one place
@@ -120,7 +135,10 @@ enum class AuthIntent {
      * this device already knows".
      */
     val startsFromDeviceLink: Boolean
-        get() = this == FAST_ACCESS || this == CONFIRM_PEER_LOGIN
+        get() = when (this) {
+            FAST_ACCESS, CONFIRM_PEER_LOGIN -> true
+            REGISTER, LOOKUP_LOGIN, WEB_SELECT_METHOD, STEP_UP, MANAGE_AUTH_METHODS, DELETE_ACCOUNT, FRESH_PROOF, RE_IDENTIFY -> false
+        }
 
     /**
      * Whether succeeding on an APP channel links this device to the account as a side effect
@@ -135,7 +153,11 @@ enum class AuthIntent {
      * the channel and is checked once in `JourneyActionExecutor.linkDeviceTo`.
      */
     val bindsDeviceImplicitly: Boolean
-        get() = this != LOOKUP_LOGIN
+        get() = when (this) {
+            LOOKUP_LOGIN -> false
+            FAST_ACCESS, REGISTER, WEB_SELECT_METHOD, STEP_UP, MANAGE_AUTH_METHODS, CONFIRM_PEER_LOGIN, DELETE_ACCOUNT,
+            FRESH_PROOF, RE_IDENTIFY -> true
+        }
 
     companion object {
         /**

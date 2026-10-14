@@ -5,6 +5,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.orchestrator.domain.AuthIntent
+import kotlin.reflect.KClass
 
 /**
  * The ACR floor for self-service actions on an account's own credentials and data: a hijacked loa1
@@ -25,6 +26,12 @@ fun selfServiceAcrFloor(account: AccountProfile?): AcrLevel =
 interface IntentStrategy<S : JourneyState> {
     /** Which [AuthIntent] this strategy implements, one bean per enum entry. */
     val intent: AuthIntent
+
+    /**
+     * The sealed roots this intent's states are persisted and read back as (`JourneyStateCodec`),
+     * usually one. Several roots must not share a state name.
+     */
+    val stateRoots: List<KClass<out S>>
 
     /** Where a fresh journey of this intent begins, before any event has been seen. */
     fun initialState(ctx: JourneyContext): S

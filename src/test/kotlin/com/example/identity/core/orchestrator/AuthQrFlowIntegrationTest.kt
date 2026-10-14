@@ -1,13 +1,16 @@
 package com.example.identity.core.orchestrator
 
 import com.example.identity.contract.texts.templateOf
+import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
+import com.example.identity.core.account.SignInLog
 import org.springframework.web.client.HttpClientErrorException
 import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
+import org.springframework.beans.factory.annotation.Autowired
 import java.time.Instant
 import java.util.UUID
 import org.springframework.http.HttpEntity
@@ -21,6 +24,9 @@ import org.springframework.http.HttpStatus
  * this process; only peer-auth is mocked (as in [KeycloakChannelIntegrationTest]).
  */
 class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
+
+    @Autowired
+    private lateinit var signInLog: SignInLog
 
     init {
         beforeScenario { stubDpopWithFakeJwk() }
@@ -177,6 +183,11 @@ class AuthQrFlowIntegrationTest : IntegrationTestSupport() {
                 }
                 then("the app finishes its confirmation") {
                     done.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
+                }
+                then("the confirmation signs the app in no second time; only the browser's login is new") {
+                    val entries = signInLog.of(AccountId(accountId)).map { it.channel to it.signInType }
+                    entries.filter { it.first == "APP" } shouldBe listOf("APP" to "SIGNED_IN")
+                    entries.filter { it.first == "WEB" } shouldBe listOf("WEB" to "SIGNED_IN")
                 }
             }
         }

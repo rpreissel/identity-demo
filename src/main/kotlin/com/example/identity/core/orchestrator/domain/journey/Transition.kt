@@ -18,11 +18,16 @@ sealed interface Transition {
     /**
      * Run [intent] first, seeded at [seedWith] (e.g. `StepUpState.forSubJourney(...)`), then resume
      * this journey at [resumeWith] once it finishes.
+     *
+     * [optional] says what a cancelled sub-journey means. Not optional (the usual case): it was a
+     * precondition, so this journey is cancelled with it, without asking the strategy. Optional: this
+     * journey resumes at [resumeWith] with [JourneyEvent.SubJourneyCancelled] and decides itself.
      */
     data class RequireSubJourney(
         val intent: AuthIntent,
         val seedWith: JourneyState,
-        val resumeWith: JourneyState
+        val resumeWith: JourneyState,
+        val optional: Boolean = false,
     ) : Transition {
         init {
             // [resumeWith] is reactivated only after the sub-journey ran, with new evidence and

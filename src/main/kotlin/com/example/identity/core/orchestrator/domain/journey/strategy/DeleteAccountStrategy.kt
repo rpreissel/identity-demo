@@ -25,6 +25,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
 
     override val intent = AuthIntent.DELETE_ACCOUNT
+    override val stateRoots = listOf(DeleteAccountState::class)
 
     override fun initialState(ctx: JourneyContext): DeleteAccountState = DeleteAccountState.ConfirmPending
 
@@ -37,11 +38,7 @@ class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
                     ANSWER_DECLINE -> Transition.Cancel
                     else -> event.notUnderstood("ConfirmPending")
                 }
-                // Only this journey's own proof counts; any other sub-journey is never assumed to be it.
-                is JourneyEvent.SubJourneyFinished ->
-                    if (event.intent == AuthIntent.FRESH_PROOF) Transition.Perform(Action.DeleteAccount, resumeState = state) else Transition.Cancel
-                // The proof was declined somewhere along the way.
-                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
+                is JourneyEvent.SubJourneyFinished -> Transition.Perform(Action.DeleteAccount, resumeState = state)
                 // The delete ran; end the channel.
                 is JourneyEvent.ActionCompleted -> Transition.Logout
                 // Started: always present the prompt, unconditionally.

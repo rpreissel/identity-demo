@@ -142,14 +142,6 @@ class StepUpStrategyTest : BehaviorSpec({
                 transition shouldBe Transition.To(StepUpState.AuthChoice(AcrLevel.LOA2, AcrLevel.LOA1, Offer(listOf(ToolId("auth-sms")))))
             }
         }
-
-        `when`("the RE_IDENTIFY sub-journey was declined instead (SubJourneyCancelled)") {
-            val event = JourneyEvent.SubJourneyCancelled(AuthIntent.RE_IDENTIFY)
-            val transition = strategy.transition(state, event, theCtx)
-            then("gives up on its own rather than re-requesting the identical RE_IDENTIFY again") {
-                transition shouldBe Transition.Cancel
-            }
-        }
     }
 
     given("AuthChoice, one offered candidate, re-identification could still help") {

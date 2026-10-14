@@ -126,16 +126,6 @@ class FastAccessStrategyTest : BehaviorSpec({
         }
     }
 
-    given("Start, waiting for a sub-journey") {
-        `when`("the sub-journey is declined instead (SubJourneyCancelled)") {
-            val event = JourneyEvent.SubJourneyCancelled(AuthIntent.RE_IDENTIFY)
-            val transition = strategy.transition(FastAccessState.Start, event, ctx())
-            then("gives up on its own rather than re-requesting the identical sub-journey again") {
-                transition shouldBe Transition.Cancel
-            }
-        }
-    }
-
     given("PreferredAuth, account with the preferred device and other methods") {
         val acc = account(method("device", AcrLevel.LOA2, boundKeyRef = BINDING_KEY), method("sms", AcrLevel.LOA2))
         `when`("the preferred tool is declined") {

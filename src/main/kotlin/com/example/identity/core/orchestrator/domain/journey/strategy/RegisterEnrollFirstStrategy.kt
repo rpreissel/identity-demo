@@ -27,6 +27,7 @@ import com.example.identity.contract.tool_api.ToolId
 class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
 
     override val intent: AuthIntent = AuthIntent.REGISTER
+    override val stateRoots = listOf(RegisterEnrollFirstState::class)
 
     override fun initialState(ctx: JourneyContext): RegisterEnrollFirstState = RegisterEnrollFirstState.EnrollFirstStart
 
@@ -119,7 +120,7 @@ class RegisterEnrollFirstStrategy : IntentStrategy<RegisterEnrollFirstState> {
      */
     private fun offerIdentificationOrFinish(ctx: JourneyContext): Transition =
         // The default wording ("erneut", "nicht erreichbar") is wrong for a new account.
-        reIdentifyOr(ctx.acrFloor, ctx, resumeWith = RegisterEnrollFirstState.EnrollFirstStart, wording = ReIdentifyState.Wording.OPTIONAL_IDENTIFICATION) {
+        reIdentifyOr(ctx.acrFloor, ctx, resumeWith = RegisterEnrollFirstState.EnrollFirstStart, wording = ReIdentifyState.Wording.OPTIONAL_IDENTIFICATION, optional = true) {
             finishOrOfferRebind(ctx)
         }
 

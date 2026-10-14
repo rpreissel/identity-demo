@@ -30,6 +30,7 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
     private val StepUpState.AuthChoice.goal get() = Goal(targetAcr, startingAcr, allowReIdentification, reason)
 
     override val intent = AuthIntent.STEP_UP
+    override val stateRoots = listOf(StepUpState::class)
 
     /** Never entered without a target; only reachable as a sub-journey, which seeds the real one. */
     override fun initialState(ctx: JourneyContext): StepUpState = StepUpState.Start(ctx.acrFloor, startingAcr = AcrLevel.NONE)
@@ -40,8 +41,6 @@ class StepUpStrategy : IntentStrategy<StepUpState> {
             is StepUpState.Start -> when (event) {
                 // Re-check whether the fresh proof already closes the gap before offering again.
                 is JourneyEvent.SubJourneyFinished -> finishOrContinue(state.goal, ctx)
-                // No new evidence - re-deriving would just re-request the same RE_IDENTIFY again.
-                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
                 else -> offerAuth(state.goal, ctx)
             }
 

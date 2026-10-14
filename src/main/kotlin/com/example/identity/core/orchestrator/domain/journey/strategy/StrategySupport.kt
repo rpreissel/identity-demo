@@ -56,17 +56,18 @@ internal inline fun AnswerableState.deviceLinkAnswered(event: JourneyEvent, when
  * `RE_IDENTIFY` toward [targetAcr] when an identification can reach it on this channel
  * ([CandidateTools.forReIdentification]), [whenNone] otherwise. [resumeWith] is where the asking
  * journey carries on once the sub-journey returns; [wording] only where the default ("erneut",
- * "nicht erreichbar") is wrong.
+ * "nicht erreichbar") is wrong; [optional] as in [Transition.RequireSubJourney].
  */
 internal inline fun reIdentifyOr(
     targetAcr: AcrLevel,
     ctx: JourneyContext,
     resumeWith: JourneyState,
     wording: ReIdentifyState.Wording? = null,
+    optional: Boolean = false,
     whenNone: () -> Transition
 ): Transition =
     if (CandidateTools.forReIdentification(targetAcr, ctx).isNotEmpty()) {
-        Transition.RequireSubJourney(AuthIntent.RE_IDENTIFY, seedWith = ReIdentifyState.forSubJourney(targetAcr, wording), resumeWith = resumeWith)
+        Transition.RequireSubJourney(AuthIntent.RE_IDENTIFY, seedWith = ReIdentifyState.forSubJourney(targetAcr, wording), resumeWith = resumeWith, optional = optional)
     } else {
         whenNone()
     }

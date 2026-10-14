@@ -24,17 +24,14 @@ import com.example.identity.contract.tool_api.ToolOutcome
 class ConfirmPeerLoginStrategy : IntentStrategy<ConfirmPeerLoginState> {
 
     override val intent = AuthIntent.CONFIRM_PEER_LOGIN
+    override val stateRoots = listOf(ConfirmPeerLoginState::class)
 
     override fun initialState(ctx: JourneyContext): ConfirmPeerLoginState = ConfirmPeerLoginState.Requested
 
     override fun transition(state: ConfirmPeerLoginState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is ConfirmPeerLoginState.Requested -> when (event) {
-                // Only this journey's own proof counts; any other sub-journey is never assumed to be it.
-                is JourneyEvent.SubJourneyFinished ->
-                    if (event.intent == AuthIntent.FRESH_PROOF) Transition.To(confirming(ctx)) else Transition.Cancel
-                // A declined proof ends the wish instead of re-requesting it forever.
-                is JourneyEvent.SubJourneyCancelled -> Transition.Cancel
+                is JourneyEvent.SubJourneyFinished -> Transition.To(confirming(ctx))
                 else -> requireFreshProof(ctx)
             }
 

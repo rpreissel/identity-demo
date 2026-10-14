@@ -22,6 +22,7 @@ import com.example.identity.contract.tool_api.ToolOutcome
 class ReIdentifyStrategy : IntentStrategy<ReIdentifyState> {
 
     override val intent = AuthIntent.RE_IDENTIFY
+    override val stateRoots = listOf(ReIdentifyState::class)
 
     /** Never entered without a target; only reachable as a sub-journey, which seeds the real one. */
     override fun initialState(ctx: JourneyContext): ReIdentifyState = ReIdentifyState.OfferReIdent(ctx.acrFloor)
