@@ -23,6 +23,6 @@ object AcrLevels {
     // Unknown values count as "none": results are only rank-compared or written into validated
     // fields.
 
-    /** [AcrLevel.max], for raw strings - a null side falls back to the other, both null -> "none". */
-    fun max(a: String?, b: String?): String = AcrLevel.max(AcrLevel.parse(a), AcrLevel.parse(b)).value
+    /** The higher of two raw levels; a missing or unknown side counts as "none". */
+    fun max(a: String?, b: String?): String = maxOf(AcrLevel.parse(a) ?: AcrLevel.NONE, AcrLevel.parse(b) ?: AcrLevel.NONE).value
 }

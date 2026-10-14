@@ -36,10 +36,10 @@ class DefaultAuthPolicy(
     }
 
     override fun resolveAcr(evidence: SessionEvidence, account: AccountProfile?): AcrLevel =
-        AcrLevel.max(AcrLevel.min(levelOf(evidence), AGELESS_CEILING), levelOf(recent(evidence)))
+        maxOf(minOf(levelOf(evidence), AGELESS_CEILING), levelOf(recent(evidence)))
 
     private fun levelOf(evidence: SessionEvidence): AcrLevel =
-        AcrLevel.max(identityAssuranceLevel(evidence), authenticatorAssuranceLevel(evidence))
+        maxOf(identityAssuranceLevel(evidence), authenticatorAssuranceLevel(evidence))
 
     /** The proofs that still count above loa1. */
     private fun recent(evidence: SessionEvidence): SessionEvidence {
@@ -174,7 +174,7 @@ class DefaultAuthPolicy(
 
     /** What proving [method] can give at most: the tool's level, capped by the enrollment's (ADR-5). */
     private fun cappedAcr(method: AuthMethodView, descriptor: Tool): AcrLevel =
-        AcrLevel.min(AcrLevel.parse(method.enrolledUnderAcr), descriptor.maxAcr)
+        minOf(AcrLevel.parse(method.enrolledUnderAcr) ?: AcrLevel.NONE, descriptor.maxAcr)
 
     /**
      * The MFA bump over one session's evidence, capped by the highest [MethodEvidence.enrolledUnderAcr]
@@ -197,8 +197,8 @@ class DefaultAuthPolicy(
      */
     private fun combinedAcr(base: AcrLevel, distinctMethods: Int, factorTypesUnion: Set<FactorType>, maxEnrolledUnderAcr: AcrLevel): AcrLevel {
         if (distinctMethods < 2 || factorTypesUnion.size < 2) return base
-        val bumped = AcrLevel.min(AcrLevels.bump(base), maxEnrolledUnderAcr)
-        return AcrLevel.max(base, AcrLevel.min(bumped, NIST_COMBINATION_CEILING))
+        val bumped = minOf(AcrLevels.bump(base), maxEnrolledUnderAcr)
+        return maxOf(base, minOf(bumped, NIST_COMBINATION_CEILING))
     }
 
     /** What an enrolled method gives when proven: its KNOWN_ACCOUNT_AUTH procedure, not whichever comes first. */

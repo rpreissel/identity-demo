@@ -43,18 +43,5 @@ value class AcrLevel(val value: String) : Comparable<AcrLevel> {
 
         /** Inverse of [rank] - the level at a given rank, [NONE] if out of range. */
         fun levelAt(rank: Int): AcrLevel = KNOWN.getOrNull(rank)?.let(::AcrLevel) ?: NONE
-
-        /** The higher of two levels; a `null` argument falls back to the other, both `null` -> [NONE]. */
-        fun max(a: AcrLevel?, b: AcrLevel?): AcrLevel {
-            if (a == null) return b ?: NONE
-            if (b == null) return a
-            return if (a >= b) a else b
-        }
-
-        /** The lower of two levels; any `null` argument means nothing was established -> [NONE]. */
-        fun min(a: AcrLevel?, b: AcrLevel?): AcrLevel {
-            if (a == null || b == null) return NONE
-            return if (a <= b) a else b
-        }
     }
 }

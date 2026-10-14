@@ -87,7 +87,7 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
 
     /** A change never lowers the credential: the session must hold what the old one was enrolled under. */
     private fun changeFloor(target: AuthMethodView, ctx: JourneyContext): AcrLevel =
-        AcrLevel.max(selfServiceAcrFloor(ctx.requireAccount()), AcrLevel.parse(target.enrolledUnderAcr) ?: AcrLevel.NONE)
+        maxOf(selfServiceAcrFloor(ctx.requireAccount()), AcrLevel.parse(target.enrolledUnderAcr) ?: AcrLevel.NONE)
 
     private fun offerChange(wish: ManageAuthMethodsState.ChangeRequested, ctx: JourneyContext): Transition {
         val tool = changeTarget(wish, ctx)?.let { ctx.catalog.changeToolOf(it.method) }

@@ -56,25 +56,12 @@ class AcrLevelTest : BehaviorSpec({
         }
     }
 
-    given("max/min") {
-        then("max picks the higher-ranked level") {
-            AcrLevel.max(AcrLevel.LOA1, AcrLevel.LOA2) shouldBe AcrLevel.LOA2
-            AcrLevel.max(AcrLevel.LOA2, AcrLevel.LOA1) shouldBe AcrLevel.LOA2
-        }
-
-        then("max treats a null side as absent, not as the winner") {
-            AcrLevel.max(null, AcrLevel.LOA2) shouldBe AcrLevel.LOA2
-            AcrLevel.max(AcrLevel.LOA2, null) shouldBe AcrLevel.LOA2
-            AcrLevel.max(null, null) shouldBe AcrLevel.NONE
-        }
-
-        then("min picks the lower-ranked level") {
-            AcrLevel.min(AcrLevel.LOA1, AcrLevel.LOA2) shouldBe AcrLevel.LOA1
-        }
-
-        then("min treats either side being null as NONE - a missing value never counts as satisfied") {
-            AcrLevel.min(null, AcrLevel.LOA2) shouldBe AcrLevel.NONE
-            AcrLevel.min(AcrLevel.LOA2, null) shouldBe AcrLevel.NONE
+    given("the ordering") {
+        then("levels compare by rank, so maxOf/minOf pick the higher/lower level") {
+            maxOf(AcrLevel.LOA1, AcrLevel.LOA2) shouldBe AcrLevel.LOA2
+            maxOf(AcrLevel.LOA2, AcrLevel.LOA1) shouldBe AcrLevel.LOA2
+            minOf(AcrLevel.LOA1, AcrLevel.LOA2) shouldBe AcrLevel.LOA1
+            minOf(AcrLevel.NONE, AcrLevel.LOA3) shouldBe AcrLevel.NONE
         }
     }
 

@@ -82,7 +82,7 @@ class ClaimLedger(
                         claimBatchId = batch.id,
                         claimSource = claim.source.value,
                         // What was actually proven, not what the tool can reach at most (ADR-5).
-                        establishedAcr = (claim.establishedAcr?.let { AcrLevel.min(it, provenAcr) } ?: provenAcr).value,
+                        establishedAcr = (claim.establishedAcr?.let { minOf(it, provenAcr) } ?: provenAcr).value,
                         authMethodId = authMethodId,
                         establishedAt = establishedAt
                     )

@@ -86,7 +86,7 @@ internal object AuthEnrollCore {
         enforceEnrollmentFloor: Boolean = true
     ): Transition {
         if (enforceEnrollmentFloor && !ctx.policy.isSatisfied(ctx.evidence, ENROLLMENT_FLOOR_ACR, account)) {
-            val reidentTarget = AcrLevel.max(ENROLLMENT_FLOOR_ACR, ctx.acrFloor)
+            val reidentTarget = maxOf(ENROLLMENT_FLOOR_ACR, ctx.acrFloor)
             return reIdentifyOr(reidentTarget, ctx, resumeWith = resumeAtStart) {
                 Transition.Abort(
                     Text("Fuer die Einrichtung eines neuen Anmeldeverfahrens ist eine frische Identifizierung (mindestens loa2) erforderlich, aktuell ist aber keine Identifizierungsmethode verfuegbar.")
