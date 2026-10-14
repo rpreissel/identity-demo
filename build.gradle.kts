@@ -312,6 +312,13 @@ tasks.withType<Test> {
     // Cache (je MockkBean-Kombination einer), und mit Spring Security wurde jeder etwas groesser -
     // der ArchUnit-Import am Ende lief dann in "OutOfMemoryError: Java heap space".
     maxHeapSize = "1g"
+    // Ein fehlgeschlagener Test nennt im CI-Log seine Meldung, nicht nur Klasse und Zeile: Ein
+    // seltener Fehlschlag (DPoP-demo-yn25) ist sonst nur mit seinen Testberichten zu verstehen, und
+    // die CI hebt sie nicht auf.
+    testLogging {
+        events(org.gradle.api.tasks.testing.logging.TestLogEvent.FAILED)
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
 }
 
 // Der API-Vertrag hat drei Leser (Kotlin-DTOs, Frontend, keycloak-extension); beide Clients werden

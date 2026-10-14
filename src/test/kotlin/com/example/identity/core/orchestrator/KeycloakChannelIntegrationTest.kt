@@ -462,9 +462,20 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                         channelBinding = Regex("/kc/channels/([0-9a-f-]{36})/").find(url)!!.groupValues[1], subject = null
                     )
                 }
-                val failures = java.util.concurrent.CopyOnWriteArrayList<Throwable>()
+                // Status and body of every answer that is not 204, so a rare failure says what it was.
+                val failures = java.util.concurrent.CopyOnWriteArrayList<String>()
                 listOf(first, second).map { channel ->
-                    kotlin.concurrent.thread { runCatching { flowEnd(channel, "kc-race", stub = false) }.onFailure(failures::add) }
+                    kotlin.concurrent.thread {
+                        runCatching {
+                            restTemplate.exchange(
+                                "http://localhost:$port/orchestrator/api/v1/kc/channels/$channel/flow-end?kcSessionId=kc-race",
+                                HttpMethod.POST, HttpEntity<Void>(keycloakHeaders()), String::class.java
+                            )
+                        }.fold(
+                            { if (it.statusCode != HttpStatus.NO_CONTENT) failures.add("${it.statusCode} ${it.body}") },
+                            { failures.add(it.toString()) },
+                        )
+                    }
                 }.forEach { it.join() }
                 val rows = jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM orchestrator.keycloak_session_evidence WHERE kc_session_id = 'kc-race'", Int::class.java
