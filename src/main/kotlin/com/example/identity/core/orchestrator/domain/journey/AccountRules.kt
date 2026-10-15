@@ -37,7 +37,7 @@ sealed interface IdentificationTarget {
          *   ([attestationFits]).
          * - **An identified account** plus an attestation that resolves to nobody means a different
          *   person. Mixing a stranger's identity into it must never happen quietly. Registering on
-         *   a linked phone does not land here (`AuthIntent.Entry.withDeviceAccount`).
+         *   a linked phone does not land here (`AuthIntent.Entry.usesLinkedAccount`).
          */
         fun forUnresolved(inHand: AccountProfile?, attestationFits: () -> Boolean): IdentificationTarget = when {
             inHand == null -> NewAccount

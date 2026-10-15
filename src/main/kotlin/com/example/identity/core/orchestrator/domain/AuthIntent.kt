@@ -32,13 +32,13 @@ enum class AuthIntent(
 ) {
     /** Into a login on this device as fast as possible, in a way that works again next time. */
     FAST_ACCESS(
-        entry = Entry(APP, withDeviceAccount = true), startableWhenLoggedIn = false,
+        entry = Entry(APP, usesLinkedAccount = true), startableWhenLoggedIn = false,
         linksDeviceWithoutAsking = true,
     ),
 
     /** Deliberately fresh identification, even on an already linked device. */
     REGISTER(
-        entry = Entry(APP_OR_WEB, withDeviceAccount = false), startableWhenLoggedIn = false,
+        entry = Entry(APP_OR_WEB, usesLinkedAccount = false), startableWhenLoggedIn = false,
         linksDeviceWithoutAsking = true,
     ),
 
@@ -49,7 +49,7 @@ enum class AuthIntent(
      * next time.
      */
     LOOKUP_LOGIN(
-        entry = Entry(APP, withDeviceAccount = false), startableWhenLoggedIn = false,
+        entry = Entry(APP, usesLinkedAccount = false), startableWhenLoggedIn = false,
         linksDeviceWithoutAsking = false,
     ),
 
@@ -60,7 +60,7 @@ enum class AuthIntent(
      * pre-set on the channel).
      */
     WEB_SELECT_METHOD(
-        entry = Entry(WEB, withDeviceAccount = false), startableWhenLoggedIn = false,
+        entry = Entry(WEB, usesLinkedAccount = false), startableWhenLoggedIn = false,
         linksDeviceWithoutAsking = true,
     ),
 
@@ -84,7 +84,7 @@ enum class AuthIntent(
      * falls back to identification or registration.
      */
     CONFIRM_PEER_LOGIN(
-        entry = Entry(APP, withDeviceAccount = true), startableWhenLoggedIn = true,
+        entry = Entry(APP, usesLinkedAccount = true), startableWhenLoggedIn = true,
         linksDeviceWithoutAsking = true,
     ),
 
@@ -118,12 +118,12 @@ enum class AuthIntent(
     /**
      * Opens a new channel on [on] (docs/04-orchestrierung.md Abschnitt 2). FAST_ACCESS, LOOKUP_LOGIN
      * and CONFIRM_PEER_LOGIN assume an App channel with device binding; WEB_SELECT_METHOD is
-     * Keycloak's own entry. [withDeviceAccount]: an APP channel starts from the account this device
+     * Keycloak's own entry. [usesLinkedAccount]: an APP channel starts from the account this device
      * is linked to (`DeviceAccountLink`), when opened and again after a cancel. One rule for both,
      * or a cancelled cold CONFIRM_PEER_LOGIN would lose its account. REGISTER and LOOKUP_LOGIN mean
      * "not the account this device already knows".
      */
-    data class Entry(val on: Set<ChannelType>, val withDeviceAccount: Boolean)
+    data class Entry(val on: Set<ChannelType>, val usesLinkedAccount: Boolean)
 
     /**
      * Why this intent may not start on an open channel in [state], or null if it may. The one place
