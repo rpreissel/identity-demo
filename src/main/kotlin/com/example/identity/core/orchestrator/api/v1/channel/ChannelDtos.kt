@@ -37,7 +37,7 @@ data class ChannelCreateRequest(
 @Schema(
     description = "An answer to whatever the current step is waiting on instead of a tool run " +
         "(docs/04-orchestrierung.md #3) - e.g. \"accept\"/\"decline\" for the optional device-binding offer of a " +
-        "lookup login. Which values are valid depends on what next.step is currently offering."
+        "lookup login. Anything but \"accept\" or \"decline\" is rejected with 400."
 )
 data class AnswerRequest(
     @field:Schema(example = "accept")

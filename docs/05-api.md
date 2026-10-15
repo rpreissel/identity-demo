@@ -836,7 +836,7 @@ Ja oder Nein. Jeder solche Zustand (`AnswerableState`) enthält in `stepData` ei
 Für **jeden** `AnswerableState` hat `next` denselben festen Wert, egal zu welchem Intent:
 `{"type":"orchestrator","context":"prompt","step":"confirm"}`. Beantwortet wird jeder `Prompt` über
 denselben gemeinsamen Endpunkt `POST .../{channelSessionId}/answer` mit
-`{"answer": "accept"|"decline"}`.
+`{"answer": "accept"|"decline"}`. Jeder andere Wert wird mit 400 abgelehnt; die Rückfrage bleibt stehen.
 
 Den ganzen Text jeder Rückfrage liefert **das Backend**; der Client formuliert nie selbst. So
 braucht eine geänderte Rückfrage keine neue App-Version.

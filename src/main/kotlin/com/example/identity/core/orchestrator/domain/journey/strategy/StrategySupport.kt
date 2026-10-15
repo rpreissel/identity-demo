@@ -6,16 +6,12 @@ import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQue
 import com.example.identity.core.orchestrator.domain.journey.state.AnswerableState
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.Action
+import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
-
-/** An answer outside [com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT]/`ANSWER_DECLINE`. */
-internal fun JourneyEvent.Answered.notUnderstood(state: String): Nothing = error("$state does not understand answer '$answer'")
 
 /** True when this device is durably linked to an account other than the one in hand (docs/04-orchestrierung.md #2, "Zweitaccount"). */
 internal fun JourneyContext.deviceLinkedElsewhere(): Boolean = linkedAccountId != null && linkedAccountId != account?.accountId
@@ -28,9 +24,8 @@ internal fun JourneyContext.deviceLinkedElsewhere(): Boolean = linkedAccountId !
  */
 internal inline fun AnswerableState.deviceLinkAnswered(event: JourneyEvent, whenDeclined: () -> Transition, afterwards: () -> Transition): Transition = when (event) {
     is JourneyEvent.Answered -> when (event.answer) {
-        ANSWER_ACCEPT -> Transition.Perform(Action.LinkDevice, resumeState = this)
-        ANSWER_DECLINE -> whenDeclined()
-        else -> event.notUnderstood(this::class.simpleName!!)
+        Answer.ACCEPT -> Transition.Perform(Action.LinkDevice, resumeState = this)
+        Answer.DECLINE -> whenDeclined()
     }
     is JourneyEvent.ActionCompleted -> afterwards()
     else -> error("${this::class.simpleName} only accepts JourneyEvent.Answered")

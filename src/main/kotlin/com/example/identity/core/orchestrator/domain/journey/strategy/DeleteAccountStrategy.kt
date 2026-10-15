@@ -3,10 +3,9 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
@@ -28,9 +27,8 @@ class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
             is DeleteAccountState.ConfirmPending -> when (event) {
                 is JourneyEvent.Answered -> when (event.answer) {
                     // Level and freshness are checked only after "yes".
-                    ANSWER_ACCEPT -> requireFreshProof(ctx)
-                    ANSWER_DECLINE -> Transition.Cancel
-                    else -> event.notUnderstood("ConfirmPending")
+                    Answer.ACCEPT -> requireFreshProof(ctx)
+                    Answer.DECLINE -> Transition.Cancel
                 }
                 is JourneyEvent.SubJourneyFinished -> Transition.Perform(Action.DeleteAccount, resumeState = state)
                 // The delete ran; end the channel.

@@ -38,7 +38,7 @@ class JourneyTraceDetails(
     fun eventDetail(event: JourneyEvent, channel: ChannelSession): Map<String, Any?> = when (event) {
         is JourneyEvent.Abandoned -> mapOf("toolId" to event.tool.toolId, "tool" to channel.declaredVersionOf(event.tool.toolId.value))
         is JourneyEvent.OfferExhausted -> mapOf("declined" to event.declined.map { it.value })
-        is JourneyEvent.Answered -> mapOf("answer" to event.answer)
+        is JourneyEvent.Answered -> mapOf("answer" to event.answer.wire)
         is JourneyEvent.SubJourneyFinished -> mapOf("subIntent" to event.intent.name, "achievedAcr" to event.achievedAcr)
         is JourneyEvent.SubJourneyCancelled -> mapOf("subIntent" to event.intent.name)
         JourneyEvent.Started -> emptyMap()

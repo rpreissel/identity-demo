@@ -4,8 +4,7 @@ import com.example.identity.core.orchestrator.domain.policy.fromNow
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyStrategy
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
+import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
@@ -16,7 +15,6 @@ import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -49,7 +47,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2)
 
         `when`("accepted") {
-            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
+            val transition = strategy.transition(state, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
             then("advances to Identifying, offering exactly the reachable IDENT tool(s)") {
                 transition.shouldBeInstanceOf<Transition.To>()
                 val to = transition.state
@@ -60,16 +58,9 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         }
 
         `when`("declined") {
-            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_DECLINE), theCtx)
+            val transition = strategy.transition(state, JourneyEvent.Answered(Answer.DECLINE), theCtx)
             then("cancels") {
                 transition shouldBe Transition.Cancel
-            }
-        }
-
-        `when`("an unrecognized answer is given") {
-            val result = runCatching { strategy.transition(state, JourneyEvent.Answered("maybe"), theCtx) }
-            then("fails loudly rather than guessing") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
 
@@ -96,7 +87,7 @@ class ReIdentifyStrategyTest : BehaviorSpec({
         val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2)
 
         `when`("accepted") {
-            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
+            val transition = strategy.transition(state, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
             then("still cancels rather than erroring") {
                 transition shouldBe Transition.Cancel
             }

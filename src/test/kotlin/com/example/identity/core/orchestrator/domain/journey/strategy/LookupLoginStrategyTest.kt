@@ -4,8 +4,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQue
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginStrategy
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
+import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -193,7 +192,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
         val state = DeviceLinkQuestion(DeviceLinkQuestion.Wording.OFFER)
 
         `when`("accepted") {
-            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_ACCEPT), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Answered(Answer.ACCEPT), ctx())
             then("links the device") {
                 transition shouldBe
                     Transition.Perform(Action.LinkDevice, resumeState = state)
@@ -208,16 +207,9 @@ class LookupLoginStrategyTest : BehaviorSpec({
         }
 
         `when`("declined") {
-            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_DECLINE), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Answered(Answer.DECLINE), ctx())
             then("finishes without linking") {
                 transition shouldBe Transition.Authenticated
-            }
-        }
-
-        `when`("answered with something unrecognized") {
-            val result = runCatching { strategy.transition(state, JourneyEvent.Answered("maybe"), ctx()) }
-            then("fails loudly") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
 
@@ -233,7 +225,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
         val state = DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND)
 
         `when`("accepted") {
-            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_ACCEPT), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Answered(Answer.ACCEPT), ctx())
 
             then("moves the device link to this account") {
                 transition shouldBe Transition.Perform(Action.LinkDevice, resumeState = state)
@@ -249,18 +241,10 @@ class LookupLoginStrategyTest : BehaviorSpec({
         }
 
         `when`("declined") {
-            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_DECLINE), ctx())
+            val transition = strategy.transition(state, JourneyEvent.Answered(Answer.DECLINE), ctx())
 
             then("signs in all the same; the device stays with the other account") {
                 transition shouldBe Transition.Authenticated
-            }
-        }
-
-        `when`("answered with something unrecognized") {
-            val result = runCatching { strategy.transition(state, JourneyEvent.Answered("maybe"), ctx()) }
-
-            then("fails loudly") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
     }

@@ -721,7 +721,7 @@ Journey-Trace steht es weiter als Eintrag „Completed“.
 | `ActionCompleted` | Die `Action` eines `Perform`-Übergangs (unten) ist ausgeführt. Der `JourneyContext` ist neu aufgebaut |
 | `SubJourneyFinished(intent, achievedAcr)` | Eine untergeordnete Journey, die als Voraussetzung gestartet wurde, ist fertig. Es ist immer die, die dieser Zustand angefordert hat; `intent` steht nur für den Journey-Trace da |
 | `SubJourneyCancelled(intent)` | Die untergeordnete Journey wurde abgelehnt oder aufgegeben, ohne Ergebnis. Dann bricht der `JourneyService` die wartende Journey ab, ohne die Strategie zu fragen. Nur eine Sub-Journey, die die Strategie als optional angefordert hat (`RequireSubJourney(optional = true)`, bisher die abschließende Identifizierung von „Enrollment zuerst“), meldet sich mit diesem Ereignis bei ihr zurück (`optional`) |
-| `Answered(answer)` | Eine ausdrückliche Antwort auf einen `AnswerableState` (einen Zustand mit Ja/Nein-Frage) statt eines Tools. `answer` ist ein String, kein `Boolean` |
+| `Answered(answer)` | Eine ausdrückliche Antwort auf einen `AnswerableState` (einen Zustand mit Ja/Nein-Frage) statt eines Tools. `answer` ist `Answer.ACCEPT` oder `Answer.DECLINE`; jeden anderen Wert lehnt schon der Endpunkt mit 400 ab, die Strategie sieht ihn nie |
 
 Ein **Übergang** (`Transition`) ist das, was als Nächstes passieren soll:
 

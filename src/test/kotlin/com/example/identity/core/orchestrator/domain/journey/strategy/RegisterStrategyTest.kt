@@ -5,8 +5,7 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.policy.fromNow
 import com.example.identity.core.orchestrator.domain.ChannelType
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
+import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -165,7 +164,7 @@ class RegisterStrategyTest : BehaviorSpec({
         val conflicting = ctx(account = acc, acrFloor = AcrLevel.LOA1, linkedAccountId = AccountId(999L))
 
         `when`("accepted") {
-            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_ACCEPT), conflicting)
+            val transition = strategy.transition(state, JourneyEvent.Answered(Answer.ACCEPT), conflicting)
             then("links the device") {
                 transition shouldBe
                     Transition.Perform(Action.LinkDevice, resumeState = state)
@@ -173,7 +172,7 @@ class RegisterStrategyTest : BehaviorSpec({
         }
 
         `when`("declined") {
-            val transition = strategy.transition(state, JourneyEvent.Answered(ANSWER_DECLINE), conflicting)
+            val transition = strategy.transition(state, JourneyEvent.Answered(Answer.DECLINE), conflicting)
             then("cancels the journey outright - no silent continuation, the old binding is left untouched") {
                 transition shouldBe Transition.Cancel
             }

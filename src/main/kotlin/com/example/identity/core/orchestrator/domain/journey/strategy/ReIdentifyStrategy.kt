@@ -2,11 +2,10 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
@@ -29,9 +28,8 @@ class ReIdentifyStrategy : IntentStrategy<ReIdentifyState> {
         when (state) {
             is ReIdentifyState.OfferReIdent -> when (event) {
                 is JourneyEvent.Answered -> when (event.answer) {
-                    ANSWER_ACCEPT -> offerIdentifying(state, ctx) ?: Transition.Cancel
-                    ANSWER_DECLINE -> Transition.Cancel
-                    else -> event.notUnderstood("OfferReIdent")
+                    Answer.ACCEPT -> offerIdentifying(state, ctx) ?: Transition.Cancel
+                    Answer.DECLINE -> Transition.Cancel
                 }
                 // Started: always present the prompt, unconditionally.
                 else -> Transition.To(state)

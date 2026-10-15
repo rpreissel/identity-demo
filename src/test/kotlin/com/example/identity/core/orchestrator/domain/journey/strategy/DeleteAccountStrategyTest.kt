@@ -1,8 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_DECLINE
+import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -14,7 +13,6 @@ import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTe
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -48,16 +46,9 @@ class DeleteAccountStrategyTest : BehaviorSpec({
         }
 
         `when`("the confirmation is declined") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(ANSWER_DECLINE), ctx())
+            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.DECLINE), ctx())
             then("cancels - no gate is ever evaluated before an explicit yes") {
                 transition shouldBe Transition.Cancel
-            }
-        }
-
-        `when`("an unrecognized answer arrives") {
-            val result = runCatching { strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered("maybe"), ctx()) }
-            then("fails loudly rather than guessing") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
             }
         }
     }
@@ -66,7 +57,7 @@ class DeleteAccountStrategyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
         `when`("the confirmation is accepted") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
+            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
             then("parks the wish and requires loa2 plus a fresh proof - only NOW, never before accepting, and never decided here (ADR-61)") {
                 transition shouldBe
                     Transition.RequireSubJourney(
@@ -82,7 +73,7 @@ class DeleteAccountStrategyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1), personId = null)
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
         `when`("the confirmation is accepted") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(ANSWER_ACCEPT), theCtx)
+            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
             then("requires only loa1 - selfServiceAcrFloor, not a second definition") {
                 transition.shouldBeInstanceOf<Transition.RequireSubJourney>().seedWith
                     .shouldBeInstanceOf<FreshProofState.Start>().requiredAcr shouldBe AcrLevel.LOA1

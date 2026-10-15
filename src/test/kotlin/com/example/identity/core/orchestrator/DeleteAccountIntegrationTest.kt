@@ -1,7 +1,10 @@
 package com.example.identity.core.orchestrator
 
 import java.util.UUID
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
+import org.springframework.http.HttpStatus
+import org.springframework.web.client.HttpClientErrorException
 
 /**
  * Account deletion's ACR gate (docs/04-orchestrierung.md, DeleteAccountStrategy): the yes/no
@@ -47,6 +50,18 @@ class DeleteAccountIntegrationTest : IntegrationTestSupport() {
 
                 then("the yes/no confirmation comes first") {
                     started.next() shouldBe mapOf("type" to "orchestrator", "context" to "prompt", "step" to "confirm")
+                }
+            }
+
+            `when`("the client sends an answer that is neither accept nor decline") {
+                val (_, channelSessionId) = loginWithSmsOnly()
+                startDeletion(channelSessionId)
+                val refused = runCatching { answer(channelSessionId, "maybe") }
+                val retried = answer(channelSessionId, "decline")
+
+                then("it is rejected with 400 and the question still stands") {
+                    shouldThrow<HttpClientErrorException> { refused.getOrThrow() }.statusCode shouldBe HttpStatus.BAD_REQUEST
+                    retried.next() shouldBe mapOf("type" to "orchestrator", "context" to "authentication", "step" to "authenticated")
                 }
             }
 

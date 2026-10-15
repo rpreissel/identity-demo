@@ -13,6 +13,7 @@ import com.example.identity.core.orchestrator.session.id
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.JourneyLifecycle
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -367,10 +368,10 @@ class JourneyService(
     }
 
     /**
-     * An answer to what the current [AnswerableState] waits on, instead of a tool run. Valid values
-     * and their meaning belong to the state and its strategy, not to this entry point.
+     * An answer to what the current [AnswerableState] waits on, instead of a tool run. What it means
+     * belongs to the state and its strategy, not to this entry point.
      */
-    fun answer(running: RunningJourney, live: LiveChannel, answer: String): Step {
+    fun answer(running: RunningJourney, live: LiveChannel, answer: Answer): Step {
         keepSessionAlive(live)
         val journey = running.entity
         val channel = live.session

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.journey.JourneyEndedException
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
@@ -368,12 +369,16 @@ class ChannelService(
         }
     }
 
-    /** The user's answer to what the current step waits on instead of a tool run. */
+    /**
+     * The user's answer to what the current step waits on instead of a tool run. Anything but
+     * `accept`/`decline` is rejected here (400), so no strategy has to.
+     */
     fun answer(channelSessionId: ChannelSessionId, bindingKeyRef: String, answer: String): ChannelResponse {
+        val parsed = requireNotNull(Answer.fromWire(answer)) { "Unknown answer" }
         val channel = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
         val active = journeyService.findActive(channelSessionId)
             ?: throw OrchestratorException.invalidState(Text("No active journey for this channel"))
-        val step = journeyService.answer(active, channel, answer)
+        val step = journeyService.answer(active, channel, parsed)
         return respondAfter(channelSessionId, step)
     }
 

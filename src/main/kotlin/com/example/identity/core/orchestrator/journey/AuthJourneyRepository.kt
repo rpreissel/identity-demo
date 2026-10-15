@@ -40,8 +40,6 @@ interface AuthJourneyRepository : JpaRepository<AuthJourney, UUID> {
     fun findIdsForRetention(cutoff: Instant, pageable: Pageable): List<JourneyId> =
         findIdValuesForRetention(cutoff, pageable).map(::JourneyId)
 
-    fun deleteByConsumedAtBeforeOrExpiresAtBefore(consumedCutoff: Instant, expiresCutoff: Instant): Long
-
     fun deleteAllByJourneyIdInBatch(journeyIds: Collection<JourneyId>) = deleteAllByIdInBatch(journeyIds.map { it.value })
 
     fun findIdsByChannelSessionIdIn(channelSessionIds: Collection<ChannelSessionId>): List<JourneyId> =

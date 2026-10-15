@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.journey.ANSWER_ACCEPT
 import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
@@ -47,7 +46,7 @@ class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
             is LookupLoginState.Credential -> proving(state, event, ctx)
             is LookupLoginState.AdditionalFactor -> proving(state, event, ctx)
 
-            // The journey ends either way; only ANSWER_ACCEPT links the device.
+            // The journey ends either way; only Answer.ACCEPT links the device.
             is DeviceLinkQuestion -> state.deviceLinkAnswered(event, whenDeclined = { Transition.Authenticated }) { Transition.Authenticated }
         }
 

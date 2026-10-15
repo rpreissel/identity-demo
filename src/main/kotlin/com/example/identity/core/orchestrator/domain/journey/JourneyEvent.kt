@@ -46,9 +46,6 @@ sealed interface JourneyEvent {
      */
     data class SubJourneyCancelled(val intent: AuthIntent, val optional: Boolean) : JourneyEvent
 
-    /**
-     * An explicit answer to what an [AnswerableState] is waiting on (`JourneyService.answer`). A
-     * string, not a boolean: the owning strategy decides which values are valid.
-     */
-    data class Answered(val answer: String) : JourneyEvent
+    /** An explicit answer to what an [AnswerableState] is waiting on (`JourneyService.answer`). */
+    data class Answered(val answer: Answer) : JourneyEvent
 }

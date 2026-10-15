@@ -68,7 +68,7 @@ export const ActiveMethodViewFactorTypesEnum = {
 export type ActiveMethodViewFactorTypesEnum = typeof ActiveMethodViewFactorTypesEnum[keyof typeof ActiveMethodViewFactorTypesEnum];
 
 /**
- * An answer to whatever the current step is waiting on instead of a tool run (docs/04-orchestrierung.md #3) - e.g. "accept"/"decline" for the optional device-binding offer of a lookup login. Which values are valid depends on what next.step is currently offering.
+ * An answer to whatever the current step is waiting on instead of a tool run (docs/04-orchestrierung.md #3) - e.g. "accept"/"decline" for the optional device-binding offer of a lookup login. Anything but "accept" or "decline" is rejected with 400.
  * @export
  * @interface AnswerRequest
  */

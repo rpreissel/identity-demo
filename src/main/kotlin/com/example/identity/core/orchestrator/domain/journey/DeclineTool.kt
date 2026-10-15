@@ -19,10 +19,3 @@ fun OfferingState.afterAbandoning(tool: ToolId, availableTools: Set<ToolId>): Jo
 
 /** This offer with [tool] declined, for the strategy to resume from once [afterAbandoning] returned `null`. */
 fun OfferingState.narrowedBy(tool: ToolId): OfferingState = declining(tool)
-
-/**
- * The two answers an [com.example.identity.core.orchestrator.domain.journey.state.AnswerableState] prompt
- * accepts, as the client sends them ([JourneyEvent.Answered]). A wire contract, so defined once.
- */
-const val ANSWER_ACCEPT = "accept"
-const val ANSWER_DECLINE = "decline"
