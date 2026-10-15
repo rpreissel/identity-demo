@@ -241,7 +241,7 @@ paths:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                   currentAcr: loa1
-                  state: STEP_UP_IN_PROGRESS
+                  state: AUTHENTICATED
                 next:
                   step: auth
                   toolId: auth-sms
@@ -282,7 +282,7 @@ paths:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                   currentAcr: loa1
-                  state: STEP_UP_IN_PROGRESS
+                  state: AUTHENTICATED
                 next:
                   step: auth
                   toolId: auth-sms

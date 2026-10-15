@@ -68,13 +68,8 @@ class AuthIntentTest : BehaviorSpec({
 
     given("a process access, signed in without an account (ADR-48)") {
         `when`("it starts an intent from within its session") {
-            then("only STEP_UP may start; the account intents are refused") {
-                inSession.associateWith { it.startRefusal(ChannelState.AUTHENTICATED, hasAccount = false) } shouldBe mapOf(
-                    AuthIntent.STEP_UP to null,
-                    AuthIntent.MANAGE_AUTH_METHODS to AuthIntent.StartRefusal.NO_ACCOUNT,
-                    AuthIntent.CONFIRM_PEER_LOGIN to AuthIntent.StartRefusal.NO_ACCOUNT,
-                    AuthIntent.DELETE_ACCOUNT to AuthIntent.StartRefusal.NO_ACCOUNT
-                )
+            then("every one is refused: each acts on the account itself") {
+                inSession.forEach { it.startRefusal(ChannelState.AUTHENTICATED, hasAccount = false) shouldBe AuthIntent.StartRefusal.NO_ACCOUNT }
             }
         }
     }

@@ -109,7 +109,7 @@ class ChannelController(
                 description = "Resumed mid-step-up, waiting on an SMS TAN.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa1"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa1"},
                       "next": {"type": "tool", "toolId": "auth-sms", "step": "auth", "toolSessionId": "$EXAMPLE_TOOL_SESSION_ID"}
                     }
                 """)])]
@@ -133,7 +133,7 @@ class ChannelController(
                 description = "loa3 requested, current evidence (loa2) doesn't satisfy it - offers the candidate methods.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa2"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa2"},
                       "next": {"type": "orchestrator", "context": "auth", "step": "selectMethod"},
                       "stepData": {"kind": "select-method", "options": ["auth-sms", "auth-password", "auth-device"]}
                     }
@@ -288,7 +288,7 @@ class ChannelController(
                 description = "Already at loa2 - approve-qr offered directly.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
-                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "STEP_UP_IN_PROGRESS", "currentAcr": "loa2"},
+                      "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "AUTHENTICATED", "currentAcr": "loa2"},
                       "next": {"type": "tool", "toolId": "approve-qr", "step": "input"}
                     }
                 """)])]

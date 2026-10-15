@@ -125,8 +125,9 @@ Ereignis in `SignInLog`. Die Ereignisse und Regeln:
   Nachweise (`amr`), die beteiligten Tools in ihrer Fassung (`tools`, ADR-51) und der Intent, der
   ihn angemeldet hat. Eine Journey auf einem schon angemeldeten Kanal schreibt keinen Eintrag,
   auch wenn ihr Intent ein Einstiegs-Intent ist (`CONFIRM_PEER_LOGIN` aus der Sitzung heraus).
-  **`STEPPED_UP`**: ein nachträglich erhöhtes Niveau (`AuthIntent.raisesLevel`), auch als
-  Unter-Journey.
+  **`STEPPED_UP`**: Eine Aktion hat das Niveau eines schon angemeldeten Kanals tatsächlich erhöht,
+  gleich in welcher Journey (`JourneyService.perform`). Festgehalten wird, was geschah, nicht was
+  ein Intent vorhatte.
 - **`SIGN_IN_FAILED`**: ein falscher Nachweis für ein bekanntes Konto, mit Verfahren und Tool in
   seiner Fassung (`tool`). Das gilt für die App wie für die Website; Keycloak prüft selbst nichts
   ([ADR-58](ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)). **`LOCKED_OUT`**: der Fehlversuch, der die Sperre ausgelöst hat.

@@ -14,11 +14,9 @@ package com.example.identity.core.orchestrator.domain
  *
  * @property entry How a client opens a new channel with this intent; `null` for an intent reached
  *   only from within a session.
- * @property inSession How a signed-in user starts it within the session (docs/04-orchestrierung.md
- *   Abschnitt 2), never as a sub-journey; `null` if not at all. [CONFIRM_PEER_LOGIN] has both.
- * @property raisesLevel Raises the level of a login, direct or as another journey's precondition.
- *   While it runs on a signed-in channel, the channel shows STEP_UP_IN_PROGRESS; when it finishes,
- *   the sign-in log records a step-up (ADR-39).
+ * @property startableWhenLoggedIn A signed-in user starts it within the session (docs/04-orchestrierung.md
+ *   Abschnitt 2), never as a sub-journey; only on an AUTHENTICATED channel with an account, see
+ *   [startRefusal]. [CONFIRM_PEER_LOGIN] also opens a channel.
  * @property linksDeviceWithoutAsking Whether succeeding on an APP channel links this device to the
  *   account as a side effect (`DeviceAccountLink`, docs/09-dpop.md #3), or whether the intent asks
  *   first. Only [LOOKUP_LOGIN] asks. A property of the intent, not a flag on each Action: it never
@@ -29,20 +27,19 @@ package com.example.identity.core.orchestrator.domain
  */
 enum class AuthIntent(
     val entry: Entry?,
-    val inSession: InSession?,
-    val raisesLevel: Boolean,
+    val startableWhenLoggedIn: Boolean,
     val linksDeviceWithoutAsking: Boolean,
 ) {
     /** Into a login on this device as fast as possible, in a way that works again next time. */
     FAST_ACCESS(
-        entry = Entry(APP, withDeviceAccount = true), inSession = null,
-        raisesLevel = false, linksDeviceWithoutAsking = true,
+        entry = Entry(APP, withDeviceAccount = true), startableWhenLoggedIn = false,
+        linksDeviceWithoutAsking = true,
     ),
 
     /** Deliberately fresh identification, even on an already linked device. */
     REGISTER(
-        entry = Entry(APP_OR_WEB, withDeviceAccount = false), inSession = null,
-        raisesLevel = false, linksDeviceWithoutAsking = true,
+        entry = Entry(APP_OR_WEB, withDeviceAccount = false), startableWhenLoggedIn = false,
+        linksDeviceWithoutAsking = true,
     ),
 
     /**
@@ -52,8 +49,8 @@ enum class AuthIntent(
      * next time.
      */
     LOOKUP_LOGIN(
-        entry = Entry(APP, withDeviceAccount = false), inSession = null,
-        raisesLevel = false, linksDeviceWithoutAsking = false,
+        entry = Entry(APP, withDeviceAccount = false), startableWhenLoggedIn = false,
+        linksDeviceWithoutAsking = false,
     ),
 
     /**
@@ -63,20 +60,20 @@ enum class AuthIntent(
      * pre-set on the channel).
      */
     WEB_SELECT_METHOD(
-        entry = Entry(WEB, withDeviceAccount = false), inSession = null,
-        raisesLevel = false, linksDeviceWithoutAsking = true,
+        entry = Entry(WEB, withDeviceAccount = false), startableWhenLoggedIn = false,
+        linksDeviceWithoutAsking = true,
     ),
 
     /** Raise the level. Only on an AUTHENTICATED channel. */
     STEP_UP(
-        entry = null, inSession = InSession(needsAccount = false),
-        raisesLevel = true, linksDeviceWithoutAsking = true,
+        entry = null, startableWhenLoggedIn = true,
+        linksDeviceWithoutAsking = true,
     ),
 
     /** Add or remove authentication methods. Only on an AUTHENTICATED channel. */
     MANAGE_AUTH_METHODS(
-        entry = null, inSession = InSession(needsAccount = true),
-        raisesLevel = false, linksDeviceWithoutAsking = true,
+        entry = null, startableWhenLoggedIn = true,
+        linksDeviceWithoutAsking = true,
     ),
 
     /**
@@ -87,14 +84,14 @@ enum class AuthIntent(
      * falls back to identification or registration.
      */
     CONFIRM_PEER_LOGIN(
-        entry = Entry(APP, withDeviceAccount = true), inSession = InSession(needsAccount = true),
-        raisesLevel = false, linksDeviceWithoutAsking = true,
+        entry = Entry(APP, withDeviceAccount = true), startableWhenLoggedIn = true,
+        linksDeviceWithoutAsking = true,
     ),
 
     /** Delete the account itself, after a fresh re-confirmation. Only on an AUTHENTICATED channel. */
     DELETE_ACCOUNT(
-        entry = null, inSession = InSession(needsAccount = true),
-        raisesLevel = false, linksDeviceWithoutAsking = true,
+        entry = null, startableWhenLoggedIn = true,
+        linksDeviceWithoutAsking = true,
     ),
 
     /**
@@ -103,8 +100,8 @@ enum class AuthIntent(
      * directly; reached only as another intent's [Transition.RequireSubJourney].
      */
     FRESH_PROOF(
-        entry = null, inSession = null,
-        raisesLevel = false, linksDeviceWithoutAsking = true,
+        entry = null, startableWhenLoggedIn = false,
+        linksDeviceWithoutAsking = true,
     ),
 
     /**
@@ -114,8 +111,8 @@ enum class AuthIntent(
      * `Action.RecordIdentification`, not here (see [ReIdentifyStrategy]).
      */
     RE_IDENTIFY(
-        entry = null, inSession = null,
-        raisesLevel = false, linksDeviceWithoutAsking = true,
+        entry = null, startableWhenLoggedIn = false,
+        linksDeviceWithoutAsking = true,
     );
 
     /**
@@ -129,21 +126,15 @@ enum class AuthIntent(
     data class Entry(val on: Set<ChannelType>, val withDeviceAccount: Boolean)
 
     /**
-     * Started by a signed-in user, only on an AUTHENTICATED channel; see [startRefusal].
-     * [needsAccount]: acts on the account itself. A process access (one-time password, ADR-48) is
-     * signed in without an account and serves only its process, so it may raise its level but not
-     * manage, delete or confirm.
-     */
-    data class InSession(val needsAccount: Boolean)
-
-    /**
      * Why this intent may not start on an open channel in [state], or null if it may. The one place
      * that decides "only on an AUTHENTICATED channel" for every intent a signed-in user starts.
      */
     fun startRefusal(state: ChannelState?, hasAccount: Boolean): StartRefusal? = when {
-        inSession == null -> StartRefusal.NOT_STARTABLE_IN_SESSION
+        !startableWhenLoggedIn -> StartRefusal.NOT_STARTABLE_IN_SESSION
         state != ChannelState.AUTHENTICATED -> StartRefusal.NOT_LOGGED_IN
-        inSession.needsAccount && !hasAccount -> StartRefusal.NO_ACCOUNT
+        // Each acts on the account itself. A process access (one-time password, ADR-48) is signed
+        // in without one and serves only its process.
+        !hasAccount -> StartRefusal.NO_ACCOUNT
         else -> null
     }
 

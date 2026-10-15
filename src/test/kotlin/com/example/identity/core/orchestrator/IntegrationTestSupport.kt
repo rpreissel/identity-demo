@@ -14,6 +14,7 @@ import com.nimbusds.jose.jwk.JWK
 import io.mockk.every
 import io.mockk.mockk
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.core.ParameterizedTypeReference
@@ -358,11 +359,13 @@ abstract class IntegrationTestSupport : SharedSpringContext() {
 
     /**
      * Triggers a step-up by requesting an enrollment while the session evidence is below the
-     * required floor. Asserts only the channel state; the offered candidates are a catalog detail.
+     * required floor. Asserts only that the login stays and a step is due; the offered candidates
+     * are a catalog detail.
      */
     protected fun triggerEnrollmentStepUp(channelSessionId: String): Map<String, Any?> {
         val started = post("/orchestrator/api/v1/channels/$channelSessionId/enrollments")
-        started.channel()["state"] shouldBe "STEP_UP_IN_PROGRESS"
+        started.channel()["state"] shouldBe "AUTHENTICATED"
+        started.next()["step"] shouldNotBe "authenticated"
         return started
     }
 

@@ -107,8 +107,6 @@ function stateLabel(state: ChannelStateName): string {
     case 'ANONYMOUS': return t('noch nicht angemeldet')
     case 'REGISTERING': return t('registriert sich')
     case 'AUTHENTICATED': return t('angemeldet')
-    case 'STEP_UP_REQUIRED': return t('braucht eine zusätzliche Bestätigung')
-    case 'STEP_UP_IN_PROGRESS': return t('bestätigt gerade zusätzlich')
     case 'LOGGED_OUT': return t('abgemeldet')
     case 'EXPIRED': return t('abgelaufen')
   }

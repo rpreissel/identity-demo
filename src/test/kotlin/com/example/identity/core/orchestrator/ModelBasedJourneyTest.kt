@@ -98,7 +98,7 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
         private fun ageSession(channel: String, issuedAgo: Duration, windowLeft: Duration): Boolean {
             val context = jdbcTemplate.queryForList(
                 "SELECT a.id FROM orchestrator.channel_session c JOIN orchestrator.app_token_session a ON a.id = c.app_token_session_id " +
-                    "WHERE c.id = ? AND c.state IN ('AUTHENTICATED', 'STEP_UP_IN_PROGRESS') AND a.keycloak_session_id IS NOT NULL " +
+                    "WHERE c.id = ? AND c.state = 'AUTHENTICATED' AND a.keycloak_session_id IS NOT NULL " +
                     "AND c.expires_at > CURRENT_TIMESTAMP",
                 UUID.fromString(channel)
             ).firstOrNull()?.get("ID") ?: return false
@@ -175,7 +175,7 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
             ).forEach { add("I-14: device link ${it["BINDING_KEY_REF"]} points to a deleted account") }
             // I-26: a logged-in channel never works with an account still being set up; REGISTERING is never stored.
             jdbcTemplate.queryForList(
-                "SELECT c.id FROM orchestrator.channel_session c WHERE c.state IN ('AUTHENTICATED', 'STEP_UP_IN_PROGRESS') " +
+                "SELECT c.id FROM orchestrator.channel_session c WHERE c.state = 'AUTHENTICATED' " +
                     "AND c.account_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM account.auth_method m WHERE m.account_id = c.account_id)"
             ).forEach { add("I-26: channel ${it["ID"]} is logged in with an account still being set up") }
             jdbcTemplate.queryForList("SELECT id FROM orchestrator.channel_session WHERE state = 'REGISTERING'")
@@ -185,7 +185,7 @@ class ModelBasedJourneyTest : IntegrationTestSupport() {
                 "SELECT c.id, a.keycloak_session_id, CASE WHEN a.refresh_expires_at IS NULL OR c.expires_at > a.refresh_expires_at " +
                     "THEN 1 ELSE 0 END AS outlives FROM orchestrator.channel_session c " +
                     "LEFT JOIN orchestrator.app_token_session a ON a.id = c.app_token_session_id " +
-                    "WHERE c.channel = 'APP' AND c.state IN ('AUTHENTICATED', 'STEP_UP_IN_PROGRESS')"
+                    "WHERE c.channel = 'APP' AND c.state = 'AUTHENTICATED'"
             ).forEach { row ->
                 if (row["KEYCLOAK_SESSION_ID"] == null) add("I-23: channel ${row["ID"]} is logged in without a session")
                 else if ((row["OUTLIVES"] as Number).toInt() == 1) add("I-23: channel ${row["ID"]} outlives its session window")

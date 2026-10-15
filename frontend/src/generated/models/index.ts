@@ -1148,7 +1148,7 @@ export interface KeycloakChannelUpsertRequest {
      */
     availableTools?: Array<string>;
     /**
-     * Only read on this channel's first call, same restriction as availableTools - the Keycloak facade's own, deliberately narrow counterpart to the App facade's `intent` request parameter (docs/05-api.md #"POST /app/channels: intent-Parameter"). Omitted (or null) means web_select_method, the existing login/step-up behaviour. Only web_select_method and register are accepted here - unlike the App facade, not every AuthIntent.isEntry value: fast_access/lookup_login assume an APP-shaped channel this facade never has.
+     * Only read on this channel's first call, same restriction as availableTools - the Keycloak facade's own, deliberately narrow counterpart to the App facade's `intent` request parameter (docs/05-api.md #"POST /app/channels: intent-Parameter"). Omitted (or null) means web_select_method, the existing login/step-up behaviour. Only web_select_method and register are accepted here - unlike the App facade, not every AuthIntent entry: fast_access/lookup_login assume an APP-shaped channel this facade never has.
      * @type {string}
      * @memberof KeycloakChannelUpsertRequest
      */

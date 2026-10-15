@@ -126,8 +126,7 @@ nur der Vorführung dienen. Im Einzelnen:
   |---|---|
   | `ANONYMOUS` | Der Kanal ist offen, aber niemand ist angemeldet, und es ist kein Konto im Aufbau. `next` zeigt auf die Identifizierung oder den Login. |
   | `REGISTERING` | Der Kanal arbeitet mit einem Konto im Aufbau, das noch kein Anmeldeverfahren hat ([ADR-46](adr/ADR-046-konto-im-aufbau.md)). Ein Abbruch (`DELETE .../journey`) verwirft dieses Konto samt Identität und Adresse und führt zurück auf `ANONYMOUS`. Der Wert wird abgeleitet und nie gespeichert. Ein Client kann daran entscheiden, ob er vor einem Abbruch noch einmal nachfragt. |
-  | `AUTHENTICATED` | Das Konto ist bekannt, und das aktuelle Niveau reicht aus. `logout`, `methods` und `enrollments` sind verfügbar. |
-  | `STEP_UP_REQUIRED` / `STEP_UP_IN_PROGRESS` | Ein höheres Niveau ist nötig, oder der Nachweis dafür läuft schon. `next` zeigt den fälligen Schritt. Ein Abbruch führt direkt zurück auf `AUTHENTICATED`. |
+  | `AUTHENTICATED` | Der Kanal ist angemeldet. `logout`, `methods` und `enrollments` sind verfügbar. Auch ein Step-up oder eine andere Journey läuft auf diesem Zustand; fertig ist der Kanal erst, wenn `next` „authenticated“ ist. Ein Abbruch lässt ihn angemeldet. |
   | `LOGGED_OUT` | Endzustand: Dieser Kanal ist beendet, und `next` fehlt. Für einen neuen Kanal braucht es einen neuen `POST /channels`. |
   | `EXPIRED` | Endzustand: Die Keycloak-Sitzung ist abgelaufen oder, vor der Anmeldung, die Lebensdauer des Kanals. Für den Client ist das dasselbe wie `LOGGED_OUT`. |
 

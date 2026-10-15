@@ -131,13 +131,6 @@ class JourneyService(
         journey.parentJourneyId = parentJourneyId
         journey.optionalForParent = optionalForParent
         journey.featureFlags = contextFactory.activeFeatureFlags()
-        // Raising the level shows on the channel, direct or as a precondition. Only on a logged-in
-        // channel: STEP_UP_IN_PROGRESS promises that cancelling leads back to AUTHENTICATED, which a
-        // cold entry (a peer-login confirmation on a fresh channel) never was.
-        if (intent.raisesLevel && channel.state == ChannelState.AUTHENTICATED) {
-            channel.state = ChannelState.STEP_UP_IN_PROGRESS
-            sessionManagementService.updateChannelSession(channel)
-        }
         val strategy = strategyFor(intent)
         // Placeholder for the NOT NULL state columns. It is rewritten once the restored evidence
         // is in, so no strategy observes it.
@@ -473,8 +466,13 @@ class JourneyService(
             optionalForParent = transition.optional)
     }
 
-    /** Resumes at resumeState against a fresh context, because the action has just changed what the old one showed. */
+    /**
+     * Resumes at resumeState against a fresh context, because the action has just changed what the
+     * old one showed. An action that raises the level of a login already in place is a step-up
+     * (ADR-39), whichever journey ran it: the sign-in log records what happened, not what was asked.
+     */
     private fun perform(journey: AuthJourney, channel: ChannelSession, transition: Transition.Perform): Step {
+        val acrBefore = if (channel.state?.isLoggedIn == true) contextFactory.currentAcrOf(channel) else null
         val demoNotice = try {
             actionExecutor.perform(journey, channel, transition.action)
         } catch (e: InvitationRefusedException) {
@@ -482,6 +480,10 @@ class JourneyService(
             journeyTraceService.record(channel.forLog(), journey.forLog(), "InvitationRefused",
                 detail = mapOf("decision" to "Abort", "reason" to e.refusal.text))
             return applyTransition(journey, channel, Transition.Abort(e.refusal.text))
+        }
+        if (acrBefore != null) {
+            val acrAfter = contextFactory.currentAcrOf(channel)
+            if (acrAfter > acrBefore) journeyRecorder.recordStepUp(channel, acrAfter)
         }
         codec.write(journey, transition.resumeState)
         val step = advance(journey, channel, JourneyEvent.ActionCompleted)
@@ -525,9 +527,7 @@ class JourneyService(
         // Before the sign-in log: a login whose session is gone is no sign-in.
         if (parent == null) openLoginSession(channel)
         val acr = contextFactory.currentAcrOf(channel)
-        // Before the parent handoff: a step-up that a parent journey waited on is a step-up too.
-        if (journey.requireIntent().raisesLevel) journeyRecorder.recordStepUp(channel, acr)
-        else if (signsIn) journeyRecorder.recordSignIn(journey, channel, acr)
+        if (signsIn) journeyRecorder.recordSignIn(journey, channel, acr)
 
         if (parent != null) {
             // The parent picks up exactly where it was parked, so the original wish survives.

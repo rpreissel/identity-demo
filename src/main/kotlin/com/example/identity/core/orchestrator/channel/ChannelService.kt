@@ -237,6 +237,7 @@ class ChannelService(
         // login or registration, which reads it on each transition. A STEP_UP here could claim
         // AUTHENTICATED on cancel without proof (docs/invarianten.md I-4).
         if (refreshed.state?.isLoggedIn != true) return resumeChannel(refreshed)
+        requireStartable(live, AuthIntent.STEP_UP)
 
         val floor = refreshed.acrFloor?.let(AcrLevel::parse) ?: AcrLevels.DEFAULT_REQUIRED_ACR
         val account = refreshed.accountId?.let { accountService.findAccount(it) }

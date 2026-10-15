@@ -274,8 +274,8 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
 - **Kanal**: Eine Verbindung eines Nutzers zum Orchestrator, entweder über die App oder über die
   Website. Ein Kanal besteht nur kurze Zeit. Ist der Nutzer angemeldet, endet der Kanal spätestens
   mit seiner Sitzung in Keycloak.
-  *Im Code:* `ChannelSession`, Zustände `ANONYMOUS`, `AUTHENTICATED`, `STEP_UP_REQUIRED`,
-  `STEP_UP_IN_PROGRESS`, `LOGGED_OUT`, `EXPIRED` (`REGISTERING` wird nur angezeigt).
+  *Im Code:* `ChannelSession`, Zustände `ANONYMOUS`, `AUTHENTICATED`, `LOGGED_OUT`, `EXPIRED`
+  (`REGISTERING` wird nur angezeigt).
   *Mehr dazu:* [02-domaenenmodell](../02-domaenenmodell.md) Abschnitt 3,
   [ADR-43](../adr/ADR-043-kanal-lebt-nicht-laenger-als-die-keycloak-sitzung.md).
 - **Kanalbindung**: Eine Kennung, mit der Keycloak jede Anfrage an den Orchestrator einem bestimmten

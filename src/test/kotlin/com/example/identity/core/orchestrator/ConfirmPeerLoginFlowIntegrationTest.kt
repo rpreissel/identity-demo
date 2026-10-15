@@ -30,8 +30,8 @@ class ConfirmPeerLoginFlowIntegrationTest : IntegrationTestSupport() {
                 then("it gates on loa2 via the normal STEP_UP sub-journey, offering the account's own methods") {
                     response.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-sms", "step" to "auth")
                 }
-                then("the channel is not STEP_UP_IN_PROGRESS, since it was never logged in") {
-                    // That state promises a cancel leads back to AUTHENTICATED (ChannelState.isLoggedIn).
+                then("the channel stays ANONYMOUS, since it was never logged in") {
+                    // A cancel must not lead to AUTHENTICATED (ChannelState.isLoggedIn).
                     response.channel()["state"] shouldBe "ANONYMOUS"
                 }
             }

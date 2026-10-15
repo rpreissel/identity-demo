@@ -685,7 +685,8 @@ danach liest `JourneyStateCodec` den gespeicherten Zustand zurück.
 
 **Kein Code fragt nach einem bestimmten Intent.** Was an einem Intent hängt, ist eine Eigenschaft
 von `AuthIntent`, als Tabelle mit einer Zeile je Intent: wie er gestartet wird (`entry`: öffnet einen
-Kanal, `inSession`: in einer Sitzung) sowie `raisesLevel` und `linksDeviceWithoutAsking`. Ein neuer
+Kanal, `startableWhenLoggedIn`: in einer Sitzung) und `linksDeviceWithoutAsking`. Was ein Lauf war
+(Anmeldung, Step-up), ist keine Eigenschaft des Intents, sondern wird beobachtet. Ein neuer
 Intent bringt seine Strategie mit und eine neue Zeile; Standardwerte gibt es nicht, also verlangt
 der Compiler bei jeder Eigenschaft eine Entscheidung. Einen Intent nennen darf nur, wer ihn startet: ein Endpunkt oder eine Strategie, die
 ihn als Sub-Journey anfordert.

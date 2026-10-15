@@ -175,17 +175,16 @@ stateDiagram-v2
   ANONYMOUS --> AUTHENTICATED: Login gelingt, Keycloak-Sitzung geöffnet
   REGISTERING --> ANONYMOUS: erstes Anmeldeverfahren, Konto eingerichtet
   REGISTERING --> ANONYMOUS: Abbruch verwirft das Konto im Aufbau
-  AUTHENTICATED --> STEP_UP_REQUIRED: Ressource verlangt höheres acr
-  STEP_UP_REQUIRED --> STEP_UP_IN_PROGRESS: Step-up gestartet
-  STEP_UP_IN_PROGRESS --> AUTHENTICATED: erreichtes acr >= gefordertes acr, in derselben Sitzung
-  STEP_UP_IN_PROGRESS --> AUTHENTICATED: Abbruch
-  STEP_UP_IN_PROGRESS --> EXPIRED: Keycloak-Sitzung inzwischen abgelaufen
-  STEP_UP_IN_PROGRESS --> LOGGED_OUT: Abmelden, bricht den Step-up ab
   AUTHENTICATED --> LOGGED_OUT: Abmelden in der App, oder Keycloak meldet das Ende der Sitzung
   AUTHENTICATED --> EXPIRED: Keycloak-Sitzung abgelaufen
   LOGGED_OUT --> [*]
   EXPIRED --> [*]
 ```
+
+**Ein Step-up ist kein eigener Zustand.** Ein Step-up, eine Änderung der Verfahren oder das
+Löschen des Kontos laufen auf einem angemeldeten Kanal; der bleibt dabei `AUTHENTICATED`. Was
+gerade fällig ist, sagt `next`: Erst `next` = „authenticated“ heißt, dass nichts mehr läuft. Ein
+Abbruch lässt den Kanal angemeldet.
 
 **`REGISTERING` ist abgeleitet.** In der Datenbank steht in diesem Fall nur `ANONYMOUS`. Der Kanal
 zeigt `REGISTERING` an, solange er mit einem **Konto im Aufbau** arbeitet. Das ist ein Konto, in
@@ -255,8 +254,7 @@ Die folgenden Aufzählungstypen kommen im Modell immer wieder vor:
 
 - `ChannelType`: `APP`, `WEB`. Der Typ sagt, über welchen Zugang der Kanal geöffnet wurde. Das
   bleibt für die ganze Lebenszeit des Kanals fest ([05-api.md](05-api.md) Abschnitt 3).
-- `ChannelState`: `ANONYMOUS`, `REGISTERING`, `AUTHENTICATED`, `STEP_UP_REQUIRED`,
-  `STEP_UP_IN_PROGRESS`, `LOGGED_OUT`, `EXPIRED`. Das sind die Zustände des Kanals aus Abschnitt 3.
+- `ChannelState`: `ANONYMOUS`, `REGISTERING`, `AUTHENTICATED`, `LOGGED_OUT`, `EXPIRED`. Das sind die Zustände des Kanals aus Abschnitt 3.
 - `AuthIntent`: `FAST_ACCESS`, `REGISTER`, `LOOKUP_LOGIN`, `WEB_SELECT_METHOD`, `STEP_UP`,
   `MANAGE_AUTH_METHODS`, `CONFIRM_PEER_LOGIN`, `DELETE_ACCOUNT`, `FRESH_PROOF`, `RE_IDENTIFY`. Ein
   Intent beschreibt, was der Nutzer erreichen will, *und* den Weg dorthin

@@ -29,8 +29,6 @@ components:
           - ANONYMOUS
           - REGISTERING
           - AUTHENTICATED
-          - STEP_UP_REQUIRED
-          - STEP_UP_IN_PROGRESS
           - LOGGED_OUT
           - EXPIRED
           type: string
@@ -700,8 +698,6 @@ components:
           - ANONYMOUS
           - REGISTERING
           - AUTHENTICATED
-          - STEP_UP_REQUIRED
-          - STEP_UP_IN_PROGRESS
           - LOGGED_OUT
           - EXPIRED
           type: string
@@ -1543,7 +1539,7 @@ paths:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                   currentAcr: loa1
-                  state: STEP_UP_IN_PROGRESS
+                  state: AUTHENTICATED
                 next:
                   step: auth
                   toolId: auth-sms
@@ -2033,7 +2029,7 @@ paths:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                   currentAcr: loa2
-                  state: STEP_UP_IN_PROGRESS
+                  state: AUTHENTICATED
                 next:
                   step: input
                   toolId: approve-qr
@@ -2080,7 +2076,7 @@ paths:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                   currentAcr: loa2
-                  state: STEP_UP_IN_PROGRESS
+                  state: AUTHENTICATED
                 next:
                   context: auth
                   step: selectMethod
@@ -2598,7 +2594,7 @@ paths:
                 channel:
                   channelSessionId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                   currentAcr: loa1
-                  state: STEP_UP_IN_PROGRESS
+                  state: AUTHENTICATED
                 next:
                   context: auth
                   step: selectMethod

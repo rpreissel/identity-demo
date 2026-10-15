@@ -231,7 +231,7 @@ describe('security-summary backfill (docs/05-api.md #1: on-demand, not part of t
 describe('entry by URL intent (docs/10-frontend.md #6, FE-18)', () => {
   it('starts confirm_peer_login on its own and clears the URL', async () => {
     window.history.replaceState(null, '', '/?intent=confirm_peer_login&pairingCode=AB3D-7KQ2')
-    const stepUp = channelResponse({ channel: channel('STEP_UP_IN_PROGRESS'), next: toolNext('auth-device', 'auth') })
+    const stepUp = channelResponse({ channel: channel('AUTHENTICATED'), next: toolNext('auth-device', 'auth') })
     api.createChannel.mockResolvedValue(stepUp)
     api.getTool.mockResolvedValue(stepUp)
 
@@ -272,7 +272,7 @@ describe('entry by URL intent (docs/10-frontend.md #6, FE-18)', () => {
     rememberChannel()
     window.history.replaceState(null, '', '/?intent=confirm_peer_login&pairingCode=AB3D-7KQ2')
     api.getChannel.mockResolvedValue(channelResponse({ channel: channel('AUTHENTICATED', { currentAcr: 'loa2' }), next: AUTHENTICATED_NEXT }))
-    const confirming = channelResponse({ channel: channel('STEP_UP_IN_PROGRESS'), next: toolNext('approve-qr', 'input', 'ts-2') })
+    const confirming = channelResponse({ channel: channel('AUTHENTICATED'), next: toolNext('approve-qr', 'input', 'ts-2') })
     api.startPeerLogin.mockResolvedValue(confirming)
     api.getTool.mockResolvedValue(confirming)
 
@@ -441,7 +441,7 @@ describe('cancelling a step-up', () => {
     api.getDeviceLink.mockResolvedValue({ linked: true, accountId: 42 })
     api.createChannel.mockResolvedValue(
       channelResponse({
-        channel: channel('STEP_UP_IN_PROGRESS', { hasProvenFactor: true }),
+        channel: channel('AUTHENTICATED', { hasProvenFactor: true }),
         next: { type: 'orchestrator', context: 'auth', step: 'selectMethod' },
         stepData: { kind: 'select-method', options: ['auth-sms'] },
       }),

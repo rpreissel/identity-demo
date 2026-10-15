@@ -190,9 +190,8 @@ public class OrchestratorManageMethodsRequiredAction implements RequiredActionPr
 
         OrchestratorNotes.applyAuthData(authSession, response);
 
-        // No channelState=="AUTHENTICATED" shortcut as in OrchestratorAuthenticator: here the
-        // channel is AUTHENTICATED before MANAGE_AUTH_METHODS starts, so it would fire on the first
-        // response.
+        // The channel is AUTHENTICATED before MANAGE_AUTH_METHODS starts, so only `next` says
+        // whether it is done.
         OrchestratorClient.Next next = response.next();
         if (next == null || next.isAuthenticated()) {
             String action = authSession.getAuthNote(PENDING_ACTION);

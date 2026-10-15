@@ -29,6 +29,12 @@ class LoginCompletionTest {
     }
 
     @Test
+    void aFurtherStepOnALoggedInChannelContinues() {
+        // A step-up or method change runs on a channel that is already AUTHENTICATED.
+        assertInstanceOf(LoginCompletion.Continue.class, LoginCompletion.judge(answer("AUTHENTICATED").next(SELECT).build(), ACCOUNT_7, "loa2"));
+    }
+
+    @Test
     void aFurtherStepContinues() {
         assertInstanceOf(LoginCompletion.Continue.class, LoginCompletion.judge(answer("STARTED").next(SELECT).build(), null, "loa2"));
     }

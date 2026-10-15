@@ -624,8 +624,8 @@ export function AppChannelApp() {
   }
 
   /**
-   * Raises this channel's required level. If the evidence does not satisfy it, the channel moves to
-   * STEP_UP_IN_PROGRESS and `next` points at an AUTH tool, rendered as in LOGIN. A 410 (level
+   * Raises this channel's required level. If the evidence does not satisfy it, the channel stays
+   * AUTHENTICATED and `next` points at an AUTH tool, rendered as in LOGIN. A 410 (level
    * unreachable with the enrolled methods) surfaces via the normal error path.
    */
   function handleStepUp(requiredAcr: string) {
@@ -750,8 +750,9 @@ export function AppChannelApp() {
   // Ein Abbruch allein ließe das Backend nur dieselbe Einstiegs-Journey neu beginnen, und wer
   // schon etwas nachgewiesen hat, käme so nie mehr heraus. Neu beginnen bietet die Demo-Spalte
   // ("Journey neu starten"). Angemeldet führt "Abbrechen" zur Übersicht, von dort "Abmelden".
-  // Wie ChannelState.isLoggedIn im Backend: Ein Step-Up läuft auf einer bestehenden Anmeldung.
-  const loggedIn = channelState === 'AUTHENTICATED' || channelState === 'STEP_UP_IN_PROGRESS'
+  // Wie ChannelState.isLoggedIn im Backend: Ein Step-Up läuft auf einer bestehenden Anmeldung,
+  // der Kanal bleibt dabei AUTHENTICATED; was fällig ist, sagt `next`.
+  const loggedIn = channelState === 'AUTHENTICATED'
   const leavesToStart = canCancel && !loggedIn
   // Same box the innermost journey's hint highlights in JourneyStructureView (stateType).
   const journeyContextCurrentStep = journeyContextKey ? CURRENT_STEP_BY_STATE_TYPE[journeyContextKey]?.[demo?.journeys?.at(-1)?.stateType ?? ''] : undefined
@@ -798,8 +799,8 @@ export function AppChannelApp() {
           {t('Zurück')}
         </button>
       )}
-      {/* Nicht an channelState gekoppelt: Auch ein STEP_UP_IN_PROGRESS-Kanal (z.B. in
-          CONFIRM_PEER_LOGIN) braucht den Ausweg. canCancel allein genügt, JourneyService
+      {/* Nicht an channelState gekoppelt: Auch ein angemeldeter Kanal mit laufender Journey
+          (z.B. CONFIRM_PEER_LOGIN) braucht den Ausweg. canCancel allein genügt, JourneyService
           kennt den Zielzustand nach dem Abbruch. */}
       {/* In einer laufenden Registrierung ist das kein "Abbrechen" im Sinne von
           "diesen Schritt lassen": Die Journey endet, und was sie bis dahin aufgebaut

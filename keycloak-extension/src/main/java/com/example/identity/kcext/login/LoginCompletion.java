@@ -36,7 +36,9 @@ final class LoginCompletion {
      */
     static Verdict judge(OrchestratorClient.ChannelResponse response, KcSubject knownSubject, String certifiedAcr) {
         OrchestratorClient.Next next = response.next();
-        boolean done = (next != null && next.isAuthenticated()) || "AUTHENTICATED".equals(response.channelState());
+        // A due step always wins: a logged-in channel may still run a journey (a step-up, a method
+        // change). Only without one does the channel's login status decide.
+        boolean done = next != null ? next.isAuthenticated() : "AUTHENTICATED".equals(response.channelState());
         if (!done) {
             return next == null ? new Refuse("no next step, channel " + response.channelState()) : new Continue();
         }
