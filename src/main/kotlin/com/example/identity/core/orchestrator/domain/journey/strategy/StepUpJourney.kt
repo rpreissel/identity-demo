@@ -1,8 +1,8 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -18,9 +18,10 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
  * Raise the level of an already authenticated session (docs/journeys/step-up.md). When no active
  * method can close the gap, the `RE_IDENTIFY` sub-journey asks before any fresh identification.
  */
-class StepUpStrategy : IntentStrategy<StepUpState> {
+object StepUpJourney : Journey<StepUpState> {
 
-    override val intent = AuthIntent.STEP_UP
+    override val name = "STEP_UP"
+    override val startPoints = listOf(StartableWhenAuthenticated)
     override val stateRoots = listOf(StepUpState::class)
 
     /** Never entered without a target; only reachable as a sub-journey, which seeds the real one. */

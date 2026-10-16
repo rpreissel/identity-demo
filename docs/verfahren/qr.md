@@ -43,7 +43,7 @@ Anfrage bleibt fünf Minuten offen (unten, „Sicherheit des Pairing-Codes“).
   vorliegt, prüft erst `approve-qr`.
 - `auth-qr` und `auth-qr-lookup` deklarieren `factorTypes = {possession, knowledge}`, also Besitz
   und Wissen. Denn das Handy, das die Anmeldung bestätigt, muss laut
-  `ConfirmPeerLoginStrategy.gate()` vorher selbst frisch loa2 nachgewiesen haben. Damit erbringt ein
+  `ConfirmPeerLoginJourney.gate()` vorher selbst frisch loa2 nachgewiesen haben. Damit erbringt ein
   einziges Verfahren zwei Faktortypen, wie `ident-eid`. Das passt zu `maxAcr=loa2`. Wie sich das zu
   den Begriffen des externen Glossars verhält, steht im
   [Abgleich](../glossar/abgleich-externes-glossar.md), Abschnitt 4.

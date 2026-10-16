@@ -23,7 +23,7 @@ Adresse voraus (`ClaimRequirement(EMAIL, PROVEN)`). Deshalb braucht es keinen ei
 Codes mehr: Schon die Aktivierung schließt es ab. Wie eine solche Abhängigkeit über verlangte Angaben
 funktioniert, beschreibt [ADR-24](ADR-024-eine-methode-haengt-von-einer-anderen-ab-indem.md).
 
-Die Registrierung läuft in dieser Reihenfolge (`RegisterStrategy`):
+Die Registrierung läuft in dieser Reihenfolge (`RegisterJourney`):
 
 1. Adresse bestätigen (`RegisterState.ConfirmingEmail`).
 2. Ein Anmeldeverfahren einrichten (`Enrolling`).
@@ -73,7 +73,7 @@ eigenes Tool `confirm-phone`.
 - Die erste Fassung nannte die Reihenfolge „Adresse, Passwort, Besitzfaktor“. Der Ablauf war aber
   immer: Adresse, Verfahren, Passwort. Die Passwortpflicht prüft erst am Ende, ob das Konto `loa2`
   sonst erreicht.
-- Seit 2026-09-23 prüft auch `RegisterEnrollFirstStrategy` dieselbe Bedingung für `loa2`. Vorher
+- Seit 2026-09-23 prüft auch `RegisterEnrollFirstJourney` dieselbe Bedingung für `loa2`. Vorher
   fragte sie ohne Bedingung nach dem Passwort. Am Verhalten änderte das nichts. Dort wird ohne
   Identifizierung jedes Verfahren auf `loa1` eingerichtet. Und `enrolledUnderAcr` verhindert, dass
   ein zweites Verfahren das Niveau anhebt (siehe

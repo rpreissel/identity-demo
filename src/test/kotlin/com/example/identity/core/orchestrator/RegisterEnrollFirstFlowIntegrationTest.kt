@@ -16,7 +16,7 @@ import org.springframework.web.client.HttpClientErrorException
 import java.util.UUID
 
 /**
- * The REGISTER "Enrollment zuerst" experiment (docs/journeys/register-enroll-first.md, `RegisterStrategy`):
+ * The REGISTER "Enrollment zuerst" experiment (docs/journeys/register-enroll-first.md, `RegisterJourney`):
  * enrollment runs against an account with no person behind it, identification is an optional
  * closing offer. Switched on per test via the admin endpoint; `IntegrationTestSupport` resets
  * `orchestrator.feature_flag`, so it does not leak into ident-first tests.
@@ -55,7 +55,7 @@ class RegisterEnrollFirstFlowIntegrationTest : IntegrationTestSupport() {
     }
 
     init {
-        // The order of the steps is the strategy's (RegisterEnrollFirstStrategyTest); here the run end to end.
+        // The order of the steps is the strategy's (RegisterEnrollFirstJourneyTest); here the run end to end.
         given("registration order set to enroll-first, a fresh channel, APP") {
             `when`("enrolling email, sms and password, then declining the closing identification offer") {
                 val channelSessionId = enrolledUpToIdentificationOffer()

@@ -6,7 +6,8 @@ import com.example.identity.core.orchestrator.domain.JourneyId
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.ChannelType
-import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.strategy.WebSelectMethodJourney
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -44,8 +45,8 @@ class SessionManagementService(
 
     /**
      * WEB channel creation for an upsert (docs/05-api.md Abschnitt 3b). The id is chosen by
-     * Keycloak; the caller has checked it is unused. `entryIntent` is [AuthIntent.WEB_SELECT_METHOD]
-     * or [AuthIntent.REGISTER]; the other entry intents assume an App channel. [availableTools] is
+     * Keycloak; the caller has checked it is unused. [entryJourney] is one that opens a Web
+     * channel (`OpensWebChannel`). [availableTools] is
      * the extension's declaration of what it can render, as on the App channel.
      */
     fun createWebChannelSession(
@@ -54,14 +55,14 @@ class SessionManagementService(
         accountId: AccountId?,
         ttl: Duration,
         availableTools: Set<String>,
-        entryIntent: AuthIntent = AuthIntent.WEB_SELECT_METHOD
+        entryJourney: Journey<*> = WebSelectMethodJourney
     ): ChannelSession {
         val now = clock.instant()
         val session = ChannelSession(ChannelType.WEB, null, now.plus(ttl), now)
         session.channelSessionId = channelSessionId
         session.channelBinding = channelBinding
         session.subject = accountId?.let(Subject::Account)
-        session.entryIntent = entryIntent
+        session.entryJourney = entryJourney
         session.availableClientTools = availableTools.toMutableSet()
         return channelSessionRepository.save(session)
     }

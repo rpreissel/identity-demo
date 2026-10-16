@@ -16,7 +16,6 @@ import io.kotest.core.spec.style.BehaviorSpec
 import org.springframework.stereotype.Repository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import com.example.identity.core.orchestrator.domain.AuthIntent
 
 /**
  * Dependency directions within the orchestrator, which Spring Modulith's `ApplicationModules.verify()`
@@ -28,8 +27,8 @@ class OrchestratorArchitectureTest : BehaviorSpec({
     // these rules are about production layering.
     val classes = mainClassesIn("com.example.identity.core.orchestrator")
 
-    given("the journey package's generic machine (JourneyService, IntentStrategy, Decision, JourneyState, ...)") {
-        then("it never depends on one concrete IntentStrategy implementation") {
+    given("the journey package's generic machine (JourneyService, Journey, Transition, JourneyState, ...)") {
+        then("it never depends on one concrete journey") {
             noClasses()
                 .that().resideInAnyPackage(
                     "com.example.identity.core.orchestrator.journey",
@@ -38,9 +37,9 @@ class OrchestratorArchitectureTest : BehaviorSpec({
                 )
                 .should().dependOnClassesThat().resideInAPackage("com.example.identity.core.orchestrator.domain.journey.strategy..")
                 .because(
-                    "the machine is generic over every AuthIntent via IntentStrategy/strategiesByIntent - " +
+                    "the machine is generic over every journey via the Journey interface and Journeys.all - " +
                         "depending on one concrete strategy class breaks that (and was exactly today's bug: " +
-                        "JourneyService referenced DeleteAccountStrategy.REQUIRED_ACR directly instead of a " +
+                        "JourneyService referenced DeleteAccountJourney.REQUIRED_ACR directly instead of a " +
                         "constant in the generic journey package)"
                 )
                 .check(classes)
@@ -140,18 +139,18 @@ class OrchestratorArchitectureTest : BehaviorSpec({
         }
     }
 
-    given("IntentStrategy implementations (docs/04-orchestrierung.md #8, Decision: \"Die Strategie bekommt nie Services, nur einen lesenden JourneyContext ... Sie entscheidet, sie wirkt nicht.\")") {
+    given("Journey implementations (docs/04-orchestrierung.md #8, Decision: \"Die Strategie bekommt nie Services, nur einen lesenden JourneyContext ... Sie entscheidet, sie wirkt nicht.\")") {
         then("they never depend on a @Service or @Repository - only on the read-only JourneyContext handed to next()/interpret()") {
             val isServiceOrRepository = DescribedPredicate.describe<JavaClass>("annotated with @Service or @Repository") { clazz ->
                 clazz.isAnnotatedWith(Service::class.java) || clazz.isAnnotatedWith(Repository::class.java)
             }
             noClasses()
-                .that().implement("com.example.identity.core.orchestrator.domain.journey.IntentStrategy")
+                .that().implement("com.example.identity.core.orchestrator.domain.journey.Journey")
                 .should().dependOnClassesThat(isServiceOrRepository)
                 .because(
-                    "a strategy DECIDES, it never ACTS (IntentStrategy's own class doc) - account creation, " +
+                    "a journey DECIDES, it never ACTS (Journey's own class doc) - account creation, " +
                         "evidence recording, device linking all happen once in JourneyService instead, so no " +
-                        "intent can forget them or duplicate them differently; a strategy that could inject a " +
+                        "journey can forget them or duplicate them differently; a journey that could inject a " +
                         "service could act directly and silently break that guarantee"
                 )
                 .check(classes)
@@ -159,7 +158,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
     }
 
     given("the acting phase (JourneyActionExecutor, docs/04-orchestrierung.md #8, \"Die vier Phasen eines Uebergangs\")") {
-        then("it never depends on the driving phase (JourneyService) or on a concrete IntentStrategy") {
+        then("it never depends on the driving phase (JourneyService) or on a concrete journey") {
             noClasses()
                 .that().haveFullyQualifiedName("com.example.identity.core.orchestrator.journey.JourneyActionExecutor")
                 .should().dependOnClassesThat().haveFullyQualifiedName("com.example.identity.core.orchestrator.journey.JourneyService")

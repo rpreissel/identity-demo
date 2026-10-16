@@ -3,11 +3,8 @@ package com.example.identity.core.orchestrator.journeytrace
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -48,9 +45,9 @@ class JourneyTraceEntry(
     @Column(name = "parent_journey_id")
     var parentJourneyId: JourneyId? = null,
 
-    @Enumerated(EnumType.STRING)
+    /** The journey's name (`Journey.name`); a log keeps it as written. */
     @Column(name = "intent", length = 32)
-    var intent: AuthIntent? = null,
+    var intent: String? = null,
 
     @Column(name = "event_type", nullable = false, length = 100)
     var eventType: String? = null,

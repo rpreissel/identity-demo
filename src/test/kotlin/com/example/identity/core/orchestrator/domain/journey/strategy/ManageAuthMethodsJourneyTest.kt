@@ -4,10 +4,9 @@ import com.example.identity.core.orchestrator.domain.journey.state.FreshProofSta
 import java.time.Duration
 import com.example.identity.core.orchestrator.domain.policy.provenAt
 import com.example.identity.TEST_NOW
-import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsStrategy
+import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsJourney
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
@@ -28,13 +27,13 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * Pure unit coverage of [ManageAuthMethodsStrategy] - add/remove authentication methods on an
+ * Pure unit coverage of [ManageAuthMethodsJourney] - add/remove authentication methods on an
  * already-authenticated channel (docs/04-orchestrierung.md, "MANAGE_AUTH_METHODS"). No Spring
- * context, no HTTP. Level and freshness are the FRESH_PROOF sub-journey's ([FreshProofStrategyTest]).
+ * context, no HTTP. Level and freshness are the FRESH_PROOF sub-journey's ([FreshProofJourneyTest]).
  */
-class ManageAuthMethodsStrategyTest : BehaviorSpec({
+class ManageAuthMethodsJourneyTest : BehaviorSpec({
 
-    val strategy = ManageAuthMethodsStrategy()
+    val strategy = ManageAuthMethodsJourney
 
     // An identification proves loa2 on its own, whatever methods the account holds.
     val loa2Evidence = evidence(listOf("fsc"), setOf(FactorType.POSSESSION))
@@ -51,13 +50,13 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
 
     fun proofRequired(transition: Transition, requiredAcr: AcrLevel, resumeWith: ManageAuthMethodsState) {
         val required = transition.shouldBeInstanceOf<Transition.RequireSubJourney>()
-        required.intent shouldBe AuthIntent.FRESH_PROOF
+        required.journey shouldBe FreshProofJourney
         required.resumeWith shouldBe resumeWith
         val seed = required.seedWith.shouldBeInstanceOf<FreshProofState.Start>()
         seed.requiredAcr shouldBe requiredAcr
         seed.purpose shouldBe FreshProofState.Purpose.MANAGE_METHODS
     }
-    val proven = JourneyEvent.SubJourneyFinished(AuthIntent.FRESH_PROOF, achievedAcr = AcrLevel.LOA2)
+    val proven = JourneyEvent.SubJourneyFinished(FreshProofJourney, achievedAcr = AcrLevel.LOA2)
 
     given("AddRequested, an identified account at loa1") {
         val acc = account(method("sms", AcrLevel.LOA1))
@@ -68,7 +67,7 @@ class ManageAuthMethodsStrategyTest : BehaviorSpec({
             then("parks the wish and requires loa2 plus a fresh proof, without losing it (ADR-61)") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        AuthIntent.FRESH_PROOF,
+                        FreshProofJourney,
                         seedWith = FreshProofState.forSubJourney(AcrLevel.LOA2, FreshProofState.Purpose.MANAGE_METHODS),
                         resumeWith = ManageAuthMethodsState.AddRequested
                     )

@@ -37,11 +37,11 @@ classDiagram
     UUID sessionEvidenceId
     ChannelState state
     string acrFloor
-    AuthIntent entryIntent
+    Journey entryJourney
   }
   class AuthJourney {
     UUID journeyId
-    AuthIntent intent
+    Journey kind
     JourneyLifecycle lifecycle
     long accountId
     string stateType
@@ -142,11 +142,11 @@ dieselbe, nämlich die `ChannelSession`.
 Journeys zu verschiedenen Intents verlaufen unterschiedlich. Man könnte dafür je Intent eine
 Unterklasse bilden. Dieses Modell trennt stattdessen die gespeicherten Daten vom Verhalten:
 
-- `AuthJourney` ist eine flache Entity ohne Unterklassen. Was sich je Intent unterscheidet, steht
-  im `JourneyState`. Das ist eine abgeschlossene Menge von Zuständen **je Intent**
-  ([Orchestrierung](04-orchestrierung.md)). Das Verhalten dazu steht in einer eigenen Strategie je
-  Intent (`IntentStrategy`). Die Strategie braucht nämlich Services, die eine JPA-Entity nicht
-  halten darf: die Richtlinie für Sicherheitsniveaus (`AuthPolicy`), den `AccountService` und den
+- `AuthJourney` ist eine flache Entity ohne Unterklassen. Was sich je Journey unterscheidet, steht
+  im `JourneyState`. Das ist eine abgeschlossene Menge von Zuständen **je Journey**
+  ([Orchestrierung](04-orchestrierung.md)). Das Verhalten dazu steht im Objekt der Journey
+  (`kind`, z. B. `RegisterJourney`), nicht in der Entity: Es braucht Regeln und Daten, die eine
+  JPA-Entity nicht halten darf, etwa die Richtlinie für Sicherheitsniveaus (`AuthPolicy`) und den
   Tool-Katalog.
 - Der Orchestrator speichert den Zustand in zwei Teilen: `stateType` ist ein
   Unterscheidungsmerkmal, nach dem sich abfragen lässt. `state` enthält die Attribute als JSON.
@@ -255,9 +255,9 @@ Die folgenden Aufzählungstypen kommen im Modell immer wieder vor:
 - `ChannelType`: `APP`, `WEB`. Der Typ sagt, über welchen Zugang der Kanal geöffnet wurde. Das
   bleibt für die ganze Lebenszeit des Kanals fest ([05-api.md](05-api.md) Abschnitt 3).
 - `ChannelState`: `ANONYMOUS`, `REGISTERING`, `AUTHENTICATED`, `LOGGED_OUT`, `EXPIRED`. Das sind die Zustände des Kanals aus Abschnitt 3.
-- `AuthIntent`: `FAST_ACCESS`, `REGISTER`, `LOOKUP_LOGIN`, `WEB_SELECT_METHOD`, `STEP_UP`,
-  `MANAGE_AUTH_METHODS`, `CONFIRM_PEER_LOGIN`, `DELETE_ACCOUNT`, `FRESH_PROOF`, `RE_IDENTIFY`. Ein
-  Intent beschreibt, was der Nutzer erreichen will, *und* den Weg dorthin
+- `Journeys.all`: `FAST_ACCESS`, `REGISTER`, `LOOKUP_LOGIN`, `WEB_SELECT_METHOD`, `STEP_UP`,
+  `MANAGE_AUTH_METHODS`, `CONFIRM_PEER_LOGIN`, `DELETE_ACCOUNT`, `FRESH_PROOF`, `RE_IDENTIFY`. Eine
+  Journey beschreibt, was der Nutzer erreichen will, *und* den Weg dorthin
   ([Orchestrierung](04-orchestrierung.md) Abschnitt 2). `DELETE_ACCOUNT` und `MANAGE_AUTH_METHODS`
   setzen einen Kanal voraus, der schon `AUTHENTICATED` ist. Was das Löschen verlangt, steht in
   [journeys/delete-account.md](journeys/delete-account.md).

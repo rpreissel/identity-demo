@@ -15,7 +15,18 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.OrchestratorException
-import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.Journeys
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.StartRefusal
+import com.example.identity.core.orchestrator.domain.journey.StartingAccount
+import com.example.identity.core.orchestrator.domain.journey.appChannelOpening
+import com.example.identity.core.orchestrator.domain.journey.startRefusal
+import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
+import com.example.identity.core.orchestrator.domain.journey.state.upTo
+import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginJourney
+import com.example.identity.core.orchestrator.domain.journey.strategy.DeleteAccountJourney
+import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsJourney
+import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpJourney
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
@@ -82,18 +93,18 @@ class ChannelService(
         // resets the attempt budget.
         channelCreationRateLimitService.recordAndAssertWithinBudget(bindingKeyRef)
 
-        val entryIntent = AuthIntent.fromRequest(intent, ChannelType.APP)
+        val entryJourney = Journeys.fromRequest(intent, ChannelType.APP)
             ?: throw OrchestratorException.invalidState(Text("Dieser Vorgang kann keinen Kanal eroeffnen"), "intent=${intent}")
 
-        // CONFIRM_PEER_LOGIN depends on the link like FAST_ACCESS: without one its strategy aborts.
-        val linkedAccountId = if (entryIntent.entry?.usesLinkedAccount == true) {
+        // CONFIRM_PEER_LOGIN depends on the link like FAST_ACCESS: without one it aborts.
+        val linkedAccountId = if (entryJourney.appChannelOpening?.startsWith == StartingAccount.LINKED_TO_DEVICE) {
             sessionManagementService.findLinkedAccountId(bindingKeyRef)
         } else {
             null
         }
         val channel = sessionManagementService
             .createChannelSession(bindingKeyRef, ChannelType.APP, CHANNEL_TTL, linkedAccountId)
-        channel.entryIntent = entryIntent
+        channel.entryJourney = entryJourney
         // Fixed for the channel's lifetime (docs/03-tool-architektur.md); the backend switch is read live.
         channel.availableClientTools = catalogToolsOf(availableTools)
         sessionManagementService.updateChannelSession(channel)
@@ -213,11 +224,11 @@ class ChannelService(
         return startEntryJourney(live, restoredEvidence)
     }
 
-    /** Starts [intent] on a live channel that may start it, and answers with its first step. */
-    private fun startIntent(channelSessionId: ChannelSessionId, bindingKeyRef: String, intent: AuthIntent, seed: JourneyState? = null): ChannelResponse {
+    /** Starts [journey] on a live channel that may start it, and answers with its first step. */
+    private fun startJourney(channelSessionId: ChannelSessionId, bindingKeyRef: String, journey: Journey<*>, seed: JourneyState? = null): ChannelResponse {
         val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
-        requireStartable(live, intent)
-        return respondAfter(channelSessionId, journeyService.start(live, intent, seed = seed))
+        requireStartable(live, journey)
+        return respondAfter(channelSessionId, journeyService.start(live, journey, seed = seed))
     }
 
     /** The channel as the journey left it, with the journey's next [step]. */
@@ -238,17 +249,14 @@ class ChannelService(
         // login or registration, which reads it on each transition. A STEP_UP here could claim
         // AUTHENTICATED on cancel without proof (docs/invarianten.md I-4).
         if (refreshed.state?.isLoggedIn != true) return resumeChannel(refreshed)
-        requireStartable(live, AuthIntent.STEP_UP)
+        requireStartable(live, StepUpJourney)
 
         val floor = refreshed.acrFloor?.let(AcrLevel::parse) ?: AcrLevels.DEFAULT_REQUIRED_ACR
         val account = refreshed.accountId?.let { accountService.findAccount(it) }
         if (authPolicy.isSatisfied(currentEvidence(refreshed), floor, account)) return responseAssembler.respond(refreshed)
 
-        val step = journeyService.startTowardAcr(
-            live,
-            targetAcr = floor,
-            startingAcr = authPolicy.resolveAcr(currentEvidence(refreshed), account)
-        )
+        val startingAcr = authPolicy.resolveAcr(currentEvidence(refreshed), account)
+        val step = journeyService.start(live, StepUpJourney, seed = StepUpState.forSubJourney(startingAcr upTo floor))
         return respondAfter(channelSessionId, step)
     }
 
@@ -334,7 +342,7 @@ class ChannelService(
     }
 
     private fun startManage(channelSessionId: ChannelSessionId, bindingKeyRef: String, wish: ManageAuthMethodsState): ChannelResponse {
-        return startIntent(channelSessionId, bindingKeyRef, AuthIntent.MANAGE_AUTH_METHODS, seed = wish)
+        return startJourney(channelSessionId, bindingKeyRef, ManageAuthMethodsJourney, seed = wish)
     }
 
     /**
@@ -343,8 +351,8 @@ class ChannelService(
      * [ConfirmPeerLoginState.Requested].
      */
     fun startPeerLogin(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
-        return startIntent(
-            channelSessionId, bindingKeyRef, AuthIntent.CONFIRM_PEER_LOGIN,
+        return startJourney(
+            channelSessionId, bindingKeyRef, ConfirmPeerLoginJourney,
             seed = ConfirmPeerLoginState.Requested
         )
     }
@@ -354,18 +362,18 @@ class ChannelService(
      * then the deletion (docs/05-api.md #3a, "Konto löschen").
      */
     fun startDeleteAccount(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
-        return startIntent(channelSessionId, bindingKeyRef, AuthIntent.DELETE_ACCOUNT)
+        return startJourney(channelSessionId, bindingKeyRef, DeleteAccountJourney)
     }
 
-    /** Applies [AuthIntent.startRefusal] before a signed-in user's journey starts on [channel]. */
-    private fun requireStartable(channel: LiveChannel, intent: AuthIntent) {
-        when (intent.startRefusal(channel.session.state, hasAccount = channel.session.accountId != null)) {
+    /** Applies [startRefusal] before a journey starts on an already open [channel]. */
+    private fun requireStartable(channel: LiveChannel, journey: Journey<*>) {
+        when (journey.startRefusal(channel.session.state, hasAccount = channel.session.accountId != null)) {
             null -> return
-            AuthIntent.StartRefusal.NOT_LOGGED_IN ->
-                throw OrchestratorException.invalidState(Text("Dieser Vorgang setzt eine Anmeldung voraus"), "intent=$intent")
-            AuthIntent.StartRefusal.NO_ACCOUNT ->
-                throw OrchestratorException.invalidState(Text("Nur mit einem Konto moeglich"), "intent=$intent")
-            AuthIntent.StartRefusal.NOT_STARTABLE_IN_SESSION -> error("$intent is not started from within a session")
+            StartRefusal.NOT_LOGGED_IN ->
+                throw OrchestratorException.invalidState(Text("Dieser Vorgang setzt eine Anmeldung voraus"), "intent=${journey.name}")
+            StartRefusal.NO_ACCOUNT ->
+                throw OrchestratorException.invalidState(Text("Nur mit einem Konto moeglich"), "intent=${journey.name}")
+            StartRefusal.NOT_STARTABLE_WHEN_AUTHENTICATED -> error("${journey.name} is not started on an authenticated channel")
         }
     }
 

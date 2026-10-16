@@ -3,7 +3,6 @@ package com.example.identity.core.orchestrator.journeytrace
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import java.time.Clock
@@ -49,7 +48,8 @@ data class LoggedChannel(
 data class LoggedJourney(
     val journeyId: JourneyId,
     val parentJourneyId: JourneyId?,
-    val intent: AuthIntent
+    /** The journey's name (`Journey.name`). */
+    val intent: String
 )
 
 @Service
@@ -193,7 +193,7 @@ class JourneyTraceService(
     }
 
     private fun JourneyTraceSummary.matches(query: JourneyTraceQuery) =
-        (query.intent == null || intent == query.intent.name) && (query.outcome == null || outcome == query.outcome)
+        (query.intent == null || intent == query.intent) && (query.outcome == null || outcome == query.outcome)
 
     private fun JourneyTraceEntry.toView() = JourneyTraceEntryView(
         channelSessionId = checkNotNull(channelSessionId),
@@ -201,7 +201,7 @@ class JourneyTraceService(
         accountId = accountId,
         journeyId = journeyId,
         parentJourneyId = parentJourneyId,
-        intent = intent?.name,
+        intent = intent,
         eventType = checkNotNull(eventType),
         journeyState = journeyState,
         detail = detail.orEmpty(),

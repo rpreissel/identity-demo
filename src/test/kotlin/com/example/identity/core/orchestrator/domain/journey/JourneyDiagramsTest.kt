@@ -1,7 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey
 
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
-import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.Journeys
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
@@ -23,7 +23,7 @@ import kotlin.reflect.KClass
 
 /**
  * The hand-written state diagrams in `docs/journeys/<intent>.md` name exactly the states of their
- * intent (ADR-40). Allowed extra nodes are sub-journeys (an `AuthIntent`) and nodes the diagram
+ * intent (ADR-40). Allowed extra nodes are sub-journeys (a `Journey`) and nodes the diagram
  * declares itself (`state "…" as X`). Arrows are not compared: they depend on context that executed
  * actions change, and the strategy tests cover the transitions.
  */
@@ -50,7 +50,7 @@ class JourneyDiagramsTest : BehaviorSpec({
             val states = entries.flatMap { entry -> JourneyStateCodec.concreteStates(entry.root).map { it.simpleName!! } }.toSet()
 
             then("$doc.md names only states that exist") {
-                val unknown = drawn - states - declared - AuthIntent.entries.map { it.name }.toSet() - END_NODES
+                val unknown = drawn - states - declared - Journeys.all.map { it.name }.toSet() - END_NODES
                 withClue("Unbekannte Knoten - umbenannt, entfernt, oder als `state \"…\" as X` zu deklarieren") { unknown.shouldBeEmpty() }
             }
 

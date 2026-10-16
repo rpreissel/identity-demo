@@ -83,7 +83,7 @@ export const JOURNEY_DIAGRAMS: Record<
   stepUp: {
     title: t('Sicherheitsniveau erhöhen'),
     steps: [t('Verfahren wählen'), t('Faktor bestätigen'), t('Niveau erreicht')],
-    // The one-method dead end (StepUpStrategy): an account with a single active auth method has
+    // The one-method dead end (StepUpJourney): an account with a single active auth method has
     // nothing left to combine with, so re-identification is the way out instead of a dead end.
     branch: {
       atIndex: 0,
@@ -95,7 +95,7 @@ export const JOURNEY_DIAGRAMS: Record<
   manageMethods: {
     title: t('Anmeldeverfahren verwalten'),
     // Every wish (add, change, remove) first runs the FRESH_PROOF sub-journey: level, then a proof
-    // of the last five minutes (ManageAuthMethodsStrategy). Nothing left to add asks for nothing.
+    // of the last five minutes (ManageAuthMethodsJourney). Nothing left to add asks for nothing.
     steps: [t('Frischer Nachweis (Sub-Journey)'), t('Einrichten, ändern oder entfernen'), t('Fertig')],
   },
   freshProof: {
@@ -127,13 +127,13 @@ export const JOURNEY_DIAGRAMS: Record<
     title: t('Anmeldung im Browser bestätigen'),
     // Same anti-self-escalation gate as manageMethods, as the FRESH_PROOF sub-journey: loa2 and a
     // recent proof first, for a cold entry and a loa1 channel alike. There is no separate "log in
-    // first" step, and never identification or registration (AuthIntent.CONFIRM_PEER_LOGIN).
+    // first" step, and never identification or registration (ConfirmPeerLoginJourney).
     steps: [t('Frischer Nachweis (Sub-Journey)'), t('Web-Login bestätigen'), t('Bestätigt')],
   },
   deleteAccount: {
     title: t('Konto löschen'),
     // The yes/no confirmation always comes first; level and fresh proof follow only once accepted,
-    // as the FRESH_PROOF sub-journey (DeleteAccountStrategy).
+    // as the FRESH_PROOF sub-journey (DeleteAccountJourney).
     steps: [t('Löschen bestätigen'), t('Frischer Nachweis (Sub-Journey)'), t('Gelöscht')],
   },
     // Kein Journey-Schritt des Orchestrators: Der Browser spricht hier nur mit Keycloak (webOidc.ts).
@@ -209,7 +209,7 @@ export const CURRENT_STEP_BY_STATE_TYPE: Partial<Record<keyof typeof JOURNEY_DIA
   },
 }
 
-/** JourneyDebugStep.intent (AuthIntent name) -> JOURNEY_DIAGRAMS key, one per intent. */
+/** JourneyDebugStep.intent (Journey name) -> JOURNEY_DIAGRAMS key, one per intent. */
 export const INTENT_DIAGRAM_KEY: Record<string, keyof typeof JOURNEY_DIAGRAMS> = {
   FAST_ACCESS: 'auto',
   REGISTER: 'register',

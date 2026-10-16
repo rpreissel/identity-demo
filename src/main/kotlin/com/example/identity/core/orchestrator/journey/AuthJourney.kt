@@ -3,7 +3,7 @@ package com.example.identity.core.orchestrator.journey
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.JourneyLifecycle
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -18,14 +18,13 @@ import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.UUID
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 
 /**
- * One run of one [AuthIntent]: a guided path with a goal (docs/04-orchestrierung.md #3). Belongs
+ * One run of one [Journey]: a guided path with a goal (docs/04-orchestrierung.md #3). Belongs
  * to one ChannelSession and lives shorter than it; at most one journey per channel is
- * [JourneyLifecycle.STARTED]. Pure data: the behaviour needs services, so it lives in an
- * [IntentStrategy] per intent (ADR-2). `next` is derived from [state], never stored.
+ * [JourneyLifecycle.STARTED]. Pure data: the behaviour lives in the [Journey] object of
+ * its [kind] (ADR-2). `next` is derived from [state], never stored.
  */
 @Entity
 @Table(schema = "orchestrator", name = "auth_journey")
@@ -33,9 +32,9 @@ class AuthJourney(
     @Column(name = "channel_session_id", nullable = false)
     var channelSessionId: ChannelSessionId? = null,
 
-    @Enumerated(EnumType.STRING)
+    /** Which journey this is a run of. Stored by name (`JourneyConverter`). */
     @Column(name = "intent", nullable = false, length = 32)
-    var intent: AuthIntent? = null,
+    var kind: Journey<*>? = null,
 
     @Column(name = "expires_at", nullable = false)
     var expiresAt: Instant? = null,
@@ -124,4 +123,4 @@ class AuthJourney(
 
 /* Set on the first save / at creation, never null afterwards - see `ChannelSession.id`. */
 val AuthJourney.id: JourneyId get() = checkNotNull(journeyId) { "AuthJourney not saved yet" }
-fun AuthJourney.requireIntent(): AuthIntent = checkNotNull(intent) { "Journey $journeyId without an intent" }
+fun AuthJourney.requireKind(): Journey<*> = checkNotNull(kind) { "Journey $journeyId without a kind" }

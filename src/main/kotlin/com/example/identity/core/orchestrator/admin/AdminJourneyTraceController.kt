@@ -6,7 +6,6 @@ import com.example.identity.contract.tool_api.directory.PersonDirectory
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.account.AccountService
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.JourneyId
 import com.example.identity.core.orchestrator.journeytrace.ChannelSessionTrace
 import com.example.identity.core.orchestrator.journeytrace.JOURNEY_TRACE_RETENTION
@@ -53,7 +52,7 @@ class AdminJourneyTraceController(
         @RequestParam(required = false) accountId: AccountId?,
         @RequestParam(required = false) channelSessionId: UUID?,
         @RequestParam(required = false) journeyId: UUID?,
-        @RequestParam(required = false) intent: AuthIntent?,
+        @RequestParam(required = false) intent: String?,
         @RequestParam(required = false) outcome: JourneyTraceOutcome?,
         @RequestParam(required = false) from: Instant?,
         @RequestParam(required = false) to: Instant?,

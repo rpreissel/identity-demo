@@ -1,11 +1,11 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsJourney
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.ErrorCode
@@ -48,7 +48,7 @@ class ChannelServiceRetractAttributeTest : BehaviorSpec({
 
             then("the manage journey starts with that wish") {
                 verify {
-                    fixture.journeyService.start(any(), AuthIntent.MANAGE_AUTH_METHODS, ManageAuthMethodsState.RetractAttributeRequested(AttributeType.EMAIL))
+                    fixture.journeyService.start(any(), ManageAuthMethodsJourney, ManageAuthMethodsState.RetractAttributeRequested(AttributeType.EMAIL))
                 }
             }
         }

@@ -83,9 +83,9 @@ etwas hinzu und brauchen nichts davon.
   nimmt er `next.type` (`tool` oder `orchestrator`) und das passende Attribut, also `next.toolId`
   bzw. `next.context`, zusammen mit dem gewählten Eintrag aus `stepData.options`.
 - Welcher Ablauf fachlich läuft, entscheidet das Backend. Es richtet sich dabei nach dem Zustand des
-  Kanals, dem Status des Kontos und seinen Regeln. Beschrieben wird der Ablauf durch den **Intent**
-  (`AuthIntent`), also das Anliegen des Nutzers, etwa „registrieren“ oder „anmelden“, und durch die
-  Strategie dazu, also die Regeln dieses Intents. Es gibt keinen eigenen Typ wie `REGISTRATION` oder
+  Kanals, dem Status des Kontos und seinen Regeln. Beschrieben wird der Ablauf durch die **Journey**
+  (`Journey`), also das Anliegen des Nutzers, etwa „registrieren“ oder „anmelden“, zusammen mit
+  ihren Regeln. Es gibt keinen eigenen Typ wie `REGISTRATION` oder
   `LOGIN`.
 - Damit alles konsistent bleibt, läuft je Kanal (`channelSessionId`) höchstens eine **Journey**
   aktiv. Eine Journey ist ein laufender Ablauf zu einem Intent, etwa eine Registrierung von der
@@ -500,8 +500,9 @@ Zusammenführen von Protokolleinträgen und der Revision. Der Client gibt sie ni
 
 #### `POST /app/channels`: Parameter `intent`
 
-`intent` ist optional; ohne Angabe gilt `fast_access`. Der Wert ist der Name eines
-`AuthIntent`-Werts. Groß- und Kleinschreibung spielen keine Rolle (`AuthIntent.fromRequest`).
+`intent` ist optional; ohne Angabe gilt `fast_access`. Der Wert ist der Name einer
+Journey, die einen App-Kanal eröffnen darf (`OpensAppChannel`). Groß- und Kleinschreibung spielen
+keine Rolle (`Journeys.fromRequest`).
 Unbekannte Werte lehnt der Orchestrator ab. Der Intent bestimmt, welcher Ablauf auf DIESEM Kanal
 startet. Das gilt unabhängig davon, ob die Geräteverknüpfung (`DeviceAccountLink`) das Gerät
 erkennt. Die Geräteverknüpfung speichert, welches Smartphone zu welchem Konto gehört.
@@ -522,7 +523,7 @@ erkennt. Die Geräteverknüpfung speichert, welches Smartphone zu welchem Konto 
     Kontos (`enroll-device`) für genau diesen Schlüssel wird deaktiviert bzw. gelöscht.
   - Lehnt er ab, endet die Journey regulär, ohne Fehler, wie bei `DELETE .../journey`. Die alte
     Verknüpfung bleibt bestehen.
-- `confirm_peer_login`: startet `AuthIntent.CONFIRM_PEER_LOGIN`. Damit bestätigt der Nutzer in der
+- `confirm_peer_login`: startet die Journey `CONFIRM_PEER_LOGIN`. Damit bestätigt der Nutzer in der
   App einen Web-Login, der gerade wartet, oder lehnt ihn ab (`auth-qr`/`auth-qr-lookup`; siehe unten,
   „Peer-Login bestätigen"). Das geht auch von einem Kanal aus, der noch nicht angemeldet ist. Der
   Ablauf weicht aber nie auf Identifizierung oder Registrierung aus.
@@ -764,7 +765,7 @@ derselbe `channelAccessGuard` wie überall sonst. Die Seite nach erfolgreicher A
 und Rolle knapp im Begrüßungstext: „Angemeldet als *Name* (Versicherter/Partner/Interessent)". Die
 vollständigen Claims lassen sich aufklappen, wie die Details des AccessTokens.
 
-#### Verfahren verwalten (AuthIntent.MANAGE_AUTH_METHODS)
+#### Verfahren verwalten (Journey MANAGE_AUTH_METHODS)
 
 Hier verwaltet der Nutzer freiwillig die Anmeldeverfahren seines Kontos, auf einem Kanal, der
 bereits `AUTHENTICATED` ist. Das ist unabhängig von `REGISTER` und `STEP_UP`
@@ -850,7 +851,7 @@ nicht angelegt. Verwendet wird `Prompt` für:
 - `ReIdentifyState.OfferReIdent` vor der Sub-Journey `RE_IDENTIFY`
   ([Orchestrierung](04-orchestrierung.md)).
 
-#### Konto löschen (AuthIntent.DELETE_ACCOUNT)
+#### Konto löschen (Journey DELETE_ACCOUNT)
 
 Hier löscht der Nutzer sein eigenes Konto, auf einem Kanal, der bereits `AUTHENTICATED` ist. Die
 Ja/Nein-Bestätigung kommt **immer zuerst und ohne Bedingung**. Erst nach der Zustimmung prüft der
@@ -909,7 +910,7 @@ das Konto selbst, über die eingegebene E-Mail-Adresse:
 - In der Demo ist `demo.password` ein fester Wert, unabhängig vom gefundenen Konto. Die
   E-Mail-Adresse kommt aus der Auswahl der Testperson (`demo.persons`).
 
-#### Peer-Login bestätigen (AuthIntent.CONFIRM_PEER_LOGIN)
+#### Peer-Login bestätigen (Journey CONFIRM_PEER_LOGIN)
 
 Beim QR-Login meldet sich der Nutzer auf der Website mit Hilfe der App an: Der Browser zeigt einen
 QR-Code, und die App gibt den Login frei. Dabei bestätigt ein App-Kanal einen wartenden Web-Login
@@ -1112,7 +1113,7 @@ in [verfahren/qr.md](verfahren/qr.md).
 
 #### Anmeldeverfahren verwalten im Web-Kanal (Keycloak Required Action)
 
-Die Verwaltung der Verfahren (`AuthIntent.MANAGE_AUTH_METHODS`) funktioniert für beide Zugänge
+Die Verwaltung der Verfahren (Journey `MANAGE_AUTH_METHODS`) funktioniert für beide Zugänge
 gleich (Abschnitt 3a, „Verfahren verwalten"; `POST .../enrollments` nutzt denselben
 `DpopBindingKeyResolver`). Der Web-Kanal braucht deshalb **keinen eigenen Endpunkt im
 Orchestrator**, nur einen eigenen Einstieg. Dieser Einstieg ist eine Required Action von Keycloak

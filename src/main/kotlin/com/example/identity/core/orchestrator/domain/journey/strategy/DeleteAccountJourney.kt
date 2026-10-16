@@ -2,8 +2,8 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.AuthIntent
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -15,9 +15,10 @@ import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccount
  * yes/no question comes first; only after "yes" does the gate at [Action.DeleteAccount.requiredAcr]
  * apply, together with the fresh proof, both as the `FRESH_PROOF` sub-journey (ADR-61).
  */
-class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
+object DeleteAccountJourney : Journey<DeleteAccountState> {
 
-    override val intent = AuthIntent.DELETE_ACCOUNT
+    override val name = "DELETE_ACCOUNT"
+    override val startPoints = listOf(StartableWhenAuthenticated)
     override val stateRoots = listOf(DeleteAccountState::class)
 
     override fun initialState(ctx: JourneyContext): DeleteAccountState = DeleteAccountState.ConfirmPending
@@ -39,7 +40,7 @@ class DeleteAccountStrategy : IntentStrategy<DeleteAccountState> {
         }
 
     private fun requireFreshProof(ctx: JourneyContext): Transition = Transition.RequireSubJourney(
-        AuthIntent.FRESH_PROOF,
+        FreshProofJourney,
         seedWith = FreshProofState.forSubJourney(Action.DeleteAccount.requiredAcr(ctx.requireAccount()), FreshProofState.Purpose.DELETE_ACCOUNT),
         resumeWith = DeleteAccountState.ConfirmPending,
     )

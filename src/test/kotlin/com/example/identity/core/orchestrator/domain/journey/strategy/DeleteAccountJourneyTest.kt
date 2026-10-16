@@ -3,7 +3,6 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
@@ -18,14 +17,14 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * Pure unit coverage of [DeleteAccountStrategy] - self-service account deletion
+ * Pure unit coverage of [DeleteAccountJourney] - self-service account deletion
  * (docs/04-orchestrierung.md #3, docs/05-api.md "Account löschen"). No Spring context, no HTTP.
  * The givens follow the journey: confirmation, the FRESH_PROOF sub-journey, delete. Level and
- * freshness themselves are [FreshProofStrategyTest]'s.
+ * freshness themselves are [FreshProofJourneyTest]'s.
  */
-class DeleteAccountStrategyTest : BehaviorSpec({
+class DeleteAccountJourneyTest : BehaviorSpec({
 
-    val strategy = DeleteAccountStrategy()
+    val strategy = DeleteAccountJourney
 
     given("a new journey") {
         `when`("its first state is chosen") {
@@ -61,7 +60,7 @@ class DeleteAccountStrategyTest : BehaviorSpec({
             then("parks the wish and requires loa2 plus a fresh proof - only NOW, never before accepting, and never decided here (ADR-61)") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        AuthIntent.FRESH_PROOF,
+                        FreshProofJourney,
                         seedWith = FreshProofState.forSubJourney(AcrLevel.LOA2, FreshProofState.Purpose.DELETE_ACCOUNT),
                         resumeWith = DeleteAccountState.ConfirmPending
                     )
@@ -86,7 +85,7 @@ class DeleteAccountStrategyTest : BehaviorSpec({
         val theCtx = ctx(account = acc)
 
         `when`("the FRESH_PROOF sub-journey finishes") {
-            val event = JourneyEvent.SubJourneyFinished(AuthIntent.FRESH_PROOF, achievedAcr = AcrLevel.LOA2)
+            val event = JourneyEvent.SubJourneyFinished(FreshProofJourney, achievedAcr = AcrLevel.LOA2)
             val transition = strategy.transition(DeleteAccountState.ConfirmPending, event, theCtx)
             then("deletes right away - level and freshness were the sub-journey's to decide") {
                 transition shouldBe Transition.Perform(Action.DeleteAccount, resumeState = DeleteAccountState.ConfirmPending)

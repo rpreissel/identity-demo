@@ -2,9 +2,12 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
+import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
+import com.example.identity.core.orchestrator.domain.journey.StartingAccount
+import com.example.identity.core.orchestrator.domain.journey.DeviceLink
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -16,11 +19,17 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
  * Approve or decline a Web-channel `auth-qr`/`auth-qr-lookup` pairing
  * (docs/journeys/confirm-peer-login.md). The session must prove loa2 and hold a recent proof before
  * it may vouch for a login elsewhere: the `FRESH_PROOF` sub-journey, without a way out through
- * re-identification (ADR-61).
+ * re-identification (ADR-61). A cold App scanning the QR opens a channel with it, an authenticated
+ * channel starts it; both reach the same gate. Without a known account it aborts; it never falls
+ * back to identification or registration.
  */
-class ConfirmPeerLoginStrategy : IntentStrategy<ConfirmPeerLoginState> {
+object ConfirmPeerLoginJourney : Journey<ConfirmPeerLoginState> {
 
-    override val intent = AuthIntent.CONFIRM_PEER_LOGIN
+    override val name = "CONFIRM_PEER_LOGIN"
+    override val startPoints = listOf(
+        OpensAppChannel(startsWith = StartingAccount.LINKED_TO_DEVICE, onSuccess = DeviceLink.LEAVE_UNCHANGED),
+        StartableWhenAuthenticated,
+    )
     override val stateRoots = listOf(ConfirmPeerLoginState::class)
 
     override fun initialState(ctx: JourneyContext): ConfirmPeerLoginState = ConfirmPeerLoginState.Requested
@@ -49,13 +58,11 @@ class ConfirmPeerLoginStrategy : IntentStrategy<ConfirmPeerLoginState> {
     private fun requireFreshProof(ctx: JourneyContext): Transition {
         if (ctx.account == null) return Transition.Abort(Text("Dieses Gerät ist noch keinem Konto zugeordnet - bitte zuerst regulär anmelden."))
         return Transition.RequireSubJourney(
-            AuthIntent.FRESH_PROOF,
+            FreshProofJourney,
             seedWith = FreshProofState.forSubJourney(REQUIRED_ACR, FreshProofState.Purpose.PEER_LOGIN),
             resumeWith = ConfirmPeerLoginState.Requested,
         )
     }
 
-    companion object {
-        val REQUIRED_ACR = AcrLevel.LOA2
-    }
+    val REQUIRED_ACR = AcrLevel.LOA2
 }

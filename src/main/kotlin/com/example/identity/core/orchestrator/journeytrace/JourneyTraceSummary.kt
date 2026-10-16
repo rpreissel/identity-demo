@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.journeytrace
 
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.JourneyId
 import java.time.Duration
 import java.time.Instant
@@ -93,7 +92,8 @@ data class JourneyTraceQuery(
     val accountId: AccountId? = null,
     val channelSessionId: ChannelSessionId? = null,
     val journeyId: JourneyId? = null,
-    val intent: AuthIntent? = null,
+    /** A journey name (`Journey.name`). */
+    val intent: String? = null,
     val outcome: JourneyTraceOutcome? = null,
     val cursor: JourneyTraceCursor? = null
 )

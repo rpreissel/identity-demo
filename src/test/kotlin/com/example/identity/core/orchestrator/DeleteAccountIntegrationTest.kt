@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 
 /**
- * Account deletion's ACR gate (docs/04-orchestrierung.md, DeleteAccountStrategy): the yes/no
+ * Account deletion's ACR gate (docs/04-orchestrierung.md, DeleteAccountJourney): the yes/no
  * confirmation comes first, then a step-up if the session lacks the level, falling back to
  * RE_IDENTIFY when no active method reaches it. loa2 for an identified account, loa1 for one never
  * identified (`Action.DeleteAccount.requiredAcr`). A proof of the last five minutes then deletes at

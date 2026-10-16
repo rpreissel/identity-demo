@@ -365,7 +365,7 @@ export interface ChannelCreateRequest {
      */
     availableTools: Array<string>;
     /**
-     * The entry intent's own name, case-insensitively (AuthIntent.fromRequest) - no separate wire vocabulary. Omitted/fast_access (default): DeviceAccountLink found -> LOGIN, else REGISTRATION. lookup_login: always offers lookup-based login (email + credential), even on a linked device. register: always starts fresh REGISTRATION, even on a linked device (second account). confirm_peer_login: a cold app approves a waiting web login (QR pairing) for the device's linked account.
+     * The entry intent's own name, case-insensitively (Journeys.fromRequest) - no separate wire vocabulary. Omitted/fast_access (default): DeviceAccountLink found -> LOGIN, else REGISTRATION. lookup_login: always offers lookup-based login (email + credential), even on a linked device. register: always starts fresh REGISTRATION, even on a linked device (second account). confirm_peer_login: a cold app approves a waiting web login (QR pairing) for the device's linked account.
      * @type {string}
      * @memberof ChannelCreateRequest
      */
@@ -1148,7 +1148,7 @@ export interface KeycloakChannelUpsertRequest {
      */
     availableTools?: Array<string>;
     /**
-     * Only read on this channel's first call, same restriction as availableTools - the Keycloak facade's own, deliberately narrow counterpart to the App facade's `intent` request parameter (docs/05-api.md #"POST /app/channels: intent-Parameter"). Omitted (or null) means web_select_method, the existing login/step-up behaviour. Only web_select_method and register are accepted here - unlike the App facade, not every AuthIntent entry: fast_access/lookup_login assume an APP-shaped channel this facade never has.
+     * Only read on this channel's first call, same restriction as availableTools - the Keycloak facade's own, deliberately narrow counterpart to the App facade's `intent` request parameter (docs/05-api.md #"POST /app/channels: intent-Parameter"). Omitted (or null) means web_select_method, the existing login/step-up behaviour. Only web_select_method and register are accepted here - unlike the App facade, not every journey that opens a channel: fast_access/lookup_login assume an APP-shaped channel this facade never has.
      * @type {string}
      * @memberof KeycloakChannelUpsertRequest
      */

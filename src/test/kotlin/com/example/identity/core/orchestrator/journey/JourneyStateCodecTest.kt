@@ -11,8 +11,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMet
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
-import com.example.identity.core.orchestrator.domain.AuthIntent
-import com.example.identity.core.orchestrator.domain.journey.strategy.ALL_INTENT_STRATEGIES
+import com.example.identity.core.orchestrator.domain.Journeys
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
@@ -39,23 +38,20 @@ class JourneyStateCodecTest : BehaviorSpec({
         ReIdentifyState::class to setOf("OfferReIdent", "Identifying"),
     )
 
-    val codec = JourneyStateCodec(ALL_INTENT_STRATEGIES)
+    val codec = JourneyStateCodec()
 
-    given("the strategies the codec reads with") {
-        then("there is one for every intent") {
-            ALL_INTENT_STRATEGIES.map { it.intent }.toSet() shouldBe AuthIntent.entries.toSet()
-        }
+    given("the journeys the codec reads with") {
         then("their states' type names are exactly the persisted ones") {
-            ALL_INTENT_STRATEGIES.flatMap { it.stateRoots }
+            Journeys.all.flatMap { it.stateRoots }
                 .associateWith { root -> JourneyStateCodec.concreteStates(root).map { it.simpleName }.toSet() } shouldBe persistedNames
         }
     }
 
     given("every state without fields") {
-        then("it survives a write and a read under its own intent") {
-            ALL_INTENT_STRATEGIES.forEach { strategy ->
-                strategy.stateRoots.flatMap(JourneyStateCodec::concreteStates).mapNotNull { it.objectInstance }.forEach { state ->
-                    val journey = AuthJourney(channelSessionId = ChannelSessionId(UUID.randomUUID()), intent = strategy.intent, createdAt = Instant.now())
+        then("it survives a write and a read under its own journey") {
+            Journeys.all.forEach { kind ->
+                kind.stateRoots.flatMap(JourneyStateCodec::concreteStates).mapNotNull { it.objectInstance }.forEach { state ->
+                    val journey = AuthJourney(channelSessionId = ChannelSessionId(UUID.randomUUID()), kind = kind, createdAt = Instant.now())
                     codec.write(journey, state)
                     journey.stateType shouldBe state.javaClass.simpleName
                     codec.read(journey) shouldBe state

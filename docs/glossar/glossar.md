@@ -240,8 +240,9 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   einigen Intents beginnt eine neue Sitzung. Sie heißen Einstiegs-Intents, etwa Schnellzugang oder
   Registrierung. Andere Intents, etwa Konto löschen, laufen nur in einer Sitzung, in der der Nutzer
   schon angemeldet ist.
-  *Im Code:* `AuthIntent`, etwa `REGISTER`, `FAST_ACCESS`, `STEP_UP` und `WEB_SELECT_METHOD`
-  (Anmeldung auf der Website).
+  *Im Code:* eine `Journey`, etwa `RegisterJourney`, `FastAccessJourney`, `StepUpJourney` und
+  `WebSelectMethodJourney` (Anmeldung auf der Website). Wo sie beginnen kann, nennt sie selbst
+  (`startPoints`); `Journeys` listet alle.
   *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 2.
 - **Interessent**, **Partner**, **Versicherter**: Die drei Rollen, die ein Konto haben kann. Ein
   Interessent ist noch keiner Person im Personenverzeichnis zugeordnet. Ein Partner ist der
@@ -497,7 +498,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   Dann bestätigt er seine E-Mail-Adresse und richtet so lange Verfahren ein, bis das verlangte Niveau
   erreicht ist. Ein Schalter lässt die Registrierung auch mit dem Einrichten eines Verfahrens
   beginnen (Experiment „Enrollment zuerst“). Die Identifizierung wird dann nur noch angeboten.
-  *Im Code:* Intent `REGISTER`, `RegisterStrategy`; die Variante schaltet `JourneyFeatureFlag.REGISTER_ENROLL_FIRST`.
+  *Im Code:* Intent `REGISTER`, `RegisterJourney`; die Variante schaltet `JourneyFeatureFlag.REGISTER_ENROLL_FIRST`.
   *Mehr dazu:* [journeys/register](../journeys/register.md).
 
 ## S
@@ -524,7 +525,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
 - **Strategie**: Die Regeln eines Intents. Eine Strategie bekommt den aktuellen Zustand und das, was
   gerade passiert ist, und entscheidet, wie es weitergeht. Sie ändert selbst keine Daten, sondern
   beschreibt nur den Übergang.
-  *Im Code:* `IntentStrategy`, etwa `RegisterStrategy`.
+  *Im Code:* die `Journey` selbst (`transition`), etwa `RegisterJourney`.
   *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
 - **Stufe einer Angabe**: Die Stufe sagt, wie verlässlich eine Angabe ist. Es gibt drei Stufen:
   - *belegt*: Die Angabe stammt aus den Stammdaten der Versicherung.

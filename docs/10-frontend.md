@@ -306,13 +306,13 @@ Die Werte, die nur die Demo braucht, stehen in der Demo-Spalte: `amr` dieser Sit
 Verfahren, mit denen sich der Nutzer in dieser Sitzung angemeldet hat) und die Verfahren mit
 Sicherheitsniveau und Art.
 
-### Anmeldeverfahren verwalten und Step-up (`AuthIntent.MANAGE_AUTH_METHODS`)
+### Anmeldeverfahren verwalten und Step-up (Journey `MANAGE_AUTH_METHODS`)
 
 Nach erfolgreicher Anmeldung gibt es zwei getrennte Wege:
 
 - „Sicherheitsniveau erhöhen“ im Profil (FE-15),
 - „Weiteres Verfahren hinzufügen“ unter „Sicherheit“ → „Anmeldeverfahren“ (FE-17,
-  `AuthIntent.MANAGE_AUTH_METHODS`, [`MANAGE_AUTH_METHODS`](journeys/manage-auth-methods.md)).
+  [`MANAGE_AUTH_METHODS`](journeys/manage-auth-methods.md)).
 
 Muss dafür das Niveau steigen, führen beide Wege in denselben **Step-up** und dieselbe
 Tool-Navigation. Ein Step-up heißt: Ein schon angemeldeter Nutzer weist noch etwas nach, um ein
@@ -336,7 +336,7 @@ Mitten in einem Ablauf führt „Zurück“ bzw. „Abbrechen“ zur Startseite 
 Eingabe der TAN bzw. des Codes nutzt dasselbe Formular wie die Anmeldung bei einem bekannten Konto,
 weil beide denselben `next.step` verwenden.
 
-### Anmeldung im Browser per QR-Code bestätigen (`AuthIntent.CONFIRM_PEER_LOGIN`)
+### Anmeldung im Browser per QR-Code bestätigen (Journey `CONFIRM_PEER_LOGIN`)
 
 Bei diesem Ablauf meldet sich ein Nutzer auf der Website an, indem er die Anmeldung in der App
 bestätigt. Die App erreicht `CONFIRM_PEER_LOGIN` auf zwei Wegen, deshalb gibt es zwei gleichwertige
@@ -596,7 +596,7 @@ zeigt die Ansicht „Vorgang“, dass das Token keinen solchen Marker enthält.
 
 Der Demo-Link der Web-Seite zur QR-Bestätigung (Abschnitt 3) zeigt auf
 `/app/?intent=confirm_peer_login&pairingCode=...`, also direkt auf den App-Kanal. `intent` hat
-dieselben Werte wie das Feld `intent` von `createChannel` (`AuthIntent.fromRequest`; Groß- und
+dieselben Werte wie das Feld `intent` von `createChannel` (`Journeys.fromRequest`; Groß- und
 Kleinschreibung spielen keine Rolle). Beide Parameter werden beim Laden aus der URL gelesen und
 sofort entfernt (FE-18).
 

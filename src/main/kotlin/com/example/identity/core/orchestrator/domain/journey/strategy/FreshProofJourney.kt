@@ -2,9 +2,9 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.OnlyAsSubJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -22,9 +22,10 @@ import com.example.identity.core.orchestrator.domain.journey.state.FreshProofSta
  * Freshness is checked once, when this sub-journey starts; a caller that offers a tool afterwards
  * gives the user until the journey expires to finish it (docs/journeys/fresh-proof.md).
  */
-class FreshProofStrategy : IntentStrategy<FreshProofState> {
+object FreshProofJourney : Journey<FreshProofState> {
 
-    override val intent = AuthIntent.FRESH_PROOF
+    override val name = "FRESH_PROOF"
+    override val startPoints = listOf(OnlyAsSubJourney)
     override val stateRoots = listOf(FreshProofState::class)
 
     /** Never entered without a seed; only reachable as a sub-journey ([FreshProofState.forSubJourney]). */
@@ -55,7 +56,7 @@ class FreshProofStrategy : IntentStrategy<FreshProofState> {
     private fun gate(state: FreshProofState.Start, ctx: JourneyContext): Transition? {
         if (ctx hasReached state.requiredAcr) return null
         return Transition.RequireSubJourney(
-            AuthIntent.STEP_UP,
+            StepUpJourney,
             seedWith = StepUpState.forSubJourney(
                 (ctx.currentAcr upTo state.requiredAcr).copy(allowReIdentification = state.purpose.allowReIdentification, reason = state.purpose.stepUpReason)
             ),

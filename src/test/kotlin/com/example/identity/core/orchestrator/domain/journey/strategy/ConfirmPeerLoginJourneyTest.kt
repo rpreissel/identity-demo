@@ -4,8 +4,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.FreshProofSta
 import java.time.Duration
 import com.example.identity.core.orchestrator.domain.policy.provenAt
 import com.example.identity.TEST_NOW
-import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginStrategy
-import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
@@ -23,17 +22,17 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * Unit test of [ConfirmPeerLoginStrategy]: approving or declining a Web-channel QR pairing
+ * Unit test of [ConfirmPeerLoginJourney]: approving or declining a Web-channel QR pairing
  * (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN). Level and freshness are the FRESH_PROOF
- * sub-journey's ([FreshProofStrategyTest]); here only that it is required, and what follows it.
+ * sub-journey's ([FreshProofJourneyTest]); here only that it is required, and what follows it.
  */
-class ConfirmPeerLoginStrategyTest : BehaviorSpec({
+class ConfirmPeerLoginJourneyTest : BehaviorSpec({
 
-    val strategy = ConfirmPeerLoginStrategy()
+    val strategy = ConfirmPeerLoginJourney
 
     // loa2 plus a recent proof, with no way out through re-identification, resuming at the parked wish.
     val peerLoginProof = Transition.RequireSubJourney(
-        AuthIntent.FRESH_PROOF,
+        FreshProofJourney,
         seedWith = FreshProofState.forSubJourney(AcrLevel.LOA2, FreshProofState.Purpose.PEER_LOGIN),
         resumeWith = ConfirmPeerLoginState.Requested
     )
@@ -90,14 +89,14 @@ class ConfirmPeerLoginStrategyTest : BehaviorSpec({
         `when`("the journey starts") {
             val transition = strategy.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
             then("still goes through the proof - whether the level and the age suffice is the sub-journey's call, never decided here") {
-                transition.shouldBeInstanceOf<Transition.RequireSubJourney>().intent shouldBe AuthIntent.FRESH_PROOF
+                transition.shouldBeInstanceOf<Transition.RequireSubJourney>().journey shouldBe FreshProofJourney
             }
         }
     }
 
     given("Requested, waiting for its proof") {
         `when`("the FRESH_PROOF sub-journey finishes") {
-            val event = JourneyEvent.SubJourneyFinished(AuthIntent.FRESH_PROOF, achievedAcr = AcrLevel.LOA2)
+            val event = JourneyEvent.SubJourneyFinished(FreshProofJourney, achievedAcr = AcrLevel.LOA2)
             val transition = strategy.transition(ConfirmPeerLoginState.Requested, event, ctx())
             then("goes on to Confirming") {
                 transition shouldBe Transition.To(ConfirmPeerLoginState.Confirming(CONFIRM_OFFER))

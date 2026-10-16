@@ -2,12 +2,15 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
+import com.example.identity.core.orchestrator.domain.journey.OpensWebChannel
+import com.example.identity.core.orchestrator.domain.journey.StartingAccount
+import com.example.identity.core.orchestrator.domain.journey.DeviceLink
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -23,9 +26,13 @@ import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
  * without identification, and only then offer the identification once. Both share every state;
  * the journey keeps the switch from its start, so a running registration never changes variant.
  */
-class RegisterStrategy : IntentStrategy<RegisterState> {
+object RegisterJourney : Journey<RegisterState> {
 
-    override val intent: AuthIntent = AuthIntent.REGISTER
+    override val name = "REGISTER"
+    override val startPoints = listOf(
+        OpensAppChannel(startsWith = StartingAccount.NONE, onSuccess = DeviceLink.LINK_WITHOUT_ASKING),
+        OpensWebChannel,
+    )
     override val stateRoots = listOf(RegisterState::class)
 
     override fun initialState(ctx: JourneyContext): RegisterState = RegisterState.Start

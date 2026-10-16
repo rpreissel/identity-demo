@@ -15,7 +15,7 @@ Ablauf, den andere Journeys starten. Diese Journeys fordern sie an:
   Kontos das fehlende Niveau liefern kann.
 - [`REGISTER`](register.md), und zwar über `AuthEnrollCore.offerEnrollment`, wenn ein neues
   Verfahren erst nach einer erneuten Identifizierung eingerichtet werden darf.
-- Das Experiment „Erst Anmeldeverfahren einrichten“ (`RegisterStrategy`, siehe
+- Das Experiment „Erst Anmeldeverfahren einrichten“ (`RegisterJourney`, siehe
   [register-enroll-first.md](register-enroll-first.md)).
 
 Es gibt nur diese eine Umsetzung und nicht sechs fast gleiche. `RE_IDENTIFY` ist nie der Einstieg
@@ -54,7 +54,7 @@ es `null`, gilt der Standardtext. Das folgt demselben Muster wie `reason` in
 `StepUpState.forSubJourney`.
 
 **Wohin eine Ablehnung führt.** Wie bei jeder Journey kehrt der Kanal zu dem Anmeldestand zurück,
-den er vor dem Start hatte ([Orchestrierung](../04-orchestrierung.md), `IntentStrategy`):
+den er vor dem Start hatte ([Orchestrierung](../04-orchestrierung.md), `Journey`):
 
 - War der Kanal noch nicht angemeldet (`FAST_ACCESS`, `LOOKUP_LOGIN`), fällt er auf `ANONYMOUS`
   zurück.

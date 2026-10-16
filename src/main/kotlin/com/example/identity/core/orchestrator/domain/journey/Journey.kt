@@ -1,0 +1,128 @@
+package com.example.identity.core.orchestrator.domain.journey
+
+import com.example.identity.core.account.AccountProfile
+import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
+import com.example.identity.core.orchestrator.domain.AcrLevels
+import com.example.identity.core.orchestrator.domain.ChannelState
+import com.example.identity.core.orchestrator.domain.ChannelType
+import com.example.identity.contract.tool_api.claims.AcrLevel
+import kotlin.reflect.KClass
+
+/**
+ * The ACR floor for self-service actions on an account's own credentials and data: a hijacked loa1
+ * session must not act as if it had proved more. Identified accounts need loa2. A never-identified
+ * account ([AccountProfile.personId] `== null`, "Enrollment zuerst") needs loa1: it has no bound
+ * identity to expose, and it could never reach loa2 without an identification anyway. That the
+ * mailbox alone then suffices for destructive self-service is deliberate (ADR-37).
+ */
+fun selfServiceAcrFloor(account: AccountProfile?): AcrLevel =
+    if (account?.personId == null) AcrLevels.DEFAULT_REQUIRED_ACR else AcrLevel.LOA2
+
+/**
+ * A kind of journey: what the user (or the server, for a sub-journey) wants to achieve, where it
+ * may start and how it gets there (docs/04-orchestrierung.md #2 and #8). One object per kind; one
+ * run of it is an `AuthJourney`.
+ *
+ * It decides, it never acts: it reads a [JourneyContext] and names an [Action]; every side effect
+ * is executed centrally by `JourneyService`. [transition] is the one place it answers "what happens
+ * next"; every trigger is a [JourneyEvent].
+ *
+ * Not a description of what a run turned out to be: whether a run was a registration or a login is
+ * an observation about the path taken, not a goal chosen up front.
+ */
+interface Journey<S : JourneyState> {
+    /** Stable name: persisted, traced and accepted on the wire (case-insensitive). */
+    val name: String
+
+    /** Where this journey may begin. Checked once for every journey by `Journeys`. */
+    val startPoints: List<StartPoint>
+
+    /**
+     * The sealed roots this journey's states are persisted and read back as (`JourneyStateCodec`),
+     * usually one. Several roots must not share a state name.
+     */
+    val stateRoots: List<KClass<out S>>
+
+    /** Where a fresh run begins, before any event has been seen. */
+    fun initialState(ctx: JourneyContext): S
+
+    /**
+     * The transition function. After a [Transition.Perform], JourneyService executes the [Action],
+     * refreshes the [JourneyContext] and calls this again with [JourneyEvent.ActionCompleted], so
+     * follow-up logic (e.g. "is the floor satisfied now?") sees the post-action context.
+     */
+    fun transition(state: S, event: JourneyEvent, ctx: JourneyContext): Transition
+}
+
+/** One place a journey may begin. A journey lists one or more of them. */
+sealed interface StartPoint
+
+/**
+ * The App opens a new channel with this journey. [startsWith] and [onSuccess] apply to every
+ * journey that later runs on that channel, sub-journeys and journeys started when authenticated
+ * included: what happens to the device's link is decided once, when the channel is opened.
+ */
+data class OpensAppChannel(val startsWith: StartingAccount, val onSuccess: DeviceLink) : StartPoint
+
+/** Keycloak opens a new Web channel with this journey. A Web channel has no device, so nothing to say about linking. */
+data object OpensWebChannel : StartPoint
+
+/**
+ * Started on an already AUTHENTICATED channel, App or Web, whose subject is an account. A process
+ * access (ADR-48) is signed in without one and serves only its process, so it does not count
+ * ([startRefusal]).
+ */
+data object StartableWhenAuthenticated : StartPoint
+
+/** No client starts it; the server reaches it only as another journey's [Transition.RequireSubJourney]. Stands alone. */
+data object OnlyAsSubJourney : StartPoint
+
+/** Which account a new App channel starts from, when opened and again after a cancel. */
+enum class StartingAccount {
+    /** The account this device is linked to (`DeviceAccountLink`), if any. */
+    LINKED_TO_DEVICE,
+
+    /** None: the run finds or creates its own account, even on a device that already knows one. */
+    NONE,
+}
+
+/**
+ * What succeeding on an App channel does with the device's link to the account (docs/09-dpop.md #3).
+ * Never a silent rebind: a device linked to another account is only moved after an explicit answer
+ * (`linksDeviceImplicitly`), because the move revokes that account's device credentials.
+ */
+enum class DeviceLink {
+    /** Linked as a side effect: choosing this journey is consent to be recognized next time. */
+    LINK_WITHOUT_ASKING,
+
+    /** Success alone never links; the journey asks first (`DeviceLinkQuestion`). */
+    ASK_BEFORE_LINKING,
+
+    /** The run only works with the account the device is already linked to, so the link stays as it is. */
+    LEAVE_UNCHANGED,
+}
+
+/** Why a journey may not start on an already open channel. */
+enum class StartRefusal { NOT_STARTABLE_WHEN_AUTHENTICATED, NOT_LOGGED_IN, NO_ACCOUNT }
+
+/** Whether a new channel of [type] may be opened with this journey. */
+fun Journey<*>.opensChannelOn(type: ChannelType): Boolean = when (type) {
+    ChannelType.APP -> appChannelOpening != null
+    ChannelType.WEB -> OpensWebChannel in startPoints
+}
+
+/** How a new App channel opened with this journey behaves; null if the App cannot open one with it. */
+val Journey<*>.appChannelOpening: OpensAppChannel?
+    get() = startPoints.filterIsInstance<OpensAppChannel>().singleOrNull()
+
+/**
+ * Why this journey may not start on an open channel in [state], or null if it may. The one place
+ * that decides "only on an AUTHENTICATED channel with an account".
+ */
+fun Journey<*>.startRefusal(state: ChannelState?, hasAccount: Boolean): StartRefusal? = when {
+    StartableWhenAuthenticated !in startPoints -> StartRefusal.NOT_STARTABLE_WHEN_AUTHENTICATED
+    state != ChannelState.AUTHENTICATED -> StartRefusal.NOT_LOGGED_IN
+    // Each acts on the account itself.
+    !hasAccount -> StartRefusal.NO_ACCOUNT
+    else -> null
+}

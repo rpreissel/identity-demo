@@ -9,7 +9,10 @@ import com.example.identity.contract.tool_api.ids.InvitationId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
-import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
+import com.example.identity.core.orchestrator.domain.journey.appChannelOpening
+import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessJourney
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -116,12 +119,12 @@ class ChannelSession(
     var acrFloor: String? = null
 
     /**
-     * The intent this channel was entered with. Resume and cancel must restart the same intent;
+     * The journey this channel was entered with. Resume and cancel must restart the same journey;
      * otherwise an abandoned lookup login would fall back to whatever the device is linked to.
+     * Stored by name (`JourneyConverter`).
      */
-    @Enumerated(EnumType.STRING)
     @Column(name = "entry_intent", nullable = false, length = 32)
-    var entryIntent: AuthIntent = AuthIntent.FAST_ACCESS
+    var entryJourney: Journey<*> = FastAccessJourney
 
     /**
      * The tools this client declared at channel creation, each as `<toolId>@<version>` in the one
@@ -167,3 +170,10 @@ class ChannelSession(
 /* Set on the first save, never null afterwards. The assumption stands once, next to the column. */
 val ChannelSession.id: ChannelSessionId get() = checkNotNull(channelSessionId) { "ChannelSession not saved yet" }
 val ChannelSession.channelType: ChannelType get() = checkNotNull(channel) { "ChannelSession $channelSessionId without a channel type" }
+
+/**
+ * What this App channel was opened to do with the device's account link, for every journey that
+ * runs on it; null on a Web channel, which has no device.
+ */
+val ChannelSession.appOpening: OpensAppChannel?
+    get() = if (channel == ChannelType.APP) entryJourney.appChannelOpening else null

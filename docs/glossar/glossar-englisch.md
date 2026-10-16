@@ -52,10 +52,9 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
   melden. Das Niveau steigt dadurch nicht. [Glossar](glossar.md#b)
 - **`authData`** → die Daten, die jede Antwort an den **Web-Kanal** mitschickt: Subjekt,
   Niveau und Verfahren. [Glossar](glossar.md#w)
-- **`AuthIntent`** → **Intent**: was der Nutzer erreichen will. Zu jedem Intent
-  gehört eine Strategie.
-  [Glossar](glossar.md#i)
-- **`AuthJourney`** → **Journey**: ein laufender Ablauf zu einem Intent. [Glossar](glossar.md#j)
+- **`AuthJourney`** → **Journey**: ein laufender Ablauf einer Journey (`kind`). [Glossar](glossar.md#j)
+- **`Journey`** → **Intent** bzw. **Strategie**: was der Nutzer erreichen will, wo das beginnen
+  kann und wie es weitergeht, als ein Objekt, etwa `RegisterJourney`. [Glossar](glossar.md#i)
 - **`AuthPolicy`**, **`DefaultAuthPolicy`** → **AuthPolicy**: die Regeln, nach denen das
   Sicherheitsniveau berechnet wird. [Glossar](glossar.md#a)
 
@@ -128,7 +127,6 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
 - **`IDENTIFICATION`** → **Identifizierung**: die Tool-Rolle eines Tools, das feststellt,
   wer jemand wirklich ist.
   [Glossar](glossar.md#i)
-- **`IntentStrategy`** → **Strategie** eines Intents, etwa `RegisterStrategy`. [Glossar](glossar.md#s)
 - **`Invitation`** → **Einladung**: ein Brief des Personenverzeichnisses. Er ist die
   Grundlage für den Vorgangszugang. [Glossar](glossar.md#e)
 - **`isDisposable`** (`AccountProfile.isDisposable`) → **verwerfbar**: ein Konto, das keiner

@@ -28,7 +28,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.util.UriComponentsBuilder
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.contract.tool_api.envelope.API_V1
 
 /**
@@ -280,7 +279,7 @@ class ChannelController(
     @Operation(
         summary = "Confirm a WEB-channel QR login from this already-authenticated APP channel",
         description = "Channel must already be AUTHENTICATED (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN). Same " +
-            "AuthIntent.CONFIRM_PEER_LOGIN as the cold-entry path via POST /app/channels - gates on loa2 " +
+            "CONFIRM_PEER_LOGIN journey as the cold-entry path via POST /app/channels - gates on loa2 " +
             "(step-up offered first if below it), then offers approve-qr as the one candidate.",
         responses = [
             ApiResponse(

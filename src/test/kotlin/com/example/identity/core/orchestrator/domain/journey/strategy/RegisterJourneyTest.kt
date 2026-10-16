@@ -7,7 +7,6 @@ import com.example.identity.core.orchestrator.domain.policy.fromNow
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
@@ -31,15 +30,15 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * Unit coverage of [RegisterStrategy]'s journey: fresh identification even on a linked device
+ * Unit coverage of [RegisterJourney]'s journey: fresh identification even on a linked device
  * (docs/04-orchestrierung.md, "REGISTER"), through to the mandatory states that keep the next
- * login working. [AuthChoice]/[Enrolling] are shared with [FastAccessStrategy], but this strategy's
+ * login working. [AuthChoice]/[Enrolling] are shared with [FastAccessJourney], but this strategy's
  * `transition` owns its own transitions around them, so they are covered here in full. Which
  * action a completed tool yields is [AuthEnrollCoreTest]'s subject.
  */
-class RegisterStrategyTest : BehaviorSpec({
+class RegisterJourneyTest : BehaviorSpec({
 
-    val strategy = RegisterStrategy()
+    val strategy = RegisterJourney
 
     given("Start, even with a linked device credential and other active methods") {
         val acc = account(method("sms", AcrLevel.LOA2))
@@ -68,7 +67,7 @@ class RegisterStrategyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
 
         `when`("resumed after a RE_IDENTIFY sub-journey (SubJourneyFinished)") {
-            val event = JourneyEvent.SubJourneyFinished(AuthIntent.RE_IDENTIFY, achievedAcr = AcrLevel.LOA2)
+            val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2)
             val transition = strategy.transition(RegisterState.Start, event, theCtx)
             then("re-checks satisfaction via afterProof instead of re-running identification") {
                 transition shouldBe Transition.Authenticated
@@ -304,7 +303,7 @@ class RegisterStrategyTest : BehaviorSpec({
             then("requires RE_IDENTIFY instead of offering the next enrollment, resuming at Start") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        AuthIntent.RE_IDENTIFY,
+                        ReIdentifyJourney,
                         seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
                         resumeWith = RegisterState.Start
                     )

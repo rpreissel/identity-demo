@@ -5,7 +5,6 @@ import java.time.Duration
 import com.example.identity.core.orchestrator.domain.policy.provenAt
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.TEST_NOW
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
@@ -24,13 +23,13 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * Pure unit coverage of [FreshProofStrategy], the sub-journey every self-service action runs
+ * Pure unit coverage of [FreshProofJourney], the sub-journey every self-service action runs
  * first (docs/journeys/fresh-proof.md, ADR-61): the level gate, the freshness of the latest proof,
  * and the re-proof of one active factor.
  */
-class FreshProofStrategyTest : BehaviorSpec({
+class FreshProofJourneyTest : BehaviorSpec({
 
-    val strategy = FreshProofStrategy()
+    val strategy = FreshProofJourney
     fun start(requiredAcr: AcrLevel = AcrLevel.LOA2, purpose: FreshProofState.Purpose = FreshProofState.Purpose.DELETE_ACCOUNT) =
         FreshProofState.Start(requiredAcr, purpose)
 
@@ -43,7 +42,7 @@ class FreshProofStrategyTest : BehaviorSpec({
             then("requires a step-up to that level, resuming here") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        AuthIntent.STEP_UP,
+                        StepUpJourney,
                         seedWith = StepUpState.forSubJourney(AcrLevel.LOA1 upTo AcrLevel.LOA2),
                         resumeWith = start()
                     )
@@ -59,14 +58,14 @@ class FreshProofStrategyTest : BehaviorSpec({
         }
 
         `when`("its STEP_UP finishes and reached the level (SubJourneyFinished)") {
-            val transition = strategy.transition(start(), JourneyEvent.SubJourneyFinished(AuthIntent.STEP_UP, achievedAcr = AcrLevel.LOA2), theCtx)
+            val transition = strategy.transition(start(), JourneyEvent.SubJourneyFinished(StepUpJourney, achievedAcr = AcrLevel.LOA2), theCtx)
             then("is done - that step-up already IS the fresh proof, no second one demanded") {
                 transition shouldBe Transition.Authenticated
             }
         }
 
         `when`("a STEP_UP finishes that fell short of the level") {
-            val transition = strategy.transition(start(), JourneyEvent.SubJourneyFinished(AuthIntent.STEP_UP, achievedAcr = AcrLevel.LOA1), theCtx)
+            val transition = strategy.transition(start(), JourneyEvent.SubJourneyFinished(StepUpJourney, achievedAcr = AcrLevel.LOA1), theCtx)
             then("cancels - a lesser re-proof would let a session stuck below the level pass via the very factor that couldn't reach it") {
                 transition shouldBe Transition.Cancel
             }

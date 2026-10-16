@@ -22,7 +22,7 @@ class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
 
     init {
         given("an account with sms only, bound to this device") {
-            // Fallback chain: the transition itself is FastAccessStrategyTest's; here the round trip.
+            // Fallback chain: the transition itself is FastAccessJourneyTest's; here the round trip.
             `when`("a fresh channel declines its only auth method and identifies via ident-fsc") {
                 val accountId = registerWithSmsOnly()
                 val channelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String

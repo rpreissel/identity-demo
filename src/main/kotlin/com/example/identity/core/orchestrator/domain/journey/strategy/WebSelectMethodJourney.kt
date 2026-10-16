@@ -1,9 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.InvitationAcceptance
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.OpensWebChannel
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -13,16 +13,18 @@ import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
 import com.example.identity.contract.tool_api.ToolId
 
 /**
- * The Web entry intent (docs/journeys/web-select-method.md): one `selectMethod` step listing every
- * Keycloak-usable tool. Keycloak's flow decides whether the reached level is enough; this strategy only
+ * The Web entry journey (docs/journeys/web-select-method.md): one `selectMethod` step listing every
+ * Keycloak-usable tool, without fallback chain or enrollment; Keycloak only renders the tools' pages
+ * (ADR-58). Keycloak's flow decides whether the reached level is enough; this journey only
  * answers "what could still prove something here". Without an account it offers lookup-login
  * tools and the one-time password of a process access (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md);
  * with one (a step-up, docs/05-api.md Abschnitt 3b) auth tools for that account. When none of them can
  * close the gap, the step-up falls back to `RE_IDENTIFY`, as STEP_UP does in the app.
  */
-class WebSelectMethodStrategy : IntentStrategy<WebSelectMethodState> {
+object WebSelectMethodJourney : Journey<WebSelectMethodState> {
 
-    override val intent = AuthIntent.WEB_SELECT_METHOD
+    override val name = "WEB_SELECT_METHOD"
+    override val startPoints = listOf(OpensWebChannel)
     override val stateRoots = listOf(WebSelectMethodState::class)
 
     override fun initialState(ctx: JourneyContext): WebSelectMethodState = selectMethod(ctx)

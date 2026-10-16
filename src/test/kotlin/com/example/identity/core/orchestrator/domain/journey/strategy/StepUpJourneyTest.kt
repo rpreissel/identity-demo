@@ -1,8 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpStrategy
+import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpJourney
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
@@ -23,12 +22,12 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * Pure unit coverage of [StepUpStrategy] - raising an already-authenticated channel's level
+ * Pure unit coverage of [StepUpJourney] - raising an already-authenticated channel's level
  * (docs/04-orchestrierung.md, "STEP_UP"). No Spring context, no HTTP.
  */
-class StepUpStrategyTest : BehaviorSpec({
+class StepUpJourneyTest : BehaviorSpec({
 
-    val strategy = StepUpStrategy()
+    val strategy = StepUpJourney
 
     given("AuthChoice, one offered candidate") {
         val state = StepUpState.AuthChoice(AcrLevel.LOA1 upTo AcrLevel.LOA2, Offer(listOf(ToolId("auth-sms"))))
@@ -59,7 +58,7 @@ class StepUpStrategyTest : BehaviorSpec({
             val transition = strategy.transition(state, JourneyEvent.Started, theCtx)
             then("requires the shared RE_IDENTIFY sub-journey instead of aborting") {
                 transition shouldBe Transition.RequireSubJourney(
-                    AuthIntent.RE_IDENTIFY,
+                    ReIdentifyJourney,
                     seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
                     resumeWith = StepUpState.Start(AcrLevel.LOA1 upTo AcrLevel.LOA2)
                 )
@@ -108,7 +107,7 @@ class StepUpStrategyTest : BehaviorSpec({
         val state = StepUpState.Start(AcrLevel.NONE upTo AcrLevel.LOA1)
 
         `when`("resumed after a RE_IDENTIFY sub-journey (SubJourneyFinished)") {
-            val event = JourneyEvent.SubJourneyFinished(AuthIntent.RE_IDENTIFY, achievedAcr = AcrLevel.LOA2)
+            val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2)
             val transition = strategy.transition(state, event, theCtx)
             then("finishes directly instead of offering auth again") {
                 transition shouldBe Transition.Authenticated
@@ -122,7 +121,7 @@ class StepUpStrategyTest : BehaviorSpec({
         val state = StepUpState.Start(AcrLevel.LOA1 upTo AcrLevel.LOA2)
 
         `when`("resumed after a RE_IDENTIFY sub-journey (SubJourneyFinished)") {
-            val event = JourneyEvent.SubJourneyFinished(AuthIntent.RE_IDENTIFY, achievedAcr = null)
+            val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = null)
             val transition = strategy.transition(state, event, theCtx)
             then("falls through to offering auth candidates, same as a fresh Start") {
                 transition shouldBe Transition.To(StepUpState.AuthChoice(AcrLevel.LOA1 upTo AcrLevel.LOA2, Offer(listOf(ToolId("auth-sms")))))
@@ -141,7 +140,7 @@ class StepUpStrategyTest : BehaviorSpec({
             then("requires the shared RE_IDENTIFY sub-journey") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        AuthIntent.RE_IDENTIFY,
+                        ReIdentifyJourney,
                         seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
                         resumeWith = StepUpState.Start(AcrLevel.LOA1 upTo AcrLevel.LOA2)
                     )

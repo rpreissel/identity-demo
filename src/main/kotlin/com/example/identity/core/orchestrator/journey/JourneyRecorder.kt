@@ -95,7 +95,7 @@ class JourneyRecorder(
     fun recordSignIn(journey: AuthJourney, channel: ChannelSession, acr: AcrLevel) {
         val (amr, tools) = proofsOf(channel)
         when (val subject = channel.subject ?: return) {
-            is Subject.Account -> signInLog.signedIn(subject.id, channel.channel?.name, acr.value, amr, tools, journey.requireIntent().name)
+            is Subject.Account -> signInLog.signedIn(subject.id, channel.channel?.name, acr.value, amr, tools, journey.requireKind().name)
             // A process access has one proof and no step-up (ADR-48).
             is Subject.Invitation -> signInLog.invitationSignedIn(subject.id, channel.channel?.name, acr.value, amr, tools)
         }

@@ -34,7 +34,7 @@ frischer Nachweis“ stand dreimal im Code, mit drei Gelegenheiten, voneinander 
 **Warum.**
 
 - **Eine Regel, eine Stelle.** Was ein frischer Nachweis ist und wann ein Step-up ihn ersetzt, steht
-  einmal in `FreshProofStrategy` und wird einmal getestet. Ein neuer Intent, der auf das Konto
+  einmal in `FreshProofJourney` und wird einmal getestet. Ein neuer Intent, der auf das Konto
   wirkt, bekommt die Regel mit einer Zeile.
 - **Dieselbe Mechanik wie `RE_IDENTIFY`.** Sub-Journeys mit `parentJourneyId`, `SUSPENDED` und
   `SubJourneyFinished` gibt es schon; der Journey-Trace zeigt sie als eigene Journey.

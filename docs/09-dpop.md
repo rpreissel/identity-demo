@@ -183,23 +183,26 @@ ist und welchem Konto das Gerät gehört, steht jeweils an anderer Stelle.
   deshalb bewusst wieder das ganze `ident-fsc`.
 - **Will dieser Ablauf verknüpfen, und gibt es hier ein Gerät?** Ob eine Geräteverknüpfung
   entsteht, legt keine einzelne `Action` fest, also keine einzelne Datenänderung der Journey.
-  Innerhalb eines Intents (des Anliegens, mit dem der Nutzer kommt) ändert sich die Antwort nie. Ein Schalter an
-  jeder Action wäre deshalb eine Konstante des Intents, die man überall neu und womöglich falsch
+  Entschieden wird einmal, wenn die App den Kanal eröffnet, und es gilt für jede Journey auf diesem
+  Kanal. Ein Schalter an jeder Action wäre eine Konstante, die man überall neu und womöglich falsch
   setzen könnte. Stattdessen gibt es zwei unabhängige Fragen. Jede wird dort beantwortet, wo die
   nötige Information liegt, und beide werden an genau einer Stelle zusammengeführt:
-  - *Will dieser Ablauf verknüpfen?* Das sagt `AuthIntent.linksDeviceWithoutAsking`. Nur
-    `LOOKUP_LOGIN` will es nicht, weil genau diesen Intent Leute wählen, die nicht wiedererkannt
-    werden wollen. Er fragt stattdessen nach (`DeviceLinkQuestion` → `Perform(LinkDevice, …)`). Die Frage
-    nach dem Kanal kann diese Eigenschaft nicht mitbeantworten: `REGISTER` läuft auf APP *und* WEB
-    und wäre dann keine Konstante mehr.
+  - *Will dieser Kanal verknüpfen?* Das sagt der Startpunkt, mit dem die App den Kanal eröffnet hat:
+    `OpensAppChannel.onSuccess` ([04-orchestrierung.md](04-orchestrierung.md) Abschnitt 2).
+    `LOOKUP_LOGIN` verknüpft nicht von selbst (`ASK_BEFORE_LINKING`), weil genau diese Journey Leute
+    wählen, die nicht wiedererkannt werden wollen. Sie fragt stattdessen nach
+    (`DeviceLinkQuestion` → `Perform(LinkDevice, …)`). Lehnt der Nutzer ab, verknüpft auch keine
+    spätere Journey auf diesem Kanal still, etwa beim Einrichten eines Verfahrens.
+    `CONFIRM_PEER_LOGIN` lässt die Verknüpfung, wie sie ist (`LEAVE_UNCHANGED`): Es arbeitet nur mit
+    dem Konto, das das Gerät schon hat.
   - *Gibt es hier ein Gerät?* Das ergibt sich aus dem Kanal, und der Executor prüft es an einer Stelle. Die
     Prüfung gilt auch für den ausdrücklichen Weg, denn auf einem Web-Kanal gibt es auch nach einer
     Zustimmung nichts zu verknüpfen.
 - **Neu verknüpft wird nur mit Zustimmung. Das stellt der Aufbau sicher, nicht die Sorgfalt im
   Einzelfall.** Es gibt zwei Wege zu einer Geräteverknüpfung, und nur einer darf ein Gerät neu
   verknüpfen:
-  - Der *implizite* Weg: Ein Ablauf war erfolgreich, und `AuthIntent.linksDeviceWithoutAsking` ist
-    gesetzt. Dieser Weg verknüpft nur, wenn der Schlüssel noch frei ist oder schon auf dasselbe
+  - Der *implizite* Weg: Ein Ablauf war erfolgreich, und der Kanal wurde mit
+    `onSuccess = LINK_WITHOUT_ASKING` eröffnet. Dieser Weg verknüpft nur, wenn der Schlüssel noch frei ist oder schon auf dasselbe
     Konto zeigt. Zeigt er auf ein fremdes Konto, geschieht gar nichts. Der implizite Weg verknüpft
     ein Gerät nie still neu und widerruft nie fremde Credentials (Zugangsdaten eines
     Anmeldeverfahrens). Wer einen Ablauf erfolgreich abschließt, ist damit einverstanden, von

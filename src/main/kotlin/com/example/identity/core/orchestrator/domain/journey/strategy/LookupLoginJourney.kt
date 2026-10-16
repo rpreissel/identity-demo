@@ -2,9 +2,11 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
+import com.example.identity.core.orchestrator.domain.journey.StartingAccount
+import com.example.identity.core.orchestrator.domain.journey.DeviceLink
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -16,11 +18,13 @@ import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
 /**
  * Log into an existing account without a paired device (docs/journeys/lookup-login.md): the user
  * names an identifier and proves a credential. There is no identification state, and the device
- * link arises only from [DeviceLinkQuestion], after the user agrees.
+ * link arises only from [DeviceLinkQuestion], after the user agrees: people choose this journey
+ * because they do not want to be recognized next time.
  */
-class LookupLoginStrategy : IntentStrategy<LookupLoginState> {
+object LookupLoginJourney : Journey<LookupLoginState> {
 
-    override val intent = AuthIntent.LOOKUP_LOGIN
+    override val name = "LOOKUP_LOGIN"
+    override val startPoints = listOf(OpensAppChannel(startsWith = StartingAccount.NONE, onSuccess = DeviceLink.ASK_BEFORE_LINKING))
     override val stateRoots = listOf(LookupLoginState::class)
 
     override fun initialState(ctx: JourneyContext): LookupLoginState = LookupLoginState.Start

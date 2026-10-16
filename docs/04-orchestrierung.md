@@ -187,7 +187,7 @@ danach ordnen, wie sie beginnen:
 - Fünf weitere Intents laufen innerhalb einer bestehenden Sitzung.
 - `CONFIRM_PEER_LOGIN` ist die Ausnahme: Er ist **beides zugleich** (eigener Abschnitt unten).
 
-| `AuthIntent` | Zweck | Einstieg |
+| Journey (`name`) | Zweck | Einstieg |
 |---|---|---|
 | `FAST_ACCESS` | So schnell wie möglich auf diesem Gerät angemeldet sein, und zwar so, dass es auch künftig klappt | `POST /app/channels` (Standard) |
 | `REGISTER` | Sich bewusst frisch identifizieren, auch auf einem schon verknüpften Gerät | `POST /app/channels` mit `intent=register` (App) bzw. `PATCH /kc/channels/{id}` mit `intent=register` (Web, siehe unten) |
@@ -199,6 +199,31 @@ danach ordnen, wie sie beginnen:
 | `DELETE_ACCOUNT` | Das Konto unwiderruflich löschen | nur auf einem Kanal, der `AUTHENTICATED` ist |
 | `RE_IDENTIFY` | Erneute Identifizierung als gemeinsam genutzte Sub-Journey | nie direkt, nur über `RequireSubJourney` |
 | `FRESH_PROOF` | Niveau und frischer Nachweis vor einer Aktion am Konto, als gemeinsam genutzte Sub-Journey | nie direkt, nur über `RequireSubJourney` |
+
+**Startpunkte im Code.** Jede Journey ist ein Objekt (`domain.journey.strategy.RegisterJourney` usw.),
+das seine Startpunkte selbst nennt; `domain.Journeys` listet alle Journeys. Die Spalte „Einstieg“
+oben steht im Code so:
+
+- `OpensAppChannel(startsWith, onSuccess)`: Die App eröffnet mit dieser Journey einen Kanal.
+  `startsWith` sagt, mit welchem Konto der Kanal beginnt (`LINKED_TO_DEVICE`: das Konto, mit dem das
+  Gerät verknüpft ist; `NONE`: keines). `onSuccess` sagt, was ein Erfolg mit der Verknüpfung des
+  Geräts macht (`LINK_WITHOUT_ASKING`, `ASK_BEFORE_LINKING`, `LEAVE_UNCHANGED`). Beides gilt für alle
+  Journeys, die danach auf diesem Kanal laufen, auch für Sub-Journeys und die auf dem angemeldeten
+  Kanal gestarteten ([09-dpop.md](09-dpop.md) Abschnitt 3).
+- `OpensWebChannel`: Keycloak eröffnet mit dieser Journey einen Web-Kanal. Ein Web-Kanal hat kein
+  Gerät, also nichts zu verknüpfen.
+- `StartableWhenAuthenticated`: startet auf einem Kanal, der schon `AUTHENTICATED` ist und an einem
+  Konto hängt, im App- wie im Web-Kanal. Ein Vorgangszugang ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md))
+  zählt nicht.
+- `OnlyAsSubJourney`: kein Client startet sie; der Server fordert sie als Sub-Journey an.
+
+```kotlin
+object LookupLoginJourney : Journey<LookupLoginState> {
+    override val name = "LOOKUP_LOGIN"
+    override val startPoints = listOf(OpensAppChannel(startsWith = StartingAccount.NONE, onSuccess = DeviceLink.ASK_BEFORE_LINKING))
+    ...
+}
+```
 
 **`CONFIRM_PEER_LOGIN` ohne bestehende Sitzung.** Startet `CONFIRM_PEER_LOGIN` ohne bestehende
 Sitzung, bietet er nie eine Identifizierung oder Registrierung an. Ist über die
@@ -543,7 +568,7 @@ muss die Entscheidung neu geprüft werden.
 
 ### Eine dritte Pflicht, auf einen Intent begrenzt
 
-`SecondFactorKindObligation` (`RegisterStrategy`) ist die oben angekündigte dritte Pflicht: die
+`SecondFactorKindObligation` (`RegisterJourney`) ist die oben angekündigte dritte Pflicht: die
 Pflicht, ein Verfahren einer zweiten Faktorart einzurichten. Sie ist aber enger zugeschnitten, als
 der Absatz darüber befürchtet. Sie betrifft **keinen zweiten Intent**, sondern nur `REGISTER` und
 nie `FAST_ACCESS`.
@@ -551,7 +576,7 @@ nie `FAST_ACCESS`.
 Die Bestätigung der E-Mail-Adresse ist kein Einrichtungsschritt
 ([ADR-17](adr/ADR-017-adresse-bestaetigen-und-e-mail-login-einrichten-sind.md)). Deshalb gilt
 die Pflicht in **beiden** Kanälen und auch im Experiment „Erst Anmeldeverfahren einrichten“
-(derselbe Zustand `SecondFactorKindObligation`). `RegisterStrategy` setzt dafür am Ergebnis von
+(derselbe Zustand `SecondFactorKindObligation`). `RegisterJourney` setzt dafür am Ergebnis von
 `AuthEnrollCore.afterEnrollment` an. Anders als `AuthChoice` und `Enrolling` gehört dieser Zustand
 allein zu `RegisterState`.
 
@@ -668,28 +693,30 @@ Journeys und Kanäle hinweg. Welche Arten von Versuchen bewusst nicht zählen un
 
 ## 8) Technik: SPI, Phasen, übernommene Nachweise, Tool-Controller
 
-Dieser Abschnitt richtet sich an Entwickler. Er beschreibt, wie die Strategien im Code aufgebaut
+Dieser Abschnitt richtet sich an Entwickler. Er beschreibt, wie die Journeys im Code aufgebaut
 sind und wie der gemeinsame Mechanismus ihre Entscheidungen ausführt.
 
-### `IntentStrategy` – die SPI
+### `Journey` – die SPI
 
 Eine **SPI** (Service Provider Interface) ist eine Schnittstelle, die verschiedene Bausteine nach
-demselben Muster umsetzen. `IntentStrategy` ist das Gegenstück zu `Tool` in `tool_api`: Dort
-beschreiben sich die Tools selbst, hier die Intents.
+demselben Muster umsetzen. `Journey` ist das Gegenstück zu `Tool` in `tool_api`: Dort
+beschreiben sich die Tools selbst, hier die Journeys. Jede Journey ist ein `object`; ein Lauf davon
+ist ein `AuthJourney` (`kind`). Intent und Strategie sind damit dasselbe: was der Nutzer erreichen
+will und wie er dorthin kommt, an einer Stelle.
 
-Jede Strategie ist ein Moore-Automat für ihren eigenen Zustandstyp, also ein Zustandsautomat, der
+Jede Journey ist ein Moore-Automat für ihren eigenen Zustandstyp, also ein Zustandsautomat, der
 aus Zustand und Ereignis den nächsten Schritt bestimmt. Sie hat die Methode
 `transition(state, event, ctx)` und dazu `initialState(ctx)`. `initialState` sagt, wo eine direkt
 gestartete Journey beginnt. `stateRoots` nennt die `sealed`-Wurzeln ihrer Zustände, meist eine;
 danach liest `JourneyStateCodec` den gespeicherten Zustand zurück.
 
-**Kein Code fragt nach einem bestimmten Intent.** Was an einem Intent hängt, ist eine Eigenschaft
-von `AuthIntent`, als Tabelle mit einer Zeile je Intent: wie er gestartet wird (`entry`: öffnet einen
-Kanal, `startableWhenLoggedIn`: in einer Sitzung) und `linksDeviceWithoutAsking`. Was ein Lauf war
-(Anmeldung, Step-up), ist keine Eigenschaft des Intents, sondern wird beobachtet. Ein neuer
-Intent bringt seine Strategie mit und eine neue Zeile; Standardwerte gibt es nicht, also verlangt
-der Compiler bei jeder Eigenschaft eine Entscheidung. Einen Intent nennen darf nur, wer ihn startet: ein Endpunkt oder eine Strategie, die
-ihn als Sub-Journey anfordert.
+**Kein Code fragt nach einer bestimmten Journey.** Was an einer Journey hängt, nennt sie selbst:
+ihre Startpunkte (`startPoints`, Abschnitt 2). Was ein Lauf war (Anmeldung, Step-up), ist keine
+Eigenschaft der Journey, sondern wird beobachtet. Eine neue Journey ist ein neues Objekt und ein
+Eintrag in `Journeys.all`; `Journeys` prüft beim Laden, dass jeder Name eindeutig ist und jede
+Journey mindestens einen Startpunkt nennt. Eine Journey nennen darf nur, wer sie startet: ein
+Endpunkt oder eine Journey, die sie als Sub-Journey anfordert. Die generische Maschine
+(`JourneyService`, `JourneyStateCodec`) kennt nur die Schnittstelle.
 
 **Wohin der Kanal bei einem Abbruch zurückfällt,** entscheidet keine Strategie. Der Kanal kehrt zu
 dem Anmeldestand zurück, den er vor der Journey hatte. War er angemeldet (`ChannelState.isLoggedIn`,
@@ -854,14 +881,14 @@ Angebots, indem es seine Rolle deklariert.
 
 ### Die vier Phasen eines Übergangs
 
-Die Trennung zwischen entscheidendem Teil (`IntentStrategy`) und ausführendem Teil setzt sich im
+Die Trennung zwischen entscheidendem Teil (`Journey`) und ausführendem Teil setzt sich im
 ausführenden Teil fort. Jeder Übergang durchläuft vier Phasen, und für jede Phase ist genau eine
 Klasse zuständig. `JourneyService` bleibt der **Treiber**, nicht der Ausführende.
 
 | Phase | Klasse | Aufgabe |
 |---|---|---|
 | lesen | `JourneyContextFactory` | baut den `JourneyContext` zum Lesen aus den dauerhaft gespeicherten Daten (Konto, Nachweise, Geräteverknüpfung, Feature-Flags) |
-| entscheiden | `IntentStrategy` | macht aus Zustand, Event und Kontext eine `Transition` – nur Werte, keine Wirkung |
+| entscheiden | `Journey` | macht aus Zustand, Event und Kontext eine `Transition` – nur Werte, keine Wirkung |
 | wirken | `JourneyActionExecutor` | führt die `Action` eines `Perform` aus (Konto anlegen, Claims und Credentials schreiben, Gerät verknüpfen, widerrufen) |
 | weiterleiten | `JourneyRouting` | leitet `next` und `Step` aus dem neuen Zustand ab |
 
@@ -906,12 +933,12 @@ vorhandener Stand. Er läuft deshalb als **erster Übergang** des Automaten. In 
 keinem Zustand.
 
 Genau dafür gibt es den Parameter `restoredEvidence` von `JourneyService.start()`. Die Nachweise
-werden übernommen, BEVOR `IntentStrategy.initialState()` aufgerufen wird. Das ist kein
+werden übernommen, BEVOR `Journey.initialState()` aufgerufen wird. Das ist kein
 `JourneyEvent` und keine `Action`, sondern ein protokollierter Übergang namens `"Entry"`, den
 `JourneyService` selbst ausführt.
 
 Weil der Nachweis also schon vor dem ersten Angebot vorliegen kann, darf `Started` das erste Angebot
-nicht einfach bauen. Eine Strategie wie `WebSelectMethodStrategy` prüft bei `Started` genauso wie
+nicht einfach bauen. Eine Strategie wie `WebSelectMethodJourney` prüft bei `Started` genauso wie
 bei jedem anderen Nachweis, ob das Vorhandene schon reicht. Lägen die Nachweise im ersten Übergang
 noch nicht vor, würde sie einen Ausweg anbieten, den sie gar nicht braucht, beim Step-up etwa die
 erneute Identifizierung.

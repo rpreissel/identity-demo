@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.ChannelType
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
@@ -25,23 +24,23 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * [RegisterStrategy] with [JourneyFeatureFlag.REGISTER_ENROLL_FIRST], the "Enrollment zuerst"
- * experiment (docs/journeys/register-enroll-first.md). [RegisterStrategyTest] covers the
+ * [RegisterJourney] with [JourneyFeatureFlag.REGISTER_ENROLL_FIRST], the "Enrollment zuerst"
+ * experiment (docs/journeys/register-enroll-first.md). [RegisterJourneyTest] covers the
  * ident-first variant on the same states.
  */
-class RegisterEnrollFirstStrategyTest : BehaviorSpec({
+class RegisterEnrollFirstJourneyTest : BehaviorSpec({
 
     /** The strategy as a journey sees it that started while the switch was on. */
     val strategy = object {
-        private val register = RegisterStrategy()
+        private val register = RegisterJourney
         fun transition(state: RegisterState, event: JourneyEvent, ctx: JourneyContext) =
             register.transition(state, event, ctx.copy(featureFlags = setOf(JourneyFeatureFlag.REGISTER_ENROLL_FIRST)))
     }
 
-    // Mirrors the literal RegisterStrategy.offerClosingIdentification builds: its closing offer
+    // Mirrors the literal RegisterJourney.offerClosingIdentification builds: its closing offer
     // needs its own wording (never identified before), not RE_IDENTIFY's shared default text.
     val optionalIdentification = Transition.RequireSubJourney(
-        AuthIntent.RE_IDENTIFY,
+        ReIdentifyJourney,
         seedWith = ReIdentifyState.forSubJourney(
             targetAcr = AcrLevel.LOA1,
             wording = ReIdentifyState.Wording.OPTIONAL_IDENTIFICATION
@@ -88,7 +87,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
 
     given("Closing, waiting on the closing, optional RE_IDENTIFY sub-journey") {
         `when`("resumed after it was accepted and succeeded (SubJourneyFinished)") {
-            val transition = strategy.transition(RegisterState.Closing, JourneyEvent.SubJourneyFinished(AuthIntent.RE_IDENTIFY, achievedAcr = AcrLevel.LOA2), ctx())
+            val transition = strategy.transition(RegisterState.Closing, JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2), ctx())
             then("finishes") {
                 transition shouldBe
                     Transition.Authenticated
@@ -96,7 +95,7 @@ class RegisterEnrollFirstStrategyTest : BehaviorSpec({
         }
 
         `when`("resumed after it was declined or abandoned (SubJourneyCancelled)") {
-            val transition = strategy.transition(RegisterState.Closing, JourneyEvent.SubJourneyCancelled(AuthIntent.RE_IDENTIFY, optional = true), ctx())
+            val transition = strategy.transition(RegisterState.Closing, JourneyEvent.SubJourneyCancelled(ReIdentifyJourney, optional = true), ctx())
             then("finishes all the same") {
                 transition shouldBe
                     Transition.Authenticated

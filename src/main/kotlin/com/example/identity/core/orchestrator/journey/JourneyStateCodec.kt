@@ -1,7 +1,7 @@
 package com.example.identity.core.orchestrator.journey
 
-import com.example.identity.core.orchestrator.domain.AuthIntent
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.Journeys
+import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import org.springframework.stereotype.Component
@@ -13,20 +13,17 @@ import kotlin.reflect.KClass
 /**
  * Persists a [JourneyState] as `(stateType, state)` on the [AuthJourney] row. The discriminator
  * has its own column, so journeys stay queryable by position; the attributes differ per state and
- * travel as JSON. The roots to read back come from the intent's strategy
- * ([IntentStrategy.stateRoots]), since two intents may share a state name; an intent with several
+ * travel as JSON. The roots to read back come from the run's kind
+ * ([Journey.stateRoots]), since two journeys may share a state name; a journey with several
  * roots has disjoint names in them, so [read] tries each in turn.
  * The states carry no serialization (ADR-40); `JourneyStateCodecTest` pins every type name.
  */
 @Component
-class JourneyStateCodec(strategies: List<IntentStrategy<*>>) {
-
-    private val rootsByIntent: Map<AuthIntent, List<KClass<out JourneyState>>> =
-        strategies.associate { it.intent to it.stateRoots }
+class JourneyStateCodec {
 
     private val mapper = jacksonMapperBuilder()
         .addMixIn(JourneyState::class.java, PersistedTypeName::class.java)
-        .registerSubtypes(*rootsByIntent.values.flatten().flatMap(::concreteStates).distinct().map { NamedType(it.java, it.simpleName) }.toTypedArray())
+        .registerSubtypes(*Journeys.all.flatMap { it.stateRoots }.flatMap(::concreteStates).distinct().map { NamedType(it.java, it.simpleName) }.toTypedArray())
         .build()
 
     /** `@t` is the simple class name, for every state, set in one place. */
@@ -40,8 +37,7 @@ class JourneyStateCodec(strategies: List<IntentStrategy<*>>) {
 
     fun read(journey: AuthJourney): JourneyState {
         val json = checkNotNull(journey.state) { "Journey ${journey.journeyId} has no state" }
-        val intent = journey.requireIntent()
-        val roots = rootsByIntent[intent] ?: error("No state roots for $intent")
+        val roots = journey.requireKind().stateRoots
         roots.dropLast(1).forEach { root ->
             try {
                 return mapper.readValue(json, root.java)

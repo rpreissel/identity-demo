@@ -1,8 +1,10 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
+import com.example.identity.core.orchestrator.domain.journey.StartingAccount
+import com.example.identity.core.orchestrator.domain.journey.DeviceLink
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -16,9 +18,10 @@ import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
  * Into a login on this device as fast as possible, and in a way that works again next time
  * (docs/journeys/fast-access.md).
  */
-class FastAccessStrategy : IntentStrategy<FastAccessState> {
+object FastAccessJourney : Journey<FastAccessState> {
 
-    override val intent: AuthIntent = AuthIntent.FAST_ACCESS
+    override val name = "FAST_ACCESS"
+    override val startPoints = listOf(OpensAppChannel(startsWith = StartingAccount.LINKED_TO_DEVICE, onSuccess = DeviceLink.LINK_WITHOUT_ASKING))
     override val stateRoots = listOf(FastAccessState::class)
 
     override fun initialState(ctx: JourneyContext): FastAccessState = FastAccessState.Start
@@ -60,7 +63,7 @@ class FastAccessStrategy : IntentStrategy<FastAccessState> {
      * is simply done.
      */
     private fun requireRegister(): Transition = Transition.RequireSubJourney(
-        AuthIntent.REGISTER,
+        RegisterJourney,
         seedWith = RegisterState.forSubJourney(),
         resumeWith = FastAccessState.Start
     )

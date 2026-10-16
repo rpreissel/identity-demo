@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.api.v1.channel
 
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.NotEmpty
-import com.example.identity.core.orchestrator.domain.AuthIntent
 
 @Schema(
     description = "requiredAcr is a lower bound only. Always creates a brand-new ChannelSession for this device " +
@@ -13,7 +12,7 @@ data class ChannelCreateRequest(
     @field:Schema(example = "loa2")
     val requiredAcr: String? = null,
     @field:Schema(
-        description = "The entry intent's own name, case-insensitively (AuthIntent.fromRequest) - no separate wire " +
+        description = "The entry intent's own name, case-insensitively (Journeys.fromRequest) - no separate wire " +
             "vocabulary. Omitted/fast_access (default): DeviceAccountLink found -> LOGIN, else REGISTRATION. " +
             "lookup_login: always offers lookup-based login (email + credential), even on a linked device. " +
             "register: always starts fresh REGISTRATION, even on a linked device (second account). " +

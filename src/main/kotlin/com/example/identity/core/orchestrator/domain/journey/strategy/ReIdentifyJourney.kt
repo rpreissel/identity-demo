@@ -1,9 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.OnlyAsSubJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -16,9 +16,10 @@ import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifySta
  * Only reached as a sub-journey. What the identification may change is decided by
  * [Action.RecordIdentification]'s handler, so no caller can smuggle in someone else's identity.
  */
-class ReIdentifyStrategy : IntentStrategy<ReIdentifyState> {
+object ReIdentifyJourney : Journey<ReIdentifyState> {
 
-    override val intent = AuthIntent.RE_IDENTIFY
+    override val name = "RE_IDENTIFY"
+    override val startPoints = listOf(OnlyAsSubJourney)
     override val stateRoots = listOf(ReIdentifyState::class)
 
     /** Never entered without a target; only reachable as a sub-journey, which seeds the real one. */

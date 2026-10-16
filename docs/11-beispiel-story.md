@@ -83,7 +83,7 @@ steht in ADR-5: Niemand soll sich selbst höher einstufen können.
 Hätte Mara statt Passwort und SMS gleich ihr Gerät eingerichtet, wäre der Schritt mit dem Passwort
 entfallen. `enroll-device` deckt Besitz und Wissen (oder Biometrie) schon allein ab.
 
-*Konzepte: [`AuthIntent`/Journey](04-orchestrierung.md) Abschnitte 2 und 3, [Tool-Vertrag](03-tool-architektur.md),
+*Konzepte: [Journey](04-orchestrierung.md) Abschnitte 2 und 3, [Tool-Vertrag](03-tool-architektur.md),
 [`next`/`stepData`](05-api.md), [Registrierung im Detail](verfahren/README.md),
 [Adresse ≠ Anmeldeverfahren, ADR-17](12-entscheidungen.md).*
 
@@ -297,7 +297,7 @@ Kapitel, das ihn erklärt.
 | Im Beispiel | Begriff | Im Code |
 |---|---|---|
 | Maras Verbindung zur App während einer Nutzung (das Gerät selbst merkt sich `DeviceAccountLink`) | `ChannelSession` | [02-domaenenmodell.md](02-domaenenmodell.md) |
-| „Ich will mich registrieren“ / „Ich will mich nur schnell anmelden“ | `AuthIntent` (`REGISTER`, `FAST_ACCESS`, …) | [04-orchestrierung.md](04-orchestrierung.md) |
+| „Ich will mich registrieren“ / „Ich will mich nur schnell anmelden“ | `Journey` (`RegisterJourney`, `FastAccessJourney`, …) | [04-orchestrierung.md](04-orchestrierung.md) |
 | Die eine Eingabe des Freischaltcodes, die eine Eingabe der TAN | `Tool` (`ident-fsc`, `enroll-sms`, …) | [03-tool-architektur.md](03-tool-architektur.md) |
 | „Was soll die App jetzt anzeigen?“ | `next`/`stepData` | [05-api.md](05-api.md) |
 | „Reicht das schon für die Anmeldung oder für diese Aktion?“ | Niveau (`loa1`/`loa2`/`loa3`) | [04-orchestrierung.md](04-orchestrierung.md) |

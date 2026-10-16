@@ -5,7 +5,7 @@ import { fetchRegistrationOrder, setRegistrationOrder } from '../api.ts'
 import { SettingRow } from './SettingRow'
 
 /**
- * REGISTER's "Enrollment zuerst" experiment (docs/journeys/register-enroll-first.md, `RegisterStrategy`):
+ * REGISTER's "Enrollment zuerst" experiment (docs/journeys/register-enroll-first.md, `RegisterJourney`):
  * a global runtime toggle between the ident-first status quo and the alternative order, for the
  * next brand-new REGISTER journey - a journey already in progress keeps whichever order it started
  * with. No DPoP, behind the admin login like every operator endpoint.

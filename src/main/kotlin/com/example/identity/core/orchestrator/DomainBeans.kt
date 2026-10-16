@@ -1,19 +1,8 @@
 package com.example.identity.core.orchestrator
 
-import com.example.identity.core.orchestrator.domain.journey.strategy.FreshProofStrategy
 import com.example.identity.core.orchestrator.domain.ToolCatalog
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
 import com.example.identity.core.orchestrator.domain.policy.DefaultAuthPolicy
-import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.DeleteAccountStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.WebSelectMethodStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterStrategy
-import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpStrategy
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -22,8 +11,8 @@ import java.time.Duration
 
 /**
  * Wires the domain's rule objects into Spring, so the domain itself carries no framework
- * annotation (docs/adr/ADR-040-fachkern-im-paket-domain.md). Also the one place that lists which
- * intent strategies exist - `JourneyService` checks at startup that every `AuthIntent` has one.
+ * annotation (docs/adr/ADR-040-fachkern-im-paket-domain.md). The journeys need no wiring: they
+ * are objects, listed in `Journeys`.
  */
 @Configuration(proxyBeanMethods = false)
 class DomainBeans {
@@ -35,35 +24,4 @@ class DomainBeans {
         @Value("\${identity.policy.loa2-max-age:PT30M}") loa2MaxAge: Duration,
         @Value("\${identity.policy.self-service-max-age:PT5M}") selfServiceMaxAge: Duration,
     ): AuthPolicy = DefaultAuthPolicy(catalog, clock, loa2MaxAge, selfServiceMaxAge)
-
-    @Bean
-    fun confirmPeerLoginStrategy(): IntentStrategy<*> = ConfirmPeerLoginStrategy()
-
-    @Bean
-    fun deleteAccountStrategy(): IntentStrategy<*> = DeleteAccountStrategy()
-
-    @Bean
-    fun fastAccessStrategy(): IntentStrategy<*> = FastAccessStrategy()
-
-    @Bean
-    fun webSelectMethodStrategy(): IntentStrategy<*> = WebSelectMethodStrategy()
-
-
-    @Bean
-    fun lookupLoginStrategy(): IntentStrategy<*> = LookupLoginStrategy()
-
-    @Bean
-    fun manageAuthMethodsStrategy(): IntentStrategy<*> = ManageAuthMethodsStrategy()
-
-    @Bean
-    fun reIdentifyStrategy(): IntentStrategy<*> = ReIdentifyStrategy()
-
-    @Bean
-    fun freshProofStrategy(): IntentStrategy<*> = FreshProofStrategy()
-
-    @Bean
-    fun registerStrategy(): IntentStrategy<*> = RegisterStrategy()
-
-    @Bean
-    fun stepUpStrategy(): IntentStrategy<*> = StepUpStrategy()
 }

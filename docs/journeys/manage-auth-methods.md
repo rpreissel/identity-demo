@@ -94,7 +94,7 @@ die Sub-Journey ihr Ende, führt derselbe Zustand aus, was ursprünglich verlang
 durch `enrolledUnderAcr` (Orchestrierung, Abschnitt 4): Niemand soll sich selbst mehr Rechte
 verschaffen können, als ihm zustehen. Wer eine fremde Sitzung übernommen hat, darf deshalb keine
 Verfahren hinzufügen oder entfernen. Das geforderte Niveau liefert die gemeinsam genutzte Funktion
-`selfServiceAcrFloor` (`orchestrator/domain/journey/IntentStrategy.kt`). `DeleteAccountStrategy`
+`selfServiceAcrFloor` (`orchestrator/domain/journey/Journey.kt`). `DeleteAccountJourney`
 nutzt sie auch:
 
 - Für ein identifiziertes Konto ist es `loa2`.

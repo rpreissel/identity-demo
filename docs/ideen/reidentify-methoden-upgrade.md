@@ -39,7 +39,7 @@ je nachgewiesen hat.
 Für Nutzer entsteht daraus aber ein echtes Problem. Ein Beispiel:
 
 - Jemand registriert sich im Experiment „Erst Anmeldeverfahren einrichten“
-  (`RegisterEnrollFirstStrategy`) nur mit SMS. Das Verfahren bekommt `sms.enrolledUnderAcr = loa1`,
+  (`RegisterEnrollFirstJourney`) nur mit SMS. Das Verfahren bekommt `sms.enrolledUnderAcr = loa1`,
   und das Konto ist keiner Person zugeordnet (`personId == null`).
 - Später weist er sich ganz regulär mit `ident-fsc`, `ident-eid` oder `ident-nect` aus.
 - Seine SMS bleibt trotzdem für immer auf `loa1` begrenzt, obwohl er seine Identität inzwischen
@@ -53,7 +53,7 @@ Inhaber des Kontos selbst, und er hat gerade freiwillig einen stärkeren Nachwei
 1. **Ein eigener Knopf.** Neben „Anmeldeverfahren verwalten“ gibt es einen neuen Knopf
    „Identifizieren“. Er kommt zuerst in die App. Im Web fehlt er vorerst, das ist eine bekannte
    Lücke (siehe Abschnitt 6). Der Knopf startet jederzeit die schon vorhandene und mehrfach
-   genutzte Sub-Journey `RE_IDENTIFY` (`ReIdentifyStrategy`). Das gilt auch, wenn `personId` schon
+   genutzte Sub-Journey `RE_IDENTIFY` (`ReIdentifyJourney`). Das gilt auch, wenn `personId` schon
    gesetzt ist. Die sonst übliche Schwelle `loa2` gibt es dabei **nicht**. Die erneute
    Identifizierung ist ja gerade der Weg, auf dem das Niveau steigt. Eine Schwelle davor wäre
    widersinnig.
@@ -62,7 +62,7 @@ Inhaber des Kontos selbst, und er hat gerade freiwillig einen stärkeren Nachwei
    - `STEP_UP`,
    - `LOOKUP_LOGIN`,
    - `AuthEnrollCore` bei `FAST_ACCESS` und `REGISTER`,
-   - `RegisterEnrollFirstStrategy`.
+   - `RegisterEnrollFirstJourney`.
 
    Nach einer erfolgreichen Identifizierung prüft der Orchestrator, ob es aktive Verfahren mit
    niedrigerem `enrolledUnderAcr` gibt. Wenn ja, fragt er den Nutzer, ob diese Verfahren künftig
@@ -80,7 +80,7 @@ Inhaber des Kontos selbst, und er hat gerade freiwillig einen stärkeren Nachwei
 ## 3) Wo das technisch ansetzen würde
 
 **Der neue Zustand.** `RE_IDENTIFY`
-([`ReIdentifyStrategy.kt`](../../src/main/kotlin/com/example/identity/core/orchestrator/domain/journey/strategy/ReIdentifyStrategy.kt),
+([`ReIdentifyJourney.kt`](../../src/main/kotlin/com/example/identity/core/orchestrator/domain/journey/strategy/ReIdentifyJourney.kt),
 Zustände in `ReIdentifyState.kt`) ist nie der Einstieg einer Journey. Man erreicht die Sub-Journey
 nur über `Transition.RequireSubJourney`. Heute läuft es so ab:
 
@@ -92,18 +92,18 @@ Genau zwischen Schritt 2 und 3 käme ein neuer, dritter Zustand hinzu: `OfferMet
 ein `AnswerableState` wie das schon bestehende `OfferReIdent`, also ein Zustand, der dem Nutzer
 eine Frage stellt und auf die Antwort wartet. Er zählt die betroffenen Verfahren auf und fragt.
 
-**Wer davon betroffen ist.** Diese Stelle liegt **innerhalb** von `ReIdentifyStrategy`. Die
+**Wer davon betroffen ist.** Diese Stelle liegt **innerhalb** von `ReIdentifyJourney`. Die
 Prüfung gälte deshalb von selbst für alle fünf Aufrufer, ohne dass einer von ihnen geändert werden
 müsste:
 
 - `STEP_UP`,
 - `LOOKUP_LOGIN`,
 - `AuthEnrollCore`, das von `FAST_ACCESS` und `REGISTER` genutzt wird,
-- `RegisterEnrollFirstStrategy`,
+- `RegisterEnrollFirstJourney`,
 - der neue Knopf in der Verwaltung.
 
 Neu hinzukommen müsste nur dieser Knopf als sechster Aufrufer. Dafür braucht es den Zustand
-`IdentifyRequested` in `ManageAuthMethodsStrategy`/`ManageAuthMethodsState`, ohne Schwelle davor.
+`IdentifyRequested` in `ManageAuthMethodsJourney`/`ManageAuthMethodsState`, ohne Schwelle davor.
 
 **Was es bei Zustimmung braucht.**
 
@@ -179,13 +179,13 @@ Regel „nie nachträglich“ ab. Die Ausnahme ist:
    hat, gibt es den neuen Einstieg nur in der App.
 3. **Wie fein die Zustimmung ist:** Werden immer alle betroffenen Verfahren auf einmal aufgewertet,
    oder soll der Nutzer einzelne abwählen können? Für eine erste Version: alle auf einmal. So
-   funktioniert auch das bestehende Ja/Nein bei `OfferReIdent` und `DeleteAccountStrategy`.
+   funktioniert auch das bestehende Ja/Nein bei `OfferReIdent` und `DeleteAccountJourney`.
 4. **Wiederholte Angebote:** Lehnt der Nutzer einmal ab, stellt der Orchestrator die Frage bei jeder
    späteren erneuten Identifizierung wieder. Einen Schalter „nie wieder fragen“ gibt es nicht. Das
    ist bewusst einfach gehalten. Bei häufigen Step-ups könnte es Nutzer aber stören. Ein
    [Step-up](../glossar/glossar.md) ist ein zusätzlicher Nachweis, um ein höheres Niveau zu
    erreichen.
-5. **Aufwand für Tests:** Die Prüfung liegt an einer gemeinsamen Stelle in `ReIdentifyStrategy`.
+5. **Aufwand für Tests:** Die Prüfung liegt an einer gemeinsamen Stelle in `ReIdentifyJourney`.
    Deshalb betrifft sie möglicherweise jeden bestehenden Aufrufer. Alle Integrationstests müssten
    auf ungewollte Nebenwirkungen geprüft werden. Eine erste Durchsicht der vorhandenen Testdaten
    fand keinen Fall, in dem ein aktives Verfahren unter dem jeweils erreichten Niveau der
@@ -194,15 +194,15 @@ Regel „nie nachträglich“ ab. Die Ausnahme ist:
 ## 7) Nächste Schritte (falls die Umsetzung gewünscht ist)
 
 1. Entscheiden lassen, ob die Ausnahme von ADR-5 (Punkt 6.1) so gewollt ist.
-2. Den neuen Zustand `ReIdentifyState.OfferMethodUpgrade` anlegen und `ReIdentifyStrategy`
+2. Den neuen Zustand `ReIdentifyState.OfferMethodUpgrade` anlegen und `ReIdentifyJourney`
    anpassen (gemeinsame Prüfung nach `Action.RecordIdentification`).
 3. Die neue `Action.UpgradeMethods` (`Action.kt`) anlegen, ihre Ausführung im
    `JourneyActionExecutor` bauen (Begrenzung je Verfahren auf dessen `maxAcr`) und
    `AccountService.upgradeMethods(...)` ergänzen.
 4. Den neuen Zustand `ManageAuthMethodsState.IdentifyRequested` anlegen und in
-   `ManageAuthMethodsStrategy` anbinden (ohne Schwelle `loa2`). Dazu kommen ein HTTP-Endpunkt und
+   `ManageAuthMethodsJourney` anbinden (ohne Schwelle `loa2`). Dazu kommen ein HTTP-Endpunkt und
    ein Knopf im Frontend (App-Kanal).
-5. Tests schreiben: Unit-Tests (`ReIdentifyStrategyTest`, `ManageAuthMethodsStrategyTest`, Test für
+5. Tests schreiben: Unit-Tests (`ReIdentifyJourneyTest`, `ManageAuthMethodsJourneyTest`, Test für
    `AccountService`) und ein Integrationstest von Anfang bis Ende. Dieser soll nachweisen, dass das
    Niveau in einer folgenden Sitzung tatsächlich höher ist. Es genügt nicht, nur den Wert in der
    Datenbank zu prüfen.

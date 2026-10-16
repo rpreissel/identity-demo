@@ -5,7 +5,6 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolOutcome
-import com.example.identity.core.orchestrator.domain.AuthIntent
 
 /**
  * A named side effect a strategy decided, wrapped in a [Transition.Perform] for `JourneyService` to
@@ -35,8 +34,8 @@ sealed interface Action {
 
     /**
      * A new credential was enrolled. Whether this also links the device is not a field here; it
-     * follows from [AuthIntent.linksDeviceWithoutAsking] and, for a Web channel, from there being
-     * no device. [replaces]: the method instance a change in place replaces. The new credential is
+     * follows from how the App channel was opened ([OpensAppChannel.onSuccess]) and, for a Web
+     * channel, from there being no device. [replaces]: the method instance a change in place replaces. The new credential is
      * then written under at least that instance's level, even if the session's proofs aged while
      * the user typed: a change never lowers a credential, and its gate made the session prove that
      * level. Only a change names it; a singleton replaced any other way inherits nothing.

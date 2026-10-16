@@ -16,7 +16,7 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ToolId
 
 /**
- * The logic [FastAccessStrategy] and [RegisterStrategy] share for [AuthChoice] and [Enrolling]. A
+ * The logic [FastAccessJourney] and [RegisterJourney] share for [AuthChoice] and [Enrolling]. A
  * stateless helper, not a base class, so each intent's states stay readable from its own file.
  * `resumeAtStart` is the caller's own start state, for when a RE_IDENTIFY sub-journey returns.
  */
@@ -46,7 +46,7 @@ internal object AuthEnrollCore {
     /**
      * [emailObligation] is normally discharged before any enrollment ([confirmEmail]). It is
      * re-checked here for the case that no attesting tool was available back then. Only
-     * [RegisterStrategy] passes `true`. [enforceEnrollmentFloor] as in [offerEnrollment].
+     * [RegisterJourney] passes `true`. [enforceEnrollmentFloor] as in [offerEnrollment].
      */
     fun afterEnrollment(ctx: JourneyContext, emailObligation: Boolean, resumeAtStart: JourneyState, enforceEnrollmentFloor: Boolean = true): Transition {
         val account = ctx.requireAccount()

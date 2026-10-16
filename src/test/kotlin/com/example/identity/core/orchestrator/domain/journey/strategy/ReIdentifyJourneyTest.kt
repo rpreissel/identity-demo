@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 
 import com.example.identity.core.orchestrator.domain.policy.fromNow
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyStrategy
+import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyJourney
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -21,12 +21,12 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * Unit coverage of [ReIdentifyStrategy], which `FAST_ACCESS`, `LOOKUP_LOGIN` and `STEP_UP` fall into
+ * Unit coverage of [ReIdentifyJourney], which `FAST_ACCESS`, `LOOKUP_LOGIN` and `STEP_UP` fall into
  * once no active method reaches their target (docs/04-orchestrierung.md, "RE_IDENTIFY").
  */
-class ReIdentifyStrategyTest : BehaviorSpec({
+class ReIdentifyJourneyTest : BehaviorSpec({
 
-    val strategy = ReIdentifyStrategy()
+    val strategy = ReIdentifyJourney
 
     given("Identifying, one offered candidate") {
         val state = ReIdentifyState.Identifying(AcrLevel.LOA2, Offer(listOf(ToolId("ident-fsc"))))

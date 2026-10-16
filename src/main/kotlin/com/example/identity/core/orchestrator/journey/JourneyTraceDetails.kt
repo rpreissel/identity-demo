@@ -39,8 +39,8 @@ class JourneyTraceDetails(
         is JourneyEvent.Abandoned -> mapOf("toolId" to event.tool.toolId, "tool" to channel.declaredVersionOf(event.tool.toolId.value))
         is JourneyEvent.OfferExhausted -> mapOf("declined" to event.declined.map { it.value })
         is JourneyEvent.Answered -> mapOf("answer" to event.answer.wire)
-        is JourneyEvent.SubJourneyFinished -> mapOf("subIntent" to event.intent.name, "achievedAcr" to event.achievedAcr)
-        is JourneyEvent.SubJourneyCancelled -> mapOf("subIntent" to event.intent.name)
+        is JourneyEvent.SubJourneyFinished -> mapOf("subIntent" to event.journey.name, "achievedAcr" to event.achievedAcr)
+        is JourneyEvent.SubJourneyCancelled -> mapOf("subIntent" to event.journey.name)
         JourneyEvent.Started -> emptyMap()
         JourneyEvent.ActionCompleted -> emptyMap()
     }
@@ -96,7 +96,7 @@ class JourneyTraceDetails(
             )
         }
         is Transition.RequireSubJourney -> mapOf(
-            "decision" to "RequireSubJourney", "subIntent" to transition.intent.name,
+            "decision" to "RequireSubJourney", "subIntent" to transition.journey.name,
             // Log only: both seed types carry a targetAcr under unrelated interfaces.
             "targetAcr" to when (val seed = transition.seedWith) {
                 is StepUpState -> seed.goal.targetAcr

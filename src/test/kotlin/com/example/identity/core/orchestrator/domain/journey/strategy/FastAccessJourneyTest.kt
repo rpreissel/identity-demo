@@ -1,9 +1,8 @@
 package com.example.identity.core.orchestrator.domain.journey.strategy
 
-import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessStrategy
+import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessJourney
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterStrategy
-import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
@@ -26,22 +25,22 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * Unit coverage of [FastAccessStrategy]: the fallback chain into a login, plus [Enrolling] for the
+ * Unit coverage of [FastAccessJourney]: the fallback chain into a login, plus [Enrolling] for the
  * case it reaches without identifying anyone (docs/04-orchestrierung.md, "FAST_ACCESS").
- * Identification is [RegisterStrategy]'s journey, see [RegisterStrategyTest]. Which action a
+ * Identification is [RegisterJourney]'s journey, see [RegisterJourneyTest]. Which action a
  * completed tool yields is [AuthEnrollCoreTest]'s subject; the step after it is
  * [JourneyEvent.ActionCompleted] against a context that reflects the action.
  */
-class FastAccessStrategyTest : BehaviorSpec({
+class FastAccessJourneyTest : BehaviorSpec({
 
-    val strategy = FastAccessStrategy()
+    val strategy = FastAccessJourney
 
     given("Start, no account known yet (unrecognized device)") {
         `when`("the journey starts") {
             val transition = strategy.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = null))
             then("hands off to REGISTER's own journey to identify") {
                 transition shouldBe
-                    Transition.RequireSubJourney(AuthIntent.REGISTER, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
+                    Transition.RequireSubJourney(RegisterJourney, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
             }
         }
     }
@@ -74,7 +73,7 @@ class FastAccessStrategyTest : BehaviorSpec({
             val transition = strategy.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = acc))
             then("hands off to REGISTER's own journey rather than a dead end") {
                 transition shouldBe
-                    Transition.RequireSubJourney(AuthIntent.REGISTER, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
+                    Transition.RequireSubJourney(RegisterJourney, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
             }
         }
     }
@@ -83,7 +82,7 @@ class FastAccessStrategyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
         `when`("resumed after a sub-journey finished (RE_IDENTIFY or REGISTER alike)") {
-            val event = JourneyEvent.SubJourneyFinished(AuthIntent.RE_IDENTIFY, achievedAcr = AcrLevel.LOA2)
+            val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2)
             val transition = strategy.transition(FastAccessState.Start, event, theCtx)
             then("re-checks satisfaction via afterProof instead of re-running firstOffer") {
                 transition shouldBe Transition.Authenticated
@@ -122,7 +121,7 @@ class FastAccessStrategyTest : BehaviorSpec({
             val transition = strategy.transition(exhausted as FastAccessState, JourneyEvent.OfferExhausted(exhausted.declined), ctx(account = acc))
             then("hands off to REGISTER's own journey, same as an account with nothing usable at all") {
                 transition shouldBe
-                    Transition.RequireSubJourney(AuthIntent.REGISTER, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
+                    Transition.RequireSubJourney(RegisterJourney, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
             }
         }
     }
@@ -151,7 +150,7 @@ class FastAccessStrategyTest : BehaviorSpec({
             then("requires the shared RE_IDENTIFY sub-journey instead of aborting") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        AuthIntent.RE_IDENTIFY,
+                        ReIdentifyJourney,
                         seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
                         resumeWith = FastAccessState.Start
                     )
@@ -185,7 +184,7 @@ class FastAccessStrategyTest : BehaviorSpec({
             then("requires RE_IDENTIFY before any enrollment - a loa1 session never enrolls a method") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        AuthIntent.RE_IDENTIFY,
+                        ReIdentifyJourney,
                         seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
                         resumeWith = FastAccessState.Start
                     )
@@ -203,7 +202,7 @@ class FastAccessStrategyTest : BehaviorSpec({
             then("requires RE_IDENTIFY instead of offering the next enrollment") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        AuthIntent.RE_IDENTIFY,
+                        ReIdentifyJourney,
                         seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
                         resumeWith = FastAccessState.Start
                     )

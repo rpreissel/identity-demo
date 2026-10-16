@@ -3,7 +3,6 @@ package com.example.identity.core.orchestrator.domain.journey
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.Tool
-import com.example.identity.core.orchestrator.domain.AuthIntent
 
 /** What just happened to the journey. */
 sealed interface JourneyEvent {
@@ -31,20 +30,20 @@ sealed interface JourneyEvent {
     data object ActionCompleted : JourneyEvent
 
     /**
-     * A sub-journey finished. It is always the one the resumed state requested; [intent] is there
+     * A sub-journey finished. It is always the one the resumed state requested; [journey] is there
      * for the journey trace. [SubJourneyCancelled] is a separate type, not a flag: a resumed
      * state that re-derived its next step from evidence alone would re-request the sub-journey it
      * was just declined, forever. The compiler forces both arms.
      */
-    data class SubJourneyFinished(val intent: AuthIntent, val achievedAcr: AcrLevel?) : JourneyEvent
+    data class SubJourneyFinished(val journey: Journey<*>, val achievedAcr: AcrLevel?) : JourneyEvent
 
     /**
      * The sub-journey was abandoned without achieving anything, so there is no acr to report.
-     * [intent] names which one, as in [SubJourneyFinished]. A strategy only sees it for a
+     * [journey] names which one, as in [SubJourneyFinished]. A strategy only sees it for a
      * sub-journey it requested as [Transition.RequireSubJourney.optional]; any other cancels the
      * waiting journey in `JourneyService`.
      */
-    data class SubJourneyCancelled(val intent: AuthIntent, val optional: Boolean) : JourneyEvent
+    data class SubJourneyCancelled(val journey: Journey<*>, val optional: Boolean) : JourneyEvent
 
     /** An explicit answer to what an [AnswerableState] is waiting on (`JourneyService.answer`). */
     data class Answered(val answer: Answer) : JourneyEvent

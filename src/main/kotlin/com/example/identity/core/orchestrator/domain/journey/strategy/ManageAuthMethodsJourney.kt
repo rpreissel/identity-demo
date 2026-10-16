@@ -3,9 +3,9 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -21,9 +21,10 @@ import com.example.identity.core.account.AuthMethodView
  * recent proof, as the `FRESH_PROOF` sub-journey (ADR-61). The wish stays parked in its state
  * meanwhile and is carried out once the proof is in.
  */
-class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
+object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
 
-    override val intent = AuthIntent.MANAGE_AUTH_METHODS
+    override val name = "MANAGE_AUTH_METHODS"
+    override val startPoints = listOf(StartableWhenAuthenticated)
     override val stateRoots = listOf(ManageAuthMethodsState::class)
 
     override fun initialState(ctx: JourneyContext): ManageAuthMethodsState = ManageAuthMethodsState.AddRequested
@@ -65,7 +66,7 @@ class ManageAuthMethodsStrategy : IntentStrategy<ManageAuthMethodsState> {
             )
         }
         return Transition.RequireSubJourney(
-            AuthIntent.FRESH_PROOF,
+            FreshProofJourney,
             seedWith = FreshProofState.forSubJourney(requiredAcr, FreshProofState.Purpose.MANAGE_METHODS),
             resumeWith = wish,
         )

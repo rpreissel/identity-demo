@@ -220,11 +220,11 @@ Hinter jedem Begriff steht deshalb in Klammern sein Name im Code.
 - **Kanal** (`ChannelSession`): die Verbindung eines Clients zum Orchestrator. Ein Client ist die
   App oder die Website. Ein Kanal lebt bewusst nur kurz
   ([ADR-3](adr/ADR-003-channelsession-bewusst-kurzlebig-geraete-identitaet-in-deviceaccountlink.md)).
-- **Intent** (`AuthIntent`): was der Nutzer erreichen will, zusammen mit dem Weg dorthin. Beispiele
-  sind `FAST_ACCESS` (anmelden), `REGISTER` (registrieren) und `STEP_UP` (Niveau erhöhen). Die
-  vollständige Liste steht in [04-orchestrierung.md](04-orchestrierung.md) Abschnitt 2.
-- **Journey** (`AuthJourney`): ein laufender Durchlauf zu einem Intent. Eine Journey nutzt ein
-  oder mehrere Tools. Wo sie gerade steht, sagt ihr **Zustand** (`JourneyState`).
+- **Journey** (`Journey`, z. B. `RegisterJourney`): was der Nutzer erreichen will (das Anliegen,
+  früher „Intent“), zusammen mit dem Weg dorthin und den Stellen, an denen sie beginnen kann.
+  Beispiele sind `FAST_ACCESS` (anmelden), `REGISTER` (registrieren) und `STEP_UP` (Niveau
+  erhöhen). Die vollständige Liste steht in [04-orchestrierung.md](04-orchestrierung.md) Abschnitt 2.
+- **Lauf einer Journey** (`AuthJourney`): ein laufender Durchlauf. Er nutzt ein oder mehrere Tools. Wo sie gerade steht, sagt ihr **Zustand** (`JourneyState`).
 - **Tool** (`toolId`, z. B. `enroll-sms`): ein einzelner Schritt, mit dem sich ein Nutzer
   identifiziert, ein Verfahren einrichtet oder sich anmeldet.
 - **Anmeldeverfahren** (`AccountAuthMethod`, im Code „Methode“): ein Weg zur Anmeldung, der im
@@ -430,10 +430,10 @@ prüft das ([ADR-40](adr/ADR-040-fachkern-im-paket-domain.md),
 [08-projektrahmen.md](08-projektrahmen.md) Abschnitt 3). Wer die Regeln verstehen will, beginnt
 dort:
 
-- `orchestrator/domain/`: das Vokabular, etwa `AuthIntent`, `AcrLevels`, `ToolCatalog` und die
-  Fehlercodes.
-- `orchestrator/domain/journey/`: `IntentStrategy` mit `Transition` und `Action`. Darunter liegen
-  die Zustände (`state/`) und die Strategie je Intent (`strategy/`), dazu `AccountRules.kt` und
+- `orchestrator/domain/`: das Vokabular, etwa `Journeys` (alle Journeys), `AcrLevels`,
+  `ToolCatalog` und die Fehlercodes.
+- `orchestrator/domain/journey/`: `Journey` mit Startpunkten, `Transition` und `Action`. Darunter
+  liegen die Zustände (`state/`) und die Journeys selbst (`strategy/`), dazu `AccountRules.kt` und
   `CredentialRules.kt`.
 - `orchestrator/domain/policy/`: `AuthPolicy`, `DefaultAuthPolicy` und `SessionEvidence`.
 - `account/domain/`: `AnchorDecision`, `ClaimValues` und `PassportForm`.

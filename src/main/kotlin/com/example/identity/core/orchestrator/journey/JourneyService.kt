@@ -11,7 +11,8 @@ import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.IntentStrategy
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.StartingAccount
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -23,8 +24,6 @@ import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.domain.journey.state.AnswerableState
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
-import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
-import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.core.orchestrator.domain.journey.state.ToolRef
 import com.example.identity.contract.tool_api.envelope.JourneyDebugStep
 import com.example.identity.contract.tool_api.envelope.Next
@@ -32,6 +31,7 @@ import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.session.AccountDeletionService
 import com.example.identity.core.orchestrator.session.ChannelSessionEndedException
 import com.example.identity.core.orchestrator.session.ChannelSession
+import com.example.identity.core.orchestrator.session.appOpening
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.SessionManagementService
@@ -44,20 +44,19 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Duration
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.session.forLog
 
 /**
- * Drives a journey between the [IntentStrategy] SPI and the rest of the orchestrator. A strategy
- * decides in pure values. Everything with side effects happens once, for every intent alike, so no
- * intent can forget the ACR cap or skip the change log.
+ * Drives a journey between its [Journey] object and the rest of the orchestrator. A journey
+ * decides in pure values. Everything with side effects happens once, for every journey alike, so no
+ * journey can forget the ACR cap or skip the change log.
  *
  * Each transition passes four phases (docs/04-orchestrierung.md #8, "Die vier Phasen"):
  *
  * | Phase | Who | What |
  * |---|---|---|
- * | read | [JourneyContextFactory] | assembles the read-only [JourneyContext] a strategy decides on |
- * | decide | [IntentStrategy] | turns (state, event, ctx) into a [Transition] |
+ * | read | [JourneyContextFactory] | assembles the read-only [JourneyContext] a journey decides on |
+ * | decide | [Journey] | turns (state, event, ctx) into a [Transition] |
  * | act | [JourneyActionExecutor] | executes the [Action] a [Transition.Perform] carries |
  * | route | [JourneyRouting] | derives `next`/[Step] from the resulting state |
  *
@@ -72,7 +71,6 @@ import com.example.identity.core.orchestrator.session.forLog
 class JourneyService(
     private val journeyRepository: AuthJourneyRepository,
     private val codec: JourneyStateCodec,
-    strategies: List<IntentStrategy<*>>,
     private val accountService: AccountService,
     private val sessionManagementService: SessionManagementService,
     private val routing: JourneyRouting,
@@ -85,36 +83,29 @@ class JourneyService(
     private val accountDeletionService: AccountDeletionService,
     private val clock: Clock,
 ) {
-    private val strategiesByIntent: Map<AuthIntent, IntentStrategy<*>> = strategies.associateBy { it.intent }
-
-    init {
-        val missing = AuthIntent.entries.filterNot { it in strategiesByIntent }
-        check(missing.isEmpty()) { "No IntentStrategy registered for: $missing" }
-    }
-
     // Lifecycle ---------------------------------------------------------------
 
     /**
      * Starts a journey and produces its first offer. [seed] names the concrete wish (a step-up
-     * target, a method to remove); without it [IntentStrategy.initialState] applies. [restoredEvidence],
+     * target, a method to remove); without it [Journey.initialState] applies. [restoredEvidence],
      * what the same Keycloak session proved before (ADR-59), is applied as a logged entry transition
-     * before `initialState()`, so the strategy already sees it (docs/04-orchestrierung.md #8,
+     * before `initialState()`, so the journey already sees it (docs/04-orchestrierung.md #8,
      * "Übernommene Nachweise als erster Übergang").
      * Only on a [LiveChannel]: an ended channel never gets a journey again (docs/invarianten.md I-1).
      */
     fun start(
         channel: LiveChannel,
-        intent: AuthIntent,
+        kind: Journey<*>,
         seed: JourneyState? = null,
         restoredEvidence: List<MethodEvidence>? = null
     ): Step {
         keepSessionAlive(channel)
-        return startJourney(channel.session, intent, seed, parentJourneyId = null, restoredEvidence = restoredEvidence)
+        return startJourney(channel.session, kind, seed, parentJourneyId = null, restoredEvidence = restoredEvidence)
     }
 
     private fun startJourney(
         channel: ChannelSession,
-        intent: AuthIntent,
+        kind: Journey<*>,
         seed: JourneyState?,
         parentJourneyId: JourneyId?,
         restoredEvidence: List<MethodEvidence>?,
@@ -127,15 +118,14 @@ class JourneyService(
             findActive(channel.id)?.let { cancelChain(it.entity, channel) }
         }
         val now = clock.instant()
-        val journey = AuthJourney(channel.channelSessionId, intent, now.plus(JOURNEY_TTL), now)
+        val journey = AuthJourney(channel.channelSessionId, kind, now.plus(JOURNEY_TTL), now)
         journey.accountId = channel.accountId
         journey.parentJourneyId = parentJourneyId
         journey.optionalForParent = optionalForParent
         journey.featureFlags = contextFactory.activeFeatureFlags()
-        val strategy = strategyFor(intent)
         // Placeholder for the NOT NULL state columns. It is rewritten once the restored evidence
         // is in, so no strategy observes it.
-        codec.write(journey, seed ?: strategy.initialState(contextFactory.contextFor(journey, channel)))
+        codec.write(journey, seed ?: kind.initialState(contextFactory.contextFor(journey, channel)))
         journeyRepository.save(journey) // journeyId exists from here on, for the entry transition's log line.
 
         restoredEvidence?.let { methods ->
@@ -143,19 +133,15 @@ class JourneyService(
             journeyTraceService.record(channel.forLog(), journey.forLog(), "Entry", detail = mapOf("methods" to journeyTraceDetails.methodEvidenceDetail(methods)))
             journeyRecorder.restoreEvidence(channel, methods)
             // Re-derive, so initialState() sees the restored evidence.
-            codec.write(journey, seed ?: strategy.initialState(contextFactory.contextFor(journey, channel)))
+            codec.write(journey, seed ?: kind.initialState(contextFactory.contextFor(journey, channel)))
             journeyRepository.save(journey)
         }
 
         return advance(journey, channel, JourneyEvent.Started)
     }
 
-    /** Starts STEP_UP toward [targetAcr], entered directly by the App channel's step-up trigger. */
-    fun startTowardAcr(channel: LiveChannel, targetAcr: AcrLevel, startingAcr: AcrLevel): Step =
-        start(channel, AuthIntent.STEP_UP, seed = StepUpState.forSubJourney(startingAcr upTo targetAcr))
-
     /**
-     * Starts or restarts the intent this channel was entered with. The intent lives on the channel
+     * Starts or restarts the journey this channel was entered with. It lives on the channel
      * so neither resume nor cancel has to guess it from leftover state. [restoredEvidence] as in [start].
      */
     fun startEntryJourney(channel: LiveChannel, restoredEvidence: List<MethodEvidence>? = null): Step = startEntryJourney(channel.session, restoredEvidence)
@@ -166,7 +152,7 @@ class JourneyService(
             channel.state = ChannelState.ANONYMOUS
             sessionManagementService.updateChannelSession(channel)
         }
-        return startJourney(channel, channel.entryIntent, seed = null, parentJourneyId = null, restoredEvidence = restoredEvidence)
+        return startJourney(channel, channel.entryJourney, seed = null, parentJourneyId = null, restoredEvidence = restoredEvidence)
     }
 
     /** The running journey of this channel, if any. A suspended parent is not it. */
@@ -202,7 +188,7 @@ class JourneyService(
         return chain.reversed().map {
             JourneyDebugStep(
                 journeyId = it.journeyId.toString(),
-                intent = it.requireIntent().name,
+                intent = it.requireKind().name,
                 lifecycle = it.lifecycle.name,
                 stateType = it.stateType!!,
                 note = if (it == innermost) innermostNote else null,
@@ -385,7 +371,7 @@ class JourneyService(
     // Transitions ----------------------------------------------------------------
 
     private fun advance(journey: AuthJourney, channel: ChannelSession, event: JourneyEvent): Step {
-        val strategy = strategyFor(journey.requireIntent())
+        val kind = journey.requireKind()
         var state = codec.read(journey)
         var event = event
         val ctx = contextFactory.contextFor(journey, channel)
@@ -403,7 +389,7 @@ class JourneyService(
         // A cancelled precondition cancels the journey that waited on it; only an optional
         // sub-journey's end is left to the strategy (RequireSubJourney.optional).
         if (event is JourneyEvent.SubJourneyCancelled && !event.optional) transition = Transition.Cancel
-        transition = transition ?: strategy.transitionErased(state, event, ctx)
+        transition = transition ?: kind.transitionErased(state, event, ctx)
         recordStep(journey, channel, event::class.simpleName!!, journeyTraceDetails.eventDetail(event, channel), state, transition, ctx)
         return applyTransition(journey, channel, transition)
     }
@@ -463,7 +449,7 @@ class JourneyService(
         // Flushed before the child row: the database allows one STARTED journey per channel
         // (ux_journey_running_per_channel), and the child insert would otherwise come first.
         journeyRepository.saveAndFlush(journey)
-        return startJourney(channel, transition.intent, seed = transition.seedWith, parentJourneyId = journey.journeyId, restoredEvidence = null,
+        return startJourney(channel, transition.journey, seed = transition.seedWith, parentJourneyId = journey.journeyId, restoredEvidence = null,
             optionalForParent = transition.optional)
     }
 
@@ -510,7 +496,7 @@ class JourneyService(
             markCancelled(journey, channel)
             parent.lifecycle = JourneyLifecycle.STARTED
             journeyRepository.save(parent)
-            return advance(parent, channel, JourneyEvent.SubJourneyCancelled(journey.requireIntent(), journey.optionalForParent))
+            return advance(parent, channel, JourneyEvent.SubJourneyCancelled(journey.requireKind(), journey.optionalForParent))
         }
         cancelJourney(journey, channel)
         return if (channel.state == ChannelState.AUTHENTICATED) Step(Next.AUTHENTICATED) else startEntryJourney(channel, restoredEvidence = null)
@@ -534,7 +520,7 @@ class JourneyService(
             // The parent picks up exactly where it was parked, so the original wish survives.
             parent.lifecycle = JourneyLifecycle.STARTED
             journeyRepository.save(parent)
-            return advance(parent, channel, JourneyEvent.SubJourneyFinished(journey.requireIntent(), acr))
+            return advance(parent, channel, JourneyEvent.SubJourneyFinished(journey.requireKind(), acr))
         }
 
         channel.state = ChannelState.AUTHENTICATED
@@ -606,7 +592,7 @@ class JourneyService(
             // the next journey on this channel gets its own (ADR-55).
             channel.journeyKeyId = null
             val abandonedAccountId = channel.accountId
-            channel.subject = if (channel.entryIntent.entry?.usesLinkedAccount == true && channel.bindingKeyRef != null) {
+            channel.subject = if (channel.appOpening?.startsWith == StartingAccount.LINKED_TO_DEVICE && channel.bindingKeyRef != null) {
                 sessionManagementService.findLinkedAccountId(channel.bindingKeyRef!!)?.let(Subject::Account)
             } else {
                 null
@@ -626,17 +612,14 @@ class JourneyService(
         accountDeletionService.deleteAccount(accountId)
     }
 
-    private fun strategyFor(intent: AuthIntent): IntentStrategy<*> =
-        strategiesByIntent[intent] ?: error("No IntentStrategy for $intent")
-
     /**
-     * The one place the SPI's state type is erased. A strategy only gets the state of its own
-     * intent; the `intent` column and [JourneyStateCodec.read] guarantee that. The registry is
-     * heterogeneous, so the cast lives here once. The `Erased` suffix avoids reading like recursion.
+     * The one place a journey's state type is erased. A journey only gets the state of its own
+     * kind; the `intent` column and [JourneyStateCodec.read] guarantee that. A run holds its kind
+     * as `Journey<*>`, so the cast lives here once. The `Erased` suffix avoids reading like recursion.
      */
     @Suppress("UNCHECKED_CAST")
-    private fun IntentStrategy<*>.transitionErased(state: JourneyState, event: JourneyEvent, ctx: JourneyContext): Transition =
-        (this as IntentStrategy<JourneyState>).transition(state, event, ctx)
+    private fun Journey<*>.transitionErased(state: JourneyState, event: JourneyEvent, ctx: JourneyContext): Transition =
+        (this as Journey<JourneyState>).transition(state, event, ctx)
 
     companion object {
         private val JOURNEY_TTL: Duration = Duration.ofMinutes(60)

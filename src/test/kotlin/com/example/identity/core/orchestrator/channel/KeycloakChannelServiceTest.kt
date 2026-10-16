@@ -1,9 +1,11 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterJourney
+import com.example.identity.core.orchestrator.domain.journey.strategy.WebSelectMethodJourney
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.ErrorCode
 import com.example.identity.core.orchestrator.domain.OrchestratorException
@@ -27,13 +29,13 @@ import java.util.UUID
 class KeycloakChannelServiceTest : BehaviorSpec({
 
     given("a fresh Web channel") {
-        listOf(null to AuthIntent.WEB_SELECT_METHOD, "register" to AuthIntent.REGISTER).forEach { (intent, expected) ->
+        listOf(null to WebSelectMethodJourney, "register" to RegisterJourney).forEach { (intent, expected) ->
             `when`("it is opened with intent=$intent") {
                 val fixture = KeycloakChannelFixture()
                 fixture.service.upsertChannel(fixture.channelSessionId, fixture.assertion, subject = null, targetAcr = null, intent = intent)
 
                 then("its entry journey is ${expected.name}") {
-                    fixture.entryIntent.captured shouldBe expected
+                    fixture.entryJourney.captured shouldBe expected
                 }
             }
         }
@@ -90,10 +92,10 @@ private class KeycloakChannelFixture {
     val existing = ChannelSession(ChannelType.WEB, null, TEST_NOW.plus(Duration.ofMinutes(30)), now = TEST_NOW).apply {
         channelBinding = channelSessionId.toString()
     }
-    val entryIntent = slot<AuthIntent>()
+    val entryJourney = slot<Journey<*>>()
     val sessionManagementService = mockk<SessionManagementService>(relaxed = true) {
         every { findChannelSessionById(channelSessionId) } returns null
-        every { createWebChannelSession(channelSessionId, any(), any(), any(), any(), capture(entryIntent)) } returns existing
+        every { createWebChannelSession(channelSessionId, any(), any(), any(), any(), capture(entryJourney)) } returns existing
     }
     private val keycloakChannelAccessGuard = mockk<KeycloakChannelAccessGuard> {
         every { requireChannel(channelSessionId, assertion) } returns existing

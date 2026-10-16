@@ -82,7 +82,7 @@ stillschweigend etwas von der Umgebung voraussetzt.
 - **A-16 (3.) (Hinweis) I-10 gilt per Regel nur für den Resolver**, nicht für den
   `IdentityMatchingService` dahinter. `DPoP-demo-9ppv.23`
 - **Hinweis: Beim Einrichten in der Verfahrensverwaltung prüft der Orchestrator `loa2` beim
-  Abschluss nicht erneut** (`ManageAuthMethodsStrategy`, Zustand `Enrolling`). Veraltet der
+  Abschluss nicht erneut** (`ManageAuthMethodsJourney`, Zustand `Enrolling`). Veraltet der
   Nachweis in der Zwischenzeit, wird das Verfahren mit einem niedrigeren Niveau eingetragen, nie mit
   einem höheren. Es besteht kein Handlungsbedarf. Issue: –
 - **Hinweis: Der Freischaltcode liegt im simulierten Personenverzeichnis als Hash ohne Salt.** Der
@@ -164,7 +164,7 @@ stillschweigend etwas von der Umgebung voraussetzt.
 - **Q-8 / Q-11 (3.) (Hinweis) Umlaute in Text-Vorlagen gemischt.** `DPoP-demo-9ppv.30`
 - **Q-9 (Hinweis) `e2e-keycloak` läuft nicht in der CI.** Lokal gegen compose lief es am 2026-10-04
   fehlerfrei. Ein nächtlicher Job mit `podman compose` wäre der Weg. Issue: –
-- **Q-10 (Hinweis) `RegisterStrategy.transition` mit 71 Zeilen**, ein `when` über acht Zustände. Es
+- **Q-10 (Hinweis) `RegisterJourney.transition` mit 71 Zeilen**, ein `when` über acht Zustände. Es
   besteht kein Handlungsbedarf.
 - **V-B (Hinweis) Rest der Vereinfachungen im Backend.**
   - `methodInstanceId` und ACR als eigene Typen statt `String`. Beide stecken in persistierten

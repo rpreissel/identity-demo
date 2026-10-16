@@ -4,7 +4,6 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.ChannelState
-import com.example.identity.core.orchestrator.domain.AuthIntent
 
 /**
  * What should happen next. Not a `Next`: the skip-if-single-candidate rule and the routing live
@@ -16,7 +15,7 @@ sealed interface Transition {
     data class To(val state: JourneyState) : Transition
 
     /**
-     * Run [intent] first, seeded at [seedWith] (e.g. `StepUpState.forSubJourney(...)`), then resume
+     * Run [journey] first, seeded at [seedWith] (e.g. `StepUpState.forSubJourney(...)`), then resume
      * this journey at [resumeWith] once it finishes.
      *
      * [optional] says what a cancelled sub-journey means. Not optional (the usual case): it was a
@@ -24,7 +23,7 @@ sealed interface Transition {
      * journey resumes at [resumeWith] with [JourneyEvent.SubJourneyCancelled] and decides itself.
      */
     data class RequireSubJourney(
-        val intent: AuthIntent,
+        val journey: Journey<*>,
         val seedWith: JourneyState,
         val resumeWith: JourneyState,
         val optional: Boolean = false,

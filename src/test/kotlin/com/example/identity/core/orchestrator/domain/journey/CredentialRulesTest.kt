@@ -4,7 +4,6 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AuthMethodView
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
 import com.example.identity.core.orchestrator.domain.AcrLevels
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.EnrollmentRef
 import io.kotest.assertions.throwables.shouldThrow
@@ -106,11 +105,11 @@ class CredentialRulesTest : BehaviorSpec({
     }
 
     // The device link that follows from succeeding.
-    given("an intent that binds the device implicitly (FAST_ACCESS)") {
-        val intent = AuthIntent.FAST_ACCESS
+    given("a channel opened to link the device without asking (FAST_ACCESS, REGISTER)") {
+        val onSuccess = DeviceLink.LINK_WITHOUT_ASKING
 
         `when`("it succeeds on a free device") {
-            val links = linksDeviceImplicitly(intent, linkedTo = null, accountId = AccountId(1))
+            val links = linksDeviceImplicitly(onSuccess, linkedTo = null, accountId = AccountId(1))
 
             then("the device is linked") {
                 links shouldBe true
@@ -118,7 +117,7 @@ class CredentialRulesTest : BehaviorSpec({
         }
 
         `when`("it succeeds on a device already linked to this account") {
-            val links = linksDeviceImplicitly(intent, linkedTo = AccountId(1), accountId = AccountId(1))
+            val links = linksDeviceImplicitly(onSuccess, linkedTo = AccountId(1), accountId = AccountId(1))
 
             then("the device is linked") {
                 links shouldBe true
@@ -126,7 +125,7 @@ class CredentialRulesTest : BehaviorSpec({
         }
 
         `when`("it succeeds on a device linked to another account") {
-            val links = linksDeviceImplicitly(intent, linkedTo = AccountId(2), accountId = AccountId(1))
+            val links = linksDeviceImplicitly(onSuccess, linkedTo = AccountId(2), accountId = AccountId(1))
 
             then("the device is never rebound implicitly") {
                 links shouldBe false
@@ -134,12 +133,13 @@ class CredentialRulesTest : BehaviorSpec({
         }
     }
 
-    given("LOOKUP_LOGIN, the intent that does not bind devices") {
-        `when`("it succeeds on a free device") {
-            val links = linksDeviceImplicitly(AuthIntent.LOOKUP_LOGIN, linkedTo = null, accountId = AccountId(1))
+    given("a channel opened to ask before linking (LOOKUP_LOGIN) or to leave the link alone (CONFIRM_PEER_LOGIN)") {
+        `when`("a journey on it succeeds on a free device") {
+            val links = listOf(DeviceLink.ASK_BEFORE_LINKING, DeviceLink.LEAVE_UNCHANGED)
+                .map { linksDeviceImplicitly(it, linkedTo = null, accountId = AccountId(1)) }
 
             then("the device is not linked") {
-                links shouldBe false
+                links shouldBe listOf(false, false)
             }
         }
     }

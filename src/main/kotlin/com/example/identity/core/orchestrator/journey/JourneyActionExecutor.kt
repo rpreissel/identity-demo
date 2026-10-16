@@ -31,6 +31,8 @@ import com.example.identity.core.orchestrator.session.AccountDeletionService
 import com.example.identity.core.orchestrator.session.AppTokenSessionService
 import com.example.identity.core.orchestrator.session.SessionEvidenceService
 import com.example.identity.core.orchestrator.session.ChannelSession
+import com.example.identity.core.orchestrator.session.appOpening
+import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
 import com.example.identity.core.orchestrator.session.SessionManagementService
 import com.example.identity.core.orchestrator.session.toCoreEvidence
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
@@ -45,7 +47,6 @@ import com.example.identity.contract.tool_api.claims.assertClaimsCovered
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
-import com.example.identity.core.orchestrator.domain.AuthIntent
 
 /**
  * The acting phase of a transition: executes the [Action] a [Transition.Perform] carries.
@@ -115,7 +116,7 @@ class JourneyActionExecutor(
         val inHand = channel.accountId
         // A correlation step proves nothing about the subject on its own (ADR-18): see checkCorrelation.
         if (action.tool.role == ToolRole.CORRELATION) {
-            val correlatingAccount = checkNotNull(inHand) { "Correlation without a known account under ${journey.intent}" }
+            val correlatingAccount = checkNotNull(inHand) { "Correlation without a known account under ${journey.kind?.name}" }
             checkCorrelation(loadAccount(correlatingAccount), action.tool.toolId, action.outcome.personId) { personId ->
                 identityResolver.attestedIdentityMatches(correlatingAccount, personId)
             }
@@ -283,7 +284,7 @@ class JourneyActionExecutor(
             label = label,
             instanceId = methodInstanceId
         )
-        linkDeviceIfIntentImplies(journey, channel, accountId)
+        linkDeviceIfChannelImplies(channel, accountId)
         journeyRecorder.recordToolCompletion(journey, channel, action.tool, enrolled, action.tool.levelOf(enrolled))
         return demoNotice
     }
@@ -297,7 +298,7 @@ class JourneyActionExecutor(
         }
         val accountId = accountOfProof(action.tool.role, named, channel.accountId)
         bindAccount(journey, channel, accountId)
-        linkDeviceIfIntentImplies(journey, channel, accountId)
+        linkDeviceIfChannelImplies(channel, accountId)
         // Capped by the instance that was used, see proofLevel (ADR-5).
         val effectiveAcr = proofLevel(
             accountService.findActiveMethods(accountId, action.tool.method), action.tool.module, channel.bindingKeyRef, action.tool.levelOf(authenticated)
@@ -334,12 +335,14 @@ class JourneyActionExecutor(
 
     /**
      * The device link that follows from success, unlike the one the user asks for
-     * ([performLinkDevice]). It is a property of the intent ([AuthIntent.linksDeviceWithoutAsking]).
+     * ([performLinkDevice]). Decided once, when the App channel was opened ([OpensAppChannel.onSuccess]),
+     * for every journey that runs on it: one that declined the link stays declined for the
+     * journeys after it. A Web channel has no device.
      */
-    private fun linkDeviceIfIntentImplies(journey: AuthJourney, channel: ChannelSession, accountId: AccountId) {
-        val intent = journey.requireIntent()
+    private fun linkDeviceIfChannelImplies(channel: ChannelSession, accountId: AccountId) {
+        val opening = channel.appOpening ?: return
         val linkedTo = channel.bindingKeyRef?.let { sessionManagementService.findLinkedAccountId(it) }
-        if (linksDeviceImplicitly(intent, linkedTo, accountId)) linkDeviceTo(channel, accountId)
+        if (linksDeviceImplicitly(opening.onSuccess, linkedTo, accountId)) linkDeviceTo(channel, accountId)
     }
 
     /** Uses the account this session holds now, not one a strategy stored earlier ([Action.LinkDevice]). */
@@ -377,7 +380,7 @@ class JourneyActionExecutor(
         val account = checkNotNull(freshCtx.account) { "DeleteAccount without a resolved account" }
         val requiredAcr = Action.DeleteAccount.requiredAcr(account)
         check(authPolicy.isSatisfied(freshCtx.evidence, requiredAcr, account)) {
-            "${journey.intent} decided Action.DeleteAccount without satisfying $requiredAcr"
+            "${journey.kind?.name} decided Action.DeleteAccount without satisfying $requiredAcr"
         }
         accountDeletionService.deleteAccount(account.accountId)
     }

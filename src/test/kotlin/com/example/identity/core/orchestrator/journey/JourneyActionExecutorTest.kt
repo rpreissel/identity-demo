@@ -1,5 +1,13 @@
 package com.example.identity.core.orchestrator.journey
 
+import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginJourney
+import com.example.identity.core.orchestrator.domain.journey.strategy.DeleteAccountJourney
+import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsJourney
+import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessJourney
+import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginJourney
+import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpJourney
+import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.session.SessionManagementService
 import com.example.identity.TEST_NOW
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -9,7 +17,6 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.account.AuthMethodView
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.ErrorCode
@@ -33,8 +40,8 @@ import io.mockk.verify
 
 /**
  * Unit test of the guards in [JourneyActionExecutor]: removing a method is refused when the account
- * could no longer reach its channel's floor afterwards, and a deletion re-checks its level against
- * the current evidence. The real policy decides ([StrategyTestFixtures.policy]); accounts,
+ * could no longer reach its channel's floor afterwards, a deletion re-checks its level against
+ * the current evidence, and an implicit device link follows how the channel was opened. The real policy decides ([StrategyTestFixtures.policy]); accounts,
  * revocation and deletion are mocked.
  */
 class JourneyActionExecutorTest : BehaviorSpec({
@@ -90,6 +97,28 @@ class JourneyActionExecutorTest : BehaviorSpec({
         }
     }
 
+    given("an App channel opened with LOOKUP_LOGIN whose device link was declined") {
+        `when`("a later journey on it (STEP_UP) proves a method of the account") {
+            val fixture = ImplicitLinkFixture(entryJourney = LookupLoginJourney)
+            fixture.proveSms()
+
+            then("the device stays unlinked - the decision made when the channel was opened holds") {
+                verify(exactly = 0) { fixture.sessionManagementService.linkDeviceToAccount(any(), any()) }
+            }
+        }
+    }
+
+    given("an App channel opened with FAST_ACCESS on a device without a link") {
+        `when`("a later journey on it (STEP_UP) proves a method of the account") {
+            val fixture = ImplicitLinkFixture(entryJourney = FastAccessJourney)
+            fixture.proveSms()
+
+            then("the device is linked to the account") {
+                verify { fixture.sessionManagementService.linkDeviceToAccount("own-key", ACCOUNT) }
+            }
+        }
+    }
+
     given("a confirming session and a peer-approval tool that reports amr, level and factors anyway") {
         `when`("the approval is recorded") {
             val fixture = RecordApprovalFixture()
@@ -115,7 +144,7 @@ private class SelfLockoutFixture(floor: AcrLevel) {
         state = ChannelState.AUTHENTICATED
         subject = Subject.Account(ACCOUNT)
     }
-    val journey = AuthJourney(intent = AuthIntent.MANAGE_AUTH_METHODS, expiresAt = TEST_NOW.plusSeconds(600), createdAt = TEST_NOW)
+    val journey = AuthJourney(kind = ManageAuthMethodsJourney, expiresAt = TEST_NOW.plusSeconds(600), createdAt = TEST_NOW)
     private val accountService = mockk<AccountService>(relaxed = true) {
         every { findAccount(ACCOUNT) } returns AccountProfile(
             accountId = ACCOUNT, personId = null,
@@ -153,7 +182,7 @@ private class DeleteAccountFixture(provenAmr: List<String>) {
         accountId = ACCOUNT
     )
     val channel = authenticatedChannel()
-    val journey = AuthJourney(intent = AuthIntent.DELETE_ACCOUNT, expiresAt = TEST_NOW.plusSeconds(600), createdAt = TEST_NOW)
+    val journey = AuthJourney(kind = DeleteAccountJourney, expiresAt = TEST_NOW.plusSeconds(600), createdAt = TEST_NOW)
     private val factors = mapOf("sms" to FactorType.POSSESSION, "password" to FactorType.KNOWLEDGE)
     private val contextFactory = mockk<JourneyContextFactory> {
         every { contextFor(journey, channel) } returns StrategyTestFixtures.ctx(
@@ -165,10 +194,30 @@ private class DeleteAccountFixture(provenAmr: List<String>) {
     val executor = executor(accountDeletionService = accountDeletionService, contextFactory = contextFactory)
 }
 
+/** A STEP_UP run on an authenticated App channel of [ACCOUNT] opened with [entryJourney]; the device has no link yet. */
+private class ImplicitLinkFixture(entryJourney: Journey<*>) {
+    val channel = authenticatedChannel().apply {
+        sessionEvidenceId = SessionEvidenceId(UUID.randomUUID())
+        this.entryJourney = entryJourney
+    }
+    private val journey = AuthJourney(kind = StepUpJourney, expiresAt = TEST_NOW.plusSeconds(600), createdAt = TEST_NOW)
+    val sessionManagementService = mockk<SessionManagementService>(relaxed = true) {
+        every { findLinkedAccountId("own-key") } returns null
+    }
+    private val accountService = mockk<AccountService>(relaxed = true) {
+        every { findActiveMethods(ACCOUNT, "sms") } returns listOf(StrategyTestFixtures.method("sms", AcrLevel.LOA1))
+    }
+    private val executor = executor(sessionManagementService = sessionManagementService, accountService = accountService)
+
+    fun proveSms() {
+        executor.perform(journey, channel, Action.AcceptProof(tool("auth-sms"), ToolOutcome.Completed.Authenticated(amr = listOf("sms"))))
+    }
+}
+
 /** The executor with a real [JourneyRecorder], so what reaches the session's evidence is observable. */
 private class RecordApprovalFixture {
     val channel = authenticatedChannel().apply { sessionEvidenceId = SessionEvidenceId(UUID.randomUUID()) }
-    val journey = AuthJourney(intent = AuthIntent.CONFIRM_PEER_LOGIN, expiresAt = TEST_NOW.plusSeconds(600), createdAt = TEST_NOW)
+    val journey = AuthJourney(kind = ConfirmPeerLoginJourney, expiresAt = TEST_NOW.plusSeconds(600), createdAt = TEST_NOW)
     val sessionEvidenceService = mockk<SessionEvidenceService>(relaxed = true)
     val executor = executor(
         sessionEvidenceService = sessionEvidenceService,
@@ -182,18 +231,20 @@ private fun authenticatedChannel() = ChannelSession(ChannelType.APP, "own-key", 
 }
 
 private fun executor(
+    accountService: AccountService = mockk(relaxed = true),
+    sessionManagementService: SessionManagementService = mockk(relaxed = true),
     accountDeletionService: AccountDeletionService = mockk(relaxed = true),
     sessionEvidenceService: SessionEvidenceService = mockk(relaxed = true),
     journeyRecorder: JourneyRecorder = mockk(relaxed = true),
     contextFactory: JourneyContextFactory = mockk(relaxed = true),
 ) = JourneyActionExecutor(
-    journeyRepository = mockk(relaxed = true),
-    accountService = mockk(relaxed = true),
+    journeyRepository = mockk(relaxed = true) { every { save(any<AuthJourney>()) } answers { firstArg() } },
+    accountService = accountService,
     journeyKeys = mockk(relaxed = true),
     identityResolver = mockk(relaxed = true),
     appTokenSessionService = mockk(relaxed = true),
     sessionEvidenceService = sessionEvidenceService,
-    sessionManagementService = mockk(relaxed = true),
+    sessionManagementService = sessionManagementService,
     accountDeletionService = accountDeletionService,
     toolRegistry = StrategyTestFixtures.catalog,
     authPolicy = StrategyTestFixtures.policy,

@@ -304,7 +304,7 @@ class AccountService(
     }
 
     /**
-     * Deactivation by the holder (AuthIntent.MANAGE_AUTH_METHODS). The caller has checked the
+     * Deactivation by the holder (MANAGE_AUTH_METHODS journey). The caller has checked the
      * channel's floor. Addressed by [methodInstanceId], since several devices share one method name.
      */
     @Transactional

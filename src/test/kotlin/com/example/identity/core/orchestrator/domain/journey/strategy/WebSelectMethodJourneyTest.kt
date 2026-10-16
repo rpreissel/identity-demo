@@ -5,7 +5,6 @@ import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.account.AccountProfile
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -25,13 +24,13 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * Unit test of [WebSelectMethodStrategy] (docs/journeys/web-select-method.md) on the Web channel:
+ * Unit test of [WebSelectMethodJourney] (docs/journeys/web-select-method.md) on the Web channel:
  * lookup-login tools without an account, auth tools for a known one, a finished journey once the
  * evidence meets the floor, never enrollment, and identification only as the step-up's way out.
  */
-class WebSelectMethodStrategyTest : BehaviorSpec({
+class WebSelectMethodJourneyTest : BehaviorSpec({
 
-    val strategy = WebSelectMethodStrategy()
+    val strategy = WebSelectMethodJourney
     val lookupTools = listOf("auth-sms-lookup", "auth-password-lookup", "auth-qr-lookup", "auth-invite-lookup").map(::ToolId)
 
     fun webCtx(
@@ -141,7 +140,7 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
 
             then("it requires RE_IDENTIFY and resumes where the offer is built anew") {
                 transition shouldBe Transition.RequireSubJourney(
-                    AuthIntent.RE_IDENTIFY,
+                    ReIdentifyJourney,
                     seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
                     resumeWith = WebSelectMethodState.AfterIdentification
                 )
@@ -175,7 +174,7 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
             val transition = strategy.transition(exhausted as WebSelectMethodState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
             then("it offers identifying again instead of giving up") {
                 transition.shouldBeInstanceOf<Transition.RequireSubJourney>()
-                transition.intent shouldBe AuthIntent.RE_IDENTIFY
+                transition.journey shouldBe ReIdentifyJourney
             }
         }
     }
@@ -186,7 +185,7 @@ class WebSelectMethodStrategyTest : BehaviorSpec({
         `when`("the identification reached the floor") {
             val identified = evidence(listOf("sms", "fsc"), setOf(FactorType.POSSESSION), account = smsAndDevice)
             val theCtx = webCtx(account = smsAndDevice, evidence = identified, acrFloor = AcrLevel.LOA2)
-            val transition = strategy.transition(state, JourneyEvent.SubJourneyFinished(AuthIntent.RE_IDENTIFY, achievedAcr = AcrLevel.LOA2), theCtx)
+            val transition = strategy.transition(state, JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2), theCtx)
 
             then("it is authenticated") {
                 transition shouldBe Transition.Authenticated

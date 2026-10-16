@@ -4,7 +4,7 @@ import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.core.orchestrator.domain.journey.JourneyLifecycle
-import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.journey.Journey
 import java.time.Instant
 
 /**
@@ -16,7 +16,7 @@ import java.time.Instant
 class RunningJourney private constructor(internal val entity: AuthJourney) {
     val journeyId: JourneyId get() = entity.id
     val channelSessionId: ChannelSessionId get() = checkNotNull(entity.channelSessionId)
-    val intent: AuthIntent get() = entity.requireIntent()
+    val kind: Journey<*> get() = entity.requireKind()
 
     companion object {
         fun of(journey: AuthJourney, now: Instant): RunningJourney? =

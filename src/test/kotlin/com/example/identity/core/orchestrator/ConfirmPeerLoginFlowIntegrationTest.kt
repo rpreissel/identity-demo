@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginJourney
 import com.example.identity.contract.texts.templateOf
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
@@ -10,9 +11,9 @@ import org.springframework.web.client.HttpClientErrorException
 import java.util.UUID
 
 /**
- * `AuthIntent.CONFIRM_PEER_LOGIN` (docs/04-orchestrierung.md): the loa2 gate, and abort instead of
+ * `ConfirmPeerLoginJourney` (docs/04-orchestrierung.md): the loa2 gate, and abort instead of
  * identification. Stops before `approve-qr` activates; the approval itself is covered by
- * `AuthQrFlowIntegrationTest`, the abort on a cold device by `ConfirmPeerLoginStrategyTest`.
+ * `AuthQrFlowIntegrationTest`, the abort on a cold device by `ConfirmPeerLoginJourneyTest`.
  */
 class ConfirmPeerLoginFlowIntegrationTest : IntegrationTestSupport() {
 

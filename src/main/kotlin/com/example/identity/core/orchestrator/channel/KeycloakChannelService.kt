@@ -12,7 +12,8 @@ import com.example.identity.core.orchestrator.domain.InvitationAcceptance
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
-import com.example.identity.core.orchestrator.domain.AuthIntent
+import com.example.identity.core.orchestrator.domain.Journeys
+import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
 import com.example.identity.core.orchestrator.session.LiveChannel
@@ -194,7 +195,7 @@ class KeycloakChannelService(
             // The Web channel's declaration of what it can render, taken verbatim like the App
             // channel's availableTools, never widened to the whole catalog.
             channelService.catalogToolsOf(availableTools.orEmpty()),
-            entryIntentFor(intent)
+            entryJourneyFor(intent)
         )
     }
 
@@ -282,9 +283,9 @@ class KeycloakChannelService(
         keycloakSessionEvidenceRepository.extend(kcSessionId, expiresAt)
     }
 
-    /** The Keycloak facade's reading of `intent`: [AuthIntent.fromRequest] for a [ChannelType.WEB] channel. */
-    private fun entryIntentFor(intent: String?): AuthIntent =
-        AuthIntent.fromRequest(intent, ChannelType.WEB)
+    /** The Keycloak facade's reading of `intent`: [Journeys.fromRequest] for a [ChannelType.WEB] channel. */
+    private fun entryJourneyFor(intent: String?): Journey<*> =
+        Journeys.fromRequest(intent, ChannelType.WEB)
             ?: throw OrchestratorException.invalidState(Text("Dieser Vorgang ist im Web-Kanal nicht zugelassen"), "intent=${intent}")
 
     companion object {

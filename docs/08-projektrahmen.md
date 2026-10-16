@@ -117,9 +117,9 @@ com.example.identity
   Implementiert die `tool_api`-Ports `ToolJourney`, `Lockouts`, `DeviceProofs` und `RateLimits`.
 - **M1a** `orchestrator.domain` — Kein eigenes Modulith-Modul, sondern das unterste Paket
   **innerhalb** von `orchestrator`. Es enthält:
-  - die gemeinsamen Begriffe (`AuthIntent`, `AcrLevels`, `OrchestratorException`,
+  - die gemeinsamen Begriffe (`Journeys`, `AcrLevels`, `OrchestratorException`,
     `FeatureFlagProvider`, `ToolCatalog`),
-  - den fachlichen Kern: die Zustände der Journeys, `IntentStrategy` mit `Transition`/`Action`,
+  - den fachlichen Kern: die Journeys (`Journey`) mit ihren Zuständen, `Transition`/`Action`,
     `AuthPolicy` und `SessionEvidence`.
 
   Alle anderen Pakete des Orchestrators dürfen von diesem Paket abhängen, es selbst aber von keinem.
@@ -450,11 +450,11 @@ Lesesichten `account.AccountProfile` und `account.AuthMethodView`). Beide Regeln
 
 **Was im Orchestrator wo liegt.**
 
-- `orchestrator.domain` (M1a): die Grundbegriffe – `AuthIntent`, `AcrLevels`,
+- `orchestrator.domain` (M1a): die Grundbegriffe – `Journeys`, `AcrLevels`,
   `ChannelType`, `ErrorCode`, `OrchestratorException`, `ToolCatalog`.
-- `orchestrator.domain.journey`: `IntentStrategy`, `JourneyContext`, `JourneyEvent`, `Transition`,
-  `Action`. Darunter liegen `state` (die Zustände je Intent) und `strategy` (eine Strategie je
-  Intent). Ein Intent ist das Ziel einer Journey, etwa „registrieren“ oder „anmelden“. Dazu kommen die
+- `orchestrator.domain.journey`: `Journey` (mit den Startpunkten), `JourneyContext`, `JourneyEvent`,
+  `Transition`, `Action`. Darunter liegen `state` (die Zustände je Journey) und `strategy` (ein
+  Objekt je Journey, etwa „registrieren“ oder „anmelden“). Dazu kommen die
   Regeln für das Ausführen von Aktionen:
   - `AccountRules.kt`: welches Konto eine Aktion betrifft (ADR-18/20). So arbeitet eine Sitzung nie
     mit einem Konto, das sie nicht nachgewiesen hat.
@@ -500,7 +500,7 @@ Modulen:
 - Im Orchestrator führt `JourneyService` jeden Übergang durch vier Phasen
   ([Orchestrierung](04-orchestrierung.md) Abschnitt 8, „Die vier Phasen eines Übergangs“):
   1. lesen (`JourneyContextFactory`),
-  2. entscheiden (`IntentStrategy`),
+  2. entscheiden (`Journey`),
   3. ausführen (`JourneyActionExecutor`),
   4. `next` ableiten, also festlegen, was der Client als Nächstes tun soll (`JourneyRouting`).
 
@@ -563,7 +563,7 @@ Stellen eine Hilfe. Jede dieser Hilfen steht an genau einer Stelle und ist dort 
 
 **Wo man zu lesen anfängt.**
 
-1. Eine Strategie unter `orchestrator/domain/journey/strategy`, etwa `StepUpStrategy.kt`, mit ihren
+1. Eine Strategie unter `orchestrator/domain/journey/strategy`, etwa `StepUpJourney.kt`, mit ihren
    Zuständen unter `domain/journey/state` (`StepUpState.kt`). Das Zustandsdiagramm dazu steht in
    [journeys/step-up.md](journeys/step-up.md).
 2. `AccountRules.kt` und `CredentialRules.kt` unter `domain/journey`: was beim Ausführen einer

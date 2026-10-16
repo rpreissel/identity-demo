@@ -6,7 +6,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQue
 import com.example.identity.core.orchestrator.domain.journey.state.AnswerableState
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -46,7 +45,7 @@ internal inline fun reIdentifyOr(
     whenNone: () -> Transition
 ): Transition =
     if (CandidateTools.forReIdentification(targetAcr, ctx).isNotEmpty()) {
-        Transition.RequireSubJourney(AuthIntent.RE_IDENTIFY, seedWith = ReIdentifyState.forSubJourney(targetAcr, wording), resumeWith = resumeWith, optional = optional)
+        Transition.RequireSubJourney(ReIdentifyJourney, seedWith = ReIdentifyState.forSubJourney(targetAcr, wording), resumeWith = resumeWith, optional = optional)
     } else {
         whenNone()
     }

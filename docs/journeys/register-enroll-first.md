@@ -9,7 +9,7 @@ Dies ist eine zweite Variante der Registrierung (`REGISTER`). Sie dreht die
 Reihenfolge um: Der Nutzer richtet zuerst Anmeldeverfahren ein, und die Identifizierung wird erst
 am Ende angeboten.
 
-**Dieselbe Strategie, dieselben Zustände.** Beide Varianten laufen in `RegisterStrategy` und nutzen
+**Dieselbe Strategie, dieselben Zustände.** Beide Varianten laufen in `RegisterJourney` und nutzen
 dieselben Zustände (`RegisterState`, `Enrolling`, `DeviceLinkQuestion`). Die Strategie fragt an
 wenigen Stellen den Schalter: beim Start (Adresse statt Identifizierung), vor dem Einrichten (keine
 loa2-Untergrenze) und am Ende (freiwillige Identifizierung, dann die Gerätefrage).

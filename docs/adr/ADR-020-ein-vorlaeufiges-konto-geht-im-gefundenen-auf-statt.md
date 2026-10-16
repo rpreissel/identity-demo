@@ -83,7 +83,7 @@ Für den Kanal gilt dasselbe in umgekehrter Richtung: Nachweis und Geräteverkn�
 neue Konto umgestellt (`SessionEvidenceService.rebindToAccount`, `linkDeviceToAccount`), **bevor** das
 alte Konto gelöscht wird. Was die Sitzung bewiesen hat, bleibt bewiesen; nur die zwischengespeicherten
 Tokens entfallen. Danach läuft die Registrierung noch einmal durch
-`RegisterStrategy.afterIdentification`. Dort wird geprüft: Ist das Gerät schon mit einem anderen
+`RegisterJourney.afterIdentification`. Dort wird geprüft: Ist das Gerät schon mit einem anderen
 Konto verknüpft? Kann das Konto ein vorhandenes Verfahren nachweisen, statt ein neues einzurichten?
 
 ## Begründung

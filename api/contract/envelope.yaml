@@ -166,7 +166,7 @@ components:
           minItems: 1
           type: array
         intent:
-          description: 'The entry intent''s own name, case-insensitively (AuthIntent.fromRequest) - no separate wire vocabulary.
+          description: 'The entry intent''s own name, case-insensitively (Journeys.fromRequest) - no separate wire vocabulary.
             Omitted/fast_access (default): DeviceAccountLink found -> LOGIN, else REGISTRATION. lookup_login: always offers
             lookup-based login (email + credential), even on a linked device. register: always starts fresh REGISTRATION,
             even on a linked device (second account). confirm_peer_login: a cold app approves a waiting web login (QR pairing)
@@ -1153,9 +1153,9 @@ paths:
       - Channels
   /orchestrator/api/v1/channels/{channelSessionId}/peer-logins:
     post:
-      description: Channel must already be AUTHENTICATED (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN). Same AuthIntent.CONFIRM_PEER_LOGIN
-        as the cold-entry path via POST /app/channels - gates on loa2 (step-up offered first if below it), then offers approve-qr
-        as the one candidate.
+      description: Channel must already be AUTHENTICATED (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN). Same CONFIRM_PEER_LOGIN
+        journey as the cold-entry path via POST /app/channels - gates on loa2 (step-up offered first if below it), then offers
+        approve-qr as the one candidate.
       operationId: confirmPeerLogin
       parameters:
       - in: path

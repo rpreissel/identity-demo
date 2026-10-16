@@ -80,7 +80,7 @@ einmaligen `toolSessionId`.
   Das Gerät liefert nie mehr, als die Sitzung beim Einrichten nachgewiesen hatte. Dafür sorgen die
   allgemeinen Prüfungen, kein eigener Code: `enrolledUnderAcr` begrenzt das Niveau (ADR-5). Nach
   einer Identifizierung steht die Sitzung schon auf `loa2`. Vor jedem späteren Einrichten verlangt
-  `AuthIntent.MANAGE_AUTH_METHODS` über die Schwelle `selfServiceAcrFloor` denselben Nachweis. Für
+  die Journey `MANAGE_AUTH_METHODS` über die Schwelle `selfServiceAcrFloor` denselben Nachweis. Für
   ein Konto, das nie identifiziert wurde, reicht dabei loa1.
 
 Wird das Gerät mit `intent=register` neu mit einem anderen Konto verknüpft, wird das bisherige

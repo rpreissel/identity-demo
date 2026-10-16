@@ -70,7 +70,7 @@ interface ActiveTool {
 
 
 /**
- * Wire vocabulary of AuthIntent's entry intents (backend `AuthIntent.fromRequest`) mapped to
+ * Wire vocabulary of the journeys that open an App channel (backend `Journeys.fromRequest`) mapped to
  * `handleStart`'s mode names. Only intents this app can enter cold from a URL.
  */
 const INTENT_TO_START_MODE: Record<string, 'auto' | 'login' | 'register' | 'confirmPeerLogin'> = {
@@ -304,7 +304,7 @@ export function AppChannelApp() {
   }, [dpop, channelSessionId])
 
   /**
-   * URL entry point (docs/10-frontend.md #6, FE-18): reads `intent` (AuthIntent's wire vocabulary)
+   * URL entry point (docs/10-frontend.md #6, FE-18): reads `intent` (the journeys' wire vocabulary)
    * and `pairingCode` once `dpop` is ready, then strips both from the URL. A ref guards against
    * StrictMode's double invocation.
    *

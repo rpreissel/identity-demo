@@ -72,7 +72,7 @@ class RequiredActionIntegrationTest : IntegrationTestSupport() {
 
                 then("a step-up is proposed first - MANAGE demands loa2, sms proved only loa1") {
                     // selfServiceAcrFloor for an identified account. Candidate computation is
-                    // unit-tested (ReIdentifyStrategyTest); here only the round trip.
+                    // unit-tested (ReIdentifyJourneyTest); here only the round trip.
                     started.next() shouldBe mapOf("type" to "orchestrator", "context" to "prompt", "step" to "confirm")
                 }
             }

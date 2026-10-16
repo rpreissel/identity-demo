@@ -6,5 +6,5 @@ import com.example.identity.core.orchestrator.journeytrace.LoggedJourney
 fun AuthJourney.forLog(): LoggedJourney = LoggedJourney(
     journeyId = id,
     parentJourneyId = parentJourneyId,
-    intent = requireIntent()
+    intent = requireKind().name
 )

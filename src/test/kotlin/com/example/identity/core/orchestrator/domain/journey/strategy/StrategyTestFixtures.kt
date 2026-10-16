@@ -35,7 +35,7 @@ import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
- * Shared fixtures for [IntentStrategy] unit tests, built on the real catalog (every module's
+ * Shared fixtures for [Journey] unit tests, built on the real catalog (every module's
  * `ToolModule`), so strategies see the same candidate resolution as production
  * (docs/03-tool-architektur.md #2). The modules are plain values; no Spring context is needed.
  */

@@ -104,7 +104,7 @@ async function call<T>(dpop: DpopKeyPair, method: string, path: string, body?: u
 
 /**
  * Always creates a new channel for this device, never a resume (docs/02-domaenenmodell.md #3).
- * [intent] is the backend's AuthIntent name, case-insensitive. Omitted or "fast_access": device
+ * [intent] is the name of a backend journey that opens an App channel, case-insensitive. Omitted or "fast_access": device
  * link found -> LOGIN, else REGISTRATION. "lookup_login" offers login by email and credential,
  * "register" starts a fresh REGISTRATION (a second account on this device); both also on a linked device.
  */
@@ -150,7 +150,7 @@ export function getMethods(dpop: DpopKeyPair, channelSessionId: string): Promise
 }
 
 /**
- * Voluntary enrollment on an AUTHENTICATED channel (AuthIntent.MANAGE): offers the enroll-* tools
+ * Voluntary enrollment on an AUTHENTICATED channel (MANAGE_AUTH_METHODS journey): offers the enroll-* tools
  * and finishes after one. Call again to add another.
  */
 export function startManageMethods(dpop: DpopKeyPair, channelSessionId: string): Promise<ChannelResponse> {
@@ -158,7 +158,7 @@ export function startManageMethods(dpop: DpopKeyPair, channelSessionId: string):
 }
 
 /**
- * Confirms a WEB-channel QR login from this AUTHENTICATED channel (AuthIntent.CONFIRM_PEER_LOGIN,
+ * Confirms a WEB-channel QR login from this AUTHENTICATED channel (CONFIRM_PEER_LOGIN journey,
  * docs/04-orchestrierung.md). Gates on loa2 (step-up first if below), then offers approve-qr.
  */
 export function startPeerLogin(dpop: DpopKeyPair, channelSessionId: string): Promise<ChannelResponse> {

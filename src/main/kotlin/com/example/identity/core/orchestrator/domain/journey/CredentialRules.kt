@@ -4,7 +4,6 @@ import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AuthMethodView
 import com.example.identity.core.orchestrator.domain.AcrLevels
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.ToolCatalog
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
 import com.example.identity.core.orchestrator.domain.policy.Reachability
@@ -43,13 +42,13 @@ fun proofLevel(active: List<AuthMethodView>, module: ToolModule, bindingKeyRef: 
 }
 
 /**
- * Whether succeeding at [intent] links this device to [accountId] on its own. Never as a rebind:
- * an ordinary flow is consent to be recognized next time, not to take the device away from another
- * account (which also revokes that account's device credentials). A rebind needs an explicit
- * answer (`DeviceLinkQuestion`).
+ * Whether succeeding on an App channel opened with [onSuccess] links this device to [accountId] on
+ * its own. Never as a rebind: an ordinary flow is consent to be recognized next time, not to take
+ * the device away from another account (which also revokes that account's device credentials). A
+ * rebind needs an explicit answer (`DeviceLinkQuestion`).
  */
-fun linksDeviceImplicitly(intent: AuthIntent, linkedTo: AccountId?, accountId: AccountId): Boolean =
-    intent.linksDeviceWithoutAsking && (linkedTo == null || linkedTo == accountId)
+fun linksDeviceImplicitly(onSuccess: DeviceLink, linkedTo: AccountId?, accountId: AccountId): Boolean =
+    onSuccess == DeviceLink.LINK_WITHOUT_ASKING && (linkedTo == null || linkedTo == accountId)
 
 /**
  * The active methods of [account] whose credential lives on [bindingKeyRef], i.e. those that stop

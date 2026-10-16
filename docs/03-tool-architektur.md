@@ -65,16 +65,16 @@ flowchart LR
 
 Das zweite Bild zeigt, wie der Orchestrator und ein Tool-Modul wie `auth_sms` bei einem konkreten
 Schritt zusammenarbeiten. Der Nutzer gibt zum Beispiel eine TAN ein. Das Tool prüft sie und meldet
-sein Ergebnis (`ToolOutcome`). Die Strategie des Intents (`IntentStrategy`) entscheidet dann, wie es
-weitergeht. Ein **Intent** ist das Anliegen des Nutzers, etwa sich anzumelden. Eine **Journey** ist
-der geführte Ablauf zu diesem Intent.
+sein Ergebnis (`ToolOutcome`). Die Journey (`Journey`) entscheidet dann, wie es weitergeht. Eine
+**Journey** ist das Anliegen des Nutzers, etwa sich anzumelden, zusammen mit dem geführten Ablauf
+dorthin.
 
 ```mermaid
 sequenceDiagram
   participant TC as ToolController (Tool-Modul)
   participant TH as ToolHandler
   participant JS as JourneyService
-  participant IS as IntentStrategy
+  participant IS as Journey
   participant AC as account
   participant KC as Keycloak
 
@@ -119,7 +119,7 @@ Für Sie als Backend-Entwickler heißt das:
   Journey oder andere Module überhaupt lesen zu müssen.
 - **Der Vertrag ist klein und stabil.** Ihr `ToolHandler` liefert nur ein `ToolOutcome`. Was das
   für die Journey, ihren Zustand und den nächsten Schritt bedeutet, entscheidet allein die
-  `IntentStrategy`. Beim Schreiben eines Tools müssen Sie also nie die ganze Zustandsmaschine im
+  `Journey`. Beim Schreiben eines Tools müssen Sie also nie die ganze Zustandsmaschine im
   Kopf haben.
 - **App- und Web-Kanal sind für Sie gleich.** Journey, Tool und `next` funktionieren für beide
   Zugänge gleich ([05-api.md](05-api.md)); Sie schreiben keine Sonderfälle für einen einzelnen

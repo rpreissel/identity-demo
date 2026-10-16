@@ -3,10 +3,9 @@ package com.example.identity.core.orchestrator.domain.journey.strategy
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginStrategy
+import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginJourney
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.AuthIntent
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
@@ -27,12 +26,12 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * Pure unit coverage of [LookupLoginStrategy] - logging into an existing account from an unpaired
+ * Pure unit coverage of [LookupLoginJourney] - logging into an existing account from an unpaired
  * device (docs/04-orchestrierung.md, "LOOKUP_LOGIN"). No Spring context, no HTTP.
  */
-class LookupLoginStrategyTest : BehaviorSpec({
+class LookupLoginJourneyTest : BehaviorSpec({
 
-    val strategy = LookupLoginStrategy()
+    val strategy = LookupLoginJourney
 
     // The first proof, offered by a lookup tool that resolves the account itself.
     val smsLookupCredential = LookupLoginState.Credential(Offer(listOf(ToolId("auth-sms-lookup"))))
@@ -80,7 +79,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), linkedAccountId = null)
 
         `when`("resumed after a RE_IDENTIFY sub-journey (SubJourneyFinished)") {
-            val event = JourneyEvent.SubJourneyFinished(AuthIntent.RE_IDENTIFY, achievedAcr = AcrLevel.LOA2)
+            val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2)
             val transition = strategy.transition(LookupLoginState.Start, event, theCtx)
             then("delegates to the same settle-or-raise check as any other proof") {
                 transition shouldBe Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.OFFER))
@@ -162,7 +161,7 @@ class LookupLoginStrategyTest : BehaviorSpec({
             then("requires the shared RE_IDENTIFY sub-journey - it only re-confirms this account, never adopts a different one") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        AuthIntent.RE_IDENTIFY,
+                        ReIdentifyJourney,
                         seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
                         resumeWith = LookupLoginState.Start
                     )
