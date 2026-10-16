@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.CallerProof
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journeys.RegisterJourney
 import com.example.identity.core.orchestrator.domain.journeys.WebSelectMethodJourney
@@ -49,7 +50,7 @@ class KeycloakChannelServiceTest : BehaviorSpec({
 
                 then("it is rejected up front with 409, never silently mapped to web_select_method") {
                     shouldThrow<OrchestratorException> { result.getOrThrow() }.code shouldBe ErrorCode.INVALID_STATE_TRANSITION
-                    verify(exactly = 0) { fixture.sessionManagementService.createWebChannelSession(any(), any(), any(), any(), any(), any()) }
+                    verify(exactly = 0) { fixture.sessionManagementService.createWebChannelSession(any(), any(), any(), any(), any()) }
                 }
             }
         }
@@ -90,19 +91,19 @@ private class KeycloakChannelFixture {
         jti = UUID.randomUUID().toString(), issuedAt = TEST_NOW, channelBinding = channelSessionId.toString(), subject = null
     )
     val existing = ChannelSession(ChannelType.WEB, null, TEST_NOW.plus(Duration.ofMinutes(30)), now = TEST_NOW).apply {
-        channelBinding = channelSessionId.toString()
+        channelSessionId = this@KeycloakChannelFixture.channelSessionId
     }
     val entryJourney = slot<Journey<*>>()
     val sessionManagementService = mockk<SessionManagementService>(relaxed = true) {
         every { findChannelSessionById(channelSessionId) } returns null
-        every { createWebChannelSession(channelSessionId, any(), any(), any(), any(), capture(entryJourney)) } returns existing
+        every { createWebChannelSession(channelSessionId, any(), any(), any(), capture(entryJourney)) } returns existing
     }
-    private val keycloakChannelAccessGuard = mockk<KeycloakChannelAccessGuard> {
-        every { requireChannel(channelSessionId, assertion) } returns existing
+    private val channelAccessGuard = mockk<ChannelAccessGuard> {
+        every { requireChannel(channelSessionId, CallerProof.KeycloakFlow(channelSessionId)) } returns existing
     }
     val service = KeycloakChannelService(
         sessionManagementService = sessionManagementService,
-        keycloakChannelAccessGuard = keycloakChannelAccessGuard,
+        channelAccessGuard = channelAccessGuard,
         channelService = mockk(relaxed = true),
         journeyService = mockk(relaxed = true),
         accountService = mockk(relaxed = true),

@@ -3,6 +3,7 @@ package com.example.identity.core.orchestrator.api.v1.tool
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.contract.tool_api.BindingKey
+import com.example.identity.contract.tool_api.CallerProof
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolJourney
 
@@ -60,9 +61,9 @@ class LeaveToolController(private val toolJourney: ToolJourney) {
         @PathVariable toolSessionId: ToolSessionId,
         @PathVariable toolId: String,
         @PathVariable version: Int,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, ToolVersion(ToolId(toolId), version))
+        val context = toolJourney.loadCurrent(toolSessionId, caller, ToolVersion(ToolId(toolId), version))
         return ResponseEntity.ok(toolJourney.abandon(context))
     }
 
@@ -90,9 +91,9 @@ class LeaveToolController(private val toolJourney: ToolJourney) {
         @PathVariable toolSessionId: ToolSessionId,
         @PathVariable toolId: String,
         @PathVariable version: Int,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<ChannelResponse> {
-        val context = toolJourney.loadCurrent(toolSessionId, bindingKeyRef, ToolVersion(ToolId(toolId), version))
+        val context = toolJourney.loadCurrent(toolSessionId, caller, ToolVersion(ToolId(toolId), version))
         return ResponseEntity.ok(toolJourney.back(context))
     }
 }

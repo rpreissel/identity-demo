@@ -110,7 +110,7 @@ class EnrollKobilToolController(
             context.toolSessionId,
             request?.activated,
             request?.biometricConsent,
-            context.bindingKeyRef,
+            context.caller.requireDeviceKey().thumbprint,
             request?.label,
             masterKey = context::masterKey,
         )

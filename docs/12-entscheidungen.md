@@ -74,6 +74,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/). Die Tabelle nennt 
 | [ADR-61](adr/ADR-061-frischer-nachweis-als-gemeinsame-sub-journey.md) | Niveau und frischer Nachweis vor einer Aktion am Konto sind die gemeinsame Sub-Journey `FRESH_PROOF`; `DELETE_ACCOUNT`, `MANAGE_AUTH_METHODS` und `CONFIRM_PEER_LOGIN` behalten nur ihren Zweck |
 | [ADR-62](adr/ADR-062-ablehnen-entscheidet-der-zustand.md) | Was Ablehnen bewirkt, deklariert der Angebots-Zustand (`declinePolicy`) und beantwortet der Fachkern; die Journey sieht nur noch `OfferExhausted` |
 | [ADR-63](adr/ADR-063-journeys-als-objekte-mit-startpunkten.md) | Journeys sind Objekte mit Startpunkten (`OpensAppChannel`, `OpensWebChannel`, `StartableWhenAuthenticated`, `OnlyAsSubJourney`), in `Journeys` gelistet; `AuthIntent` und `IntentStrategy` entfallen, die Geräteverknüpfung folgt dem Kanal-Einstieg |
+| [ADR-64](adr/ADR-064-wer-anfragt-ist-ein-typ.md) | Wer anfragt, ist ein Typ (`CallerProof.DeviceKey` / `KeycloakFlow`) statt `bindingKeyRef` mit `kc:`-Präfix; ein `ChannelAccessGuard`, `channel_binding`-Spalte entfällt |
 
 Die Nummern ADR-4, 13, 23 und 30 fehlen. Ihr Inhalt steht heute an anderer Stelle:
 

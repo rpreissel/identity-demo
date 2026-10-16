@@ -35,8 +35,8 @@ interface ToolContext {
     /** The version of the tool's contract the client speaks, as its path names it (ADR-51). */
     val version: Int
     val toolSessionId: ToolSessionId
-    /** The caller's resolved binding key (see [BindingKey]), already checked against the channel. */
-    val bindingKeyRef: String
+    /** Who is calling ([CallerProof], see [BindingKey]), already checked against the channel. */
+    val caller: CallerProof
     /**
      * The account in hand: the one this channel knows (device link, earlier login, or bound by the
      * running journey), or `null` while nobody is known yet.
@@ -76,20 +76,20 @@ interface ToolJourney {
     /**
      * Activates [tool] on the channel: creates a new tool session and advances the journey to it.
      *
-     * @param bindingKeyRef the caller's resolved DPoP binding key (see [BindingKey]).
+     * @param caller the proven caller (see [BindingKey]).
      * @throws RuntimeException if the channel or binding is invalid, the channel declared another
      * version of the tool, or the journey does not offer it.
      */
-    fun beginActivation(channelSessionId: ChannelSessionId, bindingKeyRef: String, tool: ToolVersion): ActivationToolContext
+    fun beginActivation(channelSessionId: ChannelSessionId, caller: CallerProof, tool: ToolVersion): ActivationToolContext
 
     /**
      * Loads the context of an existing tool session for the read path. Whether it is still the
      * current tool, [isCurrentTool] tells.
      *
-     * @throws RuntimeException if the tool session does not exist, the binding key does not match
+     * @throws RuntimeException if the tool session does not exist, the caller does not match
      * its channel, or the channel declared another version of the tool.
      */
-    fun loadContext(toolSessionId: ToolSessionId, bindingKeyRef: String, tool: ToolVersion): ToolContext
+    fun loadContext(toolSessionId: ToolSessionId, caller: CallerProof, tool: ToolVersion): ToolContext
 
     /**
      * The `Location` header value for a just-created tool resource.
@@ -104,7 +104,7 @@ interface ToolJourney {
      *
      * @throws RuntimeException if it is not the journey's current tool.
      */
-    fun loadCurrent(toolSessionId: ToolSessionId, bindingKeyRef: String, tool: ToolVersion): AuthorizedToolContext
+    fun loadCurrent(toolSessionId: ToolSessionId, caller: CallerProof, tool: ToolVersion): AuthorizedToolContext
 
     /**
      * The credential of [module]'s method this caller may prove: the account's active one, or for a

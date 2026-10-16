@@ -8,6 +8,7 @@ import com.example.identity.core.orchestrator.channel.MethodsResponse
 import com.example.identity.core.orchestrator.channel.TokenResponse
 import com.example.identity.core.orchestrator.channel.DeviceLinkResponse
 import com.example.identity.contract.tool_api.BindingKey
+import com.example.identity.contract.tool_api.CallerProof
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
@@ -50,8 +51,8 @@ class ChannelCreationController(
             "proof every other App-facade call already needs. Lets the entry screen show whose device this is " +
             "before the user picks how to start."
     )
-    fun getDeviceLink(@BindingKey(dpopOnly = true) bindingKeyRef: String): DeviceLinkResponse =
-        channelService.findDeviceLink(bindingKeyRef)
+    fun getDeviceLink(@BindingKey device: CallerProof.DeviceKey): DeviceLinkResponse =
+        channelService.findDeviceLink(device)
 
     @PostMapping
     @Operation(
@@ -75,11 +76,11 @@ class ChannelCreationController(
         ]
     )
     fun createChannel(
-        @BindingKey(dpopOnly = true) bindingKeyRef: String,
+        @BindingKey device: CallerProof.DeviceKey,
         @Valid @RequestBody request: ChannelCreateRequest,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val response = channelService.initializeChannel(bindingKeyRef, request.requiredAcr, request.intent, request.availableTools)
+        val response = channelService.initializeChannel(device, request.requiredAcr, request.intent, request.availableTools)
         val location = uriBuilder.replacePath("$API_V1/channels/{channelSessionId}")
             .buildAndExpand(response.channel.channelSessionId).toUri()
         return ResponseEntity.status(HttpStatus.CREATED).location(location).body(response)
@@ -117,9 +118,9 @@ class ChannelController(
     )
     fun getChannel(
         @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<ChannelResponse> {
-        return ResponseEntity.ok(channelService.getChannel(channelSessionId, bindingKeyRef))
+        return ResponseEntity.ok(channelService.getChannel(channelSessionId, caller))
     }
 
     @PostMapping("/{channelSessionId}/step-ups")
@@ -142,10 +143,10 @@ class ChannelController(
     )
     fun raiseRequiredAcr(
         @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String,
+        @BindingKey caller: CallerProof,
         @RequestBody request: ChannelPatchRequest
     ): ResponseEntity<ChannelResponse> {
-        return ResponseEntity.ok(channelService.raiseRequiredAcr(channelSessionId, bindingKeyRef, request.requiredAcr))
+        return ResponseEntity.ok(channelService.raiseRequiredAcr(channelSessionId, caller, request.requiredAcr))
     }
 
     @DeleteMapping("/{channelSessionId}/journey")
@@ -167,9 +168,9 @@ class ChannelController(
     )
     fun cancel(
         @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<ChannelResponse> {
-        return ResponseEntity.ok(channelService.cancelActiveJourney(channelSessionId, bindingKeyRef))
+        return ResponseEntity.ok(channelService.cancelActiveJourney(channelSessionId, caller))
     }
 
     @DeleteMapping("/{channelSessionId}")
@@ -184,9 +185,9 @@ class ChannelController(
     )
     fun logout(
         @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<Void> {
-        channelService.logout(channelSessionId, bindingKeyRef)
+        channelService.logout(channelSessionId, caller)
         return ResponseEntity.noContent().build()
     }
 
@@ -214,10 +215,10 @@ class ChannelController(
     )
     fun answer(
         @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String,
+        @BindingKey caller: CallerProof,
         @RequestBody request: AnswerRequest
     ): ResponseEntity<ChannelResponse> {
-        return ResponseEntity.ok(channelService.answer(channelSessionId, bindingKeyRef, request.answer))
+        return ResponseEntity.ok(channelService.answer(channelSessionId, caller, request.answer))
     }
 
     @GetMapping("/{channelSessionId}/methods")
@@ -243,9 +244,9 @@ class ChannelController(
     )
     fun getMethods(
         @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<MethodsResponse> {
-        return ResponseEntity.ok(channelService.getMethods(channelSessionId, bindingKeyRef))
+        return ResponseEntity.ok(channelService.getMethods(channelSessionId, caller))
     }
 
     @PostMapping("/{channelSessionId}/enrollments")
@@ -270,9 +271,9 @@ class ChannelController(
     )
     fun manageMethods(
         @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<ChannelResponse> {
-        return ResponseEntity.ok(channelService.startManageMethods(channelSessionId, bindingKeyRef))
+        return ResponseEntity.ok(channelService.startManageMethods(channelSessionId, caller))
     }
 
     @PostMapping("/{channelSessionId}/peer-logins")
@@ -296,9 +297,9 @@ class ChannelController(
     )
     fun confirmPeerLogin(
         @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<ChannelResponse> {
-        return ResponseEntity.ok(channelService.startPeerLogin(channelSessionId, bindingKeyRef))
+        return ResponseEntity.ok(channelService.startPeerLogin(channelSessionId, caller))
     }
 
     @PostMapping("/{channelSessionId}/account-deletions")
@@ -329,9 +330,9 @@ class ChannelController(
     )
     fun deleteAccount(
         @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<ChannelResponse> {
-        return ResponseEntity.ok(channelService.startDeleteAccount(channelSessionId, bindingKeyRef))
+        return ResponseEntity.ok(channelService.startDeleteAccount(channelSessionId, caller))
     }
 
     @DeleteMapping("/{channelSessionId}/methods/{methodInstanceId}")
@@ -361,9 +362,9 @@ class ChannelController(
     fun deactivateMethod(
         @PathVariable channelSessionId: ChannelSessionId,
         @PathVariable methodInstanceId: String,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<ChannelResponse> {
-        return ResponseEntity.ok(channelService.deactivateMethod(channelSessionId, bindingKeyRef, methodInstanceId))
+        return ResponseEntity.ok(channelService.deactivateMethod(channelSessionId, caller, methodInstanceId))
     }
 
     @PostMapping("/{channelSessionId}/methods/{methodInstanceId}/changes")
@@ -390,9 +391,9 @@ class ChannelController(
     fun changeMethod(
         @PathVariable channelSessionId: ChannelSessionId,
         @PathVariable methodInstanceId: String,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<ChannelResponse> {
-        return ResponseEntity.ok(channelService.changeMethod(channelSessionId, bindingKeyRef, methodInstanceId))
+        return ResponseEntity.ok(channelService.changeMethod(channelSessionId, caller, methodInstanceId))
     }
 
     @DeleteMapping("/{channelSessionId}/attributes/{attribute}")
@@ -423,9 +424,9 @@ class ChannelController(
     fun retractAttribute(
         @PathVariable channelSessionId: ChannelSessionId,
         @PathVariable attribute: String,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<ChannelResponse> {
-        return ResponseEntity.ok(channelService.retractAttribute(channelSessionId, bindingKeyRef, attribute))
+        return ResponseEntity.ok(channelService.retractAttribute(channelSessionId, caller, attribute))
     }
 
     @GetMapping("/{channelSessionId}/token")
@@ -452,10 +453,10 @@ class ChannelController(
     )
     fun getToken(
         @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String,
+        @BindingKey caller: CallerProof,
         @RequestParam(defaultValue = "15") minValiditySeconds: Long
     ): ResponseEntity<TokenResponse> {
-        return ResponseEntity.ok(channelService.getToken(channelSessionId, bindingKeyRef, minValiditySeconds))
+        return ResponseEntity.ok(channelService.getToken(channelSessionId, caller, minValiditySeconds))
     }
 
     @GetMapping("/{channelSessionId}/idclaims")
@@ -485,8 +486,8 @@ class ChannelController(
     )
     fun getIdClaims(
         @PathVariable channelSessionId: ChannelSessionId,
-        @BindingKey bindingKeyRef: String
+        @BindingKey caller: CallerProof
     ): ResponseEntity<Map<String, Any?>> {
-        return ResponseEntity.ok(channelService.getIdClaims(channelSessionId, bindingKeyRef))
+        return ResponseEntity.ok(channelService.getIdClaims(channelSessionId, caller))
     }
 }

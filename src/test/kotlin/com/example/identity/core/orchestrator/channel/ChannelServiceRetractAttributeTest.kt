@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.CallerProof
 import com.example.identity.core.orchestrator.domain.journeys.ManageAuthMethodsJourney
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.Subject
@@ -33,7 +34,7 @@ class ChannelServiceRetractAttributeTest : BehaviorSpec({
         listOf("person_id", "member_number", "restricted_id", "nect_restricted_id", "versnr").forEach { attribute ->
             `when`("the holder tries to withdraw $attribute") {
                 val fixture = RetractAttributeFixture()
-                val result = runCatching { fixture.service.retractAttribute(fixture.channelSessionId, "own-key", attribute) }
+                val result = runCatching { fixture.service.retractAttribute(fixture.channelSessionId, CallerProof.DeviceKey("own-key"), attribute) }
 
                 then("it is refused with 409, and no journey starts") {
                     shouldThrow<OrchestratorException> { result.getOrThrow() }.code shouldBe ErrorCode.INVALID_STATE_TRANSITION
@@ -44,7 +45,7 @@ class ChannelServiceRetractAttributeTest : BehaviorSpec({
 
         `when`("the holder withdraws the confirmed address") {
             val fixture = RetractAttributeFixture()
-            fixture.service.retractAttribute(fixture.channelSessionId, "own-key", "email")
+            fixture.service.retractAttribute(fixture.channelSessionId, CallerProof.DeviceKey("own-key"), "email")
 
             then("the manage journey starts with that wish") {
                 verify {

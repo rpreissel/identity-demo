@@ -66,7 +66,7 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
 
 - **`ChangeLog`** (Tabelle `account.change_log`) → **Änderungsprotokoll**: hält fest, welche
   Angabe wann geändert wurde. Die Werte selbst enthält es nicht. Es wird zehn Jahre aufbewahrt. [Glossar](glossar.md#a)
-- **`channel_binding`**, **`channelBinding`** → **Kanalbindung**: die Kennung in einer signierten
+- **`channel_binding`** → **Kanalbindung**: die Kennung in einer signierten
   Anfrage von Keycloak, an der der Orchestrator den zugehörigen Kanal erkennt. [Glossar](glossar.md#k)
 - **`ChannelSession`** → **Kanal**: die Verbindung eines Clients zum Orchestrator, die
   nur kurze Zeit besteht.

@@ -32,7 +32,11 @@ class ChannelSession(
     @Column(name = "channel", nullable = false, length = 32)
     var channel: ChannelType? = null,
 
-    /** APP only (docs/02-domaenenmodell.md Abschnitt 1). WEB channels binding via [channelBinding]. */
+    /**
+     * APP only (docs/02-domaenenmodell.md Abschnitt 1): the fingerprint of the device key that opened
+     * this channel. A WEB channel is bound to its own id, which Keycloak's assertion names
+     * (`ChannelAccessGuard`).
+     */
     @Column(name = "binding_key_ref", length = 64)
     var bindingKeyRef: String? = null,
 
@@ -40,15 +44,6 @@ class ChannelSession(
     var expiresAt: Instant? = null,
     now: Instant
 ) {
-    /**
-     * WEB-only channel binding (docs/02-domaenenmodell.md Abschnitt 1): this flow run's own
-     * `channelSessionId`, carried in the peer-auth assertion. [ChannelAccessGuard] checks it, so a
-     * leaked `channelSessionId` plus any valid Keycloak signature cannot hijack the channel. Not the
-     * durable `UserSessionModel` id, which concurrent flow runs of one SSO session would share.
-     */
-    @Column(name = "channel_binding", length = 64)
-    var channelBinding: String? = null
-
     /**
      * WEB only: Keycloak's durable `UserSessionModel` id, known once a flow has completed
      * (set by `KeycloakChannelService.flowEnded`). Only [com.example.identity.core.orchestrator.retention.RetentionJob]

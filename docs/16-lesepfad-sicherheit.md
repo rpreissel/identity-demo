@@ -99,12 +99,12 @@ anderen Pfade lässt Spring Security durch, und die Handler prüfen sie selbst.
 - [`RequestBodyLimitFilter`](../src/main/kotlin/com/example/identity/core/orchestrator/RequestBodyLimitFilter.kt)
   lässt höchstens 64 KB je Anfrage zu. Er prüft das, bevor irgendein anderer Code den Body liest
   (SA-10, `RequestBodyLimitIntegrationTest`).
-- [`DpopBindingKeyResolver.bindingKeyOf`](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/DpopBindingKeyResolver.kt#L52)
-  ermittelt, an welchen Schlüssel eine Anfrage gebunden ist. Aus einem DPoP-Header wird der
-  Thumbprint, also ein Fingerabdruck des Schlüssels. Sonst wird aus einer Peer-Auth-Assertion
-  `kc:<channel_binding>`. Endpunkte mit `dpopOnly`
-  (App-Kanal anlegen, Geräteverknüpfung) lehnen eine Assertion ab (SA-19,
-  `DpopBindingKeyResolverTest`).
+- [`CallerProofResolver.callerOf`](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/CallerProofResolver.kt)
+  ermittelt, wer eine Anfrage stellt (`CallerProof`). Aus einem DPoP-Header wird
+  `CallerProof.DeviceKey` mit dem Thumbprint, also einem Fingerabdruck des Schlüssels. Sonst wird aus
+  einer Peer-Auth-Assertion `CallerProof.KeycloakFlow` mit der Kanal-Id aus `channel_binding`.
+  Endpunkte, deren Parameter als `CallerProof.DeviceKey` typisiert ist (App-Kanal anlegen,
+  Geräteverknüpfung), lehnen eine Assertion ab (SA-19, `CallerProofResolverTest`).
 - [`ToolContextResolver.resolveArgument`](../src/main/kotlin/com/example/identity/core/orchestrator/api/v1/ToolContextResolver.kt#L48):
   Die `toolId` kommt aus dem Controller, nie vom Client.
 - [`ReadinessGateFilter`](../src/main/kotlin/com/example/identity/core/orchestrator/ReadinessGateFilter.kt#L16)
@@ -216,9 +216,11 @@ er besteht nie länger als seine Sitzung in Keycloak.
 **Code:**
 
 - [`ChannelSession`](../src/main/kotlin/com/example/identity/core/orchestrator/session/ChannelSession.kt#L25)
-  enthält `bindingKeyRef` (App), `channelBinding` (Web), `expiresAt` und `@Version`.
-- [`DeviceChannelAccessGuard`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ChannelAccessGuard.kt#L35)
-  vergleicht die Bindung in konstanter Zeit, damit die Dauer des Vergleichs nichts verrät.
+  enthält `bindingKeyRef` (App), `expiresAt` und `@Version`. Ein Web-Kanal ist an seine eigene Id
+  gebunden.
+- [`ChannelAccessGuard`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ChannelAccessGuard.kt)
+  lässt einen App-Kanal nur für seinen Geräteschlüssel zu (Vergleich in konstanter Zeit, damit die
+  Dauer nichts verrät) und einen Web-Kanal nur für Keycloaks Assertion mit seiner eigenen Id.
   [`requireLiveChannel`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ChannelAccessGuard.kt#L24)
   und [`LiveChannel`](../src/main/kotlin/com/example/identity/core/orchestrator/session/LiveChannel.kt#L13)
   verhindern, dass ein beendeter Kanal noch etwas schreibt.
@@ -282,8 +284,9 @@ Abschnitt 8 „Übernommene Nachweise als erster Übergang“;
 - [`KeycloakJwkSource.find`](../src/main/kotlin/com/example/identity/core/orchestrator/keycloak/KeycloakJwkSource.kt#L31)
   lädt die Schlüssel mit Größenlimit und Zeitlimits. Ist keine `jwks-uri` eingestellt, lehnt er
   jede Assertion ab („fail-closed“: im Zweifel ablehnen).
-- [`KeycloakChannelAccessGuard`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ChannelAccessGuard.kt#L72):
-  Das `channel_binding` muss zum Kanal passen. Eine bekannte Kanal-Id allein reicht nicht.
+- [`ChannelAccessGuard`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/ChannelAccessGuard.kt):
+  Das `channel_binding` der signierten Assertion muss den Kanal nennen. Eine bekannte Kanal-Id
+  allein reicht nicht.
 - [`KeycloakChannelService.upsertChannel`](../src/main/kotlin/com/example/identity/core/orchestrator/channel/KeycloakChannelService.kt#L108):
   Ein fremdes Subjekt ergibt `409`. Die Nachweise früherer Durchläufe derselben Keycloak-Sitzung
   (`kcSessionId`) übernimmt nur ein neuer Kanal desselben Kontos. Gehören sie einem anderen Konto

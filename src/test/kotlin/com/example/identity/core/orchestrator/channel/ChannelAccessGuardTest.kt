@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.TEST_NOW
+import com.example.identity.contract.tool_api.CallerProof
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.ErrorCode
@@ -15,23 +16,23 @@ import io.mockk.mockk
 import java.util.UUID
 
 /**
- * Unit test of [DeviceChannelAccessGuard], the guard of the facade-neutral endpoints: a caller whose
- * proof does not match the channel is refused with 403 (BINDING_MISMATCH), whichever endpoint it
- * calls - reading the channel, logging out or a tool step.
+ * Unit test of [ChannelAccessGuard]: a caller whose proof does not match the channel is refused
+ * with 403 (BINDING_MISMATCH), whichever endpoint it calls - reading the channel, logging out or a
+ * tool step. An App channel admits its device key, a Web channel Keycloak's assertion for its own id.
  */
-class DeviceChannelAccessGuardTest : BehaviorSpec({
+class ChannelAccessGuardTest : BehaviorSpec({
 
     val id = ChannelSessionId(UUID.randomUUID())
 
     fun guardFor(channel: ChannelSession?) =
-        DeviceChannelAccessGuard(mockk<SessionManagementService> { every { findChannelSessionById(id) } returns channel })
+        ChannelAccessGuard(mockk<SessionManagementService> { every { findChannelSessionById(id) } returns channel })
 
     given("an app channel bound to a DPoP key") {
-        val channel = ChannelSession(ChannelType.APP, "own-thumbprint", TEST_NOW.plusSeconds(3600), now = TEST_NOW)
+        val channel = ChannelSession(ChannelType.APP, "own-thumbprint", TEST_NOW.plusSeconds(3600), now = TEST_NOW).apply { channelSessionId = id }
         val guard = guardFor(channel)
 
         `when`("the same key asks for it") {
-            val result = guard.requireChannel(id, "own-thumbprint")
+            val result = guard.requireChannel(id, CallerProof.DeviceKey("own-thumbprint"))
 
             then("the channel is returned") {
                 result shouldBe channel
@@ -39,7 +40,7 @@ class DeviceChannelAccessGuardTest : BehaviorSpec({
         }
 
         `when`("a different DPoP key claims it") {
-            val result = runCatching { guard.requireChannel(id, "a-completely-different-binding-key") }
+            val result = runCatching { guard.requireChannel(id, CallerProof.DeviceKey("a-completely-different-binding-key")) }
 
             then("it is refused as a binding mismatch, 403") {
                 val failure = shouldThrow<OrchestratorException> { result.getOrThrow() }
@@ -47,24 +48,30 @@ class DeviceChannelAccessGuardTest : BehaviorSpec({
                 failure.code.httpStatus shouldBe 403
             }
         }
+
+        `when`("Keycloak's assertion for this very id asks") {
+            val result = runCatching { guard.requireChannel(id, CallerProof.KeycloakFlow(id)) }
+
+            then("it is refused - an app channel admits only its device key") {
+                shouldThrow<OrchestratorException> { result.getOrThrow() }.code shouldBe ErrorCode.BINDING_MISMATCH
+            }
+        }
     }
 
-    given("a web channel bound to a Web channel binding") {
-        val channel = ChannelSession(ChannelType.WEB, null, TEST_NOW.plusSeconds(3600), now = TEST_NOW).apply {
-            channelBinding = "binding-1"
-        }
+    given("a web channel") {
+        val channel = ChannelSession(ChannelType.WEB, null, TEST_NOW.plusSeconds(3600), now = TEST_NOW).apply { channelSessionId = id }
         val guard = guardFor(channel)
 
-        `when`("Keycloak's binding for it asks") {
-            val result = guard.requireChannel(id, "${DeviceChannelAccessGuard.KEYCLOAK_BINDING_PREFIX}binding-1")
+        `when`("Keycloak's assertion for its own id asks") {
+            val result = guard.requireChannel(id, CallerProof.KeycloakFlow(id))
 
             then("the channel is returned") {
                 result shouldBe channel
             }
         }
 
-        `when`("another Keycloak binding asks") {
-            val result = runCatching { guard.requireChannel(id, "${DeviceChannelAccessGuard.KEYCLOAK_BINDING_PREFIX}someone-elses-binding") }
+        `when`("an assertion for another flow run asks") {
+            val result = runCatching { guard.requireChannel(id, CallerProof.KeycloakFlow(ChannelSessionId(UUID.randomUUID()))) }
 
             then("it is refused as a binding mismatch") {
                 shouldThrow<OrchestratorException> { result.getOrThrow() }.code shouldBe ErrorCode.BINDING_MISMATCH
@@ -72,7 +79,7 @@ class DeviceChannelAccessGuardTest : BehaviorSpec({
         }
 
         `when`("a DPoP key asks for it") {
-            val result = runCatching { guard.requireChannel(id, "some-thumbprint") }
+            val result = runCatching { guard.requireChannel(id, CallerProof.DeviceKey("some-thumbprint")) }
 
             then("it is refused as a binding mismatch - a web channel has no device key") {
                 shouldThrow<OrchestratorException> { result.getOrThrow() }.code shouldBe ErrorCode.BINDING_MISMATCH
@@ -84,7 +91,7 @@ class DeviceChannelAccessGuardTest : BehaviorSpec({
         val guard = guardFor(null)
 
         `when`("a caller asks for it") {
-            val result = runCatching { guard.requireChannel(id, "any-thumbprint") }
+            val result = runCatching { guard.requireChannel(id, CallerProof.DeviceKey("any-thumbprint")) }
 
             then("it is refused as not found") {
                 shouldThrow<OrchestratorException> { result.getOrThrow() }.code shouldBe ErrorCode.NOT_FOUND

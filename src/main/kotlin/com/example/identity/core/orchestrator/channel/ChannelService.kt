@@ -11,6 +11,7 @@ import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.core.orchestrator.session.SessionExpiredException
 import com.example.identity.contract.texts.Text
+import com.example.identity.contract.tool_api.CallerProof
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.OrchestratorException
@@ -83,26 +84,26 @@ class ChannelService(
      * device link consult [DeviceAccountLink]; REGISTER and LOGIN_LOOKUP mean another account.
      */
     fun initializeChannel(
-        bindingKeyRef: String,
+        device: CallerProof.DeviceKey,
         requestedAcrFloor: String?,
         intent: String? = null,
         availableTools: List<String> = emptyList()
     ): ChannelResponse {
         // Before anything is created: this endpoint is unauthenticated, and every fresh channel
         // resets the attempt budget.
-        channelCreationRateLimitService.recordAndAssertWithinBudget(bindingKeyRef)
+        channelCreationRateLimitService.recordAndAssertWithinBudget(device.thumbprint)
 
         val entryJourney = Journeys.fromRequest(intent, ChannelType.APP)
             ?: throw OrchestratorException.invalidState(Text("Dieser Vorgang kann keinen Kanal eroeffnen"), "intent=${intent}")
 
         // CONFIRM_PEER_LOGIN depends on the link like FAST_ACCESS: without one it aborts.
         val linkedAccountId = if (entryJourney.appChannelOpening?.startsWith == StartingAccount.LINKED_TO_DEVICE) {
-            sessionManagementService.findLinkedAccountId(bindingKeyRef)
+            sessionManagementService.findLinkedAccountId(device.thumbprint)
         } else {
             null
         }
         val channel = sessionManagementService
-            .createChannelSession(bindingKeyRef, ChannelType.APP, CHANNEL_TTL, linkedAccountId)
+            .createChannelSession(device.thumbprint, ChannelType.APP, CHANNEL_TTL, linkedAccountId)
         channel.entryJourney = entryJourney
         // Fixed for the channel's lifetime (docs/03-tool-architektur.md); the backend switch is read live.
         channel.availableClientTools = catalogToolsOf(availableTools)
@@ -126,20 +127,20 @@ class ChannelService(
     }
 
     /** The guaranteed resume entry point (docs/05-api.md #3a): re-derives the currently due `next`. */
-    fun getChannel(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse =
-        resumeChannel(channelAccessGuard.requireChannel(channelSessionId, bindingKeyRef))
+    fun getChannel(channelSessionId: ChannelSessionId, caller: CallerProof): ChannelResponse =
+        resumeChannel(channelAccessGuard.requireChannel(channelSessionId, caller))
 
     /**
      * Whether this device is linked to an account (docs/02-domaenenmodell.md #1). A pure read, so
      * the entry screen can offer "sign in with this device". No name: holding the device key proves
      * no factor, and a stolen device should not say whose it is.
      */
-    fun findDeviceLink(bindingKeyRef: String): DeviceLinkResponse {
-        val accountId = sessionManagementService.findLinkedAccountId(bindingKeyRef) ?: return DeviceLinkResponse(linked = false)
+    fun findDeviceLink(device: CallerProof.DeviceKey): DeviceLinkResponse {
+        val accountId = sessionManagementService.findLinkedAccountId(device.thumbprint) ?: return DeviceLinkResponse(linked = false)
         return DeviceLinkResponse(
             linked = true,
             accountId = accountId,
-            boundCredentials = boundCredentials(accountId, bindingKeyRef)
+            boundCredentials = boundCredentials(accountId, device.thumbprint)
         )
     }
 
@@ -147,8 +148,8 @@ class ChannelService(
      * The active methods as their own resource (docs/05-api.md #3a). Empty, not an error, until a
      * factor was proven here ([ChannelSession.hasProvenFactor]); a recognized device is not enough.
      */
-    fun getMethods(channelSessionId: ChannelSessionId, bindingKeyRef: String): MethodsResponse {
-        val channel = channelAccessGuard.requireChannel(channelSessionId, bindingKeyRef)
+    fun getMethods(channelSessionId: ChannelSessionId, caller: CallerProof): MethodsResponse {
+        val channel = channelAccessGuard.requireChannel(channelSessionId, caller)
         val methods = if (channel.hasProvenFactor) {
             channel.accountId?.let { accountService.findAccount(it)?.activeAuthenticationMethods }
         } else {
@@ -164,8 +165,8 @@ class ChannelService(
      */
     // noRollbackFor: an expired login ends the channel and answers 410; the ending must commit.
     @Transactional(noRollbackFor = [OrchestratorException::class])
-    fun getToken(channelSessionId: ChannelSessionId, bindingKeyRef: String, minValiditySeconds: Long): TokenResponse {
-        val channel = requireAuthenticatedApp(channelAccessGuard.requireChannel(channelSessionId, bindingKeyRef))
+    fun getToken(channelSessionId: ChannelSessionId, caller: CallerProof, minValiditySeconds: Long): TokenResponse {
+        val channel = requireAuthenticatedApp(channelAccessGuard.requireChannel(channelSessionId, caller))
         val pair = try {
             appTokenIssuer.tokenFor(channel.session, minValiditySeconds)
         } catch (e: SessionExpiredException) {
@@ -183,8 +184,8 @@ class ChannelService(
     }
 
     /** The business ID-token claims, a resource separate from the AccessToken's claims. */
-    fun getIdClaims(channelSessionId: ChannelSessionId, bindingKeyRef: String): Map<String, Any?> {
-        val channel = requireAuthenticatedApp(channelAccessGuard.requireChannel(channelSessionId, bindingKeyRef)).session
+    fun getIdClaims(channelSessionId: ChannelSessionId, caller: CallerProof): Map<String, Any?> {
+        val channel = requireAuthenticatedApp(channelAccessGuard.requireChannel(channelSessionId, caller)).session
         return tokenService.idClaims(channel.appTokenSessionId!!)
     }
 
@@ -224,8 +225,8 @@ class ChannelService(
     }
 
     /** Starts [journey] on a live channel that may start it, and answers with its first step. */
-    private fun startJourney(channelSessionId: ChannelSessionId, bindingKeyRef: String, start: JourneyStart<*>): ChannelResponse {
-        val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
+    private fun startJourney(channelSessionId: ChannelSessionId, caller: CallerProof, start: JourneyStart<*>): ChannelResponse {
+        val live = channelAccessGuard.requireLiveChannel(channelSessionId, caller)
         requireStartable(live, start.journey)
         return respondAfter(channelSessionId, journeyService.start(live, start))
     }
@@ -239,8 +240,8 @@ class ChannelService(
         return respondAfter(channel.session.id, step)
     }
 
-    fun raiseRequiredAcr(channelSessionId: ChannelSessionId, bindingKeyRef: String, requiredAcr: String): ChannelResponse {
-        val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
+    fun raiseRequiredAcr(channelSessionId: ChannelSessionId, caller: CallerProof, requiredAcr: String): ChannelResponse {
+        val live = channelAccessGuard.requireLiveChannel(channelSessionId, caller)
         sessionManagementService.raiseChannelAcrFloor(channelSessionId, requestedAcr(requiredAcr).value)
         val refreshed = live.session
 
@@ -260,8 +261,8 @@ class ChannelService(
     }
 
     /** Abandons the running journey and offers a fresh start where applicable. */
-    fun cancelActiveJourney(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
-        val channel = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
+    fun cancelActiveJourney(channelSessionId: ChannelSessionId, caller: CallerProof): ChannelResponse {
+        val channel = channelAccessGuard.requireLiveChannel(channelSessionId, caller)
         val active = journeyService.findActive(channelSessionId)
             ?: throw OrchestratorException.invalidState(Text("No active journey to cancel for this channel"))
 
@@ -274,9 +275,9 @@ class ChannelService(
      * The logout, without a journey: cancels any running journey and ends the channel for good
      * (docs/02-domaenenmodell.md #3). Unlike [cancelActiveJourney], it is never resurrected.
      */
-    fun logout(channelSessionId: ChannelSessionId, bindingKeyRef: String) {
+    fun logout(channelSessionId: ChannelSessionId, caller: CallerProof) {
         // An ended channel stays in its final state.
-        val channel = LiveChannel.of(channelAccessGuard.requireChannel(channelSessionId, bindingKeyRef)) ?: return
+        val channel = LiveChannel.of(channelAccessGuard.requireChannel(channelSessionId, caller)) ?: return
         val activeJourney = journeyService.findActive(channelSessionId)
         if (activeJourney != null) {
             journeyService.cancel(activeJourney, channel)
@@ -290,24 +291,24 @@ class ChannelService(
      * Voluntarily add another method. The loa2 gate and a preceding step-up belong to
      * `ManageAuthMethodsJourney`, so the wish survives that detour.
      */
-    fun startManageMethods(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse =
-        startManage(channelSessionId, bindingKeyRef, ManageAuthMethodsState.AddRequested)
+    fun startManageMethods(channelSessionId: ChannelSessionId, caller: CallerProof): ChannelResponse =
+        startManage(channelSessionId, caller, ManageAuthMethodsState.AddRequested)
 
     /**
      * Deactivate an active method instance, addressed by [methodInstanceId], since several
      * instances can share a method name. Not restricted to this device's instances: a lost device
      * must be removable from any session.
      */
-    fun deactivateMethod(channelSessionId: ChannelSessionId, bindingKeyRef: String, methodInstanceId: String): ChannelResponse =
-        startManage(channelSessionId, bindingKeyRef, ManageAuthMethodsState.RemoveRequested(methodInstanceId))
+    fun deactivateMethod(channelSessionId: ChannelSessionId, caller: CallerProof, methodInstanceId: String): ChannelResponse =
+        startManage(channelSessionId, caller, ManageAuthMethodsState.RemoveRequested(methodInstanceId))
 
     /**
      * Change an active credential in place: its enrollment runs again and the new instance replaces
      * [methodInstanceId]. Only for a method whose enrollment is [com.example.identity.contract.tool_api.Tool.changeable];
      * anything else is refused here, not inside the journey.
      */
-    fun changeMethod(channelSessionId: ChannelSessionId, bindingKeyRef: String, methodInstanceId: String): ChannelResponse {
-        val channel = channelAccessGuard.requireChannel(channelSessionId, bindingKeyRef)
+    fun changeMethod(channelSessionId: ChannelSessionId, caller: CallerProof, methodInstanceId: String): ChannelResponse {
+        val channel = channelAccessGuard.requireChannel(channelSessionId, caller)
         val target = channel.accountId?.let { accountService.findAccount(it) }?.activeAuthenticationMethods?.firstOrNull { it.id == methodInstanceId }
             ?: throw OrchestratorException.notFound(Text("Dieses Anmeldeverfahren ist nicht aktiv"))
         if (toolRegistry.changeToolOf(target.method) == null) {
@@ -315,7 +316,7 @@ class ChannelService(
                 Text("Das Verfahren '{method}' lässt sich nicht ändern; entfernen Sie es und richten Sie es neu ein", "method" to target.method)
             )
         }
-        return startManage(channelSessionId, bindingKeyRef, ManageAuthMethodsState.ChangeRequested(methodInstanceId))
+        return startManage(channelSessionId, caller, ManageAuthMethodsState.ChangeRequested(methodInstanceId))
     }
 
     /**
@@ -324,7 +325,7 @@ class ChannelService(
      * (`AnchorRule.retractableByHolder`) qualify; an identity anchor does not. An unknown wire name
      * is refused here with 409, not as a silent no-op inside the journey.
      */
-    fun retractAttribute(channelSessionId: ChannelSessionId, bindingKeyRef: String, attribute: String): ChannelResponse {
+    fun retractAttribute(channelSessionId: ChannelSessionId, caller: CallerProof, attribute: String): ChannelResponse {
         val attributeType = AttributeType.fromWireName(attribute)
             ?: throw OrchestratorException.invalidState(Text("Unbekanntes Attribut: {attribute}", "attribute" to attribute))
         if (!attributeType.isLocalAnchor) {
@@ -337,11 +338,11 @@ class ChannelService(
                 Text("'{attribute}' weist die Identität dieses Kontos nach und kann nicht selbst zurückgenommen werden", "attribute" to attribute)
             )
         }
-        return startManage(channelSessionId, bindingKeyRef, ManageAuthMethodsState.RetractAttributeRequested(attributeType))
+        return startManage(channelSessionId, caller, ManageAuthMethodsState.RetractAttributeRequested(attributeType))
     }
 
-    private fun startManage(channelSessionId: ChannelSessionId, bindingKeyRef: String, wish: ManageAuthMethodsState.Wish): ChannelResponse {
-        return startJourney(channelSessionId, bindingKeyRef, ManageAuthMethodsJourney.toCarryOut(wish))
+    private fun startManage(channelSessionId: ChannelSessionId, caller: CallerProof, wish: ManageAuthMethodsState.Wish): ChannelResponse {
+        return startJourney(channelSessionId, caller, ManageAuthMethodsJourney.toCarryOut(wish))
     }
 
     /**
@@ -349,16 +350,16 @@ class ChannelService(
      * CONFIRM_PEER_LOGIN). The cold entry is `POST /app/channels` with that journey as `intent`;
      * both reach [ConfirmPeerLoginState.Requested].
      */
-    fun startPeerLogin(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
-        return startJourney(channelSessionId, bindingKeyRef, ConfirmPeerLoginJourney.start())
+    fun startPeerLogin(channelSessionId: ChannelSessionId, caller: CallerProof): ChannelResponse {
+        return startJourney(channelSessionId, caller, ConfirmPeerLoginJourney.start())
     }
 
     /**
      * Starts account deletion: a yes/no confirmation, then a fresh re-proof of an active factor,
      * then the deletion (docs/05-api.md #3a, "Konto löschen").
      */
-    fun startDeleteAccount(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
-        return startJourney(channelSessionId, bindingKeyRef, DeleteAccountJourney.start())
+    fun startDeleteAccount(channelSessionId: ChannelSessionId, caller: CallerProof): ChannelResponse {
+        return startJourney(channelSessionId, caller, DeleteAccountJourney.start())
     }
 
     /** Applies [startRefusal] before a journey starts on an already open [channel]. */
@@ -377,9 +378,9 @@ class ChannelService(
      * The user's answer to what the current step waits on instead of a tool run. Anything but
      * `accept`/`decline` is rejected here (400), so no journey has to.
      */
-    fun answer(channelSessionId: ChannelSessionId, bindingKeyRef: String, answer: String): ChannelResponse {
+    fun answer(channelSessionId: ChannelSessionId, caller: CallerProof, answer: String): ChannelResponse {
         val parsed = requireNotNull(Answer.fromWire(answer)) { "Unknown answer" }
-        val channel = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
+        val channel = channelAccessGuard.requireLiveChannel(channelSessionId, caller)
         val active = journeyService.findActive(channelSessionId)
             ?: throw OrchestratorException.invalidState(Text("No active journey for this channel"))
         val step = journeyService.answer(active, channel, parsed)
@@ -391,13 +392,13 @@ class ChannelService(
 
     /**
      * What else this device is known by: for every key-bound credential of [accountId] on
-     * [bindingKeyRef], the reference its enrollment left to show (`AuthMethodView.reference`).
+     * [deviceKey], the reference its enrollment left to show (`AuthMethodView.reference`).
      * Generic: no method name appears here.
      */
-    private fun boundCredentials(accountId: AccountId, bindingKeyRef: String): List<BoundCredentialView> =
+    private fun boundCredentials(accountId: AccountId, deviceKey: String): List<BoundCredentialView> =
         accountService.findAccount(accountId)?.activeAuthenticationMethods.orEmpty().mapNotNull { instance ->
             val module = toolRegistry.moduleOf(instance.method) ?: return@mapNotNull null
-            if (!module.livesOn(instance.boundKeyRef, bindingKeyRef)) return@mapNotNull null
+            if (!module.livesOn(instance.boundKeyRef, deviceKey)) return@mapNotNull null
             instance.reference?.let { BoundCredentialView(method = instance.method, reference = it) }
         }
 

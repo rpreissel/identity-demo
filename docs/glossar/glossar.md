@@ -283,7 +283,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
 - **Kanalbindung**: Eine Kennung, mit der Keycloak jede Anfrage an den Orchestrator einem bestimmten
   Anmeldevorgang zuordnet. Keycloak signiert sie mit. So kann niemand eine Anfrage auf einen fremden
   Kanal umlenken.
-  *Im Code:* `channel_binding`, `channelBinding`.
+  *Im Code:* der Claim `channel_binding`; beim Kanal `CallerProof.KeycloakFlow`.
   *Mehr dazu:* [02-domaenenmodell](../02-domaenenmodell.md) Abschnitt 1.
 - **Kandidaten**: Die Tools, die eine Journey dem Nutzer an einer bestimmten Stelle zur Auswahl
   anbieten kann, etwa „SMS oder Passwort“. Welche Tools das sind, ergibt sich aus der Art der Tools,

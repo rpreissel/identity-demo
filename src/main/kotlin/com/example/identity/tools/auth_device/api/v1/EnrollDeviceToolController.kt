@@ -103,7 +103,7 @@ class EnrollDeviceToolController(
         httpRequest: HttpServletRequest
     ): ResponseEntity<ChannelResponse> {
         val proof = deviceProofs.validate(request?.deviceProof, httpRequest)
-        val outcome = handler.patch(context.toolSessionId, proof.publicKey, proof.userVerification, context.bindingKeyRef, request?.label)
+        val outcome = handler.patch(context.toolSessionId, proof.publicKey, proof.userVerification, context.caller.requireDeviceKey().thumbprint, request?.label)
 
         return toolJourney.applied(context, outcome)
     }

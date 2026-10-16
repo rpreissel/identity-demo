@@ -1034,7 +1034,7 @@ erstellt. Es enthält:
   und einem eigenen Zeitfenster (`keycloak.peer-auth.max-clock-skew-seconds`/`max-age-seconds`, je
   30 Sekunden, nur in den lokalen Varianten 300; [13-ausfuehren.md](13-ausfuehren.md) Abschnitt 6),
 - die Kanalbindung dieses Anmeldedurchlaufs (Claim `channel_binding`). Die Kanalbindung ordnet die
-  Anfrage einem bestimmten Kanal zu; `KeycloakChannelAccessGuard` prüft sie gegen diesen Kanal. Bei
+  Anfrage einem bestimmten Kanal zu (`CallerProof.KeycloakFlow`); `ChannelAccessGuard` prüft sie gegen diesen Kanal. Bei
   den Aufrufen ohne Kanal (unten, „Endpunkte unter `/kc/`“) enthält `channel_binding` stattdessen
   die `accountId` bzw. die Id der Einladung und wird gegen den Pfadparameter geprüft.
 
@@ -1115,7 +1115,7 @@ in [verfahren/qr.md](verfahren/qr.md).
 
 Die Verwaltung der Verfahren (Journey `MANAGE_AUTH_METHODS`) funktioniert für beide Zugänge
 gleich (Abschnitt 3a, „Verfahren verwalten"; `POST .../enrollments` nutzt denselben
-`DpopBindingKeyResolver`). Der Web-Kanal braucht deshalb **keinen eigenen Endpunkt im
+`CallerProofResolver`). Der Web-Kanal braucht deshalb **keinen eigenen Endpunkt im
 Orchestrator**, nur einen eigenen Einstieg. Dieser Einstieg ist eine Required Action von Keycloak
 (`RequiredAction`), also ein Schritt, den Keycloak einem angemeldeten Nutzer vorschalten kann. Ihre
 Einstellungen sind `getId()="orchestrator-manage-methods"` und `defaultAction=false`. Sie wird also

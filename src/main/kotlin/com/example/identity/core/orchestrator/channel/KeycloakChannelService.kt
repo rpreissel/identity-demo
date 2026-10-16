@@ -16,6 +16,7 @@ import com.example.identity.core.orchestrator.domain.Journeys
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.keycloak.PeerAuthAssertion
+import com.example.identity.core.orchestrator.keycloak.asChannelCaller
 import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.AppTokenSessionService
 import com.example.identity.core.orchestrator.session.SessionEvidenceService
@@ -49,7 +50,7 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(noRollbackFor = [ChannelSessionEndedException::class, JourneyEndedException::class])
 class KeycloakChannelService(
     private val sessionManagementService: SessionManagementService,
-    private val keycloakChannelAccessGuard: KeycloakChannelAccessGuard,
+    private val channelAccessGuard: ChannelAccessGuard,
     private val channelService: ChannelService,
     private val journeyService: JourneyService,
     private val accountService: AccountService,
@@ -181,7 +182,7 @@ class KeycloakChannelService(
     ) {
         // Bound to the channel id the extension signed for (OrchestratorClient.upsertChannel), not
         // to any validly signed value.
-        if (assertion.channelBinding != channelSessionId.toString()) {
+        if (assertion.asChannelCaller().channelSessionId != channelSessionId) {
             throw PeerAuthValidationException("Peer-auth channel_binding does not name this channel")
         }
         // A process access is not raised (ADR-48): its session asks for a level only a new flow run
@@ -189,7 +190,6 @@ class KeycloakChannelService(
         if (subject is Subject.Invitation) throw invitationNotRaised()
         sessionManagementService.createWebChannelSession(
             channelSessionId,
-            assertion.channelBinding,
             (subject as? Subject.Account)?.id,
             CHANNEL_TTL,
             // The Web channel's declaration of what it can render, taken verbatim like the App
@@ -207,7 +207,7 @@ class KeycloakChannelService(
     private fun bindWebChannel(channelSessionId: ChannelSessionId, assertion: PeerAuthAssertion, subject: Subject?) {
         // A guessed channelSessionId is not enough: the assertion must carry this channel's binding
         // (docs/02-domaenenmodell.md Abschnitt 1).
-        val channel = keycloakChannelAccessGuard.requireChannel(channelSessionId, assertion)
+        val channel = channelAccessGuard.requireChannel(channelSessionId, assertion.asChannelCaller())
         val bound = channel.subject
         if (subject is Subject.Invitation && bound != subject) throw invitationNotRaised()
         if (subject != null && bound != null && bound != subject) {
@@ -237,7 +237,7 @@ class KeycloakChannelService(
         requireKcSessionId(kcSessionId)
         // An ended channel reports nothing: it may have ended with the logout of this very session,
         // and its proofs would outlive it.
-        val channel = LiveChannel.require(keycloakChannelAccessGuard.requireChannel(channelSessionId, assertion)).session
+        val channel = LiveChannel.require(channelAccessGuard.requireChannel(channelSessionId, assertion.asChannelCaller())).session
         // A Keycloak session belongs to one user. Rows of another account mean this report names a
         // session the channel's account never signed in to; joining them would let one account's
         // proofs count for the other. The channel keeps its old session id as well.

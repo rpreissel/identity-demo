@@ -40,7 +40,7 @@ class OpenApiConfig {
                 )
         )
         /**
-         * The two ways a caller proves who it is ([DpopBindingKeyResolver]). Which endpoints
+         * The two ways a caller proves who it is ([CallerProofResolver]). Which endpoints
          * accept them is stated per operation by [BindingKeyOpenApiConfig].
          */
         .components(

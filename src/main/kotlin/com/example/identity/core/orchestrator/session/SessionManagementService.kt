@@ -51,7 +51,6 @@ class SessionManagementService(
      */
     fun createWebChannelSession(
         channelSessionId: ChannelSessionId,
-        channelBinding: String,
         accountId: AccountId?,
         ttl: Duration,
         availableTools: Set<String>,
@@ -60,7 +59,6 @@ class SessionManagementService(
         val now = clock.instant()
         val session = ChannelSession(ChannelType.WEB, null, now.plus(ttl), now)
         session.channelSessionId = channelSessionId
-        session.channelBinding = channelBinding
         session.subject = accountId?.let(Subject::Account)
         session.entryJourney = entryJourney
         session.availableClientTools = availableTools.toMutableSet()

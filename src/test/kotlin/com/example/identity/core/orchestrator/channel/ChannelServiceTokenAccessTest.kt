@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.CallerProof
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.ChannelState
@@ -44,7 +45,7 @@ class ChannelServiceTokenAccessTest : BehaviorSpec({
         )
 
         `when`("its AccessToken is requested") {
-            val result = runCatching { service.getToken(channelSessionId, "kc", 30) }
+            val result = runCatching { service.getToken(channelSessionId, CallerProof.KeycloakFlow(channelSessionId), 30) }
 
             then("it is refused with 409") {
                 shouldThrow<OrchestratorException> { result.getOrThrow() }.code shouldBe ErrorCode.INVALID_STATE_TRANSITION
@@ -52,7 +53,7 @@ class ChannelServiceTokenAccessTest : BehaviorSpec({
         }
 
         `when`("its ID claims are requested") {
-            val result = runCatching { service.getIdClaims(channelSessionId, "kc") }
+            val result = runCatching { service.getIdClaims(channelSessionId, CallerProof.KeycloakFlow(channelSessionId)) }
 
             then("they are refused with 409") {
                 shouldThrow<OrchestratorException> { result.getOrThrow() }.code shouldBe ErrorCode.INVALID_STATE_TRANSITION

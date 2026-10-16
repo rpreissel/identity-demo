@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.contract.tool_api.CallerProof
 import com.example.identity.core.orchestrator.journey.JourneyEndedException
 import com.example.identity.core.account.JourneyKeys
 import com.example.identity.contract.tool_api.ids.AccountId
@@ -79,7 +80,7 @@ class ToolJourneyService(
         override val toolSessionId: ToolSessionId,
         val journeyId: JourneyId,
         val channelSessionId: ChannelSessionId,
-        override val bindingKeyRef: String,
+        override val caller: CallerProof,
         override val accountId: AccountId?,
         private val masterKeySource: () -> MasterKeyId,
     ) : AuthorizedToolContext {
@@ -106,9 +107,9 @@ class ToolJourneyService(
      * Mints the ToolSession and lets the journey decide whether [tool] may run. The check is
      * membership in the current offer, so a tool never offered cannot be activated by naming it.
      */
-    override fun beginActivation(channelSessionId: ChannelSessionId, bindingKeyRef: String, tool: ToolVersion): Activation {
+    override fun beginActivation(channelSessionId: ChannelSessionId, caller: CallerProof, tool: ToolVersion): Activation {
         val toolId = tool.toolId.value
-        val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
+        val live = channelAccessGuard.requireLiveChannel(channelSessionId, caller)
         val channel = live.session
         val journey = journeyService.findActive(channelSessionId)
             ?: throw OrchestratorException.invalidState(Text("No active journey for this channel"))
@@ -130,7 +131,7 @@ class ToolJourneyService(
             toolSessionId = toolSession.id,
             journeyId = journey.journeyId,
             channelSessionId = channel.id,
-            bindingKeyRef = bindingKeyRef,
+            caller = caller,
             accountId = channel.accountId,
             masterKeySource = { masterKeyFor(channel) },
         ))
@@ -181,8 +182,8 @@ class ToolJourneyService(
      * The write path: [loadContext] plus the authorization [applyOutcome]'s parameter type demands.
      * There is no other way to an [AuthorizedToolContext], so the check is structural.
      */
-    override fun loadCurrent(toolSessionId: ToolSessionId, bindingKeyRef: String, tool: ToolVersion): Context {
-        val context = loadContext(toolSessionId, bindingKeyRef, tool)
+    override fun loadCurrent(toolSessionId: ToolSessionId, caller: CallerProof, tool: ToolVersion): Context {
+        val context = loadContext(toolSessionId, caller, tool)
         requireCurrentTool(context)
         // On every attempt, not only at activation: a session opened before the lock must not keep
         // guessing, nor sign in with the right password while the account is locked. Booked before
@@ -194,12 +195,12 @@ class ToolJourneyService(
         return context
     }
 
-    override fun loadContext(toolSessionId: ToolSessionId, bindingKeyRef: String, tool: ToolVersion): Context {
+    override fun loadContext(toolSessionId: ToolSessionId, caller: CallerProof, tool: ToolVersion): Context {
         val toolSession = sessionManagementService.findToolSessionById(toolSessionId)
             ?: throw OrchestratorException.notFound(Text("Tool session not found"), "toolSessionId=${toolSessionId}")
         val journey = journeyService.findRunning(toolSession.journeyId!!)
             ?: throw OrchestratorException.processGone(Text("Journey for this tool session is gone"))
-        val channel = channelAccessGuard.requireChannel(journey.channelSessionId, bindingKeyRef)
+        val channel = channelAccessGuard.requireChannel(journey.channelSessionId, caller)
         requireDeclaredVersion(tool, channel)
         return Context(
             toolId = tool.toolId,
@@ -207,7 +208,7 @@ class ToolJourneyService(
             toolSessionId = toolSessionId,
             journeyId = journey.journeyId,
             channelSessionId = channel.id,
-            bindingKeyRef = bindingKeyRef,
+            caller = caller,
             accountId = channel.accountId,
             masterKeySource = { masterKeyFor(channel) },
         )
@@ -215,7 +216,8 @@ class ToolJourneyService(
 
     override fun findEnrollment(context: ToolContext, module: ToolModule): EnrollmentRef? =
         context.accountId?.let { accountId ->
-            if (module.onePerDevice) accountService.activeInstanceEnrollment(accountId, module.method, context.bindingKeyRef)
+            // A per-device credential lives on the calling device's key; a Web call has none.
+            if (module.onePerDevice) (context.caller as? CallerProof.DeviceKey)?.let { accountService.activeInstanceEnrollment(accountId, module.method, it.thumbprint) }
             else accountService.activeEnrollment(accountId, module.method)
         }
 
@@ -393,7 +395,7 @@ class ToolJourneyService(
         if (journeyChannelId != context.channelSessionId) {
             throw OrchestratorException.invalidState(Text("Tool context no longer matches its journey channel"))
         }
-        return channelAccessGuard.requireLiveChannel(journeyChannelId, context.bindingKeyRef)
+        return channelAccessGuard.requireLiveChannel(journeyChannelId, context.caller)
     }
 
     /** The demo block for tool responses, assembled by [DemoDisclosure]. personId is read off the account. */

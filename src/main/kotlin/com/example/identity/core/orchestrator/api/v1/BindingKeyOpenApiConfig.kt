@@ -1,6 +1,8 @@
 package com.example.identity.core.orchestrator.api.v1
 
 import com.example.identity.contract.tool_api.BindingKey
+import com.example.identity.contract.tool_api.CallerProof
+import org.springframework.core.MethodParameter
 import com.example.identity.contract.tool_api.ActivationToolContext
 import com.example.identity.contract.tool_api.ToolContext
 import io.swagger.v3.oas.models.media.StringSchema
@@ -16,7 +18,7 @@ import org.springframework.web.method.HandlerMethod
 
 /**
  * Describes how a caller proves who it is. `@BindingKey` parameters are filled by
- * [DpopBindingKeyResolver] from the DPoP proof or the peer-auth assertion, never from the URL.
+ * [CallerProofResolver] from the DPoP proof or the peer-auth assertion, never from the URL.
  * springdoc would otherwise document them as a query parameter, telling clients to choose their own
  * key. Instead the parameter is hidden and the endpoints declare the security they really require.
  */
@@ -35,19 +37,19 @@ class BindingKeyOpenApiConfig {
 
     /**
      * Declares the proofs an endpoint accepts: a `DPoP` header or a peer-auth assertion (two
-     * entries mean OR), only the proof for `dpopOnly`. Per operation, because endpoints without
+     * entries mean OR), only the DPoP proof for a parameter typed [CallerProof.DeviceKey]. Per operation, because endpoints without
      * `@BindingKey` need neither.
      */
     @Bean
     fun bindingKeySecurityCustomizer(): OperationCustomizer = OperationCustomizer { operation, handlerMethod ->
-        val bindingKey = bindingKeyOf(handlerMethod)
+        val bindingKey = bindingKeyParameterOf(handlerMethod)
         val idParameter = toolContextParameter(handlerMethod)
         if (idParameter != null) {
             // A tool context takes its session from the path, its channel from the query, the key from the proof.
             operation.parameters = listOf(idParameter.required(true).schema(StringSchema().format("uuid"))) + operation.parameters.orEmpty()
             operation.security = listOf(SecurityRequirement().addList(DPOP_SCHEME), SecurityRequirement().addList(PEER_AUTH_SCHEME))
         } else if (bindingKey != null) {
-            operation.security = if (bindingKey.dpopOnly) listOf(SecurityRequirement().addList(DPOP_SCHEME))
+            operation.security = if (bindingKey.parameterType == CallerProof.DeviceKey::class.java) listOf(SecurityRequirement().addList(DPOP_SCHEME))
                 else listOf(SecurityRequirement().addList(DPOP_SCHEME), SecurityRequirement().addList(PEER_AUTH_SCHEME))
         }
         operation
@@ -61,8 +63,8 @@ class BindingKeyOpenApiConfig {
         else -> null
     }
 
-    private fun bindingKeyOf(handlerMethod: HandlerMethod): BindingKey? =
-        handlerMethod.methodParameters.firstNotNullOfOrNull { it.getParameterAnnotation(BindingKey::class.java) }
+    private fun bindingKeyParameterOf(handlerMethod: HandlerMethod): MethodParameter? =
+        handlerMethod.methodParameters.firstOrNull { it.hasParameterAnnotation(BindingKey::class.java) }
 
     companion object {
         /** Declared in [OpenApiConfig]; the App channel's DPoP proof header. */

@@ -31,7 +31,6 @@ classDiagram
     UUID channelSessionId
     ChannelType channel
     string bindingKeyRef
-    string channelBinding
     Subject subject
     UUID appTokenSessionId
     UUID sessionEvidenceId
@@ -125,15 +124,16 @@ Kanal an ein Merkmal gebunden. App und Website nutzen dafür verschiedene Merkma
 - Die App (`APP`) nutzt `bindingKeyRef`, also den Geräteschlüssel. Dass die App diesen Schlüssel
   besitzt, belegt sie mit jeder Anfrage durch einen **DPoP-Proof**: Das ist ein Beleg, den sie mit
   dem Schlüssel signiert und der nur für diese eine Anfrage gilt.
-- Die Website (`WEB`) nutzt `channelBinding`. Das ist immer der eigene `channelSessionId`-Wert
-  **dieses** Login-Durchlaufs. Keycloak schickt ihn in der **Peer-Auth-Assertion** mit, also in der
+- Die Website (`WEB`) ist an ihre eigene `channelSessionId` gebunden, also an **diesen**
+  Login-Durchlauf. Keycloak schickt ihn in der **Peer-Auth-Assertion** mit, also in der
   signierten Anfrage, mit der Keycloak sich beim Orchestrator ausweist.
 
 Für den Web-Kanal ist das bewusst nicht Keycloaks langlebige Sitzung (`UserSessionModel`). Sonst
 würden sich zwei **gleichzeitige** Login-Durchläufe derselben SSO-Sitzung dieselbe Bindung teilen.
-Die Zugriffsprüfung `ChannelAccessGuard` ([05-api.md](05-api.md) Abschnitt 3b) hat für jede der
-beiden Formen der Bindung eine eigene Implementierung. Die Ressource dahinter ist in beiden Fällen
-dieselbe, nämlich die `ChannelSession`.
+Wer anfragt, steht typisiert fest (`CallerProof`): `DeviceKey` für die App, `KeycloakFlow` mit der
+Kanal-Id für die Website. Die eine Zugriffsprüfung `ChannelAccessGuard` ([05-api.md](05-api.md)
+Abschnitt 3b) lässt einen App-Kanal nur für seinen Schlüssel und einen Web-Kanal nur für seine eigene
+Id zu. Die Ressource dahinter ist in beiden Fällen dieselbe, nämlich die `ChannelSession`.
 
 ---
 

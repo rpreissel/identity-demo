@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Resolves a [ToolContext] controller parameter for the controller's tool ([ToolController.tool]),
- * bound to the caller's key like `@BindingKey` ([DpopBindingKeyResolver]). The parameter's type
+ * bound to the caller's key like `@BindingKey` ([CallerProofResolver]). The parameter's type
  * says what happens before the method runs (docs/03-tool-architektur.md #2): an
  * [ActivationToolContext] activates the tool on the channel the query names (`?channel=`), an
  * [AuthorizedToolContext] loads the session in the path and requires it to be the journey's current
@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 @Component
 class ToolContextResolver(
-    private val bindingKeyResolver: DpopBindingKeyResolver,
+    private val callerProofResolver: CallerProofResolver,
     @Lazy private val toolJourney: ToolJourney,
     private val applicationContext: ApplicationContext,
 ) : HandlerMethodArgumentResolver {
@@ -59,17 +59,17 @@ class ToolContextResolver(
         if (ActivationToolContext::class.java.isAssignableFrom(parameter.parameterType)) {
             val raw = requireNotNull(request.getParameter(CHANNEL_QUERY_PARAMETER)) { "The channel to activate the tool on is missing" }
             val channelSessionId = ChannelSessionId(uuid(raw, parameter, CHANNEL_QUERY_PARAMETER, ChannelSessionId::class.java))
-            return toolJourney.beginActivation(channelSessionId, bindingKeyResolver.bindingKeyOf(request), tool)
+            return toolJourney.beginActivation(channelSessionId, callerProofResolver.callerOf(request), tool)
         }
         @Suppress("UNCHECKED_CAST")
         val pathVariables = request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE) as? Map<String, String>
         val raw = checkNotNull(pathVariables?.get(PATH_VARIABLE)) { "The tool context parameter needs a {$PATH_VARIABLE} in the path" }
         val toolSessionId = ToolSessionId(uuid(raw, parameter, PATH_VARIABLE, ToolSessionId::class.java))
-        val bindingKeyRef = bindingKeyResolver.bindingKeyOf(request)
+        val caller = callerProofResolver.callerOf(request)
         return if (AuthorizedToolContext::class.java.isAssignableFrom(parameter.parameterType)) {
-            toolJourney.loadCurrent(toolSessionId, bindingKeyRef, tool)
+            toolJourney.loadCurrent(toolSessionId, caller, tool)
         } else {
-            toolJourney.loadContext(toolSessionId, bindingKeyRef, tool)
+            toolJourney.loadContext(toolSessionId, caller, tool)
         }
     }
 
