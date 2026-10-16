@@ -25,7 +25,7 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
 
     override val name = "WEB_SELECT_METHOD"
     override val startPoints = listOf(OpensWebChannel)
-    override val stateRoots = listOf(WebSelectMethodState::class)
+    override val stateRoot = WebSelectMethodState::class
 
     override val firstState = WebSelectMethodState.Start
 

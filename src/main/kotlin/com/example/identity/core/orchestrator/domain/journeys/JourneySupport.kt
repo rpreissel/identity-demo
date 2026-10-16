@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.state.ToolFreeState
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
@@ -10,7 +11,6 @@ import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
-import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 
 /** True when this device is durably linked to an account other than the one in hand (docs/04-orchestrierung.md #2, "Zweitaccount"). */
 internal fun JourneyContext.deviceLinkedElsewhere(): Boolean = linkedAccountId != null && linkedAccountId != account?.accountId
@@ -39,7 +39,7 @@ internal inline fun AnswerableState.deviceLinkAnswered(event: JourneyEvent, when
 internal inline fun reIdentifyOr(
     targetAcr: AcrLevel,
     ctx: JourneyContext,
-    resumeWith: JourneyState,
+    resumeWith: ToolFreeState,
     wording: ReIdentifyState.Wording? = null,
     optional: Boolean = false,
     whenNone: () -> Transition

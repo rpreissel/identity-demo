@@ -22,7 +22,7 @@ object ReIdentifyJourney : Journey<ReIdentifyState> {
 
     override val name = "RE_IDENTIFY"
     override val startPoints = listOf(OnlyAsSubJourney)
-    override val stateRoots = listOf(ReIdentifyState::class)
+    override val stateRoot = ReIdentifyState::class
 
     /** A fresh identification to reach [targetAcr], asked first in [wording] (the default question if null). */
     fun toReach(targetAcr: AcrLevel, wording: ReIdentifyState.Wording? = null): JourneyStart<*> =

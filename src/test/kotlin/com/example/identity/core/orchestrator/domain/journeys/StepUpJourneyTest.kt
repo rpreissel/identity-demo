@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.state.ProofPurpose
 import com.example.identity.core.orchestrator.domain.journeys.StepUpJourney
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -63,13 +64,13 @@ class StepUpJourneyTest : BehaviorSpec({
         }
     }
 
-    given("Start with allowReIdentification = false, the only active method already used this run") {
+    given("Start of a peer-login gate, which forbids re-identification, the only active method already used this run") {
         // Same fixture as the "re-identification could still help" case above - RE_IDENTIFY WOULD
         // be offered if allowed, proving this is the flag suppressing it, not just an absence of
         // candidates (docs/04-orchestrierung.md, CONFIRM_PEER_LOGIN #1: never identification).
         val acc = account(method("sms", AcrLevel.LOA2))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
-        val state = StepUpState.Start((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(allowReIdentification = false))
+        val state = StepUpState.Start((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(purpose = ProofPurpose.PEER_LOGIN))
 
         `when`("freshly entered (Started)") {
             val transition = journey.transition(state, JourneyEvent.Started, theCtx)
@@ -144,17 +145,17 @@ class StepUpJourneyTest : BehaviorSpec({
         }
     }
 
-    given("AuthChoice of a run with a reason, re-identification could still help") {
+    given("AuthChoice of a run with a purpose, re-identification could still help") {
         val acc = account(method("sms", AcrLevel.LOA2))
-        val state = StepUpState.AuthChoice((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(reason = StepUpState.Reason.PEER_LOGIN), Offer(listOf(ToolId("auth-sms"))))
+        val state = StepUpState.AuthChoice((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(purpose = ProofPurpose.MANAGE_METHODS), Offer(listOf(ToolId("auth-sms"))))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
 
         `when`("the last offered candidate is abandoned") {
             val exhausted = state.declining(ToolId("auth-sms"))
             val transition = journey.transition(exhausted as StepUpState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
-            then("the run resumes with its whole goal - the reason survives the detour") {
+            then("the run resumes with its whole goal - the purpose survives the detour") {
                 transition.shouldBeInstanceOf<Transition.RequireSubJourney>().resumeWith shouldBe
-                    StepUpState.Start((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(allowReIdentification = true, reason = StepUpState.Reason.PEER_LOGIN))
+                    StepUpState.Start((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(purpose = ProofPurpose.MANAGE_METHODS))
             }
         }
     }
@@ -173,9 +174,9 @@ class StepUpJourneyTest : BehaviorSpec({
         }
     }
 
-    given("AuthChoice, one offered candidate, re-identification could help, but this run forbids it (allowReIdentification = false)") {
+    given("AuthChoice, one offered candidate, re-identification could help, but this run forbids it (a peer-login gate)") {
         val acc = account(method("sms", AcrLevel.LOA2))
-        val state = StepUpState.AuthChoice((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(allowReIdentification = false), Offer(listOf(ToolId("auth-sms"))))
+        val state = StepUpState.AuthChoice((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(purpose = ProofPurpose.PEER_LOGIN), Offer(listOf(ToolId("auth-sms"))))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
 
         `when`("the last offered candidate is abandoned") {

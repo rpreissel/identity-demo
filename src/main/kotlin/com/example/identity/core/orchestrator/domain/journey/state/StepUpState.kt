@@ -9,27 +9,16 @@ sealed interface StepUpState : JourneyState {
 
     /**
      * From [startingAcr] to [targetAcr], usually written `startingAcr upTo targetAcr`. [targetAcr] is
-     * the goal of this run, distinct from the channel's durable `acrFloor`.
-     * [allowReIdentification]: whether a dead end may fall back to offering `RE_IDENTIFY`. False
-     * for CONFIRM_PEER_LOGIN's gate: a peer approval must never let someone acquire a fresh identity
-     * just to confirm someone else's login. True by default, because re-identification is an
-     * equally valid path to loa2 (docs/04-orchestrierung.md #4), not a lesser fallback.
-     * [reason] lets a caller say why this run exists; `null` keeps the generic wording. A [Reason],
-     * not text, because the state is persisted and wording must change without touching stored
-     * journeys.
+     * the goal of this run, distinct from the channel's durable `acrFloor`. [purpose] is the action
+     * this step-up is the gate of (via FRESH_PROOF); `null` for a plain step-up the channel asks for.
+     * It decides the wording and whether a dead end may offer `RE_IDENTIFY`.
      */
     data class Goal(
         val startingAcr: AcrLevel,
         val targetAcr: AcrLevel,
-        val allowReIdentification: Boolean = true,
-        val reason: Reason? = null
-    )
-
-
-    /** Why a caller needs this step-up, when it has more to say than the generic wording. */
-    enum class Reason {
-        /** CONFIRM_PEER_LOGIN's gate: a browser asks to log in, this session must first prove itself. */
-        PEER_LOGIN
+        val purpose: ProofPurpose? = null
+    ) {
+        val allowsReIdentification: Boolean get() = purpose?.allowsReIdentification ?: true
     }
 
     data class Start(override val goal: Goal) : StepUpState, ToolFreeState
@@ -49,15 +38,15 @@ sealed interface StepUpState : JourneyState {
         override val selectionContext: String get() = "auth"
         override val selectionTitle: Text get() = Text("Erhöhte Sicherheit erforderlich")
         override val selectionDescription: Text get() {
-            val base = when (goal.reason) {
+            val base = when (goal.purpose) {
                 // The first screen a peer approval without loa2 sees, so it carries the whole
                 // context, including "Abbrechen" as the way out.
-                Reason.PEER_LOGIN -> Text(
+                ProofPurpose.PEER_LOGIN -> Text(
                     "Ein Browser möchte sich mit Ihrem Konto anmelden. Um das zu bestätigen, muss " +
                         "diese Sitzung zunächst selbst ein höheres Sicherheitsniveau nachweisen. Brechen Sie ab, wenn Sie " +
                         "diesen Login nicht selbst ausgelöst haben."
                 )
-                null -> Text("Die angeforderte Aktion erfordert ein höheres Sicherheitsniveau. Bitte bestätigen Sie Ihre Identität mit einem weiteren Verfahren.")
+                ProofPurpose.DELETE_ACCOUNT, ProofPurpose.MANAGE_METHODS, null -> Text("Die angeforderte Aktion erfordert ein höheres Sicherheitsniveau. Bitte bestätigen Sie Ihre Identität mit einem weiteren Verfahren.")
             }
             return if (additionalFactorRound) {
                 Text(

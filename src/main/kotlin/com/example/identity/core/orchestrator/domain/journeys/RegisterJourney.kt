@@ -35,7 +35,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
         OpensAppChannel(startsWith = StartingAccount.NONE, onSuccess = DeviceLink.LINK_WITHOUT_ASKING),
         OpensWebChannel,
     )
-    override val stateRoots = listOf(RegisterState::class)
+    override val stateRoot = RegisterState::class
 
     override val firstState = RegisterState.Start
 

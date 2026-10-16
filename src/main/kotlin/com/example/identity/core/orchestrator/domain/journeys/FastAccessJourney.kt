@@ -21,7 +21,7 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
 
     override val name = "FAST_ACCESS"
     override val startPoints = listOf(OpensAppChannel(startsWith = StartingAccount.LINKED_TO_DEVICE, onSuccess = DeviceLink.LINK_WITHOUT_ASKING))
-    override val stateRoots = listOf(FastAccessState::class)
+    override val stateRoot = FastAccessState::class
 
     private val toRequiredLevel = PathToRequiredLevel(afterIdentificationBackTo = FastAccessState.Start)
 

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.state.ProofPurpose
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.contract.tool_api.Tool
@@ -69,7 +70,7 @@ class BookingTest : BehaviorSpec({
         }
 
         `when`("it completed as FRESH_PROOF's re-proof") {
-            val reproving = FreshProofState.Reproving(AcrLevel.LOA2, FreshProofState.Purpose.MANAGE_METHODS, Offer(listOf(ToolId("auth-sms"))))
+            val reproving = FreshProofState.Reproving(AcrLevel.LOA2, ProofPurpose.MANAGE_METHODS, Offer(listOf(ToolId("auth-sms"))))
             val action = reproving.booking(event.tool, outcome)
 
             then("it only reconfirms: the proof is for the caller's one action and never the session's evidence") {

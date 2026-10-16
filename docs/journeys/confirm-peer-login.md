@@ -23,8 +23,8 @@ Wege führen in denselben Zustand `Requested`.
 **Keine zusätzliche Rückfrage.** Vor den folgenden Sicherheitsprüfungen gibt es bewusst **keine**
 eigene Frage „Möchten Sie bestätigen?“. Fehlt `loa2`, startet ohnehin ein Step-up, der das
 Sicherheitsniveau anhebt. Dieser Step-up erklärt selbst, warum gefragt wird, und bietet
-„Abbrechen“ als Ausweg an. Den Text dafür liefert `reason` im Ziel von `StepUpJourney.toward`
-(`StepUpState.Reason.PEER_LOGIN`).
+„Abbrechen“ als Ausweg an. Den Text dafür liefert der Zweck im Ziel von `StepUpJourney.toward`
+(`ProofPurpose.PEER_LOGIN`).
 
 ```mermaid
 stateDiagram-v2

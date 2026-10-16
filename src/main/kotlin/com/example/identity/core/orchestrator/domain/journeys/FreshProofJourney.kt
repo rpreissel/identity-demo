@@ -1,8 +1,8 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.state.ProofPurpose
 import com.example.identity.core.orchestrator.domain.journey.JourneyStart
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.OnlyAsSubJourney
@@ -26,10 +26,10 @@ object FreshProofJourney : Journey<FreshProofState> {
 
     override val name = "FRESH_PROOF"
     override val startPoints = listOf(OnlyAsSubJourney)
-    override val stateRoots = listOf(FreshProofState::class)
+    override val stateRoot = FreshProofState::class
 
     /** The gate before an action for [purpose]: [requiredAcr] reached and a recent proof. */
-    fun before(purpose: FreshProofState.Purpose, requiredAcr: AcrLevel): JourneyStart<*> =
+    fun before(purpose: ProofPurpose, requiredAcr: AcrLevel): JourneyStart<*> =
         JourneyStart(this, FreshProofState.Start(requiredAcr, purpose))
 
     override fun transition(state: FreshProofState, event: JourneyEvent, ctx: JourneyContext): Transition =
@@ -57,7 +57,7 @@ object FreshProofJourney : Journey<FreshProofState> {
         if (ctx hasReached state.requiredAcr) return null
         return Transition.RequireSubJourney(
             StepUpJourney.toward(
-                (ctx.currentAcr upTo state.requiredAcr).copy(allowReIdentification = state.purpose.allowReIdentification, reason = state.purpose.stepUpReason)
+                (ctx.currentAcr upTo state.requiredAcr).copy(purpose = state.purpose)
             ),
             resumeWith = state,
         )

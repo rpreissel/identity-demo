@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.state.ProofPurpose
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import java.time.Duration
 import com.example.identity.core.orchestrator.domain.policy.provenAt
@@ -8,7 +9,6 @@ import com.example.identity.TEST_NOW
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
@@ -30,7 +30,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 class FreshProofJourneyTest : BehaviorSpec({
 
     val journey = FreshProofJourney
-    fun start(requiredAcr: AcrLevel = AcrLevel.LOA2, purpose: FreshProofState.Purpose = FreshProofState.Purpose.DELETE_ACCOUNT) =
+    fun start(requiredAcr: AcrLevel = AcrLevel.LOA2, purpose: ProofPurpose = ProofPurpose.DELETE_ACCOUNT) =
         FreshProofState.Start(requiredAcr, purpose)
 
     given("Start, the session does not yet carry the required loa2") {
@@ -42,17 +42,17 @@ class FreshProofJourneyTest : BehaviorSpec({
             then("requires a step-up to that level, resuming here") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        StepUpJourney.toward(AcrLevel.LOA1 upTo AcrLevel.LOA2),
+                        StepUpJourney.toward((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(purpose = ProofPurpose.DELETE_ACCOUNT)),
                         resumeWith = start()
                     )
             }
         }
 
         `when`("the sub-journey starts for a peer login") {
-            val transition = journey.transition(start(purpose = FreshProofState.Purpose.PEER_LOGIN), JourneyEvent.Started, theCtx)
+            val transition = journey.transition(start(purpose = ProofPurpose.PEER_LOGIN), JourneyEvent.Started, theCtx)
             then("the step-up offers no re-identification as a way out and explains the peer login") {
                 transition.shouldBeInstanceOf<Transition.RequireSubJourney>().start shouldBe
-                    StepUpJourney.toward((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN))
+                    StepUpJourney.toward((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(purpose = ProofPurpose.PEER_LOGIN))
             }
         }
 
@@ -90,7 +90,7 @@ class FreshProofJourneyTest : BehaviorSpec({
             then("demands a fresh re-proof of any active factor - the level alone is not enough") {
                 val to = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<FreshProofState.Reproving>()
                 to.offered shouldContainExactlyInAnyOrder listOf(ToolId("auth-device"))
-                to.purpose shouldBe FreshProofState.Purpose.DELETE_ACCOUNT
+                to.purpose shouldBe ProofPurpose.DELETE_ACCOUNT
             }
         }
 
@@ -118,7 +118,7 @@ class FreshProofJourneyTest : BehaviorSpec({
     }
 
     given("Reproving, more than one offered candidate") {
-        val state = FreshProofState.Reproving(AcrLevel.LOA2, FreshProofState.Purpose.MANAGE_METHODS, Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
+        val state = FreshProofState.Reproving(AcrLevel.LOA2, ProofPurpose.MANAGE_METHODS, Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
 
         `when`("any active factor was re-proven (booked as Reconfirm, ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, ctx())
@@ -129,7 +129,7 @@ class FreshProofJourneyTest : BehaviorSpec({
     }
 
     given("Reproving, a single offered candidate") {
-        val state = FreshProofState.Reproving(AcrLevel.LOA2, FreshProofState.Purpose.PEER_LOGIN, Offer(listOf(ToolId("auth-sms"))))
+        val state = FreshProofState.Reproving(AcrLevel.LOA2, ProofPurpose.PEER_LOGIN, Offer(listOf(ToolId("auth-sms"))))
 
         `when`("the last offered candidate is abandoned") {
             val exhausted = state.declining(ToolId("auth-sms"))
@@ -143,7 +143,7 @@ class FreshProofJourneyTest : BehaviorSpec({
     given("the wording each purpose brings") {
         val offer = Offer(listOf(ToolId("auth-sms")))
         then("every purpose has a title and a description of its own") {
-            FreshProofState.Purpose.entries.map { FreshProofState.Reproving(AcrLevel.LOA2, it, offer).selectionTitle }.toSet().size shouldBe FreshProofState.Purpose.entries.size
+            ProofPurpose.entries.map { FreshProofState.Reproving(AcrLevel.LOA2, it, offer).selectionTitle }.toSet().size shouldBe ProofPurpose.entries.size
         }
     }
 })

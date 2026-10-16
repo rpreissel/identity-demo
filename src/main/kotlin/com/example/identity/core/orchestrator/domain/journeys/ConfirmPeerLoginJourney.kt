@@ -1,7 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.state.ProofPurpose
 import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
-import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
@@ -30,7 +30,7 @@ object ConfirmPeerLoginJourney : JourneyWithoutInput<ConfirmPeerLoginState> {
         OpensAppChannel(startsWith = StartingAccount.LINKED_TO_DEVICE, onSuccess = DeviceLink.LEAVE_UNCHANGED),
         StartableWhenAuthenticated,
     )
-    override val stateRoots = listOf(ConfirmPeerLoginState::class)
+    override val stateRoot = ConfirmPeerLoginState::class
 
     override val firstState = ConfirmPeerLoginState.Requested
 
@@ -58,7 +58,7 @@ object ConfirmPeerLoginJourney : JourneyWithoutInput<ConfirmPeerLoginState> {
     private fun requireFreshProof(ctx: JourneyContext): Transition {
         if (ctx.account == null) return Transition.Abort(Text("Dieses Gerät ist noch keinem Konto zugeordnet - bitte zuerst regulär anmelden."))
         return Transition.RequireSubJourney(
-            FreshProofJourney.before(FreshProofState.Purpose.PEER_LOGIN, REQUIRED_ACR),
+            FreshProofJourney.before(ProofPurpose.PEER_LOGIN, REQUIRED_ACR),
             resumeWith = ConfirmPeerLoginState.Requested,
         )
     }

@@ -14,7 +14,7 @@ sealed interface ConfirmPeerLoginState : JourneyState {
      * The wish, and the state parked while the FRESH_PROOF sub-journey runs (as in
      * [ManageAuthMethodsState.AddRequested]). Without an account (cold entry, no device link) the
      * journey aborts instead of falling into registration. No extra "confirm this?" prompt: the
-     * step-up screen explains the request ([StepUpState.Reason.PEER_LOGIN]) and offers "Abbrechen".
+     * step-up screen explains the request ([ProofPurpose.PEER_LOGIN]) and offers "Abbrechen".
      */
     data object Requested : ConfirmPeerLoginState, ToolFreeState
 

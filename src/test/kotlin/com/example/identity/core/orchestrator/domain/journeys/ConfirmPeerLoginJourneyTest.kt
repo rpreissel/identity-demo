@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
-import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
+import com.example.identity.core.orchestrator.domain.journey.state.ProofPurpose
 import java.time.Duration
 import com.example.identity.core.orchestrator.domain.policy.provenAt
 import com.example.identity.TEST_NOW
@@ -9,7 +9,6 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
-import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.evidence
@@ -32,7 +31,7 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
 
     // loa2 plus a recent proof, with no way out through re-identification, resuming at the parked wish.
     val peerLoginProof = Transition.RequireSubJourney(
-        FreshProofJourney.before(FreshProofState.Purpose.PEER_LOGIN, AcrLevel.LOA2),
+        FreshProofJourney.before(ProofPurpose.PEER_LOGIN, AcrLevel.LOA2),
         resumeWith = ConfirmPeerLoginState.Requested
     )
 
@@ -62,8 +61,7 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
             val transition = journey.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
             then("parks the wish and requires loa2 plus a fresh proof, without re-identification as a way out") {
                 transition shouldBe peerLoginProof
-                FreshProofState.Purpose.PEER_LOGIN.allowReIdentification shouldBe false
-                FreshProofState.Purpose.PEER_LOGIN.stepUpReason shouldBe StepUpState.Reason.PEER_LOGIN
+                ProofPurpose.PEER_LOGIN.allowsReIdentification shouldBe false
             }
         }
     }

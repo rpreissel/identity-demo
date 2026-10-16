@@ -1,5 +1,8 @@
 package com.example.identity.core.orchestrator.journey
 
+import io.kotest.matchers.string.shouldContain
+import io.kotest.assertions.throwables.shouldThrow
+import com.example.identity.core.orchestrator.domain.journeys.StepUpJourney
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
@@ -42,15 +45,26 @@ class JourneyStateCodecTest : BehaviorSpec({
 
     given("the journeys the codec reads with") {
         then("their states' type names are exactly the persisted ones") {
-            Journeys.all.flatMap { it.stateRoots }
+            Journeys.all.map { it.stateRoot }
                 .associateWith { root -> JourneyStateCodec.concreteStates(root).map { it.simpleName }.toSet() } shouldBe persistedNames
+        }
+    }
+
+    given("a state of another journey") {
+        `when`("it is written to a run") {
+            val run = AuthJourney(channelSessionId = ChannelSessionId(UUID.randomUUID()), kind = StepUpJourney, createdAt = Instant.now())
+            val result = runCatching { codec.write(run, FastAccessState.Start) }
+
+            then("it is refused - a transition does not know whose it is, the codec does") {
+                shouldThrow<IllegalStateException> { result.getOrThrow() }.message shouldContain "belongs to another journey"
+            }
         }
     }
 
     given("every state without fields") {
         then("it survives a write and a read under its own journey") {
             Journeys.all.forEach { kind ->
-                kind.stateRoots.flatMap(JourneyStateCodec::concreteStates).mapNotNull { it.objectInstance }.forEach { state ->
+                JourneyStateCodec.concreteStates(kind.stateRoot).mapNotNull { it.objectInstance }.forEach { state ->
                     val journey = AuthJourney(channelSessionId = ChannelSessionId(UUID.randomUUID()), kind = kind, createdAt = Instant.now())
                     codec.write(journey, state)
                     journey.stateType shouldBe state.javaClass.simpleName

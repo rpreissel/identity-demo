@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator.domain.journey
 
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
-import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
+import com.example.identity.core.orchestrator.domain.journey.state.ToolFreeState
 import com.example.identity.core.orchestrator.domain.ChannelState
 
 /**
@@ -16,8 +16,9 @@ sealed interface Transition {
 
     /**
      * Run the journey [start] names first (e.g. `StepUpJourney.toward(goal)`), then resume this
-     * journey at [resumeWith] once it finishes. [resumeWith] must be a state of this journey;
-     * `JourneyService` checks that, since a transition does not know whose it is.
+     * journey at [resumeWith] once it finishes. [resumeWith] is a [ToolFreeState]: it is reactivated
+     * only after the sub-journey ran, with new evidence and possibly other methods, so it must
+     * recompute what to offer instead of re-offering a frozen candidate list.
      *
      * [optional] says what a cancelled sub-journey means. Not optional (the usual case): it was a
      * precondition, so this journey is cancelled with it, without being asked. Optional: this
@@ -25,20 +26,10 @@ sealed interface Transition {
      */
     data class RequireSubJourney(
         val start: JourneyStart<*>,
-        val resumeWith: JourneyState,
+        val resumeWith: ToolFreeState,
         val optional: Boolean = false,
     ) : Transition {
         val journey: Journey<*> get() = start.journey
-
-        init {
-            // [resumeWith] is reactivated only after the sub-journey ran, with new evidence and
-            // possibly other methods. A frozen candidate list would be re-offered as current, so
-            // resume at a state that recomputes, never at an offer.
-            check(resumeWith !is OfferingState) {
-                "resumeWith must not be an OfferingState (${resumeWith::class.simpleName}): a sub-journey's " +
-                    "whole point is that the situation changed, so the offer has to be recomputed on return"
-            }
-        }
     }
 
     /** Goal reached: consume the journey, the channel becomes AUTHENTICATED. */

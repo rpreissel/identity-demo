@@ -13,7 +13,7 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 sealed interface ManageAuthMethodsState : JourneyState {
 
     /** What the user asked for; kept while the FRESH_PROOF sub-journey runs. */
-    sealed interface Wish : ManageAuthMethodsState
+    sealed interface Wish : ManageAuthMethodsState, ToolFreeState
 
     /**
      * The user's wish, and the state the journey is parked in while level and fresh proof are

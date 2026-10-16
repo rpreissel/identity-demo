@@ -37,11 +37,8 @@ interface Journey<S : JourneyState> {
     /** Where this journey may begin. Checked once for every journey by `Journeys`. */
     val startPoints: List<StartPoint>
 
-    /**
-     * The sealed roots this journey's states are persisted and read back as (`JourneyStateCodec`),
-     * usually one. Several roots must not share a state name.
-     */
-    val stateRoots: List<KClass<out S>>
+    /** The sealed root of this journey's states; `JourneyStateCodec` reads them back under it. */
+    val stateRoot: KClass<out S>
 
     /**
      * The transition function. After a [Transition.Perform], JourneyService executes the [Action],

@@ -439,10 +439,6 @@ class JourneyService(
      * keeps "one running journey per channel" true.
      */
     private fun suspendFor(journey: AuthJourney, channel: ChannelSession, transition: Transition.RequireSubJourney): Step {
-        // A transition does not know whose it is, so this is where a foreign resume state is caught.
-        check(journey.requireKind().stateRoots.any { it.isInstance(transition.resumeWith) }) {
-            "${journey.requireKind().name} cannot resume at ${transition.resumeWith::class.simpleName}, a state of another journey"
-        }
         codec.write(journey, transition.resumeWith)
         journey.lifecycle = JourneyLifecycle.SUSPENDED
         // Flushed before the child row: the database allows one STARTED journey per channel

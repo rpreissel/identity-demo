@@ -30,21 +30,22 @@ stateDiagram-v2
 ```
 
 **Was die Zustände enthalten.** Beide Zustände tragen dasselbe Ziel (`StepUpState.Goal`), vom
-Start bis zum Ende unverändert. Es hat vier Felder:
+Start bis zum Ende unverändert. Es hat drei Felder:
 
 - `targetAcr` ist das Niveau, das dieser eine Lauf erreichen soll. Es ist nicht die dauerhafte
   Untergrenze des Kanals (Orchestrierung, Abschnitt 4).
 - `startingAcr` ist das Niveau beim Start.
-- `allowReIdentification` sagt, ob eine erneute Identifizierung als Ausweg erlaubt ist.
-- `reason` sagt, warum ein Aufrufer den Step-up braucht. Heute gibt es nur `PEER_LOGIN`. Ohne
-  `reason` gilt der allgemeine Text.
+- `purpose` (`ProofPurpose`) nennt die Aktion, für die der Step-up die Hürde ist (über
+  `FRESH_PROOF`): `DELETE_ACCOUNT`, `MANAGE_METHODS` oder `PEER_LOGIN`. Daraus folgen der Text und
+  ob eine erneute Identifizierung als Ausweg erlaubt ist. Ohne `purpose`, beim einfachen Step-up
+  des Kanals, gilt der allgemeine Text, und der Ausweg ist erlaubt.
 
 `AuthChoice` enthält außerdem das Angebot, die bisherigen Ablehnungen und `additionalFactorRound`.
 Liegt auf dem Kanal schon der Nachweis eines Anmeldeverfahrens vor, sagt der Text dem Nutzer, dass
 jetzt ein Verfahren anderer Art nötig ist.
 
-**Ohne erneute Identifizierung.** `CONFIRM_PEER_LOGIN` fordert seinen Step-up mit
-`allowReIdentification = false` an. Dann entfällt der Weg über `RE_IDENTIFY` ganz. Reicht kein
+**Ohne erneute Identifizierung.** `CONFIRM_PEER_LOGIN` fordert seinen Step-up mit dem Zweck
+`PEER_LOGIN` an, der keine erneute Identifizierung zulässt. Dann entfällt der Weg über `RE_IDENTIFY` ganz. Reicht kein
 Verfahren, endet die Journey mit `Abort` oder `Cancel`.
 
 **Mit erneuter Identifizierung.** Manchmal kann kein aktives Verfahren das fehlende Niveau

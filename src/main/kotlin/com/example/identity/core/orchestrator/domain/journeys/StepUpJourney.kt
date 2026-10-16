@@ -21,7 +21,7 @@ object StepUpJourney : Journey<StepUpState> {
 
     override val name = "STEP_UP"
     override val startPoints = listOf(StartableWhenAuthenticated)
-    override val stateRoots = listOf(StepUpState::class)
+    override val stateRoot = StepUpState::class
 
     /** A step-up toward [goal]: never started without one. */
     fun toward(goal: Goal): JourneyStart<*> = JourneyStart(this, StepUpState.Start(goal))
@@ -63,11 +63,11 @@ object StepUpJourney : Journey<StepUpState> {
     }
 
     /**
-     * Offers re-identification if allowed ([Goal.allowReIdentification]) and able to
+     * Offers re-identification if allowed ([Goal.allowsReIdentification]) and able to
      * close the gap; [whenNone] otherwise.
      */
     private fun offerReIdentOrGiveUp(goal: Goal, ctx: JourneyContext, whenNone: Transition): Transition {
-        if (!goal.allowReIdentification) return whenNone
+        if (!goal.allowsReIdentification) return whenNone
         // The whole goal, or the run would forget on return why and how it may step up.
         return reIdentifyOr(goal.targetAcr, ctx, resumeWith = StepUpState.Start(goal)) { whenNone }
     }

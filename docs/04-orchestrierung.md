@@ -492,8 +492,8 @@ gleichwertige Wege dorthin:
 
 Weil Weg 3 gleichwertig ist, bietet die Anmeldung die erneute Identifizierung
 (`CandidateTools.forReIdentification`) standardmäßig als Ausweichweg an. Das geschieht, sobald die
-vorhandenen Anmeldeverfahren nicht reichen (`StepUpJourney.toward`, standardmäßig
-`allowReIdentification=true`). `loa3` bzw. AAL3 ist bewusst nicht ausgearbeitet.
+vorhandenen Anmeldeverfahren nicht reichen (`StepUpJourney.toward`; nur der Zweck
+`ProofPurpose.PEER_LOGIN` schließt das aus). `loa3` bzw. AAL3 ist bewusst nicht ausgearbeitet.
 
 ### Nachweis der Sitzung ist nicht dasselbe wie Fähigkeit des Kontos
 
@@ -712,8 +712,9 @@ erreichen will und wie er dorthin kommt.
 
 Jede Journey ist ein Moore-Automat für ihren eigenen Zustandstyp, also ein Zustandsautomat, der
 aus Zustand und Ereignis den nächsten Schritt bestimmt. Sie hat die Methode
-`transition(state, event, ctx)`. `stateRoots` nennt die `sealed`-Wurzeln ihrer Zustände, meist eine;
-danach liest `JourneyStateCodec` den gespeicherten Zustand zurück.
+`transition(state, event, ctx)`. `stateRoot` nennt die `sealed`-Wurzel ihrer Zustände; darunter
+liest `JourneyStateCodec` den gespeicherten Zustand zurück. Der Codec ist auch die eine Stelle, die
+einen Zustand einer fremden Journey zurückweist, denn eine `Transition` weiß nicht, wessen sie ist.
 
 **Kein Code fragt nach einer bestimmten Journey.** Was an einer Journey hängt, nennt sie selbst:
 ihre Startpunkte (`startPoints`, Abschnitt 2). Was ein Lauf war (Anmeldung, Step-up), ist keine
@@ -771,7 +772,8 @@ Ein **Übergang** (`Transition`) ist das, was als Nächstes passieren soll:
 - **`To(state)`** — weiter zu diesem Zustand. Er bringt sein Angebot selbst mit.
 - **`RequireSubJourney(start, resumeWith, optional)`** — zuerst die Journey aus `start` laufen
   lassen (z. B. `StepUpJourney.toward(goal)`), und danach hier bei `resumeWith` weitermachen.
-  `resumeWith` muss ein Zustand der anfordernden Journey sein; `JourneyService` prüft das. Wird die Sub-Journey
+  `resumeWith` ist ein Zustand ohne Tool (`ToolFreeState`), denn nach der Rückkehr muss das Angebot
+  neu berechnet werden; dass er zur anfordernden Journey gehört, prüft der Codec. Wird die Sub-Journey
   abgebrochen, bricht diese Journey mit ab, außer die Anforderung war `optional`; dann entscheidet
   die anfordernde Journey. Die Aussage gilt je Anforderung und steht an der Sub-Journey
   (`auth_journey.optional_for_parent`).

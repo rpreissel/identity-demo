@@ -15,26 +15,12 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 sealed interface FreshProofState : JourneyState {
     val requiredAcr: AcrLevel
 
-    val purpose: Purpose
-
-    /**
-     * Who asks for the proof. A value, not text: the state is persisted, and wording must change
-     * without touching stored journeys.
-     */
-    enum class Purpose(
-        /** False where a dead end must not let someone acquire a fresh identity just to pass (CONFIRM_PEER_LOGIN). */
-        val allowReIdentification: Boolean = true,
-        val stepUpReason: StepUpState.Reason? = null,
-    ) {
-        DELETE_ACCOUNT,
-        MANAGE_METHODS,
-        PEER_LOGIN(allowReIdentification = false, stepUpReason = StepUpState.Reason.PEER_LOGIN),
-    }
+    val purpose: ProofPurpose
 
     /** The check itself, and the state parked while the step-up it required runs. */
     data class Start(
         override val requiredAcr: AcrLevel,
-        override val purpose: Purpose,
+        override val purpose: ProofPurpose,
     ) : FreshProofState, ToolFreeState
 
     /**
@@ -44,7 +30,7 @@ sealed interface FreshProofState : JourneyState {
      */
     data class Reproving(
         override val requiredAcr: AcrLevel,
-        override val purpose: Purpose,
+        override val purpose: ProofPurpose,
         override val offer: Offer,
     ) : FreshProofState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
@@ -56,14 +42,14 @@ sealed interface FreshProofState : JourneyState {
         // selectionContext names the kind of offer, not the journey.
         override val selectionContext: String get() = "auth"
         override val selectionTitle: Text get() = when (purpose) {
-            Purpose.DELETE_ACCOUNT -> Text("Konto löschen – Anmeldeverfahren bestätigen")
-            Purpose.MANAGE_METHODS -> Text("Anmeldeverfahren verwalten – Anmeldeverfahren bestätigen")
-            Purpose.PEER_LOGIN -> Text("Web-Login bestätigen – Anmeldeverfahren bestätigen")
+            ProofPurpose.DELETE_ACCOUNT -> Text("Konto löschen – Anmeldeverfahren bestätigen")
+            ProofPurpose.MANAGE_METHODS -> Text("Anmeldeverfahren verwalten – Anmeldeverfahren bestätigen")
+            ProofPurpose.PEER_LOGIN -> Text("Web-Login bestätigen – Anmeldeverfahren bestätigen")
         }
         override val selectionDescription: Text get() = when (purpose) {
-            Purpose.DELETE_ACCOUNT -> Text("Bevor Ihr Konto gelöscht wird, bestätigen Sie bitte noch einmal eines Ihrer Anmeldeverfahren.")
-            Purpose.MANAGE_METHODS -> Text("Ihr letzter Nachweis liegt länger zurück. Bitte bestätigen Sie zuerst eines Ihrer Anmeldeverfahren.")
-            Purpose.PEER_LOGIN -> Text("Bevor Sie den Web-Login bestätigen, bestätigen Sie bitte noch einmal eines Ihrer Anmeldeverfahren.")
+            ProofPurpose.DELETE_ACCOUNT -> Text("Bevor Ihr Konto gelöscht wird, bestätigen Sie bitte noch einmal eines Ihrer Anmeldeverfahren.")
+            ProofPurpose.MANAGE_METHODS -> Text("Ihr letzter Nachweis liegt länger zurück. Bitte bestätigen Sie zuerst eines Ihrer Anmeldeverfahren.")
+            ProofPurpose.PEER_LOGIN -> Text("Bevor Sie den Web-Login bestätigen, bestätigen Sie bitte noch einmal eines Ihrer Anmeldeverfahren.")
         }
     }
 }

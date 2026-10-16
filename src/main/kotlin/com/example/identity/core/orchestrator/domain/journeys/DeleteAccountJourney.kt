@@ -1,7 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.state.ProofPurpose
 import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
-import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
@@ -19,7 +19,7 @@ object DeleteAccountJourney : JourneyWithoutInput<DeleteAccountState> {
 
     override val name = "DELETE_ACCOUNT"
     override val startPoints = listOf(StartableWhenAuthenticated)
-    override val stateRoots = listOf(DeleteAccountState::class)
+    override val stateRoot = DeleteAccountState::class
 
     override val firstState = DeleteAccountState.ConfirmPending
 
@@ -40,7 +40,7 @@ object DeleteAccountJourney : JourneyWithoutInput<DeleteAccountState> {
         }
 
     private fun requireFreshProof(ctx: JourneyContext): Transition = Transition.RequireSubJourney(
-        FreshProofJourney.before(FreshProofState.Purpose.DELETE_ACCOUNT, Action.DeleteAccount.requiredAcr(ctx.requireAccount())),
+        FreshProofJourney.before(ProofPurpose.DELETE_ACCOUNT, Action.DeleteAccount.requiredAcr(ctx.requireAccount())),
         resumeWith = DeleteAccountState.ConfirmPending,
     )
 }

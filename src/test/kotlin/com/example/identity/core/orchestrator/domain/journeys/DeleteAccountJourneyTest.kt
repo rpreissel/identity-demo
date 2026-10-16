@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
-import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
+import com.example.identity.core.orchestrator.domain.journey.state.ProofPurpose
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -60,7 +60,7 @@ class DeleteAccountJourneyTest : BehaviorSpec({
             then("parks the wish and requires loa2 plus a fresh proof - only NOW, never before accepting, and never decided here (ADR-61)") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        FreshProofJourney.before(FreshProofState.Purpose.DELETE_ACCOUNT, AcrLevel.LOA2),
+                        FreshProofJourney.before(ProofPurpose.DELETE_ACCOUNT, AcrLevel.LOA2),
                         resumeWith = DeleteAccountState.ConfirmPending
                     )
             }
@@ -74,7 +74,7 @@ class DeleteAccountJourneyTest : BehaviorSpec({
             val transition = journey.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
             then("requires only loa1 - selfServiceAcrFloor, not a second definition") {
                 transition.shouldBeInstanceOf<Transition.RequireSubJourney>().start shouldBe
-                    FreshProofJourney.before(FreshProofState.Purpose.DELETE_ACCOUNT, AcrLevel.LOA1)
+                    FreshProofJourney.before(ProofPurpose.DELETE_ACCOUNT, AcrLevel.LOA1)
             }
         }
     }

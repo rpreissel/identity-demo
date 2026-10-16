@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
-import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
+import com.example.identity.core.orchestrator.domain.journey.state.ProofPurpose
 import java.time.Duration
 import com.example.identity.core.orchestrator.domain.policy.provenAt
 import com.example.identity.TEST_NOW
@@ -42,7 +42,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         val required = transition.shouldBeInstanceOf<Transition.RequireSubJourney>()
         required.journey shouldBe FreshProofJourney
         required.resumeWith shouldBe resumeWith
-        required.start shouldBe FreshProofJourney.before(FreshProofState.Purpose.MANAGE_METHODS, requiredAcr)
+        required.start shouldBe FreshProofJourney.before(ProofPurpose.MANAGE_METHODS, requiredAcr)
     }
     val proven = JourneyEvent.SubJourneyFinished(FreshProofJourney, achievedAcr = AcrLevel.LOA2)
 
@@ -55,7 +55,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
             then("parks the wish and requires loa2 plus a fresh proof, without losing it (ADR-61)") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        FreshProofJourney.before(FreshProofState.Purpose.MANAGE_METHODS, AcrLevel.LOA2),
+                        FreshProofJourney.before(ProofPurpose.MANAGE_METHODS, AcrLevel.LOA2),
                         resumeWith = ManageAuthMethodsState.AddRequested
                     )
             }

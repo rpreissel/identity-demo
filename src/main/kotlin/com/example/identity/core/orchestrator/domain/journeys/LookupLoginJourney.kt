@@ -25,7 +25,7 @@ object LookupLoginJourney : JourneyWithoutInput<LookupLoginState> {
 
     override val name = "LOOKUP_LOGIN"
     override val startPoints = listOf(OpensAppChannel(startsWith = StartingAccount.NONE, onSuccess = DeviceLink.ASK_BEFORE_LINKING))
-    override val stateRoots = listOf(LookupLoginState::class)
+    override val stateRoot = LookupLoginState::class
 
     override val firstState = LookupLoginState.Start
 

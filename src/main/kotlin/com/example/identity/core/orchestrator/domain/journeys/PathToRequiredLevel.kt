@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.state.ToolFreeState
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -9,7 +10,6 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.toEnrollAbortMessage
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
-import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 
 /**
@@ -19,7 +19,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.Offer
  * states stay readable from its own file; what only REGISTER asks (a confirmed address, a second
  * factor kind) stays in [RegisterJourney].
  */
-class PathToRequiredLevel(private val afterIdentificationBackTo: JourneyState) {
+class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) {
 
     /** After a proof: done, another of the account's methods, or a new one. */
     fun nextAfterProof(ctx: JourneyContext): Transition {
