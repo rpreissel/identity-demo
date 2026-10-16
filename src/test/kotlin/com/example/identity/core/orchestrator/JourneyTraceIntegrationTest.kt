@@ -63,11 +63,11 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
                     times shouldBe times.sorted()
                 }
                 then("the journey's start, the tool's activation and its completion are recorded") {
-                    entries.any { it["eventType"] == "Started" } shouldBe true
+                    entries.any { it["eventType"] == "STARTED" } shouldBe true
                     entries.any { it["eventType"] == "TOOL_ACTIVATED" && it.detail()["toolId"] == "ident-fsc" } shouldBe true
                     // In the version the client declared (ADR-51).
                     entries.any { it["eventType"] == "TOOL_ACTIVATED" && it.detail()["tool"] == "ident-fsc@1" } shouldBe true
-                    entries.any { it["eventType"] == "Completed" && it.detail()["toolId"] == "ident-fsc" } shouldBe true
+                    entries.any { it["eventType"] == "TOOL_COMPLETED" && it.detail()["toolId"] == "ident-fsc" } shouldBe true
                 }
                 then("journeyState is a first-class field (like eventType), not tucked into detail") {
                     entries.any { it["eventType"] == "TOOL_ACTIVATED" && it["journeyState"] != null } shouldBe true
@@ -77,8 +77,8 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
                     val accountIds = entries.map { it["accountId"] }.toSet()
                     accountIds.size shouldBe 1
                     accountIds.single().shouldNotBeNull()
-                    // "Started" is logged before ident-fsc binds the account - it still carries it.
-                    entries.first { it["eventType"] == "Started" }["accountId"].shouldNotBeNull()
+                    // STARTED is logged before ident-fsc binds the account - it still carries it.
+                    entries.first { it["eventType"] == "STARTED" }["accountId"].shouldNotBeNull()
                 }
             }
         }

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { buildTimeline, type TimelineJourney, type TimelineItem } from './journeyTraceTimeline'
-import type { JourneyTraceEntryView } from './types'
+import type { JourneyTraceEntryView, JourneyTraceEvent } from './types'
 
 function entry(
   createdAt: string,
-  eventType: string,
+  eventType: JourneyTraceEvent,
   journeyId?: string,
   extra: Partial<JourneyTraceEntryView> = {},
 ): JourneyTraceEntryView {
@@ -25,49 +25,49 @@ function journeyAt(items: TimelineItem[], index: number): TimelineJourney {
 describe('buildTimeline', () => {
   it('places a sub-journey right after the step that required it, not at the end', () => {
     const entries = [
-      entry('2026-10-10T09:41:02Z', 'Started', 'parent'),
-      entry('2026-10-10T09:41:09Z', 'Answered', 'parent', { detail: { decision: 'RequireSubJourney', subIntent: 'STEP_UP' } }),
-      entry('2026-10-10T09:41:09.001Z', 'Started', 'sub', { parentJourneyId: 'parent', intent: 'STEP_UP' }),
-      entry('2026-10-10T09:42:15Z', 'Completed', 'sub', { parentJourneyId: 'parent', intent: 'STEP_UP', detail: { decision: 'Authenticated' } }),
-      entry('2026-10-10T09:42:15.001Z', 'SubJourneyFinished', 'parent'),
-      entry('2026-10-10T09:42:16Z', 'ActionCompleted', 'parent'),
+      entry('2026-10-10T09:41:02Z', 'STARTED', 'parent'),
+      entry('2026-10-10T09:41:09Z', 'ANSWERED', 'parent', { detail: { decision: 'RequireSubJourney', subIntent: 'STEP_UP' } }),
+      entry('2026-10-10T09:41:09.001Z', 'STARTED', 'sub', { parentJourneyId: 'parent', intent: 'STEP_UP' }),
+      entry('2026-10-10T09:42:15Z', 'TOOL_COMPLETED', 'sub', { parentJourneyId: 'parent', intent: 'STEP_UP', detail: { decision: 'Authenticated' } }),
+      entry('2026-10-10T09:42:15.001Z', 'SUB_JOURNEY_FINISHED', 'parent'),
+      entry('2026-10-10T09:42:16Z', 'ACTION_COMPLETED', 'parent'),
     ]
 
     const items = buildTimeline(entries)
 
     expect(items).toHaveLength(1)
-    expect(shape(journeyAt(items, 0))).toEqual(['step:Started', 'step:Answered', 'sub:sub', 'step:SubJourneyFinished', 'step:ActionCompleted'])
+    expect(shape(journeyAt(items, 0))).toEqual(['step:STARTED', 'step:ANSWERED', 'sub:sub', 'step:SUB_JOURNEY_FINISHED', 'step:ACTION_COMPLETED'])
   })
 
   it('keeps a sub-journey logged in the same instant as its trigger behind that trigger', () => {
     const entries = [
-      entry('2026-10-10T09:41:02Z', 'Started', 'parent'),
-      entry('2026-10-10T09:41:09Z', 'Answered', 'parent', { detail: { decision: 'RequireSubJourney' } }),
-      entry('2026-10-10T09:41:09Z', 'Started', 'sub', { parentJourneyId: 'parent' }),
+      entry('2026-10-10T09:41:02Z', 'STARTED', 'parent'),
+      entry('2026-10-10T09:41:09Z', 'ANSWERED', 'parent', { detail: { decision: 'RequireSubJourney' } }),
+      entry('2026-10-10T09:41:09Z', 'STARTED', 'sub', { parentJourneyId: 'parent' }),
     ]
 
-    expect(shape(journeyAt(buildTimeline(entries), 0))).toEqual(['step:Started', 'step:Answered', 'sub:sub'])
+    expect(shape(journeyAt(buildTimeline(entries), 0))).toEqual(['step:STARTED', 'step:ANSWERED', 'sub:sub'])
   })
 
   it('without a RequireSubJourney step, places the sub-journey after the last step before it', () => {
     const entries = [
-      entry('2026-10-10T09:41:02Z', 'Started', 'parent'),
-      entry('2026-10-10T09:41:05Z', 'Started', 'sub', { parentJourneyId: 'parent' }),
-      entry('2026-10-10T09:41:09Z', 'SubJourneyCancelled', 'parent'),
+      entry('2026-10-10T09:41:02Z', 'STARTED', 'parent'),
+      entry('2026-10-10T09:41:05Z', 'STARTED', 'sub', { parentJourneyId: 'parent' }),
+      entry('2026-10-10T09:41:09Z', 'SUB_JOURNEY_CANCELLED', 'parent'),
     ]
 
-    expect(shape(journeyAt(buildTimeline(entries), 0))).toEqual(['step:Started', 'sub:sub', 'step:SubJourneyCancelled'])
+    expect(shape(journeyAt(buildTimeline(entries), 0))).toEqual(['step:STARTED', 'sub:sub', 'step:SUB_JOURNEY_CANCELLED'])
   })
 
   it('orders journeys and journey-less channel events by time, and shows an orphaned sub-journey on its own', () => {
     const entries = [
-      entry('2026-10-10T09:30:00Z', 'Started', 'first'),
-      entry('2026-10-10T09:35:00Z', 'Started', 'orphan', { parentJourneyId: 'gone' }),
-      entry('2026-10-10T09:52:00Z', 'EXPIRED'),
+      entry('2026-10-10T09:30:00Z', 'STARTED', 'first'),
+      entry('2026-10-10T09:35:00Z', 'STARTED', 'orphan', { parentJourneyId: 'gone' }),
+      entry('2026-10-10T09:52:00Z', 'CHANNEL_EXPIRED'),
     ]
 
     const items = buildTimeline(entries)
 
-    expect(items.map((item) => (item.kind === 'journey' ? item.journey.journeyId : item.entry.eventType))).toEqual(['first', 'orphan', 'EXPIRED'])
+    expect(items.map((item) => (item.kind === 'journey' ? item.journey.journeyId : item.entry.eventType))).toEqual(['first', 'orphan', 'CHANNEL_EXPIRED'])
   })
 })

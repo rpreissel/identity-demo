@@ -31,12 +31,12 @@ enum class JourneyTraceOutcome {
         fun of(last: JourneyTraceEntryView): JourneyTraceOutcome {
             val decision = last.detail["decision"]
             return when {
-                last.eventType == "CANCELLED" -> CANCELLED
-                last.eventType == "LOGGED_OUT" || decision == "Logout" -> LOGGED_OUT
+                last.eventType == JourneyTraceEvent.JOURNEY_CANCELLED -> CANCELLED
+                last.eventType == JourneyTraceEvent.LOGGED_OUT || decision == "Logout" -> LOGGED_OUT
                 decision == "Authenticated" -> SUCCEEDED
                 decision == "Abort" -> FAILED
                 // The attempt budget spans the journey; its last failure ends it (JourneyService.chargeAttempt).
-                last.eventType == "TOOL_FAILED" && (last.detail["attemptBudgetLeft"] as? Number)?.toInt()?.let { it <= 0 } == true -> FAILED
+                last.eventType == JourneyTraceEvent.TOOL_FAILED && (last.detail["attemptBudgetLeft"] as? Number)?.toInt()?.let { it <= 0 } == true -> FAILED
                 else -> OPEN
             }
         }
@@ -74,7 +74,7 @@ data class JourneyTraceSummary(
                 startedAt = first.createdAt,
                 lastActivityAt = steps.last().createdAt,
                 stepCount = steps.size,
-                failedAttempts = steps.count { it.eventType == "TOOL_FAILED" },
+                failedAttempts = steps.count { it.eventType == JourneyTraceEvent.TOOL_FAILED },
                 outcome = JourneyTraceOutcome.of(steps.last())
             )
         }

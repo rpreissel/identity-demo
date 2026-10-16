@@ -21,7 +21,7 @@ data class JourneyTraceEntryView(
     /** Set when [journeyId] ran as another journey's precondition; the UI nests it under that parent. */
     val parentJourneyId: JourneyId?,
     val intent: String?,
-    val eventType: String,
+    val eventType: JourneyTraceEvent,
     /** The JourneyState subtype the journey was in when this event happened (e.g. "AwaitingTan") - null for a channel-level event. */
     val journeyState: String?,
     /**
@@ -62,7 +62,7 @@ class JourneyTraceService(
     fun record(
         channel: LoggedChannel,
         journey: LoggedJourney,
-        eventType: String,
+        eventType: JourneyTraceEvent,
         journeyState: String? = null,
         detail: Map<String, Any?> = emptyMap()
     ) {
@@ -84,7 +84,7 @@ class JourneyTraceService(
     }
 
     /** For an event outside any journey, e.g. logging out of a channel with nothing running. */
-    fun recordForChannel(channel: LoggedChannel, eventType: String, detail: Map<String, Any?> = emptyMap()) {
+    fun recordForChannel(channel: LoggedChannel, eventType: JourneyTraceEvent, detail: Map<String, Any?> = emptyMap()) {
         journeyTraceRepository.save(
             JourneyTraceEntry(
                 bindingKeyRef = channel.bindingKeyRef,

@@ -8,6 +8,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
+import com.example.identity.core.orchestrator.journeytrace.JourneyTraceEvent
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
 import com.example.identity.contract.tool_api.envelope.Next
@@ -30,6 +31,17 @@ class JourneyTraceDetails(
 
     fun methodEvidenceDetail(methods: List<MethodEvidence>): List<Map<String, Any?>> =
         methods.map { mapOf("method" to it.method.value, "loa" to it.loa.value, "factorTypes" to it.factorTypes.map { t -> t.name }, "amrSourceId" to it.amrSourceId) }
+
+    /** The trace line a journey's own event is logged as. */
+    fun traceEventOf(event: JourneyEvent): JourneyTraceEvent = when (event) {
+        JourneyEvent.Started -> JourneyTraceEvent.STARTED
+        is JourneyEvent.Answered -> JourneyTraceEvent.ANSWERED
+        JourneyEvent.ActionCompleted -> JourneyTraceEvent.ACTION_COMPLETED
+        is JourneyEvent.Abandoned -> JourneyTraceEvent.TOOL_ABANDONED
+        is JourneyEvent.OfferExhausted -> JourneyTraceEvent.OFFER_EXHAUSTED
+        is JourneyEvent.SubJourneyFinished -> JourneyTraceEvent.SUB_JOURNEY_FINISHED
+        is JourneyEvent.SubJourneyCancelled -> JourneyTraceEvent.SUB_JOURNEY_CANCELLED
+    }
 
     /**
      * Event-specific detail for the trace: the tool involved, in the version [channel] declared

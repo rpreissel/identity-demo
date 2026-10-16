@@ -5,6 +5,8 @@ import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -49,8 +51,9 @@ class JourneyTraceEntry(
     @Column(name = "intent", length = 32)
     var intent: String? = null,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "event_type", nullable = false, length = 100)
-    var eventType: String? = null,
+    var eventType: JourneyTraceEvent? = null,
 
     /** The JourneyState subtype at this event (e.g. "AwaitingTan"); null for a channel-level event. */
     @Column(name = "journey_state", length = 100)

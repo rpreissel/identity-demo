@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import type { JourneyTraceChannel, JourneyTraceEntryView, JourneyTracePage, JourneyTraceSummary } from '../types'
+import type { JourneyTraceChannel, JourneyTraceEntryView, JourneyTraceEvent, JourneyTracePage, JourneyTraceSummary } from '../types'
 import { toolLabel } from '../journeyTraceText'
 import { JourneyTraceView } from './JourneyTraceView'
 
@@ -23,7 +23,7 @@ const summary: JourneyTraceSummary = {
   outcome: 'SUCCEEDED',
 }
 
-function entry(createdAt: string, eventType: string, journeyId: string, extra: Partial<JourneyTraceEntryView> = {}): JourneyTraceEntryView {
+function entry(createdAt: string, eventType: JourneyTraceEvent, journeyId: string, extra: Partial<JourneyTraceEntryView> = {}): JourneyTraceEntryView {
   return { channelSessionId: CHANNEL, channelType: 'APP', accountId: 4, journeyId, intent: 'MANAGE_AUTH_METHODS', eventType, detail: {}, createdAt, ...extra }
 }
 
@@ -35,11 +35,11 @@ const channel: JourneyTraceChannel = {
   truncated: false,
   journeys: [summary, { ...summary, journeyId: SUB, parentJourneyId: PARENT, intent: 'STEP_UP', stepCount: 2, failedAttempts: 1 }],
   entries: [
-    entry('2026-10-10T09:41:02Z', 'Started', PARENT),
-    entry('2026-10-10T09:41:09Z', 'Answered', PARENT, { detail: { answer: 'confirm', decision: 'RequireSubJourney', subIntent: 'STEP_UP', targetAcr: 'loa3' } }),
-    entry('2026-10-10T09:41:10Z', 'Started', SUB, { parentJourneyId: PARENT, intent: 'STEP_UP' }),
+    entry('2026-10-10T09:41:02Z', 'STARTED', PARENT),
+    entry('2026-10-10T09:41:09Z', 'ANSWERED', PARENT, { detail: { answer: 'confirm', decision: 'RequireSubJourney', subIntent: 'STEP_UP', targetAcr: 'loa3' } }),
+    entry('2026-10-10T09:41:10Z', 'STARTED', SUB, { parentJourneyId: PARENT, intent: 'STEP_UP' }),
     entry('2026-10-10T09:41:38Z', 'TOOL_FAILED', SUB, { parentJourneyId: PARENT, intent: 'STEP_UP', detail: { toolId: 'auth-sms', attemptBudgetLeft: 4 } }),
-    entry('2026-10-10T09:42:15Z', 'SubJourneyFinished', PARENT, { detail: { subIntent: 'STEP_UP', decision: 'Authenticated' } }),
+    entry('2026-10-10T09:42:15Z', 'SUB_JOURNEY_FINISHED', PARENT, { detail: { subIntent: 'STEP_UP', decision: 'Authenticated' } }),
   ],
 }
 

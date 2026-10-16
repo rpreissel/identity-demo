@@ -497,7 +497,7 @@ Orchestrators:
     steht dort als Satz („SMS fehlgeschlagen“), darunter die Entscheidung („weiter zu …“) und die
     Angaben als beschriftete Tags mit Erklärung. Eine Sub-Journey steht eingerückt direkt unter dem
     Schritt, der sie verlangt hat. Die Schritte lassen sich nach Text und Art filtern. „Technische
-    Namen“ blendet `eventType`, Zustand und Ids ein, „Details“ die Rohdaten. Live aktualisiert wird
+    Namen“ blendet `eventType` (`JourneyTraceEvent`), Zustand und Ids ein, „Details“ die Rohdaten. Live aktualisiert wird
     nur die geöffnete Gerätesitzung.
   - *Sitzungen* zeigt die aktiven Sitzungen. Die Seite liest sie beim Öffnen und bei
     „Aktualisieren“. Sie zeigt je Kanal die Anzahl und die zehn neuesten Sitzungen des

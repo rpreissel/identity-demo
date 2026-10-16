@@ -480,6 +480,23 @@ components:
           additionalProperties: true
           type: object
         eventType:
+          enum:
+          - STARTED
+          - ANSWERED
+          - ACTION_COMPLETED
+          - TOOL_COMPLETED
+          - TOOL_ABANDONED
+          - OFFER_EXHAUSTED
+          - SUB_JOURNEY_FINISHED
+          - SUB_JOURNEY_CANCELLED
+          - EVIDENCE_TAKEN_OVER
+          - TOOL_ACTIVATED
+          - TOOL_FAILED
+          - BACK_TO_SELECTION
+          - INVITATION_REFUSED
+          - JOURNEY_CANCELLED
+          - LOGGED_OUT
+          - CHANNEL_EXPIRED
           type: string
         intent:
           type: string

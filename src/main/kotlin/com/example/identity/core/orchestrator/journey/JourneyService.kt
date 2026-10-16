@@ -35,6 +35,7 @@ import com.example.identity.core.orchestrator.session.appOpening
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.SessionManagementService
+import com.example.identity.core.orchestrator.journeytrace.JourneyTraceEvent
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
 import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolId
@@ -126,7 +127,7 @@ class JourneyService(
 
         restoredEvidence?.let { methods ->
             // The entry transition: decided by no journey, but logged like every transition.
-            journeyTraceService.record(channel.forLog(), journey.forLog(), "Entry", detail = mapOf("methods" to journeyTraceDetails.methodEvidenceDetail(methods)))
+            journeyTraceService.record(channel.forLog(), journey.forLog(), JourneyTraceEvent.EVIDENCE_TAKEN_OVER, detail = mapOf("methods" to journeyTraceDetails.methodEvidenceDetail(methods)))
             journeyRecorder.restoreEvidence(channel, methods)
         }
 
@@ -223,7 +224,7 @@ class JourneyService(
         // Flushed: a parent resumed or a new journey started next must not meet this one still
         // STARTED in the database (ux_journey_running_per_channel).
         journeyRepository.saveAndFlush(journey)
-        journeyTraceService.record(channel.forLog(), journey.forLog(), "CANCELLED", journeyState = codec.read(journey)::class.simpleName)
+        journeyTraceService.record(channel.forLog(), journey.forLog(), JourneyTraceEvent.JOURNEY_CANCELLED, journeyState = codec.read(journey)::class.simpleName)
     }
 
     // Routing -----------------------------------------------------------------
@@ -259,7 +260,7 @@ class JourneyService(
         // isCurrent rejects the other.
         codec.write(journey, state.withActive(ToolRef(tool.toolId, toolSessionId, tool.startStep)))
         journeyRepository.save(journey)
-        journeyTraceService.record(channel.forLog(), journey.forLog(), "TOOL_ACTIVATED", journeyState = state::class.simpleName,
+        journeyTraceService.record(channel.forLog(), journey.forLog(), JourneyTraceEvent.TOOL_ACTIVATED, journeyState = state::class.simpleName,
             detail = mapOf("toolId" to tool.toolId, "tool" to channel.declaredVersionOf(tool.toolId.value)))
     }
 
@@ -310,7 +311,7 @@ class JourneyService(
     private fun complete(journey: AuthJourney, channel: ChannelSession, tool: Tool, outcome: ToolOutcome.Completed): Step {
         val state = codec.read(journey)
         val transition = Transition.Perform(state.booking(tool, outcome), resumeState = state)
-        recordStep(journey, channel, "Completed", journeyTraceDetails.completedDetail(tool, outcome, channel), state, transition)
+        recordStep(journey, channel, JourneyTraceEvent.TOOL_COMPLETED, journeyTraceDetails.completedDetail(tool, outcome, channel), state, transition)
         return applyTransition(journey, channel, transition)
     }
 
@@ -328,7 +329,7 @@ class JourneyService(
         val cleared = state.withOffer(state.offer.withActive(null))
         codec.write(journey, cleared)
         journeyRepository.save(journey)
-        journeyTraceService.record(channel.forLog(), journey.forLog(), "Back",
+        journeyTraceService.record(channel.forLog(), journey.forLog(), JourneyTraceEvent.BACK_TO_SELECTION,
             journeyState = state::class.simpleName,
             detail = mapOf("toolId" to tool.toolId, "tool" to channel.declaredVersionOf(tool.toolId.value)))
         return routing.selectionFor(cleared, channel)
@@ -381,7 +382,7 @@ class JourneyService(
             }
         }
         transition = transition ?: kind.transitionErased(state, event, ctx)
-        recordStep(journey, channel, event::class.simpleName!!, journeyTraceDetails.eventDetail(event, channel), state, transition, ctx)
+        recordStep(journey, channel, journeyTraceDetails.traceEventOf(event), journeyTraceDetails.eventDetail(event, channel), state, transition, ctx)
         return applyTransition(journey, channel, transition)
     }
 
@@ -389,7 +390,7 @@ class JourneyService(
     private fun recordStep(
         journey: AuthJourney,
         channel: ChannelSession,
-        event: String,
+        event: JourneyTraceEvent,
         eventDetail: Map<String, Any?>,
         state: JourneyState,
         transition: Transition,
@@ -455,7 +456,7 @@ class JourneyService(
             actionExecutor.perform(journey, channel, transition.action)
         } catch (e: InvitationRefusedException) {
             // The trace says why the journey ended, as for any other Abort.
-            journeyTraceService.record(channel.forLog(), journey.forLog(), "InvitationRefused",
+            journeyTraceService.record(channel.forLog(), journey.forLog(), JourneyTraceEvent.INVITATION_REFUSED,
                 detail = mapOf("decision" to "Abort", "reason" to e.refusal.text))
             return applyTransition(journey, channel, Transition.Abort(e.refusal.text))
         }
@@ -471,7 +472,7 @@ class JourneyService(
     private fun logOut(journey: AuthJourney, channel: ChannelSession): Step {
         journey.consume(clock.instant())
         journeyRepository.save(journey)
-        journeyTraceService.record(channel.forLog(), journey.forLog(), "LOGGED_OUT", journeyState = "LoggedOut")
+        journeyTraceService.record(channel.forLog(), journey.forLog(), JourneyTraceEvent.LOGGED_OUT, journeyState = "LoggedOut")
         sessionLifecycle.end(channel, ChannelEnd.SIGNED_OUT)
         return Step(next = null)
     }
@@ -535,7 +536,7 @@ class JourneyService(
     /** The channel's Keycloak session is gone, so the channel ends with it; this commits (ADR-43). */
     private fun endWithSession(channel: ChannelSession, cause: RuntimeException): Nothing {
         findActive(channel.channelSessionId)?.let { markCancelledChain(it.entity, channel) }
-        journeyTraceService.recordForChannel(channel.forLog(), "EXPIRED")
+        journeyTraceService.recordForChannel(channel.forLog(), JourneyTraceEvent.CHANNEL_EXPIRED)
         sessionLifecycle.end(channel, ChannelEnd.EXPIRED)
         throw ChannelSessionEndedException("Channel ${channel.channelSessionId} ended with its session: ${cause.message}")
     }
@@ -548,7 +549,7 @@ class JourneyService(
      */
     private fun chargeAttempt(journey: AuthJourney, channel: ChannelSession, tool: Tool, outcome: ToolOutcome.Failed): Step {
         journey.attemptBudget -= 1
-        journeyTraceService.record(channel.forLog(), journey.forLog(), "TOOL_FAILED",
+        journeyTraceService.record(channel.forLog(), journey.forLog(), JourneyTraceEvent.TOOL_FAILED,
             journeyState = codec.read(journey)::class.simpleName,
             detail = mapOf(
                 "toolId" to tool.toolId,

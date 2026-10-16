@@ -15,7 +15,7 @@ class JourneyTraceSummaryTest : BehaviorSpec({
     val channel = ChannelSessionId(UUID.randomUUID())
     val journey = JourneyId(UUID.randomUUID())
 
-    fun step(eventType: String, seconds: Long, detail: Map<String, Any?> = emptyMap(), accountId: AccountId? = null) =
+    fun step(eventType: JourneyTraceEvent, seconds: Long, detail: Map<String, Any?> = emptyMap(), accountId: AccountId? = null) =
         JourneyTraceEntryView(
             channelSessionId = channel, channelType = "APP", accountId = accountId, journeyId = journey,
             parentJourneyId = null, intent = "FAST_ACCESS", eventType = eventType, journeyState = "Offer",
@@ -24,26 +24,26 @@ class JourneyTraceSummaryTest : BehaviorSpec({
 
     given("the last entry of a journey") {
         then("its decision or event says how the journey ended") {
-            JourneyTraceOutcome.of(step("Completed", 0, mapOf("decision" to "Authenticated"))) shouldBe JourneyTraceOutcome.SUCCEEDED
-            JourneyTraceOutcome.of(step("Completed", 0, mapOf("decision" to "Abort"))) shouldBe JourneyTraceOutcome.FAILED
-            JourneyTraceOutcome.of(step("CANCELLED", 0)) shouldBe JourneyTraceOutcome.CANCELLED
-            JourneyTraceOutcome.of(step("LOGGED_OUT", 0)) shouldBe JourneyTraceOutcome.LOGGED_OUT
+            JourneyTraceOutcome.of(step(JourneyTraceEvent.TOOL_COMPLETED, 0, mapOf("decision" to "Authenticated"))) shouldBe JourneyTraceOutcome.SUCCEEDED
+            JourneyTraceOutcome.of(step(JourneyTraceEvent.TOOL_COMPLETED, 0, mapOf("decision" to "Abort"))) shouldBe JourneyTraceOutcome.FAILED
+            JourneyTraceOutcome.of(step(JourneyTraceEvent.JOURNEY_CANCELLED, 0)) shouldBe JourneyTraceOutcome.CANCELLED
+            JourneyTraceOutcome.of(step(JourneyTraceEvent.LOGGED_OUT, 0)) shouldBe JourneyTraceOutcome.LOGGED_OUT
         }
         then("a failure with budget left keeps the journey open, the last one of the budget ends it") {
-            JourneyTraceOutcome.of(step("TOOL_FAILED", 0, mapOf("attemptBudgetLeft" to 2))) shouldBe JourneyTraceOutcome.OPEN
-            JourneyTraceOutcome.of(step("TOOL_FAILED", 0, mapOf("attemptBudgetLeft" to 0))) shouldBe JourneyTraceOutcome.FAILED
+            JourneyTraceOutcome.of(step(JourneyTraceEvent.TOOL_FAILED, 0, mapOf("attemptBudgetLeft" to 2))) shouldBe JourneyTraceOutcome.OPEN
+            JourneyTraceOutcome.of(step(JourneyTraceEvent.TOOL_FAILED, 0, mapOf("attemptBudgetLeft" to 0))) shouldBe JourneyTraceOutcome.FAILED
         }
         then("a parent waiting on its sub-journey is still open") {
-            JourneyTraceOutcome.of(step("Answered", 0, mapOf("decision" to "RequireSubJourney"))) shouldBe JourneyTraceOutcome.OPEN
+            JourneyTraceOutcome.of(step(JourneyTraceEvent.ANSWERED, 0, mapOf("decision" to "RequireSubJourney"))) shouldBe JourneyTraceOutcome.OPEN
         }
     }
 
     given("the steps of a journey, oldest first") {
         val steps = listOf(
-            step("Started", 0, mapOf("decision" to "To")),
-            step("TOOL_ACTIVATED", 2),
-            step("TOOL_FAILED", 5, mapOf("attemptBudgetLeft" to 4)),
-            step("Completed", 9, mapOf("decision" to "Authenticated"), accountId = AccountId(7))
+            step(JourneyTraceEvent.STARTED, 0, mapOf("decision" to "To")),
+            step(JourneyTraceEvent.TOOL_ACTIVATED, 2),
+            step(JourneyTraceEvent.TOOL_FAILED, 5, mapOf("attemptBudgetLeft" to 4)),
+            step(JourneyTraceEvent.TOOL_COMPLETED, 9, mapOf("decision" to "Authenticated"), accountId = AccountId(7))
         )
 
         `when`("summarized") {

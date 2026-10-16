@@ -952,7 +952,7 @@ keinem Zustand.
 
 Genau dafür gibt es den Parameter `restoredEvidence` von `JourneyService.start()`. Die Nachweise
 werden übernommen, BEVOR die Journey das Ereignis `Started` sieht. Das ist kein
-`JourneyEvent` und keine `Action`, sondern ein protokollierter Übergang namens `"Entry"`, den
+`JourneyEvent` und keine `Action`, sondern ein protokollierter Übergang (Trace-Eintrag `EVIDENCE_TAKEN_OVER`), den
 `JourneyService` selbst ausführt.
 
 Weil der Nachweis also schon vor dem ersten Angebot vorliegen kann, beginnt jede Journey in einem

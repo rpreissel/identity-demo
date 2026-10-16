@@ -620,7 +620,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   übernimmt die Nachweise. So muss der Nutzer nicht alles noch einmal beweisen. Jeder Nachweis
   behält seinen Zeitpunkt. Ältere Nachweise zählen nur noch für `loa1`.
   *Im Code:* `KeycloakSessionEvidence` (Tabelle `orchestrator.keycloak_session_evidence`),
-  `JourneyService.start(restoredEvidence)`, Übergang `Entry` im Journey-Trace.
+  `JourneyService.start(restoredEvidence)`, Trace-Eintrag `EVIDENCE_TAKEN_OVER`.
   *Mehr dazu:* [05-api](../05-api.md) Abschnitt 3b,
   [ADR-59](../adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md).
 - **Untergrenze des Kanals** und **Ziel eines Durchlaufs**: Zwei Niveaus, mit denen der

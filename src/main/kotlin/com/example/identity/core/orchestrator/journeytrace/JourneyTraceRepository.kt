@@ -12,13 +12,13 @@ import java.util.UUID
 
 interface JourneyTraceRepository : JpaRepository<JourneyTraceEntry, UUID> {
     /**
-     * One page of journey starts (one `Started` entry per journey), newest first, strictly before
+     * One page of journey starts (one [JourneyTraceEvent.STARTED] entry per journey), newest first, strictly before
      * the cursor ([beforeAt], [beforeId]): keyset paging, so a page costs the same however deep.
      */
     @Query(
         """
         select e from JourneyTraceEntry e
-        where e.eventType = 'Started' and e.createdAt >= :from
+        where e.eventType = com.example.identity.core.orchestrator.journeytrace.JourneyTraceEvent.STARTED and e.createdAt >= :from
           and (e.createdAt < :beforeAt or (e.createdAt = :beforeAt and e.logId < :beforeId))
         order by e.createdAt desc, e.logId desc
         """
@@ -34,7 +34,7 @@ interface JourneyTraceRepository : JpaRepository<JourneyTraceEntry, UUID> {
     @Query(
         """
         select e from JourneyTraceEntry e
-        where e.eventType = 'Started' and e.createdAt >= :from and e.channelSessionId in :channelSessionIds
+        where e.eventType = com.example.identity.core.orchestrator.journeytrace.JourneyTraceEvent.STARTED and e.createdAt >= :from and e.channelSessionId in :channelSessionIds
           and (e.createdAt < :beforeAt or (e.createdAt = :beforeAt and e.logId < :beforeId))
         order by e.createdAt desc, e.logId desc
         """

@@ -2,7 +2,7 @@ import { CURRENT_STEP_BY_STATE_TYPE, INTENT_DIAGRAM_KEY, JOURNEY_DIAGRAMS } from
 import { language, resolveText, t, type TextRef } from './texts'
 import { catalogEntry } from './toolCatalog'
 import { metaFor } from './tools/registry'
-import type { JourneyTraceEntryView, JourneyTraceOutcome } from './types'
+import type { JourneyTraceEntryView, JourneyTraceEvent, JourneyTraceOutcome } from './types'
 
 /**
  * Reads the journey trace for people (admin page, JourneyTraceView): a title per step, the
@@ -44,14 +44,16 @@ export function categoryLabel(category: StepCategory): string {
   }
 }
 
+const TOOL_EVENTS: JourneyTraceEvent[] = ['TOOL_ACTIVATED', 'TOOL_COMPLETED', 'TOOL_ABANDONED', 'OFFER_EXHAUSTED', 'BACK_TO_SELECTION']
+
 export function stepCategory(entry: JourneyTraceEntryView): StepCategory {
   const decision = entry.detail.decision
   if (entry.eventType === 'TOOL_FAILED' || decision === 'Abort') return 'failure'
-  if (decision === 'RequireSubJourney' || entry.eventType === 'SubJourneyFinished' || entry.eventType === 'SubJourneyCancelled') {
+  if (decision === 'RequireSubJourney' || entry.eventType === 'SUB_JOURNEY_FINISHED' || entry.eventType === 'SUB_JOURNEY_CANCELLED') {
     return 'subJourney'
   }
-  if (['TOOL_ACTIVATED', 'Completed', 'Abandoned', 'OfferExhausted', 'Back'].includes(entry.eventType)) return 'tool'
-  if (entry.eventType === 'Answered' || entry.eventType === 'ActionCompleted' || entry.eventType === 'Entry' || decision === 'Perform') {
+  if (TOOL_EVENTS.includes(entry.eventType)) return 'tool'
+  if (entry.eventType === 'ANSWERED' || entry.eventType === 'ACTION_COMPLETED' || entry.eventType === 'EVIDENCE_TAKEN_OVER' || decision === 'Perform') {
     return 'action'
   }
   return 'lifecycle'
@@ -121,40 +123,38 @@ export function stepTitle(entry: JourneyTraceEntryView): string {
   const tool = toolId ? toolLabel(toolId) : ''
   const subIntent = intentLabel(entry.detail.subIntent as string | undefined)
   switch (entry.eventType) {
-    case 'Started':
+    case 'STARTED':
       return t('Journey gestartet')
-    case 'Entry':
+    case 'EVIDENCE_TAKEN_OVER':
       return t('Einstieg mit übernommenem Nachweis')
     case 'TOOL_ACTIVATED':
       return t('{verfahren} gestartet', { verfahren: tool })
-    case 'Completed':
+    case 'TOOL_COMPLETED':
       return t('{verfahren} erfolgreich', { verfahren: tool })
     case 'TOOL_FAILED':
       return t('{verfahren} fehlgeschlagen', { verfahren: tool })
-    case 'Abandoned':
+    case 'TOOL_ABANDONED':
       return t('{verfahren} abgelehnt, anderes Verfahren gewünscht', { verfahren: tool })
-    case 'OfferExhausted':
+    case 'OFFER_EXHAUSTED':
       return t('Alle angebotenen Verfahren abgelehnt')
-    case 'InvitationRefused':
+    case 'INVITATION_REFUSED':
       return t('Einmalkennwort nicht angenommen')
-    case 'Back':
+    case 'BACK_TO_SELECTION':
       return t('Zurück aus {verfahren}', { verfahren: tool })
-    case 'Answered':
+    case 'ANSWERED':
       return t('Antwort: {antwort}', { antwort: String(entry.detail.answer ?? '–') })
-    case 'SubJourneyFinished':
+    case 'SUB_JOURNEY_FINISHED':
       return t('Sub-Journey „{anliegen}“ erfolgreich, zurück in dieser Journey', { anliegen: subIntent })
-    case 'SubJourneyCancelled':
+    case 'SUB_JOURNEY_CANCELLED':
       return t('Sub-Journey „{anliegen}“ abgebrochen, zurück in dieser Journey', { anliegen: subIntent })
-    case 'ActionCompleted':
+    case 'ACTION_COMPLETED':
       return t('Aktion ausgeführt')
-    case 'CANCELLED':
+    case 'JOURNEY_CANCELLED':
       return t('Journey abgebrochen')
     case 'LOGGED_OUT':
       return t('Abgemeldet')
-    case 'EXPIRED':
+    case 'CHANNEL_EXPIRED':
       return t('Gerätesitzung abgelaufen')
-    default:
-      return entry.eventType
   }
 }
 

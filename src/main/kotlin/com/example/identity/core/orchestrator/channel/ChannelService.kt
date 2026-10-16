@@ -29,6 +29,7 @@ import com.example.identity.core.orchestrator.domain.journeys.DeleteAccountJourn
 import com.example.identity.core.orchestrator.domain.journeys.ManageAuthMethodsJourney
 import com.example.identity.core.orchestrator.domain.journeys.StepUpJourney
 import com.example.identity.core.orchestrator.journey.JourneyService
+import com.example.identity.core.orchestrator.journeytrace.JourneyTraceEvent
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
@@ -283,7 +284,7 @@ class ChannelService(
         if (activeJourney != null) {
             journeyService.cancel(activeJourney, channel)
         } else {
-            journeyTraceService.recordForChannel(channel.session.forLog(), "LOGGED_OUT")
+            journeyTraceService.recordForChannel(channel.session.forLog(), JourneyTraceEvent.LOGGED_OUT)
         }
         journeyService.endSession(channel, ChannelEnd.SIGNED_OUT)
     }

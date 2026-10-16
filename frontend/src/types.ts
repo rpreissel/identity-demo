@@ -112,6 +112,25 @@ export type ChannelResponse = Omit<Wire.ChannelResponse, 'stepData' | 'demo'> & 
  * distinct from the account's change log. For debugging and the demo. Hand-written, like the
  * types below: operator endpoints are not part of the app contract.
  */
+/** What one trace line records (backend `JourneyTraceEvent`). */
+export type JourneyTraceEvent =
+  | 'STARTED'
+  | 'ANSWERED'
+  | 'ACTION_COMPLETED'
+  | 'TOOL_COMPLETED'
+  | 'TOOL_ABANDONED'
+  | 'OFFER_EXHAUSTED'
+  | 'SUB_JOURNEY_FINISHED'
+  | 'SUB_JOURNEY_CANCELLED'
+  | 'EVIDENCE_TAKEN_OVER'
+  | 'TOOL_ACTIVATED'
+  | 'TOOL_FAILED'
+  | 'BACK_TO_SELECTION'
+  | 'INVITATION_REFUSED'
+  | 'JOURNEY_CANCELLED'
+  | 'LOGGED_OUT'
+  | 'CHANNEL_EXPIRED'
+
 export interface JourneyTraceEntryView {
   channelSessionId: string
   /** APP or WEB. */
@@ -121,7 +140,7 @@ export interface JourneyTraceEntryView {
   journeyId?: string
   parentJourneyId?: string
   intent?: string
-  eventType: string
+  eventType: JourneyTraceEvent
   journeyState?: string
   detail: Record<string, unknown>
   createdAt: string
