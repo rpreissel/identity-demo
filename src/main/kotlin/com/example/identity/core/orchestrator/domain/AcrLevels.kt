@@ -14,12 +14,4 @@ object AcrLevels {
     /** Moves [acr] up by [steps] tiers, capped at the highest known level (MFA bump). */
     fun bump(acr: AcrLevel, steps: Int = 1): AcrLevel =
         AcrLevel.levelAt((AcrLevel.rank(acr) + steps).coerceAtMost(AcrLevel.KNOWN.size - 1))
-
-    // String-typed edge mirrors -------------------------------------------------------------------
-    // The typed taxonomy for borders that carry plain strings (JPA columns, wire DTOs, tokens).
-    // Unknown values count as "none": results are only rank-compared or written into validated
-    // fields.
-
-    /** The higher of two raw levels; a missing or unknown side counts as "none". */
-    fun max(a: String?, b: String?): String = maxOf(AcrLevel.parse(a) ?: AcrLevel.NONE, AcrLevel.parse(b) ?: AcrLevel.NONE).value
 }

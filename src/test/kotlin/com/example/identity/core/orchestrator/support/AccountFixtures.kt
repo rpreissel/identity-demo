@@ -138,7 +138,7 @@ class AccountFixtures(
                 accountService.addAuthenticationMethod(
                     accountId, "sms",
                     EnrollmentRef("auth_sms.enrollment", enrollment.id.toString()),
-                    enrolledUnderAcr = ENROLLED_UNDER_ACR.value,
+                    enrolledUnderAcr = ENROLLED_UNDER_ACR,
                     enrolledUnderAmr = listOf("fsc"),
                     instanceId = instanceId
                 )
@@ -148,14 +148,14 @@ class AccountFixtures(
                 accountId, "password",
                 passwordEnrollmentRepository.save(AuthPasswordEnrollment(passwordHash = PasswordHasher.hash(method.password), createdAt = Instant.now()))
                     .let { EnrollmentRef("auth_password.enrollment", it.id.toString()) },
-                enrolledUnderAcr = ENROLLED_UNDER_ACR.value,
+                enrolledUnderAcr = ENROLLED_UNDER_ACR,
                 enrolledUnderAmr = listOf("fsc"),
                 instanceId = instanceId
             )
 
             is Method.Email -> accountService.addAuthenticationMethod(
                 accountId, "email", EMAIL_ANCHOR_ENROLLMENT,
-                enrolledUnderAcr = ENROLLED_UNDER_ACR.value,
+                enrolledUnderAcr = ENROLLED_UNDER_ACR,
                 enrolledUnderAmr = listOf("fsc"),
                 instanceId = instanceId
             )
@@ -168,7 +168,7 @@ class AccountFixtures(
                 accountService.addAuthenticationMethod(
                     accountId, "device",
                     EnrollmentRef("auth_device.enrollment", enrollment.id.toString()),
-                    enrolledUnderAcr = ENROLLED_UNDER_ACR.value,
+                    enrolledUnderAcr = ENROLLED_UNDER_ACR,
                     boundKeyRef = method.thumbprint,
                     enrolledUnderAmr = listOf("fsc"),
                     allowsMultipleInstances = true,

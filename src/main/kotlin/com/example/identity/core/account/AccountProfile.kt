@@ -1,5 +1,6 @@
 package com.example.identity.core.account
 
+import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.claims.AttributeType
@@ -12,7 +13,8 @@ data class AuthMethodView(
     val method: String,
     val active: Boolean,
     val createdAt: Instant?,
-    val enrolledUnderAcr: String?,
+    /** What was proven when the method was added; it caps what the method can contribute. */
+    val enrolledUnderAcr: AcrLevel,
     /** The caller key this instance lives on, for a one-per-device method; `null` otherwise. */
     val boundKeyRef: String?,
     /** What of this instance may be shown on the device it lives on (e.g. the KOBIL phone id). */

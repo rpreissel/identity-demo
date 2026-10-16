@@ -141,6 +141,7 @@ private const val PASSWORD_INSTANCE = "password-1"
 /** The executor for [ACCOUNT], which holds active sms and password methods; the channel's floor is [floor]. */
 private class SelfLockoutFixture(floor: AcrLevel) {
     val channel = ChannelSession(ChannelType.APP, "own-key", TEST_NOW.plusSeconds(3600), now = TEST_NOW).apply {
+        raiseAcrFloor(floor)
         state = ChannelState.AUTHENTICATED
         subject = Subject.Account(ACCOUNT)
     }
@@ -153,7 +154,7 @@ private class SelfLockoutFixture(floor: AcrLevel) {
         every { claimedTypesOf(ACCOUNT, any()) } returns emptySet()
     }
     val accountDeletionService = mockk<AccountDeletionService>(relaxed = true)
-    private val contextFactory = mockk<JourneyContextFactory> { every { acrFloorOf(channel) } returns floor }
+    private val contextFactory = mockk<JourneyContextFactory>()
     val executor = JourneyActionExecutor(
         journeyRepository = mockk(relaxed = true),
         accountService = accountService,
@@ -170,7 +171,7 @@ private class SelfLockoutFixture(floor: AcrLevel) {
     )
 
     private fun method(id: String, method: String) = AuthMethodView(
-        id = id, method = method, active = true, createdAt = TEST_NOW, enrolledUnderAcr = "loa2",
+        id = id, method = method, active = true, createdAt = TEST_NOW, enrolledUnderAcr = AcrLevel.LOA2,
         boundKeyRef = null, reference = null, enrollmentRef = EnrollmentRef("$method.enrollment", id)
     )
 }

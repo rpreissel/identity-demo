@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.core.orchestrator.domain.AcrLevels
+import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ToolVersion
 import com.example.identity.core.orchestrator.domain.SessionEvidenceId
 import com.example.identity.contract.tool_api.Subject
@@ -112,7 +114,15 @@ class ChannelSession(
      * in that run's state (docs/04-orchestrierung.md #4).
      */
     @Column(name = "acr_floor", length = 16)
-    var acrFloor: String? = null
+    private var raisedAcrFloor: AcrLevel? = null
+
+    /** [raisedAcrFloor], or the default while nothing raised it. */
+    val acrFloor: AcrLevel get() = raisedAcrFloor ?: AcrLevels.DEFAULT_REQUIRED_ACR
+
+    /** Only raises, never lowers (docs/05-api.md, step-ups): an explicit level cannot undercut the default. */
+    fun raiseAcrFloor(to: AcrLevel) {
+        raisedAcrFloor = maxOf(acrFloor, to)
+    }
 
     /**
      * The journey this channel was entered with. Resume and cancel must restart the same journey;

@@ -304,7 +304,7 @@ class AccountServiceDbTest(
             val instance = java.util.UUID.randomUUID()
             // Same order as the enrollment path: the new instance's claims first, then the instance.
             accountService.recordClaims(accountId, listOf(claim), provenAcr = AcrLevel.LOA1, authMethodId = instance)
-            accountService.addAuthenticationMethod(accountId, method, EnrollmentRef("t", ref), "loa1", instanceId = instance)
+            accountService.addAuthenticationMethod(accountId, method, EnrollmentRef("t", ref), AcrLevel.LOA1, instanceId = instance)
         }
         val smsTool = ClaimSource("enroll-sms")
         val passwordTool = ClaimSource("enroll-password")
@@ -608,7 +608,7 @@ class AccountServiceDbTest(
             val enrolled = accountService.createAccountInSetup()
             accountService.addAuthenticationMethod(
                 enrolled.accountId, "password", EnrollmentRef("auth_password", "e-3"),
-                enrolledUnderAcr = "loa1"
+                enrolledUnderAcr = AcrLevel.LOA1
             )
 
             accountService.absorbDisposableAccount(leftover.accountId, enrolled.accountId)
@@ -720,7 +720,7 @@ class AccountServiceDbTest(
                         runCatching {
                             TransactionTemplate(transactionManager).executeWithoutResult {
                                 accountService.addAuthenticationMethod(
-                                    account, "device", EnrollmentRef("auth_device", "d-$index"), "loa2", allowsMultipleInstances = true
+                                    account, "device", EnrollmentRef("auth_device", "d-$index"), AcrLevel.LOA2, allowsMultipleInstances = true
                                 )
                                 // The version check runs at commit: both must have read the same version first.
                                 commitBarrier.await(10, TimeUnit.SECONDS)

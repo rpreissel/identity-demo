@@ -37,7 +37,7 @@ fun proofLevel(active: List<AuthMethodView>, module: ToolModule, bindingKeyRef: 
     check(active.isNotEmpty()) { "No active instance to count the proof against" }
     val used = active.filter { !module.onePerDevice || module.livesOn(it.boundKeyRef, bindingKeyRef) }.ifEmpty { active }
     // A missing or unknown level counts as nothing established.
-    val cap = used.minOf { AcrLevel.parse(it.enrolledUnderAcr) ?: AcrLevel.NONE }
+    val cap = used.minOf { it.enrolledUnderAcr }
     return minOf(achieved ?: AcrLevel.NONE, cap)
 }
 

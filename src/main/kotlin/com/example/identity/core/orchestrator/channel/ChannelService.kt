@@ -109,7 +109,7 @@ class ChannelService(
         // Fixed for the channel's lifetime (docs/03-tool-architektur.md); the backend switch is read live.
         channel.availableClientTools = catalogToolsOf(availableTools)
         sessionManagementService.updateChannelSession(channel)
-        requestedAcrFloor?.let { sessionManagementService.raiseChannelAcrFloor(channel.channelSessionId, requestedAcr(it).value) }
+        requestedAcrFloor?.let { sessionManagementService.raiseChannelAcrFloor(channel.channelSessionId, requestedAcr(it)) }
 
         return resumeChannel(sessionManagementService.reloadChannelSession(channel.channelSessionId))
     }
@@ -243,7 +243,7 @@ class ChannelService(
 
     fun raiseRequiredAcr(channelSessionId: ChannelSessionId, caller: CallerProof, requiredAcr: String): ChannelResponse {
         val live = channelAccessGuard.requireLiveChannel(channelSessionId, caller)
-        sessionManagementService.raiseChannelAcrFloor(channelSessionId, requestedAcr(requiredAcr).value)
+        sessionManagementService.raiseChannelAcrFloor(channelSessionId, requestedAcr(requiredAcr))
         val refreshed = live.session
 
         // Not logged in yet: nothing to step up from. The raised floor applies to the running
@@ -252,7 +252,7 @@ class ChannelService(
         if (!refreshed.state.isLoggedIn) return resumeChannel(refreshed)
         requireStartable(live, StepUpJourney)
 
-        val floor = refreshed.acrFloor?.let(AcrLevel::parse) ?: AcrLevels.DEFAULT_REQUIRED_ACR
+        val floor = refreshed.acrFloor
         val account = refreshed.accountId?.let { accountService.findAccount(it) }
         if (authPolicy.isSatisfied(currentEvidence(refreshed), floor, account)) return responseAssembler.respond(refreshed)
 

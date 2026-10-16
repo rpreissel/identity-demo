@@ -517,5 +517,5 @@ private class AccountServiceFixture(accountId: AccountId) {
 }
 
 private fun passwordMethod(accountId: AccountId) = AccountAuthMethod(
-    accountId = accountId, method = "password", enrollmentType = "auth_password", enrollmentId = "e-1", enrolledUnderAcr = "loa1"
+    accountId = accountId, method = "password", enrollmentType = "auth_password", enrollmentId = "e-1", enrolledUnderAcr = AcrLevel.LOA1
 ).apply { id = UUID.randomUUID(); createdAt = TEST_NOW }

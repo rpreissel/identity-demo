@@ -135,7 +135,7 @@ class KeycloakChannelService(
         } else {
             bindWebChannel(channelSessionId, assertion, effectiveSubject)
         }
-        targetFloor?.let { sessionManagementService.raiseChannelAcrFloor(channelSessionId, it.value) }
+        targetFloor?.let { sessionManagementService.raiseChannelAcrFloor(channelSessionId, it) }
 
         // On a channel this call created, the entry journey's first decision already sees the
         // restored methods (docs/04-orchestrierung.md #8, "Übernommene Nachweise als erster Übergang").

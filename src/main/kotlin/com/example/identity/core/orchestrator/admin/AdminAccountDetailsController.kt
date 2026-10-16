@@ -188,7 +188,7 @@ class AdminAccountDetailsController(
                 },
                 retractions = inspection.retractions,
                 methods = profile.authenticationMethods.map {
-                    AdminMethod(it.id, it.method, it.label, it.active, it.enrolledUnderAcr, it.boundKeyRef, it.createdAt, it.deactivatedAt)
+                    AdminMethod(it.id, it.method, it.label, it.active, it.enrolledUnderAcr.value, it.boundKeyRef, it.createdAt, it.deactivatedAt)
                 },
                 devices = sessionManagementService.linkedDevicesOf(accountId),
                 changeLog = inspection.changeLog,

@@ -120,7 +120,7 @@ class KeycloakTokenProviderTest : BehaviorSpec({
             accountId = accountId, personId = PartnerNumber("P000000001"),
             authenticationMethods = listOf(
                 AuthMethodView(
-                    id = "m1", method = "password", active = true, createdAt = TEST_NOW, enrolledUnderAcr = "loa1",
+                    id = "m1", method = "password", active = true, createdAt = TEST_NOW, enrolledUnderAcr = AcrLevel.LOA1,
                     boundKeyRef = null, reference = null, enrollmentRef = EnrollmentRef("auth_password.enrollment", "1")
                 )
             )

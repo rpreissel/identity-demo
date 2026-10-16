@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
@@ -78,14 +79,10 @@ class SessionManagementService(
         return channelSessionRepository.save(session)
     }
 
-    /**
-     * Only raises, never lowers (docs/05-api.md, step-ups). Compared against the effective floor,
-     * so an explicit level cannot undercut the default ([AcrLevels.DEFAULT_REQUIRED_ACR]).
-     */
-    fun raiseChannelAcrFloor(channelSessionId: ChannelSessionId, requiredAcr: String) {
+    /** [ChannelSession.raiseAcrFloor], persisted. */
+    fun raiseChannelAcrFloor(channelSessionId: ChannelSessionId, requiredAcr: AcrLevel) {
         channelSessionRepository.findByChannelSessionId(channelSessionId)?.let { session ->
-            val effectiveFloor = session.acrFloor ?: AcrLevels.DEFAULT_REQUIRED_ACR.value
-            session.acrFloor = AcrLevels.max(effectiveFloor, requiredAcr)
+            session.raiseAcrFloor(requiredAcr)
             session.touch(clock.instant())
             channelSessionRepository.save(session)
         }

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.account.AccountService
@@ -74,7 +75,7 @@ class RegisterEnrollFirstFlowIntegrationTest : IntegrationTestSupport() {
                     val account = theAccount()
                     account.personId.shouldBeNull()
                     account.email.shouldNotBeNull()
-                    account.authenticationMethods.single { it.method == "password" }.enrolledUnderAcr shouldBe "loa1"
+                    account.authenticationMethods.single { it.method == "password" }.enrolledUnderAcr shouldBe AcrLevel.LOA1
                 }
             }
 
@@ -96,7 +97,7 @@ class RegisterEnrollFirstFlowIntegrationTest : IntegrationTestSupport() {
                     account.email.shouldNotBeNull()
                     // Not upgraded afterwards: the level is fixed at enrollment time
                     // (docs/04-orchestrierung.md, "IAL und AAL").
-                    account.authenticationMethods.single { it.method == "password" }.enrolledUnderAcr shouldBe "loa1"
+                    account.authenticationMethods.single { it.method == "password" }.enrolledUnderAcr shouldBe AcrLevel.LOA1
                 }
             }
         }

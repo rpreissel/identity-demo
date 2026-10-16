@@ -247,7 +247,7 @@ class AccountService(
         accountId: AccountId,
         method: String,
         enrollmentRef: EnrollmentRef,
-        enrolledUnderAcr: String?,
+        enrolledUnderAcr: AcrLevel,
         /** The caller key a one-per-device instance lives on. */
         boundKeyRef: String? = null,
         /** What of the instance may be shown on that device. */
@@ -285,7 +285,7 @@ class AccountService(
             // (docs/09-dpop.md). A second row would match every future lookup alike.
             return getProfileOrThrow(accountId)
         }
-        changeLog.methodAdded(accountId, method, enrolledUnderAcr, enrolledUnderAmr, channel, tool, now)
+        changeLog.methodAdded(accountId, method, enrolledUnderAcr.value, enrolledUnderAmr, channel, tool, now)
         val cipher = claimCrypto.open(accountId)
         accountAuthMethodRepository.save(
             AccountAuthMethod(
@@ -490,7 +490,8 @@ class AccountService(
         method = method.orEmpty(),
         active = active,
         createdAt = createdAt,
-        enrolledUnderAcr = enrolledUnderAcr,
+        // Rows from before the level was recorded count as nothing established.
+        enrolledUnderAcr = enrolledUnderAcr ?: AcrLevel.NONE,
         boundKeyRef = boundKeyRef,
         reference = sealedReference?.let { String(checkNotNull(cipher).open(REFERENCE, it)) },
         enrollmentRef = enrollmentRef,

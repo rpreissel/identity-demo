@@ -155,8 +155,8 @@ class ChannelResponseAssembler(
                 label = m.label,
                 factorTypes = descriptor?.factorTypes?.toList(),
                         maxAcr = descriptor?.maxAcr?.value,
-                enrolledUnderAcr = m.enrolledUnderAcr,
-                effectiveAcr = descriptor?.let { minOf(AcrLevel.parse(m.enrolledUnderAcr) ?: AcrLevel.NONE, it.maxAcr) }?.value,
+                enrolledUnderAcr = m.enrolledUnderAcr.value,
+                effectiveAcr = descriptor?.let { minOf(m.enrolledUnderAcr, it.maxAcr) }?.value,
                 changeable = toolRegistry.changeToolOf(m.method) != null
             )
         }

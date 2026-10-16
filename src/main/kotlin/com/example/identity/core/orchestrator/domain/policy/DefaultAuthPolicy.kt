@@ -82,7 +82,7 @@ class DefaultAuthPolicy(
         val methodNames = provable.map { (_, d) -> d.method }.distinct()
         val factorTypesUnion = provable.flatMap { (_, d) -> d.factorTypes }.toSet()
         val bestAcr = provable.maxOfOrNull { (m, d) -> cappedAcr(m, d) } ?: AcrLevel.NONE
-        val maxEnrolledUnderAcr = active.mapNotNull { AcrLevel.parse(it.enrolledUnderAcr) }.maxOrNull() ?: AcrLevel.NONE
+        val maxEnrolledUnderAcr = active.maxOfOrNull { it.enrolledUnderAcr } ?: AcrLevel.NONE
         val effectiveAcr = combinedAcr(bestAcr, methodNames.size, factorTypesUnion, maxEnrolledUnderAcr)
 
         val levelOk = effectiveAcr >= requiredAcr
@@ -142,7 +142,7 @@ class DefaultAuthPolicy(
             // The evidence as it would be if this candidate were also proven.
             val projected = SessionEvidence(
                 evidence.methods + MethodEvidence(
-                    MethodName(m.method), cappedAcr(m, d), AcrLevel.parse(m.enrolledUnderAcr), d.factorTypes,
+                    MethodName(m.method), cappedAcr(m, d), m.enrolledUnderAcr, d.factorTypes,
                     amrSourceId = "simulation", provenAt = clock.instant()
                 ),
             )
@@ -174,7 +174,7 @@ class DefaultAuthPolicy(
 
     /** What proving [method] can give at most: the tool's level, capped by the enrollment's (ADR-5). */
     private fun cappedAcr(method: AuthMethodView, descriptor: Tool): AcrLevel =
-        minOf(AcrLevel.parse(method.enrolledUnderAcr) ?: AcrLevel.NONE, descriptor.maxAcr)
+        minOf(method.enrolledUnderAcr, descriptor.maxAcr)
 
     /**
      * The MFA bump over one session's evidence, capped by the highest [MethodEvidence.enrolledUnderAcr]

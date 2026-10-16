@@ -274,7 +274,7 @@ class JourneyActionExecutor(
             accountId,
             action.tool.method,
             enrolled.enrollmentRef,
-            enrolledUnderAcr = enrolledUnderAcr.value,
+            enrolledUnderAcr = enrolledUnderAcr,
             boundKeyRef = enrolled.boundKeyRef,
             reference = enrolled.reference,
             enrolledUnderAmr = evidence.currentAmr,
@@ -310,7 +310,7 @@ class JourneyActionExecutor(
     private fun replacedLevel(accountId: AccountId, methodInstanceId: String): AcrLevel {
         val replaced = loadAccount(accountId).activeAuthenticationMethods.firstOrNull { it.id == methodInstanceId }
             ?: throw OrchestratorException.processGone(Text("Dieses Anmeldeverfahren lässt sich nicht ändern"), "methodInstanceId=$methodInstanceId")
-        return AcrLevel.parse(replaced.enrolledUnderAcr) ?: AcrLevel.NONE
+        return replaced.enrolledUnderAcr
     }
 
     /**
@@ -321,7 +321,7 @@ class JourneyActionExecutor(
      * replace the first.
      */
     private fun acceptInvitation(journey: AuthJourney, channel: ChannelSession, action: Action.AcceptProof, invitation: InvitationId) {
-        InvitationAcceptance.refusal(channel.type, action.tool.levelOf(action.outcome), contextFactory.acrFloorOf(channel))
+        InvitationAcceptance.refusal(channel.type, action.tool.levelOf(action.outcome), channel.acrFloor)
             ?.let { throw InvitationRefusedException(it) }
         check(action.tool.role == ToolRole.ACCOUNT_LOOKUP_AUTH) { "Only a lookup tool may name an invitation" }
         check(channel.accountId == null && channel.invitation == null && channel.sessionEvidenceId == null) {
@@ -396,7 +396,7 @@ class JourneyActionExecutor(
         val target = account.authenticationMethods.firstOrNull { it.active && it.id == methodInstanceId }
             ?: throw OrchestratorException.notFound(Text("No such active method for this account"), "methodInstanceId=${methodInstanceId}")
 
-        when (val removal = methodDependencies(account).removal(target, authPolicy, contextFactory.acrFloorOf(channel))) {
+        when (val removal = methodDependencies(account).removal(target, authPolicy, channel.acrFloor)) {
             is Removal.BelowFloor -> throw OrchestratorException.invalidState(
                 if (removal.alsoFalling.isEmpty()) Text("Deaktivieren von '{method}' wuerde das Mindestniveau dieses Kanals unterschreiten", "method" to target.method)
                 else Text("Deaktivieren von '{method}' (zusammen mit {alsoFalling}) wuerde das Mindestniveau dieses Kanals unterschreiten", "method" to target.method, "alsoFalling" to removal.alsoFalling.joinToString(", "))
@@ -423,7 +423,7 @@ class JourneyActionExecutor(
             throw OrchestratorException.notFound(Text("'{attributeType}' ist fuer dieses Konto nicht bestaetigt", "attributeType" to attributeType.wireName))
         }
 
-        when (val retraction = methodDependencies(account).retraction(attributeType, authPolicy, contextFactory.acrFloorOf(channel))) {
+        when (val retraction = methodDependencies(account).retraction(attributeType, authPolicy, channel.acrFloor)) {
             is Removal.BelowFloor -> throw OrchestratorException.invalidState(
                 if (retraction.alsoFalling.isEmpty()) Text("Zuruecknehmen von '{attributeType}' wuerde das Mindestniveau dieses Kanals unterschreiten", "attributeType" to attributeType.wireName)
                 else Text("Zuruecknehmen von '{attributeType}' (zusammen mit {alsoFalling}) wuerde das Mindestniveau dieses Kanals unterschreiten", "attributeType" to attributeType.wireName, "alsoFalling" to retraction.alsoFalling.joinToString(", "))

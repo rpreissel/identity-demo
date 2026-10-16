@@ -118,7 +118,7 @@ object JourneyTestFixtures {
         reference: String? = null,
     ) = AuthMethodView(
         id = "$method-instance", method = method, active = active,
-        createdAt = null, enrolledUnderAcr = enrolledUnderAcr.value, boundKeyRef = boundKeyRef, reference = reference,
+        createdAt = null, enrolledUnderAcr = enrolledUnderAcr, boundKeyRef = boundKeyRef, reference = reference,
         enrollmentRef = EnrollmentRef("${method}_enrollment", "1")
     )
 
@@ -139,8 +139,7 @@ object JourneyTestFixtures {
         }
         val enrolledUnderAcr = account?.authenticationMethods
             ?.filter { it.method in amr }
-            ?.mapNotNull { m -> m.enrolledUnderAcr?.let { m.method to it } }
-            ?.toMap()
+            ?.associate { m -> m.method to m.enrolledUnderAcr.value }
             ?: emptyMap()
         return SessionEvidence.fromNow(amr, factorTypes, methodAcr, enrolledUnderAcr, amrSourceId = amrSourceId)
     }

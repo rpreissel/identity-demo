@@ -1,5 +1,6 @@
 package com.example.identity.core.account.infrastructure
 
+import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.EnrollmentRef
 import jakarta.persistence.Column
@@ -31,7 +32,7 @@ class AccountAuthMethod(
     var enrollmentId: String? = null,
 
     @Column(name = "enrolled_under_acr")
-    var enrolledUnderAcr: String? = null,
+    var enrolledUnderAcr: AcrLevel? = null,
 
     /** The holder's own name for the instance, sealed under the account's key (ADR-55). */
     @Column(name = "label")

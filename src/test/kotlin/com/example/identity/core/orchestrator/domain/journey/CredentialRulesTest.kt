@@ -13,7 +13,7 @@ import io.kotest.matchers.shouldBe
 /** The credential rules of the acting phase (docs/adr/ADR-040-fachkern-im-paket-domain.md). */
 class CredentialRulesTest : BehaviorSpec({
 
-    fun instance(id: String, enrolledUnder: String?, key: String? = null) =
+    fun instance(id: String, enrolledUnder: AcrLevel, key: String? = null) =
         AuthMethodView(id, "device", true, null, enrolledUnder, key, null, EnrollmentRef("device", id))
     val onCallerKey = JourneyTestFixtures.tool("auth-device").module
     val notKeyBound = JourneyTestFixtures.tool("auth-sms").module
@@ -45,7 +45,7 @@ class CredentialRulesTest : BehaviorSpec({
 
     // The level a proof counts at.
     given("two active instances on different keys, enrolled under loa1 and loa2") {
-        val active = listOf(instance("a", "loa1", loa1Key), instance("b", "loa2", loa2Key))
+        val active = listOf(instance("a", AcrLevel.LOA1, loa1Key), instance("b", AcrLevel.LOA2, loa2Key))
 
         `when`("the proof comes from the loa2 instance's key") {
             val level = proofLevel(active, onCallerKey, loa2Key, AcrLevel.LOA2)
@@ -73,7 +73,7 @@ class CredentialRulesTest : BehaviorSpec({
     }
 
     given("two active instances enrolled under loa1 and loa2, a tool without key binding") {
-        val active = listOf(instance("a", "loa1"), instance("b", "loa2"))
+        val active = listOf(instance("a", AcrLevel.LOA1), instance("b", AcrLevel.LOA2))
 
         `when`("a proof is counted") {
             val level = proofLevel(active, notKeyBound, null, AcrLevel.LOA2)
@@ -86,7 +86,7 @@ class CredentialRulesTest : BehaviorSpec({
 
     given("one active instance enrolled under loa2") {
         `when`("the tool itself achieved only loa1") {
-            val level = proofLevel(listOf(instance("a", "loa2")), notKeyBound, null, AcrLevel.LOA1)
+            val level = proofLevel(listOf(instance("a", AcrLevel.LOA2)), notKeyBound, null, AcrLevel.LOA1)
 
             then("the proof counts at loa1 - never above what the tool achieved") {
                 level shouldBe AcrLevel.LOA1

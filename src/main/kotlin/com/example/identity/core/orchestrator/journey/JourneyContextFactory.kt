@@ -38,7 +38,7 @@ class JourneyContextFactory(
             account = accountId?.let { accountService.findAccount(it) },
             invitation = channel.invitation,
             evidence = evidence?.toCoreEvidence() ?: SessionEvidence(emptyList()),
-            acrFloor = acrFloorOf(channel),
+            acrFloor = channel.acrFloor,
             bindingKeyRef = channel.bindingKeyRef,
             linkedAccountId = channel.bindingKeyRef?.let { sessionManagementService.findLinkedAccountId(it) },
             policy = authPolicy,
@@ -50,9 +50,6 @@ class JourneyContextFactory(
 
     /** The switches active right now; a journey takes them over once, when it starts. */
     fun activeFeatureFlags(): Set<JourneyFeatureFlag> = featureFlagProviders.flatMapTo(mutableSetOf()) { it.activeFlags() }
-
-    fun acrFloorOf(channel: ChannelSession): AcrLevel =
-        channel.acrFloor?.let(AcrLevel::parse) ?: AcrLevels.DEFAULT_REQUIRED_ACR
 
     /** Recomputed from the evidence every time, never stored. */
     fun currentAcrOf(channel: ChannelSession): AcrLevel {

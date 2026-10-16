@@ -82,7 +82,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
     )
 
     fun method(method: String, enrolledUnderAcr: AcrLevel, active: Boolean = true) =
-        AuthMethodView(id = "$method-instance", method = method, active = active, createdAt = null, enrolledUnderAcr = enrolledUnderAcr.value, boundKeyRef = null, reference = null, enrollmentRef = EnrollmentRef("${method}_enrollment", "1"))
+        AuthMethodView(id = "$method-instance", method = method, active = active, createdAt = null, enrolledUnderAcr = enrolledUnderAcr, boundKeyRef = null, reference = null, enrollmentRef = EnrollmentRef("${method}_enrollment", "1"))
 
     val nothingProven = SessionEvidence(emptyList())
     val smsAtLoa2 = SessionEvidence.fromNow(amr = listOf("sms"), factorTypes = setOf(FactorType.POSSESSION), methodAcr = mapOf("sms" to AcrLevel.LOA2.value))
@@ -525,7 +525,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         val devicePolicy = DefaultAuthPolicy(catalog(deviceAuth), TEST_CLOCK)
         val deviceMethod = AuthMethodView(
             id = "device-instance", method = "device", active = true, createdAt = null,
-            enrolledUnderAcr = AcrLevel.LOA2.value, boundKeyRef = "key-1", reference = null,
+            enrolledUnderAcr = AcrLevel.LOA2, boundKeyRef = "key-1", reference = null,
             enrollmentRef = EnrollmentRef("auth_device.enrollment", "1")
         )
         val acc = account(deviceMethod)

@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.session.AccountDeletionService
@@ -41,8 +42,8 @@ class SharedCredentialRowIntegrationTest : IntegrationTestSupport() {
         val ref = EnrollmentRef("auth_device.enrollment", row.toString())
         val first = accountService.createAccountInSetup().accountId
         val second = accountService.createAccountInSetup().accountId
-        accountService.addAuthenticationMethod(first, "device", ref, enrolledUnderAcr = null, allowsMultipleInstances = true)
-        accountService.addAuthenticationMethod(second, "device", ref, enrolledUnderAcr = null, allowsMultipleInstances = true)
+        accountService.addAuthenticationMethod(first, "device", ref, enrolledUnderAcr = AcrLevel.NONE, allowsMultipleInstances = true)
+        accountService.addAuthenticationMethod(second, "device", ref, enrolledUnderAcr = AcrLevel.NONE, allowsMultipleInstances = true)
         return Triple(row, first, second)
     }
 
