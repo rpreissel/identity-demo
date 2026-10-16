@@ -37,7 +37,6 @@ class JourneyTraceDetails(
         JourneyEvent.Started -> JourneyTraceEvent.STARTED
         is JourneyEvent.Answered -> JourneyTraceEvent.ANSWERED
         JourneyEvent.ActionCompleted -> JourneyTraceEvent.ACTION_COMPLETED
-        is JourneyEvent.Abandoned -> JourneyTraceEvent.TOOL_ABANDONED
         is JourneyEvent.OfferExhausted -> JourneyTraceEvent.OFFER_EXHAUSTED
         is JourneyEvent.SubJourneyFinished -> JourneyTraceEvent.SUB_JOURNEY_FINISHED
         is JourneyEvent.SubJourneyCancelled -> JourneyTraceEvent.SUB_JOURNEY_CANCELLED
@@ -48,7 +47,6 @@ class JourneyTraceDetails(
      * (ADR-51), and how the outcome or answer read.
      */
     fun eventDetail(event: JourneyEvent, channel: ChannelSession): Map<String, Any?> = when (event) {
-        is JourneyEvent.Abandoned -> mapOf("toolId" to event.tool.toolId, "tool" to channel.declaredVersionOf(event.tool.toolId.value))
         is JourneyEvent.OfferExhausted -> mapOf("declined" to event.declined.map { it.value })
         is JourneyEvent.Answered -> mapOf("answer" to event.answer.wire)
         is JourneyEvent.SubJourneyFinished -> mapOf("subIntent" to event.journey.name, "achievedAcr" to event.achievedAcr)
@@ -56,6 +54,10 @@ class JourneyTraceDetails(
         JourneyEvent.Started -> emptyMap()
         JourneyEvent.ActionCompleted -> emptyMap()
     }
+
+    /** The tool a step is about, in the version [channel] declared (ADR-51). */
+    fun toolDetail(tool: Tool, channel: ChannelSession): Map<String, Any?> =
+        mapOf("toolId" to tool.toolId, "tool" to channel.declaredVersionOf(tool.toolId.value))
 
     /** A completed tool run, which is booked without an event (`JourneyService.complete`). */
     fun completedDetail(tool: Tool, outcome: ToolOutcome.Completed, channel: ChannelSession): Map<String, Any?> =

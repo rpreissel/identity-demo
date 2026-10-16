@@ -330,20 +330,29 @@ class JourneyService(
         codec.write(journey, cleared)
         journeyRepository.save(journey)
         journeyTraceService.record(channel.forLog(), journey.forLog(), JourneyTraceEvent.BACK_TO_SELECTION,
-            journeyState = state::class.simpleName,
-            detail = mapOf("toolId" to tool.toolId, "tool" to channel.declaredVersionOf(tool.toolId.value)))
+            journeyState = state::class.simpleName, detail = journeyTraceDetails.toolDetail(tool, channel))
         return routing.selectionFor(cleared, channel)
     }
 
-    /** "Anderes Verfahren": the tool is declined, and the state decides whether anything is left. */
+    /**
+     * "Anderes Verfahren": the offer answers backing out itself ([OfferingState.afterAbandoning],
+     * ADR-62); the journey only hears that the offer is exhausted, with everything declined.
+     */
     fun abandon(running: RunningJourney, live: LiveChannel, tool: Tool): Step {
         keepSessionAlive(live)
         val journey = running.entity
         val channel = live.session
-        val state = codec.read(journey)
-        codec.write(journey, state.withActive(null))
-        journeyRepository.save(journey)
-        return advance(journey, channel, JourneyEvent.Abandoned(tool))
+        // Only a state with an offer runs a tool.
+        val state = codec.read(journey) as? OfferingState ?: error("${tool.toolId} abandoned outside an offer")
+        val ctx = contextFactory.contextFor(journey, channel)
+        val own = state.afterAbandoning(tool.toolId, ctx.availableTools)
+        if (own != null) {
+            val transition = Transition.To(own)
+            recordStep(journey, channel, JourneyTraceEvent.TOOL_ABANDONED, journeyTraceDetails.toolDetail(tool, channel), state, transition, ctx)
+            return applyTransition(journey, channel, transition)
+        }
+        val exhausted = state.declining(tool.toolId)
+        return advance(journey, channel, JourneyEvent.OfferExhausted(exhausted.declined), from = exhausted)
     }
 
     /**
@@ -363,26 +372,20 @@ class JourneyService(
 
     // Transitions ----------------------------------------------------------------
 
-    /** [decided]: a transition already fixed by the machine, so the journey is not asked (still traced). */
-    private fun advance(journey: AuthJourney, channel: ChannelSession, event: JourneyEvent, decided: Transition? = null): Step {
-        val kind = journey.requireKind()
-        var state = codec.read(journey)
-        var event = event
+    /**
+     * [decided]: a transition already fixed by the machine, so the journey is not asked (still
+     * traced). [from]: the state the journey decides from, when it is not the stored one.
+     */
+    private fun advance(
+        journey: AuthJourney,
+        channel: ChannelSession,
+        event: JourneyEvent,
+        decided: Transition? = null,
+        from: JourneyState = codec.read(journey),
+    ): Step {
         val ctx = contextFactory.contextFor(journey, channel)
-        var transition: Transition? = decided
-        // An offer answers backing out itself (DeclinePolicy); the journey only hears that the
-        // offer is exhausted, with everything declined.
-        if (event is JourneyEvent.Abandoned && state is OfferingState) {
-            val own = state.afterAbandoning(event.tool.toolId, ctx.availableTools)
-            if (own != null) transition = Transition.To(own)
-            else {
-                val narrowed = state.declining(event.tool.toolId)
-                state = narrowed
-                event = JourneyEvent.OfferExhausted(narrowed.declined)
-            }
-        }
-        transition = transition ?: kind.transitionErased(state, event, ctx)
-        recordStep(journey, channel, journeyTraceDetails.traceEventOf(event), journeyTraceDetails.eventDetail(event, channel), state, transition, ctx)
+        val transition = decided ?: journey.requireKind().transitionErased(from, event, ctx)
+        recordStep(journey, channel, journeyTraceDetails.traceEventOf(event), journeyTraceDetails.eventDetail(event, channel), from, transition, ctx)
         return applyTransition(journey, channel, transition)
     }
 

@@ -23,8 +23,8 @@ Strategie lesen.
   Strategie fragt.
 - Die Strategie sieht nur noch `JourneyEvent.OfferExhausted(declined)` und nennt den nächsten Weg:
   `Cancel`, eine erneute Identifizierung, die Registrierung oder das Weitermachen ohne Zuordnung.
-  `Abandoned` erreicht eine Strategie nur noch in einem Zustand ohne Angebot
-  (`FastAccessState.PreferredAuth`).
+  `Abandoned` erreichte eine Strategie zunächst noch in einem Zustand ohne Angebot
+  (`FastAccessState.PreferredAuth`); seit der auch ein Angebot hält, gibt es das Ereignis nicht mehr.
 - Der Journey-Trace zeigt `OfferExhausted` mit allen abgelehnten Tools als eigenes Ereignis.
 
 **Warum.** Die Sorte ist eine Eigenschaft des Angebots, und jetzt steht sie dort. Eine Regel

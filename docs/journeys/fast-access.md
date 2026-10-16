@@ -62,9 +62,9 @@ stateDiagram-v2
   end note
 ```
 
-**Was die Zustände enthalten.** `PreferredAuth` enthält genau das eine vorgeschlagene Tool
-(`toolId`). `AuthChoice` und `Enrolling` enthalten das Angebot und die bisherigen Ablehnungen. Diese
-beiden Zustände nutzt `FAST_ACCESS` gemeinsam mit `RegisterState` (siehe [`REGISTER`](register.md)).
+**Was die Zustände enthalten.** Alle drei enthalten ein Angebot und die bisherigen Ablehnungen;
+bei `PreferredAuth` besteht es aus genau dem einen vorgeschlagenen Tool. `AuthChoice` und
+`Enrolling` nutzt `FAST_ACCESS` gemeinsam mit `RegisterState` (siehe [`REGISTER`](register.md)).
 
 `Enrolling` hat zusätzlich das Feld `then`. `FAST_ACCESS` lässt es auf `AfterEnrolling.NEXT_STEP`:
 es schuldet nach dem Einrichten nichts. Die Pflicht, die E-Mail-Adresse zu bestätigen, gibt es nur, wenn die Journey über

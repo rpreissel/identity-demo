@@ -2,7 +2,6 @@ package com.example.identity.core.orchestrator.domain.journey
 
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.contract.tool_api.Tool
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 
 /** What just happened to the journey. */
@@ -11,16 +10,11 @@ sealed interface JourneyEvent {
     data object Started : JourneyEvent
 
     /**
-     * "Back"/"Switch": the user abandoned an activated tool without finishing it. An offering state
-     * answers this itself by its [com.example.identity.core.orchestrator.domain.journey.state.DeclinePolicy];
-     * a journey sees it only for a state without an offer (e.g. `FastAccessState.PreferredAuth`).
-     */
-    data class Abandoned(val tool: Tool) : JourneyEvent
-
-    /**
-     * The offer is used up: every tool was declined, or an optional step was backed out of. Only a
-     * `FALLBACK` or `OPTIONAL` state sees it, with the full [declined] set; a mandatory offer simply
-     * comes back without any event reaching the journey.
+     * The offer is used up: every tool was declined ("Anderes Verfahren"), or an optional step was
+     * backed out of. Backing out of one tool is answered by the offer itself
+     * ([com.example.identity.core.orchestrator.domain.journey.state.DeclinePolicy]); only a
+     * `FALLBACK` or `OPTIONAL` state sees this, with the full [declined] set, while a mandatory
+     * offer simply comes back without any event reaching the journey.
      */
     data class OfferExhausted(val declined: Set<ToolId>) : JourneyEvent
 

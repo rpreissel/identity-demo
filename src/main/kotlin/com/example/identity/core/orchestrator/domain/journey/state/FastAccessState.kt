@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
+import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.ToolId
 
 /**
@@ -12,10 +13,11 @@ sealed interface FastAccessState : JourneyState {
 
     data object Start : FastAccessState, ToolFreeState
 
-    /** Linked device with a matching device method: exactly one default suggestion. */
-    data class PreferredAuth(val toolId: ToolId, override val active: ToolRef? = null) : FastAccessState {
-        override fun withActive(active: ToolRef?) = copy(active = active)
-        override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = setOf(toolId) intersect availableTools
+    /** Linked device with a matching device method: an offer of exactly that one, before any choice. */
+    data class PreferredAuth(override val offer: Offer) : FastAccessState, OfferingState {
+        override fun withOffer(offer: Offer) = copy(offer = offer)
+        override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
         override val selectionContext: String get() = "auth"
+        override val selectionTitle: Text get() = Text("Anmeldung – Verfahren wählen")
     }
 }

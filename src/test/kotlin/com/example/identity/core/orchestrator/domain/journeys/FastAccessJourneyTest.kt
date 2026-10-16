@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.core.orchestrator.domain.journeys.FastAccessJourney
-import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journeys.RegisterJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -50,7 +49,7 @@ class FastAccessJourneyTest : BehaviorSpec({
             val transition = journey.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = acc))
             then("suggests exactly that device credential, not a generic choice") {
                 transition shouldBe
-                    Transition.To(FastAccessState.PreferredAuth(ToolId("auth-device")))
+                    Transition.To(FastAccessState.PreferredAuth(Offer(listOf(ToolId("auth-device")))))
             }
         }
     }
@@ -92,7 +91,8 @@ class FastAccessJourneyTest : BehaviorSpec({
     given("PreferredAuth, account with the preferred device and other methods") {
         val acc = account(method("device", AcrLevel.LOA2, boundKeyRef = BINDING_KEY), method("sms", AcrLevel.LOA2))
         `when`("the preferred tool is declined") {
-            val transition = journey.transition(FastAccessState.PreferredAuth(ToolId("auth-device")), JourneyEvent.Abandoned(tool("auth-device")), ctx(account = acc))
+            val exhausted = FastAccessState.PreferredAuth(Offer(listOf(ToolId("auth-device")))).declining(ToolId("auth-device"))
+            val transition = journey.transition(exhausted as FastAccessState, JourneyEvent.OfferExhausted(exhausted.declined), ctx(account = acc))
             then("falls back to the account's other methods") {
                 transition shouldBe
                     Transition.To(AuthChoice(Offer(listOf(ToolId("auth-sms")), emptySet())))
@@ -103,7 +103,7 @@ class FastAccessJourneyTest : BehaviorSpec({
     given("PreferredAuth, evidence that already satisfies the floor") {
         val acc = account(method("device", AcrLevel.LOA2, boundKeyRef = BINDING_KEY))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE), account = acc), acrFloor = AcrLevel.LOA2)
-        val state = FastAccessState.PreferredAuth(ToolId("auth-device"))
+        val state = FastAccessState.PreferredAuth(Offer(listOf(ToolId("auth-device"))))
 
         `when`("resumed after the accepted proof (ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)

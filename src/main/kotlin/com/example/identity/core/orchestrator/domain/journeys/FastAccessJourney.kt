@@ -12,6 +12,7 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
+import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
 
@@ -38,13 +39,8 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
                 else -> event.notExpectedIn(state)
             }
 
-            is FastAccessState.PreferredAuth -> when (event) {
-                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterProof(ctx.requireAccount())
-                is JourneyEvent.Abandoned -> toRequiredLevel.nextWithoutOr(setOf(state.toolId), ctx) { requireRegister() }
-                else -> event.notExpectedIn(state)
-            }
-
-            is AuthChoice -> when (event) {
+            // The device's key first, then the account's other methods: one chain, two screens.
+            is FastAccessState.PreferredAuth, is AuthChoice -> when (event) {
                 JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterProof(ctx.requireAccount())
                 // Nothing else provable is left on this device: hand off to a fresh identification.
                 is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithoutOr(event.declined, ctx) { requireRegister() }
@@ -63,7 +59,7 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
     private fun firstOffer(ctx: JourneyContext): Transition {
         val known = ctx.withAccount ?: return requireRegister()
         val deviceKey = known.deviceKeyCandidate()
-        if (deviceKey != null) return Transition.To(FastAccessState.PreferredAuth(deviceKey))
+        if (deviceKey != null) return Transition.To(FastAccessState.PreferredAuth(Offer(listOf(deviceKey))))
         return offer(known.authCandidates(), ::AuthChoice) ?: requireRegister()
     }
 
