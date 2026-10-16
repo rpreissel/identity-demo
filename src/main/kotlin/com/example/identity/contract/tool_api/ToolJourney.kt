@@ -30,8 +30,8 @@ import java.net.URI
  * activates nothing (enforced by `ApiBoundaryArchitectureTest`).
  */
 interface ToolContext {
-    /** The tool this context was obtained for. */
-    val toolId: ToolId
+    /** The tool this context was obtained for, resolved once from the route it serves. */
+    val tool: Tool
     /** The version of the tool's contract the client speaks, as its path names it (ADR-51). */
     val version: Int
     val toolSessionId: ToolSessionId
@@ -107,20 +107,20 @@ interface ToolJourney {
     fun loadCurrent(toolSessionId: ToolSessionId, caller: CallerProof, tool: ToolVersion): AuthorizedToolContext
 
     /**
-     * The credential of [module]'s method this caller may prove: the account's active one, or for a
+     * The credential of the context's method this caller may prove: the account's active one, or for a
      * [ToolModule.onePerDevice] method the one living on the caller's key - a credential bound to
      * another device is not reachable. Resolved here, since a handler may not reference `account`
      * (docs/verfahren/sms.md).
      *
      * @throws UnresolvableReferenceException (422) without an account or without such a credential.
      */
-    fun requireEnrollment(context: ToolContext, module: ToolModule): EnrollmentRef
+    fun requireEnrollment(context: ToolContext): EnrollmentRef
 
     /**
      * [requireEnrollment] without the refusal: `null` when the account in hand has no such
      * credential, or nobody is known yet. Lets an enrollment say that it replaces one.
      */
-    fun findEnrollment(context: ToolContext, module: ToolModule): EnrollmentRef?
+    fun findEnrollment(context: ToolContext): EnrollmentRef?
 
     /** @return whether [context]'s toolId is still the journey's current tool. */
     fun isCurrentTool(context: ToolContext): Boolean

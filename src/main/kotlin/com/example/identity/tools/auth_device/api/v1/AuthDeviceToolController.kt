@@ -5,7 +5,6 @@ import com.example.identity.contract.tool_api.envelope.NO_REQUEST_BODY
 import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
 import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.auth_device.AuthDevice
-import com.example.identity.tools.auth_device.DeviceModule
 import com.example.identity.tools.auth_device.internal.authdevice.AuthDeviceToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.device.DeviceProofs
@@ -69,7 +68,7 @@ class AuthDeviceToolController(
         context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val outcome = handler.start(context.toolSessionId, toolJourney.requireEnrollment(context, DeviceModule))
+        val outcome = handler.start(context.toolSessionId, toolJourney.requireEnrollment(context))
 
         return toolJourney.activated(context, outcome, uriBuilder)
     }

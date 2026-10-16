@@ -39,9 +39,7 @@ import com.example.identity.contract.tool_api.Lockouts
 import com.example.identity.contract.tool_api.ToolJourney
 import com.example.identity.contract.tool_api.UnresolvableReferenceException
 import com.example.identity.contract.tool_api.EnrollmentRef
-import com.example.identity.contract.tool_api.ToolModule
 import com.example.identity.contract.tool_api.Tool
-import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ToolRole
@@ -75,7 +73,7 @@ class ToolJourneyService(
     private val demoDisclosure: DemoDisclosure
 ) : ToolJourney {
     data class Context(
-        override val toolId: ToolId,
+        override val tool: Tool,
         override val version: Int,
         override val toolSessionId: ToolSessionId,
         val journeyId: JourneyId,
@@ -100,7 +98,7 @@ class ToolJourneyService(
     override fun activationLocation(context: ToolContext, baseUri: URI): URI =
         UriComponentsBuilder.fromUri(baseUri)
             .replacePath("$TOOLS_API/{toolId}/v{version}/{toolSessionId}")
-            .buildAndExpand(context.toolId, context.version, context.toolSessionId)
+            .buildAndExpand(context.tool.toolId, context.version, context.toolSessionId)
             .toUri()
 
     /**
@@ -108,12 +106,11 @@ class ToolJourneyService(
      * membership in the current offer, so a tool never offered cannot be activated by naming it.
      */
     override fun beginActivation(channelSessionId: ChannelSessionId, caller: CallerProof, tool: ToolVersion): Activation {
-        val toolId = tool.toolId.value
         val live = channelAccessGuard.requireLiveChannel(channelSessionId, caller)
         val channel = live.session
         val journey = journeyService.findActive(channelSessionId)
             ?: throw OrchestratorException.invalidState(Text("No active journey for this channel"))
-        val descriptor = toolRegistry.toolOf(ToolId(toolId))
+        val descriptor = toolRegistry.toolOf(tool.toolId)
 
         validatePreconditions(tool, channel)
         // Only for a tool whose account the channel knows (KNOWN_ACCOUNT_AUTH). ACCOUNT_LOOKUP_AUTH and IDENT
@@ -126,7 +123,7 @@ class ToolJourneyService(
         val toolSession = sessionManagementService.createToolSession(journey.journeyId, TOOL_TTL)
         journeyService.activate(journey, live, descriptor, toolSession.id)
         return Activation(Context(
-            toolId = ToolId(toolId),
+            tool = descriptor,
             version = tool.version,
             toolSessionId = toolSession.id,
             journeyId = journey.journeyId,
@@ -167,7 +164,7 @@ class ToolJourneyService(
             throw OrchestratorException.invalidState(Text("This tool is not available on this channel"), "toolId=${toolId}")
         }
 
-        val descriptor = toolRegistry.toolOf(ToolId(toolId))
+        val descriptor = toolRegistry.toolOf(tool.toolId)
         val account = channel.accountId?.let { accountService.findAccount(it) }
         descriptor.requires.forEach { requirement ->
             if (!requiresSatisfied(requirement, account)) {
@@ -203,7 +200,7 @@ class ToolJourneyService(
         val channel = channelAccessGuard.requireChannel(journey.channelSessionId, caller)
         requireDeclaredVersion(tool, channel)
         return Context(
-            toolId = tool.toolId,
+            tool = toolRegistry.toolOf(tool.toolId),
             version = tool.version,
             toolSessionId = toolSessionId,
             journeyId = journey.journeyId,
@@ -214,15 +211,18 @@ class ToolJourneyService(
         )
     }
 
-    override fun findEnrollment(context: ToolContext, module: ToolModule): EnrollmentRef? =
-        context.accountId?.let { accountId ->
+    override fun findEnrollment(context: ToolContext): EnrollmentRef? {
+        val module = context.tool.module
+        return context.accountId?.let { accountId ->
             // A per-device credential lives on the calling device's key; a Web call has none.
             if (module.onePerDevice) (context.caller as? CallerProof.DeviceKey)?.let { accountService.activeInstanceEnrollment(accountId, module.method, it.thumbprint) }
             else accountService.activeEnrollment(accountId, module.method)
         }
+    }
 
-    override fun requireEnrollment(context: ToolContext, module: ToolModule): EnrollmentRef {
-        return findEnrollment(context, module) ?: throw UnresolvableReferenceException(
+    override fun requireEnrollment(context: ToolContext): EnrollmentRef {
+        val module = context.tool.module
+        return findEnrollment(context) ?: throw UnresolvableReferenceException(
             if (module.onePerDevice) Text("Dieses Anmeldeverfahren ist auf diesem Gerät nicht eingerichtet")
             else Text("Kein aktives Anmeldeverfahren dieser Art fuer dieses Konto"),
             "no active ${module.method} method",
@@ -241,14 +241,14 @@ class ToolJourneyService(
 
     private fun requireCurrentTool(context: ToolContext) {
         if (!isCurrentTool(context)) {
-            throw OrchestratorException.invalidState(Text("This tool is not the currently active step of this journey"), "toolId=${context.toolId}")
+            throw OrchestratorException.invalidState(Text("This tool is not the currently active step of this journey"), "toolId=${context.tool}")
         }
     }
 
     override fun isCurrentTool(context: ToolContext): Boolean {
         val ctx = context.data()
         val journey = resolveJourney(ctx)
-        return journeyService.isCurrent(journey, ctx.toolId, ctx.toolSessionId)
+        return journeyService.isCurrent(journey, ctx.tool.toolId, ctx.toolSessionId)
     }
 
     /**
@@ -268,7 +268,7 @@ class ToolJourneyService(
         val live = resolveChannel(ctx, journey)
         val channel = live.session
         sessionManagementService.endToolSession(ctx.toolSessionId, ToolSessionStatus.ABANDONED)
-        val step = move(journey, live, toolRegistry.toolOf(ctx.toolId))
+        val step = move(journey, live, ctx.tool)
         return ChannelResponse(
             channel = responseAssembler.buildChannelBlock(channel),
             next = step.next,
@@ -289,9 +289,9 @@ class ToolJourneyService(
         val journey = resolveJourney(ctx)
         val live = resolveChannel(ctx, journey)
         val channel = live.session
-        val descriptor = toolRegistry.toolOf(ctx.toolId)
+        val descriptor = ctx.tool
         // An activation checks the lock but books nothing; only [loadCurrent] books.
-        chargeRateLimits(channel.accountId, channel.type.name, descriptor, "${ctx.toolId}@${ctx.version}", outcome, booked = context !is Activation)
+        chargeRateLimits(channel.accountId, channel.type.name, descriptor, "${ctx.tool}@${ctx.version}", outcome, booked = context !is Activation)
         // A completed tool is done for good, even while the journey still names it as active.
         if (outcome is ToolOutcome.Completed) sessionManagementService.endToolSession(ctx.toolSessionId, ToolSessionStatus.DONE)
 
@@ -369,7 +369,7 @@ class ToolJourneyService(
         val journey = resolveJourney(ctx)
         val channel = resolveChannel(ctx, journey).session
         val next = if (freshOutcome != null) {
-            Next.tool(ctx.toolId.value, freshOutcome.nextStep, ctx.toolSessionId)
+            Next.tool(ctx.tool.toolId.value, freshOutcome.nextStep, ctx.toolSessionId)
         } else {
             journeyService.nextOf(journey, channel)
         }

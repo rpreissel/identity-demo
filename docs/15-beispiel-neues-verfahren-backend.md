@@ -242,7 +242,7 @@ Tool spielt es keine Rolle, aus welchem Kanal der `PATCH` kommt.
    gibt es nämlich nichts zu erraten.
 
 **Anmelden (`auth-totp`).** Der Controller holt das eingerichtete Verfahren mit
-`toolJourney.requireEnrollment(context, TotpModule)`. Gibt es keins, antwortet der Orchestrator mit
+`toolJourney.requireEnrollment(context)`. Gibt es keins, antwortet der Orchestrator mit
 `422`. Bei einem Verfahren mit `onePerDevice` wäre es automatisch das Verfahren auf diesem Gerät.
 Der Handler prüft den Code gegen das Geheimnis und meldet `Completed.Authenticated` oder
 `Failed.KnownAccountAuth`. Das Zählen der Fehlversuche und das Sperren nach zu vielen Fehlversuchen

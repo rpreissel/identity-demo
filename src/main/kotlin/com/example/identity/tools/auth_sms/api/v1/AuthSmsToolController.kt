@@ -5,7 +5,6 @@ import com.example.identity.contract.tool_api.envelope.NO_REQUEST_BODY
 import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
 import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.auth_sms.AuthSms
-import com.example.identity.tools.auth_sms.SmsModule
 import com.example.identity.tools.auth_sms.internal.authsms.AuthSmsToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolController
@@ -68,7 +67,7 @@ class AuthSmsToolController(
         context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
-        val outcome = handler.start(context.toolSessionId, toolJourney.requireEnrollment(context, SmsModule))
+        val outcome = handler.start(context.toolSessionId, toolJourney.requireEnrollment(context))
 
         return toolJourney.activated(context, outcome, uriBuilder)
     }

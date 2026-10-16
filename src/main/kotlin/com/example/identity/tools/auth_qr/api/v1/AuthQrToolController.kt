@@ -3,7 +3,6 @@ package com.example.identity.tools.auth_qr.api.v1
 import com.example.identity.tools.auth_qr.AUTH_QR_TOOL_ID
 import com.example.identity.contract.tool_api.envelope.NO_REQUEST_BODY
 import com.example.identity.tools.auth_qr.AuthQr
-import com.example.identity.tools.auth_qr.QrModule
 import com.example.identity.tools.auth_qr.internal.authqr.AuthQrToolHandler
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
 import com.example.identity.contract.tool_api.ToolController
@@ -62,7 +61,7 @@ class AuthQrToolController(
         uriBuilder: UriComponentsBuilder
     ): ResponseEntity<ChannelResponse> {
         // The opt-in holds no secret; it only has to exist for the account in hand.
-        toolJourney.requireEnrollment(context, QrModule)
+        toolJourney.requireEnrollment(context)
         val accountId = checkNotNull(context.accountId)
         val outcome = handler.start(context.toolSessionId, accountId)
 

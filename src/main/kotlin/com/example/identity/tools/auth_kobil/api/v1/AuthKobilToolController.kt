@@ -4,7 +4,6 @@ import com.example.identity.tools.auth_kobil.AUTH_KOBIL_TOOL_ID
 import com.example.identity.contract.tool_api.envelope.EXAMPLE_TOOL_SESSION_ID
 import com.example.identity.contract.tool_api.envelope.EXAMPLE_CHANNEL_SESSION_ID
 import com.example.identity.tools.auth_kobil.AuthKobil
-import com.example.identity.tools.auth_kobil.KobilModule
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.tools.auth_kobil.internal.authkobil.AuthKobilToolHandler
 import com.example.identity.contract.tool_api.directory.AccountDirectory
@@ -81,7 +80,7 @@ class AuthKobilToolController(
         context: ActivationToolContext,
         uriBuilder: UriComponentsBuilder,
     ): ResponseEntity<ChannelResponse> {
-        val enrollmentRef = toolJourney.requireEnrollment(context, KobilModule)
+        val enrollmentRef = toolJourney.requireEnrollment(context)
         val outcome = handler.start(context.toolSessionId, enrollmentRef, passwordAvailable(context.accountId))
         return toolJourney.activated(context, outcome, uriBuilder)
     }
