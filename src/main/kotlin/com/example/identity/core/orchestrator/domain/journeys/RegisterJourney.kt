@@ -53,7 +53,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
     override fun transition(state: RegisterState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is RegisterState.Start -> when (event) {
-                JourneyEvent.Started -> if (ctx.enrollFirst) offerEmailFirst(ctx) else offerIdentification(ctx)
+                JourneyEvent.Started -> firstOffer(ctx)
                 // A RE_IDENTIFY sub-journey before a new method finished: re-check.
                 is JourneyEvent.SubJourneyFinished -> toRequiredLevel.nextAfterProof(ctx)
                 else -> event.notExpectedIn(state)
@@ -121,6 +121,18 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
         }
 
     // Offers -------------------------------------------------------------------
+
+    /**
+     * Identification first, or the address under "Enrollment zuerst". Done at once only for an
+     * account that has already proven the floor and can reach it again on its own: evidence taken
+     * over from the Keycloak session (ADR-59). Any other known account registers like everyone,
+     * with no shortcut through its methods; FAST_ACCESS hands over exactly when those do not help.
+     */
+    private fun firstOffer(ctx: JourneyContext): Transition = when {
+        ctx.account != null && toRequiredLevel.isReached(ctx) -> Transition.Authenticated
+        ctx.enrollFirst -> offerEmailFirst(ctx)
+        else -> offerIdentification(ctx)
+    }
 
     /**
      * "Enrollment zuerst" begins with the address, which is account infrastructure (lookup tools,

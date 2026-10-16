@@ -51,6 +51,30 @@ class RegisterJourneyTest : BehaviorSpec({
         }
     }
 
+    given("Start, a known account whose evidence taken over from Keycloak already reaches the floor") {
+        val acc = account(method("sms", AcrLevel.LOA1))
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
+
+        `when`("the journey starts (Started)") {
+            val transition = journey.transition(RegisterState.Start, JourneyEvent.Started, theCtx)
+            then("is done at once - a login, not a new registration") {
+                transition shouldBe Transition.Authenticated
+            }
+        }
+    }
+
+    given("Start, a known account whose only evidence is an identification") {
+        val acc = account(method("sms", AcrLevel.LOA1))
+        val theCtx = ctx(account = acc, evidence = evidence(listOf("fsc"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), account = acc), acrFloor = AcrLevel.LOA2)
+
+        `when`("the journey starts (Started)") {
+            val transition = journey.transition(RegisterState.Start, JourneyEvent.Started, theCtx)
+            then("still registers - the account cannot reach the floor on its own") {
+                transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<RegisterState.Identifying>()
+            }
+        }
+    }
+
     given("Start, no account known yet") {
         `when`("the journey starts (Started)") {
             val transition = journey.transition(RegisterState.Start, JourneyEvent.Started, ctx(account = null))
@@ -68,7 +92,7 @@ class RegisterJourneyTest : BehaviorSpec({
         `when`("resumed after a RE_IDENTIFY sub-journey (SubJourneyFinished)") {
             val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2)
             val transition = journey.transition(RegisterState.Start, event, theCtx)
-            then("re-checks satisfaction via afterProof instead of re-running identification") {
+            then("re-checks satisfaction via nextAfterProof instead of re-running identification") {
                 transition shouldBe Transition.Authenticated
             }
         }
