@@ -5,6 +5,8 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyStart
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.AccountJourney
+import com.example.identity.core.orchestrator.domain.journey.AccountJourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -18,7 +20,7 @@ import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
  * Raise the level of an already authenticated session (docs/journeys/step-up.md). When no active
  * method can close the gap, the `RE_IDENTIFY` sub-journey asks before any fresh identification.
  */
-object StepUpJourney : Journey<StepUpState> {
+object StepUpJourney : AccountJourney<StepUpState> {
 
     override val name = "STEP_UP"
     override val startPoints = listOf(StartableWhenAuthenticated)
@@ -27,7 +29,7 @@ object StepUpJourney : Journey<StepUpState> {
     /** A step-up toward [goal]: never started without one. */
     fun toward(goal: Goal): JourneyStart<*> = JourneyStart(this, StepUpState.Start(goal))
 
-    override fun transition(state: StepUpState, event: JourneyEvent, ctx: JourneyContext): Transition =
+    override fun transition(state: StepUpState, event: JourneyEvent, ctx: AccountJourneyContext): Transition =
         when (state) {
             is StepUpState.Start -> when (event) {
                 // Fresh, or back from RE_IDENTIFY: the session may already have reached the goal.
@@ -42,11 +44,11 @@ object StepUpJourney : Journey<StepUpState> {
             }
         }
 
-    private fun finishOrContinue(goal: Goal, ctx: JourneyContext): Transition =
+    private fun finishOrContinue(goal: Goal, ctx: AccountJourneyContext): Transition =
         if (ctx hasReached goal.targetAcr) Transition.Authenticated
         else offerAuth(goal, ctx)
 
-    private fun offerAuth(goal: Goal, ctx: JourneyContext): Transition {
+    private fun offerAuth(goal: Goal, ctx: AccountJourneyContext): Transition {
         // Authenticator evidence already on the channel means this offer asks for an additional
         // factor (StepUpState.AuthChoice.additionalFactorRound).
         val additionalFactorRound = ctx.evidence.methods.any { it.axis == EvidenceAxis.AUTHENTICATOR }
@@ -58,14 +60,14 @@ object StepUpJourney : Journey<StepUpState> {
     }
 
     /** Nothing gets the account to [Goal.targetAcr]: say why. */
-    private fun cannotReach(goal: Goal, ctx: JourneyContext): Transition =
-        Transition.Abort(ctx.policy.reachability(ctx.requireAccount(), goal.targetAcr).toAuthAbortMessage())
+    private fun cannotReach(goal: Goal, ctx: AccountJourneyContext): Transition =
+        Transition.Abort(ctx.policy.reachability(ctx.account, goal.targetAcr).toAuthAbortMessage())
 
     /**
      * Offers re-identification if allowed ([Goal.allowsReIdentification]) and able to
      * close the gap; [whenNone] otherwise.
      */
-    private fun offerReIdentOrGiveUp(goal: Goal, ctx: JourneyContext, whenNone: Transition): Transition {
+    private fun offerReIdentOrGiveUp(goal: Goal, ctx: AccountJourneyContext, whenNone: Transition): Transition {
         if (!goal.allowsReIdentification) return whenNone
         // The whole goal, or the run would forget on return why and how it may step up.
         return ReIdentifyJourney.toReachOr(goal.targetAcr, ctx, resumeWith = StepUpState.Start(goal)) { whenNone }

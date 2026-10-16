@@ -3,11 +3,11 @@ package com.example.identity.core.orchestrator.domain.journeys
 import com.example.identity.core.orchestrator.domain.journey.authCandidates
 import com.example.identity.core.orchestrator.domain.journey.lookupLoginCandidates
 import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
-import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.domain.InvitationAcceptance
 import com.example.identity.core.orchestrator.domain.journey.OpensWebChannel
 import com.example.identity.core.orchestrator.domain.journey.SigningIn
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.AccountJourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -60,13 +60,13 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
     /** Done once the channel's floor is proven; otherwise what can still prove more depends on who is signing in. */
     private fun finishOrOfferMore(ctx: JourneyContext): Transition {
         if (ctx hasReached ctx.acrFloor) return Transition.Authenticated
-        return when (val signingIn = ctx.signingIn) {
+        return when (ctx.signingIn) {
             // A process access has its one proof and nothing else to offer. Its level was checked on
             // acceptance (InvitationAcceptance); this catches what the level alone does not say,
             // such as a second factor the floor demands.
             is SigningIn.ProcessAccess -> Transition.Abort(InvitationAcceptance.Refusal.BELOW_REQUIRED_LEVEL.text)
             SigningIn.Unknown -> offerLookupLogin(ctx)
-            is SigningIn.Holder -> offerStepUp(signingIn.account, ctx)
+            is SigningIn.Holder -> offerStepUp(ctx.requireAccount())
         }
     }
 
@@ -75,17 +75,17 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
         Transition.To(WebSelectMethodState.SelectLoginMethod(Offer(ctx.lookupLoginCandidates())))
 
     /** A step-up for a known account: its own methods first, otherwise identifying again, as in STEP_UP. */
-    private fun offerStepUp(account: AccountProfile, ctx: JourneyContext): Transition {
+    private fun offerStepUp(ctx: AccountJourneyContext): Transition {
         val ownMethods = ctx.authCandidates()
         if (ownMethods.isNotEmpty()) {
             return Transition.To(WebSelectMethodState.SelectStepUpMethod(Offer(ownMethods)))
         }
-        return reIdentifyOr(ctx) { cannotReach(account, ctx) }
+        return reIdentifyOr(ctx) { cannotReach(ctx) }
     }
 
     /** Nothing gets this account to the floor here: say why instead of handing Keycloak an empty selection. */
-    private fun cannotReach(account: AccountProfile, ctx: JourneyContext): Transition =
-        Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
+    private fun cannotReach(ctx: AccountJourneyContext): Transition =
+        Transition.Abort(ctx.policy.reachability(ctx.account, ctx.acrFloor).toAuthAbortMessage())
 
     /** RE_IDENTIFY up to the channel's floor, then back to [WebSelectMethodState.Start]; [otherwise] when it cannot help. */
     private fun reIdentifyOr(ctx: JourneyContext, otherwise: () -> Transition): Transition =

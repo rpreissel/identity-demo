@@ -38,14 +38,14 @@ class DeleteAccountJourneyTest : BehaviorSpec({
 
     given("ConfirmPending") {
         `when`("the journey starts") {
-            val transition = journey.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Started, ctx())
+            val transition = journey.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Started, ctx(account = account(method("sms", AcrLevel.LOA2))))
             then("unconditionally re-presents the confirmation prompt") {
                 transition shouldBe Transition.To(DeleteAccountState.ConfirmPending)
             }
         }
 
         `when`("the confirmation is declined") {
-            val transition = journey.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.DECLINE), ctx())
+            val transition = journey.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.DECLINE), ctx(account = account(method("sms", AcrLevel.LOA2))))
             then("cancels - no gate is ever evaluated before an explicit yes") {
                 transition shouldBe Transition.Cancel
             }

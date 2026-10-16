@@ -9,6 +9,8 @@ import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.AccountJourney
+import com.example.identity.core.orchestrator.domain.journey.AccountJourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -24,7 +26,7 @@ import com.example.identity.core.account.AuthMethodView
  * recent proof, as the `FRESH_PROOF` sub-journey (ADR-61). The wish stays parked in its state
  * meanwhile and is carried out once the proof is in.
  */
-object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
+object ManageAuthMethodsJourney : AccountJourney<ManageAuthMethodsState> {
 
     override val name = "MANAGE_AUTH_METHODS"
     override val startPoints = listOf(StartableWhenAuthenticated)
@@ -33,7 +35,7 @@ object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
     /** A run that carries out [wish]: add, change or remove a method, or retract an attribute. */
     fun toCarryOut(wish: ManageAuthMethodsState.Wish): JourneyStart<*> = JourneyStart(this, wish)
 
-    override fun transition(state: ManageAuthMethodsState, event: JourneyEvent, ctx: JourneyContext): Transition =
+    override fun transition(state: ManageAuthMethodsState, event: JourneyEvent, ctx: AccountJourneyContext): Transition =
         when (state) {
             is ManageAuthMethodsState.Wish -> when (event) {
                 JourneyEvent.Started -> requireFreshProof(state, ctx)
@@ -62,13 +64,13 @@ object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
      * What [wish] needs proven first. Nothing left to add needs no proof at all, and a change of
      * something that cannot be changed stops here, before anyone is asked for anything.
      */
-    private fun requireFreshProof(wish: ManageAuthMethodsState.Wish, ctx: JourneyContext): Transition {
+    private fun requireFreshProof(wish: ManageAuthMethodsState.Wish, ctx: AccountJourneyContext): Transition {
         val requiredAcr = when (wish) {
             ManageAuthMethodsState.AddRequested -> {
                 if (ctx.enrollmentCandidates().isEmpty()) return Transition.Authenticated
-                selfServiceAcrFloor(ctx.requireAccount())
+                selfServiceAcrFloor(ctx.account)
             }
-            is ManageAuthMethodsState.RemoveRequested, is ManageAuthMethodsState.RetractAttributeRequested -> selfServiceAcrFloor(ctx.requireAccount())
+            is ManageAuthMethodsState.RemoveRequested, is ManageAuthMethodsState.RetractAttributeRequested -> selfServiceAcrFloor(ctx.account)
             is ManageAuthMethodsState.ChangeRequested -> changeFloor(
                 changeTarget(wish, ctx) ?: return Transition.Abort(Text("Dieses Anmeldeverfahren lässt sich nicht ändern")),
                 ctx,
@@ -81,7 +83,7 @@ object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
     }
 
     /** What [wish] asked for, once the proof is in. */
-    private fun carryOut(wish: ManageAuthMethodsState.Wish, ctx: JourneyContext): Transition = when (wish) {
+    private fun carryOut(wish: ManageAuthMethodsState.Wish, ctx: AccountJourneyContext): Transition = when (wish) {
         ManageAuthMethodsState.AddRequested -> offerEnrollment(ctx)
         is ManageAuthMethodsState.RemoveRequested -> Transition.Perform(Action.RevokeAuthMethod(wish.methodInstanceId), resumeState = wish)
         is ManageAuthMethodsState.RetractAttributeRequested -> Transition.Perform(Action.RetractAttribute(wish.attributeType), resumeState = wish)
@@ -89,24 +91,23 @@ object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
     }
 
     /** The active instance [wish] names, if its method can be changed in place. */
-    private fun changeTarget(wish: ManageAuthMethodsState.ChangeRequested, ctx: JourneyContext): AuthMethodView? =
-        ctx.requireAccount().activeAuthenticationMethods
+    private fun changeTarget(wish: ManageAuthMethodsState.ChangeRequested, ctx: AccountJourneyContext): AuthMethodView? =
+        ctx.account.activeAuthenticationMethods
             .firstOrNull { it.id == wish.methodInstanceId }
             ?.takeIf { ctx.catalog.changeToolOf(it.method) != null }
 
     /** A change never lowers the credential: the session must hold what the old one was enrolled under. */
-    private fun changeFloor(target: AuthMethodView, ctx: JourneyContext): AcrLevel =
-        maxOf(selfServiceAcrFloor(ctx.requireAccount()), target.enrolledUnderAcr)
+    private fun changeFloor(target: AuthMethodView, ctx: AccountJourneyContext): AcrLevel =
+        maxOf(selfServiceAcrFloor(ctx.account), target.enrolledUnderAcr)
 
-    private fun offerChange(wish: ManageAuthMethodsState.ChangeRequested, ctx: JourneyContext): Transition {
+    private fun offerChange(wish: ManageAuthMethodsState.ChangeRequested, ctx: AccountJourneyContext): Transition {
         val tool = changeTarget(wish, ctx)?.let { ctx.catalog.changeToolOf(it.method) }
         val offered = listOfNotNull(tool?.toolId).filter { it in ctx.availableTools }
         return if (offered.isEmpty()) Transition.Abort(Text("Dieses Anmeldeverfahren lässt sich hier nicht ändern"))
         else Transition.To(ManageAuthMethodsState.Changing(Offer(offered), wish.methodInstanceId))
     }
 
-    private fun offerEnrollment(ctx: JourneyContext): Transition {
-        ctx.requireAccount()
+    private fun offerEnrollment(ctx: AccountJourneyContext): Transition {
         return offer(ctx.enrollmentCandidates(), ManageAuthMethodsState::Enrolling)
             // Nothing left to add is not an error (docs/07-betrieb.md #1).
             ?: Transition.Authenticated

@@ -8,6 +8,8 @@ import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.OnlyAsSubJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.AccountJourney
+import com.example.identity.core.orchestrator.domain.journey.AccountJourneyContext
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
@@ -20,7 +22,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.ToolFreeState
  * Only reached as a sub-journey. What the identification may change is decided by
  * [Action.RecordIdentification]'s handler, so no caller can smuggle in someone else's identity.
  */
-object ReIdentifyJourney : Journey<ReIdentifyState> {
+object ReIdentifyJourney : AccountJourney<ReIdentifyState> {
 
     override val name = "RE_IDENTIFY"
     override val startPoints = listOf(OnlyAsSubJourney)
@@ -48,7 +50,7 @@ object ReIdentifyJourney : Journey<ReIdentifyState> {
     fun offerOptionally(targetAcr: AcrLevel): JourneyStart<*> =
         JourneyStart(this, ReIdentifyState.OfferReIdent(targetAcr, ReIdentifyState.Kind.OPTIONAL))
 
-    override fun transition(state: ReIdentifyState, event: JourneyEvent, ctx: JourneyContext): Transition =
+    override fun transition(state: ReIdentifyState, event: JourneyEvent, ctx: AccountJourneyContext): Transition =
         when (state) {
             is ReIdentifyState.OfferReIdent -> when (event) {
                 is JourneyEvent.Answered -> when (event.answer) {

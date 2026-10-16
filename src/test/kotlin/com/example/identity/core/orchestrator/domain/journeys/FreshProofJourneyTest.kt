@@ -121,7 +121,7 @@ class FreshProofJourneyTest : BehaviorSpec({
         val state = FreshProofState.Reproving(AcrLevel.LOA2, ProofPurpose.MANAGE_METHODS, Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
 
         `when`("any active factor was re-proven (booked as Reconfirm, ActionCompleted)") {
-            val transition = journey.transition(state, JourneyEvent.ActionCompleted, ctx())
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, ctx(account = account(method("sms", AcrLevel.LOA2))))
             then("is done - one proof, at any level, and never itself recorded as MethodEvidence") {
                 transition shouldBe Transition.Authenticated
             }
@@ -133,7 +133,7 @@ class FreshProofJourneyTest : BehaviorSpec({
 
         `when`("the last offered candidate is abandoned") {
             val exhausted = state.declining(ToolId("auth-sms"))
-            val transition = journey.transition(exhausted as FreshProofState, JourneyEvent.OfferExhausted(exhausted.declined), ctx())
+            val transition = journey.transition(exhausted as FreshProofState, JourneyEvent.OfferExhausted(exhausted.declined), ctx(account = account(method("sms", AcrLevel.LOA2))))
             then("cancels - nothing passes just because every option was declined") {
                 transition shouldBe Transition.Cancel
             }

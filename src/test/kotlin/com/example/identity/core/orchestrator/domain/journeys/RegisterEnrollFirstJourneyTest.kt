@@ -7,7 +7,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifySta
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.journey.state.AfterEnrolling
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
-import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.OpenJourneyContext
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.APP_SECOND_FACTOR_KINDS
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
@@ -33,7 +33,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
     /** [RegisterJourney] as seen by a run started while the switch was on. */
     val journey = object {
         private val register = RegisterJourney
-        fun transition(state: RegisterState, event: JourneyEvent, ctx: JourneyContext) =
+        fun transition(state: RegisterState, event: JourneyEvent, ctx: OpenJourneyContext) =
             register.transition(state, event, ctx.copy(featureFlags = setOf(JourneyFeatureFlag.REGISTER_ENROLL_FIRST)))
     }
 

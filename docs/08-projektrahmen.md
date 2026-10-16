@@ -468,9 +468,9 @@ Lesesichten `account.AccountProfile` und `account.AuthMethodView`). Beide Regeln
   (`JourneyService`, `JourneyActionExecutor`, `JourneyContextFactory`, `JourneyRouting`, die Entität
   `AuthJourney`, `JourneyStateCodec`) und daneben unter anderem `session`, `channel`, `api.v1`,
   `keycloak`, `dpop`, `retention`.
-- `DomainBeans` im Wurzelpaket legt die Strategien und `DefaultAuthPolicy` als Spring-Beans an. Es ist
-  die einzige Stelle, die aufzählt, welche Strategien es gibt. Es ist auch die einzige Klasse
+- `DomainBeans` im Wurzelpaket legt `DefaultAuthPolicy` als Spring-Bean an. Es ist die einzige Klasse
   außerhalb von `domain.policy`, die `DefaultAuthPolicy` kennt. Alle anderen benutzen `AuthPolicy`.
+  Die Journeys brauchen keine Beans: Sie sind Objekte, aufgezählt in `Journeys.all`.
 - Fachlich heißt der Kanal für die Website **Web** (`ChannelType.WEB`, `WEB_SELECT_METHOD`,
   „Web-Kanal“), als Gegenstück zur App. Die Technik, die diesen Kanal bedient, heißt **Keycloak**:
   Klassen `Keycloak…`, Paket `keycloak`, Konfiguration `keycloak.peer-auth`. Das gilt in beide
@@ -505,8 +505,9 @@ Modulen:
   3. ausführen (`JourneyActionExecutor`),
   4. `next` ableiten, also festlegen, was der Client als Nächstes tun soll (`JourneyRouting`).
 
-  Eine Strategie bekommt nur den lesenden `JourneyContext` und gibt eine `Transition` zurück. Sie
-  ändert selbst nie etwas. `JourneyActionExecutor` liest Konto und Kanal, fragt `AccountRules.kt` und
+  Eine Journey bekommt nur den lesenden `JourneyContext` und gibt eine `Transition` zurück. Sie
+  ändert selbst nie etwas. Eine Journey, die nur angemeldet läuft (`AccountJourney`), bekommt den
+  `AccountJourneyContext`, in dem das Konto sicher da ist. `JourneyActionExecutor` liest Konto und Kanal, fragt `AccountRules.kt` und
   `CredentialRules.kt` (etwa `IdentificationTarget.forUnresolved`, `proofLevel`,
   `levelToWriteUnder`) und schreibt das Ergebnis.
 - Im Konto-Modul nimmt `AccountService` den Auftrag an und gibt ihn an `account.application` weiter.
@@ -564,7 +565,7 @@ Stellen eine Hilfe. Jede dieser Hilfen steht an genau einer Stelle und ist dort 
 
 **Wo man zu lesen anfängt.**
 
-1. Eine Strategie unter `orchestrator/domain/journeys`, etwa `StepUpJourney.kt`, mit ihren
+1. Eine Journey unter `orchestrator/domain/journeys`, etwa `StepUpJourney.kt`, mit ihren
    Zuständen unter `domain/journey/state` (`StepUpState.kt`). Das Zustandsdiagramm dazu steht in
    [journeys/step-up.md](journeys/step-up.md).
 2. `AccountRules.kt` und `CredentialRules.kt` unter `domain/journey`: was beim Ausführen einer

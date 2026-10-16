@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.journey
 
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.OpenJourneyContext
 import com.example.identity.core.orchestrator.domain.journey.SigningIn
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.account.AccountService
@@ -34,7 +35,7 @@ class JourneyContextFactory(
 ) {
     fun contextFor(journey: AuthJourney, channel: ChannelSession): JourneyContext {
         val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
-        return JourneyContext(
+        return OpenJourneyContext(
             signingIn = signingInOf(channel),
             evidence = evidence?.toCoreEvidence() ?: SessionEvidence(emptyList()),
             acrFloor = channel.acrFloor,

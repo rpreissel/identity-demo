@@ -10,10 +10,10 @@ import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
 import com.example.identity.core.orchestrator.domain.journey.StartingAccount
 import com.example.identity.core.orchestrator.domain.journey.DeviceLink
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.AccountJourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
-import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
@@ -70,19 +70,19 @@ object LookupLoginJourney : JourneyWithoutInput<LookupLoginState> {
      * an unproven device. Re-identification stays available; it adds no lasting credential.
      */
     private fun settleOrRaise(ctx: JourneyContext): Transition {
-        val account = ctx.requireAccount()
-        if (ctx hasReached ctx.acrFloor) return askAboutDeviceLink(account, ctx)
-        val furtherFactors = ctx.authCandidates()
+        val known = ctx.requireAccount()
+        if (known hasReached known.acrFloor) return askAboutDeviceLink(known)
+        val furtherFactors = known.authCandidates()
         if (furtherFactors.isNotEmpty()) return Transition.To(LookupLoginState.AdditionalFactor(Offer(furtherFactors)))
-        return ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = LookupLoginState.Start) {
-            Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
+        return ReIdentifyJourney.toReachOr(known.acrFloor, known, resumeWith = LookupLoginState.Start) {
+            Transition.Abort(known.policy.reachability(known.account, known.acrFloor).toAuthAbortMessage())
         }
     }
 
     /** Unlinked: offer the link. Linked elsewhere: warn before rebinding. Linked here: nothing to ask. */
-    private fun askAboutDeviceLink(account: AccountProfile, ctx: JourneyContext): Transition = when (ctx.linkedAccountId) {
+    private fun askAboutDeviceLink(ctx: AccountJourneyContext): Transition = when (ctx.linkedAccountId) {
         null -> Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.OFFER))
-        account.accountId -> Transition.Authenticated
+        ctx.account.accountId -> Transition.Authenticated
         else -> Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND))
     }
 }

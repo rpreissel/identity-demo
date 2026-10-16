@@ -8,6 +8,8 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.OnlyAsSubJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.AccountJourney
+import com.example.identity.core.orchestrator.domain.journey.AccountJourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -23,7 +25,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.FreshProofSta
  * Freshness is checked once, when this sub-journey starts; a caller that offers a tool afterwards
  * gives the user until the journey expires to finish it (docs/journeys/fresh-proof.md).
  */
-object FreshProofJourney : Journey<FreshProofState> {
+object FreshProofJourney : AccountJourney<FreshProofState> {
 
     override val name = "FRESH_PROOF"
     override val startPoints = listOf(OnlyAsSubJourney)
@@ -33,7 +35,7 @@ object FreshProofJourney : Journey<FreshProofState> {
     fun before(purpose: ProofPurpose, requiredAcr: AcrLevel): JourneyStart<*> =
         JourneyStart(this, FreshProofState.Start(requiredAcr, purpose))
 
-    override fun transition(state: FreshProofState, event: JourneyEvent, ctx: JourneyContext): Transition =
+    override fun transition(state: FreshProofState, event: JourneyEvent, ctx: AccountJourneyContext): Transition =
         when (state) {
             is FreshProofState.Start -> when (event) {
                 // The step-up (the only sub-journey requested here) reached the level: that is the fresh proof. Short of it, nothing less may
@@ -57,7 +59,7 @@ object FreshProofJourney : Journey<FreshProofState> {
         }
 
     /** The session is below [FreshProofState.requiredAcr]: a step-up first, which then counts as the fresh proof. */
-    private fun stepUpFirst(state: FreshProofState.Start, ctx: JourneyContext): Transition =
+    private fun stepUpFirst(state: FreshProofState.Start, ctx: AccountJourneyContext): Transition =
         Transition.RequireSubJourney(
             StepUpJourney.toward(
                 (ctx.currentAcr upTo state.requiredAcr).copy(purpose = state.purpose)
@@ -66,7 +68,7 @@ object FreshProofJourney : Journey<FreshProofState> {
         )
 
     /** Done on a recent proof, else one active factor is re-proven. */
-    private fun freshness(state: FreshProofState.Start, ctx: JourneyContext): Transition {
+    private fun freshness(state: FreshProofState.Start, ctx: AccountJourneyContext): Transition {
         if (ctx.policy.hasFreshProof(ctx.evidence)) return Transition.Authenticated
         return offer(ctx.reconfirmationCandidates()) { FreshProofState.Reproving(state.requiredAcr, state.purpose, it) }
             // Unreachable on an authenticated channel; abort rather than pass silently.

@@ -20,7 +20,7 @@ import com.example.identity.tools.ident_fsc.FscModule
 import com.example.identity.tools.ident_kvnr.KvnrModule
 import com.example.identity.tools.ident_nect.NectModule
 import com.example.identity.contract.tool_api.Tool
-import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.OpenJourneyContext
 import com.example.identity.core.orchestrator.domain.journey.SigningIn
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.DefaultAuthPolicy
@@ -154,7 +154,7 @@ object JourneyTestFixtures {
         // (docs/09-dpop.md) passes a different accountId.
         linkedAccountId: AccountId? = account?.accountId,
         availableTools: Set<ToolId> = allToolIds,
-    ) = JourneyContext(
+    ) = OpenJourneyContext(
         account?.let { SigningIn.Holder(it) } ?: SigningIn.Unknown, evidence, acrFloor, bindingKeyRef,
         linkedAccountId, policy, catalog, availableTools
     )

@@ -213,7 +213,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
 
         `when`("the tool is abandoned") {
             val exhausted = state.declining(ToolId("enroll-password"))
-            val transition = journey.transition(exhausted as ManageAuthMethodsState, JourneyEvent.OfferExhausted(exhausted.declined), ctx())
+            val transition = journey.transition(exhausted as ManageAuthMethodsState, JourneyEvent.OfferExhausted(exhausted.declined), ctx(account = account(method("sms", AcrLevel.LOA2))))
             then("cancels - nothing else is offered, the old password stays") {
                 transition shouldBe Transition.Cancel
             }
@@ -228,7 +228,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         }
 
         `when`("resumed after adopting (ActionCompleted)") {
-            val transition = journey.transition(state, JourneyEvent.ActionCompleted, ctx())
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, ctx(account = account(method("sms", AcrLevel.LOA2))))
             then("finishes") {
                 transition shouldBe Transition.Authenticated
             }
@@ -239,7 +239,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         val state = ManageAuthMethodsState.Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))))
 
         `when`("resumed after adopting (ActionCompleted)") {
-            val transition = journey.transition(state, JourneyEvent.ActionCompleted, ctx())
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, ctx(account = account(method("sms", AcrLevel.LOA2))))
             then("finishes - one successful enrollment is always enough here") {
                 transition shouldBe Transition.Authenticated
             }

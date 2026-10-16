@@ -378,7 +378,7 @@ Für die Integrationstests gibt es eine Stelle, die man von Hand ergänzt. Diese
 einen festen Katalog (`JourneyTestFixtures.modules`). So ändern sich ihre erwarteten
 Kandidatenlisten nicht, wenn anderswo ein Modul dazukommt. Fehlt das neue Modul dort, meldet
 `ToolControllerMappingTest` genau das. Trägt man es ein, können sich Erwartungen an Kandidatenlisten
-in den Strategietests ändern. Das ist dann eine echte Auswirkung des neuen Verfahrens auf das
+in den Journey-Tests ändern. Das ist dann eine echte Auswirkung des neuen Verfahrens auf das
 Angebot.
 
 Die eigenen Tests schreibt man nach diesen Vorlagen:

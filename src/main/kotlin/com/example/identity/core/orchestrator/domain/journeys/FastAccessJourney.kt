@@ -34,25 +34,25 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
             is FastAccessState.Start -> when (event) {
                 JourneyEvent.Started -> firstOffer(ctx)
                 // Back from REGISTER or RE_IDENTIFY: re-check whether that already closes the gap before offering again.
-                is JourneyEvent.SubJourneyFinished -> toRequiredLevel.nextAfterProof(ctx)
+                is JourneyEvent.SubJourneyFinished -> toRequiredLevel.nextAfterProof(ctx.requireAccount())
                 else -> event.notExpectedIn(state)
             }
 
             is FastAccessState.PreferredAuth -> when (event) {
-                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterProof(ctx)
+                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterProof(ctx.requireAccount())
                 is JourneyEvent.Abandoned -> toRequiredLevel.nextWithoutOr(setOf(state.toolId), ctx) { requireRegister() }
                 else -> event.notExpectedIn(state)
             }
 
             is AuthChoice -> when (event) {
-                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterProof(ctx)
+                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterProof(ctx.requireAccount())
                 // Nothing else provable is left on this device: hand off to a fresh identification.
                 is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithoutOr(event.declined, ctx) { requireRegister() }
                 else -> event.notExpectedIn(state)
             }
 
             is Enrolling -> when (event) {
-                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterEnrollment(ctx)
+                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterEnrollment(ctx.requireAccount())
                 else -> event.notExpectedIn(state)
             }
         }
@@ -61,10 +61,10 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
 
     /** The device's key first, then the account's other methods; without either, a registration. */
     private fun firstOffer(ctx: JourneyContext): Transition {
-        if (ctx.account == null) return requireRegister()
-        val deviceKey = ctx.deviceKeyCandidate()
+        val known = ctx.withAccount ?: return requireRegister()
+        val deviceKey = known.deviceKeyCandidate()
         if (deviceKey != null) return Transition.To(FastAccessState.PreferredAuth(deviceKey))
-        return offer(ctx.authCandidates(), ::AuthChoice) ?: requireRegister()
+        return offer(known.authCandidates(), ::AuthChoice) ?: requireRegister()
     }
 
     /**

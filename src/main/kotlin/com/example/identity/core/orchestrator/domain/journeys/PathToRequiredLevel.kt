@@ -8,6 +8,7 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.AccountJourneyContext
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.toEnrollAbortMessage
@@ -25,7 +26,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) {
 
     /** After a proof: done, another of the account's methods, or a new one. */
-    fun nextAfterProof(ctx: JourneyContext): Transition {
+    fun nextAfterProof(ctx: AccountJourneyContext): Transition {
         if (ctx hasReached ctx.acrFloor) return Transition.Authenticated
         // An existing account that logs in is never blocked on a missing confirmed email
         // (docs/04-orchestrierung.md #5).
@@ -37,7 +38,7 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
      * again on its own, else another new method. [before] and [then] as in [offerNewMethod].
      */
     fun nextAfterEnrollment(
-        ctx: JourneyContext,
+        ctx: AccountJourneyContext,
         before: BeforeNewMethod = BeforeNewMethod.IDENTIFY_FIRST,
         then: AfterEnrolling = AfterEnrolling.NEXT_STEP,
     ): Transition {
@@ -46,12 +47,12 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
     }
 
     /** The session has reached the level, and the account can reach it again on its own. */
-    fun isReached(ctx: JourneyContext): Boolean = ctx canReach ctx.acrFloor && ctx hasReached ctx.acrFloor
+    fun isReached(ctx: AccountJourneyContext): Boolean = ctx canReach ctx.acrFloor && ctx hasReached ctx.acrFloor
 
     /** The account's methods without the [declined] ones, or [otherwise] when none is left (or there is no account yet). */
     fun nextWithoutOr(declined: Set<ToolId>, ctx: JourneyContext, otherwise: () -> Transition): Transition {
-        val remaining = if (ctx.account == null) emptyList() else ctx.authCandidates() - declined
-        return offer(remaining, ::AuthChoice) ?: otherwise()
+        val known = ctx.withAccount ?: return otherwise()
+        return offer(known.authCandidates() - declined, ::AuthChoice) ?: otherwise()
     }
 
     /**
@@ -60,11 +61,10 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
      * which re-checks the confirmed address after the enrollment.
      */
     fun offerNewMethod(
-        ctx: JourneyContext,
+        ctx: AccountJourneyContext,
         before: BeforeNewMethod = BeforeNewMethod.IDENTIFY_FIRST,
         then: AfterEnrolling = AfterEnrolling.NEXT_STEP,
     ): Transition {
-        val account = ctx.requireAccount()
         if (before == BeforeNewMethod.IDENTIFY_FIRST && !(ctx hasReached NEW_METHOD_FLOOR)) {
             return ReIdentifyJourney.toReachOr(maxOf(NEW_METHOD_FLOOR, ctx.acrFloor), ctx, resumeWith = afterIdentificationBackTo) {
                 Transition.Abort(
@@ -76,7 +76,7 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
         if (enrollments.isNotEmpty()) return Transition.To(Enrolling(Offer(enrollments), then))
         return ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = afterIdentificationBackTo) {
             // Reachable here means a channel-local reason, e.g. every remaining tool disabled.
-            Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toEnrollAbortMessage())
+            Transition.Abort(ctx.policy.reachability(ctx.account, ctx.acrFloor).toEnrollAbortMessage())
         }
     }
 

@@ -57,8 +57,7 @@ internal fun JourneyContext.attestationCandidates(attributeType: AttributeType):
  * ([Tool.onePerDevice]), if any. It is the fastest offer and the only one that can succeed without
  * further input.
  */
-internal fun JourneyContext.deviceKeyCandidate(): ToolId? {
-    val account = requireAccount()
+internal fun AccountJourneyContext.deviceKeyCandidate(): ToolId? {
     val deviceAuthTools = catalog.tools().filter { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.onePerDevice }
     val preferred = deviceAuthTools.firstOrNull { descriptor ->
         account.activeAuthenticationMethods.any {
@@ -69,8 +68,8 @@ internal fun JourneyContext.deviceKeyCandidate(): ToolId? {
 }
 
 /** The account's methods that can still raise this session toward [targetAcr] (by default the channel's floor). */
-internal fun JourneyContext.authCandidates(targetAcr: AcrLevel = acrFloor): List<ToolId> =
-    filterAvailable(policy.authCandidates(candidateContext(targetAcr, requireAccount())))
+internal fun AccountJourneyContext.authCandidates(targetAcr: AcrLevel = acrFloor): List<ToolId> =
+    filterAvailable(policy.authCandidates(candidateContext(targetAcr, account)))
 
 /**
  * Every active KNOWN_ACCOUNT_AUTH method of the account, for a fresh "are you still there?"
@@ -78,8 +77,7 @@ internal fun JourneyContext.authCandidates(targetAcr: AcrLevel = acrFloor): List
  * already proven this session, since re-presenting the same factor is a valid answer. No acr target:
  * any active factor counts.
  */
-internal fun JourneyContext.reconfirmationCandidates(): List<ToolId> {
-    val account = requireAccount()
+internal fun AccountJourneyContext.reconfirmationCandidates(): List<ToolId> {
     return availableToolsOf(ToolRole.KNOWN_ACCOUNT_AUTH) { descriptor ->
         val method = account.activeAuthenticationMethods.firstOrNull { it.method == descriptor.method }
         // A device-bound credential only works on the device it was enrolled on
@@ -93,8 +91,8 @@ internal fun JourneyContext.enrollmentCandidates(): List<ToolId> =
     filterAvailable(policy.enrollmentCandidates(candidateContext(acrFloor, account)))
 
 /** The factor kinds the account's active methods cover, read from their enrollment descriptors. */
-internal fun JourneyContext.coveredFactorKinds(): Set<FactorType> {
-    val activeMethods = requireAccount().activeAuthenticationMethods.map { it.method }.toSet()
+internal fun AccountJourneyContext.coveredFactorKinds(): Set<FactorType> {
+    val activeMethods = account.activeAuthenticationMethods.map { it.method }.toSet()
     return catalog.tools()
         .filter { it.role == ToolRole.ENROLLMENT && it.method in activeMethods }
         .flatMap { it.factorTypes }
@@ -106,7 +104,7 @@ internal fun JourneyContext.coveredFactorKinds(): Set<FactorType> {
  * method this channel can also prove counts: without an available auth tool, enrolling it would not
  * lift what the account can reach here (e.g. the email login while `auth-email` is switched off).
  */
-internal fun JourneyContext.missingFactorKindCandidates(): List<ToolId> {
+internal fun AccountJourneyContext.missingFactorKindCandidates(): List<ToolId> {
     val covered = coveredFactorKinds()
     val provableMethods = catalog.tools()
         .filter { it.role == ToolRole.KNOWN_ACCOUNT_AUTH && it.toolId in availableTools }

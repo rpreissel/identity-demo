@@ -716,6 +716,15 @@ aus Zustand und Ereignis den nächsten Schritt bestimmt. Sie hat die Methode
 liest `JourneyStateCodec` den gespeicherten Zustand zurück. Der Codec ist auch die eine Stelle, die
 einen Zustand einer fremden Journey zurückweist, denn eine `Transition` weiß nicht, wessen sie ist.
 
+**Ob ein Konto da ist, sagt der Typ des Kontexts.** `JourneyContext` hat zwei Gestalten: Im
+`OpenJourneyContext` ist noch offen, wer sich anmeldet (`signingIn`: niemand, ein Konto, ein
+Vorgangszugang). Im `AccountJourneyContext` ist das Konto sicher da, und nur er beantwortet die
+Fragen, die eines brauchen (`authCandidates`, `canReach`). Eine Journey, die nur angemeldet läuft
+(`STEP_UP`, `MANAGE_AUTH_METHODS`, `FRESH_PROOF`, `RE_IDENTIFY`), ist ein `AccountJourney` und liest
+den zweiten; sie fragt nie, ob ein Konto da ist. Die anderen fragen einmal: `withAccount` dort, wo
+beides vorkommen kann, `requireAccount()` dort, wo ein fehlendes Konto ein Programmfehler wäre.
+`DELETE_ACCOUNT` bleibt bewusst offen, denn sein letzter Schritt läuft, nachdem das Konto weg ist.
+
 **Kein Code fragt nach einer bestimmten Journey.** Was an einer Journey hängt, nennt sie selbst:
 ihre Startpunkte (`startPoints`, Abschnitt 2). Was ein Lauf war (Anmeldung, Step-up), ist keine
 Eigenschaft der Journey, sondern wird beobachtet. Eine neue Journey ist ein neues Objekt und ein

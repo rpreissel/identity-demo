@@ -39,6 +39,17 @@ interface Journey<S : JourneyState> {
 }
 
 /**
+ * A journey that only runs on a channel with an account: started when authenticated, or as a
+ * sub-journey of one. It reads an [AccountJourneyContext] and never asks whether there is an account.
+ */
+interface AccountJourney<S : JourneyState> : Journey<S> {
+    fun transition(state: S, event: JourneyEvent, ctx: AccountJourneyContext): Transition
+
+    override fun transition(state: S, event: JourneyEvent, ctx: JourneyContext): Transition =
+        transition(state, event, ctx.requireAccount())
+}
+
+/**
  * A journey that begins without input from whoever starts it. Every journey that opens a channel is
  * one (`Journeys` checks it), so a cancelled run can restart it; so are those an endpoint starts
  * with nothing to pass on.
