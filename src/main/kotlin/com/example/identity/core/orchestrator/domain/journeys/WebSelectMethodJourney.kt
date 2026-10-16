@@ -50,14 +50,13 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
     /** Done once the channel's floor is proven; otherwise what can still prove more depends on who is signing in. */
     private fun finishOrOfferMore(ctx: JourneyContext): Transition {
         if (ctx hasReached ctx.acrFloor) return Transition.Authenticated
-        val account = ctx.account
         return when {
             // A process access has its one proof and nothing else to offer. Its level was checked on
             // acceptance (InvitationAcceptance); this catches what the level alone does not say,
             // such as a second factor the floor demands.
             ctx.invitation != null -> Transition.Abort(InvitationAcceptance.Refusal.BELOW_REQUIRED_LEVEL.text)
-            account == null -> offerLookupLogin(ctx)
-            else -> offerStepUp(account, ctx)
+            ctx.account == null -> offerLookupLogin(ctx)
+            else -> offerStepUp(ctx.account, ctx)
         }
     }
 
