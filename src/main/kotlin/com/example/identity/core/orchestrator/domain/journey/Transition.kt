@@ -24,7 +24,7 @@ sealed interface Transition {
      * journey resumes at [resumeWith] with [JourneyEvent.SubJourneyCancelled] and decides itself.
      */
     data class RequireSubJourney(
-        val start: JourneyStart,
+        val start: JourneyStart<*>,
         val resumeWith: JourneyState,
         val optional: Boolean = false,
     ) : Transition {

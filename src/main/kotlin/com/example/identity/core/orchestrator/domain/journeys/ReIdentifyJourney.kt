@@ -25,8 +25,8 @@ object ReIdentifyJourney : Journey<ReIdentifyState> {
     override val stateRoots = listOf(ReIdentifyState::class)
 
     /** A fresh identification to reach [targetAcr], asked first in [wording] (the default question if null). */
-    fun toReach(targetAcr: AcrLevel, wording: ReIdentifyState.Wording? = null): JourneyStart =
-        JourneyStart.With(this, ReIdentifyState.OfferReIdent(targetAcr, wording))
+    fun toReach(targetAcr: AcrLevel, wording: ReIdentifyState.Wording? = null): JourneyStart<*> =
+        JourneyStart(this, ReIdentifyState.OfferReIdent(targetAcr, wording))
 
     override fun transition(state: ReIdentifyState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {

@@ -27,20 +27,19 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
     override val startPoints = listOf(OpensWebChannel)
     override val stateRoots = listOf(WebSelectMethodState::class)
 
-    override fun initialState(ctx: JourneyContext): WebSelectMethodState = selectMethod(ctx)
+    override val firstState = WebSelectMethodState.Start
 
     override fun transition(state: WebSelectMethodState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is WebSelectMethodState.SelectMethod -> when (event) {
-                is JourneyEvent.OfferExhausted -> ctx.account?.let { reIdentifyOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.AfterIdentification) { Transition.Cancel } } ?: Transition.Cancel
-                // Started re-checks like any other proof: restored evidence may already satisfy the
-                // floor (docs/04-orchestrierung.md, "Übernommene Nachweise als erster Übergang"). So does
-                // ActionCompleted.
+                is JourneyEvent.OfferExhausted -> ctx.account?.let { reIdentifyOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.Start) { Transition.Cancel } } ?: Transition.Cancel
                 else -> afterProof(ctx)
             }
 
-            // The identification may already close the gap; otherwise the offer is built anew.
-            is WebSelectMethodState.AfterIdentification -> afterProof(ctx)
+            // Started, or back from RE_IDENTIFY: taken-over evidence (docs/04-orchestrierung.md,
+            // "Übernommene Nachweise als erster Übergang") or the identification may already close
+            // the gap; otherwise the offer is built anew.
+            is WebSelectMethodState.Start -> afterProof(ctx)
         }
 
     private fun afterProof(ctx: JourneyContext): Transition {
@@ -57,7 +56,7 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
         if (account == null || next.offer.offered.isNotEmpty()) return Transition.To(next)
         // No method of this account can close the gap here: identifying again can, as in STEP_UP.
         // Failing that, say why instead of handing Keycloak an empty selection.
-        return reIdentifyOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.AfterIdentification) {
+        return reIdentifyOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.Start) {
             Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
         }
     }

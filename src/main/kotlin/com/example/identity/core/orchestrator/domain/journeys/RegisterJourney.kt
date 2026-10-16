@@ -37,7 +37,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
     )
     override val stateRoots = listOf(RegisterState::class)
 
-    override fun initialState(ctx: JourneyContext): RegisterState = RegisterState.Start
+    override val firstState = RegisterState.Start
 
     private val toRequiredLevel = PathToRequiredLevel(afterIdentificationBackTo = RegisterState.Start)
 

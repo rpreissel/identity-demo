@@ -32,7 +32,7 @@ object ConfirmPeerLoginJourney : JourneyWithoutInput<ConfirmPeerLoginState> {
     )
     override val stateRoots = listOf(ConfirmPeerLoginState::class)
 
-    override fun initialState(ctx: JourneyContext): ConfirmPeerLoginState = ConfirmPeerLoginState.Requested
+    override val firstState = ConfirmPeerLoginState.Requested
 
     override fun transition(state: ConfirmPeerLoginState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {

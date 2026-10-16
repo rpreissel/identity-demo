@@ -5,7 +5,8 @@ import com.example.identity.contract.texts.Text
 /**
  * The states of `WEB_SELECT_METHOD` (docs/journeys/web-select-method.md): [SelectMethod] offers every
  * Keycloak-usable tool as one `selectMethod` step, narrowed by its declined tools until a proof closes
- * the gap or nothing is left; [AfterIdentification] is where a step-up returns from `RE_IDENTIFY`.
+ * the gap or nothing is left; [Start] builds that offer, at the beginning and when a step-up returns
+ * from `RE_IDENTIFY`.
  */
 sealed interface WebSelectMethodState : JourneyState {
 
@@ -34,9 +35,9 @@ sealed interface WebSelectMethodState : JourneyState {
     }
 
     /**
-     * Where a step-up resumes after `RE_IDENTIFY` (docs/journeys/web-select-method.md): no offer of
-     * its own, because the fresh identification may already close the gap and the offer has to be
-     * built anew.
+     * Where a run begins, and where a step-up resumes after `RE_IDENTIFY`
+     * (docs/journeys/web-select-method.md): no offer of its own, because taken-over evidence or the
+     * fresh identification may already close the gap, and otherwise the offer is built anew.
      */
-    data object AfterIdentification : WebSelectMethodState, ToolFreeState
+    data object Start : WebSelectMethodState, ToolFreeState
 }

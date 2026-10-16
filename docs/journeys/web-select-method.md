@@ -25,7 +25,11 @@ prüft nur, ob die Nachweise dieses Niveau schon erreichen (siehe unten).
 
 ```mermaid
 stateDiagram-v2
-  [*] --> SelectMethod
+  [*] --> Start
+  Start --> Finished: übernommene Nachweise reichen schon
+  Start --> SelectMethod: Angebot aufgebaut
+  Start --> RE_IDENTIFY: Step-up, kein Verfahren dieses Kontos reicht, Identifizierung möglich
+  Start --> [*]: Step-up, kein Verfahren übrig, keine Identifizierung möglich -> Abort mit Grund
   SelectMethod --> SelectMethod: ein Tool abgelehnt, weitere übrig
   SelectMethod --> SelectMethod: Nachweis erbracht, Niveau noch nicht erreicht - Angebot neu aufgebaut
   SelectMethod --> [*]: alle abgelehnt, ohne Konto -> Cancel
@@ -33,10 +37,8 @@ stateDiagram-v2
   SelectMethod --> Finished: Nachweis erbracht, Niveau erreicht (Konto oder Einladung)
   SelectMethod --> RE_IDENTIFY: Step-up, kein Verfahren übrig oder alle abgelehnt, Identifizierung möglich
   SelectMethod --> [*]: Step-up, kein Verfahren übrig, keine Identifizierung möglich -> Abort mit Grund
-  RE_IDENTIFY --> AfterIdentification: Identität bestätigt (SubJourneyFinished)
+  RE_IDENTIFY --> Start: Identität bestätigt (SubJourneyFinished)
   RE_IDENTIFY --> [*]: abgelehnt (SubJourneyCancelled) -> Cancel
-  AfterIdentification --> Finished: Niveau erreicht
-  AfterIdentification --> SelectMethod: Niveau noch nicht erreicht - Angebot neu aufgebaut
 ```
 
 **Zwei Fälle, ein Zustand.** Derselbe Zustand bedient zwei Fälle im Web-Kanal. Sie unterscheiden
@@ -73,8 +75,8 @@ Ein Beispiel ist ein Konto mit Gerät und SMS. Das Gerät gilt nur in der App. D
 nachgewiesen. Ein zweites Verfahren anderer Art fehlt im Web. Eine Identifizierung in derselben
 Sitzung zählt als `loa2` ([Überblick](../01-ueberblick.md) Abschnitt 9).
 
-Nach der Sub-Journey geht es im Zustand `AfterIdentification` weiter. Er hat kein eigenes Angebot,
-weil die Identifizierung das fehlende Niveau schon liefern kann. Reicht es noch nicht, wird das
+Nach der Sub-Journey geht es im Zustand `Start` weiter, in dem auch jeder Lauf beginnt. Er hat kein
+eigenes Angebot, weil die Identifizierung das fehlende Niveau schon liefern kann. Reicht es noch nicht, wird das
 Angebot neu aufgebaut. Lehnt der Nutzer die Identifizierung ab, endet die Journey mit `Cancel`,
 statt dieselbe Frage noch einmal zu stellen.
 

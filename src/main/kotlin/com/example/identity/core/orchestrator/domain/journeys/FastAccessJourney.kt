@@ -25,7 +25,7 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
 
     private val toRequiredLevel = PathToRequiredLevel(afterIdentificationBackTo = FastAccessState.Start)
 
-    override fun initialState(ctx: JourneyContext): FastAccessState = FastAccessState.Start
+    override val firstState = FastAccessState.Start
 
     override fun transition(state: FastAccessState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {

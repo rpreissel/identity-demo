@@ -224,7 +224,7 @@ class ChannelService(
     }
 
     /** Starts [journey] on a live channel that may start it, and answers with its first step. */
-    private fun startJourney(channelSessionId: ChannelSessionId, bindingKeyRef: String, start: JourneyStart): ChannelResponse {
+    private fun startJourney(channelSessionId: ChannelSessionId, bindingKeyRef: String, start: JourneyStart<*>): ChannelResponse {
         val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
         requireStartable(live, start.journey)
         return respondAfter(channelSessionId, journeyService.start(live, start))

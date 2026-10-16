@@ -29,8 +29,8 @@ object FreshProofJourney : Journey<FreshProofState> {
     override val stateRoots = listOf(FreshProofState::class)
 
     /** The gate before an action for [purpose]: [requiredAcr] reached and a recent proof. */
-    fun before(purpose: FreshProofState.Purpose, requiredAcr: AcrLevel): JourneyStart =
-        JourneyStart.With(this, FreshProofState.Start(requiredAcr, purpose))
+    fun before(purpose: FreshProofState.Purpose, requiredAcr: AcrLevel): JourneyStart<*> =
+        JourneyStart(this, FreshProofState.Start(requiredAcr, purpose))
 
     override fun transition(state: FreshProofState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {

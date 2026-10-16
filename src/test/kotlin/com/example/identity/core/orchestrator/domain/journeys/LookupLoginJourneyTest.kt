@@ -37,7 +37,7 @@ class LookupLoginJourneyTest : BehaviorSpec({
 
     given("a new journey") {
         `when`("its first state is chosen") {
-            val initial = journey.initialState(ctx())
+            val initial = journey.firstState
 
             then("it is Start") {
                 initial shouldBe LookupLoginState.Start

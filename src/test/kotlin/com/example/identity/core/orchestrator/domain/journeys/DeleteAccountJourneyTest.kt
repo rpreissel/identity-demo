@@ -28,7 +28,7 @@ class DeleteAccountJourneyTest : BehaviorSpec({
 
     given("a new journey") {
         `when`("its first state is chosen") {
-            val initial = journey.initialState(ctx())
+            val initial = journey.firstState
 
             then("it is ConfirmPending - the yes/no confirmation always comes first, unconditionally") {
                 initial shouldBe DeleteAccountState.ConfirmPending

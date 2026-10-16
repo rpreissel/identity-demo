@@ -39,13 +39,13 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
     ) = ctx(account = account, evidence = evidence, acrFloor = acrFloor, availableTools = webTools, channel = ChannelType.WEB)
 
     given("no account known yet") {
-        `when`("a new journey is created") {
-            val initial = journey.initialState(webCtx())
+        `when`("a new journey starts") {
+            val transition = journey.transition(journey.firstState, JourneyEvent.Started, webCtx())
 
             then("it offers the Web channel's lookup-login tools") {
-                initial.shouldBeInstanceOf<WebSelectMethodState.SelectMethod>()
-                initial.offer.offered shouldContainExactlyInAnyOrder lookupTools
-                initial.accountAlreadyKnown shouldBe false
+                val offered = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<WebSelectMethodState.SelectMethod>()
+                offered.offer.offered shouldContainExactlyInAnyOrder lookupTools
+                offered.accountAlreadyKnown shouldBe false
             }
         }
     }
@@ -54,11 +54,11 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1), method("password", AcrLevel.LOA1))
         val theCtx = webCtx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
 
-        `when`("a new journey is created") {
-            val initial = journey.initialState(theCtx)
+        `when`("a new journey starts") {
+            val transition = journey.transition(journey.firstState, JourneyEvent.Started, theCtx)
 
             then("it offers only the account's auth tool still missing, no lookup tool") {
-                initial shouldBe WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-password"))), accountAlreadyKnown = true)
+                transition shouldBe Transition.To(WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-password"))), accountAlreadyKnown = true))
             }
         }
     }
@@ -132,7 +132,7 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
 
     given("a Web step-up to loa2 whose account has no further method usable here") {
         val theCtx = webCtx(account = smsAndDevice, evidence = smsProven, acrFloor = AcrLevel.LOA2)
-        val state = journey.initialState(theCtx)
+        val state = journey.firstState
 
         `when`("the journey starts") {
             val transition = journey.transition(state, JourneyEvent.Started, theCtx)
@@ -140,7 +140,7 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
             then("it requires RE_IDENTIFY and resumes where the offer is built anew") {
                 transition shouldBe Transition.RequireSubJourney(
                     ReIdentifyJourney.toReach(AcrLevel.LOA2),
-                    resumeWith = WebSelectMethodState.AfterIdentification
+                    resumeWith = WebSelectMethodState.Start
                 )
             }
         }
@@ -153,7 +153,7 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
         )
 
         `when`("the journey starts") {
-            val transition = journey.transition(journey.initialState(theCtx), JourneyEvent.Started, theCtx)
+            val transition = journey.transition(journey.firstState, JourneyEvent.Started, theCtx)
 
             then("it aborts and says why, instead of handing Keycloak an empty selection") {
                 transition.shouldBeInstanceOf<Transition.Abort>()
@@ -177,8 +177,8 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
         }
     }
 
-    given("AfterIdentification, back from RE_IDENTIFY") {
-        val state = WebSelectMethodState.AfterIdentification
+    given("Start, back from RE_IDENTIFY") {
+        val state = WebSelectMethodState.Start
 
         `when`("the identification reached the floor") {
             val identified = evidence(listOf("sms", "fsc"), setOf(FactorType.POSSESSION), account = smsAndDevice)

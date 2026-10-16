@@ -29,7 +29,7 @@ object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
     override val stateRoots = listOf(ManageAuthMethodsState::class)
 
     /** A run that carries out [wish]: add, change or remove a method, or retract an attribute. */
-    fun toCarryOut(wish: ManageAuthMethodsState.Wish): JourneyStart = JourneyStart.With(this, wish)
+    fun toCarryOut(wish: ManageAuthMethodsState.Wish): JourneyStart<*> = JourneyStart(this, wish)
 
     override fun transition(state: ManageAuthMethodsState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {

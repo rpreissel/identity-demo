@@ -21,7 +21,7 @@ object DeleteAccountJourney : JourneyWithoutInput<DeleteAccountState> {
     override val startPoints = listOf(StartableWhenAuthenticated)
     override val stateRoots = listOf(DeleteAccountState::class)
 
-    override fun initialState(ctx: JourneyContext): DeleteAccountState = DeleteAccountState.ConfirmPending
+    override val firstState = DeleteAccountState.ConfirmPending
 
     override fun transition(state: DeleteAccountState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {

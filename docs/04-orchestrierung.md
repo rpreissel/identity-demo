@@ -732,15 +732,17 @@ verloren, mit Identität und Adresse ([ADR-46](adr/ADR-046-konto-im-aufbau.md)).
 Bestätigung einer Web-Anmeldung aus einem noch nicht angemeldeten Kanal und nicht für einen
 Step-up vor der Anmeldung.
 
-**Wo ein Lauf beginnt, sagt die Journey selbst** (`JourneyStart`). Es gibt zwei Arten:
+**Wo ein Lauf beginnt, sagt die Journey selbst** (`JourneyStart`: die Journey und ihr erster
+Zustand). Es gibt zwei Arten:
 
-- Eine Journey ohne Eingabe (`JourneyWithoutInput`) liest ihren ersten Zustand aus dem Kontext
-  (`initialState(ctx)`); gestartet wird sie mit `start()`. Das sind alle Journeys, die einen Kanal
+- Eine Journey ohne Eingabe (`JourneyWithoutInput`) beginnt immer im selben Zustand
+  (`firstState`); gestartet wird sie mit `start()`. Was sie anbietet, entscheidet sie erst beim
+  Ereignis `Started`, wenn übernommene Nachweise schon vorliegen. Das sind alle Journeys, die einen Kanal
   eröffnen (`Journeys` prüft das, denn ein abgebrochener Lauf startet sie ohne Eingabe neu), dazu
   `CONFIRM_PEER_LOGIN` und `DELETE_ACCOUNT`.
 - Eine Journey mit Eingabe bietet ihren Einstieg als Methode an: `StepUpJourney.toward(goal)`,
   `FreshProofJourney.before(purpose, requiredAcr)`, `ReIdentifyJourney.toReach(targetAcr, wording)`,
-  `ManageAuthMethodsJourney.toCarryOut(wish)`. `JourneyStart.With<S>` verlangt einen Zustand
+  `ManageAuthMethodsJourney.toCarryOut(wish)`. `JourneyStart<S>` verlangt einen Zustand
   *dieser* Journey; einen fremden lässt der Compiler nicht zu.
 
 Endpunkte und Journeys, die eine Sub-Journey anfordern, nutzen denselben Weg. Als Sub-Journey
@@ -947,13 +949,14 @@ vorhandener Stand. Er läuft deshalb als **erster Übergang** des Automaten. In 
 keinem Zustand.
 
 Genau dafür gibt es den Parameter `restoredEvidence` von `JourneyService.start()`. Die Nachweise
-werden übernommen, BEVOR `JourneyWithoutInput.initialState()` aufgerufen wird. Das ist kein
+werden übernommen, BEVOR die Journey das Ereignis `Started` sieht. Das ist kein
 `JourneyEvent` und keine `Action`, sondern ein protokollierter Übergang namens `"Entry"`, den
 `JourneyService` selbst ausführt.
 
-Weil der Nachweis also schon vor dem ersten Angebot vorliegen kann, darf `Started` das erste Angebot
-nicht einfach bauen. Eine Journey wie `WebSelectMethodJourney` prüft bei `Started` genauso wie
-bei jedem anderen Nachweis, ob das Vorhandene schon reicht. Lägen die Nachweise im ersten Übergang
+Weil der Nachweis also schon vor dem ersten Angebot vorliegen kann, beginnt jede Journey in einem
+festen Zustand ohne Angebot (`firstState`) und baut das erste Angebot erst bei `Started`. Eine
+Journey wie `WebSelectMethodJourney` prüft dabei genauso wie bei jedem anderen Nachweis, ob das
+Vorhandene schon reicht. Lägen die Nachweise im ersten Übergang
 noch nicht vor, würde sie einen Ausweg anbieten, den sie gar nicht braucht, beim Step-up etwa die
 erneute Identifizierung.
 

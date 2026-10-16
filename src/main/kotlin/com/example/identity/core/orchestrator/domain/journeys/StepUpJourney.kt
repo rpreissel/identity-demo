@@ -24,7 +24,7 @@ object StepUpJourney : Journey<StepUpState> {
     override val stateRoots = listOf(StepUpState::class)
 
     /** A step-up toward [goal]: never started without one. */
-    fun toward(goal: Goal): JourneyStart = JourneyStart.With(this, StepUpState.Start(goal))
+    fun toward(goal: Goal): JourneyStart<*> = JourneyStart(this, StepUpState.Start(goal))
 
     override fun transition(state: StepUpState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {

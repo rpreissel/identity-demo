@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.journey
 
-import com.example.identity.core.orchestrator.domain.journey.JourneyStart
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -99,7 +98,7 @@ class JourneyTraceDetails(
         is Transition.RequireSubJourney -> mapOf(
             "decision" to "RequireSubJourney", "subIntent" to transition.journey.name,
             // Log only: both seed types carry a targetAcr under unrelated interfaces.
-            "targetAcr" to when (val seed = (transition.start as? JourneyStart.With<*>)?.seed) {
+            "targetAcr" to when (val seed = transition.start.seed) {
                 is StepUpState -> seed.goal.targetAcr
                 is ReIdentifyState -> seed.targetAcr
                 else -> null

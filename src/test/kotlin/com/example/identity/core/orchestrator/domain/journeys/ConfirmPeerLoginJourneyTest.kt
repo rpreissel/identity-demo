@@ -38,7 +38,7 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
 
     given("a new journey") {
         `when`("its first state is chosen") {
-            val initial = journey.initialState(ctx())
+            val initial = journey.firstState
 
             then("it is Requested, for a cold entry and an authenticated channel alike") {
                 initial shouldBe ConfirmPeerLoginState.Requested
