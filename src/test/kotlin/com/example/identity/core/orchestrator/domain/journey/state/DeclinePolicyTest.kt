@@ -1,8 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journey.state
 
 import com.example.identity.contract.tool_api.ToolId
-import com.example.identity.core.orchestrator.domain.journey.afterAbandoning
-import com.example.identity.core.orchestrator.domain.journey.narrowedBy
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -47,7 +45,7 @@ class DeclinePolicyTest : BehaviorSpec({
 
             then("the state cannot decide any more: the journey hears OfferExhausted with both declined") {
                 next.shouldBeNull()
-                state.declining(sms).narrowedBy(password).declined shouldBe all
+                state.declining(sms).declining(password).declined shouldBe all
             }
         }
 

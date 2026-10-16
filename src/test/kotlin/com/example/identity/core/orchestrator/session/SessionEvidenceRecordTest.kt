@@ -34,7 +34,7 @@ class SessionEvidenceRecordTest : BehaviorSpec({
 
             then("both are kept, and their factor kinds add up") {
                 record.currentAmr.toSet() shouldBe setOf("password", "sms")
-                record.currentFactorTypes shouldBe setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE)
+                record.methods.flatMap { it.factorTypes }.toSet() shouldBe setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE)
             }
         }
 

@@ -119,7 +119,7 @@ class StepUpJourneyTest : BehaviorSpec({
         val state = StepUpState.Start(AcrLevel.LOA1 upTo AcrLevel.LOA2)
 
         `when`("resumed after a RE_IDENTIFY sub-journey (SubJourneyFinished)") {
-            val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = null)
+            val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.NONE)
             val transition = journey.transition(state, event, theCtx)
             then("falls through to offering auth candidates, same as a fresh Start") {
                 transition shouldBe Transition.To(StepUpState.AuthChoice(AcrLevel.LOA1 upTo AcrLevel.LOA2, Offer(listOf(ToolId("auth-sms")))))

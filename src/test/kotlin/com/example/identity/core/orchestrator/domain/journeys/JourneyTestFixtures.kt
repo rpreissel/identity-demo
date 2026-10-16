@@ -153,8 +153,7 @@ object JourneyTestFixtures {
         // Defaults to a device linked to the context's own account; a device-rebind conflict test
         // (docs/09-dpop.md) passes a different accountId.
         linkedAccountId: AccountId? = account?.accountId,
-        isSubJourney: Boolean = false,
         availableTools: Set<ToolId> = allToolIds,
         channel: ChannelType = ChannelType.APP
-    ) = JourneyContext(channel, account, evidence, acrFloor, bindingKeyRef, linkedAccountId, isSubJourney, policy, catalog, availableTools)
+    ) = JourneyContext(channel, account, evidence, acrFloor, bindingKeyRef, linkedAccountId, policy, catalog, availableTools)
 }

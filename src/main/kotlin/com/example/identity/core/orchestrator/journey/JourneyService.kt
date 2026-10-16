@@ -1,7 +1,5 @@
 package com.example.identity.core.orchestrator.journey
 
-import com.example.identity.core.orchestrator.domain.journey.narrowedBy
-import com.example.identity.core.orchestrator.domain.journey.afterAbandoning
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
 import com.example.identity.core.orchestrator.domain.JourneyId
@@ -365,25 +363,24 @@ class JourneyService(
 
     // Transitions ----------------------------------------------------------------
 
-    private fun advance(journey: AuthJourney, channel: ChannelSession, event: JourneyEvent): Step {
+    /** [decided]: a transition already fixed by the machine, so the journey is not asked (still traced). */
+    private fun advance(journey: AuthJourney, channel: ChannelSession, event: JourneyEvent, decided: Transition? = null): Step {
         val kind = journey.requireKind()
         var state = codec.read(journey)
         var event = event
         val ctx = contextFactory.contextFor(journey, channel)
-        var transition: Transition? = null
+        var transition: Transition? = decided
         // An offer answers backing out itself (DeclinePolicy); the journey only hears that the
         // offer is exhausted, with everything declined.
         if (event is JourneyEvent.Abandoned && state is OfferingState) {
             val own = state.afterAbandoning(event.tool.toolId, ctx.availableTools)
             if (own != null) transition = Transition.To(own)
             else {
-                state = state.narrowedBy(event.tool.toolId)
-                event = JourneyEvent.OfferExhausted((state as OfferingState).declined)
+                val narrowed = state.declining(event.tool.toolId)
+                state = narrowed
+                event = JourneyEvent.OfferExhausted(narrowed.declined)
             }
         }
-        // A cancelled precondition cancels the journey that waited on it; only an optional
-        // sub-journey's end is left to the waiting journey (RequireSubJourney.optional).
-        if (event is JourneyEvent.SubJourneyCancelled && !event.optional) transition = Transition.Cancel
         transition = transition ?: kind.transitionErased(state, event, ctx)
         recordStep(journey, channel, event::class.simpleName!!, journeyTraceDetails.eventDetail(event, channel), state, transition, ctx)
         return applyTransition(journey, channel, transition)
@@ -491,7 +488,10 @@ class JourneyService(
             markCancelled(journey, channel)
             parent.lifecycle = JourneyLifecycle.STARTED
             journeyRepository.save(parent)
-            return advance(parent, channel, JourneyEvent.SubJourneyCancelled(journey.requireKind(), journey.optionalForParent))
+            // A cancelled precondition cancels the journey that waited on it; only an optional
+            // sub-journey's end is left to the waiting journey (RequireSubJourney.optional).
+            val decided = Transition.Cancel.takeUnless { journey.optionalForParent }
+            return advance(parent, channel, JourneyEvent.SubJourneyCancelled(journey.requireKind()), decided)
         }
         cancelJourney(journey, channel)
         return if (channel.state == ChannelState.AUTHENTICATED) Step(Next.AUTHENTICATED) else startEntryJourney(channel, restoredEvidence = null)

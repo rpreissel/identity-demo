@@ -80,7 +80,6 @@ data class Offer(
     fun activatable(availableTools: Set<ToolId>): Set<ToolId> = (offered.toSet() - declined) intersect availableTools
 }
 
-/** Shared shape of every state that offers a set of tools and remembers what was declined. */
 /**
  * The kind of an offer, read when the user backs out of a tool (docs/04-orchestrierung.md, "Zwei
  * Sorten von Übergang"). Declared on the state, not decided by the journey, so the kind is visible
@@ -97,6 +96,7 @@ enum class DeclinePolicy {
     OPTIONAL,
 }
 
+/** Shared shape of every state that offers a set of tools and remembers what was declined. */
 sealed interface OfferingState : JourneyState {
     val offer: Offer
 
@@ -131,6 +131,19 @@ sealed interface OfferingState : JourneyState {
 
     /** See [Offer.declining]. */
     fun declining(toolId: ToolId): OfferingState = withOffer(offer.declining(toolId))
+
+    /**
+     * What backing out of [tool] means for this offer, by its [declinePolicy]: the next state when
+     * the state decides on its own, or `null` when the journey has to, because the offer is
+     * exhausted ([exhausted], which also respects availability) or optional. `JourneyService` then
+     * sends `JourneyEvent.OfferExhausted` with this offer [declining] the tool, so the journey sees
+     * everything declined.
+     */
+    fun afterAbandoning(tool: ToolId, availableTools: Set<ToolId>): JourneyState? = when (declinePolicy) {
+        DeclinePolicy.MANDATORY -> withActive(null)
+        DeclinePolicy.FALLBACK -> declining(tool).takeUnless { it.exhausted(availableTools) }
+        DeclinePolicy.OPTIONAL -> null
+    }
 }
 
 /**

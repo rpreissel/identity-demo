@@ -35,7 +35,7 @@ sealed interface JourneyEvent {
      * state that re-derived its next step from evidence alone would re-request the sub-journey it
      * was just declined, forever. The compiler forces both arms.
      */
-    data class SubJourneyFinished(val journey: Journey<*>, val achievedAcr: AcrLevel?) : JourneyEvent
+    data class SubJourneyFinished(val journey: Journey<*>, val achievedAcr: AcrLevel) : JourneyEvent
 
     /**
      * The sub-journey was abandoned without achieving anything, so there is no acr to report.
@@ -43,7 +43,7 @@ sealed interface JourneyEvent {
      * sub-journey it requested as [Transition.RequireSubJourney.optional]; any other cancels the
      * waiting journey in `JourneyService`.
      */
-    data class SubJourneyCancelled(val journey: Journey<*>, val optional: Boolean) : JourneyEvent
+    data class SubJourneyCancelled(val journey: Journey<*>) : JourneyEvent
 
     /** An explicit answer to what an [AnswerableState] is waiting on (`JourneyService.answer`). */
     data class Answered(val answer: Answer) : JourneyEvent

@@ -11,9 +11,6 @@ object AcrLevels {
     /** Baseline floor when neither the channel nor a step-up process names one explicitly. */
     val DEFAULT_REQUIRED_ACR = AcrLevel.LOA1
 
-    /** The highest known level: the "no ceiling" value for a caller that does not cap an MFA bump. */
-    val HIGHEST: AcrLevel get() = AcrLevel(AcrLevel.KNOWN.last())
-
     /** Moves [acr] up by [steps] tiers, capped at the highest known level (MFA bump). */
     fun bump(acr: AcrLevel, steps: Int = 1): AcrLevel =
         AcrLevel.levelAt((AcrLevel.rank(acr) + steps).coerceAtMost(AcrLevel.KNOWN.size - 1))

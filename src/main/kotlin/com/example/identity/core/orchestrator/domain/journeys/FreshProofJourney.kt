@@ -39,7 +39,7 @@ object FreshProofJourney : Journey<FreshProofState> {
                 // stand in, or a session stuck below the level would pass via the very factor that
                 // could not reach it.
                 is JourneyEvent.SubJourneyFinished ->
-                    if ((event.achievedAcr ?: AcrLevel.NONE) >= state.requiredAcr) Transition.Authenticated
+                    if (event.achievedAcr >= state.requiredAcr) Transition.Authenticated
                     else Transition.Cancel
                 else -> gate(state, ctx) ?: freshness(state, ctx)
             }

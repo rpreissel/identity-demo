@@ -28,13 +28,13 @@ interface ToolCatalog {
     fun toolOf(method: String, role: ToolRole): Tool? =
         moduleOf(method)?.tools?.firstOrNull { it.role == role }
 
+    /** The enrollment that changes an active credential of [method], if the method has one. */
+    fun changeToolOf(method: String): Tool? = toolOf(method, ToolRole.ENROLLMENT)?.takeIf { it.changeable }
+
     /**
      * The procedure named [method]: what an enrolled credential of it reaches, whichever of its
      * tools proves it. All tools of a method share their module, so the answer does not depend on
      * which tool is asked.
      */
-    /** The enrollment that changes an active credential of [method], if the method has one. */
-    fun changeToolOf(method: String): Tool? = toolOf(method, ToolRole.ENROLLMENT)?.takeIf { it.changeable }
-
     fun moduleOf(method: String): ToolModule? = modules().firstOrNull { it.method == method }
 }

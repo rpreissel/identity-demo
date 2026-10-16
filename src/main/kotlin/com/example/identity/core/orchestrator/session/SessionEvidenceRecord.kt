@@ -77,24 +77,6 @@ class SessionEvidenceRecord(
     /** Every method proven so far. */
     val currentAmr: List<String> get() = methods.map { it.method }
 
-    /**
-     * Each entry's loa (docs/05-api.md Abschnitt 3b), the only figure `AuthPolicy.resolveAcr` prices
-     * from, whether an orchestrator tool proved it here or it was restored from Keycloak's session.
-     */
-    val methodAcr: Map<String, String> get() = methods.associate { it.method to it.loa }
-
-    /**
-     * Each entry's ceiling for an MFA combination (docs/06-ablaeufe.md #1). Supplied by whoever
-     * recorded the entry, never derived here.
-     */
-    val enrolledUnderAcr: Map<String, String> get() = methods.mapNotNull { r -> r.enrolledUnderAcr?.let { r.method to it } }.toMap()
-
-    /**
-     * The factor kinds of all entries. Kept per method, since amr values name procedures, not
-     * factor kinds (docs/02-domaenenmodell.md #5).
-     */
-    val currentFactorTypes: Set<FactorType> get() = methods.flatMap { it.factorTypes }.toSet()
-
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant? = now
 

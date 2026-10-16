@@ -91,7 +91,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
         }
 
         `when`("resumed after it was declined or abandoned (SubJourneyCancelled)") {
-            val transition = journey.transition(RegisterState.Closing, JourneyEvent.SubJourneyCancelled(ReIdentifyJourney, optional = true), ctx())
+            val transition = journey.transition(RegisterState.Closing, JourneyEvent.SubJourneyCancelled(ReIdentifyJourney), ctx())
             then("finishes all the same") {
                 transition shouldBe
                     Transition.Authenticated

@@ -42,7 +42,6 @@ class JourneyContextFactory(
             acrFloor = acrFloorOf(channel),
             bindingKeyRef = channel.bindingKeyRef,
             linkedAccountId = channel.bindingKeyRef?.let { sessionManagementService.findLinkedAccountId(it) },
-            isSubJourney = journey.parentJourneyId != null,
             policy = authPolicy,
             catalog = toolRegistry,
             availableTools = routing.availableToolsOf(channel),

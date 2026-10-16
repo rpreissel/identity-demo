@@ -82,7 +82,7 @@ class SessionManagementService(
 
     /**
      * Only raises, never lowers (docs/05-api.md, step-ups). Compared against the effective floor,
-     * so an explicit "loa1" cannot undercut the implicit loa2 baseline.
+     * so an explicit level cannot undercut the default ([AcrLevels.DEFAULT_REQUIRED_ACR]).
      */
     fun raiseChannelAcrFloor(channelSessionId: ChannelSessionId, requiredAcr: String) {
         channelSessionRepository.findByChannelSessionId(channelSessionId)?.let { session ->
