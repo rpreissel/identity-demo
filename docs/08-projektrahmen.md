@@ -448,7 +448,8 @@ Lesesichten `account.AccountProfile` und `account.AuthMethodView`). Beide Regeln
 `OrchestratorArchitectureTest` für `orchestrator.domain` und `AccountArchitectureTest` für
 `account.domain`. Ein Verstoß lässt den Build scheitern.
 
-**Was im Orchestrator wo liegt.**
+**Was im Orchestrator wo liegt.** Eine Lesereihenfolge für den Einstieg steht in
+`src/main/kotlin/com/example/identity/core/orchestrator/domain/README.md`.
 
 - `orchestrator.domain` (M1a): die Grundbegriffe – `Journeys`, `AcrLevels`,
   `ChannelType`, `ErrorCode`, `OrchestratorException`, `ToolCatalog`.
