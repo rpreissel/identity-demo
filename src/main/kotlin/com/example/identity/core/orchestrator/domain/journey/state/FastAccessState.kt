@@ -17,7 +17,7 @@ sealed interface FastAccessState : JourneyState {
     data class PreferredAuth(override val offer: Offer) : FastAccessState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
-        override val selectionContext: String get() = "auth"
+        override val screen: Screen get() = Screen.SELECT_AUTH_METHOD
         override val selectionTitle: Text get() = Text("Anmeldung – Verfahren wählen")
     }
 }

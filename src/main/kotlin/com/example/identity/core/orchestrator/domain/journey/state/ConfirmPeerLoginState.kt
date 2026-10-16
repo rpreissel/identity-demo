@@ -26,7 +26,7 @@ sealed interface ConfirmPeerLoginState : JourneyState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         // Backing out is not declining the wish; the only candidate comes back.
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
-        override val selectionContext: String get() = "auth"
+        override val screen: Screen get() = Screen.SELECT_AUTH_METHOD
         override val selectionTitle: Text get() = Text("Web-Login bestätigen")
         override val selectionDescription: Text
             get() = Text("Ein Browser möchte sich mit Ihrem Konto anmelden. Bestätigen Sie das nur, wenn Sie diesen Login selbst ausgelöst haben.")

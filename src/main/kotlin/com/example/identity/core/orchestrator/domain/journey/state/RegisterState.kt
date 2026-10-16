@@ -28,8 +28,7 @@ sealed interface RegisterState : JourneyState {
     ) : RegisterState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
-        override val selectionContext: String get() = "registration"
-        override val selectionStep: String get() = "selectIdentificationMethod"
+        override val screen: Screen get() = Screen.SELECT_IDENTIFICATION_METHOD
         override val selectionTitle: Text get() = Text("Identifikation erforderlich")
         override val selectionDescription: Text get() = Text("Bitte identifizieren Sie sich, um Ihr Konto zu finden oder ein neues anzulegen.")
     }
@@ -46,7 +45,7 @@ sealed interface RegisterState : JourneyState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         // Backing out is the "not now": the run carries on as prospect (ADR-10).
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.OPTIONAL
-        override val selectionContext: String get() = "registration"
+        override val screen: Screen get() = Screen.ASSIGN_PERSON
         override val selectionTitle: Text get() = Text("Konto zuordnen")
         override val selectionDescription: Text get() =
             Text("Ihr Konto wird Ihrem Eintrag im Personenverzeichnis zugeordnet - per Versichertennummer oder, ohne sie, per Partnernummer.")
@@ -62,7 +61,7 @@ sealed interface RegisterState : JourneyState {
     ) : RegisterState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
-        override val selectionContext: String get() = "enrollment"
+        override val screen: Screen get() = Screen.SELECT_ENROLLMENT
         override val selectionTitle: Text get() = Text("E-Mail-Bestätigung ausstehend")
         override val selectionDescription: Text get() = Text("Ihre E-Mail-Adresse muss noch bestätigt werden - Ihr Konto wird darüber gefunden.")
     }
@@ -78,7 +77,7 @@ sealed interface RegisterState : JourneyState {
     ) : RegisterState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
-        override val selectionContext: String get() = "enrollment"
+        override val screen: Screen get() = Screen.SELECT_ENROLLMENT
         override val selectionTitle: Text get() = Text("Weiteres Anmeldeverfahren einrichten")
         override val selectionDescription: Text get() = Text("Damit Sie Ihre Anmeldeverfahren später verwalten können, braucht das Konto noch ein Verfahren anderer Art als die schon eingerichteten. Die Liste zeigt, welche hier passen.")
     }

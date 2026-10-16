@@ -5,6 +5,7 @@ import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.journey.state.AnswerableState
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
+import com.example.identity.core.orchestrator.domain.journey.state.Screen
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.tool.ToolAvailabilityService
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
@@ -53,18 +54,23 @@ class JourneyRouting(
      */
     fun nextFor(state: JourneyState, availableTools: Set<ToolId>): Next {
         state.active?.let { return Next.tool(it.toolId.value, it.step, it.toolSessionId) }
-        val activatable = state.activatable(availableTools)
-        val single = activatable.singleOrNull()
-        return if (single != null && withoutUserStep(single) == null) {
-            Next.tool(single.value, toolRegistry.toolOf(single).startStep)
-        } else {
-            // A single candidate that completes on activation gets the selection page too: started
-            // alone it would change the account before the user saw anything. Zero candidates
-            // mean an orchestrator page without a choice, or an offer that just became unavailable;
-            // the client's next action resolves that.
-            Next.orchestrator(state.selectionContext, state.selectionStep)
+        return when (state) {
+            is OfferingState -> {
+                val single = state.activatable(availableTools).singleOrNull()
+                // A single candidate that completes on activation gets the selection page too:
+                // started alone it would change the account before the user saw anything. Zero
+                // candidates mean an offer that just became unavailable; the client's next action
+                // resolves that.
+                if (single != null && withoutUserStep(single) == null) Next.tool(single.value, toolRegistry.toolOf(single).startStep)
+                else state.screen.asNext()
+            }
+            is AnswerableState -> state.screen.asNext()
+            // A decision point or a parked wish is left again in the step that reads it.
+            else -> error("${state::class.simpleName} is never shown; nothing to route to")
         }
     }
+
+    private fun Screen.asNext(): Next = Next.orchestrator(context, step)
 
     /**
      * The complete current step, including selection options and prompts. The cases exclude each
@@ -97,7 +103,7 @@ class JourneyRouting(
      */
     fun selectionFor(state: OfferingState, channel: ChannelSession): Step {
         val options = state.activatable(availableToolsOf(channel))
-        return Step(Next.orchestrator(state.selectionContext, state.selectionStep), selectMethodStep(state, channel, options))
+        return Step(state.screen.asNext(), selectMethodStep(state, channel, options))
     }
 
     private fun selectMethodStep(state: OfferingState, channel: ChannelSession, options: Set<ToolId>): SelectMethodStep {

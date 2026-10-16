@@ -17,7 +17,7 @@ sealed interface WebSelectMethodState : JourneyState {
     data class SelectLoginMethod(override val offer: Offer) : WebSelectMethodState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
-        override val selectionContext: String get() = "auth"
+        override val screen: Screen get() = Screen.SELECT_AUTH_METHOD
         override val selectionTitle: Text get() = Text("Anmeldeverfahren wählen")
         override val selectionDescription: Text get() = Text("Wählen Sie, wie Sie sich anmelden möchten.")
     }
@@ -30,7 +30,7 @@ sealed interface WebSelectMethodState : JourneyState {
     data class SelectStepUpMethod(override val offer: Offer) : WebSelectMethodState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
-        override val selectionContext: String get() = "auth"
+        override val screen: Screen get() = Screen.SELECT_AUTH_METHOD
         override val selectionTitle: Text get() = Text("Erhöhte Sicherheit erforderlich")
         override val selectionDescription: Text get() =
             Text("Sie sind bereits angemeldet. Dieser Bereich verlangt aber mehr Sicherheit: Bestätigen Sie Ihre Anmeldung mit einem weiteren Verfahren.")

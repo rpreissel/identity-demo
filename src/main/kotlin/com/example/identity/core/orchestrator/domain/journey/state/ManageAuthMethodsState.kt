@@ -48,7 +48,7 @@ sealed interface ManageAuthMethodsState : JourneyState {
             else error("${tool.toolId} is not offered by Changing")
         // One tool only: backing out ends the change, the old entry stays.
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
-        override val selectionContext: String get() = "enrollment"
+        override val screen: Screen get() = Screen.SELECT_ENROLLMENT
         override val selectionTitle: Text get() = Text("Anmeldeverfahren ändern")
         override val selectionDescription: Text get() = Text("Sie richten dieses Verfahren neu ein. Der bisherige Eintrag wird mit dem Abschluss ersetzt.")
     }
@@ -58,7 +58,7 @@ sealed interface ManageAuthMethodsState : JourneyState {
     ) : ManageAuthMethodsState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
-        override val selectionContext: String get() = "enrollment"
+        override val screen: Screen get() = Screen.SELECT_ENROLLMENT
         override val selectionTitle: Text get() = Text("Neues Anmeldeverfahren hinzufügen")
         override val selectionDescription: Text get() = Text("Sie möchten ein weiteres Verfahren einrichten. Wählen Sie aus, welches Sie hinzufügen möchten.")
     }

@@ -55,7 +55,7 @@ sealed interface ReIdentifyState : JourneyState {
     ) : ReIdentifyState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
-        override val selectionContext: String get() = "auth"
+        override val screen: Screen get() = Screen.SELECT_AUTH_METHOD
         override val selectionTitle: Text get() = when (kind) {
             Kind.OPTIONAL -> Text("Identifikation (optional)")
             Kind.RECOVERY -> Text("Erneute Identifikation erforderlich")

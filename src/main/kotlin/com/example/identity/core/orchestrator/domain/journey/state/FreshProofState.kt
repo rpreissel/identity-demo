@@ -39,8 +39,8 @@ sealed interface FreshProofState : JourneyState {
             if (outcome is ToolOutcome.Completed.Authenticated) Action.Reconfirm(tool, outcome)
             else error("${tool.toolId} is not offered by Reproving")
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
-        // selectionContext names the kind of offer, not the journey.
-        override val selectionContext: String get() = "auth"
+        // The kind of offer, not the journey: any active factor, as on a login.
+        override val screen: Screen get() = Screen.SELECT_AUTH_METHOD
         override val selectionTitle: Text get() = when (purpose) {
             ProofPurpose.DELETE_ACCOUNT -> Text("Konto löschen – Anmeldeverfahren bestätigen")
             ProofPurpose.MANAGE_METHODS -> Text("Anmeldeverfahren verwalten – Anmeldeverfahren bestätigen")

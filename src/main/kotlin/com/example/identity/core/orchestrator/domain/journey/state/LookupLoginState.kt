@@ -17,7 +17,7 @@ sealed interface LookupLoginState : JourneyState {
     ) : LookupLoginState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
-        override val selectionContext: String get() = "auth"
+        override val screen: Screen get() = Screen.SELECT_AUTH_METHOD
         override val selectionTitle: Text get() = Text("Anmeldung – Konto bestätigen")
         override val selectionDescription: Text get() = Text("Geben Sie Ihre Zugangsdaten ein, um sich mit Ihrem bestehenden Konto anzumelden.")
     }
@@ -32,7 +32,7 @@ sealed interface LookupLoginState : JourneyState {
     ) : LookupLoginState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
-        override val selectionContext: String get() = "auth"
+        override val screen: Screen get() = Screen.SELECT_AUTH_METHOD
         override val selectionTitle: Text get() = Text("Zusätzlicher Faktor erforderlich")
         override val selectionDescription: Text get() = Text("Ihre bisherige Anmeldung reicht für das geforderte Sicherheitsniveau nicht aus. Bitte bestätigen Sie einen weiteren Faktor.")
     }

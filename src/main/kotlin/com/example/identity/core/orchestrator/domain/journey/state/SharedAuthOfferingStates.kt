@@ -12,7 +12,7 @@ data class AuthChoice(
 ) : FastAccessState, RegisterState, OfferingState {
     override fun withOffer(offer: Offer) = copy(offer = offer)
     override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
-    override val selectionContext: String get() = "auth"
+    override val screen: Screen get() = Screen.SELECT_AUTH_METHOD
     override val selectionTitle: Text get() = Text("Anmeldung – Verfahren wählen")
     override val selectionDescription: Text get() = Text("Für Ihr Konto sind mehrere Anmeldeverfahren hinterlegt. Wählen Sie aus, wie Sie sich anmelden möchten.")
 }
@@ -27,7 +27,7 @@ data class Enrolling(
 ) : FastAccessState, RegisterState, OfferingState {
     override fun withOffer(offer: Offer) = copy(offer = offer)
     override val declinePolicy: DeclinePolicy get() = DeclinePolicy.MANDATORY
-    override val selectionContext: String get() = "enrollment"
+    override val screen: Screen get() = Screen.SELECT_ENROLLMENT
     override val selectionTitle: Text get() = Text("Anmeldeverfahren einrichten")
     override val selectionDescription: Text get() = Text("Damit Sie sich beim nächsten Mal schneller anmelden können, richten Sie jetzt ein Verfahren ein.")
 }

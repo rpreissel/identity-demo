@@ -32,13 +32,6 @@ sealed interface JourneyState {
      */
     fun booking(tool: Tool, outcome: ToolOutcome.Completed): Action = Action.of(tool, outcome)
 
-    /** `next.context` of the orchestrator-owned page this state maps to. */
-    val selectionContext: String
-
-    /** `next.step` of that page. */
-    val selectionStep: String
-        get() = "selectMethod"
-
     /**
      * The same state with a different running tool. A state that cannot host a tool (a
      * confirmation, a parked wish) ignores this; the compiler forces every new state to choose.
@@ -105,10 +98,13 @@ sealed interface OfferingState : JourneyState {
     val declined: Set<ToolId> get() = offer.declined
     override val active: ToolRef? get() = offer.active
 
+    /** The selection page this offer is shown on. */
+    val screen: Screen
+
     /**
      * Backend-authored heading for the selection screen, so it can change without an app release
-     * (as [Question]). Per state, because `selectionContext` only names the screen shared by every
-     * journey offering the same kind of candidate, not what the user is asked here.
+     * (as [Question]). Per state, because [screen] only names the page shared by every journey
+     * offering the same kind of candidate, not what the user is asked here.
      */
     val selectionTitle: Text
     val selectionDescription: Text? get() = null
@@ -148,12 +144,6 @@ sealed interface ToolFreeState : JourneyState {
     override fun activatable(availableTools: Set<ToolId>): Set<ToolId> = emptySet()
     override val active: ToolRef? get() = null
     override fun withActive(active: ToolRef?): JourneyState = this
-
-    /**
-     * Never routed to: a decision point or a parked wish is left again in the step that reads it,
-     * so the value only satisfies the interface. A question ([AnswerableState]) names its screen.
-     */
-    override val selectionContext: String get() = "auth"
 }
 
 /**
@@ -169,6 +159,27 @@ interface AnswerableState : ToolFreeState {
      * One shared address for every [AnswerableState]: they all render through the same generic
      * screen (`stepData.prompt` decides the content) and use the same endpoint.
      */
-    override val selectionContext: String get() = "prompt"
-    override val selectionStep: String get() = "confirm"
+    val screen: Screen get() = Screen.CONFIRM
+}
+
+/**
+ * The orchestrator-owned pages a client renders, as `next.context`/`next.step` on the wire
+ * (docs/05-api.md). Only a state that is shown names one: an offer its selection page, a question
+ * the prompt. A decision point or a parked wish is left again in the step that reads it.
+ */
+enum class Screen(val context: String, val step: String) {
+    /** Choose a way to prove: an auth tool of the account, or one that finds the account. */
+    SELECT_AUTH_METHOD("auth", "selectMethod"),
+
+    /** Choose how to identify (REGISTER). */
+    SELECT_IDENTIFICATION_METHOD("registration", "selectIdentificationMethod"),
+
+    /** Choose the correlation step that binds the account to a person (REGISTER). */
+    ASSIGN_PERSON("registration", "selectMethod"),
+
+    /** Choose a method to set up. */
+    SELECT_ENROLLMENT("enrollment", "selectMethod"),
+
+    /** A yes/no question; `stepData.prompt` carries the wording. */
+    CONFIRM("prompt", "confirm"),
 }
