@@ -68,14 +68,13 @@ class DefaultAuthPolicyTest : BehaviorSpec({
     val registry = ToolHandlerRegistry(listOf(fsc, sms, passkey))
     val policy = DefaultAuthPolicy(registry, TEST_CLOCK)
 
-    fun candidates(
+    fun channel(
         evidence: SessionEvidence,
         requiredAcr: AcrLevel,
-        account: AccountProfile? = null,
         bindingKeyRef: String? = null,
         linkedAccountId: AccountId? = null,
         availableTools: Set<ToolId>? = null
-    ) = CandidateContext(evidence, requiredAcr, account, bindingKeyRef, linkedAccountId, availableTools)
+    ) = CandidateContext(evidence, requiredAcr, bindingKeyRef, linkedAccountId, availableTools)
 
     fun account(vararg methods: AuthMethodView) = AccountProfile(
         accountId = AccountId(1L), personId = PartnerNumber("P000000001"), authenticationMethods = methods.toList()
@@ -139,7 +138,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
 
         `when`("auth candidates for loa2 are resolved") {
-            val offered = policy.authCandidates(candidates(evidence, AcrLevel.LOA2, acc))
+            val offered = policy.authCandidates(acc, channel(evidence, AcrLevel.LOA2))
 
             then("the same method is offered again to prove it anew") {
                 offered shouldContainExactly listOf(ToolId("auth-sms"))
@@ -214,7 +213,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
 
         `when`("re-identification candidates for loa2 are resolved") {
-            val offered = policy.reIdentCandidates(candidates(nothingProven, AcrLevel.LOA2))
+            val offered = policy.reIdentCandidates(null, channel(nothingProven, AcrLevel.LOA2))
 
             then("only the IDENTIFICATION tool appears, never AUTH or ENROLL tools") {
                 offered shouldContainExactly listOf(ToolId("ident-fsc"))
@@ -222,7 +221,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
 
         `when`("re-identification candidates for loa3 are resolved") {
-            val offered = policy.reIdentCandidates(candidates(nothingProven, AcrLevel.LOA3))
+            val offered = policy.reIdentCandidates(null, channel(nothingProven, AcrLevel.LOA3))
 
             then("an IDENT tool whose own maxAcr falls short is excluded") {
                 // ident-fsc tops out at loa2 (see catalog above), so it cannot close a loa3 gap alone.
@@ -305,7 +304,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         val alreadyIdentified = SessionEvidence.fromNow(listOf("fsc"), setOf(FactorType.POSSESSION))
 
         `when`("re-identification candidates for loa2 are resolved") {
-            val offered = policy.reIdentCandidates(candidates(alreadyIdentified, AcrLevel.LOA2))
+            val offered = policy.reIdentCandidates(null, channel(alreadyIdentified, AcrLevel.LOA2))
 
             then("the IDENT tool already used is excluded, regardless of level") {
                 offered.shouldBeEmpty()
@@ -383,7 +382,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
 
         `when`("enrollment candidates are resolved") {
-            val offered = policy.enrollmentCandidates(candidates(nothingProven, AcrLevel.LOA2, noMethods))
+            val offered = policy.enrollmentCandidates(noMethods, channel(nothingProven, AcrLevel.LOA2))
 
             then("every enrollment tool is offered") {
                 offered shouldContainExactlyInAnyOrder listOf(ToolId("enroll-sms"), ToolId("enroll-passkey"))
@@ -393,7 +392,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
 
     given("no account yet (a registration before its first method)") {
         `when`("enrollment candidates are resolved") {
-            val offered = policy.enrollmentCandidates(candidates(nothingProven, AcrLevel.LOA2, account = null))
+            val offered = policy.enrollmentCandidates(null, channel(nothingProven, AcrLevel.LOA2))
 
             then("every enrollment tool is offered, as for an account without methods") {
                 offered shouldContainExactlyInAnyOrder listOf(ToolId("enroll-sms"), ToolId("enroll-passkey"))
@@ -435,7 +434,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
 
         `when`("enrollment candidates are resolved") {
-            val offered = policy.enrollmentCandidates(candidates(nothingProven, AcrLevel.LOA2, acc))
+            val offered = policy.enrollmentCandidates(acc, channel(nothingProven, AcrLevel.LOA2))
 
             then("the already active method is excluded") {
                 offered shouldContainExactly listOf(ToolId("enroll-passkey"))
@@ -443,7 +442,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
 
         `when`("auth candidates are resolved on the App device linked to this account") {
-            val offered = policy.authCandidates(candidates(nothingProven, AcrLevel.LOA2, acc, "test-binding-key", linkedAccountId = acc.accountId))
+            val offered = policy.authCandidates(acc, channel(nothingProven, AcrLevel.LOA2, "test-binding-key", linkedAccountId = acc.accountId))
 
             then("sms is offered") {
                 offered shouldContainExactly listOf(ToolId("auth-sms"))
@@ -451,7 +450,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
 
         `when`("auth candidates are resolved on a channel without a device key (Web)") {
-            val offered = policy.authCandidates(candidates(nothingProven, AcrLevel.LOA2, acc, bindingKeyRef = null, linkedAccountId = null))
+            val offered = policy.authCandidates(acc, channel(nothingProven, AcrLevel.LOA2, bindingKeyRef = null, linkedAccountId = null))
 
             then("sms is offered all the same - it is not bound to a key") {
                 offered shouldContainExactly listOf(ToolId("auth-sms"))
@@ -463,7 +462,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA2))
 
         `when`("auth candidates are resolved") {
-            val offered = policy.authCandidates(candidates(smsAtLoa2, AcrLevel.LOA2, acc, "test-binding-key", linkedAccountId = acc.accountId))
+            val offered = policy.authCandidates(acc, channel(smsAtLoa2, AcrLevel.LOA2, "test-binding-key", linkedAccountId = acc.accountId))
 
             then("the method already used is excluded") {
                 offered.shouldBeEmpty()
@@ -505,13 +504,13 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         val tokenQr = descriptor(ToolRole.KNOWN_ACCOUNT_AUTH, "qr", setOf(FactorType.POSSESSION), AcrLevel.LOA2)
         val localPolicy = DefaultAuthPolicy(catalog(tokenSms, tokenEmail, tokenQr), TEST_CLOCK)
         val acc = account(method("sms", AcrLevel.LOA2), method("email", AcrLevel.LOA2), method("qr", AcrLevel.LOA2))
-        val context = candidates(
-            nothingProven, AcrLevel.LOA2, acc, "test-binding-key", linkedAccountId = acc.accountId,
+        val context = channel(
+            nothingProven, AcrLevel.LOA2, "test-binding-key", linkedAccountId = acc.accountId,
             availableTools = setOf(ToolId("auth-sms"), ToolId("auth-email"))
         )
 
         `when`("auth candidates for loa2 are resolved") {
-            val offered = localPolicy.authCandidates(context)
+            val offered = localPolicy.authCandidates(acc, context)
 
             then("the sms+email combination is offered - whether one method suffices is decided over the offerable ones only") {
                 offered shouldContainExactlyInAnyOrder listOf(ToolId("auth-sms"), ToolId("auth-email"))
@@ -531,7 +530,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         val acc = account(deviceMethod)
 
         `when`("auth candidates are resolved on key-1, still linked to this account") {
-            val offered = devicePolicy.authCandidates(candidates(nothingProven, AcrLevel.LOA2, acc, "key-1", linkedAccountId = acc.accountId))
+            val offered = devicePolicy.authCandidates(acc, channel(nothingProven, AcrLevel.LOA2, "key-1", linkedAccountId = acc.accountId))
 
             then("the device credential is offered") {
                 offered shouldContainExactly listOf(ToolId("auth-device"))
@@ -539,7 +538,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
 
         `when`("auth candidates are resolved on key-1, rebound to a different account") {
-            val offered = devicePolicy.authCandidates(candidates(nothingProven, AcrLevel.LOA2, acc, "key-1", linkedAccountId = AccountId(999L)))
+            val offered = devicePolicy.authCandidates(acc, channel(nothingProven, AcrLevel.LOA2, "key-1", linkedAccountId = AccountId(999L)))
 
             then("it is not offered") {
                 offered.shouldBeEmpty()
@@ -547,7 +546,7 @@ class DefaultAuthPolicyTest : BehaviorSpec({
         }
 
         `when`("auth candidates are resolved on another key, linked to this account") {
-            val offered = devicePolicy.authCandidates(candidates(nothingProven, AcrLevel.LOA2, acc, "key-2", linkedAccountId = acc.accountId))
+            val offered = devicePolicy.authCandidates(acc, channel(nothingProven, AcrLevel.LOA2, "key-2", linkedAccountId = acc.accountId))
 
             then("it is not offered - the credential lives on key-1 only") {
                 offered.shouldBeEmpty()

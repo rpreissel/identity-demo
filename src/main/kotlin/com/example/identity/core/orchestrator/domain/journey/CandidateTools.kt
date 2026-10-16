@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.domain.journey
 
-import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.domain.policy.CandidateContext
 import com.example.identity.core.orchestrator.domain.policy.requiresSatisfied
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -69,7 +68,7 @@ internal fun AccountJourneyContext.deviceKeyCandidate(): ToolId? {
 
 /** The account's methods that can still raise this session toward [targetAcr] (by default the channel's floor). */
 internal fun AccountJourneyContext.authCandidates(targetAcr: AcrLevel = acrFloor): List<ToolId> =
-    filterAvailable(policy.authCandidates(candidateContext(targetAcr, account)))
+    filterAvailable(policy.authCandidates(account, candidateContext(targetAcr)))
 
 /**
  * Every active KNOWN_ACCOUNT_AUTH method of the account, for a fresh "are you still there?"
@@ -88,7 +87,7 @@ internal fun AccountJourneyContext.reconfirmationCandidates(): List<ToolId> {
 
 /** New methods for the account in hand, or for a registration that has not created its account yet. */
 internal fun JourneyContext.enrollmentCandidates(): List<ToolId> =
-    filterAvailable(policy.enrollmentCandidates(candidateContext(acrFloor, account)))
+    filterAvailable(policy.enrollmentCandidates(account, candidateContext(acrFloor)))
 
 /** The factor kinds the account's active methods cover, read from their enrollment descriptors. */
 internal fun AccountJourneyContext.coveredFactorKinds(): Set<FactorType> {
@@ -119,7 +118,7 @@ internal fun AccountJourneyContext.missingFactorKindCandidates(): List<ToolId> {
 
 /** The identification tools that reach [targetAcr] on this channel. */
 internal fun JourneyContext.reIdentificationCandidates(targetAcr: AcrLevel): List<ToolId> =
-    filterAvailable(policy.reIdentCandidates(candidateContext(targetAcr)))
+    filterAvailable(policy.reIdentCandidates(account, candidateContext(targetAcr)))
 
 private fun JourneyContext.filterAvailable(ids: List<ToolId>): List<ToolId> = ids.filter { it in availableTools }
 
@@ -130,11 +129,10 @@ private inline fun JourneyContext.availableToolsOf(role: ToolRole, matches: (Too
 private fun JourneyContext.identCandidates(role: ToolRole): List<ToolId> =
     availableToolsOf(role) { descriptor -> descriptor.requires.all { requiresSatisfied(it, account) } }
 
-private fun JourneyContext.candidateContext(targetAcr: AcrLevel, account: AccountProfile? = null): CandidateContext =
+private fun JourneyContext.candidateContext(targetAcr: AcrLevel): CandidateContext =
     CandidateContext(
         evidence = evidence,
         requiredAcr = targetAcr,
-        account = account,
         bindingKeyRef = bindingKeyRef,
         linkedAccountId = linkedAccountId,
         availableTools = availableTools

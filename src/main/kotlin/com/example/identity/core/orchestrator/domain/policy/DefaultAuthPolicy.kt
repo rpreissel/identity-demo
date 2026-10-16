@@ -99,9 +99,8 @@ class DefaultAuthPolicy(
         )
     }
 
-    override fun enrollmentCandidates(ctx: CandidateContext): List<ToolId> {
+    override fun enrollmentCandidates(account: AccountProfile?, ctx: CandidateContext): List<ToolId> {
         // Without an account (a registration before its first method) nothing is active yet.
-        val account = ctx.account
         val activeMethods = account?.activeAuthenticationMethods.orEmpty().map { it.method }.toSet()
         return toolRegistry.tools()
             .filter { it.role == ToolRole.ENROLLMENT }
@@ -112,11 +111,10 @@ class DefaultAuthPolicy(
             .map { it.toolId }
     }
 
-    override fun authCandidates(ctx: CandidateContext): List<ToolId> {
+    override fun authCandidates(account: AccountProfile, ctx: CandidateContext): List<ToolId> {
         val requiredAcr = ctx.requiredAcr
         // An aged proof neither counts nor blocks its method from being offered again.
         val evidence = countingToward(ctx.evidence, requiredAcr)
-        val account = checkNotNull(ctx.account) { "authCandidates requires an account in CandidateContext" }
         val usedMethods = evidence.methods.map { it.method.value }.toSet()
 
         // With a known account, only KNOWN_ACCOUNT_AUTH tools, never an ACCOUNT_LOOKUP_AUTH sibling that
@@ -145,7 +143,7 @@ class DefaultAuthPolicy(
         }.distinct() // several instances of one method (devices) offer its AUTH tool once
     }
 
-    override fun reIdentCandidates(ctx: CandidateContext): List<ToolId> {
+    override fun reIdentCandidates(account: AccountProfile?, ctx: CandidateContext): List<ToolId> {
         val requiredAcr = ctx.requiredAcr
         val evidence = countingToward(ctx.evidence, requiredAcr)
         val usedMethods = evidence.methods.map { it.method.value }.toSet()
@@ -158,7 +156,7 @@ class DefaultAuthPolicy(
             .filter { it.method !in usedMethods && it.toolId.value !in usedTools }
             .filter { it.maxAcr >= requiredAcr }
             // Same precondition gate as every other candidate path.
-            .filter { descriptor -> descriptor.requires.all { requiresSatisfied(it, ctx.account) } }
+            .filter { descriptor -> descriptor.requires.all { requiresSatisfied(it, account) } }
             .map { it.toolId }
     }
 

@@ -15,20 +15,21 @@ interface AuthPolicy {
     fun isSatisfied(evidence: SessionEvidence, requiredAcr: AcrLevel, account: AccountProfile?): Boolean
 
     /**
-     * Which of the account's AUTH tools could close the remaining gap right now? A key-bound method
+     * Which of [account]'s AUTH tools could close the remaining gap right now? A key-bound method
      * is offered only on the device that holds its credential ([CandidateContext.bindingKeyRef])
      * and while that device is linked to this account ([CandidateContext.linkedAccountId],
      * docs/09-dpop.md). [CandidateContext.availableTools] narrows to what the channel can present;
      * `null` means no filter.
      */
-    fun authCandidates(ctx: CandidateContext): List<ToolId>
+    fun authCandidates(account: AccountProfile, ctx: CandidateContext): List<ToolId>
 
     /**
      * Which IDENT tools (re-identification, e.g. ident-fsc) could also close the remaining gap?
      * Separate from [authCandidates]: an identification's maxAcr does not depend on the account's
-     * enrollments, and only callers that want re-identification as a fallback ask for it.
+     * enrollments, and only callers that want re-identification as a fallback ask for it. [account]
+     * only gates a tool's `requires`; null before any account is known.
      */
-    fun reIdentCandidates(ctx: CandidateContext): List<ToolId>
+    fun reIdentCandidates(account: AccountProfile?, ctx: CandidateContext): List<ToolId>
 
     /**
      * Could this account reach [requiredAcr] in a future login with its current enrollments, and if
@@ -41,7 +42,7 @@ interface AuthPolicy {
      * Which ENROLL tools would close the gap toward requiredAcr? Also answers without an account,
      * for a registration that has not created one yet.
      */
-    fun enrollmentCandidates(ctx: CandidateContext): List<ToolId>
+    fun enrollmentCandidates(account: AccountProfile?, ctx: CandidateContext): List<ToolId>
 
     /**
      * Has this session proven anything recently enough to act on the account without asking again
@@ -53,11 +54,10 @@ interface AuthPolicy {
     fun resolveAcr(evidence: SessionEvidence, account: AccountProfile?): AcrLevel
 }
 
-/** Shared context for candidate resolution methods. */
+/** What the channel brings to a candidate question: its proofs, its target and what it can present. The account is passed beside it, where one is needed. */
 data class CandidateContext(
     val evidence: SessionEvidence,
     val requiredAcr: AcrLevel,
-    val account: AccountProfile? = null,
     val bindingKeyRef: String? = null,
     val linkedAccountId: AccountId? = null,
     val availableTools: Set<ToolId>? = null
