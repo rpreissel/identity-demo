@@ -61,7 +61,7 @@ object ConfirmPeerLoginJourney : JourneyWithoutInput<ConfirmPeerLoginState> {
      * Otherwise loa2 and a recent proof, never lowered for a never-identified account.
      */
     private fun requireFreshProof(ctx: JourneyContext): Transition {
-        if (ctx.account == null) return Transition.Abort(Text("Dieses Gerät ist noch keinem Konto zugeordnet. Bitte zuerst anmelden oder, ohne Konto, registrieren."))
+        if (ctx.account == null) return Transition.Abort(Text("Dieses Gerät ist mit keinem Konto verknüpft. Eine Anmeldung bestätigen kann nur ein Gerät, das mit dem Konto verknüpft ist."))
         if (ctx.peerApprovalCandidates().isEmpty()) return Transition.Abort(NO_APPROVAL_HERE)
         return Transition.RequireSubJourney(
             FreshProofJourney.before(ProofPurpose.PEER_LOGIN, REQUIRED_ACR),
