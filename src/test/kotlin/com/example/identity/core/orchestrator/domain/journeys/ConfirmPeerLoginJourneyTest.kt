@@ -18,7 +18,6 @@ import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ids.AccountId
 import io.kotest.core.spec.style.BehaviorSpec
-import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
@@ -104,25 +103,15 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
         }
     }
 
-    // I-33: only a device linked to the account vouches for it, on both ways in.
+    // I-34: the proof is what counts, not the device link. A channel signed in on a device linked
+    // to another account (a lookup login that declined the rebind) is gated like any other.
     given("Requested, an authenticated channel on a device linked to another account") {
         val acc = account(method("sms", AcrLevel.LOA2))
         val theCtx = ctx(account = acc, linkedAccountId = AccountId(acc.accountId.value + 1))
         `when`("the journey starts") {
             val transition = journey.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
-            then("aborts before asking for any proof") {
-                transition.shouldBeInstanceOf<Transition.Abort>().reason.template shouldContain "nicht mit Ihrem Konto verknüpft"
-            }
-        }
-    }
-
-    given("Requested, an authenticated channel on a device linked to nobody") {
-        val acc = account(method("sms", AcrLevel.LOA2))
-        val theCtx = ctx(account = acc, linkedAccountId = null)
-        `when`("the journey starts") {
-            val transition = journey.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
-            then("aborts before asking for any proof") {
-                transition.shouldBeInstanceOf<Transition.Abort>()
+            then("requires loa2 and a fresh proof for the channel's own account") {
+                transition shouldBe peerLoginProof
             }
         }
     }
@@ -135,14 +124,6 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
             val transition = journey.transition(ConfirmPeerLoginState.Requested, event, ctx(account = acc))
             then("goes on to Confirming") {
                 transition shouldBe Transition.To(ConfirmPeerLoginState.Confirming(CONFIRM_OFFER))
-            }
-        }
-
-        `when`("the FRESH_PROOF sub-journey finishes, but the device was linked elsewhere meanwhile") {
-            val theCtx = ctx(account = acc, linkedAccountId = AccountId(acc.accountId.value + 1))
-            val transition = journey.transition(ConfirmPeerLoginState.Requested, event, theCtx)
-            then("aborts instead of offering the approval") {
-                transition.shouldBeInstanceOf<Transition.Abort>()
             }
         }
     }

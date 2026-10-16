@@ -29,11 +29,10 @@ Sicherheitsniveau anhebt. Dieser Step-up erklärt selbst, warum gefragt wird, un
 ```mermaid
 stateDiagram-v2
   [*] --> Requested
-  Requested --> [*]: Gerät nicht mit dem Konto verknüpft (I-33) -> Abort (410)
+  Requested --> [*]: kein Konto bekannt -> Abort (410)
   Requested --> [*]: approve-qr hier nicht verfügbar -> Abort (410)
   Requested --> FRESH_PROOF: loa2 und frischer Nachweis, ohne erneute Identifizierung als Ausweg
-  FRESH_PROOF --> Confirming: SubJourneyFinished, Gerät weiter mit dem Konto verknüpft
-  FRESH_PROOF --> [*]: SubJourneyFinished, Gerät inzwischen umgebunden -> Abort (410)
+  FRESH_PROOF --> Confirming: SubJourneyFinished
   FRESH_PROOF --> [*]: SubJourneyCancelled -> Cancel
   Confirming --> Confirming: approve-qr abgebrochen, kommt zurück
   Confirming --> Finished: bestätigt oder abgelehnt
@@ -42,14 +41,12 @@ stateDiagram-v2
 
 Die Journey läuft in drei Schritten, für einen kalt geöffneten und einen angemeldeten Kanal gleich:
 
-1. **Nur ein mit dem Konto verknüpftes Gerät bürgt** ([I-33](../invarianten.md)). Ist das Gerät
-   über die Geräteverknüpfung (`DeviceAccountLink`) nicht mit dem Konto des Kanals verknüpft, endet
-   die Journey sofort mit `Abort`. Das gilt für den kalten Einstieg (dann ist meist gar kein Konto
-   bekannt) wie für einen angemeldeten Kanal, etwa nach einer Anmeldung per Kennwort, bei der die
-   Verknüpfung abgelehnt wurde. Identifizierung und Registrierung werden **nicht** angeboten.
-   Dasselbe gilt, wenn `approve-qr` auf diesem Kanal nicht verfügbar ist: Die Journey verlangt
-   keinen Nachweis, den sie danach nicht verwenden kann. Nach dem Nachweis wird beides noch einmal
-   geprüft, denn das Gerät kann in der Zwischenzeit umgebunden worden sein.
+1. **Ohne Konto geht nichts.** Ist über die Geräteverknüpfung (`DeviceAccountLink`) kein Konto
+   bekannt, endet die Journey sofort mit `Abort`: Der Nutzer meldet sich zuerst in der App an.
+   Identifizierung und Registrierung werden **nicht** angeboten. Dasselbe gilt, wenn `approve-qr`
+   auf diesem Kanal nicht verfügbar ist: Die Journey verlangt keinen Nachweis, den sie danach nicht
+   verwenden kann. Ob das Gerät mit dem Konto verknüpft ist, spielt sonst keine Rolle; es zählt der
+   Nachweis aus Schritt 2 ([I-34](../invarianten.md)).
 2. **`loa2` und ein frischer Nachweis**, als Sub-Journey [`FRESH_PROOF`](fresh-proof.md)
    ([ADR-61](../adr/ADR-061-frischer-nachweis-als-gemeinsame-sub-journey.md)). Die Schwelle ist fest `loa2`, auch für Konten, die nie identifiziert wurden.
    Reicht das Niveau nicht, läuft darin ein Step-up, und anders als bei `MANAGE_AUTH_METHODS` ohne

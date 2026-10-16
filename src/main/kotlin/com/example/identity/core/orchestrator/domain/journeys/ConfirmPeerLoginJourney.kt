@@ -21,8 +21,8 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
  * (docs/journeys/confirm-peer-login.md). The session must prove loa2 and hold a recent proof before
  * it may vouch for a login elsewhere: the `FRESH_PROOF` sub-journey, without a way out through
  * re-identification (ADR-61). A cold App scanning the QR opens a channel with it, an authenticated
- * channel starts it; both reach the same gate. Only a device linked to the account may vouch for it
- * (I-33): otherwise it aborts, and never falls back to identification or registration.
+ * channel starts it; both reach the same gate. Without a known account it aborts; it never falls
+ * back to identification or registration.
  */
 object ConfirmPeerLoginJourney : JourneyWithoutInput<ConfirmPeerLoginState> {
 
@@ -39,7 +39,7 @@ object ConfirmPeerLoginJourney : JourneyWithoutInput<ConfirmPeerLoginState> {
         when (state) {
             is ConfirmPeerLoginState.Requested -> when (event) {
                 JourneyEvent.Started -> requireFreshProof(ctx)
-                is JourneyEvent.SubJourneyFinished -> offerApproval(ctx)
+                is JourneyEvent.SubJourneyFinished -> Transition.To(confirming(ctx))
                 else -> event.notExpectedIn(state)
             }
 
@@ -52,40 +52,21 @@ object ConfirmPeerLoginJourney : JourneyWithoutInput<ConfirmPeerLoginState> {
         }
 
     /**
-     * loa2 and a recent proof, never lowered for a never-identified account. Never asked for when
-     * this device may not vouch anyway: this journey offers no identification or registration.
+     * loa2 and a recent proof for the channel's account (I-34), never lowered for a never-identified
+     * account. That account is what `approve-qr` approves for. Without one (a cold entry on an
+     * unlinked device) it aborts: this journey offers no identification or registration. Nor does
+     * it ask for a proof it could not use, with no approving tool on offer.
      */
     private fun requireFreshProof(ctx: JourneyContext): Transition {
-        val refusal = refusalOf(ctx)
-        if (refusal != null) return Transition.Abort(refusal)
+        if (ctx.account == null) return Transition.Abort(Text("Dieses Gerät ist noch keinem Konto zugeordnet. Bitte melden Sie sich zuerst in der App an."))
+        if (ctx.peerApprovalCandidates().isEmpty()) return Transition.Abort(Text("Eine Anmeldung lässt sich auf diesem Gerät gerade nicht bestätigen."))
         return Transition.RequireSubJourney(
             FreshProofJourney.before(ProofPurpose.PEER_LOGIN, REQUIRED_ACR),
             resumeWith = ConfirmPeerLoginState.Requested,
         )
     }
 
-    /** The approval itself. Checked again: the device may have been linked elsewhere during the proof. */
-    private fun offerApproval(ctx: JourneyContext): Transition {
-        val refusal = refusalOf(ctx)
-        if (refusal != null) return Transition.Abort(refusal)
-        return Transition.To(ConfirmPeerLoginState.Confirming(Offer(ctx.peerApprovalCandidates())))
-    }
-
-    /** Why this device may not vouch for a login right now, or null when it may. */
-    private fun refusalOf(ctx: JourneyContext): Text? = when {
-        // I-33 (docs/invarianten.md): only a device linked to the account vouches for it.
-        !ctx.isDeviceLinkedToAccount() -> NOT_LINKED
-        ctx.peerApprovalCandidates().isEmpty() -> NO_APPROVAL_HERE
-        else -> null
-    }
-
-    /** This device is durably linked to the account in hand; a channel without an account never is. */
-    private fun JourneyContext.isDeviceLinkedToAccount(): Boolean =
-        linkedAccountId != null && linkedAccountId == account?.accountId
+    private fun confirming(ctx: JourneyContext) = ConfirmPeerLoginState.Confirming(Offer(ctx.peerApprovalCandidates()))
 
     val REQUIRED_ACR = AcrLevel.LOA2
-
-    private val NOT_LINKED = Text("Dieses Gerät ist nicht mit Ihrem Konto verknüpft. Eine Anmeldung bestätigen kann nur ein Gerät, das mit dem Konto verknüpft ist.")
-
-    private val NO_APPROVAL_HERE = Text("Eine Anmeldung lässt sich auf diesem Gerät gerade nicht bestätigen.")
 }
