@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator
 
+import io.kotest.matchers.string.shouldContain
 import com.example.identity.contract.texts.templateOf
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
@@ -293,6 +294,7 @@ class LoginFlowIntegrationTest : IntegrationTestSupport() {
                 currentBindingKeyRef = bindingKeyA
                 val (lookupChannelSessionId, prompted) = passwordLookup(emailB, "second-account-password")
                 val declined = post("/orchestrator/api/v1/channels/$lookupChannelSessionId/answer", """{"answer":"decline"}""")
+                val confirmAttempt = runCatching { post("/orchestrator/api/v1/channels/$lookupChannelSessionId/peer-logins") }
                 val nextAuto = post("/orchestrator/api/v1/app/channels")
 
                 then("it asks for rebind confirmation instead of overwriting the device link silently") {
@@ -309,6 +311,11 @@ class LoginFlowIntegrationTest : IntegrationTestSupport() {
                 }
                 then("the device stays with A: a FAST channel goes to A's login") {
                     nextAuto.next() shouldBe mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
+                }
+                then("B's channel may not confirm a browser login on A's device (I-33), before any proof is asked") {
+                    val refused = shouldThrow<HttpClientErrorException> { confirmAttempt.getOrThrow() }
+                    refused.statusCode shouldBe HttpStatus.GONE
+                    templateOf(refused.getResponseBodyAs(Map::class.java)!!["text"]) shouldContain "nicht mit Ihrem Konto verknüpft"
                 }
             }
         }
