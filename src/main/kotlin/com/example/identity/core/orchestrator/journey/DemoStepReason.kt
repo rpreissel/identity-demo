@@ -92,7 +92,8 @@ internal object DemoStepReason {
         is ConfirmPeerLoginState.Requested -> Text("Ein Browser wartet auf Freigabe durch dieses Gerät. Zuerst wird geprüft, ob diese Sitzung dafür sicher genug ist.")
         is ConfirmPeerLoginState.Confirming -> Text("Diese Sitzung ist sicher genug - jetzt geben Sie die wartende Anmeldung im Browser frei.")
 
-        is WebSelectMethodState.SelectMethod -> Text("Die Anmeldeseite verlangt einen Nachweis - angeboten wird jedes Verfahren, das im Browser geht.")
+        is WebSelectMethodState.SelectLoginMethod, is WebSelectMethodState.SelectStepUpMethod ->
+            Text("Die Anmeldeseite verlangt einen Nachweis - angeboten wird jedes Verfahren, das im Browser geht.")
         is WebSelectMethodState.Start -> Text("Beginn oder zurück von der erneuten Identifizierung: Reichen die Nachweise für das verlangte Niveau, ist die Anmeldung fertig, sonst wird angeboten.")
 
         // AnswerableState is not sealed, so the compiler asks for this case; it only catches a

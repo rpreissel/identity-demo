@@ -27,24 +27,27 @@ prüft nur, ob die Nachweise dieses Niveau schon erreichen (siehe unten).
 stateDiagram-v2
   [*] --> Start
   Start --> Finished: übernommene Nachweise reichen schon
-  Start --> SelectMethod: Angebot aufgebaut
+  Start --> SelectLoginMethod: noch kein Konto, Angebot aufgebaut
+  Start --> SelectStepUpMethod: Step-up, Angebot aufgebaut
   Start --> RE_IDENTIFY: Step-up, kein Verfahren dieses Kontos reicht, Identifizierung möglich
   Start --> [*]: Step-up, kein Verfahren übrig, keine Identifizierung möglich -> Abort mit Grund
-  SelectMethod --> SelectMethod: ein Tool abgelehnt, weitere übrig
-  SelectMethod --> SelectMethod: Nachweis erbracht, Niveau noch nicht erreicht - Angebot neu aufgebaut
-  SelectMethod --> [*]: alle abgelehnt, ohne Konto -> Cancel
-  SelectMethod --> [*]: Einmalkennwort unter dem verlangten Niveau -> Abort
-  SelectMethod --> Finished: Nachweis erbracht, Niveau erreicht (Konto oder Einladung)
-  SelectMethod --> RE_IDENTIFY: Step-up, kein Verfahren übrig oder alle abgelehnt, Identifizierung möglich
-  SelectMethod --> [*]: Step-up, kein Verfahren übrig, keine Identifizierung möglich -> Abort mit Grund
+  SelectLoginMethod --> SelectLoginMethod: ein Tool abgelehnt, weitere übrig
+  SelectLoginMethod --> [*]: alle abgelehnt -> Cancel
+  SelectLoginMethod --> [*]: Einmalkennwort unter dem verlangten Niveau -> Abort
+  SelectLoginMethod --> Finished: Nachweis erbracht, Niveau erreicht (Konto oder Einladung)
+  SelectLoginMethod --> SelectStepUpMethod: Konto gefunden, Niveau noch nicht erreicht
+  SelectStepUpMethod --> SelectStepUpMethod: ein Tool abgelehnt oder Nachweis unter dem Niveau - Angebot neu aufgebaut
+  SelectStepUpMethod --> Finished: Nachweis erbracht, Niveau erreicht
+  SelectStepUpMethod --> RE_IDENTIFY: kein Verfahren übrig oder alle abgelehnt, Identifizierung möglich
+  SelectStepUpMethod --> [*]: kein Verfahren übrig, keine Identifizierung möglich -> Abort mit Grund
   RE_IDENTIFY --> Start: Identität bestätigt (SubJourneyFinished)
   RE_IDENTIFY --> [*]: abgelehnt (SubJourneyCancelled) -> Cancel
 ```
 
-**Zwei Fälle, ein Zustand.** Derselbe Zustand bedient zwei Fälle im Web-Kanal. Sie unterscheiden
-sich nur im Feld `accountAlreadyKnown`:
+**Zwei Fälle, zwei Zustände.** Die Auswahl im Web-Kanal hat zwei Fälle, und jeder ist ein eigener
+Zustand mit eigenem Titel und eigenem Ausweg:
 
-- **Erste Anmeldung** (`ctx.account` ist `null`): Angeboten werden alle Tools, die ihr Subjekt
+- **Erste Anmeldung** (`SelectLoginMethod`, `ctx.account` ist `null`): Angeboten werden alle Tools, die ihr Subjekt
   selbst aus der Eingabe finden (`ctx.lookupLoginCandidates`). Das Subjekt ist das, worauf sich
   die Anmeldung bezieht: ein Konto oder eine Einladung. Eine Identifizierung wird hier nie
   angeboten. Angeboten werden zwei Arten von Tools:
@@ -56,8 +59,8 @@ sich nur im Feld `accountAlreadyKnown`:
   dann sofort fertig, denn eine Einladung kann keine weiteren Nachweise sammeln. Verlangt die
   Anmeldung ein höheres Niveau, als die Einladung erreicht, bricht die Journey ab, bevor etwas
   gebunden wird.
-- **Step-up** (das Konto ist schon vor Beginn der Journey auf dem Kanal gesetzt): Angeboten werden
-  nur Anmelde-Tools für dieses Konto.
+- **Step-up** (`SelectStepUpMethod`, das Konto ist bekannt): Angeboten werden nur Anmelde-Tools
+  für dieses Konto. Bleibt keins übrig, ist die erneute Identifizierung der Ausweg (siehe unten).
 
 **Bei jedem Ereignis neu prüfen.** Bei jedem Ereignis (`Started`, `ActionCompleted`) prüft die
 Journey erneut, ob die vorhandenen Nachweise reichen. Dann baut sie die Kandidatenliste ganz neu

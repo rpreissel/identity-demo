@@ -34,12 +34,17 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
 
     override fun transition(state: WebSelectMethodState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
-            is WebSelectMethodState.SelectMethod -> when (event) {
+            is WebSelectMethodState.SelectLoginMethod -> when (event) {
                 JourneyEvent.ActionCompleted -> finishOrOfferMore(ctx)
-                // Nothing left on offer: a step-up may still identify again, a first login just ends.
-                is JourneyEvent.OfferExhausted ->
-                    if (ctx.account == null) Transition.Cancel
-                    else reIdentifyOr(ctx) { Transition.Cancel }
+                // Nothing left on offer: a first login just ends.
+                is JourneyEvent.OfferExhausted -> Transition.Cancel
+                else -> event.notExpectedIn(state)
+            }
+
+            is WebSelectMethodState.SelectStepUpMethod -> when (event) {
+                JourneyEvent.ActionCompleted -> finishOrOfferMore(ctx)
+                // Nothing left on offer: identifying again may still close the gap.
+                is JourneyEvent.OfferExhausted -> reIdentifyOr(ctx) { Transition.Cancel }
                 else -> event.notExpectedIn(state)
             }
 
@@ -67,13 +72,13 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
 
     /** Without an account nobody can be identified: only lookup-login tools, never enrollment. */
     private fun offerLookupLogin(ctx: JourneyContext): Transition =
-        Transition.To(WebSelectMethodState.SelectMethod(Offer(ctx.lookupLoginCandidates()), accountAlreadyKnown = false))
+        Transition.To(WebSelectMethodState.SelectLoginMethod(Offer(ctx.lookupLoginCandidates())))
 
     /** A step-up for a known account: its own methods first, otherwise identifying again, as in STEP_UP. */
     private fun offerStepUp(account: AccountProfile, ctx: JourneyContext): Transition {
         val ownMethods = ctx.authCandidates()
         if (ownMethods.isNotEmpty()) {
-            return Transition.To(WebSelectMethodState.SelectMethod(Offer(ownMethods), accountAlreadyKnown = true))
+            return Transition.To(WebSelectMethodState.SelectStepUpMethod(Offer(ownMethods)))
         }
         return reIdentifyOr(ctx) { cannotReach(account, ctx) }
     }

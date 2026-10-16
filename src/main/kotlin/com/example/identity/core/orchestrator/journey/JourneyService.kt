@@ -407,7 +407,6 @@ class JourneyService(
                 journeyTraceDetails.transitionDetail(transition, journey, channel, state, availableTools) { target ->
                     routing.nextFor(target, availableTools)
                 } +
-                state.logDetail +
                 mapOf("acrFloor" to ctx.acrFloor, "resolvedAcr" to ctx.policy.resolveAcr(ctx.evidence, ctx.account))
         )
     }

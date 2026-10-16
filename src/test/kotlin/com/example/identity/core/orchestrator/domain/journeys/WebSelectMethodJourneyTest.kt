@@ -43,9 +43,8 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
             val transition = journey.transition(journey.firstState, JourneyEvent.Started, webCtx())
 
             then("it offers the Web channel's lookup-login tools") {
-                val offered = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<WebSelectMethodState.SelectMethod>()
+                val offered = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<WebSelectMethodState.SelectLoginMethod>()
                 offered.offer.offered shouldContainExactlyInAnyOrder lookupTools
-                offered.accountAlreadyKnown shouldBe false
             }
         }
     }
@@ -58,26 +57,26 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
             val transition = journey.transition(journey.firstState, JourneyEvent.Started, theCtx)
 
             then("it offers only the account's auth tool still missing, no lookup tool") {
-                transition shouldBe Transition.To(WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-password"))), accountAlreadyKnown = true))
+                transition shouldBe Transition.To(WebSelectMethodState.SelectStepUpMethod(Offer(listOf(ToolId("auth-password")))))
             }
         }
     }
 
-    given("SelectMethod without an account") {
-        val state = WebSelectMethodState.SelectMethod(Offer(lookupTools), accountAlreadyKnown = false)
+    given("SelectLoginMethod") {
+        val state = WebSelectMethodState.SelectLoginMethod(Offer(lookupTools))
 
         `when`("the journey starts") {
             val transition = journey.transition(journey.firstState, JourneyEvent.Started, webCtx())
 
             then("it offers the lookup-login tools") {
-                transition shouldBe Transition.To(WebSelectMethodState.SelectMethod(Offer(state.offer.offered), accountAlreadyKnown = false))
+                transition shouldBe Transition.To(WebSelectMethodState.SelectLoginMethod(Offer(state.offer.offered)))
             }
         }
 
     }
 
-    given("SelectMethod with a single offered tool") {
-        val state = WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-sms-lookup"))), accountAlreadyKnown = false)
+    given("SelectLoginMethod with a single offered tool") {
+        val state = WebSelectMethodState.SelectLoginMethod(Offer(listOf(ToolId("auth-sms-lookup"))))
 
         `when`("that tool is abandoned") {
             val exhausted = state.declining(ToolId("auth-sms-lookup"))
@@ -88,10 +87,10 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
         }
     }
 
-    given("SelectMethod, the account known and the evidence meeting the floor") {
+    given("SelectStepUpMethod, the evidence meeting the floor") {
         val acc = account(method("sms", AcrLevel.LOA1))
         val theCtx = webCtx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
-        val state = WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-sms"))), accountAlreadyKnown = true)
+        val state = WebSelectMethodState.SelectStepUpMethod(Offer(listOf(ToolId("auth-sms"))))
 
         `when`("the journey starts, e.g. with restored evidence") {
             val transition = journey.transition(journey.firstState, JourneyEvent.Started, theCtx)
@@ -110,17 +109,17 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
         }
     }
 
-    given("SelectMethod, the account known but the evidence below the floor") {
+    given("SelectStepUpMethod, the evidence below the floor") {
         val acc = account(method("sms", AcrLevel.LOA1), method("password", AcrLevel.LOA1))
         val theCtx = webCtx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
-        val state = WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-password"))), accountAlreadyKnown = true)
+        val state = WebSelectMethodState.SelectStepUpMethod(Offer(listOf(ToolId("auth-password"))))
 
         `when`("an action brought evidence that still falls short") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
 
             then("it offers the account's auth tools again") {
                 transition shouldBe
-                    Transition.To(WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-password"))), accountAlreadyKnown = true))
+                    Transition.To(WebSelectMethodState.SelectStepUpMethod(Offer(listOf(ToolId("auth-password")))))
             }
         }
     }
@@ -165,7 +164,7 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
     given("a Web step-up offering one auth tool") {
         val acc = account(method("sms", AcrLevel.LOA1), method("password", AcrLevel.LOA1))
         val theCtx = webCtx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
-        val state = WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-password"))), accountAlreadyKnown = true)
+        val state = WebSelectMethodState.SelectStepUpMethod(Offer(listOf(ToolId("auth-password"))))
 
         `when`("that last tool is abandoned") {
             val exhausted = state.declining(ToolId("auth-password"))

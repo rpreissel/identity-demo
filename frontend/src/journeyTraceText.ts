@@ -203,7 +203,7 @@ const SHOWN_ELSEWHERE = new Set(['decision', 'toState', 'subIntent', 'toolId', '
 const ORDER = [
   'reason', 'attemptBudgetLeft', 'attemptedAccountId', 'attemptedPersonId', 'achievedAcr', 'resolvedAcr', 'acrFloor', 'targetAcr',
   'amr', 'factorTypes', 'accountId', 'personId', 'authCandidates', 'next', 'outcome', 'method', 'label', 'methodInstanceId',
-  'attested', 'attribute', 'enrollmentRef', 'invitation', 'methods', 'accountAlreadyKnown', 'tool',
+  'attested', 'attribute', 'enrollmentRef', 'invitation', 'methods', 'tool',
 ]
 
 function tagText(key: string): { label: string; explanation: string } {
@@ -254,8 +254,6 @@ function tagText(key: string): { label: string; explanation: string } {
       return { label: t('Einladung'), explanation: t('Die Einladung, über die angemeldet wurde.') }
     case 'methods':
       return { label: t('Übernommene Nachweise'), explanation: t('Nachweise, die aus einer früheren Sitzung übernommen wurden.') }
-    case 'accountAlreadyKnown':
-      return { label: t('Konto schon bekannt'), explanation: t('Ob das Konto vor der Wahl des Verfahrens schon feststand.') }
     case 'tool':
       return { label: t('Tool-Version'), explanation: t('Tool und Version, die der Client angegeben hat.') }
     default:
