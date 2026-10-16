@@ -623,7 +623,7 @@ erfüllt, auch wenn `loa2` wegen `enrolledUnderAcr`
 ([ADR-5](adr/ADR-005-drei-obergrenzen-fuer-das-sicherheitsniveau.md)) noch nicht erreichbar ist. Im Experiment ohne Identifizierung ist das immer so.
 
 **Für wen sie gilt, ist wie bei der E-Mail-Pflicht begrenzt:** Läuft der Nachweis über
-`AuthChoice`/`afterProof` statt über `afterEnrollment`, gilt die Pflicht nicht. Ein Konto, das
+`AuthChoice`/`nextAfterProof` statt über `afterEnrollment`, gilt die Pflicht nicht. Ein Konto, das
 sich nur anmeldet, wird also nie nachträglich blockiert.
 
 ---

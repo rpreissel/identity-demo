@@ -57,9 +57,9 @@ data class MethodEvidence(
     val loa: AcrLevel,
     /**
      * This method's ceiling for an MFA combination (docs/06-ablaeufe.md #1), from its enrollment
-     * record. Null contributes nothing to the cap.
+     * record. [AcrLevel.NONE] contributes nothing to the cap: an identification has no enrollment.
      */
-    val enrolledUnderAcr: AcrLevel? = null,
+    val enrolledUnderAcr: AcrLevel = AcrLevel.NONE,
     /** The factor kinds this method contributes. */
     val factorTypes: Set<FactorType> = emptySet(),
     /**
@@ -110,7 +110,7 @@ data class SessionEvidence(
                 MethodEvidence(
                     MethodName(m),
                     methodAcr[m]?.let(AcrLevel::parse) ?: AcrLevel.NONE,
-                    enrolledUnderAcr[m]?.let(AcrLevel::parse),
+                    enrolledUnderAcr[m]?.let(AcrLevel::parse) ?: AcrLevel.NONE,
                     factorTypes,
                     // Falls back to the method name when the caller has no source id.
                     amrSourceId[m] ?: m,

@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
-import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
@@ -117,7 +116,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = true)
         val theCtx = ctx(
             account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
-            acrFloor = AcrLevel.LOA1, channel = ChannelType.APP, availableTools = JourneyTestFixtures.appTools
+            acrFloor = AcrLevel.LOA1 , availableTools = JourneyTestFixtures.appTools
         )
         val state = RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email"))))
 
@@ -134,7 +133,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = true)
         val theCtx = ctx(
             account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
-            acrFloor = AcrLevel.LOA1, channel = ChannelType.WEB, availableTools = JourneyTestFixtures.webTools
+            acrFloor = AcrLevel.LOA1 , availableTools = JourneyTestFixtures.webTools
         )
         val state = RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email"))))
 
@@ -154,7 +153,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
         val theCtx = ctx(
             account = acc,
             evidence = evidence(listOf("sms", "password"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), account = acc),
-            acrFloor = AcrLevel.LOA1, channel = ChannelType.APP, availableTools = JourneyTestFixtures.appTools
+            acrFloor = AcrLevel.LOA1 , availableTools = JourneyTestFixtures.appTools
         )
         val state = RegisterState.SecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS))
 
@@ -171,7 +170,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
         val theCtx = ctx(
             account = acc,
             evidence = evidence(listOf("sms", "device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), account = acc),
-            acrFloor = AcrLevel.LOA1, channel = ChannelType.APP, availableTools = JourneyTestFixtures.appTools
+            acrFloor = AcrLevel.LOA1 , availableTools = JourneyTestFixtures.appTools
         )
         val state = RegisterState.SecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS))
 

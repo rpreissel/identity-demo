@@ -63,7 +63,7 @@ class KeycloakSessionEvidence(
     fun toMethodEvidence(): MethodEvidence = MethodEvidence(
         method = MethodName(checkNotNull(id?.method)),
         loa = AcrLevel.parse(loa) ?: AcrLevel.NONE,
-        enrolledUnderAcr = enrolledUnderAcr?.let(AcrLevel::parse),
+        enrolledUnderAcr = enrolledUnderAcr?.let(AcrLevel::parse) ?: AcrLevel.NONE,
         factorTypes = factorTypes.split(",").filter { it.isNotEmpty() }.map(FactorType::valueOf).toSet(),
         amrSourceId = amrSourceId,
         axis = EvidenceAxis.valueOf(axis),

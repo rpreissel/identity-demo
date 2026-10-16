@@ -4,7 +4,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQue
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.policy.fromNow
-import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -290,7 +289,7 @@ class RegisterJourneyTest : BehaviorSpec({
 
         `when`("the last candidate is abandoned") {
             val exhausted = state.declining(ToolId("auth-sms"))
-            val transition = journey.transition(exhausted as RegisterState, JourneyEvent.OfferExhausted(exhausted.declined), ctx(account = acc, channel = ChannelType.WEB)
+            val transition = journey.transition(exhausted as RegisterState, JourneyEvent.OfferExhausted(exhausted.declined), ctx(account = acc )
             )
             then("falls back to identification again, not to enrollment - never wrapped with the factor-kind obligation") {
                 transition shouldBe Transition.To(RegisterState.Identifying(Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"), ToolId("ident-nect")))))
@@ -303,7 +302,7 @@ class RegisterJourneyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = true)
         val theCtx = ctx(
             account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
-            acrFloor = AcrLevel.LOA1, channel = ChannelType.APP, availableTools = JourneyTestFixtures.appTools
+            acrFloor = AcrLevel.LOA1 , availableTools = JourneyTestFixtures.appTools
         )
 
         `when`("resumed after adopting the attestation (ActionCompleted)") {
@@ -355,7 +354,6 @@ class RegisterJourneyTest : BehaviorSpec({
             account = acc,
             evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.WEB,
             availableTools = JourneyTestFixtures.webTools
         )
         val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), emailObligation = false)
@@ -375,7 +373,6 @@ class RegisterJourneyTest : BehaviorSpec({
             account = acc,
             evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.WEB,
             availableTools = JourneyTestFixtures.webTools
         )
         // enroll-password is no candidate without a confirmed email (docs/03-tool-architektur.md #5).
@@ -396,7 +393,6 @@ class RegisterJourneyTest : BehaviorSpec({
             account = acc,
             evidence = evidence(listOf("password"), setOf(FactorType.KNOWLEDGE), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.WEB,
             availableTools = JourneyTestFixtures.webTools
         )
         val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), emailObligation = false)
@@ -417,7 +413,6 @@ class RegisterJourneyTest : BehaviorSpec({
             account = acc,
             evidence = evidence(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.APP,
             availableTools = JourneyTestFixtures.appTools
         )
         val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = false)
@@ -436,7 +431,6 @@ class RegisterJourneyTest : BehaviorSpec({
             account = acc,
             evidence = evidence(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.APP,
             availableTools = JourneyTestFixtures.appTools
         )
         val state = Enrolling(Offer(listOf(ToolId("enroll-device"))), emailObligation = false)
@@ -455,7 +449,6 @@ class RegisterJourneyTest : BehaviorSpec({
             account = acc,
             evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.APP,
             availableTools = JourneyTestFixtures.appTools
         )
         val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), emailObligation = false)
@@ -475,7 +468,6 @@ class RegisterJourneyTest : BehaviorSpec({
             account = acc,
             evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.APP,
             availableTools = JourneyTestFixtures.appTools + ToolId("auth-email")
         )
         val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = false)
@@ -496,7 +488,6 @@ class RegisterJourneyTest : BehaviorSpec({
             account = acc,
             evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.WEB,
             availableTools = JourneyTestFixtures.webTools - ToolId("enroll-password")
         )
         val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = false)
@@ -515,7 +506,6 @@ class RegisterJourneyTest : BehaviorSpec({
             account = acc,
             evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.WEB,
             availableTools = JourneyTestFixtures.webTools
         )
         val state = RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email"))))
@@ -536,7 +526,6 @@ class RegisterJourneyTest : BehaviorSpec({
             account = acc,
             evidence = evidence(listOf("sms", "password"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.APP,
             availableTools = JourneyTestFixtures.appTools
         )
         val state = RegisterState.SecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS))
@@ -555,7 +544,6 @@ class RegisterJourneyTest : BehaviorSpec({
             account = acc,
             evidence = evidence(listOf("sms", "device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), account = acc),
             acrFloor = AcrLevel.LOA1,
-            channel = ChannelType.APP,
             availableTools = JourneyTestFixtures.appTools
         )
         val state = RegisterState.SecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS))

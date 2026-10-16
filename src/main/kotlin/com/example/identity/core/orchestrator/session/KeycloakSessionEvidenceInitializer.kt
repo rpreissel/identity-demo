@@ -44,7 +44,7 @@ data class MethodEvidenceRow(
         fun of(evidence: MethodEvidence) = MethodEvidenceRow(
             method = evidence.method.value,
             loa = evidence.loa.value,
-            enrolledUnderAcr = evidence.enrolledUnderAcr?.value,
+            enrolledUnderAcr = evidence.enrolledUnderAcr.value,
             factorTypes = evidence.factorTypes.joinToString(",") { it.name },
             amrSourceId = evidence.amrSourceId,
             axis = evidence.axis.name,

@@ -167,7 +167,7 @@ laufenden Schritts zurück (ADR-47).
 
 **Ein schon eingerichtetes Konto.** Manchmal findet `Identifying` ein **bereits bestehendes** Konto
 (über die KVNR oder die Partnernummer), auf dem schon ein ausreichend starkes Verfahren eingerichtet
-ist. Dann läuft der Nachweis über `AuthChoice`/`afterProof` und nicht über
+ist. Dann läuft der Nachweis über `AuthChoice`/`nextAfterProof` und nicht über
 `Enrolling`/`afterEnrollment`. Die Pflicht zur zweiten Faktorart und die E-Mail-Pflicht gelten dann
 **nicht**.
 

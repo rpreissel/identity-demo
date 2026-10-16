@@ -5,7 +5,6 @@ import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.account.AccountProfile
-import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
@@ -36,7 +35,7 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
         account: AccountProfile? = null,
         evidence: SessionEvidence = SessionEvidence(emptyList()),
         acrFloor: AcrLevel = AcrLevel.LOA1
-    ) = ctx(account = account, evidence = evidence, acrFloor = acrFloor, availableTools = webTools, channel = ChannelType.WEB)
+    ) = ctx(account = account, evidence = evidence, acrFloor = acrFloor, availableTools = webTools )
 
     given("no account known yet") {
         `when`("a new journey starts") {
@@ -147,7 +146,7 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
 
     given("the same step-up, but no identification tool is available on the Web") {
         val theCtx = ctx(
-            account = smsAndDevice, evidence = smsProven, acrFloor = AcrLevel.LOA2, channel = ChannelType.WEB,
+            account = smsAndDevice, evidence = smsProven, acrFloor = AcrLevel.LOA2 ,
             availableTools = webTools - setOf(ToolId("ident-fsc"), ToolId("ident-eid"))
         )
 

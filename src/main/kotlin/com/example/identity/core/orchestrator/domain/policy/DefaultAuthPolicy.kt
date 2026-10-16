@@ -179,12 +179,12 @@ class DefaultAuthPolicy(
     /**
      * The MFA bump over one session's evidence, capped by the highest [MethodEvidence.enrolledUnderAcr]
      * among it. Does not filter by axis: the caller must pass authenticator evidence only, or an
-     * identification could buy MFA credit it already priced into its own loa. A method without
-     * `enrolledUnderAcr` adds nothing to the cap (docs/05-api.md Abschnitt 3b).
+     * identification could buy MFA credit it already priced into its own loa. A method enrolled under
+     * nothing adds nothing to the cap (docs/05-api.md Abschnitt 3b).
      */
     private fun applyMfaBump(base: AcrLevel, evidence: SessionEvidence): AcrLevel {
         val distinctMethods = evidence.methods.map { it.method }.distinct().size
-        val maxEnrolledUnderAcr = evidence.methods.mapNotNull { it.enrolledUnderAcr }.maxOrNull() ?: AcrLevel.NONE
+        val maxEnrolledUnderAcr = evidence.methods.maxOfOrNull { it.enrolledUnderAcr } ?: AcrLevel.NONE
         return combinedAcr(base, distinctMethods, evidence.factorTypes, maxEnrolledUnderAcr)
     }
 

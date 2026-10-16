@@ -9,16 +9,6 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 import kotlin.reflect.KClass
 
 /**
- * The ACR floor for self-service actions on an account's own credentials and data: a hijacked loa1
- * session must not act as if it had proved more. Identified accounts need loa2. A never-identified
- * account ([AccountProfile.personId] `== null`, "Enrollment zuerst") needs loa1: it has no bound
- * identity to expose, and it could never reach loa2 without an identification anyway. That the
- * mailbox alone then suffices for destructive self-service is deliberate (ADR-37).
- */
-fun selfServiceAcrFloor(account: AccountProfile?): AcrLevel =
-    if (account?.personId == null) AcrLevels.DEFAULT_REQUIRED_ACR else AcrLevel.LOA2
-
-/**
  * A kind of journey: what the user (or the server, for a sub-journey) wants to achieve, where it
  * may start and how it gets there (docs/04-orchestrierung.md #2 and #8). One object per kind; one
  * run of it is an `AuthJourney`.

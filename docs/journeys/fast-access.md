@@ -79,7 +79,7 @@ Sub-Journey, also einen untergeordneten Ablauf, der auch von anderen Journeys ge
   gemeinsam genutzte Sub-Journey [`RE_IDENTIFY`](re-identify.md) nach einer erneuten
   Identifizierung.
 
-Ist die Sub-Journey fertig (`SubJourneyFinished`), prüft `Start` mit `afterProof` erneut, ob der
+Ist die Sub-Journey fertig (`SubJourneyFinished`), prüft `Start` mit `nextAfterProof` erneut, ob der
 Nachweis reicht.
 
 **Der Unterschied im Code.** Der Unterschied zwischen beiden Zustandsarten zeigt sich im Feld

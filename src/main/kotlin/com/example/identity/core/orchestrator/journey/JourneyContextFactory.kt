@@ -35,7 +35,6 @@ class JourneyContextFactory(
     fun contextFor(journey: AuthJourney, channel: ChannelSession): JourneyContext {
         val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
         return JourneyContext(
-            channel = channel.type,
             signingIn = signingInOf(channel),
             evidence = evidence?.toCoreEvidence() ?: SessionEvidence(emptyList()),
             acrFloor = channel.acrFloor,

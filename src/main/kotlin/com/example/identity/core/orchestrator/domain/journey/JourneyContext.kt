@@ -17,11 +17,6 @@ import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
  * questions, they change nothing.
  */
 data class JourneyContext(
-    /**
-     * Which facade opened this channel (docs/02-domaenenmodell.md #4). A declared fact, so a journey
-     * never infers the channel type from [bindingKeyRef] being null.
-     */
-    val channel: ChannelType,
     /** Who this channel is signing in: nobody yet, an account, or a process access. */
     val signingIn: SigningIn,
     /** What this channel's session has already proven. */

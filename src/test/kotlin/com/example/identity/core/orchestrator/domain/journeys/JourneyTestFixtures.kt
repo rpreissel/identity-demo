@@ -154,9 +154,8 @@ object JourneyTestFixtures {
         // (docs/09-dpop.md) passes a different accountId.
         linkedAccountId: AccountId? = account?.accountId,
         availableTools: Set<ToolId> = allToolIds,
-        channel: ChannelType = ChannelType.APP
     ) = JourneyContext(
-        channel, account?.let { SigningIn.Holder(it) } ?: SigningIn.Unknown, evidence, acrFloor, bindingKeyRef,
+        account?.let { SigningIn.Holder(it) } ?: SigningIn.Unknown, evidence, acrFloor, bindingKeyRef,
         linkedAccountId, policy, catalog, availableTools
     )
 }

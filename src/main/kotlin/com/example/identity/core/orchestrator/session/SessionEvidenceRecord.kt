@@ -95,7 +95,7 @@ class SessionEvidenceRecord(
             val record = MethodEvidenceRecord(
                 method = method,
                 loa = update.loa.value,
-                enrolledUnderAcr = update.enrolledUnderAcr?.value,
+                enrolledUnderAcr = update.enrolledUnderAcr.value,
                 factorTypes = (existing?.factorTypes ?: emptySet()) + update.factorTypes,
                 amrSourceId = update.amrSourceId,
                 axis = update.axis,
@@ -128,7 +128,7 @@ data class MethodEvidenceRecord(
  * through here.
  */
 fun MethodEvidenceRecord.toMethodEvidence(): MethodEvidence =
-    MethodEvidence(MethodName(method), AcrLevel.parse(loa) ?: AcrLevel.NONE, enrolledUnderAcr?.let(AcrLevel::parse), factorTypes, amrSourceId, axis, provenAt)
+    MethodEvidence(MethodName(method), AcrLevel.parse(loa) ?: AcrLevel.NONE, enrolledUnderAcr?.let(AcrLevel::parse) ?: AcrLevel.NONE, factorTypes, amrSourceId, axis, provenAt)
 
 /** The core [SessionEvidence] this channel's evidence currently is. */
 fun SessionEvidenceRecord.toCoreEvidence(): SessionEvidence = SessionEvidence(methods.map { it.toMethodEvidence() })

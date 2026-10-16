@@ -53,10 +53,10 @@ class JourneyRecorder(
         val updates = if (axis == null) emptyList() else tool.amrOf(outcome).map { method ->
             MethodEvidence(
                 method = MethodName(method),
-            // This run's achieved or capped level, else the tool's declared ceiling.
+                // This run's achieved or capped level, else the tool's declared ceiling.
                 loa = effectiveAcr ?: tool.maxAcr,
-            // The account's enrollment record for this method (docs/06-ablaeufe.md #1).
-                enrolledUnderAcr = accountId?.let { accountService.findActiveMethod(it, method)?.enrolledUnderAcr },
+                // The account's enrollment record for this method (docs/06-ablaeufe.md #1); none for an identification.
+                enrolledUnderAcr = accountId?.let { accountService.findActiveMethod(it, method)?.enrolledUnderAcr } ?: AcrLevel.NONE,
                 factorTypes = tool.factorsOf(outcome),
                 amrSourceId = tool.toolId.value,
                 axis = axis,

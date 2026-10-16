@@ -19,6 +19,16 @@ import com.example.identity.contract.tool_api.ToolRole
  */
 
 /**
+ * The ACR floor for self-service actions on an account's own credentials and data: a hijacked loa1
+ * session must not act as if it had proved more. Identified accounts need loa2. A never-identified
+ * account ([AccountProfile.personId] `== null`, "Enrollment zuerst") needs loa1: it has no bound
+ * identity to expose, and it could never reach loa2 without an identification anyway. That the
+ * mailbox alone then suffices for destructive self-service is deliberate (ADR-37).
+ */
+fun selfServiceAcrFloor(account: AccountProfile?): AcrLevel =
+    if (account?.personId == null) AcrLevels.DEFAULT_REQUIRED_ACR else AcrLevel.LOA2
+
+/**
  * The level a new credential or an attested anchor is written under: what the session had already
  * established before this completion, never more (self-escalation, ADR-5). With nothing behind the
  * session ("Enrollment zuerst" without identification) it is the flat baseline, not the tool's

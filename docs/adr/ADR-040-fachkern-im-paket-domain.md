@@ -15,10 +15,11 @@ Architekturregeln als Tests ausdrückt (`OrchestratorArchitectureTest`, `Account
 ## Was wo liegt
 
 - **`orchestrator.domain`** (früher `kernel`, [ADR-27](ADR-027-gemeinsame-typen-im-kernel-paket.md)):
-  - das Vokabular: `AuthIntent`, die Niveaus (ACR), der Kanaltyp, die Fehlercodes und
-    `ToolCatalog`;
-  - `domain.journey`: `IntentStrategy` mit `Transition` und `Action`, die Zustände (`state`) und die
-    Strategien (`strategy`). Dazu kommen die Regeln der handelnden Phase:
+  - das Vokabular: die Niveaus (ACR), der Kanaltyp, die Fehlercodes, `ToolCatalog` und die Liste
+    aller Journey-Arten (`Journeys`);
+  - `domain.journey`: `Journey` mit `Transition` und `Action`, die Zustände (`state`); die
+    Journey-Arten selbst liegen in `domain.journeys` (seit [ADR-63](ADR-063-journeys-als-objekte-mit-startpunkten.md)
+    Objekte statt `AuthIntent`-Enum und `IntentStrategy`). Dazu kommen die Regeln der handelnden Phase:
     - `AccountRules.kt`: welches Konto eine Aktion beschreibt (ADR-18/20),
     - `CredentialRules.kt`: das Niveau eines Nachweises (ADR-5), das implizite Binden eines Geräts
       und abhängige Verfahren;
@@ -58,6 +59,6 @@ Architekturregeln als Tests ausdrückt (`OrchestratorArchitectureTest`, `Account
   existiert im Code oder ist im Diagramm ausdrücklich deklariert. Und jeder Zustand eines Intents
   ist gezeichnet. Der Test fand beim ersten Lauf zwei Abweichungen: `EnrollFirstStart` fehlte, und
   statt der Sub-Journey `RE_IDENTIFY` stand ein Hilfsknoten im Diagramm.
-- **`IntentStrategy.kt` ist in fünf Dateien geteilt** (`IntentStrategy`, `JourneyContext`,
+- **`Journey.kt` ist in fünf Dateien geteilt** (`Journey`, `JourneyContext`,
   `JourneyEvent`, `Transition`, `Action`). Wer nachschlägt, was eine `Transition` ist, muss so nicht
   die anderen vier mitlesen.
