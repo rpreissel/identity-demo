@@ -1,10 +1,11 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.offer
+import com.example.identity.core.orchestrator.domain.journey.enrollmentCandidates
 import com.example.identity.core.orchestrator.domain.journey.state.ProofPurpose
 import com.example.identity.core.orchestrator.domain.journey.JourneyStart
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
@@ -99,12 +100,9 @@ object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
     }
 
     private fun offerEnrollment(ctx: JourneyContext): Transition {
-        val candidates = CandidateTools.forEnrollment(ctx.requireAccount(), ctx.acrFloor, ctx)
-        return if (candidates.isEmpty()) {
+        ctx.requireAccount()
+        return offer(ctx.enrollmentCandidates(), ManageAuthMethodsState::Enrolling)
             // Nothing left to add is not an error (docs/07-betrieb.md #1).
-            Transition.Authenticated
-        } else {
-            Transition.To(ManageAuthMethodsState.Enrolling(Offer(candidates)))
-        }
+            ?: Transition.Authenticated
     }
 }

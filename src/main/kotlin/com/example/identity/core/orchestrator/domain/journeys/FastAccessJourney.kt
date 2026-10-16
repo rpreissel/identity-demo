@@ -1,14 +1,15 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.offer
+import com.example.identity.core.orchestrator.domain.journey.authCandidates
+import com.example.identity.core.orchestrator.domain.journey.deviceKeyCandidate
 import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
-import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
 import com.example.identity.core.orchestrator.domain.journey.StartingAccount
 import com.example.identity.core.orchestrator.domain.journey.DeviceLink
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
-import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
@@ -52,14 +53,10 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
 
     /** The device's key first, then the account's other methods; without either, a registration. */
     private fun firstOffer(ctx: JourneyContext): Transition {
-        val account = ctx.account ?: return requireRegister()
-        val deviceKey = CandidateTools.preferredDeviceAuth(account, ctx)
-        val methods = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
-        return when {
-            deviceKey != null -> Transition.To(FastAccessState.PreferredAuth(deviceKey))
-            methods.isNotEmpty() -> Transition.To(AuthChoice(Offer(methods)))
-            else -> requireRegister()
-        }
+        if (ctx.account == null) return requireRegister()
+        return ctx.deviceKeyCandidate()?.let { Transition.To(FastAccessState.PreferredAuth(it)) }
+            ?: offer(ctx.authCandidates(), ::AuthChoice)
+            ?: requireRegister()
     }
 
     /**

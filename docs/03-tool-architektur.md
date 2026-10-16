@@ -188,7 +188,7 @@ Die übrigen vier Rollen brauchen eine Erklärung:
   Kontos ([Verfahren `invite`](verfahren/invite.md)).
 - `role=CORRELATION` (`ident-kvnr`) kennzeichnet einen Schritt, der nur zuordnet. Für sich beweist
   er nichts: Eine eingetippte KVNR oder Partnernummer ist kein Nachweis. Ein solches Tool wird nie
-  für eine (erneute) Identifizierung angeboten, denn `forIdentification` und `reIdentCandidates`
+  für eine (erneute) Identifizierung angeboten, denn `identificationCandidates` und `reIdentCandidates`
   nehmen nur Tools der Rolle `IDENTIFICATION`. Starten lässt es sich erst, wenn die Identität
   bereits bestätigt ist (`requires`, ADR-18). `factorTypes = {}` folgt aus dieser Rolle, definiert
   sie aber nicht.
@@ -453,7 +453,7 @@ Sitzung schon nachgewiesen hat. Eine bestätigte Adresse hebt das Niveau des Kan
 
 `ATTESTATION` als `IDENTIFICATION` einzuordnen, wäre aus zwei Gründen falsch:
 
-- `CandidateTools.forIdentification` und `DefaultAuthPolicy.reIdentCandidates` würden das Tool dann
+- `ctx.identificationCandidates` und `DefaultAuthPolicy.reIdentCandidates` würden das Tool dann
   als Identifizierung anbieten.
 - Über `enrolledUnderAcr` würde die Obergrenze der danach eingerichteten Verfahren steigen (ADR-5).
 

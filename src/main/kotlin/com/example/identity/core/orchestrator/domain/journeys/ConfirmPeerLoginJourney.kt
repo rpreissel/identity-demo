@@ -1,9 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.peerApprovalCandidates
 import com.example.identity.core.orchestrator.domain.journey.state.ProofPurpose
 import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
 import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
 import com.example.identity.core.orchestrator.domain.journey.StartingAccount
@@ -49,7 +49,7 @@ object ConfirmPeerLoginJourney : JourneyWithoutInput<ConfirmPeerLoginState> {
             }
         }
 
-    private fun confirming(ctx: JourneyContext) = ConfirmPeerLoginState.Confirming(Offer(CandidateTools.forPeerApproval(ctx)))
+    private fun confirming(ctx: JourneyContext) = ConfirmPeerLoginState.Confirming(Offer(ctx.peerApprovalCandidates()))
 
     /**
      * Without an account (a cold entry on an unlinked device) it aborts; this journey offers no

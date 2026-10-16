@@ -25,7 +25,7 @@ sealed interface FreshProofState : JourneyState {
 
     /**
      * Re-prove any one active factor, fresh
-     * ([com.example.identity.core.orchestrator.domain.journey.CandidateTools.forReconfirmation]).
+     * ([com.example.identity.core.orchestrator.domain.journey.reconfirmationCandidates]).
      * The level alone is not enough: a hijacked session must not act on old evidence.
      */
     data class Reproving(

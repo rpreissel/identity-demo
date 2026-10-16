@@ -40,7 +40,7 @@ genau dem Verfahren durch, das es nicht erreichen konnte.
 **Dann die Frische.** Der jüngste Nachweis der Sitzung darf höchstens fünf Minuten alt sein
 (`AuthPolicy.hasFreshProof`, `identity.policy.self-service-max-age`). Ist er älter, weist der
 Nutzer in `Reproving` noch einmal ein beliebiges aktives Verfahren nach, egal welches Niveau es
-erreicht (`CandidateTools.forReconfirmation`). `Reproving` verbucht ihn als `Action.Reconfirm`,
+erreicht (`ctx.reconfirmationCandidates`). `Reproving` verbucht ihn als `Action.Reconfirm`,
 nie als `Action.AcceptProof`: Er wird nie als Nachweis der Sitzung (`MethodEvidence`) gespeichert
 und erlaubt genau die eine Aktion des Aufrufers. Danach endet die Sub-Journey.
 

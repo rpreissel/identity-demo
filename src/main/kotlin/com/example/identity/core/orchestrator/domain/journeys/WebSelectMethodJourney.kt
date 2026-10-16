@@ -1,8 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.authCandidates
+import com.example.identity.core.orchestrator.domain.journey.lookupLoginCandidates
 import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
 import com.example.identity.core.orchestrator.domain.InvitationAcceptance
-import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.OpensWebChannel
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -68,12 +69,6 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
      * Never enrollment, and identification only as the step-up's way out (`RE_IDENTIFY`, see
      * [afterProof]), never as a first login: without an account there is nobody to identify.
      */
-    private fun candidatesFor(ctx: JourneyContext): List<ToolId> {
-        val account = ctx.account
-        return if (account == null) {
-            CandidateTools.forLookupLogin(ctx)
-        } else {
-            CandidateTools.forAuth(account, ctx.acrFloor, ctx)
-        }
-    }
+    private fun candidatesFor(ctx: JourneyContext): List<ToolId> =
+        if (ctx.account == null) ctx.lookupLoginCandidates() else ctx.authCandidates()
 }

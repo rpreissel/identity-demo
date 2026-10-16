@@ -1,16 +1,17 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.offer
+import com.example.identity.core.orchestrator.domain.journey.authCandidates
+import com.example.identity.core.orchestrator.domain.journey.lookupLoginCandidates
 import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
 import com.example.identity.core.orchestrator.domain.journey.StartingAccount
 import com.example.identity.core.orchestrator.domain.journey.DeviceLink
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
-import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
@@ -37,9 +38,8 @@ object LookupLoginJourney : JourneyWithoutInput<LookupLoginState> {
                 else -> {
                     // Every tool that resolves the account itself; authCandidates would need an
                     // account, which does not exist yet.
-                    val tools = CandidateTools.forLookupLogin(ctx)
-                    if (tools.isEmpty()) Transition.Abort(Text("Es gibt kein Anmeldeverfahren, das nicht an ein Gerät gebunden ist"))
-                    else Transition.To(LookupLoginState.Credential(Offer(tools)))
+                    offer(ctx.lookupLoginCandidates(), LookupLoginState::Credential)
+                        ?: Transition.Abort(Text("Es gibt kein Anmeldeverfahren, das nicht an ein Gerät gebunden ist"))
                 }
             }
 
@@ -75,11 +75,7 @@ object LookupLoginJourney : JourneyWithoutInput<LookupLoginState> {
                 else -> Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND))
             }
         }
-        val candidates = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
-        if (candidates.isNotEmpty()) {
-            return Transition.To(LookupLoginState.AdditionalFactor(Offer(candidates)))
-        }
-        return reIdentifyOr(ctx.acrFloor, ctx, resumeWith = LookupLoginState.Start) {
+        return offer(ctx.authCandidates(), LookupLoginState::AdditionalFactor) ?: reIdentifyOr(ctx.acrFloor, ctx, resumeWith = LookupLoginState.Start) {
             Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
         }
     }

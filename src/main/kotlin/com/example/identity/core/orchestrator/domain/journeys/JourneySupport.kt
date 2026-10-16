@@ -1,12 +1,11 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.reIdentificationCandidates
 import com.example.identity.core.orchestrator.domain.journey.state.ToolFreeState
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.core.orchestrator.domain.journey.state.AnswerableState
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
-import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -32,7 +31,7 @@ internal inline fun AnswerableState.deviceLinkAnswered(event: JourneyEvent, when
 
 /**
  * `RE_IDENTIFY` toward [targetAcr] when an identification can reach it on this channel
- * ([CandidateTools.forReIdentification]), [whenNone] otherwise. [resumeWith] is where the asking
+ * ([reIdentificationCandidates]), [whenNone] otherwise. [resumeWith] is where the asking
  * journey carries on once the sub-journey returns. A required sub-journey: declining it cancels the
  * asking journey.
  */
@@ -42,7 +41,7 @@ internal inline fun reIdentifyOr(
     resumeWith: ToolFreeState,
     whenNone: () -> Transition
 ): Transition =
-    if (CandidateTools.forReIdentification(targetAcr, ctx).isNotEmpty()) {
+    if (ctx.reIdentificationCandidates(targetAcr).isNotEmpty()) {
         Transition.RequireSubJourney(ReIdentifyJourney.toReach(targetAcr), resumeWith = resumeWith)
     } else {
         whenNone()

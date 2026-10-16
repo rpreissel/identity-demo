@@ -28,7 +28,7 @@ Schalter aus. Lesen und setzen lässt er sich über
 **Grundidee:** Zum Start ist kein Konto nötig. Das Konto entsteht erst, wenn das erste Verfahren
 fertig eingerichtet ist, und nicht schon bei der Identifizierung. Das erledigt die allgemeine Aktion
 `Action.AdoptCredential` im `JourneyService`. Bis dahin fragt die Journey die
-Einrichtungs-Kandidaten ohne Konto ab (`CandidateTools.forEnrollment(account = null, …)`): Dann ist
+Einrichtungs-Kandidaten ohne Konto ab (`ctx.enrollmentCandidates()` ohne Konto): Dann ist
 noch kein Verfahren aktiv.
 
 **Zuerst die E-Mail-Adresse.** Der erste Schritt ist fest: Der Nutzer bestätigt seine

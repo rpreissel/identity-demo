@@ -491,7 +491,7 @@ gleichwertige Wege dorthin:
 3. eine Identifizierung (`ident-fsc`/`ident-eid`/`ident-nect`) allein über ihr eigenes IAL.
 
 Weil Weg 3 gleichwertig ist, bietet die Anmeldung die erneute Identifizierung
-(`CandidateTools.forReIdentification`) standardmäßig als Ausweichweg an. Das geschieht, sobald die
+(`ctx.reIdentificationCandidates`) standardmäßig als Ausweichweg an. Das geschieht, sobald die
 vorhandenen Anmeldeverfahren nicht reichen (`StepUpJourney.toward`; nur der Zweck
 `ProofPurpose.PEER_LOGIN` schließt das aus). `loa3` bzw. AAL3 ist bewusst nicht ausgearbeitet.
 

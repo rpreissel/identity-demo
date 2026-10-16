@@ -1,15 +1,15 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.offer
+import com.example.identity.core.orchestrator.domain.journey.reconfirmationCandidates
 import com.example.identity.core.orchestrator.domain.journey.state.ProofPurpose
 import com.example.identity.core.orchestrator.domain.journey.JourneyStart
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.OnlyAsSubJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
-import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
@@ -66,9 +66,8 @@ object FreshProofJourney : Journey<FreshProofState> {
     /** Done on a recent proof, else one active factor is re-proven. */
     private fun freshness(state: FreshProofState.Start, ctx: JourneyContext): Transition {
         if (ctx.policy.hasFreshProof(ctx.evidence)) return Transition.Authenticated
-        val candidates = CandidateTools.forReconfirmation(ctx.requireAccount(), ctx)
-        // Unreachable on an authenticated channel; abort rather than pass silently.
-        return if (candidates.isEmpty()) Transition.Abort(Text("Kein aktiver Faktor zur erneuten Bestaetigung verfuegbar"))
-        else Transition.To(FreshProofState.Reproving(state.requiredAcr, state.purpose, Offer(candidates)))
+        return offer(ctx.reconfirmationCandidates()) { FreshProofState.Reproving(state.requiredAcr, state.purpose, it) }
+            // Unreachable on an authenticated channel; abort rather than pass silently.
+            ?: Transition.Abort(Text("Kein aktiver Faktor zur erneuten Bestaetigung verfuegbar"))
     }
 }

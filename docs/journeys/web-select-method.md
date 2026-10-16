@@ -45,7 +45,7 @@ stateDiagram-v2
 sich nur im Feld `accountAlreadyKnown`:
 
 - **Erste Anmeldung** (`ctx.account` ist `null`): Angeboten werden alle Tools, die ihr Subjekt
-  selbst aus der Eingabe finden (`CandidateTools.forLookupLogin`). Das Subjekt ist das, worauf sich
+  selbst aus der Eingabe finden (`ctx.lookupLoginCandidates`). Das Subjekt ist das, worauf sich
   die Anmeldung bezieht: ein Konto oder eine Einladung. Eine Identifizierung wird hier nie
   angeboten. Angeboten werden zwei Arten von Tools:
   - die Anmeldungen über die E-Mail-Adresse, die ein Konto finden,

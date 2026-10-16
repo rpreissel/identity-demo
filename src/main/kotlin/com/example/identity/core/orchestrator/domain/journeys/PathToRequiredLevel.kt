@@ -1,16 +1,17 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.offer
+import com.example.identity.core.orchestrator.domain.journey.authCandidates
+import com.example.identity.core.orchestrator.domain.journey.enrollmentCandidates
 import com.example.identity.core.orchestrator.domain.journey.state.ToolFreeState
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.AcrLevel
-import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.toEnrollAbortMessage
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
-import com.example.identity.core.orchestrator.domain.journey.state.Offer
 
 /**
  * The way FAST_ACCESS and REGISTER take to the channel's required level (`acrFloor`): the account's
@@ -23,13 +24,10 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
 
     /** After a proof: done, another of the account's methods, or a new one. */
     fun nextAfterProof(ctx: JourneyContext): Transition {
-        val account = ctx.requireAccount()
         if (ctx hasReached ctx.acrFloor) return Transition.Authenticated
-        val candidates = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
-        if (candidates.isNotEmpty()) return Transition.To(AuthChoice(Offer(candidates)))
         // An existing account that logs in is never blocked on a missing confirmed email
         // (docs/04-orchestrierung.md #5).
-        return offerNewMethod(ctx)
+        return offer(ctx.authCandidates(), ::AuthChoice) ?: offerNewMethod(ctx)
     }
 
     /**
@@ -44,8 +42,8 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
 
     /** The account's methods without the [declined] ones, or [otherwise] when none is left (or there is no account yet). */
     fun nextWithoutOr(declined: Set<ToolId>, ctx: JourneyContext, otherwise: () -> Transition): Transition {
-        val remaining = ctx.account?.let { CandidateTools.forAuth(it, ctx.acrFloor, ctx) - declined }.orEmpty()
-        return if (remaining.isNotEmpty()) Transition.To(AuthChoice(Offer(remaining))) else otherwise()
+        val remaining = if (ctx.account == null) emptyList() else ctx.authCandidates() - declined
+        return offer(remaining, ::AuthChoice) ?: otherwise()
     }
 
     /**
@@ -65,9 +63,7 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
                 )
             }
         }
-        val candidates = CandidateTools.forEnrollment(account, ctx.acrFloor, ctx)
-        if (candidates.isNotEmpty()) return Transition.To(Enrolling(Offer(candidates), emailObligation = emailObligation))
-        return reIdentifyOr(ctx.acrFloor, ctx, resumeWith = afterIdentificationBackTo) {
+        return offer(ctx.enrollmentCandidates()) { Enrolling(it, emailObligation = emailObligation) } ?: reIdentifyOr(ctx.acrFloor, ctx, resumeWith = afterIdentificationBackTo) {
             // Reachable here means a channel-local reason, e.g. every remaining tool disabled.
             Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toEnrollAbortMessage())
         }

@@ -14,7 +14,7 @@ fun Reachability.NotReachable.toAbortMessage(): Text =
     Text("Mit Ihren Anmeldeverfahren ist das nötige Sicherheitsniveau nicht erreichbar. {grund}", "grund" to reason.toText())
 
 /**
- * The abort text once [CandidateTools.forAuth] and [CandidateTools.forReIdentification] both came
+ * The abort text once [authCandidates] and [reIdentificationCandidates] both came
  * back empty. Only then does [Reachability.Reachable] mean "the account could do this, just not on
  * this channel right now", e.g. a method already used this session or bound to another device.
  */
@@ -28,7 +28,7 @@ fun Reachability.toAuthAbortMessage(): Text = when (this) {
 }
 
 /**
- * The abort text once [CandidateTools.forEnrollment] came back empty. [Reachability.Reachable] here
+ * The abort text once [enrollmentCandidates] came back empty. [Reachability.Reachable] here
  * means "the account could still enroll something, just not on this channel right now"; it is worded
  * differently from the auth case in [toAuthAbortMessage].
  */

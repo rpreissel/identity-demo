@@ -1,12 +1,19 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.offer
+import com.example.identity.core.orchestrator.domain.journey.authCandidates
+import com.example.identity.core.orchestrator.domain.journey.enrollmentCandidates
+import com.example.identity.core.orchestrator.domain.journey.reIdentificationCandidates
+import com.example.identity.core.orchestrator.domain.journey.identificationCandidates
+import com.example.identity.core.orchestrator.domain.journey.assignmentCandidates
+import com.example.identity.core.orchestrator.domain.journey.attestationCandidates
+import com.example.identity.core.orchestrator.domain.journey.coveredFactorKinds
+import com.example.identity.core.orchestrator.domain.journey.missingFactorKindCandidates
 import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.contract.tool_api.claims.AttributeType
-import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
-import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
@@ -18,7 +25,6 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
-import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 
 /**
@@ -103,8 +109,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
      * `enroll-password`). Skipped if no attesting tool is available.
      */
     private fun offerEmailFirst(ctx: JourneyContext): Transition {
-        val candidates = CandidateTools.forAttestation(AttributeType.EMAIL, ctx)
-        return if (candidates.isNotEmpty()) Transition.To(RegisterState.ConfirmingEmail(Offer(candidates))) else afterEmailConfirmed(ctx)
+        return offer(ctx.attestationCandidates(AttributeType.EMAIL), RegisterState::ConfirmingEmail) ?: afterEmailConfirmed(ctx)
     }
 
     /**
@@ -113,19 +118,13 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
      */
     private fun afterEmailConfirmed(ctx: JourneyContext): Transition {
         if (ctx.account != null) return afterEnrollment(ctx, emailObligation = false)
-        val candidates = CandidateTools.forEnrollment(account = null, ctx.acrFloor, ctx)
-        return if (candidates.isEmpty()) Transition.Abort(Text("Kein Anmeldeverfahren verfuegbar"))
-        else Transition.To(Enrolling(Offer(candidates), emailObligation = true))
+        return offer(ctx.enrollmentCandidates()) { Enrolling(it, emailObligation = true) }
+            ?: Transition.Abort(Text("Kein Anmeldeverfahren verfuegbar"))
     }
 
-    private fun offerIdentification(ctx: JourneyContext): Transition {
-        val idents = CandidateTools.forIdentification(ctx)
-        return if (idents.isEmpty()) {
-            Transition.Abort(Text("Kein Identifizierungsverfahren verfuegbar"))
-        } else {
-            Transition.To(RegisterState.Identifying(Offer(idents)))
-        }
-    }
+    private fun offerIdentification(ctx: JourneyContext): Transition =
+        offer(ctx.identificationCandidates(), RegisterState::Identifying)
+            ?: Transition.Abort(Text("Kein Identifizierungsverfahren verfuegbar"))
 
     private fun afterIdentification(ctx: JourneyContext): Transition {
         val account = ctx.requireAccount()
@@ -135,10 +134,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
             return Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND_OR_CANCEL))
         }
         // An account found again may already have what it needs: prove an existing method.
-        if (ctx canReach ctx.acrFloor) {
-            val candidates = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
-            if (candidates.isNotEmpty()) return Transition.To(AuthChoice(Offer(candidates)))
-        }
+        if (ctx canReach ctx.acrFloor) offer(ctx.authCandidates(), ::AuthChoice)?.let { return it }
         // Identified but not bound in the register (ADR-18): offer the correlation step before any
         // enrollment. No yes/no prompt in front; the form says what the number is for.
         if (account.isUnidentified) offerAssignment(ctx)?.let { return it }
@@ -147,8 +143,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
 
     /** The correlation offer itself, or null when nothing is offerable (tool disabled meanwhile). */
     private fun offerAssignment(ctx: JourneyContext): Transition? =
-        CandidateTools.forAssignment(ctx).takeIf { it.isNotEmpty() }
-            ?.let { Transition.To(RegisterState.Assigning(Offer(it))) }
+        offer(ctx.assignmentCandidates(), RegisterState::Assigning)
 
     /** The rest of a registration, once the person-assignment question is settled either way. */
     private fun continueAfterAssignment(ctx: JourneyContext): Transition {
@@ -169,8 +164,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
      */
     private fun confirmEmail(account: AccountProfile, ctx: JourneyContext): Transition? {
         if (account.emailConfirmed) return null
-        return CandidateTools.forAttestation(AttributeType.EMAIL, ctx).takeIf { it.isNotEmpty() }
-            ?.let { Transition.To(RegisterState.ConfirmingEmail(Offer(it))) }
+        return offer(ctx.attestationCandidates(AttributeType.EMAIL), RegisterState::ConfirmingEmail)
     }
 
     /**
@@ -184,8 +178,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
         if (emailObligation) confirmEmail(ctx.requireAccount(), ctx)?.let { return it }
         val next = toRequiredLevel.nextAfterEnrollment(ctx, identifyBeforeEnrolling = !ctx.enrollFirst, emailObligation = emailObligation)
         if (next != Transition.Authenticated) return next
-        val candidates = secondFactorKindCandidates(ctx.requireAccount(), ctx)
-        if (candidates.isNotEmpty()) return Transition.To(RegisterState.SecondFactorKindObligation(Offer(candidates)))
+        offer(secondFactorKindCandidates(ctx), RegisterState::SecondFactorKindObligation)?.let { return it }
         return if (ctx.enrollFirst) offerClosingIdentification(ctx) else next
     }
 
@@ -195,11 +188,10 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
      * cover fewer than two factor kinds, every enrollment adding a missing kind is offered. Each
      * one adds a kind, so the covered set only grows and the obligation cannot repeat forever.
      */
-    private fun secondFactorKindCandidates(account: AccountProfile, ctx: JourneyContext): List<ToolId> {
+    private fun secondFactorKindCandidates(ctx: JourneyContext): List<ToolId> {
         if (ctx canReach PathToRequiredLevel.NEW_METHOD_FLOOR) return emptyList()
-        val covered = CandidateTools.factorKindsOf(account, ctx)
-        if (covered.size >= 2) return emptyList()
-        return CandidateTools.forMissingFactorKind(account, covered, ctx)
+        if (ctx.coveredFactorKinds().size >= 2) return emptyList()
+        return ctx.missingFactorKindCandidates()
     }
 
     /**
@@ -207,7 +199,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
      * optionally. Declining or having nothing to offer finishes the registration.
      */
     private fun offerClosingIdentification(ctx: JourneyContext): Transition =
-        if (CandidateTools.forReIdentification(ctx.acrFloor, ctx).isNotEmpty()) {
+        if (ctx.reIdentificationCandidates(ctx.acrFloor).isNotEmpty()) {
             Transition.RequireSubJourney(ReIdentifyJourney.offerOptionally(ctx.acrFloor), resumeWith = RegisterState.Closing, optional = true)
         } else {
             finishOrOfferRebind(ctx)

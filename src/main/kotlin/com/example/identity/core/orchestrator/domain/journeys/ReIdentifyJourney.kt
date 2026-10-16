@@ -1,16 +1,16 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.offer
+import com.example.identity.core.orchestrator.domain.journey.reIdentificationCandidates
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.orchestrator.domain.journey.JourneyStart
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.OnlyAsSubJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
-import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 
 /**
@@ -52,6 +52,5 @@ object ReIdentifyJourney : Journey<ReIdentifyState> {
 
     /** Null when no identification tool can reach the target (anymore). */
     private fun offerIdentifying(offer: ReIdentifyState.OfferReIdent, ctx: JourneyContext): Transition? =
-        CandidateTools.forReIdentification(offer.targetAcr, ctx).takeIf { it.isNotEmpty() }
-            ?.let { Transition.To(ReIdentifyState.Identifying(offer.targetAcr, Offer(it), kind = offer.kind)) }
+        offer(ctx.reIdentificationCandidates(offer.targetAcr)) { ReIdentifyState.Identifying(offer.targetAcr, it, kind = offer.kind) }
 }
