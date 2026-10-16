@@ -172,6 +172,6 @@ ist. Dann läuft der Nachweis über `AuthChoice`/`afterProof` und nicht über
 **nicht**.
 
 Es gibt eine zweite Variante dieser Journey: das Experiment „Erst Anmeldeverfahren einrichten“.
-Es nutzt dieselbe Strategie und dieselben Zustände, richtet aber zuerst Verfahren ein und bietet die
+Es nutzt dieselbe `RegisterJourney` und dieselben Zustände, richtet aber zuerst Verfahren ein und bietet die
 Identifizierung erst am Ende an. Die mit „nur Experiment“ beschrifteten Übergänge oben gehören zu
 ihm. Beschrieben ist es in [register-enroll-first.md](register-enroll-first.md).

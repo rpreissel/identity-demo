@@ -12,7 +12,7 @@ enum class JourneyFeatureFlag(val key: String) {
     REGISTER_ENROLL_FIRST("register-enroll-first");
 
     companion object {
-        /** Null for a key no strategy reads, such as a Keycloak switch. */
+        /** Null for a key no journey reads, such as a Keycloak switch. */
         fun ofKey(key: String): JourneyFeatureFlag? = entries.firstOrNull { it.key == key }
     }
 }

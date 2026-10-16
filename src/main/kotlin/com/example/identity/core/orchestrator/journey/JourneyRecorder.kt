@@ -90,7 +90,7 @@ class JourneyRecorder(
 
     /**
      * The channel has just become signed in (ADR-39). [acr] is the level the session holds now;
-     * [journey] names the intent that got it there.
+     * [journey] is the run that got it there.
      */
     fun recordSignIn(journey: AuthJourney, channel: ChannelSession, acr: AcrLevel) {
         val (amr, tools) = proofsOf(channel)

@@ -2,7 +2,7 @@ package com.example.identity.tools.auth_qr.internal.authqrlookup
 
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields

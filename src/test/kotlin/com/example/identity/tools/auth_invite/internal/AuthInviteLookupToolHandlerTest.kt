@@ -2,7 +2,7 @@ package com.example.identity.tools.auth_invite.internal
 
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.InvitationId
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Attempted

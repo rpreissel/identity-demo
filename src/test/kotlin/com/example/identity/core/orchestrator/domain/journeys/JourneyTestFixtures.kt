@@ -1,4 +1,4 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.values.PartnerNumber
@@ -36,10 +36,10 @@ import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
  * Shared fixtures for [Journey] unit tests, built on the real catalog (every module's
- * `ToolModule`), so strategies see the same candidate resolution as production
+ * `ToolModule`), so journeys see the same candidate resolution as production
  * (docs/03-tool-architektur.md #2). The modules are plain values; no Spring context is needed.
  */
-object StrategyTestFixtures {
+object JourneyTestFixtures {
 
     /** Every procedure, in the order the catalog lists them. */
     val modules = listOf(

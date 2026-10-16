@@ -63,4 +63,4 @@ im selben Kanal ein Verfahren ein. Bisher wurde das Gerät dabei still verknüpf
 - Eindeutigkeit und Vollständigkeit der Namen prüft der Start, nicht der Compiler.
 - Die Übersicht aller Journeys steht nicht mehr in einer Datei. Ersatz sind `Journeys.all`,
   `JourneysTest` und die Tabelle in [04-orchestrierung.md](../04-orchestrierung.md) Abschnitt 2.
-- Der Paketname `domain.journey.strategy` ist geblieben.
+- Die Journeys liegen im Paket `domain.journeys` (vorher `domain.journey.strategy`).

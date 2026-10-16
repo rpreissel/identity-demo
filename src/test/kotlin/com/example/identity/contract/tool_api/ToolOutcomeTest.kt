@@ -1,7 +1,7 @@
 package com.example.identity.contract.tool_api
 
 import com.example.identity.contract.texts.Text
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.Claim

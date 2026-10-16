@@ -1,4 +1,4 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Action

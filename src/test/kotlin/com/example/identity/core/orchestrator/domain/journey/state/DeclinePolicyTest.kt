@@ -10,7 +10,7 @@ import io.kotest.matchers.shouldBe
 /**
  * What backing out of a tool means, by the offer's [DeclinePolicy] (docs/04-orchestrierung.md,
  * "Zwei Sorten von Übergang"): the state answers it, and only an exhausted or optional offer
- * reaches a strategy. The strategy tests then only cover what follows.
+ * reaches a journey. The journey tests then only cover what follows.
  */
 class DeclinePolicyTest : BehaviorSpec({
 
@@ -24,7 +24,7 @@ class DeclinePolicyTest : BehaviorSpec({
         `when`("a tool is backed out of") {
             val next = state.afterAbandoning(sms, all)
 
-            then("the full offer comes back, nothing declined, the strategy not asked") {
+            then("the full offer comes back, nothing declined, the journey not asked") {
                 next shouldBe state.withActive(null)
                 (next as OfferingState).declined shouldBe emptySet()
             }
@@ -37,7 +37,7 @@ class DeclinePolicyTest : BehaviorSpec({
         `when`("one is backed out of") {
             val next = state.afterAbandoning(sms, all)
 
-            then("the offer narrows to the rest, the strategy not asked") {
+            then("the offer narrows to the rest, the journey not asked") {
                 next shouldBe state.declining(sms)
             }
         }
@@ -45,7 +45,7 @@ class DeclinePolicyTest : BehaviorSpec({
         `when`("the other is backed out of as well") {
             val next = state.declining(sms).afterAbandoning(password, all)
 
-            then("the state cannot decide any more: the strategy hears OfferExhausted with both declined") {
+            then("the state cannot decide any more: the journey hears OfferExhausted with both declined") {
                 next.shouldBeNull()
                 state.declining(sms).narrowedBy(password).declined shouldBe all
             }
@@ -66,7 +66,7 @@ class DeclinePolicyTest : BehaviorSpec({
         `when`("a tool is backed out of, another still offered") {
             val next = state.afterAbandoning(ToolId("ident-kvnr"), setOf(ToolId("ident-kvnr"), ToolId("ident-other")))
 
-            then("the whole step is skipped at once: the strategy decides") {
+            then("the whole step is skipped at once: the journey decides") {
                 next.shouldBeNull()
             }
         }

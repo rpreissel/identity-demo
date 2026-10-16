@@ -4,7 +4,7 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimSource
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldContainAll
@@ -132,7 +132,7 @@ class ToolModuleTest : BehaviorSpec({
     }
 
     given("a one-per-device module with an instance on key-a") {
-        val device = StrategyTestFixtures.tool("auth-device").module
+        val device = JourneyTestFixtures.tool("auth-device").module
 
         then("the instance lives on key-a only") {
             device.livesOn("key-a", "key-a") shouldBe true
@@ -142,7 +142,7 @@ class ToolModuleTest : BehaviorSpec({
             device.livesOn("key-a", null) shouldBe false
         }
         then("a method that is not one-per-device lives on no key") {
-            StrategyTestFixtures.tool("auth-sms").module.livesOn(null, null) shouldBe false
+            JourneyTestFixtures.tool("auth-sms").module.livesOn(null, null) shouldBe false
         }
     }
 })

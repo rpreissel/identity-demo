@@ -1,16 +1,16 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.core.orchestrator.domain.policy.fromNow
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyJourney
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.ReIdentifyJourney
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
@@ -26,7 +26,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
  */
 class ReIdentifyJourneyTest : BehaviorSpec({
 
-    val strategy = ReIdentifyJourney
+    val journey = ReIdentifyJourney
 
     given("Identifying, one offered candidate") {
         val state = ReIdentifyState.Identifying(AcrLevel.LOA2, Offer(listOf(ToolId("ident-fsc"))))
@@ -47,7 +47,7 @@ class ReIdentifyJourneyTest : BehaviorSpec({
         val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2)
 
         `when`("accepted") {
-            val transition = strategy.transition(state, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
+            val transition = journey.transition(state, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
             then("advances to Identifying, offering exactly the reachable IDENT tool(s)") {
                 transition.shouldBeInstanceOf<Transition.To>()
                 val to = transition.state
@@ -58,14 +58,14 @@ class ReIdentifyJourneyTest : BehaviorSpec({
         }
 
         `when`("declined") {
-            val transition = strategy.transition(state, JourneyEvent.Answered(Answer.DECLINE), theCtx)
+            val transition = journey.transition(state, JourneyEvent.Answered(Answer.DECLINE), theCtx)
             then("cancels") {
                 transition shouldBe Transition.Cancel
             }
         }
 
         `when`("(re-)started without an answer yet") {
-            val transition = strategy.transition(state, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(state, JourneyEvent.Started, theCtx)
             then("re-presents the same prompt, unconditionally") {
                 transition shouldBe Transition.To(state)
             }
@@ -87,7 +87,7 @@ class ReIdentifyJourneyTest : BehaviorSpec({
         val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2)
 
         `when`("accepted") {
-            val transition = strategy.transition(state, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
+            val transition = journey.transition(state, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
             then("still cancels rather than erroring") {
                 transition shouldBe Transition.Cancel
             }
@@ -100,7 +100,7 @@ class ReIdentifyJourneyTest : BehaviorSpec({
         val state = ReIdentifyState.Identifying(AcrLevel.LOA2, Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"))))
 
         `when`("resumed after recording the proof (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("finishes directly - the identification's own maxAcr already IS the achieved level") {
                 transition shouldBe Transition.Authenticated
             }
@@ -114,7 +114,7 @@ class ReIdentifyJourneyTest : BehaviorSpec({
 
         `when`("the last remaining candidate is abandoned too") {
             val exhausted = state.declining(ToolId("ident-fsc"))
-            val transition = strategy.transition(exhausted as ReIdentifyState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
+            val transition = journey.transition(exhausted as ReIdentifyState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
             then("cancels - giving up here is not an error") {
                 transition shouldBe Transition.Cancel
             }

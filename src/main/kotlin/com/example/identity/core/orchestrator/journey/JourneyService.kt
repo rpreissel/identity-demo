@@ -124,12 +124,12 @@ class JourneyService(
         journey.optionalForParent = optionalForParent
         journey.featureFlags = contextFactory.activeFeatureFlags()
         // Placeholder for the NOT NULL state columns. It is rewritten once the restored evidence
-        // is in, so no strategy observes it.
+        // is in, so no journey observes it.
         codec.write(journey, seed ?: kind.initialState(contextFactory.contextFor(journey, channel)))
         journeyRepository.save(journey) // journeyId exists from here on, for the entry transition's log line.
 
         restoredEvidence?.let { methods ->
-            // The entry transition: decided by no strategy, but logged like every transition.
+            // The entry transition: decided by no journey, but logged like every transition.
             journeyTraceService.record(channel.forLog(), journey.forLog(), "Entry", detail = mapOf("methods" to journeyTraceDetails.methodEvidenceDetail(methods)))
             journeyRecorder.restoreEvidence(channel, methods)
             // Re-derive, so initialState() sees the restored evidence.
@@ -312,8 +312,8 @@ class JourneyService(
     }
 
     /**
-     * A completed tool books what its state says ([JourneyState.booking]); no strategy is asked.
-     * The strategy hears only the [JourneyEvent.ActionCompleted] that follows.
+     * A completed tool books what its state says ([JourneyState.booking]); no journey is asked.
+     * The journey hears only the [JourneyEvent.ActionCompleted] that follows.
      */
     private fun complete(journey: AuthJourney, channel: ChannelSession, tool: Tool, outcome: ToolOutcome.Completed): Step {
         val state = codec.read(journey)
@@ -325,7 +325,7 @@ class JourneyService(
     /**
      * "Zurück": the running tool ends without being declined, and the selection page returns with
      * every candidate, the abandoned one included. Whoever goes back wants to choose again. The
-     * strategy is not asked. Only an [OfferingState] has a selection page; elsewhere this is [abandon].
+     * journey is not asked. Only an [OfferingState] has a selection page; elsewhere this is [abandon].
      */
     fun back(running: RunningJourney, live: LiveChannel, tool: Tool): Step {
         keepSessionAlive(live)
@@ -355,7 +355,7 @@ class JourneyService(
 
     /**
      * An answer to what the current [AnswerableState] waits on, instead of a tool run. What it means
-     * belongs to the state and its strategy, not to this entry point.
+     * belongs to the state and its journey, not to this entry point.
      */
     fun answer(running: RunningJourney, live: LiveChannel, answer: Answer): Step {
         keepSessionAlive(live)
@@ -376,7 +376,7 @@ class JourneyService(
         var event = event
         val ctx = contextFactory.contextFor(journey, channel)
         var transition: Transition? = null
-        // An offer answers backing out itself (DeclinePolicy); the strategy only hears that the
+        // An offer answers backing out itself (DeclinePolicy); the journey only hears that the
         // offer is exhausted, with everything declined.
         if (event is JourneyEvent.Abandoned && state is OfferingState) {
             val own = state.afterAbandoning(event.tool.toolId, ctx.availableTools)
@@ -387,7 +387,7 @@ class JourneyService(
             }
         }
         // A cancelled precondition cancels the journey that waited on it; only an optional
-        // sub-journey's end is left to the strategy (RequireSubJourney.optional).
+        // sub-journey's end is left to the waiting journey (RequireSubJourney.optional).
         if (event is JourneyEvent.SubJourneyCancelled && !event.optional) transition = Transition.Cancel
         transition = transition ?: kind.transitionErased(state, event, ctx)
         recordStep(journey, channel, event::class.simpleName!!, journeyTraceDetails.eventDetail(event, channel), state, transition, ctx)
@@ -578,7 +578,7 @@ class JourneyService(
 
     /**
      * After an abandoned journey the channel returns to its previous login status
-     * ([ChannelState.isLoggedIn]), one rule for every intent. Otherwise a cold step-up could claim
+     * ([ChannelState.isLoggedIn]), one rule for every journey. Otherwise a cold step-up could claim
      * AUTHENTICATED without proof (docs/invarianten.md I-4). The account is re-derived from the
      * device link, which survives a journey; an AppTokenSession does not.
      */

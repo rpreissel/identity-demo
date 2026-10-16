@@ -12,14 +12,14 @@ sealed interface JourneyEvent {
     /**
      * "Back"/"Switch": the user abandoned an activated tool without finishing it. An offering state
      * answers this itself by its [com.example.identity.core.orchestrator.domain.journey.state.DeclinePolicy];
-     * a strategy sees it only for a state without an offer (e.g. `FastAccessState.PreferredAuth`).
+     * a journey sees it only for a state without an offer (e.g. `FastAccessState.PreferredAuth`).
      */
     data class Abandoned(val tool: Tool) : JourneyEvent
 
     /**
      * The offer is used up: every tool was declined, or an optional step was backed out of. Only a
      * `FALLBACK` or `OPTIONAL` state sees it, with the full [declined] set; a mandatory offer simply
-     * comes back without any event reaching the strategy.
+     * comes back without any event reaching the journey.
      */
     data class OfferExhausted(val declined: Set<ToolId>) : JourneyEvent
 
@@ -39,7 +39,7 @@ sealed interface JourneyEvent {
 
     /**
      * The sub-journey was abandoned without achieving anything, so there is no acr to report.
-     * [journey] names which one, as in [SubJourneyFinished]. A strategy only sees it for a
+     * [journey] names which one, as in [SubJourneyFinished]. A journey only sees it for a
      * sub-journey it requested as [Transition.RequireSubJourney.optional]; any other cancels the
      * waiting journey in `JourneyService`.
      */

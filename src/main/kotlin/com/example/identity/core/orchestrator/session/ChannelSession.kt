@@ -12,7 +12,7 @@ import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
 import com.example.identity.core.orchestrator.domain.journey.appChannelOpening
-import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessJourney
+import com.example.identity.core.orchestrator.domain.journeys.FastAccessJourney
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType

@@ -1,12 +1,12 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.contract.tool_api.EnrollmentRef
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.emailAttestation
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.identifiedOutcome
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.emailAttestation
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.identifiedOutcome
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -18,7 +18,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.Offer
 /**
  * What a completed tool books ([com.example.identity.core.orchestrator.domain.journey.state.JourneyState.booking]):
  * [Action.of] for every state, except the two that say otherwise. `JourneyService` performs it
- * before any strategy hears of the tool.
+ * before any journey hears of the tool.
  */
 class BookingTest : BehaviorSpec({
 

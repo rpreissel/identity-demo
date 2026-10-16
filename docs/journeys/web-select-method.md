@@ -4,7 +4,7 @@
 # `WEB_SELECT_METHOD`
 
 Der `WEB`-Kanal ist die Verbindung der Website zum Orchestrator. Die Website wird dabei über
-Keycloak angebunden, das Produkt, das dort die Anmeldung führt. Mit dem Intent `WEB_SELECT_METHOD`
+Keycloak angebunden, das Produkt, das dort die Anmeldung führt. Mit der Journey `WEB_SELECT_METHOD`
 beginnt im Web-Kanal jede Anmeldung und jeder Step-up (das Anheben des Sicherheitsniveaus), wenn
 nichts anderes angegeben ist. Jeden Anmeldeschritt führt dabei der Orchestrator als Tool aus;
 Keycloak hat keine eigenen ([ADR-58](../adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md)).

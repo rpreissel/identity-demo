@@ -13,12 +13,12 @@ import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 
 /**
- * Everything a strategy may look at. Read-only by construction: [policy] and [catalog] answer
+ * Everything a journey may look at. Read-only by construction: [policy] and [catalog] answer
  * questions, they change nothing.
  */
 data class JourneyContext(
     /**
-     * Which facade opened this channel (docs/02-domaenenmodell.md #4). A declared fact, so a strategy
+     * Which facade opened this channel (docs/02-domaenenmodell.md #4). A declared fact, so a journey
      * never infers the channel type from [bindingKeyRef] being null.
      */
     val channel: ChannelType,
@@ -45,7 +45,7 @@ data class JourneyContext(
     val availableTools: Set<ToolId>,
     /**
      * Runtime feature flags enabled when this journey started ([JourneyFeatureFlag] names them). Resolved here because a
-     * strategy never depends on a `@Service` itself.
+     * journey never depends on a `@Service` itself.
      */
     val featureFlags: Set<JourneyFeatureFlag> = emptySet(),
     /**
@@ -59,7 +59,7 @@ data class JourneyContext(
      * deletion). There a missing account is a broken state machine, so this crashes.
      */
     fun requireAccount(): AccountProfile =
-        checkNotNull(account) { "Strategy asked for an account before one was resolved" }
+        checkNotNull(account) { "Journey asked for an account before one was resolved" }
 
     /** The ACR this channel's evidence resolves to right now, e.g. a sub-journey's `startingAcr`. */
     val currentAcr: AcrLevel get() = policy.resolveAcr(evidence, account)

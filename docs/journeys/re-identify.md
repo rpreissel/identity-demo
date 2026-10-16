@@ -65,7 +65,7 @@ den er vor dem Start hatte ([Orchestrierung](../04-orchestrierung.md), `Journey`
 (`Identified`), liefert `transition()` immer dieselbe Aktion `Action.RecordIdentification`. Hier ist
 stets schon ein Konto zugeordnet. Deshalb bestätigt die Aktion die Identität nur und übernimmt kein
 anderes Konto. Die identifizierte Person muss zum bereits bekannten Konto passen. Sonst antwortet der
-Server mit `409`. Das gilt unabhängig davon, welcher Intent die Sub-Journey angefordert hat.
+Server mit `409`. Das gilt unabhängig davon, welche Journey die Sub-Journey angefordert hat.
 
 Einzige Ausnahme ist ein Konto, das noch nie identifiziert wurde. Ein solches Konto entsteht im
 Experiment „Erst Anmeldeverfahren einrichten“. Es übernimmt die Identität hier zum ersten Mal.

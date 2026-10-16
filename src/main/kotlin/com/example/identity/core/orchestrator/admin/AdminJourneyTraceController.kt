@@ -45,7 +45,7 @@ class AdminJourneyTraceController(
     @Operation(
         summary = "Search journeys",
         description = "Journeys newest start first, at most `limit` (1-200). Account, channel or journey narrow the search; " +
-            "`from`/`to` default to the 14 days the trace is kept. Intent and outcome filter after reading, so a page may " +
+            "`from`/`to` default to the 14 days the trace is kept. Journey and outcome filter after reading, so a page may " +
             "hold fewer than `limit`: `searchedUntil` says how far back it got, `nextCursor` continues there."
     )
     fun journeys(

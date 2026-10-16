@@ -208,7 +208,7 @@ class DeviceBindingIntegrationTest : IntegrationTestSupport() {
                     @Suppress("UNCHECKED_CAST")
                     (afterDecline.stepData()["options"] as List<String>) shouldContainExactlyInAnyOrder listOf("auth-sms", "auth-password")
                 }
-                then("cancelling restarts the same intent and lands back on the first state") {
+                then("cancelling restarts the same journey and lands back on the first state") {
                     afterCancel.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-device", "step" to "auth")
                 }
             }

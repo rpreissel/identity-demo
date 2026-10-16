@@ -9,10 +9,10 @@ import org.springframework.web.client.HttpClientErrorException
 import java.util.UUID
 
 /**
- * The properties of the per-intent state machine (docs/04-orchestrierung.md): the FAST fallback chain
+ * The properties of the per-journey state machine (docs/04-orchestrierung.md): the FAST fallback chain
  * and its memory of what was declined, identification as a LOGIN path when nothing else is left, the
  * states LOGIN_LOOKUP does not have, and the journey-wide attempt budget. The happy paths of each
- * intent are in RegistrationFlowIntegrationTest and LoginFlowIntegrationTest.
+ * journey are in RegistrationFlowIntegrationTest and LoginFlowIntegrationTest.
  */
 class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
 
@@ -52,7 +52,7 @@ class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
 
                 val result = runCatching { post("/tools/api/ident-fsc/v1?channel=$channelSessionId") }
 
-                then("it is rejected at the boundary - no state of this intent offers an identification") {
+                then("it is rejected at the boundary - no state of this journey offers an identification") {
                     // Instead of failing deeper with a 500.
                     shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.CONFLICT
                 }
@@ -112,9 +112,9 @@ class JourneyFallbackChainIntegrationTest : IntegrationTestSupport() {
 
                 val afterCancel = delete("/orchestrator/api/v1/channels/$channelSessionId/journey")
 
-                then("it restarts a lookup login, not a registration - the channel remembers its entry intent") {
+                then("it restarts a lookup login, not a registration - the channel remembers its entry journey") {
                     afterCancel.next() shouldBe mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
-                    // shouldContainAll, not exact: the lookup intent is preserved, not the catalog's exact lookup-tool set.
+                    // shouldContainAll, not exact: the lookup journey is preserved, not the catalog's exact lookup-tool set.
                     @Suppress("UNCHECKED_CAST")
                     (afterCancel.stepData()["options"] as List<String>) shouldContainAll
                         listOf("auth-sms-lookup", "auth-password-lookup", "auth-email-lookup", "auth-qr-lookup")

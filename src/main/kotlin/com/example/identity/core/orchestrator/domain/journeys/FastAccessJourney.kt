@@ -1,4 +1,4 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.Journey
@@ -29,7 +29,7 @@ object FastAccessJourney : Journey<FastAccessState> {
     override fun transition(state: FastAccessState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is FastAccessState.Start -> when (event) {
-                // Re-check whether the fresh proof already closes the gap before offering again.
+                // Back from REGISTER or RE_IDENTIFY: re-check whether that already closes the gap before offering again.
                 is JourneyEvent.SubJourneyFinished -> AuthEnrollCore.afterProof(ctx, resumeAtStart = FastAccessState.Start)
                 else -> firstOffer(ctx)
             }

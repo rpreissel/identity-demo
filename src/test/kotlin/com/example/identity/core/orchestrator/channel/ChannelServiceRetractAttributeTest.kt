@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
-import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsJourney
+import com.example.identity.core.orchestrator.domain.journeys.ManageAuthMethodsJourney
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.claims.AttributeType

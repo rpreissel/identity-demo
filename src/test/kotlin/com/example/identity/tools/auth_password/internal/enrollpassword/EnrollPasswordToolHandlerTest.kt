@@ -2,7 +2,7 @@ package com.example.identity.tools.auth_password.internal.enrollpassword
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.tools.auth_password.PASSWORD_EXISTS
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollmentRepository
 import com.example.identity.tools.auth_password.internal.AuthPasswordEnrollment

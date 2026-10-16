@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator.journey
 
-import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyJourney
+import com.example.identity.core.orchestrator.domain.journeys.ReIdentifyJourney
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice

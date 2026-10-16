@@ -7,7 +7,7 @@ import com.example.identity.contract.tool_api.ids.ToolSessionId
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.journey.Journey
-import com.example.identity.core.orchestrator.domain.journey.strategy.WebSelectMethodJourney
+import com.example.identity.core.orchestrator.domain.journeys.WebSelectMethodJourney
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -105,7 +105,7 @@ class SessionManagementService(
             LinkedDevice(checkNotNull(it.bindingKeyRef), checkNotNull(it.createdAt), checkNotNull(it.updatedAt))
         }
 
-    /** Idempotent: called every time a channel reaches AUTHENTICATED, regardless of intent. */
+    /** Idempotent: called every time a channel reaches AUTHENTICATED, regardless of journey. */
     fun linkDeviceToAccount(bindingKeyRef: String, accountId: AccountId) {
         val existing = deviceAccountLinkRepository.findByIdOrNull(bindingKeyRef)
         if (existing == null) {

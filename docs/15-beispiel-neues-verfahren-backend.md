@@ -362,7 +362,7 @@ Die folgenden Tests schlagen fehl, wenn etwas fehlt. Man liest sie am besten als
 | Test | Meldet |
 |---|---|
 | `ModulithStructureTest` | Das Modul ist falsch angelegt, oder es gibt eine nicht erlaubte Abhängigkeit |
-| `ToolControllerMappingTest` | Eine deklarierte Fassung hat keinen Controller, oder ein Controller gehört zu einer nicht deklarierten Fassung. Oder ein Pfad liegt nicht unter `/tools/api/<toolId>/v<N>` des eigenen Tools. Oder das Modul fehlt in `StrategyTestFixtures.modules` (mit Hinweis, was zu tun ist) |
+| `ToolControllerMappingTest` | Eine deklarierte Fassung hat keinen Controller, oder ein Controller gehört zu einer nicht deklarierten Fassung. Oder ein Pfad liegt nicht unter `/tools/api/<toolId>/v<N>` des eigenen Tools. Oder das Modul fehlt in `JourneyTestFixtures.modules` (mit Hinweis, was zu tun ist) |
 | Integrationstests (`IntegrationTestSupport.post`) | Ein Tool beginnt bei der Aktivierung ohne Eingabe nicht mit seinem deklarierten `startStep` |
 | `ApiBoundaryArchitectureTest` | Eine Controller-Methode hat keinen Tool-Kontext und kein `@BindingKey`, der Kontext steht vor dem Body, oder eine Simulation hat kein `@DemoSurface` |
 | `SimulationBoundaryArchitectureTest` | Code außerhalb des Tools greift auf die Simulation zu |
@@ -375,7 +375,7 @@ eine Identifizierung ohne Name, Vornamen und Geburtsdatum, eine Rolle, die zweim
 verschiedene Niveaus innerhalb einer Methode.
 
 Für die Integrationstests gibt es eine Stelle, die man von Hand ergänzt. Diese Tests laufen gegen
-einen festen Katalog (`StrategyTestFixtures.modules`). So ändern sich ihre erwarteten
+einen festen Katalog (`JourneyTestFixtures.modules`). So ändern sich ihre erwarteten
 Kandidatenlisten nicht, wenn anderswo ein Modul dazukommt. Fehlt das neue Modul dort, meldet
 `ToolControllerMappingTest` genau das. Trägt man es ein, können sich Erwartungen an Kandidatenlisten
 in den Strategietests ändern. Das ist dann eine echte Auswirkung des neuen Verfahrens auf das

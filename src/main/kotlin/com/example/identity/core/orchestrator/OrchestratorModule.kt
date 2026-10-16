@@ -10,7 +10,7 @@ import org.springframework.modulith.ApplicationModule
  * the rules, free of any framework -
  * 1. `domain.journey.Journey` - what a journey is: where it may start and how it decides its next
  *    step (`Transition`, `Action`); `domain.Journeys` lists them all;
- * 2. one journey with its states, e.g. `domain.journey.strategy.RegisterJourney` with
+ * 2. one journey with its states, e.g. `domain.journeys.RegisterJourney` with
  *    `domain.journey.state.RegisterState`;
  * 3. `domain.policy.AuthPolicy` and `DefaultAuthPolicy` - which level the evidence is worth;
  * 4. `domain.journey.AccountRules` and `CredentialRules` - what the acting phase may do to accounts.

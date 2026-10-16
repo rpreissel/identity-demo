@@ -7,9 +7,9 @@ import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolOutcome
 
 /**
- * A named side effect a strategy decided, wrapped in a [Transition.Perform] for `JourneyService` to
- * execute; the strategy never acts itself. Some variants carry what a just-completed tool
- * established (booked by its state, `JourneyState.booking`), the rest are a strategy's own actions.
+ * A named side effect a journey decided, wrapped in a [Transition.Perform] for `JourneyService` to
+ * execute; the journey never acts itself. Some variants carry what a just-completed tool
+ * established (booked by its state, `JourneyState.booking`), the rest are a journey's own actions.
  *
  * Only [RecordIdentification] and [AdoptAttestation] can land on an account other than the one
  * bound to the channel, and both go through the same gate in `JourneyActionExecutor`. Which
@@ -20,7 +20,7 @@ sealed interface Action {
     /**
      * A completed identification (e.g. `ident-eid`) or correlation (`ident-kvnr`) tool resolved or
      * extended an identity. Whether an account is already in hand is read at execution time, not
-     * decided by the caller, so no strategy can skip the merge check.
+     * decided by the caller, so no journey can skip the merge check.
      */
     data class RecordIdentification(val tool: Tool, val outcome: ToolOutcome.Completed.Identified) : Action
 
@@ -101,7 +101,7 @@ sealed interface Action {
     data object DeleteAccount : Action {
         /**
          * The ACR re-checked right before execution. It lives here so the generic machine does not
-         * import a concrete strategy. It is exactly [selfServiceAcrFloor], not a second definition.
+         * import a concrete journey. It is exactly [selfServiceAcrFloor], not a second definition.
          */
         fun requiredAcr(account: AccountProfile?): AcrLevel = selfServiceAcrFloor(account)
     }

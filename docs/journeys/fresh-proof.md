@@ -3,7 +3,7 @@
 
 # `FRESH_PROOF`
 
-Mit dieser Sub-Journey prüft ein Intent, bevor er auf das Konto wirkt, zwei Dinge: Die Sitzung hat
+Mit dieser Sub-Journey prüft eine Journey, bevor sie auf das Konto wirkt, zwei Dinge: Die Sitzung hat
 das verlangte Sicherheitsniveau, und ihr jüngster Nachweis ist frisch. Nie direkt, nur über
 `Transition.RequireSubJourney`; genutzt von [`DELETE_ACCOUNT`](delete-account.md),
 [`MANAGE_AUTH_METHODS`](manage-auth-methods.md) und [`CONFIRM_PEER_LOGIN`](confirm-peer-login.md)

@@ -36,9 +36,9 @@ gemeinsame Sub-Journey [`FRESH_PROOF`](fresh-proof.md) ([ADR-61](../adr/ADR-061-
 der Zustimmung.
 
 **Wie gelöscht wird.** Der letzte Übergang ist
-`Transition.Perform(Action.DeleteAccount, resumeState = ConfirmPending)`. Die Strategie entscheidet
+`Transition.Perform(Action.DeleteAccount, resumeState = ConfirmPending)`. Die Journey entscheidet
 damit nur, dass gelöscht werden soll. Ausgeführt wird die Löschung danach vom gemeinsamen
-Mechanismus. Wird die Journey anschließend mit `ActionCompleted` fortgesetzt, wird daraus
+Mechanismus. Wird der Durchlauf anschließend mit `ActionCompleted` fortgesetzt, wird daraus
 `Transition.Logout`: Das Konto ist gelöscht, und der Kanal wird beendet.
 
 Unmittelbar vor der Ausführung prüft `JourneyActionExecutor` `requiredAcr(account)` noch einmal.

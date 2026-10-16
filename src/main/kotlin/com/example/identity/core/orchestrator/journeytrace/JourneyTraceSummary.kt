@@ -112,7 +112,7 @@ data class JourneyTraceCursor(val createdAt: Instant, val logId: UUID) {
 }
 
 /**
- * One page of the search. [searchedUntil] is the oldest start this page looked at: an intent or
+ * One page of the search. [searchedUntil] is the oldest start this page looked at: a journey or
  * outcome filter is applied after reading, so a page may find fewer than asked, and the operator
  * sees how far back it got. [nextCursor] is null when nothing older is left.
  */

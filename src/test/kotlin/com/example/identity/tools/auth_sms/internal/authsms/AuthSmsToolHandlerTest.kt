@@ -4,7 +4,7 @@ import com.example.identity.contract.tool_api.otp.OneTimeCodes
 import com.example.identity.tools.auth_sms.internal.SmsNumbers
 import com.example.identity.core.account.application.ClaimCryptoFixture
 import com.example.identity.contract.tool_api.ids.ToolSessionId
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.simulation.sms.SmsGateway

@@ -4,8 +4,8 @@ import com.example.identity.contract.texts.Text
 
 /**
  * Shared by [FastAccessState] and [RegisterState], because both journeys ask the same question
- * here: "does the account already have something that closes the gap?" Each intent keeps its own
- * strategy; they only land on the same value.
+ * here: "does the account already have something that closes the gap?" Each journey keeps its own
+ * decision; they only land on the same value.
  */
 data class AuthChoice(
     override val offer: Offer

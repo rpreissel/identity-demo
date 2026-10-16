@@ -1,4 +1,4 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -9,11 +9,11 @@ import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.APP_SECOND_FACTOR_KINDS
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.APP_SECOND_FACTOR_KINDS
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.evidence
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.method
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
@@ -30,8 +30,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
  */
 class RegisterEnrollFirstJourneyTest : BehaviorSpec({
 
-    /** The strategy as a journey sees it that started while the switch was on. */
-    val strategy = object {
+    /** [RegisterJourney] as seen by a run started while the switch was on. */
+    val journey = object {
         private val register = RegisterJourney
         fun transition(state: RegisterState, event: JourneyEvent, ctx: JourneyContext) =
             register.transition(state, event, ctx.copy(featureFlags = setOf(JourneyFeatureFlag.REGISTER_ENROLL_FIRST)))
@@ -52,7 +52,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
 
     given("Start, no account known yet") {
         `when`("started") {
-            val transition = strategy.transition(RegisterState.Start, JourneyEvent.Started, ctx(account = null))
+            val transition = journey.transition(RegisterState.Start, JourneyEvent.Started, ctx(account = null))
             then("offers EMAIL enrollment first, mandatory - not the whole menu, no identification step yet") {
                 transition shouldBe
                     Transition.To(RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email")))))
@@ -61,10 +61,10 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
     }
 
     given("Start, email attestation tool unavailable right now (admin-disabled)") {
-        val theCtx = ctx(account = null, availableTools = StrategyTestFixtures.allToolIds - ToolId("confirm-email"))
+        val theCtx = ctx(account = null, availableTools = JourneyTestFixtures.allToolIds - ToolId("confirm-email"))
 
         `when`("started") {
-            val transition = strategy.transition(RegisterState.Start, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(RegisterState.Start, JourneyEvent.Started, theCtx)
             then("skips to the free choice of a method instead of blocking or crashing on the missing account") {
                 val next = transition.shouldBeInstanceOf<Transition.To>().state
                 next.shouldBeInstanceOf<Enrolling>().offered shouldContainExactlyInAnyOrder
@@ -77,7 +77,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
         val state = RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email"))))
 
         `when`("resumed after adopting the attestation (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, ctx(account = null))
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, ctx(account = null))
             then("moves on to the free choice of a method - no method is prescribed") {
                 val next = transition.shouldBeInstanceOf<Transition.To>().state
                 next.shouldBeInstanceOf<Enrolling>().offered shouldContain ToolId("enroll-sms")
@@ -87,7 +87,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
 
     given("Closing, waiting on the closing, optional RE_IDENTIFY sub-journey") {
         `when`("resumed after it was accepted and succeeded (SubJourneyFinished)") {
-            val transition = strategy.transition(RegisterState.Closing, JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2), ctx())
+            val transition = journey.transition(RegisterState.Closing, JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2), ctx())
             then("finishes") {
                 transition shouldBe
                     Transition.Authenticated
@@ -95,7 +95,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
         }
 
         `when`("resumed after it was declined or abandoned (SubJourneyCancelled)") {
-            val transition = strategy.transition(RegisterState.Closing, JourneyEvent.SubJourneyCancelled(ReIdentifyJourney, optional = true), ctx())
+            val transition = journey.transition(RegisterState.Closing, JourneyEvent.SubJourneyCancelled(ReIdentifyJourney, optional = true), ctx())
             then("finishes all the same") {
                 transition shouldBe
                     Transition.Authenticated
@@ -109,7 +109,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
         val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = true)
 
         `when`("resumed after adopting the credential (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("moves on to ConfirmingEmail - email is always obligatory here") {
                 transition shouldBe
                     Transition.To(RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email")))))
@@ -121,12 +121,12 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = true)
         val theCtx = ctx(
             account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
-            acrFloor = AcrLevel.LOA1, channel = ChannelType.APP, availableTools = StrategyTestFixtures.appTools
+            acrFloor = AcrLevel.LOA1, channel = ChannelType.APP, availableTools = JourneyTestFixtures.appTools
         )
         val state = RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email"))))
 
         `when`("resumed after attesting (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("password, device binding and KOBIL are offered") {
                 transition shouldBe
                     Transition.To(RegisterState.SecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS)))
@@ -138,12 +138,12 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = true)
         val theCtx = ctx(
             account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
-            acrFloor = AcrLevel.LOA1, channel = ChannelType.WEB, availableTools = StrategyTestFixtures.webTools
+            acrFloor = AcrLevel.LOA1, channel = ChannelType.WEB, availableTools = JourneyTestFixtures.webTools
         )
         val state = RegisterState.ConfirmingEmail(Offer(listOf(ToolId("confirm-email"))))
 
         `when`("resumed after attesting (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("falls through to the still-open factor-kind obligation with only the password, not to the identification offer yet") {
                 transition shouldBe
                     Transition.To(RegisterState.SecondFactorKindObligation(Offer(listOf(ToolId("enroll-password")))))
@@ -158,12 +158,12 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
         val theCtx = ctx(
             account = acc,
             evidence = evidence(listOf("sms", "password"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), account = acc),
-            acrFloor = AcrLevel.LOA1, channel = ChannelType.APP, availableTools = StrategyTestFixtures.appTools
+            acrFloor = AcrLevel.LOA1, channel = ChannelType.APP, availableTools = JourneyTestFixtures.appTools
         )
         val state = RegisterState.SecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS))
 
         `when`("resumed after adopting the credential (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("offers the optional identification step - no second round for the device binding") {
                 transition shouldBe optionalIdentification
             }
@@ -175,12 +175,12 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
         val theCtx = ctx(
             account = acc,
             evidence = evidence(listOf("sms", "device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), account = acc),
-            acrFloor = AcrLevel.LOA1, channel = ChannelType.APP, availableTools = StrategyTestFixtures.appTools
+            acrFloor = AcrLevel.LOA1, channel = ChannelType.APP, availableTools = JourneyTestFixtures.appTools
         )
         val state = RegisterState.SecondFactorKindObligation(Offer(APP_SECOND_FACTOR_KINDS))
 
         `when`("resumed after adopting the credential (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("offers the optional identification step - no password on top") {
                 transition shouldBe optionalIdentification
             }

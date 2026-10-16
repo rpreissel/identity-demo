@@ -1,6 +1,6 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
-import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpJourney
+import com.example.identity.core.orchestrator.domain.journeys.StepUpJourney
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -8,11 +8,11 @@ import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifySta
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState.Goal
 import com.example.identity.core.orchestrator.domain.journey.state.upTo
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
@@ -27,7 +27,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
  */
 class StepUpJourneyTest : BehaviorSpec({
 
-    val strategy = StepUpJourney
+    val journey = StepUpJourney
 
     given("AuthChoice, one offered candidate") {
         val state = StepUpState.AuthChoice(AcrLevel.LOA1 upTo AcrLevel.LOA2, Offer(listOf(ToolId("auth-sms"))))
@@ -42,7 +42,7 @@ class StepUpJourneyTest : BehaviorSpec({
         val state = StepUpState.Start(AcrLevel.LOA1 upTo AcrLevel.LOA2)
 
         `when`("freshly entered (Started)") {
-            val transition = strategy.transition(state, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(state, JourneyEvent.Started, theCtx)
             then("offers it via AuthChoice") {
                 transition shouldBe Transition.To(StepUpState.AuthChoice(AcrLevel.LOA1 upTo AcrLevel.LOA2, Offer(listOf(ToolId("auth-sms")))))
             }
@@ -55,7 +55,7 @@ class StepUpJourneyTest : BehaviorSpec({
         val state = StepUpState.Start(AcrLevel.LOA1 upTo AcrLevel.LOA2)
 
         `when`("freshly entered (Started)") {
-            val transition = strategy.transition(state, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(state, JourneyEvent.Started, theCtx)
             then("requires the shared RE_IDENTIFY sub-journey instead of aborting") {
                 transition shouldBe Transition.RequireSubJourney(
                     ReIdentifyJourney,
@@ -75,7 +75,7 @@ class StepUpJourneyTest : BehaviorSpec({
         val state = StepUpState.Start((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(allowReIdentification = false))
 
         `when`("freshly entered (Started)") {
-            val transition = strategy.transition(state, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(state, JourneyEvent.Started, theCtx)
             then("aborts instead of offering RE_IDENTIFY") {
                 transition.shouldBeInstanceOf<Transition.Abort>()
                 transition.reason.template shouldContain "nicht erreichbar"
@@ -88,12 +88,12 @@ class StepUpJourneyTest : BehaviorSpec({
         val theCtx = ctx(
             account = acc,
             evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc),
-            availableTools = StrategyTestFixtures.allToolIds - setOf(ToolId("ident-fsc"), ToolId("ident-eid"), ToolId("ident-nect"))
+            availableTools = JourneyTestFixtures.allToolIds - setOf(ToolId("ident-fsc"), ToolId("ident-eid"), ToolId("ident-nect"))
         )
         val state = StepUpState.Start(AcrLevel.LOA1 upTo AcrLevel.LOA2)
 
         `when`("freshly entered (Started)") {
-            val transition = strategy.transition(state, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(state, JourneyEvent.Started, theCtx)
             then("aborts with a reason, never a silent auto-pick") {
                 transition.shouldBeInstanceOf<Transition.Abort>()
                 transition.reason.template shouldContain "nicht erreichbar"
@@ -108,7 +108,7 @@ class StepUpJourneyTest : BehaviorSpec({
 
         `when`("resumed after a RE_IDENTIFY sub-journey (SubJourneyFinished)") {
             val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2)
-            val transition = strategy.transition(state, event, theCtx)
+            val transition = journey.transition(state, event, theCtx)
             then("finishes directly instead of offering auth again") {
                 transition shouldBe Transition.Authenticated
             }
@@ -122,7 +122,7 @@ class StepUpJourneyTest : BehaviorSpec({
 
         `when`("resumed after a RE_IDENTIFY sub-journey (SubJourneyFinished)") {
             val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = null)
-            val transition = strategy.transition(state, event, theCtx)
+            val transition = journey.transition(state, event, theCtx)
             then("falls through to offering auth candidates, same as a fresh Start") {
                 transition shouldBe Transition.To(StepUpState.AuthChoice(AcrLevel.LOA1 upTo AcrLevel.LOA2, Offer(listOf(ToolId("auth-sms")))))
             }
@@ -136,7 +136,7 @@ class StepUpJourneyTest : BehaviorSpec({
 
         `when`("the last offered candidate is abandoned") {
             val exhausted = state.declining(ToolId("auth-sms"))
-            val transition = strategy.transition(exhausted as StepUpState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
+            val transition = journey.transition(exhausted as StepUpState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
             then("requires the shared RE_IDENTIFY sub-journey") {
                 transition shouldBe
                     Transition.RequireSubJourney(
@@ -155,7 +155,7 @@ class StepUpJourneyTest : BehaviorSpec({
 
         `when`("the last offered candidate is abandoned") {
             val exhausted = state.declining(ToolId("auth-sms"))
-            val transition = strategy.transition(exhausted as StepUpState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
+            val transition = journey.transition(exhausted as StepUpState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
             then("the run resumes with its whole goal - the reason survives the detour") {
                 transition.shouldBeInstanceOf<Transition.RequireSubJourney>().resumeWith shouldBe
                     StepUpState.Start((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(allowReIdentification = true, reason = StepUpState.Reason.PEER_LOGIN))
@@ -170,7 +170,7 @@ class StepUpJourneyTest : BehaviorSpec({
 
         `when`("the last offered candidate is abandoned") {
             val exhausted = state.declining(ToolId("auth-sms"))
-            val transition = strategy.transition(exhausted as StepUpState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
+            val transition = journey.transition(exhausted as StepUpState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
             then("cancels - giving up here is not an error") {
                 transition shouldBe Transition.Cancel
             }
@@ -184,7 +184,7 @@ class StepUpJourneyTest : BehaviorSpec({
 
         `when`("the last offered candidate is abandoned") {
             val exhausted = state.declining(ToolId("auth-sms"))
-            val transition = strategy.transition(exhausted as StepUpState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
+            val transition = journey.transition(exhausted as StepUpState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
             then("cancels instead of requiring RE_IDENTIFY") {
                 transition shouldBe Transition.Cancel
             }
@@ -199,7 +199,7 @@ class StepUpJourneyTest : BehaviorSpec({
         val state = StepUpState.AuthChoice(AcrLevel.LOA1 upTo AcrLevel.LOA2, Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
 
         `when`("resumed after accepting the proof (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("finishes once the combination satisfies the target") {
                 transition shouldBe Transition.Authenticated
             }

@@ -108,7 +108,7 @@ class JourneyActionExecutor(
     /**
      * Central identity resolution (docs/02-domaenenmodell.md #6): the account module owns the
      * matching policy, this class the consequences. Whether an account is already in hand is read
-     * from [journey]/[channel] every time, not chosen by a strategy. So no strategy or tool order
+     * from [journey]/[channel] every time, not chosen by a journey. So no journey or tool order
      * can skip the merge-safety check in [accountOf].
      */
     private fun performRecordIdentification(journey: AuthJourney, channel: ChannelSession, action: Action.RecordIdentification) {
@@ -345,7 +345,7 @@ class JourneyActionExecutor(
         if (linksDeviceImplicitly(opening.onSuccess, linkedTo, accountId)) linkDeviceTo(channel, accountId)
     }
 
-    /** Uses the account this session holds now, not one a strategy stored earlier ([Action.LinkDevice]). */
+    /** Uses the account this session holds now, not one a journey stored earlier ([Action.LinkDevice]). */
     private fun performLinkDevice(journey: AuthJourney, channel: ChannelSession) {
         val accountId = checkNotNull(channel.accountId) { "LinkDevice without a known account" }
         linkDeviceTo(channel, accountId)
@@ -375,7 +375,7 @@ class JourneyActionExecutor(
      * uses. So no "checked on A, deleted B".
      */
     private fun performDeleteAccount(journey: AuthJourney, channel: ChannelSession) {
-        // Re-check against fresh context, not the strategy's state, as for RevokeAuthMethod.
+        // Re-check against fresh context, not the stored journey state, as for RevokeAuthMethod.
         val freshCtx = contextFactory.contextFor(journey, channel)
         val account = checkNotNull(freshCtx.account) { "DeleteAccount without a resolved account" }
         val requiredAcr = Action.DeleteAccount.requiredAcr(account)
@@ -386,7 +386,7 @@ class JourneyActionExecutor(
     }
 
     /**
-     * The one action a strategy may ask for that is not a tool run. Guarded against self-lockout:
+     * The one action a journey may ask for that is not a tool run. Guarded against self-lockout:
      * rejected if the account could no longer reach its own channel's floor afterwards.
      */
     private fun removeMethod(journey: AuthJourney, channel: ChannelSession, methodInstanceId: String) {

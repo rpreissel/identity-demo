@@ -365,7 +365,7 @@ export interface ChannelCreateRequest {
      */
     availableTools: Array<string>;
     /**
-     * The entry intent's own name, case-insensitively (Journeys.fromRequest) - no separate wire vocabulary. Omitted/fast_access (default): DeviceAccountLink found -> LOGIN, else REGISTRATION. lookup_login: always offers lookup-based login (email + credential), even on a linked device. register: always starts fresh REGISTRATION, even on a linked device (second account). confirm_peer_login: a cold app approves a waiting web login (QR pairing) for the device's linked account.
+     * The entry journey's own name, case-insensitively (Journeys.fromRequest) - no separate wire vocabulary. Omitted/fast_access (default): DeviceAccountLink found -> LOGIN, else REGISTRATION. lookup_login: always offers lookup-based login (email + credential), even on a linked device. register: always starts fresh REGISTRATION, even on a linked device (second account). confirm_peer_login: a cold app approves a waiting web login (QR pairing) for the device's linked account.
      * @type {string}
      * @memberof ChannelCreateRequest
      */

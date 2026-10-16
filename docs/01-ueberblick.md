@@ -94,9 +94,9 @@ flowchart LR
     eine eigene Kopie zu halten ([ADR-38](adr/ADR-038-keycloak-liest-konten.md)).
 - **Orchestrator**: der Kern dieses Projekts. Er verwaltet die **Kanäle**, also die laufenden
   Verbindungen von App oder Website zu ihm. Er legt fest, welche Schritte ein Nutzer durchläuft.
-  Dazu gehört zu jedem Kanal ein **Intent**, das Ziel des Nutzers (etwa „anmelden“ oder
-  „registrieren“). Für dieses Ziel startet der Orchestrator eine **Journey**, also einen geführten
-  Ablauf aus mehreren Schritten. Ob die gesammelten Nachweise für ein Sicherheitsniveau reichen,
+  Dazu gehört zu jedem Kanal eine **Journey**: das Ziel des Nutzers (etwa „anmelden“ oder
+  „registrieren“) zusammen mit dem Weg dorthin. Für dieses Ziel startet der Orchestrator einen
+  **Durchlauf** der Journey, also einen geführten Ablauf aus mehreren Schritten. Ob die gesammelten Nachweise für ein Sicherheitsniveau reichen,
   bewertet er mit seiner Richtlinie für Sicherheitsniveaus (`AuthPolicy`)
   ([04-orchestrierung.md](04-orchestrierung.md)).
 - **Konto** (Modul `account`): Hier liegen die Konten mit ihren Ankern, Angaben und eingerichteten
@@ -168,7 +168,7 @@ Es gibt drei Wege, auf denen ein Nutzer zu einem Token kommt.
 
 - **App:**
   1. Die App öffnet mit DPoP einen Kanal beim Orchestrator.
-  2. Der Orchestrator startet eine Journey, meist mit dem Intent `FAST_ACCESS` (schnell anmelden).
+  2. Der Orchestrator startet eine Journey, meist `FAST_ACCESS` (schnell anmelden).
      Er bietet die Verfahren an, die im aktuellen Zustand der Journey erlaubt sind.
   3. Die App folgt `next` zu den Endpunkten der Tools.
   4. Reicht der Nachweis, öffnet der Orchestrator über seinen eigenen Grant eine
@@ -220,11 +220,12 @@ Hinter jedem Begriff steht deshalb in Klammern sein Name im Code.
 - **Kanal** (`ChannelSession`): die Verbindung eines Clients zum Orchestrator. Ein Client ist die
   App oder die Website. Ein Kanal lebt bewusst nur kurz
   ([ADR-3](adr/ADR-003-channelsession-bewusst-kurzlebig-geraete-identitaet-in-deviceaccountlink.md)).
-- **Journey** (`Journey`, z. B. `RegisterJourney`): was der Nutzer erreichen will (das Anliegen,
-  früher „Intent“), zusammen mit dem Weg dorthin und den Stellen, an denen sie beginnen kann.
+- **Journey** (`Journey`, z. B. `RegisterJourney`): was der Nutzer erreichen will (das Anliegen),
+  zusammen mit dem Weg dorthin und den Stellen, an denen sie beginnen kann.
   Beispiele sind `FAST_ACCESS` (anmelden), `REGISTER` (registrieren) und `STEP_UP` (Niveau
   erhöhen). Die vollständige Liste steht in [04-orchestrierung.md](04-orchestrierung.md) Abschnitt 2.
-- **Lauf einer Journey** (`AuthJourney`): ein laufender Durchlauf. Er nutzt ein oder mehrere Tools. Wo sie gerade steht, sagt ihr **Zustand** (`JourneyState`).
+- **Durchlauf einer Journey** (`AuthJourney`): ein einzelner Lauf. Er nutzt ein oder mehrere Tools.
+  Wo er gerade steht, sagt sein **Zustand** (`JourneyState`).
 - **Tool** (`toolId`, z. B. `enroll-sms`): ein einzelner Schritt, mit dem sich ein Nutzer
   identifiziert, ein Verfahren einrichtet oder sich anmeldet.
 - **Anmeldeverfahren** (`AccountAuthMethod`, im Code „Methode“): ein Weg zur Anmeldung, der im
@@ -326,8 +327,8 @@ Sicherheitsniveaus (`AuthPolicy`), ob die Nachweise für das verlangte Niveau re
 Nur diese Richtlinie weiß, was eine *Kombination* von Nachweisen bedeutet. Ein Modul kennt nur sich
 selbst.
 
-Für jeden Intent gibt es ein Zustandsdiagramm in [journeys/](journeys/). Es zeigt, über welche
-Zustände die Journey laufen kann. Ein Test prüft, dass jedes Diagramm zum Code passt.
+Für jede Journey gibt es ein Zustandsdiagramm in [journeys/](journeys/). Es zeigt, über welche
+Zustände ein Durchlauf laufen kann. Ein Test prüft, dass jedes Diagramm zum Code passt.
 
 Details: [04-orchestrierung.md](04-orchestrierung.md)
 
@@ -341,7 +342,7 @@ Endpunkte der Tools.
 **App – der Orchestrator führt.**
 
 1. Die App legt per `POST /app/channels` einen Kanal an. Jede Anfrage enthält einen DPoP-Beweis.
-2. Der Orchestrator startet eine Journey zum Intent des Kanals, meist `FAST_ACCESS`. Er bietet die
+2. Der Orchestrator startet die Journey des Kanals, meist `FAST_ACCESS`. Er bietet die
    Verfahren an, die im aktuellen Zustand der Journey erlaubt sind.
 3. Ist die Anmeldung erfolgreich, holt der Orchestrator die Tokens bei Keycloak. Der Kanal hat dann
    den Zustand `AUTHENTICATED` (angemeldet).
@@ -433,8 +434,9 @@ dort:
 - `orchestrator/domain/`: das Vokabular, etwa `Journeys` (alle Journeys), `AcrLevels`,
   `ToolCatalog` und die Fehlercodes.
 - `orchestrator/domain/journey/`: `Journey` mit Startpunkten, `Transition` und `Action`. Darunter
-  liegen die Zustände (`state/`) und die Journeys selbst (`strategy/`), dazu `AccountRules.kt` und
+  liegen die Zustände (`state/`), dazu `AccountRules.kt` und
   `CredentialRules.kt`.
+- `orchestrator/domain/journeys/`: die Journeys selbst, ein Objekt je Journey (`RegisterJourney` usw.).
 - `orchestrator/domain/policy/`: `AuthPolicy`, `DefaultAuthPolicy` und `SessionEvidence`.
 - `account/domain/`: `AnchorDecision`, `ClaimValues` und `PassportForm`.
 

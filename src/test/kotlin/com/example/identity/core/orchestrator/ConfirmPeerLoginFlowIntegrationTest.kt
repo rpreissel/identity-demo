@@ -1,6 +1,6 @@
 package com.example.identity.core.orchestrator
 
-import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginJourney
+import com.example.identity.core.orchestrator.domain.journeys.ConfirmPeerLoginJourney
 import com.example.identity.contract.texts.templateOf
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe

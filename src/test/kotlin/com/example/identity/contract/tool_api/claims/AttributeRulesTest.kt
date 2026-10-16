@@ -5,7 +5,7 @@ import com.example.identity.tools.auth_password.PASSWORD_EXISTS
 import com.example.identity.tools.auth_sms.PHONE_NUMBER
 import com.example.identity.tools.ident_nect.NECT_RESTRICTED_ID
 import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 
@@ -16,7 +16,7 @@ import io.kotest.matchers.shouldBe
  */
 class AttributeRulesTest : BehaviorSpec({
     // The modules' own attributes exist once their module is loaded; load all of them first.
-    StrategyTestFixtures.catalog
+    JourneyTestFixtures.catalog
 
     given("the authority of each attribute type") {
         then("PERSON_ID is locally owned, established and replaced at loa2, immutable, not the holder's to withdraw") {

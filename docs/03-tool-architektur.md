@@ -477,7 +477,7 @@ etwa gibt die App eine Anmeldung im Browser frei. Für solche Tools gelten drei 
 - Sie zählen nicht zu Niveau (ACR) und Verfahren (AMR) des *eigenen* Kanals. `evidenceAxis` ist für
   sie `null`.
 - Sie werden nie als Kandidat angeboten, um eine Lücke zum geforderten Niveau zu schließen.
-- Sie werden nur ausdrücklich per `intent` gestartet.
+- Sie werden nur über eine eigene Journey gestartet, die der Client ausdrücklich wählt (`intent`).
 
 `ToolRole` ist ein abgeschlossenes `enum`, und `evidenceAxis` behandelt jede Rolle ausdrücklich.
 Deshalb muss eine neue Rolle angeben, was sie zum Niveau beiträgt. Lehnt jemand eine fremde Anfrage

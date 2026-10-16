@@ -49,14 +49,14 @@ Anfrage bleibt fünf Minuten offen (unten, „Sicherheit des Pairing-Codes“).
   [Abgleich](../glossar/abgleich-externes-glossar.md), Abschnitt 4.
 - `approve-qr` hat die Rolle `ToolRole.PEER_APPROVAL`, denn keine der übrigen Rollen passt auf
   „bestätigt, was jemand anderes tut". Das Tool erhöht nicht das Niveau des eigenen Kanals,
-  also der Verbindung der App zum Orchestrator. Es wird nur ausdrücklich per **Intent** gestartet,
-  also mit dem Anliegen, mit dem der Nutzer kommt ([03-tool-architektur.md](../03-tool-architektur.md)
+  also der Verbindung der App zum Orchestrator. Es wird nur über eine eigene **Journey** gestartet,
+  die der Nutzer ausdrücklich wählt ([03-tool-architektur.md](../03-tool-architektur.md)
   Abschnitt 4).
 
 ## Die App bestätigt: `approve-qr`
 
-Dieser Abschnitt beschreibt die Seite der App. Der Einstieg ist der Intent `CONFIRM_PEER_LOGIN`.
-Er prüft zuerst Konto, Niveau und wie frisch der Nachweis ist ([05-api.md](../05-api.md)
+Dieser Abschnitt beschreibt die Seite der App. Der Einstieg ist die Journey `CONFIRM_PEER_LOGIN`.
+Sie prüft zuerst Konto, Niveau und wie frisch der Nachweis ist ([05-api.md](../05-api.md)
 Abschnitt 3a, „Peer-Login bestätigen“, Schritte 1 bis 3). Danach geht es so weiter:
 
 4. `approve-qr` starten:

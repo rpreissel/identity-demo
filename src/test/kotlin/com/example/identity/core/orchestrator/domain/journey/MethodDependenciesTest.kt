@@ -3,7 +3,7 @@ package com.example.identity.core.orchestrator.domain.journey
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.core.account.AuthMethodView
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 
@@ -14,14 +14,14 @@ import io.kotest.matchers.shouldBe
  */
 class MethodDependenciesTest : BehaviorSpec({
 
-    val sms = StrategyTestFixtures.method("sms", AcrLevel.LOA2)
-    val password = StrategyTestFixtures.method("password", AcrLevel.LOA2)
-    val email = StrategyTestFixtures.method("email", AcrLevel.LOA1)
-    val policy = StrategyTestFixtures.policy
+    val sms = JourneyTestFixtures.method("sms", AcrLevel.LOA2)
+    val password = JourneyTestFixtures.method("password", AcrLevel.LOA2)
+    val email = JourneyTestFixtures.method("email", AcrLevel.LOA1)
+    val policy = JourneyTestFixtures.policy
 
     /** [claimsEmail] names the instances that asserted the EMAIL claim. */
     fun dependencies(vararg methods: AuthMethodView, claimsEmail: Set<AuthMethodView> = emptySet()) = MethodDependencies(
-        StrategyTestFixtures.account(*methods), StrategyTestFixtures.catalog
+        JourneyTestFixtures.account(*methods), JourneyTestFixtures.catalog
     ) { if (it in claimsEmail) setOf(AttributeType.EMAIL) else emptySet() }
 
     given("an account with sms and password") {

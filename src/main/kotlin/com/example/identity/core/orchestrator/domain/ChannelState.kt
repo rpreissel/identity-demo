@@ -18,7 +18,7 @@ enum class ChannelState {
     /**
      * The channel has a login. Whether a journey still runs on it (a step-up, a method change) is
      * not a state of its own: `next` says what is due. A cancelled journey returns to this status,
-     * one rule for every intent (docs/04-orchestrierung.md, "Abbruch").
+     * one rule for every journey (docs/04-orchestrierung.md, "Abbruch").
      */
     val isLoggedIn: Boolean
         get() = this == AUTHENTICATED

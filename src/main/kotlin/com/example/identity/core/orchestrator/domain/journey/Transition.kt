@@ -19,7 +19,7 @@ sealed interface Transition {
      * this journey at [resumeWith] once it finishes.
      *
      * [optional] says what a cancelled sub-journey means. Not optional (the usual case): it was a
-     * precondition, so this journey is cancelled with it, without asking the strategy. Optional: this
+     * precondition, so this journey is cancelled with it, without being asked. Optional: this
      * journey resumes at [resumeWith] with [JourneyEvent.SubJourneyCancelled] and decides itself.
      */
     data class RequireSubJourney(

@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator.domain.journey
 
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.core.account.AuthMethodView
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures
 import com.example.identity.core.orchestrator.domain.AcrLevels
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -15,8 +15,8 @@ class CredentialRulesTest : BehaviorSpec({
 
     fun instance(id: String, enrolledUnder: String?, key: String? = null) =
         AuthMethodView(id, "device", true, null, enrolledUnder, key, null, EnrollmentRef("device", id))
-    val onCallerKey = StrategyTestFixtures.tool("auth-device").module
-    val notKeyBound = StrategyTestFixtures.tool("auth-sms").module
+    val onCallerKey = JourneyTestFixtures.tool("auth-device").module
+    val notKeyBound = JourneyTestFixtures.tool("auth-sms").module
 
     val loa1Key = "key-of-the-loa1-instance"
     val loa2Key = "key-of-the-loa2-instance"

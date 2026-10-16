@@ -6,7 +6,7 @@ import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolModule
 
 /**
- * What the domain may ask about the tools: the procedures and their tools. The strategies and the
+ * What the domain may ask about the tools: the procedures and their tools. The journeys and the
  * policy read the catalog through this, never through the Spring component that assembles it
  * (`ToolHandlerRegistry`) - so the domain stays free of the framework
  * (docs/adr/ADR-040-fachkern-im-paket-domain.md).

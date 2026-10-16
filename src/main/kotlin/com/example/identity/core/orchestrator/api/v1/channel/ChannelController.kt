@@ -151,11 +151,11 @@ class ChannelController(
     @DeleteMapping("/{channelSessionId}/journey")
     @Operation(
         summary = "Cancel the current journey",
-        description = "Abandons the currently running AuthJourney, whatever intent started it; the response already offers a fresh start where applicable.",
+        description = "Abandons the currently running AuthJourney, whatever journey it runs; the response already offers a fresh start where applicable.",
         responses = [
             ApiResponse(
                 responseCode = "200",
-                description = "A cancelled REGISTER journey restarts the same entry intent from scratch.",
+                description = "A cancelled REGISTER journey restarts the same entry journey from scratch.",
                 content = [Content(mediaType = "application/json", schema = Schema(implementation = ChannelResponse::class), examples = [ExampleObject(value = """
                     {
                       "channel": {"channelSessionId": "$EXAMPLE_CHANNEL_SESSION_ID", "state": "ANONYMOUS"},
@@ -198,7 +198,7 @@ class ChannelController(
             "right after a lookup login, the account-deletion confirmation, and any future one alike, all through " +
             "this same address, answer=\"accept\"/\"decline\". For device binding specifically: agreeing is the " +
             "ONLY way such a login ever makes this device recognizable for future logins - it never happens as a " +
-            "side effect, because this intent is chosen precisely by people who want no device binding.",
+            "side effect, because this journey is chosen precisely by people who want no device binding.",
         responses = [
             ApiResponse(
                 responseCode = "200",

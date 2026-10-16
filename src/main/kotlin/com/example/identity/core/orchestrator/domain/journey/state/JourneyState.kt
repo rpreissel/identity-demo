@@ -10,7 +10,7 @@ import com.example.identity.core.orchestrator.domain.journey.Action
 /**
  * The position on the path, together with the attributes that hold at this position
  * (docs/04-orchestrierung.md #3), e.g. which methods were offered and which were declined. Every
- * intent owns its own sealed set, so a forgotten position is a compile error in a `when`.
+ * journey owns its own sealed set, so a forgotten position is a compile error in a `when`.
  * [activatable] answers both "which tool may the client activate now?" and "where next?"
  * ([JourneyService.nextOf]).
  */
@@ -27,7 +27,7 @@ sealed interface JourneyState {
 
     /**
      * What a tool completed in this state books: usually what its outcome stands for ([Action.of]).
-     * `JourneyService` performs it before the strategy hears anything, so a strategy only ever sees
+     * `JourneyService` performs it before the journey hears anything, so a journey only ever sees
      * [com.example.identity.core.orchestrator.domain.journey.JourneyEvent.ActionCompleted].
      */
     fun booking(tool: Tool, outcome: ToolOutcome.Completed): Action = Action.of(tool, outcome)
@@ -83,17 +83,17 @@ data class Offer(
 /** Shared shape of every state that offers a set of tools and remembers what was declined. */
 /**
  * The kind of an offer, read when the user backs out of a tool (docs/04-orchestrierung.md, "Zwei
- * Sorten von Übergang"). Declared on the state, not decided by the strategy, so the kind is visible
+ * Sorten von Übergang"). Declared on the state, not decided by the journey, so the kind is visible
  * where the offer is; [OfferingState.afterAbandoning] answers backing out from it.
  */
 enum class DeclinePolicy {
     /** The obligation stands: the full offer comes back, the declined tool included. */
     MANDATORY,
 
-    /** Declining narrows the offer; once nothing is left, the strategy names the next, costlier way. */
+    /** Declining narrows the offer; once nothing is left, the journey names the next, costlier way. */
     FALLBACK,
 
-    /** The whole step may be skipped: the first backing out already hands over to the strategy. */
+    /** The whole step may be skipped: the first backing out already hands over to the journey. */
     OPTIONAL,
 }
 
@@ -114,7 +114,7 @@ sealed interface OfferingState : JourneyState {
     /**
      * Backend-authored heading for the selection screen, so it can change without an app release
      * (as [Question]). Per state, because `selectionContext` only names the screen shared by every
-     * intent offering the same kind of candidate, not what the user is asked here.
+     * journey offering the same kind of candidate, not what the user is asked here.
      */
     val selectionTitle: Text
     val selectionDescription: Text? get() = null
@@ -152,7 +152,7 @@ sealed interface ToolFreeState : JourneyState {
 /**
  * A state that pauses for an explicit accept/decline answer instead of a tool run
  * (`JourneyService.answer`). Not sealed, so JourneyService recognizes a waiting yes/no state
- * without importing any intent's states; a new yes/no action needs no change there.
+ * without importing any journey's states; a new yes/no action needs no change there.
  */
 interface AnswerableState : ToolFreeState {
     /** What the client renders while waiting. */

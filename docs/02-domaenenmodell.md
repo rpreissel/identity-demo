@@ -87,7 +87,7 @@ langlebigste, innen die kurzlebigste.
 ```mermaid
 flowchart LR
   CS["ChannelSession<br/><i>dieses Gerät, dieser Kanal</i>"]
-  AJ["AuthJourney<br/><i>ein Durchlauf zu einem Intent</i>"]
+  AJ["AuthJourney<br/><i>ein Durchlauf einer Journey</i>"]
   JS["JourneyState<br/><i>Position + Angaben</i>"]
   TS["ToolSession<br/><i>ein Durchlauf eines Tools</i>"]
 
@@ -101,9 +101,9 @@ flowchart LR
   **Keycloak-Sitzung**. Das ist die Sitzung, die Keycloak für einen angemeldeten Nutzer führt;
   Keycloak ist das Produkt, das die Tokens ausstellt. Von da an lebt der Kanal nicht länger als
   diese Sitzung (Abschnitt 3, „Lebensdauer“).
-- **`AuthJourney`** ist ein Durchlauf zu einem Intent, solange er läuft. Ein **Intent** ist das
-  Anliegen, mit dem der Nutzer kommt, etwa sich registrieren oder sich anmelden (Abschnitt 3,
-  „Lebenszyklus der AuthJourney“).
+- **`AuthJourney`** ist ein Durchlauf einer Journey, solange er läuft. Eine **Journey** ist das
+  Anliegen, mit dem der Nutzer kommt, zusammen mit dem Weg dorthin, etwa sich registrieren oder
+  sich anmelden (Abschnitt 3, „Lebenszyklus der AuthJourney“).
 - **`ToolSession`** ist der Durchlauf eines einzelnen Tools und dauert oft nur Minuten. Ein **Tool**
   ist ein abgeschlossener Arbeitsschritt, etwa „SMS-Code prüfen“. Die `ToolSession` hält nur den
   Lebenszyklus des Durchlaufs. Die Fachdaten, etwa TAN oder Freischaltcode, gehören dem Modul des
@@ -139,8 +139,8 @@ dieselbe, nämlich die `ChannelSession`.
 
 ## 2) Zustand statt Vererbung
 
-Journeys zu verschiedenen Intents verlaufen unterschiedlich. Man könnte dafür je Intent eine
-Unterklasse bilden. Dieses Modell trennt stattdessen die gespeicherten Daten vom Verhalten:
+Verschiedene Journeys verlaufen unterschiedlich. Man könnte dafür je Journey eine Unterklasse
+der Entity bilden. Dieses Modell trennt stattdessen die gespeicherten Daten vom Verhalten:
 
 - `AuthJourney` ist eine flache Entity ohne Unterklassen. Was sich je Journey unterscheidet, steht
   im `JourneyState`. Das ist eine abgeschlossene Menge von Zuständen **je Journey**
@@ -220,7 +220,7 @@ Sitzungsdauer ändern will, ändert sie im Realm, nicht im Orchestrator. Die Fri
 ### Lebenszyklus der AuthJourney
 
 Der Lebenszyklus sagt nur, **ob** die Journey noch läuft. Wo sie gerade steht, sagt der
-`JourneyState` des jeweiligen Intents ([Orchestrierung](04-orchestrierung.md)). Die Schritte
+`JourneyState` der jeweiligen Journey ([Orchestrierung](04-orchestrierung.md)). Die Schritte
 innerhalb eines Tools verwaltet das Modul des Tools selbst.
 
 Eine **Sub-Journey** ist eine Journey, die eine andere unterbricht. Währenddessen wartet die

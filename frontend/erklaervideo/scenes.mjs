@@ -104,15 +104,15 @@ export const SCENES = [
     ],
   },
   {
-    id: 's04-begriffe', chapter: 1, kicker: 'Drei Begriffe tragen das Modell', title: 'Intent, Journey, Tool',
+    id: 's04-begriffe', chapter: 1, kicker: 'Drei Begriffe tragen das Modell', title: 'Journey, Zustand, Tool',
     html: `
     <div class="abs concept" style="left:150px;top:240px;width:500px" data-b="0">
-      <div class="tag">Intent</div><p>Was der Nutzer erreichen will</p>
+      <div class="tag">Journey</div><p>Was der Nutzer erreichen will, und der Weg dorthin</p>
       <div class="chips mono"><span>REGISTER</span><span>FAST_ACCESS</span><span>STEP_UP</span></div>
     </div>
     <div class="abs concept" style="left:710px;top:240px;width:500px" data-b="1">
-      <div class="tag">Journey</div><p>Ein laufender Durchlauf zu einem Intent, mit festen Zuständen</p>
-      <div class="mini" data-b="1" data-d="3.2">Je Intent ein Zustandsdiagramm – ein Test prüft es gegen den Code</div>
+      <div class="tag">Zustand</div><p>Wo ein Durchlauf der Journey gerade steht</p>
+      <div class="mini" data-b="1" data-d="3.2">Je Journey ein Zustandsdiagramm – ein Test prüft es gegen den Code</div>
     </div>
     <div class="abs concept" style="left:1270px;top:240px;width:500px" data-b="2">
       <div class="tag">Tool</div><p>Ein einzelner Schritt, jeweils ein eigenes Modul</p>
@@ -125,8 +125,8 @@ export const SCENES = [
     </div>
     <div class="abs note" style="left:150px;top:850px;width:1620px" data-b="3" data-d="5.2">Der Orchestrator wählt nach jedem Tool den nächsten Schritt – so lange, bis das verlangte Niveau erreicht ist.</div>`,
     beats: [
-      { t: 'Drei Begriffe tragen das Modell. Der Intent sagt, was der Nutzer will: sich registrieren, schnell anmelden oder sein Niveau anheben.' },
-      { t: 'Eine Journey ist ein laufender Durchlauf zu einem Intent, mit festen Zuständen. Für jeden Intent gibt es ein Zustandsdiagramm, und ein Test prüft es gegen den Code.' },
+      { t: 'Drei Begriffe tragen das Modell. Eine Journey sagt, was der Nutzer will und wie er dorthin kommt: sich registrieren, schnell anmelden oder sein Niveau anheben.' },
+      { t: 'Jeder Durchlauf einer Journey steht in einem festen Zustand. Für jede Journey gibt es ein Zustandsdiagramm, und ein Test prüft es gegen den Code.' },
       { t: 'Ein Tool ist ein einzelner Schritt, jeweils in einem eigenen Modul.' },
       { t: 'Eine Registrierung sieht zum Beispiel so aus: Freischaltcode, E-Mail bestätigen, SMS einrichten, Passwort einrichten.' },
     ],
@@ -324,7 +324,7 @@ export const SCENES = [
     <div class="abs qgrid" style="left:150px;top:260px;width:1620px">
       <div class="q" data-b="1"><span>?</span>Stimmen Begriffe, Konten und Zustände?</div>
       <div class="q" data-b="1" data-d="2.4"><span>?</span>Stimmen die Regeln für die Niveaus?</div>
-      <div class="q" data-b="1" data-d="4.2"><span>?</span>Stimmen die Abläufe je Intent?</div>
+      <div class="q" data-b="1" data-d="4.2"><span>?</span>Stimmen die Abläufe je Journey?</div>
     </div>
     <div class="abs note big" style="left:150px;top:520px;width:1620px" data-b="2">Was jetzt abweicht, ändert das Modell – <b>und das ist jetzt noch billig.</b></div>
     <div class="abs path" style="left:150px;top:680px;width:1620px" data-b="3">
@@ -339,7 +339,7 @@ export const SCENES = [
     </div>`,
     beats: [
       { t: 'Der wichtigste nächste Schritt ist die Abstimmung mit euch.' },
-      { t: 'Stimmen Begriffe, Konten und Zustände? Stimmen die Regeln für die Niveaus und die Abläufe je Intent?' },
+      { t: 'Stimmen Begriffe, Konten und Zustände? Stimmen die Regeln für die Niveaus und die Abläufe je Journey?' },
       { t: 'Was jetzt abweicht, ändert das Modell, und das ist jetzt noch billig.' },
       { t: 'Der beste Einstieg ist die Beispiel-Story von Mara, danach die Orchestrierung, die Journey-Diagramme und die Entscheidungen. Alles steht in der Doku, auch als Website.' },
     ],

@@ -87,9 +87,9 @@ etwas hinzu und brauchen nichts davon.
   (`Journey`), also das Anliegen des Nutzers, etwa „registrieren“ oder „anmelden“, zusammen mit
   ihren Regeln. Es gibt keinen eigenen Typ wie `REGISTRATION` oder
   `LOGIN`.
-- Damit alles konsistent bleibt, läuft je Kanal (`channelSessionId`) höchstens eine **Journey**
-  aktiv. Eine Journey ist ein laufender Ablauf zu einem Intent, etwa eine Registrierung von der
-  Identifizierung bis zum fertigen Konto. Welche Journey läuft, entscheidet das Backend.
+- Damit alles konsistent bleibt, läuft je Kanal (`channelSessionId`) höchstens ein **Durchlauf**
+  einer Journey (`AuthJourney`) aktiv, etwa eine Registrierung von der Identifizierung bis zum
+  fertigen Konto. Welche Journey läuft, entscheidet das Backend.
 
 ### Das Antwortformat: `ChannelResponse`
 
@@ -374,7 +374,7 @@ darauf zeigt.
   als abgelehnt gilt. Die Journey zeigt wieder ihre Auswahlseite mit allen Verfahren, die sie gerade
   anbietet. Das verlassene Verfahren ist dabei. Die Auswahlseite erscheint auch dann, wenn nur ein
   Verfahren übrig ist, denn wer zurückgeht, will wählen und nicht sofort wieder im selben Tool
-  landen. Die Strategie wird nicht gefragt, weil nichts passiert ist, das sie bewerten müsste.
+  landen. Die Regeln der Journey werden nicht gefragt, weil nichts passiert ist, das sie bewerten müssten.
   Manche Zustände haben keine Auswahlseite, etwa bei einem einzelnen bevorzugten Verfahren oder
   einer Zuordnung, die man überspringen kann. Dort wirkt Zurück wie Ablehnen. Im Web-Kanal löst
   jeder „Zurück“-Knopf einer Tool-Seite diesen Weg aus (`orchestrator_back`), in der App der
@@ -398,10 +398,10 @@ nutzen für Eingabe- und Prüfschritte dieselben Tool-URLs, die für beide Kanä
 
 - Der Endpunkt des Kanals wählt über die `toolId` das Tool aus und legt eine technische
   `ToolSession` an. Fachliche Eingaben nimmt er dabei selbst nicht entgegen.
-- Fachlich zuständig bleibt die Journey (`AuthJourney`) mit Intent, Zustand und Versuchsbudget,
-  also der Zahl der erlaubten Fehlversuche. Die `ToolSession` hält nur Daten zu ihrem
+- Fachlich zuständig bleibt der Durchlauf der Journey (`AuthJourney`) mit Journey, Zustand und
+  Versuchsbudget, also der Zahl der erlaubten Fehlversuche. Die `ToolSession` hält nur Daten zu ihrem
   Lebenszyklus (`toolSessionId`, `journeyId`, Zeitstempel). Die `toolId` ergibt sich aus der Route,
-  `stepData` aus den Daten des Moduls, und das Versuchsbudget gilt für die ganze Journey (siehe
+  `stepData` aus den Daten des Moduls, und das Versuchsbudget gilt für den ganzen Durchlauf (siehe
   [Domänenmodell](02-domaenenmodell.md)).
 - Die Antworten eines Ablaufs (`ChannelResponse`) nennen weder `accountId` noch `personId`. Es gibt
   zwei Ausnahmen: das `demo`-Objekt und im Web-Kanal `authData.subject`, über das Keycloak den
@@ -503,7 +503,7 @@ Zusammenführen von Protokolleinträgen und der Revision. Der Client gibt sie ni
 `intent` ist optional; ohne Angabe gilt `fast_access`. Der Wert ist der Name einer
 Journey, die einen App-Kanal eröffnen darf (`OpensAppChannel`). Groß- und Kleinschreibung spielen
 keine Rolle (`Journeys.fromRequest`).
-Unbekannte Werte lehnt der Orchestrator ab. Der Intent bestimmt, welcher Ablauf auf DIESEM Kanal
+Unbekannte Werte lehnt der Orchestrator ab. Die Journey bestimmt, welcher Ablauf auf DIESEM Kanal
 startet. Das gilt unabhängig davon, ob die Geräteverknüpfung (`DeviceAccountLink`) das Gerät
 erkennt. Die Geräteverknüpfung speichert, welches Smartphone zu welchem Konto gehört.
 
@@ -626,7 +626,7 @@ bricht die Journey mit `410` ab ([Orchestrierung](04-orchestrierung.md)).
 
 `DELETE .../journey` bricht die laufende Journey (`AuthJourney`) ab und setzt den Zustand des
 Kanals (`ChannelSession.state`) zurück ([Domänenmodell](02-domaenenmodell.md) Abschnitt 3). Danach
-startet der Kanal **denselben Intent** neu, mit dem er eröffnet wurde. Bricht man einen Step-up
+startet der Kanal **dieselbe Journey** neu, mit der er eröffnet wurde. Bricht man einen Step-up
 (`STEP_UP`) oder die Verwaltung der Verfahren (`MANAGE_AUTH_METHODS`) ab, lautet die Antwort direkt
 `authenticated`. Die Zuordnung zum Konto und die Token-Sitzung der App (`AppTokenSession`) leitet
 der Orchestrator über die Geräteverknüpfung (`DeviceAccountLink`) neu ab. Ein Konto, das zuvor per
@@ -635,7 +635,7 @@ der Orchestrator über die Geräteverknüpfung (`DeviceAccountLink`) neu ab. Ein
 Im Web-Kanal ruft „Abbrechen“ auf der Verfahrensauswahl der Keycloak-Anmeldeseite dieses `DELETE`
 **nicht** auf. Stattdessen beendet es den ganzen Login bei Keycloak (`context.cancelLogin()` in
 `OrchestratorAuthenticator`). Keycloak kehrt dann mit `error=access_denied` zur Website zurück, und
-die Website zeigt „Anmeldung abgebrochen“ an. Der Grund: Würde derselbe Intent neu starten, käme der
+die Website zeigt „Anmeldung abgebrochen“ an. Der Grund: Würde dieselbe Journey neu starten, käme der
 Nutzer wieder auf dieselbe Seite, und eine Registrierung würde endlos von vorn beginnen. Der
 verlassene Web-Kanal läuft nach seiner Lebensdauer von selbst ab.
 
@@ -834,7 +834,7 @@ Ja oder Nein. Jeder solche Zustand (`AnswerableState`) enthält in `stepData` ei
 `confirm`):
 `{"kind": "Confirm", "title": "...", "description": "...", "confirmLabel": "...", "cancelLabel": "...", "destructive": true|false}`.
 
-Für **jeden** `AnswerableState` hat `next` denselben festen Wert, egal zu welchem Intent:
+Für **jeden** `AnswerableState` hat `next` denselben festen Wert, egal in welcher Journey:
 `{"type":"orchestrator","context":"prompt","step":"confirm"}`. Beantwortet wird jeder `Prompt` über
 denselben gemeinsamen Endpunkt `POST .../{channelSessionId}/answer` mit
 `{"answer": "accept"|"decline"}`. Jeder andere Wert wird mit 400 abgelehnt; die Rückfrage bleibt stehen.
@@ -1075,7 +1075,7 @@ Zuordnung bleibt, damit der Vertrag gleich bleibt. Das ist nur eine Information.
 
 Der Web-Kanal kennt kein Gerät. Eine Geräteverknüpfung (`DeviceAccountLink`) gibt es nur im
 App-Kanal ([02-domaenenmodell.md](02-domaenenmodell.md)). Angemeldet wird über den Login per
-E-Mail-Adresse oder über den eigenen Einstiegs-Intent `WEB_SELECT_METHOD`
+E-Mail-Adresse oder über die eigene Einstiegs-Journey `WEB_SELECT_METHOD`
 ([04-orchestrierung.md](04-orchestrierung.md) Abschnitt 3). Registriert wird über `REGISTER`
 (`intent=register`, siehe oben). `ident-fsc`, `ident-eid`, `confirm-email` und die `enroll-*`-Tools
 werden über dieselben `WebToolRenderer` angezeigt. Ohne Konto bietet die Auswahl neben den
@@ -1286,7 +1286,7 @@ Konten und Kanäle:
   (`channelSessionId`), Journey (`journeyId`) und Zeitraum (`from`, `to`, höchstens die 14 Tage, die
   der Trace aufbewahrt wird). Geblättert wird über `nextCursor`. Die Suche liest zuerst die
   Start-Einträge, je Journey einen, und danach nur die Schritte der gefundenen Journeys. Eine Seite
-  kostet deshalb bei 20 Mio. Konten so viel wie in der Demo. Anliegen (`intent`) und Ergebnis
+  kostet deshalb bei 20 Mio. Konten so viel wie in der Demo. Journey (`intent`) und Ergebnis
   (`outcome`) stehen erst nach dem Lesen fest und filtern danach. Eine Seite liest dafür höchstens
   2.000 Starts und enthält dann womöglich weniger Treffer als verlangt. `searchedUntil` nennt, wie
   weit sie zurückgekommen ist.

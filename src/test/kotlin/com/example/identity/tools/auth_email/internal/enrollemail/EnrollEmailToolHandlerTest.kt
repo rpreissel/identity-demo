@@ -2,7 +2,7 @@ package com.example.identity.tools.auth_email.internal.enrollemail
 
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.contract.tool_api.ToolOutcome
 import com.example.identity.contract.tool_api.directory.EMAIL_ANCHOR_ENROLLMENT
 import io.kotest.core.spec.style.BehaviorSpec

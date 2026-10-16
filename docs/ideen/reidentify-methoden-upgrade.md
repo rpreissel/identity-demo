@@ -80,7 +80,7 @@ Inhaber des Kontos selbst, und er hat gerade freiwillig einen stärkeren Nachwei
 ## 3) Wo das technisch ansetzen würde
 
 **Der neue Zustand.** `RE_IDENTIFY`
-([`ReIdentifyJourney.kt`](../../src/main/kotlin/com/example/identity/core/orchestrator/domain/journey/strategy/ReIdentifyJourney.kt),
+([`ReIdentifyJourney.kt`](../../src/main/kotlin/com/example/identity/core/orchestrator/domain/journeys/ReIdentifyJourney.kt),
 Zustände in `ReIdentifyState.kt`) ist nie der Einstieg einer Journey. Man erreicht die Sub-Journey
 nur über `Transition.RequireSubJourney`. Heute läuft es so ab:
 

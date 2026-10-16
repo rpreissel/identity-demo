@@ -37,9 +37,10 @@ verständlich sein. Einige Wörter haben hier eine feste Bedeutung (ausführlich
 - **Keycloak:** das Produkt, das auf der Website die Anmeldung führt und die Tokens ausstellt.
 - **Kanal:** eine Verbindung eines Clients zum Orchestrator. Der App-Kanal spricht direkt mit dem
   Orchestrator, der Web-Kanal über Keycloak.
-- **Intent:** das Anliegen, mit dem ein Nutzer kommt, etwa „anmelden“ oder „SMS einrichten“.
+- **Journey:** das Anliegen, mit dem ein Nutzer kommt, etwa „anmelden“ oder „SMS einrichten“,
+  zusammen mit dem Weg dorthin.
 - **Tool:** ein abgeschlossener Arbeitsschritt, etwa „mit Passwort anmelden“.
-- **Journey:** ein Durchlauf zu einem Intent. Er setzt sich aus Tools zusammen.
+- **Durchlauf:** ein einzelner Lauf einer Journey (`AuthJourney`). Er setzt sich aus Tools zusammen.
 - **Evidenz:** die gesammelten Nachweise einer Anmeldung, also welche Verfahren mit welchen
   Faktoren bestanden wurden. Daraus folgt das **Niveau** (`loa1` bis `loa3`), also wie sehr der
   Anmeldung vertraut wird.
@@ -70,7 +71,7 @@ Nummern stehen in der Liste am Ende.
   - Mechanismus: `type:JourneyService` (`start` bricht die laufende Kette ab), `sql:ux_journey_running_per_channel` (eine berechnete Spalte statt eines partiellen Index), `test:DatabaseInvariantConstraintTest`, `test:ModelBasedJourneyTest`
 - **I-4 Ein `AUTHENTICATED`-Kanal hat Evidenz mit mindestens einem Faktor.**
   - Worum es geht: „Angemeldet“ heißt: Es gibt einen bestandenen Nachweis. Kein Weg markiert einen Kanal ohne Nachweis als angemeldet, auch kein Abbruch, nach dem der Kanal in einen früheren Zustand zurückfällt.
-  - Mechanismus: `type:ChannelState` (`isLoggedIn`: Ein Abbruch kehrt nur dann zu `AUTHENTICATED` zurück, wenn der Kanal vorher angemeldet war. Keine Strategie legt ihren Rückfall selbst fest.), `sql:ck_channel_session_authenticated_with_evidence`, `test:DatabaseInvariantConstraintTest`, `test:ModelBasedJourneyTest`, `test:ConfirmPeerLoginFlowIntegrationTest`
+  - Mechanismus: `type:ChannelState` (`isLoggedIn`: Ein Abbruch kehrt nur dann zu `AUTHENTICATED` zurück, wenn der Kanal vorher angemeldet war. Keine Journey legt ihren Rückfall selbst fest.), `sql:ck_channel_session_authenticated_with_evidence`, `test:DatabaseInvariantConstraintTest`, `test:ModelBasedJourneyTest`, `test:ConfirmPeerLoginFlowIntegrationTest`
 
 ## Sitzung und Tokens
 

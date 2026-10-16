@@ -3,16 +3,16 @@ package com.example.identity.core.orchestrator.domain
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.OnlyAsSubJourney
 import com.example.identity.core.orchestrator.domain.journey.opensChannelOn
-import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.DeleteAccountJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.FreshProofJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.ReIdentifyJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.WebSelectMethodJourney
+import com.example.identity.core.orchestrator.domain.journeys.ConfirmPeerLoginJourney
+import com.example.identity.core.orchestrator.domain.journeys.DeleteAccountJourney
+import com.example.identity.core.orchestrator.domain.journeys.FastAccessJourney
+import com.example.identity.core.orchestrator.domain.journeys.FreshProofJourney
+import com.example.identity.core.orchestrator.domain.journeys.LookupLoginJourney
+import com.example.identity.core.orchestrator.domain.journeys.ManageAuthMethodsJourney
+import com.example.identity.core.orchestrator.domain.journeys.ReIdentifyJourney
+import com.example.identity.core.orchestrator.domain.journeys.RegisterJourney
+import com.example.identity.core.orchestrator.domain.journeys.StepUpJourney
+import com.example.identity.core.orchestrator.domain.journeys.WebSelectMethodJourney
 
 /**
  * Every kind of journey (docs/04-orchestrierung.md #2). The one place a new kind is added; its

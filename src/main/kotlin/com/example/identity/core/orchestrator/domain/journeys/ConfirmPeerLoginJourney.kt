@@ -1,4 +1,4 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
@@ -52,7 +52,7 @@ object ConfirmPeerLoginJourney : Journey<ConfirmPeerLoginState> {
     private fun confirming(ctx: JourneyContext) = ConfirmPeerLoginState.Confirming(Offer(CandidateTools.forPeerApproval(ctx)))
 
     /**
-     * Without an account (a cold entry on an unlinked device) it aborts; this intent offers no
+     * Without an account (a cold entry on an unlinked device) it aborts; this journey offers no
      * registration. Otherwise loa2 and a recent proof, never lowered for a never-identified account.
      */
     private fun requireFreshProof(ctx: JourneyContext): Transition {

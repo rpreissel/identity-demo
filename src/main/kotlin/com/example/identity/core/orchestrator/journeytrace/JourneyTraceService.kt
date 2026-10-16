@@ -105,7 +105,7 @@ class JourneyTraceService(
     /**
      * The operator's search (`AdminJourneyTraceController`): journeys, newest start first. It pages
      * over the journey starts, one entry per journey, then reads the steps of just those journeys,
-     * so a page costs the same at 20 million accounts as in the demo. Intent and outcome are only
+     * so a page costs the same at 20 million accounts as in the demo. Journey and outcome are only
      * known once read, so they filter afterwards, at most [SCAN_BUDGET] starts per page.
      */
     fun search(query: JourneyTraceQuery): JourneyTracePage {
@@ -209,7 +209,7 @@ class JourneyTraceService(
     )
 
     private companion object {
-        /** Journey starts one search page reads at most while an intent or outcome filter skips them. */
+        /** Journey starts one search page reads at most while a journey or outcome filter skips them. */
         const val SCAN_BUDGET = 2000
         const val MIN_BATCH = 50
         const val MAX_BATCH = 400

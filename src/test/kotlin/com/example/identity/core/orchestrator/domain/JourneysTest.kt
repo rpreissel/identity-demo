@@ -2,14 +2,14 @@ package com.example.identity.core.orchestrator.domain
 
 import com.example.identity.core.orchestrator.domain.journey.StartRefusal
 import com.example.identity.core.orchestrator.domain.journey.startRefusal
-import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.DeleteAccountJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.WebSelectMethodJourney
+import com.example.identity.core.orchestrator.domain.journeys.ConfirmPeerLoginJourney
+import com.example.identity.core.orchestrator.domain.journeys.DeleteAccountJourney
+import com.example.identity.core.orchestrator.domain.journeys.FastAccessJourney
+import com.example.identity.core.orchestrator.domain.journeys.LookupLoginJourney
+import com.example.identity.core.orchestrator.domain.journeys.ManageAuthMethodsJourney
+import com.example.identity.core.orchestrator.domain.journeys.RegisterJourney
+import com.example.identity.core.orchestrator.domain.journeys.StepUpJourney
+import com.example.identity.core.orchestrator.domain.journeys.WebSelectMethodJourney
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 

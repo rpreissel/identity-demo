@@ -54,7 +54,7 @@ Aufgaben der Willkommensseite im Browser vor:
 - **[Domänenmodell](02-domaenenmodell.md)**: Welche Entitäten, Zustände und Tabellen gibt es, und
   nach welchen Regeln wird gespeichert?
 - **[Orchestrierung und Policy](04-orchestrierung.md)**: Wer entscheidet, wie es weitergeht?
-  Intents, Journeys, `AuthPolicy`, Sicherheitsniveaus.
+  Journeys, `AuthPolicy`, Sicherheitsniveaus.
 - **[Verfahren: Datenmodell und Übersicht](06-ablaeufe.md)**: Welche Daten nutzen alle Verfahren
   gemeinsam? Dazu gehören Konto, Anker, Angaben (Claims), Änderungsprotokoll und eingerichtete
   Verfahren.
@@ -96,7 +96,7 @@ Aufgaben der Willkommensseite im Browser vor:
 
 ## Nachschlagen
 
-- **[Journeys](journeys/)**: Wie läuft genau ein Intent ab? Für jeden Intent gibt es ein
+- **[Journeys](journeys/)**: Wie läuft genau eine Journey ab? Für jede Journey gibt es ein
   Zustandsdiagramm, das ein Test gegen den Code prüft.
 - **[Invarianten](invarianten.md)**: Auf welche festen Regeln verlässt sich der Kern, und welcher
   Test oder Mechanismus sichert jede davon?

@@ -1,4 +1,4 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import java.time.Duration
@@ -10,10 +10,10 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.state.upTo
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.method
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
@@ -29,7 +29,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
  */
 class FreshProofJourneyTest : BehaviorSpec({
 
-    val strategy = FreshProofJourney
+    val journey = FreshProofJourney
     fun start(requiredAcr: AcrLevel = AcrLevel.LOA2, purpose: FreshProofState.Purpose = FreshProofState.Purpose.DELETE_ACCOUNT) =
         FreshProofState.Start(requiredAcr, purpose)
 
@@ -38,7 +38,7 @@ class FreshProofJourneyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
 
         `when`("the sub-journey starts") {
-            val transition = strategy.transition(start(), JourneyEvent.Started, theCtx)
+            val transition = journey.transition(start(), JourneyEvent.Started, theCtx)
             then("requires a step-up to that level, resuming here") {
                 transition shouldBe
                     Transition.RequireSubJourney(
@@ -50,7 +50,7 @@ class FreshProofJourneyTest : BehaviorSpec({
         }
 
         `when`("the sub-journey starts for a peer login") {
-            val transition = strategy.transition(start(purpose = FreshProofState.Purpose.PEER_LOGIN), JourneyEvent.Started, theCtx)
+            val transition = journey.transition(start(purpose = FreshProofState.Purpose.PEER_LOGIN), JourneyEvent.Started, theCtx)
             then("the step-up offers no re-identification as a way out and explains the peer login") {
                 transition.shouldBeInstanceOf<Transition.RequireSubJourney>().seedWith shouldBe
                     StepUpState.forSubJourney((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN))
@@ -58,14 +58,14 @@ class FreshProofJourneyTest : BehaviorSpec({
         }
 
         `when`("its STEP_UP finishes and reached the level (SubJourneyFinished)") {
-            val transition = strategy.transition(start(), JourneyEvent.SubJourneyFinished(StepUpJourney, achievedAcr = AcrLevel.LOA2), theCtx)
+            val transition = journey.transition(start(), JourneyEvent.SubJourneyFinished(StepUpJourney, achievedAcr = AcrLevel.LOA2), theCtx)
             then("is done - that step-up already IS the fresh proof, no second one demanded") {
                 transition shouldBe Transition.Authenticated
             }
         }
 
         `when`("a STEP_UP finishes that fell short of the level") {
-            val transition = strategy.transition(start(), JourneyEvent.SubJourneyFinished(StepUpJourney, achievedAcr = AcrLevel.LOA1), theCtx)
+            val transition = journey.transition(start(), JourneyEvent.SubJourneyFinished(StepUpJourney, achievedAcr = AcrLevel.LOA1), theCtx)
             then("cancels - a lesser re-proof would let a session stuck below the level pass via the very factor that couldn't reach it") {
                 transition shouldBe Transition.Cancel
             }
@@ -74,12 +74,12 @@ class FreshProofJourneyTest : BehaviorSpec({
 
     given("Start, a level the account already satisfies") {
         // device is the only tool whose own maxAcr reaches loa2 alone (sms/password/email cap at loa1).
-        val acc = account(method("device", AcrLevel.LOA2, boundKeyRef = StrategyTestFixtures.BINDING_KEY))
+        val acc = account(method("device", AcrLevel.LOA2, boundKeyRef = JourneyTestFixtures.BINDING_KEY))
         val proven = evidence(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE), account = acc)
 
         `when`("the latest proof is recent") {
             val theCtx = ctx(account = acc, evidence = proven.provenAt(TEST_NOW.minus(Duration.ofMinutes(4))), acrFloor = AcrLevel.LOA1)
-            val transition = strategy.transition(start(), JourneyEvent.Started, theCtx)
+            val transition = journey.transition(start(), JourneyEvent.Started, theCtx)
             then("is done at once - no second proof within the limit") {
                 transition shouldBe Transition.Authenticated
             }
@@ -87,7 +87,7 @@ class FreshProofJourneyTest : BehaviorSpec({
 
         `when`("the latest proof is older than the self-service limit") {
             val theCtx = ctx(account = acc, evidence = proven.provenAt(TEST_NOW.minus(Duration.ofMinutes(6))), acrFloor = AcrLevel.LOA1)
-            val transition = strategy.transition(start(), JourneyEvent.Started, theCtx)
+            val transition = journey.transition(start(), JourneyEvent.Started, theCtx)
             then("demands a fresh re-proof of any active factor - the level alone is not enough") {
                 val to = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<FreshProofState.Reproving>()
                 to.offered shouldContainExactlyInAnyOrder listOf(ToolId("auth-device"))
@@ -98,7 +98,7 @@ class FreshProofJourneyTest : BehaviorSpec({
         `when`("the latest proof is of unknown age") {
             val ageless = SessionEvidence(proven.methods.map { it.copy(provenAt = null) })
             val theCtx = ctx(account = acc.copy(personId = null), evidence = ageless, acrFloor = AcrLevel.LOA1)
-            val transition = strategy.transition(start(AcrLevel.LOA1), JourneyEvent.Started, theCtx)
+            val transition = journey.transition(start(AcrLevel.LOA1), JourneyEvent.Started, theCtx)
             then("demands the re-proof - an undated proof is never fresh") {
                 transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<FreshProofState.Reproving>()
             }
@@ -111,7 +111,7 @@ class FreshProofJourneyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = proven.provenAt(TEST_NOW.minus(Duration.ofMinutes(6))), acrFloor = AcrLevel.LOA1)
 
         `when`("the sub-journey starts") {
-            val transition = strategy.transition(start(), JourneyEvent.Started, theCtx)
+            val transition = journey.transition(start(), JourneyEvent.Started, theCtx)
             then("aborts rather than passing silently") {
                 transition.shouldBeInstanceOf<Transition.Abort>()
             }
@@ -122,7 +122,7 @@ class FreshProofJourneyTest : BehaviorSpec({
         val state = FreshProofState.Reproving(AcrLevel.LOA2, FreshProofState.Purpose.MANAGE_METHODS, Offer(listOf(ToolId("auth-sms"), ToolId("auth-password"))))
 
         `when`("any active factor was re-proven (booked as Reconfirm, ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, ctx())
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, ctx())
             then("is done - one proof, at any level, and never itself recorded as MethodEvidence") {
                 transition shouldBe Transition.Authenticated
             }
@@ -134,7 +134,7 @@ class FreshProofJourneyTest : BehaviorSpec({
 
         `when`("the last offered candidate is abandoned") {
             val exhausted = state.declining(ToolId("auth-sms"))
-            val transition = strategy.transition(exhausted as FreshProofState, JourneyEvent.OfferExhausted(exhausted.declined), ctx())
+            val transition = journey.transition(exhausted as FreshProofState, JourneyEvent.OfferExhausted(exhausted.declined), ctx())
             then("cancels - nothing passes just because every option was declined") {
                 transition shouldBe Transition.Cancel
             }

@@ -30,9 +30,9 @@ Abschnitt 6 ein, und das ist ein anderer Vorgang.
 
 ## 2) Mara registriert sich
 
-Die App startet eine **Journey** mit dem **Intent** `REGISTER`. Eine Journey ist ein geführter
-Ablauf aus mehreren Schritten. Der Intent sagt, was der Nutzer erreichen will. Hier drückt er Maras
-Wunsch aus, sich neu auszuweisen. Er beschreibt also nicht nur den technischen Ablauf dahinter.
+Die App startet die **Journey** `REGISTER`. Eine Journey ist ein geführter Ablauf aus mehreren
+Schritten. Ihr Name sagt, was der Nutzer erreichen will. Hier drückt er Maras Wunsch aus, sich neu
+auszuweisen. Er beschreibt also nicht nur den technischen Ablauf dahinter.
 
 Der Orchestrator bietet zuerst die Verfahren zur Identifizierung an. Jedes davon ist ein **Tool**,
 also ein einzelner Arbeitsschritt: `ident-fsc` (Freischaltcode), `ident-eid` (Online-Ausweis) und
@@ -113,7 +113,7 @@ Konto mit diesem Gerät verknüpft (`DeviceAccountLink`). Diese Verknüpfung die
 **Wiedererkennung**. Der Orchestrator weiß dadurch, um welches Konto es geht, bevor Mara irgendetwas
 bewiesen hat. Ein Nachweis ist die Verknüpfung nicht.
 
-Der Intent heißt jetzt `FAST_ACCESS`. Er bedeutet: möglichst bequem anmelden, mit Ausweichwegen,
+Die Journey heißt jetzt `FAST_ACCESS`. Sie bedeutet: möglichst bequem anmelden, mit Ausweichwegen,
 statt sich wieder ganz neu auszuweisen. Hat das Konto ein Verfahren, das an das Gerät gebunden ist,
 bietet der Orchestrator dieses zuerst an. Mara hat noch keines. Also bekommt sie die Wahl zwischen
 SMS und Passwort. Sie nimmt die SMS und ist angemeldet, auf `loa1`: ein Verfahren, ein Niveau.

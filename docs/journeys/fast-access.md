@@ -53,7 +53,7 @@ stateDiagram-v2
   note right of RE_IDENTIFY
     Eigene, gemeinsam genutzte
     Sub-Journey, kein Zustand
-    dieses Intents.
+    dieser Journey.
   end note
   note right of REGISTER
     Die Journey von REGISTER als

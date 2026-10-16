@@ -3,7 +3,7 @@ package com.example.identity.core.orchestrator.api.v1
 import com.example.identity.contract.tool_api.MissingFields
 import com.example.identity.contract.tool_api.StepDataTypes
 import com.example.identity.contract.tool_api.stepData
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures
 import com.example.identity.core.orchestrator.journey.MessageStep
 import com.example.identity.core.orchestrator.journey.OrchestratorStepDataTypes
 import io.kotest.assertions.throwables.shouldThrow
@@ -16,7 +16,7 @@ class StepDataWireFormatTest : BehaviorSpec({
 
     given("the declarations of the application") {
         val kinds = StepDataWireFormat.declaredKinds(
-            StrategyTestFixtures.modules,
+            JourneyTestFixtures.modules,
             listOf(OrchestratorStepDataTypes().orchestratorOwnStepDataTypes(), SharedStepDataTypes().sharedStepDataShapes()),
         )
 

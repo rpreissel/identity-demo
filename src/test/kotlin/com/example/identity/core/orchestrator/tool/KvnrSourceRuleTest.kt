@@ -7,7 +7,7 @@ import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.claims.ClaimSource
 import com.example.identity.contract.tool_api.factors
 import com.example.identity.contract.tool_api.toolModule
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -22,7 +22,7 @@ class KvnrSourceRuleTest : BehaviorSpec({
     given("the real catalog") {
         `when`("its modules are built") {
             then("they are accepted - every KVNR comes from the Personenverzeichnis") {
-                shouldNotThrowAny { StrategyTestFixtures.catalog }
+                shouldNotThrowAny { JourneyTestFixtures.catalog }
             }
         }
     }

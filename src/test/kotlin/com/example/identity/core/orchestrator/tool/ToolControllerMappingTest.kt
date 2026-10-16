@@ -2,7 +2,7 @@ package com.example.identity.core.orchestrator.tool
 
 import com.example.identity.contract.tool_api.ToolController
 import com.example.identity.contract.tool_api.envelope.TOOLS_API
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -46,9 +46,9 @@ class ToolControllerMappingTest(
                 toolRegistry.tools().flatMap { tool -> tool.versions.map { tool.toolId.value to it } }.associateWith { 1 }
         }
         then("the integration tests pin every module, so a new one does not fail there as 'Unknown tool'") {
-            val unpinned = toolRegistry.modules().map { it.method } - StrategyTestFixtures.modules.map { it.method }.toSet()
+            val unpinned = toolRegistry.modules().map { it.method } - JourneyTestFixtures.modules.map { it.method }.toSet()
             withClue(
-                "Add the module(s) $unpinned to StrategyTestFixtures.modules. The integration tests run against " +
+                "Add the module(s) $unpinned to JourneyTestFixtures.modules. The integration tests run against " +
                     "that list (PinnedToolCatalogTestConfig), so adding one may change expected candidate lists there."
             ) { unpinned.shouldBeEmpty() }
         }

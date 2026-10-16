@@ -169,7 +169,7 @@ class LoginFlowIntegrationTest : IntegrationTestSupport() {
 
                 then("the lookup tools are offered") {
                     loginStart.next() shouldBe mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
-                    // shouldContainAll, not exact: the lookup intent is preserved, not the catalog's exact lookup-tool set.
+                    // shouldContainAll, not exact: the lookup journey is preserved, not the catalog's exact lookup-tool set.
                     @Suppress("UNCHECKED_CAST")
                     (loginStart.stepData()["options"] as List<String>) shouldContainAll lookupTools
                 }

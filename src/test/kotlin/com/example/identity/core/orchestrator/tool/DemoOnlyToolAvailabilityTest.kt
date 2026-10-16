@@ -2,8 +2,8 @@ package com.example.identity.core.orchestrator.tool
 
 import com.example.identity.contract.tool_api.ToolVersion
 import com.example.identity.TEST_CLOCK
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.catalogOf
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.catalogOf
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.demo.demo_mode.DemoMode
 import com.example.identity.core.orchestrator.domain.ChannelType
 import io.kotest.core.spec.style.BehaviorSpec

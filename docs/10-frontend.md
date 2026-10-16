@@ -222,8 +222,8 @@ welche Komponente angezeigt wird:
 
 - Der Wechsel zwischen den Apps (Abschnitt 5) ist echte Browser-Navigation.
 - Der URL-Parameter `intent` beim Einstieg in den App-Kanal (FE-18, Abschnitt 6) wird einmal in
-  einen Aufruf von `handleStart` übersetzt. Ein Intent ist das Anliegen, mit dem der Nutzer kommt,
-  etwa sich registrieren oder sich anmelden.
+  einen Aufruf von `handleStart` übersetzt. Sein Wert nennt die Journey, also das, was der Nutzer
+  erreichen will, etwa sich registrieren oder sich anmelden.
 
 ---
 

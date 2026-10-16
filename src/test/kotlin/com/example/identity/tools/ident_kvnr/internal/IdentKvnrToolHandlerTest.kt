@@ -2,7 +2,7 @@ package com.example.identity.tools.ident_kvnr.internal
 
 import com.example.identity.contract.tool_api.InMemoryToolSessionData
 import com.example.identity.contract.tool_api.ids.ToolSessionId
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.contract.tool_api.values.PartnerNumber
 import com.example.identity.contract.texts.Text
 import com.example.identity.contract.tool_api.MissingFields

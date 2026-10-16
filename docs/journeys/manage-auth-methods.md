@@ -81,9 +81,9 @@ Dieser Nachweis erlaubt genau diesen einen Wunsch. Er wird nie zu einem Nachweis
 Lehnt der Nutzer alle Verfahren ab, endet die Journey, und nichts ist geändert. Gibt es nichts
 mehr einzurichten, endet das Hinzufügen ohne jede Nachfrage, auch ohne Prüfung des Niveaus.
 
-**Ein Verfahren je Journey.** `MANAGE_AUTH_METHODS` ist der einzige Intent ohne Zielniveau in der
-Richtlinie. Die Journey endet, sobald **ein** Verfahren erfolgreich eingerichtet ist, unabhängig vom
-erreichten Niveau. Für ein zweites Verfahren beginnt eine neue Journey.
+**Ein Verfahren je Durchlauf.** `MANAGE_AUTH_METHODS` ist die einzige Journey ohne Zielniveau in der
+Richtlinie. Ein Durchlauf endet, sobald **ein** Verfahren erfolgreich eingerichtet ist, unabhängig vom
+erreichten Niveau. Für ein zweites Verfahren beginnt ein neuer Durchlauf.
 
 **Der Wunsch bleibt bei der Prüfung erhalten.** Dass die Journey wartet, erkennt man an
 `JourneyLifecycle.SUSPENDED` (pausiert) und an der `parentJourneyId` der Kind-Journey, also am

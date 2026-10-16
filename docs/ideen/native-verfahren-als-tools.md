@@ -217,7 +217,7 @@ wurden.
   `RegisterEnrollFirstJourneyTest` zeigen es. In der Registrierung gibt es aber noch keinen
   Keycloak-Nutzer, und dort läuft auch keine Required Action. Die Erweiterung zeigt an dieser
   Stelle nur eine Fehlerseite. Es fehlt eine Deklaration am Tool, etwa „erst einrichtbar, wenn das
-  Konto existiert“, die die Strategien beachten.
+  Konto existiert“, die die Journeys beachten.
 - **Jeder native Schritt läuft nur in seinem eigenen Keycloak-Kontext.** Ein Authenticator läuft
   nur im Anmeldeablauf, eine Required Action nur in der Verwaltung der Verfahren. Fordert die
   Verwaltung einen frischen Nachweis an und bietet dafür `auth-otp` an, zeigt die Erweiterung eine

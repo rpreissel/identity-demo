@@ -1,4 +1,4 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.texts.Text
@@ -17,7 +17,7 @@ import com.example.identity.contract.tool_api.ToolId
 
 /**
  * The logic [FastAccessJourney] and [RegisterJourney] share for [AuthChoice] and [Enrolling]. A
- * stateless helper, not a base class, so each intent's states stay readable from its own file.
+ * stateless helper, not a base class, so each journey's states stay readable from its own file.
  * `resumeAtStart` is the caller's own start state, for when a RE_IDENTIFY sub-journey returns.
  */
 internal object AuthEnrollCore {

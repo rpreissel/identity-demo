@@ -12,7 +12,7 @@ meldet. Er steht in [03-tool-architektur.md](03-tool-architektur.md).
 ## Einstieg für Fachexperten
 
 Jeder Ablauf, den ein Nutzer durchläuft, ist nach seinem *Ziel* benannt und nicht nach seinem
-technischen Ablauf. Im System heißt ein solches Ziel **Intent**. Die folgende Tabelle ordnet jedem
+technischen Ablauf. Im System heißt ein solches Ziel samt dem Weg dorthin **Journey**. Die folgende Tabelle ordnet jedem
 fachlichen Ziel seinen Namen im System zu:
 
 | Ziel aus fachlicher Sicht | Heißt im System |
@@ -32,7 +32,7 @@ Angenommen, jemand hat eine fachliche Frage, etwa: „Darf man X löschen, ohne 
 auszuweisen?“ Die Antwort steht dann in genau *einem* dieser Bausteine (Abschnitt 3). Sie ist nicht
 über mehrere Schichten des Codes verstreut.
 
-Für jeden Intent gibt es ein vollständiges Zustandsdiagramm. Darin sind jeder Zustand, jeder
+Für jede Journey gibt es ein vollständiges Zustandsdiagramm. Darin sind jeder Zustand, jeder
 Übergang und jede Bedingung zu sehen. Hier ein Ausschnitt aus `FAST_ACCESS`:
 
 ```mermaid
@@ -57,7 +57,7 @@ stateDiagram-v2
   Finished --> [*]
 
   note right of REGISTER
-    Eigener Intent (Tabelle oben),
+    Eigene Journey (Tabelle oben),
     hier nur als Voraussetzung
     mitgenutzt.
   end note
@@ -77,12 +77,12 @@ direkt an den Markierungen «Ausweichen» und «Pflicht» ablesen:
 Angenommen, ein Fachexperte findet einen Fehler wie „Das sollte doch Pflicht sein, nicht
 Ausweichen“. Das lässt sich dann an *diesem* Bild klären, ohne dass Entwickler dazukommen müssen.
 
-Manche Anforderungen kommen in mehreren Intents vor. „Erneut identifizieren, wenn nichts anderes
+Manche Anforderungen kommen in mehreren Journeys vor. „Erneut identifizieren, wenn nichts anderes
 mehr hilft“ gehört zum Beispiel zu `FAST_ACCESS` und ebenso zu anderen Abläufen. Im Diagramm oben
-ist sogar ein ganzer eigener Intent (`REGISTER`) nur die Voraussetzung für einen anderen.
+ist sogar eine ganze eigene Journey (`REGISTER`) nur die Voraussetzung für eine andere.
 
 Beides ist im System als eigenständige **Sub-Journey** gebaut, also als untergeordneter Ablauf, den
-ein anderer Ablauf aufruft (`RE_IDENTIFY`, `REGISTER`, siehe Abschnitt 7). Mehrere Intents können
+ein anderer Ablauf aufruft (`RE_IDENTIFY`, `REGISTER`, siehe Abschnitt 7). Mehrere Journeys können
 eine Sub-Journey anstoßen, beschrieben ist sie aber nur einmal. Ändert sich die fachliche Regel für
 die erneute Identifizierung oder die Registrierung, ändert sie sich deshalb an *einer* Stelle, und
 zwar für alle Abläufe, die sie nutzen.
@@ -102,10 +102,10 @@ identifiziert wurde, reicht `loa1` (`selfServiceAcrFloor`). Beide Aktionen verla
 einen frischen Nachweis, der höchstens fünf Minuten alt ist (Abschnitt 4). `loa3` verlangen sie
 nicht.
 
-Festgelegt ist das genau an der Stelle im Modell, an der der jeweilige Intent beschrieben ist. Eine
+Festgelegt ist das genau an der Stelle im Modell, an der die jeweilige Journey beschrieben ist. Eine
 fachliche Entscheidung wie „Die QR-Bestätigung braucht künftig einen frischen Nachweis, kein altes
-Niveau“ ist damit eine gezielte und nachvollziehbare Änderung an der Beschreibung dieses einen
-Intents.
+Niveau“ ist damit eine gezielte und nachvollziehbare Änderung an der Beschreibung dieser einen
+Journey.
 
 Schließlich protokolliert das System jeden Schritt, den ein Nutzer durchläuft. Das Protokoll heißt
 **Journey-Trace** und ist einsehbar. Es zeigt, welches Verfahren wann angeboten, angenommen oder
@@ -116,10 +116,10 @@ wird 14 Tage aufbewahrt. Den Beleg für die Revision liefert das Änderungsproto
 (`account.change_log`, [ADR-39](adr/ADR-039-was-eine-kontoloeschung-ueberlebt.md)), das sogar das
 Löschen des Kontos überdauert.
 
-Ein konkretes Beispiel, das eine Person durch mehrere dieser Intents führt, steht in
+Ein konkretes Beispiel, das eine Person durch mehrere dieser Journeys führt, steht in
 [11-beispiel-story.md](11-beispiel-story.md). Insgesamt folgt aus diesem Aufbau:
 
-- **Fachliche Regeln stehen an einer Stelle, nicht verstreut im Code.** Jeder Intent hat sein
+- **Fachliche Regeln stehen an einer Stelle, nicht verstreut im Code.** Jede Journey hat ihr
   eigenes, vollständiges Zustandsdiagramm. Man kann es prüfen, ohne die Implementierung zu kennen.
 - **Ausnahmen sind sichtbar, nicht versteckt.** Das Modell zeigt ausdrücklich, ob ein Zustand
   ausweicht oder eine Pflicht ist, welches Niveau eine Aktion verlangt und welche Wege zu einer
@@ -127,15 +127,15 @@ Ein konkretes Beispiel, das eine Person durch mehrere dieser Intents führt, ste
 - **Wiederverwendete Abläufe gibt es fachlich nur einmal.** Ändert man eine Regel in einer
   Sub-Journey, wirkt das überall, wo sie eingebunden ist. Es entstehen keine Varianten, die sich
   unbemerkt voneinander unterscheiden.
-- **A/B-Tests werden möglich.** Ein Intent wie `FAST_ACCESS` ist ein eigenständiges, in sich
-  geschlossenes Modell. Deshalb lässt sich für denselben Intent eine zweite Variante der Journey
+- **A/B-Tests werden möglich.** Eine Journey wie `FAST_ACCESS` ist ein eigenständiges, in sich
+  geschlossenes Modell. Deshalb lässt sich für dasselbe Ziel eine zweite Variante der Journey
   danebenstellen und im laufenden Betrieb ausspielen.
 
 ---
 
 ## 1) Begriffe
 
-Das [Glossar](glossar/glossar.md) erklärt die Begriffe dieses Kapitels: Intent, Journey, Zustand,
+Das [Glossar](glossar/glossar.md) erklärt die Begriffe dieses Kapitels: Journey, Durchlauf, Zustand,
 Tool, Anmeldeverfahren, Schritt und Niveau. Wie sie den Wörtern des
 [externen Glossars](glossar/externes-glossar.md) entsprechen, zeigt der
 [Abgleich](glossar/abgleich-externes-glossar.md).
@@ -161,31 +161,31 @@ abgelehnt. Die Journey geht dann zurück zur Identifizierung oder bricht ab (üb
 
 ---
 
-## 2) Die Intents
+## 2) Die Journeys
 
-### Was ein Intent ist
+### Was eine Journey ist
 
-Ein **Intent** ist das Ziel des Nutzers *zusammen mit* der Strategie, die ihn dorthin führt. Er
-beantwortet drei Fragen, und zwar für jeden Intent anders:
+Eine **Journey** ist das Ziel des Nutzers *zusammen mit* dem Weg, der ihn dorthin führt. Sie
+beantwortet drei Fragen, und zwar für jede Journey anders:
 
 - Welche Tools dürfen hier überhaupt angeboten werden, und in welcher Reihenfolge?
 - Was bedeutet es in diesem Zusammenhang, wenn ein Tool abgeschlossen ist?
 - Wann ist das Ziel erreicht?
 
-Ein Intent beschreibt ausdrücklich **nicht**, was am Ende herauskam. Ob ein Durchlauf eine
+Eine Journey beschreibt ausdrücklich **nicht**, was am Ende herauskam. Ob ein Durchlauf eine
 Registrierung oder eine Anmeldung war, erkennt man erst an dem Weg, der tatsächlich gegangen wurde.
 
-### Die Intents im Überblick
+### Die Journeys im Überblick
 
 Ein **Kanal** ist die Verbindung eines Nutzers zum Orchestrator. Es gibt den `APP`-Kanal (die
-Smartphone-App) und den `WEB`-Kanal (die Website, angebunden über Keycloak). Die Intents lassen sich
+Smartphone-App) und den `WEB`-Kanal (die Website, angebunden über Keycloak). Die Journeys lassen sich
 danach ordnen, wie sie beginnen:
 
-- Vier **Einstiegs-Intents** starten eine neue Sitzung im `APP`-Kanal.
+- Vier **Einstiegs-Journeys** starten eine neue Sitzung im `APP`-Kanal.
 - `WEB_SELECT_METHOD` ist der Einstieg des Web-Kanals für die Anmeldung und den Step-up, also das
   Anheben des Niveaus. `REGISTER` ist zusätzlich über den Web-Kanal erreichbar (siehe unten).
-- Fünf weitere Intents laufen innerhalb einer bestehenden Sitzung.
-- `CONFIRM_PEER_LOGIN` ist die Ausnahme: Er ist **beides zugleich** (eigener Abschnitt unten).
+- Fünf weitere Journeys laufen innerhalb einer bestehenden Sitzung.
+- `CONFIRM_PEER_LOGIN` ist die Ausnahme: Sie ist **beides zugleich** (eigener Abschnitt unten).
 
 | Journey (`name`) | Zweck | Einstieg |
 |---|---|---|
@@ -200,7 +200,7 @@ danach ordnen, wie sie beginnen:
 | `RE_IDENTIFY` | Erneute Identifizierung als gemeinsam genutzte Sub-Journey | nie direkt, nur über `RequireSubJourney` |
 | `FRESH_PROOF` | Niveau und frischer Nachweis vor einer Aktion am Konto, als gemeinsam genutzte Sub-Journey | nie direkt, nur über `RequireSubJourney` |
 
-**Startpunkte im Code.** Jede Journey ist ein Objekt (`domain.journey.strategy.RegisterJourney` usw.),
+**Startpunkte im Code.** Jede Journey ist ein Objekt (`domain.journeys.RegisterJourney` usw.),
 das seine Startpunkte selbst nennt; `domain.Journeys` listet alle Journeys. Die Spalte „Einstieg“
 oben steht im Code so:
 
@@ -226,15 +226,15 @@ object LookupLoginJourney : Journey<LookupLoginState> {
 ```
 
 **`CONFIRM_PEER_LOGIN` ohne bestehende Sitzung.** Startet `CONFIRM_PEER_LOGIN` ohne bestehende
-Sitzung, bietet er nie eine Identifizierung oder Registrierung an. Ist über die
+Sitzung, bietet sie nie eine Identifizierung oder Registrierung an. Ist über die
 Geräteverknüpfung (`DeviceAccountLink`) kein Konto bekannt, bricht die Journey sofort ab (410). Ist
 ein Konto bekannt, gilt eine feste Schwelle von `loa2` und ein frischer Nachweis, beides als
 Sub-Journey [`FRESH_PROOF`](journeys/fresh-proof.md), so wie bei `DELETE_ACCOUNT` und
 `MANAGE_AUTH_METHODS` ([ADR-61](adr/ADR-061-frischer-nachweis-als-gemeinsame-sub-journey.md)). Anders als dort gibt es im Step-up darin keinen Ausweg
 über eine erneute Identifizierung (`Purpose.PEER_LOGIN`).
 
-**`REGISTER`** ist ein eigener Intent mit eigener Journey (`RegisterState`). Er schlägt nicht in der
-Geräteverknüpfung (`DeviceAccountLink`) nach und bietet nie eine schon bestehende
+**`REGISTER`** ist eine eigene Journey mit eigenen Zuständen (`RegisterState`). Sie schlägt nicht
+in der Geräteverknüpfung (`DeviceAccountLink`) nach und bietet nie eine schon bestehende
 Geräteverknüpfung an. Auch `FAST_ACCESS` nutzt diese Journey: Muss sich jemand beim schnellen
 Anmelden erst identifizieren, startet `REGISTER` als vorgeschalteter Schritt
 (`Transition.RequireSubJourney`). Das folgt demselben Muster wie `RE_IDENTIFY`.
@@ -249,36 +249,36 @@ abgewiesen und bekommt nicht still ein neues Konto ([register.md](journeys/regis
 `ChannelSession.accountId`. `AuthJourney.accountId` hält nur fest, für welches Konto eine Journey
 lief. Es dient als Nachweis und wird für keine Entscheidung gelesen.
 
-**Fortsetzen und Abbrechen.** Der gewählte Intent wird in der `ChannelSession` gespeichert, also in
-den Daten des Kanals. Fortsetzen und Abbrechen starten denselben Intent erneut. Eine abgebrochene
+**Fortsetzen und Abbrechen.** Die gewählte Journey wird in der `ChannelSession` gespeichert, also in
+den Daten des Kanals. Fortsetzen und Abbrechen starten dieselbe Journey erneut. Eine abgebrochene
 Anmeldung über die E-Mail-Adresse (`LOOKUP_LOGIN`) beginnt also wieder als Anmeldung über die
 E-Mail-Adresse. Solange der Kanal nicht angemeldet ist, zeigt die App danach trotzdem ihre
 Startseite ([Frontend](10-frontend.md) FE-16).
 
 ---
 
-## 3) Die Journeys
+## 3) Wie eine Journey abläuft
 
-### Was eine Journey ist
+### Ein Durchlauf (`AuthJourney`)
 
-Eine **Journey** (im Code `AuthJourney`) ist ein laufender Durchlauf zu einem Intent, also ein
-geführter Ablauf mit mehreren Schritten. Sie gehört zu genau einem Kanal (`ChannelSession`) und
-lebt kürzer als dieser. Je Kanal ist immer höchstens eine Journey aktiv.
+Ein **Durchlauf** einer Journey (im Code `AuthJourney`) ist ein geführter Ablauf mit mehreren
+Schritten. Er gehört zu genau einem Kanal (`ChannelSession`) und lebt kürzer als dieser. Je Kanal
+ist immer höchstens ein Durchlauf aktiv.
 
 Beginnt eine neue Journey auf oberster Ebene, bricht `JourneyService.start` die noch laufende
 Journey ab, samt den Eltern-Journeys, die für sie pausiert wurden. Nur eine Sub-Journey läuft neben
 ihrer pausierten Eltern-Journey ([Invarianten](invarianten.md) I-3).
 
-Die Journey hält fest, was für den ganzen Weg gilt: den Intent, das Konto, das Versuchsbudget und
-den Lebenszyklus. Sie hält aber nicht fest, wo der Nutzer gerade steht. Das steht im Zustand
-(`JourneyState`).
+Der Durchlauf hält fest, was für den ganzen Weg gilt: die Journey (`kind`), das Konto, das
+Versuchsbudget und den Lebenszyklus. Er hält aber nicht fest, wo der Nutzer gerade steht. Das
+steht im Zustand (`JourneyState`).
 
-Intent und Journey verhalten sich zueinander wie `Tool` und `ToolSession`: Das eine benennt die
-*Art*, das andere ist *ein Durchlauf* davon. Ein Kanal kann nacheinander mehrere Journeys desselben
-Intents durchlaufen.
+`Journey` und `AuthJourney` verhalten sich zueinander wie `Tool` und `ToolSession`: Das eine
+benennt die *Art*, das andere ist *ein Durchlauf* davon. Ein Kanal kann dieselbe Journey
+nacheinander mehrmals durchlaufen.
 
-Wie die Sitzungsebenen zusammenhängen (Kanal, Journey, Zustand, Tool-Durchlauf), zeigt
-[02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 1.
+Wie die Sitzungsebenen zusammenhängen (Kanal, Durchlauf einer Journey, Zustand,
+Tool-Durchlauf), zeigt [02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 1.
 
 ### Zustand (`JourneyState`)
 
@@ -286,7 +286,7 @@ Der **Zustand** (`JourneyState`) sagt, wo die Journey gerade steht. Er enthält 
 an dieser Stelle gelten. Das ist etwa, *welche* Tools angeboten und *welche* schon verworfen wurden
 oder *welche* `ToolSession` gerade laufen darf.
 
-Jeder Intent hat seine eigene, abgeschlossene Menge von Zuständen. Die Zustände von
+Jede Journey hat ihre eigene, abgeschlossene Menge von Zuständen. Die Zustände von
 `MANAGE_AUTH_METHODS` lassen sich zum Beispiel für `LOOKUP_LOGIN` gar nicht ausdrücken.
 
 Der Zustand ist außerdem die einzige Quelle für zwei Fragen: „Welches Tool darf der Client jetzt
@@ -314,15 +314,15 @@ behandeln alle Zustände gleich: Er bringt die Journey weiter. Verschieden ist n
 Beide Sorten kommen in derselben Menge von Zuständen vor, etwa in `FAST_ACCESS`. Welche Sorte ein
 Zustand ist, steht am Zustand selbst (`OfferingState.declinePolicy`: `MANDATORY`, `FALLBACK`,
 `OPTIONAL`), und der Zustand beantwortet das Ablehnen selbst (`OfferingState.afterAbandoning`).
-Die Strategie erfährt nur, dass ein Angebot erschöpft ist (`JourneyEvent.OfferExhausted`), und
+Die Journey erfährt nur, dass ein Angebot erschöpft ist (`JourneyEvent.OfferExhausted`), und
 nennt dann den nächsten Weg ([ADR-62](adr/ADR-062-ablehnen-entscheidet-der-zustand.md)).
 
 ### Tool
 
 Ein **Tool** ist ein einzelner Ablauf, zum Beispiel `ident-fsc`, `enroll-sms` oder `auth-device`.
-Es weiß nichts über Journeys, Intents oder Reihenfolgen. Es meldet nur sein Ergebnis als
+Es weiß nichts über Journeys oder Reihenfolgen. Es meldet nur sein Ergebnis als
 `ToolOutcome` ([Tool-Architektur](03-tool-architektur.md)). Was dieses Ergebnis bedeutet,
-entscheidet der Intent.
+entscheidet die Journey.
 
 ### Die Journeys im Einzelnen
 
@@ -352,13 +352,13 @@ Journey nachschlagen, ohne alle zu laden.
 | `CONFIRM_PEER_LOGIN` | [confirm-peer-login.md](journeys/confirm-peer-login.md) |
 | `DELETE_ACCOUNT` | [delete-account.md](journeys/delete-account.md) |
 | `REGISTER`, Experiment „Erst Anmeldeverfahren einrichten“ | [register-enroll-first.md](journeys/register-enroll-first.md) |
-| Lebenszyklus, unabhängig vom Intent | [02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 3, „Lebenszyklus der AuthJourney“ |
+| Lebenszyklus, unabhängig von der Journey | [02-domaenenmodell.md](02-domaenenmodell.md) Abschnitt 3, „Lebenszyklus der AuthJourney“ |
 
 ---
 
 ## 4) Niveaus und AuthPolicy
 
-Die Strategien entscheiden nicht selbst, was genug ist. Sie fragen dafür die **`AuthPolicy`**, also
+Die Journeys entscheiden nicht selbst, was genug ist. Sie fragen dafür die **`AuthPolicy`**, also
 die Regeln, nach denen der Orchestrator aus den Nachweisen einer Sitzung das Niveau berechnet. Die
 `AuthPolicy` beantwortet diese Fragen:
 
@@ -562,15 +562,17 @@ Beide Pflichten werden aus dem vorhandenen Stand **abgeleitet** (`authentication
 `emailConfirmedAt`). Sie stehen nicht in einem eigenen Feld des Kontos.
 
 **Was das kostet, ausdrücklich benannt:** Angenommen, es kommt künftig eine dritte Pflicht dazu, die
-*mehrere* Intents betrifft. Dann müsste derselbe Zustand in mehreren Hierarchien geführt werden.
-Bei zwei Pflichten ist das die bessere Abwägung. Kommt eine dritte dazu, die mehrere Intents betrifft,
+*mehrere* Journeys betrifft. Dann müsste derselbe Zustand in mehreren Hierarchien geführt werden.
+Bei zwei Pflichten ist das die bessere Abwägung. Kommt eine dritte dazu, die mehrere Journeys betrifft,
 muss die Entscheidung neu geprüft werden.
 
-### Eine dritte Pflicht, auf einen Intent begrenzt
+<a id="eine-dritte-pflicht-auf-einen-intent-begrenzt"></a>
+
+### Eine dritte Pflicht, auf eine Journey begrenzt
 
 `SecondFactorKindObligation` (`RegisterJourney`) ist die oben angekündigte dritte Pflicht: die
 Pflicht, ein Verfahren einer zweiten Faktorart einzurichten. Sie ist aber enger zugeschnitten, als
-der Absatz darüber befürchtet. Sie betrifft **keinen zweiten Intent**, sondern nur `REGISTER` und
+der Absatz darüber befürchtet. Sie betrifft **keine zweite Journey**, sondern nur `REGISTER` und
 nie `FAST_ACCESS`.
 
 Die Bestätigung der E-Mail-Adresse ist kein Einrichtungsschritt
@@ -700,9 +702,9 @@ sind und wie der gemeinsame Mechanismus ihre Entscheidungen ausführt.
 
 Eine **SPI** (Service Provider Interface) ist eine Schnittstelle, die verschiedene Bausteine nach
 demselben Muster umsetzen. `Journey` ist das Gegenstück zu `Tool` in `tool_api`: Dort
-beschreiben sich die Tools selbst, hier die Journeys. Jede Journey ist ein `object`; ein Lauf davon
-ist ein `AuthJourney` (`kind`). Intent und Strategie sind damit dasselbe: was der Nutzer erreichen
-will und wie er dorthin kommt, an einer Stelle.
+beschreiben sich die Tools selbst, hier die Journeys. Jede Journey ist ein `object`; ein Durchlauf davon
+ist ein `AuthJourney` (`kind`). Eine Journey hält damit an einer Stelle zusammen, was der Nutzer
+erreichen will und wie er dorthin kommt.
 
 Jede Journey ist ein Moore-Automat für ihren eigenen Zustandstyp, also ein Zustandsautomat, der
 aus Zustand und Ereignis den nächsten Schritt bestimmt. Sie hat die Methode
@@ -718,7 +720,7 @@ Journey mindestens einen Startpunkt nennt. Eine Journey nennen darf nur, wer sie
 Endpunkt oder eine Journey, die sie als Sub-Journey anfordert. Die generische Maschine
 (`JourneyService`, `JourneyStateCodec`) kennt nur die Schnittstelle.
 
-**Wohin der Kanal bei einem Abbruch zurückfällt,** entscheidet keine Strategie. Der Kanal kehrt zu
+**Wohin der Kanal bei einem Abbruch zurückfällt,** entscheidet keine Journey. Der Kanal kehrt zu
 dem Anmeldestand zurück, den er vor der Journey hatte. War er angemeldet (`ChannelState.isLoggedIn`,
 also `AUTHENTICATED` oder ein darauf laufender Step-up), bleibt er das. Sonst fällt er nach
 `ANONYMOUS` zurück. Ein Konto im Aufbau, also ein Konto ohne Anmeldeverfahren, geht dabei ganz
@@ -737,28 +739,28 @@ und `REGISTER`; `FRESH_PROOF` ruft seinerseits `STEP_UP`.
 
 Ein **Ereignis** (`JourneyEvent`) ist das, was der Journey gerade passiert ist: Ein erfolgreich abgeschlossenes Tool
 ist kein Ereignis: Was dabei verbucht wird, sagt der Zustand (`JourneyState.booking`), der
-`JourneyService` verbucht es ohne die Strategie, und sie hört danach nur `ActionCompleted`. Im
+`JourneyService` verbucht es, ohne die Journey zu fragen, und sie hört danach nur `ActionCompleted`. Im
 Journey-Trace steht es weiter als Eintrag „Completed“.
 
 | Event | Bedeutung |
 |---|---|
 | `Started` | Die Journey wurde gerade angelegt und braucht ihr erstes Angebot |
-| `Abandoned(tool)` | „Zurück“ oder „Wechseln“: Der Nutzer hat das gestartete Tool ohne Abschluss verworfen. Einen Angebots-Zustand beantwortet das der Zustand selbst (Abschnitt 3); eine Strategie sieht es nur in einem Zustand ohne Angebot |
-| `OfferExhausted(declined)` | Jedes angebotene Tool wurde abgelehnt, oder ein optionaler Schritt wurde übersprungen. Nur Ausweich- und optionale Zustände sehen es; die Strategie nennt dann den nächsten Weg |
+| `Abandoned(tool)` | „Zurück“ oder „Wechseln“: Der Nutzer hat das gestartete Tool ohne Abschluss verworfen. Einen Angebots-Zustand beantwortet das der Zustand selbst (Abschnitt 3); eine Journey sieht es nur in einem Zustand ohne Angebot |
+| `OfferExhausted(declined)` | Jedes angebotene Tool wurde abgelehnt, oder ein optionaler Schritt wurde übersprungen. Nur Ausweich- und optionale Zustände sehen es; die Journey nennt dann den nächsten Weg |
 | `ActionCompleted` | Die `Action` eines `Perform`-Übergangs (unten) ist ausgeführt. Der `JourneyContext` ist neu aufgebaut |
-| `SubJourneyFinished(intent, achievedAcr)` | Eine untergeordnete Journey, die als Voraussetzung gestartet wurde, ist fertig. Es ist immer die, die dieser Zustand angefordert hat; `intent` steht nur für den Journey-Trace da |
-| `SubJourneyCancelled(intent)` | Die untergeordnete Journey wurde abgelehnt oder aufgegeben, ohne Ergebnis. Dann bricht der `JourneyService` die wartende Journey ab, ohne die Strategie zu fragen. Nur eine Sub-Journey, die die Strategie als optional angefordert hat (`RequireSubJourney(optional = true)`, bisher die abschließende Identifizierung von „Enrollment zuerst“), meldet sich mit diesem Ereignis bei ihr zurück (`optional`) |
-| `Answered(answer)` | Eine ausdrückliche Antwort auf einen `AnswerableState` (einen Zustand mit Ja/Nein-Frage) statt eines Tools. `answer` ist `Answer.ACCEPT` oder `Answer.DECLINE`; jeden anderen Wert lehnt schon der Endpunkt mit 400 ab, die Strategie sieht ihn nie |
+| `SubJourneyFinished(journey, achievedAcr)` | Eine untergeordnete Journey, die als Voraussetzung gestartet wurde, ist fertig. Es ist immer die, die dieser Zustand angefordert hat; `journey` steht nur für den Journey-Trace da |
+| `SubJourneyCancelled(journey, optional)` | Die untergeordnete Journey wurde abgelehnt oder aufgegeben, ohne Ergebnis. Dann bricht der `JourneyService` die wartende Journey ab, ohne sie zu fragen. Nur eine Sub-Journey, die die wartende Journey als optional angefordert hat (`RequireSubJourney(optional = true)`, bisher die abschließende Identifizierung von „Enrollment zuerst“), meldet sich mit diesem Ereignis bei ihr zurück (`optional`) |
+| `Answered(answer)` | Eine ausdrückliche Antwort auf einen `AnswerableState` (einen Zustand mit Ja/Nein-Frage) statt eines Tools. `answer` ist `Answer.ACCEPT` oder `Answer.DECLINE`; jeden anderen Wert lehnt schon der Endpunkt mit 400 ab, die Journey sieht ihn nie |
 
 Ein **Übergang** (`Transition`) ist das, was als Nächstes passieren soll:
 
 - **`To(state)`** — weiter zu diesem Zustand. Er bringt sein Angebot selbst mit.
-- **`RequireSubJourney(intent, seedWith, resumeWith, optional)`** — zuerst `intent` laufen lassen,
+- **`RequireSubJourney(journey, seedWith, resumeWith, optional)`** — zuerst `journey` laufen lassen,
   beginnend bei `seedWith`, und danach hier bei `resumeWith` weitermachen. Wird die Sub-Journey
   abgebrochen, bricht diese Journey mit ab, außer die Anforderung war `optional`; dann entscheidet
-  die Strategie. Die Aussage gilt je Anforderung und steht an der Sub-Journey
+  die anfordernde Journey. Die Aussage gilt je Anforderung und steht an der Sub-Journey
   (`auth_journey.optional_for_parent`). `seedWith` baut die anfordernde
-  Strategie über die Fabrikmethode des Zielzustands, z. B. `StepUpState.forSubJourney(...)`.
+  Journey über die Fabrikmethode des Zielzustands, z. B. `StepUpState.forSubJourney(...)`.
 - **`Authenticated`** — Ziel erreicht. Die Journey ist damit abgeschlossen und wird nicht weiter
   verwendet.
 - **`Cancel`** — Der Nutzer gibt auf. Das ist wie ein ausdrücklicher Abbruch und kein Fehler.
@@ -770,22 +772,22 @@ Ein **Übergang** (`Transition`) ist das, was als Nächstes passieren soll:
 - **`Abort(reason)`** — Es geht gar nicht weiter (410). Das bedeutet nie bloß „keine Kandidaten
   mehr“.
 
-**`Perform` trennt die Entscheidung von der Wirkung.** Die Strategie entscheidet nur, was passieren
+**`Perform` trennt die Entscheidung von der Wirkung.** Die Journey entscheidet nur, was passieren
 soll. `JourneyService` führt die `action` aus und baut den `JourneyContext` danach neu auf. Dann ruft
 er `transition(resumeState, ActionCompleted, frischerCtx)` erneut auf. Das wiederholt er so lange,
-bis eine Strategie nicht wieder `Perform` liefert. Auf dieser Wiederholung beruhen alle besonderen
+bis die Journey nicht wieder `Perform` liefert. Auf dieser Wiederholung beruhen alle besonderen
 Wege:
 
-- Ein abgeschlossenes Tool: Das sieht keine Strategie. Der `JourneyService` fragt den Zustand, was
+- Ein abgeschlossenes Tool: Das sieht keine Journey. Der `JourneyService` fragt den Zustand, was
   es verbucht (`JourneyState.booking`, sonst `Action.of`), führt das als `Perform` aus und ruft die
-  Strategie mit `ActionCompleted` im selben Zustand. Zwei Zustände weichen ab:
+  Journey mit `ActionCompleted` im selben Zustand. Zwei Zustände weichen ab:
   `ManageAuthMethodsState.Changing` verbucht die Einrichtung als Ersatz des alten Verfahrens
   (`AdoptCredential.replaces`), `FreshProofState.Reproving` verbucht nur `Reconfirm`, das nichts
   schreibt. Ein Tool, das nicht angeboten war, kommt hier nie an, denn `JourneyService.activate`
   lässt nur angebotene zu. Ob ein Nachweis, der eine Einladung nennt, den Kanal anmelden darf,
   entscheidet `InvitationAcceptance` beim Binden der Einladung ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md));
   lehnt sie ab, endet die Journey wie bei `Abort`.
-- `Action.LinkDevice`, `Action.RevokeAuthMethod` und `Action.DeleteAccount`: Die Strategie liefert
+- `Action.LinkDevice`, `Action.RevokeAuthMethod` und `Action.DeleteAccount`: Die Journey liefert
   `Perform`, statt selbst zu verknüpfen oder zu löschen (`DeviceLinkQuestion`,
   `ManageAuthMethodsState.RemoveRequested`, `DeleteAccountState.ConfirmPending`).
 - Übernommene Nachweise ([05-api.md](05-api.md) Abschnitt 3b): Das ist kein `JourneyEvent`,
@@ -793,19 +795,19 @@ Wege:
 
 Eine **`Action`** beschreibt, was ein Übergang an Daten ändern will. Es gibt diese Varianten:
 
-- **`RecordIdentification(tool, outcome)`** — Eine Identifizierung (`ident-fsc`/`ident-eid`/`ident-nect`) oder eine Zuordnung (`ident-kvnr`) hat eine Identität festgestellt. Für beide Fälle gibt es **einen** Handler. Ob schon ein Konto gebunden ist, liest er zur Laufzeit aus Journey und Kanal. Die Strategie legt das nicht über die Variante fest.
+- **`RecordIdentification(tool, outcome)`** — Eine Identifizierung (`ident-fsc`/`ident-eid`/`ident-nect`) oder eine Zuordnung (`ident-kvnr`) hat eine Identität festgestellt. Für beide Fälle gibt es **einen** Handler. Ob schon ein Konto gebunden ist, liest er zur Laufzeit aus Journey und Kanal. Die Journey legt das nicht über die Variante fest.
 - **`AdoptCredential(tool, outcome)`** — Ein neues Verfahren wurde eingerichtet.
 - **`AcceptProof(tool, outcome)`** — Ein Nachweis wurde erbracht. Ob das Tool sein Subjekt (das Konto, um das es geht) selbst *nennen* darf, leitet der Executor aus `ToolRole.ACCOUNT_LOOKUP_AUTH` und der aktuellen Zuordnung ab. Widerspricht ein genanntes Konto einem schon gebundenen, gibt es `409`. Nennt das Tool eine Einladung (`Subject.Invitation`, `auth-invite-lookup`), bindet der Executor sie statt eines Kontos als Subjekt des Kanals. Das geschieht nur im Web-Kanal und nur auf einem Kanal ohne Subjekt ([ADR-48](adr/ADR-048-vorgangszugang-mit-einmalkennwort.md)).
 - **`AdoptAttestation(tool, outcome)`** — Ein Attribut des Kontos wurde bestätigt (z. B. die E-Mail-Adresse). Das allein darf nie zu einem *anderen* Konto wechseln. Dafür braucht es eine echte Identifizierung in derselben Sitzung.
 - **`RecordApproval(tool, outcome)`** — Ein `PEER_APPROVAL`-Tool hat über die Anfrage eines anderen Kanals entschieden (`CONFIRM_PEER_LOGIN`). Das wird nur verbucht und ändert keinen eigenen Nachweis.
-- **`RevokeAuthMethod(methodInstanceId)`** — **Ein Anmeldeverfahren** widerrufen, also das Credential selbst und nicht nur einen Schalter. Wer sich damit aussperren würde, wird vom Automaten abgewiesen, nicht von der Strategie. Der Name sagt, was die Action zerstört. Daneben steht `DeleteAccount`, das das ganze Konto zerstört.
+- **`RevokeAuthMethod(methodInstanceId)`** — **Ein Anmeldeverfahren** widerrufen, also das Credential selbst und nicht nur einen Schalter. Wer sich damit aussperren würde, wird vom Executor abgewiesen, nicht von der Journey. Der Name sagt, was die Action zerstört. Daneben steht `DeleteAccount`, das das ganze Konto zerstört.
 - **`RetractAttribute(attributeType)`** — Ein Attribut des Kontos zurücknehmen, heute die bestätigte E-Mail-Adresse. Was davon abhing (`requires`), entfällt ebenfalls.
 - **`LinkDevice`** — Das aktuelle Gerät mit dem Konto **dieser Sitzung** verknüpfen. Nur auf diesem Weg darf ein Gerät auch *neu* verknüpft werden, weil ihm eine Zustimmung vorausgeht.
 - **`DeleteAccount`** — **Das ganze Konto** dieser Sitzung unwiderruflich löschen. Unmittelbar vor der Ausführung prüft der Executor `requiredAcr(account)` noch einmal gegen die aktuellen Nachweise.
 
-**Sicherheitsprüfungen gehören nie in die Strategie.** Angenommen, die *Prüfung* liegt im einzelnen
-Handler einer Action, die *Wahl* des Handlers (oder eines Schalters darauf) aber bei der Strategie.
-Dann lassen sich fremde Konten übernehmen, denn eine Strategie wählt leicht den Handler, der nicht
+**Sicherheitsprüfungen gehören nie in die Journey.** Angenommen, die *Prüfung* liegt im einzelnen
+Handler einer Action, die *Wahl* des Handlers (oder eines Schalters darauf) aber bei der Journey.
+Dann lassen sich fremde Konten übernehmen, denn eine Journey wählt leicht den Handler, der nicht
 prüft. Deshalb ist Folgendes fest im Aufbau verankert:
 
 - Drei Dinge sind aus **genau einer** Klasse erreichbar (`JourneyActionExecutor`): die Identität
@@ -813,13 +815,13 @@ prüft. Deshalb ist Folgendes fest im Aufbau verankert:
   und ein Gerät verknüpfen (`linkDeviceToAccount`). Das erzwingt eine ArchUnit-Regel, also ein
   automatischer Architekturtest, und nicht ein Review.
 - Jeder Wechsel zu einem *anderen* Konto als dem bisherigen läuft durch dieselbe Funktion
-  (`accountOf`), egal welche Strategie ihn ausgelöst hat.
+  (`accountOf`), egal welche Journey ihn ausgelöst hat.
 - Für das Verknüpfen eines Geräts gibt es **eine** Implementierung (`linkDeviceTo`). Sie widerruft
   immer auch die Geräte-Credentials des vorher verknüpften Kontos. Eine Variante ohne Widerruf gibt
-  es nicht, also kann auch keine Strategie sie wählen.
+  es nicht, also kann auch keine Journey sie wählen.
 
 Die ersten vier Varianten von `Action` enthalten `tool` und `outcome` selbst. Sie enthalten nur, was
-sich je Intent **unterscheidet**. Alles Mechanische, also `personId`, `enrollmentRef`, `amr` und
+sich je Journey **unterscheidet**. Alles Mechanische, also `personId`, `enrollmentRef`, `amr` und
 `achievedAcr`, liest der gemeinsame Mechanismus direkt aus dem mitgegebenen `outcome`.
 
 ### Ein Angebot darf veralten, die Ausführung muss aktuell prüfen
@@ -831,7 +833,7 @@ Zweifelsfall. Sie unterscheidet zwei Arten von festgehaltenen Werten:
   nicht mehr feststellen lässt. Beispiele sind `StepUpState.Goal.startingAcr`, `MethodEvidence` als
   Nachweis und die Felder im Protokoll.
 - Er ist **falsch**, wenn er einen aktuellen Stand festschreibt, der bei der Ausführung neu gelesen
-  werden müsste. Schwellen und `accountId`-Felder, die die Strategie in Zustände schreibt, gehören
+  werden müsste. Schwellen und `accountId`-Felder, die eine Journey in Zustände schreibt, gehören
   ausnahmslos in diese zweite Gruppe.
 
 Angebote (`OfferingState.offered`) gehören bewusst in die erste Gruppe. `activatable()` gleicht sie
@@ -856,7 +858,7 @@ auch nach jeder Action, über den wiederholten Durchlauf mit `ActionCompleted`.
 „Geräteverknüpfung“, steht, ob ein Ablauf das Gerät verknüpft, ob es dort überhaupt ein Gerät gibt
 und warum nur der ausdrückliche Weg ein Gerät neu verknüpfen darf.
 
-Zentral und für Strategien unerreichbar bleiben drei Dinge: den Nachweis in die `SessionEvidence`
+Zentral und für die Journeys unerreichbar bleiben drei Dinge: den Nachweis in die `SessionEvidence`
 übernehmen, das Änderungsprotokoll des Kontos und den Journey-Trace schreiben, und die Begrenzung
 `min(achievedAcr, enrolledUnderAcr)`.
 
@@ -864,14 +866,14 @@ Die Entscheidungen hinter diesem Aufbau:
 
 - **Ein Übergang statt fünf.** „Erstes Angebot“, „abgeschlossenes Tool“, „Abbruch“, „Rückkehr aus
   einer Sub-Journey“ und „eigene Aktion fertig“ sind dieselbe Frage, nur mit einem anderen Event.
-- **Die Strategie liefert eine `Transition`, kein `Next`.** Sonst müsste jeder Intent selbst die
+- **Die Journey liefert eine `Transition`, kein `Next`.** Sonst müsste jede Journey selbst die
   Regel nachbauen, dass ein einzelner Kandidat die Auswahlseite überspringt. So macht der gemeinsame
   Mechanismus daraus Zustand und `next`.
-- **`Abort` ist eine Entscheidung der Strategie.** Es passiert nicht von selbst, wenn die
+- **`Abort` ist eine Entscheidung der Journey.** Es passiert nicht von selbst, wenn die
   Kandidaten ermittelt werden. Eine leere Liste von Kandidaten muss „nächster Zustand“ bedeuten
   dürfen. Sonst ließe sich keine Ausweichkette bauen.
-- **Die Strategie bekommt nie Services**, nur einen `JourneyContext` zum Lesen. Er enthält das
-  Konto, die Nachweise, die Untergrenze, den Bezug zum Gerät und Abfragen im Katalog. Die Strategie
+- **Die Journey bekommt nie Services**, nur einen `JourneyContext` zum Lesen. Er enthält das
+  Konto, die Nachweise, die Untergrenze, den Bezug zum Gerät und Abfragen im Katalog. Die Journey
   entscheidet nur, sie führt nichts aus. Ausgeführt wird ausschließlich außerhalb
   (`JourneyActionExecutor`, siehe unten).
 
@@ -927,7 +929,7 @@ sie am Ende jedes Durchlaufs je Sitzung und Verfahren ab
 ([ADR-59](adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md)). Ein neuer Kanal derselben
 Sitzung übernimmt sie.
 
-Ein solcher Nachweis ist keine fachliche Entscheidung einer Strategie, sondern nur ein schon
+Ein solcher Nachweis ist keine fachliche Entscheidung einer Journey, sondern nur ein schon
 vorhandener Stand. Er läuft deshalb als **erster Übergang** des Automaten. In Statecharts ist das der
 Übergang vom Startpunkt zum ersten Zustand. Er läuft mechanisch, ohne Bedingung und gehört zu
 keinem Zustand.
@@ -938,7 +940,7 @@ werden übernommen, BEVOR `Journey.initialState()` aufgerufen wird. Das ist kein
 `JourneyService` selbst ausführt.
 
 Weil der Nachweis also schon vor dem ersten Angebot vorliegen kann, darf `Started` das erste Angebot
-nicht einfach bauen. Eine Strategie wie `WebSelectMethodJourney` prüft bei `Started` genauso wie
+nicht einfach bauen. Eine Journey wie `WebSelectMethodJourney` prüft bei `Started` genauso wie
 bei jedem anderen Nachweis, ob das Vorhandene schon reicht. Lägen die Nachweise im ersten Übergang
 noch nicht vor, würde sie einen Ausweg anbieten, den sie gar nicht braucht, beim Step-up etwa die
 erneute Identifizierung.
@@ -951,7 +953,7 @@ stehen diese Methoden zur Verfügung: `activate` (prüft und übernimmt eine `To
 `applyOutcome`, `back`, `abandon` und `nextOf`, dazu zum Lesen `isCurrent` und `findActive`.
 
 Das ist ihre **einzige** Verbindung zum Journey-Modell. Sie setzen keine Routing-Felder,
-unterscheiden nicht nach dem Intent und entscheiden nicht, welches Tool laufen darf. Ein `Step` ist
+unterscheiden nicht nach der Journey und entscheiden nicht, welches Tool laufen darf. Ein `Step` ist
 `next` plus die Daten, die der Schritt zum Anzeigen braucht.
 
 Drei Aktionen muss der Client sauber auseinanderhalten:
@@ -960,5 +962,5 @@ Drei Aktionen muss der Client sauber auseinanderhalten:
   abzulehnen (`POST /tools/api/{toolId}/v{N}/{toolSessionId}/back`).
 - `abandon` lehnt das Tool im aktuellen **Zustand** ab und führt die Journey weiter
   (`DELETE /tools/api/{toolId}/v{N}/{toolSessionId}`).
-- `cancel` gibt die **Journey** auf und startet den Einstiegs-Intent neu (`DELETE .../journey`,
+- `cancel` gibt die **Journey** auf und startet die Einstiegs-Journey des Kanals neu (`DELETE .../journey`,
   über `ChannelService`, nicht über einen Tool-Controller).

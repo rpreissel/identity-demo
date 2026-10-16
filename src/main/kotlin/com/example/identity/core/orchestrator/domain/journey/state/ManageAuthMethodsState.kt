@@ -7,7 +7,7 @@ import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.contract.tool_api.claims.AttributeType
 
 /**
- * The only intent without a policy goal: one successful enrollment ends it, regardless of the level
+ * The only journey without a policy goal: one successful enrollment ends it, regardless of the level
  * reached, since the channel was already AUTHENTICATED (docs/journeys/manage-auth-methods.md).
  */
 sealed interface ManageAuthMethodsState : JourneyState {

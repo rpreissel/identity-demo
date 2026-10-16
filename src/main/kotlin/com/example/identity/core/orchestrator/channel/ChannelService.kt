@@ -23,10 +23,10 @@ import com.example.identity.core.orchestrator.domain.journey.appChannelOpening
 import com.example.identity.core.orchestrator.domain.journey.startRefusal
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.state.upTo
-import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.DeleteAccountJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpJourney
+import com.example.identity.core.orchestrator.domain.journeys.ConfirmPeerLoginJourney
+import com.example.identity.core.orchestrator.domain.journeys.DeleteAccountJourney
+import com.example.identity.core.orchestrator.domain.journeys.ManageAuthMethodsJourney
+import com.example.identity.core.orchestrator.domain.journeys.StepUpJourney
 import com.example.identity.core.orchestrator.journey.JourneyService
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
@@ -57,7 +57,7 @@ import com.example.identity.core.orchestrator.session.forLog
 
 /**
  * The channel-level entry points. Which tool comes next belongs to the journey ([JourneyService]);
- * this class decides which intent a request means and returns the response envelope.
+ * this class decides which journey a request means and returns the response envelope.
  */
 @Service
 @Transactional(noRollbackFor = [ChannelSessionEndedException::class, JourneyEndedException::class]) // ADR-43, I-2, see JourneyService
@@ -80,7 +80,7 @@ class ChannelService(
     /**
      * Always creates a new ChannelSession: DPoP proves the device but is no lookup key for a
      * session (docs/02-domaenenmodell.md #3). The client resumes via [getChannel]. [intent] is
-     * remembered on the channel, so resume and cancel restart it. Only intents starting from the
+     * remembered on the channel, so resume and cancel restart it. Only journeys starting from the
      * device link consult [DeviceAccountLink]; REGISTER and LOGIN_LOOKUP mean another account.
      */
     fun initializeChannel(
@@ -288,8 +288,8 @@ class ChannelService(
     }
 
     /**
-     * Voluntarily add another method. The loa2 gate and a preceding step-up belong to the MANAGE
-     * strategy, so the wish survives that detour.
+     * Voluntarily add another method. The loa2 gate and a preceding step-up belong to
+     * `ManageAuthMethodsJourney`, so the wish survives that detour.
      */
     fun startManageMethods(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse =
         startManage(channelSessionId, bindingKeyRef, ManageAuthMethodsState.AddRequested)
@@ -347,8 +347,8 @@ class ChannelService(
 
     /**
      * Confirms a Web-channel QR login from this authenticated App channel (docs/04-orchestrierung.md,
-     * CONFIRM_PEER_LOGIN). The cold entry is `POST /app/channels` with that intent; both reach
-     * [ConfirmPeerLoginState.Requested].
+     * CONFIRM_PEER_LOGIN). The cold entry is `POST /app/channels` with that journey as `intent`;
+     * both reach [ConfirmPeerLoginState.Requested].
      */
     fun startPeerLogin(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
         return startJourney(
@@ -379,7 +379,7 @@ class ChannelService(
 
     /**
      * The user's answer to what the current step waits on instead of a tool run. Anything but
-     * `accept`/`decline` is rejected here (400), so no strategy has to.
+     * `accept`/`decline` is rejected here (400), so no journey has to.
      */
     fun answer(channelSessionId: ChannelSessionId, bindingKeyRef: String, answer: String): ChannelResponse {
         val parsed = requireNotNull(Answer.fromWire(answer)) { "Unknown answer" }

@@ -11,7 +11,7 @@ import java.time.Instant
  * or a [com.example.identity.core.orchestrator.keycloak.KeycloakFeatureFlags] name,
  * switchable without a redeploy. No row means off, so a new flag needs no seeding (as
  * [com.example.identity.core.orchestrator.tool.ToolAvailability]). One generic table, not a table per flag:
- * a flag is operational state. Its meaning lives in the constant and the strategy reading it.
+ * a flag is operational state. Its meaning lives in the constant and the journey reading it.
  */
 @Entity
 @Table(schema = "orchestrator", name = "feature_flag")

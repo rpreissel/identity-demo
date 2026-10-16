@@ -22,10 +22,10 @@ import kotlin.io.path.readText
 import kotlin.reflect.KClass
 
 /**
- * The hand-written state diagrams in `docs/journeys/<intent>.md` name exactly the states of their
- * intent (ADR-40). Allowed extra nodes are sub-journeys (a `Journey`) and nodes the diagram
+ * The hand-written state diagrams in `docs/journeys/<journey>.md` name exactly the states of their
+ * journey (ADR-40). Allowed extra nodes are sub-journeys (a `Journey`) and nodes the diagram
  * declares itself (`state "…" as X`). Arrows are not compared: they depend on context that executed
- * actions change, and the strategy tests cover the transitions.
+ * actions change, and the journey tests cover the transitions.
  */
 class JourneyDiagramsTest : BehaviorSpec({
 
@@ -54,14 +54,14 @@ class JourneyDiagramsTest : BehaviorSpec({
                 withClue("Unbekannte Knoten - umbenannt, entfernt, oder als `state \"…\" as X` zu deklarieren") { unknown.shouldBeEmpty() }
             }
 
-            if (entries.all { it.showsAll }) then("$doc.md shows every state its intent has") {
+            if (entries.all { it.showsAll }) then("$doc.md shows every state its journey has") {
                 withClue("Zustände, die im Code existieren, aber im Diagramm fehlen") { (states - drawn).shouldBeEmpty() }
             }
         }
     }
 }) {
     /** Which sealed root is documented in which file. */
-    /** [showsAll] false: [doc] draws one variant of the intent, so it may leave states out. */
+    /** [showsAll] false: [doc] draws one variant of the journey, so it may leave states out. */
     class Diagram(val root: KClass<out JourneyState>, val doc: String, val showsAll: Boolean = true)
 
     companion object {

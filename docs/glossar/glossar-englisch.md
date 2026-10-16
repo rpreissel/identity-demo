@@ -52,9 +52,8 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
   melden. Das Niveau steigt dadurch nicht. [Glossar](glossar.md#b)
 - **`authData`** → die Daten, die jede Antwort an den **Web-Kanal** mitschickt: Subjekt,
   Niveau und Verfahren. [Glossar](glossar.md#w)
-- **`AuthJourney`** → **Journey**: ein laufender Ablauf einer Journey (`kind`). [Glossar](glossar.md#j)
-- **`Journey`** → **Intent** bzw. **Strategie**: was der Nutzer erreichen will, wo das beginnen
-  kann und wie es weitergeht, als ein Objekt, etwa `RegisterJourney`. [Glossar](glossar.md#i)
+- **`AuthJourney`** → **Durchlauf einer Journey**: ein einzelner Lauf; welche Journey es ist, sagt
+  `kind`. [Glossar](glossar.md#j)
 - **`AuthPolicy`**, **`DefaultAuthPolicy`** → **AuthPolicy**: die Regeln, nach denen das
   Sicherheitsniveau berechnet wird. [Glossar](glossar.md#a)
 
@@ -81,14 +80,14 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
   [Glossar](glossar.md#q)
 - **`ClaimTrust`** (`AUTHORITATIVE`, `PROVEN`, `SELF_REPORTED`) → **Stufe einer Angabe**: belegt,
   nachgewiesen, behauptet. [Glossar](glossar.md#s)
-- **`CONFIRM_PEER_LOGIN`** → der Intent, mit dem die App einen **QR-Login** freigibt.
+- **`CONFIRM_PEER_LOGIN`** → die Journey, mit der die App einen **QR-Login** freigibt.
   [Glossar](glossar.md#q)
 - **`CORRELATION`** → **Korrelation**: ordnet eine schon festgestellte Identität einem
   Datensatz im Personenverzeichnis zu. Sie beweist selbst nichts. [Glossar](glossar.md#k)
 
 ## D
 
-- **`DELETE_ACCOUNT`** → der Intent zum Löschen des **Kontos**. [Glossar](glossar.md#k)
+- **`DELETE_ACCOUNT`** → die Journey zum Löschen des **Kontos**. [Glossar](glossar.md#k)
 - **`demo.mode`**, **`DemoMode`**, **`@DemoSurface`** → **Demomodus**: ein Schalter, der alles
   einschaltet, was nur zur Vorführung dient. [Glossar](glossar.md#d)
 - **`DeviceAccountLink`** → **Geräteverknüpfung**: merkt sich, welches Gerät zu welchem
@@ -134,6 +133,8 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
 
 ## J
 
+- **`Journey`** → **Journey**: was der Nutzer erreichen will, wo das beginnen kann und wie es
+  weitergeht, als ein Objekt, etwa `RegisterJourney`. [Glossar](glossar.md#j)
 - **`JourneyActionExecutor`** → führt die **Aktion** eines Übergangs aus. [Glossar](glossar.md#a)
 - **`JourneyEvent`** → das Ereignis, das einen **Übergang** auslöst. [Glossar](glossar.md#u)
 - **`JourneyLifecycle`** → **Lebenszyklus einer Journey**: ob eine Journey läuft,
@@ -168,7 +169,7 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
 
 ## M
 
-- **`MANAGE_AUTH_METHODS`** → der Intent zum Verwalten der **Anmeldeverfahren**.
+- **`MANAGE_AUTH_METHODS`** → die Journey zum Verwalten der **Anmeldeverfahren**.
   [Glossar](glossar.md#a)
 - **`maxAcr`** → eine der **Obergrenzen eines Verfahrens**: das höchste Niveau, das es technisch
   hergibt. [Glossar](glossar.md#o)
@@ -292,8 +293,8 @@ deutschen Begriff und beschreibt ihn kurz. Ausführlich erklärt ist jeder Begri
 
 - **`WEB`** (`ChannelType.WEB`) → **Web-Kanal**: die Verbindung über die Website. Keycloak
   führt dort die Anmeldung, der Orchestrator entscheidet über die Schritte. [Glossar](glossar.md#w)
-- **`WEB_SELECT_METHOD`** (`web_select_method`) → der **Intent** für Anmeldung und Step-up im
-  Web-Kanal. [Glossar](glossar.md#i)
+- **`WEB_SELECT_METHOD`** (`web_select_method`) → die **Journey** für Anmeldung und Step-up im
+  Web-Kanal. [Glossar](glossar.md#j)
 
 ---
 

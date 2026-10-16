@@ -45,9 +45,9 @@ Kanalbindung prüft keine von ihnen.
 - Statuscode, `Location`-Header und die Form des Bodys jeder Operation gemäß `api/openapi.yaml`.
 - Der Fehlervertrag: Fehler kommen als `ErrorResponse {error, text}`, und jeder Fehlercode gehört
   fest zu einem Status (von `BAD_REQUEST` 400 bis `INTERNAL_ERROR` 500).
-- Die Folge von `next` und `stepData` je Intent. `next` sagt dem Client, welcher Schritt als
-  Nächstes kommt, `stepData` liefert die Daten dafür. Ein [Intent](../glossar/glossar.md) ist das
-  Anliegen des Nutzers, etwa sich registrieren oder sich anmelden. Zum Contract gehört also, welcher
+- Die Folge von `next` und `stepData` je Journey. `next` sagt dem Client, welcher Schritt als
+  Nächstes kommt, `stepData` liefert die Daten dafür. Eine [Journey](../glossar/glossar.md) ist das,
+  was der Nutzer erreichen will, etwa sich registrieren oder sich anmelden, samt dem Weg dorthin. Zum Contract gehört also, welcher
   Schritt auf welche Eingabe folgt. Das schließt Fehlversuche ein (200 mit `failed-attempt`, kein
   Fehlerstatus).
 - Die DPoP-Regeln: 401 bei fehlendem, ungültigem, veraltetem oder wiederverwendetem Proof. Ein
@@ -150,7 +150,7 @@ compose-Stack zuständig.
 ## 6) Testkatalog und Größenordnung
 
 Grundlage der Schätzung: `api/openapi.yaml` enthält 99 Operationen auf 76 Pfaden, davon 8 Pfade im
-Web-Kanal. Dazu kommen rund 24 Tools und 10 Intents mit eigenem Diagramm in `docs/journeys/`.
+Web-Kanal. Dazu kommen rund 24 Tools und 10 Journeys mit eigenem Diagramm in `docs/journeys/`.
 
 | Bereich | Inhalt | Tests (ca.) |
 |---|---|---|
@@ -158,7 +158,7 @@ Web-Kanal. Dazu kommen rund 24 Tools und 10 Intents mit eigenem Diagramm in `doc
 | Fehlervertrag | jeder Code mit Status und Form, unbekannte IDs, 410 nach Abbruch | 15 |
 | Kanal-Lebenszyklus | 201 mit `Location`, GET, DELETE mit 204, Journey abbrechen, device-link, answer | 15–20 |
 | Tools (je 4–6) | Erfolg, Fehlversuch, Sperre nach zu vielen Versuchen, back, delete, GET | 100–140 |
-| Journeys | 2–5 Szenarien je Intent, von Anfang bis Ende über den Treiber | 30–50 |
+| Journeys | 2–5 Szenarien je Journey, von Anfang bis Ende über den Treiber | 30–50 |
 | Token und Methoden | Token, idclaims, Attribute, Methoden auflisten und löschen, Step-up | 15–20 |
 | Web-Kanal | PATCH anlegen und fortsetzen, flow-end, Konten, Einladungen, Back-Channel Logout, Ablehnung bei Peer-Auth, Antwortsignatur | 20–30 |
 | Öffentliche Endpunkte | `/tools/catalog`, `/texts/{lang}`, mgmt-Passwort | 5–10 |
@@ -170,7 +170,7 @@ Als erste Stufe genügt ein **Minimalstand von 60 bis 80 Tests**:
 - ein Aufruf je Operation
 - die DPoP-Regeln
 - der Fehlervertrag
-- ein Erfolgsfall je Intent
+- ein Erfolgsfall je Journey
 
 Schon damit besteht eine Neuentwicklung die Suite nicht, wenn sie grob abweicht.
 
@@ -209,8 +209,8 @@ Die Suite soll bei jedem Lauf dasselbe Ergebnis liefern. Dafür gelten drei Rege
 
 1. **Grundaufbau:** Subprojekt, Aufgabe `contractTest`, Start des Systems, DPoP-Signer, Schema- und
    Abdeckungsprüfung, Zurücksetzen.
-2. **Minimalstand:** ein Aufruf je Operation, DPoP-Regeln, Fehlervertrag, ein Erfolgsfall je Intent.
+2. **Minimalstand:** ein Aufruf je Operation, DPoP-Regeln, Fehlervertrag, ein Erfolgsfall je Journey.
 3. **Web-Kanal:** eigener JWKS-Endpunkt, Signer für Peer-Auth, Prüfung der Antwortsignatur und die
    Fälle aus Abschnitt 6.
-4. **Tiefe je Tool und Intent:** Tool für Tool die übrigen Fälle aus Abschnitt 6, für jedes Tool
+4. **Tiefe je Tool und Journey:** Tool für Tool die übrigen Fälle aus Abschnitt 6, für jedes Tool
    ein eigenes Issue in beads (Bead).

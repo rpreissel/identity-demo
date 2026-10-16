@@ -453,8 +453,9 @@ Lesesichten `account.AccountProfile` und `account.AuthMethodView`). Beide Regeln
 - `orchestrator.domain` (M1a): die Grundbegriffe – `Journeys`, `AcrLevels`,
   `ChannelType`, `ErrorCode`, `OrchestratorException`, `ToolCatalog`.
 - `orchestrator.domain.journey`: `Journey` (mit den Startpunkten), `JourneyContext`, `JourneyEvent`,
-  `Transition`, `Action`. Darunter liegen `state` (die Zustände je Journey) und `strategy` (ein
-  Objekt je Journey, etwa „registrieren“ oder „anmelden“). Dazu kommen die
+  `Transition`, `Action`. Darunter liegt `state` (die Zustände je Journey). Die Journeys selbst,
+  ein Objekt je Journey wie „registrieren“ oder „anmelden“, liegen in `orchestrator.domain.journeys`.
+  Dazu kommen die
   Regeln für das Ausführen von Aktionen:
   - `AccountRules.kt`: welches Konto eine Aktion betrifft (ADR-18/20). So arbeitet eine Sitzung nie
     mit einem Konto, das sie nicht nachgewiesen hat.
@@ -563,7 +564,7 @@ Stellen eine Hilfe. Jede dieser Hilfen steht an genau einer Stelle und ist dort 
 
 **Wo man zu lesen anfängt.**
 
-1. Eine Strategie unter `orchestrator/domain/journey/strategy`, etwa `StepUpJourney.kt`, mit ihren
+1. Eine Strategie unter `orchestrator/domain/journeys`, etwa `StepUpJourney.kt`, mit ihren
    Zuständen unter `domain/journey/state` (`StepUpState.kt`). Das Zustandsdiagramm dazu steht in
    [journeys/step-up.md](journeys/step-up.md).
 2. `AccountRules.kt` und `CredentialRules.kt` unter `domain/journey`: was beim Ausführen einer

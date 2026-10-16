@@ -1,4 +1,4 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.core.orchestrator.domain.journey.Answer
@@ -6,10 +6,10 @@ import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.method
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import io.kotest.core.spec.style.BehaviorSpec
@@ -24,11 +24,11 @@ import io.kotest.matchers.types.shouldBeInstanceOf
  */
 class DeleteAccountJourneyTest : BehaviorSpec({
 
-    val strategy = DeleteAccountJourney
+    val journey = DeleteAccountJourney
 
     given("a new journey") {
         `when`("its first state is chosen") {
-            val initial = strategy.initialState(ctx())
+            val initial = journey.initialState(ctx())
 
             then("it is ConfirmPending - the yes/no confirmation always comes first, unconditionally") {
                 initial shouldBe DeleteAccountState.ConfirmPending
@@ -38,14 +38,14 @@ class DeleteAccountJourneyTest : BehaviorSpec({
 
     given("ConfirmPending") {
         `when`("the journey starts") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Started, ctx())
+            val transition = journey.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Started, ctx())
             then("unconditionally re-presents the confirmation prompt") {
                 transition shouldBe Transition.To(DeleteAccountState.ConfirmPending)
             }
         }
 
         `when`("the confirmation is declined") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.DECLINE), ctx())
+            val transition = journey.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.DECLINE), ctx())
             then("cancels - no gate is ever evaluated before an explicit yes") {
                 transition shouldBe Transition.Cancel
             }
@@ -56,7 +56,7 @@ class DeleteAccountJourneyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
         `when`("the confirmation is accepted") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
+            val transition = journey.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
             then("parks the wish and requires loa2 plus a fresh proof - only NOW, never before accepting, and never decided here (ADR-61)") {
                 transition shouldBe
                     Transition.RequireSubJourney(
@@ -72,7 +72,7 @@ class DeleteAccountJourneyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1), personId = null)
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
         `when`("the confirmation is accepted") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
+            val transition = journey.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
             then("requires only loa1 - selfServiceAcrFloor, not a second definition") {
                 transition.shouldBeInstanceOf<Transition.RequireSubJourney>().seedWith
                     .shouldBeInstanceOf<FreshProofState.Start>().requiredAcr shouldBe AcrLevel.LOA1
@@ -86,14 +86,14 @@ class DeleteAccountJourneyTest : BehaviorSpec({
 
         `when`("the FRESH_PROOF sub-journey finishes") {
             val event = JourneyEvent.SubJourneyFinished(FreshProofJourney, achievedAcr = AcrLevel.LOA2)
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, event, theCtx)
+            val transition = journey.transition(DeleteAccountState.ConfirmPending, event, theCtx)
             then("deletes right away - level and freshness were the sub-journey's to decide") {
                 transition shouldBe Transition.Perform(Action.DeleteAccount, resumeState = DeleteAccountState.ConfirmPending)
             }
         }
 
         `when`("the delete just ran (ActionCompleted)") {
-            val transition = strategy.transition(DeleteAccountState.ConfirmPending, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(DeleteAccountState.ConfirmPending, JourneyEvent.ActionCompleted, theCtx)
             then("ends the channel for good") {
                 transition shouldBe Transition.Logout
             }

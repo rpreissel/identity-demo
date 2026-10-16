@@ -166,7 +166,7 @@ components:
           minItems: 1
           type: array
         intent:
-          description: 'The entry intent''s own name, case-insensitively (Journeys.fromRequest) - no separate wire vocabulary.
+          description: 'The entry journey''s own name, case-insensitively (Journeys.fromRequest) - no separate wire vocabulary.
             Omitted/fast_access (default): DeviceAccountLink found -> LOGIN, else REGISTRATION. lookup_login: always offers
             lookup-based login (email + credential), even on a linked device. register: always starts fresh REGISTRATION,
             even on a linked device (second account). confirm_peer_login: a cold app approves a waiting web login (QR pairing)
@@ -781,7 +781,7 @@ paths:
         next.step=confirm, stepData.prompt) - the optional device-binding offer right after a lookup login, the account-deletion
         confirmation, and any future one alike, all through this same address, answer="accept"/"decline". For device binding
         specifically: agreeing is the ONLY way such a login ever makes this device recognizable for future logins - it never
-        happens as a side effect, because this intent is chosen precisely by people who want no device binding.'
+        happens as a side effect, because this journey is chosen precisely by people who want no device binding.'
       operationId: answer
       parameters:
       - in: path
@@ -972,7 +972,7 @@ paths:
       - Channels
   /orchestrator/api/v1/channels/{channelSessionId}/journey:
     delete:
-      description: Abandons the currently running AuthJourney, whatever intent started it; the response already offers a fresh
+      description: Abandons the currently running AuthJourney, whatever journey it runs; the response already offers a fresh
         start where applicable.
       operationId: cancel
       parameters:
@@ -996,7 +996,7 @@ paths:
                   type: tool
               schema:
                 $ref: '#/components/schemas/ChannelResponse'
-          description: A cancelled REGISTER journey restarts the same entry intent from scratch.
+          description: A cancelled REGISTER journey restarts the same entry journey from scratch.
         default:
           content:
             application/json:

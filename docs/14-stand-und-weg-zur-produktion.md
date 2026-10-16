@@ -208,7 +208,7 @@ wird, müssen die Menschen zustimmen, die es später fachlich und technisch vera
      [Glossar](glossar/glossar.md))?
    - Stimmen die Regeln für Sicherheitsniveaus und Verfahren
      ([Orchestrierung und Policy](04-orchestrierung.md))?
-   - Stimmen die Abläufe je Intent ([Journeys](journeys/))?
+   - Stimmen die Abläufe je Journey ([Journeys](journeys/))?
 
    Was hier abweicht, ändert das Modell. Jetzt ist eine solche Änderung noch günstig.
 2. **Mit Entwicklern Architektur, Konzepte und fehlende Anforderungen abstimmen.** Zu prüfen ist:

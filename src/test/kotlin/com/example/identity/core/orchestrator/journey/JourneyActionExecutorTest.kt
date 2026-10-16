@@ -1,15 +1,15 @@
 package com.example.identity.core.orchestrator.journey
 
-import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.DeleteAccountJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.LookupLoginJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.StepUpJourney
+import com.example.identity.core.orchestrator.domain.journeys.ConfirmPeerLoginJourney
+import com.example.identity.core.orchestrator.domain.journeys.DeleteAccountJourney
+import com.example.identity.core.orchestrator.domain.journeys.ManageAuthMethodsJourney
+import com.example.identity.core.orchestrator.domain.journeys.FastAccessJourney
+import com.example.identity.core.orchestrator.domain.journeys.LookupLoginJourney
+import com.example.identity.core.orchestrator.domain.journeys.StepUpJourney
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.session.SessionManagementService
 import com.example.identity.TEST_NOW
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -22,7 +22,7 @@ import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.ErrorCode
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.domain.journey.Action
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures
 import com.example.identity.core.orchestrator.session.AccountDeletionService
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.SessionEvidenceService
@@ -41,7 +41,7 @@ import io.mockk.verify
 /**
  * Unit test of the guards in [JourneyActionExecutor]: removing a method is refused when the account
  * could no longer reach its channel's floor afterwards, a deletion re-checks its level against
- * the current evidence, and an implicit device link follows how the channel was opened. The real policy decides ([StrategyTestFixtures.policy]); accounts,
+ * the current evidence, and an implicit device link follows how the channel was opened. The real policy decides ([JourneyTestFixtures.policy]); accounts,
  * revocation and deletion are mocked.
  */
 class JourneyActionExecutorTest : BehaviorSpec({
@@ -163,8 +163,8 @@ private class SelfLockoutFixture(floor: AcrLevel) {
         sessionEvidenceService = mockk(relaxed = true),
         sessionManagementService = mockk(relaxed = true),
         accountDeletionService = accountDeletionService,
-        toolRegistry = StrategyTestFixtures.catalog,
-        authPolicy = StrategyTestFixtures.policy,
+        toolRegistry = JourneyTestFixtures.catalog,
+        authPolicy = JourneyTestFixtures.policy,
         journeyRecorder = mockk(relaxed = true),
         contextFactory = contextFactory,
     )
@@ -177,17 +177,17 @@ private class SelfLockoutFixture(floor: AcrLevel) {
 
 /** An authenticated channel of [ACCOUNT] (identified, sms and password at loa2) whose evidence holds [provenAmr]. */
 private class DeleteAccountFixture(provenAmr: List<String>) {
-    private val account = StrategyTestFixtures.account(
-        StrategyTestFixtures.method("sms", AcrLevel.LOA2), StrategyTestFixtures.method("password", AcrLevel.LOA2),
+    private val account = JourneyTestFixtures.account(
+        JourneyTestFixtures.method("sms", AcrLevel.LOA2), JourneyTestFixtures.method("password", AcrLevel.LOA2),
         accountId = ACCOUNT
     )
     val channel = authenticatedChannel()
     val journey = AuthJourney(kind = DeleteAccountJourney, expiresAt = TEST_NOW.plusSeconds(600), createdAt = TEST_NOW)
     private val factors = mapOf("sms" to FactorType.POSSESSION, "password" to FactorType.KNOWLEDGE)
     private val contextFactory = mockk<JourneyContextFactory> {
-        every { contextFor(journey, channel) } returns StrategyTestFixtures.ctx(
+        every { contextFor(journey, channel) } returns JourneyTestFixtures.ctx(
             account = account,
-            evidence = StrategyTestFixtures.evidence(provenAmr, provenAmr.map { factors.getValue(it) }.toSet(), account = account)
+            evidence = JourneyTestFixtures.evidence(provenAmr, provenAmr.map { factors.getValue(it) }.toSet(), account = account)
         )
     }
     val accountDeletionService = mockk<AccountDeletionService>(relaxed = true)
@@ -205,7 +205,7 @@ private class ImplicitLinkFixture(entryJourney: Journey<*>) {
         every { findLinkedAccountId("own-key") } returns null
     }
     private val accountService = mockk<AccountService>(relaxed = true) {
-        every { findActiveMethods(ACCOUNT, "sms") } returns listOf(StrategyTestFixtures.method("sms", AcrLevel.LOA1))
+        every { findActiveMethods(ACCOUNT, "sms") } returns listOf(JourneyTestFixtures.method("sms", AcrLevel.LOA1))
     }
     private val executor = executor(sessionManagementService = sessionManagementService, accountService = accountService)
 
@@ -246,8 +246,8 @@ private fun executor(
     sessionEvidenceService = sessionEvidenceService,
     sessionManagementService = sessionManagementService,
     accountDeletionService = accountDeletionService,
-    toolRegistry = StrategyTestFixtures.catalog,
-    authPolicy = StrategyTestFixtures.policy,
+    toolRegistry = JourneyTestFixtures.catalog,
+    authPolicy = JourneyTestFixtures.policy,
     journeyRecorder = journeyRecorder,
     contextFactory = contextFactory,
 )

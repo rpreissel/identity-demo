@@ -175,7 +175,7 @@ class KeycloakChannelIntegrationTest : IntegrationTestSupport() {
                     keycloakPatchRaw(channelSessionId, """{"subject":{"type":"account","id":"999999"}}""")
                 }
 
-                then("it is rejected up front as not found, never as an internal strategy error") {
+                then("it is rejected up front as not found, never as an internal journey error") {
                     shouldThrow<HttpClientErrorException> { result.getOrThrow() }.statusCode shouldBe HttpStatus.NOT_FOUND
                 }
             }

@@ -1,4 +1,4 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
@@ -44,7 +44,7 @@ object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
                 else -> Transition.Authenticated
             }
 
-            // The enrollment just ran - one successful enrollment ends this intent. Backing out only
+            // The enrollment just ran - one successful enrollment ends this journey. Backing out only
             // re-offers (MANDATORY); giving up entirely is DELETE .../journey.
             is ManageAuthMethodsState.Enrolling -> Transition.Authenticated
         }

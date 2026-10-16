@@ -17,9 +17,9 @@ import com.example.identity.core.orchestrator.domain.FeatureFlagProvider
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 
 /**
- * The reading phase of a transition: gathers what a strategy may look at (account, evidence,
+ * The reading phase of a transition: gathers what a journey may look at (account, evidence,
  * device link, flags) into the read-only [JourneyContext]. [JourneyService] re-derives it after
- * every action, so a strategy never sees a stale picture. One assembly point makes that mechanical.
+ * every action, so a journey never sees a stale picture. One assembly point makes that mechanical.
  */
 @Component
 class JourneyContextFactory(

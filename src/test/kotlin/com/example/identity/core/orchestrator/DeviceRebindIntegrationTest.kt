@@ -128,7 +128,7 @@ class DeviceRebindIntegrationTest : IntegrationTestSupport() {
                 val deviceLinkAfter = get("/orchestrator/api/v1/app/channels/device-link")
 
                 then("the journey is cancelled outright, which is no error") {
-                    // Cancel restarts the entry intent REGISTER. The second person's account was still
+                    // Cancel restarts the entry journey REGISTER. The second person's account was still
                     // being set up and went with the cancel (ADR-46).
                     declined.channel()["state"] shouldBe "ANONYMOUS"
                 }

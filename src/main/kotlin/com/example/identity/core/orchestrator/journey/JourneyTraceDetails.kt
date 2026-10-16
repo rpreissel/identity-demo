@@ -75,7 +75,7 @@ class JourneyTraceDetails(
     }
 
     /**
-     * Where the transition leads: target state, sub-intent or action. [availableTools] and [next]
+     * Where the transition leads: target state, sub-journey or action. [availableTools] and [next]
      * come from routing, so the log shows what the client will see.
      */
     fun transitionDetail(

@@ -53,7 +53,7 @@ freiwillige Frage:
 „Dieses Gerät für künftige Anmeldungen wiedererkennen?“ Dafür implementiert der Zustand das
 allgemeine Markierungs-Interface `AnswerableState` (Orchestrierung, Abschnitt 8). So erkennt der
 gemeinsame Mechanismus den Zustand als Frage, ohne `DeviceLinkQuestion` zu kennen. Der Zustand ist
-mit `REGISTER` geteilt; was Zustimmen und Ablehnen bewirken, entscheidet jede Strategie selbst.
+mit `REGISTER` geteilt; was Zustimmen und Ablehnen bewirken, entscheidet jede Journey selbst.
 
 Je nachdem, wem das Gerät gerade zugeordnet ist, geht es verschieden weiter:
 
@@ -65,12 +65,14 @@ Je nachdem, wem das Gerät gerade zugeordnet ist, geht es verschieden weiter:
   direkt mit einer erfolgreichen Anmeldung.
 
 Die dauerhafte Zuordnung von Gerät zu Konto (`DeviceAccountLink`) entsteht in dieser Journey
-**nur** mit Zustimmung und nie nebenbei beim Anmelden.
+**nur** mit Zustimmung und nie nebenbei beim Anmelden. Das gilt auch für alle späteren Journeys auf
+diesem Kanal, etwa das Einrichten eines Verfahrens: Der Kanal wurde mit
+`onSuccess = ASK_BEFORE_LINKING` eröffnet ([ADR-63](../adr/ADR-063-journeys-als-objekte-mit-startpunkten.md)).
 
 **Wenn das Niveau nicht reicht.** Jeder Kanal hat eine Untergrenze für das Sicherheitsniveau
 (`acrFloor`, Orchestrierung, Abschnitt 4). `AdditionalFactor` sorgt dafür, dass sie erreicht wird,
 und verlangt dafür einen weiteren Faktor. Bleibt danach kein kombinierbares Verfahren übrig, bietet
-die Strategie die erneute Identifizierung nicht selbst an. Sie startet stattdessen die gemeinsam
+die Journey die erneute Identifizierung nicht selbst an. Sie startet stattdessen die gemeinsam
 genutzte Sub-Journey [`RE_IDENTIFY`](re-identify.md). Ist diese fertig, prüft `Start` mit
 `settleOrRaise` erneut.
 

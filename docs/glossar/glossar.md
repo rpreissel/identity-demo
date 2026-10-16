@@ -24,7 +24,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   danach passiert, hängt vom Zustand der Journey ab. Mehr dazu unter Ausweichzustand und
   Pflichten.
 - **Aktion**: Eine Aktion ist eine Änderung an gespeicherten Daten, die ein Übergang auslösen will,
-  etwa ein Konto anlegen, eine Angabe schreiben oder ein Gerät verknüpfen. Die Strategie beschreibt
+  etwa ein Konto anlegen, eine Angabe schreiben oder ein Gerät verknüpfen. Die Journey beschreibt
   die Aktion nur. Ausgeführt wird sie an einer einzigen Stelle, damit Änderungen am Konto nicht über
   den ganzen Code verstreut sind.
   *Im Code:* `Action`, ausgeführt vom `JourneyActionExecutor`.
@@ -78,7 +78,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   Sicherheitsniveau. In der App meldet er sich meist über sein verknüpftes Gerät an (Schnellzugang),
   auf der Website über Keycloak. Wer kein verknüpftes Gerät hat, meldet sich über seine
   E-Mail-Adresse an.
-  *Im Code:* Intents `FAST_ACCESS`, `LOOKUP_LOGIN`, `WEB_SELECT_METHOD`.
+  *Im Code:* Journeys `FAST_ACCESS`, `LOOKUP_LOGIN`, `WEB_SELECT_METHOD`.
   *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 2.
 - **App-Kanal**: Die Verbindung der Smartphone-App zum Orchestrator. Die App weist sich bei jeder
   Anfrage mit einem Schlüssel aus, der das Gerät nie verlässt (DPoP). Ihre Tokens bekommt sie vom
@@ -141,6 +141,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   Schlüssel. Er gilt nur für diese eine Anfrage und nur kurze Zeit. Nicht zu verwechseln mit dem
   Nachweis, der beschreibt, was die Sitzung insgesamt bewiesen hat.
   *Mehr dazu:* [09-dpop](../09-dpop.md) Abschnitt 1.
+- **Durchlauf einer Journey**: siehe Journey.
 
 ## E
 
@@ -161,13 +162,13 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   die Frist abläuft oder der Vorgang abgeschlossen ist. „Einmal“ heißt hier also „für einen
   Vorgang“. Gespeichert wird nie das Kennwort selbst, nur ein daraus berechneter Wert.
   *Mehr dazu:* [ADR-48](../adr/ADR-048-vorgangszugang-mit-einmalkennwort.md).
-- **Einstiegs-Intent**: siehe Intent.
+- **Einstiegs-Journey**: siehe Journey.
 - **Erneute Identifizierung**: Ein Ausweg, wenn ein Nutzer mit seinen Verfahren das geforderte
   Niveau nicht erreicht. Erreicht keines seiner aktiven Verfahren das Niveau, bietet die Journey an,
   sich noch einmal zu identifizieren. Sie fragt dabei immer erst nach. Die Identifizierung bestätigt
   nur das Konto, das schon bekannt ist, und übernimmt nie ein anderes. Ein Konto, das noch nie
   identifiziert wurde, bekommt auf diesem Weg zum ersten Mal eine Identität.
-  *Im Code:* Intent `RE_IDENTIFY`, nur als Sub-Journey.
+  *Im Code:* Journey `RE_IDENTIFY`, nur als Sub-Journey.
   *Mehr dazu:* [journeys/re-identify](../journeys/re-identify.md).
 
 ## F
@@ -181,7 +182,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
 - **Feature-Flag**: Ein Schalter, mit dem der Betreiber ein Verhalten umstellt, während die
   Anwendung läuft, ohne sie neu zu starten. Ein Beispiel ist, ob die Registrierung mit dem
   Einrichten eines Verfahrens beginnt statt mit der Identifizierung.
-  *Im Code:* `FeatureFlagService`. Die Schalter, die eine Strategie liest, nennt `JourneyFeatureFlag`
+  *Im Code:* `FeatureFlagService`. Die Schalter, die eine Journey liest, nennt `JourneyFeatureFlag`
   (`register-enroll-first`).
   *Mehr dazu:* [Journey `REGISTER_ENROLL_FIRST`](../journeys/register-enroll-first.md).
 - **Freischaltcode**: Ein Code, den die Versicherung per Brief schickt und mit dem sich eine Person
@@ -235,15 +236,6 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   *Mehr dazu:* [03-tool-architektur](../03-tool-architektur.md) Abschnitt 1,
   [Abgleich mit dem externen Glossar](abgleich-externes-glossar.md).
 - **Identifizierungsverfahren**: siehe Identifizierung.
-- **Intent**: Das Anliegen, mit dem ein Nutzer kommt, etwa sich registrieren, sich anmelden oder
-  sein Niveau erhöhen. Zu jedem Intent gehört ein fester Ablauf, den der Orchestrator steuert. Mit
-  einigen Intents beginnt eine neue Sitzung. Sie heißen Einstiegs-Intents, etwa Schnellzugang oder
-  Registrierung. Andere Intents, etwa Konto löschen, laufen nur in einer Sitzung, in der der Nutzer
-  schon angemeldet ist.
-  *Im Code:* eine `Journey`, etwa `RegisterJourney`, `FastAccessJourney`, `StepUpJourney` und
-  `WebSelectMethodJourney` (Anmeldung auf der Website). Wo sie beginnen kann, nennt sie selbst
-  (`startPoints`); `Journeys` listet alle.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 2.
 - **Interessent**, **Partner**, **Versicherter**: Die drei Rollen, die ein Konto haben kann. Ein
   Interessent ist noch keiner Person im Personenverzeichnis zugeordnet. Ein Partner ist der
   Versicherung als Person bekannt, er hat also eine Partnernummer, ist aber nicht bei ihr versichert.
@@ -258,11 +250,20 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
 
 ## J
 
-- **Journey**: Ein laufender Ablauf zu einem Intent, etwa eine Registrierung von der Identifizierung
-  bis zum fertigen Konto. Eine Journey besteht aus mehreren Schritten und nutzt dafür ein oder
-  mehrere Tools. Auf einem Kanal läuft immer genau eine Journey.
-  *Im Code:* `AuthJourney`.
-  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 3, Diagramme unter
+- **Journey**: Das Anliegen, mit dem ein Nutzer kommt, zusammen mit dem Weg dorthin, etwa sich
+  registrieren, sich anmelden oder sein Niveau erhöhen. Die Journey legt fest, welche Tools in
+  welcher Reihenfolge angeboten werden und wie es nach jedem Schritt weitergeht. Mit einigen
+  Journeys beginnt eine neue Sitzung. Sie heißen Einstiegs-Journeys, etwa Schnellzugang oder
+  Registrierung. Andere Journeys, etwa Konto löschen, laufen nur in einer Sitzung, in der der Nutzer
+  schon angemeldet ist.
+
+  Ein einzelner **Durchlauf** einer Journey ist der Weg, den ein Nutzer tatsächlich geht, etwa eine
+  Registrierung von der Identifizierung bis zum fertigen Konto. Er besteht aus mehreren Schritten
+  und nutzt dafür ein oder mehrere Tools. Auf einem Kanal ist immer höchstens ein Durchlauf aktiv.
+  *Im Code:* `Journey`, etwa `RegisterJourney`, `FastAccessJourney`, `StepUpJourney` und
+  `WebSelectMethodJourney` (Anmeldung auf der Website). Wo sie beginnen kann, nennt sie selbst
+  (`startPoints`); `Journeys` listet alle. Ein Durchlauf ist ein `AuthJourney`.
+  *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitte 2 und 3, Diagramme unter
   [journeys](../journeys/).
 - **Journey-Protokoll**: Das Journey-Protokoll hält jeden Schritt einer Journey fest: welches Tool
   angeboten, gewählt oder abgelehnt wurde und welches Niveau am Ende erreicht war. Damit lässt sich
@@ -476,8 +477,8 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
 - **QR-Login**: Eine Anmeldung auf der Website mit Hilfe der App. Der Browser zeigt einen QR-Code.
   Der Nutzer scannt ihn mit der App, in der er schon angemeldet ist, und gibt die Anmeldung dort
   frei. Danach tippt er den Bestätigungscode im Browser ein.
-  *Im Code:* Tools `auth-qr`, `auth-qr-lookup`. Die Freigabe in der App heißt `approve-qr`, der
-  Intent dazu `CONFIRM_PEER_LOGIN`.
+  *Im Code:* Tools `auth-qr`, `auth-qr-lookup`. Die Freigabe in der App heißt `approve-qr`, die
+  Journey dazu `CONFIRM_PEER_LOGIN`.
   *Mehr dazu:* [Verfahren `qr`](../verfahren/qr.md).
 - **Quelle**: Die Quelle einer Angabe sagt, wer sie geliefert hat und für ihre Richtigkeit
   verantwortlich ist: das Personenverzeichnis, ein Prüfverfahren wie der Online-Ausweis oder der
@@ -498,7 +499,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
   Dann bestätigt er seine E-Mail-Adresse und richtet so lange Verfahren ein, bis das verlangte Niveau
   erreicht ist. Ein Schalter lässt die Registrierung auch mit dem Einrichten eines Verfahrens
   beginnen (Experiment „Enrollment zuerst“). Die Identifizierung wird dann nur noch angeboten.
-  *Im Code:* Intent `REGISTER`, `RegisterJourney`; die Variante schaltet `JourneyFeatureFlag.REGISTER_ENROLL_FIRST`.
+  *Im Code:* Journey `REGISTER`, `RegisterJourney`; die Variante schaltet `JourneyFeatureFlag.REGISTER_ENROLL_FIRST`.
   *Mehr dazu:* [journeys/register](../journeys/register.md).
 
 ## S
@@ -506,7 +507,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
 - **Schnellzugang**: Der übliche Weg, sich in der App anzumelden. Er soll den Nutzer auf diesem Gerät
   so schnell wie möglich anmelden und dafür sorgen, dass es auch beim nächsten Mal klappt. Er
   probiert zuerst das Bequemste und weicht dann Schritt für Schritt auf aufwendigere Wege aus.
-  *Im Code:* Intent `FAST_ACCESS`.
+  *Im Code:* Journey `FAST_ACCESS`.
   *Mehr dazu:* [journeys/fast-access](../journeys/fast-access.md).
 - **Schritt**: Ein einzelner Bildschirm innerhalb eines Tools, etwa „TAN eingeben“.
   *Im Code:* `next.step`.
@@ -520,12 +521,12 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
 - **Step-up**: Ein schon angemeldeter Nutzer beweist zusätzlich etwas, um ein höheres Niveau zu
   erreichen, etwa bevor er sein Konto löschen darf. Er bleibt dabei in derselben Sitzung. Ein
   Vorgangszugang lässt sich auf diese Weise nicht aufwerten.
-  *Im Code:* Intent `STEP_UP`.
+  *Im Code:* Journey `STEP_UP`.
   *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 2.
-- **Strategie**: Die Regeln eines Intents. Eine Strategie bekommt den aktuellen Zustand und das, was
-  gerade passiert ist, und entscheidet, wie es weitergeht. Sie ändert selbst keine Daten, sondern
-  beschreibt nur den Übergang.
-  *Im Code:* die `Journey` selbst (`transition`), etwa `RegisterJourney`.
+- **Strategie**: Früherer Name für die Regeln einer Journey. Heute sind sie Teil der Journey selbst:
+  Sie bekommt den aktuellen Zustand und das, was gerade passiert ist, und entscheidet, wie es
+  weitergeht. Sie ändert selbst keine Daten, sondern beschreibt nur den Übergang. Siehe Journey.
+  *Im Code:* `Journey.transition`, etwa in `RegisterJourney`.
   *Mehr dazu:* [04-orchestrierung](../04-orchestrierung.md) Abschnitt 8.
 - **Stufe einer Angabe**: Die Stufe sagt, wie verlässlich eine Angabe ist. Es gibt drei Stufen:
   - *belegt*: Die Angabe stammt aus den Stammdaten der Versicherung.
@@ -671,7 +672,7 @@ genügen die wichtigsten Begriffe im [Überblick](../01-ueberblick.md), Abschnit
 ## Z
 
 - **Ziel eines Durchlaufs**: siehe Untergrenze des Kanals.
-- **Zustand**: Die Stelle, an der eine Journey gerade steht, etwa „wartet auf die TAN“. Jeder Intent
+- **Zustand**: Die Stelle, an der eine Journey gerade steht, etwa „wartet auf die TAN“. Jede Journey
   hat eine feste, abgeschlossene Liste möglicher Zustände. So ist klar, welcher Schritt von wo aus
   möglich ist.
   *Im Code:* `JourneyState`.

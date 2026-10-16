@@ -1,9 +1,10 @@
 # Journeys
 
-Eine **Journey** ist ein geführter Ablauf mit mehreren Schritten, der einen Nutzer zu seinem Ziel
-bringt. Das Ziel heißt im System **Intent**, etwa „schnell anmelden“ oder „Konto löschen“.
+Eine **Journey** ist das, was ein Nutzer erreichen will, etwa „schnell anmelden“ oder „Konto
+löschen“, zusammen mit dem geführten Weg dorthin in mehreren Schritten. Im Code ist jede Journey ein
+eigenes Objekt (`Journey<S>`), ein einzelner Durchlauf heißt `AuthJourney`.
 
-Hier gibt es für jeden Intent ein Zustandsdiagramm. Ein Test prüft jedes Diagramm gegen den Code.
+Hier gibt es für jede Journey ein Zustandsdiagramm. Ein Test prüft jedes Diagramm gegen den Code.
 Wie die Diagramme zu lesen sind, erklärt [../04-orchestrierung.md](../04-orchestrierung.md),
 Abschnitt 3.
 
@@ -18,6 +19,6 @@ Abschnitt 3.
 - [`MANAGE_AUTH_METHODS`](manage-auth-methods.md)
 - [`CONFIRM_PEER_LOGIN`](confirm-peer-login.md)
 - [`DELETE_ACCOUNT`](delete-account.md)
-- [Lebenszyklus, unabhängig vom Intent](lebenszyklus-unabhaengig-vom-intent.md): Diese Datei
+- [Lebenszyklus, unabhängig von der Journey](lebenszyklus-unabhaengig-vom-intent.md): Diese Datei
   verweist nur auf [02-domaenenmodell.md](../02-domaenenmodell.md) Abschnitt 3. Dort steht das
   Diagramm.

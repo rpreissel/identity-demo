@@ -210,11 +210,11 @@ ist und welchem Konto das Gerät gehört, steht jeweils an anderer Stelle.
     anderen Konto wegzunehmen.
   - Der *ausdrückliche* Weg (`Action.LinkDevice` nach einer Rückfrage) darf neu verknüpfen und
     widerruft dabei. Unterschieden wird also danach, **ob etwas zerstört wird**, nicht nach der
-    Strategie.
+    Journey.
 
-  Ob unbemerkt neu verknüpft wird, hängt damit nicht davon ab, ob die jeweilige Strategie (die
-  Regeln eines Intents) an diesen Fall gedacht hat. An welcher Stelle eine Strategie die Rückfrage
-  stellt, hängt davon ab, wann bei ihr eine Identität feststeht. Beispiele: [`REGISTER`](journeys/register.md)
+  Ob unbemerkt neu verknüpft wird, hängt damit nicht davon ab, ob die jeweilige Journey an diesen
+  Fall gedacht hat. An welcher Stelle eine Journey die Rückfrage stellt, hängt davon ab, wann bei
+  ihr eine Identität feststeht. Beispiele: [`REGISTER`](journeys/register.md)
   und das [Experiment „Erst Anmeldeverfahren einrichten“](journeys/register-enroll-first.md).
 - **`DeviceAccountLink` ist immer 1:1.** Ein `binding_key_ref` zeigt zu jedem Zeitpunkt auf
   höchstens ein Konto. Was passiert, wenn sich auf einem bereits verknüpften Gerät jemand anderes

@@ -1,19 +1,19 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import java.time.Duration
 import com.example.identity.core.orchestrator.domain.policy.provenAt
 import com.example.identity.TEST_NOW
-import com.example.identity.core.orchestrator.domain.journey.strategy.ConfirmPeerLoginJourney
+import com.example.identity.core.orchestrator.domain.journeys.ConfirmPeerLoginJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.evidence
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.method
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
@@ -28,7 +28,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
  */
 class ConfirmPeerLoginJourneyTest : BehaviorSpec({
 
-    val strategy = ConfirmPeerLoginJourney
+    val journey = ConfirmPeerLoginJourney
 
     // loa2 plus a recent proof, with no way out through re-identification, resuming at the parked wish.
     val peerLoginProof = Transition.RequireSubJourney(
@@ -39,7 +39,7 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
 
     given("a new journey") {
         `when`("its first state is chosen") {
-            val initial = strategy.initialState(ctx())
+            val initial = journey.initialState(ctx())
 
             then("it is Requested, for a cold entry and an authenticated channel alike") {
                 initial shouldBe ConfirmPeerLoginState.Requested
@@ -49,7 +49,7 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
 
     given("Requested, a cold entry with no account at all") {
         `when`("the journey starts") {
-            val transition = strategy.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, ctx(account = null))
+            val transition = journey.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, ctx(account = null))
             then("aborts right here - never falls into identification/registration") {
                 transition.shouldBeInstanceOf<Transition.Abort>()
             }
@@ -60,7 +60,7 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
         `when`("the journey starts") {
-            val transition = strategy.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
             then("parks the wish and requires loa2 plus a fresh proof, without re-identification as a way out") {
                 transition shouldBe peerLoginProof
                 FreshProofState.Purpose.PEER_LOGIN.allowReIdentification shouldBe false
@@ -75,7 +75,7 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA1), personId = null)
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
         `when`("the journey starts") {
-            val transition = strategy.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
             then("the required level is not lowered - still loa2") {
                 transition shouldBe peerLoginProof
             }
@@ -83,11 +83,11 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
     }
 
     given("Requested, the session already carries loa2 with a recent proof") {
-        val acc = account(method("device", AcrLevel.LOA2, boundKeyRef = StrategyTestFixtures.BINDING_KEY))
+        val acc = account(method("device", AcrLevel.LOA2, boundKeyRef = JourneyTestFixtures.BINDING_KEY))
         val proven = evidence(listOf("device"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE, FactorType.INHERENCE), account = acc)
         val theCtx = ctx(account = acc, evidence = proven.provenAt(TEST_NOW.minus(Duration.ofMinutes(4))), acrFloor = AcrLevel.LOA1)
         `when`("the journey starts") {
-            val transition = strategy.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
             then("still goes through the proof - whether the level and the age suffice is the sub-journey's call, never decided here") {
                 transition.shouldBeInstanceOf<Transition.RequireSubJourney>().journey shouldBe FreshProofJourney
             }
@@ -97,7 +97,7 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
     given("Requested, waiting for its proof") {
         `when`("the FRESH_PROOF sub-journey finishes") {
             val event = JourneyEvent.SubJourneyFinished(FreshProofJourney, achievedAcr = AcrLevel.LOA2)
-            val transition = strategy.transition(ConfirmPeerLoginState.Requested, event, ctx())
+            val transition = journey.transition(ConfirmPeerLoginState.Requested, event, ctx())
             then("goes on to Confirming") {
                 transition shouldBe Transition.To(ConfirmPeerLoginState.Confirming(CONFIRM_OFFER))
             }
@@ -110,7 +110,7 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
         val state = ConfirmPeerLoginState.Confirming(CONFIRM_OFFER)
 
         `when`("the approval has been recorded (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
 
             then("the journey ends with the channel signed in - no logout question of its own (ADR-60)") {
                 transition shouldBe Transition.Authenticated

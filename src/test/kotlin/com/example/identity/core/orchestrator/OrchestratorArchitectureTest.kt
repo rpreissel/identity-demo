@@ -35,10 +35,10 @@ class OrchestratorArchitectureTest : BehaviorSpec({
                     "com.example.identity.core.orchestrator.domain.journey",
                     "com.example.identity.core.orchestrator.domain.journey.state"
                 )
-                .should().dependOnClassesThat().resideInAPackage("com.example.identity.core.orchestrator.domain.journey.strategy..")
+                .should().dependOnClassesThat().resideInAPackage("com.example.identity.core.orchestrator.domain.journeys..")
                 .because(
                     "the machine is generic over every journey via the Journey interface and Journeys.all - " +
-                        "depending on one concrete strategy class breaks that (and was exactly today's bug: " +
+                        "depending on one concrete journey object breaks that (and was exactly today's bug: " +
                         "JourneyService referenced DeleteAccountJourney.REQUIRED_ACR directly instead of a " +
                         "constant in the generic journey package)"
                 )
@@ -134,7 +134,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
                 .that().resideOutsideOfPackage("com.example.identity.core.orchestrator.domain.policy..")
                 .and().doNotHaveFullyQualifiedName("com.example.identity.core.orchestrator.DomainBeans")
                 .should().dependOnClassesThat().haveFullyQualifiedName("com.example.identity.core.orchestrator.domain.policy.DefaultAuthPolicy")
-                .because("every caller is meant to go through the AuthPolicy interface (Spring-injected), never the concrete implementation - the same reasoning as the journey/strategy rule above")
+                .because("every caller is meant to go through the AuthPolicy interface (Spring-injected), never the concrete implementation - the same reasoning as the concrete-journey rule above")
                 .check(classes)
         }
     }
@@ -162,7 +162,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
             noClasses()
                 .that().haveFullyQualifiedName("com.example.identity.core.orchestrator.journey.JourneyActionExecutor")
                 .should().dependOnClassesThat().haveFullyQualifiedName("com.example.identity.core.orchestrator.journey.JourneyService")
-                .orShould().dependOnClassesThat().resideInAPackage("com.example.identity.core.orchestrator.domain.journey.strategy..")
+                .orShould().dependOnClassesThat().resideInAPackage("com.example.identity.core.orchestrator.domain.journeys..")
                 .because(
                     "the executor WRITES and returns - it never advances a journey, never routes and never starts a " +
                         "sub-journey; that one-way dependency is what keeps the recursion in JourneyService." +
@@ -187,9 +187,9 @@ class OrchestratorArchitectureTest : BehaviorSpec({
     }
 
     // Account takeover: a session bound to an account it never proved it owns. It arises when the
-    // safety check lives per action handler while a strategy chooses the handler. The rules below make
+    // safety check lives per action handler while a journey chooses the handler. The rules below make
     // identity resolution, account absorption and device linking reachable from one class only, so no
-    // strategy or tool order can reach a takeover path that skips the gate.
+    // journey or tool order can reach a takeover path that skips the gate.
     val gate = "com.example.identity.core.orchestrator.journey.JourneyActionExecutor"
     // A lambda taking a value class compiles to a class of its own (`JourneyActionExecutor$accountOf$1`).
     val gateAndItsLambdas = "${Regex.escape(gate)}(\\$.*)?"
@@ -243,7 +243,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
                 .because(
                     "resolving claims to an existing account is the first half of a takeover; the second half " +
                         "(actually binding the session to it) is gated in JourneyActionExecutor.accountOf. A " +
-                        "strategy that could resolve for itself could act on the answer before that gate - " +
+                        "journey that could resolve for itself could act on the answer before that gate - " +
                         "exactly the shape of both account-takeover bugs found in this codebase"
                 )
                 .check(everything)
@@ -255,7 +255,7 @@ class OrchestratorArchitectureTest : BehaviorSpec({
     // that skips the check does not compile. No ArchUnit rule is needed (tool_api/ToolJourney.kt).
 
     given("absorbing one account into another and linking a device to an account") {
-        then("both happen in the acting phase only - never from a strategy, a controller or a tool") {
+        then("both happen in the acting phase only - never from a journey, a controller or a tool") {
             val crossesAccounts = DescribedPredicate.describe<JavaCall<*>>(
                 "absorb an account into another, or link a device to an account"
             ) { call ->

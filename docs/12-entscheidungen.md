@@ -23,7 +23,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/). Die Tabelle nennt 
 | [ADR-7](adr/ADR-007-web-kanal-ohne-mtls-signierte-request-assertion-statt.md) | Web-Kanal ohne mTLS, signierte Request-Assertion statt Client-Zertifikat |
 | [ADR-8](adr/ADR-008-keycloak-fuehrt-seine-eigenen-nativen-schritte-selbst-statt.md) | Keycloak führt seine eigenen nativen Schritte selbst, statt alles zu delegieren oder über Identity-Brokering zu gehen *(abgelöst durch [ADR-58](adr/ADR-058-keycloak-fuehrt-keine-eigenen-anmeldeschritte.md))* |
 | [ADR-9](adr/ADR-009-profilabhaengiges-token-retrieval-account-keypair-custom-oauth2-grant.md) | Profilabhängiger Token-Abruf — eigener OAuth2-Grant, den nur der Orchestrator aufrufen darf |
-| [ADR-10](adr/ADR-010-interessent-ist-konto-zustand-kein-eigener-authintent.md) | Interessent ist Konto-Zustand, kein eigener AuthIntent |
+| [ADR-10](adr/ADR-010-interessent-ist-konto-zustand-kein-eigener-authintent.md) | Interessent ist Konto-Zustand, keine eigene Journey |
 | [ADR-11](adr/ADR-011-kontouebergreifender-person-id-konflikt-ist-abweisung-merge-nie.md) | Ein Anker, der schon einem anderen Konto gehört, wird abgewiesen; Konten werden nie automatisch zusammengeführt |
 | [ADR-12](adr/ADR-012-ein-widerruf-ist-eine-eigene-zeile-mit-eigenem.md) | Ein Widerruf ist eine eigene Zeile mit eigener Quelle |
 | [ADR-14](adr/ADR-014-schema-zusammengefuehrt-das-konto-als-sperrpunkt-eine-wahrheit.md) | Das Konto als gemeinsame Sperre, jeder Fakt an genau einer Stelle |
@@ -72,7 +72,7 @@ Jede Entscheidung hat eine eigene Datei unter [`adr/`](adr/). Die Tabelle nennt 
 | [ADR-59](adr/ADR-059-nachweise-je-keycloak-sitzung-im-orchestrator.md) | Die Nachweise einer Keycloak-Sitzung liegen im Orchestrator, eine Zeile je Sitzung und Verfahren; das signierte RestoreData-Token entfällt, parallele Tabs verlieren keine Nachweise mehr |
 | [ADR-60](adr/ADR-060-abmeldung-ueber-keycloak-back-channel-logout.md) | Keycloak meldet jedes Sitzungsende per OIDC Back-Channel Logout, die Abmeldung ist keine Journey mehr; der Orchestrator läuft immer mit Keycloak, der Token-Ersatz liegt nur noch in `src/testFixtures` |
 | [ADR-61](adr/ADR-061-frischer-nachweis-als-gemeinsame-sub-journey.md) | Niveau und frischer Nachweis vor einer Aktion am Konto sind die gemeinsame Sub-Journey `FRESH_PROOF`; `DELETE_ACCOUNT`, `MANAGE_AUTH_METHODS` und `CONFIRM_PEER_LOGIN` behalten nur ihren Zweck |
-| [ADR-62](adr/ADR-062-ablehnen-entscheidet-der-zustand.md) | Was Ablehnen bewirkt, deklariert der Angebots-Zustand (`declinePolicy`) und beantwortet der Fachkern; die Strategie sieht nur noch `OfferExhausted` |
+| [ADR-62](adr/ADR-062-ablehnen-entscheidet-der-zustand.md) | Was Ablehnen bewirkt, deklariert der Angebots-Zustand (`declinePolicy`) und beantwortet der Fachkern; die Journey sieht nur noch `OfferExhausted` |
 | [ADR-63](adr/ADR-063-journeys-als-objekte-mit-startpunkten.md) | Journeys sind Objekte mit Startpunkten (`OpensAppChannel`, `OpensWebChannel`, `StartableWhenAuthenticated`, `OnlyAsSubJourney`), in `Journeys` gelistet; `AuthIntent` und `IntentStrategy` entfallen, die Geräteverknüpfung folgt dem Kanal-Einstieg |
 
 Die Nummern ADR-4, 13, 23 und 30 fehlen. Ihr Inhalt steht heute an anderer Stelle:

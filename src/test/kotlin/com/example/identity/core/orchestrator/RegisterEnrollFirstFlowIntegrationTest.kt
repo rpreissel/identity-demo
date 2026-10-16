@@ -55,7 +55,7 @@ class RegisterEnrollFirstFlowIntegrationTest : IntegrationTestSupport() {
     }
 
     init {
-        // The order of the steps is the strategy's (RegisterEnrollFirstJourneyTest); here the run end to end.
+        // The order of the steps is the journey's (RegisterEnrollFirstJourneyTest); here the run end to end.
         given("registration order set to enroll-first, a fresh channel, APP") {
             `when`("enrolling email, sms and password, then declining the closing identification offer") {
                 val channelSessionId = enrolledUpToIdentificationOffer()

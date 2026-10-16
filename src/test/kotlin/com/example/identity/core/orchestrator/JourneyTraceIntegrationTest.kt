@@ -53,7 +53,7 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
 
                 val entries = logOf(channelSessionId)
 
-                then("every entry belongs to the APP channel and names its intent") {
+                then("every entry belongs to the APP channel and names its journey") {
                     entries.shouldNotBeEmpty()
                     entries.all { it["channelType"] == "APP" } shouldBe true
                     entries.all { (it["intent"] as String).isNotBlank() } shouldBe true
@@ -145,11 +145,11 @@ class JourneyTraceIntegrationTest : IntegrationTestSupport() {
                 }
             }
 
-            `when`("filtering by intent across all channels") {
+            `when`("filtering by journey across all channels") {
                 registerAndStartDeletion()
                 val journeys = search("intent=DELETE_ACCOUNT").journeys()
 
-                then("only journeys of that intent come back") {
+                then("only runs of that journey come back") {
                     journeys.shouldNotBeEmpty()
                     journeys.all { it["intent"] == "DELETE_ACCOUNT" } shouldBe true
                 }

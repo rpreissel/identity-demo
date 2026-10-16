@@ -1,8 +1,8 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
-import com.example.identity.core.orchestrator.domain.journey.strategy.FastAccessJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
-import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterJourney
+import com.example.identity.core.orchestrator.domain.journeys.FastAccessJourney
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.RegisterJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
@@ -11,11 +11,11 @@ import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.BINDING_KEY
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.BINDING_KEY
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.method
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.FactorType
 import com.example.identity.contract.tool_api.ToolId
@@ -33,11 +33,11 @@ import io.kotest.matchers.types.shouldBeInstanceOf
  */
 class FastAccessJourneyTest : BehaviorSpec({
 
-    val strategy = FastAccessJourney
+    val journey = FastAccessJourney
 
     given("Start, no account known yet (unrecognized device)") {
         `when`("the journey starts") {
-            val transition = strategy.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = null))
+            val transition = journey.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = null))
             then("hands off to REGISTER's own journey to identify") {
                 transition shouldBe
                     Transition.RequireSubJourney(RegisterJourney, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
@@ -48,7 +48,7 @@ class FastAccessJourneyTest : BehaviorSpec({
     given("Start, account known via a linked device credential") {
         val acc = account(method("device", AcrLevel.LOA2, boundKeyRef = BINDING_KEY))
         `when`("the journey starts") {
-            val transition = strategy.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = acc))
+            val transition = journey.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = acc))
             then("suggests exactly that device credential, not a generic choice") {
                 transition shouldBe
                     Transition.To(FastAccessState.PreferredAuth(ToolId("auth-device")))
@@ -59,7 +59,7 @@ class FastAccessJourneyTest : BehaviorSpec({
     given("Start, account known but no preferred device - other methods available") {
         val acc = account(method("sms", AcrLevel.LOA2))
         `when`("the journey starts") {
-            val transition = strategy.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = acc))
+            val transition = journey.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = acc))
             then("offers them via AuthChoice") {
                 transition shouldBe
                     Transition.To(AuthChoice(Offer(listOf(ToolId("auth-sms")))))
@@ -70,7 +70,7 @@ class FastAccessJourneyTest : BehaviorSpec({
     given("Start, account known but has no active methods at all") {
         val acc = account()
         `when`("the journey starts") {
-            val transition = strategy.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = acc))
+            val transition = journey.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = acc))
             then("hands off to REGISTER's own journey rather than a dead end") {
                 transition shouldBe
                     Transition.RequireSubJourney(RegisterJourney, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
@@ -83,7 +83,7 @@ class FastAccessJourneyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
         `when`("resumed after a sub-journey finished (RE_IDENTIFY or REGISTER alike)") {
             val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2)
-            val transition = strategy.transition(FastAccessState.Start, event, theCtx)
+            val transition = journey.transition(FastAccessState.Start, event, theCtx)
             then("re-checks satisfaction via afterProof instead of re-running firstOffer") {
                 transition shouldBe Transition.Authenticated
             }
@@ -93,7 +93,7 @@ class FastAccessJourneyTest : BehaviorSpec({
     given("PreferredAuth, account with the preferred device and other methods") {
         val acc = account(method("device", AcrLevel.LOA2, boundKeyRef = BINDING_KEY), method("sms", AcrLevel.LOA2))
         `when`("the preferred tool is declined") {
-            val transition = strategy.transition(FastAccessState.PreferredAuth(ToolId("auth-device")), JourneyEvent.Abandoned(tool("auth-device")), ctx(account = acc))
+            val transition = journey.transition(FastAccessState.PreferredAuth(ToolId("auth-device")), JourneyEvent.Abandoned(tool("auth-device")), ctx(account = acc))
             then("falls back to the account's other methods") {
                 transition shouldBe
                     Transition.To(AuthChoice(Offer(listOf(ToolId("auth-sms")), emptySet())))
@@ -107,7 +107,7 @@ class FastAccessJourneyTest : BehaviorSpec({
         val state = FastAccessState.PreferredAuth(ToolId("auth-device"))
 
         `when`("resumed after the accepted proof (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("finishes") {
                 transition shouldBe Transition.Authenticated
             }
@@ -118,7 +118,7 @@ class FastAccessJourneyTest : BehaviorSpec({
         val acc = account(method("sms", AcrLevel.LOA2))
         `when`("the last offered candidate is abandoned") {
             val exhausted = AuthChoice(Offer(listOf(ToolId("auth-sms")))).declining(ToolId("auth-sms"))
-            val transition = strategy.transition(exhausted as FastAccessState, JourneyEvent.OfferExhausted(exhausted.declined), ctx(account = acc))
+            val transition = journey.transition(exhausted as FastAccessState, JourneyEvent.OfferExhausted(exhausted.declined), ctx(account = acc))
             then("hands off to REGISTER's own journey, same as an account with nothing usable at all") {
                 transition shouldBe
                     Transition.RequireSubJourney(RegisterJourney, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
@@ -132,7 +132,7 @@ class FastAccessJourneyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
 
         `when`("resumed after the adopted credential (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("finishes directly - FAST_ACCESS never carries an email obligation") {
                 transition shouldBe Transition.Authenticated
             }
@@ -146,7 +146,7 @@ class FastAccessJourneyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2, availableTools = onlyAuthTools + setOf(ToolId("ident-fsc"), ToolId("ident-eid")))
 
         `when`("resumed after the accepted proof (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("requires the shared RE_IDENTIFY sub-journey instead of aborting") {
                 transition shouldBe
                     Transition.RequireSubJourney(
@@ -165,7 +165,7 @@ class FastAccessJourneyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2, availableTools = onlyAuthTools)
 
         `when`("resumed after the accepted proof (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("aborts, naming the missing fresh identification") {
                 transition.shouldBeInstanceOf<Transition.Abort>().reason.template shouldContain "frische Identifizierung"
             }
@@ -180,7 +180,7 @@ class FastAccessJourneyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
 
         `when`("resumed after the accepted proof (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("requires RE_IDENTIFY before any enrollment - a loa1 session never enrolls a method") {
                 transition shouldBe
                     Transition.RequireSubJourney(
@@ -198,7 +198,7 @@ class FastAccessJourneyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
 
         `when`("resumed after an adopted credential that leaves the floor unmet (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("requires RE_IDENTIFY instead of offering the next enrollment") {
                 transition shouldBe
                     Transition.RequireSubJourney(
@@ -220,7 +220,7 @@ class FastAccessJourneyTest : BehaviorSpec({
         )
 
         `when`("resumed after the accepted proof (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("offers enrollment directly - at loa2 no fresh identification is needed") {
                 transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<Enrolling>()
             }

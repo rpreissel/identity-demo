@@ -9,12 +9,12 @@ Dies ist eine zweite Variante der Registrierung (`REGISTER`). Sie dreht die
 Reihenfolge um: Der Nutzer richtet zuerst Anmeldeverfahren ein, und die Identifizierung wird erst
 am Ende angeboten.
 
-**Dieselbe Strategie, dieselben Zustände.** Beide Varianten laufen in `RegisterJourney` und nutzen
-dieselben Zustände (`RegisterState`, `Enrolling`, `DeviceLinkQuestion`). Die Strategie fragt an
+**Dieselbe Journey, dieselben Zustände.** Beide Varianten laufen in `RegisterJourney` und nutzen
+dieselben Zustände (`RegisterState`, `Enrolling`, `DeviceLinkQuestion`). Die Journey fragt an
 wenigen Stellen den Schalter: beim Start (Adresse statt Identifizierung), vor dem Einrichten (keine
 loa2-Untergrenze) und am Ende (freiwillige Identifizierung, dann die Gerätefrage).
 
-**Wie die Variante gewählt wird.** Jede Journey übernimmt beim Start die aktiven Schalter
+**Wie die Variante gewählt wird.** Jeder Durchlauf übernimmt beim Start die aktiven Schalter
 (`AuthJourney.featureFlags`) und behält sie bis zum Ende. Stellt der Betreiber den Schalter um, gilt
 das erst für danach gestartete Registrierungen; eine laufende wechselt nie die Variante.
 
@@ -27,7 +27,7 @@ Schalter aus. Lesen und setzen lässt er sich über
 
 **Grundidee:** Zum Start ist kein Konto nötig. Das Konto entsteht erst, wenn das erste Verfahren
 fertig eingerichtet ist, und nicht schon bei der Identifizierung. Das erledigt die allgemeine Aktion
-`Action.AdoptCredential` im `JourneyService`. Bis dahin fragt die Strategie die
+`Action.AdoptCredential` im `JourneyService`. Bis dahin fragt die Journey die
 Einrichtungs-Kandidaten ohne Konto ab (`CandidateTools.forEnrollment(account = null, …)`): Dann ist
 noch kein Verfahren aktiv.
 

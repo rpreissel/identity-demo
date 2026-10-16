@@ -20,7 +20,7 @@ internal object CandidateTools {
 
     /**
      * Availability is applied here as well as live in [JourneyState.activatable]. This layer makes
-     * the strategy's decision correct (e.g. "fall through to identification because nothing else is
+     * the journey's decision correct (e.g. "fall through to identification because nothing else is
      * left"); `activatable()` can only narrow an offer, not pick a different state.
      */
     private fun JourneyContext.filterAvailable(ids: List<ToolId>): List<ToolId> = ids.filter { it in availableTools }

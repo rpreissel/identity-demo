@@ -1,20 +1,20 @@
-package com.example.identity.core.orchestrator.domain.journey.strategy
+package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import java.time.Duration
 import com.example.identity.core.orchestrator.domain.policy.provenAt
 import com.example.identity.TEST_NOW
-import com.example.identity.core.orchestrator.domain.journey.strategy.ManageAuthMethodsJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.ManageAuthMethodsJourney
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.account
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.ctx
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.method
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.evidence
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.method
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.evidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.contract.tool_api.EnrollmentRef
@@ -33,14 +33,14 @@ import io.kotest.matchers.types.shouldBeInstanceOf
  */
 class ManageAuthMethodsJourneyTest : BehaviorSpec({
 
-    val strategy = ManageAuthMethodsJourney
+    val journey = ManageAuthMethodsJourney
 
     // An identification proves loa2 on its own, whatever methods the account holds.
     val loa2Evidence = evidence(listOf("fsc"), setOf(FactorType.POSSESSION))
 
     given("a new journey") {
         `when`("its first state is chosen") {
-            val initial = strategy.initialState(ctx())
+            val initial = journey.initialState(ctx())
 
             then("it is AddRequested") {
                 initial shouldBe ManageAuthMethodsState.AddRequested
@@ -63,7 +63,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
 
         `when`("started") {
-            val transition = strategy.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.Started, theCtx)
             then("parks the wish and requires loa2 plus a fresh proof, without losing it (ADR-61)") {
                 transition shouldBe
                     Transition.RequireSubJourney(
@@ -75,7 +75,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         }
 
         `when`("resumed after the proof is in (SubJourneyFinished)") {
-            val transition = strategy.transition(ManageAuthMethodsState.AddRequested, proven, theCtx)
+            val transition = journey.transition(ManageAuthMethodsState.AddRequested, proven, theCtx)
             then("offers the enrollment candidates") {
                 val next = transition.shouldBeInstanceOf<Transition.To>().state
                 next.shouldBeInstanceOf<ManageAuthMethodsState.Enrolling>().offered shouldContainExactlyInAnyOrder ENROLLABLE_BESIDES_SMS
@@ -88,7 +88,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
 
         `when`("started") {
-            val transition = strategy.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.Started, theCtx)
             then("selfServiceAcrFloor only demands loa1 for this account") {
                 proofRequired(transition, AcrLevel.LOA1, ManageAuthMethodsState.AddRequested)
             }
@@ -101,21 +101,21 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         val state = ManageAuthMethodsState.RemoveRequested("sms-instance")
 
         `when`("started") {
-            val transition = strategy.transition(state, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(state, JourneyEvent.Started, theCtx)
             then("requires loa1 plus a fresh proof, and removes nothing yet") {
                 proofRequired(transition, AcrLevel.LOA1, state)
             }
         }
 
         `when`("resumed after the proof is in") {
-            val transition = strategy.transition(state, proven, theCtx)
-            then("removes the method and resumes in the wish - the machine, not this strategy, rejects self-lockout") {
+            val transition = journey.transition(state, proven, theCtx)
+            then("removes the method and resumes in the wish - the machine, not this journey, rejects self-lockout") {
                 transition shouldBe Transition.Perform(Action.RevokeAuthMethod("sms-instance"), resumeState = state)
             }
         }
 
         `when`("resumed after the removal (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
             then("finishes") {
                 transition shouldBe Transition.Authenticated
             }
@@ -129,7 +129,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         `when`("started on a never-identified account (personId == null)") {
             val acc = account(method("sms", AcrLevel.LOA1), personId = null)
             val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
-            val transition = strategy.transition(state, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(state, JourneyEvent.Started, theCtx)
             then("requires only loa1") {
                 proofRequired(transition, AcrLevel.LOA1, state)
             }
@@ -138,14 +138,14 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         `when`("started on an identified account") {
             val acc = account(method("sms", AcrLevel.LOA1))
             val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc))
-            val transition = strategy.transition(state, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(state, JourneyEvent.Started, theCtx)
             then("requires loa2") {
                 proofRequired(transition, AcrLevel.LOA2, state)
             }
         }
 
         `when`("resumed after the proof is in") {
-            val transition = strategy.transition(state, proven, ctx(account = account(method("sms", AcrLevel.LOA1))))
+            val transition = journey.transition(state, proven, ctx(account = account(method("sms", AcrLevel.LOA1))))
             then("withdraws the address") {
                 transition shouldBe Transition.Perform(Action.RetractAttribute(AttributeType.EMAIL), resumeState = state)
             }
@@ -161,11 +161,11 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         // one active instance, so this case is only reachable by ALSO backend-disabling them.
         val theCtx = ctx(
             account = acc, evidence = loa2Evidence.provenAt(TEST_NOW.minus(Duration.ofMinutes(6))), acrFloor = AcrLevel.LOA1,
-            availableTools = StrategyTestFixtures.allToolIds - ToolId("enroll-device") - ToolId("enroll-kobil")
+            availableTools = JourneyTestFixtures.allToolIds - ToolId("enroll-device") - ToolId("enroll-kobil")
         )
 
         `when`("started, on an aged session") {
-            val transition = strategy.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(ManageAuthMethodsState.AddRequested, JourneyEvent.Started, theCtx)
             then("finishes without asking for any proof - there is nothing to authorize") {
                 transition shouldBe Transition.Authenticated
             }
@@ -178,14 +178,14 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         val wish = ManageAuthMethodsState.ChangeRequested("password-instance")
 
         `when`("started") {
-            val transition = strategy.transition(wish, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(wish, JourneyEvent.Started, theCtx)
             then("requires the level the old password was enrolled under plus a fresh proof") {
                 proofRequired(transition, AcrLevel.LOA2, wish)
             }
         }
 
         `when`("resumed after the proof is in") {
-            val transition = strategy.transition(wish, proven, theCtx)
+            val transition = journey.transition(wish, proven, theCtx)
             then("offers exactly the password enrollment, though the method is already active") {
                 val next = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<ManageAuthMethodsState.Changing>()
                 next.offered shouldBe listOf(ToolId("enroll-password"))
@@ -194,14 +194,14 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         }
 
         `when`("the wish names a device instance") {
-            val transition = strategy.transition(ManageAuthMethodsState.ChangeRequested("device-instance"), JourneyEvent.Started, theCtx)
+            val transition = journey.transition(ManageAuthMethodsState.ChangeRequested("device-instance"), JourneyEvent.Started, theCtx)
             then("aborts before asking for anything - a method with one credential per device is added or removed, never changed") {
                 transition.shouldBeInstanceOf<Transition.Abort>()
             }
         }
 
         `when`("the wish names an instance that is not active") {
-            val transition = strategy.transition(ManageAuthMethodsState.ChangeRequested("gone"), JourneyEvent.Started, theCtx)
+            val transition = journey.transition(ManageAuthMethodsState.ChangeRequested("gone"), JourneyEvent.Started, theCtx)
             then("aborts") {
                 transition.shouldBeInstanceOf<Transition.Abort>()
             }
@@ -214,7 +214,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         val wish = ManageAuthMethodsState.ChangeRequested("password-instance")
 
         `when`("started") {
-            val transition = strategy.transition(wish, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(wish, JourneyEvent.Started, theCtx)
             then("demands the level the old password was enrolled under - a change never lowers it") {
                 proofRequired(transition, AcrLevel.LOA2, wish)
             }
@@ -226,7 +226,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
 
         `when`("the tool is abandoned") {
             val exhausted = state.declining(ToolId("enroll-password"))
-            val transition = strategy.transition(exhausted as ManageAuthMethodsState, JourneyEvent.OfferExhausted(exhausted.declined), ctx())
+            val transition = journey.transition(exhausted as ManageAuthMethodsState, JourneyEvent.OfferExhausted(exhausted.declined), ctx())
             then("cancels - nothing else is offered, the old password stays") {
                 transition shouldBe Transition.Cancel
             }
@@ -241,7 +241,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         }
 
         `when`("resumed after adopting (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, ctx())
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, ctx())
             then("finishes") {
                 transition shouldBe Transition.Authenticated
             }
@@ -252,7 +252,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
         val state = ManageAuthMethodsState.Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))))
 
         `when`("resumed after adopting (ActionCompleted)") {
-            val transition = strategy.transition(state, JourneyEvent.ActionCompleted, ctx())
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, ctx())
             then("finishes - one successful enrollment is always enough here") {
                 transition shouldBe Transition.Authenticated
             }

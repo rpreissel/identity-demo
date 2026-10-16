@@ -5,7 +5,7 @@ import com.example.identity.tools.auth_kobil.internal.KobilPins
 import com.example.identity.core.account.application.ClaimCryptoFixture
 import com.example.identity.contract.tool_api.load
 import com.example.identity.contract.tool_api.ids.ToolSessionId
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.UnresolvableReferenceException

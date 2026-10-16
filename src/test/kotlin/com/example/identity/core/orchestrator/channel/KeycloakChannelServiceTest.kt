@@ -1,8 +1,8 @@
 package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.core.orchestrator.domain.journey.Journey
-import com.example.identity.core.orchestrator.domain.journey.strategy.RegisterJourney
-import com.example.identity.core.orchestrator.domain.journey.strategy.WebSelectMethodJourney
+import com.example.identity.core.orchestrator.domain.journeys.RegisterJourney
+import com.example.identity.core.orchestrator.domain.journeys.WebSelectMethodJourney
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
@@ -23,7 +23,7 @@ import java.time.Duration
 import java.util.UUID
 
 /**
- * Unit test of [KeycloakChannelService]'s own rules, with every collaborator mocked: which entry intents
+ * Unit test of [KeycloakChannelService]'s own rules, with every collaborator mocked: which entry journeys
  * the Web channel accepts, and that a channel never outlives the Keycloak session it ends in (ADR-43).
  */
 class KeycloakChannelServiceTest : BehaviorSpec({

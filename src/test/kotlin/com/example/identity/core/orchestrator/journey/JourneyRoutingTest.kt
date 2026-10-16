@@ -1,8 +1,8 @@
 package com.example.identity.core.orchestrator.journey
 
 import com.example.identity.core.orchestrator.domain.journey.state.ManageAuthMethodsState
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.catalogOf
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures.tool
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.catalogOf
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.tool
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.session.ChannelSession

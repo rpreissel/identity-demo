@@ -5,7 +5,7 @@ import com.example.identity.tools.auth_password.PASSWORD_EXISTS
 import com.example.identity.tools.auth_sms.PHONE_NUMBER
 import com.example.identity.tools.ident_nect.NECT_RESTRICTED_ID
 import com.example.identity.tools.ident_eid.EID_RESTRICTED_ID
-import com.example.identity.core.orchestrator.domain.journey.strategy.StrategyTestFixtures
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures
 import com.example.identity.contract.tool_api.ToolRole
 import com.example.identity.contract.tool_api.FactorType
 import io.kotest.assertions.throwables.shouldThrow
@@ -21,7 +21,7 @@ import io.kotest.matchers.string.shouldContain
 class ClaimsTest : BehaviorSpec({
     given("the attribute types") {
         // The modules' own attributes exist once their module is loaded; load all of them first.
-        StrategyTestFixtures.catalog
+        JourneyTestFixtures.catalog
         then("wire names are stable - they become account.claim.attribute_type values") {
             AttributeType.declared.associateWith { it.wireName } shouldBe mapOf(
                 AttributeType.PERSON_ID to "person_id",
@@ -89,7 +89,7 @@ class ClaimsTest : BehaviorSpec({
     }
 
     given("ident-fsc, declaring KVNR and the names from the master data") {
-        val descriptor = StrategyTestFixtures.tool("ident-fsc")
+        val descriptor = JourneyTestFixtures.tool("ident-fsc")
 
         `when`("a run reports claims that match the declaration") {
             val result = runCatching {

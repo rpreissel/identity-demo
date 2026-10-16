@@ -1,7 +1,7 @@
 # Idee: Abmeldung nur über Keycloak, keine `LOGOUT`-Journey mehr
 
 **Worum es geht.** Die Abmeldung läuft heute in den beiden Kanälen auf verschiedenen Wegen. In der
-App ist sie eine eigene Journey (`AuthIntent.LOGOUT`) mit einer Rückfrage. Im Web ist sie Keycloaks
+App ist sie eine eigene Journey (`LOGOUT`, `LogoutJourney`) mit einer Rückfrage. Im Web ist sie Keycloaks
 eigener Logout, und der Orchestrator erfährt davon über einen selbst gebauten Event-Listener. Die
 Idee: Beide Kanäle melden sich über Keycloak ab. Der Orchestrator erfährt das Ende nur noch über den
 standardisierten [OIDC Back-Channel Logout](https://openid.net/specs/openid-connect-backchannel-1_0.html).
@@ -119,7 +119,7 @@ Nach Gewicht geordnet.
 
 **Fällt weg:**
 
-- Journey und Endpunkt: `AuthIntent.LOGOUT`, `LogoutStrategy`, `ChannelService.startLogout`,
+- Journey und Endpunkt: `LogoutJourney`, `ChannelService.startLogout`,
   `POST /channels/{id}/logouts`, `startLogout` im Frontend und `journeys/logout.md`
   samt Tests und Diagramm.
 - Die alte Meldekette: `SignInLogEventListener`, `OrchestratorClient.reportSignOut` und

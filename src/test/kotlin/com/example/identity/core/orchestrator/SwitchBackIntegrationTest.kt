@@ -9,7 +9,7 @@ import org.springframework.web.client.HttpClientErrorException
 
 /**
  * Backing out of the currently activated tool (Back/Switch). Shared plumbing lives in
- * IntegrationTestSupport. Which candidates a declined tool leaves is the strategies' part
+ * IntegrationTestSupport. Which candidates a declined tool leaves is the journeys' part
  * (RegisterJourneyTest).
  */
 class SwitchBackIntegrationTest : IntegrationTestSupport() {

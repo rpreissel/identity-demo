@@ -7,7 +7,7 @@ import com.example.identity.contract.texts.Text
  * an account (docs/04-orchestrierung.md #2 "Zweitaccount", docs/09-dpop.md). A durable device link
  * never arises as a side effect and is never overwritten silently, so the question is a state of
  * its own, shared by [LookupLoginState] and [RegisterState]. Only the [wording] is here; what
- * accepting and declining lead to is each strategy's (`deviceLinkAnswered`). Carries no account
+ * accepting and declining lead to is up to each journey (`deviceLinkAnswered`). Carries no account
  * id: `Action.LinkDevice` reads the account from the live session.
  */
 data class DeviceLinkQuestion(val wording: Wording) : LookupLoginState, RegisterState, AnswerableState {

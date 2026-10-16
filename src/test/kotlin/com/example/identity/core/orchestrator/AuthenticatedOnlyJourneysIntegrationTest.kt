@@ -8,11 +8,11 @@ import org.springframework.web.client.HttpClientErrorException
 import java.util.UUID
 
 /**
- * Which intents a channel may start before it is logged in (docs/04-orchestrierung.md, intent
+ * Which journeys a channel may start before it is logged in (docs/04-orchestrierung.md, journey
  * table): STEP_UP, MANAGE_AUTH_METHODS and DELETE_ACCOUNT only on an AUTHENTICATED channel,
  * RE_IDENTIFY never directly. Ended channels are [CancelLogoutIntegrationTest]'s subject.
  */
-class AuthenticatedOnlyIntentsIntegrationTest : IntegrationTestSupport() {
+class AuthenticatedOnlyJourneysIntegrationTest : IntegrationTestSupport() {
 
     init {
         beforeScenario { stubDpopWithFakeJwk() }
@@ -32,7 +32,7 @@ class AuthenticatedOnlyIntentsIntegrationTest : IntegrationTestSupport() {
         jdbcTemplate.queryForObject("SELECT COUNT(*) FROM orchestrator.channel_session", Int::class.java)!!
 
     init {
-        // Each request starts its intent on an AUTHENTICATED channel; on an anonymous one it is refused.
+        // Each request starts its journey on an AUTHENTICATED channel; on an anonymous one it is refused.
         listOf(
             Triple("method management", "MANAGE_AUTH_METHODS") { id: String -> post("/orchestrator/api/v1/channels/$id/enrollments") },
             Triple("removing a method", "MANAGE_AUTH_METHODS") { id: String -> delete("/orchestrator/api/v1/channels/$id/methods/sms-1") },
@@ -72,7 +72,7 @@ class AuthenticatedOnlyIntentsIntegrationTest : IntegrationTestSupport() {
             }
         }
 
-        // Only entry intents open a channel; RE_IDENTIFY is reached only through RequireSubJourney.
+        // Only entry journeys open a channel; RE_IDENTIFY is reached only through RequireSubJourney.
         listOf("step_up", "manage_auth_methods", "delete_account", "re_identify").forEach { intent ->
             given("a device without a channel") {
                 `when`("a channel is opened with intent=$intent") {
