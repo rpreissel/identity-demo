@@ -10,6 +10,7 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
+import com.example.identity.core.orchestrator.domain.journey.state.AfterEnrolling
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.APP_SECOND_FACTOR_KINDS
@@ -152,7 +153,7 @@ class RegisterJourneyTest : BehaviorSpec({
             then("offers enrollment and keeps the email obligation for the check after enrollment") {
                 val to = transition.shouldBeInstanceOf<Transition.To>().state
                 to.shouldBeInstanceOf<Enrolling>()
-                to.emailObligation shouldBe true
+                to.then shouldBe AfterEnrolling.CONFIRM_EMAIL_FIRST
                 // confirm-email is not in here: attesting the address is its own act, discharged
                 // above. enroll-password is a candidate because the confirmed address unlocks it.
                 to.offered shouldContainExactlyInAnyOrder listOf(
@@ -235,7 +236,7 @@ class RegisterJourneyTest : BehaviorSpec({
 
             then("skips the assignment, since ident-kvnr has nothing to match against, and offers enrollment") {
                 val enrolling = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<Enrolling>()
-                enrolling.emailObligation shouldBe true
+                enrolling.then shouldBe AfterEnrolling.CONFIRM_EMAIL_FIRST
             }
         }
     }
@@ -250,7 +251,7 @@ class RegisterJourneyTest : BehaviorSpec({
             val transition = journey.transition(exhausted as RegisterState, JourneyEvent.OfferExhausted(exhausted.declined), theCtx)
             then("the registration carries on unbound and offers enrollment (ADR-10)") {
                 val enrolling = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<Enrolling>()
-                enrolling.emailObligation shouldBe true
+                enrolling.then shouldBe AfterEnrolling.CONFIRM_EMAIL_FIRST
             }
         }
     }
@@ -264,7 +265,7 @@ class RegisterJourneyTest : BehaviorSpec({
 
             then("continues with enrollment and does not offer the assignment again") {
                 val enrolling = transition.shouldBeInstanceOf<Transition.To>().state.shouldBeInstanceOf<Enrolling>()
-                enrolling.emailObligation shouldBe true
+                enrolling.then shouldBe AfterEnrolling.CONFIRM_EMAIL_FIRST
             }
         }
     }
@@ -317,7 +318,7 @@ class RegisterJourneyTest : BehaviorSpec({
     // PathToRequiredLevel.NEW_METHOD_FLOOR (docs/journeys/register.md): below loa2 a new method needs a fresh identification first.
     given("Enrolling, the session still below loa2 and enrollment tools available") {
         val acc = account(method("sms", AcrLevel.LOA1))
-        val state = Enrolling(Offer(listOf(ToolId("enroll-password"))), emailObligation = false)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-password"))), then = AfterEnrolling.NEXT_STEP)
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
 
         `when`("resumed after an adopted credential that leaves the floor unmet (ActionCompleted)") {
@@ -335,7 +336,7 @@ class RegisterJourneyTest : BehaviorSpec({
     given("Enrolling, floor reached, but the email obligation from Identifying is still open") {
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = false)
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
-        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = true)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), then = AfterEnrolling.CONFIRM_EMAIL_FIRST)
 
         `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
@@ -356,7 +357,7 @@ class RegisterJourneyTest : BehaviorSpec({
             acrFloor = AcrLevel.LOA1,
             availableTools = JourneyTestFixtures.webTools
         )
-        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), emailObligation = false)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), then = AfterEnrolling.NEXT_STEP)
 
         `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
@@ -376,7 +377,7 @@ class RegisterJourneyTest : BehaviorSpec({
             availableTools = JourneyTestFixtures.webTools
         )
         // enroll-password is no candidate without a confirmed email (docs/03-tool-architektur.md #5).
-        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = true)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), then = AfterEnrolling.CONFIRM_EMAIL_FIRST)
 
         `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
@@ -395,7 +396,7 @@ class RegisterJourneyTest : BehaviorSpec({
             acrFloor = AcrLevel.LOA1,
             availableTools = JourneyTestFixtures.webTools
         )
-        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), emailObligation = false)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), then = AfterEnrolling.NEXT_STEP)
 
         `when`("resumed after adopting the password (ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
@@ -415,7 +416,7 @@ class RegisterJourneyTest : BehaviorSpec({
             acrFloor = AcrLevel.LOA1,
             availableTools = JourneyTestFixtures.appTools
         )
-        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = false)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), then = AfterEnrolling.NEXT_STEP)
 
         `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
@@ -433,7 +434,7 @@ class RegisterJourneyTest : BehaviorSpec({
             acrFloor = AcrLevel.LOA1,
             availableTools = JourneyTestFixtures.appTools
         )
-        val state = Enrolling(Offer(listOf(ToolId("enroll-device"))), emailObligation = false)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-device"))), then = AfterEnrolling.NEXT_STEP)
 
         `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
@@ -451,7 +452,7 @@ class RegisterJourneyTest : BehaviorSpec({
             acrFloor = AcrLevel.LOA1,
             availableTools = JourneyTestFixtures.appTools
         )
-        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), emailObligation = false)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"), ToolId("enroll-password"))), then = AfterEnrolling.NEXT_STEP)
 
         `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
@@ -470,7 +471,7 @@ class RegisterJourneyTest : BehaviorSpec({
             acrFloor = AcrLevel.LOA1,
             availableTools = JourneyTestFixtures.appTools + ToolId("auth-email")
         )
-        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = false)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), then = AfterEnrolling.NEXT_STEP)
 
         `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
@@ -490,7 +491,7 @@ class RegisterJourneyTest : BehaviorSpec({
             acrFloor = AcrLevel.LOA1,
             availableTools = JourneyTestFixtures.webTools - ToolId("enroll-password")
         )
-        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = false)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), then = AfterEnrolling.NEXT_STEP)
 
         `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)

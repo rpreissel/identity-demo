@@ -66,8 +66,8 @@ stateDiagram-v2
 (`toolId`). `AuthChoice` und `Enrolling` enthalten das Angebot und die bisherigen Ablehnungen. Diese
 beiden Zustände nutzt `FAST_ACCESS` gemeinsam mit `RegisterState` (siehe [`REGISTER`](register.md)).
 
-`Enrolling` hat zusätzlich das Feld `emailObligation`. `FAST_ACCESS` setzt es nie, es bleibt also
-`false`. Die Pflicht, die E-Mail-Adresse zu bestätigen, gibt es nur, wenn die Journey über
+`Enrolling` hat zusätzlich das Feld `then`. `FAST_ACCESS` lässt es auf `AfterEnrolling.NEXT_STEP`:
+es schuldet nach dem Einrichten nichts. Die Pflicht, die E-Mail-Adresse zu bestätigen, gibt es nur, wenn die Journey über
 `RegisterState.Identifying` gelaufen ist (Orchestrierung, Abschnitt 5).
 
 **Identifizieren lassen andere.** `FAST_ACCESS` identifiziert nie selbst. Dafür startet es eine

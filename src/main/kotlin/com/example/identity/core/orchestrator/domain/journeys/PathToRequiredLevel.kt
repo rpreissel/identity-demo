@@ -12,6 +12,7 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.toEnrollAbortMessage
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
+import com.example.identity.core.orchestrator.domain.journey.state.AfterEnrolling
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 
 /**
@@ -33,12 +34,15 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
 
     /**
      * After an enrollment: done once the session has reached the level and the account can reach it
-     * again on its own, else another new method. [identifyBeforeEnrolling] and [emailObligation] as
-     * in [offerNewMethod].
+     * again on its own, else another new method. [before] and [then] as in [offerNewMethod].
      */
-    fun nextAfterEnrollment(ctx: JourneyContext, identifyBeforeEnrolling: Boolean = true, emailObligation: Boolean = false): Transition {
+    fun nextAfterEnrollment(
+        ctx: JourneyContext,
+        before: BeforeNewMethod = BeforeNewMethod.IDENTIFY_FIRST,
+        then: AfterEnrolling = AfterEnrolling.NEXT_STEP,
+    ): Transition {
         if (isReached(ctx)) return Transition.Authenticated
-        return offerNewMethod(ctx, identifyBeforeEnrolling, emailObligation)
+        return offerNewMethod(ctx, before, then)
     }
 
     /** The session has reached the level, and the account can reach it again on its own. */
@@ -51,16 +55,17 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
     }
 
     /**
-     * A new method, or a fresh identification first when none can help. Never below
-     * [NEW_METHOD_FLOOR] while [identifyBeforeEnrolling]: a credential keeps the level the session had
-     * when it was enrolled (ADR-5), so a loa1 session would create a loa1 credential forever that a
-     * later step-up rejects. "Enrollment zuerst" accepts that cap on purpose and passes `false`: there
-     * the identification comes last, optionally. [emailObligation] is carried into [Enrolling] for
-     * REGISTER, which re-checks the confirmed address after the enrollment.
+     * A new method, or a fresh identification first when none can help. [before] says whether the
+     * session must hold [NEW_METHOD_FLOOR] first; [then] is carried into [Enrolling] for REGISTER,
+     * which re-checks the confirmed address after the enrollment.
      */
-    fun offerNewMethod(ctx: JourneyContext, identifyBeforeEnrolling: Boolean = true, emailObligation: Boolean = false): Transition {
+    fun offerNewMethod(
+        ctx: JourneyContext,
+        before: BeforeNewMethod = BeforeNewMethod.IDENTIFY_FIRST,
+        then: AfterEnrolling = AfterEnrolling.NEXT_STEP,
+    ): Transition {
         val account = ctx.requireAccount()
-        if (identifyBeforeEnrolling && !(ctx hasReached NEW_METHOD_FLOOR)) {
+        if (before == BeforeNewMethod.IDENTIFY_FIRST && !(ctx hasReached NEW_METHOD_FLOOR)) {
             return ReIdentifyJourney.toReachOr(maxOf(NEW_METHOD_FLOOR, ctx.acrFloor), ctx, resumeWith = afterIdentificationBackTo) {
                 Transition.Abort(
                     Text("Fuer die Einrichtung eines neuen Anmeldeverfahrens ist eine frische Identifizierung (mindestens loa2) erforderlich, aktuell ist aber keine Identifizierungsmethode verfuegbar.")
@@ -68,7 +73,7 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
             }
         }
         val enrollments = ctx.enrollmentCandidates()
-        if (enrollments.isNotEmpty()) return Transition.To(Enrolling(Offer(enrollments), emailObligation = emailObligation))
+        if (enrollments.isNotEmpty()) return Transition.To(Enrolling(Offer(enrollments), then))
         return ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = afterIdentificationBackTo) {
             // Reachable here means a channel-local reason, e.g. every remaining tool disabled.
             Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toEnrollAbortMessage())
@@ -83,4 +88,17 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
          */
         val NEW_METHOD_FLOOR = AcrLevel.LOA2
     }
+}
+
+/** What a session must hold before a new method is enrolled for it. */
+enum class BeforeNewMethod {
+    /**
+     * [PathToRequiredLevel.NEW_METHOD_FLOOR], by a fresh identification if need be: a credential
+     * keeps the level the session had when it was enrolled (ADR-5), so a loa1 session would create a
+     * loa1 credential forever that a later step-up rejects.
+     */
+    IDENTIFY_FIRST,
+
+    /** Whatever it has: "Enrollment zuerst" accepts that cap on purpose, the identification comes last, optionally. */
+    ENROLL_AT_CURRENT_LEVEL,
 }

@@ -7,6 +7,7 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
+import com.example.identity.core.orchestrator.domain.journey.state.AfterEnrolling
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.BINDING_KEY
@@ -125,7 +126,7 @@ class FastAccessJourneyTest : BehaviorSpec({
     }
 
     given("Enrolling, the new method lets the account reach the floor") {
-        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = false)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), then = AfterEnrolling.NEXT_STEP)
         val acc = account(method("sms", AcrLevel.LOA1))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
 
@@ -190,7 +191,7 @@ class FastAccessJourneyTest : BehaviorSpec({
 
     given("Enrolling, the session still below loa2 and enrollment tools available") {
         val acc = account(method("sms", AcrLevel.LOA1))
-        val state = Enrolling(Offer(listOf(ToolId("enroll-password"))), emailObligation = false)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-password"))), then = AfterEnrolling.NEXT_STEP)
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA2)
 
         `when`("resumed after an adopted credential that leaves the floor unmet (ActionCompleted)") {

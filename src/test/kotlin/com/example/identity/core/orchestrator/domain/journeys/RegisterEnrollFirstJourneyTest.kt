@@ -5,6 +5,7 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
+import com.example.identity.core.orchestrator.domain.journey.state.AfterEnrolling
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
@@ -101,7 +102,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
     given("Enrolling, floor reached, but email is still unconfirmed") {
         val acc = account(method("sms", AcrLevel.LOA1), emailConfirmed = false)
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1)
-        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), emailObligation = true)
+        val state = Enrolling(Offer(listOf(ToolId("enroll-sms"))), then = AfterEnrolling.CONFIRM_EMAIL_FIRST)
 
         `when`("resumed after adopting the credential (ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)

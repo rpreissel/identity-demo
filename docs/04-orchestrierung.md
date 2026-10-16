@@ -553,12 +553,12 @@ Anmeldeverfahren einrichten“ (dort ist `ConfirmingEmail` der erste Schritt,
 
 Ist kein Tool zum Bestätigen verfügbar, weil der Betreiber es gesperrt hat, wird der Schritt
 übersprungen. Die Pflicht bleibt dann offen. Sie wird nach jedem Einrichtungsschritt
-(`RegisterJourney.afterEnrollment`) erneut angeboten. Dafür hält `Enrolling.emailObligation` den
-Vermerk fest.
+(`RegisterJourney.afterEnrollment`) erneut angeboten. Dafür hält `Enrolling.then`
+(`AfterEnrolling.CONFIRM_EMAIL_FIRST`) den Vermerk fest.
 
 Für wen eine Pflicht gilt, hängt davon ab, auf welchem Weg der Zustand erreicht wurde. Die Pflicht
 zur E-Mail-Bestätigung gilt nur für einen Durchlauf, der über `Identifying` kam, also ein Konto
-angelegt oder übernommen hat. Das hält das Attribut `Enrolling.emailObligation` fest. Wer sich
+angelegt oder übernommen hat. Das hält das Attribut `Enrolling.then` fest. Wer sich
 lediglich anmeldet, wird nie nachträglich verpflichtet, eine fehlende E-Mail-Adresse zu bestätigen.
 Die Bestätigung wird deshalb erst *nach* dem Zweig `AuthChoice` angeboten, nicht davor.
 

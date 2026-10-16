@@ -25,6 +25,7 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
+import com.example.identity.core.orchestrator.domain.journey.state.AfterEnrolling
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 
@@ -49,6 +50,10 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
     private val toRequiredLevel = PathToRequiredLevel(afterIdentificationBackTo = RegisterState.Start)
 
     private val JourneyContext.enrollFirst get() = JourneyFeatureFlag.REGISTER_ENROLL_FIRST in featureFlags
+
+    /** "Enrollment zuerst" enrolls at whatever level the session has; the identification comes last. */
+    private val JourneyContext.beforeNewMethod
+        get() = if (enrollFirst) BeforeNewMethod.ENROLL_AT_CURRENT_LEVEL else BeforeNewMethod.IDENTIFY_FIRST
 
     override fun transition(state: RegisterState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
@@ -110,12 +115,12 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
                 else -> event.notExpectedIn(state)
             }
             is Enrolling -> when (event) {
-                JourneyEvent.ActionCompleted -> afterEnrollment(ctx, state.emailObligation)
+                JourneyEvent.ActionCompleted -> afterEnrollment(ctx, state.then)
                 else -> event.notExpectedIn(state)
             }
             // The email obligation is already discharged here.
             is RegisterState.SecondFactorKindObligation -> when (event) {
-                JourneyEvent.ActionCompleted -> afterEnrollment(ctx, emailObligation = false)
+                JourneyEvent.ActionCompleted -> afterEnrollment(ctx, AfterEnrolling.NEXT_STEP)
                 else -> event.notExpectedIn(state)
             }
         }
@@ -147,8 +152,8 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
      * it arises with the first method, from a free choice among all enrollment tools.
      */
     private fun afterEmailConfirmed(ctx: JourneyContext): Transition {
-        if (ctx.account != null) return afterEnrollment(ctx, emailObligation = false)
-        return offer(ctx.enrollmentCandidates()) { Enrolling(it, emailObligation = true) }
+        if (ctx.account != null) return afterEnrollment(ctx, AfterEnrolling.NEXT_STEP)
+        return offer(ctx.enrollmentCandidates()) { Enrolling(it, AfterEnrolling.CONFIRM_EMAIL_FIRST) }
             ?: Transition.Abort(Text("Kein Anmeldeverfahren verfuegbar"))
     }
 
@@ -164,10 +169,16 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
             return Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND_OR_CANCEL))
         }
         // An account found again may already have what it needs: prove an existing method.
-        if (ctx canReach ctx.acrFloor) offer(ctx.authCandidates(), ::AuthChoice)?.let { return it }
+        if (ctx canReach ctx.acrFloor) {
+            val existingMethod = offer(ctx.authCandidates(), ::AuthChoice)
+            if (existingMethod != null) return existingMethod
+        }
         // Identified but not bound in the register (ADR-18): offer the correlation step before any
         // enrollment. No yes/no prompt in front; the form says what the number is for.
-        if (account.isUnidentified) offerAssignment(ctx)?.let { return it }
+        if (account.isUnidentified) {
+            val assignment = offerAssignment(ctx)
+            if (assignment != null) return assignment
+        }
         return continueAfterAssignment(ctx)
     }
 
@@ -180,10 +191,10 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
         val account = ctx.requireAccount()
         // After the AuthChoice branch: the email obligation belongs to a genuine registration,
         // not to a rediscovered account logging in (docs/04-orchestrierung.md #5).
-        // emailObligation stays true: without an attesting tool confirmEmail yields nothing, and
-        // the obligation is retried after enrollment.
+        // The obligation stays: without an attesting tool confirmEmail yields nothing, and it is
+        // retried after the enrollment.
         return confirmEmail(account, ctx)
-            ?: toRequiredLevel.offerNewMethod(ctx, emailObligation = true)
+            ?: toRequiredLevel.offerNewMethod(ctx, then = AfterEnrolling.CONFIRM_EMAIL_FIRST)
     }
 
     /**
@@ -198,18 +209,20 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
     }
 
     /**
-     * The next step on [toRequiredLevel], with REGISTER's own obligations around it. [emailObligation]
-     * is normally discharged before any enrollment ([confirmEmail]); it is re-checked here for the
-     * case that no attesting tool was available back then. Once the level is reached, the factor-kind
+     * The next step on [toRequiredLevel], with REGISTER's own obligations around it. The email
+     * obligation ([then]) is normally discharged before any enrollment ([confirmEmail]); it is
+     * re-checked here for the case that no attesting tool was available back then. Once the level is reached, the factor-kind
      * obligation ([RegisterState.SecondFactorKindObligation]) comes last. "Enrollment zuerst" accepts
      * a loa1 credential (no identification before enrolling) and ends in [offerClosingIdentification].
      */
-    private fun afterEnrollment(ctx: JourneyContext, emailObligation: Boolean): Transition {
-        if (emailObligation) confirmEmail(ctx.requireAccount(), ctx)?.let { return it }
-        if (!toRequiredLevel.isReached(ctx)) {
-            return toRequiredLevel.offerNewMethod(ctx, identifyBeforeEnrolling = !ctx.enrollFirst, emailObligation = emailObligation)
+    private fun afterEnrollment(ctx: JourneyContext, then: AfterEnrolling): Transition {
+        if (then == AfterEnrolling.CONFIRM_EMAIL_FIRST) {
+            val confirm = confirmEmail(ctx.requireAccount(), ctx)
+            if (confirm != null) return confirm
         }
-        offer(secondFactorKindCandidates(ctx), RegisterState::SecondFactorKindObligation)?.let { return it }
+        if (!toRequiredLevel.isReached(ctx)) return toRequiredLevel.offerNewMethod(ctx, ctx.beforeNewMethod, then)
+        val secondKind = offer(secondFactorKindCandidates(ctx), RegisterState::SecondFactorKindObligation)
+        if (secondKind != null) return secondKind
         return if (ctx.enrollFirst) offerClosingIdentification(ctx) else Transition.Authenticated
     }
 
