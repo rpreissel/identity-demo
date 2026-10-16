@@ -1,7 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.core.orchestrator.domain.journey.authCandidates
-import com.example.identity.core.orchestrator.domain.journey.offer
 import com.example.identity.core.orchestrator.domain.journey.lookupLoginCandidates
 import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
 import com.example.identity.core.account.AccountProfile
@@ -64,13 +63,18 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
     private fun offerLookupLogin(ctx: JourneyContext): Transition =
         Transition.To(WebSelectMethodState.SelectMethod(Offer(ctx.lookupLoginCandidates()), accountAlreadyKnown = false))
 
-    /**
-     * The account's methods. When none of them can close the gap here, identifying again can, as in
-     * STEP_UP; failing that, say why instead of handing Keycloak an empty selection.
-     */
-    private fun offerStepUp(account: AccountProfile, ctx: JourneyContext): Transition =
-        offer(ctx.authCandidates()) { WebSelectMethodState.SelectMethod(it, accountAlreadyKnown = true) }
-            ?: reIdentifyOr(ctx) { Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage()) }
+    /** A step-up for a known account: its own methods first, otherwise identifying again, as in STEP_UP. */
+    private fun offerStepUp(account: AccountProfile, ctx: JourneyContext): Transition {
+        val ownMethods = ctx.authCandidates()
+        if (ownMethods.isNotEmpty()) {
+            return Transition.To(WebSelectMethodState.SelectMethod(Offer(ownMethods), accountAlreadyKnown = true))
+        }
+        return reIdentifyOr(ctx) { cannotReach(account, ctx) }
+    }
+
+    /** Nothing gets this account to the floor here: say why instead of handing Keycloak an empty selection. */
+    private fun cannotReach(account: AccountProfile, ctx: JourneyContext): Transition =
+        Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
 
     /** RE_IDENTIFY up to the channel's floor, then back to [WebSelectMethodState.Start]; [otherwise] when it cannot help. */
     private fun reIdentifyOr(ctx: JourneyContext, otherwise: () -> Transition): Transition =
