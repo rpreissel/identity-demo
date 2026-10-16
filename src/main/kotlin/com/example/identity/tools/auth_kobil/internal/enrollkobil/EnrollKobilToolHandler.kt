@@ -91,20 +91,7 @@ class EnrollKobilToolHandler(
                 // Idempotent: a repeated confirmation of the same activation must reuse the row
                 // rather than violate the UNIQUE constraint on kobil_user_id.
                 val enrollment = enrollmentRepository.findByKobilUserId(session.kobilUserId)
-                    ?: masterKey().let { masterKeyId ->
-                        enrollmentRepository.save(KobilEnrollment(
-                            kobilTenantId = session.kobilTenantId,
-                            kobilUserId = session.kobilUserId,
-                            kobilDeviceId = decision.deviceId,
-                            sealedPin = pins.seal(session.pin, masterKeyId),
-                            masterKeyId = masterKeyId,
-                            // Only with consent - see EnrollKobilDecision.Enroll.
-                            unlockSecretHash = if (decision.biometricConsent) secrets.hash(session.unlockSecret) else null,
-                            bindingKeyRef = bindingKeyRef,
-                            label = label,
-                            createdAt = clock.instant(),
-                        ))
-                    }
+                    ?: saveEnrollment(session, decision, bindingKeyRef, label, masterKey())
                 // The activation secrets have done their job: the PIN now lives in the credential,
                 // the unlock secret only as its hash. Nothing keeps them in the tool session until
                 // it ends, which may be up to 24 h away.
@@ -134,6 +121,25 @@ class EnrollKobilToolHandler(
      * Rebuilt on every read on purpose: during setup the app still has to receive these values, so a
      * reload picks the flow up again. Once the credential exists, the PIN only comes back via `auth-kobil`.
      */
+    private fun saveEnrollment(
+        session: EnrollKobilToolSession,
+        decision: EnrollKobilDecision.Enroll,
+        bindingKeyRef: String,
+        label: String?,
+        masterKeyId: MasterKeyId,
+    ): KobilEnrollment = enrollmentRepository.save(KobilEnrollment(
+        kobilTenantId = session.kobilTenantId,
+        kobilUserId = session.kobilUserId,
+        kobilDeviceId = decision.deviceId,
+        sealedPin = pins.seal(session.pin, masterKeyId),
+        masterKeyId = masterKeyId,
+        // Only with consent - see EnrollKobilDecision.Enroll.
+        unlockSecretHash = if (decision.biometricConsent) secrets.hash(session.unlockSecret) else null,
+        bindingKeyRef = bindingKeyRef,
+        label = label,
+        createdAt = clock.instant(),
+    ))
+
     private fun outcomeFor(session: EnrollKobilToolSession): ToolOutcome.InProgress {
         val (step, fields) = EnrollKobilState.describe()
         return ToolOutcome.InProgress(

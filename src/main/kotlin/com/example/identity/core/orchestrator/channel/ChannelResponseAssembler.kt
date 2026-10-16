@@ -14,6 +14,7 @@ import com.example.identity.core.orchestrator.session.toCoreEvidence
 import com.example.identity.contract.tool_api.envelope.ActiveMethodView
 import com.example.identity.contract.tool_api.envelope.AuthData
 import com.example.identity.contract.tool_api.envelope.AuthSubject
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.envelope.AuthSubjectType
 import com.example.identity.contract.tool_api.envelope.ChannelBlock
 import com.example.identity.contract.tool_api.envelope.ChannelResponse
@@ -46,19 +47,20 @@ class ChannelResponseAssembler(
     fun respond(channel: ChannelSession, next: Next? = null, stepData: StepData? = null): ChannelResponse {
         // A terminal channel (docs/02-domaenenmodell.md #3) never has a next, whatever the caller
         // passed, so no stray next can resurrect it.
-        val resolved = if (channel.state.isTerminal) {
-            null
-        } else {
-            next ?: journeyService.findActive(channel.channelSessionId)?.let { journeyService.nextOf(it, channel) }
-                ?: if (channel.state == ChannelState.AUTHENTICATED) Next.AUTHENTICATED else null
-        }
         return ChannelResponse(
             channel = buildChannelBlock(channel, includeAccountFields = true),
-            next = resolved,
+            next = if (channel.state.isTerminal) null else next ?: nextOf(channel),
             stepData = stepData,
             demo = demoInfo(channel),
             authData = authDataFor(channel)
         )
+    }
+
+    /** The running journey's next step; without one, an authenticated channel is simply done. */
+    private fun nextOf(channel: ChannelSession): Next? {
+        val running = journeyService.findActive(channel.channelSessionId)
+        if (running != null) return journeyService.nextOf(running, channel)
+        return if (channel.state == ChannelState.AUTHENTICATED) Next.AUTHENTICATED else null
     }
 
     /**
@@ -75,8 +77,11 @@ class ChannelResponseAssembler(
             val account = channel.accountId?.let { id -> accountService.findAccount(id) }
             authPolicy.resolveAcr(it.toCoreEvidence(), account)
         }
-        val subject = channel.accountId?.let { AuthSubject(AuthSubjectType.ACCOUNT, it.toString()) }
-            ?: channel.invitation?.let { AuthSubject(AuthSubjectType.INVITATION, it.value) }
+        val subject = when (val signedIn = channel.subject) {
+            is Subject.Account -> AuthSubject(AuthSubjectType.ACCOUNT, signedIn.id.toString())
+            is Subject.Invitation -> AuthSubject(AuthSubjectType.INVITATION, signedIn.id.value)
+            null -> null
+        }
         return AuthData(acr = acr?.value, amr = amr, subject = subject)
     }
 

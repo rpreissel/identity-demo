@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
-import com.example.identity.core.orchestrator.domain.journey.offer
 import com.example.identity.core.orchestrator.domain.journey.authCandidates
 import com.example.identity.core.orchestrator.domain.journey.JourneyStart
 import com.example.identity.core.orchestrator.domain.journey.Journey
@@ -8,6 +7,7 @@ import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthen
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
+import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState.Goal
@@ -49,12 +49,16 @@ object StepUpJourney : Journey<StepUpState> {
         // Authenticator evidence already on the channel means this offer asks for an additional
         // factor (StepUpState.AuthChoice.additionalFactorRound).
         val additionalFactorRound = ctx.evidence.methods.any { it.axis == EvidenceAxis.AUTHENTICATOR }
-        return offer(ctx.authCandidates(goal.targetAcr)) { StepUpState.AuthChoice(goal, it, additionalFactorRound = additionalFactorRound) }
-            ?: offerReIdentOrGiveUp(
-                goal, ctx,
-                whenNone = Transition.Abort(ctx.policy.reachability(ctx.requireAccount(), goal.targetAcr).toAuthAbortMessage())
-            )
+        val candidates = ctx.authCandidates(goal.targetAcr)
+        if (candidates.isNotEmpty()) {
+            return Transition.To(StepUpState.AuthChoice(goal, Offer(candidates), additionalFactorRound = additionalFactorRound))
+        }
+        return offerReIdentOrGiveUp(goal, ctx, whenNone = cannotReach(goal, ctx))
     }
+
+    /** Nothing gets the account to [Goal.targetAcr]: say why. */
+    private fun cannotReach(goal: Goal, ctx: JourneyContext): Transition =
+        Transition.Abort(ctx.policy.reachability(ctx.requireAccount(), goal.targetAcr).toAuthAbortMessage())
 
     /**
      * Offers re-identification if allowed ([Goal.allowsReIdentification]) and able to

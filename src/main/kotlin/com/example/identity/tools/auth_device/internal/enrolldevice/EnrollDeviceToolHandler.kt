@@ -52,17 +52,10 @@ class EnrollDeviceToolHandler(
 
         // The client keeps its device key, so re-enrolling on the same device resubmits the same
         // thumbprint. Reuse that row; a second insert would violate the unique thumbprint.
-        val enrollment = enrollmentRepository.findByThumbprint(decision.devicePublicKey.thumbprint)
-            ?: enrollmentRepository.save(
-                DeviceEnrollment(
-                    kty = decision.devicePublicKey.kty,
-                    crv = decision.devicePublicKey.crv,
-                    x = decision.devicePublicKey.x,
-                    y = decision.devicePublicKey.y,
-                    thumbprint = decision.devicePublicKey.thumbprint,
-                    createdAt = clock.instant()
-                )
-            )
+        val key = decision.devicePublicKey
+        val enrollment = enrollmentRepository.findByThumbprint(key.thumbprint) ?: enrollmentRepository.save(
+            DeviceEnrollment(kty = key.kty, crv = key.crv, x = key.x, y = key.y, thumbprint = key.thumbprint, createdAt = clock.instant())
+        )
 
         return ToolOutcome.Completed.Enrolled(
             enrollmentRef = EnrollmentRef(type = DEVICE_ENROLLMENT_TYPE, id = enrollment.id.toString()),

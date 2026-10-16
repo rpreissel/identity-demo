@@ -161,8 +161,7 @@ class JourneyTraceService(
     fun channelSession(channelSessionId: ChannelSessionId): ChannelSessionTrace {
         val rows = journeyTraceRepository.findByChannelSessionIdOldestFirst(channelSessionId, PageRequest.of(0, MAX_CHANNEL_ENTRIES + 1))
         val entries = rows.take(MAX_CHANNEL_ENTRIES).map { it.toView() }
-        val accountId = entries.firstNotNullOfOrNull { it.accountId }
-            ?: journeyTraceRepository.findAccountsOfChannelValues(listOf(channelSessionId.value)).firstOrNull()?.let { it[1] as AccountId }
+        val accountId = entries.firstNotNullOfOrNull { it.accountId } ?: accountOfChannel(channelSessionId)
         val attributed = entries.map { it.copy(accountId = it.accountId ?: accountId) }
         return ChannelSessionTrace(
             channelSessionId = channelSessionId,
@@ -174,6 +173,10 @@ class JourneyTraceService(
             truncated = rows.size > MAX_CHANNEL_ENTRIES
         )
     }
+
+    /** The account a channel resolved, read from any of its entries. */
+    private fun accountOfChannel(channelSessionId: ChannelSessionId): AccountId? =
+        journeyTraceRepository.findAccountsOfChannelValues(listOf(channelSessionId.value)).firstOrNull()?.let { it[1] as AccountId }
 
     /** The steps of the journeys [starts] begin, one summary each. */
     @JvmName("summarizeStarts")

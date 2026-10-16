@@ -2,6 +2,8 @@ package com.example.identity.core.orchestrator.channel
 
 import com.example.identity.core.orchestrator.journey.ChannelEnd
 import com.example.identity.core.orchestrator.journey.JourneyEndedException
+import com.example.identity.core.orchestrator.session.AppTokenSession
+import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.ChannelSessionEndedException
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.ChannelSessionId
@@ -98,15 +100,19 @@ class KeycloakChannelService(
             }
             return
         }
-        val subject = webChannels.firstNotNullOfOrNull { it.subject }
-            ?: appLogins.firstNotNullOfOrNull { it.accountId }?.let(Subject::Account)
-            ?: evidenceAccount?.let { Subject.Account(AccountId(it)) }
-            ?: return
+        val subject = subjectOf(webChannels, appLogins, evidenceAccount) ?: return
         if (subject is Subject.Account && accountService.findAccount(subject.id) == null) return
         // An App login's session ends only after its channel did, and that end was written.
         val alreadyWritten = appLogins.isNotEmpty() || webChannels.any { it.state == ChannelState.LOGGED_OUT }
         if (alreadyWritten) return
         signInLog.signedOut(subject, ChannelType.WEB.name)
+    }
+
+    /** Who the ended session signed in: its Web channels know first, then its App login, then its evidence rows. */
+    private fun subjectOf(webChannels: List<ChannelSession>, appLogins: List<AppTokenSession>, evidenceAccount: Long?): Subject? {
+        webChannels.firstNotNullOfOrNull { it.subject }?.let { return it }
+        appLogins.firstNotNullOfOrNull { it.accountId }?.let { return Subject.Account(it) }
+        return evidenceAccount?.let { Subject.Account(AccountId(it)) }
     }
 
     fun upsertChannel(

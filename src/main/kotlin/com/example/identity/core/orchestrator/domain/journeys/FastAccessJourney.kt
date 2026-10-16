@@ -54,9 +54,9 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
     /** The device's key first, then the account's other methods; without either, a registration. */
     private fun firstOffer(ctx: JourneyContext): Transition {
         if (ctx.account == null) return requireRegister()
-        return ctx.deviceKeyCandidate()?.let { Transition.To(FastAccessState.PreferredAuth(it)) }
-            ?: offer(ctx.authCandidates(), ::AuthChoice)
-            ?: requireRegister()
+        val deviceKey = ctx.deviceKeyCandidate()
+        if (deviceKey != null) return Transition.To(FastAccessState.PreferredAuth(deviceKey))
+        return offer(ctx.authCandidates(), ::AuthChoice) ?: requireRegister()
     }
 
     /**

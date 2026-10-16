@@ -105,8 +105,8 @@ class JourneyRouting(
         return SelectMethodStep(
             options = toolAvailabilityService.ordered(channelTypeOf(channel), options).map { it.value },
             title = state.selectionTitle,
-            description = withoutUserStep?.let { Text("Nur dieses Verfahren steht hier noch zur Wahl. {grund}", "grund" to it) }
-                ?: state.selectionDescription
+            description = if (withoutUserStep == null) state.selectionDescription
+                else Text("Nur dieses Verfahren steht hier noch zur Wahl. {grund}", "grund" to withoutUserStep)
         )
     }
 

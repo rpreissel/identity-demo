@@ -198,8 +198,7 @@ class JourneyActionExecutor(
         assertClaimsCovered(action.tool, action.outcome.claims)
         // Created lazily, as in performAdoptCredential: under REGISTER the address may be the
         // first step. An abandoned channel leaves no orphan (deleteIfAbandonedUnidentified).
-        val inHand = channel.accountId
-            ?: accountService.createAccountInSetup(channel.journeyKeyId).accountId.also { bindAccount(journey, channel, it) }
+        val inHand = channel.accountId ?: createAccountFor(journey, channel)
         val sessionEvidenceId = checkNotNull(channel.sessionEvidenceId) { "Attested without an SessionEvidence" }
         val evidence = checkNotNull(sessionEvidenceService.getSessionEvidence(sessionEvidenceId)) {
             "SessionEvidence not found: $sessionEvidenceId"
@@ -235,8 +234,7 @@ class JourneyActionExecutor(
         assertClaimsCovered(action.tool, enrolled.claims)
         // With no account yet (REGISTER), the first completed enrollment creates one. An abandoned
         // channel leaves no orphan (deleteIfAbandonedUnidentified).
-        val accountId = channel.accountId
-            ?: accountService.createAccountInSetup(channel.journeyKeyId).accountId.also { bindAccount(journey, channel, it) }
+        val accountId = channel.accountId ?: createAccountFor(journey, channel)
         val sessionEvidenceId = checkNotNull(channel.sessionEvidenceId) { "Enrolled without an SessionEvidence" }
         val evidence = checkNotNull(sessionEvidenceService.getSessionEvidence(sessionEvidenceId)) {
             "SessionEvidence not found: $sessionEvidenceId"
@@ -442,6 +440,16 @@ class JourneyActionExecutor(
      * gets an [com.example.identity.core.orchestrator.session.AppTokenSession], because only App channels are
      * issued tokens (docs/05-api.md).
      */
+    /**
+     * A fresh account in setup, bound to the channel: the first completed enrollment or attestation
+     * of a REGISTER creates it. An abandoned channel leaves no orphan (deleteIfAbandonedUnidentified).
+     */
+    private fun createAccountFor(journey: AuthJourney, channel: ChannelSession): AccountId {
+        val accountId = accountService.createAccountInSetup(channel.journeyKeyId).accountId
+        bindAccount(journey, channel, accountId)
+        return accountId
+    }
+
     private fun bindAccount(journey: AuthJourney, channel: ChannelSession, accountId: AccountId) {
         journey.accountId = accountId
         channel.subject = Subject.Account(accountId)
