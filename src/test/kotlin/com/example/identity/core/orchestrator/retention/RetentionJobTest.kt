@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.retention
 
+import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.TEST_CLOCK
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.ids.AccountId
@@ -43,7 +44,7 @@ class RetentionJobTest : BehaviorSpec({
     given("expired channels that each carry an AppTokenSession") {
         val fixture = RetentionFixture()
         val appTokenSessionIds = listOf(UUID.randomUUID(), UUID.randomUUID())
-        val expired = appTokenSessionIds.map { id -> ChannelSession(now = TEST_NOW).apply { appTokenSessionId = id } }
+        val expired = appTokenSessionIds.map { id -> ChannelSession(type = ChannelType.APP, expiresAt = TEST_NOW.plusSeconds(3600), now = TEST_NOW).apply { appTokenSessionId = id } }
         every { fixture.channelSessionRepository.findByExpiresAtBefore(any(), any()) } returnsMany listOf(expired, emptyList())
         val deletedIds = slot<List<UUID>>()
         every { fixture.appTokenSessionRepository.deleteAllByIdInBatch(capture(deletedIds)) } returns Unit
@@ -61,7 +62,7 @@ class RetentionJobTest : BehaviorSpec({
     given("expired channels with no AppTokenSession at all") {
         val fixture = RetentionFixture()
         every { fixture.channelSessionRepository.findByExpiresAtBefore(any(), any()) } returnsMany
-            listOf(listOf(ChannelSession(now = TEST_NOW).apply { appTokenSessionId = null }), emptyList())
+            listOf(listOf(ChannelSession(type = ChannelType.APP, expiresAt = TEST_NOW.plusSeconds(3600), now = TEST_NOW).apply { appTokenSessionId = null }), emptyList())
 
         `when`("the job runs") {
             fixture.job.cleanup()

@@ -29,7 +29,7 @@ Sitzung und Konto sind nur über die `accountId` verbunden. Daneben gibt es die
 classDiagram
   class ChannelSession {
     UUID channelSessionId
-    ChannelType channel
+    ChannelType type
     string bindingKeyRef
     Subject subject
     UUID appTokenSessionId

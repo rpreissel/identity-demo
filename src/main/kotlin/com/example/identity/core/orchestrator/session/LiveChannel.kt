@@ -14,7 +14,7 @@ class LiveChannel private constructor(val session: ChannelSession) {
 
     companion object {
         fun of(session: ChannelSession): LiveChannel? =
-            session.takeIf { it.state?.isTerminal != true }?.let(::LiveChannel)
+            session.takeIf { !it.state.isTerminal }?.let(::LiveChannel)
 
         fun require(session: ChannelSession): LiveChannel =
             of(session) ?: throw OrchestratorException.invalidState(Text("This channel session has ended"), "state=${session.state}")

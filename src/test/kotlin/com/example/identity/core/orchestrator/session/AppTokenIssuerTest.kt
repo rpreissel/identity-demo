@@ -88,7 +88,7 @@ class AppTokenIssuerTest : BehaviorSpec({
 /** An APP channel whose AppTokenSession holds a token minted at [issuedAt] and a window ending at [windowEnd]. */
 private class AppTokenIssuerFixture(issuedAt: Instant?, windowEnd: Instant?, withSession: Boolean = true) {
     private val appTokenSessionId = UUID.randomUUID()
-    val channel = ChannelSession(channel = ChannelType.APP, now = TEST_NOW).also {
+    val channel = ChannelSession(type = ChannelType.APP, expiresAt = TEST_NOW.plusSeconds(3600), now = TEST_NOW).also {
         it.appTokenSessionId = appTokenSessionId.takeIf { withSession }
         it.expiresAt = windowEnd ?: TEST_NOW
     }

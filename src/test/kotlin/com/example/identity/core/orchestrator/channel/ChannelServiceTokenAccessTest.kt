@@ -26,7 +26,7 @@ class ChannelServiceTokenAccessTest : BehaviorSpec({
         val channelSessionId = ChannelSessionId(UUID.randomUUID())
         val guard = mockk<ChannelAccessGuard> {
             every { requireChannel(channelSessionId, any()) } returns
-                ChannelSession(channel = ChannelType.WEB, now = TEST_NOW).apply { state = ChannelState.AUTHENTICATED }
+                ChannelSession(type = ChannelType.WEB, expiresAt = TEST_NOW.plusSeconds(3600), now = TEST_NOW).apply { state = ChannelState.AUTHENTICATED }
         }
         val service = ChannelService(
             sessionManagementService = mockk(relaxed = true),

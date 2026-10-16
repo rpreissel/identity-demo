@@ -177,7 +177,7 @@ class JourneyActionExecutor(
         journey.accountId = to
         channel.subject = Subject.Account(to)
         channel.sessionEvidenceId?.let { sessionEvidenceService.rebindToAccount(it, to) }
-        if (channel.channel == ChannelType.APP) {
+        if (channel.type == ChannelType.APP) {
             channel.bindingKeyRef?.let { bindingKeyRef ->
                 if (sessionManagementService.findLinkedAccountId(bindingKeyRef) == from) {
                     sessionManagementService.linkDeviceToAccount(bindingKeyRef, to)
@@ -278,7 +278,7 @@ class JourneyActionExecutor(
             boundKeyRef = enrolled.boundKeyRef,
             reference = enrolled.reference,
             enrolledUnderAmr = evidence.currentAmr,
-            channel = channel.channel?.name,
+            channel = channel.type.name,
             tool = channel.declaredVersionOf(action.tool.toolId.value),
             allowsMultipleInstances = action.tool.onePerDevice,
             label = label,
@@ -321,7 +321,7 @@ class JourneyActionExecutor(
      * replace the first.
      */
     private fun acceptInvitation(journey: AuthJourney, channel: ChannelSession, action: Action.AcceptProof, invitation: InvitationId) {
-        InvitationAcceptance.refusal(channel.channel, action.tool.levelOf(action.outcome), contextFactory.acrFloorOf(channel))
+        InvitationAcceptance.refusal(channel.type, action.tool.levelOf(action.outcome), contextFactory.acrFloorOf(channel))
             ?.let { throw InvitationRefusedException(it) }
         check(action.tool.role == ToolRole.ACCOUNT_LOOKUP_AUTH) { "Only a lookup tool may name an invitation" }
         check(channel.accountId == null && channel.invitation == null && channel.sessionEvidenceId == null) {
@@ -357,7 +357,7 @@ class JourneyActionExecutor(
      * that case. WEB has no device (docs/02-domaenenmodell.md Abschnitt 1) and gets no link.
      */
     private fun linkDeviceTo(channel: ChannelSession, accountId: AccountId) {
-        if (channel.channel != ChannelType.APP) return
+        if (channel.type != ChannelType.APP) return
         val bindingKeyRef = checkNotNull(channel.bindingKeyRef) { "APP channel without a bindingKeyRef" }
         val previousAccountId = sessionManagementService.findLinkedAccountId(bindingKeyRef)
         sessionManagementService.linkDeviceToAccount(bindingKeyRef, accountId)
@@ -451,7 +451,7 @@ class JourneyActionExecutor(
             // Fresh login: start a new session evidence rather than reuse a stale one.
             val evidenceId = checkNotNull(sessionEvidenceService.createForAccount(accountId).sessionEvidenceId)
             channel.sessionEvidenceId = evidenceId
-            if (channel.channel == ChannelType.APP) {
+            if (channel.type == ChannelType.APP) {
                 channel.appTokenSessionId = appTokenSessionService.createForAccount(accountId, evidenceId).appTokenSessionId
             }
         }

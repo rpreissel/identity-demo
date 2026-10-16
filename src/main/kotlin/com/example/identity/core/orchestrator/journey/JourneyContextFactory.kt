@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.journey
 
-import com.example.identity.core.orchestrator.session.channelType
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
@@ -35,7 +34,7 @@ class JourneyContextFactory(
         val accountId = channel.accountId
         val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
         return JourneyContext(
-            channel = channel.channelType,
+            channel = channel.type,
             account = accountId?.let { accountService.findAccount(it) },
             invitation = channel.invitation,
             evidence = evidence?.toCoreEvidence() ?: SessionEvidence(emptyList()),

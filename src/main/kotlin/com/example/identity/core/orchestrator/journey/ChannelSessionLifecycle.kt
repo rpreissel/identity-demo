@@ -38,7 +38,7 @@ class ChannelSessionLifecycle(
      * whole transition back. A WEB channel's session is opened by Keycloak itself.
      */
     fun open(channel: ChannelSession): SessionGone? {
-        if (channel.channel != ChannelType.APP) return null
+        if (channel.type != ChannelType.APP) return null
         return try {
             appTokenIssuer.tokenFor(channel)
             null
@@ -55,7 +55,7 @@ class ChannelSessionLifecycle(
      * gone, as on a token request.
      */
     fun keepAlive(channel: ChannelSession): SessionGone? {
-        if (channel.channel != ChannelType.APP || channel.state?.isLoggedIn != true) return null
+        if (channel.type != ChannelType.APP || !channel.state.isLoggedIn) return null
         return try {
             appTokenIssuer.keepAlive(channel)
             null
@@ -79,7 +79,7 @@ class ChannelSessionLifecycle(
         // Only a sign-out someone asked for is one - an expiry is not an event (ADR-39, addendum).
         if (finalState == ChannelState.LOGGED_OUT && recordSignOut) journeyRecorder.recordSignOut(channel, endedBy = "HOLDER")
         channel.appTokenSessionId?.let { appTokenSessionService.getAppTokenSession(it) }?.let { tokenSession ->
-            if (channel.channel == ChannelType.APP && !endedAtKeycloak) {
+            if (channel.type == ChannelType.APP && !endedAtKeycloak) {
                 // Published, not called: the Admin API call would hold the transaction open across
                 // a network round trip. KeycloakSessionLogoutListener runs after commit, asynchronously.
                 tokenSession.keycloakSessionId?.let { eventPublisher.publishEvent(KeycloakSessionEnded(it)) }

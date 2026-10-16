@@ -108,9 +108,9 @@ class ChannelService(
         // Fixed for the channel's lifetime (docs/03-tool-architektur.md); the backend switch is read live.
         channel.availableClientTools = catalogToolsOf(availableTools)
         sessionManagementService.updateChannelSession(channel)
-        requestedAcrFloor?.let { sessionManagementService.raiseChannelAcrFloor(channel.id, requestedAcr(it).value) }
+        requestedAcrFloor?.let { sessionManagementService.raiseChannelAcrFloor(channel.channelSessionId, requestedAcr(it).value) }
 
-        return resumeChannel(sessionManagementService.reloadChannelSession(channel.id))
+        return resumeChannel(sessionManagementService.reloadChannelSession(channel.channelSessionId))
     }
 
     /**
@@ -194,7 +194,7 @@ class ChannelService(
      * so a WEB channel gets 409, not a 500 from the missing context.
      */
     private fun requireAuthenticatedApp(channel: ChannelSession): LiveChannel {
-        if (channel.channel != ChannelType.APP) {
+        if (channel.type != ChannelType.APP) {
             throw OrchestratorException.invalidState(Text("Token retrieval is only supported for APP channels"))
         }
         if (channel.state != ChannelState.AUTHENTICATED) {
@@ -214,7 +214,7 @@ class ChannelService(
         // channelSessionId cannot open a fresh login on a dead channel.
         val live = LiveChannel.of(channel) ?: return responseAssembler.respond(channel)
 
-        val channelId = channel.id
+        val channelId = channel.channelSessionId
         journeyService.findActive(channelId)?.let {
             val step = journeyService.stepOf(it, channel)
             return responseAssembler.respond(channel, step.next, step.stepData)
@@ -237,7 +237,7 @@ class ChannelService(
 
     private fun startEntryJourney(channel: LiveChannel, restoredEvidence: List<MethodEvidence>? = null): ChannelResponse {
         val step = journeyService.startEntryJourney(channel, restoredEvidence)
-        return respondAfter(channel.session.id, step)
+        return respondAfter(channel.session.channelSessionId, step)
     }
 
     fun raiseRequiredAcr(channelSessionId: ChannelSessionId, caller: CallerProof, requiredAcr: String): ChannelResponse {
@@ -248,7 +248,7 @@ class ChannelService(
         // Not logged in yet: nothing to step up from. The raised floor applies to the running
         // login or registration, which reads it on each transition. A STEP_UP here could claim
         // AUTHENTICATED on cancel without proof (docs/invarianten.md I-4).
-        if (refreshed.state?.isLoggedIn != true) return resumeChannel(refreshed)
+        if (!refreshed.state.isLoggedIn) return resumeChannel(refreshed)
         requireStartable(live, StepUpJourney)
 
         val floor = refreshed.acrFloor?.let(AcrLevel::parse) ?: AcrLevels.DEFAULT_REQUIRED_ACR

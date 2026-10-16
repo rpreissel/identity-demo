@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.session
 
+import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.TEST_NOW
 import com.example.identity.contract.tool_api.EnrollmentRef
 import com.example.identity.contract.tool_api.credentials.EnrollmentCleanup
@@ -31,7 +32,7 @@ class AccountDeletionServiceTest : BehaviorSpec({
 
     given("an account with an authenticated channel session still bound to it") {
         val fixture = AccountDeletionFixture()
-        val session = ChannelSession(now = TEST_NOW).apply {
+        val session = ChannelSession(type = ChannelType.APP, expiresAt = TEST_NOW.plusSeconds(3600), now = TEST_NOW).apply {
             channelSessionId = ChannelSessionId(UUID.randomUUID())
             state = ChannelState.AUTHENTICATED
             appTokenSessionId = UUID.randomUUID()

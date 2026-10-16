@@ -53,7 +53,7 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
     }
 
     fun channel(type: ChannelType, state: ChannelState = ChannelState.AUTHENTICATED) =
-        ChannelSession(channel = type, now = Instant.now()).apply { this.state = state }
+        ChannelSession(type = type, expiresAt = Instant.now().plusSeconds(3600), now = Instant.now()).apply { this.state = state }
 
     fun tokenPair() = TokenPair("access", Instant.now().plusSeconds(60), Instant.now().plusSeconds(600))
 

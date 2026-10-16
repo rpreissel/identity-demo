@@ -130,7 +130,7 @@ class ToolJourneyService(
             version = tool.version,
             toolSessionId = toolSession.id,
             journeyId = journey.journeyId,
-            channelSessionId = channel.id,
+            channelSessionId = channel.channelSessionId,
             caller = caller,
             accountId = channel.accountId,
             masterKeySource = { masterKeyFor(channel) },
@@ -163,7 +163,7 @@ class ToolJourneyService(
         // A direct activation is re-checked against both availability axes
         // (docs/03-tool-architektur.md), though the offer already excludes unavailable tools.
         requireDeclaredVersion(tool, channel)
-        if (!toolAvailabilityService.isEnabled(tool, checkNotNull(channel.channel))) {
+        if (!toolAvailabilityService.isEnabled(tool, checkNotNull(channel.type))) {
             throw OrchestratorException.invalidState(Text("This tool is not available on this channel"), "toolId=${toolId}")
         }
 
@@ -207,7 +207,7 @@ class ToolJourneyService(
             version = tool.version,
             toolSessionId = toolSessionId,
             journeyId = journey.journeyId,
-            channelSessionId = channel.id,
+            channelSessionId = channel.channelSessionId,
             caller = caller,
             accountId = channel.accountId,
             masterKeySource = { masterKeyFor(channel) },
@@ -291,7 +291,7 @@ class ToolJourneyService(
         val channel = live.session
         val descriptor = toolRegistry.toolOf(ctx.toolId)
         // An activation checks the lock but books nothing; only [loadCurrent] books.
-        chargeRateLimits(channel.accountId, channel.channel?.name, descriptor, "${ctx.toolId}@${ctx.version}", outcome, booked = context !is Activation)
+        chargeRateLimits(channel.accountId, channel.type.name, descriptor, "${ctx.toolId}@${ctx.version}", outcome, booked = context !is Activation)
         // A completed tool is done for good, even while the journey still names it as active.
         if (outcome is ToolOutcome.Completed) sessionManagementService.endToolSession(ctx.toolSessionId, ToolSessionStatus.DONE)
 

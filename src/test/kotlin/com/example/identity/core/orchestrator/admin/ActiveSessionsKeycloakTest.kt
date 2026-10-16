@@ -108,7 +108,7 @@ class ActiveSessionsKeycloakTest : BehaviorSpec({
 
     given("an unreachable Keycloak and three app channels") {
         val fixture = Fixture { error("Connection refused") }
-        every { fixture.channels.countByChannelAndStateNotInAndExpiresAtAfter(ChannelType.APP, any(), any()) } returns 3
+        every { fixture.channels.countByTypeAndStateNotInAndExpiresAtAfter(ChannelType.APP, any(), any()) } returns 3
 
         `when`("the report is built") {
             val report = fixture.service.report()

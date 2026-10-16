@@ -30,7 +30,7 @@ interface ChannelSessionRepository : JpaRepository<ChannelSession, UUID> {
     fun existsByAccountIdAndStateNotInAndExpiresAtAfter(accountId: AccountId?, states: Collection<ChannelState>, now: Instant): Boolean
 
     /** Channels of [channel] in none of [states] that expire after [now]: the live ones, counted. */
-    fun countByChannelAndStateNotInAndExpiresAtAfter(channel: ChannelType, states: Collection<ChannelState>, now: Instant): Long
+    fun countByTypeAndStateNotInAndExpiresAtAfter(type: ChannelType, states: Collection<ChannelState>, now: Instant): Long
 
     /** The same selection across both channel types, ordered and bounded by [pageable]. */
     fun findByStateNotInAndExpiresAtAfter(states: Collection<ChannelState>, now: Instant, pageable: Pageable): List<ChannelSession>

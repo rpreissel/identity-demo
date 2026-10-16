@@ -30,7 +30,7 @@ class JourneyRoutingTest : BehaviorSpec({
         every { ordered(any(), any()) } answers { secondArg<Collection<ToolId>>().toList() }
     }
     val routing = JourneyRouting(catalogOf("enroll-email", "enroll-sms"), availability)
-    val webChannel = ChannelSession(channel = ChannelType.WEB, now = Instant.now()).apply {
+    val webChannel = ChannelSession(type = ChannelType.WEB, expiresAt = Instant.now().plusSeconds(3600), now = Instant.now()).apply {
         availableClientTools = mutableSetOf("enroll-email@1", "enroll-sms@1")
     }
 

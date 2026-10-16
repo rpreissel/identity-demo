@@ -214,7 +214,7 @@ private class KeycloakTokenFixture(val session: AppTokenSession) {
     val accountService = mockk<AccountService>(relaxed = true)
     private val provider = KeycloakTokenProvider(appTokenSessionRepository, keycloak, sessionEvidenceService, authPolicy, accountService, plainTokenVault, clock = TEST_CLOCK)
 
-    private val appChannel = ChannelSession(channel = ChannelType.APP, now = TEST_NOW).also { it.appTokenSessionId = appTokenSessionId }
+    private val appChannel = ChannelSession(type = ChannelType.APP, expiresAt = TEST_NOW.plusSeconds(3600), now = TEST_NOW).also { it.appTokenSessionId = appTokenSessionId }
 
     fun tokenFor(minValiditySeconds: Long = TokenService.DEFAULT_MIN_VALIDITY_SECONDS) = provider.tokenFor(appChannel, minValiditySeconds)
 }

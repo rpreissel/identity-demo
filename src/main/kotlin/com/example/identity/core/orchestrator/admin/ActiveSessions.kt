@@ -12,7 +12,6 @@ import com.example.identity.core.orchestrator.keycloak.KeycloakUserSessions
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.AppTokenSessionRepository
 import com.example.identity.core.orchestrator.session.ChannelSessionRepository
-import com.example.identity.core.orchestrator.session.channelType
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.contract.tool_api.directory.PersonDirectory
 import org.slf4j.LoggerFactory
@@ -93,7 +92,7 @@ class ActiveSessions(
     private fun channels(): ActiveChannelsView {
         val now = clock.instant()
         val perType = ChannelType.entries.map { type ->
-            ChannelTypeCount(type, channelSessionRepository.countByChannelAndStateNotInAndExpiresAtAfter(type, TERMINAL, now))
+            ChannelTypeCount(type, channelSessionRepository.countByTypeAndStateNotInAndExpiresAtAfter(type, TERMINAL, now))
         }
         val newest = channelSessionRepository.findByStateNotInAndExpiresAtAfter(
             TERMINAL, now, PageRequest.of(0, NEWEST, Sort.by(Sort.Direction.DESC, "createdAt")),
@@ -144,7 +143,7 @@ class ActiveSessions(
                     displayName = accountId?.let { displayName(AccountId(it)) },
                     start = session.start,
                     lastAccess = session.lastAccess,
-                    channelSessionId = channel?.id,
+                    channelSessionId = channel?.channelSessionId,
                     channelState = channel?.let(::shownState),
                 )
             },
@@ -152,8 +151,8 @@ class ActiveSessions(
     }
 
     private fun ChannelSession.toView() = ActiveChannelView(
-        channelSessionId = id,
-        channel = channelType,
+        channelSessionId = channelSessionId,
+        channel = type,
         state = shownState(this),
         accountId = accountId,
         displayName = accountId?.let { displayName(it) },

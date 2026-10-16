@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.channel
 
-import com.example.identity.core.orchestrator.session.channelType
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.account.AccountService
@@ -47,10 +46,10 @@ class ChannelResponseAssembler(
     fun respond(channel: ChannelSession, next: Next? = null, stepData: StepData? = null): ChannelResponse {
         // A terminal channel (docs/02-domaenenmodell.md #3) never has a next, whatever the caller
         // passed, so no stray next can resurrect it.
-        val resolved = if (channel.state?.isTerminal == true) {
+        val resolved = if (channel.state.isTerminal) {
             null
         } else {
-            next ?: journeyService.findActive(channel.id)?.let { journeyService.nextOf(it, channel) }
+            next ?: journeyService.findActive(channel.channelSessionId)?.let { journeyService.nextOf(it, channel) }
                 ?: if (channel.state == ChannelState.AUTHENTICATED) Next.AUTHENTICATED else null
         }
         return ChannelResponse(
@@ -67,7 +66,7 @@ class ChannelResponseAssembler(
      * it, including tool responses from `ToolJourneyService`.
      */
     fun authDataFor(channel: ChannelSession): AuthData? {
-        if (channel.channel != ChannelType.WEB) return null
+        if (channel.type != ChannelType.WEB) return null
         val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
         // Method -> who proved it. Since ADR-58 every proof is an orchestrator tool's; the map's shape
         // stays for the frozen envelope (ADR-50).
@@ -116,13 +115,13 @@ class ChannelResponseAssembler(
      */
     /** The stored state as clients see it: ANONYMOUS with an account being set up is REGISTERING (ADR-46). */
     fun shownState(channel: ChannelSession): ChannelState =
-        (channel.state ?: ChannelState.ANONYMOUS).shownWith(channel.accountId?.let { accountService.isBeingSetUp(it) } == true)
+        channel.state.shownWith(channel.accountId?.let { accountService.isBeingSetUp(it) } == true)
 
     fun buildChannelBlock(channel: ChannelSession, includeAccountFields: Boolean = false): ChannelBlock {
-        val channelType = channel.channelType.name
+        val channelType = channel.type.name
         if (!includeAccountFields || !channel.hasProvenFactor) {
             return ChannelBlock(
-                channelSessionId = channel.id,
+                channelSessionId = channel.channelSessionId,
                 channelType = channelType,
                 state = shownState(channel).name,
                 hasProvenFactor = channel.hasProvenFactor
@@ -132,7 +131,7 @@ class ChannelResponseAssembler(
         val account = channel.accountId?.let { accountService.findAccount(it) }
         val currentAcr = evidence?.let { authPolicy.resolveAcr(it.toCoreEvidence(), account) }
         return ChannelBlock(
-            channelSessionId = channel.id,
+            channelSessionId = channel.channelSessionId,
             channelType = channelType,
             state = shownState(channel).name,
             hasProvenFactor = channel.hasProvenFactor,

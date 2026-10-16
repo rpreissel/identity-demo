@@ -8,7 +8,6 @@ import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.session.ChannelSession
 import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.SessionManagementService
-import com.example.identity.core.orchestrator.session.channelType
 import com.example.identity.core.orchestrator.session.id
 import org.springframework.stereotype.Component
 import java.security.MessageDigest
@@ -38,8 +37,8 @@ class ChannelAccessGuard(
 
     private fun ChannelSession.admits(caller: CallerProof): Boolean = when (caller) {
         // Constant-time, though both sides are public thumbprints: cheap insurance should the key ever carry more.
-        is CallerProof.DeviceKey -> channelType == ChannelType.APP && constantTimeEquals(bindingKeyRef, caller.thumbprint)
-        is CallerProof.KeycloakFlow -> channelType == ChannelType.WEB && caller.channelSessionId == id
+        is CallerProof.DeviceKey -> type == ChannelType.APP && constantTimeEquals(bindingKeyRef, caller.thumbprint)
+        is CallerProof.KeycloakFlow -> type == ChannelType.WEB && caller.channelSessionId == channelSessionId
     }
 
     private fun constantTimeEquals(stored: String?, presented: String): Boolean =

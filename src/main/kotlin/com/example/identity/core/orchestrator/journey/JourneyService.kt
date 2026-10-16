@@ -113,7 +113,7 @@ class JourneyService(
         // replaces the whole running chain. A sub-journey is the legitimate exception: its parent
         // is suspended, not started.
         if (parentJourneyId == null) {
-            findActive(channel.id)?.let { cancelChain(it.entity, channel) }
+            findActive(channel.channelSessionId)?.let { cancelChain(it.entity, channel) }
         }
         val now = clock.instant()
         val journey = AuthJourney(channel.channelSessionId, start.journey, now.plus(JOURNEY_TTL), now)
@@ -166,7 +166,7 @@ class JourneyService(
      * suspended ancestors, outermost first. Empty once nothing is running.
      */
     fun debugChain(channel: ChannelSession): List<JourneyDebugStep> {
-        val channelSessionId = channel.channelSessionId ?: return emptyList()
+        val channelSessionId = channel.channelSessionId
         val innermost = findActive(channelSessionId)?.entity ?: return emptyList()
         val chain = mutableListOf(innermost)
         var current = innermost
@@ -451,7 +451,7 @@ class JourneyService(
      * (ADR-39), whichever journey ran it: the sign-in log records what happened, not what was asked.
      */
     private fun perform(journey: AuthJourney, channel: ChannelSession, transition: Transition.Perform): Step {
-        val acrBefore = if (channel.state?.isLoggedIn == true) contextFactory.currentAcrOf(channel) else null
+        val acrBefore = if (channel.state.isLoggedIn) contextFactory.currentAcrOf(channel) else null
         val demoNotice = try {
             actionExecutor.perform(journey, channel, transition.action)
         } catch (e: InvitationRefusedException) {
@@ -505,7 +505,7 @@ class JourneyService(
             ?.takeIf { it.lifecycle == JourneyLifecycle.SUSPENDED }
         // The sign-in log mirrors the channel: SIGNED_IN is the moment it becomes signed in, so a
         // journey on a channel that already is (CONFIRM_PEER_LOGIN from within a session) adds none.
-        val signsIn = parent == null && channel.state?.isLoggedIn != true
+        val signsIn = parent == null && !channel.state.isLoggedIn
         // Before the sign-in log: a login whose session is gone is no sign-in.
         if (parent == null) openLoginSession(channel)
         val acr = contextFactory.currentAcrOf(channel)
@@ -535,10 +535,10 @@ class JourneyService(
 
     /** The channel's Keycloak session is gone, so the channel ends with it; this commits (ADR-43). */
     private fun endWithSession(channel: ChannelSession, cause: RuntimeException): Nothing {
-        findActive(channel.id)?.let { markCancelledChain(it.entity, channel) }
+        findActive(channel.channelSessionId)?.let { markCancelledChain(it.entity, channel) }
         journeyTraceService.recordForChannel(channel.forLog(), "EXPIRED")
         sessionLifecycle.end(channel, ChannelState.EXPIRED)
-        throw ChannelSessionEndedException("Channel ${channel.id} ended with its session: ${cause.message}")
+        throw ChannelSessionEndedException("Channel ${channel.channelSessionId} ended with its session: ${cause.message}")
     }
 
 
@@ -578,7 +578,7 @@ class JourneyService(
      * device link, which survives a journey; an AppTokenSession does not.
      */
     private fun fallBack(channel: ChannelSession) {
-        val target = if (channel.state?.isLoggedIn == true) ChannelState.AUTHENTICATED else ChannelState.ANONYMOUS
+        val target = if (channel.state.isLoggedIn) ChannelState.AUTHENTICATED else ChannelState.ANONYMOUS
         channel.state = target
         if (target != ChannelState.AUTHENTICATED) {
             channel.appTokenSessionId = null

@@ -7,8 +7,8 @@ import com.example.identity.core.orchestrator.journeytrace.LoggedChannel
  * trace must not depend on the machine it traces (see [LoggedChannel]).
  */
 fun ChannelSession.forLog(): LoggedChannel = LoggedChannel(
-    channelSessionId = id,
+    channelSessionId = channelSessionId,
     bindingKeyRef = bindingKeyRef,
-    channelType = channel?.name,
+    channelType = type.name,
     accountId = accountId
 )

@@ -28,9 +28,10 @@ import java.util.UUID
 @Entity
 @Table(schema = "orchestrator", name = "channel_session")
 class ChannelSession(
+    /** Which facade opened this channel; fixed for its lifetime (docs/05-api.md Abschnitt 3). */
     @Enumerated(EnumType.STRING)
     @Column(name = "channel", nullable = false, length = 32)
-    var channel: ChannelType? = null,
+    var type: ChannelType,
 
     /**
      * APP only (docs/02-domaenenmodell.md Abschnitt 1): the fingerprint of the device key that opened
@@ -41,7 +42,7 @@ class ChannelSession(
     var bindingKeyRef: String? = null,
 
     @Column(name = "expires_at", nullable = false)
-    var expiresAt: Instant? = null,
+    var expiresAt: Instant,
     now: Instant
 ) {
     /**
@@ -58,7 +59,7 @@ class ChannelSession(
      */
     @Id
     @Column(name = "id", nullable = false)
-    var channelSessionId: ChannelSessionId? = null
+    var channelSessionId: ChannelSessionId = ChannelSessionId(UUID.randomUUID())
 
     /** The account of [subject], if the subject is one. Written only through [subject]. */
     @Column(name = "account_id")
@@ -84,7 +85,7 @@ class ChannelSession(
 
     @Enumerated(EnumType.STRING)
     @Column(name = "state", nullable = false, length = 32)
-    var state: ChannelState? = null
+    var state: ChannelState = ChannelState.ANONYMOUS
 
     /** APP only (docs/05-api.md Abschnitt 3b): the WEB channel has no App-style tokens to bind. */
     @Column(name = "app_token_session_id")
@@ -150,25 +151,17 @@ class ChannelSession(
     @Column(name = "version", nullable = false)
     var version: Long? = null
 
-    init {
-        channelSessionId = ChannelSessionId(UUID.randomUUID())
-        state = ChannelState.ANONYMOUS
-    }
-
     fun touch(now: Instant) {
         lastAccessedAt = now
     }
 
-    fun isExpiredAt(now: Instant): Boolean = expiresAt?.let { now.isAfter(it) } ?: false
+    fun isExpiredAt(now: Instant): Boolean = now.isAfter(expiresAt)
 }
 
-/* Set on the first save, never null afterwards. The assumption stands once, next to the column. */
-val ChannelSession.id: ChannelSessionId get() = checkNotNull(channelSessionId) { "ChannelSession not saved yet" }
-val ChannelSession.channelType: ChannelType get() = checkNotNull(channel) { "ChannelSession $channelSessionId without a channel type" }
 
 /**
  * What this App channel was opened to do with the device's account link, for every journey that
  * runs on it; null on a Web channel, which has no device.
  */
 val ChannelSession.appOpening: OpensAppChannel?
-    get() = if (channel == ChannelType.APP) entryJourney.appChannelOpening else null
+    get() = if (type == ChannelType.APP) entryJourney.appChannelOpening else null

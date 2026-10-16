@@ -1,6 +1,5 @@
 package com.example.identity.core.orchestrator.journey
 
-import com.example.identity.core.orchestrator.session.channelType
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.ChannelType
 import com.example.identity.core.orchestrator.domain.journey.state.AnswerableState
@@ -114,5 +113,5 @@ class JourneyRouting(
     private fun withoutUserStep(toolId: ToolId): Text? = toolRegistry.toolOf(toolId).withoutUserStep
 
     private fun channelTypeOf(channel: ChannelSession): ChannelType =
-        channel.channelType
+        channel.type
 }

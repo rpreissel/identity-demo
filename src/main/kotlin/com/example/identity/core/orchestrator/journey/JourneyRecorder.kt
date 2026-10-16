@@ -95,9 +95,9 @@ class JourneyRecorder(
     fun recordSignIn(journey: AuthJourney, channel: ChannelSession, acr: AcrLevel) {
         val (amr, tools) = proofsOf(channel)
         when (val subject = channel.subject ?: return) {
-            is Subject.Account -> signInLog.signedIn(subject.id, channel.channel?.name, acr.value, amr, tools, journey.requireKind().name)
+            is Subject.Account -> signInLog.signedIn(subject.id, channel.type.name, acr.value, amr, tools, journey.requireKind().name)
             // A process access has one proof and no step-up (ADR-48).
-            is Subject.Invitation -> signInLog.invitationSignedIn(subject.id, channel.channel?.name, acr.value, amr, tools)
+            is Subject.Invitation -> signInLog.invitationSignedIn(subject.id, channel.type.name, acr.value, amr, tools)
         }
     }
 
@@ -105,14 +105,14 @@ class JourneyRecorder(
     fun recordStepUp(channel: ChannelSession, acr: AcrLevel) {
         val subject = channel.subject as? Subject.Account ?: return
         val (amr, tools) = proofsOf(channel)
-        signInLog.steppedUp(subject.id, channel.channel?.name, acr.value, amr, tools)
+        signInLog.steppedUp(subject.id, channel.type.name, acr.value, amr, tools)
     }
 
     /** The session's methods, and the orchestrator tools behind them in the version this client spoke (ADR-51). */
     private fun proofsOf(channel: ChannelSession): Pair<List<String>, List<String>> {
         val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
         val tools = evidence?.methods.orEmpty()
-            .mapNotNull { it.amrSourceId?.let(channel::declaredVersionOf) }
+            .mapNotNull { channel.declaredVersionOf(it.amrSourceId) }
             .distinct()
         return evidence?.currentAmr.orEmpty() to tools
     }
@@ -120,8 +120,8 @@ class JourneyRecorder(
     /** A session the holder ended on purpose. An expiry is not recorded. */
     fun recordSignOut(channel: ChannelSession, endedBy: String) {
         when (val subject = channel.subject ?: return) {
-            is Subject.Account -> signInLog.signedOut(subject.id, channel.channel?.name, endedBy)
-            is Subject.Invitation -> signInLog.invitationSignedOut(subject.id, channel.channel?.name, endedBy)
+            is Subject.Account -> signInLog.signedOut(subject.id, channel.type.name, endedBy)
+            is Subject.Invitation -> signInLog.invitationSignedOut(subject.id, channel.type.name, endedBy)
         }
     }
 }

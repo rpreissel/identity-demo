@@ -47,7 +47,7 @@ class DemoReset(
         accountIds.forEach { accountDeletionService.deleteAccount(it) }
         val liveIds = channelSessionRepository
             .findByStateNotInAndExpiresAtAfter(TERMINAL_STATES, clock.instant(), Pageable.unpaged())
-            .map { it.id }
+            .map { it.channelSessionId }
         // One transaction per channel: cancelling the journey saves the channel, so ending it
         // afterwards must see that same managed instance, not the stale one from the query.
         liveIds.forEach { id ->

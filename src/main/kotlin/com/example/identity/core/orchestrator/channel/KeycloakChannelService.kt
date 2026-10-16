@@ -77,10 +77,10 @@ class KeycloakChannelService(
         keycloakSessionEvidenceRepository.deleteBySession(kcSessionId)
         val appLogins = appTokenSessionService.findByKeycloakSessionId(kcSessionId)
         val webChannels = channelSessionRepository.findByDurableKeycloakSessionIdIn(listOf(kcSessionId))
-            .filter { it.channel == ChannelType.WEB }
+            .filter { it.type == ChannelType.WEB }
         val appChannels = appLogins.mapNotNull { it.appTokenSessionId }.toSet().takeIf { it.isNotEmpty() }
             ?.let { channelSessionRepository.findByAppTokenSessionIdIn(it) }.orEmpty()
-            .filter { it.channel == ChannelType.APP }
+            .filter { it.type == ChannelType.APP }
         // Every live channel of the session ends, whoever it works for: the sid alone decides (ADR-43).
         val live = (webChannels + appChannels).mapNotNull { LiveChannel.of(it) }
         if (live.isNotEmpty()) {
@@ -90,7 +90,7 @@ class KeycloakChannelService(
             // One session, one sign-out: several tabs of it are several channels, not several logouts.
             val recorded = mutableSetOf<Subject?>()
             live.forEach { channel ->
-                journeyService.findActive(channel.session.id)?.let { journeyService.cancel(it, channel) }
+                journeyService.findActive(channel.session.channelSessionId)?.let { journeyService.cancel(it, channel) }
                 journeyService.endSession(
                     channel, ChannelState.LOGGED_OUT, endedAtKeycloak = true, recordSignOut = recorded.add(channel.session.subject),
                 )
@@ -248,7 +248,7 @@ class KeycloakChannelService(
         // Every completed Keycloak flow run makes this call, so it records the durable session id
         // without a separate write path. [sessionExpiresAt] is the latest end of that session
         // without further activity: the channel does not outlive it (ADR-43).
-        val cappedExpiry = listOfNotNull(channel.expiresAt, sessionExpiresAt).minOrNull()
+        val cappedExpiry = sessionExpiresAt?.let { minOf(channel.expiresAt, it) } ?: channel.expiresAt
         if (channel.durableKeycloakSessionId != kcSessionId || channel.expiresAt != cappedExpiry) {
             channel.durableKeycloakSessionId = kcSessionId
             channel.expiresAt = cappedExpiry
