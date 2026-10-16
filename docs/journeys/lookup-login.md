@@ -74,7 +74,7 @@ diesem Kanal, etwa das Einrichten eines Verfahrens: Der Kanal wurde mit
 und verlangt dafür einen weiteren Faktor. Bleibt danach kein kombinierbares Verfahren übrig, bietet
 die Journey die erneute Identifizierung nicht selbst an. Sie startet stattdessen die gemeinsam
 genutzte Sub-Journey [`RE_IDENTIFY`](re-identify.md). Ist diese fertig, prüft `Start` mit
-`settleOrRaise` erneut.
+`settle` erneut.
 
 Diese Journey bietet bewusst **nicht** an, ein weiteres Verfahren einzurichten. Die erneute
 Identifizierung ist dagegen erlaubt. Bei ihr entsteht nämlich kein Credential, also kein

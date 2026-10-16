@@ -38,7 +38,7 @@ object LookupLoginJourney : JourneyWithoutInput<LookupLoginState> {
             is LookupLoginState.Start -> when (event) {
                 JourneyEvent.Started -> offerLookup(ctx)
                 // Back from RE_IDENTIFY: the fresh proof may already close the gap.
-                is JourneyEvent.SubJourneyFinished -> settleOrRaise(ctx)
+                is JourneyEvent.SubJourneyFinished -> settle(ctx)
                 else -> event.notExpectedIn(state)
             }
 
@@ -59,17 +59,18 @@ object LookupLoginJourney : JourneyWithoutInput<LookupLoginState> {
             ?: Transition.Abort(Text("Es gibt kein Anmeldeverfahren, das nicht an ein Gerät gebunden ist"))
 
     private fun proving(state: OfferingState, event: JourneyEvent, ctx: JourneyContext): Transition = when (event) {
-        JourneyEvent.ActionCompleted -> settleOrRaise(ctx)
+        JourneyEvent.ActionCompleted -> settle(ctx)
         is JourneyEvent.OfferExhausted -> Transition.Cancel
         else -> event.notExpectedIn(state)
     }
 
     /**
-     * Checks the channel's acrFloor, since finishing sets AUTHENTICATED unconditionally. There is no
+     * Settles the run: done once the floor is reached, else a further factor. Checked here, since
+     * finishing sets AUTHENTICATED unconditionally. There is no
      * enrollment fallback: an account that cannot reach the floor must not grow new credentials on
      * an unproven device. Re-identification stays available; it adds no lasting credential.
      */
-    private fun settleOrRaise(ctx: JourneyContext): Transition {
+    private fun settle(ctx: JourneyContext): Transition {
         val known = ctx.requireAccount()
         if (known hasReached known.acrFloor) return askAboutDeviceLink(known)
         val furtherFactors = known.authCandidates()

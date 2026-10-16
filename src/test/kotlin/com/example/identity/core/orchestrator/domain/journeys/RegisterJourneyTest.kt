@@ -92,7 +92,7 @@ class RegisterJourneyTest : BehaviorSpec({
         `when`("resumed after a RE_IDENTIFY sub-journey (SubJourneyFinished)") {
             val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2)
             val transition = journey.transition(RegisterState.Start, event, theCtx)
-            then("re-checks satisfaction via nextAfterProof instead of re-running identification") {
+            then("re-checks satisfaction via settle instead of re-running identification") {
                 transition shouldBe Transition.Authenticated
             }
         }

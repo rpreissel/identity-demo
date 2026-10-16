@@ -25,8 +25,8 @@ import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
  */
 class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) {
 
-    /** After a proof: done, another of the account's methods, or a new one. */
-    fun nextAfterProof(ctx: AccountJourneyContext): Transition {
+    /** Settles the run after a proof: done once the floor is reached, else another of the account's methods, else a new one. */
+    fun settle(ctx: AccountJourneyContext): Transition {
         if (ctx hasReached ctx.acrFloor) return Transition.Authenticated
         // An existing account that logs in is never blocked on a missing confirmed email
         // (docs/04-orchestrierung.md #5).
@@ -34,10 +34,10 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
     }
 
     /**
-     * After an enrollment: done once the session has reached the level and the account can reach it
-     * again on its own, else another new method. [before] and [then] as in [offerNewMethod].
+     * Settles the run after an enrollment: done once the session has reached the level and the
+     * account can reach it again on its own, else another new method. [before] and [then] as in [offerNewMethod].
      */
-    fun nextAfterEnrollment(
+    fun settleAfterEnrollment(
         ctx: AccountJourneyContext,
         before: BeforeNewMethod = BeforeNewMethod.IDENTIFY_FIRST,
         then: AfterEnrolling = AfterEnrolling.NEXT_STEP,

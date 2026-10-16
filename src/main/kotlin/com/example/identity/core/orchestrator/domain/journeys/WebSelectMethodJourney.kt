@@ -35,14 +35,14 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
     override fun transition(state: WebSelectMethodState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is WebSelectMethodState.SelectLoginMethod -> when (event) {
-                JourneyEvent.ActionCompleted -> finishOrOfferMore(ctx)
+                JourneyEvent.ActionCompleted -> settle(ctx)
                 // Nothing left on offer: a first login just ends.
                 is JourneyEvent.OfferExhausted -> Transition.Cancel
                 else -> event.notExpectedIn(state)
             }
 
             is WebSelectMethodState.SelectStepUpMethod -> when (event) {
-                JourneyEvent.ActionCompleted -> finishOrOfferMore(ctx)
+                JourneyEvent.ActionCompleted -> settle(ctx)
                 // Nothing left on offer: identifying again may still close the gap.
                 is JourneyEvent.OfferExhausted -> reIdentifyOr(ctx) { Transition.Cancel }
                 else -> event.notExpectedIn(state)
@@ -52,13 +52,13 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
             // "Übernommene Nachweise als erster Übergang") or the identification may already close
             // the gap; otherwise the offer is built anew.
             is WebSelectMethodState.Start -> when (event) {
-                JourneyEvent.Started, is JourneyEvent.SubJourneyFinished -> finishOrOfferMore(ctx)
+                JourneyEvent.Started, is JourneyEvent.SubJourneyFinished -> settle(ctx)
                 else -> event.notExpectedIn(state)
             }
         }
 
-    /** Done once the channel's floor is proven; otherwise what can still prove more depends on who is signing in. */
-    private fun finishOrOfferMore(ctx: JourneyContext): Transition {
+    /** Settles the run: done once the channel's floor is proven; else what can still prove more depends on who is signing in. */
+    private fun settle(ctx: JourneyContext): Transition {
         if (ctx hasReached ctx.acrFloor) return Transition.Authenticated
         return when (ctx.signingIn) {
             // A process access has its one proof and nothing else to offer. Its level was checked on

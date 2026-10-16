@@ -33,18 +33,19 @@ object StepUpJourney : AccountJourney<StepUpState> {
         when (state) {
             is StepUpState.Start -> when (event) {
                 // Fresh, or back from RE_IDENTIFY: the session may already have reached the goal.
-                JourneyEvent.Started, is JourneyEvent.SubJourneyFinished -> finishOrContinue(state.goal, ctx)
+                JourneyEvent.Started, is JourneyEvent.SubJourneyFinished -> settle(state.goal, ctx)
                 else -> event.notExpectedIn(state)
             }
 
             is StepUpState.AuthChoice -> when (event) {
-                JourneyEvent.ActionCompleted -> finishOrContinue(state.goal, ctx)
+                JourneyEvent.ActionCompleted -> settle(state.goal, ctx)
                 is JourneyEvent.OfferExhausted -> offerReIdentOrGiveUp(state.goal, ctx, whenNone = Transition.Cancel)
                 else -> event.notExpectedIn(state)
             }
         }
 
-    private fun finishOrContinue(goal: Goal, ctx: AccountJourneyContext): Transition =
+    /** Settles the run: done once [goal] is reached, else the next offer. */
+    private fun settle(goal: Goal, ctx: AccountJourneyContext): Transition =
         if (ctx hasReached goal.targetAcr) Transition.Authenticated
         else offerAuth(goal, ctx)
 

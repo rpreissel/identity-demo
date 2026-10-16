@@ -53,4 +53,4 @@ liefern. Das betrifft etwa ein Konto mit nur einem aktiven Verfahren, das allein
 Dann bietet die Journey die erneute Identifizierung nicht selbst an. Sie startet stattdessen die
 gemeinsam genutzte Sub-Journey [`RE_IDENTIFY`](re-identify.md), also einen untergeordneten Ablauf,
 den mehrere Journeys nutzen. Ist die Sub-Journey fertig (`SubJourneyFinished`), prüft `Start` mit
-`finishOrContinue` erneut, ob der Nachweis jetzt reicht.
+`settle` erneut, ob der Nachweis jetzt reicht.

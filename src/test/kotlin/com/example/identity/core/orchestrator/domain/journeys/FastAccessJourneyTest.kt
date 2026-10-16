@@ -82,7 +82,7 @@ class FastAccessJourneyTest : BehaviorSpec({
         `when`("resumed after a sub-journey finished (RE_IDENTIFY or REGISTER alike)") {
             val event = JourneyEvent.SubJourneyFinished(ReIdentifyJourney, achievedAcr = AcrLevel.LOA2)
             val transition = journey.transition(FastAccessState.Start, event, theCtx)
-            then("re-checks satisfaction via nextAfterProof instead of re-running firstOffer") {
+            then("re-checks satisfaction via settle instead of re-running firstOffer") {
                 transition shouldBe Transition.Authenticated
             }
         }

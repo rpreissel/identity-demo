@@ -98,7 +98,7 @@ class LookupLoginJourneyTest : BehaviorSpec({
         }
     }
 
-    // Credential/AdditionalFactor after a proof: settleOrRaise runs on ActionCompleted.
+    // Credential/AdditionalFactor after a proof: settle runs on ActionCompleted.
     given("Credential after a proof, the floor already satisfied, the device linked to nobody") {
         val acc = account(method("sms", AcrLevel.LOA1))
         val theCtx = ctx(account = acc, evidence = evidence(listOf("sms"), setOf(FactorType.POSSESSION), account = acc), acrFloor = AcrLevel.LOA1, linkedAccountId = null)

@@ -35,20 +35,20 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
             is FastAccessState.Start -> when (event) {
                 JourneyEvent.Started -> firstOffer(ctx)
                 // Back from REGISTER or RE_IDENTIFY: re-check whether that already closes the gap before offering again.
-                is JourneyEvent.SubJourneyFinished -> toRequiredLevel.nextAfterProof(ctx.requireAccount())
+                is JourneyEvent.SubJourneyFinished -> toRequiredLevel.settle(ctx.requireAccount())
                 else -> event.notExpectedIn(state)
             }
 
             // The device's key first, then the account's other methods: one chain, two screens.
             is FastAccessState.PreferredAuth, is AuthChoice -> when (event) {
-                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterProof(ctx.requireAccount())
+                JourneyEvent.ActionCompleted -> toRequiredLevel.settle(ctx.requireAccount())
                 // Nothing else provable is left on this device: hand off to a fresh identification.
                 is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithoutOr(event.declined, ctx) { requireRegister() }
                 else -> event.notExpectedIn(state)
             }
 
             is Enrolling -> when (event) {
-                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterEnrollment(ctx.requireAccount())
+                JourneyEvent.ActionCompleted -> toRequiredLevel.settleAfterEnrollment(ctx.requireAccount())
                 else -> event.notExpectedIn(state)
             }
         }

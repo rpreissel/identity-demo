@@ -305,7 +305,7 @@ behandeln alle Zustände gleich: Er bringt die Journey weiter. Verschieden ist n
   Journey. Den **Weg zum verlangten Niveau**, den `FAST_ACCESS` und `REGISTER` teilen, hält jede
   der beiden als `PathToRequiredLevel`: erst die Verfahren des Kontos (`AuthChoice`), dann ein
   neues Verfahren (`Enrolling`), zuletzt eine frische Identifizierung. Im Zustandsautomaten liest
-  sich das als `toRequiredLevel.nextAfterProof(ctx)`, `nextAfterEnrollment(ctx)` und
+  sich das als `toRequiredLevel.settle(ctx)`, `settleAfterEnrollment(ctx)` und
   `nextWithoutOr(declined, ctx) { … }`.
 - In einem **Pflichtzustand** führt Ablehnen nicht weiter. Die Pflicht bleibt bestehen, und das
   volle Angebot kommt zurück, auch das gerade verworfene Tool. Nur wer die Pflicht erfüllt, kommt
@@ -583,7 +583,7 @@ Die Bestätigung der E-Mail-Adresse ist kein Einrichtungsschritt
 ([ADR-17](adr/ADR-017-adresse-bestaetigen-und-e-mail-login-einrichten-sind.md)). Deshalb gilt
 die Pflicht in **beiden** Kanälen und auch im Experiment „Erst Anmeldeverfahren einrichten“
 (derselbe Zustand `SecondFactorKindObligation`). `RegisterJourney` setzt dafür am Ergebnis von
-`PathToRequiredLevel.nextAfterEnrollment` an. Anders als `AuthChoice` und `Enrolling` gehört dieser Zustand
+`PathToRequiredLevel.settleAfterEnrollment` an. Anders als `AuthChoice` und `Enrolling` gehört dieser Zustand
 allein zu `RegisterState`.
 
 **Wozu sie da ist:** Wer seine eigenen Verfahren verwalten will, braucht `loa2`
@@ -623,7 +623,7 @@ erfüllt, auch wenn `loa2` wegen `enrolledUnderAcr`
 ([ADR-5](adr/ADR-005-drei-obergrenzen-fuer-das-sicherheitsniveau.md)) noch nicht erreichbar ist. Im Experiment ohne Identifizierung ist das immer so.
 
 **Für wen sie gilt, ist wie bei der E-Mail-Pflicht begrenzt:** Läuft der Nachweis über
-`AuthChoice`/`nextAfterProof` statt über `afterEnrollment`, gilt die Pflicht nicht. Ein Konto, das
+`AuthChoice`/`settle` statt über `afterEnrollment`, gilt die Pflicht nicht. Ein Konto, das
 sich nur anmeldet, wird also nie nachträglich blockiert.
 
 ---

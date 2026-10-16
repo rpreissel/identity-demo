@@ -60,7 +60,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
             is RegisterState.Start -> when (event) {
                 JourneyEvent.Started -> firstOffer(ctx)
                 // A RE_IDENTIFY sub-journey before a new method finished: re-check.
-                is JourneyEvent.SubJourneyFinished -> toRequiredLevel.nextAfterProof(ctx.requireAccount())
+                is JourneyEvent.SubJourneyFinished -> toRequiredLevel.settle(ctx.requireAccount())
                 else -> event.notExpectedIn(state)
             }
 
@@ -82,7 +82,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
             is AuthChoice -> when (event) {
                 // No factor-kind or email obligation: a rediscovered, set-up account finishing here
                 // is an ordinary login, not a fresh registration.
-                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterProof(ctx.requireAccount())
+                JourneyEvent.ActionCompleted -> toRequiredLevel.settle(ctx.requireAccount())
                 // Nothing else provable is left: identification is the only way forward.
                 is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithoutOr(event.declined, ctx) { offerIdentification(ctx) }
                 else -> event.notExpectedIn(state)
