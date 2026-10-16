@@ -4,6 +4,7 @@ import com.example.identity.core.orchestrator.domain.journey.authCandidates
 import com.example.identity.core.orchestrator.domain.journey.offer
 import com.example.identity.core.orchestrator.domain.journey.lookupLoginCandidates
 import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
+import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.domain.InvitationAcceptance
 import com.example.identity.core.orchestrator.domain.journey.OpensWebChannel
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
@@ -36,33 +37,43 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
                 // Nothing left on offer: a step-up may still identify again, a first login just ends.
                 is JourneyEvent.OfferExhausted ->
                     if (ctx.account == null) Transition.Cancel
-                    else ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.Start) { Transition.Cancel }
-                else -> afterProof(ctx)
+                    else reIdentifyOr(ctx) { Transition.Cancel }
+                else -> finishOrOfferMore(ctx)
             }
 
             // Started, or back from RE_IDENTIFY: taken-over evidence (docs/04-orchestrierung.md,
             // "Übernommene Nachweise als erster Übergang") or the identification may already close
             // the gap; otherwise the offer is built anew.
-            is WebSelectMethodState.Start -> afterProof(ctx)
+            is WebSelectMethodState.Start -> finishOrOfferMore(ctx)
         }
 
-    private fun afterProof(ctx: JourneyContext): Transition {
-        // A process access is complete with its one proof; it has nothing else to offer. Its level
-        // was already checked on acceptance (InvitationAcceptance); this catches what the level
-        // alone does not say, such as a second factor the floor demands.
-        if (ctx.invitation != null) {
-            return if (ctx hasReached ctx.acrFloor) Transition.Authenticated
-            else Transition.Abort(InvitationAcceptance.Refusal.BELOW_REQUIRED_LEVEL.text)
-        }
-        // Without an account nobody can be identified: only lookup-login tools, never enrollment.
-        val account = ctx.account
-            ?: return Transition.To(WebSelectMethodState.SelectMethod(Offer(ctx.lookupLoginCandidates()), accountAlreadyKnown = false))
+    /** Done once the channel's floor is proven; otherwise what can still prove more depends on who is signing in. */
+    private fun finishOrOfferMore(ctx: JourneyContext): Transition {
         if (ctx hasReached ctx.acrFloor) return Transition.Authenticated
-        // No method of this account can close the gap here: identifying again can, as in STEP_UP.
-        // Failing that, say why instead of handing Keycloak an empty selection.
-        return offer(ctx.authCandidates()) { WebSelectMethodState.SelectMethod(it, accountAlreadyKnown = true) }
-            ?: ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.Start) {
-                Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
-            }
+        val account = ctx.account
+        return when {
+            // A process access has its one proof and nothing else to offer. Its level was checked on
+            // acceptance (InvitationAcceptance); this catches what the level alone does not say,
+            // such as a second factor the floor demands.
+            ctx.invitation != null -> Transition.Abort(InvitationAcceptance.Refusal.BELOW_REQUIRED_LEVEL.text)
+            account == null -> offerLookupLogin(ctx)
+            else -> offerStepUp(account, ctx)
+        }
     }
+
+    /** Without an account nobody can be identified: only lookup-login tools, never enrollment. */
+    private fun offerLookupLogin(ctx: JourneyContext): Transition =
+        Transition.To(WebSelectMethodState.SelectMethod(Offer(ctx.lookupLoginCandidates()), accountAlreadyKnown = false))
+
+    /**
+     * The account's methods. When none of them can close the gap here, identifying again can, as in
+     * STEP_UP; failing that, say why instead of handing Keycloak an empty selection.
+     */
+    private fun offerStepUp(account: AccountProfile, ctx: JourneyContext): Transition =
+        offer(ctx.authCandidates()) { WebSelectMethodState.SelectMethod(it, accountAlreadyKnown = true) }
+            ?: reIdentifyOr(ctx) { Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage()) }
+
+    /** RE_IDENTIFY up to the channel's floor, then back to [WebSelectMethodState.Start]; [otherwise] when it cannot help. */
+    private fun reIdentifyOr(ctx: JourneyContext, otherwise: () -> Transition): Transition =
+        ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.Start) { otherwise() }
 }
